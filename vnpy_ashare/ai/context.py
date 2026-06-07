@@ -1,0 +1,46 @@
+"""行情上下文组装。"""
+
+from __future__ import annotations
+
+from vnpy.trader.constant import Exchange
+
+from vnpy_ashare.config import exchange_to_cn
+from vnpy_ashare.models import StockItem
+from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_llm.events import AiContextData
+
+
+def format_quote_summary(quote: QuoteSnapshot | None) -> str:
+    if quote is None:
+        return ""
+    return (
+        f"最新价 {quote.last_price:.2f}，涨跌 {quote.change_amount:+.2f}（{quote.change_pct:+.2f}%），"
+        f"今开 {quote.open_price:.2f}，最高 {quote.high_price:.2f}，最低 {quote.low_price:.2f}，"
+        f"昨收 {quote.prev_close:.2f}，换手率 {quote.turnover_rate:.2f}%"
+    )
+
+
+def build_quote_context(
+    *,
+    page: str,
+    item: StockItem | None,
+    quote: QuoteSnapshot | None = None,
+    bar_count: int = 0,
+) -> AiContextData:
+    if item is None:
+        return AiContextData(page=page)
+
+    extra_parts: list[str] = []
+    if bar_count > 0:
+        extra_parts.append(f"本地日 K 条数：{bar_count}")
+    else:
+        extra_parts.append("本地日 K：暂无（需先下载）")
+
+    return AiContextData(
+        page=page,
+        symbol=item.symbol,
+        exchange=exchange_to_cn(item.exchange),
+        name=item.name,
+        quote_summary=format_quote_summary(quote),
+        extra="\n".join(extra_parts),
+    )

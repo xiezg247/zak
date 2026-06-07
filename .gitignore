@@ -1,0 +1,20 @@
+# uv
+.venv/
+
+# 导出备份
+data/backup/
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.env
+.venv/
+venv/
+.DS_Store
+.idea/
+.vscode/
+*.log

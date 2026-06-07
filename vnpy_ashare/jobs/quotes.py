@@ -1,0 +1,21 @@
+"""全市场行情采集。"""
+
+from __future__ import annotations
+
+from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.quotes.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.tickflow_client import fetch_quotes_from_tickflow
+from vnpy_ashare.universe import load_universe
+
+
+def collect_market_quotes() -> JobResult:
+    stocks = load_universe(allow_sync=False)
+    quotes = fetch_quotes_from_tickflow(stocks)
+    store = RedisQuoteStore()
+    store.ping()
+    count = store.write_quotes(quotes)
+    updated_at = store.get_updated_at() or "-"
+    return JobResult(
+        success=True,
+        message=f"写入 {count} 条行情，更新于 {updated_at}",
+    )

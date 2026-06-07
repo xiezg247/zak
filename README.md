@@ -1,0 +1,161 @@
+# vnpy_zak — A 股量化回测分析
+
+基于 [VeighNa (vnpy)](https://www.vnpy.com) 的 **A 股现货** 图形化回测项目。行情主数据源为 **TickFlow Pro**，基本面/另类数据辅助为 **Tushare**。
+
+## 功能特性
+
+- A 股专项：默认回测参数、自选池、整手下单、T+1 规则
+- 图形化 GUI：**A股日K 浏览**（全市场 5500+ 标的）、策略回测、数据管理
+- TickFlow Pro：A 股日线 / 分钟线批量下载
+- Tushare：财务、资金流等（后续可扩展选股脚本）
+- 本地 **SQLite** 存储（默认），可选 **QuestDB**（见下文）
+
+## 环境要求
+
+- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) 包管理器
+
+## 快速开始
+
+```bash
+cd vnpy_zak
+bash scripts/install.sh
+
+cp .env.example .env          # 填入 TICKFLOW_API_KEY
+uv run python scripts/init_config.py
+
+uv run python scripts/sync_universe.py  # 同步全 A 股标的列表（首次建议执行）
+uv run python run.py                    # 启动 GUI（默认自选页，市场页可搜索加入自选）
+
+# 自选池有标的后，批量下载日 K：
+uv run python scripts/batch_download.py --start 2020-01-01 --end 2025-12-31
+uv run python scripts/list_bars.py      # 确认本地数据
+```
+
+## A 股回测参数（自动配置）
+
+启动时若检测到期货默认参数（`IF88.CFFEX` / `size=300`），会自动替换为 A 股配置：
+
+| 界面字段 | A 股取值 | 说明 |
+|---------|---------|------|
+| 本地代码 | `600519.SSE` | 6 位代码 + `.SSE` / `.SZSE` / `.BSE` |
+| 合约乘数 | **1** | 每股乘数（界面仍显示期货术语） |
+| 价格跳动 | **0.01** | 最小报价单位 |
+| 手续费率 | **0.00055** | 万三佣金 + 万五印花税折中 |
+| 交易滑点 | **0.01** | 1 个最小价位 |
+| 回测资金 | 1000000 | 100 万 |
+
+> 策略回测页已中文化关键字段（股票代码、每股乘数）；其余控件沿用 vnpy 回测引擎，填对参数即可。
+
+## 策略开发
+
+继承 `AShareTemplate` 而非直接继承 `CtaTemplate`：
+
+```python
+from ashare_template import AShareTemplate
+
+class MyStrategy(AShareTemplate):
+    def on_bar(self, bar):
+        self.buy_stock(bar.close_price, 100)                    # 整手买入
+        self.sell_stock(bar.close_price, 100, bar.datetime.date())  # T+1 卖出
+```
+
+内置示例：`AshareDoubleMaStrategy`（双均线，仅做多）
+
+## 自选池与标的列表
+
+自选池、全 A 股列表存放在 `~/.vntrader/vnpy_zak.db`（与 K 线库 `~/.vntrader/database.db` 同目录）。
+
+```bash
+# 同步全 A 股列表
+uv run python scripts/sync_universe.py
+
+# 批量下载自选池 K 线
+uv run python scripts/batch_download.py --start 2020-01-01 --end 2025-12-31
+
+# 查看入库状态
+uv run python scripts/list_bars.py
+
+# 单元测试
+uv run python -m unittest discover -s tests -v
+
+# 备份 / 恢复（CSV 仅作导入导出，非主存储）
+uv run python scripts/export_metadata.py
+uv run python scripts/import_metadata.py --watchlist data/backup/watchlist.csv
+```
+
+## 数据库（可选 QuestDB）
+
+默认使用 **SQLite**（`vnpy_sqlite`），无需额外服务。
+
+后续若数据量增大或需要盘中高频写入，可切换 [vnpy_questdb](https://github.com/vnpy/vnpy_questdb)：
+
+```bash
+uv sync --extra questdb
+bash scripts/start_questdb.sh
+# .env: DATABASE_NAME=questdb，并取消注释 QUESTDB_* 配置
+uv run python scripts/init_config.py
+uv run python scripts/check_database.py
+```
+
+切回 SQLite：`.env` 设 `DATABASE_NAME=sqlite`，重新执行 `init_config.py`。
+
+## 文档
+
+- [产品方案](docs/product-plan.md) — A 股回测 + 看盘 + AI + 选股 + 策略实盘路径
+- [架构说明](docs/architecture.md) — 与 vnpy 默认 Trader 的关系、当前 UI 分层
+- [后续规划](docs/roadmap.md) — A 股 Gateway 实盘、PaperAccount、看盘行情切换等
+
+## 项目结构
+
+```
+vnpy_zak/
+├── run.py                         # GUI 入口（调用 vnpy_ashare.launcher）
+├── strategies/                    # CTA 策略
+├── docs/                          # 架构说明与后续规划
+├── vnpy_ashare/                   # VeighNa A 股行情 App
+│   ├── launcher.py                # GUI 启动逻辑
+│   ├── paths.py / config.py       # 路径与 A 股常量
+│   ├── models.py / bars.py        # 标的模型与 K 线下载
+│   ├── app_db.py / universe.py    # 元数据库与全市场同步
+│   ├── ai/                        # AI 上下文与全屏页
+│   └── ui/                        # 主窗口、行情页、字体等
+├── vnpy_llm/                      # 大模型对话插件
+├── vnpy_tickflow/                 # TickFlow 行情适配器
+├── docker-compose.yml             # QuestDB（可选）
+└── scripts/
+    ├── init_config.py
+    ├── start_questdb.sh
+    ├── check_database.py
+    ├── batch_download.py
+    ├── download_data.py
+    ├── list_bars.py
+    └── sync_universe.py           # 同步全 A 股标的列表
+```
+
+首次使用「A股日K」前，建议同步标的列表：
+
+```bash
+uv run python scripts/sync_universe.py
+```
+
+## 数据源分工
+
+| 用途 | 数据源 |
+|------|--------|
+| A 股 K 线（日/分钟） | TickFlow Pro（`DATAFEED_NAME=tickflow`） |
+| 财务 / 资金流 / 选股 | Tushare（独立脚本，非 GUI 行情） |
+
+## 常见问题
+
+**Q: 策略列表里有多个双均线？**
+
+选 `AshareDoubleMaStrategy`（本项目 A 股版本），不要选 vnpy 内置的 `DoubleMaStrategy`（含做空逻辑）。
+
+**Q: 回测界面仍是期货样式？**
+
+vnpy CTA 模块 UI 不可改，参数正确即可。启动 `run.py` 会自动写入 A 股默认值。
+
+**Q: 分钟线下载失败？**
+
+缩短日期范围（建议 ≤ 6 个月），并确认已配置 TickFlow Pro API Key。

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vnpy-zak"
+version = "0.1.0"
+description = "基于 VeighNa 的 A 股量化回测分析项目，集成 TickFlow 与 Tushare 数据源"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "vnpy>=4.0.0",
+    "vnpy_ctastrategy>=1.3.0",
+    "vnpy_ctabacktester>=1.3.0",
+    "vnpy_datamanager>=1.2.0",
+    "vnpy_sqlite>=1.1.0",
+    "vnpy_tushare>=1.4.0",
+    "tickflow[all]>=0.1.22",
+    "pandas>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "redis>=5.0.0",
+    "apscheduler>=3.10.0",
+    "openai>=1.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vnpy_tickflow*", "vnpy_ashare*", "vnpy_llm*"]
+
+[project.optional-dependencies]
+questdb = [
+    "vnpy_questdb>=1.0.0",
+]
+
+[tool.uv]
+index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+
+[tool.uv.sources]
