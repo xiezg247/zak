@@ -14,7 +14,7 @@ from vnpy_ashare.ui.ma_line_item import register_ma_items
 
 MINUTE_BAR_COUNT = 80
 DAILY_BAR_COUNT = 120
-WATCHLIST_DAILY_DEFAULT_BAR_COUNT = 20
+WATCHLIST_DAILY_DEFAULT_BAR_COUNT = 60
 WATCHLIST_DAILY_BAR_PRESETS: tuple[tuple[str, int], ...] = (
     ("10日", 10),
     ("20日", 20),

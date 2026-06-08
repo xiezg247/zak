@@ -171,8 +171,10 @@ class ChartPanel(QtWidgets.QWidget):
 
         self._daily_range_combo = QtWidgets.QComboBox()
         self._daily_range_combo.setObjectName("DailyRangeCombo")
-        for label, bar_count in WATCHLIST_DAILY_BAR_PRESETS:
+        for idx, (label, bar_count) in enumerate(WATCHLIST_DAILY_BAR_PRESETS):
             self._daily_range_combo.addItem(label, bar_count)
+            if bar_count == WATCHLIST_DAILY_DEFAULT_BAR_COUNT:
+                self._daily_range_combo.setCurrentIndex(idx)
         self._daily_range_combo.currentIndexChanged.connect(self._on_daily_range_changed)
 
         toolbar = QtWidgets.QHBoxLayout()
@@ -283,10 +285,10 @@ class ChartPanel(QtWidgets.QWidget):
         self._load_active_tab()
 
     def current_period(self) -> str:
-        return "60m"
+        return "1m"
 
     def current_period_label(self) -> str:
-        return "60分"
+        return "1分"
 
     def _update_hint(self, *, daily_missing: bool = False) -> None:
         text = chart_tab_hint(

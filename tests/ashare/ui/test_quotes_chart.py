@@ -193,10 +193,10 @@ class TestAshareChartWidget(unittest.TestCase):
         _, plot_y_max = chart._first_plot.viewRange()[1]
         self.assertGreaterEqual(plot_y_max, candle_max)
 
-    def test_create_watchlist_daily_chart_defaults_to_20_bars(self) -> None:
+    def test_create_watchlist_daily_chart_defaults_to_60_bars(self) -> None:
         chart = create_watchlist_chart(minute=False)
         self.assertEqual(chart._default_bar_count, WATCHLIST_DAILY_DEFAULT_BAR_COUNT)
-        self.assertEqual(WATCHLIST_DAILY_DEFAULT_BAR_COUNT, 20)
+        self.assertEqual(WATCHLIST_DAILY_DEFAULT_BAR_COUNT, 60)
 
     def test_create_watchlist_daily_chart_all_preset_matches_daily_count(self) -> None:
         chart = create_watchlist_chart(minute=False)
