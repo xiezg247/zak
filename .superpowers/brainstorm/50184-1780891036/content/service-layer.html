@@ -1,0 +1,179 @@
+<h2>设计第一章：vnpy_ashare Service 层抽取</h2>
+<p class="subtitle">把散落在 UI / worker / 工具函数中的业务能力抽象为可复用的 Service</p>
+
+<div class="section">
+  <h3>现状问题</h3>
+  <div class="mockup">
+    <div class="mockup-header">当前依赖关系（问题）</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; white-space: pre; line-height: 1.7;">
+skills/vnpy_context_skill.py
+  ├─ vnpy_ashare.ai.session_context     ← 全局变量，线程锁
+  ├─ vnpy_ashare.bar_store              ← 直接调函数
+  ├─ vnpy_ashare.bars                   ← 直接调函数
+  └─ vnpy_ashare.ai.symbol              ← 工具函数
+
+问题：
+1. Skill 直接导入 ashare 内部模块，耦合过深
+2. bar_store/bars 是纯函数模块，不是有状态的 Service
+3. 回测摘要通过全局变量传递（session_context._backtest_summary）
+4. 后续要新增选股/数据查询 Skill，会散落更多跨模块 import
+5. Skill 初始化时不持有 MainEngine/数据库连接，能力受限
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>目标架构</h3>
+  <div class="mockup">
+    <div class="mockup-header">新增 vnpy_ashare/services/ 层</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; white-space: pre; line-height: 1.7;">
+vnpy_ashare/
+├── services/                     ← 新增
+│   ├── __init__.py               ← 导出所有 Service 类
+│   ├── base.py                   ← BaseService（持有 engine 引用）
+│   ├── bar_service.py            ← BarService（K线查询、概览、下载）
+│   ├── quote_service.py          ← QuoteService（行情查询、快照）
+│   ├── watchlist_service.py      ← WatchlistService（自选池 CRUD）
+│   ├── backtest_service.py       ← BacktestService（回测触发、结果摘要）
+│   ├── screening_service.py      ← ScreeningService（选股条件执行）
+│   └── data_health_service.py    ← DataHealthService（数据完整性检查）
+├── engine.py                     ← AshareEngine 初始化 Services 并注入引用
+├── ai/
+│   ├── context.py                ← 不变
+│   └── session_context.py        ← 简化，BacktestSummary 移到 backtest_service
+├── bar_store.py                  ← 保留（底层数据访问，Service 调用它）
+├── bars.py                       ← 保留（底层数据访问）
+└── ...
+
+核心原则：
+  Skill ← Service ← 数据层（bar_store / bars / DB）
+  不直接跨层调用
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Service 基类设计</h3>
+  <div class="mockup">
+    <div class="mockup-header">services/base.py</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; white-space: pre; line-height: 1.6;">
+class BaseService:
+    """Service 基类：通过 AshareEngine 注入依赖。"""
+    
+    def __init__(self, engine: "AshareEngine") -> None:
+        self.engine = engine
+        self.main_engine = engine.main_engine
+        self.event_engine = engine.event_engine
+    
+    @property
+    def logger(self):
+        return self.engine.main_engine.get_engine("Log")  # 可选
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>新增的四个关键 Service</h3>
+
+  <div class="cards">
+    <div class="card">
+      <div class="card-body">
+        <h3>BacktestService</h3>
+        <p>封装回测生命周期：启动回测 → 等待结果 → 生成摘要</p>
+        <ul style="font-size: 13px; margin-top: 8px;">
+          <li><code>run_backtest(strategy, vt_symbol, ...)</code> → BacktestSummary</li>
+          <li><code>get_last_summary()</code> → BacktestSummary | None</li>
+          <li><code>list_strategies()</code> → 可用策略列表</li>
+          <li>替代 session_context.py 中的全局变量方式</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3>BarService</h3>
+        <p>封装 K 线查询：概览、历史数据、区间统计</p>
+        <ul style="font-size: 13px; margin-top: 8px;">
+          <li><code>get_overview(symbol, scope)</code> → PeriodBarOverview</li>
+          <li><code>load_bars(symbol, scope, start, end)</code> → list[BarData]</li>
+          <li><code>get_return(symbol, days)</code> → 区间涨跌</li>
+          <li>聚合 bar_store 和 bars 模块的功能</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3>ScreeningService</h3>
+        <p>封装选股能力，暴露给 AI 工具</p>
+        <ul style="font-size: 13px; margin-top: 8px;">
+          <li><code>screen_by_condition(condition, scope)</code> → list[Candidate]</li>
+          <li><code>list_conditions()</code> → 可用选股条件</li>
+          <li>内置：涨幅/换手率/成交量/均线金叉等基础条件</li>
+          <li>可扩展为自定义条件组合</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h3>WatchlistService</h3>
+        <p>封装自选池操作</p>
+        <ul style="font-size: 13px; margin-top: 8px;">
+          <li><code>get_items()</code> → 自选池列表</li>
+          <li><code>add/remove/move()</code> → CRUD</li>
+          <li><code>get_quotes()</code> → 自选池实时行情</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 32px;">
+  <h3>Engine 初始化变更</h3>
+  <div class="mockup">
+    <div class="mockup-header">vnpy_ashare/engine.py（改造后）</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; white-space: pre; line-height: 1.6;">
+class AshareEngine(BaseEngine):
+    def __init__(self, main_engine, event_engine):
+        super().__init__(main_engine, event_engine, APP_NAME)
+        self.scheduler = TaskSchedulerManager()
+        self.scheduler.start()
+        
+        # --- 新增：初始化所有 Service ---
+        self.bar_service = BarService(self)
+        self.quote_service = QuoteService(self)
+        self.watchlist_service = WatchlistService(self)
+        self.backtest_service = BacktestService(self)
+        self.screening_service = ScreeningService(self)
+        self.data_health_service = DataHealthService(self)
+        
+    def close(self):
+        self.scheduler.shutdown()
+        super().close()
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>对现有代码的影响</h3>
+  <div class="pros-cons">
+    <div class="pros"><h4>需要改动的文件</h4>
+      <ul>
+        <li><code>skills/vnpy_context_skill.py</code> — 改为通过 engine.service 调用</li>
+        <li><code>vnpy_ashare/ui/backtest_widget.py</code> — set_backtest_summary 改为 backtest_service</li>
+        <li><code>vnpy_ashare/ai/session_context.py</code> — 删除全局 BacktestSummary</li>
+        <li><code>vnpy_ashare/ui/quotes_page.py</code> — 仅需通过 page -> engine 获取 Service</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>不需要改动的</h4>
+      <ul>
+        <li><code>bar_store.py / bars.py</code> — 保留，由 Service 调用</li>
+        <li><code>app_db.py</code> — 保留</li>
+        <li><code>jobs/</code> — 调度任务不变</li>
+        <li><code>quotes/</code> — 行情 Provider 不变</li>
+        <li><code>ui/</code> 除 backtest_widget 外 — 渐进式迁移</li>
+      </ul>
+    </div>
+  </div>
+</div>

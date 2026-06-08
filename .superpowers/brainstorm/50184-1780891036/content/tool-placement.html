@@ -1,0 +1,95 @@
+<h2>核心业务工具归属 — 三种方案对比</h2>
+<p class="subtitle">回测·选股·数据查询的工具函数应该放在哪个模块？</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>全部放入 vnpy_ashare 作为 ToolProvider</h3>
+      <p>在 AshareEngine 中直接注册工具函数，统一挂载到 LlmEngine</p>
+      <div class="pros-cons" style="margin-top: 12px; font-size: 13px;">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>工具和业务逻辑在同一模块，修改方便</li>
+            <li>少一层间接调用，性能较好</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>vnpy_ashare 本就臃肿（27 文件），会进一步膨胀</li>
+            <li>工具定义与 GUI / 行情 / 引擎混在一起，职责不清</li>
+            <li>未来新增更多 AI 能力时 ashare 会变成单体巨石</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>全部作为 Python Skills</h3>
+      <p>所有业务工具注册到 vnpy_skills 框架，Skills 直接实现业务逻辑</p>
+      <div class="pros-cons" style="margin-top: 12px; font-size: 13px;">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>AI 工具集中在 skills 体系，职责清晰</li>
+            <li>Skills 框架已经是 LlmEngine 的标准入口</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>Skills 需要持有 MainEngine / BarStore 等依赖，获取困难</li>
+            <li>回测引擎、数据查询等重量级逻辑不应在 Skills 中重新实现</li>
+            <li>如果没有 ashare 的 GUI/引擎运行，Skills 工具无法独立工作</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>混合：Skills 做薄壳适配，ashare 做 Service</h3>
+      <p>Python Skills 封装对 vnpy_ashare 服务的调用，业务逻辑仍留在 ashare</p>
+      <div class="pros-cons" style="margin-top: 12px; font-size: 13px;">
+        <div class="pros"><h4>Pros</h4>
+          <ul>
+            <li>遵循现有模式（VnpyContextSkill 已这样做）</li>
+            <li>vnpy_ashare 保持纯业务逻辑，不必感知 LLM/Function Calling</li>
+            <li>Skills 做薄壳翻译 — 把内部方法映射为 LLM 友好的工具参数</li>
+            <li>可以在 ashare 中抽 Service 层，被 GUI 和 Skills 共用</li>
+            <li>测试友好：Service 可独立测试，Skill 可 mock Service</li>
+          </ul>
+        </div>
+        <div class="cons"><h4>Cons</h4>
+          <ul>
+            <li>多一层间接调用，但影响可忽略（都是内存调用）</li>
+            <li>需要在 ashare 中设计好 Service 接口，初期多些设计工作</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 32px;">
+  <div class="mockup">
+    <div class="mockup-header">推荐方案 C 的调用链路</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; white-space: pre; line-height: 1.8;">
+用户提问 "帮我回测双均线策略，2024年沪深300"
+
+LlmEngine (Function Calling)
+  └─ SkillEngine
+      └─ BacktestSkill.run_backtest(params)
+          └─ AshareEngine.backtest_service.run(strategy, scope)
+              ├─ BarStore.query_bars(symbols, start, end)  ← 已有
+              ├─ BacktesterEngine.run_backtesting()         ← vnpy 内置
+              └─ return 回测摘要 (dict)
+
+Skill 只做：参数校验 + 格式转换 + 结果摘要化
+ashare 做：真正的回测执行 + 数据查询 + 结果持久化
+    </div>
+  </div>
+</div>
