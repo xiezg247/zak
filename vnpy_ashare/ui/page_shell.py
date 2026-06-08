@@ -41,7 +41,6 @@ class QuotesShellWidget(QtWidgets.QWidget):
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
-        root.addWidget(self.page, stretch=1)
 
         if self.PAGE_NAME == "市场":
             self.index_ticker = QtWidgets.QLabel("指数加载中...")
@@ -51,6 +50,8 @@ class QuotesShellWidget(QtWidgets.QWidget):
             self._index_timer = QtCore.QTimer(self)
             self._index_timer.setInterval(INDEX_REFRESH_MS)
             self._index_timer.timeout.connect(self.refresh_indices)
+
+        root.addWidget(self.page, stretch=1)
 
         self.setStyleSheet(TERMINAL_STYLESHEET)
 
