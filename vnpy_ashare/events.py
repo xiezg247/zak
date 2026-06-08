@@ -45,3 +45,4 @@ class AskAiRequest:
     prompt: str
     source_page: str = ""
     use_full_page: bool = False
+    new_session: bool = False

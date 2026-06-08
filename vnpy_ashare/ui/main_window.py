@@ -48,6 +48,9 @@ _VNPY_WIDGETS: dict[str, tuple[str, str]] = {
     "data_manager": ("vnpy_ashare.ui.manager_widget", "ManagerWidget"),
 }
 
+# 仅看盘与选股页展示 AI 悬浮球
+_FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "local", "screener"})
+
 
 class AshareMainWindow(MainWindow):
     """左侧图标菜单 + 中央内容区，不再使用顶部「功能」菜单。"""
@@ -63,6 +66,7 @@ class AshareMainWindow(MainWindow):
         self._current_key: str | None = None
         self._floating_ai_orb: FloatingAiOrb | None = None
         self._floating_ai_panel: FloatingAiPanel | None = None
+        self._orb_user_hidden = False
         self._page_before_ai: int = 0
         self._ai_toggle_action: QtGui.QAction | None = None
         self._screener_draft_connected = False
@@ -229,9 +233,23 @@ class AshareMainWindow(MainWindow):
         self._floating_ai_panel = panel
 
         orb.restore_position(shell)
-        orb.show()
-        orb.raise_()
+        orb.hide()
         return True
+
+    @staticmethod
+    def _floating_orb_allowed(page_key: str) -> bool:
+        return page_key in _FLOATING_ORB_PAGE_KEYS
+
+    def _sync_floating_orb_for_page(self, page_key: str) -> None:
+        """按页面白名单显隐悬浮球；非白名单页收起面板并隐藏球。"""
+        if self._floating_ai_orb is None:
+            return
+        if self._floating_orb_allowed(page_key):
+            if not self._orb_user_hidden:
+                self._show_floating_orb()
+        else:
+            self._hide_floating_panel()
+            self._floating_ai_orb.hide()
 
     def _ensure_floating_ai(self) -> bool:
         if self._init_floating_ai():
@@ -249,10 +267,12 @@ class AshareMainWindow(MainWindow):
         if self._floating_ai_panel is not None:
             self._floating_ai_panel.hide()
 
-    def _hide_floating_orb(self) -> None:
+    def _hide_floating_orb(self, *, user_initiated: bool = True) -> None:
         self._hide_floating_panel()
         if self._floating_ai_orb is not None:
             self._floating_ai_orb.hide()
+        if user_initiated:
+            self._orb_user_hidden = True
 
     def _shell_widget(self) -> QtWidgets.QWidget | None:
         orb = self._floating_ai_orb
@@ -267,11 +287,14 @@ class AshareMainWindow(MainWindow):
         orb = self._floating_ai_orb
         if orb is None:
             return
+        if self._current_key and not self._floating_orb_allowed(self._current_key):
+            return
         shell = self._shell_widget()
         if shell is not None:
             orb.restore_position(shell)
         orb.show()
         orb.raise_()
+        self._orb_user_hidden = False
 
     def _show_floating_panel(self) -> None:
         orb = self._floating_ai_orb
@@ -298,14 +321,21 @@ class AshareMainWindow(MainWindow):
         if self._current_key == "ai_assistant":
             self._return_to_floating_mode()
             return
+        if self._current_key and not self._floating_orb_allowed(self._current_key):
+            QtWidgets.QMessageBox.information(
+                self,
+                "提示",
+                "AI 悬浮球仅在自选、市场、本地、选股页可用。",
+            )
+            return
         if self._orb_visible():
             self._hide_floating_orb()
         else:
             self._show_floating_orb()
 
     def _return_to_floating_mode(self) -> None:
+        self._orb_user_hidden = False
         self._show_page(self._page_before_ai)
-        self._show_floating_orb()
         self._show_floating_panel()
 
     def _open_ai_history(self) -> None:
@@ -385,9 +415,12 @@ class AshareMainWindow(MainWindow):
 
     def _handle_ask_ai(self, data: AskAiRequest) -> None:
         if data.use_full_page:
-            if self._get_llm_engine() is None:
+            llm_engine = self._get_llm_engine()
+            if llm_engine is None:
                 QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
                 return
+            if data.new_session:
+                llm_engine.new_session()
             index = self._nav_index_for_key("ai_assistant")
             if index is None:
                 return
@@ -398,6 +431,12 @@ class AshareMainWindow(MainWindow):
             return
         if not self._ensure_floating_ai():
             return
+        if self._current_key and not self._floating_orb_allowed(self._current_key):
+            index = self._nav_index_for_key("watchlist")
+            if index is not None:
+                self._orb_user_hidden = False
+                self._show_page(index)
+        self._orb_user_hidden = False
         self._show_floating_orb()
         self._show_floating_panel()
         if self._floating_ai_panel is not None:
@@ -432,6 +471,8 @@ class AshareMainWindow(MainWindow):
                 if prev_index is not None:
                     self._page_before_ai = prev_index
             self._hide_floating_panel()
+            if self._floating_ai_orb is not None:
+                self._floating_ai_orb.hide()
 
         if self._current_key and self._current_key != entry.key:
             old = self._page_widgets.get(self._current_key)
@@ -448,6 +489,7 @@ class AshareMainWindow(MainWindow):
         self._current_key = entry.key
         if entry.key != "ai_assistant":
             self._page_before_ai = index
+        self._sync_floating_orb_for_page(entry.key)
         self.sidebar.set_active_index(index)
         self.raise_()
         self.activateWindow()

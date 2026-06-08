@@ -281,6 +281,7 @@ class BacktesterWidget(VnpyBacktesterManager):
                     prompt=build_backtest_ai_prompt(summary),
                     source_page="策略回测",
                     use_full_page=True,
+                    new_session=True,
                 ),
             )
         )
