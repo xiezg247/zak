@@ -1,4 +1,4 @@
-"""本地页 K 线加载竞态校验测试。"""
+"""行情页 K 线加载竞态校验测试。"""
 
 from __future__ import annotations
 

@@ -21,11 +21,12 @@ dependencies = [
     "redis>=5.0.0",
     "apscheduler>=3.10.0",
     "openai>=1.0.0",
+    "mcp>=1.0.0",
 ]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["vnpy_tickflow*", "vnpy_ashare*", "vnpy_llm*"]
+include = ["vnpy_tickflow*", "vnpy_ashare*", "vnpy_llm*", "vnpy_skills*", "vnpy_mcp*"]
 
 [project.optional-dependencies]
 questdb = [

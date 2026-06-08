@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ctabacktester.ui.widget import BacktesterManager as VnpyBacktesterManager
 
@@ -11,6 +14,7 @@ from strategies.registry import (
     format_strategy_guide,
     get_strategy_meta,
 )
+from vnpy_ashare.ai.session_context import BacktestSummary, set_backtest_summary
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR, PANEL_BG
@@ -168,3 +172,21 @@ class BacktesterWidget(VnpyBacktesterManager):
             text = label.text()
             if text in _LABEL_MAP:
                 label.setText(_LABEL_MAP[text])
+
+    def process_backtesting_finished_event(self, event: Event) -> None:
+        super().process_backtesting_finished_event(event)
+        statistics = self.backtester_engine.get_result_statistics()
+        if not statistics:
+            return
+        start = cast(QtCore.QDateTime, self.start_date_edit.dateTime()).toPython()
+        end = cast(QtCore.QDateTime, self.end_date_edit.dateTime()).toPython()
+        set_backtest_summary(
+            BacktestSummary(
+                strategy=self.class_combo.currentText(),
+                vt_symbol=self.symbol_line.text().strip(),
+                interval=self.interval_combo.currentText(),
+                start=start.strftime("%Y-%m-%d"),
+                end=end.strftime("%Y-%m-%d"),
+                statistics=dict(statistics),
+            )
+        )

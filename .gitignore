@@ -12,6 +12,10 @@ __pycache__/
 dist/
 build/
 .env
+mcp/mcp.json
+mcp/*.json
+!mcp/*.example.json
+!mcp/mcp.json.example
 .venv/
 venv/
 .DS_Store

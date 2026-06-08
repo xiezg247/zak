@@ -299,7 +299,7 @@ flowchart TD
 
 ## 9. 测试计划
 
-### 单元测试（`tests/test_bar_health.py`）
+### 单元测试（`tests/ashare/test_bar_health.py`）
 
 - `last_trading_day` 周末/节假日（mock 日历）
 - `find_gaps` 无断层、单段断层、多段断层

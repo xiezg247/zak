@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
+from typing import Any
 
 from vnpy.event import Event, EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
-from vnpy_llm.client import LlmClientError, stream_chat_completion
+from vnpy_llm.client import LlmClientError, complete_with_tools, stream_chat_completion
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.events import EVENT_AI_CONTEXT, AiContextData
 from vnpy_llm.prompts import SYSTEM_PROMPT
 from vnpy_llm.store import ChatMessage, ChatStore
+from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
+from vnpy_mcp import McpEngine
+from vnpy_skills import SkillEngine
+
+from vnpy_ashare.ai.session_context import set_ai_context
 
 APP_NAME = "Llm"
 
@@ -24,6 +30,7 @@ class LlmSignals(QtCore.QObject):
     stream_finished = QtCore.Signal()
     stream_failed = QtCore.Signal(str)
     context_changed = QtCore.Signal(str)
+    tools_status_changed = QtCore.Signal(object)
 
 
 class LlmEngine(BaseEngine):
@@ -38,7 +45,14 @@ class LlmEngine(BaseEngine):
         self._context = AiContextData()
         self._extra_context_provider: Callable[[], str] | None = None
         self._streaming = False
+        self.skill_engine = SkillEngine()
+        self.skill_engine.load_all()
+        self._enabled_skills = self.skill_engine.init_skills()
+        self.mcp_engine = McpEngine()
+        self.mcp_engine.load_all()
+        self._enabled_mcp = self.mcp_engine.init_providers()
         self.register_event()
+        self._emit_tools_status()
 
     def register_event(self) -> None:
         self.event_engine.register(EVENT_AI_CONTEXT, self._on_context_event)
@@ -51,6 +65,7 @@ class LlmEngine(BaseEngine):
         if not isinstance(data, AiContextData):
             return
         self._context = data
+        set_ai_context(data)
         text = self.get_context_text()
         self.signals.context_changed.emit(text)
 
@@ -78,6 +93,12 @@ class LlmEngine(BaseEngine):
 
     def build_api_messages(self) -> list[dict[str, str]]:
         system_parts = [SYSTEM_PROMPT]
+        skills_text = self.skill_engine.build_skills_prompt()
+        if skills_text:
+            system_parts.append(skills_text)
+        mcp_text = self.mcp_engine.build_mcp_prompt()
+        if mcp_text:
+            system_parts.append(mcp_text)
         context_text = self.get_context_text()
         if context_text:
             system_parts.append("\n【当前终端上下文】\n" + context_text)
@@ -85,6 +106,43 @@ class LlmEngine(BaseEngine):
         for item in self.get_messages():
             messages.append({"role": item.role, "content": item.content})
         return messages
+
+    def reload_skills(self) -> list[str]:
+        self._enabled_skills = self.skill_engine.reload_skills()
+        return self._enabled_skills
+
+    def reload_mcp(self) -> list[str]:
+        self._enabled_mcp = self.mcp_engine.reload_providers()
+        return self._enabled_mcp
+
+    def reload_tools(self) -> tuple[list[str], list[str]]:
+        skills = self.reload_skills()
+        mcp = self.reload_mcp()
+        self._emit_tools_status()
+        return skills, mcp
+
+    def get_tools_status(self) -> ToolsStatusSnapshot:
+        return build_tools_status(self.skill_engine, self.mcp_engine)
+
+    def _emit_tools_status(self) -> None:
+        self.signals.tools_status_changed.emit(self.get_tools_status())
+
+    def get_enabled_skills(self) -> list[str]:
+        return list(self._enabled_skills)
+
+    def get_enabled_mcp(self) -> list[str]:
+        return list(self._enabled_mcp)
+
+    def _get_openai_tools(self) -> list[dict[str, Any]]:
+        tools = self.skill_engine.get_openai_tools()
+        tools.extend(self.mcp_engine.get_openai_tools())
+        return tools
+
+    def _execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        mcp_names = {spec.name for spec in self.mcp_engine.get_tool_specs()}
+        if name in mcp_names:
+            return self.mcp_engine.execute_tool(name, arguments)
+        return self.skill_engine.execute_tool(name, arguments)
 
     def append_local_message(self, *, role: str, content: str) -> None:
         self.store.append_message(self.session_id, role=role, content=content)
@@ -97,15 +155,32 @@ class LlmEngine(BaseEngine):
         self.signals.stream_started.emit()
         self.append_local_message(role="user", content=user_text)
 
-        chunks: list[str] = []
         try:
-            for delta in stream_chat_completion(self.config, self.build_api_messages()):
-                chunks.append(delta)
-                self.signals.stream_delta.emit(delta)
-                yield delta
-            content = "".join(chunks).strip()
-            if content:
-                self.append_local_message(role="assistant", content=content)
+            tools = self._get_openai_tools()
+            if tools:
+                messages = self.build_api_messages()
+                content, _ = complete_with_tools(
+                    self.config,
+                    messages,
+                    tools,
+                    self._execute_tool,
+                )
+                if content:
+                    chunk_size = 24
+                    for index in range(0, len(content), chunk_size):
+                        delta = content[index : index + chunk_size]
+                        self.signals.stream_delta.emit(delta)
+                        yield delta
+                    self.append_local_message(role="assistant", content=content)
+            else:
+                chunks: list[str] = []
+                for delta in stream_chat_completion(self.config, self.build_api_messages()):
+                    chunks.append(delta)
+                    self.signals.stream_delta.emit(delta)
+                    yield delta
+                content = "".join(chunks).strip()
+                if content:
+                    self.append_local_message(role="assistant", content=content)
         except Exception as ex:
             self.signals.stream_failed.emit(str(ex))
             raise

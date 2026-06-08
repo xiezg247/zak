@@ -6,13 +6,18 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.market_hours import default_chart_tab_index
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.chart_style import CHART_PANEL_STYLESHEET
 from vnpy_ashare.ui.intraday_chart import IntradayChart
 from vnpy_ashare.ui.ma_legend import MaLegendBar
-from vnpy_ashare.ui.quotes_chart import AshareChartWidget, create_watchlist_chart, prepare_chart_bars
+from vnpy_ashare.ui.quotes_chart import (
+    AshareChartWidget,
+    WATCHLIST_DAILY_BAR_PRESETS,
+    WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
+    create_watchlist_chart,
+    prepare_chart_bars,
+)
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
 from vnpy_ashare.ui.worker import (
     BarsLoadWorker,
@@ -23,6 +28,8 @@ from vnpy_ashare.ui.worker import (
 )
 
 LIVE_INTRADAY_HINT = "分时来自 TickFlow 实时接口，不写入本地"
+INTRADAY_EMPTY_HINT = "暂无分时数据（可能为非交易时段、标的无分钟线或 TickFlow 未返回当日数据）"
+INTRADAY_FAILED_HINT = "分时加载失败：{error}"
 LIVE_MINUTE_HINT = "1分K来自 TickFlow 实时接口，不写入本地"
 LOCAL_MINUTE_HINT = "1分K来自本地，{start} ~ {end}，共 {count} 根"
 MINUTE_MISSING_HINT = "暂无本地分K，请点击上方「下载分K到本地」（建议 ≤6 个月）"
@@ -84,16 +91,34 @@ def is_same_minute_request(
     return worker.period == period and worker_key == target_key
 
 
+def is_same_item_request(
+    worker: QtCore.QThread,
+    *,
+    target_key: tuple[str, Exchange],
+) -> bool:
+    """worker 是否仍在为同一标的加载（分时 / 日 K）。"""
+    item = getattr(worker, "item", None)
+    if item is None:
+        return False
+    return (item.symbol, item.exchange) == target_key
+
+
 def chart_tab_hint(
     tab_index: int,
     *,
     daily_missing: bool = False,
+    intraday_error: str | None = None,
+    intraday_empty: bool = False,
     minute_from_local: bool = False,
     minute_start: str | None = None,
     minute_end: str | None = None,
     minute_count: int = 0,
 ) -> str | None:
     if tab_index == 0:
+        if intraday_error:
+            return INTRADAY_FAILED_HINT.format(error=intraday_error)
+        if intraday_empty:
+            return INTRADAY_EMPTY_HINT
         return LIVE_INTRADAY_HINT
     if tab_index == MINUTE_TAB_INDEX:
         if minute_from_local and minute_start and minute_end:
@@ -129,6 +154,9 @@ class ChartPanel(QtWidgets.QWidget):
         self._minute_loaded_period: str | None = None
         self._minute_loaded_key: tuple[str, Exchange] | None = None
         self._minute_request_id = 0
+        self._intraday_error: str | None = None
+        self._intraday_empty = False
+        self._daily_viewport_bars = WATCHLIST_DAILY_DEFAULT_BAR_COUNT
 
         self._intraday_worker: IntradayBarsWorker | None = None
         self._minute_worker: MinuteBarsWorker | None = None
@@ -141,8 +169,15 @@ class ChartPanel(QtWidgets.QWidget):
         self.tab_bar.addTab("分K")
         self.tab_bar.currentChanged.connect(self._on_tab_changed)
 
+        self._daily_range_combo = QtWidgets.QComboBox()
+        self._daily_range_combo.setObjectName("DailyRangeCombo")
+        for label, bar_count in WATCHLIST_DAILY_BAR_PRESETS:
+            self._daily_range_combo.addItem(label, bar_count)
+        self._daily_range_combo.currentIndexChanged.connect(self._on_daily_range_changed)
+
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.addWidget(self.tab_bar, stretch=1)
+        toolbar.addWidget(self._daily_range_combo)
 
         self.intraday_chart = IntradayChart()
         self.daily_chart = create_watchlist_chart()
@@ -170,6 +205,22 @@ class ChartPanel(QtWidgets.QWidget):
         layout.addWidget(self.ma_legend)
         layout.addWidget(self.stack, stretch=1)
         layout.addWidget(self.hint_label)
+        self._update_daily_range_visibility()
+
+    def _update_daily_range_visibility(self) -> None:
+        self._daily_range_combo.setVisible(self.tab_bar.currentIndex() == DAILY_TAB_INDEX)
+
+    def _apply_daily_viewport(self) -> None:
+        chart = self.daily_chart
+        if isinstance(chart, AshareChartWidget):
+            chart.set_viewport_bar_count(self._daily_viewport_bars)
+
+    def _on_daily_range_changed(self, index: int) -> None:
+        bar_count = self._daily_range_combo.itemData(index)
+        if not isinstance(bar_count, int):
+            return
+        self._daily_viewport_bars = bar_count
+        self._apply_daily_viewport()
 
     @staticmethod
     def _thread_active(worker: QtCore.QThread | None) -> bool:
@@ -184,12 +235,9 @@ class ChartPanel(QtWidgets.QWidget):
         self._active = active
         if not active:
             self._generation += 1
-            for attr in ("_intraday_worker", "_minute_worker", "_daily_worker"):
-                worker = getattr(self, attr, None)
-                if worker is None:
-                    continue
-                setattr(self, attr, None)
-                self._retire_worker(worker)
+            self._abandon_intraday_worker()
+            self._abandon_minute_worker()
+            self._abandon_daily_worker()
 
     def current_tab_index(self) -> int:
         return self.tab_bar.currentIndex()
@@ -211,6 +259,9 @@ class ChartPanel(QtWidgets.QWidget):
         self._item = item
         self.update_quote(quote)
         self._generation += 1
+        self._abandon_intraday_worker()
+        self._abandon_minute_worker()
+        self._abandon_daily_worker()
         self._minute_from_local = False
         self._minute_start_text = ""
         self._minute_end_text = ""
@@ -218,12 +269,15 @@ class ChartPanel(QtWidgets.QWidget):
         self._minute_loaded_period = None
         self._minute_loaded_key = None
         self._minute_request_id += 1
+        self._intraday_error = None
+        self._intraday_empty = False
         if is_new:
             if self.tab_bar.currentIndex() == MINUTE_TAB_INDEX:
                 self._reset_minute_chart()
             else:
                 self._apply_default_tab()
         self.ma_legend.setVisible(self.tab_bar.currentIndex() in (1, 2))
+        self._update_daily_range_visibility()
         self._update_hint()
         self.tab_changed.emit(self.tab_bar.currentIndex())
         self._load_active_tab()
@@ -238,6 +292,8 @@ class ChartPanel(QtWidgets.QWidget):
         text = chart_tab_hint(
             self.tab_bar.currentIndex(),
             daily_missing=daily_missing,
+            intraday_error=self._intraday_error,
+            intraday_empty=self._intraday_empty,
             minute_from_local=self._minute_from_local,
             minute_start=self._minute_start_text or None,
             minute_end=self._minute_end_text or None,
@@ -250,7 +306,8 @@ class ChartPanel(QtWidgets.QWidget):
             self.hint_label.hide()
 
     def _apply_default_tab(self) -> None:
-        tab = default_chart_tab_index()
+        # 自选页以分时为主；非交易时段也展示当日已产生的分时数据。
+        tab = 0
         if self.tab_bar.currentIndex() == tab:
             return
         self.tab_bar.blockSignals(True)
@@ -272,6 +329,7 @@ class ChartPanel(QtWidgets.QWidget):
 
     def _on_tab_changed(self, index: int) -> None:
         self.ma_legend.setVisible(index in (1, 2))
+        self._update_daily_range_visibility()
         self.stack.setCurrentIndex(index)
         self._update_hint()
         self.tab_changed.emit(index)
@@ -295,6 +353,20 @@ class ChartPanel(QtWidgets.QWidget):
         self._minute_worker = None
         self._retire_worker(worker)
 
+    def _abandon_intraday_worker(self) -> None:
+        worker = self._intraday_worker
+        if worker is None:
+            return
+        self._intraday_worker = None
+        self._retire_worker(worker)
+
+    def _abandon_daily_worker(self) -> None:
+        worker = self._daily_worker
+        if worker is None:
+            return
+        self._daily_worker = None
+        self._retire_worker(worker)
+
     def _load_active_tab(self, *, quiet: bool = False) -> None:
         if not self._active or self._item is None:
             return
@@ -308,14 +380,21 @@ class ChartPanel(QtWidgets.QWidget):
             self._load_minute(quiet=quiet)
 
     def _load_intraday(self, *, quiet: bool = False) -> None:
-        if self._thread_active(self._intraday_worker):
-            return
-        item = self._item
-        if item is None:
+        if not self._active or self._item is None:
             return
 
-        generation = self._generation
+        item = self._item
         target_key = (item.symbol, item.exchange)
+        if self._thread_active(self._intraday_worker):
+            worker = self._intraday_worker
+            if worker is not None and is_same_item_request(
+                worker,
+                target_key=target_key,
+            ):
+                return
+            self._abandon_intraday_worker()
+
+        generation = self._generation
         if not quiet:
             self.intraday_chart.clear_all()
 
@@ -335,11 +414,32 @@ class ChartPanel(QtWidgets.QWidget):
                 return
             if self.tab_bar.currentIndex() != 0:
                 return
-            self.intraday_chart.update_bars(list(bars), prev_close=self._prev_close)
+            bar_list = list(bars)
+            if bar_list:
+                self._intraday_empty = False
+                self._intraday_error = None
+                self.intraday_chart.update_bars(bar_list, prev_close=self._prev_close)
+            else:
+                self._intraday_empty = True
+                self._intraday_error = None
+                self.intraday_chart.clear_all()
+            self._update_hint()
 
-        def on_failed(_msg: str) -> None:
+        def on_failed(msg: str) -> None:
             if self._intraday_worker is worker:
                 self._intraday_worker = None
+            if generation != self._generation:
+                return
+            if not self._active or self._item is None:
+                return
+            if (self._item.symbol, self._item.exchange) != target_key:
+                return
+            if self.tab_bar.currentIndex() != 0:
+                return
+            self._intraday_error = msg
+            self._intraday_empty = False
+            self.intraday_chart.clear_all()
+            self._update_hint()
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
@@ -348,14 +448,21 @@ class ChartPanel(QtWidgets.QWidget):
         worker.start()
 
     def _load_daily(self, *, quiet: bool = False) -> None:
-        if self._thread_active(self._daily_worker):
-            return
-        item = self._item
-        if item is None:
+        if not self._active or self._item is None:
             return
 
-        generation = self._generation
+        item = self._item
         target_key = (item.symbol, item.exchange)
+        if self._thread_active(self._daily_worker):
+            worker = self._daily_worker
+            if worker is not None and is_same_item_request(
+                worker,
+                target_key=target_key,
+            ):
+                return
+            self._abandon_daily_worker()
+
+        generation = self._generation
         if not quiet:
             self.daily_chart.clear_all()
 
@@ -382,6 +489,7 @@ class ChartPanel(QtWidgets.QWidget):
             loaded: LoadedBars = result
             if loaded.bars:
                 self.daily_chart.replace_history(loaded.bars)
+                self._apply_daily_viewport()
                 self._update_hint(daily_missing=False)
             else:
                 self.daily_chart.clear_all()

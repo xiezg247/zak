@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "tdx": {
+      "url": "https://mcp.tdx.com.cn:3001/mcp",
+      "headers": {
+        "tdx-api-key": "您的API密钥"
+      }
+    }
+  }
+}

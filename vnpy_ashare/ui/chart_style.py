@@ -15,6 +15,21 @@ AXIS_COLOR = "#666666"
 AXIS_TEXT_COLOR = "#a0a0a0"
 AVG_LINE_COLOR = "#e6b422"
 PREV_CLOSE_COLOR = "#888888"
+INTRADAY_CROSSHAIR_COLOR = "#5a5a5a"
+INTRADAY_LUNCH_LINE_COLOR = "#333333"
+INTRADAY_INFO_COLOR = "#9a9a9a"
+INTRADAY_LAST_DOT_SIZE = 7
+INTRADAY_PRICE_LINE_WIDTH = 2.0
+INTRADAY_AVG_LINE_WIDTH = 1.2
+
+INTRADAY_INFO_STYLESHEET = """
+QLabel#IntradayInfoBar {
+    color: #9a9a9a;
+    font-size: 11px;
+    padding: 2px 6px;
+    background-color: transparent;
+}
+"""
 
 CHART_FRAME_STYLESHEET = """
 QWidget#ChartFrame {
@@ -115,19 +130,32 @@ def apply_ashare_chart_theme(chart: ChartWidget) -> None:
             axis.setTextPen(pg.mkPen(AXIS_TEXT_COLOR))
 
 
-def style_intraday_plot(plot: pg.PlotWidget) -> None:
-    plot.setBackground(CHART_BG)
+def _style_plot_axes(plot: pg.PlotItem, *, sides: tuple[str, ...]) -> None:
+    plot.setMenuEnabled(False)
+    plot.getViewBox().setMouseEnabled(x=False, y=False)
+    for side in ("left", "right", "bottom"):
+        if side in sides:
+            plot.showAxis(side)
+            axis = plot.getAxis(side)
+            axis.setPen(pg.mkPen(AXIS_COLOR))
+            axis.setTextPen(pg.mkPen(AXIS_TEXT_COLOR))
+            if side == "left":
+                axis.setWidth(52)
+            elif side == "right":
+                axis.setWidth(48)
+        else:
+            plot.hideAxis(side)
+
+
+def style_intraday_price_plot(plot: pg.PlotItem) -> None:
     plot.showGrid(x=True, y=True, alpha=GRID_ALPHA)
-    plot.getPlotItem().hideAxis("left")
-    plot.showAxis("right")
     plot.setLabel("left", "")
-    plot.setLabel("bottom", "")
+    plot.setLabel("right", "")
+    _style_plot_axes(plot, sides=("left", "right"))
 
-    right_axis = plot.getAxis("right")
-    right_axis.setPen(pg.mkPen(AXIS_COLOR))
-    right_axis.setTextPen(pg.mkPen(AXIS_TEXT_COLOR))
-    right_axis.setWidth(52)
 
-    bottom_axis = plot.getAxis("bottom")
-    bottom_axis.setPen(pg.mkPen(AXIS_COLOR))
-    bottom_axis.setTextPen(pg.mkPen(AXIS_TEXT_COLOR))
+def style_intraday_volume_plot(plot: pg.PlotItem) -> None:
+    plot.showGrid(x=False, y=True, alpha=0.08)
+    plot.setLabel("left", "")
+    plot.setMaximumHeight(96)
+    _style_plot_axes(plot, sides=("left", "bottom"))

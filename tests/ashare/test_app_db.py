@@ -74,5 +74,44 @@ class TestWatchlistDb(unittest.TestCase):
         self.assertEqual(rows[0][0], "600000")
 
 
+class TestSearchUniverse(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.db_path = Path(self._tmp.name)
+        self._patcher = patch.object(app_db, "APP_DB_PATH", self.db_path)
+        self._patcher.start()
+        app_db.init_app_db()
+        app_db.save_universe_rows(
+            [
+                ("600519", Exchange.SSE, "贵州茅台"),
+                ("000001", Exchange.SZSE, "平安银行"),
+                ("300750", Exchange.SZSE, "宁德时代"),
+            ]
+        )
+
+    def tearDown(self) -> None:
+        self._patcher.stop()
+        self.db_path.unlink(missing_ok=True)
+
+    def test_search_by_symbol_and_name(self) -> None:
+        rows, total = app_db.search_universe("600519")
+        self.assertEqual(total, 1)
+        self.assertEqual(rows[0][0], "600519")
+
+        rows, total = app_db.search_universe("宁德")
+        self.assertEqual(total, 1)
+        self.assertEqual(rows[0][2], "宁德时代")
+
+    def test_search_pagination(self) -> None:
+        rows, total = app_db.search_universe("", limit=1, offset=0)
+        self.assertEqual(total, 0)
+        self.assertEqual(rows, [])
+
+        rows, total = app_db.search_universe("平安", limit=1, offset=0)
+        self.assertEqual(total, 1)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][2], "平安银行")
+
+
 if __name__ == "__main__":
     unittest.main()

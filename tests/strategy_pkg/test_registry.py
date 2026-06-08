@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import unittest
 
+import tests._bootstrap  # noqa: F401
+
 from strategies.registry import (
     format_strategy_guide,
     get_strategy_meta,

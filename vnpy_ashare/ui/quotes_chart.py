@@ -14,6 +14,15 @@ from vnpy_ashare.ui.ma_line_item import register_ma_items
 
 MINUTE_BAR_COUNT = 80
 DAILY_BAR_COUNT = 120
+WATCHLIST_DAILY_DEFAULT_BAR_COUNT = 20
+WATCHLIST_DAILY_BAR_PRESETS: tuple[tuple[str, int], ...] = (
+    ("10日", 10),
+    ("20日", 20),
+    ("30日", 30),
+    ("60日", 60),
+    ("90日", 90),
+    ("全部", DAILY_BAR_COUNT),
+)
 
 
 def prepare_chart_bars(bars: list[BarData]) -> list[BarData]:
@@ -109,6 +118,74 @@ class AshareChartWidget(ChartWidget):
         if self._cursor:
             self._cursor.clear_all()
 
+    def set_viewport_bar_count(self, bar_count: int) -> None:
+        """调整可见 K 线根数（不重新加载数据）。"""
+        self._default_bar_count = max(1, int(bar_count))
+        self._bar_count = self._default_bar_count
+        if self._manager.get_count() <= 0:
+            return
+        self._sync_viewport_to_data()
+        self._sync_cursor_to_last()
+        if self.scene():
+            self.scene().update()
+
+    def _visible_ix_range(self) -> tuple[int, int]:
+        count = self._manager.get_count()
+        if count <= 0:
+            return 0, 1
+        max_ix = min(int(self._right_ix), count)
+        min_ix = max(0, max_ix - int(self._bar_count))
+        if min_ix >= max_ix:
+            min_ix = max(0, max_ix - 1)
+        return min_ix, max_ix
+
+    def _update_plot_limits(self) -> None:
+        """同一子图合并 K 线与均线上下界，避免 setLimits 被 MA 单独压扁。"""
+        count = self._manager.get_count()
+        merged: dict[pg.PlotItem, tuple[float, float]] = {}
+        for item, plot in self._item_plot_map.items():
+            y_min, y_max = item.get_y_range()
+            if plot not in merged:
+                merged[plot] = (y_min, y_max)
+                continue
+            prev_min, prev_max = merged[plot]
+            merged[plot] = (min(prev_min, y_min), max(prev_max, y_max))
+
+        for plot, (y_min, y_max) in merged.items():
+            plot.setLimits(
+                xMin=-1,
+                xMax=count,
+                yMin=y_min,
+                yMax=y_max,
+            )
+
+    def _update_x_range(self) -> None:
+        min_ix, max_ix = self._visible_ix_range()
+        for plot in self._plots.values():
+            plot.setRange(xRange=(min_ix, max_ix), padding=0)
+
+    def _update_y_range(self) -> None:
+        """合并同一子图内 K 线与均线的 Y 范围，避免短视口下 MA 压扁蜡烛。"""
+        if not self._first_plot:
+            return
+        min_ix, max_ix = self._visible_ix_range()
+        if min_ix >= max_ix:
+            return
+
+        merged: dict[pg.PlotItem, tuple[float, float]] = {}
+        for item, plot in self._item_plot_map.items():
+            y_min, y_max = item.get_y_range(min_ix, max_ix)
+            if plot not in merged:
+                merged[plot] = (y_min, y_max)
+                continue
+            prev_min, prev_max = merged[plot]
+            merged[plot] = (min(prev_min, y_min), max(prev_max, y_max))
+
+        for plot, (y_min, y_max) in merged.items():
+            span = y_max - y_min
+            padding = span * 0.06 if span > 0 else max(abs(y_max) * 0.06, 0.5)
+            plot.setRange(yRange=(y_min - padding, y_max + padding))
+
     def _sync_viewport_to_data(self) -> None:
         """将视口与当前 K 线数量对齐，避免切换标的后沿用旧坐标范围。"""
         count = self._manager.get_count()
@@ -160,7 +237,8 @@ class AshareChartWidget(ChartWidget):
                 if max_x > count + 1 or min_x >= count:
                     self._sync_viewport_to_data()
                 else:
-                    self._right_ix = min(max(0, max_x), count)
+                    self._right_ix = min(max(0, int(max_x)), count)
+                    self._update_y_range()
             else:
                 self._right_ix = 0
         pg.PlotWidget.paintEvent(self, event)
@@ -201,4 +279,5 @@ def create_daily_chart() -> AshareChartWidget:
 
 def create_watchlist_chart(*, minute: bool = False) -> AshareChartWidget:
     """自选页日 K / 分 K。"""
-    return _create_ashare_kline_chart(bar_count=MINUTE_BAR_COUNT if minute else DAILY_BAR_COUNT)
+    bar_count = MINUTE_BAR_COUNT if minute else WATCHLIST_DAILY_DEFAULT_BAR_COUNT
+    return _create_ashare_kline_chart(bar_count=bar_count)

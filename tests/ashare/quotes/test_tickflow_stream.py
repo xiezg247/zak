@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import vnpy_ashare.quotes.tickflow_stream as tickflow_stream_module
 
-from vnpy.trader.ui import QtCore
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tickflow_stream
 
@@ -15,10 +15,7 @@ from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tic
 class TickflowStreamBridgeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        if not QtCore.QCoreApplication.instance():
-            cls._app = QtCore.QCoreApplication([])
-        else:
-            cls._app = QtCore.QCoreApplication.instance()
+        cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def test_set_quote_symbols_updates_subscription(self) -> None:
         bridge = TickflowStreamBridge()

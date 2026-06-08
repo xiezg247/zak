@@ -10,23 +10,38 @@ from vnpy_ashare.models import StockItem
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.chart_panel import (
+    ChartPanel,
     DAILY_MISSING_HINT,
     DAILY_TAB_INDEX,
+    INTRADAY_EMPTY_HINT,
+    INTRADAY_FAILED_HINT,
     LIVE_INTRADAY_HINT,
     LIVE_MINUTE_HINT,
     LOCAL_MINUTE_HINT,
     MINUTE_TAB_INDEX,
     chart_tab_hint,
+    is_same_item_request,
     is_same_minute_request,
     retain_thread_until_finished,
     should_apply_minute_bars,
 )
-from vnpy_ashare.ui.worker import MinuteBarsWorker
+from vnpy_ashare.ui.quotes_chart import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
+from vnpy_ashare.ui.worker import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
 
 
 class ChartTabHintTests(unittest.TestCase):
     def test_intraday_hint(self) -> None:
         self.assertEqual(chart_tab_hint(0), LIVE_INTRADAY_HINT)
+
+    def test_intraday_empty_hint(self) -> None:
+        self.assertEqual(chart_tab_hint(0, intraday_empty=True), INTRADAY_EMPTY_HINT)
+
+    def test_intraday_failed_hint(self) -> None:
+        text = chart_tab_hint(0, intraday_error="免费服务不支持日内分时数据")
+        self.assertEqual(
+            text,
+            INTRADAY_FAILED_HINT.format(error="免费服务不支持日内分时数据"),
+        )
 
     def test_minute_hint(self) -> None:
         text = chart_tab_hint(MINUTE_TAB_INDEX)
@@ -55,6 +70,22 @@ class ChartTabHintTests(unittest.TestCase):
 
     def test_daily_with_data_no_hint(self) -> None:
         self.assertIsNone(chart_tab_hint(DAILY_TAB_INDEX, daily_missing=False))
+
+
+class SameItemRequestTests(unittest.TestCase):
+    def test_same_intraday_symbol(self) -> None:
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
+        worker = IntradayBarsWorker(item)
+        self.assertTrue(
+            is_same_item_request(worker, target_key=("600519", Exchange.SSE))
+        )
+
+    def test_different_daily_symbol(self) -> None:
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
+        worker = BarsLoadWorker(item)
+        self.assertFalse(
+            is_same_item_request(worker, target_key=("000001", Exchange.SZSE))
+        )
 
 
 class SameMinuteRequestTests(unittest.TestCase):
@@ -104,6 +135,29 @@ class RetainThreadTests(unittest.TestCase):
         while worker in retired and not deadline.hasExpired():
             QtWidgets.QApplication.processEvents()
         self.assertNotIn(worker, retired)
+
+
+class DailyRangePresetTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    def test_watchlist_daily_presets_include_default(self) -> None:
+        counts = [count for _, count in WATCHLIST_DAILY_BAR_PRESETS]
+        self.assertIn(WATCHLIST_DAILY_DEFAULT_BAR_COUNT, counts)
+
+    def test_daily_range_combo_visible_only_on_daily_tab(self) -> None:
+        panel = ChartPanel()
+        panel.show()
+        QtWidgets.QApplication.processEvents()
+
+        panel.tab_bar.setCurrentIndex(DAILY_TAB_INDEX)
+        panel._update_daily_range_visibility()
+        self.assertTrue(panel._daily_range_combo.isVisible())
+
+        panel.tab_bar.setCurrentIndex(0)
+        panel._update_daily_range_visibility()
+        self.assertFalse(panel._daily_range_combo.isVisible())
 
 
 class MinuteBarsApplyTests(unittest.TestCase):

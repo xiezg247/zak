@@ -441,6 +441,9 @@ class QuotesPage(QtWidgets.QWidget):
                 suffix = "..." if len(removed) > 5 else ""
                 self.status_label.setText(f"已清理 {len(removed)} 条无效日K：{symbols}{suffix}")
         self.refresh_local_meta()
+        if self.current_item is not None and self.chart_panel is not None:
+            quote = self.quote_map.get(self.current_item.tickflow_symbol)
+            self.chart_panel.load_item(self.current_item, quote=quote)
         self.load_stock_list()
 
     def deactivate(self) -> None:

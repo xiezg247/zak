@@ -1,13 +1,37 @@
-"""行情上下文组装。"""
+"""行情上下文数据模型与组装。"""
 
 from __future__ import annotations
+
+from dataclasses import dataclass
 
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_llm.events import AiContextData
+
+
+@dataclass
+class AiContextData:
+    page: str = ""
+    symbol: str = ""
+    exchange: str = ""
+    name: str = ""
+    quote_summary: str = ""
+    extra: str = ""
+
+    def to_text(self) -> str:
+        lines: list[str] = []
+        if self.page:
+            lines.append(f"当前页面：{self.page}")
+        if self.symbol and self.exchange:
+            title = self.name or self.symbol
+            lines.append(f"当前选中：{title}（{self.symbol}.{self.exchange}）")
+        if self.quote_summary:
+            lines.append(f"行情摘要：{self.quote_summary}")
+        if self.extra:
+            lines.append(self.extra)
+        return "\n".join(lines)
 
 
 def format_quote_summary(quote: QuoteSnapshot | None) -> str:

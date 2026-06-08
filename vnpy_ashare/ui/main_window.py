@@ -17,6 +17,7 @@ from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
 from vnpy_llm.ui.panel import AiChatPanel
+from vnpy_llm.ui.tools_widgets import show_ai_tools_dialog
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.scheduler_dialog import SchedulerDialog
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
@@ -84,6 +85,9 @@ class AshareMainWindow(MainWindow):
         self._ai_toggle_action.triggered.connect(self._toggle_ai_dock)
         self.addAction(self._ai_toggle_action)
         tools_menu.addSeparator()
+        ai_tools_action = tools_menu.addAction("AI 工具能力…")
+        ai_tools_action.triggered.connect(self._open_ai_tools_dialog)
+        tools_menu.addSeparator()
 
         scheduler_action = tools_menu.addAction("定时任务...")
         scheduler_action.triggered.connect(self._open_scheduler_dialog)
@@ -141,6 +145,13 @@ class AshareMainWindow(MainWindow):
         if isinstance(engine, LlmEngine):
             return engine
         return None
+
+    def _open_ai_tools_dialog(self) -> None:
+        llm_engine = self._get_llm_engine()
+        if llm_engine is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+            return
+        show_ai_tools_dialog(llm_engine, self)
 
     def _init_ai_dock(self) -> bool:
         if self._ai_dock is not None:

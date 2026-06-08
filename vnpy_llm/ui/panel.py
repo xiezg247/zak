@@ -5,7 +5,9 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_llm.engine import LlmEngine
+from vnpy_llm.tools_status import ToolsStatusSnapshot
 from vnpy_llm.ui.styles import PANEL_STYLESHEET
+from vnpy_llm.ui.tools_widgets import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.worker import ChatWorker
 
 
@@ -61,6 +63,9 @@ class AiChatPanel(QtWidgets.QWidget):
         more_btn.setObjectName("AiToolBtn")
         more_btn.setFixedWidth(36)
         more_menu = QtWidgets.QMenu(more_btn)
+        more_menu.addAction("AI 工具能力…", self._on_show_tools)
+        more_menu.addAction("重新加载工具", self._on_reload_tools)
+        more_menu.addSeparator()
         more_menu.addAction("新会话", self._on_new_session)
         more_menu.addAction("清空会话", self._on_clear)
         more_menu.addSeparator()
@@ -72,6 +77,10 @@ class AiChatPanel(QtWidgets.QWidget):
         header.addWidget(more_btn)
 
         root.addLayout(header)
+
+        self.tools_status_bar = AiToolsStatusBar(self)
+        self.tools_status_bar.open_details_requested.connect(self._on_show_tools)
+        root.addWidget(self.tools_status_bar)
 
         if self.compact:
             shortcut_hint = QtWidgets.QLabel("Ctrl+L / ⌘L 开关侧栏 · 全屏进入专注模式")
@@ -121,6 +130,8 @@ class AiChatPanel(QtWidgets.QWidget):
         signals.stream_finished.connect(self._on_stream_finished)
         signals.stream_failed.connect(self._on_stream_failed)
         signals.context_changed.connect(self._on_context_changed)
+        signals.tools_status_changed.connect(self._on_tools_status_changed)
+        self._on_tools_status_changed(self.engine.get_tools_status())
 
     def focus_input(self) -> None:
         self.input_box.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
@@ -244,6 +255,22 @@ class AiChatPanel(QtWidgets.QWidget):
         if self._worker is not None and self._worker.isRunning():
             return
         self.engine.new_session()
+
+    def _on_tools_status_changed(self, snapshot: ToolsStatusSnapshot) -> None:
+        self.tools_status_bar.apply_snapshot(snapshot)
+
+    def _on_show_tools(self) -> None:
+        dialog = AiToolsDialog(self.engine, self)
+        dialog.reload_requested.connect(
+            lambda: self._on_tools_status_changed(self.engine.get_tools_status())
+        )
+        dialog.exec()
+
+    def _on_reload_tools(self) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再重新加载")
+            return
+        self.engine.reload_tools()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if (

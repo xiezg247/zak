@@ -17,7 +17,10 @@ from vnpy_ashare.ui.quotes_chart import (
     AshareVolumeItem,
     ChineseCandleItem,
     ChineseVolumeItem,
+    DAILY_BAR_COUNT,
     MINUTE_BAR_COUNT,
+    WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
+    create_watchlist_chart,
     prepare_chart_bars,
 )
 from vnpy.chart.manager import BarManager
@@ -106,9 +109,7 @@ class TestAshareChartWidget(unittest.TestCase):
     def setUpClass(cls) -> None:
         from vnpy.trader.ui import QtWidgets
 
-        cls._app = QtWidgets.QApplication.instance()
-        if cls._app is None:
-            cls._app = QtWidgets.QApplication([])
+        cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def _create_chart(self) -> AshareChartWidget:
         chart = AshareChartWidget(bar_count=MINUTE_BAR_COUNT)
@@ -167,6 +168,43 @@ class TestAshareChartWidget(unittest.TestCase):
         first = chart._manager.get_bar(0)
         assert first is not None
         self.assertEqual(first.datetime.minute, 50)
+
+    def test_set_viewport_bar_count_without_reload(self) -> None:
+        chart = self._create_chart()
+        chart.replace_history(_daily_bars(80))
+
+        chart.set_viewport_bar_count(10)
+
+        self.assertEqual(chart._default_bar_count, 10)
+        self.assertEqual(chart._bar_count, 10)
+        self.assertEqual(chart._right_ix, 80)
+        min_x, max_x = chart._first_plot.getViewBox().viewRange()[0]
+        self.assertAlmostEqual(max_x, 80.0, places=3)
+        self.assertAlmostEqual(min_x, 70.0, places=3)
+
+    def test_short_viewport_y_range_includes_candle_highs(self) -> None:
+        chart = create_watchlist_chart(minute=False)
+        chart.replace_history(_daily_bars(80))
+        chart.set_viewport_bar_count(5)
+
+        min_ix, max_ix = chart._visible_ix_range()
+        candle = chart._items["candle"]
+        candle_min, candle_max = candle.get_y_range(min_ix, max_ix)
+        _, plot_y_max = chart._first_plot.viewRange()[1]
+        self.assertGreaterEqual(plot_y_max, candle_max)
+
+    def test_create_watchlist_daily_chart_defaults_to_20_bars(self) -> None:
+        chart = create_watchlist_chart(minute=False)
+        self.assertEqual(chart._default_bar_count, WATCHLIST_DAILY_DEFAULT_BAR_COUNT)
+        self.assertEqual(WATCHLIST_DAILY_DEFAULT_BAR_COUNT, 20)
+
+    def test_create_watchlist_daily_chart_all_preset_matches_daily_count(self) -> None:
+        chart = create_watchlist_chart(minute=False)
+        chart.replace_history(_daily_bars(DAILY_BAR_COUNT))
+        chart.set_viewport_bar_count(DAILY_BAR_COUNT)
+        self.assertEqual(chart._bar_count, DAILY_BAR_COUNT)
+        min_x, max_x = chart._first_plot.getViewBox().viewRange()[0]
+        self.assertAlmostEqual(max_x, float(DAILY_BAR_COUNT), places=3)
 
 
 class TestChineseChartItems(unittest.TestCase):
