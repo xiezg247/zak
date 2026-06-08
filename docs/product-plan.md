@@ -38,13 +38,13 @@ flowchart TB
         W[自选]
         M[市场]
         L[本地]
-        S[选股]
         B[策略回测]
         D[数据管理]
     end
 
-    subgraph overlay [叠加层]
+    subgraph overlay [叠加层 + Skills]
         AI[AI 侧栏 / 全屏]
+        SK[Agent Skills]
     end
 
     subgraph data [数据层]
@@ -55,10 +55,9 @@ flowchart TB
     end
 
     subgraph engine [引擎]
-        SCR[选股引擎 screener]
         BT[CTA 回测引擎]
-        LIVE[CTA 策略实盘引擎]
-        LLM[LlmEngine + tools]
+        LIVE[CTA 策略实盘引擎 规划]
+        LLM[LlmEngine]
     end
 
     subgraph trade [交易层 规划]
@@ -69,21 +68,19 @@ flowchart TB
     W --> TF
     M --> RD
     L --> DB
-    S --> SCR
-    SCR --> TS
-    SCR --> DB
     B --> BT
     BT --> DB
     LIVE --> GW
     LIVE --> PA
     BT -.同一策略类.-> LIVE
     AI --> LLM
-    LLM --> SCR
-    LLM --> DB
-    LLM --> TF
+    LLM --> SK
+    SK --> DB
+    SK --> TF
+    SK --> TS
 ```
 
-原则：**看盘与回测 UI 已自建；选股新增一页；AI 不替代规则引擎，而是增强解释与对话。**
+原则：**看盘与回测 UI 已自建；AI 通过 Agent Skills 读数据、不替代规则引擎；选股页与筛选引擎为规划中能力。**
 
 ---
 
@@ -103,14 +100,18 @@ flowchart TB
 
 ## 4. 四支柱最优路径
 
-### 4.1 看盘（维持 + 小步增强）
+### 4.1 看盘（已实现，维护增强）
 
 **现状**：自选 TickFlow、市场 Redis、图表/五档/调度 —— 已是正确方向。
 
-**下一步（按需）**：
+**当前状态**：
 
+- [x] 自选页直连 TickFlow 行情
+- [x] 市场页 Redis 涨幅榜 + TickFlow 直连刷新（`TickFlowStreamBridge`）
+- [x] 分K 图表（1分/5分/日K）
+- [x] 五档盘口（TickFlow WS）
+- [x] 定时刷新调度（`refresh_scheduler`）
 - [ ] 自选页工具栏「AI」图标（等同 `Ctrl+L`）
-- [ ] 选股结果一键「加入自选」跳转并高亮
 - [ ] 状态栏显示行情源（TickFlow / Redis）
 
 **实盘阶段**：看盘可切换为 Gateway 行情主源（roadmap P4），与策略下单同源。
@@ -138,9 +139,9 @@ flowchart TB
 
 ---
 
-### 4.3 选股（新核心，建议优先建设）
+### 4.3 选股（规划中，为四大支柱的缺口）
 
-选股是四支柱里**缺口最大**的一块，建议独立成左侧导航 **「选股」** 页（与市场「发现」、自选「跟踪」区分）。
+选股是四支柱里**缺口最大**的一块，规划独立成左侧导航 **「选股」** 页（与市场「发现」、自选「跟踪」区分）。**当前尚未实现**，选股能力暂时通过 Agent Skill `vnpy_screening_skill.py` 提供 CLI 级筛选。
 
 #### 分层设计
 
@@ -154,7 +155,7 @@ Layer 3  AI 增强（可选）
          对结果集生成文字点评（不替代筛选）
 ```
 
-#### 推荐模块结构
+#### 推荐模块结构（尚未创建）
 
 ```text
 vnpy_ashare/screener/
@@ -185,13 +186,23 @@ scripts/run_screener.py           # CLI，便于定时任务
 
 ### 4.4 AI 增强（服务三业，而非第四套 UI）
 
-**现状**：侧栏 Dock、全屏、选股上下文、`vnpy_llm` 插件化。
+**现状**：侧栏 Dock、全屏、`vnpy_llm` 插件化。**Agent Skills** 体系已落地：通过 `vnpy_skills/` 引擎注册业务 Skill，每个 Skill 以 `SkillTemplate` 子类暴露工具函数供 LLM 调用。
 
-**最优演进**：**工具调用（Function Calling）** 把 AI 钉在真实数据上。
+**核心 Skill：**
+
+| Skill 文件 | 能力 |
+|------------|------|
+| `skills/vnpy_context_skill.py` | 终端上下文（当前自选、K 线概览） |
+| `skills/vnpy_data_skill.py` | 行情/K 线数据查询 |
+| `skills/vnpy_backtest_skill.py` | 回测执行与结果读取 |
+| `skills/vnpy_screening_skill.py` | 选股筛选（CLI 级） |
+| `skills/vnpy_watchlist_skill.py` | 自选池管理 |
+
+**工具调用（由 Agent Skills 提供）：**
 
 | 工具 | 作用 |
 |------|------|
-| `get_quote_context` | 当前选中标的行情摘要（已有事件，可封装） |
+| `get_quote_context` | 当前选中标的行情摘要（通过 `set_ai_context` 共享） |
 | `get_bars_summary` | 本地 K 线条数、区间涨跌 |
 | `get_watchlist` | 自选列表 |
 | `run_screener` | 执行已保存选股方案，返回 Top N |
@@ -210,50 +221,50 @@ scripts/run_screener.py           # CLI，便于定时任务
 
 ---
 
-## 5. 左侧导航（目标态）
+## 5. 左侧导航（当前态）
 
 ```text
-自选 | 市场 | 本地 | 选股 | ── | 策略回测 | 数据管理
-（P3 实盘阶段再启用：CTA策略 页 + launcher 挂载 CtaStrategyApp）
+自选 | 市场 | 本地 | 策略回测 | 数据管理
+（规划：选股页 + CTA策略页 待后续迭代加入）
 ```
 
 | 页 | 心智 |
 |----|------|
 | 自选 | 我的池子，深度跟踪 |
 | 市场 | 全市场发现、涨幅榜 |
-| 本地 | 已下载 K 线 |
-| **选股** | **规则筛票 → 入池** |
+| 本地 | 已下载 K 线健康状态 |
 | 策略回测 | 历史验证策略 |
 | 数据管理 | vnpy 数据维护 |
 
-**CTA策略** 页（vnpy `CtaManager`）：**当前未挂载**（`launcher` 不加载 `CtaStrategyApp`），避免无用入口；P3 接入 A 股 Gateway 时恢复。
+**选股** 页（未实现）：规划为规则筛选 + 导入自选。  
+**CTA策略** 页（vnpy `CtaManager`）：**当前未挂载**（`launcher` 不加载 `CtaStrategyApp`），P3 接入 A 股 Gateway 时恢复。
 
 AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 
 ---
 
-## 6. 实施优先级（建议 3 个迭代）
+## 6. 实施优先级（分 4 个迭代，当前处于迭代 2–3 之间）
 
-### 迭代 1：选股 MVP（4–6 周当量，可拆 PR）
+### 迭代 1：选股 MVP（待开始）
 
 1. `screener` 包 + CLI：`scripts/run_screener.py`
 2. 2–3 个预置方案（如：市值 > X、PE < Y、近 5 日资金流）
 3. 结果写入 DB / 导出 CSV，脚本 `加入自选`
 4. `.env` / README 补充 Tushare 说明
 
-### 迭代 2：选股 GUI + 回测联动
+### 迭代 2：选股 GUI + 回测联动（部分完成）
 
-1. 左侧「选股」页：条件表单 + 结果表 + 加入自选
-2. 自选池批量回测脚本或 GUI 入口
-3. 回测结果摘要落库
+1. ~~左侧「选股」页：条件表单 + 结果表 + 加入自选~~（待开始）
+2. **✅ 看盘 → 策略回测联动**（B1 已完成）
+3. 回测结果摘要落库（B3 待开始）
 
-### 迭代 3：AI 工具链
+### 迭代 3：AI 工具链（Agent Skills 已落地）
 
-1. `vnpy_ashare/ai/tools.py` 注册到 `LlmEngine`
-2. AI 可读：上下文、K 线摘要、选股结果、回测摘要
+1. **✅ Agent Skills 体系**（`vnpy_skills/` 引擎 + 5 个业务 Skill）
+2. **✅ AI 可读上下文**（`session_context.py`：行情/K 线/回测摘要共享）
 3. 可选：自然语言 → 选股参数（需确认框）
 
-### 迭代 4：A 股策略实盘（roadmap P3–P4）
+### 迭代 4：A 股策略实盘（roadmap P3–P4，待开始）
 
 1. 接入 **A 股 Gateway**（XTP / 华鑫奇点 / OST 等，按券商选型），`launcher` 注册 `add_gateway`
 2. **PaperAccount** 本地模拟：Gateway 行情 + 本地撮合，验证策略再实盘
@@ -269,7 +280,7 @@ AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 2. **策略只做多**：`AShareTemplate` 统一 T+1、100 股  
 3. **选股可复现**：条件 JSON 存盘，同条件同结果  
 4. **AI 可审计**：工具调用打日志，回答引用数据来源  
-5. **包边界**：`vnpy_llm` 通用；`vnpy_ashare/screener` + `ai/tools` 为 A 股专用  
+5. **包边界**：`vnpy_llm` 通用；`vnpy_skills` 为 AI 工具引擎；`vnpy_mcp` 为远端工具集成  
 
 ---
 
@@ -306,9 +317,9 @@ AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 
 | 文档阶段 | 内容 |
 |----------|------|
-| 迭代 1–3（product-plan） | 选股、批量回测、AI 工具 |
+| 迭代 1–3（product-plan） | 选股、批量回测、AI Agent Skills |
 | P3（roadmap） | A 股 Gateway、PaperAccount、CTA策略实盘、交易 Dock |
 | P4（roadmap） | 看盘页 `GatewayQuoteProvider`，与策略行情同源 |
 | 不在范围 | 期货 CTP、默认 Trader 全屏布局 |
 
-投研闭环（选股 + 回测 + 看盘 + AI）可先独立交付；**策略实盘为已规划的必要延伸**，与回测共用同一套 A 股策略代码。
+投研闭环（看盘 + 回测 + AI Skills）已基本可用；**选股 GUI 与策略实盘为规划的后续迭代**，与回测共用同一套 A 股策略代码。

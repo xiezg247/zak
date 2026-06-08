@@ -130,7 +130,7 @@ QuotesPage（工具栏按钮）
 
 ### 迭代 B4：回测页 AI 上下文（未开始）
 
-- 进入策略回测页或完成回测后，向 `EVENT_AI_CONTEXT` 推送：
+- 进入策略回测页或完成回测后，通过 `session_context.set_ai_context()` 推送：
   - 当前 `vt_symbol`、策略名、最近回测摘要（依赖 B3）
 - 系统提示词分化：「你正在协助用户解读 A 股策略回测结果…」
 
@@ -153,7 +153,7 @@ QuotesPage（工具栏按钮）
 | 股票代码 | `600519.SSE` | 可被 B1 覆盖 |
 | 每股乘数 | `1` | vnpy 字段 `size` |
 | 价格跳动 | `0.01` | |
-| 手续费率 | `0.00055` | 佣金+印花税折中 |
+| 手续费率 | `0.0008` | 佣金万三 + 印花税万五折中 |
 | 滑点 | `0.01` | |
 | 资金 | `1000000` | |
 
@@ -176,12 +176,13 @@ uv run python scripts/batch_download.py --start 2020-01-01 --end 2025-12-31
 | 文件 | 职责 |
 |------|------|
 | `vnpy_ashare/events.py` | `EVENT_OPEN_BACKTEST`、`BacktestRequest` |
-| `vnpy_ashare/ui/quotes_page.py` | 「策略回测」按钮与事件发送 |
+| `vnpy_ashare/ui/page_shell.py` | 「策略回测」按钮与事件发送 |
 | `vnpy_ashare/ui/main_window.py` | 导航切换与事件订阅 |
 | `vnpy_ashare/ui/backtest_widget.py` | `apply_vt_symbol()` |
 | `vnpy_ashare/config.py` | A 股回测默认参数 |
-| `strategies/ashare_template.py` | 策略基类 |
-| `strategies/double_ma_strategy.py` | 默认示例策略 |
+| `strategies/ashare_template.py` | 策略基类 `AShareTemplate` |
+| `strategies/double_ma_strategy.py` | 默认示例策略 `AshareDoubleMaStrategy` |
+| `strategies/registry.py` | 策略元数据注册表 `STRATEGY_REGISTRY` |
 
 ---
 

@@ -9,7 +9,7 @@ vnpy MainWindow（基类）
 ├── 复用：MainEngine / EventEngine、App 插件注册、部分菜单、窗口配置
 ├── 禁用：init_dock() 默认交易 Dock（下单/委托/持仓/资金/TickMonitor）
 ├── 替换：中央区域 → 自建左侧导航 + StackedWidget
-└── 嵌入：CTA 策略 / CTA 回测 / 数据管理（vnpy 官方 Widget）
+└── 嵌入：策略回测 / 数据管理（vnpy 官方 Widget）
 ```
 
 | 维度 | vnpy 默认 Trader | vnpy_zak 自建看盘 |
@@ -19,7 +19,7 @@ vnpy MainWindow（基类）
 | 行情 | Gateway → OMS → TickMonitor | TickFlow / Redis（未来可切换为 Gateway 优先） |
 | 数据模型 | `TickData` / `ContractData` | `StockItem` / `QuoteSnapshot` |
 | 交易 | TradingWidget 下单 | 当前未接 Gateway；规划 A 股现货实盘 |
-| 策略实盘 | CTA策略 + Gateway | 规划：`AShareTemplate` 与回测同策略类 |
+| 策略实盘 | CTA策略 + Gateway | 规划：`AShareTemplate` 与回测同策略类；CTA策略页暂未挂载 |
 
 **结论**：看盘 UI 自建；vnpy 提供 CTA 回测/实盘引擎与 Gateway 交易能力。远期以 **A 股 Gateway + PaperAccount + CTA策略页** 跑现货自动交易，**不用**期货 CTP。
 
@@ -30,8 +30,8 @@ vnpy MainWindow（基类）
 │ 菜单栏：系统 / 工具 / 配置 / 帮助                        │
 ├────┬──────────────────────────────────────────┬─────────┤
 │左侧│  中央内容区（StackedWidget）                │ AI Dock │
-│导航│  · 自选 / 市场 / 本地（QuotesPage）       │（可选）  │
-│    │  · CTA 策略 / CTA 回测 / 数据管理          │         │
+│导航│  · 自选 / 市场 / 本地（看盘三页）          │（可选）  │
+│    │  · 策略回测 / 数据管理                    │         │
 └────┴──────────────────────────────────────────┴─────────┘
 ```
 
@@ -39,10 +39,12 @@ vnpy MainWindow（基类）
 
 | 包 | 职责 |
 |----|------|
-| `vnpy_ashare` | A 股行情页、主窗口、调度、元数据 |
+| `vnpy_ashare` | A 股行情页、主窗口、调度、元数据、AI 全屏页 |
 | `vnpy_tickflow` | TickFlow 行情适配器 |
 | `vnpy_llm` | 通用 LLM 对话（client / engine / panel） |
-| `vnpy_ashare/ai` | A 股上下文组装、全屏 AI 页 |
+| `vnpy_skills` | Agent Skill 引擎（工具注册、执行、系统提示词注入） |
+| `vnpy_mcp` | MCP 远端工具集成（从 `mcp/mcp.json` 发现工具） |
+| `vnpy_ashare/ai` | A 股上下文共享（`session_context.py`）、AI 全屏页 |
 
 ### 行情 Provider 抽象
 
@@ -94,4 +96,6 @@ AI 不作为左侧主导航项，而是**叠加能力**：
 | 全屏 | Dock 内「全屏」 | 长对话；与 Dock 互斥 |
 | 返回 | 全屏「← 返回看盘」 | 回到上次看盘页并打开 Dock |
 
-选股时通过 `EVENT_AI_CONTEXT` 推送当前标的与行情摘要给 `LlmEngine`。
+选股/回测时通过 `vnpy_ashare/ai/session_context.py` 的 `set_ai_context()` / `set_backtest_summary()` 共享上下文给 Agent Skills，避免事件广播耦合。
+
+**Agent Skills 工具链：** 各业务 Skill（`skills/vnpy_*_skill.py`）继承 `SkillTemplate`，通过 `vnpy_skills/` 引擎注册到 `LlmEngine`，提供 `get_watchlist`、`get_bars_summary`、`run_backtest` 等工具函数。

@@ -6,8 +6,10 @@
 
 - A 股专项：默认回测参数、自选池、整手下单、T+1 规则
 - 图形化 GUI：**A股日K 浏览**（全市场 5500+ 标的）、策略回测、数据管理
-- TickFlow Pro：A 股日线 / 分钟线批量下载
+- TickFlow Pro：A 股日线 / 分钟线批量下载、实时行情推送
 - Tushare：财务、资金流等（后续可扩展选股脚本）
+- **AI 助手**：侧栏/全屏对话，Agent Skills 工具调用（查行情/K线/回测）
+- **MCP 远端工具**：可通过 `mcp/mcp.json` 集成外部 MCP 服务器
 - 本地 **SQLite** 存储（默认），可选 **QuestDB**（见下文）
 
 ## 环境要求
@@ -41,7 +43,7 @@ uv run python scripts/list_bars.py      # 确认本地数据
 | 本地代码 | `600519.SSE` | 6 位代码 + `.SSE` / `.SZSE` / `.BSE` |
 | 合约乘数 | **1** | 每股乘数（界面仍显示期货术语） |
 | 价格跳动 | **0.01** | 最小报价单位 |
-| 手续费率 | **0.00055** | 万三佣金 + 万五印花税折中 |
+| 手续费率 | **0.0008** | 佣金万三 + 印花税万五折中 |
 | 交易滑点 | **0.01** | 1 个最小价位 |
 | 回测资金 | 1000000 | 100 万 |
 
@@ -104,6 +106,8 @@ uv run python scripts/check_database.py
 
 - [产品方案](docs/product-plan.md) — A 股回测 + 看盘 + AI + 选股 + 策略实盘路径
 - [架构说明](docs/architecture.md) — 与 vnpy 默认 Trader 的关系、当前 UI 分层
+- [数据设计](docs/data-design.md) — 三个 SQLite 数据库 + Redis 缓存层
+- [策略回测交互规格](docs/backtest-ux.md) — 看盘→回测联动、批量回测分阶段设计
 - [后续规划](docs/roadmap.md) — A 股 Gateway 实盘、PaperAccount、看盘行情切换等
 
 ## 项目结构
@@ -111,17 +115,28 @@ uv run python scripts/check_database.py
 ```
 vnpy_zak/
 ├── run.py                         # GUI 入口（调用 vnpy_ashare.launcher）
-├── strategies/                    # CTA 策略
+├── strategies/                    # CTA 策略（AShareTemplate + 双均线等）
 ├── docs/                          # 架构说明与后续规划
 ├── vnpy_ashare/                   # VeighNa A 股行情 App
 │   ├── launcher.py                # GUI 启动逻辑
 │   ├── paths.py / config.py       # 路径与 A 股常量
 │   ├── models.py / bars.py        # 标的模型与 K 线下载
 │   ├── app_db.py / universe.py    # 元数据库与全市场同步
-│   ├── ai/                        # AI 上下文与全屏页
-│   └── ui/                        # 主窗口、行情页、字体等
-├── vnpy_llm/                      # 大模型对话插件
+│   ├── bar_health.py / bar_store.py # K 线健康状态与读取
+│   ├── ai/                        # AI 上下文共享与全屏页
+│   ├── quotes/                    # 行情 Provider 抽象（TickFlow/Redis/Gateway）
+│   └── ui/                        # 主窗口、导航、行情页、回测页
+├── vnpy_llm/                      # 大模型对话插件（client / engine / panel）
+├── vnpy_skills/                   # Agent Skill 引擎（工具注册/执行/注入）
+├── vnpy_mcp/                      # MCP 远端工具集成
 ├── vnpy_tickflow/                 # TickFlow 行情适配器
+├── skills/                        # 业务 Skill 实现（行情/回测/选股/自选）
+│   ├── vnpy_context_skill.py      # 终端上下文
+│   ├── vnpy_data_skill.py         # 数据查询
+│   ├── vnpy_backtest_skill.py     # 回测
+│   ├── vnpy_screening_skill.py    # 选股
+│   └── vnpy_watchlist_skill.py    # 自选管理
+├── mcp/                           # MCP 外接配置文件
 ├── docker-compose.yml             # QuestDB（可选）
 └── scripts/
     ├── init_config.py
@@ -130,7 +145,11 @@ vnpy_zak/
     ├── batch_download.py
     ├── download_data.py
     ├── list_bars.py
-    └── sync_universe.py           # 同步全 A 股标的列表
+    ├── sync_universe.py           # 同步全 A 股标的列表
+    ├── sync_skills.py             # 同步 Agent Skills
+    ├── quote_collector.py         # 行情收集器（Redis）
+    ├── export_metadata.py         # 导出元数据
+    └── import_metadata.py         # 导入元数据
 ```
 
 首次使用「A股日K」前，建议同步标的列表：

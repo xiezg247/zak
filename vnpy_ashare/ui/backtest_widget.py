@@ -121,6 +121,9 @@ class BacktesterWidget(VnpyBacktesterManager):
             if issubclass(cls, AShareTemplate) and cls is not AShareTemplate
         )
         if not ashare_names:
+            self.class_names = []
+            self.class_combo.clear()
+            self.write_log("未发现 A 股策略，请检查 strategies/ 目录下的策略导入是否正常。")
             return
 
         self.class_names = ashare_names

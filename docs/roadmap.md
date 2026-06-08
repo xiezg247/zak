@@ -10,8 +10,8 @@
 |------|------|------|
 | P0 | 看盘终端（自选/市场/本地）、TickFlow、Redis、K 线、调度 | ✅ 已完成 |
 | P1 | AI 助手（侧栏 + 全屏、上下文、会话持久化） | ✅ 已完成 |
-| **P1.5** | **选股 MVP + 选股页 + 回测联动 + 批量回测 + AI 工具** | **见 product-plan、[backtest-ux](./backtest-ux.md)** |
-| P2 | AI 增强（多会话、流式中断、配置热重载） | 规划中 |
+| **P1.5** | **选股 MVP + 回测联动 + Agent Skills 工具链** | **选股页未建、看盘→回测联动已通、Skills 已落地** |
+| P2 | AI 增强（多会话UI、流式中断、MCP远端工具） | 部分完成 |
 | P3 | **A 股策略实盘**（Gateway、PaperAccount、CTA策略页、交易 Dock） | 已规划 |
 | P4 | 看盘页 Gateway 行情主源、TickFlow/Redis 降级 | 随 P3 推进 |
 
@@ -28,11 +28,12 @@
 
 ---
 
-## P2：AI 助手增强（可选）
+## P2：AI 助手增强
 
-- [ ] 多会话列表与切换（`vnpy_llm/store.py` 已有 sessions 表，UI 未暴露）
-- [ ] 工具调用：查本地 K 线、自选列表、涨跌幅（需定义 `vnpy_ashare/ai/tools`）
-- [ ] 系统提示词按页面分化（自选 vs 回测 vs 数据管理）
+- [x] 系统提示词按页面分化（`vnpy_ashare/ai/session_context.py`：`set_ai_context` / `set_backtest_summary`）
+- [ ] 多会话列表与切换 UI（`vnpy_llm/store.py` 已有 sessions 表，ChatStore 已支持，UI 未暴露）
+- [x] 工具调用：查本地 K 线、自选列表、涨跌幅（已通过 Agent Skills 实现，见 `skills/vnpy_*_skill.py`）
+- [x] MCP 远端工具集成（`vnpy_mcp/`，从 `mcp/mcp.json` 读取远端 MCP 服务器配置）
 - [ ] 流式输出中断（Stop 按钮）
 - [ ] 配置页：模型 / API 热重载（不必重启 GUI）
 

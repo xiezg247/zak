@@ -124,6 +124,9 @@ class SchedulerDialog(QtWidgets.QDialog):
         self._timer.setInterval(2000)
         self._timer.timeout.connect(self.refresh_table)
 
+        self._refreshing = False
+        self._refresh_pending = False
+
         self.scheduler.add_listener(self._on_scheduler_event)
         self.refresh_table()
         self._timer.start()
@@ -134,64 +137,120 @@ class SchedulerDialog(QtWidgets.QDialog):
         super().closeEvent(event)
 
     def _on_scheduler_event(self, _job_id: str) -> None:
-        QtCore.QTimer.singleShot(0, self.refresh_table)
+        QtCore.QTimer.singleShot(0, self, self._request_refresh)
+
+    def _request_refresh(self) -> None:
+        if self._refreshing:
+            self._refresh_pending = True
+            return
+        self.refresh_table()
 
     def refresh_table(self) -> None:
-        statuses = self.scheduler.list_status()
-        self.table.setRowCount(len(statuses))
+        if self._refreshing:
+            self._refresh_pending = True
+            return
 
-        for row, status in enumerate(statuses):
-            enabled_box = QtWidgets.QCheckBox()
+        self._refreshing = True
+        try:
+            statuses = self.scheduler.list_status()
+            if self.table.rowCount() != len(statuses):
+                self.table.setRowCount(len(statuses))
+
+            for row, status in enumerate(statuses):
+                self._update_row(row, status)
+        finally:
+            self._refreshing = False
+            if self._refresh_pending:
+                self._refresh_pending = False
+                QtCore.QTimer.singleShot(0, self, self.refresh_table)
+
+    def _set_table_text(self, row: int, column: int, text: str) -> None:
+        item = self.table.item(row, column)
+        if item is None:
+            item = QtWidgets.QTableWidgetItem(text)
+            self.table.setItem(row, column, item)
+            return
+        if item.text() != text:
+            item.setText(text)
+
+    def _ensure_enabled_checkbox(self, row: int, job_id: str) -> QtWidgets.QCheckBox:
+        widget = self.table.cellWidget(row, 0)
+        if isinstance(widget, QtWidgets.QCheckBox):
+            return widget
+
+        enabled_box = QtWidgets.QCheckBox()
+        enabled_box.toggled.connect(
+            lambda checked, bound_job_id=job_id: self._toggle_job(bound_job_id, checked)
+        )
+        self.table.setCellWidget(row, 0, enabled_box)
+        return enabled_box
+
+    def _ensure_action_widget(self, row: int, job_id: str) -> None:
+        if self.table.cellWidget(row, 7) is not None:
+            return
+
+        action_widget = QtWidgets.QWidget()
+        action_layout = QtWidgets.QHBoxLayout(action_widget)
+        action_layout.setContentsMargins(2, 2, 2, 2)
+        action_layout.setSpacing(6)
+
+        run_button = QtWidgets.QPushButton("▶ 立即执行")
+        run_button.setObjectName("ActionButton")
+        run_button.clicked.connect(
+            lambda _checked=False, bound_job_id=job_id: self._run_now(bound_job_id)
+        )
+
+        settings_button = QtWidgets.QPushButton("设置")
+        settings_button.setObjectName("SecondaryButton")
+        settings_button.clicked.connect(
+            lambda _checked=False, bound_job_id=job_id: self._open_settings(bound_job_id)
+        )
+
+        action_layout.addWidget(run_button)
+        action_layout.addWidget(settings_button)
+        self.table.setCellWidget(row, 7, action_widget)
+
+    def _update_row(self, row: int, status: JobStatus) -> None:
+        enabled_box = self._ensure_enabled_checkbox(row, status.job_id)
+        if enabled_box.isChecked() != status.enabled:
             enabled_box.blockSignals(True)
             enabled_box.setChecked(status.enabled)
             enabled_box.blockSignals(False)
-            enabled_box.stateChanged.connect(
-                lambda state, job_id=status.job_id: self._toggle_job(job_id, state)
-            )
-            self.table.setCellWidget(row, 0, enabled_box)
 
-            self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(status.name))
-            self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(status.schedule_text))
+        self._set_table_text(row, 1, status.name)
+        self._set_table_text(row, 2, status.schedule_text)
 
-            if status.running:
-                state_text = "运行中"
-            elif status.enabled:
-                state_text = "已启用"
-            else:
-                state_text = "已停止"
-            self.table.setItem(row, 3, QtWidgets.QTableWidgetItem(state_text))
-            self.table.setItem(row, 4, QtWidgets.QTableWidgetItem(status.last_run_at or "—"))
+        if status.running:
+            state_text = "运行中"
+        elif status.enabled:
+            state_text = "已启用"
+        else:
+            state_text = "已停止"
+        self._set_table_text(row, 3, state_text)
+        self._set_table_text(row, 4, status.last_run_at or "—")
 
-            result_text = status.last_message or "—"
+        result_text = status.last_message or "—"
+        result_item = self.table.item(row, 5)
+        if result_item is None:
             result_item = QtWidgets.QTableWidgetItem(result_text)
-            if status.last_success is True:
-                result_item.setForeground(QtCore.Qt.GlobalColor.green)
-            elif status.last_success is False:
-                result_item.setForeground(QtCore.Qt.GlobalColor.red)
             self.table.setItem(row, 5, result_item)
+        elif result_item.text() != result_text:
+            result_item.setText(result_text)
 
-            self.table.setItem(row, 6, QtWidgets.QTableWidgetItem(status.next_run_at or "—"))
+        if status.last_success is True:
+            result_item.setForeground(QtCore.Qt.GlobalColor.green)
+        elif status.last_success is False:
+            result_item.setForeground(QtCore.Qt.GlobalColor.red)
+        else:
+            result_item.setForeground(self.palette().text().color())
 
-            action_widget = QtWidgets.QWidget()
-            action_layout = QtWidgets.QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(2, 2, 2, 2)
-            action_layout.setSpacing(6)
-            run_button = QtWidgets.QPushButton("▶ 立即执行")
-            run_button.setObjectName("ActionButton")
-            run_button.clicked.connect(
-                lambda _checked=False, job_id=status.job_id: self._run_now(job_id)
-            )
-            settings_button = QtWidgets.QPushButton("设置")
-            settings_button.setObjectName("SecondaryButton")
-            settings_button.clicked.connect(
-                lambda _checked=False, job_id=status.job_id: self._open_settings(job_id)
-            )
-            action_layout.addWidget(run_button)
-            action_layout.addWidget(settings_button)
-            self.table.setCellWidget(row, 7, action_widget)
+        self._set_table_text(row, 6, status.next_run_at or "—")
+        self._ensure_action_widget(row, status.job_id)
 
-    def _toggle_job(self, job_id: str, state: int) -> None:
-        enabled = state == int(QtCore.Qt.CheckState.Checked)
+    def _toggle_job(self, job_id: str, enabled: bool) -> None:
+        status = self.scheduler.get_status(job_id)
+        if status is not None and status.enabled == enabled:
+            return
         self.scheduler.set_enabled(job_id, enabled)
 
     def _run_now(self, job_id: str) -> None:
