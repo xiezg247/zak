@@ -478,3 +478,119 @@ class IndexQuotesWorker(QtCore.QThread):
 
 def _load_downloaded() -> list[StockItem]:
     return load_downloaded_stocks()
+
+
+@dataclass
+class ScreenerRunResult:
+    """GUI Worker 结果（与 screener.runner.ScreenerRunResult 结构一致）。"""
+
+    rows: list[dict]
+    condition: str
+    updated_at: str | None
+    total_scanned: int
+    source: str = "quote"
+    columns: list[tuple[str, str]] | None = None
+
+    @classmethod
+    def from_runner(cls, result) -> ScreenerRunResult:
+        return cls(
+            rows=result.rows,
+            condition=result.condition,
+            updated_at=result.updated_at,
+            total_scanned=result.total_scanned,
+            source=result.source,
+            columns=result.columns,
+        )
+
+
+class ScreenerRunWorker(QtCore.QThread):
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        *,
+        preset: str,
+        top_n: int,
+        min_change_pct: float | None = None,
+        max_change_pct: float | None = None,
+        min_turnover: float | None = None,
+        scheme_id: str | None = None,
+    ) -> None:
+        super().__init__()
+        self.preset = preset
+        self.top_n = top_n
+        self.min_change_pct = min_change_pct
+        self.max_change_pct = max_change_pct
+        self.min_turnover = min_turnover
+        self.scheme_id = scheme_id
+
+    def run(self) -> None:
+        try:
+            from vnpy_ashare.screener.runner import ScreenerRequest, run_screener, resolve_preset_input
+
+            if self.scheme_id:
+                request = ScreenerRequest(
+                    preset="",
+                    top_n=self.top_n,
+                    scheme_id=self.scheme_id,
+                )
+            elif self.preset.startswith("我的 · "):
+                request = resolve_preset_input(self.preset)
+                request.top_n = self.top_n
+            else:
+                request = ScreenerRequest(
+                    preset=self.preset,
+                    top_n=self.top_n,
+                    min_change_pct=self.min_change_pct,
+                    max_change_pct=self.max_change_pct,
+                    min_turnover=self.min_turnover,
+                )
+            result = run_screener(request)
+            self.finished.emit(ScreenerRunResult.from_runner(result))
+        except Exception as ex:
+            self.failed.emit(str(ex))
+
+
+class ScreenerBatchDownloadWorker(QtCore.QThread):
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(self, rows: list[dict], parent: QtCore.QObject | None = None) -> None:
+        super().__init__(parent)
+        self.rows = rows
+
+    def run(self) -> None:
+        try:
+            from vnpy_ashare.screener.batch_actions import batch_download_daily_bars
+
+            result = batch_download_daily_bars(self.rows)
+            self.finished.emit(result)
+        except Exception as ex:
+            self.failed.emit(str(ex))
+
+
+class ScreenerBatchBacktestWorker(QtCore.QThread):
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        main_engine,
+        rows: list[dict],
+        params,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.main_engine = main_engine
+        self.rows = rows
+        self.params = params
+
+    def run(self) -> None:
+        try:
+            from vnpy_ashare.screener.batch_actions import run_batch_backtests
+
+            results = run_batch_backtests(self.main_engine, self.rows, self.params)
+            self.finished.emit(results)
+        except Exception as ex:
+            self.failed.emit(str(ex))

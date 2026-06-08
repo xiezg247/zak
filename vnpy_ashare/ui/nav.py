@@ -20,6 +20,7 @@ class NavEntry:
 APP_NAV_ENTRIES: tuple[NavEntry, ...] = (
     NavEntry("watchlist", "自选"),
     NavEntry("market", "市场"),
+    NavEntry("screener", "选股"),
     NavEntry("local", "本地"),
     NavEntry("ai_assistant", "AI 助手"),
     NavEntry("cta_backtest", "策略回测"),
@@ -116,9 +117,24 @@ def _draw_ai_assistant(painter: QtGui.QPainter, size: int) -> None:
     painter.drawPolyline(tail)
 
 
+def _draw_screener(painter: QtGui.QPainter, size: int) -> None:
+    m = 5
+    path = QtGui.QPainterPath()
+    path.moveTo(m, m + 2)
+    path.lineTo(size - m, m + 2)
+    path.lineTo(size - m - 4, size // 2 + 2)
+    path.lineTo(size // 2 + 2, size // 2 + 2)
+    path.lineTo(size // 2 - 2, size - m - 1)
+    path.lineTo(m + 4, size // 2 + 2)
+    path.lineTo(m, size // 2 + 2)
+    path.closeSubpath()
+    painter.drawPath(path)
+
+
 _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "market": _draw_market,
     "watchlist": _draw_watchlist,
+    "screener": _draw_screener,
     "local": _draw_local,
     "cta_backtest": _draw_backtest,
     "data_manager": _draw_data,

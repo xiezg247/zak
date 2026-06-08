@@ -20,6 +20,7 @@ from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
 from vnpy_llm.ui.panel import AiChatPanel
 from vnpy_llm.ui.tools_widgets import show_ai_tools_dialog
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
+from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.scheduler_dialog import SchedulerDialog
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 
@@ -314,6 +315,8 @@ class AshareMainWindow(MainWindow):
             page = AiPageWidget(self.main_engine, self.event_engine)
             page.collapse_to_dock.connect(self._return_to_dock_mode)
             widget = page
+        elif key == "screener":
+            widget = ScreenerPageWidget(self.main_engine, self.event_engine)
 
         if widget is not None:
             self._page_widgets[key] = widget

@@ -1,35 +1,38 @@
-"""选股 Service。"""
+"""选股 Service（委托 screener.runner）。"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from vnpy_ashare.screener.presets import (
+    SCREENER_CHANGE_TOP,
+    SCREENER_CUSTOM,
+    SCREENER_LARGE_CAP,
+    SCREENER_LOW_PE,
+    SCREENER_MONEYFLOW_IN,
+    SCREENER_TURNOVER,
+    SCREENER_VOLUME_SURGE,
+    list_builtin_preset_names,
+    list_quote_preset_names,
+    list_tushare_preset_names,
+)
+from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult, run_screener
 from vnpy_ashare.services.base import BaseService
 
-SCREENER_CHANGE_TOP = "涨幅榜"
-SCREENER_TURNOVER = "换手率排行"
-SCREENER_VOLUME_SURGE = "成交量放大"
-
-AVAILABLE_SCREENERS = [SCREENER_CHANGE_TOP, SCREENER_TURNOVER, SCREENER_VOLUME_SURGE]
-
-
-@dataclass
-class Candidate:
-    symbol: str
-    name: str
-    vt_symbol: str
-    last_price: float
-    change_pct: float
-    turnover_rate: float
-    volume: float
+AVAILABLE_SCREENERS = list_builtin_preset_names()
 
 
 class ScreeningService(BaseService):
     """执行选股条件，返回候选标的。"""
 
     def list_screeners(self) -> list[str]:
-        return list(AVAILABLE_SCREENERS)
+        return list_builtin_preset_names()
+
+    def list_quote_screeners(self) -> list[str]:
+        return list_quote_preset_names()
+
+    def list_tushare_screeners(self) -> list[str]:
+        return list_tushare_preset_names()
 
     def screen_by_condition(
         self,
@@ -38,38 +41,33 @@ class ScreeningService(BaseService):
         *,
         top_n: int = 20,
     ) -> list[dict[str, Any]]:
-        name = name.strip()
-        if name == SCREENER_CHANGE_TOP:
-            sorted_quotes = sorted(
-                quotes, key=lambda q: q.get("change_pct", 0), reverse=True
-            )
-        elif name == SCREENER_TURNOVER:
-            sorted_quotes = sorted(
-                quotes, key=lambda q: q.get("turnover_rate", 0), reverse=True
-            )
-        elif name == SCREENER_VOLUME_SURGE:
-            sorted_quotes = sorted(
-                quotes, key=lambda q: q.get("volume", 0), reverse=True
-            )
-        else:
-            return []
-        return sorted_quotes[:top_n]
+        from vnpy_ashare.screener.rules import apply_quote_preset
 
-    def screen_custom(
-        self,
-        quotes: list[dict[str, Any]],
-        *,
-        min_change_pct: float | None = None,
-        max_change_pct: float | None = None,
-        min_turnover: float | None = None,
-        top_n: int = 20,
-    ) -> list[dict[str, Any]]:
-        result = quotes
-        if min_change_pct is not None:
-            result = [q for q in result if q.get("change_pct", 0) >= min_change_pct]
-        if max_change_pct is not None:
-            result = [q for q in result if q.get("change_pct", 0) <= max_change_pct]
-        if min_turnover is not None:
-            result = [q for q in result if q.get("turnover_rate", 0) >= min_turnover]
-        result = sorted(result, key=lambda q: q.get("change_pct", 0), reverse=True)
-        return result[:top_n]
+        return apply_quote_preset(name, quotes, top_n=top_n)
+
+    def run_request(self, request: ScreenerRequest) -> ScreenerRunResult:
+        return run_screener(request)
+
+
+def run_screening(
+    quotes: list[dict[str, Any]] | None = None,
+    *,
+    preset: str,
+    top_n: int = 20,
+    min_change_pct: float | None = None,
+    max_change_pct: float | None = None,
+    min_turnover: float | None = None,
+    scheme_id: str | None = None,
+) -> ScreenerRunResult:
+    """兼容旧入口；quotes 参数已弃用，统一走 runner。"""
+    _ = quotes
+    return run_screener(
+        ScreenerRequest(
+            preset=preset,
+            top_n=top_n,
+            min_change_pct=min_change_pct,
+            max_change_pct=max_change_pct,
+            min_turnover=min_turnover,
+            scheme_id=scheme_id,
+        )
+    )

@@ -59,11 +59,12 @@ def get_backtest_summary() -> dict[str, Any] | None:
 
 
 def clear_session_context() -> None:
-    global _ai_context, _backtest_summary, _market_quotes
+    global _ai_context, _backtest_summary, _market_quotes, _screening_result
     with _lock:
         _ai_context = AiContextData()
         _backtest_summary = None
         _market_quotes = []
+        _screening_result = None
 
 
 def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
@@ -90,6 +91,46 @@ def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
 def get_market_quotes_cache() -> list[dict[str, Any]]:
     with _lock:
         return list(_market_quotes)
+
+
+@dataclass
+class ScreeningResultContext:
+    condition: str
+    count: int
+    updated_at: str | None
+    rows: list[dict[str, Any]]
+
+
+_screening_result: ScreeningResultContext | None = None
+
+
+def set_screening_results(
+    *,
+    condition: str,
+    rows: list[dict[str, Any]],
+    updated_at: str | None = None,
+) -> None:
+    global _screening_result
+    with _lock:
+        _screening_result = ScreeningResultContext(
+            condition=condition,
+            count=len(rows),
+            updated_at=updated_at,
+            rows=list(rows),
+        )
+
+
+def get_screening_results() -> ScreeningResultContext | None:
+    with _lock:
+        if _screening_result is None:
+            return None
+        ctx = _screening_result
+        return ScreeningResultContext(
+            condition=ctx.condition,
+            count=ctx.count,
+            updated_at=ctx.updated_at,
+            rows=list(ctx.rows),
+        )
 
 
 def sync_backtest_to_service(backtest_service: object) -> None:

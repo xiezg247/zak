@@ -1,0 +1,605 @@
+"""选股页（P0 行情 + P1 Tushare 基本面）。"""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any
+
+from vnpy.event import Event, EventEngine
+
+from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
+from vnpy.trader.engine import MainEngine
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+
+from vnpy_ashare.ai.session_context import set_screening_results
+from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.engine import APP_NAME, AshareEngine
+from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
+from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
+from vnpy_ashare.screener.runner import ScreenerRequest, build_scheme_config, list_all_preset_names
+from vnpy_ashare.screener.run_store import save_run
+from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
+from vnpy_ashare.screener.batch_actions import BatchBacktestParams, load_batch_backtest_defaults
+from vnpy_ashare.ui.screener_batch_dialog import (
+    ScreenerBatchBacktestConfigDialog,
+    ScreenerBatchBacktestDialog,
+)
+from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
+from vnpy_ashare.ui.worker import (
+    ScreenerBatchBacktestWorker,
+    ScreenerBatchDownloadWorker,
+    ScreenerRunResult,
+    ScreenerRunWorker,
+)
+
+_ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
+_SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
+
+
+class ScreenerPageWidget(QtWidgets.QWidget):
+    """左侧导航「选股」页。"""
+
+    def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
+        super().__init__()
+        self.main_engine = main_engine
+        self.event_engine = event_engine
+        self.setObjectName("MarketRoot")
+        self._active = False
+        self._worker: ScreenerRunWorker | None = None
+        self._download_worker: ScreenerBatchDownloadWorker | None = None
+        self._batch_bt_worker: ScreenerBatchBacktestWorker | None = None
+        self._results: list[dict[str, Any]] = []
+        self._result_columns: list[tuple[str, str]] = []
+        self._watchlist_service = self._get_watchlist_service()
+
+        self._build_ui()
+        self._reload_preset_combo()
+        self._on_preset_changed(0)
+        self.setStyleSheet(TERMINAL_STYLESHEET)
+
+    def _get_watchlist_service(self):
+        engine = self.main_engine.get_engine(APP_NAME)
+        if isinstance(engine, AshareEngine):
+            return engine.watchlist_service
+        return None
+
+    def _build_ui(self) -> None:
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(12, 12, 12, 12)
+        root.setSpacing(10)
+
+        toolbar = QtWidgets.QHBoxLayout()
+        self.run_btn = QtWidgets.QPushButton("运行选股")
+        self.run_btn.clicked.connect(self._run_screening)
+        toolbar.addWidget(self.run_btn)
+
+        self.save_scheme_btn = QtWidgets.QPushButton("保存方案")
+        self.save_scheme_btn.clicked.connect(self._save_scheme)
+        toolbar.addWidget(self.save_scheme_btn)
+
+        self.delete_scheme_btn = QtWidgets.QPushButton("删除方案")
+        self.delete_scheme_btn.clicked.connect(self._delete_scheme)
+        toolbar.addWidget(self.delete_scheme_btn)
+
+        self.export_btn = QtWidgets.QPushButton("导出 CSV")
+        self.export_btn.clicked.connect(self._export_csv)
+        toolbar.addWidget(self.export_btn)
+
+        self.select_all_btn = QtWidgets.QPushButton("全选")
+        self.select_all_btn.clicked.connect(self._select_all)
+        toolbar.addWidget(self.select_all_btn)
+
+        self.add_watchlist_btn = QtWidgets.QPushButton("加入自选")
+        self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
+        toolbar.addWidget(self.add_watchlist_btn)
+
+        self.download_btn = QtWidgets.QPushButton("下载日K")
+        self.download_btn.clicked.connect(self._download_selected_bars)
+        toolbar.addWidget(self.download_btn)
+
+        self.backtest_btn = QtWidgets.QPushButton("策略回测")
+        self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
+        toolbar.addWidget(self.backtest_btn)
+
+        self.batch_backtest_btn = QtWidgets.QPushButton("批量回测")
+        self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
+        toolbar.addWidget(self.batch_backtest_btn)
+
+        toolbar.addStretch()
+        self.status_label = QtWidgets.QLabel("设定条件后点击「运行选股」")
+        toolbar.addWidget(self.status_label)
+        root.addLayout(toolbar)
+
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
+
+        form_panel = QtWidgets.QWidget()
+        form_layout = QtWidgets.QVBoxLayout(form_panel)
+        form_layout.setContentsMargins(0, 0, 8, 0)
+        form_layout.setSpacing(10)
+
+        form_layout.addWidget(QtWidgets.QLabel("筛选条件"))
+
+        preset_form = QtWidgets.QFormLayout()
+        preset_form.setSpacing(8)
+        self.preset_combo = QtWidgets.QComboBox()
+        self.preset_combo.currentIndexChanged.connect(self._on_preset_changed)
+        preset_form.addRow("方案", self.preset_combo)
+
+        self.top_n_spin = QtWidgets.QSpinBox()
+        self.top_n_spin.setRange(1, 200)
+        self.top_n_spin.setValue(20)
+        preset_form.addRow("Top N", self.top_n_spin)
+        form_layout.addLayout(preset_form)
+
+        self.custom_box = QtWidgets.QGroupBox("自定义行情条件")
+        custom_layout = QtWidgets.QFormLayout(self.custom_box)
+        self.min_change_spin = self._optional_spin("最低涨幅")
+        self.max_change_spin = self._optional_spin("最高涨幅")
+        self.min_turnover_spin = self._optional_spin("最低换手", maximum=100)
+        custom_layout.addRow("最低涨幅", self.min_change_spin)
+        custom_layout.addRow("最高涨幅", self.max_change_spin)
+        custom_layout.addRow("最低换手", self.min_turnover_spin)
+        form_layout.addWidget(self.custom_box)
+
+        self.hint_label = QtWidgets.QLabel()
+        self.hint_label.setWordWrap(True)
+        form_layout.addWidget(self.hint_label)
+        form_layout.addStretch()
+        splitter.addWidget(form_panel)
+
+        self.result_table = QtWidgets.QTableWidget(0, 1)
+        self.result_table.setObjectName("MarketTable")
+        self.result_table.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.result_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.result_table.verticalHeader().setVisible(False)
+        splitter.addWidget(self.result_table)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([300, 700])
+        root.addWidget(splitter, stretch=1)
+
+    def _optional_spin(self, _label: str, *, maximum: float = 20) -> QtWidgets.QDoubleSpinBox:
+        spin = QtWidgets.QDoubleSpinBox()
+        spin.setRange(-1, maximum)
+        spin.setDecimals(2)
+        spin.setSuffix(" %")
+        spin.setSpecialValueText("不限")
+        spin.setValue(-1)
+        return spin
+
+    def _reload_preset_combo(self) -> None:
+        current = self.preset_combo.currentText()
+        self.preset_combo.blockSignals(True)
+        self.preset_combo.clear()
+        for name in list_all_preset_names(include_saved=True):
+            self.preset_combo.addItem(name)
+            if name.startswith("我的 · "):
+                scheme_name = name.removeprefix("我的 · ")
+                for scheme in list_schemes():
+                    if scheme.name == scheme_name:
+                        self.preset_combo.setItemData(
+                            self.preset_combo.count() - 1,
+                            scheme.id,
+                            _SCHEME_ID_ROLE,
+                        )
+                        break
+        index = self.preset_combo.findText(current)
+        if index >= 0:
+            self.preset_combo.setCurrentIndex(index)
+        self.preset_combo.blockSignals(False)
+
+    def _current_scheme_id(self) -> str | None:
+        data = self.preset_combo.currentData(_SCHEME_ID_ROLE)
+        return str(data) if data else None
+
+    def _on_preset_changed(self, _index: int) -> None:
+        label = self.preset_combo.currentText()
+        preset = get_preset(label.removeprefix("我的 · ") if label.startswith("我的 · ") else label)
+        if label.startswith("我的 · "):
+            scheme_id = self._current_scheme_id()
+            if scheme_id:
+                for scheme in list_schemes():
+                    if scheme.id == scheme_id:
+                        self.top_n_spin.setValue(int(scheme.config.get("top_n", 20)))
+                        self.min_change_spin.setValue(
+                            scheme.config.get("min_change_pct") if scheme.config.get("min_change_pct") is not None else -1
+                        )
+                        self.max_change_spin.setValue(
+                            scheme.config.get("max_change_pct") if scheme.config.get("max_change_pct") is not None else -1
+                        )
+                        self.min_turnover_spin.setValue(
+                            scheme.config.get("min_turnover") if scheme.config.get("min_turnover") is not None else -1
+                        )
+                        break
+            self.custom_box.setVisible(False)
+            self.hint_label.setText("已保存方案：运行后将按保存的条件执行。")
+            return
+
+        is_custom = label == SCREENER_CUSTOM
+        self.custom_box.setVisible(is_custom)
+        for spin in (self.min_change_spin, self.max_change_spin, self.min_turnover_spin):
+            spin.setEnabled(is_custom)
+
+        if preset is None:
+            self.hint_label.setText("")
+            return
+        if preset.source == "tushare":
+            self.hint_label.setText(
+                f"{preset.description}\n需要 .env 中配置 TUSHARE_TOKEN。"
+            )
+        else:
+            self.hint_label.setText(
+                f"{preset.description}\n"
+                "若 Redis 无快照，请运行「工具 → 立即执行 → 行情采集」。"
+            )
+
+    def _optional_float(self, spin: QtWidgets.QDoubleSpinBox) -> float | None:
+        if not spin.isEnabled() or spin.value() < 0:
+            return None
+        return spin.value()
+
+    def _build_request(self) -> tuple[ScreenerRequest | None, str | None]:
+        label = self.preset_combo.currentText()
+        scheme_id = self._current_scheme_id()
+        if scheme_id:
+            return ScreenerRequest(preset="", top_n=self.top_n_spin.value(), scheme_id=scheme_id), None
+        return ScreenerRequest(
+            preset=label,
+            top_n=self.top_n_spin.value(),
+            min_change_pct=self._optional_float(self.min_change_spin),
+            max_change_pct=self._optional_float(self.max_change_spin),
+            min_turnover=self._optional_float(self.min_turnover_spin),
+        ), None
+
+    def _run_screening(self) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            return
+
+        request, _ = self._build_request()
+        if request is None:
+            return
+
+        self.run_btn.setDisabled(True)
+        self.status_label.setText("正在执行选股…")
+
+        worker = ScreenerRunWorker(
+            preset=request.preset,
+            top_n=request.top_n,
+            min_change_pct=request.min_change_pct,
+            max_change_pct=request.max_change_pct,
+            min_turnover=request.min_turnover,
+            scheme_id=request.scheme_id,
+        )
+        if request.scheme_id:
+            worker.preset = self.preset_combo.currentText()
+        self._worker = worker
+        worker.finished.connect(self._on_screen_finished)
+        worker.failed.connect(self._on_screen_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_screen_finished(self, result: ScreenerRunResult) -> None:
+        self._worker = None
+        self.run_btn.setDisabled(False)
+        self._results = list(result.rows)
+        self._result_columns = result.columns or resolve_export_columns(self._results)
+        self._populate_results(self._results)
+        set_screening_results(
+            condition=result.condition,
+            rows=self._results,
+            updated_at=result.updated_at,
+        )
+        request, _ = self._build_request()
+        save_run(
+            condition=result.condition,
+            source=result.source,
+            rows=self._results,
+            total_scanned=result.total_scanned,
+            config=build_scheme_config(request) if request else {},
+        )
+        updated = result.updated_at or "-"
+        source_label = "Tushare" if result.source == "tushare" else "Redis 行情"
+        self.status_label.setText(
+            f"「{result.condition}」命中 {len(self._results)} 条 · "
+            f"扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
+        )
+
+    def _on_screen_failed(self, message: str) -> None:
+        self._worker = None
+        self.run_btn.setDisabled(False)
+        self.status_label.setText(message)
+
+    def _populate_results(self, rows: list[dict[str, Any]]) -> None:
+        headers = ["选择"] + [label for _, label in self._result_columns]
+        self.result_table.setColumnCount(len(headers))
+        self.result_table.setHorizontalHeaderLabels(headers)
+        self.result_table.setRowCount(len(rows))
+
+        header = self.result_table.horizontalHeader()
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        name_col = next(
+            (idx + 1 for idx, (key, _) in enumerate(self._result_columns) if key == "name"),
+            2,
+        )
+        header.setSectionResizeMode(name_col, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        for col in range(len(headers)):
+            if col not in (0, name_col):
+                header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+
+        for row_index, row in enumerate(rows):
+            check_item = QtWidgets.QTableWidgetItem()
+            check_item.setFlags(
+                QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled
+            )
+            check_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
+            check_item.setData(_ROW_DATA_ROLE, row)
+            self.result_table.setItem(row_index, 0, check_item)
+
+            for col_index, (key, _label) in enumerate(self._result_columns, start=1):
+                value = row.get(key, "")
+                if isinstance(value, float):
+                    if key in ("change_pct",):
+                        text = f"{value:+.2f}"
+                    elif key in ("last_price", "close", "pb", "pe_ttm"):
+                        text = f"{value:.2f}"
+                    elif key in ("total_mv", "circ_mv", "net_mf_amount", "volume"):
+                        text = f"{value:,.0f}"
+                    else:
+                        text = f"{value:.2f}"
+                else:
+                    text = str(value)
+                item = QtWidgets.QTableWidgetItem(text)
+                item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                if key == "change_pct":
+                    change_pct = float(value or 0)
+                    color = RISE_COLOR if change_pct > 0 else FALL_COLOR if change_pct < 0 else FLAT_COLOR
+                    item.setForeground(QtGui.QColor(color))
+                self.result_table.setItem(row_index, col_index, item)
+
+    def _iter_checked_rows(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for row_index in range(self.result_table.rowCount()):
+            item = self.result_table.item(row_index, 0)
+            if item and item.checkState() == QtCore.Qt.CheckState.Checked:
+                data = item.data(_ROW_DATA_ROLE)
+                if isinstance(data, dict):
+                    rows.append(data)
+        return rows
+
+    def _select_all(self) -> None:
+        for row_index in range(self.result_table.rowCount()):
+            item = self.result_table.item(row_index, 0)
+            if item is not None:
+                item.setCheckState(QtCore.Qt.CheckState.Checked)
+
+    def _add_selected_to_watchlist(self) -> None:
+        if self._watchlist_service is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "自选服务未就绪")
+            return
+        selected = self._iter_checked_rows()
+        if not selected:
+            QtWidgets.QMessageBox.information(self, "提示", "请先勾选要加入自选的标的")
+            return
+
+        added = skipped = 0
+        for row in selected:
+            item = parse_stock_symbol(str(row.get("vt_symbol", "")))
+            if item is None:
+                skipped += 1
+                continue
+            name = str(row.get("name", "") or item.name)
+            if self._watchlist_service.add(item.symbol, item.exchange, name):
+                added += 1
+            else:
+                skipped += 1
+        msg = f"新加入 {added} 只"
+        if skipped:
+            msg += f" · 跳过 {skipped} 只"
+        self.status_label.setText(msg)
+
+    def _get_backtest_service(self):
+        engine = self.main_engine.get_engine(APP_NAME)
+        if isinstance(engine, AshareEngine):
+            return engine.backtest_service
+        return None
+
+    def _download_selected_bars(self) -> None:
+        if self._download_worker is not None and self._download_worker.isRunning():
+            return
+        selected = self._iter_checked_rows()
+        if not selected:
+            QtWidgets.QMessageBox.information(self, "提示", "请先勾选要下载日 K 的标的")
+            return
+
+        self.download_btn.setDisabled(True)
+        self.status_label.setText(f"正在下载 {len(selected)} 只日 K…")
+        worker = ScreenerBatchDownloadWorker(selected, parent=self)
+        self._download_worker = worker
+        worker.finished.connect(self._on_download_finished)
+        worker.failed.connect(self._on_download_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_download_finished(self, result) -> None:
+        self._download_worker = None
+        self.download_btn.setDisabled(False)
+        message = getattr(result, "message", str(result))
+        self.status_label.setText(message)
+        if not getattr(result, "success", True):
+            QtWidgets.QMessageBox.warning(self, "下载日 K", message)
+
+    def _on_download_failed(self, message: str) -> None:
+        self._download_worker = None
+        self.download_btn.setDisabled(False)
+        self.status_label.setText(message)
+        QtWidgets.QMessageBox.warning(self, "下载日 K", message)
+
+    def _open_backtest_for_selection(self) -> None:
+        selected = self._iter_checked_rows()
+        if not selected:
+            QtWidgets.QMessageBox.information(self, "提示", "请先勾选一只标的进行回测")
+            return
+        if len(selected) > 1:
+            QtWidgets.QMessageBox.information(
+                self,
+                "提示",
+                "「策略回测」仅打开单只；批量请用「批量回测」",
+            )
+            return
+        row = selected[0]
+        vt_symbol = str(row.get("vt_symbol", ""))
+        if not vt_symbol:
+            QtWidgets.QMessageBox.warning(self, "提示", "缺少 vt_symbol")
+            return
+        name = str(row.get("name", ""))
+        self.event_engine.put(
+            Event(
+                EVENT_OPEN_BACKTEST,
+                BacktestRequest(
+                    vt_symbol=vt_symbol,
+                    source_page="选股",
+                    name=name,
+                ),
+            )
+        )
+
+    def _run_batch_backtest(self) -> None:
+        if self._batch_bt_worker is not None and self._batch_bt_worker.isRunning():
+            return
+        selected = self._iter_checked_rows()
+        if not selected:
+            QtWidgets.QMessageBox.information(self, "提示", "请先勾选要批量回测的标的")
+            return
+
+        backtest_service = self._get_backtest_service()
+        strategies = backtest_service.list_strategies() if backtest_service else []
+        class_names = [item["class_name"] for item in strategies if item.get("class_name")]
+        defaults = load_batch_backtest_defaults()
+        dialog = ScreenerBatchBacktestConfigDialog(
+            class_names=class_names,
+            default_class=defaults.class_name,
+            default_start=defaults.start.strftime("%Y-%m-%d"),
+            default_end=defaults.end.strftime("%Y-%m-%d"),
+            count=len(selected),
+            parent=self,
+        )
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+
+        try:
+            params = BatchBacktestParams(
+                class_name=dialog.class_name,
+                start=datetime.strptime(dialog.start_text[:10], "%Y-%m-%d"),
+                end=datetime.strptime(dialog.end_text[:10], "%Y-%m-%d"),
+                rate=defaults.rate,
+                slippage=defaults.slippage,
+                size=defaults.size,
+                pricetick=defaults.pricetick,
+                capital=defaults.capital,
+            )
+        except ValueError:
+            QtWidgets.QMessageBox.warning(self, "提示", "日期格式应为 YYYY-MM-DD")
+            return
+
+        self.batch_backtest_btn.setDisabled(True)
+        self.status_label.setText(f"批量回测中（{len(selected)} 只）…")
+        worker = ScreenerBatchBacktestWorker(
+            self.main_engine,
+            selected,
+            params,
+            parent=self,
+        )
+        self._batch_bt_worker = worker
+        worker.finished.connect(
+            lambda rows: self._on_batch_backtest_finished(rows, dialog.class_name)
+        )
+        worker.failed.connect(self._on_batch_backtest_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_batch_backtest_finished(self, rows, class_name: str) -> None:
+        self._batch_bt_worker = None
+        self.batch_backtest_btn.setDisabled(False)
+        self.status_label.setText(f"批量回测完成：{len(rows)} 只")
+        ScreenerBatchBacktestDialog(rows, class_name=class_name, parent=self).exec()
+
+    def _on_batch_backtest_failed(self, message: str) -> None:
+        self._batch_bt_worker = None
+        self.batch_backtest_btn.setDisabled(False)
+        self.status_label.setText(message)
+        QtWidgets.QMessageBox.warning(self, "批量回测", message)
+
+    def _save_scheme(self) -> None:
+        label = self.preset_combo.currentText()
+        if label.startswith("我的 · "):
+            QtWidgets.QMessageBox.information(self, "提示", "请选择内置方案或自定义条件后再保存")
+            return
+        text, ok = QtWidgets.QInputDialog.getText(self, "保存方案", "方案名称")
+        if not ok or not text.strip():
+            return
+        request, _ = self._build_request()
+        if request is None or not request.preset:
+            return
+        try:
+            save_scheme(text.strip(), build_scheme_config(request))
+            self._reload_preset_combo()
+            saved_name = f"我的 · {text.strip()}"
+            index = self.preset_combo.findText(saved_name)
+            if index >= 0:
+                self.preset_combo.setCurrentIndex(index)
+            self.status_label.setText(f"已保存方案：{text.strip()}")
+        except Exception as ex:
+            QtWidgets.QMessageBox.warning(self, "提示", str(ex))
+
+    def _delete_scheme(self) -> None:
+        scheme_id = self._current_scheme_id()
+        if not scheme_id:
+            QtWidgets.QMessageBox.information(self, "提示", "请先选择「我的 · …」方案")
+            return
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "确认删除",
+            f"删除方案「{self.preset_combo.currentText()}」？",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        delete_scheme(scheme_id)
+        self._reload_preset_combo()
+        self.status_label.setText("方案已删除")
+
+    def _export_csv(self) -> None:
+        if not self._results:
+            QtWidgets.QMessageBox.information(self, "提示", "请先运行选股")
+            return
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            self,
+            "导出 CSV",
+            "screener_results.csv",
+            "CSV (*.csv)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".csv"):
+            path += ".csv"
+        export_rows_to_csv(self._results, path)
+        self.status_label.setText(f"已导出：{path}")
+
+    def activate(self) -> None:
+        self._active = True
+        self._reload_preset_combo()
+
+    def deactivate(self) -> None:
+        self._active = False
+        for worker in (self._worker, self._download_worker, self._batch_bt_worker):
+            if worker is not None and worker.isRunning():
+                worker.wait(500)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        self.deactivate()
+        super().closeEvent(event)

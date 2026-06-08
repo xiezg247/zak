@@ -113,6 +113,9 @@ class RedisQuoteStore:
         )
         return list(symbols), total
 
+    def list_all_rank_symbols(self) -> list[str]:
+        return list(self._client.zrevrange(RANK_CHANGE_PCT_KEY, 0, -1))
+
     def get_updated_at(self) -> str | None:
         value = self._client.get(META_UPDATED_AT_KEY)
         return str(value) if value else None
