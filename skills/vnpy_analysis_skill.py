@@ -10,31 +10,10 @@ from vnpy_skills.base import SkillTemplate, ToolSpec
 class VnpyAnalysisSkill(SkillTemplate):
     skill_name = "vnpy-analysis"
     author = "zak"
-    description = "股票诊断、技术形态、选股结果解读（数据来自本地 K 线与通达信 MCP）"
+    description = "股票技术形态、策略信号、选股结果解读（诊断见 tdx-stock-diagnose）"
 
     def register_tools(self) -> list[ToolSpec]:
         return [
-            ToolSpec(
-                name="diagnose_stock",
-                description=(
-                    "对单只股票做综合诊断：本地 K 线技术形态 + 通达信 MCP 研报/F10。"
-                    "用户问「诊断」「基本面+技术面」「券商怎么看」时优先调用。"
-                ),
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "symbol": {
-                            "type": "string",
-                            "description": "股票代码，如 600519.SSE",
-                        },
-                        "include_reports": {
-                            "type": "boolean",
-                            "description": "是否查询研报，默认 true",
-                        },
-                    },
-                    "required": ["symbol"],
-                },
-            ),
             ToolSpec(
                 name="technical_snapshot",
                 description="查询本地 K 线的均线排列、区间涨跌、量比等技术面快照",
@@ -125,11 +104,6 @@ class VnpyAnalysisSkill(SkillTemplate):
         if svc is None:
             raise RuntimeError("AnalysisService 未就绪")
         return svc
-
-    def diagnose_stock(self, symbol: str, include_reports: bool = True) -> str:
-        svc = self._get_analysis_service()
-        result = svc.diagnose(symbol, include_reports=bool(include_reports))
-        return json.dumps(result, ensure_ascii=False)
 
     def technical_snapshot(self, symbol: str, lookback: int = 60) -> str:
         svc = self._get_analysis_service()

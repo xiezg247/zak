@@ -17,7 +17,7 @@ class QuickActionChips(QtWidgets.QWidget):
         self.setObjectName("AiQuickActionChips")
         self._layout = QtWidgets.QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(6)
+        self._layout.setSpacing(0)
 
         self._scroll = QtWidgets.QScrollArea()
         self._scroll.setObjectName("AiQuickActionScroll")
@@ -25,18 +25,21 @@ class QuickActionChips(QtWidgets.QWidget):
         self._scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self._scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self._scroll.setMaximumHeight(34)
+        self._scroll.setMaximumHeight(38)
 
         self._inner = QtWidgets.QWidget()
+        self._inner.setObjectName("AiQuickActionInner")
         self._inner_layout = QtWidgets.QHBoxLayout(self._inner)
         self._inner_layout.setContentsMargins(0, 0, 0, 0)
         self._inner_layout.setSpacing(6)
         self._inner_layout.addStretch()
         self._scroll.setWidget(self._inner)
 
-        outer = QtWidgets.QHBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(self._scroll)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self._layout.addWidget(self._scroll)
 
     def set_actions(self, actions: list[QuickAction]) -> None:
         while self._inner_layout.count() > 1:

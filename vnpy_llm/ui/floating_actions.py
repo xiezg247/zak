@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from vnpy_ashare.ai.context import AiContextData, QuickAction
+from vnpy_ashare.ai.context import AiContextData, QuickAction, build_stock_quick_actions
 from vnpy_ashare.ai.session_context import get_screening_results
 
 
@@ -61,26 +61,11 @@ def _extract_change_pct(quote_summary: str) -> str:
 
 def _build_actions(data: AiContextData) -> list[QuickAction]:
     if data.page in ("自选", "市场", "本地") and data.symbol:
-        vt = f"{data.symbol}.{data.exchange}" if data.exchange else data.symbol
-        name = data.name or data.symbol
-        return [
-            QuickAction(
-                id="diagnose",
-                label="综合诊断",
-                prompt=(
-                    f"请对 {name}（{vt}）做综合诊断。"
-                    f'请调用 diagnose_stock(symbol="{vt}")，基于工具结果解读。'
-                ),
-            ),
-            QuickAction(
-                id="technical",
-                label="技术形态",
-                prompt=(
-                    f"请分析 {name}（{vt}）的近期技术形态。"
-                    f'请调用 technical_snapshot(symbol="{vt}")，基于工具结果解读。'
-                ),
-            ),
-        ]
+        return build_stock_quick_actions(
+            data.symbol,
+            exchange_cn=data.exchange,
+            name=data.name,
+        )
     if data.page == "选股":
         ctx = get_screening_results()
         if ctx is not None and ctx.count > 0:

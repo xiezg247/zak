@@ -109,35 +109,15 @@ class AnalysisService(BaseService):
         lookback: int = 60,
         include_reports: bool = True,
     ) -> dict[str, Any]:
-        item = parse_stock_symbol(symbol)
-        if item is None:
-            return {"error": f"无法解析代码: {symbol}"}
+        from vnpy_ashare.services.tdx_diagnose import run_tdx_diagnose
 
-        technical = self.technical_snapshot(symbol, lookback=lookback)
-        warnings = list(technical.get("warnings") or [])
-        sources = list(technical.get("sources") or [])
-
-        reports: list[dict[str, Any]] = []
-        mcp_raw: dict[str, Any] = {}
-        if include_reports:
-            report_bundle = self._fetch_reports(item)
-            reports = report_bundle.get("reports") or []
-            mcp_raw = report_bundle.get("raw") or {}
-            warnings.extend(report_bundle.get("warnings") or [])
-            if report_bundle.get("source"):
-                sources.append(report_bundle["source"])
-
-        return {
-            "symbol": item.vt_symbol,
-            "name": item.name,
-            "as_of": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "technical": technical,
-            "reports": reports,
-            "mcp_raw": mcp_raw,
-            "warnings": warnings,
-            "sources": sorted(set(sources)),
-            "disclaimer": "以上内容来自工具数据与第三方研报摘要，不构成投资建议。",
-        }
+        del lookback  # 诊断改走通达信问小达，不再依赖本地 K 线根数
+        return run_tdx_diagnose(
+            symbol,
+            mcp_execute=self._mcp_execute,
+            tool_names=self._mcp_tool_names,
+            include_reports=include_reports,
+        )
 
     def _fetch_reports(self, item: "StockItem") -> dict[str, Any]:  # type: ignore[name-defined]
         from vnpy_ashare.services.report_sources import fetch_tushare_reports, report_fallback_enabled

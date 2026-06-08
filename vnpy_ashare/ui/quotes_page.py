@@ -1678,6 +1678,81 @@ class QuotesPage(QtWidgets.QWidget):
             )
         )
 
+    def _ask_ai_for_technical(self) -> None:
+        """向 AI 请求当前股票的技术面分析。"""
+        item = self.current_item
+        if item is None or self.event_engine is None:
+            return
+        quote = self.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        title = f"{name}（{item.vt_symbol}）" if name else item.vt_symbol
+        self._emit_ai_context()
+        prompt = (
+            f"请分析 {title} 的近期技术形态。"
+            f'请调用 technical_snapshot(symbol="{item.vt_symbol}")，'
+            "基于工具返回的均线、量比、区间涨跌等数据做解读。"
+        )
+        self.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(
+                    prompt=prompt,
+                    source_page=self.page_name,
+                    use_full_page=True,
+                ),
+            )
+        )
+
+    def _ask_ai_for_signals(self) -> None:
+        """向 AI 请求当前股票的双均线策略信号。"""
+        item = self.current_item
+        if item is None or self.event_engine is None:
+            return
+        quote = self.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        title = f"{name}（{item.vt_symbol}）" if name else item.vt_symbol
+        self._emit_ai_context()
+        prompt = (
+            f"请分析 {title} 的双均线（MA10/MA20）策略信号。"
+            f'请调用 list_strategy_signals(symbol="{item.vt_symbol}")，'
+            "基于工具返回的金叉/死叉信号和当前均线状态做解读。"
+        )
+        self.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(
+                    prompt=prompt,
+                    source_page=self.page_name,
+                    use_full_page=True,
+                ),
+            )
+        )
+
+    def _ask_ai_for_trend(self) -> None:
+        """向 AI 请求当前股票的近期走势分析。"""
+        item = self.current_item
+        if item is None or self.event_engine is None:
+            return
+        quote = self.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        title = f"{name}（{item.vt_symbol}）" if name else item.vt_symbol
+        self._emit_ai_context()
+        prompt = (
+            f"请分析 {title} 的近期走势。"
+            f'请调用 historical_pattern_summary(symbol="{item.vt_symbol}")，'
+            "基于工具返回的涨跌幅、波动、连涨连跌等历史统计数据做描述，禁止预测未来走势。"
+        )
+        self.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(
+                    prompt=prompt,
+                    source_page=self.page_name,
+                    use_full_page=True,
+                ),
+            )
+        )
+
     def _on_diagnose_finished(self, payload: dict) -> None:
         self._diagnose_worker = None
         if self.diagnose_panel is not None:
@@ -1771,6 +1846,14 @@ class QuotesPage(QtWidgets.QWidget):
             return
 
         menu = QtWidgets.QMenu(self)
+
+        # ── AI 分析 ──
+        ai_menu = menu.addMenu("AI 分析 ▸")
+        ai_menu.addAction("综合诊断", self._ask_ai_for_diagnose)
+        ai_menu.addAction("技术形态", self._ask_ai_for_technical)
+        ai_menu.addAction("双均线信号", self._ask_ai_for_signals)
+        ai_menu.addAction("近期走势", self._ask_ai_for_trend)
+        menu.addSeparator()
 
         if self.config.show_add_watchlist_button:
             key = (item.symbol, item.exchange)

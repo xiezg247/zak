@@ -22,7 +22,7 @@ from vnpy_llm.ui.styles import FLOATING_CHAT_INNER_STYLESHEET, FLOATING_CHAT_STY
 ORB_SIZE = 52
 ORB_MARGIN = 20
 PANEL_WIDTH = 360
-PANEL_HEIGHT = 460
+PANEL_HEIGHT = 480
 TITLE_BAR_HEIGHT = 32
 
 BTN_MARGIN = ORB_MARGIN
@@ -294,7 +294,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("FloatingAiPanel")
-        self.setMinimumSize(300, 360)
+        self.setMinimumSize(300, 380)
         self.resize(PANEL_WIDTH, PANEL_HEIGHT)
 
         self._drag_pos: QtCore.QPoint | None = None
@@ -338,8 +338,6 @@ class FloatingAiPanel(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
         self.chat_panel.expand_requested.connect(self._on_expand)
-        if self.chat_panel.quick_actions is not None:
-            self.chat_panel.quick_actions.triggered.connect(self.quick_action_triggered.emit)
         root.addWidget(self.chat_panel, 1)
 
         self.setStyleSheet(FLOATING_CHAT_STYLESHEET + FLOATING_CHAT_INNER_STYLESHEET)

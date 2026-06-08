@@ -1,7 +1,8 @@
-"""AnalysisService 单元测试。"""
+"""tdx_diagnose 与 AnalysisService.diagnose 单元测试。"""
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -34,6 +35,12 @@ class _FakeBarService:
         }
 
 
+def _wenda_payload(**extra_fields: str) -> str:
+    headers = ["sec_code", "sec_name", "now_price", "chg", *extra_fields.keys()]
+    row = ["600000", "浦发银行", "10.5", "1.2", *extra_fields.values()]
+    return json.dumps({"headers": headers, "data": [row]}, ensure_ascii=False)
+
+
 @pytest.fixture
 def analysis_service():
     import importlib.util
@@ -61,35 +68,31 @@ def test_technical_snapshot(analysis_service):
     assert result["period_return"]["return_pct"] == 5.5
 
 
-def test_diagnose_with_mock_mcp(analysis_service):
-    import json
+def test_diagnose_with_mock_wenda(analysis_service):
+    def _execute(name: str, args: dict) -> str:
+        question = args.get("question", "")
+        if "MACD" in question:
+            return _wenda_payload(**{"MACD.MACD": "-0.5", "MACD.DIF": "-0.3", "MACD.DEA": "-0.1"})
+        if "市盈率" in question:
+            return _wenda_payload(**{"市盈(动)": "8.5", "加权净资产收益率(ROE)": "12.3"})
+        if "主力" in question:
+            return _wenda_payload(**{"主力净额": "12345678"})
+        return _wenda_payload()
 
-    payload = {
-        "reports": [
-            {
-                "title": "测试研报",
-                "broker": "测试券商",
-                "date": "2025-06-01",
-                "rating": "买入",
-                "summary": "示例摘要",
-            }
-        ]
-    }
-    analysis_service.bind_mcp(
-        lambda name, args: json.dumps(payload, ensure_ascii=False),
-        ["mcp_tdx_research_report"],
-    )
-    result = analysis_service.diagnose("600000.SSE")
+    analysis_service.bind_mcp(_execute, ["mcp_tdx_tdx_wenda_quotes"])
+    result = analysis_service.diagnose("600000.SSE", include_reports=False)
     assert result["symbol"] == "600000.SSE"
-    assert len(result["reports"]) == 1
-    assert result["reports"][0]["broker"] == "测试券商"
+    assert result["quote"]["last_price"] == 10.5
+    assert result["technical"]["macd"] == -0.5
+    assert result["fundamental"]["pe_ttm"] == 8.5
+    assert result["capital_flow"]["main_net"] == 12345678.0
     assert "tdx_mcp" in result["sources"]
 
 
 def test_pick_mcp_tool(analysis_service):
-    analysis_service.bind_mcp(None, ["mcp_tdx_stock_quotes", "mcp_tdx_research_report"])
+    analysis_service.bind_mcp(None, ["mcp_tdx_tdx_wenda_quotes", "mcp_tdx_stock_quotes"])
     name = analysis_service._pick_mcp_tool(("report", "research"))
-    assert name == "mcp_tdx_research_report"
+    assert name is None
 
 
 def test_strategy_signals(analysis_service):
@@ -105,3 +108,18 @@ def test_historical_pattern_summary(analysis_service):
     assert "return_pct" in result
     assert "pattern_label" in result
     assert "disclaimer" in result
+
+
+def test_parse_wenda_table():
+    from vnpy_ashare.services.tdx_diagnose import _parse_wenda_table
+
+    raw = json.dumps(
+        {
+            "headers": ["sec_name", "now_price", "MACD.MACD<br>2026.06.08"],
+            "data": [["测试股", "12.34", "-0.88"]],
+        },
+        ensure_ascii=False,
+    )
+    parsed = _parse_wenda_table(raw)
+    assert parsed["fields"]["sec_name"] == "测试股"
+    assert parsed["fields"]["MACD.MACD"] == "-0.88"

@@ -8,9 +8,9 @@
 |----------|-------------------|------|
 | 当前选中标的 | `get_quote_context` | — |
 | 本地 K 线 / 区间涨跌 | `get_bars_summary` / `get_bars_data` | 提示下载日 K |
-| 技术面快照 | `technical_snapshot` / `diagnose_stock` | 同上 |
-| 综合诊断 | `diagnose_stock` | — |
-| 券商研报 / 评级 | `diagnose_stock`（内调通达信 MCP）或 `mcp_tdx_*` | Tushare `research_report`（TDX 不可用时） |
+| 技术面快照 | `technical_snapshot`（本地 K 线） | 同上 |
+| 综合诊断 | `diagnose_stock`（tdx-stock-diagnose，问小达 MCP） | — |
+| 券商研报 / 评级 | `diagnose_stock` 或 `mcp_tdx_tdx_wenda_quotes` | — |
 | 实时行情 / 板块 / F10 | 通达信 MCP `mcp_tdx_*` | TickFlow / Redis |
 | 财务 / 估值 / 宏观 | `tushare-data` Skill（`run_python`） | — |
 | 选股结果解读 | `get_screening_context` | 选股页运行方案 |
@@ -24,12 +24,17 @@
 - 已知示例（以 `list_mcp_tools.py` 输出为准）：
   - `mcp_tdx_stock_quotes` — 个股报价
 
-### 研报类工具
+### 问小达工具（个股诊断）
 
-`AnalysisService` 会自动匹配名称含以下关键词的 MCP 工具：
+`diagnose_stock`（tdx-stock-diagnose Skill）自动调用 `mcp_tdx_tdx_wenda_quotes`，按维度查询：
 
-- `report` / `research` / `研报` / `rating`
-- 若无研报工具，尝试 `f10` / `fundamental` / `financial`
+- 行情：现价、涨跌幅、成交量
+- 技术指标：MACD、KDJ、RSI
+- 财务：PE、ROE
+- 资金流：主力净额
+- 研报评级（可选）
+
+不再依赖本地 K 线。旧版研报/F10 自动匹配逻辑仍保留在 `AnalysisService._fetch_reports`，供其他路径使用。
 
 ## Python Skills
 
@@ -37,7 +42,8 @@
 |-------|------|
 | vnpy-context | get_quote_context |
 | vnpy-data | get_bars_summary, get_bars_data |
-| vnpy-analysis | diagnose_stock, technical_snapshot |
+| vnpy-analysis | technical_snapshot, list_strategy_signals, historical_pattern_summary |
+| tdx-stock-diagnose | diagnose_stock |
 | vnpy-backtest | list_strategies, get_backtest_result, list_backtest_history |
 | vnpy-screening | list_screeners, screen_by_condition |
 | vnpy-watchlist | get_watchlist, add_to_watchlist, remove_from_watchlist |

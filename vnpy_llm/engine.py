@@ -262,7 +262,9 @@ class LlmEngine(BaseEngine):
             elif name.startswith("vnpy-screening"):
                 capabilities.append("选股筛选")
             elif name.startswith("vnpy-analysis"):
-                capabilities.append("股票诊断")
+                capabilities.append("技术形态/策略信号")
+            elif name.startswith("tdx-stock-diagnose"):
+                capabilities.append("个股诊断(通达信)")
             elif name.startswith("vnpy-watchlist"):
                 capabilities.append("自选管理")
         if capabilities:

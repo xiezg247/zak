@@ -22,23 +22,24 @@ QLabel#AiContextLabel {
 QLabel#AiBubbleUser {
     background-color: #2a3a55;
     color: #e8e8e8;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
 }
-QLabel#AiBubbleAssistant {
+QLabel#AiBubbleAssistant,
+QTextBrowser#AiBubbleAssistant {
     background-color: #1e1e24;
     color: #e0e0e0;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
 }
 QLabel#AiBubbleError {
     background-color: #3a2020;
     color: #ff8a8a;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
 }
 QPlainTextEdit#AiInput {
     background-color: #1e1e24;
@@ -74,6 +75,18 @@ QPushButton#AiToolBtn {
 QPushButton#AiToolBtn:hover {
     border-color: #4a9eff;
     color: #4a9eff;
+}
+QPushButton#AiDeleteSessionsBtn {
+    background-color: transparent;
+    border: 1px solid #d04a4a;
+    border-radius: 4px;
+    padding: 4px 10px;
+    color: #d04a4a;
+    font-size: 12px;
+}
+QPushButton#AiDeleteSessionsBtn:hover {
+    background-color: #3a2020;
+    color: #ff6060;
 }
 QLabel#AiTitle {
     font-size: 14px;
@@ -189,7 +202,8 @@ QPushButton#AiQuickActionBtn {
     border-radius: 12px;
     color: #a8b0c0;
     font-size: 11px;
-    padding: 4px 10px;
+    padding: 5px 12px;
+    min-height: 24px;
 }
 QPushButton#AiQuickActionBtn:hover {
     border-color: #4a9eff;
@@ -218,24 +232,25 @@ QLabel#AiBubbleUser {
     color: #eef0f4;
     border: none;
     border-radius: 10px;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 10px 14px;
+    font-size: 14px;
 }
-QLabel#AiBubbleAssistant {
+QLabel#AiBubbleAssistant,
+QTextBrowser#AiBubbleAssistant {
     background-color: #1e1e26;
     color: #e8e8f0;
     border: 1px solid #2a2a34;
     border-radius: 10px;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 10px 14px;
+    font-size: 14px;
 }
 QLabel#AiBubbleError {
     background-color: #3a2020;
     color: #ff8a8a;
     border: none;
     border-radius: 10px;
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 10px 14px;
+    font-size: 14px;
 }
 QLabel#AiFloatingToolHint {
     color: #4a9eff;
@@ -250,7 +265,15 @@ QPlainTextEdit#AiInput {
     border-radius: 8px;
     padding: 6px 8px;
     color: #e0e0e8;
-    font-size: 12px;
+    font-size: 13px;
+    min-height: 44px;
+}
+QWidget#AiInputRow {
+    background-color: transparent;
+}
+QWidget#AiQuickActionChips {
+    background-color: transparent;
+    margin-bottom: 2px;
 }
 QPushButton#AiSendBtn {
     background-color: #4a9eff;
@@ -259,6 +282,10 @@ QPushButton#AiSendBtn {
     color: #fff;
     font-size: 14px;
     font-weight: bold;
+    min-width: 36px;
+    min-height: 36px;
+    max-width: 36px;
+    max-height: 36px;
 }
 QPushButton#AiSendBtn:hover {
     background-color: #5aadff;

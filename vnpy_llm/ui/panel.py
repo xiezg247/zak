@@ -13,7 +13,12 @@ from vnpy_llm.ui.tools_widgets import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.session_widgets import show_ai_session_dialog
 from vnpy_ashare.ai.context import QuickAction
 from vnpy_llm.ui.floating_widgets import QuickActionChips
+from vnpy_llm.ui.md_renderer import render_markdown
 from vnpy_llm.ui.worker import ChatWorker
+
+# 股票代码正则：6位数字
+import re
+_STOCK_CODE_RE = re.compile(r"\b(\d{6})\b")
 
 
 class AiChatPanel(QtWidgets.QWidget):
@@ -39,6 +44,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._streaming_bubble: QtWidgets.QWidget | None = None
         self._context_text = ""
         self._tool_hint: QtWidgets.QLabel | None = None
+        self._skip_completion_once = False
 
         self.setObjectName("AiChatPanel")
         if self.floating:
@@ -57,8 +63,8 @@ class AiChatPanel(QtWidgets.QWidget):
             root.setContentsMargins(8, 4, 8, 8)
             root.setSpacing(6)
         else:
-            root.setContentsMargins(8 if self.compact else 16, 8, 8 if self.compact else 16, 8)
-            root.setSpacing(8)
+            root.setContentsMargins(8 if self.compact else 12, 6, 8 if self.compact else 12, 6)
+            root.setSpacing(6)
 
         if not self.floating:
             self._build_header(root)
@@ -106,47 +112,86 @@ class AiChatPanel(QtWidgets.QWidget):
             )
         self.message_layout = QtWidgets.QVBoxLayout(self.message_container)
         self.message_layout.setContentsMargins(0, 0, 0, 0)
-        self.message_layout.setSpacing(6 if self.floating else 8)
+        self.message_layout.setSpacing(6)
         self.message_layout.addStretch()
         self.scroll.setWidget(self.message_container)
         if self.floating:
-            self.scroll.setMinimumHeight(180)
+            self.scroll.setMinimumHeight(100)
         root.addWidget(self.scroll, stretch=1)
+        QtCore.QTimer.singleShot(0, self._on_panel_shown)
 
+        # ── 快捷指令面板（浮动/桌面紧凑模式） ──
         self.quick_actions: QuickActionChips | None = None
-        if self.floating:
+        if self.floating or self.compact:
             self.quick_actions = QuickActionChips(self)
-            self.quick_actions.setVisible(False)
+            self.quick_actions.triggered.connect(self._on_quick_action)
             root.addWidget(self.quick_actions)
+
+        # ── 代码补全弹窗 ──
+        self._completion_popup = QtWidgets.QListWidget()
+        self._completion_popup.setObjectName("AiCompletionPopup")
+        self._completion_popup.setWindowFlags(
+            QtCore.Qt.WindowType.Popup | QtCore.Qt.WindowType.FramelessWindowHint
+        )
+        self._completion_popup.setMaximumHeight(240)
+        self._completion_popup.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self._completion_popup.itemClicked.connect(self._on_completion_selected)
+        self._completion_popup.itemActivated.connect(self._on_completion_selected)
+        self._completion_popup.hide()
 
         input_row = QtWidgets.QHBoxLayout()
         input_row.setSpacing(6)
+        input_row.setAlignment(QtCore.Qt.AlignmentFlag.AlignBottom)
         self.input_box = QtWidgets.QPlainTextEdit()
         self.input_box.setObjectName("AiInput")
         self.input_box.setPlaceholderText(
             "问点什么…" if self.floating else "输入问题，Ctrl+Enter 发送…"
         )
         line_height = self.input_box.fontMetrics().lineSpacing()
-        min_lines = 1 if self.floating else 2
-        max_lines = 6 if self.floating else 8
-        self._input_min_height = line_height * min_lines + (6 if self.floating else 16)
-        self._input_max_height = line_height * max_lines + (6 if self.floating else 16)
+        if self.floating:
+            self._input_min_height = max(44, line_height + 20)
+            self._input_max_height = line_height * 5 + 24
+        else:
+            min_lines = 2 if self.compact else 2
+            max_lines = 5 if self.compact else 5
+            self._input_min_height = line_height * min_lines + 16
+            self._input_max_height = line_height * max_lines + 16
+        self.input_box.document().setDocumentMargin(4 if self.floating else 2)
         self.input_box.setVerticalScrollBarPolicy(
-            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded if self.floating
+            else QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.input_box.setMinimumHeight(self._input_min_height)
+        self.input_box.setMaximumHeight(self._input_max_height)
+        self.input_box.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
         )
         self.input_box.setFixedHeight(self._input_min_height)
         self.input_box.document().documentLayout().documentSizeChanged.connect(
             self._on_input_document_changed
         )
+        self.input_box.textChanged.connect(self._on_input_text_changed)
+        # 方向键在不显示补全时正常导航
+        self.input_box.installEventFilter(self)
         input_row.addWidget(self.input_box, stretch=1)
 
         self.send_btn = QtWidgets.QPushButton("↑" if self.floating else "发送")
         self.send_btn.setObjectName("AiSendBtn")
         if self.floating:
-            self.send_btn.setFixedSize(36, 36)
+            send_size = max(44, self._input_min_height)
+            self.send_btn.setFixedSize(send_size, send_size)
         self.send_btn.clicked.connect(self._on_send)
         input_row.addWidget(self.send_btn)
-        root.addLayout(input_row)
+
+        input_host = QtWidgets.QWidget()
+        input_host.setObjectName("AiInputRow")
+        input_host.setLayout(input_row)
+        if self.floating:
+            input_host.setMinimumHeight(self._input_min_height + 4)
+        root.addWidget(input_host, stretch=0)
 
     def _build_header(self, root: QtWidgets.QVBoxLayout) -> None:
         header = QtWidgets.QHBoxLayout()
@@ -210,16 +255,25 @@ class AiChatPanel(QtWidgets.QWidget):
     def _on_input_document_changed(self) -> None:
         doc = self.input_box.document()
         content_height = int(doc.documentLayout().documentSize().height())
-        ideal = max(self._input_min_height, min(content_height + 6, self._input_max_height))
+        extra = 12 if self.floating else 6
+        ideal = max(self._input_min_height, min(content_height + extra, self._input_max_height))
         current = self.input_box.height()
-        if abs(ideal - current) > 4:
+        if abs(ideal - current) > 2:
             self.input_box.setFixedHeight(ideal)
+        if not self.floating:
             self.input_box.verticalScrollBar().setVisible(
                 content_height > self._input_max_height
             )
 
     def set_input_text(self, text: str) -> None:
+        self._completion_popup.hide()
+        self._skip_completion_once = True
+        self.input_box.setEnabled(True)
         self.input_box.setPlainText(text.strip())
+        self._on_input_document_changed()
+        cursor = self.input_box.textCursor()
+        cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
+        self.input_box.setTextCursor(cursor)
         self.focus_input()
 
     def submit_prompt(self, text: str, *, auto_send: bool = False) -> None:
@@ -232,10 +286,75 @@ class AiChatPanel(QtWidgets.QWidget):
             return
         self.quick_actions.set_actions(actions)
 
+    # ── 快捷指令 ──
+    def _on_quick_action(self, action: QuickAction) -> None:
+        """快捷指令：悬浮模式仅回填输入框，不自动发送。"""
+        if self.floating:
+            self.set_input_text(action.prompt)
+            return
+        auto_send = action.auto_send or True
+        self.submit_prompt(action.prompt, auto_send=auto_send)
+
+    # ── 代码补全 ──
+    def _on_input_text_changed(self) -> None:
+        """输入框文本变化时，检测股票代码并弹出补全建议。"""
+        if self._skip_completion_once:
+            self._skip_completion_once = False
+            return
+        text = self.input_box.toPlainText()
+        # 检测最后匹配的股票代码
+        codes = _STOCK_CODE_RE.findall(text)
+        if not codes:
+            self._completion_popup.hide()
+            return
+        # 取最后一个代码
+        code = codes[-1]
+        # 展示补全建议
+        self._show_completions(code)
+
+    def _show_completions(self, code: str) -> None:
+        """在输入框下方弹出操作联想。"""
+        from vnpy_ashare.ai.context import build_stock_completion_items
+        from vnpy_ashare.ai.session_context import get_ai_context
+
+        ctx = get_ai_context()
+        exchange_cn = ctx.exchange if ctx.symbol == code else ""
+        stock_name = ctx.name if ctx.symbol == code else ""
+
+        self._completion_popup.clear()
+        for entry in build_stock_completion_items(
+            code,
+            exchange_cn=exchange_cn,
+            name=stock_name,
+        ):
+            list_item = QtWidgets.QListWidgetItem(entry.label)
+            list_item.setData(QtCore.Qt.ItemDataRole.UserRole, entry.prompt)
+            self._completion_popup.addItem(list_item)
+
+        self._completion_popup.setFixedWidth(
+            max(280, self.input_box.width())
+        )
+        pos = self.input_box.mapToGlobal(
+            QtCore.QPoint(0, self.input_box.height())
+        )
+        self._completion_popup.move(pos)
+        self._completion_popup.show()
+
+    def _on_completion_selected(self, item: QtWidgets.QListWidgetItem) -> None:
+        """选择了补全项，填入完整 prompt。"""
+        prompt = item.data(QtCore.Qt.ItemDataRole.UserRole)
+        if not prompt:
+            prompt = item.text()
+        self.set_input_text(str(prompt))
+        self._completion_popup.hide()
+
     def on_floating_shown(self) -> None:
         """悬浮面板显示后刷新消息区布局。"""
         if not self.floating:
             return
+        self._set_busy(False)
+        self.input_box.setEnabled(True)
+        self._refresh_quick_actions_from_context()
         self.message_container.adjustSize()
         self._refresh_messages()
         QtCore.QTimer.singleShot(100, self._sync_all_bubble_widths)
@@ -253,12 +372,34 @@ class AiChatPanel(QtWidgets.QWidget):
     def _on_context_changed(self, text: str) -> None:
         self._context_text = text.strip()
         if self.floating:
+            self._refresh_quick_actions_from_context()
             return
         if self._context_text:
             self.context_label.setText(self._context_text)
             self.context_label.setVisible(True)
         else:
             self.context_label.setVisible(False)
+        self._refresh_quick_actions()
+
+    def _refresh_quick_actions_from_context(self) -> None:
+        """悬浮模式：上下文变化时同步快捷指令。"""
+        if self.quick_actions is None:
+            return
+        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_llm.ui.floating_actions import _build_actions
+
+        ctx = get_ai_context()
+        self.quick_actions.set_actions(_build_actions(ctx))
+
+    def _refresh_quick_actions(self) -> None:
+        """根据当前 AI 上下文刷新快捷指令按钮。"""
+        if self.quick_actions is None or self.floating:
+            return
+        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_llm.ui.floating_actions import _build_actions
+        ctx = get_ai_context()
+        actions = _build_actions(ctx)
+        self.quick_actions.set_actions(actions)
 
     def _clear_message_widgets(self) -> None:
         while self.message_layout.count() > 1:
@@ -277,23 +418,57 @@ class AiChatPanel(QtWidgets.QWidget):
                 continue
             if msg.role == "assistant" and not msg.content.strip():
                 continue
-            self._append_bubble(msg.role, msg.content, persist=False)
+            if msg.role == "assistant":
+                self._insert_assistant_html_bubble(msg.content)
+            else:
+                self._append_bubble(msg.role, msg.content, persist=False)
         self._sync_all_bubble_widths()
         self._scroll_to_bottom()
 
-    def _bubble_max_width(self, role: str) -> int:
+    def _message_viewport_width(self) -> int:
         viewport_width = self.scroll.viewport().width()
-        if viewport_width < 40:
-            viewport_width = self.scroll.width() - 20
-        if viewport_width < 40:
-            viewport_width = self.width() - 20
-        if viewport_width < 100:
-            viewport_width = 300
-        margin = 8 if self.floating else 12
-        usable = max(200, viewport_width - margin * 2)
+        if viewport_width >= 100:
+            return viewport_width
+        fallback = self.scroll.width()
+        if fallback >= 100:
+            return fallback
+        margin = 16 if (not self.compact and not self.floating) else 8
+        return max(200, self.width() - margin * 2)
+
+    def _usable_message_width(self) -> int:
+        viewport_width = self._message_viewport_width()
+        margin = 8 if self.floating else 4
+        return max(200, viewport_width - margin * 2)
+
+    def _bubble_max_width(self, role: str) -> int:
+        usable = self._usable_message_width()
         if role == "user":
-            return int(usable * 0.85)
-        return usable
+            return int(usable * 0.72)
+        if self.floating:
+            return int(usable * 0.94)
+        if self.compact:
+            return int(usable * 0.88)
+        return int(usable * 0.82)
+
+    @staticmethod
+    def _bubble_horizontal_padding() -> int:
+        return 28
+
+    def _user_label_width(self, bubble: QtWidgets.QLabel, max_width: int) -> int:
+        text = bubble.text()
+        padding = self._bubble_horizontal_padding()
+        if not text.strip():
+            return min(max_width, 120)
+        metrics = bubble.fontMetrics()
+        single_line = metrics.horizontalAdvance(text) + padding
+        if single_line <= max_width:
+            return max(64, single_line)
+        return max_width
+
+    @staticmethod
+    def _apply_widget_width(widget: QtWidgets.QWidget, width: int) -> None:
+        widget.setMinimumWidth(width)
+        widget.setMaximumWidth(width)
 
     @staticmethod
     def _bubble_role(widget: QtWidgets.QWidget) -> str:
@@ -306,10 +481,13 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _sync_label_bubble(self, bubble: QtWidgets.QLabel) -> None:
         role = self._bubble_role(bubble)
-        target_width = self._bubble_max_width(role)
-        bubble.setMaximumWidth(target_width)
-        bubble.setMinimumWidth(min(target_width, 200))
-        wrapped_height = bubble.heightForWidth(target_width)
+        max_width = self._bubble_max_width(role)
+        if role == "user":
+            width = self._user_label_width(bubble, max_width)
+        else:
+            width = max_width
+        self._apply_widget_width(bubble, width)
+        wrapped_height = bubble.heightForWidth(width)
         if wrapped_height > 0:
             bubble.setMinimumHeight(wrapped_height)
 
@@ -320,6 +498,19 @@ class AiChatPanel(QtWidgets.QWidget):
         for bubble in self._iter_message_bubbles():
             if isinstance(bubble, QtWidgets.QLabel):
                 self._sync_label_bubble(bubble)
+            elif isinstance(bubble, QtWidgets.QTextBrowser):
+                self._sync_browser_bubble(bubble)
+
+    def _sync_browser_bubble(self, browser: QtWidgets.QTextBrowser) -> None:
+        role = self._bubble_role(browser)
+        width = self._bubble_max_width(role)
+        content_width = max(120, width - self._bubble_horizontal_padding())
+        self._apply_widget_width(browser, width)
+        browser.document().setTextWidth(content_width)
+        doc_height = int(browser.document().size().height())
+        if doc_height > 0:
+            browser.setMinimumHeight(doc_height + 20)
+            browser.setFixedHeight(doc_height + 20)
 
     def _iter_message_bubbles(self):
         for index in range(self.message_layout.count() - 1):
@@ -327,6 +518,9 @@ class AiChatPanel(QtWidgets.QWidget):
             if row is None:
                 continue
             for child in row.findChildren(QtWidgets.QLabel):
+                if child.objectName().startswith("AiBubble"):
+                    yield child
+            for child in row.findChildren(QtWidgets.QTextBrowser):
                 if child.objectName().startswith("AiBubble"):
                     yield child
 
@@ -362,16 +556,33 @@ class AiChatPanel(QtWidgets.QWidget):
         if self.floating:
             row.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         row_layout = QtWidgets.QHBoxLayout(row)
-        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setContentsMargins(2, 2, 2, 2)
         row_layout.setSpacing(0)
         if role == "user":
             row_layout.addStretch(1)
-            row_layout.addWidget(bubble, 0)
+            row_layout.addWidget(bubble, 0, QtCore.Qt.AlignmentFlag.AlignRight)
         else:
-            row_layout.addWidget(bubble, 0)
+            row_layout.addWidget(bubble, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
             row_layout.addStretch(1)
         insert_at = max(0, self.message_layout.count() - 1)
         self.message_layout.insertWidget(insert_at, row)
+
+    def _insert_assistant_html_bubble(self, content: str) -> None:
+        """插入一条助手消息气泡，以 HTML 方式渲染 Markdown。"""
+        html = render_markdown(content)
+        browser = QtWidgets.QTextBrowser()
+        browser.setObjectName("AiBubbleAssistant")
+        browser.setOpenExternalLinks(True)
+        browser.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        browser.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        browser.setMinimumWidth(40)
+        browser.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+        browser.setHtml(html)
+        self._sync_browser_bubble(browser)
+        self._insert_bubble_row("assistant", browser)
 
     def _append_bubble(self, role: str, content: str, *, persist: bool) -> QtWidgets.QWidget:
         bubble = self._create_label_bubble(role, content)
@@ -555,12 +766,36 @@ class AiChatPanel(QtWidgets.QWidget):
             obj is self.scroll.viewport()
             and event.type() == QtCore.QEvent.Type.Resize
         ):
+            self.message_container.setMinimumWidth(self._message_viewport_width())
             self._sync_all_bubble_widths()
+        if obj is self.input_box and event.type() == QtCore.QEvent.Type.KeyPress:
+            key_event = event
+            if self._completion_popup.isVisible():
+                if key_event.key() == QtCore.Qt.Key.Key_Down:
+                    self._completion_popup.setFocus()
+                    self._completion_popup.setCurrentRow(0)
+                    return True
+                if key_event.key() == QtCore.Qt.Key.Key_Escape:
+                    self._completion_popup.hide()
+                    return True
+                if key_event.key() in (
+                    QtCore.Qt.Key.Key_Return,
+                    QtCore.Qt.Key.Key_Enter,
+                ):
+                    if key_event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+                        self._completion_popup.hide()
+                        return False
+                    self._completion_popup.hide()
+                    return False
         return super().eventFilter(obj, event)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
-        QtCore.QTimer.singleShot(0, self._sync_all_bubble_widths)
+        QtCore.QTimer.singleShot(0, self._on_panel_shown)
+
+    def _on_panel_shown(self) -> None:
+        self.message_container.setMinimumWidth(self._message_viewport_width())
+        self._sync_all_bubble_widths()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if (
@@ -591,6 +826,8 @@ class AiChatPanel(QtWidgets.QWidget):
                 pass
 
     def deactivate(self, *, final: bool = False) -> None:
+        self._set_busy(False)
+        self._completion_popup.hide()
         if final:
             self._disconnect_engine_signals()
         worker = self._worker

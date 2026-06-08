@@ -36,6 +36,7 @@ class AiSessionListWidget(QtWidgets.QWidget):
         self.engine = engine
         self._close_on_select = close_on_select
         self._close_parent: QtWidgets.QWidget | None = None
+        self._multi_select_mode = False
         self.setObjectName("AiSessionList")
         self.setStyleSheet(PANEL_STYLESHEET)
         self._build_ui()
@@ -48,29 +49,106 @@ class AiSessionListWidget(QtWidgets.QWidget):
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(8)
+        root.setSpacing(6)
 
-        header = QtWidgets.QHBoxLayout()
+        title_row = QtWidgets.QHBoxLayout()
         title = QtWidgets.QLabel("历史会话")
         title.setObjectName("AiSessionTitle")
-        header.addWidget(title)
-        header.addStretch()
+        title_row.addWidget(title)
+        title_row.addStretch()
         new_btn = QtWidgets.QPushButton("+ 新会话")
         new_btn.setObjectName("AiToolBtn")
         new_btn.clicked.connect(self._on_new_session)
-        header.addWidget(new_btn)
-        root.addLayout(header)
+        title_row.addWidget(new_btn)
+        root.addLayout(title_row)
+
+        actions_row = QtWidgets.QHBoxLayout()
+        actions_row.setSpacing(6)
+        self._multi_btn = QtWidgets.QPushButton("多选")
+        self._multi_btn.setObjectName("AiToolBtn")
+        self._multi_btn.setCheckable(True)
+        self._multi_btn.setToolTip("多选删除会话")
+        self._multi_btn.toggled.connect(self._on_multi_select_toggled)
+        actions_row.addWidget(self._multi_btn)
+        self._del_btn = QtWidgets.QPushButton("删除选中")
+        self._del_btn.setObjectName("AiDeleteSessionsBtn")
+        self._del_btn.setVisible(False)
+        self._del_btn.clicked.connect(self._on_delete_selected)
+        actions_row.addWidget(self._del_btn)
+        actions_row.addStretch()
+        root.addLayout(actions_row)
 
         self._list = QtWidgets.QListWidget()
         self._list.setObjectName("AiSessionListWidget")
         self._list.setSpacing(2)
+        self._list.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
         self._list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._on_context_menu)
         self._list.itemClicked.connect(self._on_item_clicked)
         self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        self._list.itemSelectionChanged.connect(self._on_selection_changed)
         root.addWidget(self._list, stretch=1)
 
+    def _on_multi_select_toggled(self, checked: bool) -> None:
+        self._set_multi_select_mode(checked)
+
+    def _set_multi_select_mode(
+        self,
+        enabled: bool,
+        *,
+        preselect_item: QtWidgets.QListWidgetItem | None = None,
+    ) -> None:
+        if self._multi_select_mode == enabled and preselect_item is None:
+            return
+        self._multi_select_mode = enabled
+        if self._multi_btn.isChecked() != enabled:
+            self._multi_btn.blockSignals(True)
+            self._multi_btn.setChecked(enabled)
+            self._multi_btn.blockSignals(False)
+        if enabled:
+            self._list.setSelectionMode(
+                QtWidgets.QAbstractItemView.SelectionMode.MultiSelection
+            )
+            self._multi_btn.setText("取消")
+            self._multi_btn.setToolTip("退出多选模式")
+            if preselect_item is not None:
+                preselect_item.setSelected(True)
+        else:
+            self._list.setSelectionMode(
+                QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+            )
+            self._multi_btn.setText("多选")
+            self._multi_btn.setToolTip("多选删除会话")
+            self._restore_current_selection()
+        self._update_multi_select_ui()
+
+    def _restore_current_selection(self) -> None:
+        current_id = self.engine.session_id
+        self._list.clearSelection()
+        for row in range(self._list.count()):
+            item = self._list.item(row)
+            if item is None:
+                continue
+            session_id = item.data(_SESSION_ID_ROLE)
+            if session_id and str(session_id) == current_id:
+                self._list.setCurrentRow(row)
+                break
+
+    def _update_multi_select_ui(self) -> None:
+        count = len(self._list.selectedItems())
+        if self._multi_select_mode:
+            self._del_btn.setVisible(count >= 1)
+            self._del_btn.setText(f"删除({count})" if count else "删除选中")
+        else:
+            self._del_btn.setVisible(False)
+            self._del_btn.setText("删除选中")
+
     def refresh(self) -> None:
+        selected_ids = {
+            sid for sid, _ in self._selected_sessions()
+        } if self._multi_select_mode else set()
         current_id = self.engine.session_id
         selected_row = self._list.currentRow()
         self._list.clear()
@@ -87,10 +165,58 @@ class AiSessionListWidget(QtWidgets.QWidget):
             self._list.addItem(item)
             if session.id == current_id:
                 current_row = index
-        if current_row >= 0:
+        if self._multi_select_mode:
+            for row in range(self._list.count()):
+                item = self._list.item(row)
+                if item is None:
+                    continue
+                session_id = item.data(_SESSION_ID_ROLE)
+                if session_id and str(session_id) in selected_ids:
+                    item.setSelected(True)
+            self._update_multi_select_ui()
+        elif current_row >= 0:
             self._list.setCurrentRow(current_row)
         elif selected_row >= 0 and selected_row < self._list.count():
             self._list.setCurrentRow(selected_row)
+
+    def _selected_sessions(self) -> list[tuple[str, str]]:
+        """返回 [(session_id, title), ...] 当前选中的会话列表。"""
+        result: list[tuple[str, str]] = []
+        for item in self._list.selectedItems():
+            session_id = item.data(_SESSION_ID_ROLE)
+            if session_id:
+                title = item.text().split("\n", 1)[0]
+                result.append((str(session_id), title))
+        return result
+
+    def _on_selection_changed(self) -> None:
+        self._update_multi_select_ui()
+
+    def _on_delete_selected(self) -> None:
+        selected = self._selected_sessions()
+        if not selected:
+            return
+        if self.engine.session_id in {sid for sid, _ in selected}:
+            QtWidgets.QMessageBox.warning(
+                self, "提示",
+                "不能删除当前正在使用的会话，请先切换到其他会话。"
+            )
+            return
+        count = len(selected)
+        title_line = f"确定要删除选中的 {count} 个会话及其全部消息吗？"
+        if count == 1:
+            title_line = f"确定要删除会话「{selected[0][1]}」及其全部消息吗？"
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "确认删除",
+            title_line + ("\n\n" + "\n".join(f"  · {title}" for _, title in selected) if count > 1 else ""),
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        for session_id, _ in selected:
+            self.engine.delete_session(session_id)
+        self._set_multi_select_mode(False)
 
     def _session_id_at(self, row: int) -> str | None:
         item = self._list.item(row)
@@ -100,6 +226,8 @@ class AiSessionListWidget(QtWidgets.QWidget):
         return str(session_id) if session_id else None
 
     def _on_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
+        if self._multi_select_mode:
+            return
         if self.engine.is_busy():
             QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再切换会话")
             return
@@ -112,6 +240,9 @@ class AiSessionListWidget(QtWidgets.QWidget):
             self._close_parent.close()
 
     def _on_item_double_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
+        if self._multi_select_mode:
+            item.setSelected(not item.isSelected())
+            return
         self._rename_item(item)
 
     def _on_new_session(self) -> None:
@@ -122,19 +253,35 @@ class AiSessionListWidget(QtWidgets.QWidget):
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         item = self._list.itemAt(pos)
-        if item is None:
-            return
-        session_id = item.data(_SESSION_ID_ROLE)
-        if not session_id:
-            return
+        selected = self._selected_sessions()
         menu = QtWidgets.QMenu(self)
-        rename_action = menu.addAction("重命名")
-        delete_action = menu.addAction("删除")
+
+        if self._multi_select_mode:
+            if selected:
+                menu.addAction(
+                    f"删除选中的 {len(selected)} 个会话",
+                    self._on_delete_selected,
+                )
+            menu.addAction("全选", self._list.selectAll)
+            menu.addAction("取消多选", lambda: self._set_multi_select_mode(False))
+            menu.exec(self._list.mapToGlobal(pos))
+            return
+
+        enter_multi = menu.addAction("多选")
+        if item is not None:
+            session_id = item.data(_SESSION_ID_ROLE)
+            if session_id:
+                menu.addSeparator()
+                menu.addAction("重命名", lambda: self._rename_item(item))
+                menu.addAction(
+                    "删除",
+                    lambda: self._delete_session(
+                        str(session_id), item.text().split("\n", 1)[0]
+                    ),
+                )
         action = menu.exec(self._list.mapToGlobal(pos))
-        if action is rename_action:
-            self._rename_item(item)
-        elif action is delete_action:
-            self._delete_session(str(session_id), item.text().split("\n", 1)[0])
+        if action is enter_multi:
+            self._set_multi_select_mode(True, preselect_item=item)
 
     def _rename_item(self, item: QtWidgets.QListWidgetItem) -> None:
         session_id = item.data(_SESSION_ID_ROLE)
@@ -164,8 +311,8 @@ class AiSessionListWidget(QtWidgets.QWidget):
 class AiSessionSidebar(QtWidgets.QWidget):
     """全屏页左侧会话栏（可折叠）。"""
 
-    CONTENT_WIDTH = 220
-    RAIL_WIDTH = 36
+    CONTENT_WIDTH = 248
+    RAIL_WIDTH = 32
 
     def __init__(self, engine: LlmEngine, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -181,7 +328,7 @@ class AiSessionSidebar(QtWidgets.QWidget):
         self._content = QtWidgets.QWidget(self)
         self._content.setFixedWidth(self.CONTENT_WIDTH)
         content_layout = QtWidgets.QVBoxLayout(self._content)
-        content_layout.setContentsMargins(12, 12, 4, 12)
+        content_layout.setContentsMargins(10, 10, 6, 10)
         content_layout.setSpacing(0)
         self._list = AiSessionListWidget(engine, parent=self._content)
         content_layout.addWidget(self._list)
@@ -197,7 +344,7 @@ class AiSessionSidebar(QtWidgets.QWidget):
         self._toggle_btn.setObjectName("AiSessionToggle")
         self._toggle_btn.setText("◀")
         self._toggle_btn.setToolTip("收起历史会话")
-        self._toggle_btn.setFixedSize(28, 28)
+        self._toggle_btn.setFixedSize(26, 26)
         self._toggle_btn.clicked.connect(self._toggle_expanded)
         rail_layout.addWidget(self._toggle_btn, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
         rail_layout.addStretch()
