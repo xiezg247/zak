@@ -283,10 +283,10 @@ class ChartPanel(QtWidgets.QWidget):
         self._load_active_tab()
 
     def current_period(self) -> str:
-        return "1m"
+        return "60m"
 
     def current_period_label(self) -> str:
-        return "1分"
+        return "60分"
 
     def _update_hint(self, *, daily_missing: bool = False) -> None:
         text = chart_tab_hint(
