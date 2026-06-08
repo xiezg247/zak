@@ -265,3 +265,20 @@ class BacktesterWidget(VnpyBacktesterManager):
                 statistics=dict(statistics),
             )
         )
+        self._persist_backtest_summary(dict(statistics), start, end)
+
+    def _persist_backtest_summary(self, statistics: dict, start, end) -> None:
+        from vnpy_ashare.engine import APP_NAME, AshareEngine
+
+        engine = self.main_engine.get_engine(APP_NAME)
+        if not isinstance(engine, AshareEngine):
+            return
+        summary = {
+            "strategy": self.class_combo.currentText(),
+            "vt_symbol": self.symbol_line.text().strip(),
+            "interval": self.interval_combo.currentText(),
+            "start": start.strftime("%Y-%m-%d"),
+            "end": end.strftime("%Y-%m-%d"),
+            "statistics": statistics,
+        }
+        engine.backtest_service.persist_summary(summary, source="single")

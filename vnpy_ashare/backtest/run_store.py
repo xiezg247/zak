@@ -1,0 +1,248 @@
+"""回测运行历史落库（B3）。"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+import uuid
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
+from vnpy_ashare.paths import APP_DB_PATH
+
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS backtest_runs (
+    id TEXT PRIMARY KEY,
+    vt_symbol TEXT NOT NULL,
+    strategy TEXT NOT NULL,
+    interval TEXT NOT NULL DEFAULT 'd',
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    total_return REAL,
+    max_drawdown REAL,
+    sharpe_ratio REAL,
+    trade_count INTEGER,
+    source TEXT NOT NULL DEFAULT 'single',
+    batch_id TEXT,
+    raw_statistics_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_backtest_runs_created ON backtest_runs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_backtest_runs_symbol ON backtest_runs(vt_symbol);
+"""
+
+
+@dataclass
+class BacktestRunRecord:
+    id: str
+    vt_symbol: str
+    strategy: str
+    interval: str
+    start_date: str
+    end_date: str
+    total_return: float | None
+    max_drawdown: float | None
+    sharpe_ratio: float | None
+    trade_count: int | None
+    source: str
+    batch_id: str | None
+    raw_statistics: dict[str, Any]
+    created_at: str
+
+    def to_summary_dict(self) -> dict[str, Any]:
+        """与 session_context BacktestSummary.to_dict() 对齐。"""
+        return {
+            "strategy": self.strategy,
+            "vt_symbol": self.vt_symbol,
+            "interval": self.interval,
+            "start": self.start_date,
+            "end": self.end_date,
+            "statistics": dict(self.raw_statistics),
+            "total_return": self.total_return,
+            "max_drawdown": self.max_drawdown,
+            "sharpe_ratio": self.sharpe_ratio,
+            "trade_count": self.trade_count,
+            "source": self.source,
+            "created_at": self.created_at,
+        }
+
+
+@contextmanager
+def _connect():
+    APP_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(APP_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.executescript(_SCHEMA)
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _now() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _to_float(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        text = str(value).replace("%", "").strip()
+        return float(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_metrics(statistics: dict[str, Any]) -> tuple[float | None, float | None, float | None, int | None]:
+    total_return = _to_float(statistics.get("total_return"))
+    max_drawdown = _to_float(statistics.get("max_drawdown"))
+    sharpe_ratio = _to_float(statistics.get("sharpe_ratio"))
+    trade_count_raw = statistics.get("total_trade_count")
+    trade_count = int(trade_count_raw) if trade_count_raw is not None else None
+    return total_return, max_drawdown, sharpe_ratio, trade_count
+
+
+def save_backtest_run(
+    *,
+    vt_symbol: str,
+    strategy: str,
+    interval: str,
+    start: str,
+    end: str,
+    statistics: dict[str, Any] | None = None,
+    source: str = "single",
+    batch_id: str | None = None,
+    total_return: float | None = None,
+    max_drawdown: float | None = None,
+    sharpe_ratio: float | None = None,
+    trade_count: int | None = None,
+) -> BacktestRunRecord:
+    stats = dict(statistics or {})
+    if total_return is None and max_drawdown is None:
+        extracted = _extract_metrics(stats)
+        total_return, max_drawdown, sharpe_ratio, trade_count = extracted
+    elif trade_count is None:
+        _, _, _, trade_count = _extract_metrics(stats)
+
+    run_id = uuid.uuid4().hex
+    now = _now()
+    stats_payload = json.dumps(stats, ensure_ascii=False)
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO backtest_runs
+            (id, vt_symbol, strategy, interval, start_date, end_date,
+             total_return, max_drawdown, sharpe_ratio, trade_count,
+             source, batch_id, raw_statistics_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                vt_symbol,
+                strategy,
+                interval,
+                start[:10],
+                end[:10],
+                total_return,
+                max_drawdown,
+                sharpe_ratio,
+                trade_count,
+                source,
+                batch_id,
+                stats_payload,
+                now,
+            ),
+        )
+    return BacktestRunRecord(
+        id=run_id,
+        vt_symbol=vt_symbol,
+        strategy=strategy,
+        interval=interval,
+        start_date=start[:10],
+        end_date=end[:10],
+        total_return=total_return,
+        max_drawdown=max_drawdown,
+        sharpe_ratio=sharpe_ratio,
+        trade_count=trade_count,
+        source=source,
+        batch_id=batch_id,
+        raw_statistics=stats,
+        created_at=now,
+    )
+
+
+def save_backtest_summary_dict(summary: dict[str, Any], *, source: str = "single") -> BacktestRunRecord:
+    """从 BacktestSummary.to_dict() 写入。"""
+    return save_backtest_run(
+        vt_symbol=str(summary.get("vt_symbol", "")),
+        strategy=str(summary.get("strategy", "")),
+        interval=str(summary.get("interval", "d")),
+        start=str(summary.get("start", "")),
+        end=str(summary.get("end", "")),
+        statistics=dict(summary.get("statistics") or {}),
+        source=source,
+    )
+
+
+def list_backtest_runs(*, limit: int = 20, vt_symbol: str | None = None) -> list[BacktestRunRecord]:
+    query = """
+        SELECT id, vt_symbol, strategy, interval, start_date, end_date,
+               total_return, max_drawdown, sharpe_ratio, trade_count,
+               source, batch_id, raw_statistics_json, created_at
+        FROM backtest_runs
+    """
+    params: list[Any] = []
+    if vt_symbol:
+        query += " WHERE vt_symbol=?"
+        params.append(vt_symbol)
+    query += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+    with _connect() as conn:
+        rows = conn.execute(query, params).fetchall()
+    return [_row_to_record(row) for row in rows]
+
+
+def get_backtest_run(run_id: str) -> BacktestRunRecord | None:
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT id, vt_symbol, strategy, interval, start_date, end_date,
+                   total_return, max_drawdown, sharpe_ratio, trade_count,
+                   source, batch_id, raw_statistics_json, created_at
+            FROM backtest_runs WHERE id=?
+            """,
+            (run_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return _row_to_record(row)
+
+
+def get_latest_backtest_run(*, vt_symbol: str | None = None) -> BacktestRunRecord | None:
+    runs = list_backtest_runs(limit=1, vt_symbol=vt_symbol)
+    return runs[0] if runs else None
+
+
+def _row_to_record(row: sqlite3.Row) -> BacktestRunRecord:
+    return BacktestRunRecord(
+        id=str(row["id"]),
+        vt_symbol=str(row["vt_symbol"]),
+        strategy=str(row["strategy"]),
+        interval=str(row["interval"]),
+        start_date=str(row["start_date"]),
+        end_date=str(row["end_date"]),
+        total_return=row["total_return"],
+        max_drawdown=row["max_drawdown"],
+        sharpe_ratio=row["sharpe_ratio"],
+        trade_count=row["trade_count"],
+        source=str(row["source"]),
+        batch_id=str(row["batch_id"]) if row["batch_id"] else None,
+        raw_statistics=json.loads(str(row["raw_statistics_json"] or "{}")),
+        created_at=str(row["created_at"]),
+    )

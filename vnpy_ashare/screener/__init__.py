@@ -11,6 +11,7 @@ from vnpy_ashare.screener.batch_actions import (
 )
 from vnpy_ashare.screener.run_store import (
     ScreenerRunRecord,
+    delete_run,
     get_latest_run,
     get_run,
     list_runs,
@@ -39,6 +40,7 @@ __all__ = [
     "TushareNotConfiguredError",
     "batch_download_daily_bars",
     "build_scheme_config",
+    "delete_run",
     "delete_scheme",
     "export_rows_to_csv",
     "get_latest_run",

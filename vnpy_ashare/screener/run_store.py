@@ -134,6 +134,12 @@ def get_latest_run() -> ScreenerRunRecord | None:
     return runs[0] if runs else None
 
 
+def delete_run(run_id: str) -> bool:
+    with _connect() as conn:
+        cursor = conn.execute("DELETE FROM screener_runs WHERE id=?", (run_id,))
+        return cursor.rowcount > 0
+
+
 def _row_to_record(row: sqlite3.Row) -> ScreenerRunRecord:
     return ScreenerRunRecord(
         id=str(row["id"]),

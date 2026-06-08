@@ -1,0 +1,149 @@
+"""选股页历史运行侧栏。"""
+
+from __future__ import annotations
+
+from vnpy.trader.ui import QtCore, QtWidgets
+
+from vnpy_ashare.screener.run_store import delete_run, list_runs
+from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+
+_RUN_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
+
+
+class ScreenerRunListWidget(QtWidgets.QWidget):
+    """可复用的选股历史列表。"""
+
+    run_selected = QtCore.Signal(str)
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ScreenerRunList")
+        self.setStyleSheet(TERMINAL_STYLESHEET)
+        self._build_ui()
+        self.refresh()
+
+    def _build_ui(self) -> None:
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(8)
+
+        title = QtWidgets.QLabel("历史运行")
+        title.setObjectName("AiSessionTitle")
+        root.addWidget(title)
+
+        self._list = QtWidgets.QListWidget()
+        self._list.setObjectName("AiSessionListWidget")
+        self._list.setSpacing(2)
+        self._list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self._list.customContextMenuRequested.connect(self._on_context_menu)
+        self._list.itemClicked.connect(self._on_item_clicked)
+        root.addWidget(self._list, stretch=1)
+
+    def refresh(self) -> None:
+        selected_row = self._list.currentRow()
+        self._list.clear()
+        for record in list_runs(limit=30):
+            subtitle = f"{record.row_count} 条 · {record.created_at[5:16]}"
+            display = f"{record.condition}\n{subtitle}"
+            item = QtWidgets.QListWidgetItem(display)
+            item.setData(_RUN_ID_ROLE, record.id)
+            item.setToolTip(
+                f"{record.condition}\n"
+                f"来源 {record.source} · 扫描 {record.total_scanned} · {record.created_at}"
+            )
+            self._list.addItem(item)
+        if selected_row >= 0 and selected_row < self._list.count():
+            self._list.setCurrentRow(selected_row)
+
+    def _on_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
+        run_id = item.data(_RUN_ID_ROLE)
+        if run_id:
+            self.run_selected.emit(str(run_id))
+
+    def _on_context_menu(self, pos: QtCore.QPoint) -> None:
+        item = self._list.itemAt(pos)
+        if item is None:
+            return
+        run_id = item.data(_RUN_ID_ROLE)
+        if not run_id:
+            return
+        menu = QtWidgets.QMenu(self)
+        delete_action = menu.addAction("删除")
+        action = menu.exec(self._list.mapToGlobal(pos))
+        if action is delete_action:
+            title = item.text().split("\n", 1)[0]
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "确认删除",
+                f"删除历史运行「{title}」？",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                delete_run(str(run_id))
+                self.refresh()
+
+
+class ScreenerRunSidebar(QtWidgets.QWidget):
+    """选股页左侧历史栏（可折叠）。"""
+
+    run_selected = QtCore.Signal(str)
+
+    CONTENT_WIDTH = 200
+    RAIL_WIDTH = 36
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("AiSessionSidebar")
+        self._expanded = True
+        self.setFixedWidth(self.CONTENT_WIDTH + self.RAIL_WIDTH)
+        self.setStyleSheet(TERMINAL_STYLESHEET)
+
+        root = QtWidgets.QHBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        self._content = QtWidgets.QWidget(self)
+        self._content.setFixedWidth(self.CONTENT_WIDTH)
+        content_layout = QtWidgets.QVBoxLayout(self._content)
+        content_layout.setContentsMargins(12, 12, 4, 12)
+        content_layout.setSpacing(0)
+        self._list = ScreenerRunListWidget(parent=self._content)
+        self._list.run_selected.connect(self.run_selected.emit)
+        content_layout.addWidget(self._list)
+        root.addWidget(self._content)
+
+        rail = QtWidgets.QWidget(self)
+        rail.setObjectName("AiSessionRail")
+        rail.setFixedWidth(self.RAIL_WIDTH)
+        rail_layout = QtWidgets.QVBoxLayout(rail)
+        rail_layout.setContentsMargins(0, 12, 0, 12)
+        rail_layout.addStretch()
+        self._toggle_btn = QtWidgets.QToolButton()
+        self._toggle_btn.setObjectName("AiSessionToggle")
+        self._toggle_btn.setText("◀")
+        self._toggle_btn.setToolTip("收起历史运行")
+        self._toggle_btn.setFixedSize(28, 28)
+        self._toggle_btn.clicked.connect(self._toggle_expanded)
+        rail_layout.addWidget(self._toggle_btn, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
+        rail_layout.addStretch()
+        root.addWidget(rail)
+
+    def refresh(self) -> None:
+        self._list.refresh()
+
+    def _toggle_expanded(self) -> None:
+        self.set_expanded(not self._expanded)
+
+    def set_expanded(self, expanded: bool) -> None:
+        if self._expanded == expanded:
+            return
+        self._expanded = expanded
+        self._content.setVisible(expanded)
+        if expanded:
+            self.setFixedWidth(self.CONTENT_WIDTH + self.RAIL_WIDTH)
+            self._toggle_btn.setText("◀")
+            self._toggle_btn.setToolTip("收起历史运行")
+        else:
+            self.setFixedWidth(self.RAIL_WIDTH)
+            self._toggle_btn.setText("▶")
+            self._toggle_btn.setToolTip("展开历史运行")

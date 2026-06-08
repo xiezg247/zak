@@ -17,13 +17,18 @@ from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
 from vnpy_ashare.screener.runner import ScreenerRequest, build_scheme_config, list_all_preset_names
-from vnpy_ashare.screener.run_store import save_run
+from vnpy_ashare.screener.run_store import get_run, save_run
 from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
-from vnpy_ashare.screener.batch_actions import BatchBacktestParams, load_batch_backtest_defaults
+from vnpy_ashare.screener.batch_actions import (
+    BatchBacktestParams,
+    load_batch_backtest_defaults,
+    persist_batch_backtest_results,
+)
 from vnpy_ashare.ui.screener_batch_dialog import (
     ScreenerBatchBacktestConfigDialog,
     ScreenerBatchBacktestDialog,
 )
+from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import (
     ScreenerBatchBacktestWorker,
@@ -48,6 +53,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._worker: ScreenerRunWorker | None = None
         self._download_worker: ScreenerBatchDownloadWorker | None = None
         self._batch_bt_worker: ScreenerBatchBacktestWorker | None = None
+        self._last_batch_params: BatchBacktestParams | None = None
         self._results: list[dict[str, Any]] = []
         self._result_columns: list[tuple[str, str]] = []
         self._watchlist_service = self._get_watchlist_service()
@@ -64,9 +70,19 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         return None
 
     def _build_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
+        page_layout = QtWidgets.QHBoxLayout(self)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(0)
+
+        self.run_sidebar = ScreenerRunSidebar(parent=self)
+        self.run_sidebar.run_selected.connect(self._load_historical_run)
+        page_layout.addWidget(self.run_sidebar)
+
+        main_panel = QtWidgets.QWidget()
+        root = QtWidgets.QVBoxLayout(main_panel)
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(10)
+        page_layout.addWidget(main_panel, stretch=1)
 
         toolbar = QtWidgets.QHBoxLayout()
         self.run_btn = QtWidgets.QPushButton("运行选股")
@@ -306,6 +322,26 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             f"「{result.condition}」命中 {len(self._results)} 条 · "
             f"扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
         )
+        self.run_sidebar.refresh()
+
+    def _load_historical_run(self, run_id: str) -> None:
+        record = get_run(run_id)
+        if record is None:
+            self.status_label.setText("历史运行不存在或已删除")
+            return
+        self._results = list(record.rows)
+        self._result_columns = resolve_export_columns(self._results)
+        self._populate_results(self._results)
+        set_screening_results(
+            condition=record.condition,
+            rows=self._results,
+            updated_at=record.created_at,
+        )
+        source_label = "Tushare" if record.source == "tushare" else "Redis 行情"
+        self.status_label.setText(
+            f"[历史] 「{record.condition}」{len(self._results)} 条 · "
+            f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
+        )
 
     def _on_screen_failed(self, message: str) -> None:
         self._worker = None
@@ -507,6 +543,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
         self.batch_backtest_btn.setDisabled(True)
         self.status_label.setText(f"批量回测中（{len(selected)} 只）…")
+        self._last_batch_params = params
         worker = ScreenerBatchBacktestWorker(
             self.main_engine,
             selected,
@@ -525,7 +562,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
     def _on_batch_backtest_finished(self, rows, class_name: str) -> None:
         self._batch_bt_worker = None
         self.batch_backtest_btn.setDisabled(False)
-        self.status_label.setText(f"批量回测完成：{len(rows)} 只")
+        if self._last_batch_params is not None:
+            persist_batch_backtest_results(self._last_batch_params, rows)
+        self.status_label.setText(f"批量回测完成：{len(rows)} 只（结果已落库）")
         ScreenerBatchBacktestDialog(rows, class_name=class_name, parent=self).exec()
 
     def _on_batch_backtest_failed(self, message: str) -> None:
@@ -593,6 +632,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
     def activate(self) -> None:
         self._active = True
         self._reload_preset_combo()
+        self.run_sidebar.refresh()
 
     def deactivate(self) -> None:
         self._active = False

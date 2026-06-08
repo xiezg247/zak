@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -177,6 +178,36 @@ def run_batch_backtests(
             row.error = str(ex)
         results.append(row)
     return results
+
+
+def persist_batch_backtest_results(
+    params: BatchBacktestParams,
+    rows: list[BatchBacktestRow],
+) -> str:
+    """批量回测结果落库，返回 batch_id。"""
+    from vnpy_ashare.backtest.run_store import save_backtest_run
+
+    batch_id = uuid.uuid4().hex
+    interval = params.interval.value if hasattr(params.interval, "value") else str(params.interval)
+    start_text = params.start.strftime("%Y-%m-%d")
+    end_text = params.end.strftime("%Y-%m-%d")
+    for row in rows:
+        if row.error:
+            continue
+        save_backtest_run(
+            vt_symbol=row.vt_symbol,
+            strategy=params.class_name,
+            interval=interval,
+            start=start_text,
+            end=end_text,
+            source="batch_screener",
+            batch_id=batch_id,
+            total_return=row.total_return,
+            max_drawdown=row.max_drawdown,
+            sharpe_ratio=row.sharpe_ratio,
+            trade_count=row.total_trade_count,
+        )
+    return batch_id
 
 
 def _to_float(value: Any) -> float | None:

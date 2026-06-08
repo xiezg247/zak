@@ -246,6 +246,7 @@ class AiChatPanel(QtWidgets.QWidget):
             "get_bars_data": "加载K线数据",
             "list_strategies": "列出可用策略",
             "get_backtest_result": "读取回测结果",
+            "list_backtest_history": "查询回测历史",
             "list_screeners": "列出选股条件",
             "screen_by_condition": "执行选股筛选",
             "add_to_watchlist": "加入自选",

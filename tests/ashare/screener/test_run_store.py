@@ -27,6 +27,9 @@ def test_save_and_list_runs(tmp_path, monkeypatch):
     assert runs[0].condition == "涨幅榜"
     assert runs[0].rows[0]["name"] == "浦发银行"
 
+    assert run_store.delete_run(record.id) is True
+    assert run_store.list_runs(limit=5) == []
+
     loaded = run_store.get_run(record.id)
     assert loaded is not None
     assert loaded.id == record.id
