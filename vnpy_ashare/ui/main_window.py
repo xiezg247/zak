@@ -26,11 +26,13 @@ from vnpy_ashare.branding import window_title as build_window_title
 from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
-from vnpy_llm.ui.floating_panel import FloatingAiButton, FloatingAiPanel, BTN_MARGIN
+from vnpy_llm.ui.floating_panel import FloatingAiOrb, FloatingAiPanel, ORB_MARGIN
+from vnpy_llm.ui.session_widgets import show_ai_session_dialog
 from vnpy_llm.ui.tools_widgets import show_ai_tools_dialog
 from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
 from vnpy_ashare.ui.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
+from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.scheduler_dialog import SchedulerDialog
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
@@ -59,7 +61,7 @@ class AshareMainWindow(MainWindow):
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         self._page_widgets: dict[str, QtWidgets.QWidget] = {}
         self._current_key: str | None = None
-        self._floating_ai_btn: FloatingAiButton | None = None
+        self._floating_ai_orb: FloatingAiOrb | None = None
         self._floating_ai_panel: FloatingAiPanel | None = None
         self._page_before_ai: int = 0
         self._ai_toggle_action: QtGui.QAction | None = None
@@ -99,12 +101,12 @@ class AshareMainWindow(MainWindow):
                 break
 
         tools_menu = bar.addMenu("工具")
-        self._ai_toggle_action = tools_menu.addAction("切换 AI 侧栏")
+        self._ai_toggle_action = tools_menu.addAction("显示/隐藏 AI 悬浮球")
         self._ai_toggle_action.setShortcuts([
             QtGui.QKeySequence("Ctrl+L"),
             QtGui.QKeySequence("Meta+L"),
         ])
-        self._ai_toggle_action.triggered.connect(self._toggle_floating_ai)
+        self._ai_toggle_action.triggered.connect(self._toggle_floating_orb)
         self.addAction(self._ai_toggle_action)
         tools_menu.addSeparator()
         ai_tools_action = tools_menu.addAction("AI 工具能力…")
@@ -160,8 +162,8 @@ class AshareMainWindow(MainWindow):
         shell.setLayout(body)
         shell.setStyleSheet(TERMINAL_STYLESHEET)
 
-        self._init_floating_ai()
         self.setCentralWidget(shell)
+        self._init_floating_ai(shell)
         self._show_page(0)
 
     def _get_llm_engine(self) -> LlmEngine | None:
@@ -199,28 +201,36 @@ class AshareMainWindow(MainWindow):
             return
         show_ai_tool_audit_dialog(llm_engine, self)
 
-    def _init_floating_ai(self) -> bool:
-        """创建浮动按钮与弹出面板。"""
-        if self._floating_ai_btn is not None:
+    def _init_floating_ai(self, shell: QtWidgets.QWidget | None = None) -> bool:
+        """创建悬浮球与精简对话面板（默认显示悬浮球，Ctrl+L 切换显隐）。"""
+        if self._floating_ai_orb is not None:
             return True
 
         llm_engine = self._get_llm_engine()
         if llm_engine is None:
             return False
 
-        # 悬浮按钮（右下角）
-        shell = self.centralWidget()
-        btn = FloatingAiButton(shell)
-        btn.clicked_toggle.connect(self._toggle_floating_ai)
-        btn.raise_()
-        self._floating_ai_btn = btn
+        if shell is None:
+            shell = self.centralWidget()
+        if shell is None:
+            return False
 
-        # 弹出面板
+        orb = FloatingAiOrb(shell)
+        orb.clicked.connect(self._on_orb_open_chat)
+        orb.fullscreen_requested.connect(self._open_ai_page)
+        orb.history_requested.connect(self._open_ai_history)
+        orb.tools_requested.connect(self._open_ai_tools_dialog)
+        orb.hide_requested.connect(self._hide_floating_orb)
+        self._floating_ai_orb = orb
+
         panel = FloatingAiPanel(llm_engine, parent=None)
         panel.expand_requested.connect(self._open_ai_page)
+        panel.panel_minimized.connect(self._on_panel_minimized)
         self._floating_ai_panel = panel
 
-        self._position_floating_button()
+        orb.restore_position(shell)
+        orb.show()
+        orb.raise_()
         return True
 
     def _ensure_floating_ai(self) -> bool:
@@ -229,51 +239,95 @@ class AshareMainWindow(MainWindow):
         QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
         return False
 
-    def _floating_ai_visible(self) -> bool:
+    def _orb_visible(self) -> bool:
+        return self._floating_ai_orb is not None and self._floating_ai_orb.isVisible()
+
+    def _panel_visible(self) -> bool:
         return self._floating_ai_panel is not None and self._floating_ai_panel.isVisible()
 
-    def _hide_floating_ai(self) -> None:
+    def _hide_floating_panel(self) -> None:
         if self._floating_ai_panel is not None:
             self._floating_ai_panel.hide()
 
-    def _show_floating_ai(self) -> None:
-        if self._floating_ai_panel is None:
-            return
-        self._floating_ai_panel.show_near(self)
-        self._floating_ai_panel.focus_input()
+    def _hide_floating_orb(self) -> None:
+        self._hide_floating_panel()
+        if self._floating_ai_orb is not None:
+            self._floating_ai_orb.hide()
 
-    def _toggle_floating_ai(self) -> None:
+    def _shell_widget(self) -> QtWidgets.QWidget | None:
+        orb = self._floating_ai_orb
+        if orb is not None:
+            parent = orb.parentWidget()
+            if parent is not None:
+                return parent
+        widget = self.centralWidget()
+        return widget if isinstance(widget, QtWidgets.QWidget) else None
+
+    def _show_floating_orb(self) -> None:
+        orb = self._floating_ai_orb
+        if orb is None:
+            return
+        shell = self._shell_widget()
+        if shell is not None:
+            orb.restore_position(shell)
+        orb.show()
+        orb.raise_()
+
+    def _show_floating_panel(self) -> None:
+        orb = self._floating_ai_orb
+        panel = self._floating_ai_panel
+        if orb is None or panel is None:
+            return
+        if not orb.isVisible():
+            self._show_floating_orb()
+        panel.show_near_orb(orb)
+        panel.focus_input()
+
+    def _on_orb_open_chat(self) -> None:
+        if self._panel_visible():
+            self._hide_floating_panel()
+        else:
+            self._show_floating_panel()
+
+    def _on_panel_minimized(self) -> None:
+        self._hide_floating_panel()
+
+    def _toggle_floating_orb(self) -> None:
         if not self._ensure_floating_ai():
             return
         if self._current_key == "ai_assistant":
             self._return_to_floating_mode()
             return
-        if self._floating_ai_visible():
-            self._hide_floating_ai()
+        if self._orb_visible():
+            self._hide_floating_orb()
         else:
-            self._show_floating_ai()
+            self._show_floating_orb()
 
     def _return_to_floating_mode(self) -> None:
         self._show_page(self._page_before_ai)
-        self._show_floating_ai()
+        self._show_floating_orb()
+        self._show_floating_panel()
 
-    def _position_floating_button(self) -> None:
-        """将浮动按钮定位到内容区右下角。"""
-        btn = self._floating_ai_btn
-        if btn is None:
+    def _open_ai_history(self) -> None:
+        llm_engine = self._get_llm_engine()
+        if llm_engine is None:
             return
-        shell = btn.parentWidget()
-        if shell is None:
+        if not self._ensure_floating_ai():
             return
-        btn.move(
-            shell.width() - btn.width() - BTN_MARGIN,
-            shell.height() - btn.height() - BTN_MARGIN,
-        )
-        btn.raise_()
+        self._show_floating_orb()
+        show_ai_session_dialog(llm_engine, self)
+
+    def _clamp_floating_orb(self) -> None:
+        orb = self._floating_ai_orb
+        if orb is None or not orb.isVisible():
+            return
+        shell = self._shell_widget()
+        if shell is not None:
+            orb.clamp_to_parent(shell)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
-        self._position_floating_button()
+        self._clamp_floating_orb()
 
     def _open_ai_page(self) -> None:
         index = self._nav_index_for_key("ai_assistant")
@@ -344,7 +398,8 @@ class AshareMainWindow(MainWindow):
             return
         if not self._ensure_floating_ai():
             return
-        self._show_floating_ai()
+        self._show_floating_orb()
+        self._show_floating_panel()
         if self._floating_ai_panel is not None:
             self._floating_ai_panel.set_input_text(data.prompt)
 
@@ -376,7 +431,7 @@ class AshareMainWindow(MainWindow):
                 prev_index = self._nav_index_for_key(self._current_key)
                 if prev_index is not None:
                     self._page_before_ai = prev_index
-            self._hide_floating_ai()
+            self._hide_floating_panel()
 
         if self._current_key and self._current_key != entry.key:
             old = self._page_widgets.get(self._current_key)
@@ -441,9 +496,7 @@ class AshareMainWindow(MainWindow):
 
     def load_window_setting(self, name: str) -> None:
         settings = QtCore.QSettings(self.window_title, name)
-        geometry = settings.value("geometry")
-        if geometry is not None:
-            self.restoreGeometry(geometry)
+        restore_geometry_on_screen(self, settings.value("geometry"))
 
     def save_window_setting(self, name: str) -> None:
         settings = QtCore.QSettings(self.window_title, name)

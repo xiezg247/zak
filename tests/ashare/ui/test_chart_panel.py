@@ -22,9 +22,9 @@ from vnpy_ashare.ui.chart_panel import (
     chart_tab_hint,
     is_same_item_request,
     is_same_minute_request,
-    retain_thread_until_finished,
     should_apply_minute_bars,
 )
+from vnpy_ashare.ui.qt_helpers import retain_thread_until_finished
 from vnpy_ashare.ui.quotes_chart import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
 from vnpy_ashare.ui.worker import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
 

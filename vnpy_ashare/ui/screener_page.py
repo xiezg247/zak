@@ -33,6 +33,7 @@ from vnpy_ashare.screener.batch_actions import (
     load_batch_backtest_defaults,
     persist_batch_backtest_results,
 )
+from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
@@ -59,6 +60,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._worker: ScreenerRunWorker | None = None
         self._download_worker: ScreenerBatchDownloadWorker | None = None
         self._batch_bt_worker: ScreenerBatchBacktestWorker | None = None
+        self._retired_workers: list[QtCore.QThread] = []
         self._last_batch_params: BatchBacktestParams | None = None
         self._results: list[dict[str, Any]] = []
         self._result_columns: list[tuple[str, str]] = []
@@ -773,9 +775,10 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
     def deactivate(self) -> None:
         self._active = False
-        for worker in (self._worker, self._download_worker, self._batch_bt_worker):
-            if worker is not None and worker.isRunning():
-                worker.wait(500)
+        for attr in ("_worker", "_download_worker", "_batch_bt_worker"):
+            worker = getattr(self, attr)
+            setattr(self, attr, None)
+            release_thread(self._retired_workers, worker)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()

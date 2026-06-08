@@ -61,6 +61,7 @@ from vnpy_ashare.app_db import (
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quote_time import format_batch_updated_at
 from vnpy_ashare.ui.chart_panel import ChartPanel, DAILY_TAB_INDEX, MINUTE_TAB_INDEX
+from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.chart_style import CHART_FRAME_STYLESHEET
 from vnpy_ashare.ui.ma_legend import MaLegendBar
 from vnpy_ashare.ui.depth_panel import DepthPanel
@@ -135,12 +136,8 @@ class QuotesPage(QtWidgets.QWidget):
         worker = getattr(self, attr, None)
         if worker is None:
             return
-        try:
-            if worker.isRunning():
-                worker.wait(timeout_ms)
-        except RuntimeError:
-            pass
         setattr(self, attr, None)
+        release_thread(self._retired_workers, worker, timeout_ms=timeout_ms)
 
     def __init__(
         self,
@@ -163,6 +160,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._selected_gap_result: BarGapResult | None = None
         self.current_item: StockItem | None = None
         self._watchlist_keys: set[tuple[str, Exchange]] = set()
+        self._retired_workers: list[QtCore.QThread] = []
         self._load_generation = 0
         self._bars_generation = 0
         self._bars_request_id = 0
@@ -630,6 +628,25 @@ class QuotesPage(QtWidgets.QWidget):
         self._save_splitter()
         self._save_column_config()
         self._active = False
+        self._bars_generation += 1
+        self._depth_generation += 1
+        self._gap_generation += 1
+        if self.chart_panel is not None:
+            self.chart_panel.set_active(False)
+        self._stop_quote_stream()
+        self._quote_timer.stop()
+        for attr in (
+            "_load_worker",
+            "_market_worker",
+            "_sync_worker",
+            "_bars_worker",
+            "_download_worker",
+            "_gap_worker",
+            "_quotes_worker",
+            "_depth_worker",
+            "_diagnose_worker",
+        ):
+            self._wait_worker_release(attr)
 
     def _splitter_settings_key(self) -> str:
         return f"quotes/splitter/{self.page_name}"
@@ -681,24 +698,6 @@ class QuotesPage(QtWidgets.QWidget):
             self._visible_columns = valid_cols
         if len(parts) > 1 and parts[1]:
             self._visible_tail_columns = [k for k in parts[1].split(",") if k in ALL_TAIL_COLUMNS]
-        self._bars_generation += 1
-        self._depth_generation += 1
-        self._gap_generation += 1
-        if self.chart_panel is not None:
-            self.chart_panel.set_active(False)
-        self._stop_quote_stream()
-        self._quote_timer.stop()
-        for attr in (
-            "_load_worker",
-            "_market_worker",
-            "_sync_worker",
-            "_bars_worker",
-            "_download_worker",
-            "_gap_worker",
-            "_quotes_worker",
-            "_depth_worker",
-        ):
-            self._wait_worker_release(attr)
 
     def refresh_local_meta(self) -> None:
         self.downloaded_keys = set()

@@ -1,74 +1,206 @@
-"""浮动 AI 按钮与弹出对话面板。"""
+"""浮动 AI 悬浮球与精简对话面板。"""
 
 from __future__ import annotations
 
+import math
+
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+
+from vnpy_ashare.ui.qt_helpers import ensure_geometry_on_screen, restore_geometry_on_screen
 
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.ui.panel import AiChatPanel
-from vnpy_llm.ui.styles import PANEL_STYLESHEET
+from vnpy_llm.ui.styles import FLOATING_CHAT_STYLESHEET
 
-TITLE_BAR_HEIGHT = 36
-PANEL_WIDTH = 400
-PANEL_HEIGHT = 520
+ORB_SIZE = 52
+ORB_MARGIN = 20
+PANEL_WIDTH = 360
+PANEL_HEIGHT = 460
+TITLE_BAR_HEIGHT = 32
 
-_BTN_SIZE = 48
-BTN_MARGIN = 16
+BTN_MARGIN = ORB_MARGIN
 
 
-class FloatingAiButton(QtWidgets.QPushButton):
-    """右下角浮动圆形 AI 按钮。"""
+class FloatingAiOrb(QtWidgets.QWidget):
+    """可拖拽的 AI 悬浮球。"""
 
-    clicked_toggle = QtCore.Signal()
+    clicked = QtCore.Signal()
+    fullscreen_requested = QtCore.Signal()
+    history_requested = QtCore.Signal()
+    tools_requested = QtCore.Signal()
+    hide_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setObjectName("FloatingAiButton")
-        self.setFixedSize(_BTN_SIZE, _BTN_SIZE)
+        self.setObjectName("FloatingAiOrb")
+        self.setFixedSize(ORB_SIZE, ORB_SIZE)
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self.setToolTip("AI 助手 (Ctrl+L)")
-        self.clicked.connect(self.clicked_toggle.emit)
-        self.setStyleSheet(
-            "QPushButton#FloatingAiButton {"
-            "  background-color: #4a9eff;"
-            "  border: none;"
-            "  border-radius: 24px;"
-            "}"
-            "QPushButton#FloatingAiButton:hover {"
-            "  background-color: #5aadff;"
-            "}"
-        )
+        self.setToolTip("AI 助手 · 左键对话 · 右键菜单 · Ctrl+L 显示/隐藏")
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+
+        self._drag_offset: QtCore.QPoint | None = None
+        self._press_global: QtCore.QPoint | None = None
+        self._dragging = False
+        self._hovered = False
+
+    @staticmethod
+    def _draw_sparkle(
+        painter: QtGui.QPainter,
+        cx: float,
+        cy: float,
+        size: float,
+        color: QtGui.QColor,
+    ) -> None:
+        path = QtGui.QPainterPath()
+        for index in range(8):
+            angle = index * math.pi / 4 - math.pi / 2
+            radius = size if index % 2 == 0 else size * 0.28
+            point = QtCore.QPointF(cx + radius * math.cos(angle), cy + radius * math.sin(angle))
+            if index == 0:
+                path.moveTo(point)
+            else:
+                path.lineTo(point)
+        path.closeSubpath()
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(color)
+        painter.drawPath(path)
+
+    def _paint_orb_icon(self, painter: QtGui.QPainter) -> None:
+        center = QtCore.QPointF(ORB_SIZE / 2, ORB_SIZE / 2 + 0.5)
+        radius = 21.0
+
+        glow = QtGui.QRadialGradient(center + QtCore.QPointF(0, 3), radius + 6)
+        glow.setColorAt(0.0, QtGui.QColor(56, 132, 255, 70 if self._hovered else 48))
+        glow.setColorAt(1.0, QtGui.QColor(56, 132, 255, 0))
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(glow)
+        painter.drawEllipse(center + QtCore.QPointF(0, 4), radius + 4, radius + 3)
+
+        orb_gradient = QtGui.QRadialGradient(center + QtCore.QPointF(-7, -8), radius * 1.55)
+        if self._hovered:
+            orb_gradient.setColorAt(0.0, QtGui.QColor("#c4f1ff"))
+            orb_gradient.setColorAt(0.28, QtGui.QColor("#5ecbff"))
+            orb_gradient.setColorAt(0.62, QtGui.QColor("#3b82f6"))
+            orb_gradient.setColorAt(1.0, QtGui.QColor("#1d3f8f"))
+        else:
+            orb_gradient.setColorAt(0.0, QtGui.QColor("#b8ecff"))
+            orb_gradient.setColorAt(0.30, QtGui.QColor("#4db8ff"))
+            orb_gradient.setColorAt(0.65, QtGui.QColor("#3478f6"))
+            orb_gradient.setColorAt(1.0, QtGui.QColor("#1e3a8a"))
+
+        painter.setBrush(orb_gradient)
+        painter.drawEllipse(center, radius, radius)
+
+        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 55), 1.0))
+        painter.drawEllipse(center, radius - 0.6, radius - 0.6)
+
+        specular = QtGui.QRadialGradient(center + QtCore.QPointF(-8, -10), 13)
+        specular.setColorAt(0.0, QtGui.QColor(255, 255, 255, 165))
+        specular.setColorAt(0.55, QtGui.QColor(255, 255, 255, 45))
+        specular.setColorAt(1.0, QtGui.QColor(255, 255, 255, 0))
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(specular)
+        painter.drawEllipse(center + QtCore.QPointF(-7, -9), 11.5, 8.0)
+
+        self._draw_sparkle(painter, center.x(), center.y() - 1.5, 8.5, QtGui.QColor(255, 255, 255, 245))
+        self._draw_sparkle(painter, center.x() + 10.5, center.y() - 9.0, 4.2, QtGui.QColor(220, 245, 255, 215))
+        self._draw_sparkle(painter, center.x() - 10.8, center.y() + 8.2, 3.4, QtGui.QColor(196, 228, 255, 185))
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
-        super().paintEvent(event)
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-
-        m = 10
-        pen = QtGui.QPen(QtGui.QColor("#ffffff"), 1.8)
-        pen.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(QtCore.Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-
-        rect = QtCore.QRectF(m + 1, m + 3, _BTN_SIZE - m * 2 - 2, _BTN_SIZE - m * 2 - 4)
-        painter.drawRoundedRect(rect, 4, 4)
-        painter.drawLine(m + 7, m + 11, m + 11, m + 15)
-        painter.drawLine(m + 11, m + 15, m + 17, m + 9)
-        tail = QtGui.QPolygonF([
-            QtCore.QPointF(m + 8, _BTN_SIZE - m - 3),
-            QtCore.QPointF(m + 4, _BTN_SIZE - m + 1),
-            QtCore.QPointF(m + 12, _BTN_SIZE - m - 2),
-        ])
-        painter.drawPolyline(tail)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+        self._paint_orb_icon(painter)
         painter.end()
+
+    def enterEvent(self, event: QtCore.QEvent) -> None:
+        self._hovered = True
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event: QtCore.QEvent) -> None:
+        self._hovered = False
+        self.update()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._press_global = event.globalPosition().toPoint()
+            self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._dragging = False
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        if (
+            self._drag_offset is not None
+            and event.buttons() & QtCore.Qt.MouseButton.LeftButton
+        ):
+            if self._press_global is not None:
+                delta = event.globalPosition().toPoint() - self._press_global
+                if delta.manhattanLength() > 4:
+                    self._dragging = True
+            self.move(event.globalPosition().toPoint() - self._drag_offset)
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            if not self._dragging:
+                self.clicked.emit()
+            else:
+                self._save_position()
+            self._drag_offset = None
+            self._press_global = None
+            self._dragging = False
+        super().mouseReleaseEvent(event)
+
+    def _show_context_menu(self, pos: QtCore.QPoint) -> None:
+        menu = QtWidgets.QMenu(self)
+        menu.setObjectName("FloatingAiOrbMenu")
+        menu.addAction("打开对话", self.clicked.emit)
+        menu.addAction("全屏模式", self.fullscreen_requested.emit)
+        menu.addSeparator()
+        menu.addAction("历史会话…", self.history_requested.emit)
+        menu.addAction("AI 工具能力…", self.tools_requested.emit)
+        menu.addSeparator()
+        menu.addAction("隐藏悬浮球", self.hide_requested.emit)
+        menu.exec(self.mapToGlobal(pos))
+
+    def restore_position(self, shell: QtWidgets.QWidget | None = None) -> None:
+        if shell is None:
+            shell = self.parentWidget()
+        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
+        pos = settings.value("orb_position")
+        if isinstance(pos, QtCore.QPoint):
+            self.move(pos)
+        elif shell is not None:
+            self.move(
+                shell.width() - self.width() - ORB_MARGIN,
+                shell.height() - self.height() - ORB_MARGIN,
+            )
+        if shell is not None:
+            self.clamp_to_parent(shell)
+
+    def _save_position(self) -> None:
+        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
+        settings.setValue("orb_position", self.pos())
+
+    def clamp_to_parent(self, shell: QtWidgets.QWidget | None = None) -> None:
+        if shell is None:
+            shell = self.parentWidget()
+        if shell is None:
+            return
+        x = min(max(0, self.x()), max(0, shell.width() - self.width()))
+        y = min(max(0, self.y()), max(0, shell.height() - self.height()))
+        self.move(x, y)
 
 
 class FloatingAiPanel(QtWidgets.QWidget):
-    """浮动 AI 对话面板（无边框工具窗口）。"""
+    """精简浮动对话面板（无边框工具窗口）。"""
 
     expand_requested = QtCore.Signal()
-    panel_closed = QtCore.Signal()
+    panel_minimized = QtCore.Signal()
 
     def __init__(
         self,
@@ -80,19 +212,14 @@ class FloatingAiPanel(QtWidgets.QWidget):
             QtCore.Qt.WindowType.Tool
             | QtCore.Qt.WindowType.FramelessWindowHint
         )
-        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
         self.setObjectName("FloatingAiPanel")
-        self.setMinimumSize(320, 400)
+        self.setMinimumSize(300, 360)
         self.resize(PANEL_WIDTH, PANEL_HEIGHT)
 
         self._drag_pos: QtCore.QPoint | None = None
 
         self._build_ui(engine)
         self._restore_geometry()
-
-    # ------------------------------------------------------------------
-    # UI
-    # ------------------------------------------------------------------
 
     def _build_ui(self, engine: LlmEngine) -> None:
         root = QtWidgets.QVBoxLayout(self)
@@ -102,72 +229,71 @@ class FloatingAiPanel(QtWidgets.QWidget):
         title_bar = self._build_title_bar()
         root.addWidget(title_bar)
 
-        self.chat_panel = AiChatPanel(engine, compact=True, parent=self)
+        self.chat_panel = AiChatPanel(engine, floating=True, parent=self)
         self.chat_panel.expand_requested.connect(self._on_expand)
         root.addWidget(self.chat_panel, stretch=1)
 
-        self.setStyleSheet(_FLOATING_PANEL_STYLESHEET)
+        self.setStyleSheet(FLOATING_CHAT_STYLESHEET)
 
         shadow = QtWidgets.QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(20)
-        shadow.setColor(QtGui.QColor(0, 0, 0, 80))
-        shadow.setOffset(0, 4)
+        shadow.setBlurRadius(16)
+        shadow.setColor(QtGui.QColor(0, 0, 0, 100))
+        shadow.setOffset(0, 3)
         self.setGraphicsEffect(shadow)
 
     def _build_title_bar(self) -> QtWidgets.QWidget:
         bar = QtWidgets.QWidget()
         bar.setObjectName("AiFloatingTitleBar")
         bar.setFixedHeight(TITLE_BAR_HEIGHT)
-        bar.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
 
         layout = QtWidgets.QHBoxLayout(bar)
-        layout.setContentsMargins(12, 0, 8, 0)
-        layout.setSpacing(6)
+        layout.setContentsMargins(10, 0, 6, 0)
+        layout.setSpacing(4)
 
-        title = QtWidgets.QLabel("AI 助手")
+        grip = QtWidgets.QLabel("⠿")
+        grip.setObjectName("AiFloatingGrip")
+        layout.addWidget(grip)
+
+        title = QtWidgets.QLabel("AI")
         title.setObjectName("AiFloatingTitle")
         layout.addWidget(title)
         layout.addStretch()
 
-        expand_btn = QtWidgets.QPushButton("全屏")
-        expand_btn.setObjectName("AiFloatingBtn")
-        expand_btn.setFixedSize(48, 26)
+        expand_btn = QtWidgets.QToolButton()
+        expand_btn.setObjectName("AiFloatingIconBtn")
+        expand_btn.setText("⛶")
+        expand_btn.setToolTip("全屏")
+        expand_btn.setFixedSize(24, 24)
         expand_btn.clicked.connect(self._on_expand)
         layout.addWidget(expand_btn)
 
-        close_btn = QtWidgets.QPushButton("✕")
-        close_btn.setObjectName("AiFloatingCloseBtn")
-        close_btn.setFixedSize(26, 26)
-        close_btn.clicked.connect(self._on_close)
-        layout.addWidget(close_btn)
+        minimize_btn = QtWidgets.QToolButton()
+        minimize_btn.setObjectName("AiFloatingIconBtn")
+        minimize_btn.setText("—")
+        minimize_btn.setToolTip("收起")
+        minimize_btn.setFixedSize(24, 24)
+        minimize_btn.clicked.connect(self._on_minimize)
+        layout.addWidget(minimize_btn)
 
         return bar
 
-    # ------------------------------------------------------------------
-    # Geometry persistence
-    # ------------------------------------------------------------------
-
     def _restore_geometry(self) -> None:
         settings = QtCore.QSettings("vnpy_zak", "floating_ai")
-        geo = settings.value("panel_geometry")
-        if geo is not None:
-            self.restoreGeometry(geo)
+        restore_geometry_on_screen(self, settings.value("panel_geometry"))
 
     def _save_geometry(self) -> None:
         settings = QtCore.QSettings("vnpy_zak", "floating_ai")
         settings.setValue("panel_geometry", self.saveGeometry())
 
-    # ------------------------------------------------------------------
-    # Show / hide
-    # ------------------------------------------------------------------
-
-    def show_near(self, anchor: QtWidgets.QWidget) -> None:
-        """在 anchor 窗口右下角附近弹出。"""
-        if not self.isVisible():
-            anchor_geo = anchor.geometry()
-            x = anchor_geo.right() - self.width() - 24
-            y = anchor_geo.bottom() - self.height() - 24
-            self.move(anchor.mapToGlobal(QtCore.QPoint(x, y)))
+    def show_near_orb(self, orb: FloatingAiOrb) -> None:
+        """在悬浮球附近弹出面板。"""
+        orb_global = orb.mapToGlobal(QtCore.QPoint(0, 0))
+        x = orb_global.x() - self.width() + orb.width()
+        y = orb_global.y() - self.height() - 12
+        if y < 0:
+            y = orb_global.y() + orb.height() + 12
+        self.move(x, y)
+        ensure_geometry_on_screen(self)
         self.show()
         self.raise_()
         self.chat_panel.focus_input()
@@ -181,23 +307,15 @@ class FloatingAiPanel(QtWidgets.QWidget):
     def deactivate(self) -> None:
         self.chat_panel.deactivate()
 
-    # ------------------------------------------------------------------
-    # Slots
-    # ------------------------------------------------------------------
-
     def _on_expand(self) -> None:
         self._save_geometry()
         self.hide()
         self.expand_requested.emit()
 
-    def _on_close(self) -> None:
+    def _on_minimize(self) -> None:
         self._save_geometry()
         self.hide()
-        self.panel_closed.emit()
-
-    # ------------------------------------------------------------------
-    # Title bar drag
-    # ------------------------------------------------------------------
+        self.panel_minimized.emit()
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         if event.position().y() <= TITLE_BAR_HEIGHT:
@@ -213,68 +331,17 @@ class FloatingAiPanel(QtWidgets.QWidget):
         self._drag_pos = None
         super().mouseReleaseEvent(event)
 
-    # ------------------------------------------------------------------
-    # Keyboard
-    # ------------------------------------------------------------------
-
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == QtCore.Qt.Key.Key_Escape:
-            self._on_close()
+            self._on_minimize()
             event.accept()
             return
         super().keyPressEvent(event)
-
-    # ------------------------------------------------------------------
-    # Close
-    # ------------------------------------------------------------------
 
     def closeEvent(self, event) -> None:
         self._save_geometry()
         super().closeEvent(event)
 
 
-# ------------------------------------------------------------------
-# Stylesheet
-# ------------------------------------------------------------------
-
-_FLOATING_PANEL_STYLESHEET = PANEL_STYLESHEET + """
-QWidget#FloatingAiPanel {
-    background-color: #141418;
-    border: 1px solid #3a3a42;
-    border-radius: 10px;
-}
-QWidget#AiFloatingTitleBar {
-    background-color: #1a1a22;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-}
-QLabel#AiFloatingTitle {
-    color: #e0e0e0;
-    font-size: 13px;
-    font-weight: bold;
-}
-QPushButton#AiFloatingBtn {
-    background-color: transparent;
-    border: 1px solid #3a3a42;
-    border-radius: 4px;
-    color: #a0a0a8;
-    font-size: 11px;
-}
-QPushButton#AiFloatingBtn:hover {
-    border-color: #4a9eff;
-    color: #4a9eff;
-}
-QPushButton#AiFloatingCloseBtn {
-    background-color: transparent;
-    border: 1px solid #3a3a42;
-    border-radius: 4px;
-    color: #a0a0a8;
-    font-size: 13px;
-    font-weight: bold;
-}
-QPushButton#AiFloatingCloseBtn:hover {
-    background-color: #3a2020;
-    border-color: #6a3030;
-    color: #ff8a8a;
-}
-"""
+# 向后兼容别名
+FloatingAiButton = FloatingAiOrb

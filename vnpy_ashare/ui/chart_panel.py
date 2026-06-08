@@ -19,6 +19,7 @@ from vnpy_ashare.ui.quotes_chart import (
     prepare_chart_bars,
 )
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
+from vnpy_ashare.ui.qt_helpers import retain_thread_until_finished
 from vnpy_ashare.ui.worker import (
     BarsLoadWorker,
     IntradayBarsWorker,
@@ -53,31 +54,6 @@ def should_apply_minute_bars(
     if loaded_period is not None and loaded_period != target_period:
         return False
     return True
-
-
-def retain_thread_until_finished(
-    retired: list[QtCore.QThread],
-    worker: QtCore.QThread,
-) -> None:
-    """保留 QThread 引用直至 run() 结束，避免 destroy-while-running。"""
-    if worker in retired:
-        return
-    retired.append(worker)
-
-    def _release(*_args: object) -> None:
-        try:
-            retired.remove(worker)
-        except ValueError:
-            pass
-
-    for signal_name in ("finished", "failed"):
-        signal = getattr(worker, signal_name, None)
-        if signal is None:
-            continue
-        try:
-            signal.connect(_release)
-        except (RuntimeError, TypeError):
-            pass
 
 
 def is_same_minute_request(

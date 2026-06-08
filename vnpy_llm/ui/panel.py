@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ui.qt_helpers import release_thread
+
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tools_status import ToolsStatusSnapshot
 from vnpy_llm.ui.styles import PANEL_STYLESHEET
@@ -21,17 +23,23 @@ class AiChatPanel(QtWidgets.QWidget):
         engine: LlmEngine,
         *,
         compact: bool = False,
+        floating: bool = False,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.engine = engine
         self.compact = compact
+        self.floating = floating
+        if self.floating:
+            self.setProperty("floating", True)
         self._worker: ChatWorker | None = None
+        self._retired_workers: list[QtCore.QThread] = []
         self._streaming_bubble: QtWidgets.QLabel | None = None
         self._context_text = ""
 
         self.setObjectName("AiChatPanel")
-        self.setStyleSheet(PANEL_STYLESHEET)
+        if not self.floating:
+            self.setStyleSheet(PANEL_STYLESHEET)
         self._build_ui()
         self._connect_signals()
         self._refresh_messages()
@@ -39,9 +47,69 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(8 if self.compact else 16, 8, 8 if self.compact else 16, 8)
-        root.setSpacing(8)
+        if self.floating:
+            root.setContentsMargins(8, 4, 8, 8)
+            root.setSpacing(6)
+        else:
+            root.setContentsMargins(8 if self.compact else 16, 8, 8 if self.compact else 16, 8)
+            root.setSpacing(8)
 
+        if not self.floating:
+            self._build_header(root)
+
+        self.tools_status_bar = AiToolsStatusBar(self)
+        self.tools_status_bar.open_details_requested.connect(self._on_show_tools)
+        if self.floating:
+            self.tools_status_bar.hide()
+        root.addWidget(self.tools_status_bar)
+
+        if self.compact and not self.floating:
+            shortcut_hint = QtWidgets.QLabel("Ctrl+L / ⌘L 显示悬浮球 · 全屏进入专注模式")
+            shortcut_hint.setObjectName("AiConfigHint")
+            shortcut_hint.setWordWrap(True)
+            root.addWidget(shortcut_hint)
+
+        self.context_label = QtWidgets.QLabel()
+        self.context_label.setObjectName("AiContextLabel")
+        self.context_label.setWordWrap(True)
+        self.context_label.setVisible(False)
+        root.addWidget(self.context_label)
+
+        self.scroll = QtWidgets.QScrollArea()
+        self.scroll.setObjectName("AiMessageScroll")
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.message_container = QtWidgets.QWidget()
+        self.message_container.setObjectName("AiMessageContainer")
+        self.message_layout = QtWidgets.QVBoxLayout(self.message_container)
+        self.message_layout.setContentsMargins(0, 0, 0, 0)
+        self.message_layout.setSpacing(6 if self.floating else 8)
+        self.message_layout.addStretch()
+        self.scroll.setWidget(self.message_container)
+        root.addWidget(self.scroll, stretch=1)
+
+        input_row = QtWidgets.QHBoxLayout()
+        input_row.setSpacing(6)
+        self.input_box = QtWidgets.QPlainTextEdit()
+        self.input_box.setObjectName("AiInput")
+        self.input_box.setPlaceholderText(
+            "问点什么…" if self.floating else "输入问题，Ctrl+Enter 发送…"
+        )
+        line_height = self.input_box.fontMetrics().lineSpacing()
+        input_lines = 2 if self.floating else 3
+        self.input_box.setFixedHeight(line_height * input_lines + (10 if self.floating else 16))
+        input_row.addWidget(self.input_box, stretch=1)
+
+        self.send_btn = QtWidgets.QPushButton("↑" if self.floating else "发送")
+        self.send_btn.setObjectName("AiSendBtn")
+        if self.floating:
+            self.send_btn.setFixedSize(36, 36)
+        self.send_btn.clicked.connect(self._on_send)
+        input_row.addWidget(self.send_btn)
+        root.addLayout(input_row)
+
+    def _build_header(self, root: QtWidgets.QVBoxLayout) -> None:
         header = QtWidgets.QHBoxLayout()
 
         if self.compact:
@@ -84,50 +152,6 @@ class AiChatPanel(QtWidgets.QWidget):
 
         root.addLayout(header)
 
-        self.tools_status_bar = AiToolsStatusBar(self)
-        self.tools_status_bar.open_details_requested.connect(self._on_show_tools)
-        root.addWidget(self.tools_status_bar)
-
-        if self.compact:
-            shortcut_hint = QtWidgets.QLabel("Ctrl+L / ⌘L 开关侧栏 · 全屏进入专注模式")
-            shortcut_hint.setObjectName("AiConfigHint")
-            shortcut_hint.setWordWrap(True)
-            root.addWidget(shortcut_hint)
-
-        self.context_label = QtWidgets.QLabel()
-        self.context_label.setObjectName("AiContextLabel")
-        self.context_label.setWordWrap(True)
-        self.context_label.setVisible(False)
-        root.addWidget(self.context_label)
-
-        self.scroll = QtWidgets.QScrollArea()
-        self.scroll.setObjectName("AiMessageScroll")
-        self.scroll.setWidgetResizable(True)
-        self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-        self.message_container = QtWidgets.QWidget()
-        self.message_container.setObjectName("AiMessageContainer")
-        self.message_layout = QtWidgets.QVBoxLayout(self.message_container)
-        self.message_layout.setContentsMargins(0, 0, 0, 0)
-        self.message_layout.setSpacing(8)
-        self.message_layout.addStretch()
-        self.scroll.setWidget(self.message_container)
-        root.addWidget(self.scroll, stretch=1)
-
-        input_row = QtWidgets.QHBoxLayout()
-        self.input_box = QtWidgets.QPlainTextEdit()
-        self.input_box.setObjectName("AiInput")
-        self.input_box.setPlaceholderText("输入问题，Ctrl+Enter 发送…")
-        line_height = self.input_box.fontMetrics().lineSpacing()
-        self.input_box.setFixedHeight(line_height * 3 + 16)
-        input_row.addWidget(self.input_box, stretch=1)
-
-        self.send_btn = QtWidgets.QPushButton("发送")
-        self.send_btn.setObjectName("AiSendBtn")
-        self.send_btn.clicked.connect(self._on_send)
-        input_row.addWidget(self.send_btn)
-        root.addLayout(input_row)
-
     def _connect_signals(self) -> None:
         signals = self.engine.signals
         signals.messages_changed.connect(self._refresh_messages)
@@ -149,6 +173,8 @@ class AiChatPanel(QtWidgets.QWidget):
         self.focus_input()
 
     def _update_model_action(self) -> None:
+        if self.floating:
+            return
         cfg = self.engine.config
         if cfg.configured:
             self._model_action.setText(f"模型：{cfg.model}")
@@ -280,10 +306,14 @@ class AiChatPanel(QtWidgets.QWidget):
                 display = f"通达信 MCP ({suffix})"
         if display is None:
             display = name
+        if self.floating:
+            self.tools_status_bar.show()
         self.tools_status_bar.show_progress(f"正在 {display}…")
 
     def _on_tool_call_finished(self, name: str) -> None:
         self.tools_status_bar.hide_progress()
+        if self.floating:
+            self.tools_status_bar.hide()
 
     def _on_worker_done(self) -> None:
         self._worker = None
@@ -348,5 +378,5 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def deactivate(self) -> None:
         worker = self._worker
-        if worker is not None and worker.isRunning():
-            worker.wait(500)
+        self._worker = None
+        release_thread(self._retired_workers, worker)

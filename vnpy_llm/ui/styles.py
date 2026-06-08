@@ -132,6 +132,113 @@ QListWidget#AiSessionListWidget::item:hover {
 }
 """
 
+FLOATING_CHAT_STYLESHEET = """
+QWidget#FloatingAiPanel {
+    background-color: #16161c;
+    border: 1px solid #2e2e38;
+    border-radius: 12px;
+}
+QWidget#AiFloatingTitleBar {
+    background-color: #1c1c24;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    border-bottom: 1px solid #2a2a34;
+}
+QLabel#AiFloatingGrip {
+    color: #5a5a66;
+    font-size: 12px;
+    padding-right: 2px;
+}
+QLabel#AiFloatingTitle {
+    color: #c8c8d0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+QToolButton#AiFloatingIconBtn {
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    color: #9090a0;
+    font-size: 13px;
+}
+QToolButton#AiFloatingIconBtn:hover {
+    background-color: #2a2a36;
+    color: #4a9eff;
+}
+QWidget#AiChatPanel[floating="true"] {
+    background-color: transparent;
+}
+QScrollArea#AiMessageScroll {
+    background-color: transparent;
+    border: none;
+}
+QWidget#AiMessageContainer {
+    background-color: transparent;
+}
+QLabel#AiBubbleUser {
+    background-color: #2a4060;
+    color: #eef0f4;
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+QLabel#AiBubbleAssistant {
+    background-color: #22222a;
+    color: #d8d8e0;
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+QLabel#AiBubbleError {
+    background-color: #3a2020;
+    color: #ff8a8a;
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+QPlainTextEdit#AiInput {
+    background-color: #1e1e26;
+    border: 1px solid #2e2e38;
+    border-radius: 8px;
+    padding: 6px 8px;
+    color: #e0e0e8;
+    font-size: 12px;
+}
+QPushButton#AiSendBtn {
+    background-color: #4a9eff;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+}
+QPushButton#AiSendBtn:hover {
+    background-color: #5aadff;
+}
+QPushButton#AiSendBtn:disabled {
+    background-color: #2a2a32;
+    color: #555;
+}
+QWidget#AiToolsStatusBar {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+}
+QLabel#AiToolsSummary {
+    color: #7a7a88;
+    font-size: 10px;
+    padding: 2px 4px;
+}
+QLabel#AiContextLabel {
+    color: #7a7a88;
+    font-size: 10px;
+    padding: 2px 6px;
+    background-color: #1e1e26;
+    border-radius: 4px;
+}
+"""
+
 TOOLS_WIDGET_STYLESHEET = """
 QWidget#AiToolsStatusBar {
     background-color: #1a1a22;

@@ -6,6 +6,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.quotes_page import QuotesPage
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import IndexQuotesWorker
@@ -35,6 +36,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
 
         self.page = QuotesPage(self.PAGE_NAME, self, event_engine=event_engine)
         self._index_worker: IndexQuotesWorker | None = None
+        self._retired_workers: list[QtCore.QThread] = []
         self._index_timer: QtCore.QTimer | None = None
         self.index_ticker: QtWidgets.QLabel | None = None
 
@@ -65,6 +67,9 @@ class QuotesShellWidget(QtWidgets.QWidget):
         self.page.deactivate()
         if self._index_timer is not None:
             self._index_timer.stop()
+        worker = self._index_worker
+        self._index_worker = None
+        release_thread(self._retired_workers, worker)
 
     def refresh_indices(self) -> None:
         if self.index_ticker is None or self._thread_active(self._index_worker):
