@@ -56,6 +56,7 @@ class PageConfig:
     auto_refresh_quotes: bool = True
     quote_refresh_ms: int = MARKET_QUOTE_REFRESH_MS
     quote_source: Literal["market", "watchlist"] | None = None
+    quote_refresh_source: Literal["market", "watchlist"] | None = None  # auto-refresh 数据源（None=同 quote_source）
     show_depth_panel: bool = False
     show_chart_tabs: bool = False
     use_quote_stream: bool = False
@@ -82,6 +83,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         table_header_sortable=True,
         quote_refresh_ms=MARKET_QUOTE_REFRESH_MS,
         quote_source="market",
+        quote_refresh_source="watchlist",  # auto-refresh 直连 TickFlow 实时行情
         show_kline=False,
     ),
     "自选": PageConfig(

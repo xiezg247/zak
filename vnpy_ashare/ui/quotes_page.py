@@ -1348,7 +1348,8 @@ class QuotesPage(QtWidgets.QWidget):
         if self.config.show_depth_panel:
             self.refresh_depth()
 
-        worker = QuotesRefreshWorker(list(self.display_stocks), self.config.quote_source)
+        refresh_source = self.config.quote_refresh_source or self.config.quote_source or "watchlist"
+        worker = QuotesRefreshWorker(list(self.display_stocks), refresh_source)
         self._quotes_worker = worker
         current = self.current_item
 
