@@ -29,8 +29,13 @@ DEFAULT_SKILLS_DIR = PROJECT_ROOT / "skills"
 class SkillEngine:
     """加载 Agent Skills + 自编写 Python Skills，聚合 LLM 工具。"""
 
-    def __init__(self, skills_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        skills_dir: Path | None = None,
+        services: dict[str, object] | None = None,
+    ) -> None:
         self.skills_dir = (skills_dir or DEFAULT_SKILLS_DIR).resolve()
+        self._services = services or {}
         self.agent_skills: dict[str, AgentSkill] = {}
         self.classes: dict[str, type[SkillTemplate]] = {}
         self.instances: dict[str, SkillTemplate] = {}
@@ -98,6 +103,7 @@ class SkillEngine:
 
         for class_name, cls in sorted(self.classes.items()):
             instance = cls()
+            instance._services = self._services
             instance.on_init()
             if not instance.available:
                 continue

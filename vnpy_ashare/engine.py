@@ -2,17 +2,30 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 
 from vnpy_ashare.scheduler import TaskSchedulerManager
+from vnpy_ashare.services import (
+    BacktestService,
+    BarService,
+    QuoteService,
+    ScreeningService,
+    WatchlistService,
+)
 
 APP_NAME = "Ashare"
 
 
 class AshareEngine(BaseEngine):
-    """A 股行情引擎（含定时任务调度）。"""
+    """A 股行情引擎（含定时任务调度与服务层）。"""
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         super().__init__(main_engine, event_engine, APP_NAME)
         self.scheduler = TaskSchedulerManager()
         self.scheduler.start()
+
+        self.bar_service = BarService(self)
+        self.quote_service = QuoteService(self)
+        self.backtest_service = BacktestService(self)
+        self.screening_service = ScreeningService(self)
+        self.watchlist_service = WatchlistService(self)
 
     def close(self) -> None:
         self.scheduler.shutdown()
