@@ -81,7 +81,6 @@ from vnpy_ashare.ui.quotes_config import (
     TABLE_HEADERS_LOCAL,
     TABLE_HEADERS_WITH_LOCAL,
 )
-from vnpy_llm.events import EVENT_AI_CONTEXT
 
 STATUS_OK_COLOR = "#3ddc84"
 STATUS_STALE_COLOR = "#f0b429"
@@ -995,8 +994,8 @@ class QuotesPage(QtWidgets.QWidget):
         self._emit_ai_context()
 
     def _emit_ai_context(self) -> None:
-        if self.event_engine is None:
-            return
+        """更新 session_context（bridge，供 QuoteService/Skill 读取）。"""
+        from vnpy_ashare.ai.session_context import set_ai_context
         quote = None
         bar_count = 0
         if self.current_item is not None:
@@ -1010,7 +1009,7 @@ class QuotesPage(QtWidgets.QWidget):
             quote=quote,
             bar_count=bar_count,
         )
-        self.event_engine.put(Event(EVENT_AI_CONTEXT, data))
+        set_ai_context(data)
 
     def _use_quote_stream(self) -> bool:
         return (

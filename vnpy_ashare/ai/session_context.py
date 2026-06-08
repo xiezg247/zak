@@ -62,3 +62,12 @@ def clear_session_context() -> None:
     with _lock:
         _ai_context = AiContextData()
         _backtest_summary = None
+
+
+def sync_backtest_to_service(backtest_service: object) -> None:
+    """将全局回测摘要同步到 backtest_service（LlmEngine 初始化时调用）。"""
+    if backtest_service is None:
+        return
+    with _lock:
+        if _backtest_summary:
+            backtest_service.set_last_summary(dict(_backtest_summary))

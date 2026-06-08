@@ -5,20 +5,19 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from typing import Any
 
-from vnpy.event import Event, EventEngine
+from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
 from vnpy_llm.client import LlmClientError, complete_with_tools, stream_chat_completion
 from vnpy_llm.config import LlmConfig, load_llm_config
-from vnpy_llm.events import EVENT_AI_CONTEXT, AiContextData
-from vnpy_llm.prompts import SYSTEM_PROMPT
+from vnpy_llm.prompts import SYSTEM_PROMPT, build_strategy_prompt
 from vnpy_llm.store import ChatMessage, ChatStore
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
 from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
 
-from vnpy_ashare.ai.session_context import set_ai_context
+from vnpy_ashare.ai.session_context import sync_backtest_to_service
 
 APP_NAME = "Llm"
 
@@ -42,36 +41,41 @@ class LlmEngine(BaseEngine):
         self.store = ChatStore()
         self.config: LlmConfig = load_llm_config()
         self.session_id: str = self.store.get_or_create_default_session()
-        self._context = AiContextData()
         self._extra_context_provider: Callable[[], str] | None = None
         self._streaming = False
-        self.skill_engine = SkillEngine()
+        ashare_engine = getattr(main_engine, "engines", {}).get("Ashare")
+        services: dict[str, object] = {}
+        if ashare_engine is not None and hasattr(ashare_engine, "bar_service"):
+            services = {
+                "bar": ashare_engine.bar_service,
+                "quote": ashare_engine.quote_service,
+                "backtest": ashare_engine.backtest_service,
+                "screening": ashare_engine.screening_service,
+                "watchlist": ashare_engine.watchlist_service,
+            }
+        self.skill_engine = SkillEngine(services=services)
         self.skill_engine.load_all()
         self._enabled_skills = self.skill_engine.init_skills()
         self.mcp_engine = McpEngine()
         self.mcp_engine.load_all()
         self._enabled_mcp = self.mcp_engine.init_providers()
+        if ashare_engine is not None and hasattr(ashare_engine, "backtest_service"):
+            sync_backtest_to_service(ashare_engine.backtest_service)
         self.register_event()
         self._emit_tools_status()
 
     def register_event(self) -> None:
-        self.event_engine.register(EVENT_AI_CONTEXT, self._on_context_event)
+        pass  # EVENT_AI_CONTEXT 已移除，改用 session_context 桥接
 
     def set_extra_context_provider(self, provider: Callable[[], str] | None) -> None:
         self._extra_context_provider = provider
 
-    def _on_context_event(self, event: Event) -> None:
-        data = event.data
-        if not isinstance(data, AiContextData):
-            return
-        self._context = data
-        set_ai_context(data)
-        text = self.get_context_text()
-        self.signals.context_changed.emit(text)
-
     def get_context_text(self) -> str:
         parts: list[str] = []
-        context_text = self._context.to_text()
+        # 从 session_context 读取（QuotesPage 通过 set_ai_context 写入）
+        from vnpy_ashare.ai.session_context import get_ai_context
+        ctx = get_ai_context()
+        context_text = ctx.to_text()
         if context_text:
             parts.append(context_text)
         if self._extra_context_provider:
@@ -93,9 +97,15 @@ class LlmEngine(BaseEngine):
 
     def build_api_messages(self) -> list[dict[str, str]]:
         system_parts = [SYSTEM_PROMPT]
+        tools_summary = self._build_tools_summary()
+        if tools_summary:
+            system_parts.append(tools_summary)
         skills_text = self.skill_engine.build_skills_prompt()
         if skills_text:
             system_parts.append(skills_text)
+        strategy_prompt = build_strategy_prompt()
+        if strategy_prompt:
+            system_parts.append(strategy_prompt)
         mcp_text = self.mcp_engine.build_mcp_prompt()
         if mcp_text:
             system_parts.append(mcp_text)
@@ -106,6 +116,26 @@ class LlmEngine(BaseEngine):
         for item in self.get_messages():
             messages.append({"role": item.role, "content": item.content})
         return messages
+
+    def _build_tools_summary(self) -> str:
+        """生成可用工具能力摘要。"""
+        capabilities: list[str] = []
+        for name in self.skill_engine.skill_names():
+            if name.startswith("vnpy-data"):
+                capabilities.append("数据查询(K线/行情)")
+            elif name.startswith("vnpy-backtest"):
+                capabilities.append("策略回测")
+            elif name.startswith("vnpy-screening"):
+                capabilities.append("选股筛选")
+            elif name.startswith("vnpy-watchlist"):
+                capabilities.append("自选管理")
+        if capabilities:
+            return "\n".join([
+                "【可用工具能力】",
+                "你拥有以下工具能力，涉及行情、K线、财务数据时必须调用工具获取真实数据，禁止编造。",
+                "  " + "、".join(sorted(set(capabilities))),
+            ])
+        return ""
 
     def reload_skills(self) -> list[str]:
         self._enabled_skills = self.skill_engine.reload_skills()
@@ -192,5 +222,4 @@ class LlmEngine(BaseEngine):
         self.config = load_llm_config()
 
     def close(self) -> None:
-        self.event_engine.unregister(EVENT_AI_CONTEXT, self._on_context_event)
         super().close()
