@@ -8,21 +8,58 @@ from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ctabacktester.ui.widget import BacktesterManager as VnpyBacktesterManager
 
-from strategies.ashare_template import AShareTemplate
 from strategies.registry import (
     format_missing_strategy_guide,
     format_strategy_guide,
     get_strategy_meta,
 )
 from vnpy_ashare.ai.session_context import BacktestSummary, set_backtest_summary
+from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
-from vnpy_ashare.ui.styles import NAV_MUTED_COLOR, PANEL_BG
+from vnpy_ashare.ui.styles import NAV_MUTED_COLOR, apply_toolbar_combo_style
 
 _LABEL_MAP: dict[str, str] = {
     "本地代码": "股票代码",
     "合约乘数": "每股乘数",
 }
+
+_LOG_MAP: dict[str, str] = {
+    "初始化CTA回测引擎": "初始化策略回测引擎",
+    "策略文件重载刷新完成": "策略文件重载完成",
+}
+
+
+class StrategyGuideDialog(QtWidgets.QDialog):
+    """策略说明弹窗。"""
+
+    def __init__(self, title: str, html: str, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.resize(480, 520)
+
+        label = QtWidgets.QLabel(html)
+        label.setWordWrap(True)
+        label.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        label.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
+        label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px; padding: 4px;")
+
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        scroll.setWidget(label)
+
+        close_button = QtWidgets.QPushButton("关闭")
+        close_button.setObjectName("SecondaryButton")
+        close_button.clicked.connect(self.accept)
+
+        footer = QtWidgets.QHBoxLayout()
+        footer.addStretch()
+        footer.addWidget(close_button)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(scroll, stretch=1)
+        layout.addLayout(footer)
 
 
 class BacktesterWidget(VnpyBacktesterManager):
@@ -34,6 +71,8 @@ class BacktesterWidget(VnpyBacktesterManager):
         self._localize_labels()
         self.symbol_line.setPlaceholderText("如 600519.SSE / 000001.SZSE")
         self._replace_chart_widget()
+        apply_toolbar_combo_style(self.class_combo)
+        apply_toolbar_combo_style(self.interval_combo)
         self._install_strategy_guide()
 
     def _replace_chart_widget(self) -> None:
@@ -48,37 +87,42 @@ class BacktesterWidget(VnpyBacktesterManager):
         self.chart = new_chart
 
     def _install_strategy_guide(self) -> None:
-        frame = QtWidgets.QFrame()
-        frame.setObjectName("StrategyGuideFrame")
-        frame.setStyleSheet(
-            f"QFrame#StrategyGuideFrame {{"
-            f"background-color: {PANEL_BG};"
-            f"border: 1px solid #2a2a2a;"
-            f"border-radius: 4px;"
-            f"}}"
-        )
+        self._strategy_guide_html = ""
+        self.strategy_guide_button = QtWidgets.QPushButton("说明")
+        self.strategy_guide_button.setObjectName("SecondaryButton")
+        self.strategy_guide_button.setFixedWidth(56)
+        self.strategy_guide_button.setToolTip("查看当前策略的适用场景与参数说明")
+        self.strategy_guide_button.clicked.connect(self._show_strategy_guide_dialog)
+        self.strategy_guide_button.setEnabled(False)
 
-        self.strategy_guide = QtWidgets.QLabel()
-        self.strategy_guide.setObjectName("StrategyGuide")
-        self.strategy_guide.setWordWrap(True)
-        self.strategy_guide.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self.strategy_guide.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft
-        )
-        self.strategy_guide.setStyleSheet(
-            f"color: {NAV_MUTED_COLOR}; font-size: 12px; padding: 8px;"
-        )
+        form = self._settings_form()
+        if form is not None:
+            for row in range(form.rowCount()):
+                field = form.itemAt(row, QtWidgets.QFormLayout.ItemRole.FieldRole)
+                if field is None or field.widget() is not self.class_combo:
+                    continue
+                row_layout = QtWidgets.QHBoxLayout()
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(8)
+                form.removeWidget(self.class_combo)
+                row_layout.addWidget(self.class_combo, stretch=1)
+                row_layout.addWidget(self.strategy_guide_button)
+                container = QtWidgets.QWidget()
+                container.setLayout(row_layout)
+                form.setWidget(row, QtWidgets.QFormLayout.ItemRole.FieldRole, container)
+                break
 
-        layout = QtWidgets.QVBoxLayout(frame)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.strategy_guide)
+        self.class_combo.currentTextChanged.connect(self._on_strategy_changed)
+        self._on_strategy_changed(self.class_combo.currentText())
 
+    def _settings_form(self) -> QtWidgets.QFormLayout | None:
         left_vbox = self._left_settings_vbox()
-        if left_vbox is not None:
-            left_vbox.insertWidget(1, frame)
-
-        self.class_combo.currentTextChanged.connect(self._update_strategy_guide)
-        self._update_strategy_guide(self.class_combo.currentText())
+        if left_vbox is None or left_vbox.count() == 0:
+            return None
+        layout = left_vbox.itemAt(0).layout()
+        if isinstance(layout, QtWidgets.QFormLayout):
+            return layout
+        return None
 
     def _left_settings_vbox(self) -> QtWidgets.QVBoxLayout | None:
         root = self.layout()
@@ -98,41 +142,69 @@ class BacktesterWidget(VnpyBacktesterManager):
             return layout
         return None
 
-    def _update_strategy_guide(self, class_name: str) -> None:
-        if not hasattr(self, "strategy_guide"):
-            return
+    def _build_strategy_guide_html(self, class_name: str) -> str:
         name = class_name.strip()
         if not name:
-            self.strategy_guide.setText(
-                '<p style="color:#8a8a8a;">选择策略后显示说明与适用场景。</p>'
-            )
-            return
+            return '<p style="color:#8a8a8a;">选择策略后显示说明与适用场景。</p>'
         meta = get_strategy_meta(name)
         if meta is None:
-            self.strategy_guide.setText(format_missing_strategy_guide(name))
+            return format_missing_strategy_guide(name)
+        return format_strategy_guide(meta)
+
+    def _on_strategy_changed(self, class_name: str) -> None:
+        self._strategy_guide_html = self._build_strategy_guide_html(class_name)
+        if hasattr(self, "strategy_guide_button"):
+            self.strategy_guide_button.setEnabled(bool(class_name.strip()))
+
+    def _show_strategy_guide_dialog(self) -> None:
+        class_name = self.class_combo.currentText().strip()
+        if not class_name:
             return
-        self.strategy_guide.setText(format_strategy_guide(meta))
+        meta = get_strategy_meta(class_name)
+        title = meta.title if meta else class_name
+        dialog = StrategyGuideDialog(title, self._strategy_guide_html, self)
+        dialog.exec()
+
+    def _ashare_strategy_names(self) -> list[str]:
+        return filter_ashare_strategy_names(self.backtester_engine.classes)
+
+    def write_log(self, msg: str) -> None:
+        super().write_log(_LOG_MAP.get(msg, msg))
+
+    def _ensure_class_combo_selection(self) -> None:
+        if self.class_combo.currentIndex() >= 0 or not self.class_names:
+            return
+        default_name = str(ASHARE_BACKTEST_DEFAULTS["class_name"])
+        index = self.class_combo.findText(default_name)
+        if index < 0:
+            index = 0
+        self.class_combo.setCurrentIndex(index)
 
     def init_strategy_settings(self) -> None:
         super().init_strategy_settings()
-        ashare_names = sorted(
-            name
-            for name, cls in self.backtester_engine.classes.items()
-            if issubclass(cls, AShareTemplate) and cls is not AShareTemplate
-        )
+        ashare_names = self._ashare_strategy_names()
         if not ashare_names:
             self.class_names = []
             self.class_combo.clear()
-            self.write_log("未发现 A 股策略，请检查 strategies/ 目录下的策略导入是否正常。")
+            self.write_log(
+                "未发现 A 股策略，请检查项目 strategies/ 目录及策略类是否继承 AShareTemplate。"
+            )
             return
 
         self.class_names = ashare_names
+        self.settings = {
+            name: self.settings[name]
+            for name in ashare_names
+            if name in self.settings
+        }
         self.class_combo.clear()
         self.class_combo.addItems(ashare_names)
-        self._update_strategy_guide(self.class_combo.currentText())
+        self._ensure_class_combo_selection()
+        self._on_strategy_changed(self.class_combo.currentText())
 
     def load_backtesting_setting(self) -> None:
         super().load_backtesting_setting()
+        self._ensure_class_combo_selection()
         if not self.symbol_line.text().strip():
             defaults = ASHARE_BACKTEST_DEFAULTS
             self.symbol_line.setText(str(defaults["vt_symbol"]))
@@ -143,7 +215,7 @@ class BacktesterWidget(VnpyBacktesterManager):
             self.capital_line.setText(str(defaults["capital"]))
         else:
             self._normalize_decimal_fields()
-        self._update_strategy_guide(self.class_combo.currentText())
+        self._on_strategy_changed(self.class_combo.currentText())
 
     def _normalize_decimal_fields(self) -> None:
         for line, places in (

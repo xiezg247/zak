@@ -14,7 +14,7 @@ SCHEDULER_CONFIG_PATH = VNTRADER_DIR / "vnpy_zak_scheduler.json"
 @dataclass
 class JobConfig:
     enabled: bool = False
-    interval_seconds: int = 15
+    interval_seconds: int = 30
     cron_hour: int = 8
     cron_minute: int = 0
     cron_day_of_week: str = "mon"
@@ -23,7 +23,7 @@ class JobConfig:
 
 @dataclass
 class SchedulerConfig:
-    collect_quotes: JobConfig = field(default_factory=lambda: JobConfig(enabled=False, interval_seconds=15))
+    collect_quotes: JobConfig = field(default_factory=lambda: JobConfig(enabled=False, interval_seconds=30))
     sync_universe: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=False,

@@ -16,7 +16,7 @@ from vnpy_ashare.config import ensure_runtime_config
 from vnpy_ashare.paths import PROJECT_ROOT
 from vnpy_ashare.ui.fonts import resolve_font_family
 from vnpy_ashare.ui.main_window import AshareMainWindow
-from vnpy_ctabacktester import CtaBacktesterApp
+from vnpy_ashare.backtester_app import AshareCtaBacktesterApp
 from vnpy_datamanager import DataManagerApp
 from vnpy_llm import LlmApp
 
@@ -44,7 +44,7 @@ def main() -> None:
     main_engine = MainEngine(event_engine)
 
     main_engine.add_app(AshareApp)
-    main_engine.add_app(CtaBacktesterApp)
+    main_engine.add_app(AshareCtaBacktesterApp)
     main_engine.add_app(DataManagerApp)
     main_engine.add_app(LlmApp)
 

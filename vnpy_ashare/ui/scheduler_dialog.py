@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.scheduler import JobStatus, TaskSchedulerManager
 from vnpy_ashare.scheduler.config import JobConfig
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.styles import SCHEDULER_TABLE_STYLESHEET, TERMINAL_STYLESHEET
 
 
 class _JobSettingsDialog(QtWidgets.QDialog):
@@ -80,8 +80,9 @@ class SchedulerDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.scheduler = scheduler
         self.setWindowTitle("定时任务")
-        self.setMinimumSize(860, 420)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
+        self.setMinimumSize(1020, 480)
+        self.resize(1080, 520)
+        self.setStyleSheet(TERMINAL_STYLESHEET + SCHEDULER_TABLE_STYLESHEET)
 
         hint = QtWidgets.QLabel(
             "生产环境建议独立运行 scripts/quote_collector.py；"
@@ -90,6 +91,7 @@ class SchedulerDialog(QtWidgets.QDialog):
         hint.setWordWrap(True)
 
         self.table = QtWidgets.QTableWidget(0, 8)
+        self.table.setObjectName("SchedulerTable")
         self.table.setHorizontalHeaderLabels(
             ["启用", "任务", "调度", "状态", "上次执行", "结果", "下次执行", "操作"]
         )
@@ -99,11 +101,17 @@ class SchedulerDialog(QtWidgets.QDialog):
         self.table.setEditTriggers(
             QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
         )
+        self.table.setWordWrap(True)
+        self.table.setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
+        self.table.setHorizontalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
         self.table.verticalHeader().setVisible(False)
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(7, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.table.verticalHeader().setSectionResizeMode(
+            QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.table.verticalHeader().setMinimumSectionSize(36)
+        self._configure_table_columns()
 
         refresh_button = QtWidgets.QPushButton("刷新")
         refresh_button.clicked.connect(self.refresh_table)
@@ -130,6 +138,27 @@ class SchedulerDialog(QtWidgets.QDialog):
         self.scheduler.add_listener(self._on_scheduler_event)
         self.refresh_table()
         self._timer.start()
+
+    def _configure_table_columns(self) -> None:
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(52)
+
+        fixed_columns = (0, 1, 3, 7)
+        content_columns = (2, 4, 5, 6)
+        for column in fixed_columns:
+            header.setSectionResizeMode(
+                column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            )
+        for column in content_columns:
+            header.setSectionResizeMode(
+                column, QtWidgets.QHeaderView.ResizeMode.Interactive
+            )
+
+        self.table.setColumnWidth(2, 180)
+        self.table.setColumnWidth(4, 158)
+        self.table.setColumnWidth(5, 320)
+        self.table.setColumnWidth(6, 158)
 
     def closeEvent(self, event) -> None:
         self.scheduler.remove_listener(self._on_scheduler_event)
@@ -158,20 +187,32 @@ class SchedulerDialog(QtWidgets.QDialog):
 
             for row, status in enumerate(statuses):
                 self._update_row(row, status)
+            self.table.resizeRowsToContents()
         finally:
             self._refreshing = False
             if self._refresh_pending:
                 self._refresh_pending = False
                 QtCore.QTimer.singleShot(0, self, self.refresh_table)
 
-    def _set_table_text(self, row: int, column: int, text: str) -> None:
+    def _set_table_text(
+        self,
+        row: int,
+        column: int,
+        text: str,
+        *,
+        show_tooltip: bool = False,
+    ) -> None:
         item = self.table.item(row, column)
         if item is None:
             item = QtWidgets.QTableWidgetItem(text)
             self.table.setItem(row, column, item)
-            return
-        if item.text() != text:
+        elif item.text() != text:
             item.setText(text)
+
+        if show_tooltip and text and text != "—":
+            item.setToolTip(text)
+        else:
+            item.setToolTip("")
 
     def _ensure_enabled_checkbox(self, row: int, job_id: str) -> QtWidgets.QCheckBox:
         widget = self.table.cellWidget(row, 0)
@@ -218,7 +259,7 @@ class SchedulerDialog(QtWidgets.QDialog):
             enabled_box.blockSignals(False)
 
         self._set_table_text(row, 1, status.name)
-        self._set_table_text(row, 2, status.schedule_text)
+        self._set_table_text(row, 2, status.schedule_text, show_tooltip=True)
 
         if status.running:
             state_text = "运行中"
@@ -227,7 +268,9 @@ class SchedulerDialog(QtWidgets.QDialog):
         else:
             state_text = "已停止"
         self._set_table_text(row, 3, state_text)
-        self._set_table_text(row, 4, status.last_run_at or "—")
+        self._set_table_text(
+            row, 4, status.last_run_at or "—", show_tooltip=True
+        )
 
         result_text = status.last_message or "—"
         result_item = self.table.item(row, 5)
@@ -244,7 +287,14 @@ class SchedulerDialog(QtWidgets.QDialog):
         else:
             result_item.setForeground(self.palette().text().color())
 
-        self._set_table_text(row, 6, status.next_run_at or "—")
+        if result_text and result_text != "—":
+            result_item.setToolTip(result_text)
+        else:
+            result_item.setToolTip("")
+
+        self._set_table_text(
+            row, 6, status.next_run_at or "—", show_tooltip=True
+        )
         self._ensure_action_widget(row, status.job_id)
 
     def _toggle_job(self, job_id: str, enabled: bool) -> None:

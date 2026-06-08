@@ -111,6 +111,27 @@ QPushButton#SecondaryButton:pressed {
 }
 """
 
+SCHEDULER_TABLE_STYLESHEET = """
+QTableWidget#SchedulerTable {
+    background-color: #1a1a1a;
+    gridline-color: #2a2a2a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    font-size: 12px;
+}
+QTableWidget#SchedulerTable::item {
+    padding: 8px 10px;
+}
+QTableWidget#SchedulerTable QHeaderView::section {
+    background-color: #252525;
+    color: #a0a0a0;
+    padding: 8px 10px;
+    border: none;
+    border-right: 1px solid #333;
+    font-size: 12px;
+}
+"""
+
 TOOLBAR_COMBO_STYLESHEET = """
 QComboBox#ToolbarCombo {
     background-color: #252525;
