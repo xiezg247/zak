@@ -77,6 +77,38 @@ QPushButton:hover {
 QPushButton:disabled {
     color: #666;
 }
+QPushButton#ActionButton {
+    background-color: #2a5a9e;
+    border: 1px solid #4a9eff;
+    border-radius: 4px;
+    padding: 4px 14px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 12px;
+}
+QPushButton#ActionButton:hover {
+    background-color: #3a6fbf;
+    border-color: #6ab4ff;
+}
+QPushButton#ActionButton:pressed {
+    background-color: #1e4a80;
+}
+QPushButton#SecondaryButton {
+    background-color: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 4px 14px;
+    color: #b0b0b0;
+    font-size: 12px;
+}
+QPushButton#SecondaryButton:hover {
+    background-color: #353535;
+    border-color: #555;
+    color: #e0e0e0;
+}
+QPushButton#SecondaryButton:pressed {
+    background-color: #222;
+}
 """
 
 TOOLBAR_COMBO_STYLESHEET = """

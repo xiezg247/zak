@@ -103,6 +103,7 @@ class SchedulerDialog(QtWidgets.QDialog):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(7, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
         refresh_button = QtWidgets.QPushButton("刷新")
         refresh_button.clicked.connect(self.refresh_table)
@@ -173,12 +174,15 @@ class SchedulerDialog(QtWidgets.QDialog):
 
             action_widget = QtWidgets.QWidget()
             action_layout = QtWidgets.QHBoxLayout(action_widget)
-            action_layout.setContentsMargins(4, 0, 4, 0)
-            run_button = QtWidgets.QPushButton("立即执行")
+            action_layout.setContentsMargins(2, 2, 2, 2)
+            action_layout.setSpacing(6)
+            run_button = QtWidgets.QPushButton("▶ 立即执行")
+            run_button.setObjectName("ActionButton")
             run_button.clicked.connect(
                 lambda _checked=False, job_id=status.job_id: self._run_now(job_id)
             )
             settings_button = QtWidgets.QPushButton("设置")
+            settings_button.setObjectName("SecondaryButton")
             settings_button.clicked.connect(
                 lambda _checked=False, job_id=status.job_id: self._open_settings(job_id)
             )
