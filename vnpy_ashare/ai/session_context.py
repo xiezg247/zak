@@ -11,6 +11,7 @@ from vnpy_ashare.ai.context import AiContextData
 _lock = threading.Lock()
 _ai_context = AiContextData()
 _backtest_summary: dict[str, Any] | None = None
+_market_quotes: list[dict[str, Any]] = []
 
 
 @dataclass
@@ -58,10 +59,37 @@ def get_backtest_summary() -> dict[str, Any] | None:
 
 
 def clear_session_context() -> None:
-    global _ai_context, _backtest_summary
+    global _ai_context, _backtest_summary, _market_quotes
     with _lock:
         _ai_context = AiContextData()
         _backtest_summary = None
+        _market_quotes = []
+
+
+def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
+    """缓存市场页行情（行情页加载时调用），转为 skill 可用的 dict 列表。"""
+    global _market_quotes
+    rows: list[dict[str, Any]] = []
+    for item in items:
+        tickflow_symbol = getattr(item, "tickflow_symbol", "")
+        quote = quotes.get(tickflow_symbol)
+        row = {
+            "symbol": getattr(item, "symbol", ""),
+            "name": getattr(item, "name", ""),
+            "vt_symbol": getattr(item, "vt_symbol", ""),
+            "last_price": getattr(quote, "last_price", 0) if quote else 0,
+            "change_pct": getattr(quote, "change_pct", 0) if quote else 0,
+            "turnover_rate": getattr(quote, "turnover_rate", 0) if quote else 0,
+            "volume": getattr(quote, "volume", 0) if quote else 0,
+        }
+        rows.append(row)
+    with _lock:
+        _market_quotes = rows
+
+
+def get_market_quotes_cache() -> list[dict[str, Any]]:
+    with _lock:
+        return list(_market_quotes)
 
 
 def sync_backtest_to_service(backtest_service: object) -> None:

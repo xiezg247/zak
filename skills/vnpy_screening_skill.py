@@ -21,7 +21,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="screen_by_condition",
-                description="按指定条件筛选标的",
+                description="按指定条件筛选标的，返回符合条件的前N只股票",
                 parameters={
                     "type": "object",
                     "properties": {
@@ -51,12 +51,48 @@ class VnpyScreeningSkill(SkillTemplate):
         return json.dumps({"count": len(names), "screeners": names}, ensure_ascii=False)
 
     def screen_by_condition(self, name: str, top_n: int = 10) -> str:
+        from vnpy_ashare.ai.session_context import get_market_quotes_cache
+
+        quotes = get_market_quotes_cache()
+        if not quotes:
+            return json.dumps(
+                {
+                    "message": (
+                        "暂无可用的市场行情数据。请先在终端打开「市场」页加载行情，"
+                        "然后再次尝试选股。"
+                    ),
+                },
+                ensure_ascii=False,
+            )
+
+        svc = self._get_screening_service()
+        results = svc.screen_by_condition(name, quotes, top_n=int(top_n or 10))
+
+        if not results:
+            return json.dumps(
+                {
+                    "message": f"选股条件「{name}」未匹配到标的，可用的条件：涨幅榜、换手率排行、成交量放大",
+                    "count": 0,
+                },
+                ensure_ascii=False,
+            )
+
+        summary = []
+        for r in results:
+            summary.append({
+                "symbol": r.get("symbol", ""),
+                "name": r.get("name", ""),
+                "vt_symbol": r.get("vt_symbol", ""),
+                "last_price": r.get("last_price"),
+                "change_pct": r.get("change_pct"),
+                "turnover_rate": r.get("turnover_rate"),
+            })
+
         return json.dumps(
             {
-                "message": (
-                    f"选股条件「{name}」已就绪。"
-                    "选股需要实时行情数据，请在市场涨幅页查看后，将你关注的标的告诉我来帮你分析。"
-                ),
+                "condition": name,
+                "count": len(summary),
+                "results": summary,
             },
             ensure_ascii=False,
         )

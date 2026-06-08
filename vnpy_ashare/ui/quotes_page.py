@@ -596,6 +596,7 @@ class QuotesPage(QtWidgets.QWidget):
             self.quote_map = dict(result.quotes)
             self._market_total = result.total
             self._apply_default_table_sort = True
+            self._sync_market_quotes_to_cache(result)
             if not quiet:
                 self._set_busy(False)
             self._render_table()
@@ -992,6 +993,13 @@ class QuotesPage(QtWidgets.QWidget):
                 self.refresh_depth()
         self._sync_stream_depth_subscription()
         self._emit_ai_context()
+
+    def _sync_market_quotes_to_cache(self, result: object) -> None:
+        """将市场页行情写入 session_context，供 AI 选股工具使用。"""
+        if not hasattr(result, "items") or not hasattr(result, "quotes"):
+            return
+        from vnpy_ashare.ai.session_context import set_market_quotes_cache
+        set_market_quotes_cache(result.items, dict(result.quotes))
 
     def _emit_ai_context(self) -> None:
         """更新 session_context（bridge，供 QuoteService/Skill 读取）。"""
