@@ -24,6 +24,7 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = (
     NavEntry("local", "本地"),
     NavEntry("ai_assistant", "AI 助手"),
     NavEntry("cta_backtest", "策略回测"),
+    NavEntry("batch_backtest", "回测对比"),
     NavEntry("data_manager", "数据管理"),
 )
 
@@ -131,12 +132,21 @@ def _draw_screener(painter: QtGui.QPainter, size: int) -> None:
     painter.drawPath(path)
 
 
+def _draw_batch_backtest(painter: QtGui.QPainter, size: int) -> None:
+    m = 4
+    painter.drawRect(m, m + 2, size - m * 2 - 8, size - m * 2 - 6)
+    painter.drawRect(m + 10, m + 4, size - m * 2 - 8, size - m * 2 - 6)
+    for offset in (0, 8, 16):
+        painter.drawLine(m + 3 + offset, size - m - 4, m + 8 + offset, size - m - 10)
+
+
 _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "market": _draw_market,
     "watchlist": _draw_watchlist,
     "screener": _draw_screener,
     "local": _draw_local,
     "cta_backtest": _draw_backtest,
+    "batch_backtest": _draw_batch_backtest,
     "data_manager": _draw_data,
     "ai_assistant": _draw_ai_assistant,
 }

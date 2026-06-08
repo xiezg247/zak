@@ -30,8 +30,21 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_backtest_runs_created ON backtest_runs(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_backtest_runs_symbol ON backtest_runs(vt_symbol);
+CREATE INDEX IF NOT EXISTS idx_backtest_runs_batch ON backtest_runs(batch_id);
 """
+
+
+@dataclass
+class BatchBacktestSession:
+    batch_id: str
+    strategy: str
+    start_date: str
+    end_date: str
+    row_count: int
+    success_count: int
+    error_count: int
+    source: str
+    created_at: str
 
 
 @dataclass
@@ -227,6 +240,66 @@ def get_backtest_run(run_id: str) -> BacktestRunRecord | None:
 def get_latest_backtest_run(*, vt_symbol: str | None = None) -> BacktestRunRecord | None:
     runs = list_backtest_runs(limit=1, vt_symbol=vt_symbol)
     return runs[0] if runs else None
+
+
+def list_batch_sessions(*, limit: int = 30) -> list[BatchBacktestSession]:
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                batch_id,
+                strategy,
+                MIN(start_date) AS start_date,
+                MAX(end_date) AS end_date,
+                COUNT(*) AS row_count,
+                SUM(CASE WHEN total_return IS NOT NULL AND batch_id IS NOT NULL THEN 1 ELSE 0 END) AS success_count,
+                SUM(CASE WHEN total_return IS NULL THEN 1 ELSE 0 END) AS error_count,
+                MIN(source) AS source,
+                MIN(created_at) AS created_at
+            FROM backtest_runs
+            WHERE batch_id IS NOT NULL
+            GROUP BY batch_id
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [
+        BatchBacktestSession(
+            batch_id=str(row["batch_id"]),
+            strategy=str(row["strategy"]),
+            start_date=str(row["start_date"]),
+            end_date=str(row["end_date"]),
+            row_count=int(row["row_count"]),
+            success_count=int(row["success_count"] or 0),
+            error_count=int(row["error_count"] or 0),
+            source=str(row["source"]),
+            created_at=str(row["created_at"]),
+        )
+        for row in rows
+    ]
+
+
+def list_runs_by_batch(batch_id: str) -> list[BacktestRunRecord]:
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, vt_symbol, strategy, interval, start_date, end_date,
+                   total_return, max_drawdown, sharpe_ratio, trade_count,
+                   source, batch_id, raw_statistics_json, created_at
+            FROM backtest_runs
+            WHERE batch_id=?
+            ORDER BY (total_return IS NULL), total_return DESC, vt_symbol ASC
+            """,
+            (batch_id,),
+        ).fetchall()
+    return [_row_to_record(row) for row in rows]
+
+
+def delete_batch(batch_id: str) -> int:
+    with _connect() as conn:
+        cursor = conn.execute("DELETE FROM backtest_runs WHERE batch_id=?", (batch_id,))
+        return int(cursor.rowcount or 0)
 
 
 def _row_to_record(row: sqlite3.Row) -> BacktestRunRecord:

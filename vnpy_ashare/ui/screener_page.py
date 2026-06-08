@@ -7,7 +7,7 @@ from typing import Any
 
 from vnpy.event import Event, EventEngine
 
-from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
+from vnpy_ashare.events import EVENT_OPEN_BACKTEST, EVENT_OPEN_BATCH_BACKTEST, BacktestRequest, BatchBacktestViewRequest
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -24,10 +24,7 @@ from vnpy_ashare.screener.batch_actions import (
     load_batch_backtest_defaults,
     persist_batch_backtest_results,
 )
-from vnpy_ashare.ui.screener_batch_dialog import (
-    ScreenerBatchBacktestConfigDialog,
-    ScreenerBatchBacktestDialog,
-)
+from vnpy_ashare.ui.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import (
@@ -559,13 +556,22 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         worker.failed.connect(worker.deleteLater)
         worker.start()
 
-    def _on_batch_backtest_finished(self, rows, class_name: str) -> None:
+    def _on_batch_backtest_finished(self, rows, _class_name: str) -> None:
         self._batch_bt_worker = None
         self.batch_backtest_btn.setDisabled(False)
+        batch_id = None
         if self._last_batch_params is not None:
-            persist_batch_backtest_results(self._last_batch_params, rows)
-        self.status_label.setText(f"批量回测完成：{len(rows)} 只（结果已落库）")
-        ScreenerBatchBacktestDialog(rows, class_name=class_name, parent=self).exec()
+            batch_id = persist_batch_backtest_results(self._last_batch_params, rows)
+        if batch_id:
+            self.status_label.setText(f"批量回测完成：{len(rows)} 只 · 已打开回测对比页")
+            self.event_engine.put(
+                Event(
+                    EVENT_OPEN_BATCH_BACKTEST,
+                    BatchBacktestViewRequest(batch_id=batch_id, source_page="选股"),
+                )
+            )
+        else:
+            self.status_label.setText(f"批量回测完成：{len(rows)} 只")
 
     def _on_batch_backtest_failed(self, message: str) -> None:
         self._batch_bt_worker = None

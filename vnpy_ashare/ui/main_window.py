@@ -7,7 +7,7 @@ from types import ModuleType
 
 from vnpy.event import Event, EventEngine
 
-from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
+from vnpy_ashare.events import EVENT_OPEN_BACKTEST, EVENT_OPEN_BATCH_BACKTEST, BacktestRequest, BatchBacktestViewRequest
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import MainWindow
 from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
@@ -19,6 +19,7 @@ from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
 from vnpy_llm.ui.panel import AiChatPanel
 from vnpy_llm.ui.tools_widgets import show_ai_tools_dialog
+from vnpy_ashare.ui.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.scheduler_dialog import SchedulerDialog
@@ -41,6 +42,7 @@ class AshareMainWindow(MainWindow):
 
     # EventEngine 在后台线程回调，须经 Signal 切回 GUI 线程再操作控件。
     _signal_open_backtest = QtCore.Signal(object)
+    _signal_open_batch_backtest = QtCore.Signal(object)
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         self._page_widgets: dict[str, QtWidgets.QWidget] = {}
@@ -51,7 +53,9 @@ class AshareMainWindow(MainWindow):
         self._ai_toggle_action: QtGui.QAction | None = None
         super().__init__(main_engine, event_engine)
         self._signal_open_backtest.connect(self._handle_open_backtest)
+        self._signal_open_batch_backtest.connect(self._handle_open_batch_backtest)
         self.event_engine.register(EVENT_OPEN_BACKTEST, self._on_open_backtest_event)
+        self.event_engine.register(EVENT_OPEN_BATCH_BACKTEST, self._on_open_batch_backtest_event)
 
     def init_dock(self) -> None:
         return
@@ -249,6 +253,19 @@ class AshareMainWindow(MainWindow):
         if widget is not None and hasattr(widget, "apply_vt_symbol"):
             widget.apply_vt_symbol(data.vt_symbol, source_page=data.source_page)
 
+    def _on_open_batch_backtest_event(self, event: Event) -> None:
+        if isinstance(event.data, BatchBacktestViewRequest):
+            self._signal_open_batch_backtest.emit(event.data)
+
+    def _handle_open_batch_backtest(self, data: BatchBacktestViewRequest) -> None:
+        index = self._nav_index_for_key("batch_backtest")
+        if index is None:
+            return
+        self._show_page(index)
+        widget = self._page_widgets.get("batch_backtest")
+        if widget is not None and hasattr(widget, "show_batch"):
+            widget.show_batch(data.batch_id)
+
     def _nav_index_for_key(self, key: str) -> int | None:
         for index, entry in enumerate(APP_NAV_ENTRIES):
             if entry.key == key:
@@ -317,6 +334,8 @@ class AshareMainWindow(MainWindow):
             widget = page
         elif key == "screener":
             widget = ScreenerPageWidget(self.main_engine, self.event_engine)
+        elif key == "batch_backtest":
+            widget = BatchBacktestPageWidget(self.main_engine, self.event_engine)
 
         if widget is not None:
             self._page_widgets[key] = widget

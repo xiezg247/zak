@@ -11,6 +11,24 @@ SYSTEM_PROMPT = """你是 zak A 股量化终端的投研助手。
 
 免责声明：AI 生成内容仅供参考，不构成投资建议。"""
 
+BACKTEST_PAGE_PROMPT = """【策略回测页】
+用户正在策略回测页。请协助解读回测指标（总收益、最大回撤、夏普、交易次数等）。
+优先引用上下文中的「最近回测摘要」；需要历史对比时调用 list_backtest_history。
+不要编造回测数字；若尚未回测，说明需用户先点击「开始回测」。"""
+
+BATCH_BACKTEST_PAGE_PROMPT = """【批量回测对比页】
+用户正在查看多标的同一策略的批量回测对比表。
+请基于上下文中的批量统计（均值、最优/最差标的）做横向对比解读。
+单只详情可建议用户跳转策略回测页。"""
+
+
+def build_page_prompt(page: str) -> str:
+    if page == "策略回测":
+        return BACKTEST_PAGE_PROMPT
+    if page == "回测对比":
+        return BATCH_BACKTEST_PAGE_PROMPT
+    return ""
+
 
 def build_strategy_prompt() -> str:
     """从策略注册表生成可注入 System Prompt 的策略摘要。"""

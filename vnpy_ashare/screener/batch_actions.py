@@ -192,8 +192,9 @@ def persist_batch_backtest_results(
     start_text = params.start.strftime("%Y-%m-%d")
     end_text = params.end.strftime("%Y-%m-%d")
     for row in rows:
+        stats: dict[str, Any] = {"name": row.name}
         if row.error:
-            continue
+            stats["error"] = row.error
         save_backtest_run(
             vt_symbol=row.vt_symbol,
             strategy=params.class_name,
@@ -202,10 +203,11 @@ def persist_batch_backtest_results(
             end=end_text,
             source="batch_screener",
             batch_id=batch_id,
-            total_return=row.total_return,
-            max_drawdown=row.max_drawdown,
-            sharpe_ratio=row.sharpe_ratio,
-            trade_count=row.total_trade_count,
+            statistics=stats,
+            total_return=row.total_return if not row.error else None,
+            max_drawdown=row.max_drawdown if not row.error else None,
+            sharpe_ratio=row.sharpe_ratio if not row.error else None,
+            trade_count=row.total_trade_count if not row.error else None,
         )
     return batch_id
 

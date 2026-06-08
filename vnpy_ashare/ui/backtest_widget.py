@@ -13,6 +13,7 @@ from strategies.registry import (
     format_strategy_guide,
     get_strategy_meta,
 )
+from vnpy_ashare.ai.backtest_context import connect_backtest_context_sync, sync_backtest_page_context
 from vnpy_ashare.ai.session_context import BacktestSummary, set_backtest_summary
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
@@ -74,6 +75,13 @@ class BacktesterWidget(VnpyBacktesterManager):
         apply_toolbar_combo_style(self.class_combo)
         apply_toolbar_combo_style(self.interval_combo)
         self._install_strategy_guide()
+        connect_backtest_context_sync(self)
+
+    def activate(self) -> None:
+        sync_backtest_page_context(self, self.main_engine)
+
+    def deactivate(self) -> None:
+        pass
 
     def _replace_chart_widget(self) -> None:
         old_chart = self.chart
@@ -241,6 +249,7 @@ class BacktesterWidget(VnpyBacktesterManager):
             self.write_log(f"已从{source_page}带入股票代码：{symbol}")
         else:
             self.write_log(f"已带入股票代码：{symbol}")
+        sync_backtest_page_context(self, self.main_engine)
 
     def _localize_labels(self) -> None:
         for label in self.findChildren(QtWidgets.QLabel):
@@ -282,3 +291,4 @@ class BacktesterWidget(VnpyBacktesterManager):
             "statistics": statistics,
         }
         engine.backtest_service.persist_summary(summary, source="single")
+        sync_backtest_page_context(self, self.main_engine)

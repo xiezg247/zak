@@ -40,6 +40,23 @@ def test_save_and_list_backtest_runs(tmp_path, monkeypatch):
     assert latest is not None
     assert latest.id == record.id
 
+    run_store.save_backtest_run(
+        vt_symbol="000001.SZSE",
+        strategy="DoubleMaStrategy",
+        interval="d",
+        start="2020-01-01",
+        end="2024-12-31",
+        source="batch_screener",
+        batch_id="batch-test-1",
+        statistics={"name": "平安银行"},
+        total_return=8.0,
+    )
+    sessions = run_store.list_batch_sessions(limit=5)
+    assert len(sessions) == 1
+    assert sessions[0].batch_id == "batch-test-1"
+    batch_rows = run_store.list_runs_by_batch("batch-test-1")
+    assert len(batch_rows) == 1
+
     with sqlite3.connect(db_path) as conn:
         count = conn.execute("SELECT COUNT(*) FROM backtest_runs").fetchone()[0]
     assert count == 1

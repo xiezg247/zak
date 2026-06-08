@@ -1,0 +1,155 @@
+"""策略回测页 AI 上下文组装。"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from vnpy.trader.ui import QtCore, QtWidgets
+
+from vnpy_ashare.ai.context import AiContextData
+from vnpy_ashare.ai.session_context import get_backtest_summary, set_ai_context
+
+
+def _fmt_metric(value: Any) -> str:
+    if value is None or value == "":
+        return "—"
+    try:
+        text = str(value).replace("%", "").strip()
+        return f"{float(text):.2f}"
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def format_backtest_summary_text(summary: dict[str, Any] | None) -> str:
+    if not summary:
+        return "最近回测：尚未完成回测"
+    stats = dict(summary.get("statistics") or {})
+    lines = [
+        "最近回测摘要：",
+        f"  策略：{summary.get('strategy', '—')}",
+        f"  标的：{summary.get('vt_symbol', '—')}",
+        f"  区间：{summary.get('start', '—')} ~ {summary.get('end', '—')}",
+        f"  总收益：{_fmt_metric(stats.get('total_return', summary.get('total_return')))}",
+        f"  最大回撤：{_fmt_metric(stats.get('max_drawdown', summary.get('max_drawdown')))}",
+        f"  夏普：{_fmt_metric(stats.get('sharpe_ratio', summary.get('sharpe_ratio')))}",
+        f"  交易次数：{stats.get('total_trade_count', summary.get('trade_count', '—'))}",
+    ]
+    return "\n".join(lines)
+
+
+def build_backtest_page_context(widget: QtWidgets.QWidget) -> AiContextData:
+    """从 BacktesterWidget 表单与最近摘要组装上下文。"""
+    symbol_line = getattr(widget, "symbol_line", None)
+    class_combo = getattr(widget, "class_combo", None)
+    interval_combo = getattr(widget, "interval_combo", None)
+    start_edit = getattr(widget, "start_date_edit", None)
+    end_edit = getattr(widget, "end_date_edit", None)
+
+    vt_symbol = symbol_line.text().strip() if symbol_line is not None else ""
+    strategy = class_combo.currentText().strip() if class_combo is not None else ""
+    interval = interval_combo.currentText().strip() if interval_combo is not None else ""
+
+    date_range = ""
+    if start_edit is not None and end_edit is not None:
+        start = start_edit.dateTime().toString("yyyy-MM-dd")
+        end = end_edit.dateTime().toString("yyyy-MM-dd")
+        date_range = f"{start} ~ {end}"
+
+    extra_parts = [
+        "你正在协助用户解读 A 股策略回测结果；请基于回测摘要与工具数据回答，禁止编造指标。",
+        f"当前表单：策略 {strategy or '—'} · 标的 {vt_symbol or '—'} · 周期 {interval or '—'}",
+    ]
+    if date_range:
+        extra_parts.append(f"回测区间：{date_range}")
+    extra_parts.append(format_backtest_summary_text(get_backtest_summary()))
+
+    symbol = vt_symbol.split(".", 1)[0] if "." in vt_symbol else vt_symbol
+    exchange = vt_symbol.split(".", 1)[1] if "." in vt_symbol else ""
+
+    return AiContextData(
+        page="策略回测",
+        symbol=symbol,
+        exchange=exchange,
+        name=vt_symbol,
+        extra="\n".join(extra_parts),
+    )
+
+
+def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None) -> None:
+    data = build_backtest_page_context(widget)
+    set_ai_context(data)
+    if main_engine is None:
+        return
+    try:
+        from vnpy_llm.engine import APP_NAME, LlmEngine
+
+        engine = main_engine.get_engine(APP_NAME)
+        if isinstance(engine, LlmEngine):
+            engine.signals.context_changed.emit(data.to_text())
+    except Exception:
+        pass
+
+
+def connect_backtest_context_sync(widget: QtWidgets.QWidget) -> None:
+    """绑定表单变更，实时刷新 AI 上下文。"""
+    main_engine = getattr(widget, "main_engine", None)
+    for attr in ("symbol_line", "class_combo", "interval_combo", "start_date_edit", "end_date_edit"):
+        control = getattr(widget, attr, None)
+        if control is None:
+            continue
+        if isinstance(control, QtWidgets.QLineEdit):
+            control.textChanged.connect(lambda _t, w=widget, me=main_engine: sync_backtest_page_context(w, me))
+        elif isinstance(control, QtWidgets.QComboBox):
+            control.currentTextChanged.connect(lambda _t, w=widget, me=main_engine: sync_backtest_page_context(w, me))
+        elif isinstance(control, QtWidgets.QDateTimeEdit):
+            control.dateTimeChanged.connect(
+                lambda _dt, w=widget, me=main_engine: sync_backtest_page_context(w, me)
+            )
+
+
+def _avg(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def build_batch_compare_context(session, rows: list[Any]) -> AiContextData:
+    returns = [float(row.total_return) for row in rows if row.total_return is not None]
+    sharpes = [float(row.sharpe_ratio) for row in rows if row.sharpe_ratio is not None]
+    valid_rows = [row for row in rows if row.total_return is not None]
+    best = max(valid_rows, key=lambda r: r.total_return, default=None)
+    worst = min(valid_rows, key=lambda r: r.total_return, default=None)
+
+    extra_parts = [
+        "你正在协助用户对比批量回测结果；请基于下列统计解读，禁止编造。",
+    ]
+    if session is not None:
+        extra_parts.append(
+            f"当前批次：策略 {session.strategy} · {session.start_date}~{session.end_date} · "
+            f"{session.success_count}/{session.row_count} 成功"
+        )
+    if returns:
+        extra_parts.append(f"总收益：均值 {_avg(returns):.2f} · 最高 {max(returns):.2f} · 最低 {min(returns):.2f}")
+    if sharpes:
+        extra_parts.append(f"夏普：均值 {_avg(sharpes):.2f}")
+    if best is not None and best.total_return is not None:
+        extra_parts.append(f"最优：{best.vt_symbol}（收益 {best.total_return:.2f}）")
+    if worst is not None and worst.total_return is not None:
+        extra_parts.append(f"最差：{worst.vt_symbol}（收益 {worst.total_return:.2f}）")
+
+    return AiContextData(page="回测对比", extra="\n".join(extra_parts))
+
+
+def sync_batch_compare_context(session, rows: list[Any], main_engine=None) -> None:
+    data = build_batch_compare_context(session, rows)
+    set_ai_context(data)
+    if main_engine is None:
+        return
+    try:
+        from vnpy_llm.engine import APP_NAME, LlmEngine
+
+        engine = main_engine.get_engine(APP_NAME)
+        if isinstance(engine, LlmEngine):
+            engine.signals.context_changed.emit(data.to_text())
+    except Exception:
+        pass

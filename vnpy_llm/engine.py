@@ -12,7 +12,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_llm.client import LlmClientError, complete_with_tools, stream_chat_completion
 from vnpy_llm.config import LlmConfig, load_llm_config
-from vnpy_llm.prompts import SYSTEM_PROMPT, build_strategy_prompt
+from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
 from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
 from vnpy_mcp import McpEngine
@@ -158,6 +158,11 @@ class LlmEngine(BaseEngine):
         context_text = self.get_context_text()
         if context_text:
             system_parts.append("\n【当前终端上下文】\n" + context_text)
+        from vnpy_ashare.ai.session_context import get_ai_context
+
+        page_prompt = build_page_prompt(get_ai_context().page)
+        if page_prompt:
+            system_parts.append(page_prompt)
         messages: list[dict[str, str]] = [{"role": "system", "content": "\n".join(system_parts)}]
         for item in self.get_messages():
             content = item.content
