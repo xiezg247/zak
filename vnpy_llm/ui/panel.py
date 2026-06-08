@@ -131,6 +131,8 @@ class AiChatPanel(QtWidgets.QWidget):
         signals.stream_failed.connect(self._on_stream_failed)
         signals.context_changed.connect(self._on_context_changed)
         signals.tools_status_changed.connect(self._on_tools_status_changed)
+        signals.tool_call_started.connect(self._on_tool_call_started)
+        signals.tool_call_finished.connect(self._on_tool_call_finished)
         self._on_tools_status_changed(self.engine.get_tools_status())
 
     def focus_input(self) -> None:
@@ -229,6 +231,27 @@ class AiChatPanel(QtWidgets.QWidget):
             self._streaming_bubble.deleteLater()
             self._streaming_bubble = None
         self._append_bubble("error", f"生成失败：{message}", persist=True)
+
+    def _on_tool_call_started(self, name: str) -> None:
+        label_map = {
+            "get_quote_context": "读取当前上下文",
+            "get_watchlist": "查询自选池",
+            "get_bars_summary": "查询K线概览",
+            "get_bars_data": "加载K线数据",
+            "list_strategies": "列出可用策略",
+            "get_backtest_result": "读取回测结果",
+            "list_screeners": "列出选股条件",
+            "screen_by_condition": "执行选股筛选",
+            "add_to_watchlist": "加入自选",
+            "remove_from_watchlist": "移出自选",
+            "read_skill_file": "读取知识文档",
+            "run_python": "执行数据分析",
+        }
+        display = label_map.get(name, name)
+        self.tools_status_bar.show_progress(f"正在 {display}…")
+
+    def _on_tool_call_finished(self, name: str) -> None:
+        self.tools_status_bar.hide_progress()
 
     def _on_worker_done(self) -> None:
         self._worker = None

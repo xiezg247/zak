@@ -41,6 +41,13 @@ class AiToolsStatusBar(QtWidgets.QWidget):
     def apply_snapshot(self, snapshot: ToolsStatusSnapshot) -> None:
         self._summary.setText(snapshot.compact_summary())
 
+    def show_progress(self, text: str) -> None:
+        self._summary.setText(f"⏳ {text}")
+        self._summary.setStyleSheet("color: #4a9eff;")
+
+    def hide_progress(self) -> None:
+        self._summary.setStyleSheet("")
+
 
 class AiToolsDialog(QtWidgets.QDialog):
     """AI 工具能力详情。"""

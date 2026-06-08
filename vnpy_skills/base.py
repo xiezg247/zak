@@ -76,10 +76,21 @@ class SkillTemplate(ABC):
     def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
         handler = self._handlers.get(name)
         if handler is None:
-            return json.dumps({"error": f"未知工具: {name}"}, ensure_ascii=False)
+            return json.dumps({
+                "error": f"未知工具: {name}",
+                "suggestion": "请使用 list_strategies 或 get_watchlist 查看可用功能",
+            }, ensure_ascii=False)
         try:
             return handler(**arguments)
         except TypeError as ex:
-            return json.dumps({"error": f"参数错误: {ex}"}, ensure_ascii=False)
+            return json.dumps({
+                "error": f"参数错误: {ex}",
+                "suggestion": "请检查工具参数格式，或尝试不带参数调用此工具",
+            }, ensure_ascii=False)
+        except RuntimeError as ex:
+            return json.dumps({
+                "error": str(ex),
+                "suggestion": "所需服务未就绪，请确认终端已完全启动",
+            }, ensure_ascii=False)
         except Exception as ex:
             return json.dumps({"error": str(ex)}, ensure_ascii=False)

@@ -59,6 +59,9 @@ def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+MAX_MESSAGES_PER_SESSION = 50
+MAX_TOOL_RESULT_CHARS = 2000
+
 class ChatStore:
     def get_or_create_default_session(self) -> str:
         with _connect() as conn:
@@ -91,10 +94,13 @@ class ChatStore:
                 "SELECT role, content, created_at FROM messages WHERE session_id=? ORDER BY id",
                 (session_id,),
             ).fetchall()
-        return [
+        messages = [
             ChatMessage(role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"]))
             for row in rows
         ]
+        if len(messages) > MAX_MESSAGES_PER_SESSION:
+            messages = messages[-MAX_MESSAGES_PER_SESSION:]
+        return messages
 
     def append_message(self, session_id: str, *, role: str, content: str) -> None:
         now = _now()

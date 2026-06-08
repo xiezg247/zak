@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -12,7 +13,7 @@ from vnpy.trader.ui import QtCore
 from vnpy_llm.client import LlmClientError, complete_with_tools, stream_chat_completion
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_strategy_prompt
-from vnpy_llm.store import ChatMessage, ChatStore
+from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatStore
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
 from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
@@ -30,6 +31,8 @@ class LlmSignals(QtCore.QObject):
     stream_failed = QtCore.Signal(str)
     context_changed = QtCore.Signal(str)
     tools_status_changed = QtCore.Signal(object)
+    tool_call_started = QtCore.Signal(str)
+    tool_call_finished = QtCore.Signal(str)
 
 
 class LlmEngine(BaseEngine):
@@ -114,7 +117,10 @@ class LlmEngine(BaseEngine):
             system_parts.append("\n【当前终端上下文】\n" + context_text)
         messages: list[dict[str, str]] = [{"role": "system", "content": "\n".join(system_parts)}]
         for item in self.get_messages():
-            messages.append({"role": item.role, "content": item.content})
+            content = item.content
+            if item.role == "tool" and len(content) > MAX_TOOL_RESULT_CHARS:
+                content = content[:MAX_TOOL_RESULT_CHARS] + "\n...(结果过长已截断)"
+            messages.append({"role": item.role, "content": content})
         return messages
 
     def _build_tools_summary(self) -> str:
@@ -169,10 +175,14 @@ class LlmEngine(BaseEngine):
         return tools
 
     def _execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
-        mcp_names = {spec.name for spec in self.mcp_engine.get_tool_specs()}
-        if name in mcp_names:
-            return self.mcp_engine.execute_tool(name, arguments)
-        return self.skill_engine.execute_tool(name, arguments)
+        self.signals.tool_call_started.emit(name)
+        try:
+            mcp_names = {spec.name for spec in self.mcp_engine.get_tool_specs()}
+            if name in mcp_names:
+                return self.mcp_engine.execute_tool(name, arguments)
+            return self.skill_engine.execute_tool(name, arguments)
+        finally:
+            self.signals.tool_call_finished.emit(name)
 
     def append_local_message(self, *, role: str, content: str) -> None:
         self.store.append_message(self.session_id, role=role, content=content)
