@@ -378,38 +378,45 @@ class QuotesPage(QtWidgets.QWidget):
             frame_layout.addWidget(self.chart_hint)
             chart_widget = chart_frame
 
-        chart_row = QtWidgets.QHBoxLayout()
-        chart_row.setSpacing(6)
-        if chart_widget is not None:
-            chart_row.addWidget(chart_widget, stretch=1)
-        if self.config.show_depth_panel:
-            self.depth_panel = DepthPanel()
-            chart_row.addWidget(self.depth_panel)
-
-        right_panel = QtWidgets.QVBoxLayout()
-        right_panel.addLayout(quote_info)
-        right_panel.addLayout(chart_row, stretch=1)
-
-        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        center_widget = QtWidgets.QWidget()
-        center_layout = QtWidgets.QVBoxLayout(center_widget)
-        center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.addLayout(toolbar)
-        center_layout.addWidget(self.market_table)
-        center_layout.addLayout(self.pagination_bar)
-        splitter.addWidget(center_widget)
-
-        right_widget = QtWidgets.QWidget()
-        right_widget.setLayout(right_panel)
         if self.config.show_kline:
+            chart_row = QtWidgets.QHBoxLayout()
+            chart_row.setSpacing(6)
+            if chart_widget is not None:
+                chart_row.addWidget(chart_widget, stretch=1)
+            if self.config.show_depth_panel:
+                self.depth_panel = DepthPanel()
+                chart_row.addWidget(self.depth_panel)
+
+            right_panel = QtWidgets.QVBoxLayout()
+            right_panel.addLayout(quote_info)
+            right_panel.addLayout(chart_row, stretch=1)
+
+            splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            center_widget = QtWidgets.QWidget()
+            center_layout = QtWidgets.QVBoxLayout(center_widget)
+            center_layout.setContentsMargins(0, 0, 0, 0)
+            center_layout.addLayout(toolbar)
+            center_layout.addWidget(self.market_table)
+            center_layout.addLayout(self.pagination_bar)
+            splitter.addWidget(center_widget)
+
+            right_widget = QtWidgets.QWidget()
+            right_widget.setLayout(right_panel)
             right_widget.setMinimumWidth(560 if self.config.show_depth_panel else 420)
-        splitter.addWidget(right_widget)
-        if self.config.show_kline:
+            splitter.addWidget(right_widget)
             splitter.setStretchFactor(0, 3)
             splitter.setStretchFactor(1, 2)
         else:
-            splitter.setStretchFactor(0, 8)
-            splitter.setStretchFactor(1, 1)
+            # 市场页：单栏全宽布局，报价信息放在表格上方
+            splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            center_widget = QtWidgets.QWidget()
+            center_layout = QtWidgets.QVBoxLayout(center_widget)
+            center_layout.setContentsMargins(0, 0, 0, 0)
+            center_layout.addLayout(toolbar)
+            center_layout.addLayout(quote_info)
+            center_layout.addWidget(self.market_table)
+            center_layout.addLayout(self.pagination_bar)
+            splitter.addWidget(center_widget)
 
         self.status_label = QtWidgets.QLabel("就绪")
         self.refresh_hint_label = QtWidgets.QLabel(
