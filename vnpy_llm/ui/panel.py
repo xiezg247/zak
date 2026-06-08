@@ -8,6 +8,7 @@ from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tools_status import ToolsStatusSnapshot
 from vnpy_llm.ui.styles import PANEL_STYLESHEET
 from vnpy_llm.ui.tools_widgets import AiToolsDialog, AiToolsStatusBar
+from vnpy_llm.ui.session_widgets import show_ai_session_dialog
 from vnpy_llm.ui.worker import ChatWorker
 
 
@@ -48,6 +49,10 @@ class AiChatPanel(QtWidgets.QWidget):
             title.setObjectName("AiTitle")
             header.addWidget(title)
             header.addStretch()
+            history_btn = QtWidgets.QPushButton("历史")
+            history_btn.setObjectName("AiToolBtn")
+            history_btn.clicked.connect(self._on_show_sessions)
+            header.addWidget(history_btn)
             expand_btn = QtWidgets.QPushButton("全屏")
             expand_btn.setObjectName("AiToolBtn")
             expand_btn.clicked.connect(self.expand_requested.emit)
@@ -66,6 +71,7 @@ class AiChatPanel(QtWidgets.QWidget):
         more_menu.addAction("AI 工具能力…", self._on_show_tools)
         more_menu.addAction("重新加载工具", self._on_reload_tools)
         more_menu.addSeparator()
+        more_menu.addAction("历史会话…", self._on_show_sessions)
         more_menu.addAction("新会话", self._on_new_session)
         more_menu.addAction("清空会话", self._on_clear)
         more_menu.addSeparator()
@@ -278,6 +284,15 @@ class AiChatPanel(QtWidgets.QWidget):
         if self._worker is not None and self._worker.isRunning():
             return
         self.engine.new_session()
+
+    def _on_show_sessions(self) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再切换会话")
+            return
+        if self.engine.is_busy():
+            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再切换会话")
+            return
+        show_ai_session_dialog(self.engine, self)
 
     def _on_tools_status_changed(self, snapshot: ToolsStatusSnapshot) -> None:
         self.tools_status_bar.apply_snapshot(snapshot)

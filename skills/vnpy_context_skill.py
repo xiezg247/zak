@@ -1,4 +1,4 @@
-"""vnpy_zak 终端上下文 Skill：当前选中标的与页面状态。"""
+"""zak 终端上下文 Skill：当前选中标的与页面状态。"""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from vnpy_skills.base import SkillTemplate, ToolSpec
 
 class VnpyContextSkill(SkillTemplate):
     skill_name = "vnpy-context"
-    author = "vnpy_zak"
-    description = "读取 vnpy_zak 终端当前页面与选中标的上下文"
+    author = "zak"
+    description = "读取 zak 终端当前页面与选中标的上下文"
 
     def register_tools(self) -> list[ToolSpec]:
         return [

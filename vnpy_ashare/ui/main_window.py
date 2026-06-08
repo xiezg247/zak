@@ -13,6 +13,7 @@ from vnpy.trader.ui import MainWindow
 from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.page import AiPageWidget
+from vnpy_ashare.branding import window_title as build_window_title
 from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
@@ -45,8 +46,6 @@ class AshareMainWindow(MainWindow):
         self._current_key: str | None = None
         self._ai_dock: QtWidgets.QDockWidget | None = None
         self._ai_dock_panel: AiChatPanel | None = None
-        self._ai_page_widget: AiPageWidget | None = None
-        self._ai_fullscreen = False
         self._page_before_ai: int = 0
         self._ai_toggle_action: QtGui.QAction | None = None
         super().__init__(main_engine, event_engine)
@@ -61,6 +60,7 @@ class AshareMainWindow(MainWindow):
         self.toolbar.setVisible(False)
 
     def init_ui(self) -> None:
+        self.window_title = build_window_title()
         self.setWindowTitle(self.window_title)
         self.init_toolbar()
         self.init_menu()
@@ -162,7 +162,7 @@ class AshareMainWindow(MainWindow):
             return False
 
         panel = AiChatPanel(llm_engine, compact=True, parent=self)
-        panel.expand_requested.connect(self._enter_ai_fullscreen)
+        panel.expand_requested.connect(self._open_ai_page)
         self._ai_dock_panel = panel
 
         dock = QtWidgets.QDockWidget("AI 助手", self)
@@ -209,18 +209,10 @@ class AshareMainWindow(MainWindow):
         if self._ai_dock_panel is not None:
             self._ai_dock_panel.focus_input()
 
-    def _remember_page_before_ai(self) -> None:
-        if self._ai_fullscreen:
-            return
-        if self._current_key:
-            index = self._nav_index_for_key(self._current_key)
-            if index is not None:
-                self._page_before_ai = index
-
     def _toggle_ai_dock(self) -> None:
         if not self._ensure_ai_dock():
             return
-        if self._ai_fullscreen:
+        if self._current_key == "ai_assistant":
             self._return_to_dock_mode()
             return
         if self._ai_dock_visible():
@@ -229,34 +221,17 @@ class AshareMainWindow(MainWindow):
             self._show_ai_dock()
 
     def _return_to_dock_mode(self) -> None:
-        if self._ai_fullscreen:
-            self._leave_ai_fullscreen()
         self._show_page(self._page_before_ai)
         self._show_ai_dock()
 
-    def _get_or_create_ai_page(self) -> AiPageWidget:
-        if self._ai_page_widget is None:
-            page = AiPageWidget(self.main_engine, self.event_engine)
-            page.collapse_to_dock.connect(self._return_to_dock_mode)
-            self._ai_page_widget = page
-            self.stack.addWidget(page)
-        return self._ai_page_widget
-
-    def _enter_ai_fullscreen(self) -> None:
-        self._remember_page_before_ai()
-        self._hide_ai_dock()
-        page = self._get_or_create_ai_page()
-        self.stack.setCurrentWidget(page)
-        page.activate()
-        self._ai_fullscreen = True
-        self.sidebar.set_active_index(self._page_before_ai)
-
-    def _leave_ai_fullscreen(self) -> None:
-        if not self._ai_fullscreen:
+    def _open_ai_page(self) -> None:
+        index = self._nav_index_for_key("ai_assistant")
+        if index is None:
             return
-        self._ai_fullscreen = False
-        if self._ai_page_widget is not None:
-            self._ai_page_widget.deactivate()
+        if self._get_llm_engine() is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+            return
+        self._show_page(index)
 
     def _on_open_backtest_event(self, event: Event) -> None:
         """EventEngine 线程：仅转发，不触碰 Qt 控件。"""
@@ -280,8 +255,14 @@ class AshareMainWindow(MainWindow):
         return None
 
     def _on_nav_changed(self, index: int) -> None:
-        if self._ai_fullscreen:
-            self._leave_ai_fullscreen()
+        entry = self.sidebar.entry_at(index)
+        if entry.key == "ai_assistant" and self._get_llm_engine() is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+            if self._current_key:
+                prev = self._nav_index_for_key(self._current_key)
+                if prev is not None:
+                    self.sidebar.set_active_index(prev)
+            return
         self._show_page(index)
 
     def _show_page(self, index: int) -> None:
@@ -289,6 +270,13 @@ class AshareMainWindow(MainWindow):
         widget = self._get_or_create_page(entry.key)
         if widget is None:
             return
+
+        if entry.key == "ai_assistant":
+            if self._current_key and self._current_key != "ai_assistant":
+                prev_index = self._nav_index_for_key(self._current_key)
+                if prev_index is not None:
+                    self._page_before_ai = prev_index
+            self._hide_ai_dock()
 
         if self._current_key and self._current_key != entry.key:
             old = self._page_widgets.get(self._current_key)
@@ -303,7 +291,8 @@ class AshareMainWindow(MainWindow):
             widget.activate()
 
         self._current_key = entry.key
-        self._page_before_ai = index
+        if entry.key != "ai_assistant":
+            self._page_before_ai = index
         self.sidebar.set_active_index(index)
         self.raise_()
         self.activateWindow()
@@ -321,6 +310,10 @@ class AshareMainWindow(MainWindow):
             ui_module: ModuleType = import_module(module_path)
             widget_class = getattr(ui_module, class_name)
             widget = widget_class(self.main_engine, self.event_engine)
+        elif key == "ai_assistant":
+            page = AiPageWidget(self.main_engine, self.event_engine)
+            page.collapse_to_dock.connect(self._return_to_dock_mode)
+            widget = page
 
         if widget is not None:
             self._page_widgets[key] = widget
@@ -355,8 +348,6 @@ class AshareMainWindow(MainWindow):
     def closeEvent(self, event) -> None:
         if self._ai_dock_panel is not None:
             self._ai_dock_panel.deactivate()
-        if self._ai_page_widget is not None:
-            self._ai_page_widget.deactivate()
         for widget in self._page_widgets.values():
             if hasattr(widget, "deactivate"):
                 widget.deactivate()

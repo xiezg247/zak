@@ -21,6 +21,7 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = (
     NavEntry("watchlist", "自选"),
     NavEntry("market", "市场"),
     NavEntry("local", "本地"),
+    NavEntry("ai_assistant", "AI 助手"),
     NavEntry("cta_backtest", "策略回测"),
     NavEntry("data_manager", "数据管理"),
 )
@@ -101,12 +102,27 @@ def _draw_data(painter: QtGui.QPainter, size: int) -> None:
     painter.drawEllipse(m, m + 10, w, 6)
 
 
+def _draw_ai_assistant(painter: QtGui.QPainter, size: int) -> None:
+    m = 4
+    rect = QtCore.QRectF(m + 1, m + 3, size - m * 2 - 2, size - m * 2 - 4)
+    painter.drawRoundedRect(rect, 4, 4)
+    painter.drawLine(m + 7, m + 11, m + 11, m + 15)
+    painter.drawLine(m + 11, m + 15, m + 17, m + 9)
+    tail = QtGui.QPolygonF([
+        QtCore.QPointF(m + 8, size - m - 3),
+        QtCore.QPointF(m + 4, size - m + 1),
+        QtCore.QPointF(m + 12, size - m - 2),
+    ])
+    painter.drawPolyline(tail)
+
+
 _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "market": _draw_market,
     "watchlist": _draw_watchlist,
     "local": _draw_local,
     "cta_backtest": _draw_backtest,
     "data_manager": _draw_data,
+    "ai_assistant": _draw_ai_assistant,
 }
 
 
@@ -167,7 +183,7 @@ class SidebarNav(QtWidgets.QWidget):
             layout.addWidget(btn)
             self._buttons.append(btn)
 
-            if entry.key == "local":
+            if entry.key == "ai_assistant":
                 line = QtWidgets.QFrame()
                 line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
                 line.setStyleSheet("background-color: #2a2a30; max-height: 1px; margin: 8px 10px;")

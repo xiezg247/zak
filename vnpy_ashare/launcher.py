@@ -12,6 +12,7 @@ from vnpy.trader.setting import SETTINGS
 from vnpy.trader.ui import create_qapp
 
 from vnpy_ashare import AshareApp
+from vnpy_ashare.branding import QAPP_NAME
 from vnpy_ashare.config import ensure_runtime_config
 from vnpy_ashare.paths import PROJECT_ROOT
 from vnpy_ashare.ui.fonts import resolve_font_family
@@ -38,7 +39,7 @@ def main() -> None:
     if ensure_runtime_config():
         print("已应用 A 股回测默认参数（~/.vntrader/cta_backtester_setting.json）")
 
-    qapp = create_qapp("vnpy_zak - A股量化终端")
+    qapp = create_qapp(QAPP_NAME)
 
     event_engine = EventEngine()
     main_engine = MainEngine(event_engine)

@@ -1,4 +1,4 @@
-# vnpy_zak — A 股量化回测分析
+# zak — A 股量化终端
 
 基于 [VeighNa (vnpy)](https://www.vnpy.com) 的 **A 股现货** 图形化回测项目。行情主数据源为 **TickFlow Pro**，基本面/另类数据辅助为 **Tushare**。
 
@@ -20,7 +20,7 @@
 ## 快速开始
 
 ```bash
-cd vnpy_zak
+cd zak
 bash scripts/install.sh
 
 cp .env.example .env          # 填入 TICKFLOW_API_KEY
@@ -66,7 +66,7 @@ class MyStrategy(AShareTemplate):
 
 ## 自选池与标的列表
 
-自选池、全 A 股列表存放在 `~/.vntrader/vnpy_zak.db`（与 K 线库 `~/.vntrader/database.db` 同目录）。
+自选池、全 A 股列表存放在 `~/.vntrader/zak.db`（与 K 线库 `~/.vntrader/database.db` 同目录）。
 
 ```bash
 # 同步全 A 股列表
@@ -113,7 +113,7 @@ uv run python scripts/check_database.py
 ## 项目结构
 
 ```
-vnpy_zak/
+zak/
 ├── run.py                         # GUI 入口（调用 vnpy_ashare.launcher）
 ├── strategies/                    # CTA 策略（AShareTemplate + 双均线等）
 ├── docs/                          # 架构说明与后续规划

@@ -38,7 +38,7 @@ class SkillTemplate(ABC):
     """
 
     skill_name: str = ""
-    author: str = "vnpy_zak"
+    author: str = "zak"
     description: str = ""
 
     def __init__(self) -> None:

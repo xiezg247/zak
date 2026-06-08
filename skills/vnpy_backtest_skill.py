@@ -9,7 +9,7 @@ from vnpy_skills.base import SkillTemplate, ToolSpec
 
 class VnpyBacktestSkill(SkillTemplate):
     skill_name = "vnpy-backtest"
-    author = "vnpy_zak"
+    author = "zak"
     description = "可用策略列表、最近回测结果查询"
 
     def register_tools(self) -> list[ToolSpec]:

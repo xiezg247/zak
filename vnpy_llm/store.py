@@ -39,6 +39,15 @@ class ChatMessage:
     created_at: str = ""
 
 
+@dataclass
+class ChatSession:
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+    message_count: int = 0
+
+
 @contextmanager
 def _connect():
     CHAT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -87,6 +96,67 @@ class ChatStore:
                 (session_id, title, now, now),
             )
         return session_id
+
+    def list_sessions(self, *, limit: int = 50) -> list[ChatSession]:
+        with _connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT s.id, s.title, s.created_at, s.updated_at,
+                       COUNT(m.id) AS message_count
+                FROM sessions s
+                LEFT JOIN messages m ON m.session_id = s.id
+                GROUP BY s.id
+                ORDER BY s.updated_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [
+            ChatSession(
+                id=str(row["id"]),
+                title=str(row["title"] or "新会话"),
+                created_at=str(row["created_at"]),
+                updated_at=str(row["updated_at"]),
+                message_count=int(row["message_count"]),
+            )
+            for row in rows
+        ]
+
+    def get_session(self, session_id: str) -> ChatSession | None:
+        with _connect() as conn:
+            row = conn.execute(
+                """
+                SELECT s.id, s.title, s.created_at, s.updated_at,
+                       COUNT(m.id) AS message_count
+                FROM sessions s
+                LEFT JOIN messages m ON m.session_id = s.id
+                WHERE s.id = ?
+                GROUP BY s.id
+                """,
+                (session_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return ChatSession(
+            id=str(row["id"]),
+            title=str(row["title"] or "新会话"),
+            created_at=str(row["created_at"]),
+            updated_at=str(row["updated_at"]),
+            message_count=int(row["message_count"]),
+        )
+
+    def update_session_title(self, session_id: str, title: str) -> None:
+        cleaned = title.strip() or "新会话"
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE sessions SET title=? WHERE id=?",
+                (cleaned, session_id),
+            )
+
+    def delete_session(self, session_id: str) -> None:
+        with _connect() as conn:
+            conn.execute("DELETE FROM messages WHERE session_id=?", (session_id,))
+            conn.execute("DELETE FROM sessions WHERE id=?", (session_id,))
 
     def list_messages(self, session_id: str) -> list[ChatMessage]:
         with _connect() as conn:

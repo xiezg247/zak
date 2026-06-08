@@ -12,7 +12,7 @@ WATCHLIST_LIMIT = 80
 
 class VnpyWatchlistSkill(SkillTemplate):
     skill_name = "vnpy-watchlist"
-    author = "vnpy_zak"
+    author = "zak"
     description = "查看自选池、管理自选标的"
 
     def register_tools(self) -> list[ToolSpec]:

@@ -28,7 +28,7 @@ class McpProvider(ABC):
     """
 
     provider_name: str = ""
-    author: str = "vnpy_zak"
+    author: str = "zak"
     description: str = ""
 
     def __init__(self) -> None:

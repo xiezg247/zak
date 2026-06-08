@@ -84,6 +84,52 @@ QLabel#AiConfigHint {
     font-size: 11px;
     color: #6a6a72;
 }
+QWidget#AiSessionSidebar {
+    background-color: #101014;
+    border-right: 1px solid #2a2a30;
+}
+QWidget#AiSessionRail {
+    background-color: #101014;
+    border-left: 1px solid #2a2a30;
+}
+QToolButton#AiSessionToggle {
+    background-color: transparent;
+    border: 1px solid #3a3a42;
+    border-radius: 4px;
+    color: #a0a0a8;
+    font-size: 11px;
+}
+QToolButton#AiSessionToggle:hover {
+    border-color: #4a9eff;
+    color: #4a9eff;
+}
+QWidget#AiSessionList {
+    background-color: transparent;
+}
+QLabel#AiSessionTitle {
+    font-size: 13px;
+    font-weight: bold;
+    color: #c0c0c8;
+}
+QListWidget#AiSessionListWidget {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: #d0d0d8;
+    font-size: 12px;
+}
+QListWidget#AiSessionListWidget::item {
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin: 2px 0;
+}
+QListWidget#AiSessionListWidget::item:selected {
+    background-color: #2a3a55;
+    color: #ffffff;
+}
+QListWidget#AiSessionListWidget::item:hover {
+    background-color: #1e1e28;
+}
 """
 
 TOOLS_WIDGET_STYLESHEET = """

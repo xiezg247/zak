@@ -10,7 +10,7 @@ from vnpy_skills.base import SkillTemplate, ToolSpec
 
 class VnpyDataSkill(SkillTemplate):
     skill_name = "vnpy-data"
-    author = "vnpy_zak"
+    author = "zak"
     description = "查询本地 K 线概览、历史数据、区间涨跌"
 
     def register_tools(self) -> list[ToolSpec]:

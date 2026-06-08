@@ -1,7 +1,7 @@
 services:
   questdb:
     image: questdb/questdb:latest
-    container_name: vnpy_zak_questdb
+    container_name: zak_questdb
     ports:
       - "8812:8812"   # PGWire 查询
       - "9000:9000"   # HTTP / ILP 写入

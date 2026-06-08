@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""启动 VeighNa Trader GUI（回测分析模式）"""
+"""启动 zak GUI（回测分析模式）"""
 
 from vnpy_ashare.launcher import main
 

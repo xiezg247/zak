@@ -15,7 +15,7 @@ from .ashare_template import AShareTemplate
 class AshareDoubleMaStrategy(AShareTemplate):
     """A 股双均线策略（仅做多、T+1、100股整数倍）"""
 
-    author = "vnpy_zak"
+    author = "zak"
 
     fast_window: int = 10
     slow_window: int = 20

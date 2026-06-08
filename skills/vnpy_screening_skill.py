@@ -9,7 +9,7 @@ from vnpy_skills.base import SkillTemplate, ToolSpec
 
 class VnpyScreeningSkill(SkillTemplate):
     skill_name = "vnpy-screening"
-    author = "vnpy_zak"
+    author = "zak"
     description = "按条件筛选标的（涨幅榜、换手率、成交量等）"
 
     def register_tools(self) -> list[ToolSpec]:

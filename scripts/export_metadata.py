@@ -16,7 +16,7 @@ from vnpy_ashare.paths import APP_DB_PATH, BACKUP_DIR
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="导出 vnpy_zak 元数据到 CSV")
+    parser = argparse.ArgumentParser(description="导出 zak 元数据到 CSV")
     parser.add_argument(
         "--out-dir",
         default=str(BACKUP_DIR),

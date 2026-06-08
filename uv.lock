@@ -2525,51 +2525,6 @@ wheels = [
 ]
 
 [[package]]
-name = "vnpy-zak"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "apscheduler" },
-    { name = "mcp" },
-    { name = "openai" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "python-dotenv" },
-    { name = "redis" },
-    { name = "tickflow", extra = ["all"] },
-    { name = "vnpy" },
-    { name = "vnpy-ctabacktester" },
-    { name = "vnpy-ctastrategy" },
-    { name = "vnpy-datamanager" },
-    { name = "vnpy-sqlite" },
-    { name = "vnpy-tushare" },
-]
-
-[package.optional-dependencies]
-questdb = [
-    { name = "vnpy-questdb" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "apscheduler", specifier = ">=3.10.0" },
-    { name = "mcp", specifier = ">=1.0.0" },
-    { name = "openai", specifier = ">=1.0.0" },
-    { name = "pandas", specifier = ">=2.0.0" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "redis", specifier = ">=5.0.0" },
-    { name = "tickflow", extras = ["all"], specifier = ">=0.1.22" },
-    { name = "vnpy", specifier = ">=4.0.0" },
-    { name = "vnpy-ctabacktester", specifier = ">=1.3.0" },
-    { name = "vnpy-ctastrategy", specifier = ">=1.3.0" },
-    { name = "vnpy-datamanager", specifier = ">=1.2.0" },
-    { name = "vnpy-questdb", marker = "extra == 'questdb'", specifier = ">=1.0.0" },
-    { name = "vnpy-sqlite", specifier = ">=1.1.0" },
-    { name = "vnpy-tushare", specifier = ">=1.4.0" },
-]
-provides-extras = ["questdb"]
-
-[[package]]
 name = "websocket-client"
 version = "1.9.0"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -2654,6 +2609,51 @@ sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/b3/8f/705086c9d734d3
 wheels = [
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/e1/07/c6fe3ad3e685340704d314d765b7912993bcb8dc198f0e7a89382d37974b/win32_setctime-1.2.0-py3-none-any.whl", hash = "sha256:95d644c4e708aba81dc3704a116d8cbc974d70b3bdb8be1d150e36be6e9d1390", size = 4083, upload-time = "2024-12-07T15:28:26.465Z" },
 ]
+
+[[package]]
+name = "zak"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "apscheduler" },
+    { name = "mcp" },
+    { name = "openai" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "python-dotenv" },
+    { name = "redis" },
+    { name = "tickflow", extra = ["all"] },
+    { name = "vnpy" },
+    { name = "vnpy-ctabacktester" },
+    { name = "vnpy-ctastrategy" },
+    { name = "vnpy-datamanager" },
+    { name = "vnpy-sqlite" },
+    { name = "vnpy-tushare" },
+]
+
+[package.optional-dependencies]
+questdb = [
+    { name = "vnpy-questdb" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "apscheduler", specifier = ">=3.10.0" },
+    { name = "mcp", specifier = ">=1.0.0" },
+    { name = "openai", specifier = ">=1.0.0" },
+    { name = "pandas", specifier = ">=2.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "redis", specifier = ">=5.0.0" },
+    { name = "tickflow", extras = ["all"], specifier = ">=0.1.22" },
+    { name = "vnpy", specifier = ">=4.0.0" },
+    { name = "vnpy-ctabacktester", specifier = ">=1.3.0" },
+    { name = "vnpy-ctastrategy", specifier = ">=1.3.0" },
+    { name = "vnpy-datamanager", specifier = ">=1.2.0" },
+    { name = "vnpy-questdb", marker = "extra == 'questdb'", specifier = ">=1.0.0" },
+    { name = "vnpy-sqlite", specifier = ">=1.1.0" },
+    { name = "vnpy-tushare", specifier = ">=1.4.0" },
+]
+provides-extras = ["questdb"]
 
 [[package]]
 name = "zipp"

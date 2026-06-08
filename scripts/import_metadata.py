@@ -11,7 +11,7 @@ from vnpy_ashare.paths import APP_DB_PATH
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="从 CSV 导入 vnpy_zak 元数据")
+    parser = argparse.ArgumentParser(description="从 CSV 导入 zak 元数据")
     parser.add_argument("--watchlist", help="自选池 CSV，列: symbol,exchange,name")
     parser.add_argument("--universe", help="全 A 股列表 CSV，列: symbol,exchange,name")
     return parser.parse_args()

@@ -15,7 +15,7 @@ class ExampleSkill(SkillTemplate):
     """示例：演示如何扩展自定义工具（默认不启用）。"""
 
     skill_name = "example"
-    author = "vnpy_zak"
+    author = "zak"
     description = "示例自编写 Skill"
 
     @property

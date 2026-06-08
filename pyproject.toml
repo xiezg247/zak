@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vnpy-zak"
+name = "zak"
 version = "0.1.0"
-description = "基于 VeighNa 的 A 股量化回测分析项目，集成 TickFlow 与 Tushare 数据源"
+description = "zak — 基于 VeighNa 的 A 股量化终端，集成 TickFlow 与 Tushare 数据源"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

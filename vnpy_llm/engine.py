@@ -13,7 +13,7 @@ from vnpy.trader.ui import QtCore
 from vnpy_llm.client import LlmClientError, complete_with_tools, stream_chat_completion
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_strategy_prompt
-from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatStore
+from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
 from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
@@ -25,6 +25,7 @@ APP_NAME = "Llm"
 
 class LlmSignals(QtCore.QObject):
     messages_changed = QtCore.Signal()
+    sessions_changed = QtCore.Signal()
     stream_started = QtCore.Signal()
     stream_delta = QtCore.Signal(str)
     stream_finished = QtCore.Signal()
@@ -90,13 +91,55 @@ class LlmEngine(BaseEngine):
     def get_messages(self) -> list[ChatMessage]:
         return self.store.list_messages(self.session_id)
 
+    def list_sessions(self) -> list[ChatSession]:
+        return self.store.list_sessions()
+
+    def get_current_session(self) -> ChatSession | None:
+        return self.store.get_session(self.session_id)
+
+    def switch_session(self, session_id: str) -> None:
+        if session_id == self.session_id:
+            return
+        if self.store.get_session(session_id) is None:
+            return
+        self.session_id = session_id
+        self.signals.messages_changed.emit()
+        self.signals.sessions_changed.emit()
+
+    def rename_session(self, session_id: str, title: str) -> None:
+        self.store.update_session_title(session_id, title)
+        self.signals.sessions_changed.emit()
+
+    def delete_session(self, session_id: str) -> None:
+        self.store.delete_session(session_id)
+        if session_id == self.session_id:
+            remaining = self.store.list_sessions(limit=1)
+            if remaining:
+                self.session_id = remaining[0].id
+            else:
+                self.session_id = self.store.create_session()
+            self.signals.messages_changed.emit()
+        self.signals.sessions_changed.emit()
+
     def clear_session(self) -> None:
         self.store.clear_messages(self.session_id)
         self.signals.messages_changed.emit()
+        self.signals.sessions_changed.emit()
 
     def new_session(self) -> None:
         self.session_id = self.store.create_session()
         self.signals.messages_changed.emit()
+        self.signals.sessions_changed.emit()
+
+    def _maybe_update_session_title(self, user_text: str) -> None:
+        session = self.store.get_session(self.session_id)
+        if session is None or session.title not in ("新会话", "默认会话"):
+            return
+        title = user_text.replace("\n", " ").strip()[:30]
+        if not title:
+            return
+        self.store.update_session_title(self.session_id, title)
+        self.signals.sessions_changed.emit()
 
     def build_api_messages(self) -> list[dict[str, str]]:
         system_parts = [SYSTEM_PROMPT]
@@ -169,6 +212,9 @@ class LlmEngine(BaseEngine):
     def get_enabled_mcp(self) -> list[str]:
         return list(self._enabled_mcp)
 
+    def is_busy(self) -> bool:
+        return self._streaming
+
     def _get_openai_tools(self) -> list[dict[str, Any]]:
         tools = self.skill_engine.get_openai_tools()
         tools.extend(self.mcp_engine.get_openai_tools())
@@ -185,8 +231,11 @@ class LlmEngine(BaseEngine):
             self.signals.tool_call_finished.emit(name)
 
     def append_local_message(self, *, role: str, content: str) -> None:
+        if role == "user":
+            self._maybe_update_session_title(content)
         self.store.append_message(self.session_id, role=role, content=content)
         self.signals.messages_changed.emit()
+        self.signals.sessions_changed.emit()
 
     def stream_reply(self, user_text: str) -> Iterator[str]:
         if self._streaming:

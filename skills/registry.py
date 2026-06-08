@@ -34,7 +34,7 @@ OFFICIAL_SKILLS: dict[str, SkillMeta] = {
         skill_name="vnpy-context",
         title="终端上下文",
         summary="自选池、本地 K 线概览、当前选中标的、最近回测摘要。",
-        source="vnpy_zak",
+        source="zak",
         tags=("自选", "本地 K 线", "回测", "终端"),
     ),
 }
