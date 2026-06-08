@@ -16,7 +16,7 @@
 
 ---
 
-## 2. 现状盘点（2025-06）
+## 2. 现状盘点（2026-06）
 
 ### 2.1 已适配
 
@@ -153,9 +153,9 @@ QuotesPage（工具栏按钮）
 | 股票代码 | `600519.SSE` | 可被 B1 覆盖 |
 | 每股乘数 | `1` | vnpy 字段 `size` |
 | 价格跳动 | `0.01` | |
-| 手续费率 | `0.0008` | 佣金万三 + 印花税万五折中 |
+| 手续费率 | `0.00045` | 佣金万二 + 印花税万五折中 |
 | 滑点 | `0.01` | |
-| 资金 | `1000000` | |
+| 资金 | `100000` | |
 
 定义见 `vnpy_ashare/config.py` → `ASHARE_BACKTEST_DEFAULTS`。
 
@@ -164,7 +164,7 @@ QuotesPage（工具栏按钮）
 回测前需本地有对应标的日 K：
 
 ```bash
-uv run python scripts/batch_download.py --start 2020-01-01 --end 2025-12-31
+uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
 ```
 
 或在回测页 / 数据管理中使用「下载数据」。
@@ -190,5 +190,5 @@ uv run python scripts/batch_download.py --start 2020-01-01 --end 2025-12-31
 
 | 日期 | 内容 |
 |------|------|
-| 2025-06 | 初版：盘点 + B1–B5 分阶段规格 |
-| 2025-06 | B1 实现：`EVENT_OPEN_BACKTEST`、看盘工具栏「策略回测」按钮 |
+| 2026-06 | 初版：盘点 + B1–B5 分阶段规格 |
+| 2026-06 | B1 实现：`EVENT_OPEN_BACKTEST`、看盘工具栏「策略回测」按钮 |

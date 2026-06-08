@@ -7,10 +7,19 @@ from typing import Any
 
 from vnpy.event import Event, EventEngine
 
-from vnpy_ashare.events import EVENT_OPEN_BACKTEST, EVENT_OPEN_BATCH_BACKTEST, BacktestRequest, BatchBacktestViewRequest
+from vnpy_ashare.events import (
+    EVENT_ASK_AI,
+    EVENT_OPEN_BACKTEST,
+    EVENT_OPEN_BATCH_BACKTEST,
+    AskAiRequest,
+    BacktestRequest,
+    BatchBacktestViewRequest,
+    FillScreenerRequest,
+)
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_screener_page_context
 from vnpy_ashare.ai.session_context import set_screening_results
 from vnpy_ashare.ai.symbol import parse_stock_symbol
 from vnpy_ashare.engine import APP_NAME, AshareEngine
@@ -73,80 +82,113 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
         self.run_sidebar = ScreenerRunSidebar(parent=self)
         self.run_sidebar.run_selected.connect(self._load_historical_run)
+        self.run_sidebar.copy_run_id_requested.connect(self._on_copy_run_id)
+        self.run_sidebar.ask_ai_requested.connect(self._on_ask_ai_for_run)
         page_layout.addWidget(self.run_sidebar)
 
         main_panel = QtWidgets.QWidget()
         root = QtWidgets.QVBoxLayout(main_panel)
-        root.setContentsMargins(12, 12, 12, 12)
-        root.setSpacing(10)
+        root.setContentsMargins(16, 12, 16, 0)
+        root.setSpacing(0)
         page_layout.addWidget(main_panel, stretch=1)
 
+        # ── 工具栏 ──────────────────────────────────────────
         toolbar = QtWidgets.QHBoxLayout()
-        self.run_btn = QtWidgets.QPushButton("运行选股")
+        toolbar.setContentsMargins(0, 0, 0, 8)
+        toolbar.setSpacing(8)
+
+        # 主操作
+        self.run_btn = QtWidgets.QPushButton("▶  运行选股")
+        self.run_btn.setObjectName("PrimaryRunButton")
         self.run_btn.clicked.connect(self._run_screening)
         toolbar.addWidget(self.run_btn)
+        toolbar.addWidget(self._toolbar_separator())
 
+        # 方案管理
         self.save_scheme_btn = QtWidgets.QPushButton("保存方案")
+        self.save_scheme_btn.setObjectName("SecondaryButton")
         self.save_scheme_btn.clicked.connect(self._save_scheme)
         toolbar.addWidget(self.save_scheme_btn)
 
         self.delete_scheme_btn = QtWidgets.QPushButton("删除方案")
+        self.delete_scheme_btn.setObjectName("SecondaryButton")
         self.delete_scheme_btn.clicked.connect(self._delete_scheme)
         toolbar.addWidget(self.delete_scheme_btn)
+        toolbar.addWidget(self._toolbar_separator())
 
-        self.export_btn = QtWidgets.QPushButton("导出 CSV")
-        self.export_btn.clicked.connect(self._export_csv)
-        toolbar.addWidget(self.export_btn)
-
-        self.select_all_btn = QtWidgets.QPushButton("全选")
+        # 选取操作
+        self.select_all_btn = QtWidgets.QPushButton("全 选")
+        self.select_all_btn.setObjectName("SecondaryButton")
         self.select_all_btn.clicked.connect(self._select_all)
         toolbar.addWidget(self.select_all_btn)
 
         self.add_watchlist_btn = QtWidgets.QPushButton("加入自选")
+        self.add_watchlist_btn.setObjectName("SecondaryButton")
         self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
         toolbar.addWidget(self.add_watchlist_btn)
 
         self.download_btn = QtWidgets.QPushButton("下载日K")
+        self.download_btn.setObjectName("SecondaryButton")
         self.download_btn.clicked.connect(self._download_selected_bars)
         toolbar.addWidget(self.download_btn)
+        toolbar.addWidget(self._toolbar_separator())
 
+        # 回测分析
         self.backtest_btn = QtWidgets.QPushButton("策略回测")
+        self.backtest_btn.setObjectName("SecondaryButton")
         self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
         toolbar.addWidget(self.backtest_btn)
 
         self.batch_backtest_btn = QtWidgets.QPushButton("批量回测")
+        self.batch_backtest_btn.setObjectName("SecondaryButton")
         self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
         toolbar.addWidget(self.batch_backtest_btn)
+        toolbar.addSpacing(16)
+
+        # 导出
+        self.export_btn = QtWidgets.QPushButton("CSV")
+        self.export_btn.setObjectName("SecondaryButton")
+        self.export_btn.clicked.connect(self._export_csv)
+        toolbar.addWidget(self.export_btn)
 
         toolbar.addStretch()
-        self.status_label = QtWidgets.QLabel("设定条件后点击「运行选股」")
-        toolbar.addWidget(self.status_label)
         root.addLayout(toolbar)
 
+        # ── 内容区域（Splitter） ──────────────────────────
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(1)
 
+        # 左侧：筛选条件面板
         form_panel = QtWidgets.QWidget()
+        form_panel.setObjectName("ScreenerFormPanel")
         form_layout = QtWidgets.QVBoxLayout(form_panel)
-        form_layout.setContentsMargins(0, 0, 8, 0)
-        form_layout.setSpacing(10)
+        form_layout.setContentsMargins(0, 0, 10, 0)
+        form_layout.setSpacing(6)
 
-        form_layout.addWidget(QtWidgets.QLabel("筛选条件"))
-
-        preset_form = QtWidgets.QFormLayout()
-        preset_form.setSpacing(8)
+        # 预设方案
+        form_layout.addWidget(self._section_label("方案选择"))
         self.preset_combo = QtWidgets.QComboBox()
+        self.preset_combo.setObjectName("ToolbarCombo")
         self.preset_combo.currentIndexChanged.connect(self._on_preset_changed)
-        preset_form.addRow("方案", self.preset_combo)
+        form_layout.addWidget(self.preset_combo)
 
         self.top_n_spin = QtWidgets.QSpinBox()
         self.top_n_spin.setRange(1, 200)
         self.top_n_spin.setValue(20)
-        preset_form.addRow("Top N", self.top_n_spin)
-        form_layout.addLayout(preset_form)
+        top_row = QtWidgets.QHBoxLayout()
+        top_row.addWidget(QtWidgets.QLabel("Top N"))
+        top_row.addWidget(self.top_n_spin)
+        top_row.addStretch()
+        form_layout.addLayout(top_row)
 
+        form_layout.addSpacing(8)
+
+        # 自定义条件
         self.custom_box = QtWidgets.QGroupBox("自定义行情条件")
+        self.custom_box.setObjectName("ScreenerFormBox")
         custom_layout = QtWidgets.QFormLayout(self.custom_box)
+        custom_layout.setSpacing(6)
         self.min_change_spin = self._optional_spin("最低涨幅")
         self.max_change_spin = self._optional_spin("最高涨幅")
         self.min_turnover_spin = self._optional_spin("最低换手", maximum=100)
@@ -155,11 +197,24 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         custom_layout.addRow("最低换手", self.min_turnover_spin)
         form_layout.addWidget(self.custom_box)
 
+        # 提示说明
         self.hint_label = QtWidgets.QLabel()
+        self.hint_label.setObjectName("ScreenerHint")
         self.hint_label.setWordWrap(True)
         form_layout.addWidget(self.hint_label)
         form_layout.addStretch()
         splitter.addWidget(form_panel)
+
+        # 右侧：结果区域
+        result_panel = QtWidgets.QWidget()
+        result_layout = QtWidgets.QVBoxLayout(result_panel)
+        result_layout.setContentsMargins(4, 0, 0, 0)
+        result_layout.setSpacing(4)
+
+        # 结果摘要
+        self._summary_label = QtWidgets.QLabel("")
+        self._summary_label.setObjectName("ResultSummary")
+        result_layout.addWidget(self._summary_label)
 
         self.result_table = QtWidgets.QTableWidget(0, 1)
         self.result_table.setObjectName("MarketTable")
@@ -168,10 +223,36 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         self.result_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.result_table.verticalHeader().setVisible(False)
-        splitter.addWidget(self.result_table)
+        self.result_table.setAlternatingRowColors(True)
+        self.result_table.setMouseTracking(True)
+        result_layout.addWidget(self.result_table, stretch=1)
+        splitter.addWidget(result_panel)
+
+        splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([300, 700])
+        splitter.setSizes([260, 740])
         root.addWidget(splitter, stretch=1)
+
+        # ── 底部状态栏 ─────────────────────────────────────
+        self._status_bar = QtWidgets.QStatusBar()
+        self._status_bar.setObjectName("ScreenerStatusBar")
+        self._status_bar.setSizeGripEnabled(False)
+        self._status_label = QtWidgets.QLabel("设定条件后点击「运行选股」")
+        self._status_bar.addWidget(self._status_label, stretch=1)
+        root.addWidget(self._status_bar)
+
+    def _toolbar_separator(self) -> QtWidgets.QFrame:
+        sep = QtWidgets.QFrame()
+        sep.setObjectName("ToolbarSeparator")
+        sep.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+        sep.setFixedWidth(1)
+        sep.setFixedHeight(22)
+        return sep
+
+    def _section_label(self, text: str) -> QtWidgets.QLabel:
+        lbl = QtWidgets.QLabel(text)
+        lbl.setObjectName("ScreenerSectionLabel")
+        return lbl
 
     def _optional_spin(self, _label: str, *, maximum: float = 20) -> QtWidgets.QDoubleSpinBox:
         spin = QtWidgets.QDoubleSpinBox()
@@ -266,6 +347,28 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             min_turnover=self._optional_float(self.min_turnover_spin),
         ), None
 
+    def apply_request(self, data: FillScreenerRequest) -> None:
+        """AI 确认流：预填表单，不自动运行。"""
+        self._reload_preset_combo()
+        index = self.preset_combo.findText(data.preset_label)
+        if index >= 0:
+            self.preset_combo.setCurrentIndex(index)
+
+        req = data.request
+        self.top_n_spin.setValue(int(req.top_n or 20))
+        self.min_change_spin.setValue(
+            req.min_change_pct if req.min_change_pct is not None else -1
+        )
+        self.max_change_spin.setValue(
+            req.max_change_pct if req.max_change_pct is not None else -1
+        )
+        self.min_turnover_spin.setValue(
+            req.min_turnover if req.min_turnover is not None else -1
+        )
+        self._on_preset_changed(self.preset_combo.currentIndex())
+        source = data.source_page or "AI"
+        self._status_label.setText(f"已从 {source} 预填选股条件，请核对后点击「运行选股」")
+
     def _run_screening(self) -> None:
         if self._worker is not None and self._worker.isRunning():
             return
@@ -275,7 +378,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
 
         self.run_btn.setDisabled(True)
-        self.status_label.setText("正在执行选股…")
+        self._status_label.setText("正在执行选股…")
 
         worker = ScreenerRunWorker(
             preset=request.preset,
@@ -315,16 +418,37 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         updated = result.updated_at or "-"
         source_label = "Tushare" if result.source == "tushare" else "Redis 行情"
-        self.status_label.setText(
+        self._summary_label.setText(
+            f"「{result.condition}」命中 {len(self._results)} 条 · "
+            f"扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
+        )
+        self._status_label.setText(
             f"「{result.condition}」命中 {len(self._results)} 条 · "
             f"扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
         )
         self.run_sidebar.refresh()
+        sync_screener_page_context(self.main_engine)
+
+    def _on_copy_run_id(self, run_id: str, condition: str) -> None:
+        short = run_id[:8] + "…" if len(run_id) > 8 else run_id
+        self._status_label.setText(f"已复制 run_id（{condition}）：{short}")
+
+    def _on_ask_ai_for_run(self, run_id: str, condition: str) -> None:
+        if self.event_engine is None:
+            return
+        prompt = build_ask_ai_prompt_for_run(run_id, condition)
+        self.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(prompt=prompt, source_page="选股"),
+            )
+        )
+        self._status_label.setText(f"已打开 AI，预填解读请求：{condition}")
 
     def _load_historical_run(self, run_id: str) -> None:
         record = get_run(run_id)
         if record is None:
-            self.status_label.setText("历史运行不存在或已删除")
+            self._status_label.setText("历史运行不存在或已删除")
             return
         self._results = list(record.rows)
         self._result_columns = resolve_export_columns(self._results)
@@ -335,15 +459,21 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             updated_at=record.created_at,
         )
         source_label = "Tushare" if record.source == "tushare" else "Redis 行情"
-        self.status_label.setText(
+        self._summary_label.setText(
+            f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · "
+            f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
+        )
+        self._status_label.setText(
             f"[历史] 「{record.condition}」{len(self._results)} 条 · "
             f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
         )
+        sync_screener_page_context(self.main_engine)
 
     def _on_screen_failed(self, message: str) -> None:
         self._worker = None
         self.run_btn.setDisabled(False)
-        self.status_label.setText(message)
+        self._summary_label.setText("")
+        self._status_label.setText(message)
 
     def _populate_results(self, rows: list[dict[str, Any]]) -> None:
         headers = ["选择"] + [label for _, label in self._result_columns]
@@ -431,7 +561,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         msg = f"新加入 {added} 只"
         if skipped:
             msg += f" · 跳过 {skipped} 只"
-        self.status_label.setText(msg)
+        self._status_label.setText(msg)
 
     def _get_backtest_service(self):
         engine = self.main_engine.get_engine(APP_NAME)
@@ -448,7 +578,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
 
         self.download_btn.setDisabled(True)
-        self.status_label.setText(f"正在下载 {len(selected)} 只日 K…")
+        self._status_label.setText(f"正在下载 {len(selected)} 只日 K…")
         worker = ScreenerBatchDownloadWorker(selected, parent=self)
         self._download_worker = worker
         worker.finished.connect(self._on_download_finished)
@@ -461,14 +591,14 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._download_worker = None
         self.download_btn.setDisabled(False)
         message = getattr(result, "message", str(result))
-        self.status_label.setText(message)
+        self._status_label.setText(message)
         if not getattr(result, "success", True):
             QtWidgets.QMessageBox.warning(self, "下载日 K", message)
 
     def _on_download_failed(self, message: str) -> None:
         self._download_worker = None
         self.download_btn.setDisabled(False)
-        self.status_label.setText(message)
+        self._status_label.setText(message)
         QtWidgets.QMessageBox.warning(self, "下载日 K", message)
 
     def _open_backtest_for_selection(self) -> None:
@@ -539,7 +669,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
 
         self.batch_backtest_btn.setDisabled(True)
-        self.status_label.setText(f"批量回测中（{len(selected)} 只）…")
+        self._status_label.setText(f"批量回测中（{len(selected)} 只）…")
         self._last_batch_params = params
         worker = ScreenerBatchBacktestWorker(
             self.main_engine,
@@ -563,7 +693,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if self._last_batch_params is not None:
             batch_id = persist_batch_backtest_results(self._last_batch_params, rows)
         if batch_id:
-            self.status_label.setText(f"批量回测完成：{len(rows)} 只 · 已打开回测对比页")
+            self._status_label.setText(f"批量回测完成：{len(rows)} 只 · 已打开回测对比页")
             self.event_engine.put(
                 Event(
                     EVENT_OPEN_BATCH_BACKTEST,
@@ -571,12 +701,12 @@ class ScreenerPageWidget(QtWidgets.QWidget):
                 )
             )
         else:
-            self.status_label.setText(f"批量回测完成：{len(rows)} 只")
+            self._status_label.setText(f"批量回测完成：{len(rows)} 只")
 
     def _on_batch_backtest_failed(self, message: str) -> None:
         self._batch_bt_worker = None
         self.batch_backtest_btn.setDisabled(False)
-        self.status_label.setText(message)
+        self._status_label.setText(message)
         QtWidgets.QMessageBox.warning(self, "批量回测", message)
 
     def _save_scheme(self) -> None:
@@ -597,7 +727,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             index = self.preset_combo.findText(saved_name)
             if index >= 0:
                 self.preset_combo.setCurrentIndex(index)
-            self.status_label.setText(f"已保存方案：{text.strip()}")
+            self._status_label.setText(f"已保存方案：{text.strip()}")
         except Exception as ex:
             QtWidgets.QMessageBox.warning(self, "提示", str(ex))
 
@@ -616,7 +746,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
         delete_scheme(scheme_id)
         self._reload_preset_combo()
-        self.status_label.setText("方案已删除")
+        self._status_label.setText("方案已删除")
 
     def _export_csv(self) -> None:
         if not self._results:
@@ -633,12 +763,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if not path.lower().endswith(".csv"):
             path += ".csv"
         export_rows_to_csv(self._results, path)
-        self.status_label.setText(f"已导出：{path}")
+        self._status_label.setText(f"已导出：{path}")
 
     def activate(self) -> None:
         self._active = True
         self._reload_preset_combo()
         self.run_sidebar.refresh()
+        sync_screener_page_context(self.main_engine)
 
     def deactivate(self) -> None:
         self._active = False

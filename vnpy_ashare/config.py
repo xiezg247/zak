@@ -35,9 +35,9 @@ _CN_NAME_TO_EXCHANGE: dict[str, Exchange] = {
 
 LOT_SIZE: int = 100
 PRICE_TICK: float = 0.01
-COMMISSION_RATE: float = 0.0003
+COMMISSION_RATE: float = 0.0002
 STAMP_TAX_RATE: float = 0.0005
-# 万三双边佣金 + 万五印花税，折为 vnpy 单边 rate；用 round 避免 0.000549999… 浮点噪声
+# 万二双边佣金 + 万五印花税，折为 vnpy 单边 rate；用 round 避免 0.000449999… 浮点噪声
 EFFECTIVE_RATE: float = round(
     (COMMISSION_RATE + COMMISSION_RATE + STAMP_TAX_RATE) / 2,
     6,
@@ -62,7 +62,7 @@ ASHARE_BACKTEST_DEFAULTS: dict = {
     "slippage": PRICE_TICK,
     "size": 1,
     "pricetick": PRICE_TICK,
-    "capital": 1_000_000,
+    "capital": 100_000,
 }
 
 

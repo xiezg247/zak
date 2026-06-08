@@ -65,7 +65,31 @@ class PageConfig:
     table_header_sortable: bool = False
     show_watchlist_move_buttons: bool = False
     show_backtest_button: bool = True
+    show_diagnose_button: bool = False
+    show_diagnose_panel: bool = False
     show_kline: bool = True
+    show_board_filter: bool = False
+    hide_quote_header: bool = False
+    column_configurable: bool = False
+
+
+DEFAULT_WATCHLIST_COLUMNS: list[str] = [
+    "symbol", "name", "last_price", "change_pct", "change_amount",
+    "amplitude", "volume", "amount", "high_price", "low_price", "trade_time",
+]
+
+MARKET_VISIBLE_COLUMNS: list[str] = [
+    "symbol", "name", "last_price", "change_pct", "change_amount",
+    "volume", "amount", "turnover_rate", "amplitude", "trade_time",
+]
+
+ALL_TAIL_COLUMNS: dict[str, str] = {
+    "local": "本地",
+    "start": "起始",
+    "end": "结束",
+    "count": "K线数",
+    "status": "状态",
+}
 
 
 PAGE_CONFIGS: dict[str, PageConfig] = {
@@ -85,6 +109,8 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         quote_source="market",
         quote_refresh_source="watchlist",  # auto-refresh 直连 TickFlow 实时行情
         show_kline=False,
+        show_board_filter=True,
+        hide_quote_header=True,
     ),
     "自选": PageConfig(
         title="自选",
@@ -101,6 +127,9 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_depth_panel=True,
         show_chart_tabs=True,
         use_quote_stream=True,
+        column_configurable=True,
+        show_diagnose_button=True,
+        show_diagnose_panel=False,
     ),
     "本地": PageConfig(
         title="本地",
@@ -114,5 +143,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_local_column=False,
         require_keyword=False,
         auto_refresh_quotes=False,
+        show_diagnose_button=True,
+        show_diagnose_panel=True,
     ),
 }

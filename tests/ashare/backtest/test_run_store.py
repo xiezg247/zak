@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import date
 
 from vnpy_ashare.backtest import run_store
 
@@ -59,4 +60,21 @@ def test_save_and_list_backtest_runs(tmp_path, monkeypatch):
 
     with sqlite3.connect(db_path) as conn:
         count = conn.execute("SELECT COUNT(*) FROM backtest_runs").fetchone()[0]
-    assert count == 1
+    assert count == 2
+
+
+def test_save_statistics_with_date(tmp_path, monkeypatch):
+    db_path = tmp_path / "app.db"
+    monkeypatch.setattr(run_store, "APP_DB_PATH", db_path)
+
+    record = run_store.save_backtest_run(
+        vt_symbol="600000.SSE",
+        strategy="DoubleMaStrategy",
+        interval="d",
+        start="2020-01-01",
+        end="2024-12-31",
+        statistics={"start_trade_date": date(2020, 1, 1)},
+    )
+    loaded = run_store.get_backtest_run(record.id)
+    assert loaded is not None
+    assert loaded.raw_statistics["start_trade_date"] == "2020-01-01"

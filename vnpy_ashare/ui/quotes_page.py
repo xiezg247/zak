@@ -6,7 +6,7 @@ from typing import Literal
 
 from vnpy.event import Event, EventEngine
 
-from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
+from vnpy_ashare.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 from vnpy.trader.database import get_database
@@ -40,6 +40,7 @@ from vnpy_ashare.ui.worker import (
     BarGapCheckWorker,
     BarsLoadWorker,
     DepthRefreshWorker,
+    DiagnoseWorker,
     DownloadWorker,
     LoadedBars,
     MarketPageLoadWorker,
@@ -68,12 +69,17 @@ from vnpy_ashare.ui.quote_columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
     build_quote_row,
+    format_volume,
     quote_column_index,
 )
 from vnpy_ashare.ui.sortable_table import SortableTableItem
 from vnpy_ashare.ui.quotes_chart import AshareChartWidget, create_daily_chart, prepare_chart_bars
-from vnpy_ashare.ai.context import build_quote_context
+from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
+from vnpy_ashare.ai.context import build_diagnose_ai_prompt, build_quote_context
 from vnpy_ashare.ui.quotes_config import (
+    ALL_TAIL_COLUMNS,
+    DEFAULT_WATCHLIST_COLUMNS,
+    MARKET_VISIBLE_COLUMNS,
     MAX_DISPLAY_ROWS,
     PAGE_CONFIGS,
     quote_refresh_hint,
@@ -163,6 +169,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._active = False
         self._market_page = 0
         self._market_total = 0
+        self._market_board: str | None = None
         self._apply_default_table_sort = False
 
         self._load_worker: UniverseLoadWorker | None = None
@@ -174,14 +181,25 @@ class QuotesPage(QtWidgets.QWidget):
         self._gap_generation = 0
         self._quotes_worker: QuotesRefreshWorker | None = None
         self._depth_worker: DepthRefreshWorker | None = None
+        self._diagnose_worker: DiagnoseWorker | None = None
         self._depth_generation = 0
         self._depth_permission_denied = False
         self.depth_panel: DepthPanel | None = None
+        self.diagnose_panel: DiagnosePanel | None = None
         self.chart_panel: ChartPanel | None = None
         self.chart_hint: QtWidgets.QLabel | None = None
         self._stream_bridge: TickflowStreamBridge | None = None
         self._stream_fallback = False
         self._local_scope = "daily"
+        self._splitter: QtWidgets.QSplitter | None = None
+        self._column_menu: QtWidgets.QMenu | None = None
+        self._visible_columns: list[str] = []
+        self._visible_tail_columns: list[str] = []
+        self._stats_label: QtWidgets.QLabel | None = None
+        self._open_label: QtWidgets.QLabel | None = None
+        self._high_label: QtWidgets.QLabel | None = None
+        self._low_label: QtWidgets.QLabel | None = None
+        self._volume_label: QtWidgets.QLabel | None = None
 
         self._search_timer = QtCore.QTimer(self)
         self._search_timer.setSingleShot(True)
@@ -194,18 +212,67 @@ class QuotesPage(QtWidgets.QWidget):
 
         self._init_ui()
 
+    def _init_columns(self) -> None:
+        """根据页面类型初始化默认可见列。"""
+        if self.config.column_configurable:
+            from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
+            all_keys = [c.key for c in QUOTE_TABLE_COLUMNS]
+            if self.page_name == "自选":
+                default_main = [k for k in DEFAULT_WATCHLIST_COLUMNS if k in all_keys]
+            else:
+                default_main = [k for k in MARKET_VISIBLE_COLUMNS if k in all_keys]
+            # 确保 index 和 symbol 始终可见
+            for required in ("index", "symbol", "name"):
+                if required in all_keys and required not in default_main:
+                    default_main.insert(0, required)
+            self._visible_columns = default_main
+            # tail 列：支持切换
+            all_tail_keys = list(ALL_TAIL_COLUMNS.keys())
+            self._visible_tail_columns = self._default_tail_columns()
+        else:
+            from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
+            self._visible_columns = [c.key for c in QUOTE_TABLE_COLUMNS]
+            self._visible_tail_columns = self._default_tail_columns()
+        self._restore_column_config()
+
+    def _default_tail_columns(self) -> list[str]:
+        if self.config.use_local_table:
+            return []
+        if self.config.show_fill_button and not self.config.use_local_table:
+            return ["start", "end", "count", "status"]
+        if self.config.show_local_column:
+            return ["local"]
+        return ["local"]
+
+    def _build_visible_headers(self) -> list[str]:
+        from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
+        col_map = {c.key: c.header for c in QUOTE_TABLE_COLUMNS}
+        headers = [col_map[k] for k in self._visible_columns]
+        for k in self._visible_tail_columns:
+            headers.append(ALL_TAIL_COLUMNS.get(k, k))
+        return headers
+
+    def _all_quote_column_keys(self) -> list[str]:
+        from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
+        return [c.key for c in QUOTE_TABLE_COLUMNS]
+
     def _init_ui(self) -> None:
+        self._init_columns()
         if self.config.use_local_table:
             headers = LOCAL_TABLE_HEADERS
-        elif self.config.show_local_column:
-            headers = TABLE_HEADERS_WITH_LOCAL
         else:
-            headers = TABLE_HEADERS_LOCAL
+            headers = self._build_visible_headers()
 
         self.search_edit = QtWidgets.QLineEdit()
         self.search_edit.setObjectName("SearchBox")
         self.search_edit.setPlaceholderText(self.config.search_placeholder)
         self.search_edit.textChanged.connect(lambda _: self._search_timer.start())
+
+        self.board_combo = QtWidgets.QComboBox()
+        self.board_combo.setObjectName("BoardCombo")
+        self.board_combo.addItems(["全部", "沪深主板", "创业板", "科创板", "北交所"])
+        self.board_combo.setVisible(self.config.show_board_filter)
+        self.board_combo.currentIndexChanged.connect(self._on_board_changed)
 
         self.sync_button = QtWidgets.QPushButton("同步 A 股列表")
         self.sync_button.clicked.connect(self.sync_universe_clicked)
@@ -258,16 +325,45 @@ class QuotesPage(QtWidgets.QWidget):
         self.backtest_button.setEnabled(False)
         self.backtest_button.setVisible(self.config.show_backtest_button)
 
+        self.diagnose_button = QtWidgets.QPushButton("诊断")
+        self.diagnose_button.clicked.connect(self.run_diagnose_for_selected)
+        self.diagnose_button.setEnabled(False)
+        self.diagnose_button.setVisible(self.config.show_diagnose_button)
+
         self.refresh_quotes_button = QtWidgets.QPushButton("刷新行情")
         self.refresh_quotes_button.clicked.connect(self._refresh_market_clicked)
         self.refresh_quotes_button.setVisible(self.config.use_market_rank)
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.addWidget(self.search_edit, stretch=1)
+        if self.config.show_board_filter:
+            toolbar.addWidget(self.board_combo)
+
+        # ── 分隔线 ──
+        group2_visible = self.config.use_market_rank or self.config.show_sync_button
+        if group2_visible:
+            sep1 = QtWidgets.QFrame()
+            sep1.setObjectName("ToolbarSeparator")
+            sep1.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+            toolbar.addWidget(sep1)
+
         if self.config.use_market_rank:
             toolbar.addWidget(self.refresh_quotes_button)
         if self.config.show_sync_button:
             toolbar.addWidget(self.sync_button)
+
+        # ── 分隔线 ──
+        group3_visible = (
+            self.config.show_add_watchlist_button
+            or self.config.show_download_button
+            or self.config.show_backtest_button
+        )
+        if group2_visible and group3_visible:
+            sep2 = QtWidgets.QFrame()
+            sep2.setObjectName("ToolbarSeparator")
+            sep2.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+            toolbar.addWidget(sep2)
+
         if self.config.use_local_table:
             toolbar.addWidget(self.local_period_combo)
         if self.config.show_add_watchlist_button:
@@ -285,20 +381,45 @@ class QuotesPage(QtWidgets.QWidget):
             toolbar.addWidget(self.redownload_button)
         if self.config.show_backtest_button:
             toolbar.addWidget(self.backtest_button)
+        if self.config.show_diagnose_button:
+            toolbar.addWidget(self.diagnose_button)
+        if self.config.column_configurable:
+            self.column_button = QtWidgets.QPushButton("列 ▾")
+            self.column_button.setObjectName("ColumnButton")
+            self.column_button.clicked.connect(self._show_column_menu)
+            toolbar.addWidget(self.column_button)
 
-        self.prev_page_button = QtWidgets.QPushButton("上一页")
+        self.prev_page_button = QtWidgets.QPushButton("◀ 上一页")
         self.prev_page_button.clicked.connect(self._go_prev_page)
-        self.next_page_button = QtWidgets.QPushButton("下一页")
+        self.next_page_button = QtWidgets.QPushButton("下一页 ▶")
         self.next_page_button.clicked.connect(self._go_next_page)
         self.page_label = QtWidgets.QLabel("")
+        self.page_total_label = QtWidgets.QLabel("")
+
+        self.home_button = QtWidgets.QPushButton("⏮ 首页")
+        self.home_button.clicked.connect(self._go_home_page)
+        self.end_button = QtWidgets.QPushButton("尾页 ⏭")
+        self.end_button.clicked.connect(self._go_end_page)
+        self.page_jump_input = QtWidgets.QLineEdit()
+        self.page_jump_input.setObjectName("PageJumpInput")
+        self.page_jump_input.setPlaceholderText("跳页")
+        self.page_jump_input.setFixedWidth(52)
+        self.page_jump_input.returnPressed.connect(self._page_jump)
 
         self.pagination_bar = QtWidgets.QHBoxLayout()
-        self.pagination_bar.addStretch()
+        self.pagination_bar.addWidget(self.home_button)
         self.pagination_bar.addWidget(self.prev_page_button)
         self.pagination_bar.addWidget(self.page_label)
+        self.pagination_bar.addWidget(self.page_jump_input)
+        self.pagination_bar.addWidget(self.page_total_label)
         self.pagination_bar.addWidget(self.next_page_button)
-        self.pagination_bar.addStretch()
+        self.pagination_bar.addWidget(self.end_button)
         self._set_pagination_visible(self.config.use_market_rank)
+
+        self.stats_label = QtWidgets.QLabel("")
+        self.stats_label.setObjectName("StatsLabel")
+        self.stats_label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; padding: 2px 6px;")
+        self.stats_label.setVisible(self.config.column_configurable)
 
         self.market_table = QtWidgets.QTableWidget()
         self.market_table.setObjectName("MarketTable")
@@ -317,14 +438,19 @@ class QuotesPage(QtWidgets.QWidget):
         self.market_table.setAlternatingRowColors(True)
         self.market_table.setSortingEnabled(False)
         self.market_table.itemSelectionChanged.connect(self._on_table_selection)
+        self.market_table.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.market_table.customContextMenuRequested.connect(self._on_context_menu)
         if self.config.table_header_sortable:
             self.market_table.horizontalHeader().setSortIndicatorShown(True)
             self.market_table.horizontalHeader().setSectionsClickable(True)
 
         header = self.market_table.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        header.setStretchLastSection(False)
         if self.config.use_local_table:
+            header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+            header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
             header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
             header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.Stretch)
             header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -332,9 +458,11 @@ class QuotesPage(QtWidgets.QWidget):
             header.setSectionResizeMode(6, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
             header.setSectionResizeMode(7, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         else:
-            header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        header.setStretchLastSection(False)
+            for col in range(len(headers)):
+                header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+            if "name" in self._visible_columns:
+                name_idx = self._visible_columns.index("name")
+                header.setSectionResizeMode(name_idx, QtWidgets.QHeaderView.ResizeMode.Stretch)
 
         self.quote_name_label = QtWidgets.QLabel("—")
         self.quote_name_label.setObjectName("QuoteHeader")
@@ -342,7 +470,12 @@ class QuotesPage(QtWidgets.QWidget):
         self.quote_price_label = QtWidgets.QLabel("—")
         self.quote_price_label.setObjectName("QuoteHeader")
         self.quote_change_label = QtWidgets.QLabel("")
-        if self.config.use_local_table:
+        if self.config.hide_quote_header:
+            self.quote_name_label.hide()
+            self.quote_code_label.hide()
+            self.quote_price_label.hide()
+            self.quote_change_label.hide()
+        elif self.config.use_local_table:
             self.quote_price_label.hide()
             self.quote_change_label.hide()
 
@@ -352,6 +485,20 @@ class QuotesPage(QtWidgets.QWidget):
         quote_info.addStretch()
         quote_info.addWidget(self.quote_price_label)
         quote_info.addWidget(self.quote_change_label)
+
+        self.quote_sub_info = QtWidgets.QHBoxLayout()
+        self._open_label = QtWidgets.QLabel("")
+        self._high_label = QtWidgets.QLabel("")
+        self._low_label = QtWidgets.QLabel("")
+        self._volume_label = QtWidgets.QLabel("")
+        for lbl in (self._open_label, self._high_label, self._low_label, self._volume_label):
+            lbl.setObjectName("QuoteSubInfo")
+            lbl.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px;")
+        self.quote_sub_info.addStretch()
+        self.quote_sub_info.addWidget(self._open_label)
+        self.quote_sub_info.addWidget(self._high_label)
+        self.quote_sub_info.addWidget(self._low_label)
+        self.quote_sub_info.addWidget(self._volume_label)
 
         if self.config.show_chart_tabs:
             self.chart_panel = ChartPanel()
@@ -389,13 +536,22 @@ class QuotesPage(QtWidgets.QWidget):
 
             right_panel = QtWidgets.QVBoxLayout()
             right_panel.addLayout(quote_info)
+            if self.config.column_configurable:
+                right_panel.addLayout(self.quote_sub_info)
+            if self.config.show_diagnose_panel:
+                self.diagnose_panel = DiagnosePanel()
+                self.diagnose_panel.refresh_requested.connect(self.run_diagnose_for_selected)
+                right_panel.addWidget(self.diagnose_panel)
             right_panel.addLayout(chart_row, stretch=1)
 
             splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            self._splitter = splitter
             center_widget = QtWidgets.QWidget()
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
             center_layout.addLayout(toolbar)
+            if self.stats_label is not None:
+                center_layout.addWidget(self.stats_label)
             center_layout.addWidget(self.market_table)
             center_layout.addLayout(self.pagination_bar)
             splitter.addWidget(center_widget)
@@ -407,15 +563,15 @@ class QuotesPage(QtWidgets.QWidget):
             splitter.setStretchFactor(0, 3)
             splitter.setStretchFactor(1, 2)
         else:
-            # 市场页：单栏全宽布局，报价信息放在表格上方
+            # 市场页：单栏全宽布局
             splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
             center_widget = QtWidgets.QWidget()
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
             center_layout.addLayout(toolbar)
-            center_layout.addLayout(quote_info)
+            if self.stats_label is not None:
+                center_layout.addWidget(self.stats_label)
             center_layout.addWidget(self.market_table)
-            center_layout.addLayout(self.pagination_bar)
             splitter.addWidget(center_widget)
 
         self.status_label = QtWidgets.QLabel("就绪")
@@ -428,15 +584,24 @@ class QuotesPage(QtWidgets.QWidget):
         )
         self.refresh_hint_label.setStyleSheet(f"color: {NAV_MUTED_COLOR};")
 
-        status_bar = QtWidgets.QHBoxLayout()
-        status_bar.setContentsMargins(4, 2, 8, 4)
-        status_bar.addWidget(self.status_label, stretch=1)
-        status_bar.addWidget(self.refresh_hint_label)
+        bottom_bar = QtWidgets.QHBoxLayout()
+        bottom_bar.setContentsMargins(8, 2, 8, 4)
+        bottom_bar.addWidget(self.status_label, stretch=1)
+        bottom_bar.addStretch()
+        bottom_bar.addWidget(self.home_button)
+        bottom_bar.addWidget(self.prev_page_button)
+        bottom_bar.addWidget(self.page_label)
+        bottom_bar.addWidget(self.page_jump_input)
+        bottom_bar.addWidget(self.page_total_label)
+        bottom_bar.addWidget(self.next_page_button)
+        bottom_bar.addWidget(self.end_button)
+        bottom_bar.addStretch()
+        bottom_bar.addWidget(self.refresh_hint_label)
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.addWidget(splitter, stretch=1)
-        root.addLayout(status_bar)
+        root.addLayout(bottom_bar)
 
     def activate(self) -> None:
         self._active = True
@@ -459,9 +624,63 @@ class QuotesPage(QtWidgets.QWidget):
             quote = self.quote_map.get(self.current_item.tickflow_symbol)
             self.chart_panel.load_item(self.current_item, quote=quote)
         self.load_stock_list()
+        self._restore_splitter()
 
     def deactivate(self) -> None:
+        self._save_splitter()
+        self._save_column_config()
         self._active = False
+
+    def _splitter_settings_key(self) -> str:
+        return f"quotes/splitter/{self.page_name}"
+
+    def _column_settings_key(self) -> str:
+        return f"quotes/columns/{self.page_name}"
+
+    def _save_splitter(self) -> None:
+        if self._splitter is None:
+            return
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings.setValue(self._splitter_settings_key(), self._splitter.saveState())
+
+    def _restore_splitter(self) -> None:
+        if self._splitter is None:
+            return
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        state = settings.value(self._splitter_settings_key())
+        if state is not None:
+            self._splitter.restoreState(state)
+
+    def _save_column_config(self) -> None:
+        if not self.config.column_configurable:
+            return
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings.setValue(
+            self._column_settings_key(),
+            ",".join(self._visible_columns) + "|" + ",".join(self._visible_tail_columns),
+        )
+
+    def _restore_column_config(self) -> None:
+        if not self.config.column_configurable:
+            return
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        value = settings.value(self._column_settings_key())
+        if not isinstance(value, str):
+            return
+        parts = value.split("|", 1)
+        if parts[0]:
+            saved_cols = [k for k in parts[0].split(",") if k]
+            from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
+            all_keys = {c.key for c in QUOTE_TABLE_COLUMNS}
+            valid_cols = [k for k in saved_cols if k in all_keys and k != "index"]
+            # 确保 index 和 symbol 始终可见
+            for required in ("symbol", "name"):
+                if required in all_keys and required not in valid_cols:
+                    valid_cols.insert(0, required)
+            valid_cols.insert(0, "index")
+            self._visible_columns = valid_cols
+        if len(parts) > 1 and parts[1]:
+            self._visible_tail_columns = [k for k in parts[1].split(",") if k in ALL_TAIL_COLUMNS]
         self._bars_generation += 1
         self._depth_generation += 1
         self._gap_generation += 1
@@ -516,9 +735,13 @@ class QuotesPage(QtWidgets.QWidget):
                 self._update_coverage_hint(self.current_item)
 
     def _set_pagination_visible(self, visible: bool) -> None:
+        self.home_button.setVisible(visible)
         self.prev_page_button.setVisible(visible)
         self.next_page_button.setVisible(visible)
+        self.end_button.setVisible(visible)
         self.page_label.setVisible(visible)
+        self.page_total_label.setVisible(visible)
+        self.page_jump_input.setVisible(visible)
 
     def _market_page_count(self) -> int:
         page_size = self.config.market_page_size
@@ -531,9 +754,13 @@ class QuotesPage(QtWidgets.QWidget):
             return
         page_count = self._market_page_count()
         current = min(self._market_page + 1, page_count)
-        self.page_label.setText(f"第 {current} / {page_count} 页")
+        if not self.page_jump_input.hasFocus():
+            self.page_jump_input.setText(str(current))
+        self.page_total_label.setText(f"/ {page_count} 页")
+        self.home_button.setEnabled(self._market_page > 0)
         self.prev_page_button.setEnabled(self._market_page > 0)
         self.next_page_button.setEnabled(self._market_page + 1 < page_count)
+        self.end_button.setEnabled(self._market_page + 1 < page_count)
 
     def _go_prev_page(self) -> None:
         if self._market_page <= 0:
@@ -545,6 +772,35 @@ class QuotesPage(QtWidgets.QWidget):
         if self._market_page + 1 >= self._market_page_count():
             return
         self._market_page += 1
+        self.load_market_page()
+
+    def _go_home_page(self) -> None:
+        if self._market_page <= 0:
+            return
+        self._market_page = 0
+        self.load_market_page()
+
+    def _go_end_page(self) -> None:
+        page_count = self._market_page_count()
+        if self._market_page + 1 >= page_count:
+            return
+        self._market_page = max(page_count - 1, 0)
+        self.load_market_page()
+
+    def _page_jump(self) -> None:
+        try:
+            target = int(self.page_jump_input.text())
+            page_count = self._market_page_count()
+            if 1 <= target <= page_count:
+                self._market_page = target - 1
+                self.load_market_page()
+        except ValueError:
+            self.page_jump_input.setText(str(self._market_page + 1))
+
+    def _on_board_changed(self, _index: int) -> None:
+        board = self.board_combo.currentText()
+        self._market_board = board if board != "全部" else None
+        self._market_page = 0
         self.load_market_page()
 
     def _format_market_status(self, result: MarketPageResult) -> str:
@@ -596,6 +852,7 @@ class QuotesPage(QtWidgets.QWidget):
             keyword=keyword,
             page=self._market_page,
             page_size=self.config.market_page_size,
+            board=self._market_board,
         )
         self._market_worker = worker
 
@@ -802,6 +1059,39 @@ class QuotesPage(QtWidgets.QWidget):
         if self.market_table.currentRow() >= 0:
             self._on_table_selection()
         self._sync_stream_subscriptions()
+        self._update_stats()
+
+    def _update_stats(self) -> None:
+        if self.stats_label is None:
+            return
+        total = len(self.display_stocks)
+        up_count = 0
+        down_count = 0
+        flat_count = 0
+        up_total_pct = 0.0
+        for item in self.display_stocks:
+            quote = self.quote_map.get(item.tickflow_symbol)
+            if quote is None or not quote.last_price:
+                flat_count += 1
+                continue
+            if quote.is_rise:
+                up_count += 1
+                up_total_pct += quote.change_pct
+            elif quote.is_fall:
+                down_count += 1
+            else:
+                flat_count += 1
+        avg_pct = (up_total_pct / up_count) if up_count > 0 else 0.0
+        parts = [f"自选池 {total} 只"]
+        if up_count:
+            parts.append(f'<span style="color:{RISE_COLOR}">涨 {up_count}</span>')
+        if down_count:
+            parts.append(f'<span style="color:{FALL_COLOR}">跌 {down_count}</span>')
+        if flat_count:
+            parts.append(f"平 {flat_count}")
+        if up_count:
+            parts.append(f" | 均涨幅 {avg_pct:+.2f}%")
+        self.stats_label.setText("  |  ".join(parts))
 
     def _refresh_table_quotes(self) -> None:
         """仅更新行情列，避免重建表格导致选中行跳动。"""
@@ -951,6 +1241,39 @@ class QuotesPage(QtWidgets.QWidget):
             tail_value,
             tail_values=tail_values,
         )
+        # 根据 _visible_columns 过滤出需要显示的列
+        all_keys = self._all_quote_column_keys()
+        visible_indices: list[int] = []
+        tail_cols = tail_values if tail_values is not None else [tail_value]
+        tail_start = len(all_keys)
+        for col_key in self._visible_columns:
+            if col_key in all_keys:
+                visible_indices.append(all_keys.index(col_key))
+        for _ in self._visible_tail_columns:
+            visible_indices.append(tail_start)
+            tail_start += 1
+
+        filtered_values: list[str] = []
+        filtered_price_cols: set[int] = set()
+        filtered_sort_keys: list[float | str] = []
+        for new_col, src_idx in enumerate(visible_indices):
+            if src_idx < len(values):
+                filtered_values.append(values[src_idx])
+            else:
+                filtered_values.append("—")
+            if src_idx in price_cols:
+                filtered_price_cols.add(new_col)
+            # 排序键
+            if src_idx < len(all_keys):
+                col_key = all_keys[src_idx]
+                filtered_sort_keys.append(
+                    self._quote_sort_key(col_key, item, quote, index_text)
+                )
+            else:
+                filtered_sort_keys.append(
+                    values[src_idx] if src_idx < len(values) else ""
+                )
+
         color = FLAT_COLOR
         if quote:
             color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
@@ -958,25 +1281,16 @@ class QuotesPage(QtWidgets.QWidget):
         status_col: int | None = None
         status: BarHealthStatus | None = None
         if tail_values is not None:
-            status_col = len(values) - 1
+            status_col = len(filtered_values) - 1
             status = self.bar_list_status.get(key, list_status(self.bar_meta.get(key)))
 
-        for col, text in enumerate(values):
-            column_key = (
-                QUOTE_TABLE_COLUMNS[col].key
-                if col < len(QUOTE_TABLE_COLUMNS)
-                else f"tail_{col - len(QUOTE_TABLE_COLUMNS)}"
-            )
-            sort_key = (
-                self._quote_sort_key(column_key, item, quote, index_text)
-                if col < len(QUOTE_TABLE_COLUMNS)
-                else text
-            )
+        for col, text in enumerate(filtered_values):
             cell_color = None
-            if quote and col in price_cols:
+            if quote and col in filtered_price_cols:
                 cell_color = color
             if status_col is not None and col == status_col and status is not None:
                 cell_color = self._status_color(status)
+            sort_key = filtered_sort_keys[col] if col < len(filtered_sort_keys) else text
             cell = self._make_table_cell(
                 text,
                 item=item if col == 0 else None,
@@ -1010,11 +1324,71 @@ class QuotesPage(QtWidgets.QWidget):
         self._sync_stream_depth_subscription()
         self._emit_ai_context()
 
+    def _show_column_menu(self) -> None:
+        menu = QtWidgets.QMenu(self)
+        from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
+        col_map = {c.key: c.header for c in QUOTE_TABLE_COLUMNS}
+
+        # 主线行情列
+        for key in [c.key for c in QUOTE_TABLE_COLUMNS]:
+            if key == "index":
+                continue  # 序号始终显示，不可切换
+            action = menu.addAction(col_map.get(key, key))
+            action.setCheckable(True)
+            action.setChecked(key in self._visible_columns)
+            action.setData(key)
+            action.triggered.connect(lambda checked, k=key: self._on_column_toggle(k, checked))
+
+        menu.addSeparator()
+
+        # 附加列（本地/起始/结束/K线数/状态）
+        for key, header in ALL_TAIL_COLUMNS.items():
+            action = menu.addAction(header)
+            action.setCheckable(True)
+            action.setChecked(key in self._visible_tail_columns)
+            action.setData(key)
+            action.triggered.connect(lambda checked, k=key: self._on_tail_column_toggle(k, checked))
+
+        button = self.column_button
+        menu.popup(button.mapToGlobal(button.rect().bottomLeft()))
+
+    def _on_column_toggle(self, key: str, checked: bool) -> None:
+        if checked and key not in self._visible_columns:
+            self._visible_columns.append(key)
+        elif not checked and key in self._visible_columns:
+            self._visible_columns.remove(key)
+        self._rebuild_table()
+
+    def _on_tail_column_toggle(self, key: str, checked: bool) -> None:
+        if checked and key not in self._visible_tail_columns:
+            self._visible_tail_columns.append(key)
+        elif not checked and key in self._visible_tail_columns:
+            self._visible_tail_columns.remove(key)
+        self._rebuild_table()
+
+    def _rebuild_table(self) -> None:
+        """列配置变化后重建表头并重新渲染。"""
+        headers = self._build_visible_headers()
+        self.market_table.setColumnCount(len(headers))
+        self.market_table.setHorizontalHeaderLabels(headers)
+        # 保持 stretch 策略
+        header = self.market_table.horizontalHeader()
+        header.setStretchLastSection(False)
+        for col in range(len(headers)):
+            header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        if self._visible_columns:
+            # 名称列 stretch
+            if "name" in self._visible_columns:
+                name_idx = self._visible_columns.index("name")
+                header.setSectionResizeMode(name_idx, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self._render_table()
+
     def _sync_market_quotes_to_cache(self, result: object) -> None:
         """将市场页行情写入 session_context，供 AI 选股工具使用。"""
         if not hasattr(result, "items") or not hasattr(result, "quotes"):
             return
         from vnpy_ashare.ai.session_context import set_market_quotes_cache
+
         set_market_quotes_cache(result.items, dict(result.quotes))
 
     def _emit_ai_context(self) -> None:
@@ -1237,6 +1611,84 @@ class QuotesPage(QtWidgets.QWidget):
             )
         if self.config.show_backtest_button:
             self.backtest_button.setEnabled(item is not None)
+        if self.config.show_diagnose_button:
+            self.diagnose_button.setEnabled(item is not None)
+
+    def _get_main_engine(self):
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "main_engine"):
+            return parent.main_engine
+        return None
+
+    def _get_analysis_service(self):
+        from vnpy_ashare.engine import APP_NAME, AshareEngine
+
+        main_engine = self._get_main_engine()
+        if main_engine is None:
+            return None
+        engine = main_engine.get_engine(APP_NAME)
+        if isinstance(engine, AshareEngine):
+            return engine.analysis_service
+        return None
+
+    def run_diagnose_for_selected(self) -> None:
+        if not self.current_item:
+            return
+        if not self.config.show_diagnose_panel:
+            self._ask_ai_for_diagnose()
+            return
+        if self._thread_active(self._diagnose_worker):
+            return
+        service = self._get_analysis_service()
+        if service is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "分析服务未就绪")
+            return
+
+        vt_symbol = self.current_item.vt_symbol
+        if self.diagnose_panel is not None:
+            self.diagnose_panel.show_loading(vt_symbol)
+
+        worker = DiagnoseWorker(service, vt_symbol=vt_symbol, parent=self)
+        self._diagnose_worker = worker
+        worker.finished.connect(self._on_diagnose_finished)
+        worker.failed.connect(self._on_diagnose_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.start()
+
+    def _ask_ai_for_diagnose(self) -> None:
+        item = self.current_item
+        if item is None or self.event_engine is None:
+            return
+        quote = self.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        self._emit_ai_context()
+        prompt = build_diagnose_ai_prompt(item.vt_symbol, name)
+        self.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(
+                    prompt=prompt,
+                    source_page=self.page_name,
+                    use_full_page=True,
+                ),
+            )
+        )
+
+    def _on_diagnose_finished(self, payload: dict) -> None:
+        self._diagnose_worker = None
+        if self.diagnose_panel is not None:
+            self.diagnose_panel.show_result(payload)
+        from vnpy_ashare.ai.session_context import set_diagnose_result
+
+        set_diagnose_result(payload)
+        self._emit_ai_context()
+
+    def _on_diagnose_failed(self, message: str) -> None:
+        self._diagnose_worker = None
+        if self.diagnose_panel is not None:
+            self.diagnose_panel.show_result({"error": message})
+        self.status_label.setText(message)
 
     def open_backtest_for_selected(self) -> None:
         if not self.current_item or self.event_engine is None:
@@ -1306,6 +1758,66 @@ class QuotesPage(QtWidgets.QWidget):
             f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已{label}"
         )
 
+    def _on_context_menu(self, pos: QtCore.QPoint) -> None:
+        """表格行右键菜单。"""
+        row = self.market_table.rowAt(pos.y())
+        if row < 0:
+            return
+        item = self._stock_at_row(row)
+        if item is None:
+            return
+
+        menu = QtWidgets.QMenu(self)
+
+        if self.config.show_add_watchlist_button:
+            key = (item.symbol, item.exchange)
+            in_watchlist = key in self._watchlist_keys
+            if in_watchlist:
+                action = menu.addAction("移出自选")
+                action.triggered.connect(self.remove_from_watchlist)
+            else:
+                action = menu.addAction("加入自选")
+                action.triggered.connect(self.add_to_watchlist)
+
+        if self.config.show_download_button:
+            action = menu.addAction("下载日K到本地")
+            action.triggered.connect(self.download_selected)
+
+        if self.config.show_backtest_button:
+            action = menu.addAction("策略回测")
+            action.triggered.connect(self.open_backtest_for_selected)
+
+        if self.config.show_watchlist_move_buttons and self.current_item is not None:
+            key = (self.current_item.symbol, self.current_item.exchange)
+            if key in self._watchlist_keys:
+                menu.addSeparator()
+                index = self._watchlist_index(item)
+                total = len(self.all_stocks)
+                if index is not None and index > 0:
+                    action = menu.addAction("上移")
+                    action.triggered.connect(lambda: self._move_watchlist_selected("up"))
+                if index is not None and index + 1 < total:
+                    action = menu.addAction("下移")
+                    action.triggered.connect(lambda: self._move_watchlist_selected("down"))
+
+        menu.popup(self.market_table.viewport().mapToGlobal(pos))
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """上下方向键切换选中股票。"""
+        if event.key() in (QtCore.Qt.Key.Key_Up, QtCore.Qt.Key.Key_Down):
+            table = self.market_table
+            if table.rowCount() == 0:
+                return
+            current = table.currentRow()
+            if event.key() == QtCore.Qt.Key.Key_Up:
+                next_row = current - 1 if current > 0 else 0
+            else:
+                next_row = current + 1 if current < table.rowCount() - 1 else table.rowCount() - 1
+            if next_row != current and next_row >= 0:
+                table.selectRow(next_row)
+            return
+        super().keyPressEvent(event)
+
     def _update_quote_header(self, item: StockItem) -> None:
         quote = self.quote_map.get(item.tickflow_symbol)
         self.quote_name_label.setText(quote.name if quote and quote.name else item.name)
@@ -1325,6 +1837,24 @@ class QuotesPage(QtWidgets.QWidget):
             f"  {quote.change_amount:+.2f}  ({quote.change_pct:+.2f}%)"
         )
         self.quote_change_label.setStyleSheet(f"color: {color}; font-size: 14px;")
+
+        # 增强报价：今开 / 最高 / 最低 / 成交量
+        if self._open_label is not None:
+            open_text = f"今开 {quote.open_price:.2f}" if quote.open_price else "今开 —"
+            self._open_label.setText(open_text)
+            self._high_label.setText(
+                f"最高 {quote.high_price:.2f}" if quote.high_price else "最高 —"
+            )
+            high_color = RISE_COLOR if quote.high_price == quote.last_price else \
+                RISE_COLOR if quote.is_rise else FLAT_COLOR
+            self._high_label.setStyleSheet(f"color: {RISE_COLOR}; font-size: 12px;")
+            self._low_label.setText(
+                f"最低 {quote.low_price:.2f}" if quote.low_price else "最低 —"
+            )
+            self._low_label.setStyleSheet(f"color: {FALL_COLOR}; font-size: 12px;")
+            vol_text = format_volume(quote.volume) if quote.volume else "—"
+            self._volume_label.setText(f"量 {vol_text}")
+            self._volume_label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px;")
 
     def refresh_quotes(self) -> None:
         if not self._active or not self.config.quote_source:
@@ -1751,15 +2281,22 @@ class QuotesPage(QtWidgets.QWidget):
         self.search_edit.setEnabled(not busy)
         if self.config.use_local_table:
             self.local_period_combo.setEnabled(not busy)
+        if self.config.show_board_filter:
+            self.board_combo.setEnabled(not busy)
         if self.config.use_market_rank:
             self.refresh_quotes_button.setEnabled(not busy)
         if self.config.show_sync_button:
             self.sync_button.setEnabled(not busy)
         if self.config.use_market_rank:
+            self.home_button.setEnabled(not busy and self._market_page > 0)
             self.prev_page_button.setEnabled(not busy and self._market_page > 0)
             self.next_page_button.setEnabled(
                 not busy and self._market_page + 1 < self._market_page_count()
             )
+            self.end_button.setEnabled(
+                not busy and self._market_page + 1 < self._market_page_count()
+            )
+            self.page_jump_input.setEnabled(not busy)
         if busy:
             if self.config.show_download_button:
                 self.download_button.setEnabled(False)

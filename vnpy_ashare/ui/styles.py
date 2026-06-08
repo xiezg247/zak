@@ -188,7 +188,175 @@ QComboBox#ToolbarCombo QAbstractItemView::item:selected {
 }
 """
 
-TERMINAL_STYLESHEET = TERMINAL_STYLESHEET + TOOLBAR_COMBO_STYLESHEET
+SCREENER_STYLESHEET = """
+/* ── 工具栏分隔线 ── */
+QFrame#ToolbarSeparator {
+    color: #3a3a3a;
+    background-color: #3a3a3a;
+}
+
+/* ── 选股页表单面板 ── */
+QGroupBox#ScreenerFormBox {
+    background-color: #1e1e22;
+    border: 1px solid #2d2d32;
+    border-radius: 6px;
+    margin-top: 16px;
+    padding: 14px 14px 10px 14px;
+    font-size: 12px;
+    color: #a0a0a0;
+}
+QGroupBox#ScreenerFormBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 6px;
+    left: 12px;
+    color: #8a8aaf;
+}
+
+QLabel#ScreenerSectionLabel {
+    color: #7a7a8f;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 0 2px 0;
+}
+
+QLabel#ScreenerHint {
+    color: #6a6a7a;
+    font-size: 11px;
+    padding: 6px 4px;
+}
+
+/* ── 结果摘要 ── */
+QLabel#ResultSummary {
+    color: #8888aa;
+    font-size: 12px;
+    padding: 6px 2px;
+}
+
+/* ── 底部状态栏 ── */
+QStatusBar#ScreenerStatusBar {
+    background-color: #1a1a20;
+    border-top: 1px solid #2a2a2a;
+    color: #888;
+    font-size: 12px;
+    min-height: 28px;
+}
+
+/* ── 结果表格增强 ── */
+QTableWidget#MarketTable::item {
+    padding: 5px 4px;
+}
+QTableWidget#MarketTable::item:selected {
+    background-color: #2a4a7a;
+}
+QTableWidget#MarketTable::item:hover {
+    background-color: #242428;
+}
+QTableWidget#MarketTable::item:alternate {
+    background-color: #1e1e22;
+}
+
+/* ── 主操作按钮 ── */
+QPushButton#PrimaryRunButton {
+    background-color: #2a5a9e;
+    border: 1px solid #4a9eff;
+    border-radius: 4px;
+    padding: 6px 18px;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 13px;
+}
+QPushButton#PrimaryRunButton:hover {
+    background-color: #3a6fbf;
+    border-color: #6ab4ff;
+}
+QPushButton#PrimaryRunButton:pressed {
+    background-color: #1e4a80;
+}
+QPushButton#PrimaryRunButton:disabled {
+    background-color: #1a3a60;
+    border-color: #3a5a80;
+    color: #6688aa;
+}
+
+/* ── 底栏分页跳转输入框 ── */
+QLineEdit#PageJumpInput {
+    background-color: #252525;
+    border: 1px solid #3a3a3a;
+    border-radius: 3px;
+    padding: 2px 6px;
+    color: #e0e0e0;
+    font-size: 12px;
+    max-width: 48px;
+}
+QLineEdit#PageJumpInput:focus {
+    border-color: #4a9eff;
+}
+
+/* ── 板块筛选下拉 ── */
+QComboBox#BoardCombo {
+    background-color: #252525;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    color: #f0f0f0;
+    padding: 4px 10px;
+    padding-right: 26px;
+    font-size: 13px;
+    min-width: 90px;
+}
+QComboBox#BoardCombo:hover {
+    border-color: #5a8fd4;
+    background-color: #2c2c2c;
+}
+QComboBox#BoardCombo:focus {
+    border-color: #4a9eff;
+}
+QComboBox#BoardCombo:disabled {
+    color: #777777;
+    background-color: #1f1f1f;
+}
+QComboBox#BoardCombo::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 22px;
+    border: none;
+}
+QComboBox#BoardCombo QAbstractItemView {
+    background-color: #2a2a2a;
+    color: #f0f0f0;
+    border: 1px solid #4a4a4a;
+    selection-background-color: #3d6a9e;
+    selection-color: #ffffff;
+    outline: none;
+    padding: 4px 0;
+}
+QComboBox#BoardCombo QAbstractItemView::item {
+    min-height: 28px;
+    padding: 4px 12px;
+    color: #f0f0f0;
+}
+QComboBox#BoardCombo QAbstractItemView::item:hover {
+    background-color: #383838;
+    color: #ffffff;
+}
+QComboBox#BoardCombo QAbstractItemView::item:selected {
+    background-color: #3d6a9e;
+    color: #ffffff;
+}
+
+/* ── 工具栏分组竖线 ── */
+QFrame#ToolbarSeparator {
+    color: #3a3a3a;
+    background-color: #3a3a3a;
+    max-width: 1px;
+    min-width: 1px;
+    margin: 2px 6px;
+}
+"""
+
+TERMINAL_STYLESHEET = TERMINAL_STYLESHEET + TOOLBAR_COMBO_STYLESHEET + SCREENER_STYLESHEET
 
 
 def apply_toolbar_combo_style(combo) -> None:

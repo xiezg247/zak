@@ -49,6 +49,10 @@ class AiPageWidget(QtWidgets.QWidget):
         if self.panel is not None:
             self.panel.focus_input()
 
+    def set_input_text(self, text: str) -> None:
+        if self.panel is not None:
+            self.panel.set_input_text(text)
+
     def deactivate(self) -> None:
         if self.panel is not None:
             self.panel.deactivate()

@@ -10,14 +10,14 @@
 |------|------|------|
 | P0 | 看盘终端（自选/市场/本地）、TickFlow、Redis、K 线、调度 | ✅ 已完成 |
 | P1 | AI 助手（侧栏 + 全屏、上下文、会话持久化） | ✅ 已完成 |
-| **P1.5** | **选股 MVP + 回测联动 + Agent Skills 工具链** | **选股页未建、看盘→回测联动已通、Skills 已落地** |
+| **P1.5** | **选股 + 回测联动 + Agent Skills 工具链 + Service 层** | **✅ 已完成（选股页、Skills、Service 全部落地）** |
 | P2 | AI 增强（多会话UI、流式中断、MCP远端工具） | 部分完成 |
 | P3 | **A 股策略实盘**（Gateway、PaperAccount、CTA策略页、交易 Dock） | 已规划 |
 | P4 | 看盘页 Gateway 行情主源、TickFlow/Redis 降级 | 随 P3 推进 |
 
 ---
 
-## P1.5 子项：策略回测交互（见 [backtest-ux.md](./backtest-ux.md)）
+## P1.5 子项：策略回测交互与选股（见 [backtest-ux.md](./backtest-ux.md)）
 
 | 迭代 | 内容 | 状态 |
 |------|------|------|
@@ -25,15 +25,19 @@
 | B2 | 自选池批量回测对比表 | 未开始 |
 | B3 | 回测摘要落库（AI 可读） | 未开始 |
 | B4 | 回测页 AI 上下文 | 未开始 |
+| S1 | 选股模块（screener/ 包 + 因子/规则/方案/NL） | ✅ 已完成 |
+| S2 | 选股 GUI 页（含批量导入自选、确认对话框） | ✅ 已完成 |
 
 ---
 
 ## P2：AI 助手增强
 
-- [x] 系统提示词按页面分化（`vnpy_ashare/ai/session_context.py`：`set_ai_context` / `set_backtest_summary`）
-- [ ] 多会话列表与切换 UI（`vnpy_llm/store.py` 已有 sessions 表，ChatStore 已支持，UI 未暴露）
-- [x] 工具调用：查本地 K 线、自选列表、涨跌幅（已通过 Agent Skills 实现，见 `skills/vnpy_*_skill.py`）
+- [x] 系统提示词按页面分化（`vnpy_ashare/ai/context.py`：`set_ai_context` / `set_backtest_summary`）
+- [x] Service 层抽取（`vnpy_ashare/services/`：BarService、QuoteService、BacktestService、ScreeningService、WatchlistService、AnalysisService）
+- [x] Skills 按业务域拆分（5 个 Python Skill + Agent Skills）
+- [x] 工具调用：查本地 K 线、自选列表、涨跌幅、技术诊断（已通过 Agent Skills 实现，见 `skills/vnpy_*_skill.py`）
 - [x] MCP 远端工具集成（`vnpy_mcp/`，从 `mcp/mcp.json` 读取远端 MCP 服务器配置）
+- [ ] 多会话列表与切换 UI（`vnpy_llm/store.py` 已有 sessions 表，ChatStore 已支持，UI 未暴露）
 - [ ] 流式输出中断（Stop 按钮）
 - [ ] 配置页：模型 / API 热重载（不必重启 GUI）
 

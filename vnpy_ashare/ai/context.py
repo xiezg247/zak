@@ -68,3 +68,13 @@ def build_quote_context(
         quote_summary=format_quote_summary(quote),
         extra="\n".join(extra_parts),
     )
+
+
+def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:
+    """生成跳转 AI 助手页的综合诊断预填文案。"""
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    return (
+        f"请对 {title} 做综合诊断。"
+        f'请调用 diagnose_stock(symbol="{vt_symbol}") 获取技术面与研报，'
+        "基于工具返回结果解读，不要编造未在结果中的指标或研报观点。"
+    )

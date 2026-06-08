@@ -22,12 +22,12 @@ def _set_cache(rows: list[dict]) -> None:
 
 
 def test_list_screeners():
-    svc = MagicMock()
-    svc.list_screeners.return_value = ["涨幅榜", "换手率排行", "成交量放大"]
-    skill = _make_skill(svc)
+    skill = _make_skill(MagicMock())
     result = json.loads(skill.list_screeners())
-    assert result["count"] == 3
+    assert result["count"] >= 3
     assert "涨幅榜" in result["screeners"]
+    assert "catalog" in result
+    assert "propose_screening" in result["note"]
 
 
 def test_screen_by_condition_no_data():
@@ -37,30 +37,18 @@ def test_screen_by_condition_no_data():
     clear_session_context()
     skill = _make_skill(svc)
     result = json.loads(skill.screen_by_condition("涨幅榜"))
-    assert "暂无可用的市场行情数据" in result["message"]
+    assert result["status"] == "blocked"
+    assert "propose_screening" in result["message"]
 
 
-def test_screen_by_condition_with_data():
-    svc = MagicMock()
-    svc.screen_by_condition.return_value = [
-        {"symbol": "000001", "name": "平安银行", "last_price": 10.5, "change_pct": 3.2}
-    ]
+def test_propose_screening_builtin():
+    from unittest.mock import patch
 
-    _set_cache([{"symbol": "000001", "name": "平安银行", "vt_symbol": "000001.SZSE"}])
-
-    skill = _make_skill(svc)
-    result = json.loads(skill.screen_by_condition("涨幅榜", top_n=10))
-    assert result["condition"] == "涨幅榜"
-    assert result["count"] == 1
-    assert result["results"][0]["symbol"] == "000001"
-
-
-def test_screen_by_condition_no_match():
-    svc = MagicMock()
-    svc.screen_by_condition.return_value = []
-
-    _set_cache([{"symbol": "000001", "name": "平安银行"}])
-
-    skill = _make_skill(svc)
-    result = json.loads(skill.screen_by_condition("涨幅榜"))
-    assert "未匹配到标的" in result["message"]
+    skill = _make_skill(MagicMock())
+    with patch("vnpy_ashare.screener.nl_mapper.collect_warnings", return_value=[]):
+        result = json.loads(
+            skill.propose_screening("今天涨最多的", preset="涨幅榜", top_n=5, confidence="high")
+        )
+    assert result["status"] == "pending_confirm"
+    assert result["draft_id"]
+    assert result["preset"] == "涨幅榜"

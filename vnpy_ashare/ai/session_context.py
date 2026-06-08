@@ -59,12 +59,13 @@ def get_backtest_summary() -> dict[str, Any] | None:
 
 
 def clear_session_context() -> None:
-    global _ai_context, _backtest_summary, _market_quotes, _screening_result
+    global _ai_context, _backtest_summary, _market_quotes, _screening_result, _diagnose_result
     with _lock:
         _ai_context = AiContextData()
         _backtest_summary = None
         _market_quotes = []
         _screening_result = None
+        _diagnose_result = None
 
 
 def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
@@ -102,6 +103,7 @@ class ScreeningResultContext:
 
 
 _screening_result: ScreeningResultContext | None = None
+_diagnose_result: dict[str, Any] | None = None
 
 
 def set_screening_results(
@@ -131,6 +133,17 @@ def get_screening_results() -> ScreeningResultContext | None:
             updated_at=ctx.updated_at,
             rows=list(ctx.rows),
         )
+
+
+def set_diagnose_result(payload: dict[str, Any] | None) -> None:
+    global _diagnose_result
+    with _lock:
+        _diagnose_result = dict(payload) if payload else None
+
+
+def get_diagnose_result() -> dict[str, Any] | None:
+    with _lock:
+        return dict(_diagnose_result) if _diagnose_result else None
 
 
 def sync_backtest_to_service(backtest_service: object) -> None:

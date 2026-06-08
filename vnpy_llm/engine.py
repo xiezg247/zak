@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable, Iterator
 from typing import Any
@@ -34,6 +35,7 @@ class LlmSignals(QtCore.QObject):
     tools_status_changed = QtCore.Signal(object)
     tool_call_started = QtCore.Signal(str)
     tool_call_finished = QtCore.Signal(str)
+    screener_draft_ready = QtCore.Signal(str)
 
 
 class LlmEngine(BaseEngine):
@@ -56,6 +58,7 @@ class LlmEngine(BaseEngine):
                 "backtest": ashare_engine.backtest_service,
                 "screening": ashare_engine.screening_service,
                 "watchlist": ashare_engine.watchlist_service,
+                "analysis": ashare_engine.analysis_service,
             }
         self.skill_engine = SkillEngine(services=services)
         self.skill_engine.load_all()
@@ -63,6 +66,11 @@ class LlmEngine(BaseEngine):
         self.mcp_engine = McpEngine()
         self.mcp_engine.load_all()
         self._enabled_mcp = self.mcp_engine.init_providers()
+        if ashare_engine is not None and hasattr(ashare_engine, "analysis_service"):
+            ashare_engine.analysis_service.bind_mcp(
+                self.mcp_engine.execute_tool,
+                [spec.name for spec in self.mcp_engine.get_tool_specs()],
+            )
         if ashare_engine is not None and hasattr(ashare_engine, "backtest_service"):
             sync_backtest_to_service(ashare_engine.backtest_service)
         self.register_event()
@@ -181,6 +189,8 @@ class LlmEngine(BaseEngine):
                 capabilities.append("策略回测")
             elif name.startswith("vnpy-screening"):
                 capabilities.append("选股筛选")
+            elif name.startswith("vnpy-analysis"):
+                capabilities.append("股票诊断")
             elif name.startswith("vnpy-watchlist"):
                 capabilities.append("自选管理")
         if capabilities:
@@ -202,8 +212,18 @@ class LlmEngine(BaseEngine):
     def reload_tools(self) -> tuple[list[str], list[str]]:
         skills = self.reload_skills()
         mcp = self.reload_mcp()
+        self._rebind_analysis_mcp()
         self._emit_tools_status()
         return skills, mcp
+
+    def _rebind_analysis_mcp(self) -> None:
+        ashare_engine = getattr(self.main_engine, "engines", {}).get("Ashare")
+        if ashare_engine is None or not hasattr(ashare_engine, "analysis_service"):
+            return
+        ashare_engine.analysis_service.bind_mcp(
+            self.mcp_engine.execute_tool,
+            [spec.name for spec in self.mcp_engine.get_tool_specs()],
+        )
 
     def get_tools_status(self) -> ToolsStatusSnapshot:
         return build_tools_status(self.skill_engine, self.mcp_engine)
@@ -227,13 +247,47 @@ class LlmEngine(BaseEngine):
 
     def _execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
         self.signals.tool_call_started.emit(name)
+        result = ""
+        success = True
         try:
             mcp_names = {spec.name for spec in self.mcp_engine.get_tool_specs()}
             if name in mcp_names:
-                return self.mcp_engine.execute_tool(name, arguments)
-            return self.skill_engine.execute_tool(name, arguments)
+                result = self.mcp_engine.execute_tool(name, arguments)
+            else:
+                result = self.skill_engine.execute_tool(name, arguments)
+            if name == "propose_screening":
+                self._maybe_emit_screener_draft(result)
+            return result
+        except Exception as ex:
+            success = False
+            result = json.dumps({"error": str(ex)}, ensure_ascii=False)
+            raise
         finally:
+            try:
+                from vnpy_llm.tool_audit import log_tool_call
+
+                if result:
+                    log_tool_call(
+                        session_id=self.session_id,
+                        tool_name=name,
+                        arguments=arguments,
+                        result=result,
+                        success=success,
+                    )
+            except Exception:
+                pass
             self.signals.tool_call_finished.emit(name)
+
+    def _maybe_emit_screener_draft(self, result: str) -> None:
+        try:
+            payload = json.loads(result)
+        except json.JSONDecodeError:
+            return
+        if payload.get("status") != "pending_confirm":
+            return
+        draft_id = payload.get("draft_id")
+        if isinstance(draft_id, str) and draft_id:
+            self.signals.screener_draft_ready.emit(draft_id)
 
     def append_local_message(self, *, role: str, content: str) -> None:
         if role == "user":

@@ -3,6 +3,7 @@ from vnpy.trader.engine import BaseEngine, MainEngine
 
 from vnpy_ashare.scheduler import TaskSchedulerManager
 from vnpy_ashare.services import (
+    AnalysisService,
     BacktestService,
     BarService,
     QuoteService,
@@ -26,6 +27,7 @@ class AshareEngine(BaseEngine):
         self.backtest_service = BacktestService(self)
         self.screening_service = ScreeningService(self)
         self.watchlist_service = WatchlistService(self)
+        self.analysis_service = AnalysisService(self)
 
     def close(self) -> None:
         self.scheduler.shutdown()

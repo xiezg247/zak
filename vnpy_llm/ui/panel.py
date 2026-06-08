@@ -144,6 +144,10 @@ class AiChatPanel(QtWidgets.QWidget):
     def focus_input(self) -> None:
         self.input_box.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
 
+    def set_input_text(self, text: str) -> None:
+        self.input_box.setPlainText(text.strip())
+        self.focus_input()
+
     def _update_model_action(self) -> None:
         cfg = self.engine.config
         if cfg.configured:
@@ -244,17 +248,38 @@ class AiChatPanel(QtWidgets.QWidget):
             "get_watchlist": "查询自选池",
             "get_bars_summary": "查询K线概览",
             "get_bars_data": "加载K线数据",
+            "diagnose_stock": "综合诊断",
+            "technical_snapshot": "分析技术形态",
+            "list_strategy_signals": "查询策略信号",
+            "historical_pattern_summary": "统计历史走势",
+            "get_screening_context": "读取选股结果",
             "list_strategies": "列出可用策略",
             "get_backtest_result": "读取回测结果",
             "list_backtest_history": "查询回测历史",
             "list_screeners": "列出选股条件",
+            "propose_screening": "解析选股条件",
             "screen_by_condition": "执行选股筛选",
             "add_to_watchlist": "加入自选",
             "remove_from_watchlist": "移出自选",
             "read_skill_file": "读取知识文档",
             "run_python": "执行数据分析",
+            "list_skill_files": "列出 Skill 文件",
         }
-        display = label_map.get(name, name)
+        display = label_map.get(name)
+        if display is None and name.startswith("mcp_tdx_"):
+            suffix = name.removeprefix("mcp_tdx_")
+            if any(key in suffix for key in ("report", "research", "yanbao", "rating")):
+                display = "查询通达信研报"
+            elif "f10" in suffix:
+                display = "查询通达信 F10"
+            elif "quote" in suffix or "price" in suffix:
+                display = "查询通达信行情"
+            elif "kline" in suffix or "bar" in suffix:
+                display = "查询通达信 K 线"
+            else:
+                display = f"通达信 MCP ({suffix})"
+        if display is None:
+            display = name
         self.tools_status_bar.show_progress(f"正在 {display}…")
 
     def _on_tool_call_finished(self, name: str) -> None:

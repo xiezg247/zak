@@ -40,11 +40,16 @@ vnpy MainWindow（基类）
 | 包 | 职责 |
 |----|------|
 | `vnpy_ashare` | A 股行情页、主窗口、调度、元数据、AI 全屏页 |
+| `vnpy_ashare/services/` | **Service 业务层**（6 个 Service）：K 线查询、行情上下文、回测管理、选股、自选 CRUD、技术分析 |
+| `vnpy_ashare/screener/` | **选股模块**（13 文件）：因子封装、规则引擎、方案持久化、Tushare 接入、NL 解析 |
+| `vnpy_ashare/backtest/` | 回测结果落地（`run_store.py`） |
+| `vnpy_ashare/scheduler/` | 定时任务调度管理 |
+| `vnpy_ashare/jobs/` | 任务定义（下载/行情/同步） |
 | `vnpy_tickflow` | TickFlow 行情适配器 |
 | `vnpy_llm` | 通用 LLM 对话（client / engine / panel） |
 | `vnpy_skills` | Agent Skill 引擎（工具注册、执行、系统提示词注入） |
 | `vnpy_mcp` | MCP 远端工具集成（从 `mcp/mcp.json` 发现工具） |
-| `vnpy_ashare/ai` | A 股上下文共享（`session_context.py`）、AI 全屏页 |
+| `vnpy_ashare/ai` | A 股上下文共享（`context.py` 等）、AI 全屏页 |
 
 ### 行情 Provider 抽象
 
@@ -96,6 +101,6 @@ AI 不作为左侧主导航项，而是**叠加能力**：
 | 全屏 | Dock 内「全屏」 | 长对话；与 Dock 互斥 |
 | 返回 | 全屏「← 返回看盘」 | 回到上次看盘页并打开 Dock |
 
-选股/回测时通过 `vnpy_ashare/ai/session_context.py` 的 `set_ai_context()` / `set_backtest_summary()` 共享上下文给 Agent Skills，避免事件广播耦合。
+选股/回测时通过 `vnpy_ashare/ai/context.py` 的 `set_ai_context()` / `set_backtest_summary()` 共享上下文给 Agent Skills，避免事件广播耦合。
 
-**Agent Skills 工具链：** 各业务 Skill（`skills/vnpy_*_skill.py`）继承 `SkillTemplate`，通过 `vnpy_skills/` 引擎注册到 `LlmEngine`，提供 `get_watchlist`、`get_bars_summary`、`run_backtest` 等工具函数。
+**Agent Skills 工具链：** 各业务 Skill（`skills/vnpy_*_skill.py`）继承 `SkillTemplate`，通过 `SkillEngine` 的 `services` 参数注入 `vnpy_ashare/services/` 层引用，提供 `get_watchlist`、`get_bars_summary`、`run_backtest`、`diagnose_stock` 等工具函数。

@@ -7,7 +7,7 @@ import sqlite3
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from vnpy_ashare.paths import APP_DB_PATH
@@ -121,6 +121,16 @@ def _extract_metrics(statistics: dict[str, Any]) -> tuple[float | None, float | 
     return total_return, max_drawdown, sharpe_ratio, trade_count
 
 
+def _json_default(value: Any) -> str:
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return str(value)
+
+
+def _json_dumps(data: Any) -> str:
+    return json.dumps(data, ensure_ascii=False, default=_json_default)
+
+
 def save_backtest_run(
     *,
     vt_symbol: str,
@@ -145,7 +155,7 @@ def save_backtest_run(
 
     run_id = uuid.uuid4().hex
     now = _now()
-    stats_payload = json.dumps(stats, ensure_ascii=False)
+    stats_payload = _json_dumps(stats)
     with _connect() as conn:
         conn.execute(
             """

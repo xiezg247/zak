@@ -88,6 +88,10 @@ class AiToolsDialog(QtWidgets.QDialog):
 
         buttons = QtWidgets.QHBoxLayout()
         buttons.addStretch()
+        audit_btn = QtWidgets.QPushButton("工具审计")
+        audit_btn.setObjectName("AiToolBtn")
+        audit_btn.clicked.connect(self._open_audit)
+        buttons.addWidget(audit_btn)
         reload_btn = QtWidgets.QPushButton("重新加载")
         reload_btn.setObjectName("AiToolBtn")
         reload_btn.clicked.connect(self._on_reload)
@@ -167,6 +171,11 @@ class AiToolsDialog(QtWidgets.QDialog):
         self.engine.reload_tools()
         self.refresh()
         self.reload_requested.emit()
+
+    def _open_audit(self) -> None:
+        from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
+
+        show_ai_tool_audit_dialog(self.engine, self)
 
 
 def show_ai_tools_dialog(

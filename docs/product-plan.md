@@ -139,40 +139,57 @@ flowchart TB
 
 ---
 
-### 4.3 选股（规划中，为四大支柱的缺口）
+### 4.3 选股（已实现，含 GUI 选股页）
 
-选股是四支柱里**缺口最大**的一块，规划独立成左侧导航 **「选股」** 页（与市场「发现」、自选「跟踪」区分）。**当前尚未实现**，选股能力暂时通过 Agent Skill `vnpy_screening_skill.py` 提供 CLI 级筛选。
+选股模块已完整实现：`vnpy_ashare/screener/`（13 个文件）提供因子封装、规则引擎、方案持久化、Tushare 数据接入；`screener_page.py` 提供左侧导航「选股」页；`ScreeningService` + `vnpy_screening_skill.py` + AI 上下文已贯通。
 
 #### 分层设计
 
 ```text
-Layer 1  规则引擎（确定性）
-         Tushare 拉表 → pandas 筛选 → 结果列表
-Layer 2  模板 / 保存方案
-         预置：低 PE、高 ROE、主力净流入、行业龙头等
-Layer 3  AI 增强（可选）
-         自然语言 → 解析为规则参数（人工确认后执行）
-         对结果集生成文字点评（不替代筛选）
+Layer 1  规则引擎（已实现）
+         factors.py（Tushare 字段封装）+ rules.py（可组合筛选条件）
+         + runner.py（执行选股）+ tushare_client.py（Tushare 数据源）
+Layer 2  模板 / 保存方案（已实现）
+         presets.py（内置方案：低PE、高ROE、主力净流入等）
+         + scheme_store.py（方案持久化）+ draft_store.py（草稿）
+Layer 3  AI 增强（已实现）
+         nl_mapper.py（自然语言 → 规则参数解析）
+         screener_context.py（AI 上下文共享）
+         vnpy_screening_skill.py（AI 工具调用）
 ```
 
-#### 推荐模块结构（尚未创建）
+#### 已实现结构
 
 ```text
 vnpy_ashare/screener/
-├── factors.py      # Tushare 字段封装
-├── rules.py        # 可组合筛选条件
-├── runner.py       # 执行选股、写 DB
-└── presets.py      # 内置方案
+├── factors.py           # Tushare 字段封装
+├── rules.py             # 可组合筛选条件
+├── runner.py            # 执行选股、写 DB
+├── presets.py           # 内置方案
+├── scheme_store.py      # 方案持久化（JSON）
+├── draft_store.py       # 草稿保存
+├── run_store.py         # 运行记录
+├── batch_actions.py     # 批量操作（加入自选等）
+├── export.py            # CSV 导出
+├── tushare_client.py    # Tushare 数据源
+├── quotes_loader.py     # 行情加载
+└── nl_mapper.py         # 自然语言 → 规则参数
 
-vnpy_ashare/ui/screener_page.py   # 选股页 GUI
-scripts/run_screener.py           # CLI，便于定时任务
-```
+vnpy_ashare/ui/
+├── screener_page.py             # 选股页 GUI
+├── screener_batch_dialog.py     # 批量导入自选
+├── screener_confirm_dialog.py   # 确认对话框
+└── screener_run_sidebar.py      # 运行侧边栏
+
+vnpy_ashare/services/screening_service.py    # ScreeningService
+skills/vnpy_screening_skill.py               # 选股 Skill
+scripts/run_screener.py                      # CLI 选股
 
 #### 与用户流程
 
 ```text
 选股页设定条件 → 运行 → 结果表（代码/名称/关键因子）
-    → 勾选 → 加入自选
+    → 勾选 → 加入自选（batch_actions）
     → 选中 → 跳转自选看盘 / 问 AI
     → 可选：对结果批量下载日 K → CTA 回测
 ```
@@ -195,8 +212,9 @@ scripts/run_screener.py           # CLI，便于定时任务
 | `skills/vnpy_context_skill.py` | 终端上下文（当前自选、K 线概览） |
 | `skills/vnpy_data_skill.py` | 行情/K 线数据查询 |
 | `skills/vnpy_backtest_skill.py` | 回测执行与结果读取 |
-| `skills/vnpy_screening_skill.py` | 选股筛选（CLI 级） |
+| `skills/vnpy_screening_skill.py` | 选股筛选 |
 | `skills/vnpy_watchlist_skill.py` | 自选池管理 |
+| `skills/vnpy_analysis_skill.py` | 技术面快照、综合诊断、研报聚合 |
 
 **工具调用（由 Agent Skills 提供）：**
 
@@ -204,9 +222,12 @@ scripts/run_screener.py           # CLI，便于定时任务
 |------|------|
 | `get_quote_context` | 当前选中标的行情摘要（通过 `set_ai_context` 共享） |
 | `get_bars_summary` | 本地 K 线条数、区间涨跌 |
+| `get_bars_data` | 获取指定标的最近 N 根 K 线 OHLCV 数据 |
 | `get_watchlist` | 自选列表 |
 | `run_screener` | 执行已保存选股方案，返回 Top N |
 | `get_backtest_summary` | 最近一次回测指标 |
+| `diagnose_stock` | 综合诊断（技术面 + 研报聚合） |
+| `technical_snapshot` | 技术指标快照（均线/RSI/MACD 等） |
 
 交互示例：
 
@@ -224,8 +245,8 @@ scripts/run_screener.py           # CLI，便于定时任务
 ## 5. 左侧导航（当前态）
 
 ```text
-自选 | 市场 | 本地 | 策略回测 | 数据管理
-（规划：选股页 + CTA策略页 待后续迭代加入）
+自选 | 市场 | 本地 | 策略回测 | 数据管理 | 选股
+（规划：CTA策略页 待后续迭代加入）
 ```
 
 | 页 | 心智 |
@@ -235,26 +256,27 @@ scripts/run_screener.py           # CLI，便于定时任务
 | 本地 | 已下载 K 线健康状态 |
 | 策略回测 | 历史验证策略 |
 | 数据管理 | vnpy 数据维护 |
+| 选股 | 多因子筛选、方案保存、批量入自选 |
 
-**选股** 页（未实现）：规划为规则筛选 + 导入自选。  
+**选股** 页：已实现，含规则筛选、AI 自然语言解析、批量导入自选等功能。  
 **CTA策略** 页（vnpy `CtaManager`）：**当前未挂载**（`launcher` 不加载 `CtaStrategyApp`），P3 接入 A 股 Gateway 时恢复。
 
 AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 
 ---
 
-## 6. 实施优先级（分 4 个迭代，当前处于迭代 2–3 之间）
+## 6. 实施优先级（当前处于迭代 3）
 
-### 迭代 1：选股 MVP（待开始）
+### 迭代 1：选股 MVP ✅ 已完成
 
 1. `screener` 包 + CLI：`scripts/run_screener.py`
-2. 2–3 个预置方案（如：市值 > X、PE < Y、近 5 日资金流）
-3. 结果写入 DB / 导出 CSV，脚本 `加入自选`
+2. 2–3 个预置方案（低 PE、高 ROE、主力净流入等）
+3. 结果写入 DB / 导出 CSV，批量加入自选
 4. `.env` / README 补充 Tushare 说明
 
-### 迭代 2：选股 GUI + 回测联动（部分完成）
+### 迭代 2：选股 GUI + 回测联动 ✅ 已完成
 
-1. ~~左侧「选股」页：条件表单 + 结果表 + 加入自选~~（待开始）
+1. **✅** 左侧「选股」页：条件表单 + 结果表 + 加入自选（`screener_page.py`）
 2. **✅ 看盘 → 策略回测联动**（B1 已完成）
 3. 回测结果摘要落库（B3 待开始）
 
@@ -288,9 +310,9 @@ AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 
 ### 阶段 A（投研闭环，迭代 1–3）
 
-- [ ] 用户用 **选股页** 从全市场筛出列表并 **一键入自选**  
+- [x] 用户用 **选股页** 从全市场筛出列表并 **一键入自选**  
 - [ ] 自选标的 **批量回测** 同一策略并对比  
-- [ ] 看盘时 **AI** 能基于 **真实行情/K 线摘要** 回答，无幻觉价格  
+- [x] 看盘时 **AI** 能基于 **真实行情/K 线摘要** 回答，无幻觉价格  
 
 ### 阶段 B（策略实盘，迭代 4）
 

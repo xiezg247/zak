@@ -13,8 +13,14 @@ from strategies.registry import (
     format_strategy_guide,
     get_strategy_meta,
 )
-from vnpy_ashare.ai.backtest_context import connect_backtest_context_sync, sync_backtest_page_context
-from vnpy_ashare.ai.session_context import BacktestSummary, set_backtest_summary
+from vnpy_ashare.ai.backtest_context import (
+    build_backtest_ai_prompt,
+    connect_backtest_context_sync,
+    format_backtest_summary_text,
+    sync_backtest_page_context,
+)
+from vnpy_ashare.ai.session_context import BacktestSummary, get_backtest_summary, set_backtest_summary
+from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
@@ -75,13 +81,23 @@ class BacktesterWidget(VnpyBacktesterManager):
         apply_toolbar_combo_style(self.class_combo)
         apply_toolbar_combo_style(self.interval_combo)
         self._install_strategy_guide()
+        self._install_ask_ai_button()
         connect_backtest_context_sync(self)
 
     def activate(self) -> None:
-        sync_backtest_page_context(self, self.main_engine)
+        pass
 
     def deactivate(self) -> None:
         pass
+
+    def _install_ask_ai_button(self) -> None:
+        self.ask_ai_button = QtWidgets.QPushButton("问 AI")
+        self.ask_ai_button.setObjectName("SecondaryButton")
+        self.ask_ai_button.setToolTip("打开 AI 助手解读最近一次回测")
+        self.ask_ai_button.clicked.connect(self._ask_ai_for_backtest)
+        left_vbox = self._left_settings_vbox()
+        if left_vbox is not None:
+            left_vbox.addWidget(self.ask_ai_button)
 
     def _replace_chart_widget(self) -> None:
         old_chart = self.chart
@@ -249,7 +265,33 @@ class BacktesterWidget(VnpyBacktesterManager):
             self.write_log(f"已从{source_page}带入股票代码：{symbol}")
         else:
             self.write_log(f"已带入股票代码：{symbol}")
+
+    def _ask_ai_for_backtest(self) -> None:
+        summary = get_backtest_summary()
+        if not summary:
+            QtWidgets.QMessageBox.information(self, "提示", "请先完成一次回测")
+            return
         sync_backtest_page_context(self, self.main_engine)
+        if self.event_engine is None:
+            return
+        self.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(
+                    prompt=build_backtest_ai_prompt(summary),
+                    source_page="策略回测",
+                    use_full_page=True,
+                ),
+            )
+        )
+
+    def _write_backtest_summary_log(self, summary: dict) -> None:
+        self.write_log("—— 回测摘要 ——")
+        for line in format_backtest_summary_text(summary).splitlines():
+            text = line.strip()
+            if text:
+                self.write_log(text)
+        self.write_log("如需 AI 解读，请点击「问 AI」")
 
     def _localize_labels(self) -> None:
         for label in self.findChildren(QtWidgets.QLabel):
@@ -264,16 +306,16 @@ class BacktesterWidget(VnpyBacktesterManager):
             return
         start = cast(QtCore.QDateTime, self.start_date_edit.dateTime()).toPython()
         end = cast(QtCore.QDateTime, self.end_date_edit.dateTime()).toPython()
-        set_backtest_summary(
-            BacktestSummary(
-                strategy=self.class_combo.currentText(),
-                vt_symbol=self.symbol_line.text().strip(),
-                interval=self.interval_combo.currentText(),
-                start=start.strftime("%Y-%m-%d"),
-                end=end.strftime("%Y-%m-%d"),
-                statistics=dict(statistics),
-            )
+        summary = BacktestSummary(
+            strategy=self.class_combo.currentText(),
+            vt_symbol=self.symbol_line.text().strip(),
+            interval=self.interval_combo.currentText(),
+            start=start.strftime("%Y-%m-%d"),
+            end=end.strftime("%Y-%m-%d"),
+            statistics=dict(statistics),
         )
+        set_backtest_summary(summary)
+        self._write_backtest_summary_log(summary.to_dict())
         self._persist_backtest_summary(dict(statistics), start, end)
 
     def _persist_backtest_summary(self, statistics: dict, start, end) -> None:
@@ -291,4 +333,3 @@ class BacktesterWidget(VnpyBacktesterManager):
             "statistics": statistics,
         }
         engine.backtest_service.persist_summary(summary, source="single")
-        sync_backtest_page_context(self, self.main_engine)

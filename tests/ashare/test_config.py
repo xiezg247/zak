@@ -26,7 +26,7 @@ class AshareBacktestConfigTest(unittest.TestCase):
         self.assertEqual(ASHARE_BACKTEST_DEFAULTS["pricetick"], PRICE_TICK)
         self.assertEqual(ASHARE_BACKTEST_DEFAULTS["rate"], EFFECTIVE_RATE)
         self.assertEqual(ASHARE_BACKTEST_DEFAULTS["slippage"], PRICE_TICK)
-        self.assertEqual(EFFECTIVE_RATE, 0.00055)
+        self.assertEqual(EFFECTIVE_RATE, 0.00045)
 
     def test_effective_rate_json_no_float_noise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -35,11 +35,11 @@ class AshareBacktestConfigTest(unittest.TestCase):
             raw = path.read_text(encoding="utf-8")
             self.assertNotIn("999999", raw)
             data = json.loads(raw)
-            self.assertEqual(data["rate"], 0.00055)
+            self.assertEqual(data["rate"], 0.00045)
 
     def test_format_decimal_field(self) -> None:
-        noisy = (0.0003 + 0.0003 + 0.0005) / 2
-        self.assertEqual(format_decimal_field(noisy, places=6), "0.00055")
+        noisy = (0.0002 + 0.0002 + 0.0005) / 2
+        self.assertEqual(format_decimal_field(noisy, places=6), "0.00045")
         self.assertEqual(format_decimal_field(0.01, places=4), "0.01")
 
     def test_futures_config_detection(self) -> None:

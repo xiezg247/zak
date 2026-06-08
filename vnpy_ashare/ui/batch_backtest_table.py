@@ -51,7 +51,8 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
         self.setSortingEnabled(True)
         self.verticalHeader().setVisible(False)
         header = self.horizontalHeader()
-        header.setStretchHighlightSections(False)
+        if hasattr(header, "setStretchHighlightSections"):
+            header.setStretchHighlightSections(False)
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         for col in (0, 2, 3, 4, 5, 6):
             header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)

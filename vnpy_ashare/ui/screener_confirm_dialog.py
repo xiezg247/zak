@@ -1,0 +1,194 @@
+"""AI 选股确认对话框。"""
+
+from __future__ import annotations
+
+from vnpy.event import Event, EventEngine
+from vnpy.trader.engine import MainEngine
+from vnpy.trader.ui import QtCore, QtWidgets
+
+from vnpy_ashare.ai.screener_context import sync_screener_page_context
+from vnpy_ashare.ai.session_context import set_screening_results
+from vnpy_ashare.events import EVENT_FILL_SCREENER, FillScreenerRequest
+from vnpy_ashare.screener.draft_store import cancel_draft, consume_draft, get_draft
+from vnpy_ashare.screener.runner import build_scheme_config
+from vnpy_ashare.screener.run_store import save_run
+from vnpy_ashare.ui.worker import ScreenerRunResult, ScreenerRunWorker
+from vnpy_llm.engine import LlmEngine
+
+
+class ScreenerConfirmDialog(QtWidgets.QDialog):
+    """展示草案摘要，确认后执行 run_screener。"""
+
+    def __init__(
+        self,
+        draft_id: str,
+        llm_engine: LlmEngine,
+        *,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.draft_id = draft_id
+        self.llm_engine = llm_engine
+        self.main_engine: MainEngine = llm_engine.main_engine
+        self.event_engine: EventEngine = llm_engine.event_engine
+        self._worker: ScreenerRunWorker | None = None
+        self._consumed_draft = None
+        self._draft = get_draft(draft_id)
+
+        self.setWindowTitle("确认选股条件")
+        self.setMinimumWidth(480)
+        self._build_ui()
+        self._populate()
+
+    def _build_ui(self) -> None:
+        layout = QtWidgets.QVBoxLayout(self)
+
+        self.intent_label = QtWidgets.QLabel()
+        self.intent_label.setWordWrap(True)
+        layout.addWidget(QtWidgets.QLabel("用户描述："))
+        layout.addWidget(self.intent_label)
+
+        self.summary_label = QtWidgets.QLabel()
+        self.summary_label.setWordWrap(True)
+        layout.addWidget(QtWidgets.QLabel("解析条件："))
+        layout.addWidget(self.summary_label)
+
+        self.source_label = QtWidgets.QLabel()
+        layout.addWidget(self.source_label)
+
+        self.warnings_box = QtWidgets.QTextEdit()
+        self.warnings_box.setReadOnly(True)
+        self.warnings_box.setMaximumHeight(100)
+        self.warnings_box.setVisible(False)
+        layout.addWidget(self.warnings_box)
+
+        btn_row = QtWidgets.QHBoxLayout()
+        self.confirm_btn = QtWidgets.QPushButton("确认运行")
+        self.edit_btn = QtWidgets.QPushButton("在选股页修改")
+        self.cancel_btn = QtWidgets.QPushButton("取消")
+        btn_row.addWidget(self.confirm_btn)
+        btn_row.addWidget(self.edit_btn)
+        btn_row.addStretch()
+        btn_row.addWidget(self.cancel_btn)
+        layout.addLayout(btn_row)
+
+        self.confirm_btn.clicked.connect(self._on_confirm)
+        self.edit_btn.clicked.connect(self._on_edit_in_page)
+        self.cancel_btn.clicked.connect(self.reject)
+
+    def _populate(self) -> None:
+        draft = self._draft
+        if draft is None or draft.status != "pending":
+            self.intent_label.setText("草案不存在或已过期，请重新描述选股条件。")
+            self.summary_label.setText("")
+            self.source_label.setText("")
+            self.confirm_btn.setEnabled(False)
+            self.edit_btn.setEnabled(False)
+            return
+
+        self.intent_label.setText(draft.natural_language or "（无）")
+        self.summary_label.setText(draft.summary)
+        source_label = "Tushare" if draft.source == "tushare" else "Redis 行情"
+        self.source_label.setText(f"数据来源：{source_label} · 置信度：{draft.confidence}")
+
+        if draft.warnings:
+            self.warnings_box.setVisible(True)
+            self.warnings_box.setPlainText("\n".join(f"• {w}" for w in draft.warnings))
+        else:
+            self.warnings_box.setVisible(False)
+
+    def _on_edit_in_page(self) -> None:
+        draft = get_draft(self.draft_id)
+        if draft is None or draft.status != "pending":
+            QtWidgets.QMessageBox.warning(self, "提示", "草案已失效，请重新描述选股条件。")
+            return
+        cancel_draft(self.draft_id)
+        self.event_engine.put(
+            Event(EVENT_FILL_SCREENER, FillScreenerRequest(
+                request=draft.request,
+                preset_label=draft.preset_label,
+                source_page="AI",
+            ))
+        )
+        self.llm_engine.append_local_message(
+            role="assistant",
+            content=f"【选股草案】已填入选股页「{draft.preset_label}」，请在选股页核对后点击「运行选股」。",
+        )
+        self.accept()
+
+    def _on_confirm(self) -> None:
+        draft = consume_draft(self.draft_id)
+        if draft is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "草案已过期或已被处理，请重新描述选股条件。")
+            self.reject()
+            return
+        self._consumed_draft = draft
+
+        self.confirm_btn.setEnabled(False)
+        self.edit_btn.setEnabled(False)
+        self.cancel_btn.setEnabled(False)
+
+        req = draft.request
+        worker = ScreenerRunWorker(
+            preset=req.preset or draft.preset_label,
+            top_n=req.top_n,
+            min_change_pct=req.min_change_pct,
+            max_change_pct=req.max_change_pct,
+            min_turnover=req.min_turnover,
+            scheme_id=req.scheme_id,
+        )
+        self._worker = worker
+        worker.finished.connect(self._on_run_finished)
+        worker.failed.connect(self._on_run_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.start()
+
+    def _on_run_finished(self, result: ScreenerRunResult) -> None:
+        self._worker = None
+        rows = list(result.rows)
+        set_screening_results(
+            condition=result.condition,
+            rows=rows,
+            updated_at=result.updated_at,
+        )
+        draft = self._consumed_draft
+        config = build_scheme_config(draft.request) if draft else {}
+        if draft is not None:
+            config = dict(config)
+            config["nl_source"] = draft.natural_language
+            config["draft_id"] = self.draft_id
+        save_run(
+            condition=result.condition,
+            source=result.source,
+            rows=rows,
+            total_scanned=result.total_scanned,
+            config=config,
+        )
+        sync_screener_page_context(self.main_engine)
+        self.llm_engine.append_local_message(
+            role="assistant",
+            content=(
+                f"【选股已执行】「{result.condition}」命中 {len(rows)} 条，"
+                f"扫描 {result.total_scanned} 只。"
+            ),
+        )
+        self.accept()
+
+    def _on_run_failed(self, message: str) -> None:
+        self._worker = None
+        QtWidgets.QMessageBox.warning(self, "选股失败", message)
+        self.reject()
+
+
+def show_screener_confirm_dialog(
+    draft_id: str,
+    llm_engine: LlmEngine,
+    *,
+    parent: QtWidgets.QWidget | None = None,
+) -> None:
+    draft = get_draft(draft_id)
+    if draft is None or draft.status != "pending":
+        return
+    dialog = ScreenerConfirmDialog(draft_id, llm_engine, parent=parent)
+    dialog.exec()

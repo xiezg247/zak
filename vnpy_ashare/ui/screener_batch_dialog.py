@@ -38,8 +38,10 @@ class ScreenerBatchBacktestDialog(QtWidgets.QDialog):
         table.setHorizontalHeaderLabels(headers)
         table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         table.verticalHeader().setVisible(False)
-        table.horizontalHeader().setStretchHighlightSections(False)
-        table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        header = table.horizontalHeader()
+        if hasattr(header, "setStretchHighlightSections"):
+            header.setStretchHighlightSections(False)
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
 
         for row_index, row in enumerate(self._rows):
             values = [

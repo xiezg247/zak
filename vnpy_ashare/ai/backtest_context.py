@@ -75,10 +75,20 @@ def build_backtest_page_context(widget: QtWidgets.QWidget) -> AiContextData:
     )
 
 
-def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None) -> None:
+def build_backtest_ai_prompt(summary: dict[str, Any]) -> str:
+    """生成跳转 AI 助手页的回测解读预填文案。"""
+    strategy = summary.get("strategy", "—")
+    vt_symbol = summary.get("vt_symbol", "—")
+    return (
+        f"请解读最近一次回测（策略 {strategy} · 标的 {vt_symbol}）。"
+        "请调用 get_backtest_result 获取摘要指标，结合上下文解读，不要编造未在结果中的数值。"
+    )
+
+
+def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, notify_ui: bool = True) -> None:
     data = build_backtest_page_context(widget)
     set_ai_context(data)
-    if main_engine is None:
+    if not notify_ui or main_engine is None:
         return
     try:
         from vnpy_llm.engine import APP_NAME, LlmEngine
@@ -91,20 +101,8 @@ def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None) -> N
 
 
 def connect_backtest_context_sync(widget: QtWidgets.QWidget) -> None:
-    """绑定表单变更，实时刷新 AI 上下文。"""
-    main_engine = getattr(widget, "main_engine", None)
-    for attr in ("symbol_line", "class_combo", "interval_combo", "start_date_edit", "end_date_edit"):
-        control = getattr(widget, attr, None)
-        if control is None:
-            continue
-        if isinstance(control, QtWidgets.QLineEdit):
-            control.textChanged.connect(lambda _t, w=widget, me=main_engine: sync_backtest_page_context(w, me))
-        elif isinstance(control, QtWidgets.QComboBox):
-            control.currentTextChanged.connect(lambda _t, w=widget, me=main_engine: sync_backtest_page_context(w, me))
-        elif isinstance(control, QtWidgets.QDateTimeEdit):
-            control.dateTimeChanged.connect(
-                lambda _dt, w=widget, me=main_engine: sync_backtest_page_context(w, me)
-            )
+    """保留接口；回测页不再自动推送 AI 上下文，由用户点击「问 AI」触发。"""
+    return
 
 
 def _avg(values: list[float]) -> float | None:

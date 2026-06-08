@@ -39,6 +39,7 @@ class MarketPageResult:
     page_size: int
     mode: str
     updated_at: str | None = None
+    board: str | None = None
 
 
 @dataclass
@@ -412,11 +413,13 @@ class MarketPageLoadWorker(QtCore.QThread):
         keyword: str,
         page: int,
         page_size: int,
+        board: str | None = None,
     ) -> None:
         super().__init__()
         self.keyword = keyword.strip()
         self.page = max(page, 0)
         self.page_size = page_size
+        self.board = board if board and board != "全部" else None
 
     def run(self) -> None:
         try:
@@ -431,6 +434,7 @@ class MarketPageLoadWorker(QtCore.QThread):
                     self.keyword,
                     limit=self.page_size,
                     offset=offset,
+                    board=self.board,
                 )
                 items = [
                     StockItem(symbol=symbol, exchange=exchange, name=name)
@@ -442,6 +446,7 @@ class MarketPageLoadWorker(QtCore.QThread):
                 rows, total = load_universe_page(
                     offset=offset,
                     limit=self.page_size,
+                    board=self.board,
                 )
                 items = [
                     StockItem(symbol=symbol, exchange=exchange, name=name)
@@ -459,6 +464,7 @@ class MarketPageLoadWorker(QtCore.QThread):
                     page_size=self.page_size,
                     mode=mode,
                     updated_at=updated_at,
+                    board=self.board,
                 )
             )
         except Exception as ex:
@@ -592,5 +598,33 @@ class ScreenerBatchBacktestWorker(QtCore.QThread):
 
             results = run_batch_backtests(self.main_engine, self.rows, self.params)
             self.finished.emit(results)
+        except Exception as ex:
+            self.failed.emit(str(ex))
+
+
+class DiagnoseWorker(QtCore.QThread):
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        analysis_service,
+        *,
+        vt_symbol: str,
+        include_reports: bool = True,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.analysis_service = analysis_service
+        self.vt_symbol = vt_symbol
+        self.include_reports = include_reports
+
+    def run(self) -> None:
+        try:
+            result = self.analysis_service.diagnose(
+                self.vt_symbol,
+                include_reports=self.include_reports,
+            )
+            self.finished.emit(result)
         except Exception as ex:
             self.failed.emit(str(ex))
