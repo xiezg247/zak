@@ -51,6 +51,16 @@ def release_thread(
         pass
 
 
+def frame_intersects_any_screen(rect: QtCore.QRect) -> bool:
+    screens = QtGui.QGuiApplication.screens()
+    if not screens or rect.isEmpty():
+        return False
+    for screen in screens:
+        if rect.intersects(screen.availableGeometry()):
+            return True
+    return False
+
+
 def ensure_geometry_on_screen(widget: QtWidgets.QWidget) -> None:
     """确保窗口至少部分落在已连接屏幕的可用区域内。"""
     frame = widget.frameGeometry()
@@ -61,13 +71,7 @@ def ensure_geometry_on_screen(widget: QtWidgets.QWidget) -> None:
     if not screens:
         return
 
-    def intersects_any_screen(rect: QtCore.QRect) -> bool:
-        for screen in screens:
-            if rect.intersects(screen.availableGeometry()):
-                return True
-        return False
-
-    if intersects_any_screen(frame):
+    if frame_intersects_any_screen(frame):
         return
 
     target = QtGui.QGuiApplication.primaryScreen() or screens[0]
@@ -84,6 +88,48 @@ def restore_geometry_on_screen(
     geometry: QtCore.QByteArray | object | None,
 ) -> None:
     """恢复保存的几何信息，并校正到可见屏幕内。"""
-    if geometry is not None:
+    if isinstance(geometry, QtCore.QByteArray) and not geometry.isEmpty():
         widget.restoreGeometry(geometry)
-    ensure_geometry_on_screen(widget)
+        if not frame_intersects_any_screen(widget.frameGeometry()):
+            widget.hide()
+            ensure_geometry_on_screen(widget)
+    else:
+        ensure_geometry_on_screen(widget)
+
+
+def clamp_point_in_parent(
+    parent: QtWidgets.QWidget,
+    widget: QtWidgets.QWidget,
+    point: QtCore.QPoint,
+) -> QtCore.QPoint:
+    """将子控件坐标限制在父控件范围内。"""
+    max_x = max(0, parent.width() - widget.width())
+    max_y = max(0, parent.height() - widget.height())
+    return QtCore.QPoint(
+        min(max(0, point.x()), max_x),
+        min(max(0, point.y()), max_y),
+    )
+
+
+def restore_child_position(
+    parent: QtWidgets.QWidget,
+    widget: QtWidgets.QWidget,
+    pos: object | None,
+    *,
+    default_x: int | None = None,
+    default_y: int | None = None,
+) -> None:
+    """恢复子控件在父控件内的位置。"""
+    if default_x is None:
+        default_x = max(0, parent.width() - widget.width() - 20)
+    if default_y is None:
+        default_y = max(0, parent.height() - widget.height() - 20)
+    if isinstance(pos, QtCore.QPoint):
+        point = clamp_point_in_parent(parent, widget, pos)
+    else:
+        point = clamp_point_in_parent(
+            parent,
+            widget,
+            QtCore.QPoint(default_x, default_y),
+        )
+    widget.move(point)

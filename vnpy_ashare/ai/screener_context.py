@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_ashare.ai.session_context import get_screening_results, set_ai_context
+from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
 
 def sync_screener_page_context(main_engine=None) -> None:
@@ -29,17 +30,7 @@ def sync_screener_page_context(main_engine=None) -> None:
             lines.append(f"  … 另有 {ctx.count - len(preview)} 条，可调用 get_screening_context 查看")
         data = AiContextData(page="选股", extra="\n".join(lines))
 
-    set_ai_context(data)
-    if main_engine is None:
-        return
-    try:
-        from vnpy_llm.engine import APP_NAME, LlmEngine
-
-        engine = main_engine.get_engine(APP_NAME)
-        if isinstance(engine, LlmEngine):
-            engine.signals.context_changed.emit(data.to_text())
-    except Exception:
-        pass
+    set_ai_context(enrich_context_with_actions(data))
 
 
 def build_ask_ai_prompt_for_run(run_id: str, condition: str) -> str:

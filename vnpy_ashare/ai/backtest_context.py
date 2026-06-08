@@ -86,18 +86,10 @@ def build_backtest_ai_prompt(summary: dict[str, Any]) -> str:
 
 
 def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, notify_ui: bool = True) -> None:
-    data = build_backtest_page_context(widget)
-    set_ai_context(data)
-    if not notify_ui or main_engine is None:
-        return
-    try:
-        from vnpy_llm.engine import APP_NAME, LlmEngine
+    from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
-        engine = main_engine.get_engine(APP_NAME)
-        if isinstance(engine, LlmEngine):
-            engine.signals.context_changed.emit(data.to_text())
-    except Exception:
-        pass
+    data = enrich_context_with_actions(build_backtest_page_context(widget))
+    set_ai_context(data)
 
 
 def connect_backtest_context_sync(widget: QtWidgets.QWidget) -> None:
@@ -139,15 +131,7 @@ def build_batch_compare_context(session, rows: list[Any]) -> AiContextData:
 
 
 def sync_batch_compare_context(session, rows: list[Any], main_engine=None) -> None:
-    data = build_batch_compare_context(session, rows)
-    set_ai_context(data)
-    if main_engine is None:
-        return
-    try:
-        from vnpy_llm.engine import APP_NAME, LlmEngine
+    from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
-        engine = main_engine.get_engine(APP_NAME)
-        if isinstance(engine, LlmEngine):
-            engine.signals.context_changed.emit(data.to_text())
-    except Exception:
-        pass
+    data = enrich_context_with_actions(build_batch_compare_context(session, rows))
+    set_ai_context(data)

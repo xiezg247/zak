@@ -46,6 +46,9 @@ class AiPageWidget(QtWidgets.QWidget):
         self.collapse_to_dock.emit()
 
     def activate(self) -> None:
+        engine = getattr(self, "_llm_engine", None)
+        if engine is not None:
+            engine.switch_surface("assistant")
         if self.panel is not None:
             self.panel.focus_input()
 

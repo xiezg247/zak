@@ -91,15 +91,17 @@ SQLite       ──► 本地 K 线（vnpy_sqlite）
 SQLite       ──► 本地 K 线（回测，与实盘 Tick 无关）
 ```
 
-## AI 助手交互（方案 B）
+## AI 助手交互
 
-AI 不作为左侧主导航项，而是**叠加能力**：
+AI 提供**悬浮球 + 全屏**两种形态：
 
 | 模式 | 入口 | 说明 |
 |------|------|------|
-| 侧栏 Dock | `Ctrl+L` / `⌘L`、工具 → 切换 AI 侧栏 | 默认隐藏，边看盘边问 |
-| 全屏 | Dock 内「全屏」 | 长对话；与 Dock 互斥 |
-| 返回 | 全屏「← 返回看盘」 | 回到上次看盘页并打开 Dock |
+| 悬浮球 | 自选/市场/本地/选股页默认显示；`Ctrl+L` 切换显隐 | 左键开精简面板，右键快捷动作 |
+| 全屏 | 导航「AI 助手」、面板「全屏」、回测「问 AI」 | 长对话与会话管理；回测问 AI 使用新会话 |
+| 返回 | 全屏「← 返回看盘」 | 回到上次看盘页并打开悬浮面板 |
+
+上下文通过 `session_context.set_ai_context()` 写入，变更后 `LlmEngine.signals.context_changed` 驱动悬浮球角标与面板 ContextChip 更新。设计详见 [悬浮球功能增强设计](./superpowers/specs/2026-06-08-floating-orb-enhancement-design.md)。
 
 选股/回测时通过 `vnpy_ashare/ai/context.py` 的 `set_ai_context()` / `set_backtest_summary()` 共享上下文给 Agent Skills，避免事件广播耦合。
 

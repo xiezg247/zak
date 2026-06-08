@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.qt_helpers import release_thread
+from vnpy_ashare.ui.qt_helpers import release_thread, retain_thread_until_finished
 
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tools_status import ToolsStatusSnapshot
 from vnpy_llm.ui.styles import PANEL_STYLESHEET
 from vnpy_llm.ui.tools_widgets import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.session_widgets import show_ai_session_dialog
+from vnpy_ashare.ai.context import QuickAction
+from vnpy_llm.ui.floating_widgets import QuickActionChips
 from vnpy_llm.ui.worker import ChatWorker
 
 
@@ -34,14 +36,18 @@ class AiChatPanel(QtWidgets.QWidget):
             self.setProperty("floating", True)
         self._worker: ChatWorker | None = None
         self._retired_workers: list[QtCore.QThread] = []
-        self._streaming_bubble: QtWidgets.QLabel | None = None
+        self._streaming_bubble: QtWidgets.QWidget | None = None
         self._context_text = ""
+        self._tool_hint: QtWidgets.QLabel | None = None
 
         self.setObjectName("AiChatPanel")
-        if not self.floating:
+        if self.floating:
+            self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        else:
             self.setStyleSheet(PANEL_STYLESHEET)
         self._build_ui()
         self._connect_signals()
+        self.scroll.viewport().installEventFilter(self)
         self._refresh_messages()
         self._update_model_action()
 
@@ -61,7 +67,13 @@ class AiChatPanel(QtWidgets.QWidget):
         self.tools_status_bar.open_details_requested.connect(self._on_show_tools)
         if self.floating:
             self.tools_status_bar.hide()
-        root.addWidget(self.tools_status_bar)
+            self._tool_hint = QtWidgets.QLabel()
+            self._tool_hint.setObjectName("AiFloatingToolHint")
+            self._tool_hint.setWordWrap(True)
+            self._tool_hint.hide()
+            root.addWidget(self._tool_hint)
+        else:
+            root.addWidget(self.tools_status_bar)
 
         if self.compact and not self.floating:
             shortcut_hint = QtWidgets.QLabel("Ctrl+L / ⌘L 显示悬浮球 · 全屏进入专注模式")
@@ -73,21 +85,39 @@ class AiChatPanel(QtWidgets.QWidget):
         self.context_label.setObjectName("AiContextLabel")
         self.context_label.setWordWrap(True)
         self.context_label.setVisible(False)
-        root.addWidget(self.context_label)
+        if not self.floating:
+            root.addWidget(self.context_label)
 
         self.scroll = QtWidgets.QScrollArea()
         self.scroll.setObjectName("AiMessageScroll")
         self.scroll.setWidgetResizable(True)
         self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        if self.floating:
+            self.scroll.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+            self.scroll.viewport().setAttribute(
+                QtCore.Qt.WidgetAttribute.WA_StyledBackground, True
+            )
 
         self.message_container = QtWidgets.QWidget()
         self.message_container.setObjectName("AiMessageContainer")
+        if self.floating:
+            self.message_container.setAttribute(
+                QtCore.Qt.WidgetAttribute.WA_StyledBackground, True
+            )
         self.message_layout = QtWidgets.QVBoxLayout(self.message_container)
         self.message_layout.setContentsMargins(0, 0, 0, 0)
         self.message_layout.setSpacing(6 if self.floating else 8)
         self.message_layout.addStretch()
         self.scroll.setWidget(self.message_container)
+        if self.floating:
+            self.scroll.setMinimumHeight(180)
         root.addWidget(self.scroll, stretch=1)
+
+        self.quick_actions: QuickActionChips | None = None
+        if self.floating:
+            self.quick_actions = QuickActionChips(self)
+            self.quick_actions.setVisible(False)
+            root.addWidget(self.quick_actions)
 
         input_row = QtWidgets.QHBoxLayout()
         input_row.setSpacing(6)
@@ -97,8 +127,17 @@ class AiChatPanel(QtWidgets.QWidget):
             "问点什么…" if self.floating else "输入问题，Ctrl+Enter 发送…"
         )
         line_height = self.input_box.fontMetrics().lineSpacing()
-        input_lines = 2 if self.floating else 3
-        self.input_box.setFixedHeight(line_height * input_lines + (10 if self.floating else 16))
+        min_lines = 1 if self.floating else 2
+        max_lines = 6 if self.floating else 8
+        self._input_min_height = line_height * min_lines + (6 if self.floating else 16)
+        self._input_max_height = line_height * max_lines + (6 if self.floating else 16)
+        self.input_box.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.input_box.setFixedHeight(self._input_min_height)
+        self.input_box.document().documentLayout().documentSizeChanged.connect(
+            self._on_input_document_changed
+        )
         input_row.addWidget(self.input_box, stretch=1)
 
         self.send_btn = QtWidgets.QPushButton("↑" if self.floating else "发送")
@@ -168,9 +207,39 @@ class AiChatPanel(QtWidgets.QWidget):
     def focus_input(self) -> None:
         self.input_box.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
 
+    def _on_input_document_changed(self) -> None:
+        doc = self.input_box.document()
+        content_height = int(doc.documentLayout().documentSize().height())
+        ideal = max(self._input_min_height, min(content_height + 6, self._input_max_height))
+        current = self.input_box.height()
+        if abs(ideal - current) > 4:
+            self.input_box.setFixedHeight(ideal)
+            self.input_box.verticalScrollBar().setVisible(
+                content_height > self._input_max_height
+            )
+
     def set_input_text(self, text: str) -> None:
         self.input_box.setPlainText(text.strip())
         self.focus_input()
+
+    def submit_prompt(self, text: str, *, auto_send: bool = False) -> None:
+        self.set_input_text(text)
+        if auto_send:
+            self._on_send()
+
+    def set_quick_actions(self, actions: list[QuickAction]) -> None:
+        if self.quick_actions is None:
+            return
+        self.quick_actions.set_actions(actions)
+
+    def on_floating_shown(self) -> None:
+        """悬浮面板显示后刷新消息区布局。"""
+        if not self.floating:
+            return
+        self.message_container.adjustSize()
+        self._refresh_messages()
+        QtCore.QTimer.singleShot(100, self._sync_all_bubble_widths)
+        QtCore.QTimer.singleShot(300, self._sync_all_bubble_widths)
 
     def _update_model_action(self) -> None:
         if self.floating:
@@ -183,6 +252,8 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_context_changed(self, text: str) -> None:
         self._context_text = text.strip()
+        if self.floating:
+            return
         if self._context_text:
             self.context_label.setText(self._context_text)
             self.context_label.setVisible(True)
@@ -202,22 +273,110 @@ class AiChatPanel(QtWidgets.QWidget):
             return
         self._clear_message_widgets()
         for msg in self.engine.get_messages():
+            if msg.role not in ("user", "assistant", "error"):
+                continue
+            if msg.role == "assistant" and not msg.content.strip():
+                continue
             self._append_bubble(msg.role, msg.content, persist=False)
+        self._sync_all_bubble_widths()
         self._scroll_to_bottom()
 
-    def _append_bubble(self, role: str, content: str, *, persist: bool) -> QtWidgets.QLabel:
+    def _bubble_max_width(self, role: str) -> int:
+        viewport_width = self.scroll.viewport().width()
+        if viewport_width < 40:
+            viewport_width = self.scroll.width() - 20
+        if viewport_width < 40:
+            viewport_width = self.width() - 20
+        if viewport_width < 100:
+            viewport_width = 300
+        margin = 8 if self.floating else 12
+        usable = max(200, viewport_width - margin * 2)
+        if role == "user":
+            return int(usable * 0.85)
+        return usable
+
+    @staticmethod
+    def _bubble_role(widget: QtWidgets.QWidget) -> str:
+        name = widget.objectName()
+        if name == "AiBubbleUser":
+            return "user"
+        if name == "AiBubbleError":
+            return "error"
+        return "assistant"
+
+    def _sync_label_bubble(self, bubble: QtWidgets.QLabel) -> None:
+        role = self._bubble_role(bubble)
+        target_width = self._bubble_max_width(role)
+        bubble.setMaximumWidth(target_width)
+        bubble.setMinimumWidth(min(target_width, 200))
+        wrapped_height = bubble.heightForWidth(target_width)
+        if wrapped_height > 0:
+            bubble.setMinimumHeight(wrapped_height)
+
+    def _fit_floating_bubble(self, bubble: QtWidgets.QTextBrowser) -> None:
+        """已不再使用 QTextBrowser；保留以防残留。"""
+
+    def _sync_all_bubble_widths(self) -> None:
+        for bubble in self._iter_message_bubbles():
+            if isinstance(bubble, QtWidgets.QLabel):
+                self._sync_label_bubble(bubble)
+
+    def _iter_message_bubbles(self):
+        for index in range(self.message_layout.count() - 1):
+            row = self.message_layout.itemAt(index).widget()
+            if row is None:
+                continue
+            for child in row.findChildren(QtWidgets.QLabel):
+                if child.objectName().startswith("AiBubble"):
+                    yield child
+
+    def _create_label_bubble(self, role: str, content: str) -> QtWidgets.QLabel:
         bubble = QtWidgets.QLabel(content)
         bubble.setWordWrap(True)
         bubble.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+        bubble.setMinimumWidth(40)
+        bubble.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
         if role == "user":
             bubble.setObjectName("AiBubbleUser")
-            bubble.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignTop)
+            bubble.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignTop
+            )
         elif role == "error":
             bubble.setObjectName("AiBubbleError")
+            bubble.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+            )
         else:
             bubble.setObjectName("AiBubbleAssistant")
+            bubble.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+            )
+        return bubble
+
+    def _insert_bubble_row(self, role: str, bubble: QtWidgets.QWidget) -> None:
+        row = QtWidgets.QWidget()
+        row.setObjectName("AiBubbleRow")
+        if self.floating:
+            row.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        row_layout = QtWidgets.QHBoxLayout(row)
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(0)
+        if role == "user":
+            row_layout.addStretch(1)
+            row_layout.addWidget(bubble, 0)
+        else:
+            row_layout.addWidget(bubble, 0)
+            row_layout.addStretch(1)
         insert_at = max(0, self.message_layout.count() - 1)
-        self.message_layout.insertWidget(insert_at, bubble)
+        self.message_layout.insertWidget(insert_at, row)
+
+    def _append_bubble(self, role: str, content: str, *, persist: bool) -> QtWidgets.QWidget:
+        bubble = self._create_label_bubble(role, content)
+        self._insert_bubble_row(role, bubble)
+        self._sync_label_bubble(bubble)
         if persist:
             self._scroll_to_bottom()
         return bubble
@@ -238,9 +397,12 @@ class AiChatPanel(QtWidgets.QWidget):
             return
 
         self.input_box.clear()
+        self.input_box.setFixedHeight(self._input_min_height)
         self._set_busy(True)
-        worker = ChatWorker(self.engine, text, self)
+        self._append_bubble("user", text, persist=True)
+        worker = ChatWorker(self.engine, text, None)
         self._worker = worker
+        retain_thread_until_finished(self._retired_workers, worker)
         worker.finished_ok.connect(self._on_worker_done)
         worker.failed.connect(self._on_worker_failed)
         worker.finished.connect(worker.deleteLater)
@@ -253,19 +415,38 @@ class AiChatPanel(QtWidgets.QWidget):
     def _on_stream_started(self) -> None:
         self._streaming_bubble = self._append_bubble("assistant", "", persist=True)
 
-    def _on_stream_delta(self, delta: str) -> None:
+    def _append_stream_delta(self, delta: str) -> None:
         if self._streaming_bubble is None:
             return
-        self._streaming_bubble.setText(self._streaming_bubble.text() + delta)
+        widget = self._streaming_bubble
+        if isinstance(widget, QtWidgets.QLabel):
+            widget.setText(widget.text() + delta)
+            self._sync_label_bubble(widget)
+        elif isinstance(widget, QtWidgets.QTextBrowser):
+            widget.setPlainText(widget.toPlainText() + delta)
+            self._fit_floating_bubble(widget)
+
+    def _on_stream_delta(self, delta: str) -> None:
+        self._append_stream_delta(delta)
         self._scroll_to_bottom()
 
     def _on_stream_finished(self) -> None:
+        if self._streaming_bubble is not None:
+            self._sync_all_bubble_widths()
+        self._streaming_bubble = None
+
+    def _remove_streaming_bubble(self) -> None:
+        if self._streaming_bubble is None:
+            return
+        row = self._streaming_bubble.parentWidget()
+        if row is not None:
+            row.deleteLater()
+        else:
+            self._streaming_bubble.deleteLater()
         self._streaming_bubble = None
 
     def _on_stream_failed(self, message: str) -> None:
-        if self._streaming_bubble is not None:
-            self._streaming_bubble.deleteLater()
-            self._streaming_bubble = None
+        self._remove_streaming_bubble()
         self._append_bubble("error", f"生成失败：{message}", persist=True)
 
     def _on_tool_call_started(self, name: str) -> None:
@@ -306,14 +487,17 @@ class AiChatPanel(QtWidgets.QWidget):
                 display = f"通达信 MCP ({suffix})"
         if display is None:
             display = name
-        if self.floating:
-            self.tools_status_bar.show()
-        self.tools_status_bar.show_progress(f"正在 {display}…")
+        if self.floating and self._tool_hint is not None:
+            self._tool_hint.setText(f"⏳ 正在 {display}…")
+            self._tool_hint.show()
+        else:
+            self.tools_status_bar.show_progress(f"正在 {display}…")
 
     def _on_tool_call_finished(self, name: str) -> None:
-        self.tools_status_bar.hide_progress()
-        if self.floating:
-            self.tools_status_bar.hide()
+        if self.floating and self._tool_hint is not None:
+            self._tool_hint.hide()
+        else:
+            self.tools_status_bar.hide_progress()
 
     def _on_worker_done(self) -> None:
         self._worker = None
@@ -366,6 +550,18 @@ class AiChatPanel(QtWidgets.QWidget):
             return
         self.engine.reload_tools()
 
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if (
+            obj is self.scroll.viewport()
+            and event.type() == QtCore.QEvent.Type.Resize
+        ):
+            self._sync_all_bubble_widths()
+        return super().eventFilter(obj, event)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        QtCore.QTimer.singleShot(0, self._sync_all_bubble_widths)
+
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if (
             event.key() in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter)
@@ -376,7 +572,36 @@ class AiChatPanel(QtWidgets.QWidget):
             return
         super().keyPressEvent(event)
 
-    def deactivate(self) -> None:
+    def _disconnect_engine_signals(self) -> None:
+        signals = self.engine.signals
+        for signal, slot in (
+            (signals.messages_changed, self._refresh_messages),
+            (signals.stream_started, self._on_stream_started),
+            (signals.stream_delta, self._on_stream_delta),
+            (signals.stream_finished, self._on_stream_finished),
+            (signals.stream_failed, self._on_stream_failed),
+            (signals.context_changed, self._on_context_changed),
+            (signals.tools_status_changed, self._on_tools_status_changed),
+            (signals.tool_call_started, self._on_tool_call_started),
+            (signals.tool_call_finished, self._on_tool_call_finished),
+        ):
+            try:
+                signal.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+
+    def deactivate(self, *, final: bool = False) -> None:
+        if final:
+            self._disconnect_engine_signals()
         worker = self._worker
         self._worker = None
-        release_thread(self._retired_workers, worker)
+        if final and worker is not None:
+            worker.safe_stop()
+        else:
+            release_thread(self._retired_workers, worker, timeout_ms=5000)
+        if final:
+            for retired in list(self._retired_workers):
+                if isinstance(retired, ChatWorker):
+                    retired.safe_stop()
+                else:
+                    release_thread(self._retired_workers, retired, timeout_ms=2000)

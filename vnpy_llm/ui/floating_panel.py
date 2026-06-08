@@ -6,11 +6,18 @@ import math
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.qt_helpers import ensure_geometry_on_screen, restore_geometry_on_screen
+from vnpy_ashare.ai.context import AiContextData
+from vnpy_ashare.ui.qt_helpers import (
+    clamp_point_in_parent,
+    ensure_geometry_on_screen,
+    restore_child_position,
+    restore_geometry_on_screen,
+)
 
 from vnpy_llm.engine import LlmEngine
+from vnpy_llm.ui.floating_actions import orb_tooltip_text
 from vnpy_llm.ui.panel import AiChatPanel
-from vnpy_llm.ui.styles import FLOATING_CHAT_STYLESHEET
+from vnpy_llm.ui.styles import FLOATING_CHAT_INNER_STYLESHEET, FLOATING_CHAT_STYLESHEET
 
 ORB_SIZE = 52
 ORB_MARGIN = 20
@@ -27,8 +34,10 @@ class FloatingAiOrb(QtWidgets.QWidget):
     clicked = QtCore.Signal()
     fullscreen_requested = QtCore.Signal()
     history_requested = QtCore.Signal()
+    new_session_requested = QtCore.Signal()
     tools_requested = QtCore.Signal()
     hide_requested = QtCore.Signal()
+    quick_action_requested = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -43,6 +52,29 @@ class FloatingAiOrb(QtWidgets.QWidget):
         self._press_global: QtCore.QPoint | None = None
         self._dragging = False
         self._hovered = False
+        self._badge_text = ""
+        self._context_actions: list = []
+        self._attention_strength = 0.0
+        self._attention_timer = QtCore.QTimer(self)
+        self._attention_timer.setInterval(80)
+        self._attention_timer.timeout.connect(self._on_attention_tick)
+
+    def play_attention_pulse(self) -> None:
+        """选股完成等场景：短暂高亮，不展开面板。"""
+        self._attention_strength = 1.0
+        self._attention_timer.start()
+
+    def _on_attention_tick(self) -> None:
+        self._attention_strength = max(0.0, self._attention_strength - 0.1)
+        self.update()
+        if self._attention_strength <= 0:
+            self._attention_timer.stop()
+
+    def apply_context(self, data: AiContextData) -> None:
+        self._badge_text = (data.badge or "")[:8]
+        self._context_actions = list(data.actions)
+        self.setToolTip(orb_tooltip_text(data))
+        self.update()
 
     @staticmethod
     def _draw_sparkle(
@@ -70,12 +102,26 @@ class FloatingAiOrb(QtWidgets.QWidget):
         center = QtCore.QPointF(ORB_SIZE / 2, ORB_SIZE / 2 + 0.5)
         radius = 21.0
 
-        glow = QtGui.QRadialGradient(center + QtCore.QPointF(0, 3), radius + 6)
-        glow.setColorAt(0.0, QtGui.QColor(56, 132, 255, 70 if self._hovered else 48))
+        attention = self._attention_strength
+        glow_alpha = 48 + int(90 * attention)
+        if self._hovered:
+            glow_alpha += 22
+        glow = QtGui.QRadialGradient(center + QtCore.QPointF(0, 3), radius + 6 + attention * 6)
+        glow.setColorAt(0.0, QtGui.QColor(56, 132, 255, glow_alpha))
         glow.setColorAt(1.0, QtGui.QColor(56, 132, 255, 0))
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.setBrush(glow)
-        painter.drawEllipse(center + QtCore.QPointF(0, 4), radius + 4, radius + 3)
+        painter.drawEllipse(
+            center + QtCore.QPointF(0, 4),
+            radius + 4 + attention * 4,
+            radius + 3 + attention * 3,
+        )
+        if attention > 0.05:
+            ring = QtGui.QPen(QtGui.QColor(120, 200, 255, int(180 * attention)), 2.0)
+            painter.setPen(ring)
+            painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(center, radius + 2 + attention * 3, radius + 2 + attention * 3)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
 
         orb_gradient = QtGui.QRadialGradient(center + QtCore.QPointF(-7, -8), radius * 1.55)
         if self._hovered:
@@ -113,7 +159,36 @@ class FloatingAiOrb(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
         self._paint_orb_icon(painter)
+        if self._badge_text:
+            self._paint_badge(painter)
         painter.end()
+
+    def _paint_badge(self, painter: QtGui.QPainter) -> None:
+        font = painter.font()
+        font.setPixelSize(9)
+        font.setBold(True)
+        painter.setFont(font)
+        metrics = QtGui.QFontMetrics(font)
+        text = self._badge_text
+        width = min(metrics.horizontalAdvance(text) + 8, ORB_SIZE - 4)
+        height = 14
+        rect = QtCore.QRectF(ORB_SIZE - width - 2, 2, width, height)
+        badge_bg = QtGui.QColor(30, 36, 52, 230)
+        if self._attention_strength > 0.05:
+            mix = self._attention_strength
+            badge_bg = QtGui.QColor(
+                int(30 + 40 * mix),
+                int(36 + 50 * mix),
+                int(52 + 10 * mix),
+                240,
+            )
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(badge_bg)
+        painter.drawRoundedRect(rect, 4, 4)
+        painter.setPen(
+            QtGui.QColor(255, 220, 160) if self._attention_strength > 0.05 else QtGui.QColor(200, 220, 255)
+        )
+        painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, text)
 
     def enterEvent(self, event: QtCore.QEvent) -> None:
         self._hovered = True
@@ -159,8 +234,17 @@ class FloatingAiOrb(QtWidgets.QWidget):
         menu = QtWidgets.QMenu(self)
         menu.setObjectName("FloatingAiOrbMenu")
         menu.addAction("打开对话", self.clicked.emit)
+        if self._context_actions:
+            menu.addSeparator()
+            for action in self._context_actions[:5]:
+                menu.addAction(
+                    action.label,
+                    lambda checked=False, prompt=action.prompt: self.quick_action_requested.emit(prompt),
+                )
+        menu.addSeparator()
         menu.addAction("全屏模式", self.fullscreen_requested.emit)
         menu.addSeparator()
+        menu.addAction("新会话", self.new_session_requested.emit)
         menu.addAction("历史会话…", self.history_requested.emit)
         menu.addAction("AI 工具能力…", self.tools_requested.emit)
         menu.addSeparator()
@@ -170,17 +254,17 @@ class FloatingAiOrb(QtWidgets.QWidget):
     def restore_position(self, shell: QtWidgets.QWidget | None = None) -> None:
         if shell is None:
             shell = self.parentWidget()
+        if shell is None:
+            return
         settings = QtCore.QSettings("vnpy_zak", "floating_ai")
         pos = settings.value("orb_position")
-        if isinstance(pos, QtCore.QPoint):
-            self.move(pos)
-        elif shell is not None:
-            self.move(
-                shell.width() - self.width() - ORB_MARGIN,
-                shell.height() - self.height() - ORB_MARGIN,
-            )
-        if shell is not None:
-            self.clamp_to_parent(shell)
+        restore_child_position(
+            shell,
+            self,
+            pos,
+            default_x=shell.width() - self.width() - ORB_MARGIN,
+            default_y=shell.height() - self.height() - ORB_MARGIN,
+        )
 
     def _save_position(self) -> None:
         settings = QtCore.QSettings("vnpy_zak", "floating_ai")
@@ -191,9 +275,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
             shell = self.parentWidget()
         if shell is None:
             return
-        x = min(max(0, self.x()), max(0, shell.width() - self.width()))
-        y = min(max(0, self.y()), max(0, shell.height() - self.height()))
-        self.move(x, y)
+        self.move(clamp_point_in_parent(shell, self, self.pos()))
 
 
 class FloatingAiPanel(QtWidgets.QWidget):
@@ -201,6 +283,9 @@ class FloatingAiPanel(QtWidgets.QWidget):
 
     expand_requested = QtCore.Signal()
     panel_minimized = QtCore.Signal()
+    new_session_requested = QtCore.Signal()
+    history_requested = QtCore.Signal()
+    quick_action_triggered = QtCore.Signal(object)
 
     def __init__(
         self,
@@ -208,10 +293,6 @@ class FloatingAiPanel(QtWidgets.QWidget):
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setWindowFlags(
-            QtCore.Qt.WindowType.Tool
-            | QtCore.Qt.WindowType.FramelessWindowHint
-        )
         self.setObjectName("FloatingAiPanel")
         self.setMinimumSize(300, 360)
         self.resize(PANEL_WIDTH, PANEL_HEIGHT)
@@ -219,9 +300,11 @@ class FloatingAiPanel(QtWidgets.QWidget):
         self._drag_pos: QtCore.QPoint | None = None
 
         self._build_ui(engine)
-        self._restore_geometry()
+        QtCore.QTimer.singleShot(0, self._restore_geometry)
 
     def _build_ui(self, engine: LlmEngine) -> None:
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -229,17 +312,38 @@ class FloatingAiPanel(QtWidgets.QWidget):
         title_bar = self._build_title_bar()
         root.addWidget(title_bar)
 
+        self.context_bar = QtWidgets.QWidget()
+        self.context_bar.setObjectName("AiFloatingContextBar")
+        self.context_bar.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        context_layout = QtWidgets.QHBoxLayout(self.context_bar)
+        context_layout.setContentsMargins(10, 8, 10, 8)
+        context_layout.setSpacing(0)
+        self.context_chip = QtWidgets.QLabel("AI 助手")
+        self.context_chip.setObjectName("AiFloatingContextChip")
+        self.context_chip.setWordWrap(True)
+        self.context_chip.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+        context_layout.addWidget(self.context_chip)
+        self.context_bar.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        root.addWidget(self.context_bar, 0)
+
         self.chat_panel = AiChatPanel(engine, floating=True, parent=self)
+        self.chat_panel.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self.chat_panel.expand_requested.connect(self._on_expand)
-        root.addWidget(self.chat_panel, stretch=1)
+        if self.chat_panel.quick_actions is not None:
+            self.chat_panel.quick_actions.triggered.connect(self.quick_action_triggered.emit)
+        root.addWidget(self.chat_panel, 1)
 
-        self.setStyleSheet(FLOATING_CHAT_STYLESHEET)
-
-        shadow = QtWidgets.QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(16)
-        shadow.setColor(QtGui.QColor(0, 0, 0, 100))
-        shadow.setOffset(0, 3)
-        self.setGraphicsEffect(shadow)
+        self.setStyleSheet(FLOATING_CHAT_STYLESHEET + FLOATING_CHAT_INNER_STYLESHEET)
+        self._update_context_bar_geometry()
 
     def _build_title_bar(self) -> QtWidgets.QWidget:
         bar = QtWidgets.QWidget()
@@ -258,6 +362,22 @@ class FloatingAiPanel(QtWidgets.QWidget):
         title.setObjectName("AiFloatingTitle")
         layout.addWidget(title)
         layout.addStretch()
+
+        new_btn = QtWidgets.QToolButton()
+        new_btn.setObjectName("AiFloatingIconBtn")
+        new_btn.setText("＋")
+        new_btn.setToolTip("新会话")
+        new_btn.setFixedSize(24, 24)
+        new_btn.clicked.connect(self.new_session_requested.emit)
+        layout.addWidget(new_btn)
+
+        history_btn = QtWidgets.QToolButton()
+        history_btn.setObjectName("AiFloatingIconBtn")
+        history_btn.setText("⌚")
+        history_btn.setToolTip("历史会话")
+        history_btn.setFixedSize(24, 24)
+        history_btn.clicked.connect(self.history_requested.emit)
+        layout.addWidget(history_btn)
 
         expand_btn = QtWidgets.QToolButton()
         expand_btn.setObjectName("AiFloatingIconBtn")
@@ -287,16 +407,36 @@ class FloatingAiPanel(QtWidgets.QWidget):
 
     def show_near_orb(self, orb: FloatingAiOrb) -> None:
         """在悬浮球附近弹出面板。"""
-        orb_global = orb.mapToGlobal(QtCore.QPoint(0, 0))
-        x = orb_global.x() - self.width() + orb.width()
-        y = orb_global.y() - self.height() - 12
-        if y < 0:
-            y = orb_global.y() + orb.height() + 12
-        self.move(x, y)
-        ensure_geometry_on_screen(self)
+        shell = self.parentWidget() or orb.parentWidget()
+        if shell is not None:
+            orb_pos = orb.pos()
+            x = orb_pos.x() - self.width() + orb.width()
+            y = orb_pos.y() - self.height() - 12
+            if y < 0:
+                y = orb_pos.y() + orb.height() + 12
+            self.move(clamp_point_in_parent(shell, self, QtCore.QPoint(x, y)))
+        else:
+            orb_global = orb.mapToGlobal(QtCore.QPoint(0, 0))
+            x = orb_global.x() - self.width() + orb.width()
+            y = orb_global.y() - self.height() - 12
+            if y < 0:
+                y = orb_global.y() + orb.height() + 12
+            self.move(x, y)
+            ensure_geometry_on_screen(self)
         self.show()
         self.raise_()
+        self._update_context_bar_geometry()
+        self.chat_panel.on_floating_shown()
         self.chat_panel.focus_input()
+
+    def _update_context_bar_geometry(self) -> None:
+        content_width = max(self.width() - 20, 200)
+        chip_height = self.context_chip.heightForWidth(content_width)
+        self.context_bar.setFixedHeight(max(40, chip_height + 16))
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._update_context_bar_geometry()
 
     def focus_input(self) -> None:
         self.chat_panel.focus_input()
@@ -305,7 +445,19 @@ class FloatingAiPanel(QtWidgets.QWidget):
         self.chat_panel.set_input_text(text)
 
     def deactivate(self) -> None:
-        self.chat_panel.deactivate()
+        self.hide()
+        self.chat_panel.deactivate(final=True)
+
+    def apply_context(self, data: AiContextData) -> None:
+        chip = data.chip_text or "AI 助手"
+        self.context_chip.setText(chip)
+        detail = data.to_text()
+        self.context_chip.setToolTip(detail if detail else chip)
+        self._update_context_bar_geometry()
+        self.chat_panel.set_quick_actions(data.actions)
+
+    def submit_prompt(self, text: str, *, auto_send: bool = False) -> None:
+        self.chat_panel.submit_prompt(text, auto_send=auto_send)
 
     def _on_expand(self) -> None:
         self._save_geometry()

@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
+
+
+@dataclass
+class QuickAction:
+    """悬浮球/面板可点击的快捷动作。"""
+
+    id: str
+    label: str
+    prompt: str
+    auto_send: bool = False
 
 
 @dataclass
@@ -19,6 +29,9 @@ class AiContextData:
     name: str = ""
     quote_summary: str = ""
     extra: str = ""
+    badge: str = ""
+    chip_text: str = ""
+    actions: list[QuickAction] = field(default_factory=list)
 
     def to_text(self) -> str:
         lines: list[str] = []

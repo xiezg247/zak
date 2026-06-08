@@ -14,12 +14,14 @@ from vnpy.trader.ui import QtCore
 from vnpy_llm.client import LlmClientError, complete_with_tools, stream_chat_completion
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
+from vnpy_llm.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
 from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
 
-from vnpy_ashare.ai.session_context import sync_backtest_to_service
+from vnpy_ashare.ai.context import AiContextData
+from vnpy_ashare.ai.session_context import register_context_listener, sync_backtest_to_service
 
 APP_NAME = "Llm"
 
@@ -46,7 +48,18 @@ class LlmEngine(BaseEngine):
         self.signals = LlmSignals()
         self.store = ChatStore()
         self.config: LlmConfig = load_llm_config()
-        self.session_id: str = self.store.get_or_create_default_session()
+        self._surface_store = SessionSurfaceStore()
+        default_session_id = self.store.get_or_create_default_session()
+        floating_id = self._ensure_session_exists(
+            self._surface_store.get("floating", fallback=default_session_id),
+        )
+        assistant_id = self._ensure_session_exists(
+            self._surface_store.get("assistant", fallback=default_session_id),
+        )
+        self._surface_store.set("floating", floating_id)
+        self._surface_store.set("assistant", assistant_id)
+        self._active_surface: Surface = "assistant"
+        self.session_id: str = assistant_id
         self._extra_context_provider: Callable[[], str] | None = None
         self._streaming = False
         ashare_engine = getattr(main_engine, "engines", {}).get("Ashare")
@@ -74,7 +87,11 @@ class LlmEngine(BaseEngine):
         if ashare_engine is not None and hasattr(ashare_engine, "backtest_service"):
             sync_backtest_to_service(ashare_engine.backtest_service)
         self.register_event()
+        register_context_listener(self._on_session_context_changed)
         self._emit_tools_status()
+
+    def _on_session_context_changed(self, data: AiContextData) -> None:
+        self.signals.context_changed.emit(data.to_text())
 
     def register_event(self) -> None:
         pass  # EVENT_AI_CONTEXT 已移除，改用 session_context 桥接
@@ -105,12 +122,55 @@ class LlmEngine(BaseEngine):
     def get_current_session(self) -> ChatSession | None:
         return self.store.get_session(self.session_id)
 
+    @property
+    def active_surface(self) -> Surface:
+        return self._active_surface
+
+    def _ensure_session_exists(self, session_id: str) -> str:
+        if self.store.get_session(session_id) is not None:
+            return session_id
+        return self.store.get_or_create_default_session()
+
+    def _bind_surface_session(self, surface: Surface, session_id: str) -> None:
+        session_id = self._ensure_session_exists(session_id)
+        self._surface_store.set(surface, session_id)
+
+    def switch_surface(self, surface: Surface) -> None:
+        """切换 UI 轨道并恢复该轨道上次会话。"""
+        if surface == self._active_surface:
+            return
+        self._bind_surface_session(self._active_surface, self.session_id)
+        self._active_surface = surface
+        next_id = self._surface_store.get(surface, fallback=self.session_id)
+        next_id = self._ensure_session_exists(next_id)
+        self._bind_surface_session(surface, next_id)
+        if next_id != self.session_id:
+            self.session_id = next_id
+            self.signals.messages_changed.emit()
+            self.signals.sessions_changed.emit()
+
+    def open_session_for_ask(
+        self,
+        *,
+        surface: Surface,
+        new_session: bool = False,
+        session_policy: str = "resume",
+        scene: str = "",
+    ) -> str:
+        """打开悬浮/全屏 AI 前的统一会话入口。"""
+        _ = scene  # 预留 scene 策略（Phase 2）
+        self.switch_surface(surface)
+        if new_session or session_policy == "new":
+            return self.new_session(surface=surface)
+        return self.session_id
+
     def switch_session(self, session_id: str) -> None:
         if session_id == self.session_id:
             return
         if self.store.get_session(session_id) is None:
             return
         self.session_id = session_id
+        self._bind_surface_session(self._active_surface, session_id)
         self.signals.messages_changed.emit()
         self.signals.sessions_changed.emit()
 
@@ -120,12 +180,14 @@ class LlmEngine(BaseEngine):
 
     def delete_session(self, session_id: str) -> None:
         self.store.delete_session(session_id)
+        remaining = self.store.list_sessions(limit=1)
+        replacement = remaining[0].id if remaining else self.store.create_session()
+        self._surface_store.clear_binding(session_id, replacement=replacement)
         if session_id == self.session_id:
-            remaining = self.store.list_sessions(limit=1)
-            if remaining:
-                self.session_id = remaining[0].id
-            else:
-                self.session_id = self.store.create_session()
+            self.session_id = self._ensure_session_exists(
+                self._surface_store.get(self._active_surface, fallback=replacement),
+            )
+            self._bind_surface_session(self._active_surface, self.session_id)
             self.signals.messages_changed.emit()
         self.signals.sessions_changed.emit()
 
@@ -134,10 +196,20 @@ class LlmEngine(BaseEngine):
         self.signals.messages_changed.emit()
         self.signals.sessions_changed.emit()
 
-    def new_session(self) -> None:
-        self.session_id = self.store.create_session()
-        self.signals.messages_changed.emit()
+    def new_session(
+        self,
+        *,
+        title: str = "新会话",
+        surface: Surface | None = None,
+    ) -> str:
+        target = surface or self._active_surface
+        session_id = self.store.create_session(title=title)
+        self._bind_surface_session(target, session_id)
+        if target == self._active_surface:
+            self.session_id = session_id
+            self.signals.messages_changed.emit()
         self.signals.sessions_changed.emit()
+        return session_id
 
     def _maybe_update_session_title(self, user_text: str) -> None:
         session = self.store.get_session(self.session_id)
@@ -340,4 +412,5 @@ class LlmEngine(BaseEngine):
         self.config = load_llm_config()
 
     def close(self) -> None:
+        self._bind_surface_session(self._active_surface, self.session_id)
         super().close()

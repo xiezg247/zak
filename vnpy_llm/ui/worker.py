@@ -19,7 +19,20 @@ class ChatWorker(QtCore.QThread):
     def run(self) -> None:
         try:
             for _ in self._engine.stream_reply(self._user_text):
-                pass
-            self.finished_ok.emit()
+                if self.isInterruptionRequested():
+                    return
+            if not self.isInterruptionRequested():
+                self.finished_ok.emit()
         except Exception as ex:
-            self.failed.emit(str(ex))
+            if not self.isInterruptionRequested():
+                self.failed.emit(str(ex))
+
+    def safe_stop(self, *, polite_wait_ms: int = 10000, force_wait_ms: int = 3000) -> None:
+        """等待线程结束；超时则强制终止。"""
+        if not self.isRunning():
+            return
+        self.requestInterruption()
+        if self.wait(polite_wait_ms):
+            return
+        self.terminate()
+        self.wait(force_wait_ms)

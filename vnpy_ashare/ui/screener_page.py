@@ -11,7 +11,9 @@ from vnpy_ashare.events import (
     EVENT_ASK_AI,
     EVENT_OPEN_BACKTEST,
     EVENT_OPEN_BATCH_BACKTEST,
+    EVENT_ORB_ATTENTION,
     AskAiRequest,
+    OrbAttentionRequest,
     BacktestRequest,
     BatchBacktestViewRequest,
     FillScreenerRequest,
@@ -430,6 +432,10 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
+        if self.event_engine is not None:
+            self.event_engine.put(
+                Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="screener")),
+            )
 
     def _on_copy_run_id(self, run_id: str, condition: str) -> None:
         short = run_id[:8] + "…" if len(run_id) > 8 else run_id

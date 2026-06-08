@@ -1400,11 +1400,15 @@ class QuotesPage(QtWidgets.QWidget):
             key = (self.current_item.symbol, self.current_item.exchange)
             meta = self.bar_meta.get(key)
             bar_count = meta.count if meta else 0
-        data = build_quote_context(
-            page=self.page_name,
-            item=self.current_item,
-            quote=quote,
-            bar_count=bar_count,
+        from vnpy_llm.ui.floating_actions import enrich_context_with_actions
+
+        data = enrich_context_with_actions(
+            build_quote_context(
+                page=self.page_name,
+                item=self.current_item,
+                quote=quote,
+                bar_count=bar_count,
+            )
         )
         set_ai_context(data)
 

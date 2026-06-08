@@ -174,6 +174,10 @@ class ManagerWidget(VnpyManagerWidget):
         for i in range(self.tree.topLevelItemCount()):
             self._localize_item(self.tree.topLevelItem(i))
 
+        from vnpy_ashare.ai.data_manager_context import sync_data_manager_context
+
+        sync_data_manager_context()
+
     def _localize_item(self, item) -> None:
         text = item.text(0)
         if text in _VALUE_TO_CN:

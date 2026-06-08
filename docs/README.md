@@ -14,5 +14,6 @@
 | 文档 | 说明 |
 |------|------|
 | [AI 能力重构设计方案](./superpowers/specs/2026-06-08-ai-refactor-design.md) | Service 层抽取、Skills 拆分、上下文优化 |
+| [悬浮球功能增强设计](./superpowers/specs/2026-06-08-floating-orb-enhancement-design.md) | 上下文 Chip、Quick Actions、FloatingAiController 分阶段方案 |
 | [本地页 K 线覆盖设计](./superpowers/specs/2026-06-07-local-data-coverage-design.md) | K 线数据健康检测、补全交互 |
 | [AI 重构实现计划](./superpowers/plans/2026-06-08-ai-refactor-plan.md) | 分步实施指南（含提交说明） |

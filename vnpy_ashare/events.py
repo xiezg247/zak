@@ -10,6 +10,7 @@ EVENT_OPEN_BACKTEST = "eOpenBacktest"
 EVENT_OPEN_BATCH_BACKTEST = "eOpenBatchBacktest"
 EVENT_FILL_SCREENER = "eFillScreener"
 EVENT_ASK_AI = "eAskAi"
+EVENT_ORB_ATTENTION = "eOrbAttention"
 
 
 @dataclass
@@ -39,6 +40,13 @@ class FillScreenerRequest:
 
 
 @dataclass
+class OrbAttentionRequest:
+    """通知悬浮球展示轻量提示（如选股完成），不强制展开面板。"""
+
+    source: str = ""
+
+
+@dataclass
 class AskAiRequest:
     """打开 AI 面板并预填输入框。"""
 
@@ -46,3 +54,6 @@ class AskAiRequest:
     source_page: str = ""
     use_full_page: bool = False
     new_session: bool = False
+    auto_send: bool = False
+    session_policy: str = "resume"  # resume | new
+    scene: str = ""

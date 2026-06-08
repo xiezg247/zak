@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 from vnpy_ashare.ai.context import AiContextData
 
 _lock = threading.Lock()
+_listeners: list[Callable[[AiContextData], None]] = []
 _ai_context = AiContextData()
 _backtest_summary: dict[str, Any] | None = None
 _market_quotes: list[dict[str, Any]] = []
@@ -36,10 +38,23 @@ class BacktestSummary:
         }
 
 
+def register_context_listener(callback: Callable[[AiContextData], None]) -> None:
+    """注册上下文变更回调（如 LlmEngine 转发为 Qt Signal）。"""
+    with _lock:
+        if callback not in _listeners:
+            _listeners.append(callback)
+
+
 def set_ai_context(data: AiContextData) -> None:
     global _ai_context
     with _lock:
         _ai_context = data
+        listeners = list(_listeners)
+    for listener in listeners:
+        try:
+            listener(data)
+        except Exception:
+            pass
 
 
 def get_ai_context() -> AiContextData:
