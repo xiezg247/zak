@@ -64,6 +64,7 @@ class PageConfig:
     table_header_sortable: bool = False
     show_watchlist_move_buttons: bool = False
     show_backtest_button: bool = True
+    show_kline: bool = True
 
 
 PAGE_CONFIGS: dict[str, PageConfig] = {
@@ -81,6 +82,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         table_header_sortable=True,
         quote_refresh_ms=MARKET_QUOTE_REFRESH_MS,
         quote_source="market",
+        show_kline=False,
     ),
     "自选": PageConfig(
         title="自选",

@@ -358,6 +358,8 @@ class QuotesPage(QtWidgets.QWidget):
             self.chart_panel.tab_changed.connect(self._on_chart_tab_changed)
             self._on_chart_tab_changed(self.chart_panel.current_tab_index())
             chart_widget = self.chart_panel
+        elif not self.config.show_kline:
+            chart_widget = None
         else:
             self.chart = create_daily_chart()
             chart_frame = QtWidgets.QWidget()
@@ -378,7 +380,8 @@ class QuotesPage(QtWidgets.QWidget):
 
         chart_row = QtWidgets.QHBoxLayout()
         chart_row.setSpacing(6)
-        chart_row.addWidget(chart_widget, stretch=1)
+        if chart_widget is not None:
+            chart_row.addWidget(chart_widget, stretch=1)
         if self.config.show_depth_panel:
             self.depth_panel = DepthPanel()
             chart_row.addWidget(self.depth_panel)
@@ -398,10 +401,15 @@ class QuotesPage(QtWidgets.QWidget):
 
         right_widget = QtWidgets.QWidget()
         right_widget.setLayout(right_panel)
-        right_widget.setMinimumWidth(560 if self.config.show_depth_panel else 420)
+        if self.config.show_kline:
+            right_widget.setMinimumWidth(560 if self.config.show_depth_panel else 420)
         splitter.addWidget(right_widget)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
+        if self.config.show_kline:
+            splitter.setStretchFactor(0, 3)
+            splitter.setStretchFactor(1, 2)
+        else:
+            splitter.setStretchFactor(0, 8)
+            splitter.setStretchFactor(1, 1)
 
         self.status_label = QtWidgets.QLabel("就绪")
         self.refresh_hint_label = QtWidgets.QLabel(
@@ -986,7 +994,8 @@ class QuotesPage(QtWidgets.QWidget):
         self._update_quote_header(item)
         if new_key != old_key:
             self._selected_gap_result = None
-            self.show_kline(item)
+            if self.config.show_kline:
+                self.show_kline(item)
             if self.config.show_fill_button and self._is_daily_local_scope():
                 self._check_bar_gaps(item)
             if self.config.show_depth_panel:
@@ -1102,7 +1111,7 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _refresh_charts_only(self) -> None:
         current = self.current_item
-        if current is None or self.chart_panel is None:
+        if current is None or self.chart_panel is None or not self.config.show_kline:
             return
         self.chart_panel.update_quote(self.quote_map.get(current.tickflow_symbol))
         self.chart_panel.refresh_active()
@@ -1460,6 +1469,8 @@ class QuotesPage(QtWidgets.QWidget):
         worker.start()
 
     def _clear_local_chart(self) -> None:
+        if not self.config.show_kline:
+            return
         chart = self.chart
         if isinstance(chart, AshareChartWidget):
             chart.configure_scope(minute=not self._is_daily_local_scope())
@@ -1469,6 +1480,8 @@ class QuotesPage(QtWidgets.QWidget):
             chart.move_to_right()
 
     def _render_local_chart(self, bars: list[BarData]) -> None:
+        if not self.config.show_kline:
+            return
         chart = self.chart
         minute = not self._is_daily_local_scope()
         if isinstance(chart, AshareChartWidget):
@@ -1489,6 +1502,8 @@ class QuotesPage(QtWidgets.QWidget):
             break
 
     def show_kline(self, item: StockItem) -> None:
+        if not self.config.show_kline:
+            return
         quote = self.quote_map.get(item.tickflow_symbol)
         if self.chart_panel is not None:
             self.chart_panel.load_item(item, quote=quote)
