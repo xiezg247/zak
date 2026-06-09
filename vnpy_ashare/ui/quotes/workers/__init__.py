@@ -1,6 +1,6 @@
-"""后台线程 Worker（兼容 re-export，新代码请从 ui.quotes.workers 导入）。"""
+"""看盘页 Worker 子包。"""
 
-from vnpy_ashare.ui.quotes.workers import (
+from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
     DepthRefreshWorker,
@@ -19,11 +19,6 @@ from vnpy_ashare.ui.quotes.workers import (
     UniverseLoadWorker,
     UniverseSyncWorker,
 )
-from vnpy_ashare.ui.workers.screener_workers import (
-    ScreenerBatchBacktestWorker,
-    ScreenerBatchDownloadWorker,
-    ScreenerRunWorker,
-)
 
 __all__ = [
     "BarGapCheckWorker",
@@ -41,9 +36,6 @@ __all__ = [
     "MinuteDownloadWorker",
     "QuotesRefreshWorker",
     "ScopeBarsLoadWorker",
-    "ScreenerBatchBacktestWorker",
-    "ScreenerBatchDownloadWorker",
-    "ScreenerRunWorker",
     "UniverseLoadWorker",
     "UniverseSyncWorker",
 ]

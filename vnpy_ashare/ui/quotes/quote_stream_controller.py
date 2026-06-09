@@ -1,0 +1,108 @@
+"""TickFlow WebSocket 行情流控制器。"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tickflow_stream
+
+if TYPE_CHECKING:
+    from vnpy_ashare.ui.quotes_page import QuotesPage
+
+
+class QuoteStreamController:
+    """自选页 WebSocket 行情/五档订阅。"""
+
+    def __init__(self, page: QuotesPage) -> None:
+        self._page = page
+
+    def use_stream(self) -> bool:
+        page = self._page
+        return (
+            page.config.use_quote_stream
+            and page._stream_bridge is not None
+            and page._stream_bridge.is_connected
+            and not page._stream_fallback
+        )
+
+    def start(self) -> None:
+        page = self._page
+        if page._stream_bridge is not None:
+            return
+        if not can_use_tickflow_stream():
+            page._stream_fallback = True
+            return
+        bridge = TickflowStreamBridge(page)
+        bridge.quotes_updated.connect(self.on_quotes)
+        bridge.depth_updated.connect(self.on_depth)
+        bridge.depth_permission_denied.connect(self.on_depth_denied)
+        bridge.disconnected.connect(self.on_disconnected)
+        bridge.error.connect(self.on_error)
+        page._stream_bridge = bridge
+        page._stream_fallback = False
+        bridge.start()
+
+    def stop(self) -> None:
+        page = self._page
+        bridge = page._stream_bridge
+        page._stream_bridge = None
+        if bridge is None:
+            return
+        bridge.stop()
+        bridge.deleteLater()
+
+    def sync_subscriptions(self) -> None:
+        page = self._page
+        if page._stream_bridge is None:
+            return
+        symbols = [item.tickflow_symbol for item in page.display_stocks]
+        page._stream_bridge.set_quote_symbols(symbols)
+        self.sync_depth_subscription()
+
+    def sync_depth_subscription(self) -> None:
+        page = self._page
+        if page._stream_bridge is None:
+            return
+        if page._depth_permission_denied or page.current_item is None:
+            page._stream_bridge.set_depth_symbol(None)
+            return
+        page._stream_bridge.set_depth_symbol(page.current_item.tickflow_symbol)
+
+    def on_quotes(self, quotes: dict) -> None:
+        page = self._page
+        if not page._active:
+            return
+        page._stream_fallback = False
+        page.quote_map.update(quotes)
+        page._refresh_table_quotes()
+        if page.current_item:
+            page._update_quote_header(page.current_item)
+            if page.chart_panel is not None:
+                page.chart_panel.update_quote(quotes.get(page.current_item.tickflow_symbol))
+            page._emit_ai_context()
+
+    def on_depth(self, depth: DepthSnapshot) -> None:
+        page = self._page
+        if not page._active or page.depth_panel is None or page.current_item is None:
+            return
+        if depth.symbol != page.current_item.tickflow_symbol:
+            return
+        page.depth_panel.update_depth(depth)
+
+    def on_depth_denied(self, _message: str) -> None:
+        page = self._page
+        page._depth_permission_denied = True
+        if page.depth_panel is not None:
+            page.depth_panel.show_permission_denied("未开通市场深度权限")
+        self.sync_depth_subscription()
+
+    def on_disconnected(self) -> None:
+        self._page._stream_fallback = True
+
+    def on_error(self, _message: str) -> None:
+        page = self._page
+        page._stream_fallback = True
+        self.stop()
+        if page._active:
+            page._refresh_quotes_rest()

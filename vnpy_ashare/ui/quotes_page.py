@@ -4,121 +4,63 @@ from __future__ import annotations
 
 from typing import Literal
 
-from vnpy.event import Event, EventEngine
+from vnpy.event import EventEngine
 
-from vnpy_ashare.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy.trader.constant import Exchange, Interval
-from vnpy.trader.object import BarData
-from vnpy.trader.database import get_database
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.bar_health import (
     BarGapResult,
     BarHealthStatus,
     BarMeta,
-    format_gap_ranges,
     format_meta_date,
-    format_meta_datetime,
-    list_status,
-    status_label,
 )
-from vnpy_ashare.bar_store import iter_bar_overviews
 from vnpy_ashare.bars import cleanup_invalid_daily_bars
-from vnpy_ashare.minute_periods import (
-    DEFAULT_MINUTE_DOWNLOAD_MONTHS,
-    LOCAL_SCOPE_OPTIONS,
-    is_daily_scope,
-    scope_display,
-)
+from vnpy_ashare.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.calendar import last_trading_day
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
-from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tickflow_stream
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, NAV_MUTED_COLOR, RISE_COLOR, apply_toolbar_combo_style
-from vnpy_ashare.ui.worker import (
+from vnpy_ashare.ui.styles import apply_toolbar_combo_style
+from vnpy_ashare.ui.quotes.actions_controller import ActionsController
+from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController, should_apply_loaded_bars
+from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
+from vnpy_ashare.ui.quotes.quote_stream_controller import QuoteStreamController
+from vnpy_ashare.ui.quotes.table_controller import TableController
+from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
+from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
     DepthRefreshWorker,
     DiagnoseWorker,
     DownloadWorker,
-    LoadedBars,
     MarketPageLoadWorker,
     MarketPageResult,
     MinuteDownloadWorker,
-    ScopeBarsLoadWorker,
     QuotesRefreshWorker,
     UniverseLoadWorker,
     UniverseSyncWorker,
 )
-from vnpy_ashare.app_db import (
-    add_watchlist_item,
-    load_watchlist_rows,
-    move_watchlist_item,
-    remove_watchlist_item,
-    universe_exists,
-)
+from vnpy_ashare.app_db import universe_exists
 from vnpy_ashare.models import StockItem
-from vnpy_ashare.quote_time import format_batch_updated_at
-from vnpy_ashare.ui.chart_panel import ChartPanel, DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.qt_helpers import release_thread
+from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
+from vnpy_ashare.ui.chart_panel import ChartPanel
 from vnpy_ashare.ui.chart_style import CHART_FRAME_STYLESHEET
-from vnpy_ashare.ui.ma_legend import MaLegendBar
 from vnpy_ashare.ui.depth_panel import DepthPanel
+from vnpy_ashare.ui.ma_legend import MaLegendBar
+from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.quote_columns import (
     LOCAL_TABLE_HEADERS,
-    QUOTE_TABLE_COLUMNS,
-    build_local_data_row,
-    build_quote_row,
-    format_volume,
-    quote_column_index,
 )
-from vnpy_ashare.ui.sortable_table import SortableTableItem
-from vnpy_ashare.ui.quotes_chart import AshareChartWidget, create_daily_chart, prepare_chart_bars
+from vnpy_ashare.ui.quotes_chart import create_daily_chart
 from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
-from vnpy_ashare.ai.context import build_diagnose_ai_prompt, build_quote_context
 from vnpy_ashare.ui.quotes_config import (
-    ALL_TAIL_COLUMNS,
-    DEFAULT_WATCHLIST_COLUMNS,
-    MARKET_VISIBLE_COLUMNS,
-    MAX_DISPLAY_ROWS,
     PAGE_CONFIGS,
     quote_refresh_hint,
     SEARCH_DEBOUNCE_MS,
     TABLE_HEADERS_LOCAL,
     TABLE_HEADERS_WITH_LOCAL,
 )
-
-STATUS_OK_COLOR = "#3ddc84"
-STATUS_STALE_COLOR = "#f0b429"
-STATUS_GAP_COLOR = "#ff5c5c"
-
-
-def should_apply_loaded_bars(
-    *,
-    generation: int,
-    current_generation: int,
-    request_id: int,
-    current_request_id: int,
-    target_key: tuple[str, Exchange],
-    current_key: tuple[str, Exchange] | None,
-    target_scope: str,
-    current_scope: str,
-    loaded_key: tuple[str, Exchange] | None = None,
-) -> bool:
-    """K 线回调是否应写入图表（标的、周期、generation 须一致）。"""
-    if generation != current_generation:
-        return False
-    if request_id != current_request_id:
-        return False
-    if current_key is None or current_key != target_key:
-        return False
-    if target_scope != current_scope:
-        return False
-    if loaded_key is not None and loaded_key != target_key:
-        return False
-    return True
-
 
 class QuotesPage(QtWidgets.QWidget):
     """单页行情：列表 + 报价头 + 日 K。"""
@@ -159,7 +101,12 @@ class QuotesPage(QtWidgets.QWidget):
         self.bar_list_status: dict[tuple[str, Exchange], BarHealthStatus] = {}
         self._selected_gap_result: BarGapResult | None = None
         self.current_item: StockItem | None = None
-        self._watchlist_keys: set[tuple[str, Exchange]] = set()
+        self._watchlist = WatchlistController(self)
+        self._pagination = MarketPaginationController(self)
+        self._stream = QuoteStreamController(self)
+        self._local = LocalDataController(self)
+        self._table = TableController(self)
+        self._actions = ActionsController(self)
         self._retired_workers: list[QtCore.QThread] = []
         self._load_generation = 0
         self._bars_generation = 0
@@ -191,8 +138,6 @@ class QuotesPage(QtWidgets.QWidget):
         self._local_scope = "daily"
         self._splitter: QtWidgets.QSplitter | None = None
         self._column_menu: QtWidgets.QMenu | None = None
-        self._visible_columns: list[str] = []
-        self._visible_tail_columns: list[str] = []
         self._stats_label: QtWidgets.QLabel | None = None
         self._open_label: QtWidgets.QLabel | None = None
         self._high_label: QtWidgets.QLabel | None = None
@@ -211,48 +156,10 @@ class QuotesPage(QtWidgets.QWidget):
         self._init_ui()
 
     def _init_columns(self) -> None:
-        """根据页面类型初始化默认可见列。"""
-        if self.config.column_configurable:
-            from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
-            all_keys = [c.key for c in QUOTE_TABLE_COLUMNS]
-            if self.page_name == "自选":
-                default_main = [k for k in DEFAULT_WATCHLIST_COLUMNS if k in all_keys]
-            else:
-                default_main = [k for k in MARKET_VISIBLE_COLUMNS if k in all_keys]
-            # 确保 index 和 symbol 始终可见
-            for required in ("index", "symbol", "name"):
-                if required in all_keys and required not in default_main:
-                    default_main.insert(0, required)
-            self._visible_columns = default_main
-            # tail 列：支持切换
-            all_tail_keys = list(ALL_TAIL_COLUMNS.keys())
-            self._visible_tail_columns = self._default_tail_columns()
-        else:
-            from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
-            self._visible_columns = [c.key for c in QUOTE_TABLE_COLUMNS]
-            self._visible_tail_columns = self._default_tail_columns()
-        self._restore_column_config()
-
-    def _default_tail_columns(self) -> list[str]:
-        if self.config.use_local_table:
-            return []
-        if self.config.show_fill_button and not self.config.use_local_table:
-            return ["start", "end", "count", "status"]
-        if self.config.show_local_column:
-            return ["local"]
-        return ["local"]
+        self._table.init_columns()
 
     def _build_visible_headers(self) -> list[str]:
-        from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
-        col_map = {c.key: c.header for c in QUOTE_TABLE_COLUMNS}
-        headers = [col_map[k] for k in self._visible_columns]
-        for k in self._visible_tail_columns:
-            headers.append(ALL_TAIL_COLUMNS.get(k, k))
-        return headers
-
-    def _all_quote_column_keys(self) -> list[str]:
-        from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
-        return [c.key for c in QUOTE_TABLE_COLUMNS]
+        return self._table.build_visible_headers()
 
     def _init_ui(self) -> None:
         self._init_columns()
@@ -299,32 +206,36 @@ class QuotesPage(QtWidgets.QWidget):
         self.local_period_combo.currentIndexChanged.connect(self._on_local_period_changed)
 
         self.add_watchlist_button = QtWidgets.QPushButton("加入自选")
-        self.add_watchlist_button.clicked.connect(self.add_to_watchlist)
+        self.add_watchlist_button.clicked.connect(self._watchlist.add_selected)
         self.add_watchlist_button.setEnabled(False)
         self.add_watchlist_button.setVisible(self.config.show_add_watchlist_button)
 
         self.remove_watchlist_button = QtWidgets.QPushButton("移出自选")
-        self.remove_watchlist_button.clicked.connect(self.remove_from_watchlist)
+        self.remove_watchlist_button.clicked.connect(self._watchlist.remove_selected)
         self.remove_watchlist_button.setEnabled(False)
         self.remove_watchlist_button.setVisible(self.config.show_remove_watchlist_button)
 
         self.move_watchlist_up_button = QtWidgets.QPushButton("上移")
-        self.move_watchlist_up_button.clicked.connect(lambda: self._move_watchlist_selected("up"))
+        self.move_watchlist_up_button.clicked.connect(
+            lambda: self._watchlist.move_selected("up")
+        )
         self.move_watchlist_up_button.setEnabled(False)
         self.move_watchlist_up_button.setVisible(self.config.show_watchlist_move_buttons)
 
         self.move_watchlist_down_button = QtWidgets.QPushButton("下移")
-        self.move_watchlist_down_button.clicked.connect(lambda: self._move_watchlist_selected("down"))
+        self.move_watchlist_down_button.clicked.connect(
+            lambda: self._watchlist.move_selected("down")
+        )
         self.move_watchlist_down_button.setEnabled(False)
         self.move_watchlist_down_button.setVisible(self.config.show_watchlist_move_buttons)
 
         self.backtest_button = QtWidgets.QPushButton("策略回测")
-        self.backtest_button.clicked.connect(self.open_backtest_for_selected)
+        self.backtest_button.clicked.connect(self._actions.open_backtest_for_selected)
         self.backtest_button.setEnabled(False)
         self.backtest_button.setVisible(self.config.show_backtest_button)
 
         self.diagnose_button = QtWidgets.QPushButton("诊断")
-        self.diagnose_button.clicked.connect(self.run_diagnose_for_selected)
+        self.diagnose_button.clicked.connect(self._actions.run_diagnose_for_selected)
         self.diagnose_button.setEnabled(False)
         self.diagnose_button.setVisible(self.config.show_diagnose_button)
 
@@ -384,7 +295,7 @@ class QuotesPage(QtWidgets.QWidget):
         if self.config.column_configurable:
             self.column_button = QtWidgets.QPushButton("列 ▾")
             self.column_button.setObjectName("ColumnButton")
-            self.column_button.clicked.connect(self._show_column_menu)
+            self.column_button.clicked.connect(self._table.show_column_menu)
             toolbar.addWidget(self.column_button)
 
         self.prev_page_button = QtWidgets.QPushButton("◀ 上一页")
@@ -435,32 +346,17 @@ class QuotesPage(QtWidgets.QWidget):
         self.market_table.verticalHeader().setVisible(False)
         self.market_table.setAlternatingRowColors(True)
         self.market_table.setSortingEnabled(False)
-        self.market_table.itemSelectionChanged.connect(self._on_table_selection)
+        self.market_table.itemSelectionChanged.connect(self._table.on_selection_changed)
         self.market_table.setContextMenuPolicy(
             QtCore.Qt.ContextMenuPolicy.CustomContextMenu
         )
-        self.market_table.customContextMenuRequested.connect(self._on_context_menu)
+        self.market_table.customContextMenuRequested.connect(self._actions.show_context_menu)
         if self.config.table_header_sortable:
             self.market_table.horizontalHeader().setSortIndicatorShown(True)
             self.market_table.horizontalHeader().setSectionsClickable(True)
 
         header = self.market_table.horizontalHeader()
-        header.setStretchLastSection(False)
-        if self.config.use_local_table:
-            header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            header.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.Stretch)
-            header.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            header.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            header.setSectionResizeMode(6, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            header.setSectionResizeMode(7, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        else:
-            for col in range(len(headers)):
-                header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-            if "name" in self._visible_columns:
-                name_idx = self._visible_columns.index("name")
-                header.setSectionResizeMode(name_idx, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self._table.apply_header_layout(column_count=len(headers))
 
         self.quote_name_label = QtWidgets.QLabel("—")
         self.quote_name_label.setObjectName("QuoteHeader")
@@ -606,9 +502,9 @@ class QuotesPage(QtWidgets.QWidget):
         if self.chart_panel is not None:
             self.chart_panel.set_active(True)
         if self.config.use_quote_stream:
-            self._start_quote_stream()
+            self._stream.start()
         if self.config.show_add_watchlist_button:
-            self._refresh_watchlist_keys()
+            self._watchlist.refresh_keys()
         if self.config.use_local_table:
             removed = cleanup_invalid_daily_bars()
             if removed:
@@ -617,7 +513,7 @@ class QuotesPage(QtWidgets.QWidget):
                 )
                 suffix = "..." if len(removed) > 5 else ""
                 self.status_label.setText(f"已清理 {len(removed)} 条无效日K：{symbols}{suffix}")
-        self.refresh_local_meta()
+        self._local.refresh_meta()
         if self.current_item is not None and self.chart_panel is not None:
             quote = self.quote_map.get(self.current_item.tickflow_symbol)
             self.chart_panel.load_item(self.current_item, quote=quote)
@@ -633,7 +529,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._gap_generation += 1
         if self.chart_panel is not None:
             self.chart_panel.set_active(False)
-        self._stop_quote_stream()
+        self._stream.stop()
         self._quote_timer.stop()
         for attr in (
             "_load_worker",
@@ -652,7 +548,7 @@ class QuotesPage(QtWidgets.QWidget):
         return f"quotes/splitter/{self.page_name}"
 
     def _column_settings_key(self) -> str:
-        return f"quotes/columns/{self.page_name}"
+        return self._table.column_settings_key()
 
     def _save_splitter(self) -> None:
         if self._splitter is None:
@@ -669,155 +565,52 @@ class QuotesPage(QtWidgets.QWidget):
             self._splitter.restoreState(state)
 
     def _save_column_config(self) -> None:
-        if not self.config.column_configurable:
-            return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-        settings.setValue(
-            self._column_settings_key(),
-            ",".join(self._visible_columns) + "|" + ",".join(self._visible_tail_columns),
-        )
+        self._table.save_column_config()
 
     def _restore_column_config(self) -> None:
-        if not self.config.column_configurable:
-            return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-        value = settings.value(self._column_settings_key())
-        if not isinstance(value, str):
-            return
-        parts = value.split("|", 1)
-        if parts[0]:
-            saved_cols = [k for k in parts[0].split(",") if k]
-            from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
-            all_keys = {c.key for c in QUOTE_TABLE_COLUMNS}
-            valid_cols = [k for k in saved_cols if k in all_keys and k != "index"]
-            # 确保 index 和 symbol 始终可见
-            for required in ("symbol", "name"):
-                if required in all_keys and required not in valid_cols:
-                    valid_cols.insert(0, required)
-            valid_cols.insert(0, "index")
-            self._visible_columns = valid_cols
-        if len(parts) > 1 and parts[1]:
-            self._visible_tail_columns = [k for k in parts[1].split(",") if k in ALL_TAIL_COLUMNS]
+        self._table.restore_column_config()
 
     def refresh_local_meta(self) -> None:
-        self.downloaded_keys = set()
-        self.bar_meta = {}
-        self.bar_list_status = {}
-        for row in iter_bar_overviews(scope=self._local_scope):
-            key = (row.symbol, row.exchange)
-            meta = BarMeta(start=row.start, end=row.end, count=row.count)
-            self.downloaded_keys.add(key)
-            self.bar_meta[key] = meta
-            self.bar_list_status[key] = list_status(meta)
+        self._local.refresh_meta()
 
     def _is_daily_local_scope(self) -> bool:
-        return not self.config.use_local_table or is_daily_scope(self._local_scope)
+        return self._local.is_daily_scope()
 
     def _local_scope_label(self) -> str:
-        return scope_display(self._local_scope)
+        return self._local.scope_label()
 
     def _on_local_period_changed(self, _index: int) -> None:
-        if not self.config.use_local_table:
-            return
-        value = self.local_period_combo.currentData()
-        if not isinstance(value, str) or value == self._local_scope:
-            return
-        self._local_scope = value
-        self._selected_gap_result = None
-        self.refresh_local_meta()
-        self.load_stock_list()
-        if self.current_item is not None:
-            self.show_kline(self.current_item)
-            if self._is_daily_local_scope():
-                self._check_bar_gaps(self.current_item)
-            elif self.chart_hint is not None:
-                self._update_coverage_hint(self.current_item)
+        self._local.on_period_changed()
 
     def _set_pagination_visible(self, visible: bool) -> None:
-        self.home_button.setVisible(visible)
-        self.prev_page_button.setVisible(visible)
-        self.next_page_button.setVisible(visible)
-        self.end_button.setVisible(visible)
-        self.page_label.setVisible(visible)
-        self.page_total_label.setVisible(visible)
-        self.page_jump_input.setVisible(visible)
+        self._pagination.set_visible(visible)
 
     def _market_page_count(self) -> int:
-        page_size = self.config.market_page_size
-        if self._market_total <= 0 or page_size <= 0:
-            return 1
-        return max((self._market_total + page_size - 1) // page_size, 1)
+        return self._pagination.page_count()
 
     def _update_pagination_controls(self) -> None:
-        if not self.config.use_market_rank:
-            return
-        page_count = self._market_page_count()
-        current = min(self._market_page + 1, page_count)
-        if not self.page_jump_input.hasFocus():
-            self.page_jump_input.setText(str(current))
-        self.page_total_label.setText(f"/ {page_count} 页")
-        self.home_button.setEnabled(self._market_page > 0)
-        self.prev_page_button.setEnabled(self._market_page > 0)
-        self.next_page_button.setEnabled(self._market_page + 1 < page_count)
-        self.end_button.setEnabled(self._market_page + 1 < page_count)
+        self._pagination.update_controls()
 
     def _go_prev_page(self) -> None:
-        if self._market_page <= 0:
-            return
-        self._market_page -= 1
-        self.load_market_page()
+        self._pagination.go_prev()
 
     def _go_next_page(self) -> None:
-        if self._market_page + 1 >= self._market_page_count():
-            return
-        self._market_page += 1
-        self.load_market_page()
+        self._pagination.go_next()
 
     def _go_home_page(self) -> None:
-        if self._market_page <= 0:
-            return
-        self._market_page = 0
-        self.load_market_page()
+        self._pagination.go_home()
 
     def _go_end_page(self) -> None:
-        page_count = self._market_page_count()
-        if self._market_page + 1 >= page_count:
-            return
-        self._market_page = max(page_count - 1, 0)
-        self.load_market_page()
+        self._pagination.go_end()
 
     def _page_jump(self) -> None:
-        try:
-            target = int(self.page_jump_input.text())
-            page_count = self._market_page_count()
-            if 1 <= target <= page_count:
-                self._market_page = target - 1
-                self.load_market_page()
-        except ValueError:
-            self.page_jump_input.setText(str(self._market_page + 1))
+        self._pagination.jump()
 
     def _on_board_changed(self, _index: int) -> None:
-        board = self.board_combo.currentText()
-        self._market_board = board if board != "全部" else None
-        self._market_page = 0
-        self.load_market_page()
+        self._pagination.on_board_changed()
 
     def _format_market_status(self, result: MarketPageResult) -> str:
-        page_count = max(
-            (result.total + result.page_size - 1) // result.page_size,
-            1,
-        )
-        current = min(result.page + 1, page_count)
-        if result.mode == "search":
-            status = f"搜索匹配 {result.total} 只，第 {current}/{page_count} 页"
-        else:
-            status = f"共 {result.total} 只，第 {current}/{page_count} 页"
-        batch_time = format_batch_updated_at(result.updated_at)
-        if batch_time:
-            status += f"，行情更新于 {batch_time}"
-        elif result.total == 0:
-            status += "（Redis 暂无行情，请运行 quote_collector）"
-        return status
+        return self._pagination.format_status(result)
 
     def _refresh_market_clicked(self) -> None:
         self.load_market_page(quiet=False)
@@ -945,442 +738,40 @@ class QuotesPage(QtWidgets.QWidget):
         worker.start()
 
     def apply_filter(self) -> None:
-        if not self._active:
-            return
-
-        if self.config.use_market_rank:
-            self._market_page = 0
-            self.load_market_page()
-            return
-
-        keyword = self.search_edit.text().strip().lower()
-
-        if self.config.require_keyword and not keyword:
-            self.display_stocks = []
-            self.market_table.setRowCount(0)
-            self._quote_timer.stop()
-            self.status_label.setText(
-                f"共 {len(self.all_stocks)} 只 A 股，请输入关键词搜索（最多 {MAX_DISPLAY_ROWS} 条）"
-            )
-            return
-
-        matched = (
-            [s for s in self.all_stocks if keyword in s.search_key]
-            if keyword
-            else list(self.all_stocks)
-        )
-        self.display_stocks = matched[:MAX_DISPLAY_ROWS]
-        self._render_table()
-        if self.config.auto_refresh_quotes:
-            self.refresh_quotes()
-            self._quote_timer.start()
-        else:
-            self._quote_timer.stop()
-
-        extra = f"，显示前 {MAX_DISPLAY_ROWS} 条" if len(matched) > MAX_DISPLAY_ROWS else ""
-        if not matched and self.config.scope_key == "自选池":
-            self.status_label.setText("自选池为空，请在市场页搜索标的并点击「加入自选」")
-        elif not matched and self.config.use_local_table:
-            label = self._local_scope_label()
-            self.status_label.setText(f"暂无本地{label}，请在自选页下载")
-        elif self.config.use_local_table:
-            stale = sum(
-                1
-                for item in matched
-                if self.bar_list_status.get(
-                    (item.symbol, item.exchange),
-                    BarHealthStatus.UNKNOWN,
-                )
-                in (BarHealthStatus.STALE, BarHealthStatus.GAPS)
-            )
-            status = f"{self.page_name}  共 {len(matched)} 只{extra}"
-            if stale:
-                status += f"，{stale} 只需补全"
-            self.status_label.setText(status)
-        else:
-            self.status_label.setText(f"{self.page_name}  匹配 {len(matched)} 只{extra}")
+        self._table.apply_filter()
 
     def _stock_at_row(self, row: int) -> StockItem | None:
-        if row < 0:
-            return None
-        cell = self.market_table.item(row, 0)
-        if cell is not None:
-            item = cell.data(QtCore.Qt.ItemDataRole.UserRole)
-            if isinstance(item, StockItem):
-                return item
-        if row < len(self.display_stocks):
-            return self.display_stocks[row]
-        return None
+        return self._table.stock_at_row(row)
 
     def _selected_stock_key(self) -> tuple[str, Exchange] | None:
-        if self.current_item is None:
-            return None
-        return (self.current_item.symbol, self.current_item.exchange)
+        return self._table.selected_stock_key()
 
     def _select_stock_key(self, key: tuple[str, Exchange]) -> None:
-        for row in range(self.market_table.rowCount()):
-            item = self._stock_at_row(row)
-            if item and (item.symbol, item.exchange) == key:
-                self.market_table.selectRow(row)
-                return
+        self._table.select_stock_key(key)
 
     def _render_table(self, *, preserve_selection: bool = True) -> None:
-        selected_key = self._selected_stock_key() if preserve_selection else None
-
-        self.market_table.blockSignals(True)
-        sorting_enabled = self.market_table.isSortingEnabled()
-        self.market_table.setSortingEnabled(False)
-        try:
-            self.market_table.setRowCount(len(self.display_stocks))
-            for row, item in enumerate(self.display_stocks):
-                quote = self.quote_map.get(item.tickflow_symbol)
-                self._set_row(row, item, quote)
-
-            if selected_key:
-                self._select_stock_key(selected_key)
-            if self.market_table.currentRow() < 0 and self.display_stocks:
-                self.market_table.selectRow(0)
-        finally:
-            self.market_table.blockSignals(False)
-
-        if self.config.table_header_sortable:
-            self.market_table.setSortingEnabled(True)
-            if self._apply_default_table_sort:
-                self._apply_default_table_sort = False
-                symbol_col = quote_column_index("symbol")
-                self.market_table.sortItems(
-                    symbol_col,
-                    QtCore.Qt.SortOrder.AscendingOrder,
-                )
-        elif sorting_enabled:
-            self.market_table.setSortingEnabled(False)
-
-        if self.market_table.currentRow() >= 0:
-            self._on_table_selection()
-        self._sync_stream_subscriptions()
-        self._update_stats()
+        self._table.render_table(preserve_selection=preserve_selection)
 
     def _update_stats(self) -> None:
-        if self.stats_label is None:
-            return
-        total = len(self.display_stocks)
-        up_count = 0
-        down_count = 0
-        flat_count = 0
-        up_total_pct = 0.0
-        for item in self.display_stocks:
-            quote = self.quote_map.get(item.tickflow_symbol)
-            if quote is None or not quote.last_price:
-                flat_count += 1
-                continue
-            if quote.is_rise:
-                up_count += 1
-                up_total_pct += quote.change_pct
-            elif quote.is_fall:
-                down_count += 1
-            else:
-                flat_count += 1
-        avg_pct = (up_total_pct / up_count) if up_count > 0 else 0.0
-        parts = [f"自选池 {total} 只"]
-        if up_count:
-            parts.append(f'<span style="color:{RISE_COLOR}">涨 {up_count}</span>')
-        if down_count:
-            parts.append(f'<span style="color:{FALL_COLOR}">跌 {down_count}</span>')
-        if flat_count:
-            parts.append(f"平 {flat_count}")
-        if up_count:
-            parts.append(f" | 均涨幅 {avg_pct:+.2f}%")
-        self.stats_label.setText("  |  ".join(parts))
+        self._table.update_stats()
 
     def _refresh_table_quotes(self) -> None:
-        """仅更新行情列，避免重建表格导致选中行跳动。"""
-        sorting_enabled = self.market_table.isSortingEnabled()
-        if sorting_enabled:
-            self.market_table.setSortingEnabled(False)
-        self.market_table.blockSignals(True)
-        try:
-            for row in range(self.market_table.rowCount()):
-                item = self._stock_at_row(row)
-                if item is None:
-                    continue
-                quote = self.quote_map.get(item.tickflow_symbol)
-                self._set_row(row, item, quote)
-        finally:
-            self.market_table.blockSignals(False)
-        if sorting_enabled:
-            self.market_table.setSortingEnabled(True)
-
-    def _display_index(self, row: int) -> int:
-        if self.config.use_market_rank:
-            return self._market_page * self.config.market_page_size + row + 1
-        return row + 1
-
-    def _status_color(self, status: BarHealthStatus) -> str:
-        if status == BarHealthStatus.OK:
-            return STATUS_OK_COLOR
-        if status == BarHealthStatus.STALE:
-            return STATUS_STALE_COLOR
-        if status == BarHealthStatus.GAPS:
-            return STATUS_GAP_COLOR
-        return FLAT_COLOR
-
-    def _local_tail_values(self, item: StockItem) -> list[str]:
-        key = (item.symbol, item.exchange)
-        meta = self.bar_meta.get(key)
-        status = self.bar_list_status.get(key, list_status(meta))
-        minute = not self._is_daily_local_scope()
-        return [
-            format_meta_datetime(meta.start if meta else None, minute=minute),
-            format_meta_datetime(meta.end if meta else None, minute=minute),
-            str(meta.count) if meta else "—",
-            status_label(status),
-        ]
-
-    def _quote_sort_key(
-        self,
-        column_key: str,
-        item: StockItem,
-        quote: QuoteSnapshot | None,
-        index_text: str,
-    ) -> float | str:
-        if column_key == "index":
-            return int(index_text)
-        if column_key == "symbol":
-            return item.symbol
-        if column_key == "exchange":
-            return item.exchange.value
-        if column_key == "name":
-            return (quote.name if quote and quote.name else item.name).lower()
-        if quote is None:
-            return float("-inf")
-        numeric_map = {
-            "last_price": quote.last_price,
-            "change_pct": quote.change_pct,
-            "change_amount": quote.change_amount,
-            "amplitude": quote.amplitude,
-            "turnover_rate": quote.turnover_rate,
-            "volume": quote.volume,
-            "amount": quote.amount,
-            "high_price": quote.high_price,
-            "low_price": quote.low_price,
-            "open_price": quote.open_price,
-            "prev_close": quote.prev_close,
-        }
-        if column_key in numeric_map:
-            return numeric_map[column_key]
-        if column_key == "trade_time":
-            return quote.trade_time or ""
-        return ""
-
-    def _make_table_cell(
-        self,
-        text: str,
-        *,
-        item: StockItem | None = None,
-        sort_key: float | str | None = None,
-        color: str | None = None,
-    ) -> QtWidgets.QTableWidgetItem:
-        if self.config.table_header_sortable and sort_key is not None:
-            cell: QtWidgets.QTableWidgetItem = SortableTableItem(text, sort_key)
-        else:
-            cell = QtWidgets.QTableWidgetItem(text)
-        cell.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        if item is not None:
-            cell.setData(QtCore.Qt.ItemDataRole.UserRole, item)
-        if color is not None:
-            cell.setForeground(QtGui.QColor(color))
-        return cell
-
-    def _set_local_row(self, row: int, item: StockItem) -> None:
-        key = (item.symbol, item.exchange)
-        meta = self.bar_meta.get(key)
-        status = self.bar_list_status.get(key, list_status(meta))
-        minute = not self._is_daily_local_scope()
-        values = build_local_data_row(
-            item,
-            str(self._display_index(row)),
-            start=format_meta_datetime(meta.start if meta else None, minute=minute),
-            end=format_meta_datetime(meta.end if meta else None, minute=minute),
-            count=str(meta.count) if meta else "—",
-            status=status_label(status),
-        )
-        status_col = len(values) - 1
-        for col, text in enumerate(values):
-            cell = self._make_table_cell(
-                text,
-                item=item if col == 0 else None,
-            )
-            if col == status_col:
-                cell.setForeground(QtGui.QColor(self._status_color(status)))
-            self.market_table.setItem(row, col, cell)
-
-    def _set_row(self, row: int, item: StockItem, quote: QuoteSnapshot | None) -> None:
-        if self.config.use_local_table:
-            self._set_local_row(row, item)
-            return
-
-        index_text = str(self._display_index(row))
-        key = (item.symbol, item.exchange)
-        if self.config.show_local_column:
-            tail_value = "✓" if key in self.downloaded_keys else "—"
-            tail_values = None
-        elif self.config.show_fill_button and not self.config.use_local_table:
-            tail_value = ""
-            tail_values = self._local_tail_values(item)
-        else:
-            meta = self.bar_meta.get(key)
-            count = meta.count if meta else 0
-            tail_value = str(count) if count else "—"
-            tail_values = None
-
-        values, price_cols = build_quote_row(
-            item,
-            quote,
-            index_text,
-            tail_value,
-            tail_values=tail_values,
-        )
-        # 根据 _visible_columns 过滤出需要显示的列
-        all_keys = self._all_quote_column_keys()
-        visible_indices: list[int] = []
-        tail_cols = tail_values if tail_values is not None else [tail_value]
-        tail_start = len(all_keys)
-        for col_key in self._visible_columns:
-            if col_key in all_keys:
-                visible_indices.append(all_keys.index(col_key))
-        for _ in self._visible_tail_columns:
-            visible_indices.append(tail_start)
-            tail_start += 1
-
-        filtered_values: list[str] = []
-        filtered_price_cols: set[int] = set()
-        filtered_sort_keys: list[float | str] = []
-        for new_col, src_idx in enumerate(visible_indices):
-            if src_idx < len(values):
-                filtered_values.append(values[src_idx])
-            else:
-                filtered_values.append("—")
-            if src_idx in price_cols:
-                filtered_price_cols.add(new_col)
-            # 排序键
-            if src_idx < len(all_keys):
-                col_key = all_keys[src_idx]
-                filtered_sort_keys.append(
-                    self._quote_sort_key(col_key, item, quote, index_text)
-                )
-            else:
-                filtered_sort_keys.append(
-                    values[src_idx] if src_idx < len(values) else ""
-                )
-
-        color = FLAT_COLOR
-        if quote:
-            color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
-
-        status_col: int | None = None
-        status: BarHealthStatus | None = None
-        if tail_values is not None:
-            status_col = len(filtered_values) - 1
-            status = self.bar_list_status.get(key, list_status(self.bar_meta.get(key)))
-
-        for col, text in enumerate(filtered_values):
-            cell_color = None
-            if quote and col in filtered_price_cols:
-                cell_color = color
-            if status_col is not None and col == status_col and status is not None:
-                cell_color = self._status_color(status)
-            sort_key = filtered_sort_keys[col] if col < len(filtered_sort_keys) else text
-            cell = self._make_table_cell(
-                text,
-                item=item if col == 0 else None,
-                sort_key=sort_key,
-                color=cell_color,
-            )
-            self.market_table.setItem(row, col, cell)
+        self._table.refresh_table_quotes()
 
     def _on_table_selection(self) -> None:
-        rows = self.market_table.selectionModel().selectedRows()
-        if not rows:
-            return
-        idx = rows[0].row()
-        item = self._stock_at_row(idx)
-        if item is None:
-            return
-
-        new_key = (item.symbol, item.exchange)
-        old_key = self._selected_stock_key()
-        self.current_item = item
-        self._update_action_buttons()
-        self._update_quote_header(item)
-        if new_key != old_key:
-            self._selected_gap_result = None
-            if self.config.show_kline:
-                self.show_kline(item)
-            if self.config.show_fill_button and self._is_daily_local_scope():
-                self._check_bar_gaps(item)
-            if self.config.show_depth_panel:
-                self.refresh_depth()
-        self._sync_stream_depth_subscription()
-        self._emit_ai_context()
+        self._table.on_selection_changed()
 
     def _show_column_menu(self) -> None:
-        menu = QtWidgets.QMenu(self)
-        from vnpy_ashare.ui.quote_columns import QUOTE_TABLE_COLUMNS
-        col_map = {c.key: c.header for c in QUOTE_TABLE_COLUMNS}
-
-        # 主线行情列
-        for key in [c.key for c in QUOTE_TABLE_COLUMNS]:
-            if key == "index":
-                continue  # 序号始终显示，不可切换
-            action = menu.addAction(col_map.get(key, key))
-            action.setCheckable(True)
-            action.setChecked(key in self._visible_columns)
-            action.setData(key)
-            action.triggered.connect(lambda checked, k=key: self._on_column_toggle(k, checked))
-
-        menu.addSeparator()
-
-        # 附加列（本地/起始/结束/K线数/状态）
-        for key, header in ALL_TAIL_COLUMNS.items():
-            action = menu.addAction(header)
-            action.setCheckable(True)
-            action.setChecked(key in self._visible_tail_columns)
-            action.setData(key)
-            action.triggered.connect(lambda checked, k=key: self._on_tail_column_toggle(k, checked))
-
-        button = self.column_button
-        menu.popup(button.mapToGlobal(button.rect().bottomLeft()))
+        self._table.show_column_menu()
 
     def _on_column_toggle(self, key: str, checked: bool) -> None:
-        if checked and key not in self._visible_columns:
-            self._visible_columns.append(key)
-        elif not checked and key in self._visible_columns:
-            self._visible_columns.remove(key)
-        self._rebuild_table()
+        self._table.on_column_toggle(key, checked)
 
     def _on_tail_column_toggle(self, key: str, checked: bool) -> None:
-        if checked and key not in self._visible_tail_columns:
-            self._visible_tail_columns.append(key)
-        elif not checked and key in self._visible_tail_columns:
-            self._visible_tail_columns.remove(key)
-        self._rebuild_table()
+        self._table.on_tail_column_toggle(key, checked)
 
     def _rebuild_table(self) -> None:
-        """列配置变化后重建表头并重新渲染。"""
-        headers = self._build_visible_headers()
-        self.market_table.setColumnCount(len(headers))
-        self.market_table.setHorizontalHeaderLabels(headers)
-        # 保持 stretch 策略
-        header = self.market_table.horizontalHeader()
-        header.setStretchLastSection(False)
-        for col in range(len(headers)):
-            header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        if self._visible_columns:
-            # 名称列 stretch
-            if "name" in self._visible_columns:
-                name_idx = self._visible_columns.index("name")
-                header.setSectionResizeMode(name_idx, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self._render_table()
+        self._table.rebuild_table()
 
     def _sync_market_quotes_to_cache(self, result: object) -> None:
         """将市场页行情写入 session_context，供 AI 选股工具使用。"""
@@ -1391,231 +782,52 @@ class QuotesPage(QtWidgets.QWidget):
         set_market_quotes_cache(result.items, dict(result.quotes))
 
     def _emit_ai_context(self) -> None:
-        """更新 session_context（bridge，供 QuoteService/Skill 读取）。"""
-        from vnpy_ashare.ai.session_context import set_ai_context
-        quote = None
-        bar_count = 0
-        if self.current_item is not None:
-            quote = self.quote_map.get(self.current_item.tickflow_symbol)
-            key = (self.current_item.symbol, self.current_item.exchange)
-            meta = self.bar_meta.get(key)
-            bar_count = meta.count if meta else 0
-        from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
-        data = enrich_context_with_actions(
-            build_quote_context(
-                page=self.page_name,
-                item=self.current_item,
-                quote=quote,
-                bar_count=bar_count,
-            )
-        )
-        set_ai_context(data)
+        self._actions.emit_ai_context()
 
     def _use_quote_stream(self) -> bool:
-        return (
-            self.config.use_quote_stream
-            and self._stream_bridge is not None
-            and self._stream_bridge.is_connected
-            and not self._stream_fallback
-        )
+        return self._stream.use_stream()
 
     def _start_quote_stream(self) -> None:
-        if self._stream_bridge is not None:
-            return
-        if not can_use_tickflow_stream():
-            self._stream_fallback = True
-            return
-        bridge = TickflowStreamBridge(self)
-        bridge.quotes_updated.connect(self._on_stream_quotes)
-        bridge.depth_updated.connect(self._on_stream_depth)
-        bridge.depth_permission_denied.connect(self._on_stream_depth_denied)
-        bridge.disconnected.connect(self._on_stream_disconnected)
-        bridge.error.connect(self._on_stream_error)
-        self._stream_bridge = bridge
-        self._stream_fallback = False
-        bridge.start()
+        self._stream.start()
 
     def _stop_quote_stream(self) -> None:
-        bridge = self._stream_bridge
-        self._stream_bridge = None
-        if bridge is None:
-            return
-        bridge.stop()
-        bridge.deleteLater()
+        self._stream.stop()
 
     def _sync_stream_subscriptions(self) -> None:
-        if self._stream_bridge is None:
-            return
-        symbols = [item.tickflow_symbol for item in self.display_stocks]
-        self._stream_bridge.set_quote_symbols(symbols)
-        self._sync_stream_depth_subscription()
+        self._stream.sync_subscriptions()
 
     def _sync_stream_depth_subscription(self) -> None:
-        if self._stream_bridge is None:
-            return
-        if self._depth_permission_denied or self.current_item is None:
-            self._stream_bridge.set_depth_symbol(None)
-            return
-        self._stream_bridge.set_depth_symbol(self.current_item.tickflow_symbol)
+        self._stream.sync_depth_subscription()
 
     def _on_stream_quotes(self, quotes: dict) -> None:
-        if not self._active:
-            return
-        self._stream_fallback = False
-        self.quote_map.update(quotes)
-        self._refresh_table_quotes()
-        if self.current_item:
-            self._update_quote_header(self.current_item)
-            if self.chart_panel is not None:
-                self.chart_panel.update_quote(quotes.get(self.current_item.tickflow_symbol))
-            self._emit_ai_context()
+        self._stream.on_quotes(quotes)
 
     def _on_stream_depth(self, depth: DepthSnapshot) -> None:
-        if not self._active or self.depth_panel is None or self.current_item is None:
-            return
-        if depth.symbol != self.current_item.tickflow_symbol:
-            return
-        self.depth_panel.update_depth(depth)
+        self._stream.on_depth(depth)
 
     def _on_stream_depth_denied(self, _message: str) -> None:
-        self._depth_permission_denied = True
-        if self.depth_panel is not None:
-            self.depth_panel.show_permission_denied("未开通市场深度权限")
-        self._sync_stream_depth_subscription()
+        self._stream.on_depth_denied(_message)
 
     def _on_stream_disconnected(self) -> None:
-        self._stream_fallback = True
+        self._stream.on_disconnected()
 
     def _on_stream_error(self, _message: str) -> None:
-        self._stream_fallback = True
-        self._stop_quote_stream()
-        if self._active:
-            self._refresh_quotes_rest()
+        self._stream.on_error(_message)
 
     def _refresh_charts_only(self) -> None:
-        current = self.current_item
-        if current is None or self.chart_panel is None or not self.config.show_kline:
-            return
-        self.chart_panel.update_quote(self.quote_map.get(current.tickflow_symbol))
-        self.chart_panel.refresh_active()
+        self._actions.refresh_charts_only()
 
     def refresh_depth(self) -> None:
-        if not self._active or not self.config.show_depth_panel or self.depth_panel is None:
-            return
-        if self._use_quote_stream():
-            return
-        if self._depth_permission_denied or not self.current_item:
-            return
-        if self._thread_active(self._depth_worker):
-            return
-
-        self._depth_generation += 1
-        generation = self._depth_generation
-        item = self.current_item
-        target_key = (item.symbol, item.exchange)
-
-        worker = DepthRefreshWorker(item)
-        self._depth_worker = worker
-
-        def on_finished(depth: object) -> None:
-            if generation != self._depth_generation:
-                return
-            if self._depth_worker is worker:
-                self._depth_worker = None
-            if not self._active or self.current_item is None:
-                return
-            if (self.current_item.symbol, self.current_item.exchange) != target_key:
-                return
-            if isinstance(depth, DepthSnapshot):
-                self.depth_panel.update_depth(depth)
-
-        def on_permission_denied(message: str) -> None:
-            if generation != self._depth_generation:
-                return
-            if self._depth_worker is worker:
-                self._depth_worker = None
-            self._depth_permission_denied = True
-            self.depth_panel.show_permission_denied("未开通市场深度权限")
-
-        def on_failed(_msg: str) -> None:
-            if self._depth_worker is worker:
-                self._depth_worker = None
-
-        worker.finished.connect(on_finished)
-        worker.permission_denied.connect(on_permission_denied)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.permission_denied.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._actions.refresh_depth()
 
     def _refresh_watchlist_keys(self) -> None:
-        self._watchlist_keys = {
-            (symbol, exchange) for symbol, exchange, _ in load_watchlist_rows()
-        }
+        self._watchlist.refresh_keys()
 
     def _on_chart_tab_changed(self, index: int) -> None:
-        if self.config.show_download_button and self.config.show_chart_tabs:
-            show = index in (DAILY_TAB_INDEX, MINUTE_TAB_INDEX)
-            self.download_button.setVisible(show)
-            if index == MINUTE_TAB_INDEX:
-                self.download_button.setText("下载分K到本地")
-            else:
-                self.download_button.setText("下载日K到本地")
-        self._update_action_buttons()
+        self._actions.on_chart_tab_changed(index)
 
     def _update_action_buttons(self) -> None:
-        item = self.current_item
-        if self.config.show_download_button:
-            if self.config.show_chart_tabs:
-                on_download_tab = (
-                    self.chart_panel is not None
-                    and self.chart_panel.current_tab_index()
-                    in (DAILY_TAB_INDEX, MINUTE_TAB_INDEX)
-                )
-                self.download_button.setVisible(on_download_tab)
-                self.download_button.setEnabled(item is not None and on_download_tab)
-            else:
-                self.download_button.setEnabled(item is not None)
-        if self.config.show_fill_button:
-            if item is None:
-                self.fill_button.setEnabled(False)
-            else:
-                key = (item.symbol, item.exchange)
-                status = self.bar_list_status.get(key, list_status(self.bar_meta.get(key)))
-                self.fill_button.setEnabled(
-                    status in (BarHealthStatus.STALE, BarHealthStatus.GAPS)
-                )
-        if self.config.show_redownload_button:
-            if item is None:
-                self.redownload_button.setEnabled(False)
-            else:
-                key = (item.symbol, item.exchange)
-                self.redownload_button.setEnabled(key in self.bar_meta)
-        if self.config.show_add_watchlist_button:
-            if item is None:
-                self.add_watchlist_button.setEnabled(False)
-            else:
-                key = (item.symbol, item.exchange)
-                self.add_watchlist_button.setEnabled(key not in self._watchlist_keys)
-        if self.config.show_remove_watchlist_button:
-            self.remove_watchlist_button.setEnabled(item is not None)
-        if self.config.show_watchlist_move_buttons:
-            index = self._watchlist_index(item) if item is not None else None
-            total = len(self.all_stocks)
-            self.move_watchlist_up_button.setEnabled(
-                item is not None and index is not None and index > 0
-            )
-            self.move_watchlist_down_button.setEnabled(
-                item is not None
-                and index is not None
-                and index + 1 < total
-            )
-        if self.config.show_backtest_button:
-            self.backtest_button.setEnabled(item is not None)
-        if self.config.show_diagnose_button:
-            self.diagnose_button.setEnabled(item is not None)
+        self._actions.update_action_buttons()
 
     def _get_main_engine(self):
         parent = self.parent()
@@ -1623,270 +835,48 @@ class QuotesPage(QtWidgets.QWidget):
             return parent.main_engine
         return None
 
-    def _get_analysis_service(self):
-        from vnpy_ashare.engine import APP_NAME, AshareEngine
+    def _get_watchlist_service(self):
+        from vnpy_ashare.engine_access import get_service
 
-        main_engine = self._get_main_engine()
-        if main_engine is None:
-            return None
-        engine = main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.analysis_service
-        return None
+        return get_service(self._get_main_engine(), "watchlist_service")
+
+    def _get_analysis_service(self):
+        from vnpy_ashare.engine_access import get_service
+
+        return get_service(self._get_main_engine(), "analysis_service")
 
     def run_diagnose_for_selected(self) -> None:
-        if not self.current_item:
-            return
-        if not self.config.show_diagnose_panel:
-            self._ask_ai_for_diagnose()
-            return
-        if self._thread_active(self._diagnose_worker):
-            return
-        service = self._get_analysis_service()
-        if service is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "分析服务未就绪")
-            return
-
-        vt_symbol = self.current_item.vt_symbol
-        if self.diagnose_panel is not None:
-            self.diagnose_panel.show_loading(vt_symbol)
-
-        worker = DiagnoseWorker(service, vt_symbol=vt_symbol, parent=self)
-        self._diagnose_worker = worker
-        worker.finished.connect(self._on_diagnose_finished)
-        worker.failed.connect(self._on_diagnose_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._actions.run_diagnose_for_selected()
 
     def _ask_ai_for_diagnose(self) -> None:
-        item = self.current_item
-        if item is None or self.event_engine is None:
-            return
-        quote = self.quote_map.get(item.tickflow_symbol)
-        name = quote.name if quote and quote.name else item.name
-        self._emit_ai_context()
-        prompt = build_diagnose_ai_prompt(item.vt_symbol, name)
-        self.event_engine.put(
-            Event(
-                EVENT_ASK_AI,
-                AskAiRequest(
-                    prompt=prompt,
-                    source_page=self.page_name,
-                    use_full_page=True,
-                ),
-            )
-        )
+        self._actions.ask_ai_for_diagnose()
 
     def _ask_ai_for_technical(self) -> None:
-        """向 AI 请求当前股票的技术面分析。"""
-        item = self.current_item
-        if item is None or self.event_engine is None:
-            return
-        quote = self.quote_map.get(item.tickflow_symbol)
-        name = quote.name if quote and quote.name else item.name
-        title = f"{name}（{item.vt_symbol}）" if name else item.vt_symbol
-        self._emit_ai_context()
-        prompt = (
-            f"请分析 {title} 的近期技术形态。"
-            f'请调用 technical_snapshot(symbol="{item.vt_symbol}")，'
-            "基于工具返回的均线、量比、区间涨跌等数据做解读。"
-        )
-        self.event_engine.put(
-            Event(
-                EVENT_ASK_AI,
-                AskAiRequest(
-                    prompt=prompt,
-                    source_page=self.page_name,
-                    use_full_page=True,
-                ),
-            )
-        )
+        self._actions.ask_ai_for_technical()
 
     def _ask_ai_for_signals(self) -> None:
-        """向 AI 请求当前股票的双均线策略信号。"""
-        item = self.current_item
-        if item is None or self.event_engine is None:
-            return
-        quote = self.quote_map.get(item.tickflow_symbol)
-        name = quote.name if quote and quote.name else item.name
-        title = f"{name}（{item.vt_symbol}）" if name else item.vt_symbol
-        self._emit_ai_context()
-        prompt = (
-            f"请分析 {title} 的双均线（MA10/MA20）策略信号。"
-            f'请调用 list_strategy_signals(symbol="{item.vt_symbol}")，'
-            "基于工具返回的金叉/死叉信号和当前均线状态做解读。"
-        )
-        self.event_engine.put(
-            Event(
-                EVENT_ASK_AI,
-                AskAiRequest(
-                    prompt=prompt,
-                    source_page=self.page_name,
-                    use_full_page=True,
-                ),
-            )
-        )
+        self._actions.ask_ai_for_signals()
 
     def _ask_ai_for_trend(self) -> None:
-        """向 AI 请求当前股票的近期走势分析。"""
-        item = self.current_item
-        if item is None or self.event_engine is None:
-            return
-        quote = self.quote_map.get(item.tickflow_symbol)
-        name = quote.name if quote and quote.name else item.name
-        title = f"{name}（{item.vt_symbol}）" if name else item.vt_symbol
-        self._emit_ai_context()
-        prompt = (
-            f"请分析 {title} 的近期走势。"
-            f'请调用 historical_pattern_summary(symbol="{item.vt_symbol}")，'
-            "基于工具返回的涨跌幅、波动、连涨连跌等历史统计数据做描述，禁止预测未来走势。"
-        )
-        self.event_engine.put(
-            Event(
-                EVENT_ASK_AI,
-                AskAiRequest(
-                    prompt=prompt,
-                    source_page=self.page_name,
-                    use_full_page=True,
-                ),
-            )
-        )
+        self._actions.ask_ai_for_trend()
 
     def _on_diagnose_finished(self, payload: dict) -> None:
-        self._diagnose_worker = None
-        if self.diagnose_panel is not None:
-            self.diagnose_panel.show_result(payload)
-        from vnpy_ashare.ai.session_context import set_diagnose_result
-
-        set_diagnose_result(payload)
-        self._emit_ai_context()
+        self._actions.on_diagnose_finished(payload)
 
     def _on_diagnose_failed(self, message: str) -> None:
-        self._diagnose_worker = None
-        if self.diagnose_panel is not None:
-            self.diagnose_panel.show_result({"error": message})
-        self.status_label.setText(message)
+        self._actions.on_diagnose_failed(message)
 
     def open_backtest_for_selected(self) -> None:
-        if not self.current_item or self.event_engine is None:
-            return
-        item = self.current_item
-        quote = self.quote_map.get(item.tickflow_symbol)
-        name = quote.name if quote and quote.name else item.name
-        self.event_engine.put(
-            Event(
-                EVENT_OPEN_BACKTEST,
-                BacktestRequest(
-                    vt_symbol=item.vt_symbol,
-                    source_page=self.page_name,
-                    name=name,
-                ),
-            )
-        )
+        self._actions.open_backtest_for_selected()
 
     def add_to_watchlist(self) -> None:
-        if not self.current_item:
-            return
-        item = self.current_item
-        quote = self.quote_map.get(item.tickflow_symbol)
-        name = quote.name if quote and quote.name else item.name
-        if not add_watchlist_item(item.symbol, item.exchange, name):
-            self.status_label.setText(f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已在自选池")
-            return
-        self._refresh_watchlist_keys()
-        self._update_action_buttons()
-        self.status_label.setText(f"已加入自选：{format_vt_symbol_cn(item.symbol, item.exchange)}")
+        self._watchlist.add_selected()
 
     def remove_from_watchlist(self) -> None:
-        if not self.current_item:
-            return
-        item = self.current_item
-        if not remove_watchlist_item(item.symbol, item.exchange):
-            self.status_label.setText("移出失败：标的不在自选池")
-            return
-        self.current_item = None
-        if self.depth_panel is not None:
-            self.depth_panel.clear()
-        self.status_label.setText(f"已移出自选：{format_vt_symbol_cn(item.symbol, item.exchange)}")
-        self.load_stock_list()
-
-    def _watchlist_index(self, item: StockItem) -> int | None:
-        key = (item.symbol, item.exchange)
-        for index, stock in enumerate(self.all_stocks):
-            if (stock.symbol, stock.exchange) == key:
-                return index
-        return None
-
-    def _move_watchlist_selected(self, direction: Literal["up", "down"]) -> None:
-        if not self.current_item:
-            return
-        item = self.current_item
-        key = (item.symbol, item.exchange)
-        if not move_watchlist_item(item.symbol, item.exchange, direction=direction):
-            return
-        self.all_stocks = [
-            StockItem(symbol=symbol, exchange=exchange, name=name)
-            for symbol, exchange, name in load_watchlist_rows()
-        ]
-        self.apply_filter()
-        self._select_stock_key(key)
-        label = "上移" if direction == "up" else "下移"
-        self.status_label.setText(
-            f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已{label}"
-        )
+        self._watchlist.remove_selected()
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
-        """表格行右键菜单。"""
-        row = self.market_table.rowAt(pos.y())
-        if row < 0:
-            return
-        item = self._stock_at_row(row)
-        if item is None:
-            return
-
-        menu = QtWidgets.QMenu(self)
-
-        # ── AI 分析 ──
-        ai_menu = menu.addMenu("AI 分析 ▸")
-        ai_menu.addAction("综合诊断", self._ask_ai_for_diagnose)
-        ai_menu.addAction("技术形态", self._ask_ai_for_technical)
-        ai_menu.addAction("双均线信号", self._ask_ai_for_signals)
-        ai_menu.addAction("近期走势", self._ask_ai_for_trend)
-        menu.addSeparator()
-
-        if self.config.show_add_watchlist_button:
-            key = (item.symbol, item.exchange)
-            in_watchlist = key in self._watchlist_keys
-            if in_watchlist:
-                action = menu.addAction("移出自选")
-                action.triggered.connect(self.remove_from_watchlist)
-            else:
-                action = menu.addAction("加入自选")
-                action.triggered.connect(self.add_to_watchlist)
-
-        if self.config.show_download_button:
-            action = menu.addAction("下载日K到本地")
-            action.triggered.connect(self.download_selected)
-
-        if self.config.show_backtest_button:
-            action = menu.addAction("策略回测")
-            action.triggered.connect(self.open_backtest_for_selected)
-
-        if self.config.show_watchlist_move_buttons and self.current_item is not None:
-            key = (self.current_item.symbol, self.current_item.exchange)
-            if key in self._watchlist_keys:
-                menu.addSeparator()
-                index = self._watchlist_index(item)
-                total = len(self.all_stocks)
-                if index is not None and index > 0:
-                    action = menu.addAction("上移")
-                    action.triggered.connect(lambda: self._move_watchlist_selected("up"))
-                if index is not None and index + 1 < total:
-                    action = menu.addAction("下移")
-                    action.triggered.connect(lambda: self._move_watchlist_selected("down"))
-
-        menu.popup(self.market_table.viewport().mapToGlobal(pos))
+        self._actions.show_context_menu(pos)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         """上下方向键切换选中股票。"""
@@ -1905,307 +895,28 @@ class QuotesPage(QtWidgets.QWidget):
         super().keyPressEvent(event)
 
     def _update_quote_header(self, item: StockItem) -> None:
-        quote = self.quote_map.get(item.tickflow_symbol)
-        self.quote_name_label.setText(quote.name if quote and quote.name else item.name)
-        self.quote_code_label.setText(
-            f"  {format_vt_symbol_cn(item.symbol, item.exchange)}"
-        )
-
-        if not quote:
-            self.quote_price_label.setText("—")
-            self.quote_change_label.setText("")
-            return
-
-        color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
-        self.quote_price_label.setText(f"{quote.last_price:.2f}")
-        self.quote_price_label.setStyleSheet(f"color: {color};")
-        self.quote_change_label.setText(
-            f"  {quote.change_amount:+.2f}  ({quote.change_pct:+.2f}%)"
-        )
-        self.quote_change_label.setStyleSheet(f"color: {color}; font-size: 14px;")
-
-        # 增强报价：今开 / 最高 / 最低 / 成交量
-        if self._open_label is not None:
-            open_text = f"今开 {quote.open_price:.2f}" if quote.open_price else "今开 —"
-            self._open_label.setText(open_text)
-            self._high_label.setText(
-                f"最高 {quote.high_price:.2f}" if quote.high_price else "最高 —"
-            )
-            high_color = RISE_COLOR if quote.high_price == quote.last_price else \
-                RISE_COLOR if quote.is_rise else FLAT_COLOR
-            self._high_label.setStyleSheet(f"color: {RISE_COLOR}; font-size: 12px;")
-            self._low_label.setText(
-                f"最低 {quote.low_price:.2f}" if quote.low_price else "最低 —"
-            )
-            self._low_label.setStyleSheet(f"color: {FALL_COLOR}; font-size: 12px;")
-            vol_text = format_volume(quote.volume) if quote.volume else "—"
-            self._volume_label.setText(f"量 {vol_text}")
-            self._volume_label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px;")
+        self._actions.update_quote_header(item)
 
     def refresh_quotes(self) -> None:
-        if not self._active or not self.config.quote_source:
-            return
-        if self.config.use_market_rank:
-            self._refresh_quotes_rest()
-            return
-        if not self.display_stocks:
-            return
-        if self._use_quote_stream():
-            self._refresh_charts_only()
-            return
-        self._refresh_quotes_rest()
+        self._actions.refresh_quotes()
 
     def _refresh_quotes_rest(self) -> None:
-        if not self.display_stocks:
-            return
-        if self._thread_active(self._quotes_worker):
-            return
-
-        if self.config.show_depth_panel:
-            self.refresh_depth()
-
-        refresh_source = self.config.quote_refresh_source or self.config.quote_source or "watchlist"
-        worker = QuotesRefreshWorker(list(self.display_stocks), refresh_source)
-        self._quotes_worker = worker
-        current = self.current_item
-
-        def on_finished(quotes: dict) -> None:
-            if self._quotes_worker is worker:
-                self._quotes_worker = None
-            if not self._active:
-                return
-            self.quote_map.update(quotes)
-            self._refresh_table_quotes()
-            if current:
-                self._update_quote_header(current)
-                if self.chart_panel is not None:
-                    self.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
-                    self.chart_panel.refresh_active()
-
-        def on_failed(_msg: str) -> None:
-            if self._quotes_worker is worker:
-                self._quotes_worker = None
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._actions.refresh_quotes_rest()
 
     def _set_chart_hint(self, text: str | None) -> None:
-        if self.chart_hint is None:
-            return
-        if text:
-            self.chart_hint.setText(text)
-            self.chart_hint.show()
-        else:
-            self.chart_hint.hide()
+        self._local.set_chart_hint(text)
 
     def _update_coverage_hint(self, item: StockItem) -> None:
-        if not self.config.show_fill_button or self.chart_hint is None:
-            return
-        key = (item.symbol, item.exchange)
-        meta = self.bar_meta.get(key)
-        scope_label = self._local_scope_label()
-        if meta is None:
-            self._set_chart_hint(f"暂无本地{scope_label}")
-            return
-
-        minute = not self._is_daily_local_scope()
-        lines = [
-            f"{scope_label}："
-            f"{format_meta_datetime(meta.start, minute=minute)} ~ "
-            f"{format_meta_datetime(meta.end, minute=minute)}，共 {meta.count} 根"
-        ]
-        status = self.bar_list_status.get(key, list_status(meta))
-        if status == BarHealthStatus.STALE:
-            latest = last_trading_day()
-            lines.append(
-                f"⚠️ 数据过期，最新应为 {latest.isoformat()}，请点击「补全到最新」"
-            )
-        elif (
-            self._is_daily_local_scope()
-            and status == BarHealthStatus.GAPS
-            and self._selected_gap_result is not None
-        ):
-            gap_text = format_gap_ranges(self._selected_gap_result.gaps)
-            lines.append(f"🔴 发现 {len(self._selected_gap_result.gaps)} 处断层：{gap_text}")
-        self._set_chart_hint("\n".join(lines))
+        self._local.update_coverage_hint(item)
 
     def _check_bar_gaps(self, item: StockItem) -> None:
-        if not self.config.show_fill_button or not self._is_daily_local_scope():
-            return
-        key = (item.symbol, item.exchange)
-        meta = self.bar_meta.get(key)
-        if meta is None:
-            self._selected_gap_result = None
-            self._update_coverage_hint(item)
-            return
-
-        if self._thread_active(self._gap_worker):
-            self._wait_worker_release("_gap_worker")
-
-        self._gap_generation += 1
-        generation = self._gap_generation
-        self._set_chart_hint("正在检查数据完整性...")
-
-        worker = BarGapCheckWorker(item, meta)
-        self._gap_worker = worker
-
-        def on_finished(result: object) -> None:
-            if generation != self._gap_generation:
-                return
-            if self._gap_worker is worker:
-                self._gap_worker = None
-            if not self._active or self.current_item is None:
-                return
-            if (self.current_item.symbol, self.current_item.exchange) != key:
-                return
-            if not isinstance(result, tuple) or len(result) != 2:
-                return
-            result_item, gap_result = result
-            if (result_item.symbol, result_item.exchange) != key:
-                return
-            if not isinstance(gap_result, BarGapResult):
-                return
-
-            self._selected_gap_result = gap_result
-            self.bar_list_status[key] = gap_result.status
-            self._refresh_row_for_item(item)
-            self._update_action_buttons()
-            self._update_coverage_hint(item)
-
-        def on_failed(_msg: str) -> None:
-            if generation != self._gap_generation:
-                return
-            if self._gap_worker is worker:
-                self._gap_worker = None
-            if self.current_item is None:
-                return
-            if (self.current_item.symbol, self.current_item.exchange) != key:
-                return
-            self._set_chart_hint("完整性检查失败，仍可查看已有 K 线")
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
-
-    def _clear_local_chart(self) -> None:
-        if not self.config.show_kline:
-            return
-        chart = self.chart
-        if isinstance(chart, AshareChartWidget):
-            chart.configure_scope(minute=not self._is_daily_local_scope())
-            chart.replace_history([])
-        else:
-            chart.clear_all()
-            chart.move_to_right()
-
-    def _render_local_chart(self, bars: list[BarData]) -> None:
-        if not self.config.show_kline:
-            return
-        chart = self.chart
-        minute = not self._is_daily_local_scope()
-        if isinstance(chart, AshareChartWidget):
-            chart.configure_scope(minute=minute)
-            chart.replace_history(bars)
-        else:
-            chart.replace_history(prepare_chart_bars(bars))
+        self._local.check_bar_gaps(item)
 
     def _refresh_row_for_item(self, item: StockItem) -> None:
-        for row in range(self.market_table.rowCount()):
-            row_item = self._stock_at_row(row)
-            if row_item is None:
-                continue
-            if (row_item.symbol, row_item.exchange) != (item.symbol, item.exchange):
-                continue
-            quote = self.quote_map.get(item.tickflow_symbol)
-            self._set_row(row, item, quote)
-            break
+        self._table.refresh_row_for_item(item)
 
     def show_kline(self, item: StockItem) -> None:
-        if not self.config.show_kline:
-            return
-        quote = self.quote_map.get(item.tickflow_symbol)
-        if self.chart_panel is not None:
-            self.chart_panel.load_item(item, quote=quote)
-            return
-
-        self._set_chart_hint(None)
-        self._bars_generation += 1
-        generation = self._bars_generation
-        self._bars_request_id += 1
-        request_id = self._bars_request_id
-        target_key = (item.symbol, item.exchange)
-        target_scope = self._local_scope
-
-        self._wait_worker_release("_bars_worker")
-
-        self._clear_local_chart()
-
-        if self._is_daily_local_scope():
-            worker = BarsLoadWorker(item)
-        else:
-            worker = ScopeBarsLoadWorker(item, scope=target_scope)
-        self._bars_worker = worker
-
-        def _should_apply(result: object) -> bool:
-            if not self._active or self.current_item is None:
-                return False
-            current_key = (self.current_item.symbol, self.current_item.exchange)
-            loaded_key = None
-            if isinstance(result, LoadedBars):
-                loaded_key = (result.item.symbol, result.item.exchange)
-            return should_apply_loaded_bars(
-                generation=generation,
-                current_generation=self._bars_generation,
-                request_id=request_id,
-                current_request_id=self._bars_request_id,
-                target_key=target_key,
-                current_key=current_key,
-                target_scope=target_scope,
-                current_scope=self._local_scope,
-                loaded_key=loaded_key,
-            )
-
-        def on_finished(result: object) -> None:
-            if self._bars_worker is worker:
-                self._bars_worker = None
-            if not _should_apply(result):
-                return
-            scope_label = self._local_scope_label()
-            if result is None:
-                self._clear_local_chart()
-                if self.config.show_fill_button:
-                    self._set_chart_hint(f"暂无本地{scope_label}")
-                else:
-                    self._set_chart_hint(f"暂无本地{scope_label}，请点击「下载日K到本地」")
-                return
-            loaded: LoadedBars = result
-            if loaded.bars:
-                self._render_local_chart(loaded.bars)
-                if self.config.show_fill_button:
-                    self._update_coverage_hint(item)
-                else:
-                    self._set_chart_hint(None)
-            else:
-                self._clear_local_chart()
-                if self.config.show_fill_button:
-                    self._set_chart_hint(f"暂无本地{scope_label}")
-                else:
-                    self._set_chart_hint(f"暂无本地{scope_label}，请点击「下载日K到本地」")
-
-        def on_failed(_msg: str) -> None:
-            if self._bars_worker is worker:
-                self._bars_worker = None
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._local.show_kline(item)
 
     def sync_universe_clicked(self) -> None:
         if self._thread_active(self._sync_worker):
@@ -2237,14 +948,7 @@ class QuotesPage(QtWidgets.QWidget):
         worker.start()
 
     def download_selected(self) -> None:
-        if (
-            self.config.show_chart_tabs
-            and self.chart_panel is not None
-            and self.chart_panel.current_tab_index() == MINUTE_TAB_INDEX
-        ):
-            self._run_minute_download(mode="full")
-            return
-        self._run_download(mode="full", action_label="下载")
+        self._local.download_selected()
 
     def _run_minute_download(
         self,
@@ -2252,116 +956,16 @@ class QuotesPage(QtWidgets.QWidget):
         mode: str = "full",
         action_label: str = "下载",
     ) -> None:
-        if not self.current_item or self._thread_active(self._download_worker):
-            return
-        if self.chart_panel is None and not self.config.use_local_table:
-            return
-
-        item = self.current_item
-        if self.config.use_local_table:
-            period = self._local_scope
-            period_label = self._local_scope_label()
-        else:
-            period = self.chart_panel.current_period()
-            period_label = self.chart_panel.current_period_label()
-
-        self._set_busy(True)
-        if mode == "incremental":
-            status_text = f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} {period_label}..."
-        else:
-            status_text = (
-                f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} "
-                f"{period_label}（近{DEFAULT_MINUTE_DOWNLOAD_MONTHS}个月）..."
-            )
-        self.status_label.setText(status_text)
-
-        worker = MinuteDownloadWorker(item, period=period, mode=mode)
-        self._download_worker = worker
-
-        def on_finished(count: int) -> None:
-            if self._download_worker is worker:
-                self._download_worker = None
-            self._set_busy(False)
-            label = format_vt_symbol_cn(item.symbol, item.exchange)
-            if self.config.use_local_table:
-                self.refresh_local_meta()
-                self.apply_filter()
-            if self.chart_panel is not None:
-                self.chart_panel.refresh_active()
-            elif self.current_item is not None:
-                self.show_kline(self.current_item)
-            if mode == "incremental" and count == 0:
-                self.status_label.setText(f"{label} 已是最新，无新增 K 线")
-            elif action_label == "下载":
-                self.status_label.setText(f"{label} 已下载 {count} 根{period_label}")
-            else:
-                self.status_label.setText(f"{label} {action_label}完成，新增 {count} 根")
-
-        def on_failed(msg: str) -> None:
-            if self._download_worker is worker:
-                self._download_worker = None
-            self._set_busy(False)
-            self.status_label.setText(f"{action_label}分K失败: {msg}")
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._local.run_minute_download(mode=mode, action_label=action_label)
 
     def fill_selected(self) -> None:
-        if self.config.use_local_table and not self._is_daily_local_scope():
-            self._run_minute_download(mode="incremental", action_label="补全")
-            return
-        self._run_download(mode="incremental", action_label="补全")
+        self._local.fill_selected()
 
     def redownload_selected(self) -> None:
-        if self.config.use_local_table and not self._is_daily_local_scope():
-            self._run_minute_download(mode="full", action_label="重新下载")
-            return
-        self._run_download(mode="full", action_label="重新下载")
+        self._local.redownload_selected()
 
     def _run_download(self, *, mode: str, action_label: str) -> None:
-        if not self.current_item or self._thread_active(self._download_worker):
-            return
-
-        item = self.current_item
-        self._set_busy(True)
-        self.status_label.setText(
-            f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} 日K..."
-        )
-
-        worker = DownloadWorker(item, mode=mode)
-        self._download_worker = worker
-
-        def on_finished(count: int) -> None:
-            if self._download_worker is worker:
-                self._download_worker = None
-            self.refresh_local_meta()
-            self.apply_filter()
-            self.show_kline(item)
-            if self.config.show_fill_button and self._is_daily_local_scope():
-                self._check_bar_gaps(item)
-            self._set_busy(False)
-            label = format_vt_symbol_cn(item.symbol, item.exchange)
-            if mode == "incremental" and count == 0:
-                self.status_label.setText(f"{label} 已是最新，无新增 K 线")
-            elif action_label == "下载":
-                self.status_label.setText(f"{label} 已下载 {count} 根日K")
-            else:
-                self.status_label.setText(f"{label} {action_label}完成，新增 {count} 根日K")
-
-        def on_failed(msg: str) -> None:
-            if self._download_worker is worker:
-                self._download_worker = None
-            self._set_busy(False)
-            self.status_label.setText(f"{action_label}失败: {msg}")
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._local.run_download(mode=mode, action_label=action_label)
 
     def _set_busy(self, busy: bool) -> None:
         self.search_edit.setEnabled(not busy)
@@ -2374,15 +978,7 @@ class QuotesPage(QtWidgets.QWidget):
         if self.config.show_sync_button:
             self.sync_button.setEnabled(not busy)
         if self.config.use_market_rank:
-            self.home_button.setEnabled(not busy and self._market_page > 0)
-            self.prev_page_button.setEnabled(not busy and self._market_page > 0)
-            self.next_page_button.setEnabled(
-                not busy and self._market_page + 1 < self._market_page_count()
-            )
-            self.end_button.setEnabled(
-                not busy and self._market_page + 1 < self._market_page_count()
-            )
-            self.page_jump_input.setEnabled(not busy)
+            self._pagination.update_busy_state(busy)
         if busy:
             if self.config.show_download_button:
                 self.download_button.setEnabled(False)
