@@ -20,6 +20,7 @@ def _tool(name: str) -> dict:
 ALL_TOOLS = [
     _tool("get_quote_context"),
     _tool("screen_by_condition"),
+    _tool("screen_by_pattern"),
     _tool("propose_screening"),
     _tool("list_screeners"),
     _tool("get_backtest_result"),
@@ -33,6 +34,7 @@ def test_filter_screening_subset():
     filtered = filter_tools_by_route(ALL_TOOLS, "screening")
     names = {t["function"]["name"] for t in filtered}
     assert "screen_by_condition" in names
+    assert "screen_by_pattern" in names
     assert "propose_screening" in names
     assert "list_screeners" in names
     assert "read_skill_file" in names

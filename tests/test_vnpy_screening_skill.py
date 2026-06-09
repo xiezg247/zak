@@ -28,6 +28,8 @@ def test_list_screeners():
     assert "涨幅榜" in result["screeners"]
     assert "catalog" in result
     assert "screen_by_condition" in result["note"]
+    assert "patterns" in result
+    assert "screen_by_pattern" in result["note"]
 
 
 def test_screen_by_condition_no_data():
@@ -66,6 +68,38 @@ def test_screen_by_condition_need_confirm():
     result = json.loads(skill.screen_by_condition("我的 · 测试"))
     assert result["status"] == "need_confirm"
     assert "propose_screening" in result["message"]
+
+
+def test_screen_by_pattern_ok():
+    from vnpy_ashare.screener.runner import ScreenerRunResult
+
+    svc = MagicMock()
+    svc.run_pattern_screen.return_value = ScreenerRunResult(
+        rows=[{
+            "symbol": "600519",
+            "name": "贵州茅台",
+            "vt_symbol": "600519.SSE",
+            "pattern_score": 12.5,
+            "pattern_hint": "MA5>MA10>MA20>MA60",
+        }],
+        condition="形态 · 均线多头",
+        updated_at="2026-06-09",
+        total_scanned=50,
+        source="bar",
+    )
+    skill = _make_skill(svc)
+    result = json.loads(skill.screen_by_pattern("均线多头", top_n=5))
+    assert result["status"] == "ok"
+    assert result["pattern"] == "ma_bull"
+    assert result["count"] == 1
+    svc.persist_run_result.assert_called_once()
+
+
+def test_screen_by_pattern_unknown():
+    skill = _make_skill(MagicMock())
+    result = json.loads(skill.screen_by_pattern("头肩顶"))
+    assert result["status"] == "error"
+    assert "未知形态" in result["message"]
 
 
 def test_propose_screening_builtin():

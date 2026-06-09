@@ -1,7 +1,7 @@
 # 全自动选股设计说明
 
 **日期**：2026-06-09  
-**状态**：待实施  
+**状态**：已实施（含形态选股 `screen_by_pattern`）  
 **范围**：AI 助手（悬浮 / Dock / 全屏共用）对话内直接执行选股
 
 ---
@@ -24,7 +24,7 @@
 
 - 不改变选股页 GUI 主流程
 - 不删除 `propose_screening` 确认机制
-- 不在本阶段实现形态选股（老鸭头等）的全自动规则引擎——仍走 TDX MCP 轻量查询或 `propose_screening`
+- ~~不在本阶段实现形态选股~~ → 已实现 `screen_by_pattern`（老鸭头/均线多头/W底/主题投资，基于本地日 K 或行情快照）
 
 ---
 
@@ -32,8 +32,9 @@
 
 | 路径 | 工具 | 触发条件 |
 |------|------|----------|
-| **自动** | `screen_by_condition` | 内置 preset 可解析；`confidence` 为 high/medium；无 `scheme_name`；非形态/技术复合条件 |
-| **确认** | `propose_screening` | 已保存方案；`confidence=low`；意图模糊；形态/多因子复合需 MCP 探查 |
+| **自动（preset）** | `screen_by_condition` | 内置 preset 可解析；`confidence` 为 high/medium；无 `scheme_name` |
+| **自动（形态）** | `screen_by_pattern` | 老鸭头/均线多头/W底/主题投资；依赖本地日 K（主题需全市场行情） |
+| **确认** | `propose_screening` | 已保存方案；`confidence=low`；意图模糊；未支持形态 |
 
 ### 自动轨可执行范围
 
@@ -45,7 +46,7 @@
 
 - `scheme_name` / 「我的 · xxx」已保存方案
 - 路由 `clarification_needed=true` 或 `confidence=low`
-- 形态选股快捷菜单（老鸭头、W 底等）—— prompt 引导 MCP 探查 + `propose_screening`
+- 未在 `screen_by_pattern` 支持列表内的形态
 
 ---
 

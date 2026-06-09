@@ -24,6 +24,7 @@ _TOOL_LABELS: dict[str, str] = {
     "propose_screening": "解析选股条件",
     "list_screeners": "列出选股条件",
     "screen_by_condition": "执行选股筛选",
+    "screen_by_pattern": "执行形态选股",
     "list_strategies": "列出可用策略",
     "get_backtest_result": "读取回测结果",
     "list_backtest_history": "查询回测历史",

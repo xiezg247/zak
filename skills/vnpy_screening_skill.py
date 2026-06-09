@@ -69,6 +69,25 @@ class VnpyScreeningSkill(SkillTemplate):
                 },
             ),
             ToolSpec(
+                name="screen_by_pattern",
+                description=(
+                    "直接执行 A 股形态选股并返回结果（无需确认）。"
+                    "支持：老鸭头形态/均线多头/W底形态/主题投资。"
+                    "依赖本地日 K（主题投资需全市场行情）。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "description": "形态名称，如 老鸭头形态、均线多头、W底形态、主题投资",
+                        },
+                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
+                    },
+                    "required": ["pattern"],
+                },
+            ),
+            ToolSpec(
                 name="screen_by_condition",
                 description=(
                     "直接执行内置选股方案并返回结果（无需用户确认）。"
@@ -106,6 +125,7 @@ class VnpyScreeningSkill(SkillTemplate):
 
     def list_screeners(self) -> str:
         from vnpy_ashare.screener.nl_mapper import preset_catalog_for_prompt
+        from vnpy_ashare.screener.pattern_screen import list_pattern_screeners
         from vnpy_ashare.screener.runner import list_all_preset_names
 
         names = list_all_preset_names(include_saved=True)
@@ -113,8 +133,9 @@ class VnpyScreeningSkill(SkillTemplate):
             {
                 "count": len(names),
                 "screeners": names,
+                "patterns": list_pattern_screeners(),
                 "catalog": preset_catalog_for_prompt(),
-                "note": "简单内置方案可直接 screen_by_condition；复杂/保存方案用 propose_screening。",
+                "note": "内置 preset 用 screen_by_condition；形态用 screen_by_pattern；复杂/保存方案用 propose_screening。",
             },
             ensure_ascii=False,
         )
@@ -231,6 +252,58 @@ class VnpyScreeningSkill(SkillTemplate):
             })
         return json.dumps(
             {"condition": name, "count": len(summary), "results": summary},
+            ensure_ascii=False,
+        )
+
+    def screen_by_pattern(self, pattern: str, top_n: int = 20) -> str:
+        from vnpy_ashare.screener.pattern_screen import PatternScreenInput, resolve_pattern_screen
+
+        pattern_id, error = resolve_pattern_screen(PatternScreenInput(pattern=pattern, top_n=top_n))
+        if error:
+            return json.dumps({"status": "error", "message": error}, ensure_ascii=False)
+
+        svc = self._get_screening_service()
+        try:
+            result = svc.run_pattern_screen(pattern, top_n=int(top_n or 20))
+        except Exception as ex:
+            return json.dumps({"status": "error", "message": str(ex)}, ensure_ascii=False)
+
+        if not result.rows:
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "pattern": pattern_id,
+                    "condition": result.condition,
+                    "count": 0,
+                    "total_scanned": result.total_scanned,
+                    "message": f"形态「{result.condition}」未匹配到标的（已扫描 {result.total_scanned} 只本地日 K）",
+                },
+                ensure_ascii=False,
+            )
+
+        svc.persist_run_result(result, nl_source=f"pattern:{pattern_id}")
+        return json.dumps(
+            {
+                "status": "ok",
+                "pattern": pattern_id,
+                "condition": result.condition,
+                "count": len(result.rows),
+                "source": result.source,
+                "updated_at": result.updated_at,
+                "total_scanned": result.total_scanned,
+                "results": [
+                    {
+                        "symbol": r.get("symbol", ""),
+                        "name": r.get("name", ""),
+                        "vt_symbol": r.get("vt_symbol", ""),
+                        "last_price": r.get("last_price"),
+                        "change_pct": r.get("change_pct"),
+                        "pattern_score": r.get("pattern_score"),
+                        "pattern_hint": r.get("pattern_hint"),
+                    }
+                    for r in result.rows
+                ],
+            },
             ensure_ascii=False,
         )
 

@@ -84,6 +84,33 @@ class ScreeningService(BaseService):
     def run_request(self, request: ScreenerRequest) -> ScreenerRunResult:
         return run_screener(request)
 
+    def run_pattern_screen(self, pattern: str, *, top_n: int = 20) -> ScreenerRunResult:
+        from vnpy_ashare.screener.pattern_screen import (
+            PatternScreenInput,
+            resolve_pattern_screen,
+            run_pattern_screen,
+        )
+
+        pattern_id, error = resolve_pattern_screen(PatternScreenInput(pattern=pattern, top_n=top_n))
+        if error:
+            raise ValueError(error)
+
+        quote_rows = None
+        if pattern_id == "theme_hot":
+            quote_rows, err = self.load_quote_rows()
+            if not quote_rows:
+                raise RuntimeError(self.quote_rows_unavailable_message(err))
+
+        def _load_bars(symbol: str, exchange) -> list:
+            return self.engine.bar_service.load_bars(symbol, exchange, "daily")
+
+        return run_pattern_screen(
+            pattern_id,
+            top_n=top_n,
+            load_bars=_load_bars,
+            quote_rows=quote_rows,
+        )
+
     def set_screening_results(
         self,
         *,

@@ -130,7 +130,7 @@ CTA 策略          ← 恢复挂载
 - 更多 `AShareTemplate` 示例策略（突破、RSI 等）
 - 分钟回测（B5，依赖本地分钟 K 体量）
 - `vnpy_ashare` / `vnpy_llm` 拆包发布
-- AI 对话**全自动选股**（内置 preset → `screen_by_condition`；复杂条件保留 `propose_screening` 确认）✅
+- AI 对话**全自动选股**（内置 preset → `screen_by_condition`；形态 → `screen_by_pattern`；复杂条件保留 `propose_screening` 确认）✅
 
 （日志 Dock 已实现，见主窗口「工具 → 显示/隐藏 日志 Dock」。）
 

@@ -492,13 +492,23 @@ def build_floating_page_extras(
     return extras
 
 
+def _pattern_screen_prompt(pattern: str, *, detail: str = "") -> str:
+    extra = f" {detail}" if detail else ""
+    return (
+        f"请按「{pattern}」在 A 股全市场选股。{extra}"
+        "直接调用 screen_by_pattern 执行（无需 propose_screening 确认）；"
+        "结果用 Markdown 表格展示 Top 20，注明 pattern_score 与数据来源（本地日 K / 行情）。"
+    )
+
+
 def _screening_prompt(intent: str, *, detail: str = "") -> str:
     extra = f" {detail}" if detail else ""
     return (
         f"请按「{intent}」在 A 股中选股。{extra}"
         "先 list_screeners 了解终端内置方案；"
         "内置 preset 且条件明确时直接 screen_by_condition；"
-        "形态/技术复合条件可结合 tdx-stock-picker 与 mcp_tdx 探查，复杂或需保存时用 propose_screening。"
+        "形态选股（老鸭头/均线多头/W底/主题投资）直接 screen_by_pattern；"
+        "已保存方案或复杂条件用 propose_screening。"
         "结果用 Markdown 表格展示，默认 Top 20，排除 ST，注明数据来源。"
     )
 
@@ -512,7 +522,7 @@ def build_pattern_screen_menu() -> QuickAction:
             QuickAction(
                 id="pattern_old_duck",
                 label="老鸭头形态",
-                prompt=_screening_prompt(
+                prompt=_pattern_screen_prompt(
                     "老鸭头形态",
                     detail="关注放量突破、短期均线回踩后再次上攻、颈线位突破等典型特征。",
                 ),
@@ -520,7 +530,7 @@ def build_pattern_screen_menu() -> QuickAction:
             QuickAction(
                 id="pattern_ma_bull",
                 label="均线多头",
-                prompt=_screening_prompt(
+                prompt=_pattern_screen_prompt(
                     "均线多头排列",
                     detail="优先 MA5>MA10>MA20>MA60，现价站上关键均线，量能配合。",
                 ),
@@ -528,7 +538,7 @@ def build_pattern_screen_menu() -> QuickAction:
             QuickAction(
                 id="pattern_w_bottom",
                 label="W底形态",
-                prompt=_screening_prompt(
+                prompt=_pattern_screen_prompt(
                     "W底形态",
                     detail="关注双底结构、第二次探底缩量、突破颈线位放量等特征。",
                 ),
@@ -536,7 +546,7 @@ def build_pattern_screen_menu() -> QuickAction:
             QuickAction(
                 id="pattern_theme",
                 label="主题投资",
-                prompt=_screening_prompt(
+                prompt=_pattern_screen_prompt(
                     "主题投资",
                     detail="结合当前热点主题/概念板块，筛选资金关注度高的龙头与跟风标的。",
                 ),

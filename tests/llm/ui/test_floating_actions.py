@@ -73,7 +73,7 @@ class FloatingActionsTests(unittest.TestCase):
         )
         trend = next(a for a in actions if a.id == "trend_forecast")
         self.assertIn("600519.SSE", trend.children[0].prompt)
-        self.assertIn("propose_screening", pattern.children[0].prompt)
+        self.assertIn("screen_by_pattern", pattern.children[0].prompt)
 
     def test_floating_bound_to_selected_symbol(self) -> None:
         actions = build_floating_stock_quick_actions(

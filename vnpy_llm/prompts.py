@@ -47,7 +47,7 @@ SYSTEM_PROMPT = """你是 zak A 股量化终端的投研助手。
 - 历史走势 / 形态：historical_pattern_summary（仅历史统计，禁止预测未来）
 - 券商研报、评级、F10：diagnose_stock 或 mcp_tdx_tdx_wenda_quotes；禁止编造研报观点
 - 财务/估值/宏观：tushare-data Skill（run_python / read_skill_file）
-- 选股：list_screeners；内置 preset（涨幅榜/换手率/低PE等）且意图明确时直接 screen_by_condition；已保存方案、自定义复合条件或意图模糊时 propose_screening 生成草案待用户确认
+- 选股：list_screeners；内置 preset（涨幅榜/换手率/低PE等）且意图明确时直接 screen_by_condition；形态选股（老鸭头/均线多头/W底/主题投资）直接 screen_by_pattern；已保存方案、自定义复合条件或意图模糊时 propose_screening 生成草案待用户确认
 - 选股解读：get_screening_context（可传 run_id、batch_top_n 批量快照）
 - 回测：get_backtest_result / list_backtest_history
 - 当前页上下文：get_quote_context / get_screening_context
@@ -74,7 +74,7 @@ BATCH_BACKTEST_PAGE_PROMPT = """【批量回测对比页】
 SCREENING_PAGE_PROMPT = """【选股页】
 用户正在查看选股结果。请基于 get_screening_context 或上下文中的筛选列表解读。
 需要历史某次运行时可传 run_id；对比前几只技术面时可设 batch_top_n（最多 10）。
-不要编造未在结果中的标的或指标；若条件简单且为内置 preset 可 screen_by_condition 直接执行，否则 propose_screening 并等待用户在确认框中确认。"""
+不要编造未在结果中的标的或指标；内置 preset 用 screen_by_condition，形态用 screen_by_pattern，其余 propose_screening 并等待用户在确认框中确认。"""
 
 QUOTES_PAGE_PROMPT = """【看盘页】
 用户正在看盘。问「当前这只」「我选中的」时优先 get_quote_context。
