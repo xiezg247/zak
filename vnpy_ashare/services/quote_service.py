@@ -25,7 +25,7 @@ class QuoteService(BaseService):
         quote: QuoteSnapshot | None = None,
         bar_count: int = 0,
     ) -> None:
-        """写入 session_context（兼容旧调用方；UI 可直接 set_ai_context）。"""
+        """写入 session_context（不含悬浮球快捷动作 enrichment）。"""
         if item is None:
             set_ai_context(AiContextData(page=page))
         else:
@@ -37,6 +37,28 @@ class QuoteService(BaseService):
                     bar_count=bar_count,
                 )
             )
+
+    def publish_quote_context(
+        self,
+        *,
+        page: str,
+        item: StockItem | None = None,
+        quote: QuoteSnapshot | None = None,
+        bar_count: int = 0,
+    ) -> None:
+        """写入看盘页 AI 上下文（含悬浮球快捷动作 enrichment）。"""
+        if item is None:
+            data = AiContextData(page=page)
+        else:
+            data = build_quote_context(
+                page=page,
+                item=item,
+                quote=quote,
+                bar_count=bar_count,
+            )
+        from vnpy_llm.ui.floating_actions import enrich_context_with_actions
+
+        set_ai_context(enrich_context_with_actions(data))
 
     def get_current_context(self) -> AiContextData:
         """Skill 读取终端当前页面与选中标的。"""

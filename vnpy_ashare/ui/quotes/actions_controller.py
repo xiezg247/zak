@@ -84,9 +84,6 @@ class ActionsController:
         self.update_action_buttons()
 
     def emit_ai_context(self) -> None:
-        from vnpy_ashare.ai.session_context import set_ai_context
-        from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
         page = self._p
         quote = None
         bar_count = 0
@@ -95,6 +92,20 @@ class ActionsController:
             key = (page.current_item.symbol, page.current_item.exchange)
             meta = page.bar_meta.get(key)
             bar_count = meta.count if meta else 0
+
+        quote_service = page._get_quote_service()
+        if quote_service is not None:
+            quote_service.publish_quote_context(
+                page=page.page_name,
+                item=page.current_item,
+                quote=quote,
+                bar_count=bar_count,
+            )
+            return
+
+        from vnpy_ashare.ai.session_context import set_ai_context
+        from vnpy_llm.ui.floating_actions import enrich_context_with_actions
+
         data = enrich_context_with_actions(
             build_quote_context(
                 page=page.page_name,

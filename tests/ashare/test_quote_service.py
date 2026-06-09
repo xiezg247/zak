@@ -39,6 +39,18 @@ class QuoteServiceContextTests(unittest.TestCase):
         self.assertEqual(ctx.page, "市场")
         self.assertEqual(ctx.symbol, "")
 
+    def test_publish_quote_context_writes_session(self) -> None:
+        from vnpy.trader.constant import Exchange
+
+        from vnpy_ashare.models import StockItem
+
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
+        self.service.publish_quote_context(page="自选", item=item, bar_count=120)
+        ctx = get_ai_context()
+        self.assertEqual(ctx.page, "自选")
+        self.assertEqual(ctx.symbol, "600519")
+        self.assertIn("120", ctx.extra)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -8,6 +8,17 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_ashare.ai.session_context import get_backtest_summary, set_ai_context
+from vnpy_ashare.engine_access import get_service
+
+
+def resolve_backtest_summary(main_engine=None) -> dict[str, Any] | None:
+    """优先从 BacktestService 读取，回退 session 缓存。"""
+    service = get_service(main_engine, "backtest_service")
+    if service is not None:
+        summary = service.get_last_summary()
+        if summary:
+            return summary
+    return get_backtest_summary()
 
 
 def _fmt_metric(value: Any) -> str:
@@ -37,7 +48,10 @@ def format_backtest_summary_text(summary: dict[str, Any] | None) -> str:
     return "\n".join(lines)
 
 
-def build_backtest_page_context(widget: QtWidgets.QWidget) -> AiContextData:
+def build_backtest_page_context(
+    widget: QtWidgets.QWidget,
+    main_engine=None,
+) -> AiContextData:
     """从 BacktesterWidget 表单与最近摘要组装上下文。"""
     symbol_line = getattr(widget, "symbol_line", None)
     class_combo = getattr(widget, "class_combo", None)
@@ -61,7 +75,7 @@ def build_backtest_page_context(widget: QtWidgets.QWidget) -> AiContextData:
     ]
     if date_range:
         extra_parts.append(f"回测区间：{date_range}")
-    extra_parts.append(format_backtest_summary_text(get_backtest_summary()))
+    extra_parts.append(format_backtest_summary_text(resolve_backtest_summary(main_engine)))
 
     symbol = vt_symbol.split(".", 1)[0] if "." in vt_symbol else vt_symbol
     exchange = vt_symbol.split(".", 1)[1] if "." in vt_symbol else ""
@@ -88,7 +102,7 @@ def build_backtest_ai_prompt(summary: dict[str, Any]) -> str:
 def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, notify_ui: bool = True) -> None:
     from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
-    data = enrich_context_with_actions(build_backtest_page_context(widget))
+    data = enrich_context_with_actions(build_backtest_page_context(widget, main_engine))
     set_ai_context(data)
 
 

@@ -63,9 +63,14 @@ def get_ai_context() -> AiContextData:
 
 
 def set_backtest_summary(summary: BacktestSummary | None) -> None:
+    sync_backtest_summary_dict(summary.to_dict() if summary else None)
+
+
+def sync_backtest_summary_dict(summary: dict[str, Any] | None) -> None:
+    """同步回测摘要到 session 缓存（BacktestService 写入时调用）。"""
     global _backtest_summary
     with _lock:
-        _backtest_summary = summary.to_dict() if summary else None
+        _backtest_summary = dict(summary) if summary else None
 
 
 def get_backtest_summary() -> dict[str, Any] | None:
@@ -162,9 +167,9 @@ def get_diagnose_result() -> dict[str, Any] | None:
 
 
 def sync_backtest_to_service(backtest_service: object) -> None:
-    """将全局回测摘要同步到 backtest_service（LlmEngine 初始化时调用）。"""
-    if backtest_service is None:
+    """兼容旧调用：改为从 Service/DB 预热摘要缓存。"""
+    if backtest_service is None or not hasattr(backtest_service, "get_last_summary"):
         return
-    with _lock:
-        if _backtest_summary:
-            backtest_service.set_last_summary(dict(_backtest_summary))
+    summary = backtest_service.get_last_summary()
+    if summary:
+        sync_backtest_summary_dict(summary)

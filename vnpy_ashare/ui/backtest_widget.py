@@ -19,7 +19,7 @@ from vnpy_ashare.ai.backtest_context import (
     format_backtest_summary_text,
     sync_backtest_page_context,
 )
-from vnpy_ashare.ai.session_context import BacktestSummary, get_backtest_summary, set_backtest_summary
+from vnpy_ashare.ai.session_context import BacktestSummary, get_backtest_summary
 from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
@@ -266,8 +266,16 @@ class BacktesterWidget(VnpyBacktesterManager):
         else:
             self.write_log(f"已带入股票代码：{symbol}")
 
+    def _get_last_backtest_summary(self) -> dict | None:
+        from vnpy_ashare.engine import APP_NAME, AshareEngine
+
+        engine = self.main_engine.get_engine(APP_NAME)
+        if isinstance(engine, AshareEngine):
+            return engine.backtest_service.get_last_summary()
+        return get_backtest_summary()
+
     def _ask_ai_for_backtest(self) -> None:
-        summary = get_backtest_summary()
+        summary = self._get_last_backtest_summary()
         if not summary:
             QtWidgets.QMessageBox.information(self, "提示", "请先完成一次回测")
             return
@@ -315,22 +323,14 @@ class BacktesterWidget(VnpyBacktesterManager):
             end=end.strftime("%Y-%m-%d"),
             statistics=dict(statistics),
         )
-        set_backtest_summary(summary)
-        self._write_backtest_summary_log(summary.to_dict())
-        self._persist_backtest_summary(dict(statistics), start, end)
-
-    def _persist_backtest_summary(self, statistics: dict, start, end) -> None:
+        summary_dict = summary.to_dict()
+        self._write_backtest_summary_log(summary_dict)
         from vnpy_ashare.engine import APP_NAME, AshareEngine
 
         engine = self.main_engine.get_engine(APP_NAME)
-        if not isinstance(engine, AshareEngine):
-            return
-        summary = {
-            "strategy": self.class_combo.currentText(),
-            "vt_symbol": self.symbol_line.text().strip(),
-            "interval": self.interval_combo.currentText(),
-            "start": start.strftime("%Y-%m-%d"),
-            "end": end.strftime("%Y-%m-%d"),
-            "statistics": statistics,
-        }
-        engine.backtest_service.persist_summary(summary, source="single")
+        if isinstance(engine, AshareEngine):
+            engine.backtest_service.persist_summary(summary_dict, source="single")
+        else:
+            from vnpy_ashare.ai.session_context import set_backtest_summary
+
+            set_backtest_summary(summary)

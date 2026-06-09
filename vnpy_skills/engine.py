@@ -134,7 +134,8 @@ class SkillEngine:
 
         parts = [
             "【已加载 Skills】",
-            "以下 skill 包来自官方 SKILL.md，可通过 read_skill_file / run_python / list_skill_files 调用。",
+            "以下 skill 包来自官方 SKILL.md；系统提示仅含名称与简介，",
+            "详细说明请通过 read_skill_file / run_python / list_skill_files 按需查阅。",
             "涉及行情、财务、宏观数据时必须先调用工具取数，禁止编造。",
             "",
         ]

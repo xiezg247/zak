@@ -72,6 +72,23 @@ class SkillEngineTests(unittest.TestCase):
         prompt = engine.build_skills_prompt()
         self.assertIn("tickflow", prompt)
         self.assertIn("read_skill_file", prompt)
+        skill = engine.agent_skills["tickflow"]
+        if skill.body.strip():
+            marker = skill.body.strip().splitlines()[0][:40]
+            if len(marker) > 10 and marker not in skill.description:
+                self.assertNotIn(marker, prompt)
+
+    def test_prompt_section_is_summary_only(self) -> None:
+        if not (PROJECT_ROOT / "skills" / "tickflow" / "SKILL.md").is_file():
+            self.skipTest("请先运行 scripts/sync_skills.py")
+        skill = AgentSkill.from_directory(PROJECT_ROOT / "skills" / "tickflow")
+        assert skill is not None
+        summary = skill.prompt_section()
+        self.assertIn("read_skill_file", summary)
+        if skill.body.strip():
+            marker = skill.body.strip().splitlines()[0][:40]
+            if len(marker) > 10 and marker not in skill.description:
+                self.assertNotIn(marker, summary)
 
     def test_execute_read_skill_file(self) -> None:
         if not (PROJECT_ROOT / "skills" / "tickflow" / "SKILL.md").is_file():

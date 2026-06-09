@@ -119,8 +119,10 @@ AI 提供**悬浮球 + 全屏**两种形态：
 | 全屏 | 导航「AI 助手」、面板「全屏」、回测「问 AI」 | 长对话与会话管理；回测问 AI 使用新会话 |
 | 返回 | 全屏「← 返回看盘」 | 回到上次看盘页并打开悬浮面板 |
 
-上下文通过 `session_context.set_ai_context()` 写入，变更后 `LlmEngine.signals.context_changed` 驱动悬浮球角标与面板 ContextChip 更新。设计详见 [悬浮球功能增强设计](./superpowers/specs/2026-06-08-floating-orb-enhancement-design.md)。
+上下文通过 `QuoteService.publish_quote_context()` / `session_context.set_ai_context()` 写入，变更后 `LlmEngine.signals.context_changed` 驱动悬浮球角标与面板 ContextChip 更新。设计详见 [悬浮球功能增强设计](./superpowers/specs/2026-06-08-floating-orb-enhancement-design.md)。
 
-选股/回测时通过 `vnpy_ashare/ai/context.py` 的 `set_ai_context()` / `set_backtest_summary()` 共享上下文给 Agent Skills，避免事件广播耦合。
+回测摘要由 `BacktestService.persist_summary()` 统一写入（内存 + 落库 + session 缓存）；`get_backtest_result` 等 Skill 优先读 Service。
 
 **Agent Skills 工具链：** 各业务 Skill（`skills/vnpy_*_skill.py`）继承 `SkillTemplate`，通过 `SkillEngine` 的 `services` 参数注入 `vnpy_ashare/services/` 层引用，提供 `get_watchlist`、`get_bars_summary`、`run_backtest`、`diagnose_stock` 等工具函数。
+
+System Prompt 中 Agent Skill（`SKILL.md`）**仅注入名称与简介**；详细 API 文档通过 `read_skill_file` 按需加载，避免每次对话灌入全文。`ScreeningService` 统一从 session 行情缓存或 Redis 加载 quote 行，供 AI 选股与规则引擎共用。

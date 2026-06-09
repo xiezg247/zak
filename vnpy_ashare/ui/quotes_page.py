@@ -373,6 +373,11 @@ class QuotesPage(QtWidgets.QWidget):
 
         return get_service(self._get_main_engine(), "analysis_service")
 
+    def _get_quote_service(self):
+        from vnpy_ashare.engine_access import get_service
+
+        return get_service(self._get_main_engine(), "quote_service")
+
     def run_diagnose_for_selected(self) -> None:
         self._actions.run_diagnose_for_selected()
 

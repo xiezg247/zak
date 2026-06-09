@@ -133,6 +133,22 @@ class AgentSkill:
         return text
 
     def prompt_section(self) -> str:
+        """注入 System Prompt 的 Skill 摘要（不含 SKILL.md 正文）。"""
+        lines = [f"### Skill: {self.name}"]
+        if self.description:
+            lines.append(self.description)
+        if self.missing_env:
+            lines.append(
+                f"（缺少环境变量: {', '.join(self.missing_env)}，部分功能可能受限）"
+            )
+        lines.append(
+            "详细 API 与示例请按需调用 read_skill_file(skill="
+            f'"{self.name}", path="SKILL.md") 或 references/ 下文档。'
+        )
+        return "\n".join(lines)
+
+    def prompt_section_full(self) -> str:
+        """完整 SKILL.md 正文（调试或显式按需加载时使用）。"""
         header = f"### Skill: {self.name}"
         if self.description:
             header += f"\n{self.description}"

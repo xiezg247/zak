@@ -85,28 +85,6 @@ class VnpyScreeningSkill(SkillTemplate):
             ),
         ]
 
-    def _load_quotes(self) -> list[dict] | str:
-        from vnpy_ashare.ai.session_context import get_market_quotes_cache
-
-        quotes = get_market_quotes_cache()
-        if quotes:
-            return quotes
-        try:
-            from vnpy_ashare.screener.quotes_loader import load_market_quote_rows
-
-            snapshot = load_market_quote_rows()
-            return snapshot.rows
-        except Exception as ex:
-            return json.dumps(
-                {
-                    "message": (
-                        f"暂无可用的市场行情数据（{ex}）。"
-                        "请运行「工具 → 立即执行 → 行情采集」，或使用「选股」页。"
-                    ),
-                },
-                ensure_ascii=False,
-            )
-
     def _get_screening_service(self):
         svc = self._services.get("screening")
         if svc is None:
@@ -209,12 +187,11 @@ class VnpyScreeningSkill(SkillTemplate):
             except Exception as ex:
                 return json.dumps({"message": str(ex)}, ensure_ascii=False)
 
-        quotes = self._load_quotes()
-        if isinstance(quotes, str):
-            return quotes
-
         svc = self._get_screening_service()
-        results = svc.screen_by_condition(name, quotes, top_n=int(top_n or 10))
+        try:
+            results = svc.screen_quote_preset(name, top_n=int(top_n or 10))
+        except RuntimeError as ex:
+            return json.dumps({"message": str(ex)}, ensure_ascii=False)
         if not results:
             return json.dumps(
                 {

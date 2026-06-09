@@ -25,7 +25,7 @@ from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
 
 from vnpy_ashare.ai.context import AiContextData
-from vnpy_ashare.ai.session_context import register_context_listener, sync_backtest_to_service
+from vnpy_ashare.ai.session_context import register_context_listener
 
 APP_NAME = "Llm"
 
@@ -94,7 +94,7 @@ class LlmEngine(BaseEngine):
                 [spec.name for spec in self.mcp_engine.get_tool_specs()],
             )
         if ashare_engine is not None and hasattr(ashare_engine, "backtest_service"):
-            sync_backtest_to_service(ashare_engine.backtest_service)
+            ashare_engine.backtest_service.get_last_summary()
         self.register_event()
         register_context_listener(self._on_session_context_changed)
         self._emit_tools_status()
