@@ -29,6 +29,9 @@ _TRIGGER_TAGS = {
     "scheduled_post_close": "[盘后]",
 }
 
+_SETTINGS_ORG = "vnpy_zak"
+_SETTINGS_APP = "screener_ui"
+
 
 def _run_filter_label(record) -> str:
     trigger = str(record.config.get("trigger", ""))
@@ -103,6 +106,17 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         action_row.addWidget(self._ask_ai_btn)
         root.addLayout(action_row)
         self._update_action_buttons()
+
+    def unread_count(self) -> int:
+        count = 0
+        for record in list_runs(limit=40):
+            if not self._matches_mode(record):
+                continue
+            if not self._matches_subfilter(record):
+                continue
+            if is_run_unread(record.config):
+                count += 1
+        return count
 
     def _on_filter_changed(self, index: int) -> None:
         filters = [_FILTER_ALL, _FILTER_INTRADAY, _FILTER_POST_CLOSE]
@@ -180,6 +194,12 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         elif self._list.count() > 0:
             self._list.setCurrentRow(0)
         self._update_action_buttons()
+        parent = self.parent()
+        while parent is not None:
+            if isinstance(parent, ScreenerRunSidebar):
+                parent._update_rail_badge()
+                break
+            parent = parent.parent()
 
     def _on_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
         run_id = item.data(_RUN_ID_ROLE)
@@ -279,6 +299,13 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         rail_layout = QtWidgets.QVBoxLayout(rail)
         rail_layout.setContentsMargins(0, 12, 0, 12)
         rail_layout.addStretch()
+
+        self._badge = QtWidgets.QLabel("")
+        self._badge.setObjectName("ScreenerUnreadBadge")
+        self._badge.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self._badge.setFixedHeight(16)
+        self._badge.hide()
+
         self._toggle_btn = QtWidgets.QToolButton()
         self._toggle_btn.setObjectName("AiSessionToggle")
         self._toggle_btn.setText("▶")
@@ -286,15 +313,51 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         self._toggle_btn.setToolTip(tooltip)
         self._toggle_btn.setFixedSize(28, 28)
         self._toggle_btn.clicked.connect(self._toggle_expanded)
+
+        rail_layout.addWidget(self._badge, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
         rail_layout.addWidget(self._toggle_btn, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
         rail_layout.addStretch()
         root.addWidget(rail)
         self._mode = mode
+        self._restore_expanded_preference()
+
+    def _settings_key(self) -> str:
+        return f"{self._mode}_sidebar_expanded"
+
+    def _load_expanded_preference(self) -> bool:
+        settings = QtCore.QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+        value = settings.value(self._settings_key(), False)
+        if isinstance(value, str):
+            return value.lower() in ("1", "true", "yes")
+        return bool(value)
+
+    def _save_expanded_preference(self) -> None:
+        settings = QtCore.QSettings(_SETTINGS_ORG, _SETTINGS_APP)
+        settings.setValue(self._settings_key(), self._expanded)
+
+    def _restore_expanded_preference(self) -> None:
+        if self._load_expanded_preference():
+            self.set_expanded(True, persist=False)
+        else:
+            self._update_rail_badge()
+
+    def _update_rail_badge(self) -> None:
+        if self._expanded:
+            self._badge.hide()
+            return
+        count = self._list.unread_count()
+        if count <= 0:
+            self._badge.hide()
+            return
+        self._badge.setText(str(count) if count <= 9 else "9+")
+        self._badge.setToolTip(f"{count} 条未读结果")
+        self._badge.show()
 
     def refresh(self) -> None:
         self._list.refresh()
+        self._update_rail_badge()
 
-    def set_expanded(self, expanded: bool) -> None:
+    def set_expanded(self, expanded: bool, *, persist: bool = True) -> None:
         if self._expanded == expanded:
             return
         self._expanded = expanded
@@ -311,6 +374,9 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
             self._toggle_btn.setToolTip(
                 "展开自动结果" if self._mode == "auto" else "展开历史运行"
             )
+        if persist:
+            self._save_expanded_preference()
+        self._update_rail_badge()
 
     def _toggle_expanded(self) -> None:
         self.set_expanded(not self._expanded)

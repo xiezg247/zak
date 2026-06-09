@@ -166,7 +166,7 @@ class DiagnosePanel(QtWidgets.QWidget):
         self.body.setAlignment(
             QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft
         )
-        self.body.setStyleSheet("color: #8a8a8a; font-size: 12px;")
+        self.body.setObjectName("DiagnoseBody")
 
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)

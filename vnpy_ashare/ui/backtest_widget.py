@@ -24,7 +24,13 @@ from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
-from vnpy_ashare.ui.styles import NAV_MUTED_COLOR, apply_toolbar_combo_style
+from vnpy_ashare.ui.styles import (
+    SETTINGS_DIALOG_STYLESHEET,
+    apply_legacy_page_style,
+    apply_toolbar_combo_style,
+    style_legacy_form_inputs,
+    style_legacy_push_buttons,
+)
 
 _LABEL_MAP: dict[str, str] = {
     "本地代码": "股票代码",
@@ -46,16 +52,15 @@ class StrategyGuideDialog(QtWidgets.QDialog):
         self.resize(480, 520)
 
         label = QtWidgets.QLabel(html)
+        label.setObjectName("SettingsHint")
         label.setWordWrap(True)
         label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         label.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
-        label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px; padding: 4px;")
 
         scroll = QtWidgets.QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         scroll.setWidget(label)
-
         close_button = QtWidgets.QPushButton("关闭")
         close_button.setObjectName("SecondaryButton")
         close_button.clicked.connect(self.accept)
@@ -67,6 +72,7 @@ class StrategyGuideDialog(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(scroll, stretch=1)
         layout.addLayout(footer)
+        self.setStyleSheet(SETTINGS_DIALOG_STYLESHEET)
 
 
 class BacktesterWidget(VnpyBacktesterManager):
@@ -83,6 +89,26 @@ class BacktesterWidget(VnpyBacktesterManager):
         self._install_strategy_guide()
         self._install_ask_ai_button()
         connect_backtest_context_sync(self)
+        self._apply_page_theme()
+
+    def _apply_page_theme(self) -> None:
+        apply_legacy_page_style(self, page_id="BacktestPage")
+        layout = self.layout()
+        if layout is not None:
+            layout.setContentsMargins(12, 12, 12, 12)
+            layout.setSpacing(8)
+        style_legacy_form_inputs(self)
+        self.symbol_line.setObjectName("BacktestInput")
+        self.rate_line.setObjectName("BacktestInput")
+        self.slippage_line.setObjectName("BacktestInput")
+        self.size_line.setObjectName("BacktestInput")
+        self.pricetick_line.setObjectName("BacktestInput")
+        self.capital_line.setObjectName("BacktestInput")
+        self.start_date_edit.setObjectName("BacktestInput")
+        self.end_date_edit.setObjectName("BacktestInput")
+        self.log_monitor.setObjectName("BacktestLogView")
+        self.statistics_monitor.setObjectName("BacktestStatisticsTable")
+        style_legacy_push_buttons(self)
 
     def activate(self) -> None:
         pass

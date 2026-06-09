@@ -1,97 +1,6 @@
 """AI 面板样式。"""
 
-PANEL_STYLESHEET = """
-QWidget#AiChatPanel {
-    background-color: #141418;
-    color: #e0e0e0;
-}
-QScrollArea#AiMessageScroll {
-    background-color: #141418;
-    border: none;
-}
-QWidget#AiMessageContainer {
-    background-color: #141418;
-}
-QLabel#AiContextLabel {
-    color: #8a8a95;
-    font-size: 11px;
-    padding: 4px 8px;
-    background-color: #1a1a22;
-    border-radius: 4px;
-}
-QLabel#AiBubbleUser {
-    background-color: #2a3a55;
-    color: #e8e8e8;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 14px;
-}
-QLabel#AiBubbleAssistant,
-QTextBrowser#AiBubbleAssistant {
-    background-color: #1e1e24;
-    color: #e0e0e0;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 14px;
-}
-QLabel#AiBubblePending {
-    background-color: #1a2230;
-    color: #4a9eff;
-    border: 1px solid #2a4060;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 14px;
-}
-QLabel#AiBubbleError {
-    background-color: #3a2020;
-    color: #ff8a8a;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 14px;
-}
-QPlainTextEdit#AiInput {
-    background-color: #1e1e24;
-    border: 1px solid #333;
-    border-radius: 6px;
-    padding: 8px;
-    color: #e0e0e0;
-    font-size: 13px;
-}
-QPushButton#AiSendBtn {
-    background-color: #4a9eff;
-    border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    color: #fff;
-    font-weight: bold;
-}
-QPushButton#AiSendBtn:hover {
-    background-color: #5aadff;
-}
-QPushButton#AiSendBtn:disabled {
-    background-color: #2a2a30;
-    color: #666;
-}
-QPushButton#AiToolBtn {
-    background-color: transparent;
-    border: 1px solid #3a3a42;
-    border-radius: 4px;
-    padding: 4px 10px;
-    color: #a0a0a8;
-    font-size: 12px;
-}
-QPushButton#AiToolBtn:hover {
-    border-color: #4a9eff;
-    color: #4a9eff;
-}
-QPushButton#AiDeleteSessionsBtn {
-    background-color: transparent;
-    border: 1px solid #d04a4a;
-    border-radius: 4px;
-    padding: 4px 10px;
-    color: #d04a4a;
-    font-size: 12px;
-}
+_AI_QUICK_ACTION_STYLESHEET = """
 QPushButton#AiQuickActionBtn {
     background-color: #1e1e26;
     border: 1px solid #2e2e38;
@@ -143,6 +52,110 @@ QScrollArea#AiQuickActionScroll {
 }
 QWidget#AiQuickActionChips {
     background-color: transparent;
+}
+"""
+
+_AI_CHAT_BUBBLE_STYLESHEET = """
+QLabel#AiBubbleUser {
+    background-color: #2a3a55;
+    color: #e8e8e8;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+QLabel#AiBubbleAssistant,
+QTextBrowser#AiBubbleAssistant {
+    background-color: #1e1e24;
+    color: #e0e0e0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+QLabel#AiBubblePending {
+    background-color: #1a2230;
+    color: #4a9eff;
+    border: 1px solid #2a4060;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+QLabel#AiBubbleError {
+    background-color: #3a2020;
+    color: #ff8a8a;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+"""
+
+PANEL_STYLESHEET = """
+QWidget#AiChatPanel {
+    background-color: #141418;
+    color: #e0e0e0;
+}
+QScrollArea#AiMessageScroll {
+    background-color: #141418;
+    border: none;
+}
+QWidget#AiMessageContainer {
+    background-color: #141418;
+}
+QLabel#AiContextLabel {
+    color: #8a8a95;
+    font-size: 11px;
+    padding: 4px 8px;
+    background-color: #1a1a22;
+    border-radius: 4px;
+}
+""" + _AI_CHAT_BUBBLE_STYLESHEET + """
+QPlainTextEdit#AiInput {
+    background-color: #1e1e24;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px;
+    color: #e0e0e0;
+    font-size: 13px;
+}
+QPlainTextEdit#AiInput:focus {
+    border-color: #4a9eff;
+}
+QPushButton#AiSendBtn {
+    background-color: #4a9eff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    color: #fff;
+    font-weight: bold;
+}
+QPushButton#AiSendBtn:hover {
+    background-color: #5aadff;
+}
+QPushButton#AiSendBtn:disabled {
+    background-color: #2a2a30;
+    color: #666;
+}
+QPushButton#AiToolBtn {
+    background-color: transparent;
+    border: 1px solid #3a3a42;
+    border-radius: 4px;
+    padding: 4px 10px;
+    color: #a0a0a8;
+    font-size: 12px;
+}
+QPushButton#AiToolBtn:hover {
+    border-color: #4a9eff;
+    color: #4a9eff;
+}
+QPushButton#AiDeleteSessionsBtn {
+    background-color: transparent;
+    border: 1px solid #d04a4a;
+    border-radius: 4px;
+    padding: 4px 10px;
+    color: #d04a4a;
+    font-size: 12px;
+}
+""" + _AI_QUICK_ACTION_STYLESHEET + """
+QWidget#AiQuickActionChips {
     margin-bottom: 4px;
 }
 QLabel#AiTitle {
@@ -253,52 +266,7 @@ QScrollArea#AiQuickActionScroll {
     background-color: #141418;
     border: none;
 }
-QPushButton#AiQuickActionBtn {
-    background-color: #1e1e26;
-    border: 1px solid #2e2e38;
-    border-radius: 12px;
-    color: #a8b0c0;
-    font-size: 11px;
-    padding: 5px 12px;
-    min-height: 24px;
-}
-QPushButton#AiQuickActionBtn:hover {
-    border-color: #4a9eff;
-    color: #4a9eff;
-}
-QToolButton#AiQuickActionBtn {
-    background-color: #1e1e26;
-    border: 1px solid #2e2e38;
-    border-radius: 12px;
-    color: #a8b0c0;
-    font-size: 11px;
-    padding: 5px 12px;
-    min-height: 24px;
-}
-QToolButton#AiQuickActionBtn:hover {
-    border-color: #4a9eff;
-    color: #4a9eff;
-}
-QToolButton#AiQuickActionBtn::menu-indicator {
-    image: none;
-    width: 0;
-}
-QMenu#AiQuickActionMenu {
-    background-color: #1e1e26;
-    border: 1px solid #2e2e38;
-    border-radius: 8px;
-    padding: 4px 0;
-}
-QMenu#AiQuickActionMenu::item {
-    color: #c8c8d0;
-    padding: 6px 16px;
-    font-size: 12px;
-}
-QMenu#AiQuickActionMenu::item:selected {
-    background-color: #2a3a55;
-    color: #ffffff;
-}
-"""
+""" + _AI_QUICK_ACTION_STYLESHEET
 
 FLOATING_CHAT_INNER_STYLESHEET = """
 QWidget#AiChatPanel {
@@ -365,11 +333,13 @@ QPlainTextEdit#AiInput {
     font-size: 13px;
     min-height: 44px;
 }
+QPlainTextEdit#AiInput:focus {
+    border-color: #4a9eff;
+}
 QWidget#AiInputRow {
     background-color: transparent;
 }
 QWidget#AiQuickActionChips {
-    background-color: transparent;
     margin-bottom: 2px;
 }
 QPushButton#AiSendBtn {

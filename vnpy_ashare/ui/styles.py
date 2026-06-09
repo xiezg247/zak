@@ -30,8 +30,21 @@ QToolButton#NavButton:hover {
     color: #b8b8b8;
 }
 QToolButton#NavButton:checked {
-    background-color: transparent;
+    background-color: #1a2438;
     color: #4a9eff;
+}
+QScrollArea#NavScroll {
+    background-color: transparent;
+    border: none;
+}
+QWidget#NavBody {
+    background-color: transparent;
+}
+QFrame#NavGroupSeparator {
+    background-color: #2a2a30;
+    max-height: 1px;
+    min-height: 1px;
+    margin: 6px 10px;
 }
 QTableWidget#MarketTable {
     background-color: #1a1a1a;
@@ -108,6 +121,72 @@ QPushButton#SecondaryButton:hover {
 }
 QPushButton#SecondaryButton:pressed {
     background-color: #222;
+}
+QPushButton#DangerButton {
+    background-color: #2a2020;
+    border: 1px solid #6a3030;
+    border-radius: 4px;
+    padding: 4px 14px;
+    color: #ff8a8a;
+    font-size: 12px;
+}
+QPushButton#DangerButton:hover {
+    background-color: #3a2828;
+    border-color: #8a4040;
+    color: #ffaaaa;
+}
+QLabel#PageTitle {
+    color: #e8e8e8;
+    font-size: 16px;
+    font-weight: 600;
+}
+QLabel#PageHint {
+    color: #6a6a7a;
+    font-size: 12px;
+}
+QLabel#BottomBarMeta {
+    color: #8a8a8a;
+    font-size: 12px;
+}
+QLabel#StatsLabel,
+QLabel#QuoteSubInfo {
+    color: #8a8a8a;
+    font-size: 12px;
+    padding: 2px 6px;
+}
+QWidget#QuotesToolbarHost {
+    background-color: transparent;
+}
+QFrame#DepthPanel {
+    background-color: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+}
+QFrame#DepthPanel QLabel {
+    color: #a0a0a0;
+    font-size: 12px;
+}
+QFrame#DepthPanel QTableWidget,
+QFrame#DepthPanel QTableWidget#DepthTable {
+    background-color: #1a1a1a;
+    border: none;
+    font-size: 12px;
+    color: #d0d0d0;
+}
+QWidget#DiagnosePanel {
+    background-color: #1e1e22;
+    border: 1px solid #2d2d32;
+    border-radius: 6px;
+    padding: 4px;
+}
+QLabel#SectionLabel {
+    color: #8a8aaf;
+    font-size: 12px;
+    font-weight: bold;
+}
+QLabel#DiagnoseBody {
+    color: #8a8a8a;
+    font-size: 12px;
 }
 """
 
@@ -389,6 +468,41 @@ QFrame#ToolbarSeparator {
     min-width: 1px;
     margin: 2px 6px;
 }
+
+QTabBar#ScreenerRunFilterTabs {
+    background-color: transparent;
+}
+QTabBar#ScreenerRunFilterTabs::tab {
+    background-color: #252525;
+    color: #9090a0;
+    border: 1px solid #3a3a3a;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 5px 12px;
+    margin-right: 2px;
+    font-size: 11px;
+}
+QTabBar#ScreenerRunFilterTabs::tab:selected {
+    background-color: #1e1e22;
+    color: #e0e0e0;
+    border-color: #4a4a4a;
+}
+QTabBar#ScreenerRunFilterTabs::tab:hover {
+    color: #c8c8c8;
+}
+
+QLabel#ScreenerUnreadBadge {
+    background-color: #4a9eff;
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 16px;
+    max-width: 24px;
+    min-height: 16px;
+    padding: 0 4px;
+}
 """
 
 SETTINGS_DIALOG_STYLESHEET = """
@@ -588,6 +702,130 @@ QPushButton#SettingsSecondaryButton:hover {
 """
 
 TERMINAL_STYLESHEET = TERMINAL_STYLESHEET + TOOLBAR_COMBO_STYLESHEET + SCREENER_STYLESHEET
+
+LEGACY_PAGE_STYLESHEET = """
+QWidget#BacktestPage,
+QWidget#DataManagerPage {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+QWidget#BacktestPage QLabel,
+QWidget#DataManagerPage QLabel {
+    color: #b0b0b0;
+    font-size: 12px;
+}
+QWidget#BacktestPage QLineEdit#BacktestInput,
+QWidget#BacktestPage QDateEdit#BacktestInput,
+QWidget#DataManagerPage QLineEdit {
+    background-color: #252525;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #f0f0f0;
+    min-height: 26px;
+    font-size: 13px;
+}
+QWidget#BacktestPage QLineEdit#BacktestInput:focus,
+QWidget#BacktestPage QDateEdit#BacktestInput:focus {
+    border-color: #4a9eff;
+}
+QWidget#BacktestPage QDateEdit#BacktestInput::drop-down,
+QWidget#BacktestPage QDateEdit#BacktestInput::down-arrow {
+    border: none;
+}
+QTextEdit#BacktestLogView {
+    background-color: #141418;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    color: #b8b8b8;
+    font-family: Menlo, Monaco, "Courier New", monospace;
+    font-size: 12px;
+}
+QTableWidget#BacktestStatisticsTable,
+QTreeWidget#DataManagerTree,
+QTableWidget#DataManagerTable {
+    background-color: #1a1a1a;
+    gridline-color: #2a2a2a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #e0e0e0;
+    alternate-background-color: #1e1e22;
+}
+QTableWidget#BacktestStatisticsTable::item,
+QTreeWidget#DataManagerTree::item,
+QTableWidget#DataManagerTable::item {
+    padding: 4px 6px;
+}
+QHeaderView::section {
+    background-color: #252525;
+    color: #a0a0a0;
+    padding: 6px 8px;
+    border: none;
+    border-right: 1px solid #333;
+    font-size: 12px;
+}
+QListWidget#BatchSessionListWidget {
+    background-color: #1e1e22;
+    border: 1px solid #2d2d32;
+    border-radius: 4px;
+    outline: none;
+    color: #d0d0d8;
+    font-size: 12px;
+}
+QListWidget#BatchSessionListWidget::item {
+    padding: 10px 12px;
+    border-bottom: 1px solid #252528;
+}
+QListWidget#BatchSessionListWidget::item:selected {
+    background-color: #2a4a7a;
+    color: #ffffff;
+}
+QListWidget#BatchSessionListWidget::item:hover {
+    background-color: #242428;
+}
+QSplitter::handle {
+    background-color: #2a2a2a;
+    width: 1px;
+}
+"""
+
+_PRIMARY_ACTION_LABELS = frozenset({"开始回测"})
+
+
+def apply_legacy_page_style(widget, *, page_id: str) -> None:
+    """vnpy 继承页：深色表单 / 表格 / 日志。"""
+    widget.setObjectName(page_id)
+    widget.setStyleSheet(TERMINAL_STYLESHEET + LEGACY_PAGE_STYLESHEET)
+
+
+def style_legacy_form_inputs(widget, *, input_name: str = "BacktestInput") -> None:
+    from vnpy.trader.ui import QtWidgets
+
+    for line in widget.findChildren(QtWidgets.QLineEdit):
+        if line.objectName() in ("SearchBox", "PageJumpInput", "BacktestInput"):
+            continue
+        line.setObjectName(input_name)
+    for date_edit in widget.findChildren(QtWidgets.QDateEdit):
+        date_edit.setObjectName(input_name)
+
+
+def style_legacy_push_buttons(
+    widget,
+    *,
+    primary_labels: frozenset[str] = _PRIMARY_ACTION_LABELS,
+    skip: frozenset[str] = frozenset({"SecondaryButton", "ActionButton", "PrimaryRunButton", "DangerButton"}),
+) -> None:
+    from vnpy.trader.ui import QtWidgets
+
+    for btn in widget.findChildren(QtWidgets.QPushButton):
+        name = btn.objectName()
+        if name in skip:
+            continue
+        if btn.text().strip() in primary_labels:
+            btn.setObjectName("ActionButton")
+        else:
+            btn.setObjectName("SecondaryButton")
 
 
 def apply_toolbar_combo_style(combo) -> None:

@@ -21,6 +21,7 @@ class DepthPanel(QtWidgets.QFrame):
         title.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self.table = QtWidgets.QTableWidget(10, 3)
+        self.table.setObjectName("DepthTable")
         self.table.setHorizontalHeaderLabels(["", "价格", "量"])
         self.table.verticalHeader().setVisible(False)
         self.table.horizontalHeader().setStretchLastSection(True)

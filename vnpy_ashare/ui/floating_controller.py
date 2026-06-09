@@ -184,7 +184,7 @@ class FloatingAiController(QtCore.QObject):
         if self._orb is None or self._orb_user_hidden:
             return
         page_key = self._current_page_key()
-        if source == "screener" and page_key != "screener":
+        if source in ("screener", "auto_screener") and page_key != source:
             return
         if not page_key or not self.is_page_allowed(page_key):
             return

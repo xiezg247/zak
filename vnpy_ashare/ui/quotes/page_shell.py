@@ -16,10 +16,32 @@ from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS
 from vnpy_ashare.ui.quotes_chart import create_daily_chart
 from vnpy_ashare.ui.quotes_config import quote_refresh_hint, quote_source_label
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
-from vnpy_ashare.ui.styles import NAV_MUTED_COLOR, apply_toolbar_combo_style
+from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage
+
+
+def _toolbar_separator() -> QtWidgets.QFrame:
+    sep = QtWidgets.QFrame()
+    sep.setObjectName("ToolbarSeparator")
+    sep.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+    return sep
+
+
+def _add_more_menu(
+    toolbar: QtWidgets.QHBoxLayout,
+    actions: list[tuple[str, QtWidgets.QPushButton]],
+) -> None:
+    if not actions:
+        return
+    menu_btn = QtWidgets.QPushButton("更多 ▾")
+    menu_btn.setObjectName("SecondaryButton")
+    menu = QtWidgets.QMenu(menu_btn)
+    for label, action_btn in actions:
+        menu.addAction(label, action_btn.click)
+    menu_btn.setMenu(menu)
+    toolbar.addWidget(menu_btn)
 
 
 class QuotesPageShell:
@@ -110,6 +132,7 @@ class QuotesPageShell:
         page.move_watchlist_down_button.setVisible(page.config.show_watchlist_move_buttons)
 
         page.backtest_button = QtWidgets.QPushButton("策略回测")
+        page.backtest_button.setObjectName("SecondaryButton")
         page.backtest_button.clicked.connect(page._actions.open_backtest_for_selected)
         page.backtest_button.setEnabled(False)
         page.backtest_button.setVisible(page.config.show_backtest_button)
@@ -129,7 +152,10 @@ class QuotesPageShell:
         page.refresh_quotes_button.clicked.connect(page._refresh_market_clicked)
         page.refresh_quotes_button.setVisible(page.config.use_market_rank)
 
+        more_actions: list[tuple[str, QtWidgets.QPushButton]] = []
+
         toolbar = QtWidgets.QHBoxLayout()
+        toolbar.setSpacing(8)
         toolbar.addWidget(page.search_edit, stretch=1)
         if page.config.show_board_filter:
             toolbar.addWidget(page.board_combo)
@@ -137,10 +163,7 @@ class QuotesPageShell:
         # ── 分隔线 ──
         group2_visible = page.config.use_market_rank or page.config.show_sync_button
         if group2_visible:
-            sep1 = QtWidgets.QFrame()
-            sep1.setObjectName("ToolbarSeparator")
-            sep1.setFrameShape(QtWidgets.QFrame.Shape.VLine)
-            toolbar.addWidget(sep1)
+            toolbar.addWidget(_toolbar_separator())
 
         if page.config.use_market_rank:
             toolbar.addWidget(page.refresh_quotes_button)
@@ -153,12 +176,11 @@ class QuotesPageShell:
             or page.config.show_download_button
             or page.config.show_backtest_button
             or page.config.show_batch_backtest_button
+            or page.config.show_fill_button
+            or page.config.show_watchlist_move_buttons
         )
         if group2_visible and group3_visible:
-            sep2 = QtWidgets.QFrame()
-            sep2.setObjectName("ToolbarSeparator")
-            sep2.setFrameShape(QtWidgets.QFrame.Shape.VLine)
-            toolbar.addWidget(sep2)
+            toolbar.addWidget(_toolbar_separator())
 
         if page.config.use_local_table:
             toolbar.addWidget(page.local_period_combo)
@@ -167,29 +189,44 @@ class QuotesPageShell:
         if page.config.show_remove_watchlist_button:
             toolbar.addWidget(page.remove_watchlist_button)
         if page.config.show_watchlist_move_buttons:
-            toolbar.addWidget(page.move_watchlist_up_button)
-            toolbar.addWidget(page.move_watchlist_down_button)
-        if page.config.show_download_button:
+            more_actions.extend([
+                ("上移", page.move_watchlist_up_button),
+                ("下移", page.move_watchlist_down_button),
+            ])
+        if page.config.show_download_button and not page.config.use_local_table:
+            if page.config.show_watchlist_move_buttons:
+                more_actions.append(("下载日K到本地", page.download_button))
+            else:
+                toolbar.addWidget(page.download_button)
+        elif page.config.show_download_button:
             toolbar.addWidget(page.download_button)
         if page.config.show_fill_button:
-            toolbar.addWidget(page.fill_button)
+            more_actions.append(("补全到最新", page.fill_button))
         if page.config.show_redownload_button:
-            toolbar.addWidget(page.redownload_button)
+            more_actions.append(("重新下载", page.redownload_button))
         if page.config.show_batch_fill_button:
-            toolbar.addWidget(page.batch_fill_button)
+            more_actions.append(("批量补全过期", page.batch_fill_button))
         if page.config.show_batch_gap_fill_button:
-            toolbar.addWidget(page.batch_gap_fill_button)
+            more_actions.append(("批量修复断层", page.batch_gap_fill_button))
         if page.config.show_backtest_button:
             toolbar.addWidget(page.backtest_button)
         if page.config.show_batch_backtest_button:
-            toolbar.addWidget(page.batch_backtest_button)
+            more_actions.append(("批量回测", page.batch_backtest_button))
         if page.config.show_diagnose_button:
             toolbar.addWidget(page.diagnose_button)
         if page.config.column_configurable:
             page.column_button = QtWidgets.QPushButton("列 ▾")
-            page.column_button.setObjectName("ColumnButton")
+            page.column_button.setObjectName("SecondaryButton")
             page.column_button.clicked.connect(page._table.show_column_menu)
             toolbar.addWidget(page.column_button)
+        _add_more_menu(toolbar, more_actions)
+
+        toolbar_host = QtWidgets.QWidget()
+        toolbar_host.setObjectName("QuotesToolbarHost")
+        toolbar_host_layout = QtWidgets.QVBoxLayout(toolbar_host)
+        toolbar_host_layout.setContentsMargins(8, 8, 8, 4)
+        toolbar_host_layout.setSpacing(0)
+        toolbar_host_layout.addLayout(toolbar)
 
         page.prev_page_button = QtWidgets.QPushButton("◀ 上一页")
         page.prev_page_button.clicked.connect(page._go_prev_page)
@@ -208,19 +245,10 @@ class QuotesPageShell:
         page.page_jump_input.setFixedWidth(52)
         page.page_jump_input.returnPressed.connect(page._page_jump)
 
-        page.pagination_bar = QtWidgets.QHBoxLayout()
-        page.pagination_bar.addWidget(page.home_button)
-        page.pagination_bar.addWidget(page.prev_page_button)
-        page.pagination_bar.addWidget(page.page_label)
-        page.pagination_bar.addWidget(page.page_jump_input)
-        page.pagination_bar.addWidget(page.page_total_label)
-        page.pagination_bar.addWidget(page.next_page_button)
-        page.pagination_bar.addWidget(page.end_button)
         page._set_pagination_visible(page.config.use_market_rank)
 
         page.stats_label = QtWidgets.QLabel("")
         page.stats_label.setObjectName("StatsLabel")
-        page.stats_label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; padding: 2px 6px;")
         page.stats_label.setVisible(page.config.column_configurable)
 
         page.market_table = QtWidgets.QTableWidget()
@@ -279,7 +307,6 @@ class QuotesPageShell:
         page._volume_label = QtWidgets.QLabel("")
         for lbl in (page._open_label, page._high_label, page._low_label, page._volume_label):
             lbl.setObjectName("QuoteSubInfo")
-            lbl.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px;")
         page.quote_sub_info.addStretch()
         page.quote_sub_info.addWidget(page._open_label)
         page.quote_sub_info.addWidget(page._high_label)
@@ -335,11 +362,10 @@ class QuotesPageShell:
             center_widget = QtWidgets.QWidget()
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
-            center_layout.addLayout(toolbar)
+            center_layout.addWidget(toolbar_host)
             if page.stats_label is not None:
                 center_layout.addWidget(page.stats_label)
             center_layout.addWidget(page.market_table)
-            center_layout.addLayout(page.pagination_bar)
             splitter.addWidget(center_widget)
 
             right_widget = QtWidgets.QWidget()
@@ -354,7 +380,7 @@ class QuotesPageShell:
             center_widget = QtWidgets.QWidget()
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
-            center_layout.addLayout(toolbar)
+            center_layout.addWidget(toolbar_host)
             if page.stats_label is not None:
                 center_layout.addWidget(page.stats_label)
             center_layout.addWidget(page.market_table)
@@ -367,7 +393,7 @@ class QuotesPageShell:
                 gateway_active=is_gateway_quote_active(),
             )
         )
-        page.quote_source_label.setStyleSheet(f"color: {NAV_MUTED_COLOR};")
+        page.quote_source_label.setObjectName("BottomBarMeta")
         page.refresh_hint_label = QtWidgets.QLabel(
             quote_refresh_hint(
                 auto_refresh=page.config.auto_refresh_quotes,
@@ -375,7 +401,7 @@ class QuotesPageShell:
                 quote_source=page.config.quote_source,
             )
         )
-        page.refresh_hint_label.setStyleSheet(f"color: {NAV_MUTED_COLOR};")
+        page.refresh_hint_label.setObjectName("BottomBarMeta")
 
         bottom_bar = QtWidgets.QHBoxLayout()
         bottom_bar.setContentsMargins(8, 2, 8, 4)

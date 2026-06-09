@@ -30,6 +30,9 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = (
     NavEntry("data_manager", "数据管理"),
 )
 
+# 导航分组分隔线（显示在该 key 的按钮之后）
+_NAV_GROUP_AFTER: frozenset[str] = frozenset({"local", "ai_assistant", "batch_backtest"})
+
 
 def _tinted_icon(
     draw: Callable[[QtGui.QPainter, int], None],
@@ -212,8 +215,16 @@ class SidebarNav(QtWidgets.QWidget):
         self.setFixedWidth(72)
         self._entries = entries
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 16, 0, 16)
+        scroll = QtWidgets.QScrollArea()
+        scroll.setObjectName("NavScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+
+        nav_body = QtWidgets.QWidget()
+        nav_body.setObjectName("NavBody")
+        layout = QtWidgets.QVBoxLayout(nav_body)
+        layout.setContentsMargins(0, 8, 0, 8)
         layout.setSpacing(4)
 
         self._group = QtWidgets.QButtonGroup(self)
@@ -221,19 +232,25 @@ class SidebarNav(QtWidgets.QWidget):
         self._buttons: list[NavButton] = []
 
         for index, entry in enumerate(entries):
-            btn = NavButton(entry, self)
+            btn = NavButton(entry, nav_body)
             btn.clicked.connect(lambda checked, i=index: self._on_click(i))
             self._group.addButton(btn, index)
             layout.addWidget(btn)
             self._buttons.append(btn)
 
-            if entry.key == "ai_assistant":
+            if entry.key in _NAV_GROUP_AFTER:
                 line = QtWidgets.QFrame()
+                line.setObjectName("NavGroupSeparator")
                 line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-                line.setStyleSheet("background-color: #2a2a30; max-height: 1px; margin: 8px 10px;")
                 layout.addWidget(line)
 
         layout.addStretch()
+        scroll.setWidget(nav_body)
+
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        root.addWidget(scroll, stretch=1)
 
     def _on_click(self, index: int) -> None:
         self.set_active_index(index)

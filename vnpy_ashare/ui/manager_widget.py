@@ -11,7 +11,7 @@ from vnpy_ashare.app_db import build_symbol_name_map
 from vnpy_ashare.bar_store import iter_bar_overviews
 from vnpy_ashare.config import EXCHANGE_CN_NAMES
 from vnpy_ashare.minute_periods import bar_interval, is_daily_scope
-from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
+from vnpy_ashare.ui.styles import apply_legacy_page_style, style_legacy_push_buttons
 from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
 _VALUE_TO_CN = {ex.value: name for ex, name in EXCHANGE_CN_NAMES.items()}
@@ -54,24 +54,32 @@ class ManagerWidget(VnpyManagerWidget):
         self.init_table()
 
         refresh_button = QtWidgets.QPushButton("刷新")
+        refresh_button.setObjectName("SecondaryButton")
         refresh_button.clicked.connect(self.refresh_tree)
 
         hint_label = QtWidgets.QLabel(_DOWNLOAD_HINT)
         hint_label.setWordWrap(True)
-        hint_label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px;")
+        hint_label.setObjectName("PageHint")
 
         toolbar = QtWidgets.QHBoxLayout()
+        toolbar.setContentsMargins(0, 0, 0, 8)
         toolbar.addWidget(refresh_button)
         toolbar.addWidget(hint_label, stretch=1)
 
         body = QtWidgets.QHBoxLayout()
+        self.tree.setObjectName("DataManagerTree")
+        self.table.setObjectName("DataManagerTable")
         body.addWidget(self.tree)
         body.addWidget(self.table)
 
         root = QtWidgets.QVBoxLayout()
+        root.setContentsMargins(16, 16, 16, 16)
+        root.setSpacing(10)
         root.addLayout(toolbar)
         root.addLayout(body)
         self.setLayout(root)
+        apply_legacy_page_style(self, page_id="DataManagerPage")
+        style_legacy_push_buttons(self)
 
     def init_tree(self) -> None:
         self.tree = QtWidgets.QTreeWidget()
@@ -132,6 +140,7 @@ class ManagerWidget(VnpyManagerWidget):
                     interval = bar_interval(overview.period)
 
                 output_button = QtWidgets.QPushButton("导出")
+                output_button.setObjectName("SecondaryButton")
                 output_button.clicked.connect(
                     partial(
                         self.output_data,
@@ -143,6 +152,7 @@ class ManagerWidget(VnpyManagerWidget):
                     )
                 )
                 show_button = QtWidgets.QPushButton("查看")
+                show_button.setObjectName("SecondaryButton")
                 show_button.clicked.connect(
                     partial(
                         self.show_data,
@@ -154,6 +164,7 @@ class ManagerWidget(VnpyManagerWidget):
                     )
                 )
                 delete_button = QtWidgets.QPushButton("删除")
+                delete_button.setObjectName("DangerButton")
                 delete_button.clicked.connect(
                     partial(
                         self.delete_data,

@@ -37,31 +37,43 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
 
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(12, 12, 12, 12)
+        root.setContentsMargins(16, 12, 16, 12)
         root.setSpacing(10)
+
+        header = QtWidgets.QHBoxLayout()
+        title = QtWidgets.QLabel("回测对比")
+        title.setObjectName("PageTitle")
+        header.addWidget(title)
+        header.addStretch()
+        root.addLayout(header)
 
         toolbar = QtWidgets.QHBoxLayout()
         self.refresh_btn = QtWidgets.QPushButton("刷新")
+        self.refresh_btn.setObjectName("SecondaryButton")
         self.refresh_btn.clicked.connect(self.refresh_sessions)
         toolbar.addWidget(self.refresh_btn)
 
         self.open_backtest_btn = QtWidgets.QPushButton("策略回测")
+        self.open_backtest_btn.setObjectName("SecondaryButton")
         self.open_backtest_btn.clicked.connect(self._open_selected_backtest)
         self.open_backtest_btn.setEnabled(False)
         toolbar.addWidget(self.open_backtest_btn)
 
         self.export_btn = QtWidgets.QPushButton("导出 CSV")
+        self.export_btn.setObjectName("SecondaryButton")
         self.export_btn.clicked.connect(self._export_csv)
         self.export_btn.setEnabled(False)
         toolbar.addWidget(self.export_btn)
 
         self.delete_btn = QtWidgets.QPushButton("删除批次")
+        self.delete_btn.setObjectName("DangerButton")
         self.delete_btn.clicked.connect(self._delete_current_batch)
         self.delete_btn.setEnabled(False)
         toolbar.addWidget(self.delete_btn)
 
         toolbar.addStretch()
         self.summary_label = QtWidgets.QLabel("选择左侧批次查看对比结果")
+        self.summary_label.setObjectName("PageHint")
         toolbar.addWidget(self.summary_label)
         root.addLayout(toolbar)
 
@@ -71,9 +83,11 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         session_panel = QtWidgets.QWidget()
         session_layout = QtWidgets.QVBoxLayout(session_panel)
         session_layout.setContentsMargins(0, 0, 8, 0)
-        session_layout.addWidget(QtWidgets.QLabel("批量回测批次"))
+        session_title = QtWidgets.QLabel("批量回测批次")
+        session_title.setObjectName("ScreenerSectionLabel")
+        session_layout.addWidget(session_title)
         self.session_list = QtWidgets.QListWidget()
-        self.session_list.setObjectName("AiSessionListWidget")
+        self.session_list.setObjectName("BatchSessionListWidget")
         self.session_list.currentItemChanged.connect(self._on_session_changed)
         session_layout.addWidget(self.session_list, stretch=1)
         splitter.addWidget(session_panel)

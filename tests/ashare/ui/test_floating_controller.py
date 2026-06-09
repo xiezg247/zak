@@ -21,7 +21,7 @@ class FloatingControllerTests(unittest.TestCase):
         self.assertFalse(FloatingAiController.is_page_allowed("cta_backtest"))
         self.assertEqual(
             FLOATING_ORB_PAGE_KEYS,
-            frozenset({"watchlist", "market", "local", "screener"}),
+            frozenset({"watchlist", "market", "local", "screener", "auto_screener"}),
         )
 
     def test_load_orb_user_hidden(self) -> None:
@@ -55,6 +55,19 @@ class FloatingControllerTests(unittest.TestCase):
         controller._orb.isVisible.return_value = True
         with patch.object(controller, "refresh_context"):
             controller.notify_attention("screener")
+        controller._orb.play_attention_pulse.assert_called_once()
+
+    def test_notify_attention_skips_auto_screener_when_not_on_page(self) -> None:
+        controller = self._bare_controller("watchlist")
+        with patch.object(controller, "refresh_context"):
+            controller.notify_attention("auto_screener")
+        controller._orb.play_attention_pulse.assert_not_called()
+
+    def test_notify_attention_pulses_on_auto_screener(self) -> None:
+        controller = self._bare_controller("auto_screener")
+        controller._orb.isVisible.return_value = True
+        with patch.object(controller, "refresh_context"):
+            controller.notify_attention("auto_screener")
         controller._orb.play_attention_pulse.assert_called_once()
 
 
