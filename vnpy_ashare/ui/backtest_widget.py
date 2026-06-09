@@ -2,11 +2,21 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import cast
 
 from vnpy.event import Event
+from vnpy.trader.constant import Interval
 from vnpy.trader.ui import QtCore, QtWidgets
-from vnpy_ctabacktester.ui.widget import BacktesterManager as VnpyBacktesterManager
+from vnpy_ctabacktester.ui.widget import (
+    BacktesterManager as VnpyBacktesterManager,
+    BacktestingOrderMonitor,
+    BacktestingResultDialog,
+    BacktestingTradeMonitor,
+    CandleChartDialog,
+    DailyResultMonitor,
+    StatisticsMonitor,
+)
 
 from strategies.registry import (
     format_missing_strategy_guide,
@@ -19,23 +29,18 @@ from vnpy_ashare.ai.backtest_context import (
     format_backtest_summary_text,
     sync_backtest_page_context,
 )
-from vnpy_ashare.ai.context_store import BacktestSummary, get_backtest_summary_dict, sync_backtest_summary_dict
+from vnpy_ashare.ai.context_store import BacktestSummary, get_backtest_summary_dict
 from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
+from vnpy_ashare.ui.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.styles import (
     SETTINGS_DIALOG_STYLESHEET,
     apply_legacy_page_style,
     apply_toolbar_combo_style,
     style_legacy_form_inputs,
-    style_legacy_push_buttons,
 )
-
-_LABEL_MAP: dict[str, str] = {
-    "本地代码": "股票代码",
-    "合约乘数": "每股乘数",
-}
 
 _LOG_MAP: dict[str, str] = {
     "初始化CTA回测引擎": "初始化策略回测引擎",
@@ -61,6 +66,7 @@ class StrategyGuideDialog(QtWidgets.QDialog):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         scroll.setWidget(label)
+
         close_button = QtWidgets.QPushButton("关闭")
         close_button.setObjectName("SecondaryButton")
         close_button.clicked.connect(self.accept)
@@ -76,39 +82,121 @@ class StrategyGuideDialog(QtWidgets.QDialog):
 
 
 class BacktesterWidget(VnpyBacktesterManager):
-    """vnpy CTA 回测 Widget 的 A 股包装：标题、字段文案、策略下拉过滤。"""
+    """A 股策略回测页：自研布局 + vnpy 回测引擎。"""
 
     def init_ui(self) -> None:
-        super().init_ui()
-        self.setWindowTitle("策略回测")
-        self._localize_labels()
+        self._create_form_controls()
+        self._create_action_buttons()
+        self._create_result_panels()
+        self._create_dialogs()
+        self._prepare_strategy_guide_button()
+        self._prepare_ask_ai_button()
+        BacktestPageShell(self).build()
         self.symbol_line.setPlaceholderText("如 600519.SSE / 000001.SZSE")
-        self._replace_chart_widget()
         apply_toolbar_combo_style(self.class_combo)
         apply_toolbar_combo_style(self.interval_combo)
-        self._install_strategy_guide()
-        self._install_ask_ai_button()
+        self._finalize_strategy_guide()
         connect_backtest_context_sync(self)
         self._apply_page_theme()
 
+    def _create_form_controls(self) -> None:
+        end_dt = datetime.now()
+        start_dt = end_dt - timedelta(days=3 * 365)
+
+        self.class_combo = QtWidgets.QComboBox()
+        self.symbol_line = QtWidgets.QLineEdit(str(ASHARE_BACKTEST_DEFAULTS["vt_symbol"]))
+        self.interval_combo = QtWidgets.QComboBox()
+        for interval in Interval:
+            self.interval_combo.addItem(interval.value)
+
+        self.start_date_edit = QtWidgets.QDateEdit(
+            QtCore.QDate(start_dt.year, start_dt.month, start_dt.day)
+        )
+        self.end_date_edit = QtWidgets.QDateEdit(QtCore.QDate.currentDate())
+
+        defaults = ASHARE_BACKTEST_DEFAULTS
+        self.rate_line = QtWidgets.QLineEdit(format_decimal_field(defaults["rate"], places=6))
+        self.slippage_line = QtWidgets.QLineEdit(format_decimal_field(defaults["slippage"], places=4))
+        self.size_line = QtWidgets.QLineEdit(str(defaults["size"]))
+        self.pricetick_line = QtWidgets.QLineEdit(format_decimal_field(defaults["pricetick"], places=4))
+        self.capital_line = QtWidgets.QLineEdit(str(defaults["capital"]))
+
+    def _create_action_buttons(self) -> None:
+        self.run_button = QtWidgets.QPushButton("▶  开始回测")
+        self.run_button.clicked.connect(self.start_backtesting)
+
+        self.download_button = QtWidgets.QPushButton("下载数据")
+        self.download_button.clicked.connect(self.start_downloading)
+
+        self.optimization_button = QtWidgets.QPushButton("参数优化")
+        self.optimization_button.clicked.connect(self.start_optimization)
+
+        self.result_button = QtWidgets.QPushButton("优化结果")
+        self.result_button.clicked.connect(self.show_optimization_result)
+        self.result_button.setEnabled(False)
+
+        self.trade_button = QtWidgets.QPushButton("成交记录")
+        self.trade_button.clicked.connect(self.show_backtesting_trades)
+        self.trade_button.setEnabled(False)
+
+        self.order_button = QtWidgets.QPushButton("委托记录")
+        self.order_button.clicked.connect(self.show_backtesting_orders)
+        self.order_button.setEnabled(False)
+
+        self.daily_button = QtWidgets.QPushButton("每日盈亏")
+        self.daily_button.clicked.connect(self.show_daily_results)
+        self.daily_button.setEnabled(False)
+
+        self.candle_button = QtWidgets.QPushButton("K 线图表")
+        self.candle_button.clicked.connect(self.show_candle_chart)
+        self.candle_button.setEnabled(False)
+
+        self.edit_button = QtWidgets.QPushButton("代码编辑")
+        self.edit_button.clicked.connect(self.edit_strategy_code)
+
+        self.reload_button = QtWidgets.QPushButton("策略重载")
+        self.reload_button.clicked.connect(self.reload_strategy_class)
+
+    def _create_result_panels(self) -> None:
+        self.statistics_monitor = StatisticsMonitor()
+        self.log_monitor = QtWidgets.QTextEdit()
+        self.chart = AshareBacktesterChart()
+
+    def _create_dialogs(self) -> None:
+        self.trade_dialog = BacktestingResultDialog(
+            self.main_engine,
+            self.event_engine,
+            "回测成交记录",
+            BacktestingTradeMonitor,
+        )
+        self.order_dialog = BacktestingResultDialog(
+            self.main_engine,
+            self.event_engine,
+            "回测委托记录",
+            BacktestingOrderMonitor,
+        )
+        self.daily_dialog = BacktestingResultDialog(
+            self.main_engine,
+            self.event_engine,
+            "回测每日盈亏",
+            DailyResultMonitor,
+        )
+        self.candle_dialog = CandleChartDialog()
+
     def _apply_page_theme(self) -> None:
         apply_legacy_page_style(self, page_id="BacktestPage")
-        layout = self.layout()
-        if layout is not None:
-            layout.setContentsMargins(12, 12, 12, 12)
-            layout.setSpacing(8)
         style_legacy_form_inputs(self)
-        self.symbol_line.setObjectName("BacktestInput")
-        self.rate_line.setObjectName("BacktestInput")
-        self.slippage_line.setObjectName("BacktestInput")
-        self.size_line.setObjectName("BacktestInput")
-        self.pricetick_line.setObjectName("BacktestInput")
-        self.capital_line.setObjectName("BacktestInput")
-        self.start_date_edit.setObjectName("BacktestInput")
-        self.end_date_edit.setObjectName("BacktestInput")
-        self.log_monitor.setObjectName("BacktestLogView")
-        self.statistics_monitor.setObjectName("BacktestStatisticsTable")
-        style_legacy_push_buttons(self)
+        for name in (
+            "symbol_line",
+            "rate_line",
+            "slippage_line",
+            "size_line",
+            "pricetick_line",
+            "capital_line",
+            "start_date_edit",
+            "end_date_edit",
+        ):
+            getattr(self, name).setObjectName("BacktestInput")
 
     def activate(self) -> None:
         pass
@@ -116,81 +204,33 @@ class BacktesterWidget(VnpyBacktesterManager):
     def deactivate(self) -> None:
         pass
 
-    def _install_ask_ai_button(self) -> None:
+    def _prepare_ask_ai_button(self) -> None:
         self.ask_ai_button = QtWidgets.QPushButton("问 AI")
         self.ask_ai_button.setObjectName("SecondaryButton")
         self.ask_ai_button.setToolTip("打开 AI 助手解读最近一次回测")
         self.ask_ai_button.clicked.connect(self._ask_ai_for_backtest)
-        left_vbox = self._left_settings_vbox()
-        if left_vbox is not None:
-            left_vbox.addWidget(self.ask_ai_button)
 
-    def _replace_chart_widget(self) -> None:
-        old_chart = self.chart
-        new_chart = AshareBacktesterChart()
-        parent = old_chart.parentWidget()
-        if parent is not None:
-            layout = parent.layout()
-            if layout is not None:
-                layout.replaceWidget(old_chart, new_chart)
-        old_chart.deleteLater()
-        self.chart = new_chart
-
-    def _install_strategy_guide(self) -> None:
+    def _prepare_strategy_guide_button(self) -> None:
         self._strategy_guide_html = ""
         self.strategy_guide_button = QtWidgets.QPushButton("说明")
         self.strategy_guide_button.setObjectName("SecondaryButton")
-        self.strategy_guide_button.setFixedWidth(56)
         self.strategy_guide_button.setToolTip("查看当前策略的适用场景与参数说明")
         self.strategy_guide_button.clicked.connect(self._show_strategy_guide_dialog)
         self.strategy_guide_button.setEnabled(False)
 
-        form = self._settings_form()
-        if form is not None:
-            for row in range(form.rowCount()):
-                field = form.itemAt(row, QtWidgets.QFormLayout.ItemRole.FieldRole)
-                if field is None or field.widget() is not self.class_combo:
-                    continue
-                row_layout = QtWidgets.QHBoxLayout()
-                row_layout.setContentsMargins(0, 0, 0, 0)
-                row_layout.setSpacing(8)
-                form.removeWidget(self.class_combo)
-                row_layout.addWidget(self.class_combo, stretch=1)
-                row_layout.addWidget(self.strategy_guide_button)
-                container = QtWidgets.QWidget()
-                container.setLayout(row_layout)
-                form.setWidget(row, QtWidgets.QFormLayout.ItemRole.FieldRole, container)
-                break
+    def _install_strategy_guide(self, form: QtWidgets.QFormLayout) -> None:
+        row_layout = QtWidgets.QHBoxLayout()
+        row_layout.setContentsMargins(0, 0, 0, 0)
+        row_layout.setSpacing(8)
+        row_layout.addWidget(self.class_combo, stretch=1)
+        row_layout.addWidget(self.strategy_guide_button)
+        container = QtWidgets.QWidget()
+        container.setLayout(row_layout)
+        form.addRow("交易策略", container)
 
+    def _finalize_strategy_guide(self) -> None:
         self.class_combo.currentTextChanged.connect(self._on_strategy_changed)
         self._on_strategy_changed(self.class_combo.currentText())
-
-    def _settings_form(self) -> QtWidgets.QFormLayout | None:
-        left_vbox = self._left_settings_vbox()
-        if left_vbox is None or left_vbox.count() == 0:
-            return None
-        layout = left_vbox.itemAt(0).layout()
-        if isinstance(layout, QtWidgets.QFormLayout):
-            return layout
-        return None
-
-    def _left_settings_vbox(self) -> QtWidgets.QVBoxLayout | None:
-        root = self.layout()
-        if root is None or root.count() == 0:
-            return None
-        left_widget = root.itemAt(0).widget()
-        if left_widget is None:
-            return None
-        left_hbox = left_widget.layout()
-        if left_hbox is None or left_hbox.count() == 0:
-            return None
-        item = left_hbox.itemAt(0)
-        if item is None:
-            return None
-        layout = item.layout()
-        if isinstance(layout, QtWidgets.QVBoxLayout):
-            return layout
-        return None
 
     def _build_strategy_guide_html(self, class_name: str) -> str:
         name = class_name.strip()
@@ -203,8 +243,7 @@ class BacktesterWidget(VnpyBacktesterManager):
 
     def _on_strategy_changed(self, class_name: str) -> None:
         self._strategy_guide_html = self._build_strategy_guide_html(class_name)
-        if hasattr(self, "strategy_guide_button"):
-            self.strategy_guide_button.setEnabled(bool(class_name.strip()))
+        self.strategy_guide_button.setEnabled(bool(class_name.strip()))
 
     def _show_strategy_guide_dialog(self) -> None:
         class_name = self.class_combo.currentText().strip()
@@ -327,12 +366,6 @@ class BacktesterWidget(VnpyBacktesterManager):
             if text:
                 self.write_log(text)
         self.write_log("如需 AI 解读，请点击「问 AI」")
-
-    def _localize_labels(self) -> None:
-        for label in self.findChildren(QtWidgets.QLabel):
-            text = label.text()
-            if text in _LABEL_MAP:
-                label.setText(_LABEL_MAP[text])
 
     def process_backtesting_finished_event(self, event: Event) -> None:
         super().process_backtesting_finished_event(event)

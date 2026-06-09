@@ -784,9 +784,31 @@ QListWidget#BatchSessionListWidget::item:selected {
 QListWidget#BatchSessionListWidget::item:hover {
     background-color: #242428;
 }
-QSplitter::handle {
-    background-color: #2a2a2a;
-    width: 1px;
+QGroupBox#BacktestFormBox {
+    background-color: #1e1e22;
+    border: 1px solid #2d2d32;
+    border-radius: 6px;
+    margin-top: 4px;
+    padding: 14px 12px 12px 12px;
+    font-size: 12px;
+    color: #a0a0a0;
+}
+QGroupBox#BacktestFormBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 6px;
+    left: 10px;
+    color: #8a8aaf;
+    font-weight: bold;
+}
+QWidget#BacktestChartFrame {
+    background-color: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+}
+QFormLayout QLabel {
+    color: #9a9aa5;
+    font-size: 12px;
 }
 """
 
