@@ -65,6 +65,7 @@ class PageConfig:
     table_header_sortable: bool = False
     show_watchlist_move_buttons: bool = False
     show_backtest_button: bool = True
+    show_batch_backtest_button: bool = False
     show_diagnose_button: bool = False
     show_diagnose_panel: bool = False
     show_kline: bool = True
@@ -130,6 +131,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         column_configurable=True,
         show_diagnose_button=True,
         show_diagnose_panel=False,
+        show_batch_backtest_button=True,
     ),
     "本地": PageConfig(
         title="本地",

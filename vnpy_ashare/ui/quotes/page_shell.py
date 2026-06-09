@@ -101,6 +101,12 @@ class QuotesPageShell:
         page.backtest_button.setEnabled(False)
         page.backtest_button.setVisible(page.config.show_backtest_button)
 
+        page.batch_backtest_button = QtWidgets.QPushButton("批量回测")
+        page.batch_backtest_button.setObjectName("SecondaryButton")
+        page.batch_backtest_button.clicked.connect(page.run_watchlist_batch_backtest)
+        page.batch_backtest_button.setEnabled(False)
+        page.batch_backtest_button.setVisible(page.config.show_batch_backtest_button)
+
         page.diagnose_button = QtWidgets.QPushButton("诊断")
         page.diagnose_button.clicked.connect(page._actions.run_diagnose_for_selected)
         page.diagnose_button.setEnabled(False)
@@ -133,6 +139,7 @@ class QuotesPageShell:
             page.config.show_add_watchlist_button
             or page.config.show_download_button
             or page.config.show_backtest_button
+            or page.config.show_batch_backtest_button
         )
         if group2_visible and group3_visible:
             sep2 = QtWidgets.QFrame()
@@ -157,6 +164,8 @@ class QuotesPageShell:
             toolbar.addWidget(page.redownload_button)
         if page.config.show_backtest_button:
             toolbar.addWidget(page.backtest_button)
+        if page.config.show_batch_backtest_button:
+            toolbar.addWidget(page.batch_backtest_button)
         if page.config.show_diagnose_button:
             toolbar.addWidget(page.diagnose_button)
         if page.config.column_configurable:

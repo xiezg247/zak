@@ -1,0 +1,71 @@
+"""自选页批量回测。"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from vnpy.trader.ui import QtWidgets
+
+from vnpy_ashare.screener.batch_actions import (
+    stock_items_to_batch_rows,
+    watchlist_items_to_rows,
+)
+from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
+
+if TYPE_CHECKING:
+    from vnpy_ashare.ui.quotes_page import QuotesPage
+
+
+class WatchlistBatchBacktestController:
+    """从自选池发起批量回测。"""
+
+    def __init__(self, page: QuotesPage) -> None:
+        self._page = page
+        self._flow: BatchBacktestFlow | None = None
+
+    def _get_flow(self) -> BatchBacktestFlow:
+        if self._flow is None:
+            page = self._page
+            self._flow = BatchBacktestFlow(
+                main_engine=page._get_main_engine(),
+                event_engine=page.event_engine,
+                parent=page,
+                on_status=lambda message: page.status_label.setText(message),
+            )
+        return self._flow
+
+    def collect_watchlist_rows(self) -> list[dict[str, str]]:
+        page = self._page
+        service = page._get_watchlist_service()
+        if service is not None:
+            items = service.get_items()
+            if items:
+                return watchlist_items_to_rows(items)
+        if page.page_name == "自选" and page.all_stocks:
+            return stock_items_to_batch_rows(page.all_stocks)
+        return []
+
+    def update_action_buttons(self) -> None:
+        page = self._page
+        if not page.config.show_batch_backtest_button:
+            return
+        button = page.batch_backtest_button
+        running = self._flow is not None and self._flow.is_running()
+        button.setEnabled(not running and bool(self.collect_watchlist_rows()))
+
+    def run_batch_backtest(self) -> None:
+        rows = self.collect_watchlist_rows()
+        if not rows:
+            QtWidgets.QMessageBox.information(
+                self._page,
+                "提示",
+                "自选池为空，请先添加标的",
+            )
+            return
+        flow = self._get_flow()
+        flow.start(
+            rows,
+            source_page="自选",
+            batch_source="batch_watchlist",
+            on_running=lambda running: self._page.batch_backtest_button.setDisabled(running),
+        )

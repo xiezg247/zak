@@ -21,6 +21,7 @@ from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.quotes.actions_controller import ActionsController
+from vnpy_ashare.ui.quotes.batch_backtest_controller import WatchlistBatchBacktestController
 from vnpy_ashare.ui.quotes.data_loader_controller import DataLoaderController
 from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController, should_apply_loaded_bars
 from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
@@ -92,6 +93,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._local = LocalDataController(self)
         self._table = TableController(self)
         self._actions = ActionsController(self)
+        self._batch_backtest = WatchlistBatchBacktestController(self)
         self._loader = DataLoaderController(self)
         self._retired_workers: list[QtCore.QThread] = []
         self._load_generation = 0
@@ -377,6 +379,9 @@ class QuotesPage(QtWidgets.QWidget):
         from vnpy_ashare.engine_access import get_service
 
         return get_service(self._get_main_engine(), "quote_service")
+
+    def run_watchlist_batch_backtest(self) -> None:
+        self._batch_backtest.run_batch_backtest()
 
     def run_diagnose_for_selected(self) -> None:
         self._actions.run_diagnose_for_selected()

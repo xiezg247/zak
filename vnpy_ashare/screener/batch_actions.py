@@ -183,6 +183,8 @@ def run_batch_backtests(
 def persist_batch_backtest_results(
     params: BatchBacktestParams,
     rows: list[BatchBacktestRow],
+    *,
+    source: str = "batch_screener",
 ) -> str:
     """批量回测结果落库，返回 batch_id。"""
     from vnpy_ashare.backtest.run_store import save_backtest_run
@@ -201,7 +203,7 @@ def persist_batch_backtest_results(
             interval=interval,
             start=start_text,
             end=end_text,
-            source="batch_screener",
+            source=source,
             batch_id=batch_id,
             statistics=stats,
             total_return=row.total_return if not row.error else None,
@@ -220,3 +222,24 @@ def _to_float(value: Any) -> float | None:
         return float(text)
     except (TypeError, ValueError):
         return None
+
+
+def watchlist_items_to_rows(items: list[dict[str, str]]) -> list[dict[str, str]]:
+    """WatchlistService.get_items() → 批量回测行。"""
+    rows: list[dict[str, str]] = []
+    for item in items:
+        symbol = str(item.get("symbol", "")).strip()
+        exchange = str(item.get("exchange", "")).strip()
+        if not symbol or not exchange:
+            continue
+        rows.append(
+            {
+                "vt_symbol": f"{symbol}.{exchange}",
+                "name": str(item.get("name", "") or ""),
+            }
+        )
+    return rows
+
+
+def stock_items_to_batch_rows(stocks: list[StockItem]) -> list[dict[str, str]]:
+    return [{"vt_symbol": item.vt_symbol, "name": item.name} for item in stocks]

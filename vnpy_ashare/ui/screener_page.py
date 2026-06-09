@@ -10,12 +10,10 @@ from vnpy.event import Event, EventEngine
 from vnpy_ashare.events import (
     EVENT_ASK_AI,
     EVENT_OPEN_BACKTEST,
-    EVENT_OPEN_BATCH_BACKTEST,
     EVENT_ORB_ATTENTION,
     AskAiRequest,
     OrbAttentionRequest,
     BacktestRequest,
-    BatchBacktestViewRequest,
     FillScreenerRequest,
 )
 from vnpy.trader.engine import MainEngine
@@ -30,17 +28,11 @@ from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
 from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult, build_scheme_config, list_all_preset_names
 from vnpy_ashare.screener.run_store import get_run, save_run
 from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
-from vnpy_ashare.screener.batch_actions import (
-    BatchBacktestParams,
-    load_batch_backtest_defaults,
-    persist_batch_backtest_results,
-)
+from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.qt_helpers import release_thread
-from vnpy_ashare.ui.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import (
-    ScreenerBatchBacktestWorker,
     ScreenerBatchDownloadWorker,
     ScreenerRunWorker,
 )
@@ -60,9 +52,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._active = False
         self._worker: ScreenerRunWorker | None = None
         self._download_worker: ScreenerBatchDownloadWorker | None = None
-        self._batch_bt_worker: ScreenerBatchBacktestWorker | None = None
+        self._batch_backtest_flow = BatchBacktestFlow(
+            main_engine=main_engine,
+            event_engine=event_engine,
+            parent=self,
+            on_status=lambda message: self._status_label.setText(message),
+        )
         self._retired_workers: list[QtCore.QThread] = []
-        self._last_batch_params: BatchBacktestParams | None = None
         self._results: list[dict[str, Any]] = []
         self._result_columns: list[tuple[str, str]] = []
         self._watchlist_service = self._get_watchlist_service()
@@ -663,7 +659,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
 
     def _run_batch_backtest(self) -> None:
-        if self._batch_bt_worker is not None and self._batch_bt_worker.isRunning():
+        if self._batch_backtest_flow.is_running():
             return
         selected = self._iter_checked_rows()
         if not selected:
@@ -673,73 +669,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         backtest_service = self._get_backtest_service()
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
-        defaults = load_batch_backtest_defaults()
-        dialog = ScreenerBatchBacktestConfigDialog(
-            class_names=class_names,
-            default_class=defaults.class_name,
-            default_start=defaults.start.strftime("%Y-%m-%d"),
-            default_end=defaults.end.strftime("%Y-%m-%d"),
-            count=len(selected),
-            parent=self,
-        )
-        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-            return
-
-        try:
-            params = BatchBacktestParams(
-                class_name=dialog.class_name,
-                start=datetime.strptime(dialog.start_text[:10], "%Y-%m-%d"),
-                end=datetime.strptime(dialog.end_text[:10], "%Y-%m-%d"),
-                rate=defaults.rate,
-                slippage=defaults.slippage,
-                size=defaults.size,
-                pricetick=defaults.pricetick,
-                capital=defaults.capital,
-            )
-        except ValueError:
-            QtWidgets.QMessageBox.warning(self, "提示", "日期格式应为 YYYY-MM-DD")
-            return
-
-        self.batch_backtest_btn.setDisabled(True)
-        self._status_label.setText(f"批量回测中（{len(selected)} 只）…")
-        self._last_batch_params = params
-        worker = ScreenerBatchBacktestWorker(
-            self.main_engine,
+        self._batch_backtest_flow.start(
             selected,
-            params,
-            parent=self,
+            source_page="选股",
+            batch_source="batch_screener",
+            list_strategies=lambda: class_names,
+            on_running=lambda running: self.batch_backtest_btn.setDisabled(running),
         )
-        self._batch_bt_worker = worker
-        worker.finished.connect(
-            lambda rows: self._on_batch_backtest_finished(rows, dialog.class_name)
-        )
-        worker.failed.connect(self._on_batch_backtest_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
-
-    def _on_batch_backtest_finished(self, rows, _class_name: str) -> None:
-        self._batch_bt_worker = None
-        self.batch_backtest_btn.setDisabled(False)
-        batch_id = None
-        if self._last_batch_params is not None:
-            batch_id = persist_batch_backtest_results(self._last_batch_params, rows)
-        if batch_id:
-            self._status_label.setText(f"批量回测完成：{len(rows)} 只 · 已打开回测对比页")
-            self.event_engine.put(
-                Event(
-                    EVENT_OPEN_BATCH_BACKTEST,
-                    BatchBacktestViewRequest(batch_id=batch_id, source_page="选股"),
-                )
-            )
-        else:
-            self._status_label.setText(f"批量回测完成：{len(rows)} 只")
-
-    def _on_batch_backtest_failed(self, message: str) -> None:
-        self._batch_bt_worker = None
-        self.batch_backtest_btn.setDisabled(False)
-        self._status_label.setText(message)
-        QtWidgets.QMessageBox.warning(self, "批量回测", message)
 
     def _save_scheme(self) -> None:
         label = self.preset_combo.currentText()

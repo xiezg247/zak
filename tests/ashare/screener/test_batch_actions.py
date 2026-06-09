@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.batch_actions import rows_to_stock_items
+from vnpy_ashare.screener.batch_actions import rows_to_stock_items, watchlist_items_to_rows
 
 
 def test_rows_to_stock_items_deduplicates():
@@ -16,3 +16,13 @@ def test_rows_to_stock_items_deduplicates():
     assert len(items) == 2
     assert items[0].symbol == "600000"
     assert items[1].symbol == "000001"
+
+
+def test_watchlist_items_to_rows():
+    rows = watchlist_items_to_rows(
+        [
+            {"symbol": "600519", "exchange": "SSE", "name": "贵州茅台"},
+            {"symbol": "", "exchange": "SSE", "name": "无效"},
+        ]
+    )
+    assert rows == [{"vt_symbol": "600519.SSE", "name": "贵州茅台"}]
