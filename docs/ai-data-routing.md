@@ -47,6 +47,14 @@
 | vnpy-backtest | list_strategies, get_backtest_result, list_backtest_history |
 | vnpy-screening | list_screeners, screen_by_condition |
 | vnpy-watchlist | get_watchlist, add_to_watchlist, remove_from_watchlist |
+| vnpy-sentiment | get_ashare_fear_greed_index（需 TUSHARE_TOKEN） |
+
+## 恐贪指数（AI 自主运用）
+
+- 工具：`get_ashare_fear_greed_index`（`vnpy-sentiment` Skill）
+- 路由 enrichment：`skip` / `consider` / `highlight` 三档，控制工具是否进入本轮 tool list
+- **不**注入页面上下文；由主对话自行判断是否调用与是否写入正文
+- 典型触发：大盘环境、市场节奏、综合研判、选股背景；**不**用于纯价格/自选 CRUD/回测数值
 
 ## 合规
 

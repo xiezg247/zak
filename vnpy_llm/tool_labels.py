@@ -23,6 +23,7 @@ _TOOL_LABELS: dict[str, str] = {
     "read_skill_file": "读取知识文档",
     "run_python": "执行数据分析",
     "list_skill_files": "列出 Skill 文件",
+    "get_ashare_fear_greed_index": "查询 A 股恐贪指数",
 }
 
 

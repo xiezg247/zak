@@ -37,6 +37,13 @@ OFFICIAL_SKILLS: dict[str, SkillMeta] = {
         source="zak",
         tags=("自选", "本地 K 线", "回测", "终端"),
     ),
+    "vnpy-sentiment": SkillMeta(
+        skill_name="vnpy-sentiment",
+        title="A 股恐贪指数",
+        summary="全市场恐贪指数（0-100）及分项，供 AI 自主判断是否写入回答。",
+        source="zak",
+        tags=("情绪", "大盘", "Tushare", "恐贪"),
+    ),
     "tdx-stock-picker": SkillMeta(
         skill_name="tdx-stock-picker",
         title="通达信 AI 选股",

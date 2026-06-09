@@ -79,6 +79,7 @@ class LlmEngine(BaseEngine):
                 "screening": ashare_engine.screening_service,
                 "watchlist": ashare_engine.watchlist_service,
                 "analysis": ashare_engine.analysis_service,
+                "sentiment": ashare_engine.sentiment_service,
             }
         self.skill_engine = SkillEngine(services=services)
         self.skill_engine.load_all()
@@ -287,6 +288,8 @@ class LlmEngine(BaseEngine):
                 capabilities.append("个股诊断(通达信)")
             elif name.startswith("vnpy-watchlist"):
                 capabilities.append("自选管理")
+            elif name.startswith("vnpy-sentiment"):
+                capabilities.append("全市场恐贪指数")
         if capabilities:
             return "\n".join([
                 "【可用工具能力】",
@@ -369,6 +372,8 @@ class LlmEngine(BaseEngine):
             "reasoning": route.reasoning,
             "tool_count": len(route_ctx.tools),
             "routing_hint": route_ctx.routing_hint,
+            "fear_greed": route_ctx.analysis.market.fear_greed,
+            "market_reasoning": route_ctx.analysis.market.reasoning,
         }
         if route_ctx.analysis.screening is not None:
             detail["screening"] = route_ctx.analysis.screening.model_dump()

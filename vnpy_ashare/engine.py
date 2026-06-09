@@ -8,6 +8,7 @@ from vnpy_ashare.services import (
     BarService,
     QuoteService,
     ScreeningService,
+    SentimentService,
     WatchlistService,
 )
 
@@ -28,6 +29,7 @@ class AshareEngine(BaseEngine):
         self.screening_service = ScreeningService(self)
         self.watchlist_service = WatchlistService(self)
         self.analysis_service = AnalysisService(self)
+        self.sentiment_service = SentimentService(self)
 
     def close(self) -> None:
         self.scheduler.shutdown()

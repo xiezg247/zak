@@ -67,9 +67,23 @@ class IntentRoute(BaseModel):
     reasoning: str = ""
 
 
+FearGreedEnrichment = Literal["skip", "consider", "highlight"]
+
+
+class MarketEnrichment(BaseModel):
+    """恐贪指数 enrichment 三档（由分类器 + 规则归一化）。"""
+
+    fear_greed: FearGreedEnrichment = Field(
+        default="consider",
+        description="skip=勿调用; consider=AI 自主判断是否调用/写入; highlight=建议结合回答",
+    )
+    reasoning: str = ""
+
+
 class IntentAnalysis(BaseModel):
     """单次结构化调用：分类 + 可选域内解析。"""
 
     route: IntentRoute
     screening: ScreeningIntent | None = None
     backtest: BacktestIntent | None = None
+    market: MarketEnrichment = Field(default_factory=MarketEnrichment)

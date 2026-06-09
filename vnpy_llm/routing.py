@@ -12,6 +12,7 @@ from vnpy_llm.intent import (
     IntentAnalysis,
     IntentCategory,
     IntentRoute,
+    MarketEnrichment,
     ScreeningIntent,
 )
 
@@ -20,6 +21,8 @@ AGENT_TOOL_NAMES = frozenset({
     "run_python",
     "list_skill_files",
 })
+
+FEAR_GREED_TOOL = "get_ashare_fear_greed_index"
 
 TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
     "general": frozenset(),
@@ -87,6 +90,11 @@ _CLASSIFY_PROMPT = """你是 zak 量化终端的意图分类器。根据用户�
 - data：财务、宏观、需 Tushare/TickFlow 等外部数据接口
 - general：闲聊、概念解释、与上述无关
 
+market.fear_greed（恐贪指数 enrichment，三档）：
+- skip：纯价格/自选 CRUD/回测数值/K 线条数等 factual 问答，勿调用恐贪工具
+- consider：综合研判、个股值不值得看、选股环境、风险/节奏/大盘强弱相关时，由主对话自行判断是否调用与是否写入正文
+- highlight：用户明显在问市场情绪、冷热、恐贪/贪婪/恐慌、赚钱效应、是否过热
+
 若 category 为 screening，必须填写 screening 字段（intent 必填）。
 若 category 为 backtest，必须填写 backtest 字段。
 confidence=low 表示意图模糊，需要主对话追问。"""
@@ -133,6 +141,95 @@ def filter_tools_by_route(
             filtered.append(tool)
 
     return filtered if filtered else list(all_tools)
+
+
+def apply_fear_greed_tools(
+    tools: list[dict[str, Any]],
+    analysis: IntentAnalysis,
+    all_tools: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """按 enrichment 三档加入或移除恐贪指数工具。"""
+    available = {
+        (tool.get("function") or {}).get("name", "")
+        for tool in all_tools
+    }
+    if FEAR_GREED_TOOL not in available:
+        return tools
+
+    level = analysis.market.fear_greed
+    if level == "skip":
+        return [
+            tool
+            for tool in tools
+            if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL
+        ]
+
+    names = {(tool.get("function") or {}).get("name", "") for tool in tools}
+    if FEAR_GREED_TOOL in names:
+        return tools
+    for tool in all_tools:
+        if (tool.get("function") or {}).get("name", "") == FEAR_GREED_TOOL:
+            return list(tools) + [tool]
+    return tools
+
+
+def _infer_market_enrichment(
+    user_text: str,
+    page: str,
+    category: IntentCategory,
+) -> MarketEnrichment:
+    text = user_text.strip()
+
+    highlight_keywords = (
+        "恐贪", "贪婪", "恐慌", "市场情绪", "大盘情绪", "赚钱效应",
+        "过热", "冰点", "市场冷热", "市场怎么样", "大盘怎么样",
+    )
+    skip_keywords = (
+        "多少钱", "当前价", "涨了多少", "跌了多少", "加入自选", "移出自选",
+        "删除自选", "清空自选", "下载", "导入",
+    )
+    if any(keyword in text for keyword in highlight_keywords):
+        return MarketEnrichment(
+            fear_greed="highlight",
+            reasoning="用户关注全市场情绪或冷热",
+        )
+    if category == "watchlist":
+        return MarketEnrichment(fear_greed="skip", reasoning="自选操作场景")
+    if category == "backtest" and any(k in text for k in ("夏普", "回撤", "收益", "胜率", "回测结果")):
+        return MarketEnrichment(fear_greed="skip", reasoning="回测数值解读")
+    if category == "quote" and any(keyword in text for keyword in skip_keywords):
+        return MarketEnrichment(fear_greed="skip", reasoning="纯行情 factual 查询")
+    if page == "市场" and category in ("quote", "general"):
+        return MarketEnrichment(fear_greed="consider", reasoning="市场页综合浏览")
+    if category in ("general", "screening", "diagnosis"):
+        return MarketEnrichment(fear_greed="consider", reasoning="综合研判场景")
+    return MarketEnrichment(fear_greed="consider", reasoning="默认可由 AI 判断是否使用")
+
+
+def _normalize_market_enrichment(
+    analysis: IntentAnalysis,
+    user_text: str,
+    page: str,
+) -> IntentAnalysis:
+    inferred = _infer_market_enrichment(user_text, page, analysis.route.category)
+    current = analysis.market.fear_greed
+
+    if inferred.fear_greed == "highlight":
+        return analysis.model_copy(update={"market": inferred})
+    if inferred.fear_greed == "skip":
+        return analysis.model_copy(update={"market": inferred})
+    if current == "skip":
+        return analysis
+    if current == "highlight":
+        return analysis
+    return analysis.model_copy(
+        update={
+            "market": MarketEnrichment(
+                fear_greed="consider",
+                reasoning=inferred.reasoning or analysis.market.reasoning,
+            )
+        }
+    )
 
 
 def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
@@ -184,6 +281,22 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
     if route.confidence == "low" and route.category != "general":
         lines.append("置信度较低：可先简短追问澄清，再决定是否调用工具。")
 
+    fg = analysis.market.fear_greed
+    if fg == "skip":
+        lines.append("【恐贪指数】本轮 skip：勿调用 get_ashare_fear_greed_index。")
+    elif fg == "highlight":
+        lines.append(
+            "【恐贪指数】本轮 highlight：建议调用 get_ashare_fear_greed_index，"
+            "并在回答中结合工具数据简要说明市场环境（仍禁止具体买卖建议）。"
+        )
+    else:
+        lines.append(
+            "【恐贪指数】本轮 consider：可自行判断是否调用 get_ashare_fear_greed_index；"
+            "与大盘节奏/风险/环境无关则勿调用；调用后也不必强行写入正文。"
+        )
+    if analysis.market.reasoning:
+        lines.append(f"- enrichment：{analysis.market.reasoning}")
+
     group = TOOL_GROUPS.get(route.category)
     if group:
         names = sorted(group | AGENT_TOOL_NAMES)
@@ -197,36 +310,36 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
     text = user_text.strip()
     lower = text.lower()
 
+    def _with_market(category: IntentCategory, **kwargs) -> IntentAnalysis:
+        route = IntentRoute(category=category, confidence="medium", reasoning="关键词匹配")
+        analysis = IntentAnalysis(route=route, **kwargs)
+        return _normalize_market_enrichment(analysis, text, page)
+
     if any(k in text for k in ("选股", "筛选", "涨幅榜", "换手率", "涨最多")):
-        return IntentAnalysis(
-            route=IntentRoute(category="screening", confidence="medium", reasoning="关键词匹配"),
+        return _with_market(
+            "screening",
             screening=ScreeningIntent(intent=text, confidence="medium"),
         )
     if any(k in text for k in ("回测", "夏普", "最大回撤", "策略列表")):
         action = "list_history" if "历史" in text or "对比" in text else "query_result"
         if "有哪些策略" in text or "策略列表" in text:
             action = "list_strategies"
-        return IntentAnalysis(
-            route=IntentRoute(category="backtest", confidence="medium", reasoning="关键词匹配"),
+        return _with_market(
+            "backtest",
             backtest=BacktestIntent(action=action, confidence="medium"),
         )
     if any(k in text for k in ("诊断", "研报", "评级", "券商")):
-        return IntentAnalysis(
-            route=IntentRoute(category="diagnosis", confidence="medium", reasoning="关键词匹配"),
-        )
+        return _with_market("diagnosis")
     if any(k in text for k in ("均线", "金叉", "死叉", "技术面", "形态")):
-        return IntentAnalysis(
-            route=IntentRoute(category="technical", confidence="medium", reasoning="关键词匹配"),
-        )
+        return _with_market("technical")
     if page and page in PAGE_CATEGORY_HINT:
         cat = PAGE_CATEGORY_HINT[page]
-        return IntentAnalysis(
+        analysis = IntentAnalysis(
             route=IntentRoute(category=cat, confidence="low", reasoning=f"页面上下文 {page}"),
         )
+        return _normalize_market_enrichment(analysis, text, page)
     if any(k in lower for k in ("多少钱", "涨了多少", "当前价")):
-        return IntentAnalysis(
-            route=IntentRoute(category="quote", confidence="medium", reasoning="关键词匹配"),
-        )
+        return _with_market("quote")
     return None
 
 
@@ -267,7 +380,8 @@ def analyze_user_intent(
         fallback = _keyword_fallback(user_text, page)
         if fallback:
             return fallback
-        return IntentAnalysis(route=IntentRoute(category="general", confidence="low"))
+        analysis = IntentAnalysis(route=IntentRoute(category="general", confidence="low"))
+        return _normalize_market_enrichment(analysis, user_text, page)
 
     page_hint = f"\n当前用户所在页面：{page}" if page else ""
     messages = [
@@ -281,7 +395,8 @@ def analyze_user_intent(
         fallback = _keyword_fallback(user_text, page)
         if fallback:
             return fallback
-        return IntentAnalysis(route=IntentRoute(category="general", confidence="low"))
+        analysis = IntentAnalysis(route=IntentRoute(category="general", confidence="low"))
+        return _normalize_market_enrichment(analysis, user_text, page)
 
     if page and analysis.route.confidence == "low":
         boosted = PAGE_CATEGORY_HINT.get(page)
@@ -299,7 +414,7 @@ def analyze_user_intent(
             update={"backtest": BacktestIntent(confidence="medium")},
         )
 
-    return analysis
+    return _normalize_market_enrichment(analysis, user_text, page)
 
 
 def build_route_context(
@@ -317,6 +432,7 @@ def build_route_context(
         tools = list(all_tools)
     else:
         tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
+    tools = apply_fear_greed_tools(tools, analysis, all_tools)
 
     hint = build_routing_hint(analysis, page=page)
     return RouteContext(analysis=analysis, tools=tools, routing_hint=hint)

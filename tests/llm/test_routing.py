@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from vnpy_llm.intent import BacktestIntent, IntentAnalysis, IntentRoute, ScreeningIntent
+from vnpy_llm.intent import BacktestIntent, IntentAnalysis, IntentRoute, MarketEnrichment, ScreeningIntent
 from vnpy_llm.routing import (
+    FEAR_GREED_TOOL,
+    apply_fear_greed_tools,
     build_routing_hint,
     filter_tools_by_route,
     _keyword_fallback,
+    _normalize_market_enrichment,
 )
 
 
@@ -81,3 +84,25 @@ def test_build_routing_hint_backtest():
     hint = build_routing_hint(analysis)
     assert "list_backtest_history" in hint
     assert "list_history" in hint
+    assert "恐贪指数" in hint
+
+
+def test_build_routing_hint_market_consider():
+    analysis = IntentAnalysis(
+        route=IntentRoute(category="diagnosis", confidence="medium"),
+    )
+    analysis = _normalize_market_enrichment(analysis, "这只票怎么样", "")
+    hint = build_routing_hint(analysis)
+    assert "consider" in hint or "可自行判断" in hint
+
+
+def test_apply_fear_greed_on_filtered_tools():
+    tools = filter_tools_by_route(ALL_TOOLS, "quote")
+    analysis = IntentAnalysis(
+        route=IntentRoute(category="quote", confidence="medium"),
+        market=MarketEnrichment(fear_greed="consider"),
+    )
+    all_tools = ALL_TOOLS + [_tool(FEAR_GREED_TOOL)]
+    enriched = apply_fear_greed_tools(tools, analysis, all_tools)
+    names = {item["function"]["name"] for item in enriched}
+    assert FEAR_GREED_TOOL in names
