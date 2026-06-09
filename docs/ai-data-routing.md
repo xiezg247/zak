@@ -45,7 +45,7 @@
 | vnpy-analysis | technical_snapshot, list_strategy_signals, historical_pattern_summary |
 | tdx-stock-diagnose | diagnose_stock |
 | vnpy-backtest | list_strategies, get_backtest_result, list_backtest_history |
-| vnpy-screening | list_screeners, screen_by_condition |
+| vnpy-screening | list_screeners, screen_by_condition, propose_screening |
 | vnpy-watchlist | get_watchlist, add_to_watchlist, remove_from_watchlist |
 | vnpy-sentiment | get_ashare_fear_greed_index（需 TUSHARE_TOKEN） |
 
