@@ -42,7 +42,6 @@
 - 本地页 K 线健康检测与补全（`bar_health` + `local_data_controller`）
 - 本地页 **批量补全过期** 日 K（`jobs/local_fill.py`）
 - 本地页 **批量修复断层** 日 K（`jobs/local_fill.py`）
-- 主窗口 **日志 Dock**（vnpy `LogMonitor`，`Ctrl+Shift+L`）
 - 配置单源（`config_schema` / `config_bridge` / `settings_dialog`）
 
 ---
@@ -145,15 +144,12 @@ uv run python scripts/check_database.py
 
 - 本地页 **批量补全过期** 日 K（`jobs/local_fill.py`）
 - 本地页 **批量修复断层** 日 K（`jobs/local_fill.py`）
-- 主窗口 **日志 Dock**（`Ctrl+Shift+L` 切换）
 
 其余可优先考虑：
 
 - 更多 `AShareTemplate` 示例策略（突破、RSI 等）
 - `vnpy_ashare` / `vnpy_llm` 拆包发布
 - AI 对话**全自动选股**（内置 preset → `screen_by_condition`；形态 → `screen_by_pattern`；复杂条件保留 `propose_screening` 确认）✅
-
-（日志 Dock 已实现，见主窗口「工具 → 显示/隐藏 日志 Dock」。）
 
 ---
 
