@@ -13,6 +13,7 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_ashare.ai.context_store import get_backtest_summary_dict, set_ai_context
 from vnpy_ashare.engine_access import get_service
+from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
 
 def resolve_backtest_summary(main_engine=None) -> dict[str, Any] | None:
@@ -101,8 +102,6 @@ def build_backtest_ai_prompt(summary: dict[str, Any]) -> str:
 
 
 def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, notify_ui: bool = True) -> None:
-    from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
     data = enrich_context_with_actions(build_backtest_page_context(widget, main_engine))
     set_ai_context(data)
 
@@ -143,7 +142,5 @@ def build_batch_compare_context(session, rows: list[Any]) -> AiContextData:
 
 
 def sync_batch_compare_context(session, rows: list[Any], main_engine=None) -> None:
-    from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
     data = enrich_context_with_actions(build_batch_compare_context(session, rows))
     set_ai_context(data)

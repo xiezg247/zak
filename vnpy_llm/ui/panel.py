@@ -7,12 +7,14 @@ import re
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.context import QuickAction
+from vnpy_ashare.ai.context import QuickAction, build_stock_completion_items
+from vnpy_ashare.ai.context_store import get_ai_context
 from vnpy_ashare.ui.qt_helpers import release_thread, retain_thread_until_finished
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tool_labels import tool_display_name
 from vnpy_llm.tools_status import ToolsStatusSnapshot
 from vnpy_llm.trace import TurnTrace, map_turns_to_user_messages
+from vnpy_llm.ui.floating_actions import build_quick_actions_for_panel
 from vnpy_llm.ui.floating_widgets import QuickActionChips
 from vnpy_llm.ui.md_renderer import render_markdown
 from vnpy_llm.ui.pending_bubble import (
@@ -333,9 +335,6 @@ class AiChatPanel(QtWidgets.QWidget):
         """根据当前 AI 上下文刷新快捷指令按钮。"""
         if self.quick_actions is None:
             return
-        from vnpy_ashare.ai.context_store import get_ai_context
-        from vnpy_llm.ui.floating_actions import build_quick_actions_for_panel
-
         ctx = get_ai_context()
         actions = build_quick_actions_for_panel(ctx, mode=self._panel_mode())
         self.quick_actions.set_actions(actions)
@@ -373,9 +372,6 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _show_completions(self, code: str) -> None:
         """在输入框下方弹出操作联想。"""
-        from vnpy_ashare.ai.context import build_stock_completion_items
-        from vnpy_ashare.ai.context_store import get_ai_context
-
         ctx = get_ai_context()
         exchange_cn = ctx.exchange if ctx.symbol == code else ""
         stock_name = ctx.name if ctx.symbol == code else ""

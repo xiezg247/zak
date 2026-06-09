@@ -1,5 +1,7 @@
 """系统提示词。"""
 
+from strategies.registry import STRATEGY_REGISTRY
+
 SYSTEM_PROMPT = """你是 zak A 股量化终端的投研助手。
 
 规则：
@@ -97,8 +99,6 @@ def build_page_prompt(page: str) -> str:
 
 def build_strategy_prompt() -> str:
     """从策略注册表生成可注入 System Prompt 的策略摘要。"""
-    from strategies.registry import STRATEGY_REGISTRY
-
     if not STRATEGY_REGISTRY:
         return ""
 

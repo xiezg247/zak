@@ -7,9 +7,13 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.ai.context import QuickAction
+from vnpy_ashare.ai.context_store import get_ai_context
 from vnpy_ashare.events import AskAiRequest
 from vnpy_llm.engine import LlmEngine
+from vnpy_llm.ui.floating_actions import scene_label_from_context
 from vnpy_llm.ui.floating_panel import FloatingAiOrb, FloatingAiPanel
+from vnpy_llm.ui.session_widgets import show_ai_session_dialog
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.main_window import AshareMainWindow
@@ -150,8 +154,6 @@ class FloatingAiController(QtCore.QObject):
             self._panel.submit_prompt(prompt, auto_send=auto_send, action_id=action_id)
 
     def refresh_context(self, _text: str = "") -> None:
-        from vnpy_ashare.ai.context_store import get_ai_context
-
         data = get_ai_context()
         if self._orb is not None:
             self._orb.apply_context(data)
@@ -254,8 +256,6 @@ class FloatingAiController(QtCore.QObject):
             self.show_panel()
 
     def _on_panel_quick_action(self, action: object) -> None:
-        from vnpy_ashare.ai.context import QuickAction
-
         if not isinstance(action, QuickAction):
             return
         self.run_quick_action(
@@ -266,9 +266,6 @@ class FloatingAiController(QtCore.QObject):
 
     @staticmethod
     def _scene_from_context() -> str:
-        from vnpy_ashare.ai.context_store import get_ai_context
-        from vnpy_llm.ui.floating_actions import scene_label_from_context
-
         return scene_label_from_context(get_ai_context())
 
     def _prepare_floating_session(
@@ -293,8 +290,6 @@ class FloatingAiController(QtCore.QObject):
         self.show_panel()
 
     def _open_history(self) -> None:
-        from vnpy_llm.ui.session_widgets import show_ai_session_dialog
-
         self._engine.switch_surface("floating")
         self.show_orb()
         show_ai_session_dialog(self._engine, self._host)

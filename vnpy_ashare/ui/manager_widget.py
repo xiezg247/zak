@@ -8,6 +8,8 @@ from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.ui import QtWidgets
 from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
+from vnpy_ashare.ai.data_manager_context import sync_data_manager_context
+from vnpy_ashare.bar_access import build_symbol_name_map, iter_bar_overviews
 from vnpy_ashare.config import EXCHANGE_CN_NAMES
 from vnpy_ashare.engine_access import get_bar_service
 from vnpy_ashare.minute_periods import bar_interval, is_daily_scope
@@ -186,8 +188,6 @@ class ManagerWidget(VnpyManagerWidget):
         for i in range(self.tree.topLevelItemCount()):
             self._localize_item(self.tree.topLevelItem(i))
 
-        from vnpy_ashare.ai.data_manager_context import sync_data_manager_context
-
         sync_data_manager_context(getattr(self, "main_engine", None))
 
     def _localize_item(self, item) -> None:
@@ -205,12 +205,8 @@ class ManagerWidget(VnpyManagerWidget):
     @staticmethod
     def _fallback_symbol_name_map():
         """BarService 不可用时（无 Engine）经 bar_access 读取。"""
-        from vnpy_ashare.bar_access import build_symbol_name_map
-
         return build_symbol_name_map()
 
     @staticmethod
     def _fallback_iter_overviews(scope: str):
-        from vnpy_ashare.bar_access import iter_bar_overviews
-
         return iter_bar_overviews(scope=scope)

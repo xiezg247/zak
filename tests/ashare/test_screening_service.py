@@ -27,7 +27,7 @@ class ScreeningServiceTests(unittest.TestCase):
         snapshot.rows = [{"symbol": "000001", "change_pct": -0.5}]
         self.engine.quote_service.get_market_quotes_cache.return_value = []
         with patch(
-            "vnpy_ashare.screener.quotes_loader.load_market_quote_rows",
+            "vnpy_ashare.services.screening_service.load_market_quote_rows",
             return_value=snapshot,
         ):
             loaded, err = self.service.load_quote_rows()
@@ -49,7 +49,7 @@ class ScreeningServiceTests(unittest.TestCase):
         with (
             patch.object(self.service, "load_quote_rows", return_value=(rows, None)),
             patch(
-                "vnpy_ashare.screener.rules.apply_quote_preset",
+                "vnpy_ashare.services.screening_service.apply_quote_preset",
                 return_value=[{"symbol": "600519"}],
             ) as mock_apply,
         ):

@@ -42,6 +42,7 @@ from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.scheduler_page import SchedulerPageWidget
+from vnpy_ashare.ui.screener_confirm_dialog import show_screener_confirm_dialog
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.settings_dialog import show_settings_dialog
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
@@ -186,8 +187,6 @@ class AshareMainWindow(MainWindow):
         self._screener_draft_connected = True
 
     def _on_screener_draft_ready(self, draft_id: str) -> None:
-        from vnpy_ashare.ui.screener_confirm_dialog import show_screener_confirm_dialog
-
         engine = self.main_engine.get_engine(LLM_APP_NAME)
         if not isinstance(engine, LlmEngine):
             return

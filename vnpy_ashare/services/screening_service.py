@@ -16,6 +16,7 @@ from typing import Any
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_ashare.ai.context_store import (
     ScreeningResultContext,
+    get_market_quotes_cache,
     set_ai_context,
 )
 from vnpy_ashare.ai.context_store import (
@@ -24,9 +25,44 @@ from vnpy_ashare.ai.context_store import (
 from vnpy_ashare.ai.context_store import (
     set_screening_results as _set_screening_results,
 )
-from vnpy_ashare.screener.presets import list_builtin_preset_names
-from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult, run_screener
+from vnpy_ashare.screener.data_source import resolve_result_source_tag
+from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
+from vnpy_ashare.screener.pattern_screen import (
+    PatternScreenInput,
+    resolve_pattern_screen,
+    run_pattern_screen,
+)
+from vnpy_ashare.screener.presets import (
+    SCREENER_CUSTOM,
+    get_preset,
+    list_builtin_preset_names,
+    list_quote_preset_names,
+    list_tushare_preset_names,
+)
+from vnpy_ashare.screener.quotes_loader import load_market_quote_rows
+from vnpy_ashare.screener.recipe import resolve_recipe
+from vnpy_ashare.screener.recipe_runner import build_reason_summary
+from vnpy_ashare.screener.rules import apply_quote_preset
+from vnpy_ashare.screener.run_store import (
+    delete_run,
+    get_run,
+    is_auto_run,
+    is_run_unread,
+    is_strategy_run,
+    list_runs,
+    mark_run_read,
+    save_run,
+)
+from vnpy_ashare.screener.runner import (
+    ScreenerRequest,
+    ScreenerRunResult,
+    build_scheme_config,
+    list_all_preset_names,
+    run_screener,
+)
+from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.services.base import BaseService
+from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
 AVAILABLE_SCREENERS = list_builtin_preset_names()
 
@@ -35,18 +71,12 @@ class ScreeningService(BaseService):
     """执行选股条件，返回候选标的。"""
 
     def list_screeners(self) -> list[str]:
-        from vnpy_ashare.screener.runner import list_all_preset_names
-
         return list_all_preset_names(include_saved=True)
 
     def list_quote_screeners(self) -> list[str]:
-        from vnpy_ashare.screener.presets import list_quote_preset_names
-
         return list_quote_preset_names()
 
     def list_tushare_screeners(self) -> list[str]:
-        from vnpy_ashare.screener.presets import list_tushare_preset_names
-
         return list_tushare_preset_names()
 
     def load_quote_rows(self) -> tuple[list[dict[str, Any]] | None, str | None]:
@@ -55,15 +85,11 @@ class ScreeningService(BaseService):
         if quote_svc is not None:
             cached = quote_svc.get_market_quotes_cache()
         else:
-            from vnpy_ashare.ai.context_store import get_market_quotes_cache
-
             cached = get_market_quotes_cache()
         if cached:
             return cached, None
 
         try:
-            from vnpy_ashare.screener.quotes_loader import load_market_quote_rows
-
             snapshot = load_market_quote_rows()
             return snapshot.rows, None
         except Exception as ex:
@@ -80,8 +106,6 @@ class ScreeningService(BaseService):
         *,
         top_n: int = 20,
     ) -> list[dict[str, Any]]:
-        from vnpy_ashare.screener.rules import apply_quote_preset
-
         return apply_quote_preset(name, quotes, top_n=top_n)
 
     def screen_quote_preset(self, name: str, *, top_n: int = 20) -> list[dict[str, Any]]:
@@ -95,12 +119,6 @@ class ScreeningService(BaseService):
         return run_screener(request)
 
     def run_pattern_screen(self, pattern: str, *, top_n: int = 20) -> ScreenerRunResult:
-        from vnpy_ashare.screener.pattern_screen import (
-            PatternScreenInput,
-            resolve_pattern_screen,
-            run_pattern_screen,
-        )
-
         pattern_id, error = resolve_pattern_screen(PatternScreenInput(pattern=pattern, top_n=top_n))
         if error:
             raise ValueError(error)
@@ -143,8 +161,6 @@ class ScreeningService(BaseService):
         extra_config: dict[str, Any] | None = None,
     ) -> None:
         """自动/确认选股执行后统一落库（context_store + run_store）。"""
-        from vnpy_ashare.screener.run_store import save_run
-
         rows = list(result.rows)
         self.set_screening_results(
             condition=result.condition,
@@ -174,28 +190,18 @@ class ScreeningService(BaseService):
     # ── UI Facade（委托 screener 子模块，避免页面直连 store） ──
 
     def format_source_tag(self, source: str) -> str:
-        from vnpy_ashare.screener.data_source import resolve_result_source_tag
-
         return resolve_result_source_tag(source)
 
     def resolve_export_columns(self, rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
-        from vnpy_ashare.screener.export import resolve_export_columns
-
         return resolve_export_columns(rows)
 
     def export_csv(self, rows: list[dict[str, Any]], path: str) -> None:
-        from vnpy_ashare.screener.export import export_rows_to_csv
-
         export_rows_to_csv(rows, path)
 
     def get_run_record(self, run_id: str):
-        from vnpy_ashare.screener.run_store import get_run
-
         return get_run(run_id)
 
     def mark_run_read(self, run_id: str) -> None:
-        from vnpy_ashare.screener.run_store import mark_run_read
-
         mark_run_read(run_id)
 
     def save_manual_run(
@@ -204,77 +210,51 @@ class ScreeningService(BaseService):
         request: ScreenerRequest | None,
     ) -> None:
         """策略选股页手动运行后落库。"""
-        from vnpy_ashare.screener.runner import build_scheme_config
-
         config = build_scheme_config(request) if request else {}
         config["trigger"] = "manual"
         self.persist_run_result(result, extra_config=config)
 
     def list_schemes(self):
-        from vnpy_ashare.screener.scheme_store import list_schemes
-
         return list_schemes()
 
     def save_scheme(self, name: str, config: dict[str, Any]):
-        from vnpy_ashare.screener.scheme_store import save_scheme
-
         return save_scheme(name, config)
 
     def delete_scheme(self, scheme_id: str) -> None:
-        from vnpy_ashare.screener.scheme_store import delete_scheme
-
         delete_scheme(scheme_id)
 
     def get_preset(self, name: str):
-        from vnpy_ashare.screener.presets import get_preset
-
         return get_preset(name)
 
     @staticmethod
     def is_custom_preset(name: str) -> bool:
-        from vnpy_ashare.screener.presets import SCREENER_CUSTOM
-
         return name == SCREENER_CUSTOM
 
     def build_scheme_config(self, request: ScreenerRequest) -> dict[str, Any]:
-        from vnpy_ashare.screener.runner import build_scheme_config
-
         return build_scheme_config(request)
 
     # ── 运行历史（侧栏 / 收件箱） ──
 
     def list_run_history(self, limit: int = 40):
-        from vnpy_ashare.screener.run_store import list_runs
-
         return list_runs(limit=limit)
 
     def delete_run_record(self, run_id: str) -> None:
-        from vnpy_ashare.screener.run_store import delete_run
-
         delete_run(run_id)
 
     @staticmethod
     def is_auto_run_config(config: dict[str, Any] | None) -> bool:
-        from vnpy_ashare.screener.run_store import is_auto_run
-
         return is_auto_run(config)
 
     @staticmethod
     def is_strategy_run_config(config: dict[str, Any] | None) -> bool:
-        from vnpy_ashare.screener.run_store import is_strategy_run
-
         return is_strategy_run(config)
 
     @staticmethod
     def is_run_unread_config(config: dict[str, Any] | None) -> bool:
-        from vnpy_ashare.screener.run_store import is_run_unread
-
         return is_run_unread(config)
 
     def find_latest_auto_run_for_job(self, job_id: str):
         """定时任务完成后定位最新自动选股记录。"""
-        from vnpy_ashare.screener.run_store import is_auto_run, list_runs
-
         expected = f"scheduled_{job_id.removeprefix('screen_')}"
         for record in list_runs(limit=10):
             if not is_auto_run(record.config):
@@ -292,9 +272,6 @@ class ScreeningService(BaseService):
         recipe_id: str,
     ) -> None:
         """定时/配方自动选股落库。"""
-        from vnpy_ashare.screener.recipe import resolve_recipe
-        from vnpy_ashare.screener.recipe_runner import build_reason_summary
-
         recipe = resolve_recipe(recipe_id)
         reason = (
             build_reason_summary(
@@ -319,10 +296,6 @@ def persist_scheduled_recipe_run(
     recipe_id: str,
 ) -> None:
     """无 Engine 时定时选股落库（委托 run_store + context_store）。"""
-    from vnpy_ashare.screener.recipe import resolve_recipe
-    from vnpy_ashare.screener.recipe_runner import build_reason_summary
-    from vnpy_ashare.screener.run_store import save_run
-
     recipe = resolve_recipe(recipe_id)
     rows = list(result.rows)
     config: dict[str, Any] = {
@@ -353,8 +326,6 @@ def persist_scheduled_recipe_run(
 
 def publish_screener_page_context() -> None:
     """推送选股页 AI 上下文（含悬浮球 actions）。"""
-    from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
     ctx = _get_screening_results()
     if ctx is None or ctx.count == 0:
         extra = "当前无选股结果。请用户先在选股页运行方案，或询问如何设置筛选条件。"

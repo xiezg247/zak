@@ -17,6 +17,7 @@ from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.base import BaseService
+from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
 
 class QuoteService(BaseService):
@@ -65,8 +66,6 @@ class QuoteService(BaseService):
                 quote=quote,
                 bar_count=bar_count,
             )
-        from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
         set_ai_context(enrich_context_with_actions(data))
 
     def get_current_context(self) -> AiContextData:

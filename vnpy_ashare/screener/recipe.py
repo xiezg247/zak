@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from vnpy_ashare.screener.recipe_store import get_saved_recipe, list_saved_recipes
+
 TriggerKind = Literal["intraday", "post_close"]
 
 RECIPE_INTRADAY_MULTI = "intraday_multi"
@@ -179,8 +181,6 @@ def resolve_recipe(recipe_id: str) -> ScreenRecipe | None:
     if builtin is not None:
         return builtin
 
-    from vnpy_ashare.screener.recipe_store import get_saved_recipe
-
     saved = get_saved_recipe(rid)
     if saved is None:
         return None
@@ -205,8 +205,6 @@ def list_recipe_ids(*, trigger_kind: TriggerKind | None = None) -> list[str]:
 
 
 def list_recipe_catalog(*, trigger_kind: TriggerKind | None = None) -> list[RecipeCatalogEntry]:
-    from vnpy_ashare.screener.recipe_store import list_saved_recipes
-
     entries: list[RecipeCatalogEntry] = []
     for recipe in BUILTIN_RECIPES.values():
         if trigger_kind is not None and recipe.trigger_kind != trigger_kind:

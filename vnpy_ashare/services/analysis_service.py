@@ -11,8 +11,22 @@ if TYPE_CHECKING:
     from vnpy_ashare.engine import AshareEngine
     from vnpy_ashare.models import StockItem
 
+from strategies.registry import get_strategy_meta
+from strategies.signals import (
+    SUPPORTED_SIGNAL_STRATEGIES,
+    list_supported_signal_strategies,
+    summarize_double_ma_state,
+)
+from vnpy_ashare.ai.context_store import (
+    get_diagnose_result,
+    get_screening_results,
+    set_diagnose_result,
+)
 from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.screener.run_store import get_run
 from vnpy_ashare.services.base import BaseService
+from vnpy_ashare.services.report_sources import fetch_tushare_reports, report_fallback_enabled
+from vnpy_ashare.services.tdx_diagnose import run_tdx_diagnose
 
 _MCPExecute = Callable[[str, dict[str, Any]], str]
 
@@ -113,8 +127,6 @@ class AnalysisService(BaseService):
         lookback: int = 60,
         include_reports: bool = True,
     ) -> dict[str, Any]:
-        from vnpy_ashare.services.tdx_diagnose import run_tdx_diagnose
-
         del lookback  # 诊断改走通达信问小达，不再依赖本地 K 线根数
         return run_tdx_diagnose(
             symbol,
@@ -124,8 +136,6 @@ class AnalysisService(BaseService):
         )
 
     def _fetch_reports(self, item: StockItem) -> dict[str, Any]:
-        from vnpy_ashare.services.report_sources import fetch_tushare_reports, report_fallback_enabled
-
         bundle = self._fetch_tdx_reports(item.vt_symbol, item.symbol)
         if bundle.get("reports"):
             return bundle
@@ -284,13 +294,6 @@ class AnalysisService(BaseService):
         scope: str = "daily",
     ) -> dict[str, Any]:
         """基于本地 K 线计算策略规则信号（与回测策略逻辑一致）。"""
-        from strategies.registry import get_strategy_meta
-        from strategies.signals import (
-            SUPPORTED_SIGNAL_STRATEGIES,
-            list_supported_signal_strategies,
-            summarize_double_ma_state,
-        )
-
         item = parse_stock_symbol(symbol)
         if item is None:
             return {"error": f"无法解析代码: {symbol}"}
@@ -511,9 +514,6 @@ class AnalysisService(BaseService):
         batch_top_n: int = 0,
     ) -> dict[str, Any]:
         """读取选股结果；可选历史 run_id 与批量技术面快照。"""
-        from vnpy_ashare.ai.context_store import get_screening_results
-        from vnpy_ashare.screener.run_store import get_run
-
         screening_svc = getattr(self.engine, "screening_service", None)
 
         if run_id:
@@ -587,11 +587,7 @@ class AnalysisService(BaseService):
 
     def set_diagnose_result(self, payload: dict[str, Any] | None) -> None:
         """写入最近一次诊断结果，供 AI Skill ``get_diagnose_context`` 读取。"""
-        from vnpy_ashare.ai.context_store import set_diagnose_result
-
         set_diagnose_result(payload)
 
     def get_diagnose_result(self) -> dict[str, Any] | None:
-        from vnpy_ashare.ai.context_store import get_diagnose_result
-
         return get_diagnose_result()

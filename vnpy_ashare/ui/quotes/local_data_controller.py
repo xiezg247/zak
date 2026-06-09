@@ -8,6 +8,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.bar_access import iter_bar_overviews
 from vnpy_ashare.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -18,6 +19,15 @@ from vnpy_ashare.bar_health import (
 )
 from vnpy_ashare.calendar import last_trading_day
 from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.jobs.local_fill import (
+    BatchFillProgress,
+    BatchFillResult,
+    BatchGapFillProgress,
+    BatchGapFillResult,
+    count_scannable_daily_items,
+    count_stale_daily_items,
+    select_stale_daily_items,
+)
 from vnpy_ashare.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS, is_daily_scope, scope_display
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.ui.chart_panel import MINUTE_TAB_INDEX
@@ -93,8 +103,6 @@ class LocalDataController:
     @staticmethod
     def _fallback_overviews(scope: str):
         """BarService 不可用时经 bar_access 枚举本地 K 线概览。"""
-        from vnpy_ashare.bar_access import iter_bar_overviews
-
         return iter_bar_overviews(scope=scope)
 
     def update_batch_toolbar_buttons(self) -> None:
@@ -114,8 +122,6 @@ class LocalDataController:
         if page._thread_active(getattr(page, "_batch_fill_worker", None)):
             button.setEnabled(False)
             return
-        from vnpy_ashare.jobs.local_fill import count_stale_daily_items
-
         stale_count = count_stale_daily_items(page.all_stocks, page.bar_meta)
         button.setEnabled(stale_count > 0)
         button.setToolTip(f"对 {stale_count} 只过期标的增量补全日 K 到最新交易日" if stale_count else "当前列表无过期日 K")
@@ -136,8 +142,6 @@ class LocalDataController:
         if page._thread_active(getattr(page, "_batch_fill_worker", None)):
             button.setEnabled(False)
             return
-        from vnpy_ashare.jobs.local_fill import count_scannable_daily_items
-
         scannable = count_scannable_daily_items(page.all_stocks, page.bar_meta)
         button.setEnabled(scannable > 0)
         button.setToolTip(f"扫描并修复列表内 {scannable} 只日 K 的内部断层" if scannable else "当前列表无本地日 K")
@@ -152,8 +156,6 @@ class LocalDataController:
             return
         if page._thread_active(page._download_worker) or self._batch_worker_active():
             return
-
-        from vnpy_ashare.jobs.local_fill import count_stale_daily_items, select_stale_daily_items
 
         items = select_stale_daily_items(page.all_stocks, page.bar_meta)
         if not items:
@@ -180,8 +182,6 @@ class LocalDataController:
         page._batch_fill_worker = worker
 
         def on_progress(progress: object) -> None:
-            from vnpy_ashare.jobs.local_fill import BatchFillProgress
-
             if not isinstance(progress, BatchFillProgress):
                 return
             page.status_label.setText(f"批量补全 ({progress.current}/{progress.total}) {progress.label}...")
@@ -196,8 +196,6 @@ class LocalDataController:
                 page.show_kline(page.current_item)
                 self.check_bar_gaps(page.current_item)
             self.update_batch_toolbar_buttons()
-            from vnpy_ashare.jobs.local_fill import BatchFillResult
-
             if isinstance(result, BatchFillResult):
                 page.status_label.setText(result.message)
 
@@ -221,8 +219,6 @@ class LocalDataController:
             return
         if page._thread_active(page._download_worker) or self._batch_worker_active():
             return
-
-        from vnpy_ashare.jobs.local_fill import count_scannable_daily_items
 
         scannable = count_scannable_daily_items(page.all_stocks, page.bar_meta)
         if scannable == 0:
@@ -248,8 +244,6 @@ class LocalDataController:
         page._batch_gap_fill_worker = worker
 
         def on_progress(progress: object) -> None:
-            from vnpy_ashare.jobs.local_fill import BatchGapFillProgress
-
             if not isinstance(progress, BatchGapFillProgress):
                 return
             phase_label = "扫描断层" if progress.phase == "scan" else "修复断层"
@@ -265,8 +259,6 @@ class LocalDataController:
                 page.show_kline(page.current_item)
                 self.check_bar_gaps(page.current_item)
             self.update_batch_toolbar_buttons()
-            from vnpy_ashare.jobs.local_fill import BatchGapFillResult
-
             if isinstance(result, BatchGapFillResult):
                 page.status_label.setText(result.message)
 

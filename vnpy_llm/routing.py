@@ -6,6 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+from vnpy_llm.client import LlmClientError, create_openai_client
 from vnpy_llm.config import LlmConfig
 from vnpy_llm.intent import (
     BacktestIntent,
@@ -366,8 +367,6 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
 
 
 def _structured_parse(config: LlmConfig, messages: list[dict[str, str]], model_type: type) -> Any:
-    from vnpy_llm.client import LlmClientError, create_openai_client
-
     client = create_openai_client(config)
     try:
         response = client.beta.chat.completions.parse(

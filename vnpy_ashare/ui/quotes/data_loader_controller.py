@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy_ashare.bar_access import universe_exists
 from vnpy_ashare.engine_access import get_bar_service
 from vnpy_ashare.ui.quotes.workers import (
     MarketPageLoadWorker,
@@ -197,6 +198,5 @@ class DataLoaderController:
         bar_svc = get_bar_service(self._p._get_main_engine())
         if bar_svc is not None:
             return bar_svc.universe_exists()
-        from vnpy_ashare.bar_access import universe_exists
 
         return universe_exists()

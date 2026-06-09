@@ -8,6 +8,8 @@ from typing import Any
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
+from vnpy_ashare.ai.context import AiContextData
+from vnpy_ashare.ai.context_store import set_ai_context
 from vnpy_ashare.bar_access import (
     PeriodBarOverview,
     build_symbol_name_map,
@@ -17,6 +19,7 @@ from vnpy_ashare.bar_access import (
     universe_exists,
 )
 from vnpy_ashare.services.base import BaseService
+from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
 LOOKBACK_MAX = 250
 
@@ -97,10 +100,6 @@ class BarService(BaseService):
 
 def publish_data_manager_page_context() -> None:
     """推送数据管理页 AI 上下文。"""
-    from vnpy_ashare.ai.context import AiContextData
-    from vnpy_ashare.ai.context_store import set_ai_context
-    from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
     daily_symbols: set[tuple[str, str]] = set()
     minute_symbols: set[tuple[str, str]] = set()
     daily_bars = 0

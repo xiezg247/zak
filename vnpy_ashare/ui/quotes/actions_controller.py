@@ -16,6 +16,7 @@ from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quote_columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
+from vnpy_ashare.ui.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, NAV_MUTED_COLOR, RISE_COLOR
 
 if TYPE_CHECKING:
@@ -423,8 +424,6 @@ class ActionsController:
         menu.popup(page.market_table.viewport().mapToGlobal(pos))
 
     def open_reference_peer(self, item: StockItem) -> None:
-        from vnpy_ashare.ui.reference_peer_dialog import show_reference_peer_dialog
-
         page = self._p
         service = page._get_watchlist_service()
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from vnpy_ashare.calendar import last_trading_day
@@ -412,7 +412,5 @@ def _std(values: list[float]) -> float:
 
 
 def _shift_trade_date(trade_date: str, offset: int) -> str:
-    from datetime import timedelta
-
     day = datetime.strptime(trade_date, "%Y%m%d").date()
     return (day + timedelta(days=offset)).strftime("%Y%m%d")

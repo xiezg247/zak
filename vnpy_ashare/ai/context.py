@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from vnpy_ashare.config import exchange_to_cn
+from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.app_db import load_watchlist_rows
+from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE, exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 
@@ -113,8 +115,6 @@ class StockBinding:
 
 def resolve_assistant_stock_binding() -> StockBinding:
     """全屏助手：自选首只 → 否则写死默认标的。"""
-    from vnpy_ashare.app_db import load_watchlist_rows
-
     rows = load_watchlist_rows()
     if rows:
         symbol, exchange, name = rows[0]
@@ -134,9 +134,6 @@ def resolve_assistant_stock_binding() -> StockBinding:
 
 def resolve_vt_symbol(symbol: str, exchange_cn: str = "") -> str:
     """将代码 + 中文交易所名解析为工具可用的 vt_symbol（如 002230.SZSE）。"""
-    from vnpy_ashare.ai.symbol import parse_stock_symbol
-    from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE
-
     if exchange_cn:
         exchange = _CN_NAME_TO_EXCHANGE.get(exchange_cn)
         if exchange is not None:
@@ -410,9 +407,6 @@ def build_add_watchlist_prompt(vt_symbol: str, name: str = "") -> str:
 
 def is_symbol_in_watchlist(symbol: str, exchange_cn: str = "") -> bool:
     """判断标的是否已在自选池。"""
-    from vnpy_ashare.app_db import load_watchlist_rows
-    from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE
-
     if not symbol.strip():
         return False
     exchange = _CN_NAME_TO_EXCHANGE.get(exchange_cn) if exchange_cn else None

@@ -9,12 +9,14 @@ from typing import Any
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.engine_access import get_service
 from vnpy_ashare.events import EVENT_OPEN_BATCH_BACKTEST, BatchBacktestViewRequest
 from vnpy_ashare.screener.batch_actions import (
     BatchBacktestParams,
     load_batch_backtest_defaults,
     persist_batch_backtest_results,
 )
+from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.worker import ScreenerBatchBacktestWorker
 
@@ -49,8 +51,6 @@ class BatchBacktestFlow:
         *,
         timeout_ms: int = 3000,
     ) -> None:
-        from vnpy_ashare.ui.qt_helpers import release_thread
-
         worker = self._worker
         self._worker = None
         release_thread(retired, worker, timeout_ms=timeout_ms)
@@ -125,13 +125,9 @@ class BatchBacktestFlow:
         worker.start()
 
     def _release_worker(self, worker: ScreenerBatchBacktestWorker | None) -> None:
-        from vnpy_ashare.ui.qt_helpers import release_thread
-
         release_thread(self._retired_workers, worker)
 
     def _default_strategies(self) -> list[str]:
-        from vnpy_ashare.engine_access import get_service
-
         service = get_service(self.main_engine, "backtest_service")
         if service is None:
             return []

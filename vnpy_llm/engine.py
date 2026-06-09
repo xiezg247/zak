@@ -11,13 +11,14 @@ from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.ai.context import AiContextData
-from vnpy_ashare.ai.context_store import register_context_listener
+from vnpy_ashare.ai.context_store import get_ai_context, register_context_listener
 from vnpy_llm.client import LlmClientError, StreamCancelled, stream_chat_completion, stream_with_tools
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
 from vnpy_llm.routing import build_route_context
 from vnpy_llm.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.store import MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
+from vnpy_llm.tool_audit import log_tool_call
 from vnpy_llm.tool_labels import tool_display_name
 from vnpy_llm.tool_result import enrich_tool_result
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
@@ -112,8 +113,6 @@ class LlmEngine(BaseEngine):
     def get_context_text(self) -> str:
         parts: list[str] = []
         # 从 context_store 读取（QuotesPage 通过 set_ai_context 写入）
-        from vnpy_ashare.ai.context_store import get_ai_context
-
         ctx = get_ai_context()
         context_text = ctx.to_text()
         if context_text:
@@ -271,8 +270,6 @@ class LlmEngine(BaseEngine):
         context_text = self.get_context_text()
         if context_text:
             system_parts.append("\n【当前终端上下文】\n" + context_text)
-        from vnpy_ashare.ai.context_store import get_ai_context
-
         page_prompt = build_page_prompt(get_ai_context().page)
         if page_prompt:
             system_parts.append(page_prompt)
@@ -519,8 +516,6 @@ class LlmEngine(BaseEngine):
         finally:
             self._trace_finish_tool(step_id, result=result, success=success)
             try:
-                from vnpy_llm.tool_audit import log_tool_call
-
                 if result:
                     log_tool_call(
                         session_id=self.session_id,
@@ -575,8 +570,6 @@ class LlmEngine(BaseEngine):
         try:
             all_tools = self._get_openai_tools()
             if all_tools:
-                from vnpy_ashare.ai.context_store import get_ai_context
-
                 mcp_names = frozenset(spec.name for spec in self.mcp_engine.get_tool_specs())
                 route_ctx = build_route_context(
                     self.config,

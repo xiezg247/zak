@@ -28,6 +28,7 @@ from vnpy_ashare.bars import (
     load_watchlist,
 )
 from vnpy_ashare.calendar import last_trading_day
+from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.minute_periods import period_step
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
@@ -531,8 +532,6 @@ class BatchGapFillWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars
-
             result = batch_fill_gap_daily_bars(
                 self.items,
                 self.bar_meta,
@@ -564,8 +563,6 @@ class BatchFillWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.jobs.local_fill import batch_fill_stale_daily_bars
-
             result = batch_fill_stale_daily_bars(
                 self.items,
                 self.bar_meta,

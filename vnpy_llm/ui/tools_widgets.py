@@ -7,6 +7,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tools_status import ToolProviderState, ToolProviderStatus, ToolsStatusSnapshot
 from vnpy_llm.ui.styles import PANEL_STYLESHEET, TOOLS_WIDGET_STYLESHEET
+from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
 
 _STATE_LABELS: dict[ToolProviderState, str] = {
     "ready": "已就绪",
@@ -170,8 +171,6 @@ class AiToolsDialog(QtWidgets.QDialog):
         self.reload_requested.emit()
 
     def _open_audit(self) -> None:
-        from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
-
         show_ai_tool_audit_dialog(self.engine, self)
 
 

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.screener.batch_actions import batch_download_daily_bars, run_batch_backtests
+from vnpy_ashare.screener.recipe_runner import run_recipe_object
+from vnpy_ashare.screener.runner import ScreenerRequest, resolve_preset_input, run_screener
+
 
 class ScreenerRunWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
@@ -29,8 +33,6 @@ class ScreenerRunWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.screener.runner import ScreenerRequest, resolve_preset_input, run_screener
-
             if self.scheme_id:
                 request = ScreenerRequest(
                     preset="",
@@ -65,8 +67,6 @@ class ScreenerRecipeRunWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.screener.recipe_runner import run_recipe_object
-
             result = run_recipe_object(self.recipe, condition_prefix="配方")
             self.finished.emit(result, self.recipe_id)
         except Exception as ex:
@@ -83,8 +83,6 @@ class ScreenerBatchDownloadWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.screener.batch_actions import batch_download_daily_bars
-
             result = batch_download_daily_bars(self.rows)
             self.finished.emit(result)
         except Exception as ex:
@@ -109,8 +107,6 @@ class ScreenerBatchBacktestWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.screener.batch_actions import run_batch_backtests
-
             results = run_batch_backtests(self.main_engine, self.rows, self.params)
             self.finished.emit(results)
         except Exception as ex:

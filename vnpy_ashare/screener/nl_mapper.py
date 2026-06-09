@@ -19,7 +19,8 @@ from vnpy_ashare.screener.presets import (
     get_preset,
     list_builtin_preset_names,
 )
-from vnpy_ashare.screener.runner import ScreenerRequest
+from vnpy_ashare.screener.quotes_loader import load_market_quote_rows
+from vnpy_ashare.screener.runner import ScreenerRequest, resolve_preset_input
 from vnpy_ashare.screener.scheme_store import list_schemes
 
 ProposeKind = Literal["pending_confirm", "need_clarification", "error"]
@@ -116,8 +117,6 @@ def collect_warnings(*, source: str) -> list[str]:
             warnings.append("需要 .env 中配置 TUSHARE_TOKEN，否则无法执行 Tushare 选股。")
     else:
         try:
-            from vnpy_ashare.screener.quotes_loader import load_market_quote_rows
-
             load_market_quote_rows()
         except Exception as ex:
             warnings.append(f"Redis 全市场行情不可用（{ex}）。请先运行「工具 → 立即执行 → 行情采集」。")
@@ -167,8 +166,6 @@ def _resolve_request(data: ProposeInput) -> tuple[ScreenerRequest, str, str] | t
             return None, None, "未指定选股方案"
 
     if preset_name.startswith("我的 · "):
-        from vnpy_ashare.screener.runner import resolve_preset_input
-
         try:
             request = resolve_preset_input(preset_name)
         except ValueError as ex:

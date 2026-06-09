@@ -34,6 +34,7 @@ from vnpy_ashare.ai.backtest_context import (
 from vnpy_ashare.ai.context_store import BacktestSummary, get_backtest_summary_dict
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
+from vnpy_ashare.engine_access import get_backtest_service
 from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
 from vnpy_ashare.ui.backtest_page_shell import BacktestPageShell
@@ -326,11 +327,9 @@ class BacktesterWidget(VnpyBacktesterManager):
             self.write_log(f"已带入股票代码：{symbol}")
 
     def _get_last_backtest_summary(self) -> dict | None:
-        from vnpy_ashare.engine import APP_NAME, AshareEngine
-
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.backtest_service.get_last_summary()
+        backtest_service = get_backtest_service(self.main_engine)
+        if backtest_service is not None:
+            return backtest_service.get_last_summary()
         return get_backtest_summary_dict()
 
     def _ask_ai_for_backtest(self) -> None:
@@ -378,8 +377,6 @@ class BacktesterWidget(VnpyBacktesterManager):
         )
         summary_dict = summary.to_dict()
         self._write_backtest_summary_log(summary_dict)
-        from vnpy_ashare.engine_access import get_backtest_service
-
         backtest_service = get_backtest_service(self.main_engine)
         if backtest_service is not None:
             backtest_service.persist_summary(summary_dict, source="single")

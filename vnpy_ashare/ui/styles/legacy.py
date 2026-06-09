@@ -1,5 +1,7 @@
 """QSS：LEGACY_PAGE。"""
 
+from vnpy.trader.ui import QtWidgets
+
 LEGACY_PAGE_STYLESHEET = """
 QWidget#BacktestPage,
 QWidget#DataManagerPage {
@@ -122,8 +124,6 @@ def apply_legacy_page_style(widget, *, page_id: str) -> None:
 
 
 def style_legacy_form_inputs(widget, *, input_name: str = "BacktestInput") -> None:
-    from vnpy.trader.ui import QtWidgets
-
     for line in widget.findChildren(QtWidgets.QLineEdit):
         if line.objectName() in ("SearchBox", "PageJumpInput", "BacktestInput"):
             continue
@@ -138,8 +138,6 @@ def style_legacy_push_buttons(
     primary_labels: frozenset[str] = _PRIMARY_ACTION_LABELS,
     skip: frozenset[str] = frozenset({"SecondaryButton", "ActionButton", "PrimaryRunButton", "DangerButton"}),
 ) -> None:
-    from vnpy.trader.ui import QtWidgets
-
     for btn in widget.findChildren(QtWidgets.QPushButton):
         name = btn.objectName()
         if name in skip:
@@ -152,8 +150,6 @@ def style_legacy_push_buttons(
 
 def apply_toolbar_combo_style(combo) -> None:
     """工具栏下拉：深色背景 + 高对比选项（macOS 需自定义 QListView）。"""
-    from vnpy.trader.ui import QtWidgets
-
     combo.setObjectName("ToolbarCombo")
     view = QtWidgets.QListView(combo)
     view.setObjectName("ToolbarComboList")
@@ -163,8 +159,6 @@ def apply_toolbar_combo_style(combo) -> None:
 
 def apply_settings_combo_style(combo) -> None:
     """配置页下拉：macOS 深色选项列表。"""
-    from vnpy.trader.ui import QtWidgets
-
     combo.setObjectName("SettingsInput")
     view = QtWidgets.QListView(combo)
     view.setObjectName("SettingsComboList")

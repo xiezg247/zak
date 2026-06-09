@@ -7,6 +7,13 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.engine_access import get_screening_service
+from vnpy_ashare.screener.run_store import (
+    delete_run,
+    is_auto_run,
+    is_run_unread,
+    is_strategy_run,
+    list_runs,
+)
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 
 if TYPE_CHECKING:
@@ -43,7 +50,6 @@ def _list_runs(main_engine: MainEngine | None, limit: int = 40):
     service = _screening_from_engine(main_engine)
     if service is not None:
         return service.list_run_history(limit)
-    from vnpy_ashare.screener.run_store import list_runs
 
     return list_runs(limit=limit)
 
@@ -53,7 +59,6 @@ def _delete_run(main_engine: MainEngine | None, run_id: str) -> None:
     if service is not None:
         service.delete_run_record(run_id)
         return
-    from vnpy_ashare.screener.run_store import delete_run
 
     delete_run(run_id)
 
@@ -62,7 +67,6 @@ def _is_auto_run(main_engine: MainEngine | None, config) -> bool:
     service = _screening_from_engine(main_engine)
     if service is not None:
         return service.is_auto_run_config(config)
-    from vnpy_ashare.screener.run_store import is_auto_run
 
     return is_auto_run(config)
 
@@ -71,7 +75,6 @@ def _is_strategy_run(main_engine: MainEngine | None, config) -> bool:
     service = _screening_from_engine(main_engine)
     if service is not None:
         return service.is_strategy_run_config(config)
-    from vnpy_ashare.screener.run_store import is_strategy_run
 
     return is_strategy_run(config)
 
@@ -80,7 +83,6 @@ def _is_run_unread(main_engine: MainEngine | None, config) -> bool:
     service = _screening_from_engine(main_engine)
     if service is not None:
         return service.is_run_unread_config(config)
-    from vnpy_ashare.screener.run_store import is_run_unread
 
     return is_run_unread(config)
 

@@ -11,7 +11,7 @@ from vnpy_ashare.screener.data_source import (
     load_screening_quote_snapshot,
 )
 from vnpy_ashare.screener.export import resolve_export_columns
-from vnpy_ashare.screener.presets import SCREENER_CUSTOM, PresetDefinition, get_preset
+from vnpy_ashare.screener.presets import SCREENER_CUSTOM, PresetDefinition, get_preset, list_builtin_preset_names
 from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.rules import (
     apply_large_cap,
@@ -19,7 +19,7 @@ from vnpy_ashare.screener.rules import (
     apply_moneyflow_in,
     apply_quote_preset,
 )
-from vnpy_ashare.screener.scheme_store import SavedScheme, get_scheme
+from vnpy_ashare.screener.scheme_store import SavedScheme, get_scheme, list_schemes
 
 
 @dataclass
@@ -140,9 +140,6 @@ def build_scheme_config(request: ScreenerRequest) -> dict[str, Any]:
 
 
 def list_all_preset_names(*, include_saved: bool = True) -> list[str]:
-    from vnpy_ashare.screener.presets import list_builtin_preset_names
-    from vnpy_ashare.screener.scheme_store import list_schemes
-
     names = list_builtin_preset_names()
     if include_saved:
         for scheme in list_schemes():
@@ -154,7 +151,6 @@ def resolve_preset_input(preset_label: str) -> ScreenerRequest:
     label = preset_label.strip()
     if label.startswith("我的 · "):
         scheme_name = label.removeprefix("我的 · ").strip()
-        from vnpy_ashare.screener.scheme_store import list_schemes
 
         for scheme in list_schemes():
             if scheme.name == scheme_name:

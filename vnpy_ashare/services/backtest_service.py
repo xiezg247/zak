@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 from strategies.registry import (
     STRATEGY_REGISTRY,
 )
+from vnpy_ashare.ai.context_store import sync_backtest_summary_dict
 from vnpy_ashare.backtest.run_store import (
     get_latest_backtest_run,
     list_backtest_runs,
@@ -50,8 +51,6 @@ class BacktestService(BaseService):
         payload = dict(summary)
         self.set_last_summary(payload)
         save_backtest_summary_dict(payload, source=source)
-        from vnpy_ashare.ai.context_store import sync_backtest_summary_dict
-
         sync_backtest_summary_dict(payload)
 
     def get_last_summary(self) -> dict[str, Any] | None:
@@ -63,8 +62,6 @@ class BacktestService(BaseService):
             return None
         summary = latest.to_summary_dict()
         self._last_summary = summary
-        from vnpy_ashare.ai.context_store import sync_backtest_summary_dict
-
         sync_backtest_summary_dict(summary)
         return dict(summary)
 

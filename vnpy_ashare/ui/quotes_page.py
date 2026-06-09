@@ -22,6 +22,7 @@ from vnpy_ashare.engine_access import (
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
 from vnpy_ashare.ui.chart_panel import ChartPanel
 from vnpy_ashare.ui.depth_panel import DepthPanel
@@ -31,6 +32,7 @@ from vnpy_ashare.ui.quotes.actions_controller import ActionsController
 from vnpy_ashare.ui.quotes.batch_backtest_controller import WatchlistBatchBacktestController
 from vnpy_ashare.ui.quotes.data_loader_controller import DataLoaderController
 from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController
+from vnpy_ashare.ui.quotes.page_shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
 from vnpy_ashare.ui.quotes.quote_stream_controller import QuoteStreamController
 from vnpy_ashare.ui.quotes.table_controller import TableController
@@ -48,6 +50,7 @@ from vnpy_ashare.ui.quotes.workers import (
 from vnpy_ashare.ui.quotes_config import (
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
+    quote_source_label,
 )
 
 
@@ -148,8 +151,6 @@ class QuotesPage(QtWidgets.QWidget):
         return self._table.build_visible_headers()
 
     def _init_ui(self) -> None:
-        from vnpy_ashare.ui.quotes.page_shell import QuotesPageShell
-
         QuotesPageShell(self).build()
 
     def activate(self) -> None:
@@ -315,9 +316,6 @@ class QuotesPage(QtWidgets.QWidget):
         self._actions.emit_ai_context()
 
     def _update_quote_source_label(self) -> None:
-        from vnpy_ashare.quotes.provider import is_gateway_quote_active
-        from vnpy_ashare.ui.quotes_config import quote_source_label
-
         label = getattr(self, "quote_source_label", None)
         if label is None:
             return

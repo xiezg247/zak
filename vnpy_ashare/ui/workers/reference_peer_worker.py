@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.screener.reference_peer import ReferencePeerCancelled, run_reference_peer_screen
+
 
 class ReferencePeerWorker(QtCore.QThread):
     progress = QtCore.Signal(str)
@@ -25,11 +27,6 @@ class ReferencePeerWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.screener.reference_peer import (
-                ReferencePeerCancelled,
-                run_reference_peer_screen,
-            )
-
             if self.isInterruptionRequested():
                 return
             result = run_reference_peer_screen(

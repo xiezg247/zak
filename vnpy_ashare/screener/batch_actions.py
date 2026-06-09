@@ -12,6 +12,7 @@ from typing import Any
 from vnpy.trader.constant import Exchange, Interval
 
 from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.backtest.run_store import save_backtest_run
 from vnpy_ashare.bars import download_bars
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.jobs.result import JobResult
@@ -187,8 +188,6 @@ def persist_batch_backtest_results(
     source: str = "batch_screener",
 ) -> str:
     """批量回测结果落库，返回 batch_id。"""
-    from vnpy_ashare.backtest.run_store import save_backtest_run
-
     batch_id = uuid.uuid4().hex
     interval = params.interval.value if hasattr(params.interval, "value") else str(params.interval)
     start_text = params.start.strftime("%Y-%m-%d")

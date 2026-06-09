@@ -4,6 +4,21 @@ from __future__ import annotations
 
 import json
 
+from vnpy_ashare.screener.auto_screen import AutoScreenInput, resolve_auto_screen_request
+from vnpy_ashare.screener.draft_store import save_draft
+from vnpy_ashare.screener.nl_mapper import (
+    ProposeInput,
+    preset_catalog_for_prompt,
+    try_fast_path,
+    validate_and_build,
+)
+from vnpy_ashare.screener.pattern_screen import (
+    PatternScreenInput,
+    list_pattern_screeners,
+    resolve_pattern_screen,
+)
+from vnpy_ashare.screener.presets import get_preset
+from vnpy_ashare.screener.runner import ScreenerRequest, list_all_preset_names, run_screener
 from vnpy_skills.base import SkillTemplate, ToolSpec
 
 
@@ -112,10 +127,6 @@ class VnpyScreeningSkill(SkillTemplate):
         return svc
 
     def list_screeners(self) -> str:
-        from vnpy_ashare.screener.nl_mapper import preset_catalog_for_prompt
-        from vnpy_ashare.screener.pattern_screen import list_pattern_screeners
-        from vnpy_ashare.screener.runner import list_all_preset_names
-
         names = list_all_preset_names(include_saved=True)
         return json.dumps(
             {
@@ -139,9 +150,6 @@ class VnpyScreeningSkill(SkillTemplate):
         scheme_name: str | None = None,
         confidence: str = "medium",
     ) -> str:
-        from vnpy_ashare.screener.draft_store import save_draft
-        from vnpy_ashare.screener.nl_mapper import ProposeInput, try_fast_path, validate_and_build
-
         intent_text = (intent or "").strip()
         if not intent_text:
             return json.dumps(
@@ -198,9 +206,6 @@ class VnpyScreeningSkill(SkillTemplate):
         )
 
     def run_screener(self, name: str, top_n: int = 10) -> str:
-        from vnpy_ashare.screener.presets import get_preset
-        from vnpy_ashare.screener.runner import ScreenerRequest, run_screener
-
         preset = get_preset(name)
         if preset is not None and preset.source == "tushare":
             try:
@@ -246,8 +251,6 @@ class VnpyScreeningSkill(SkillTemplate):
         )
 
     def screen_by_pattern(self, pattern: str, top_n: int = 20) -> str:
-        from vnpy_ashare.screener.pattern_screen import PatternScreenInput, resolve_pattern_screen
-
         pattern_id, error = resolve_pattern_screen(PatternScreenInput(pattern=pattern, top_n=top_n))
         if error:
             return json.dumps({"status": "error", "message": error}, ensure_ascii=False)
@@ -305,8 +308,6 @@ class VnpyScreeningSkill(SkillTemplate):
         max_change_pct: float | None = None,
         min_turnover: float | None = None,
     ) -> str:
-        from vnpy_ashare.screener.auto_screen import AutoScreenInput, resolve_auto_screen_request
-
         resolved = resolve_auto_screen_request(
             AutoScreenInput(
                 name=name,

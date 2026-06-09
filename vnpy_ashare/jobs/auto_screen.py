@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from vnpy_ashare.calendar import is_trading_day
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.market_hours import is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.scheduler.config import load_scheduler_config
 from vnpy_ashare.screener.recipe import (
     RECIPE_INTRADAY_MULTI,
     RECIPE_POST_CLOSE_MULTI,
@@ -28,8 +29,6 @@ _SCREEN_JOB_RECIPES = {
 
 
 def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
-    from vnpy_ashare.scheduler.config import load_scheduler_config
-
     default_recipe_id = _SCREEN_JOB_RECIPES.get(job_id)
     if default_recipe_id is None:
         return JobResult(success=False, message=f"未知自动选股任务：{job_id}")
