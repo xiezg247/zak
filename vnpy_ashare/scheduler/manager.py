@@ -22,6 +22,7 @@ from vnpy_ashare.jobs import (
     collect_market_quotes,
     sync_universe_job,
 )
+from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
 
@@ -62,8 +63,8 @@ class _JobMeta:
     description: str
     runner: Callable[[], JobResult]
     config_attr: str
-    schedule_builder: Callable[[JobConfig], Any]
-    schedule_text_builder: Callable[[JobConfig], str]
+    schedule_builder: Callable[[Any], Any]
+    schedule_text_builder: Callable[[Any], str]
 
 
 class TaskSchedulerManager:
@@ -124,6 +125,34 @@ class TaskSchedulerManager:
                 schedule_text_builder=lambda cfg: (
                     f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，"
                     f"起始于 {cfg.download_start}"
+                ),
+            ),
+            "screen_intraday": _JobMeta(
+                job_id="screen_intraday",
+                name="盘中自动选股",
+                description="交易时段多维度选股（动量+换手），结果写入选股历史",
+                runner=lambda: run_scheduled_auto_screen("screen_intraday"),
+                config_attr="screen_intraday",
+                schedule_builder=lambda _cfg: CronTrigger(hour="10,14", minute=0),
+                schedule_text_builder=lambda cfg: (
+                    f"交易日 {cfg.cron_hours}:{cfg.cron_minute_intraday:02d} · "
+                    f"配方 {cfg.recipe_id or 'intraday_multi'}"
+                ),
+            ),
+            "screen_post_close": _JobMeta(
+                job_id="screen_post_close",
+                name="盘后自动选股",
+                description="收盘后多维度选股（资金+估值+动量），结果写入选股历史",
+                runner=lambda: run_scheduled_auto_screen("screen_post_close"),
+                config_attr="screen_post_close",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: (
+                    f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · "
+                    f"配方 {cfg.recipe_id or 'post_close_multi'}"
                 ),
             ),
         }
@@ -292,9 +321,24 @@ class TaskSchedulerManager:
                     self._schedule_collect_quotes(prefer_immediate=True)
                 continue
             meta = self._jobs[job_id]
+            if job_id == "screen_intraday":
+                hours = [h.strip() for h in cfg.cron_hours.split(",") if h.strip()]
+                trigger = CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=hours or "10,14",
+                    minute=cfg.cron_minute_intraday,
+                )
+            elif job_id == "screen_post_close":
+                trigger = CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                )
+            else:
+                trigger = meta.schedule_builder(cfg)
             self._scheduler.add_job(
                 self._wrap_job,
-                trigger=meta.schedule_builder(cfg),
+                trigger=trigger,
                 id=job_id,
                 name=meta.name,
                 kwargs={"job_id": job_id},
@@ -328,7 +372,11 @@ class TaskSchedulerManager:
             return False
         if job_id in self._running_jobs:
             return False
-        force = job_id == _COLLECT_QUOTES_JOB_ID
+        force = job_id in (
+            _COLLECT_QUOTES_JOB_ID,
+            "screen_intraday",
+            "screen_post_close",
+        )
         self._scheduler.add_job(
             self._wrap_job,
             kwargs={"job_id": job_id, "force": force},
@@ -351,6 +399,8 @@ class TaskSchedulerManager:
         try:
             if job_id == _COLLECT_QUOTES_JOB_ID:
                 result = self._run_collect_quotes(force=force)
+            elif job_id in ("screen_intraday", "screen_post_close"):
+                result = run_scheduled_auto_screen(job_id, force=force)
             else:
                 result = meta.runner()
             message = result.message

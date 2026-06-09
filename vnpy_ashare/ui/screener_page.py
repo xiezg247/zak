@@ -26,7 +26,7 @@ from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
 from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult, build_scheme_config, list_all_preset_names
-from vnpy_ashare.screener.run_store import get_run, save_run
+from vnpy_ashare.screener.run_store import get_run, mark_run_read, save_run
 from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.qt_helpers import release_thread
@@ -411,12 +411,14 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             updated_at=result.updated_at,
         )
         request, _ = self._build_request()
+        config = build_scheme_config(request) if request else {}
+        config["trigger"] = "manual"
         save_run(
             condition=result.condition,
             source=result.source,
             rows=self._results,
             total_scanned=result.total_scanned,
-            config=build_scheme_config(request) if request else {},
+            config=config,
         )
         updated = result.updated_at or "-"
         source_label = resolve_result_source_tag(result.source)
@@ -456,6 +458,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if record is None:
             self._status_label.setText("历史运行不存在或已删除")
             return
+        mark_run_read(run_id)
         self._results = list(record.rows)
         self._result_columns = resolve_export_columns(self._results)
         self._populate_results(self._results)
@@ -465,14 +468,22 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             updated_at=record.created_at,
         )
         source_label = resolve_result_source_tag(record.source)
+        trigger = str(record.config.get("trigger", ""))
+        trigger_note = ""
+        if trigger == "manual":
+            trigger_note = "手动 · "
+        elif trigger.startswith("scheduled_"):
+            reason = record.config.get("reason_summary") or trigger.removeprefix("scheduled_")
+            trigger_note = f"自动 · {reason} · "
         self._summary_label.setText(
-            f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · "
+            f"[历史] {trigger_note}「{record.condition}」命中 {len(self._results)} 条 · "
             f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
         )
         self._status_label.setText(
-            f"[历史] 「{record.condition}」{len(self._results)} 条 · "
+            f"[历史] {trigger_note}「{record.condition}」{len(self._results)} 条 · "
             f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
         )
+        self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
 
     def _on_screen_failed(self, message: str) -> None:
@@ -528,6 +539,10 @@ class ScreenerPageWidget(QtWidgets.QWidget):
                     change_pct = float(value or 0)
                     color = RISE_COLOR if change_pct > 0 else FALL_COLOR if change_pct < 0 else FLAT_COLOR
                     item.setForeground(QtGui.QColor(color))
+                elif key == "hit_reason":
+                    item.setTextAlignment(
+                        QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+                    )
                 self.result_table.setItem(row_index, col_index, item)
 
     def _iter_checked_rows(self) -> list[dict[str, Any]]:

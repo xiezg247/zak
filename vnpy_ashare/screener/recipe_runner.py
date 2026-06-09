@@ -1,0 +1,285 @@
+"""多维度选股配方执行。"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
+
+from vnpy_ashare.screener.data_source import (
+    fetch_fundamental_screening_rows,
+    fetch_moneyflow_with_fallback,
+    load_screening_quote_snapshot,
+)
+from vnpy_ashare.screener.export import resolve_export_columns
+from vnpy_ashare.screener.presets import SCREENER_CHANGE_TOP, SCREENER_TURNOVER
+from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.recipe import ScreenRecipe, get_recipe
+from vnpy_ashare.screener.rules import (
+    apply_low_pe,
+    apply_moneyflow_in,
+    apply_quote_preset,
+)
+from vnpy_ashare.screener.runner import ScreenerRunResult
+
+
+@dataclass
+class _DimensionHit:
+    vt_symbol: str
+    dimension_id: str
+    label: str
+    weight: float
+    score: float
+    reason: str
+    row: dict[str, Any]
+
+
+def run_recipe(recipe_id: str, *, top_n: int | None = None) -> ScreenerRunResult:
+    recipe = get_recipe(recipe_id)
+    if recipe is None:
+        raise ValueError(f"未知选股配方：{recipe_id}")
+
+    limit = top_n or recipe.top_n
+    hits_by_symbol: dict[str, list[_DimensionHit]] = {}
+    total_scanned = 0
+
+    for spec in recipe.dimensions:
+        dimension_hits, scanned = _run_dimension(spec, recipe.pool_size)
+        total_scanned = max(total_scanned, scanned)
+        for hit in dimension_hits:
+            hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
+
+    merged_rows: list[dict[str, Any]] = []
+    for vt_symbol, hits in hits_by_symbol.items():
+        if len(hits) < recipe.min_dimensions:
+            continue
+        weight_sum = sum(item.weight for item in hits)
+        composite = sum(item.score * item.weight for item in hits) / max(weight_sum, 1e-6)
+        base = _merge_rows([item.row for item in hits])
+        reasons = [item.reason for item in hits]
+        base["composite_score"] = round(composite, 1)
+        base["hit_reasons"] = reasons
+        base["hit_reason"] = reasons[0] if len(reasons) == 1 else "；".join(reasons[:2])
+        base["dimensions"] = {item.dimension_id: round(item.score, 1) for item in hits}
+        base["source"] = "recipe"
+        merged_rows.append(base)
+
+    merged_rows.sort(
+        key=lambda row: (
+            float(row.get("composite_score") or 0),
+            len(row.get("hit_reasons") or []),
+        ),
+        reverse=True,
+    )
+    rows = merged_rows[: max(1, min(int(limit), 200))]
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return ScreenerRunResult(
+        rows=rows,
+        condition=f"自动 · {recipe.name}",
+        updated_at=now,
+        total_scanned=total_scanned,
+        source="recipe",
+        columns=resolve_export_columns(rows),
+    )
+
+
+def build_reason_summary(*, recipe: ScreenRecipe, trigger: str, row_count: int) -> str:
+    trigger_label = {
+        "scheduled_intraday": "盘中自动",
+        "scheduled_post_close": "盘后自动",
+    }.get(trigger, trigger)
+    dims = " + ".join(spec.label for spec in recipe.dimensions)
+    return f"{trigger_label} · {recipe.name}（{dims}）· 命中 {row_count} 条"
+
+
+def _run_dimension(
+    spec,
+    pool_size: int,
+) -> tuple[list[_DimensionHit], int]:
+    if spec.dimension_id == "momentum":
+        return _dimension_momentum(pool_size)
+    if spec.dimension_id == "turnover":
+        return _dimension_turnover(pool_size)
+    if spec.dimension_id == "moneyflow":
+        return _dimension_moneyflow(pool_size)
+    if spec.dimension_id == "low_pe":
+        return _dimension_low_pe(pool_size)
+    return [], 0
+
+
+def _dimension_momentum(pool_size: int) -> tuple[list[_DimensionHit], int]:
+    try:
+        snapshot = load_screening_quote_snapshot()
+        rows = apply_quote_preset(SCREENER_CHANGE_TOP, snapshot.rows, top_n=pool_size)
+        return _quote_hits(
+            rows,
+            dimension_id="momentum",
+            label="动量",
+            weight=_weight_for("momentum"),
+            reason_builder=lambda row, rank: (
+                f"动量：涨幅 {float(row.get('change_pct') or 0):+.2f}%，排名第 {rank}"
+            ),
+        ), snapshot.total
+    except MarketQuotesLoadError:
+        raw_rows, trade_date, _ = fetch_fundamental_screening_rows()
+        if not raw_rows:
+            return [], 0
+        sorted_rows = sorted(
+            raw_rows,
+            key=lambda item: float(item.get("pct_chg") or item.get("change_pct") or 0),
+            reverse=True,
+        )[:pool_size]
+        hits: list[_DimensionHit] = []
+        for index, row in enumerate(sorted_rows, start=1):
+            vt_symbol = str(row.get("vt_symbol") or "")
+            if not vt_symbol:
+                continue
+            pct = float(row.get("pct_chg") or row.get("change_pct") or 0)
+            score = _rank_score(index, len(sorted_rows))
+            hits.append(
+                _DimensionHit(
+                    vt_symbol=vt_symbol,
+                    dimension_id="momentum",
+                    label="动量",
+                    weight=_weight_for("momentum"),
+                    score=score,
+                    reason=f"动量：日涨幅 {pct:+.2f}%，排名第 {index}",
+                    row=_fundamental_base_row(row),
+                )
+            )
+        return hits, len(raw_rows)
+
+
+def _dimension_turnover(pool_size: int) -> tuple[list[_DimensionHit], int]:
+    try:
+        snapshot = load_screening_quote_snapshot()
+        rows = apply_quote_preset(SCREENER_TURNOVER, snapshot.rows, top_n=pool_size)
+        return _quote_hits(
+            rows,
+            dimension_id="turnover",
+            label="换手",
+            weight=_weight_for("turnover"),
+            reason_builder=lambda row, rank: (
+                f"换手：{float(row.get('turnover_rate') or 0):.2f}%，排名第 {rank}"
+            ),
+        ), snapshot.total
+    except MarketQuotesLoadError:
+        return [], 0
+
+
+def _dimension_moneyflow(pool_size: int) -> tuple[list[_DimensionHit], int]:
+    raw_rows, _trade_date = fetch_moneyflow_with_fallback()
+    if not raw_rows:
+        return [], 0
+    rows = apply_moneyflow_in(raw_rows, top_n=pool_size)
+    hits: list[_DimensionHit] = []
+    for index, row in enumerate(rows, start=1):
+        vt_symbol = str(row.get("vt_symbol") or "")
+        if not vt_symbol:
+            continue
+        amount = float(row.get("net_mf_amount") or 0)
+        hits.append(
+            _DimensionHit(
+                vt_symbol=vt_symbol,
+                dimension_id="moneyflow",
+                label="资金",
+                weight=_weight_for("moneyflow"),
+                score=_rank_score(index, len(rows)),
+                reason=f"资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
+                row=dict(row),
+            )
+        )
+    return hits, len(raw_rows)
+
+
+def _dimension_low_pe(pool_size: int) -> tuple[list[_DimensionHit], int]:
+    raw_rows, _trade_date, _ = fetch_fundamental_screening_rows()
+    if not raw_rows:
+        return [], 0
+    rows = apply_low_pe(raw_rows, top_n=pool_size)
+    hits: list[_DimensionHit] = []
+    for index, row in enumerate(rows, start=1):
+        vt_symbol = str(row.get("vt_symbol") or "")
+        if not vt_symbol:
+            continue
+        pe = float(row.get("pe_ttm") or 0)
+        hits.append(
+            _DimensionHit(
+                vt_symbol=vt_symbol,
+                dimension_id="low_pe",
+                label="估值",
+                weight=_weight_for("low_pe"),
+                score=_rank_score(index, len(rows)),
+                reason=f"估值：PE(TTM) {pe:.2f}，排名第 {index}",
+                row=dict(row),
+            )
+        )
+    return hits, len(raw_rows)
+
+
+def _quote_hits(
+    rows: list[dict[str, Any]],
+    *,
+    dimension_id: str,
+    label: str,
+    weight: float,
+    reason_builder,
+) -> list[_DimensionHit]:
+    hits: list[_DimensionHit] = []
+    for index, row in enumerate(rows, start=1):
+        vt_symbol = str(row.get("vt_symbol") or "")
+        if not vt_symbol:
+            continue
+        hits.append(
+            _DimensionHit(
+                vt_symbol=vt_symbol,
+                dimension_id=dimension_id,
+                label=label,
+                weight=weight,
+                score=_rank_score(index, len(rows)),
+                reason=reason_builder(row, index),
+                row=dict(row),
+            )
+        )
+    return hits
+
+
+def _rank_score(rank: int, total: int) -> float:
+    if total <= 0:
+        return 0.0
+    return round(max(0.0, (total - rank + 1) / total * 100), 1)
+
+
+def _weight_for(dimension_id: str) -> float:
+    for recipe in (get_recipe("intraday_multi"), get_recipe("post_close_multi")):
+        if recipe is None:
+            continue
+        for spec in recipe.dimensions:
+            if spec.dimension_id == dimension_id:
+                return spec.weight
+    return 1.0
+
+
+def _merge_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for row in rows:
+        for key, value in row.items():
+            if key in merged and merged[key] not in (None, "", 0):
+                continue
+            if value not in (None, ""):
+                merged[key] = value
+    return merged
+
+
+def _fundamental_base_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "symbol": row.get("symbol", ""),
+        "name": row.get("name", ""),
+        "vt_symbol": row.get("vt_symbol", ""),
+        "close": row.get("close", 0),
+        "pe_ttm": row.get("pe_ttm", 0),
+        "pct_chg": row.get("pct_chg", row.get("change_pct", 0)),
+        "turnover_rate": row.get("turnover_rate", 0),
+        "source": row.get("source", "tushare"),
+    }

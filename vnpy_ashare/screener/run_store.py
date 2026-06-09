@@ -140,6 +140,36 @@ def delete_run(run_id: str) -> bool:
         return cursor.rowcount > 0
 
 
+def update_run_config(run_id: str, config: dict[str, Any]) -> bool:
+    payload = json.dumps(config, ensure_ascii=False)
+    with _connect() as conn:
+        cursor = conn.execute(
+            "UPDATE screener_runs SET config_json=? WHERE id=?",
+            (payload, run_id),
+        )
+        return cursor.rowcount > 0
+
+
+def mark_run_read(run_id: str) -> bool:
+    record = get_run(run_id)
+    if record is None:
+        return False
+    config = dict(record.config)
+    if config.get("read_at"):
+        return True
+    config["read_at"] = _now()
+    return update_run_config(run_id, config)
+
+
+def is_auto_run(config: dict[str, Any]) -> bool:
+    trigger = str(config.get("trigger", ""))
+    return trigger.startswith("scheduled_")
+
+
+def is_run_unread(config: dict[str, Any]) -> bool:
+    return is_auto_run(config) and not config.get("read_at")
+
+
 def _row_to_record(row: sqlite3.Row) -> ScreenerRunRecord:
     return ScreenerRunRecord(
         id=str(row["id"]),

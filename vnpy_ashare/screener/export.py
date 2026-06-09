@@ -29,6 +29,18 @@ _FUNDAMENTAL_COLUMNS = [
     ("trade_date", "交易日"),
 ]
 
+_RECIPE_COLUMNS = [
+    ("symbol", "代码"),
+    ("name", "名称"),
+    ("vt_symbol", "合约"),
+    ("composite_score", "综合分"),
+    ("hit_reason", "入选原因"),
+    ("change_pct", "涨幅%"),
+    ("turnover_rate", "换手%"),
+    ("pe_ttm", "PE TTM"),
+    ("net_mf_amount", "主力净流入(万)"),
+]
+
 _MONEYFLOW_COLUMNS = [
     ("symbol", "代码"),
     ("name", "名称"),
@@ -43,6 +55,8 @@ _MONEYFLOW_COLUMNS = [
 def resolve_export_columns(rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
     if not rows:
         return _QUOTE_COLUMNS
+    if "hit_reason" in rows[0] or "composite_score" in rows[0]:
+        return _RECIPE_COLUMNS
     source = str(rows[0].get("source", "quote"))
     if "net_mf_amount" in rows[0]:
         return _MONEYFLOW_COLUMNS

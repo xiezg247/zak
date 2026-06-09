@@ -129,6 +129,7 @@ class ScreeningService(BaseService):
         *,
         nl_source: str = "",
         draft_id: str = "",
+        trigger: str = "",
         extra_config: dict[str, Any] | None = None,
     ) -> None:
         """自动/确认选股执行后统一落库（context_store + run_store）。"""
@@ -145,6 +146,8 @@ class ScreeningService(BaseService):
             config["nl_source"] = nl_source
         if draft_id:
             config["draft_id"] = draft_id
+        if trigger:
+            config["trigger"] = trigger
         save_run(
             condition=result.condition,
             source=result.source,

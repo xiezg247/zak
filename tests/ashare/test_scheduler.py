@@ -30,6 +30,39 @@ class TestSchedulerConfig(unittest.TestCase):
             self.assertEqual(loaded.collect_quotes.interval_seconds, 30)
             self.assertEqual(loaded.batch_download.download_start, "2018-01-01")
 
+    def test_auto_screen_config_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scheduler.json"
+            config = SchedulerConfig()
+            config.screen_intraday.enabled = True
+            config.screen_intraday.recipe_id = "intraday_multi"
+            config.screen_post_close.top_n = 15
+            save_scheduler_config(config, path)
+
+            loaded = load_scheduler_config(path)
+            self.assertTrue(loaded.screen_intraday.enabled)
+            self.assertEqual(loaded.screen_intraday.recipe_id, "intraday_multi")
+            self.assertEqual(loaded.screen_post_close.top_n, 15)
+
+    def test_screen_jobs_listed(self) -> None:
+        manager = TaskSchedulerManager()
+        job_ids = {item.job_id for item in manager.list_status()}
+        self.assertIn("screen_intraday", job_ids)
+        self.assertIn("screen_post_close", job_ids)
+
+    def test_screen_intraday_skips_off_hours(self) -> None:
+        manager = TaskSchedulerManager()
+        next_run = datetime(2026, 6, 10, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
+        with patch(
+            "vnpy_ashare.scheduler.manager.run_scheduled_auto_screen",
+            return_value=JobResult(success=True, skipped=True, message="非交易时段，已跳过"),
+        ):
+            manager._wrap_job("screen_intraday", force=False)
+
+        records = manager.list_run_log(limit=1)
+        self.assertEqual(records[0].job_name, "盘中自动选股")
+        self.assertTrue(records[0].skipped)
+
     def test_collect_quotes_reschedules_after_completion(self) -> None:
         manager = TaskSchedulerManager()
         manager._config.collect_quotes.enabled = True
