@@ -1,6 +1,8 @@
 # 数据设计
 
-vnpy_zak 使用 **三个独立的 SQLite 数据库**（App DB 7 张表 + K 线 DB 4 张 + LLM Chat DB 2 张）和 **一个 Redis 缓存层**。终端 AI 共享状态在内存模块 `vnpy_ashare/ai/context_store.py`（非 SQLite）。所有建表语句均通过 `CREATE TABLE IF NOT EXISTS` 在代码中内联执行，没有独立的数据库迁移文件。
+> **2026-06 状态**：下文表结构均已落地；LLM 多会话 UI 已暴露；终端 AI 共享态在 `context_store`（内存，非 DB）。
+
+vnpy_zak 使用 **三个独立的 SQLite 数据库**（App DB 7 张表 + K 线 DB 4 张 + LLM Chat DB 2 张）和 **一个 Redis 缓存层**。所有建表语句均通过 `CREATE TABLE IF NOT EXISTS` 在代码中内联执行，没有独立的数据库迁移文件。
 
 ---
 

@@ -1,6 +1,6 @@
-# 后续规划
+# 演进路线
 
-本文档记录 vnpy_zak 的技术演进路线，含 **A 股策略实盘**（P3–P4）。**产品全景与迭代顺序**见 [product-plan.md](./product-plan.md)。
+**产品全景**见 [product-plan.md](./product-plan.md)。**近期交付范围**（P0–P2）已全部实现；P3–P4 保留在路线图中作**远期参考**，**暂无近期实施计划**。
 
 ---
 
@@ -8,235 +8,136 @@
 
 | 阶段 | 目标 | 状态 |
 |------|------|------|
-| P0 | 看盘终端（自选/市场/本地）、TickFlow、Redis、K 线、调度 | ✅ 已完成 |
-| P1 | AI 助手（侧栏 + 全屏、上下文、会话持久化） | ✅ 已完成 |
-| **P1.5** | **选股 + 回测联动 + Agent Skills 工具链 + Service 层** | **✅ 已完成（选股页、Skills、Service 全部落地）** |
-| P2 | AI 增强（多会话UI、流式中断、配置热重载） | ✅ 已完成 |
-| P3 | **A 股策略实盘**（Gateway、PaperAccount、CTA策略页、交易 Dock） | 已规划 |
-| P4 | 看盘页 Gateway 行情主源、TickFlow/Redis 降级 | 随 P3 推进 |
+| P0 | 看盘终端（自选/市场/本地）、TickFlow、Redis、K 线、调度 | ✅ |
+| P1 | AI 助手（侧栏 + 全屏、上下文、会话持久化） | ✅ |
+| P1.5 | 选股 + 回测联动 + Agent Skills + Service 层 | ✅ |
+| P2 | AI 增强（多会话 UI、流式 Stop、LLM 配置热重载） | ✅ |
+| P3 | A 股策略实盘（Gateway、PaperAccount、CTA 策略页、交易 Dock） | 📋 远期 |
+| P4 | 看盘页 Gateway 行情主源（TickFlow/Redis 降级） | 📋 远期（随 P3） |
 
 ---
 
-## P1.5 子项：策略回测交互与选股（见 [backtest-ux.md](./backtest-ux.md)）
+## 已完成摘要
 
-| 迭代 | 内容 | 状态 |
-|------|------|------|
-| B1 | 看盘页「策略回测」按钮 → 跳转 + 预填 `vt_symbol` | ✅ 已完成 |
-| B2 | 自选 / 选股批量回测对比表 | ✅ 已完成（`batch_backtest_flow` + `batch_backtest_page`） |
-| B3 | 回测摘要落库（AI 可读） | ✅ 已完成（`backtest/run_store.py` + `BacktestService`） |
-| B4 | 回测页 AI 上下文 | ✅ 已完成（`ai/backtest_context.py` + `context_store`） |
-| S1 | 选股模块（screener/ 包 + 因子/规则/方案/NL） | ✅ 已完成 |
-| S2 | 选股 GUI 页（含批量导入自选、确认对话框） | ✅ 已完成 |
+### 回测与选股（[backtest-ux.md](./backtest-ux.md)）
+
+| 项 | 状态 |
+|----|------|
+| B1 看盘 → 策略回测联动 | ✅ |
+| B2 自选 / 选股批量回测 + 回测对比页 | ✅ |
+| B3 回测摘要落库 | ✅ |
+| B4 回测页 AI 上下文 | ✅ |
+| S1 选股模块 `screener/` | ✅ |
+| S2 选股 GUI 页 | ✅ |
+
+### AI 助手（P1 + P2）
+
+- 悬浮球 + Dock + 全屏；`context_store` + 6 个 Service 写入上下文
+- Agent Skills（`vnpy_*_skill.py`）+ MCP 远端工具
+- 多会话（侧栏 / 「历史会话」弹窗）；流式 **停止**；`.env` **重载 LLM**
+- 设置页（`.env` ↔ `vt_setting.json` 漂移检测）
+
+### 其他
+
+- 本地页 K 线健康检测与补全（`bar_health` + `local_data_controller`）
+- 配置单源（`config_schema` / `config_bridge` / `settings_dialog`）
 
 ---
 
-## P2：AI 助手增强
+## 远期规划（P3–P4，暂无近期计划）
 
-- [x] 系统提示词按页面分化（`vnpy_ashare/ai/context.py` + `context_store`；回测摘要经 `BacktestService`）
-- [x] Service 层抽取（`vnpy_ashare/services/`：6 个 Service + `config_bridge`）
-- [x] Skills 按业务域拆分（Python Skill + Agent Skills 摘要注入）
-- [x] 终端上下文统一（`ai/context_store.py`；已删除 `session_context.py`）
-- [x] 工具调用：查本地 K 线、自选列表、涨跌幅、技术诊断（已通过 Agent Skills 实现，见 `skills/vnpy_*_skill.py`）
-- [x] MCP 远端工具集成（`vnpy_mcp/`，从 `mcp/mcp.json` 读取远端 MCP 服务器配置）
-- [x] 多会话列表与切换 UI（全屏侧栏 + 悬浮/ Dock「历史会话」弹窗）
-- [x] 流式输出中断（发送钮切换为「停止」）
-- [x] LLM 配置热重载（设置页「重载 LLM」+ 面板菜单；`.env` 中 `LLM_*` 无需重启）
+> 以下保留设计备忘，便于日后若接入券商 Gateway 时参考。**当前产品重心为投研闭环维护与可选增强**（见下文「近期可选」），不排期实盘 / 模拟盘开发。
 
----
+## P3：A 股策略实盘（远期）
 
-## P3：A 股策略实盘
-
-> **目标**：回测验证通过的 `AShareTemplate` 策略（如 `AshareDoubleMaStrategy`），在同一终端内以 **CTA策略** 模块跑 **A 股现货**自动交易（含 PaperAccount 模拟盘）。  
-> **不是**期货 CTP / SimNow；vnpy「CTA」为策略框架名称，本项目的 A 股规则由 `AShareTemplate` 实现。
+> **目标**：回测验证通过的 `AShareTemplate` 策略（如 `AshareDoubleMaStrategy`），在同一终端内以 **CTA 策略** 模块跑 **A 股现货**自动交易（含 PaperAccount 模拟盘）。  
+> **不是**期货 CTP / SimNow。
 
 ### 原则
 
 1. **不替换**现有自建看盘页，在其上**增量叠加** vnpy 交易能力。
-2. **策略代码复用**：回测与实盘共用 `strategies/` 下同一策略类，不维护两套逻辑。
-3. **研究 vs 实盘**行情：未连接券商时 TickFlow/Redis；实盘/模拟盘优先 **A 股 Gateway** Tick，与下单同源。
-4. **最大程度复用** vnpy 组件：`CtaStrategyApp`、`TradingWidget`、PaperAccount，少造轮子。
+2. **策略代码复用**：回测与实盘共用 `strategies/` 下同一策略类。
+3. **研究 vs 实盘**行情：未连接券商时 TickFlow/Redis；实盘/模拟盘优先 **A 股 Gateway** Tick。
+4. **复用** vnpy：`CtaStrategyApp`、`TradingWidget`、PaperAccount。
 
 ### 推荐 UI 结构
 
 ```
 左侧导航（页面级）              右侧 Dock（操作级）
 ─────────────────              ─────────────────
-自选 / 市场 / 本地  ← 主界面    AI 侧栏（已有）
-交易监控          ← 新增       下单面板 TradingWidget（新增，默认隐藏）
-策略回测 / 数据管理  ← 保持       委托 / 成交 / 持仓 Monitor（可选 Dock）
+自选 / 市场 / 本地  ← 已有      AI 侧栏（已有）
+交易监控          ← 新增       下单面板 TradingWidget（新增）
+策略回测 / 数据管理  ← 已有       委托 / 成交 / 持仓 Monitor（可选）
+CTA 策略          ← 恢复挂载
 ```
 
-**CTA策略** 页（vnpy `CtaManager`）：**当前未启用**（左侧导航与 `CtaStrategyApp` 均已移除）。P3 实盘阶段再 `add_app(CtaStrategyApp)` 并加回导航；与 **策略回测** 分工——回测看历史，CTA策略跑盘中。
-
-#### 1. 左侧导航：新增「交易监控」页
-
-放**监控型、全屏**内容，不放完整下单表单：
-
-- 当日委托 / 成交汇总
-- 持仓 / 资金
-- Gateway 连接状态
-- 可选：券商 Tick 驱动的简化行情条
-
-#### 2. 右侧 Dock：vnpy 原生交易组件
-
-与 AI Dock 类似，默认隐藏，快捷键或菜单唤起（如 `Ctrl+T`）：
-
-- `TradingWidget` — 下单
-- `OrderMonitor` / `TradeMonitor` / `PositionMonitor`
-
-实现参考：恢复 `MainWindow.create_dock()` 模式，在 `AshareMainWindow` 中新增 `_init_trading_dock()`，**不要**恢复整套默认 `init_dock()`。
-
-#### 3. 自建看盘页：薄联动
-
-- 选中股票 → 填充 `TradingWidget` 的合约代码
-- 可选只读展示：持仓数量、可卖数量（读 OMS）
-- **不在**看盘页嵌入第二套下单 UI
+**CTA 策略** 页：当前 `launcher` **未**加载 `CtaStrategyApp`；P3 接入 Gateway 时恢复。
 
 ### 后端接入步骤
 
 ```text
-1. 选型并安装 A 股 Gateway 包（如 vnpy_xtp、vnpy_torastock 等）
+1. 选型并安装 A 股 Gateway 包（vnpy_xtp、vnpy_torastock 等）
 2. launcher：main_engine.add_gateway(AshareGateway)
-3. launcher：main_engine.add_app(CtaStrategyApp)   # 恢复 CTA策略 页
-4. launcher：main_engine.add_app(PaperAccountApp)   # 模拟盘
-5. 左侧导航加回「CTA策略」入口
-6. 系统菜单「连接」→ ConnectDialog（vnpy 已有）
-7. _init_trading_dock()                            # 交易 Dock
-8. 导航新增「交易监控」页
-9. quotes_page 选股 → TradingWidget 联动
-10. CTA策略页：添加 AshareDoubleMaStrategy → 初始化 → 启动
-11. P4：看盘页切换 GatewayQuoteProvider（与策略 Tick 同源）
+3. launcher：main_engine.add_app(CtaStrategyApp)
+4. launcher：main_engine.add_app(PaperAccountApp)
+5. 导航加回「CTA 策略」；系统菜单「连接」→ ConnectDialog
+6. _init_trading_dock() + 「交易监控」页
+7. quotes_page 选股 → TradingWidget 联动
+8. CTA 策略页：加载 AshareDoubleMaStrategy → 初始化 → 启动
+9. P4：GatewayQuoteProvider
 ```
 
 ### 模拟盘路径（推荐先于实盘）
 
 ```text
-连接 A 股 Gateway（仅需行情 + 合约查询）
-    → 启动 PaperAccount（委托本地撮合，接口显示 PAPER）
-    → CTA策略页运行 AShareTemplate 策略
+连接 A 股 Gateway（行情 + 合约查询）
+    → PaperAccount（本地撮合，接口显示 PAPER）
+    → CTA 策略页运行 AShareTemplate 策略
     → 验证通过后再切换券商实盘/仿真账号
 ```
 
-### 行情双源策略（概要）
-
-| 场景 | 行情来源 | 说明 |
-|------|----------|------|
-| 研究 / 回测 / 未连接券商 | TickFlow + Redis | 现状默认 |
-| 实盘（Gateway 已连接） | 券商实时 Tick | 与委托、持仓同一数据源 |
-| 模拟盘（PaperAccount） | A 股 Gateway 行情 + 本地撮合 | 与实盘共用 CTA策略 页与策略类 |
-| 仅研究、未连接券商 | TickFlow + Redis | 现状默认 |
-
 ---
 
-## P4：看盘页切换为券商行情（Gateway 优先）
+## P4：看盘页 Gateway 行情（远期，随 P3）
 
-有券商接口后，**看盘页可改以 Gateway 为主源**，TickFlow / Redis **降级为备用**，无需重做 UI。
+有券商接口后，看盘页可改以 **Gateway 为主源**，TickFlow / Redis **降级备用**；UI 仍消费 `QuoteSnapshot`，新增 `GatewayQuoteProvider` + `QUOTE_MODE` 路由即可。K 线历史仍走 TickFlow + SQLite。
 
-### 原则
+详见下文「GatewayQuoteProvider 要点」与原 P4 设计（配置项 `QUOTE_MODE=auto`、订阅数量限制、市场榜回退 Redis 等）。
 
-1. **UI 不变**：`QuotesPage` 继续消费 `QuoteSnapshot`。
-2. **扩展 Provider**：在 `QuoteProvider` 上新增 `GatewayQuoteProvider`，不修改页面布局。
-3. **自动回退**：Gateway 未连接、非交易时段、订阅失败时，回退 TickFlow / Redis。
-4. **K 线独立**：历史 / 回测 K 线仍走 TickFlow + SQLite，不与实盘 Tick 混用。
-
-### 目标架构
-
-```text
-QuotesPage / QuotesRefreshWorker / TickflowStreamBridge（可选改造）
-        ↓
-   get_quote_provider(page, mode)
-        ↓
-   ┌─────────────────────────────────────┐
-   │ QUOTE_MODE=auto | gateway | tickflow │
-   └─────────────────────────────────────┘
-        ↓
-   auto：Gateway 已连接 → GatewayQuoteProvider
-         否则           → TickflowQuoteProvider / RedisQuoteProvider
-```
-
-### 配置项（规划）
-
-```env
-# 行情模式：auto（推荐）| gateway | tickflow
-QUOTE_MODE=auto
-
-# gateway 模式下，市场涨幅榜是否仍用 Redis（券商无全市场快照时）
-MARKET_RANK_FALLBACK=redis
-```
-
-### GatewayQuoteProvider 实现要点
+### GatewayQuoteProvider 要点
 
 | 环节 | 说明 |
 |------|------|
-| 事件订阅 | 监听 `EVENT_TICK`，按 `vt_symbol` 更新内存 cache |
-| 类型转换 | `TickData` → `QuoteSnapshot`（最新价、昨收、涨跌等字段映射） |
-| 符号映射 | `600519.SSE` ↔ 券商代码，在 Gateway 或适配层统一 |
-| 自选刷新 | `get_quotes(items)` 从 cache 读取；缺失则触发 `subscribe` 或回退 TickFlow |
-| 五档 / WS | 若券商提供 Level-2，可替代 `TickflowStreamBridge`；否则回退或隐藏五档 |
-| 市场榜 | 若券商无涨幅榜 API，市场页继续 `RedisQuoteProvider` 或改为「持仓 + 自选」列表 |
-
-### 降级后 TickFlow / Redis 的保留价值
-
-| 组件 | 降级后用途 |
-|------|------------|
-| **TickFlow** | 无券商账户、批量下 K、历史分钟线、Gateway 不可用时的看盘 |
-| **Redis + quote_collector** | 全市场涨幅榜、降低 TickFlow 调用频率、离线缓存 |
-| **TickflowStreamBridge** | Gateway 无 WS 时的五档 / 推送回退 |
-| **SQLite K 线库** | 图表、CTA 回测（长期不变） |
-
-### 实现步骤（建议顺序）
-
-```text
-1. GatewayQuoteProvider：Tick cache + TickData → QuoteSnapshot
-2. provider.py：get_quote_provider() 支持 QUOTE_MODE 路由
-3. quotes_page / worker：自选刷新走统一 Provider（替代硬编码 TickFlow）
-4. Gateway 连接状态变化时，刷新 Provider 并提示当前行情源
-5. （可选）Gateway 模式下用 EVENT_TICK 推送到 chart_panel，替代 TickFlow WS
-6. 状态栏或设置页展示：当前源 = 券商 / TickFlow / Redis
-```
-
-### 风险与约束
-
-- **订阅数量**：券商常限制同时订阅标的数；自选过多时需「仅订阅当前选中 + 可见行」或分批。
-- **交易时段**：休市无 Tick 时显示昨收或回退 TickFlow 静态快照。
-- **数据一致性**：实盘下单场景下，同一标的的行情与持仓必须同源（Gateway）；研究模式允许 TickFlow。
-- **市场页**：全市场 5000+ 标的无法全部订阅 Gateway，市场榜宜保留 Redis 或改为有限榜单。
-
-### 与 P3 交易模块的关系
-
-| 模块 | 关系 |
-|------|------|
-| P3 交易 Dock | 下单、委托、持仓（vnpy 原生组件） |
-| P4 Gateway 看盘 | 同一 Gateway 的 Tick 驱动看盘页，与下单数据一致 |
-| 执行顺序 | 可先 P3（仅交易 + TickMonitor），再 P4（看盘页切 Provider）；或一次接入 Gateway 后并行 |
+| 事件订阅 | `EVENT_TICK` → 内存 cache |
+| 类型转换 | `TickData` → `QuoteSnapshot` |
+| 自动回退 | Gateway 未连接 → Tickflow / Redis |
+| 市场榜 | 券商无全市场快照时保留 Redis |
 
 ---
 
-## P5：其他可选项
+## 近期可选（非阻塞）
 
-- [ ] **QuestDB**：大数据量 K 线 / 盘中写入（见根目录 README）
-- [ ] **Tushare 选股脚本**：财务、资金流筛选，结果导入自选池
-- [ ] **自选页工具栏 AI 图标**：`Ctrl+L` 的可视化入口（当前仅菜单 + 快捷键）
-- [ ] **vnpy_ashare / vnpy_llm 拆包发布**：独立 pip 包时的路径与配置解耦
-- [ ] **日志 Dock**：调试 Gateway / 调度时可选开启
+当前若无新需求，**不启动 P3–P4**。可优先考虑：
+
+- QuestDB 大数据量 K 线（见根目录 README）
+- 更多 `AShareTemplate` 示例策略（突破、RSI 等）
+- 自选页工具栏 AI 图标（`Ctrl+L` 可视化入口）
+- 状态栏显示当前行情源（TickFlow / Redis）
+- 分钟回测（B5，依赖本地分钟 K 体量）
+- `vnpy_ashare` / `vnpy_llm` 拆包发布
 
 ---
 
-## 明确不做（除非需求变更）
+## 明确不做
 
 - 用 vnpy 默认 Trader 布局**替换**自建看盘页
-- 在主导航为 AI 单独占一格（已采用方案 B：叠加层）
-- **期货** CTP / SimNow 作为本项目的交易或行情通道
-- 无券商连接时默认强制走 Gateway（应回退 TickFlow）
-- 回测与实盘维护两套独立策略代码
-- 废弃 TickFlow / Redis（实盘阶段降级为备用，不删除）
+- 主导航为 AI 单独占一格（已采用叠加层方案）
+- **期货** CTP / SimNow
+- 回测与实盘维护两套策略代码
+- 废弃 TickFlow / Redis（实盘阶段为降级备用）
 
 ---
 
 ## 文档维护
 
-架构或规划变更时，同步更新：
-
-- `docs/architecture.md` — 现状结构
-- `docs/roadmap.md` — 本文件
-- 根目录 `README.md` — 用户可见的快速开始（保持精简）
+架构或规划变更时同步：`docs/architecture.md`、`docs/product-plan.md`、根目录 `README.md`。

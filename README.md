@@ -4,13 +4,13 @@
 
 ## 功能特性
 
-- A 股专项：默认回测参数、自选池、整手下单、T+1 规则
-- 图形化 GUI：**A股日K 浏览**（全市场 5500+ 标的）、策略回测、数据管理
-- TickFlow Pro：A 股日线 / 分钟线批量下载、实时行情推送
-- Tushare：财务、资金流等（后续可扩展选股脚本）
-- **AI 助手**：侧栏/全屏对话，Agent Skills 工具调用；终端上下文经 `context_store` + Service 共享
-- **MCP 远端工具**：可通过 `mcp/mcp.json` 集成外部 MCP 服务器
-- 本地 **SQLite** 存储（默认），可选 **QuestDB**（见下文）
+- **看盘**：自选 / 市场 / 本地三页；TickFlow 行情与五档、Redis 涨幅榜、分 K 图表、定时调度
+- **K 线**：TickFlow 日/分钟线下载，SQLite 存储；本地页数据健康检测与补全
+- **选股**：Tushare 因子 + 规则引擎 + GUI 选股页；方案保存、批量入自选、NL 解析
+- **回测**：`AShareTemplate`（T+1、整手、只做多）；看盘联动、自选/选股 **批量回测** 与 **回测对比** 页
+- **AI 助手**：悬浮球 + Dock + 全屏；Agent Skills 工具调用；MCP 远端工具；多会话、流式停止、LLM 配置热重载
+- **配置**：`.env` 与 `vt_setting.json` 单源同步；GUI 设置页 + 漂移检测
+- **远期（不排期）**：A 股 Gateway 实盘 / PaperAccount 模拟盘 / Gateway 看盘（见 [roadmap](docs/roadmap.md) P3–P4）
 
 ## 环境要求
 
@@ -104,12 +104,15 @@ uv run python scripts/check_database.py
 
 ## 文档
 
-- [产品方案](docs/product-plan.md) — A 股回测 + 看盘 + AI + 选股 + 策略实盘路径
-- [架构说明](docs/architecture.md) — 与 vnpy 默认 Trader 的关系、当前 UI 分层
-- [数据设计](docs/data-design.md) — 三个 SQLite 数据库 + Redis 缓存层
-- [策略回测交互规格](docs/backtest-ux.md) — 看盘→回测联动、自选/选股批量回测、回测对比页
-- [AI 数据路由说明](docs/ai-data-routing.md) — AI 助手各类问题对应的数据源与工具
-- [后续规划](docs/roadmap.md) — A 股 Gateway 实盘、PaperAccount、看盘行情切换等
+| 文档 | 说明 |
+|------|------|
+| [文档索引](docs/README.md) | 状态总览与全部文档入口 |
+| [产品方案](docs/product-plan.md) | 四支柱投研闭环（✅）；策略实盘为远期备忘 |
+| [演进路线](docs/roadmap.md) | P0–P2 已完成；P3–P4 保留设计、**暂无近期计划** |
+| [架构说明](docs/architecture.md) | GUI 分层、Service 层、行情 Provider |
+| [数据设计](docs/data-design.md) | SQLite ×3 + Redis + AI 上下文 |
+| [策略回测交互](docs/backtest-ux.md) | B1–B4 批量回测与 AI 上下文 |
+| [AI 数据路由](docs/ai-data-routing.md) | Skill / MCP 与数据源对应关系 |
 
 ## 项目结构
 

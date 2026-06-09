@@ -1,19 +1,38 @@
 # zak 文档
 
+## 项目状态（2026-06）
+
+**投研终端已基本就绪**：看盘、K 线下载、选股、策略回测（含批量对比）、AI 助手（Skills + MCP + 多会话 + 流式中断）、配置热重载均已落地。
+
+**远期规划（暂无近期计划）**：P3 策略实盘、PaperAccount 模拟盘、P4 Gateway 看盘行情 — 设计保留在 [roadmap.md](./roadmap.md)，当前不排期。
+
+---
+
+## 产品与交互
+
 | 文档 | 说明 |
 |------|------|
-| [产品方案](./product-plan.md) | **北极星**：回测 + 看盘 + AI + 选股 + A 股策略实盘 |
-| [策略回测交互规格](./backtest-ux.md) | B1–B4 已实现（含自选/选股批量回测与回测对比页） |
-| [架构说明](./architecture.md) | 与 vnpy 默认 Trader 的关系、当前 UI 分层、Service 层 |
-| [数据设计](./data-design.md) | 三个 SQLite 数据库 + Redis 缓存层设计 |
-| [AI 数据路由说明](./ai-data-routing.md) | AI 助手各类问题对应的数据源与工具 |
-| [后续规划](./roadmap.md) | P3 策略实盘、P4 Gateway 看盘、PaperAccount 等 |
+| [产品方案](./product-plan.md) | 北极星：四支柱投研闭环 ✅；策略实盘为远期备忘 |
+| [策略回测交互规格](./backtest-ux.md) | B1–B4 已实现（联动、批量回测、摘要落库、AI 上下文） |
+| [AI 数据路由说明](./ai-data-routing.md) | 各类问题对应的 Skill / MCP / 数据源 |
 
-## 技术规格
+---
+
+## 架构与数据
 
 | 文档 | 说明 |
 |------|------|
-| [AI 能力重构设计方案](./superpowers/specs/2026-06-08-ai-refactor-design.md) | Service 层、Skills 拆分、context_store（**已实现**） |
-| [悬浮球功能增强设计](./superpowers/specs/2026-06-08-floating-orb-enhancement-design.md) | 上下文 Chip、Quick Actions、FloatingAiController（Phase 1–3 已实现） |
-| [本地页 K 线覆盖设计](./superpowers/specs/2026-06-07-local-data-coverage-design.md) | K 线数据健康检测、补全交互 |
-| [AI 重构实现计划](./superpowers/plans/2026-06-08-ai-refactor-plan.md) | 分步实施记录（**已完成**，checkbox 仅作历史参考） |
+| [架构说明](./architecture.md) | GUI 分层、Service 层、行情 Provider、AI 上下文 |
+| [数据设计](./data-design.md) | 三个 SQLite + Redis + `context_store` 内存态 |
+| [演进路线](./roadmap.md) | P0–P2 ✅；P3–P4 远期规划（暂无近期计划） |
+
+---
+
+## 设计档案（已实现，供追溯）
+
+| 文档 | 说明 |
+|------|------|
+| [AI 能力重构设计](./design/specs/2026-06-08-ai-refactor-design.md) | Service 层、Skills 拆分、context_store |
+| [悬浮球功能增强设计](./design/specs/2026-06-08-floating-orb-enhancement-design.md) | ContextChip、Quick Actions、FloatingAiController |
+| [本地页 K 线覆盖设计](./design/specs/2026-06-07-local-data-coverage-design.md) | `bar_health` 健康检测与补全交互 |
+| [AI 重构实施记录](./design/plans/2026-06-08-ai-refactor-plan.md) | 分步 checkbox 历史（**已完成**） |

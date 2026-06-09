@@ -1,5 +1,7 @@
 # 架构说明
 
+> **2026-06 状态**：投研终端（看盘 / 选股 / 回测 / AI）为当前交付范围。P3–P4（Gateway 实盘 / 模拟盘 / 看盘行情）为**远期路线**，暂无近期计划。
+
 ## 与 vnpy 默认 Trader 的关系
 
 `vnpy_zak` **继承** `vnpy.trader.ui.MainWindow`，但**不采用**默认的期货实盘交易布局。
@@ -14,14 +16,14 @@ vnpy MainWindow（基类）
 
 | 维度 | vnpy 默认 Trader | vnpy_zak 自建看盘 |
 |------|------------------|-------------------|
-| 定位 | 通用实盘交易终端（含期货） | A 股看盘 + 回测 + **策略实盘（规划）** |
+| 定位 | 通用实盘交易终端（含期货） | A 股看盘 + 回测 + 选股 + AI（**实盘为远期 P3**） |
 | 布局 | 多 Dock 环绕 | 单页行情终端（列表 + K 线 + 五档） |
-| 行情 | Gateway → OMS → TickMonitor | TickFlow / Redis（未来可切换为 Gateway 优先） |
+| 行情 | Gateway → OMS → TickMonitor | TickFlow / Redis（远期 P4 可切 Gateway） |
 | 数据模型 | `TickData` / `ContractData` | `StockItem` / `QuoteSnapshot` |
-| 交易 | TradingWidget 下单 | 当前未接 Gateway；规划 A 股现货实盘 |
-| 策略实盘 | CTA策略 + Gateway | 规划：`AShareTemplate` 与回测同策略类；CTA策略页暂未挂载 |
+| 交易 | TradingWidget 下单 | 不在近期范围；设计见 roadmap P3 |
+| 策略实盘 | CTA 策略 + Gateway | 远期 P3；回测与实盘设计上共用 `AShareTemplate` |
 
-**结论**：看盘 UI 自建；vnpy 提供 CTA 回测/实盘引擎与 Gateway 交易能力。远期以 **A 股 Gateway + PaperAccount + CTA策略页** 跑现货自动交易，**不用**期货 CTP。
+**结论**：看盘 UI 自建；vnpy 提供 CTA 回测引擎。若远期启动 P3，可增量叠加 **A 股 Gateway + PaperAccount + CTA 策略页**，**不用**期货 CTP。
 
 ## 当前 GUI 分层
 
@@ -30,8 +32,8 @@ vnpy MainWindow（基类）
 │ 菜单栏：系统 / 工具 / 配置 / 帮助                        │
 ├────┬──────────────────────────────────────────┬─────────┤
 │左侧│  中央内容区（StackedWidget）                │ AI Dock │
-│导航│  · 自选 / 市场 / 本地（看盘三页）          │（可选）  │
-│    │  · 策略回测 / 回测对比 / 数据管理              │         │
+│导航│  · 自选 / 市场 / 本地 / 选股（看盘 + 筛选）   │（可选）  │
+│    │  · 策略回测 / 回测对比 / 数据管理 / AI 全屏    │         │
 └────┴──────────────────────────────────────────┴─────────┘
 ```
 
@@ -92,7 +94,7 @@ vnpy MainWindow（基类）
 |----------|------|------|
 | `TickflowQuoteProvider` | 自选页直连 / REST | 研究主源 |
 | `RedisQuoteProvider` | 市场页涨幅榜 | 批量快照 |
-| `GatewayQuoteProvider` | **未实现** | 实盘主源（规划） |
+| `GatewayQuoteProvider` | **远期 P4** | 券商 Tick → QuoteSnapshot（暂无近期计划） |
 
 ```
 QuotesPage / Workers
@@ -134,7 +136,7 @@ AI 提供**悬浮球 + 全屏**两种形态：
 | 全屏 | 导航「AI 助手」、面板「全屏」、回测「问 AI」 | 长对话与会话管理；回测问 AI 使用新会话 |
 | 返回 | 全屏「← 返回看盘」 | 回到上次看盘页并打开悬浮面板 |
 
-上下文通过 `QuoteService.publish_quote_context()` / `context_store.set_ai_context()` 写入，变更后 `LlmEngine.signals.context_changed` 驱动悬浮球角标与面板 ContextChip 更新。设计详见 [悬浮球功能增强设计](./superpowers/specs/2026-06-08-floating-orb-enhancement-design.md)。
+上下文通过 `QuoteService.publish_quote_context()` / `context_store.set_ai_context()` 写入，变更后 `LlmEngine.signals.context_changed` 驱动悬浮球角标与面板 ContextChip 更新。设计详见 [悬浮球功能增强设计](./design/specs/2026-06-08-floating-orb-enhancement-design.md)。
 
 回测摘要由 `BacktestService.persist_summary()` 统一写入（内存 + 落库 + context_store 缓存）；`get_backtest_result` 等 Skill 优先读 Service。
 
