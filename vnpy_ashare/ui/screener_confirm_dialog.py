@@ -9,6 +9,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.ai.screener_context import sync_screener_page_context
 from vnpy_ashare.ai.session_context import set_screening_results
 from vnpy_ashare.events import EVENT_FILL_SCREENER, FillScreenerRequest
+from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft_store import cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.runner import build_scheme_config
 from vnpy_ashare.screener.run_store import save_run
@@ -88,7 +89,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
 
         self.intent_label.setText(draft.natural_language or "（无）")
         self.summary_label.setText(draft.summary)
-        source_label = "Tushare" if draft.source == "tushare" else "Redis 行情"
+        source_label = resolve_result_source_tag(draft.source)
         self.source_label.setText(f"数据来源：{source_label} · 置信度：{draft.confidence}")
 
         if draft.warnings:

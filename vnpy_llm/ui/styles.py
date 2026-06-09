@@ -34,6 +34,14 @@ QTextBrowser#AiBubbleAssistant {
     padding: 10px 14px;
     font-size: 14px;
 }
+QLabel#AiBubblePending {
+    background-color: #1a2230;
+    color: #4a9eff;
+    border: 1px solid #2a4060;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
 QLabel#AiBubbleError {
     background-color: #3a2020;
     color: #ff8a8a;
@@ -84,9 +92,58 @@ QPushButton#AiDeleteSessionsBtn {
     color: #d04a4a;
     font-size: 12px;
 }
-QPushButton#AiDeleteSessionsBtn:hover {
-    background-color: #3a2020;
-    color: #ff6060;
+QPushButton#AiQuickActionBtn {
+    background-color: #1e1e26;
+    border: 1px solid #2e2e38;
+    border-radius: 12px;
+    color: #a8b0c0;
+    font-size: 11px;
+    padding: 5px 12px;
+    min-height: 24px;
+}
+QPushButton#AiQuickActionBtn:hover {
+    border-color: #4a9eff;
+    color: #4a9eff;
+}
+QToolButton#AiQuickActionBtn {
+    background-color: #1e1e26;
+    border: 1px solid #2e2e38;
+    border-radius: 12px;
+    color: #a8b0c0;
+    font-size: 11px;
+    padding: 5px 12px;
+    min-height: 24px;
+}
+QToolButton#AiQuickActionBtn:hover {
+    border-color: #4a9eff;
+    color: #4a9eff;
+}
+QToolButton#AiQuickActionBtn::menu-indicator {
+    image: none;
+    width: 0;
+}
+QMenu#AiQuickActionMenu {
+    background-color: #1e1e26;
+    border: 1px solid #2e2e38;
+    border-radius: 8px;
+    padding: 4px 0;
+}
+QMenu#AiQuickActionMenu::item {
+    color: #c8c8d0;
+    padding: 6px 16px;
+    font-size: 12px;
+}
+QMenu#AiQuickActionMenu::item:selected {
+    background-color: #2a3a55;
+    color: #ffffff;
+}
+QScrollArea#AiQuickActionScroll {
+    background-color: transparent;
+    border: none;
+}
+QWidget#AiQuickActionChips {
+    background-color: transparent;
+    margin-bottom: 4px;
 }
 QLabel#AiTitle {
     font-size: 14px;
@@ -209,6 +266,38 @@ QPushButton#AiQuickActionBtn:hover {
     border-color: #4a9eff;
     color: #4a9eff;
 }
+QToolButton#AiQuickActionBtn {
+    background-color: #1e1e26;
+    border: 1px solid #2e2e38;
+    border-radius: 12px;
+    color: #a8b0c0;
+    font-size: 11px;
+    padding: 5px 12px;
+    min-height: 24px;
+}
+QToolButton#AiQuickActionBtn:hover {
+    border-color: #4a9eff;
+    color: #4a9eff;
+}
+QToolButton#AiQuickActionBtn::menu-indicator {
+    image: none;
+    width: 0;
+}
+QMenu#AiQuickActionMenu {
+    background-color: #1e1e26;
+    border: 1px solid #2e2e38;
+    border-radius: 8px;
+    padding: 4px 0;
+}
+QMenu#AiQuickActionMenu::item {
+    color: #c8c8d0;
+    padding: 6px 16px;
+    font-size: 12px;
+}
+QMenu#AiQuickActionMenu::item:selected {
+    background-color: #2a3a55;
+    color: #ffffff;
+}
 """
 
 FLOATING_CHAT_INNER_STYLESHEET = """
@@ -240,6 +329,14 @@ QTextBrowser#AiBubbleAssistant {
     background-color: #1e1e26;
     color: #e8e8f0;
     border: 1px solid #2a2a34;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+}
+QLabel#AiBubblePending {
+    background-color: #1a2230;
+    color: #4a9eff;
+    border: 1px solid #2a4060;
     border-radius: 10px;
     padding: 10px 14px;
     font-size: 14px;
@@ -377,5 +474,44 @@ QLabel#AiToolsBadge_connect_failed {
 QLabel#AiToolsBadge_disabled {
     color: #6a6a72;
     font-size: 11px;
+}
+"""
+
+INLINE_TRACE_STYLESHEET = """
+QFrame#AiInlineTraceBlock {
+    background-color: #17171e;
+    border: 1px solid #2a2a34;
+    border-radius: 8px;
+}
+QLabel#AiInlineTraceHeader {
+    color: #a8a8b2;
+    font-size: 11px;
+}
+QPushButton#AiInlineTraceStep {
+    color: #c8c8d0;
+    font-size: 11px;
+    text-align: left;
+    padding: 2px 4px;
+    border: none;
+}
+QPushButton#AiInlineTraceStep:hover {
+    color: #e8e8ec;
+    background-color: #22222c;
+    border-radius: 4px;
+}
+QPushButton#AiInlineTraceStep[stepStatus="running"] {
+    color: #4a9eff;
+}
+QPushButton#AiInlineTraceStep[stepStatus="error"] {
+    color: #ff8a8a;
+}
+QPlainTextEdit#AiInlineTraceDetail {
+    background-color: #101016;
+    border: 1px solid #2a2a32;
+    border-radius: 4px;
+    color: #b0b0b8;
+    font-family: Menlo, Monaco, Consolas, monospace;
+    font-size: 10px;
+    padding: 6px;
 }
 """

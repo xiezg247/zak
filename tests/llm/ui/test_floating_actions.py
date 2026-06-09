@@ -3,18 +3,87 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.ai.context import AiContextData
+from vnpy_ashare.ai.context import (
+    AiContextData,
+    StockBinding,
+    build_assistant_quick_actions,
+    build_floating_stock_quick_actions,
+    build_quote_context,
+    format_quote_summary,
+    resolve_assistant_stock_binding,
+)
 from vnpy_ashare.ai.session_context import set_screening_results
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ai.context import build_quote_context, format_quote_summary
-from vnpy_llm.ui.floating_actions import enrich_context_with_actions
+from vnpy_llm.ui.floating_actions import enrich_context_with_actions, build_quick_actions_for_panel
 
 
 class FloatingActionsTests(unittest.TestCase):
+    def test_assistant_default_fallback_binding(self) -> None:
+        with patch("vnpy_ashare.app_db.load_watchlist_rows", return_value=[]):
+            binding = resolve_assistant_stock_binding()
+        self.assertEqual(binding.vt_symbol, "002230.SZSE")
+        self.assertEqual(binding.name, "科大讯飞")
+
+    def test_assistant_watchlist_first_binding(self) -> None:
+        with patch(
+            "vnpy_ashare.app_db.load_watchlist_rows",
+            return_value=[("600519", Exchange.SSE, "贵州茅台")],
+        ):
+            binding = resolve_assistant_stock_binding()
+        self.assertEqual(binding.vt_symbol, "600519.SSE")
+
+    def test_assistant_four_menus_with_children(self) -> None:
+        binding = StockBinding(
+            symbol="600519",
+            exchange_cn="上交所",
+            name="贵州茅台",
+            vt_symbol="600519.SSE",
+        )
+        with patch(
+            "vnpy_ashare.ai.context.resolve_assistant_stock_binding",
+            return_value=binding,
+        ):
+            actions = build_assistant_quick_actions()
+        self.assertEqual(len(actions), 7)
+        stock_ids = [a.id for a in actions[:4]]
+        screen_ids = [a.id for a in actions[4:]]
+        self.assertEqual(stock_ids, ["diagnose", "technical", "trend_forecast", "recent_trend"])
+        self.assertEqual(screen_ids, ["pattern_screen", "condition_screen", "reference_screen"])
+        for action in actions:
+            self.assertTrue(action.has_menu, action.id)
+        pattern = next(a for a in actions if a.id == "pattern_screen")
+        self.assertEqual(
+            [child.label for child in pattern.children],
+            ["老鸭头形态", "均线多头", "W底形态", "主题投资"],
+        )
+        condition = next(a for a in actions if a.id == "condition_screen")
+        self.assertEqual(
+            [child.label for child in condition.children],
+            ["中线波段", "短线游资", "长线价投"],
+        )
+        reference = next(a for a in actions if a.id == "reference_screen")
+        self.assertEqual(
+            [child.label for child in reference.children],
+            ["短线波段", "长线价值", "成长赛道", "周期资源"],
+        )
+        trend = next(a for a in actions if a.id == "trend_forecast")
+        self.assertIn("600519.SSE", trend.children[0].prompt)
+        self.assertIn("propose_screening", pattern.children[0].prompt)
+
+    def test_floating_bound_to_selected_symbol(self) -> None:
+        actions = build_floating_stock_quick_actions(
+            "002230",
+            exchange_cn="深交所",
+            name="科大讯飞",
+        )
+        self.assertEqual(len(actions), 4)
+        self.assertIn("002230.SZSE", actions[0].children[0].prompt)
+
     def test_watchlist_badge_and_chip(self) -> None:
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         quote = QuoteSnapshot(
@@ -36,9 +105,34 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertEqual(data.badge, "自选")
         self.assertIn("贵州茅台", data.chip_text)
         self.assertIn("+2.30%", data.chip_text)
-        self.assertEqual(len(data.actions), 2)
-        self.assertEqual(data.actions[0].id, "diagnose")
-        self.assertEqual(data.actions[1].id, "technical")
+        self.assertEqual(len(data.actions), 4)
+        self.assertTrue(all(action.has_menu for action in data.actions))
+
+    def test_assistant_mode_actions(self) -> None:
+        binding = StockBinding(
+            symbol="002230",
+            exchange_cn="深交所",
+            name="科大讯飞",
+            vt_symbol="002230.SZSE",
+        )
+        with patch(
+            "vnpy_ashare.ai.context.resolve_assistant_stock_binding",
+            return_value=binding,
+        ):
+            panel_actions = build_quick_actions_for_panel(AiContextData(page="AI 助手"), mode="assistant")
+        ids = [a.id for a in panel_actions]
+        self.assertEqual(
+            ids,
+            [
+                "diagnose",
+                "technical",
+                "trend_forecast",
+                "recent_trend",
+                "pattern_screen",
+                "condition_screen",
+                "reference_screen",
+            ],
+        )
 
     def test_screener_badge_with_count(self) -> None:
         set_screening_results(

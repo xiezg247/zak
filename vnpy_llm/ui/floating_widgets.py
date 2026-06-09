@@ -1,4 +1,4 @@
-"""悬浮球相关 UI 组件。"""
+"""悬浮球 / 全屏助手快捷动作 UI。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from vnpy_ashare.ai.context import QuickAction
 
 
 class QuickActionChips(QtWidgets.QWidget):
-    """横向快捷动作按钮条。"""
+    """横向快捷动作按钮条，支持二级菜单。"""
 
     triggered = QtCore.Signal(object)
 
@@ -25,7 +25,7 @@ class QuickActionChips(QtWidgets.QWidget):
         self._scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self._scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self._scroll.setMaximumHeight(38)
+        self._scroll.setMaximumHeight(42)
 
         self._inner = QtWidgets.QWidget()
         self._inner.setObjectName("AiQuickActionInner")
@@ -47,12 +47,36 @@ class QuickActionChips(QtWidgets.QWidget):
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
-        for action in actions[:5]:
-            btn = QtWidgets.QPushButton(action.label)
-            btn.setObjectName("AiQuickActionBtn")
-            btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-            btn.clicked.connect(
-                lambda checked=False, item=action: self.triggered.emit(item)
-            )
-            self._inner_layout.insertWidget(self._inner_layout.count() - 1, btn)
+        for action in actions:
+            widget = self._build_action_widget(action)
+            self._inner_layout.insertWidget(self._inner_layout.count() - 1, widget)
         self.setVisible(bool(actions))
+
+    def _build_action_widget(self, action: QuickAction) -> QtWidgets.QWidget:
+        if action.has_menu:
+            btn = QtWidgets.QToolButton()
+            btn.setObjectName("AiQuickActionBtn")
+            btn.setText(action.label)
+            btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+            btn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
+            btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+            btn.setArrowType(QtCore.Qt.ArrowType.NoArrow)
+            menu = QtWidgets.QMenu(btn)
+            menu.setObjectName("AiQuickActionMenu")
+            for child in action.children:
+                menu.addAction(
+                    child.label,
+                    lambda checked=False, item=child: self.triggered.emit(item),
+                )
+            btn.setMenu(menu)
+            if action.tooltip:
+                btn.setToolTip(action.tooltip)
+            return btn
+
+        btn = QtWidgets.QPushButton(action.label)
+        btn.setObjectName("AiQuickActionBtn")
+        btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        if action.tooltip:
+            btn.setToolTip(action.tooltip)
+        btn.clicked.connect(lambda checked=False, item=action: self.triggered.emit(item))
+        return btn

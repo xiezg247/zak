@@ -50,6 +50,7 @@ class AiPageWidget(QtWidgets.QWidget):
         if engine is not None:
             engine.switch_surface("assistant")
         if self.panel is not None:
+            self.panel._refresh_quick_actions_from_context()
             self.panel.focus_input()
 
     def set_input_text(self, text: str) -> None:

@@ -19,6 +19,7 @@ class MarketQuotesSnapshot:
     rows: list[dict[str, Any]]
     updated_at: str | None
     total: int
+    source: str = "quote"
 
 
 def load_market_quote_rows() -> MarketQuotesSnapshot:
@@ -48,6 +49,7 @@ def load_market_quote_rows() -> MarketQuotesSnapshot:
         rows=rows,
         updated_at=store.get_updated_at(),
         total=len(rows),
+        source="quote",
     )
 
 

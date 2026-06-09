@@ -104,7 +104,7 @@ def _fundamental_row(row: dict[str, Any]) -> dict[str, Any]:
         "circ_mv": row.get("circ_mv", 0),
         "turnover_rate": row.get("turnover_rate", 0),
         "trade_date": row.get("trade_date", ""),
-        "source": "tushare",
+        "source": row.get("source", "tushare"),
     }
 
 

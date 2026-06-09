@@ -25,6 +25,7 @@ from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_sc
 from vnpy_ashare.ai.session_context import set_screening_results
 from vnpy_ashare.ai.symbol import parse_stock_symbol
 from vnpy_ashare.engine import APP_NAME, AshareEngine
+from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
 from vnpy_ashare.screener.runner import ScreenerRequest, build_scheme_config, list_all_preset_names
@@ -421,7 +422,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             config=build_scheme_config(request) if request else {},
         )
         updated = result.updated_at or "-"
-        source_label = "Tushare" if result.source == "tushare" else "Redis 行情"
+        source_label = resolve_result_source_tag(result.source)
         self._summary_label.setText(
             f"「{result.condition}」命中 {len(self._results)} 条 · "
             f"扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
@@ -466,7 +467,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             rows=self._results,
             updated_at=record.created_at,
         )
-        source_label = "Tushare" if record.source == "tushare" else "Redis 行情"
+        source_label = resolve_result_source_tag(record.source)
         self._summary_label.setText(
             f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · "
             f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"

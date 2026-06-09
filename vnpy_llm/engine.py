@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import time
 from collections.abc import Callable, Iterator
 from typing import Any
 
@@ -11,12 +10,16 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
-from vnpy_llm.client import LlmClientError, complete_with_tools, stream_chat_completion
+from vnpy_llm.client import LlmClientError, stream_chat_completion, stream_with_tools
+from vnpy_llm.routing import build_route_context
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
 from vnpy_llm.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
+from vnpy_llm.trace import TraceStep, TraceStore, TurnTrace, preview_text
+from vnpy_llm.trace_persistence import TracePersistence
+from vnpy_llm.tool_labels import tool_display_name
 from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
 
@@ -38,6 +41,7 @@ class LlmSignals(QtCore.QObject):
     tool_call_started = QtCore.Signal(str)
     tool_call_finished = QtCore.Signal(str)
     screener_draft_ready = QtCore.Signal(str)
+    trace_changed = QtCore.Signal()
 
 
 class LlmEngine(BaseEngine):
@@ -62,6 +66,9 @@ class LlmEngine(BaseEngine):
         self.session_id: str = assistant_id
         self._extra_context_provider: Callable[[], str] | None = None
         self._streaming = False
+        self._trace_store = TraceStore(TracePersistence())
+        self._trace_store.ensure_session_loaded(self.session_id)
+        self._reply_step_id: str | None = None
         ashare_engine = getattr(main_engine, "engines", {}).get("Ashare")
         services: dict[str, object] = {}
         if ashare_engine is not None and hasattr(ashare_engine, "bar_service"):
@@ -146,8 +153,10 @@ class LlmEngine(BaseEngine):
         self._bind_surface_session(surface, next_id)
         if next_id != self.session_id:
             self.session_id = next_id
+            self._trace_store.ensure_session_loaded(next_id)
             self.signals.messages_changed.emit()
             self.signals.sessions_changed.emit()
+            self.signals.trace_changed.emit()
 
     def open_session_for_ask(
         self,
@@ -171,14 +180,17 @@ class LlmEngine(BaseEngine):
             return
         self.session_id = session_id
         self._bind_surface_session(self._active_surface, session_id)
+        self._trace_store.ensure_session_loaded(session_id)
         self.signals.messages_changed.emit()
         self.signals.sessions_changed.emit()
+        self.signals.trace_changed.emit()
 
     def rename_session(self, session_id: str, title: str) -> None:
         self.store.update_session_title(session_id, title)
         self.signals.sessions_changed.emit()
 
     def delete_session(self, session_id: str) -> None:
+        self._trace_store.clear_session(session_id)
         self.store.delete_session(session_id)
         remaining = self.store.list_sessions(limit=1)
         replacement = remaining[0].id if remaining else self.store.create_session()
@@ -188,11 +200,15 @@ class LlmEngine(BaseEngine):
                 self._surface_store.get(self._active_surface, fallback=replacement),
             )
             self._bind_surface_session(self._active_surface, self.session_id)
+            self._trace_store.ensure_session_loaded(self.session_id)
             self.signals.messages_changed.emit()
+            self.signals.trace_changed.emit()
         self.signals.sessions_changed.emit()
 
     def clear_session(self) -> None:
         self.store.clear_messages(self.session_id)
+        self._trace_store.clear_session(self.session_id)
+        self.signals.trace_changed.emit()
         self.signals.messages_changed.emit()
         self.signals.sessions_changed.emit()
 
@@ -207,7 +223,9 @@ class LlmEngine(BaseEngine):
         self._bind_surface_session(target, session_id)
         if target == self._active_surface:
             self.session_id = session_id
+            self._trace_store.ensure_session_loaded(session_id)
             self.signals.messages_changed.emit()
+            self.signals.trace_changed.emit()
         self.signals.sessions_changed.emit()
         return session_id
 
@@ -221,7 +239,7 @@ class LlmEngine(BaseEngine):
         self.store.update_session_title(self.session_id, title)
         self.signals.sessions_changed.emit()
 
-    def build_api_messages(self) -> list[dict[str, str]]:
+    def build_api_messages(self, *, extra_system: str = "") -> list[dict[str, str]]:
         system_parts = [SYSTEM_PROMPT]
         tools_summary = self._build_tools_summary()
         if tools_summary:
@@ -243,6 +261,8 @@ class LlmEngine(BaseEngine):
         page_prompt = build_page_prompt(get_ai_context().page)
         if page_prompt:
             system_parts.append(page_prompt)
+        if extra_system.strip():
+            system_parts.append(extra_system.strip())
         messages: list[dict[str, str]] = [{"role": "system", "content": "\n".join(system_parts)}]
         for item in self.get_messages():
             content = item.content
@@ -314,12 +334,140 @@ class LlmEngine(BaseEngine):
     def is_busy(self) -> bool:
         return self._streaming
 
+    def get_trace_turns(self) -> list[TurnTrace]:
+        return self._trace_store.list_turns(self.session_id)
+
+    def get_current_trace_turn(self) -> TurnTrace | None:
+        turn = self._trace_store.current_turn()
+        if turn is not None and turn.session_id == self.session_id:
+            return turn
+        return None
+
+    def get_trace_step(self, step_id: str) -> TraceStep | None:
+        return self._trace_store.get_step(step_id)
+
+    def format_trace_step_detail(self, step: TraceStep) -> str:
+        return self._trace_store.step_detail_json(step)
+
+    def _emit_trace_changed(self) -> None:
+        self.signals.trace_changed.emit()
+
+    def _trace_begin_turn(self, user_text: str) -> TurnTrace:
+        turn = self._trace_store.start_turn(self.session_id, user_text)
+        self._reply_step_id = None
+        self._emit_trace_changed()
+        return turn
+
+    def _trace_add_routing(self, route_ctx: Any) -> TraceStep:
+        route = route_ctx.analysis.route
+        summary = f"{route.category} · {route.confidence}"
+        if route.reasoning:
+            summary = f"{summary} · {route.reasoning[:48]}"
+        detail = {
+            "category": route.category,
+            "confidence": route.confidence,
+            "reasoning": route.reasoning,
+            "tool_count": len(route_ctx.tools),
+            "routing_hint": route_ctx.routing_hint,
+        }
+        if route_ctx.analysis.screening is not None:
+            detail["screening"] = route_ctx.analysis.screening.model_dump()
+        if route_ctx.analysis.backtest is not None:
+            detail["backtest"] = route_ctx.analysis.backtest.model_dump()
+        step = self._trace_store.add_step(
+            kind="routing",
+            name="intent_route",
+            summary=summary,
+            detail=detail,
+            status="ok",
+        )
+        self._emit_trace_changed()
+        return step
+
+    def _trace_begin_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        display = tool_display_name(name)
+        step = self._trace_store.add_step(
+            kind="tool",
+            name=name,
+            summary=f"{display}…",
+            detail={"arguments": arguments},
+        )
+        self._emit_trace_changed()
+        return step.id
+
+    def _trace_finish_tool(
+        self,
+        step_id: str,
+        *,
+        result: str,
+        success: bool,
+    ) -> None:
+        step = self._trace_store.get_step(step_id)
+        if step is None:
+            return
+        display = tool_display_name(step.name)
+        status = "ok" if success else "error"
+        summary = display if success else f"{display} 失败"
+        self._trace_store.update_step(
+            step_id,
+            status=status,
+            summary=summary,
+            detail={"result_preview": preview_text(result)},
+        )
+        self._emit_trace_changed()
+
+    def _trace_begin_reply(self) -> None:
+        if self._reply_step_id is not None:
+            return
+        step = self._trace_store.add_step(
+            kind="reply",
+            name="assistant_reply",
+            summary="生成回复…",
+        )
+        self._reply_step_id = step.id
+        self._emit_trace_changed()
+
+    def _trace_finish_reply(self) -> None:
+        if self._reply_step_id is None:
+            return
+        self._trace_store.update_step(
+            self._reply_step_id,
+            status="ok",
+            summary="回复完成",
+        )
+        self._reply_step_id = None
+        self._emit_trace_changed()
+
+    def _trace_add_error(self, message: str) -> None:
+        if self._trace_store.current_turn() is None:
+            return
+        self._trace_store.add_step(
+            kind="error",
+            name="stream_error",
+            summary=message[:80],
+            detail={"message": message},
+            status="error",
+        )
+        self._emit_trace_changed()
+
+    def _trace_finish_turn(self, *, ok: bool) -> None:
+        if self._reply_step_id is not None:
+            self._trace_store.update_step(
+                self._reply_step_id,
+                status="error" if not ok else "ok",
+                summary="回复中断" if not ok else "回复完成",
+            )
+            self._reply_step_id = None
+        self._trace_store.finish_turn("ok" if ok else "error")
+        self._emit_trace_changed()
+
     def _get_openai_tools(self) -> list[dict[str, Any]]:
         tools = self.skill_engine.get_openai_tools()
         tools.extend(self.mcp_engine.get_openai_tools())
         return tools
 
     def _execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        step_id = self._trace_begin_tool(name, arguments)
         self.signals.tool_call_started.emit(name)
         result = ""
         success = True
@@ -337,6 +485,7 @@ class LlmEngine(BaseEngine):
             result = json.dumps({"error": str(ex)}, ensure_ascii=False)
             raise
         finally:
+            self._trace_finish_tool(step_id, result=result, success=success)
             try:
                 from vnpy_llm.tool_audit import log_tool_call
 
@@ -376,26 +525,43 @@ class LlmEngine(BaseEngine):
         self._streaming = True
         self.signals.stream_started.emit()
         self.append_local_message(role="user", content=user_text)
+        self._trace_begin_turn(user_text)
+        turn_ok = True
 
         try:
-            tools = self._get_openai_tools()
-            if tools:
-                messages = self.build_api_messages()
-                content, _ = complete_with_tools(
+            all_tools = self._get_openai_tools()
+            if all_tools:
+                from vnpy_ashare.ai.session_context import get_ai_context
+
+                mcp_names = frozenset(
+                    spec.name for spec in self.mcp_engine.get_tool_specs()
+                )
+                route_ctx = build_route_context(
+                    self.config,
+                    user_text,
+                    all_tools,
+                    page=get_ai_context().page,
+                    mcp_tool_names=mcp_names,
+                )
+                self._trace_add_routing(route_ctx)
+                messages = self.build_api_messages(extra_system=route_ctx.routing_hint)
+                chunks: list[str] = []
+                self._trace_begin_reply()
+                for delta in stream_with_tools(
                     self.config,
                     messages,
-                    tools,
+                    route_ctx.tools,
                     self._execute_tool,
-                )
+                ):
+                    chunks.append(delta)
+                    self.signals.stream_delta.emit(delta)
+                    yield delta
+                content = "".join(chunks).strip()
                 if content:
-                    chunk_size = 24
-                    for index in range(0, len(content), chunk_size):
-                        delta = content[index : index + chunk_size]
-                        self.signals.stream_delta.emit(delta)
-                        yield delta
                     self.append_local_message(role="assistant", content=content)
             else:
                 chunks: list[str] = []
+                self._trace_begin_reply()
                 for delta in stream_chat_completion(self.config, self.build_api_messages()):
                     chunks.append(delta)
                     self.signals.stream_delta.emit(delta)
@@ -403,11 +569,15 @@ class LlmEngine(BaseEngine):
                 content = "".join(chunks).strip()
                 if content:
                     self.append_local_message(role="assistant", content=content)
+            self._trace_finish_reply()
         except Exception as ex:
+            turn_ok = False
+            self._trace_add_error(str(ex))
             self.signals.stream_failed.emit(str(ex))
             raise
         finally:
             self._streaming = False
+            self._trace_finish_turn(ok=turn_ok)
             self.signals.stream_finished.emit()
 
     def reload_config(self) -> None:

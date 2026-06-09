@@ -21,6 +21,61 @@ def ts_code_to_vt_symbol(ts_code: str) -> str | None:
     return f"{code}.{exchange}"
 
 
+def vt_symbol_to_ts_code(vt_symbol: str) -> str | None:
+    if "." not in vt_symbol:
+        return None
+    code, exchange = vt_symbol.rsplit(".", 1)
+    suffix_map = {"SSE": "SH", "SZSE": "SZ", "BSE": "BJ"}
+    suffix = suffix_map.get(exchange.upper())
+    if not suffix:
+        return None
+    return f"{code}.{suffix}"
+
+
+def merge_quotes_into_fundamentals(
+    fund_rows: list[dict[str, Any]],
+    quote_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
+    quote_map = {
+        str(row.get("vt_symbol", "")): row
+        for row in quote_rows
+        if row.get("vt_symbol")
+    }
+    merged: list[dict[str, Any]] = []
+    for row in fund_rows:
+        item = dict(row)
+        quote = quote_map.get(str(item.get("vt_symbol", "")))
+        if quote is None:
+            merged.append(item)
+            continue
+        last_price = quote.get("last_price")
+        if last_price:
+            item["close"] = float(last_price)
+        turnover = quote.get("turnover_rate")
+        if turnover:
+            item["turnover_rate"] = float(turnover)
+        item["source"] = "quote+tushare"
+        merged.append(item)
+    return merged
+
+
+def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
+    """拉取指定交易日全市场涨跌幅（供非交易时段涨幅榜）。"""
+    pro = get_tushare_pro()
+    try:
+        frame = pro.daily(trade_date=trade_date, fields="ts_code,pct_chg")
+    except Exception:
+        return {}
+    if frame is None or frame.empty:
+        return {}
+    return {
+        str(record.get("ts_code", "")): _float(record.get("pct_chg"))
+        for record in frame.to_dict(orient="records")
+        if record.get("ts_code")
+    }
+
+
 def load_ts_code_name_map() -> dict[str, str]:
     mapping: dict[str, str] = {}
     for symbol, exchange, name in load_universe_rows():

@@ -14,11 +14,41 @@ from vnpy_llm.ui.session_widgets import show_ai_session_dialog
 from vnpy_ashare.ai.context import QuickAction
 from vnpy_llm.ui.floating_widgets import QuickActionChips
 from vnpy_llm.ui.md_renderer import render_markdown
+from vnpy_llm.ui.pending_bubble import (
+    SPINNER_FRAMES,
+    format_pending_html,
+    pending_status_from_turn,
+)
+from vnpy_llm.ui.trace_widgets import AiInlineTraceBlock
 from vnpy_llm.ui.worker import ChatWorker
+from vnpy_llm.tool_labels import tool_display_name
+from vnpy_llm.trace import TurnTrace, map_turns_to_user_messages
 
 # 股票代码正则：6位数字
 import re
 _STOCK_CODE_RE = re.compile(r"\b(\d{6})\b")
+
+
+class AiInputEdit(QtWidgets.QPlainTextEdit):
+    """输入框：Enter 发送，Ctrl/Cmd+Enter 换行。"""
+
+    enter_pressed = QtCore.Signal(bool)
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        key = event.key()
+        if key in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
+            mods = event.modifiers()
+            newline = bool(
+                mods
+                & (
+                    QtCore.Qt.KeyboardModifier.ControlModifier
+                    | QtCore.Qt.KeyboardModifier.MetaModifier
+                )
+            )
+            self.enter_pressed.emit(newline)
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
 
 class AiChatPanel(QtWidgets.QWidget):
@@ -42,6 +72,11 @@ class AiChatPanel(QtWidgets.QWidget):
         self._worker: ChatWorker | None = None
         self._retired_workers: list[QtCore.QThread] = []
         self._streaming_bubble: QtWidgets.QWidget | None = None
+        self._live_trace_block: AiInlineTraceBlock | None = None
+        self._pending_bubble: QtWidgets.QLabel | None = None
+        self._pending_main = "思考中…"
+        self._pending_sub = "已收到你的问题"
+        self._pending_spinner_index = 0
         self._context_text = ""
         self._tool_hint: QtWidgets.QLabel | None = None
         self._skip_completion_once = False
@@ -52,6 +87,9 @@ class AiChatPanel(QtWidgets.QWidget):
         else:
             self.setStyleSheet(PANEL_STYLESHEET)
         self._build_ui()
+        self._pending_timer = QtCore.QTimer(self)
+        self._pending_timer.setInterval(400)
+        self._pending_timer.timeout.connect(self._tick_pending_spinner)
         self._connect_signals()
         self.scroll.viewport().installEventFilter(self)
         self._refresh_messages()
@@ -120,12 +158,12 @@ class AiChatPanel(QtWidgets.QWidget):
         root.addWidget(self.scroll, stretch=1)
         QtCore.QTimer.singleShot(0, self._on_panel_shown)
 
-        # ── 快捷指令面板（浮动/桌面紧凑模式） ──
+        # ── 快捷指令面板（输入框上方） ──
         self.quick_actions: QuickActionChips | None = None
-        if self.floating or self.compact:
-            self.quick_actions = QuickActionChips(self)
-            self.quick_actions.triggered.connect(self._on_quick_action)
-            root.addWidget(self.quick_actions)
+        self.quick_actions = QuickActionChips(self)
+        self.quick_actions.triggered.connect(self._on_quick_action)
+        root.addWidget(self.quick_actions)
+        QtCore.QTimer.singleShot(0, self._refresh_quick_actions_from_context)
 
         # ── 代码补全弹窗 ──
         self._completion_popup = QtWidgets.QListWidget()
@@ -144,11 +182,10 @@ class AiChatPanel(QtWidgets.QWidget):
         input_row = QtWidgets.QHBoxLayout()
         input_row.setSpacing(6)
         input_row.setAlignment(QtCore.Qt.AlignmentFlag.AlignBottom)
-        self.input_box = QtWidgets.QPlainTextEdit()
+        self.input_box = AiInputEdit()
         self.input_box.setObjectName("AiInput")
-        self.input_box.setPlaceholderText(
-            "问点什么…" if self.floating else "输入问题，Ctrl+Enter 发送…"
-        )
+        self.input_box.setPlaceholderText("Enter 发送，Ctrl+Enter 换行…")
+        self.input_box.enter_pressed.connect(self._on_input_enter)
         line_height = self.input_box.fontMetrics().lineSpacing()
         if self.floating:
             self._input_min_height = max(44, line_height + 20)
@@ -176,6 +213,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self.input_box.textChanged.connect(self._on_input_text_changed)
         # 方向键在不显示补全时正常导航
         self.input_box.installEventFilter(self)
+        self.input_box.viewport().installEventFilter(self)
         input_row.addWidget(self.input_box, stretch=1)
 
         self.send_btn = QtWidgets.QPushButton("↑" if self.floating else "发送")
@@ -247,6 +285,7 @@ class AiChatPanel(QtWidgets.QWidget):
         signals.tools_status_changed.connect(self._on_tools_status_changed)
         signals.tool_call_started.connect(self._on_tool_call_started)
         signals.tool_call_finished.connect(self._on_tool_call_finished)
+        signals.trace_changed.connect(self._on_trace_changed)
         self._on_tools_status_changed(self.engine.get_tools_status())
 
     def focus_input(self) -> None:
@@ -281,6 +320,24 @@ class AiChatPanel(QtWidgets.QWidget):
         if auto_send:
             self._on_send()
 
+    def _panel_mode(self) -> str:
+        if self.floating:
+            return "floating"
+        if self.compact:
+            return "compact"
+        return "assistant"
+
+    def _refresh_quick_actions_from_context(self) -> None:
+        """根据当前 AI 上下文刷新快捷指令按钮。"""
+        if self.quick_actions is None:
+            return
+        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_llm.ui.floating_actions import build_quick_actions_for_panel
+
+        ctx = get_ai_context()
+        actions = build_quick_actions_for_panel(ctx, mode=self._panel_mode())
+        self.quick_actions.set_actions(actions)
+
     def set_quick_actions(self, actions: list[QuickAction]) -> None:
         if self.quick_actions is None:
             return
@@ -288,8 +345,8 @@ class AiChatPanel(QtWidgets.QWidget):
 
     # ── 快捷指令 ──
     def _on_quick_action(self, action: QuickAction) -> None:
-        """快捷指令：悬浮模式仅回填输入框，不自动发送。"""
-        if self.floating:
+        """快捷指令：悬浮/全屏回填输入框；紧凑模式默认直接发送。"""
+        if self.floating or self._panel_mode() == "assistant":
             self.set_input_text(action.prompt)
             return
         auto_send = action.auto_send or True
@@ -371,35 +428,14 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_context_changed(self, text: str) -> None:
         self._context_text = text.strip()
+        self._refresh_quick_actions_from_context()
         if self.floating:
-            self._refresh_quick_actions_from_context()
             return
         if self._context_text:
             self.context_label.setText(self._context_text)
             self.context_label.setVisible(True)
         else:
             self.context_label.setVisible(False)
-        self._refresh_quick_actions()
-
-    def _refresh_quick_actions_from_context(self) -> None:
-        """悬浮模式：上下文变化时同步快捷指令。"""
-        if self.quick_actions is None:
-            return
-        from vnpy_ashare.ai.session_context import get_ai_context
-        from vnpy_llm.ui.floating_actions import _build_actions
-
-        ctx = get_ai_context()
-        self.quick_actions.set_actions(_build_actions(ctx))
-
-    def _refresh_quick_actions(self) -> None:
-        """根据当前 AI 上下文刷新快捷指令按钮。"""
-        if self.quick_actions is None or self.floating:
-            return
-        from vnpy_ashare.ai.session_context import get_ai_context
-        from vnpy_llm.ui.floating_actions import _build_actions
-        ctx = get_ai_context()
-        actions = _build_actions(ctx)
-        self.quick_actions.set_actions(actions)
 
     def _clear_message_widgets(self) -> None:
         while self.message_layout.count() > 1:
@@ -408,15 +444,87 @@ class AiChatPanel(QtWidgets.QWidget):
             if widget is not None:
                 widget.deleteLater()
         self._streaming_bubble = None
+        self._live_trace_block = None
+        self._remove_pending_bubble()
+
+    def _should_show_inline_trace(self) -> bool:
+        return not self.floating
+
+    def _trace_block_width(self) -> int:
+        return int(self._bubble_max_width("assistant") * 0.92)
+
+    def _trace_insert_index(self) -> int:
+        for index in range(self.message_layout.count() - 1):
+            row = self.message_layout.itemAt(index).widget()
+            if row is None:
+                continue
+            for label in row.findChildren(QtWidgets.QLabel):
+                name = label.objectName()
+                if name == "AiBubblePending":
+                    return index
+                if (
+                    name == "AiBubbleAssistant"
+                    and self._streaming_bubble is not None
+                    and label is self._streaming_bubble
+                ):
+                    return index
+        for index in range(self.message_layout.count() - 2, -1, -1):
+            row = self.message_layout.itemAt(index).widget()
+            if row is None:
+                continue
+            for label in row.findChildren(QtWidgets.QLabel):
+                if label.objectName() == "AiBubbleUser":
+                    return index + 1
+        return max(0, self.message_layout.count() - 1)
+
+    def _insert_inline_trace(self, turn: TurnTrace, *, expanded: bool) -> AiInlineTraceBlock:
+        block = AiInlineTraceBlock(self.engine, turn_id=turn.turn_id, parent=self.message_container)
+        block.apply_turn(turn, expanded=expanded)
+        block.sync_width(self._trace_block_width())
+
+        row = QtWidgets.QWidget()
+        row.setObjectName("AiTraceRow")
+        if self.floating:
+            row.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        row_layout = QtWidgets.QHBoxLayout(row)
+        row_layout.setContentsMargins(2, 0, 2, 4)
+        row_layout.setSpacing(0)
+        row_layout.addWidget(block, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        row_layout.addStretch(1)
+        self.message_layout.insertWidget(self._trace_insert_index(), row)
+        return block
+
+    def _sync_trace_block_widths(self) -> None:
+        if not self._should_show_inline_trace():
+            return
+        width = self._trace_block_width()
+        for block in self._iter_trace_blocks():
+            block.sync_width(width)
+
+    def _iter_trace_blocks(self):
+        for index in range(self.message_layout.count() - 1):
+            row = self.message_layout.itemAt(index).widget()
+            if row is None:
+                continue
+            for block in row.findChildren(AiInlineTraceBlock):
+                yield block
 
     def _refresh_messages(self) -> None:
         if self._worker is not None and self._worker.isRunning():
             return
         self._clear_message_widgets()
-        for msg in self.engine.get_messages():
+        messages = self.engine.get_messages()
+        turn_map = map_turns_to_user_messages(messages, self.engine.get_trace_turns())
+        for index, msg in enumerate(messages):
             if msg.role not in ("user", "assistant", "error"):
                 continue
             if msg.role == "assistant" and not msg.content.strip():
+                continue
+            if msg.role == "user":
+                self._append_bubble(msg.role, msg.content, persist=False)
+                turn = turn_map.get(index)
+                if self._should_show_inline_trace() and turn is not None:
+                    self._insert_inline_trace(turn, expanded=False)
                 continue
             if msg.role == "assistant":
                 self._insert_assistant_html_bubble(msg.content)
@@ -477,6 +585,8 @@ class AiChatPanel(QtWidgets.QWidget):
             return "user"
         if name == "AiBubbleError":
             return "error"
+        if name in ("AiBubblePending", "AiBubbleAssistant"):
+            return "assistant"
         return "assistant"
 
     def _sync_label_bubble(self, bubble: QtWidgets.QLabel) -> None:
@@ -500,6 +610,7 @@ class AiChatPanel(QtWidgets.QWidget):
                 self._sync_label_bubble(bubble)
             elif isinstance(bubble, QtWidgets.QTextBrowser):
                 self._sync_browser_bubble(bubble)
+        self._sync_trace_block_widths()
 
     def _sync_browser_bubble(self, browser: QtWidgets.QTextBrowser) -> None:
         role = self._bubble_role(browser)
@@ -611,6 +722,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self.input_box.setFixedHeight(self._input_min_height)
         self._set_busy(True)
         self._append_bubble("user", text, persist=True)
+        self._show_pending_bubble("思考中…", "已收到你的问题")
         worker = ChatWorker(self.engine, text, None)
         self._worker = worker
         retain_thread_until_finished(self._retired_workers, worker)
@@ -622,9 +734,119 @@ class AiChatPanel(QtWidgets.QWidget):
     def _set_busy(self, busy: bool) -> None:
         self.send_btn.setDisabled(busy)
         self.input_box.setDisabled(busy)
+        if busy:
+            self.send_btn.setToolTip("正在处理…")
+        else:
+            self.send_btn.setToolTip("")
+            self._stop_pending_timer()
+
+    def _show_pending_bubble(self, main: str, sub: str = "") -> None:
+        self._pending_main = main.strip() or "思考中…"
+        self._pending_sub = sub.strip()
+        if self._pending_bubble is None:
+            bubble = QtWidgets.QLabel()
+            bubble.setObjectName("AiBubblePending")
+            bubble.setWordWrap(True)
+            bubble.setTextFormat(QtCore.Qt.TextFormat.RichText)
+            bubble.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.NoTextInteraction)
+            bubble.setMinimumWidth(40)
+            bubble.setMinimumHeight(36)
+            bubble.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Preferred,
+                QtWidgets.QSizePolicy.Policy.Preferred,
+            )
+            bubble.setAlignment(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+            )
+            self._insert_bubble_row("assistant", bubble)
+            self._pending_bubble = bubble
+            self._start_pending_timer()
+        self._render_pending_bubble()
+        self._scroll_to_bottom()
+
+    def _render_pending_bubble(self) -> None:
+        if self._pending_bubble is None:
+            return
+        spinner = SPINNER_FRAMES[self._pending_spinner_index % len(SPINNER_FRAMES)]
+        self._pending_bubble.setText(
+            format_pending_html(self._pending_main, self._pending_sub, spinner=spinner)
+        )
+        self._sync_label_bubble(self._pending_bubble)
+        if self.floating and self._tool_hint is not None:
+            hint = self._pending_main
+            if self._pending_sub:
+                hint = f"{hint} · {self._pending_sub}"
+            self._tool_hint.setText(f"⏳ {hint}")
+            self._tool_hint.show()
+
+    def _start_pending_timer(self) -> None:
+        if not self._pending_timer.isActive():
+            self._pending_spinner_index = 0
+            self._pending_timer.start()
+
+    def _stop_pending_timer(self) -> None:
+        if self._pending_timer.isActive():
+            self._pending_timer.stop()
+
+    def _tick_pending_spinner(self) -> None:
+        if self._pending_bubble is None:
+            self._stop_pending_timer()
+            return
+        self._pending_spinner_index = (self._pending_spinner_index + 1) % len(SPINNER_FRAMES)
+        self._render_pending_bubble()
+
+    def _remove_pending_bubble(self) -> None:
+        self._stop_pending_timer()
+        if self._pending_bubble is None:
+            return
+        row = self._pending_bubble.parentWidget()
+        if row is not None:
+            row.deleteLater()
+        else:
+            self._pending_bubble.deleteLater()
+        self._pending_bubble = None
+        if self.floating and self._tool_hint is not None:
+            self._tool_hint.hide()
+
+    def _update_pending_from_trace(self) -> None:
+        if self._pending_bubble is None:
+            return
+        main, sub = pending_status_from_turn(self.engine.get_current_trace_turn())
+        if main == self._pending_main and sub == self._pending_sub:
+            return
+        self._pending_main = main
+        self._pending_sub = sub
+        self._render_pending_bubble()
+
+    def _on_trace_changed(self) -> None:
+        self._update_pending_from_trace()
+        if not self._should_show_inline_trace():
+            return
+        turn = self.engine.get_current_trace_turn()
+        if turn is not None:
+            if self._live_trace_block is None:
+                self._live_trace_block = self._insert_inline_trace(turn, expanded=True)
+            else:
+                self._live_trace_block.apply_turn(turn, expanded=True)
+            self._scroll_to_bottom()
+            return
+        if self._live_trace_block is not None:
+            turns = self.engine.get_trace_turns()
+            if turns:
+                self._live_trace_block.apply_turn(turns[-1], expanded=True)
+        if self._worker is None or not self._worker.isRunning():
+            self._live_trace_block = None
 
     def _on_stream_started(self) -> None:
-        self._streaming_bubble = self._append_bubble("assistant", "", persist=True)
+        if self._pending_bubble is None:
+            self._show_pending_bubble("思考中…", "已收到你的问题")
+        else:
+            self._update_pending_from_trace()
+
+    def _ensure_streaming_bubble(self, initial: str) -> None:
+        if self._streaming_bubble is not None:
+            return
+        self._streaming_bubble = self._append_bubble("assistant", initial, persist=True)
 
     def _append_stream_delta(self, delta: str) -> None:
         if self._streaming_bubble is None:
@@ -638,10 +860,18 @@ class AiChatPanel(QtWidgets.QWidget):
             self._fit_floating_bubble(widget)
 
     def _on_stream_delta(self, delta: str) -> None:
-        self._append_stream_delta(delta)
+        if not delta:
+            return
+        if self._pending_bubble is not None:
+            self._remove_pending_bubble()
+        if self._streaming_bubble is None:
+            self._ensure_streaming_bubble(delta)
+        else:
+            self._append_stream_delta(delta)
         self._scroll_to_bottom()
 
     def _on_stream_finished(self) -> None:
+        self._remove_pending_bubble()
         if self._streaming_bubble is not None:
             self._sync_all_bubble_widths()
         self._streaming_bubble = None
@@ -657,47 +887,12 @@ class AiChatPanel(QtWidgets.QWidget):
         self._streaming_bubble = None
 
     def _on_stream_failed(self, message: str) -> None:
+        self._remove_pending_bubble()
         self._remove_streaming_bubble()
         self._append_bubble("error", f"生成失败：{message}", persist=True)
 
     def _on_tool_call_started(self, name: str) -> None:
-        label_map = {
-            "get_quote_context": "读取当前上下文",
-            "get_watchlist": "查询自选池",
-            "get_bars_summary": "查询K线概览",
-            "get_bars_data": "加载K线数据",
-            "diagnose_stock": "综合诊断",
-            "technical_snapshot": "分析技术形态",
-            "list_strategy_signals": "查询策略信号",
-            "historical_pattern_summary": "统计历史走势",
-            "get_screening_context": "读取选股结果",
-            "list_strategies": "列出可用策略",
-            "get_backtest_result": "读取回测结果",
-            "list_backtest_history": "查询回测历史",
-            "list_screeners": "列出选股条件",
-            "propose_screening": "解析选股条件",
-            "screen_by_condition": "执行选股筛选",
-            "add_to_watchlist": "加入自选",
-            "remove_from_watchlist": "移出自选",
-            "read_skill_file": "读取知识文档",
-            "run_python": "执行数据分析",
-            "list_skill_files": "列出 Skill 文件",
-        }
-        display = label_map.get(name)
-        if display is None and name.startswith("mcp_tdx_"):
-            suffix = name.removeprefix("mcp_tdx_")
-            if any(key in suffix for key in ("report", "research", "yanbao", "rating")):
-                display = "查询通达信研报"
-            elif "f10" in suffix:
-                display = "查询通达信 F10"
-            elif "quote" in suffix or "price" in suffix:
-                display = "查询通达信行情"
-            elif "kline" in suffix or "bar" in suffix:
-                display = "查询通达信 K 线"
-            else:
-                display = f"通达信 MCP ({suffix})"
-        if display is None:
-            display = name
+        display = tool_display_name(name)
         if self.floating and self._tool_hint is not None:
             self._tool_hint.setText(f"⏳ 正在 {display}…")
             self._tool_hint.show()
@@ -712,11 +907,14 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_worker_done(self) -> None:
         self._worker = None
+        self._remove_pending_bubble()
         self._set_busy(False)
+        self._live_trace_block = None
         self._refresh_messages()
 
     def _on_worker_failed(self, message: str) -> None:
         self._worker = None
+        self._remove_pending_bubble()
         self._set_busy(False)
         if message:
             self._append_bubble("error", message, persist=True)
@@ -761,6 +959,40 @@ class AiChatPanel(QtWidgets.QWidget):
             return
         self.engine.reload_tools()
 
+    def _on_input_enter(self, newline: bool) -> None:
+        if newline:
+            if self._completion_popup.isVisible():
+                self._completion_popup.hide()
+            self._insert_input_newline()
+            return
+        if self._completion_popup.isVisible() and self._completion_popup.hasFocus():
+            row = self._completion_popup.currentRow()
+            if row < 0:
+                row = 0
+            item = self._completion_popup.item(row)
+            if item is not None:
+                self._on_completion_selected(item)
+            return
+        self._completion_popup.hide()
+        self._on_send()
+
+    def _handle_input_return(self, key_event: QtGui.QKeyEvent) -> bool:
+        if key_event.key() not in (
+            QtCore.Qt.Key.Key_Return,
+            QtCore.Qt.Key.Key_Enter,
+        ):
+            return False
+        mods = key_event.modifiers()
+        newline = bool(
+            mods
+            & (
+                QtCore.Qt.KeyboardModifier.ControlModifier
+                | QtCore.Qt.KeyboardModifier.MetaModifier
+            )
+        )
+        self._on_input_enter(newline)
+        return True
+
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
         if (
             obj is self.scroll.viewport()
@@ -768,26 +1000,26 @@ class AiChatPanel(QtWidgets.QWidget):
         ):
             self.message_container.setMinimumWidth(self._message_viewport_width())
             self._sync_all_bubble_widths()
-        if obj is self.input_box and event.type() == QtCore.QEvent.Type.KeyPress:
+        input_targets = (self.input_box, self.input_box.viewport())
+        if obj in input_targets and event.type() == QtCore.QEvent.Type.KeyPress:
             key_event = event
-            if self._completion_popup.isVisible():
-                if key_event.key() == QtCore.Qt.Key.Key_Down:
-                    self._completion_popup.setFocus()
-                    self._completion_popup.setCurrentRow(0)
+            if isinstance(key_event, QtGui.QKeyEvent):
+                if obj is self.input_box.viewport() and self._handle_input_return(key_event):
                     return True
-                if key_event.key() == QtCore.Qt.Key.Key_Escape:
-                    self._completion_popup.hide()
-                    return True
-                if key_event.key() in (
-                    QtCore.Qt.Key.Key_Return,
-                    QtCore.Qt.Key.Key_Enter,
-                ):
-                    if key_event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier:
+                if self._completion_popup.isVisible():
+                    if key_event.key() == QtCore.Qt.Key.Key_Down:
+                        self._completion_popup.setFocus()
+                        self._completion_popup.setCurrentRow(0)
+                        return True
+                    if key_event.key() == QtCore.Qt.Key.Key_Escape:
                         self._completion_popup.hide()
-                        return False
-                    self._completion_popup.hide()
-                    return False
+                        return True
         return super().eventFilter(obj, event)
+
+    def _insert_input_newline(self) -> None:
+        cursor = self.input_box.textCursor()
+        cursor.insertText("\n")
+        self.input_box.setTextCursor(cursor)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
@@ -798,13 +1030,6 @@ class AiChatPanel(QtWidgets.QWidget):
         self._sync_all_bubble_widths()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if (
-            event.key() in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter)
-            and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
-        ):
-            self._on_send()
-            event.accept()
-            return
         super().keyPressEvent(event)
 
     def _disconnect_engine_signals(self) -> None:
@@ -819,6 +1044,7 @@ class AiChatPanel(QtWidgets.QWidget):
             (signals.tools_status_changed, self._on_tools_status_changed),
             (signals.tool_call_started, self._on_tool_call_started),
             (signals.tool_call_finished, self._on_tool_call_finished),
+            (signals.trace_changed, self._on_trace_changed),
         ):
             try:
                 signal.disconnect(slot)
@@ -826,6 +1052,7 @@ class AiChatPanel(QtWidgets.QWidget):
                 pass
 
     def deactivate(self, *, final: bool = False) -> None:
+        self._remove_pending_bubble()
         self._set_busy(False)
         self._completion_popup.hide()
         if final:

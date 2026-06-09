@@ -5,7 +5,13 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from vnpy_ashare.ai.context import AiContextData, QuickAction, build_stock_quick_actions
+from vnpy_ashare.ai.context import (
+    AiContextData,
+    QuickAction,
+    build_assistant_quick_actions,
+    build_floating_stock_quick_actions,
+    build_stock_quick_actions,
+)
 from vnpy_ashare.ai.session_context import get_screening_results
 
 
@@ -15,6 +21,44 @@ def enrich_context_with_actions(data: AiContextData) -> AiContextData:
     chip_text = _build_chip_text(data)
     actions = _build_actions(data)
     return replace(data, badge=badge, chip_text=chip_text, actions=actions)
+
+
+def _build_actions(data: AiContextData) -> list[QuickAction]:
+    if data.page in ("自选", "市场", "本地") and data.symbol:
+        return build_floating_stock_quick_actions(
+            data.symbol,
+            exchange_cn=data.exchange,
+            name=data.name,
+        )
+    return _build_page_actions(data)
+
+
+def _build_page_actions(data: AiContextData) -> list[QuickAction]:
+    if data.page == "选股":
+        ctx = get_screening_results()
+        if ctx is not None and ctx.count > 0:
+            return [
+                QuickAction(
+                    id="interpret_screen",
+                    label="解读选股结果",
+                    prompt=(
+                        f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
+                        "请调用 get_screening_context 获取数据后解读前几只标的。"
+                    ),
+                ),
+            ]
+    if data.page == "数据管理":
+        return [
+            QuickAction(
+                id="data_gap",
+                label="检查数据缺口",
+                prompt=(
+                    "请根据当前本地 K 线覆盖情况，分析可能存在的数据缺口，"
+                    "并说明建议优先补全哪些标的或周期。可结合 get_bars_summary 等工具。"
+                ),
+            ),
+        ]
+    return []
 
 
 def _build_badge(data: AiContextData) -> str:
@@ -59,38 +103,17 @@ def _extract_change_pct(quote_summary: str) -> str:
     return match.group(1) if match else ""
 
 
-def _build_actions(data: AiContextData) -> list[QuickAction]:
+def build_quick_actions_for_panel(data: AiContextData, *, mode: str) -> list[QuickAction]:
+    """按面板模式组装快捷按钮（floating / compact / assistant）。"""
+    if mode == "assistant":
+        return build_assistant_quick_actions()
     if data.page in ("自选", "市场", "本地") and data.symbol:
-        return build_stock_quick_actions(
+        return build_floating_stock_quick_actions(
             data.symbol,
             exchange_cn=data.exchange,
             name=data.name,
         )
-    if data.page == "选股":
-        ctx = get_screening_results()
-        if ctx is not None and ctx.count > 0:
-            return [
-                QuickAction(
-                    id="interpret_screen",
-                    label="解读选股结果",
-                    prompt=(
-                        f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
-                        "请调用 get_screening_context 获取数据后解读前几只标的。"
-                    ),
-                ),
-            ]
-    if data.page == "数据管理":
-        return [
-            QuickAction(
-                id="data_gap",
-                label="检查数据缺口",
-                prompt=(
-                    "请根据当前本地 K 线覆盖情况，分析可能存在的数据缺口，"
-                    "并说明建议优先补全哪些标的或周期。可结合 get_bars_summary 等工具。"
-                ),
-            ),
-        ]
-    return []
+    return _build_page_actions(data)
 
 
 def orb_tooltip_text(data: AiContextData) -> str:

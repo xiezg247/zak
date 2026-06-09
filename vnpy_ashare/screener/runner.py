@@ -5,10 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from vnpy_ashare.screener.data_source import (
+    fetch_fundamental_screening_rows,
+    fetch_moneyflow_with_fallback,
+    load_screening_quote_snapshot,
+)
 from vnpy_ashare.screener.export import resolve_export_columns
-from vnpy_ashare.screener.factors import fetch_daily_basic, fetch_moneyflow
 from vnpy_ashare.screener.presets import PresetDefinition, get_preset
-from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.rules import (
     apply_large_cap,
     apply_low_pe,
@@ -51,7 +55,10 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
         raise ValueError(f"未知选股方案：{request.preset}")
 
     if preset.source == "quote":
-        snapshot = load_market_quote_rows()
+        try:
+            snapshot = load_screening_quote_snapshot()
+        except MarketQuotesLoadError as ex:
+            raise RuntimeError(str(ex)) from ex
         rows = apply_quote_preset(
             preset.name,
             snapshot.rows,
@@ -65,7 +72,7 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
             condition=preset.name,
             updated_at=snapshot.updated_at,
             total_scanned=snapshot.total,
-            source="quote",
+            source=snapshot.source,
             columns=resolve_export_columns(rows),
         )
 
@@ -91,9 +98,11 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
     top_n = max(1, min(int(top_n or 20), 200))
 
     if preset.rule_kind == "moneyflow_in":
-        raw_rows, trade_date = fetch_moneyflow()
+        raw_rows, trade_date = fetch_moneyflow_with_fallback()
         if not raw_rows:
-            raise RuntimeError("Tushare moneyflow 无数据，请稍后重试或检查积分权限。")
+            raise RuntimeError(
+                "Tushare moneyflow 在最近多个交易日均无数据，请稍后重试或检查积分权限。"
+            )
         rows = apply_moneyflow_in(raw_rows, top_n=top_n)
         return ScreenerRunResult(
             rows=rows,
@@ -104,9 +113,7 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
             columns=resolve_export_columns(rows),
         )
 
-    raw_rows, trade_date = fetch_daily_basic()
-    if not raw_rows:
-        raise RuntimeError("Tushare daily_basic 无数据，请稍后重试或检查积分权限。")
+    raw_rows, trade_date, source_tag = fetch_fundamental_screening_rows()
 
     if preset.rule_kind == "low_pe":
         rows = apply_low_pe(raw_rows, top_n=top_n)
@@ -120,7 +127,7 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
         condition=preset.name,
         updated_at=trade_date,
         total_scanned=len(raw_rows),
-        source="tushare",
+        source=source_tag,
         columns=resolve_export_columns(rows),
     )
 
