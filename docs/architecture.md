@@ -51,6 +51,18 @@ vnpy MainWindow（基类）
 | `vnpy_mcp` | MCP 远端工具集成（从 `mcp/mcp.json` 发现工具） |
 | `vnpy_ashare/ai` | A 股上下文共享（`context.py` 等）、AI 全屏页 |
 
+### 配置单源（`.env` ↔ `vt_setting.json`）
+
+| 模块 | 职责 |
+|------|------|
+| `config_schema.py` | 可配置项定义（ENV / VT 字段 spec） |
+| `config_bridge.py` | ENV→VT 构建、`detect_config_drift()` 漂移检测 |
+| `vt_settings.py` | 运行时读写、`sync_vt_settings_from_env()` |
+| `ui/settings_snapshot.py` | 配置页数据解析与来源标记 |
+| `ui/settings_dialog.py` | GUI 编辑 + 漂移提示 +「从 .env 同步」 |
+
+`.env` 为密钥与部署环境真源；`vt_setting.json` 为 VeighNa 运行时配置。`scripts/init_config.py` 与设置页「从 .env 同步」均调用 `build_vt_settings()` → `config_bridge`。
+
 ### 看盘页 UI 拆分（`ui/quotes/`）
 
 `QuotesPage`（`ui/quotes_page.py`）作为薄壳组合各 controller，子包 `ui/quotes/` 按职责拆分：

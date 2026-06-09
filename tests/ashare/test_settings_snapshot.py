@@ -8,6 +8,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from vnpy_ashare.config_bridge import (
+    build_vt_settings_from_env_values,
+    detect_config_drift,
+    format_config_drift_summary,
+)
 from vnpy_ashare.ui.settings_snapshot import (
     collect_editable_values,
     detect_database_mode,
@@ -155,7 +160,24 @@ class VtSettingsTest(unittest.TestCase):
         clear=False,
     )
     def test_build_vt_settings_tickflow(self) -> None:
-        settings = build_vt_settings()
+        with tempfile.TemporaryDirectory() as tmp:
+            env_path = Path(tmp) / ".env"
+            env_path.write_text(
+                "DATAFEED_NAME=tickflow\nTICKFLOW_API_KEY=tf-key\nDATABASE_NAME=sqlite\n",
+                encoding="utf-8",
+            )
+            import vnpy_ashare.config_bridge as config_bridge
+            import vnpy_ashare.vt_settings as vt_settings
+
+            original = vt_settings.ENV_FILE
+            original_bridge = config_bridge.ENV_FILE
+            try:
+                vt_settings.ENV_FILE = env_path
+                config_bridge.ENV_FILE = env_path
+                settings = build_vt_settings()
+            finally:
+                vt_settings.ENV_FILE = original
+                config_bridge.ENV_FILE = original_bridge
         self.assertEqual(settings["datafeed.name"], "tickflow")
         self.assertEqual(settings["datafeed.password"], "tf-key")
         self.assertEqual(settings["database.name"], "sqlite")
@@ -204,3 +226,35 @@ class VtSettingsTest(unittest.TestCase):
             finally:
                 vt_settings.SETTING_FILE = original_file
                 vt_settings.VNTRADER_DIR = original_dir
+
+
+class ConfigBridgeTest(unittest.TestCase):
+    def test_build_vt_settings_from_env_values_tickflow(self) -> None:
+        settings = build_vt_settings_from_env_values(
+            {
+                "DATAFEED_NAME": "tickflow",
+                "TICKFLOW_API_KEY": "tf-key",
+                "DATABASE_NAME": "sqlite",
+            }
+        )
+        self.assertEqual(settings["datafeed.name"], "tickflow")
+        self.assertEqual(settings["datafeed.password"], "tf-key")
+        self.assertEqual(settings["database.name"], "sqlite")
+
+    def test_detect_config_drift_datafeed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / ".env"
+            path.write_text("DATAFEED_NAME=tickflow\nDATABASE_NAME=sqlite\n", encoding="utf-8")
+            drifts = detect_config_drift(
+                {"datafeed.name": "tushare", "database.name": "sqlite"},
+                env_file=path,
+            )
+            keys = {d.env_key for d in drifts}
+            self.assertIn("DATAFEED_NAME", keys)
+
+    def test_format_config_drift_summary_empty(self) -> None:
+        self.assertEqual(format_config_drift_summary([]), "")
+
+
+if __name__ == "__main__":
+    unittest.main()

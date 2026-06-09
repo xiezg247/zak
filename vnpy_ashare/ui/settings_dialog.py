@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.config_bridge import detect_config_drift, format_config_drift_summary
 from vnpy_ashare.config_schema import (
     VT_DB_SPECS,
     VT_NON_DB_SPECS,
@@ -69,6 +70,12 @@ class SettingsDialog(QtWidgets.QDialog):
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
         root.addWidget(hint)
+
+        self._drift_label = QtWidgets.QLabel("")
+        self._drift_label.setObjectName("SettingsDriftWarning")
+        self._drift_label.setWordWrap(True)
+        self._drift_label.setVisible(False)
+        root.addWidget(self._drift_label)
 
         self._hide_secrets = QtWidgets.QCheckBox("隐藏密钥")
         root.addWidget(self._hide_secrets)
@@ -313,6 +320,13 @@ class SettingsDialog(QtWidgets.QDialog):
         )
         self._update_database_status()
         self._populate_runtime_fields(settings)
+        self._update_drift_warning(settings)
+
+    def _update_drift_warning(self, settings: dict) -> None:
+        drifts = detect_config_drift(settings)
+        summary = format_config_drift_summary(drifts)
+        self._drift_label.setText(summary)
+        self._drift_label.setVisible(bool(summary))
 
     def _on_database_toggle(self, index: int) -> None:
         mode = "questdb" if index == 1 else "sqlite"

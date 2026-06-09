@@ -1,0 +1,264 @@
+"""`.env` 与 `vt_setting.json` 映射、构建与漂移检测（单源逻辑）。"""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from dotenv import load_dotenv
+
+from vnpy_ashare.config_schema import ENV_CONFIG_SPECS, normalize_database_name
+from vnpy_ashare.paths import ENV_FILE
+from vnpy_ashare.ui.fonts import default_font_family
+
+
+def parse_env_file(path: Path) -> dict[str, str]:
+    """解析 .env 文件中显式定义的键值。"""
+    if not path.is_file():
+        return {}
+
+    result: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        result[key] = value
+    return result
+
+
+def load_effective_env_values(env_file: Path = ENV_FILE) -> dict[str, str]:
+    """合并 .env 文件与 schema 默认值，得到生效的 ENV 配置。"""
+    file_values = parse_env_file(env_file)
+    return {
+        spec.key: file_values[spec.key] if spec.key in file_values else spec.default
+        for spec in ENV_CONFIG_SPECS
+    }
+
+
+def normalize_datafeed_name(name: str) -> str:
+    text = name.strip().lower()
+    return text if text in {"tickflow", "tushare"} else "tickflow"
+
+
+def _env_lookup(env: dict[str, str], key: str, default: str = "") -> str:
+    if key in env:
+        return env[key]
+    return default
+
+
+def sqlite_database_settings(*, database_file: str = "database.db") -> dict[str, Any]:
+    return {
+        "database.name": "sqlite",
+        "database.database": database_file,
+        "database.host": "",
+        "database.port": 0,
+        "database.user": "",
+        "database.password": "",
+    }
+
+
+def questdb_database_settings(env: dict[str, str]) -> dict[str, Any]:
+    return {
+        "database.name": "questdb",
+        "database.host": _env_lookup(env, "QUESTDB_HOST", "localhost"),
+        "database.port": int(_env_lookup(env, "QUESTDB_PORT", "8812") or "8812"),
+        "database.http_port": int(_env_lookup(env, "QUESTDB_HTTP_PORT", "9000") or "9000"),
+        "database.user": _env_lookup(env, "QUESTDB_USER", "admin"),
+        "database.password": _env_lookup(env, "QUESTDB_PASSWORD", "quest"),
+        "database.database": _env_lookup(env, "QUESTDB_DATABASE", "qdb"),
+    }
+
+
+def database_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
+    name = normalize_database_name(_env_lookup(env, "DATABASE_NAME", "sqlite"))
+    if name == "questdb":
+        return questdb_database_settings(env)
+    return sqlite_database_settings()
+
+
+def datafeed_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
+    name = normalize_datafeed_name(_env_lookup(env, "DATAFEED_NAME", "tickflow"))
+    if name == "tushare":
+        return {
+            "datafeed.name": "tushare",
+            "datafeed.username": "token",
+            "datafeed.password": _env_lookup(env, "TUSHARE_TOKEN", ""),
+        }
+    return {
+        "datafeed.name": "tickflow",
+        "datafeed.username": "api_key",
+        "datafeed.password": _env_lookup(env, "TICKFLOW_API_KEY", ""),
+    }
+
+
+def base_vt_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
+    return {
+        "font.family": default_font_family(),
+        "font.size": 12,
+        "log.active": True,
+        "log.level": "INFO",
+        **database_settings_from_env(env),
+    }
+
+
+def build_vt_settings_from_env_values(env: dict[str, str]) -> dict[str, Any]:
+    """由 .env 键值对生成完整 vt_setting 字典（纯函数，便于测试）。"""
+    return {
+        **base_vt_settings_from_env(env),
+        **datafeed_settings_from_env(env),
+    }
+
+
+def build_vt_settings_from_env_file(env_file: Path = ENV_FILE) -> dict[str, Any]:
+    load_dotenv(env_file, override=True)
+    env = load_effective_env_values(env_file)
+    for key, value in parse_env_file(env_file).items():
+        env[key] = os.getenv(key, value)
+    return build_vt_settings_from_env_values(env)
+
+
+@dataclass(frozen=True)
+class ConfigDrift:
+    """运行时 vt_setting 与 .env 不一致项。"""
+
+    category: str
+    env_key: str
+    vt_key: str
+    env_value: str
+    vt_value: str
+
+    @property
+    def message(self) -> str:
+        return f"{self.vt_key}（运行时 {self.vt_value!r}）与 {self.env_key}（.env {self.env_value!r}）不一致"
+
+
+def detect_config_drift(
+    runtime_settings: dict[str, Any],
+    *,
+    env_file: Path = ENV_FILE,
+) -> list[ConfigDrift]:
+    """检测 vt_setting.json 与 .env 之间的关键漂移。"""
+    env = load_effective_env_values(env_file)
+    drifts: list[ConfigDrift] = []
+
+    env_datafeed = normalize_datafeed_name(env.get("DATAFEED_NAME", "tickflow"))
+    vt_datafeed = normalize_datafeed_name(str(runtime_settings.get("datafeed.name", "tickflow")))
+    if env_datafeed != vt_datafeed:
+        drifts.append(
+            ConfigDrift(
+                category="datafeed",
+                env_key="DATAFEED_NAME",
+                vt_key="datafeed.name",
+                env_value=env_datafeed,
+                vt_value=vt_datafeed,
+            )
+        )
+
+    env_db = normalize_database_name(env.get("DATABASE_NAME", "sqlite"))
+    vt_db = normalize_database_name(str(runtime_settings.get("database.name", "sqlite")))
+    if env_db != vt_db:
+        drifts.append(
+            ConfigDrift(
+                category="database",
+                env_key="DATABASE_NAME",
+                vt_key="database.name",
+                env_value=env_db,
+                vt_value=vt_db,
+            )
+        )
+
+    if env_datafeed == vt_datafeed:
+        if env_datafeed == "tickflow":
+            env_secret = env.get("TICKFLOW_API_KEY", "")
+            vt_secret = str(runtime_settings.get("datafeed.password", ""))
+            if env_secret != vt_secret:
+                drifts.append(
+                    ConfigDrift(
+                        category="datafeed",
+                        env_key="TICKFLOW_API_KEY",
+                        vt_key="datafeed.password",
+                        env_value=mask_for_display(env_secret),
+                        vt_value=mask_for_display(vt_secret),
+                    )
+                )
+        elif env_datafeed == "tushare":
+            env_secret = env.get("TUSHARE_TOKEN", "")
+            vt_secret = str(runtime_settings.get("datafeed.password", ""))
+            if env_secret != vt_secret:
+                drifts.append(
+                    ConfigDrift(
+                        category="datafeed",
+                        env_key="TUSHARE_TOKEN",
+                        vt_key="datafeed.password",
+                        env_value=mask_for_display(env_secret),
+                        vt_value=mask_for_display(vt_secret),
+                    )
+                )
+
+    if env_db == vt_db == "questdb":
+        mapping = (
+            ("QUESTDB_HOST", "database.host"),
+            ("QUESTDB_PORT", "database.port"),
+            ("QUESTDB_HTTP_PORT", "database.http_port"),
+            ("QUESTDB_USER", "database.user"),
+            ("QUESTDB_DATABASE", "database.database"),
+        )
+        for env_key, vt_key in mapping:
+            env_val = env.get(env_key, "")
+            vt_val = str(runtime_settings.get(vt_key, ""))
+            if str(env_val) != vt_val:
+                drifts.append(
+                    ConfigDrift(
+                        category="database",
+                        env_key=env_key,
+                        vt_key=vt_key,
+                        env_value=env_val,
+                        vt_value=vt_val,
+                    )
+                )
+        env_pwd = env.get("QUESTDB_PASSWORD", "")
+        vt_pwd = str(runtime_settings.get("database.password", ""))
+        if env_pwd != vt_pwd:
+            drifts.append(
+                ConfigDrift(
+                    category="database",
+                    env_key="QUESTDB_PASSWORD",
+                    vt_key="database.password",
+                    env_value=mask_for_display(env_pwd),
+                    vt_value=mask_for_display(vt_pwd),
+                )
+            )
+
+    return drifts
+
+
+def mask_for_display(value: str) -> str:
+    text = value.strip()
+    if not text:
+        return "（空）"
+    if len(text) <= 8:
+        return "***"
+    return f"{text[:4]}…{text[-4:]}"
+
+
+def format_config_drift_summary(drifts: list[ConfigDrift], *, max_items: int = 3) -> str:
+    if not drifts:
+        return ""
+    lines = ["检测到 .env 与 vt_setting.json 不一致："]
+    for drift in drifts[:max_items]:
+        lines.append(f"  · {drift.message}")
+    if len(drifts) > max_items:
+        lines.append(f"  · 另有 {len(drifts) - max_items} 项…")
+    lines.append("可使用「从 .env 同步」覆盖运行时配置。")
+    return "\n".join(lines)

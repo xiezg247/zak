@@ -8,6 +8,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from vnpy_ashare.config_bridge import parse_env_file
 from vnpy_ashare.config_schema import (
     ENV_CONFIG_SPECS,
     ENV_DB_KEYS,
@@ -40,29 +41,6 @@ def format_config_value(value: object) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     return str(value)
-
-
-def parse_env_file(path: Path) -> dict[str, str]:
-    """解析 .env 文件中显式定义的键值。"""
-    if not path.is_file():
-        return {}
-
-    result: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line[7:].strip()
-        if "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        key = key.strip()
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-            value = value[1:-1]
-        result[key] = value
-    return result
 
 
 @dataclass(frozen=True)
