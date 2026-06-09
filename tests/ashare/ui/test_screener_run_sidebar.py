@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunListWidget
+from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunListWidget, ScreenerRunSidebar
 
 
 class ScreenerRunListWidgetTests(unittest.TestCase):
@@ -32,6 +32,17 @@ class ScreenerRunListWidgetTests(unittest.TestCase):
 
                         widget._filter = "post_close"
                         self.assertEqual(widget.unread_count(), 0)
+
+
+class ScreenerRunSidebarTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    def test_sidebar_init_does_not_crash_during_list_refresh(self) -> None:
+        with patch("vnpy_ashare.ui.screener_run_sidebar.list_runs", return_value=[]):
+            sidebar = ScreenerRunSidebar(mode="auto")
+            self.assertIsNotNone(sidebar._list)
 
 
 if __name__ == "__main__":

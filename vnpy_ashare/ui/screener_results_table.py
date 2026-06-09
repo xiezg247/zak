@@ -11,6 +11,49 @@ from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
 ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 
+def configure_screener_results_table(table: QtWidgets.QTableWidget) -> None:
+    """选股结果表通用配置：勾选列操作，禁用行高亮选中。"""
+    table.setSelectionBehavior(
+        QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+    )
+    table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
+    table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+    table.verticalHeader().setVisible(False)
+    table.verticalHeader().setFixedWidth(0)
+    table.setAlternatingRowColors(True)
+    table.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+
+
+def clear_screener_results_table(table: QtWidgets.QTableWidget) -> None:
+    table.setRowCount(0)
+    table.setColumnCount(0)
+    table.clearSelection()
+    table.setCurrentItem(None)
+
+
+def apply_screener_results_view(
+    table: QtWidgets.QTableWidget,
+    rows: list[dict[str, Any]],
+    columns: list[tuple[str, str]],
+    *,
+    empty_label: QtWidgets.QLabel | None = None,
+) -> None:
+    """刷新结果表，并在无数据时展示空状态提示。"""
+    if not rows:
+        clear_screener_results_table(table)
+        table.hide()
+        if empty_label is not None:
+            empty_label.show()
+        return
+
+    populate_screener_results_table(table, rows, columns)
+    table.clearSelection()
+    table.setCurrentItem(None)
+    if empty_label is not None:
+        empty_label.hide()
+    table.show()
+
+
 def populate_screener_results_table(
     table: QtWidgets.QTableWidget,
     rows: list[dict[str, Any]],
@@ -72,6 +115,9 @@ def populate_screener_results_table(
                     QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
                 )
             table.setItem(row_index, col_index, item)
+
+    table.clearSelection()
+    table.setCurrentItem(None)
 
 
 def iter_checked_table_rows(table: QtWidgets.QTableWidget) -> list[dict[str, Any]]:

@@ -349,6 +349,29 @@ QLabel#ResultSummary {
     padding: 6px 2px;
 }
 
+QLabel#ScreenerEmptyResult {
+    color: #5a5a6a;
+    font-size: 13px;
+    padding: 24px;
+}
+
+QLabel#ScreenerRunSummary {
+    color: #9a9ab8;
+    font-size: 12px;
+    padding: 4px 2px;
+    line-height: 1.4;
+}
+
+QPlainTextEdit#ScreenerRunLogView {
+    background-color: #141418;
+    border: 1px solid #2a2a30;
+    border-radius: 4px;
+    color: #a8a8b0;
+    font-family: Menlo, Monaco, "Courier New", monospace;
+    font-size: 11px;
+    padding: 8px 10px;
+}
+
 /* ── 底部状态栏 ── */
 QStatusBar#ScreenerStatusBar {
     background-color: #1a1a20;

@@ -28,10 +28,12 @@ from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_recipe_panel import ScreenerRecipePanel
 from vnpy_ashare.ui.screener_results_table import (
+    apply_screener_results_view,
+    configure_screener_results_table,
     iter_checked_table_rows,
-    populate_screener_results_table,
     select_all_table_rows,
 )
+from vnpy_ashare.ui.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import ScreenerBatchDownloadWorker, ScreenerRecipeRunWorker
@@ -49,18 +51,19 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.setObjectName("MarketRoot")
         self._recipe_worker: ScreenerRecipeRunWorker | None = None
         self._download_worker: ScreenerBatchDownloadWorker | None = None
-        self._batch_backtest_flow = BatchBacktestFlow(
-            main_engine=main_engine,
-            event_engine=event_engine,
-            parent=self,
-            on_status=lambda message: self._status_label.setText(message),
-        )
+        self._batch_backtest_flow: BatchBacktestFlow | None = None
         self._retired_workers: list[QtCore.QThread] = []
         self._results: list[dict[str, Any]] = []
         self._result_columns: list[tuple[str, str]] = []
         self._watchlist_service = self._get_watchlist_service()
 
         self._build_ui()
+        self._batch_backtest_flow = BatchBacktestFlow(
+            main_engine=main_engine,
+            event_engine=event_engine,
+            parent=self,
+            on_status=self._append_action_log,
+        )
         self.setStyleSheet(TERMINAL_STYLESHEET)
 
     def _get_watchlist_service(self):
@@ -82,7 +85,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
 
         main_panel = QtWidgets.QWidget()
         root = QtWidgets.QVBoxLayout(main_panel)
-        root.setContentsMargins(16, 12, 16, 0)
+        root.setContentsMargins(16, 12, 16, 12)
         root.setSpacing(0)
         page_layout.addWidget(main_panel, stretch=1)
 
@@ -137,10 +140,19 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         splitter.setChildrenCollapsible(False)
         splitter.setHandleWidth(1)
 
+        left_column = QtWidgets.QWidget()
+        left_column_layout = QtWidgets.QVBoxLayout(left_column)
+        left_column_layout.setContentsMargins(0, 0, 10, 0)
+        left_column_layout.setSpacing(0)
+
+        left_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        left_splitter.setChildrenCollapsible(False)
+        left_splitter.setHandleWidth(1)
+
         form_panel = QtWidgets.QWidget()
         form_panel.setObjectName("ScreenerFormPanel")
         form_layout = QtWidgets.QVBoxLayout(form_panel)
-        form_layout.setContentsMargins(0, 0, 10, 0)
+        form_layout.setContentsMargins(0, 0, 0, 0)
         form_layout.setSpacing(6)
 
         hint = QtWidgets.QLabel(
@@ -155,26 +167,38 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.recipe_panel.run_requested.connect(self._run_recipe)
         form_layout.addWidget(self.recipe_panel)
         form_layout.addStretch()
-        splitter.addWidget(form_panel)
+        left_splitter.addWidget(form_panel)
+
+        self.run_output_panel = ScreenerRunOutputPanel(parent=left_column)
+        left_splitter.addWidget(self.run_output_panel)
+        left_splitter.setStretchFactor(0, 1)
+        left_splitter.setStretchFactor(1, 1)
+        left_splitter.setSizes([280, 280])
+
+        left_column_layout.addWidget(left_splitter)
+        splitter.addWidget(left_column)
 
         result_panel = QtWidgets.QWidget()
         result_layout = QtWidgets.QVBoxLayout(result_panel)
         result_layout.setContentsMargins(4, 0, 0, 0)
-        result_layout.setSpacing(4)
+        result_layout.setSpacing(0)
 
-        self._summary_label = QtWidgets.QLabel("")
-        self._summary_label.setObjectName("ResultSummary")
-        result_layout.addWidget(self._summary_label)
+        result_body = QtWidgets.QWidget()
+        result_body_layout = QtWidgets.QVBoxLayout(result_body)
+        result_body_layout.setContentsMargins(0, 0, 0, 0)
+        result_body_layout.setSpacing(0)
 
-        self.result_table = QtWidgets.QTableWidget(0, 1)
+        self._empty_result_label = QtWidgets.QLabel("试跑配方或选择左侧自动结果后在此展示")
+        self._empty_result_label.setObjectName("ScreenerEmptyResult")
+        self._empty_result_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        result_body_layout.addWidget(self._empty_result_label, stretch=1)
+
+        self.result_table = QtWidgets.QTableWidget(0, 0)
         self.result_table.setObjectName("MarketTable")
-        self.result_table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.result_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.result_table.verticalHeader().setVisible(False)
-        self.result_table.setAlternatingRowColors(True)
-        result_layout.addWidget(self.result_table, stretch=1)
+        configure_screener_results_table(self.result_table)
+        self.result_table.hide()
+        result_body_layout.addWidget(self.result_table, stretch=1)
+        result_layout.addWidget(result_body, stretch=1)
         splitter.addWidget(result_panel)
 
         splitter.setStretchFactor(0, 0)
@@ -182,12 +206,9 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         splitter.setSizes([300, 700])
         root.addWidget(splitter, stretch=1)
 
-        self._status_bar = QtWidgets.QStatusBar()
-        self._status_bar.setObjectName("ScreenerStatusBar")
-        self._status_bar.setSizeGripEnabled(False)
-        self._status_label = QtWidgets.QLabel("配置配方后试跑，或等待定时任务写入结果")
-        self._status_bar.addWidget(self._status_label, stretch=1)
-        root.addWidget(self._status_bar)
+    def _append_action_log(self, message: str) -> None:
+        if message:
+            self.run_output_panel.append_log(message)
 
     def _release_worker(self, worker: QtCore.QThread | None) -> None:
         release_thread(self._retired_workers, worker)
@@ -195,7 +216,11 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
     def _run_recipe(self, recipe, recipe_id: str) -> None:
         if self._recipe_worker is not None and self._recipe_worker.isRunning():
             return
-        self._status_label.setText("正在试跑多因子配方…")
+        self.run_output_panel.begin_run(
+            label=str(getattr(recipe, "name", recipe_id) or recipe_id),
+            top_n=int(getattr(recipe, "top_n", 20) or 20),
+            kind="配方",
+        )
         worker = ScreenerRecipeRunWorker(recipe, recipe_id)
         self._recipe_worker = worker
         worker.finished.connect(self._on_recipe_finished)
@@ -206,7 +231,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         worker = self._recipe_worker
         self._recipe_worker = None
         self._release_worker(worker)
-        self._apply_result(result)
+        summary = self._apply_result(result)
         save_run(
             condition=result.condition,
             source=result.source,
@@ -214,8 +239,9 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             total_scanned=result.total_scanned,
             config={"trigger": "manual", "recipe_id": recipe_id},
         )
-        self._status_label.setText(
-            f"配方试跑完成 · 命中 {len(self._results)} 条 · 扫描 {result.total_scanned} 只"
+        self.run_output_panel.complete_run(
+            summary=summary,
+            detail=f"配方 ID {recipe_id} · 已写入自动结果",
         )
         self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
@@ -224,22 +250,47 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         worker = self._recipe_worker
         self._recipe_worker = None
         self._release_worker(worker)
-        self._status_label.setText(message)
+        self.run_output_panel.fail_run(message)
 
-    def _apply_result(self, result: ScreenerRunResult) -> None:
+    def _format_result_summary(
+        self,
+        *,
+        condition: str,
+        row_count: int,
+        total_scanned: int,
+        source: str,
+        updated_at: str | None,
+        prefix: str = "",
+    ) -> str:
+        source_label = resolve_result_source_tag(source)
+        updated = updated_at or "-"
+        headline = (
+            f"「{condition}」命中 {row_count} 条 · "
+            f"扫描 {total_scanned} 只 · {source_label} · 更新 {updated}"
+        )
+        return f"{prefix}{headline}" if prefix else headline
+
+    def _apply_result(self, result: ScreenerRunResult, *, prefix: str = "") -> str:
         self._results = list(result.rows)
         self._result_columns = result.columns or resolve_export_columns(self._results)
-        populate_screener_results_table(self.result_table, self._results, self._result_columns)
+        apply_screener_results_view(
+            self.result_table,
+            self._results,
+            self._result_columns,
+            empty_label=self._empty_result_label,
+        )
         self._store_screening_results(
             condition=result.condition,
             rows=self._results,
             updated_at=result.updated_at,
         )
-        source_label = resolve_result_source_tag(result.source)
-        updated = result.updated_at or "-"
-        self._summary_label.setText(
-            f"「{result.condition}」命中 {len(self._results)} 条 · "
-            f"扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
+        return self._format_result_summary(
+            condition=result.condition,
+            row_count=len(self._results),
+            total_scanned=result.total_scanned,
+            source=result.source,
+            updated_at=result.updated_at,
+            prefix=prefix,
         )
 
     def on_scheduled_run_complete(self, job_id: str, message: str) -> None:
@@ -248,7 +299,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         latest = get_run_from_latest_auto(job_id)
         if latest is not None:
             self._load_historical_run(latest.id, from_scheduler=True)
-        self._status_label.setText(message)
+        self.run_output_panel.append_log(f"[定时] {message}")
         if self.event_engine is not None:
             self.event_engine.put(
                 Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="auto_screener")),
@@ -257,39 +308,45 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
     def _load_historical_run(self, run_id: str, *, from_scheduler: bool = False) -> None:
         record = get_run(run_id)
         if record is None:
-            self._status_label.setText("自动选股结果不存在或已删除")
+            self._append_action_log("自动选股结果不存在或已删除")
             return
         mark_run_read(run_id)
         self._results = list(record.rows)
         self._result_columns = resolve_export_columns(self._results)
-        populate_screener_results_table(self.result_table, self._results, self._result_columns)
+        apply_screener_results_view(
+            self.result_table,
+            self._results,
+            self._result_columns,
+            empty_label=self._empty_result_label,
+        )
         self._store_screening_results(
             condition=record.condition,
             rows=self._results,
             updated_at=record.created_at,
         )
-        source_label = resolve_result_source_tag(record.source)
         trigger = str(record.config.get("trigger", ""))
-        trigger_note = ""
+        prefix = ""
         if trigger.startswith("scheduled_"):
             reason = record.config.get("reason_summary") or trigger.removeprefix("scheduled_")
-            trigger_note = f"自动 · {reason} · "
+            prefix = f"自动 · {reason} · "
         elif record.config.get("recipe_id"):
-            trigger_note = "配方试跑 · "
-        self._summary_label.setText(
-            f"[历史] {trigger_note}「{record.condition}」命中 {len(self._results)} 条 · "
-            f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
+            prefix = "配方试跑 · "
+        summary = self._format_result_summary(
+            condition=record.condition,
+            row_count=len(self._results),
+            total_scanned=record.total_scanned,
+            source=record.source,
+            updated_at=record.created_at,
+            prefix=prefix,
         )
-        if not from_scheduler:
-            self._status_label.setText(
-                f"[历史] {trigger_note}{len(self._results)} 条 · {record.created_at}"
-            )
+        log_tag = "定时" if from_scheduler else "历史"
+        self.run_output_panel.load_history(summary=summary, log_tag=log_tag)
         self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
 
     def _on_copy_run_id(self, run_id: str, condition: str) -> None:
         short = run_id[:8] + "…" if len(run_id) > 8 else run_id
-        self._status_label.setText(f"已复制 run_id（{condition}）：{short}")
+        self._append_action_log(f"已复制 run_id（{condition}）：{short}")
 
     def _on_ask_ai_for_run(self, run_id: str, condition: str) -> None:
         if self.event_engine is None:
@@ -301,7 +358,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
                 AskAiRequest(prompt=prompt, source_page="自动选股"),
             )
         )
-        self._status_label.setText(f"已打开 AI，预填解读请求：{condition}")
+        self._append_action_log(f"已打开 AI，预填解读请求：{condition}")
 
     def _get_screening_service(self):
         engine = self.main_engine.get_engine(APP_NAME)
@@ -340,7 +397,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         msg = f"新加入 {added} 只"
         if skipped:
             msg += f" · 跳过 {skipped} 只"
-        self._status_label.setText(msg)
+        self._append_action_log(msg)
 
     def _get_backtest_service(self):
         engine = self.main_engine.get_engine(APP_NAME)
@@ -356,7 +413,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             QtWidgets.QMessageBox.information(self, "提示", "请先勾选要下载日 K 的标的")
             return
         self.download_btn.setDisabled(True)
-        self._status_label.setText(f"正在下载 {len(selected)} 只日 K…")
+        self._append_action_log(f"正在下载 {len(selected)} 只日 K…")
         worker = ScreenerBatchDownloadWorker(selected)
         self._download_worker = worker
         worker.finished.connect(self._on_download_finished)
@@ -369,14 +426,14 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._release_worker(worker)
         self.download_btn.setDisabled(False)
         message = getattr(result, "message", str(result))
-        self._status_label.setText(message)
+        self._append_action_log(message)
 
     def _on_download_failed(self, message: str) -> None:
         worker = self._download_worker
         self._download_worker = None
         self._release_worker(worker)
         self.download_btn.setDisabled(False)
-        self._status_label.setText(message)
+        self._append_action_log(message)
 
     def _open_backtest_for_selection(self) -> None:
         selected = iter_checked_table_rows(self.result_table)
@@ -398,7 +455,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         )
 
     def _run_batch_backtest(self) -> None:
-        if self._batch_backtest_flow.is_running():
+        if self._batch_backtest_flow is not None and self._batch_backtest_flow.is_running():
             return
         selected = iter_checked_table_rows(self.result_table)
         if not selected:
@@ -427,7 +484,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         if not path.lower().endswith(".csv"):
             path += ".csv"
         export_rows_to_csv(self._results, path)
-        self._status_label.setText(f"已导出：{path}")
+        self._append_action_log(f"已导出：{path}")
 
     def activate(self) -> None:
         self.recipe_panel.reload()
@@ -439,7 +496,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             worker = getattr(self, attr, None)
             setattr(self, attr, None)
             release_thread(self._retired_workers, worker)
-        self._batch_backtest_flow.release_worker(self._retired_workers)
+        if self._batch_backtest_flow is not None:
+            self._batch_backtest_flow.release_worker(self._retired_workers)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()

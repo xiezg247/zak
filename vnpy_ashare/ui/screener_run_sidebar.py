@@ -197,7 +197,9 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         parent = self.parent()
         while parent is not None:
             if isinstance(parent, ScreenerRunSidebar):
-                parent._update_rail_badge()
+                # 侧栏 __init__ 中创建列表时会同步 refresh，此时尚未赋值 self._list
+                if getattr(parent, "_list", None) is self:
+                    parent._update_rail_badge()
                 break
             parent = parent.parent()
 
