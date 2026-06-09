@@ -1,4 +1,7 @@
-"""以标杆股为锚，在全市场找同类标的（同业 + 估值 + 走势）。"""
+"""以标杆股为锚，在全市场找同类标的（同业 + 估值 + 走势）。
+
+相似度 = 同业 40% + 估值接近 35% + 近 5 日动量 25%；数据来自 Tushare daily_basic。
+"""
 
 from __future__ import annotations
 
@@ -27,6 +30,7 @@ class ReferencePeerCancelled(Exception):
 
 
 def clamp_reference_peer_top_n(value: int | None) -> int:
+    """Top N 限制在 [1, REFERENCE_PEER_TOP_N_MAX]。"""
     try:
         number = int(value if value is not None else DEFAULT_TOP_N)
     except (TypeError, ValueError):
@@ -35,6 +39,7 @@ def clamp_reference_peer_top_n(value: int | None) -> int:
 
 
 def env_default_reference_peer_top_n() -> int:
+    """从 .env REFERENCE_PEER_TOP_N 读取默认 Top N。"""
     import os
 
     from dotenv import load_dotenv
@@ -53,6 +58,8 @@ def env_default_reference_peer_top_n() -> int:
 
 @dataclass
 class ReferencePeerRunResult:
+    """标杆对标选股结果（含步骤日志）。"""
+
     reference_vt_symbol: str
     reference_name: str
     reference_industry: str
@@ -70,6 +77,10 @@ def run_reference_peer_screen(
     on_progress: ProgressCallback | None = None,
     cancelled: CancelledCallback | None = None,
 ) -> ReferencePeerRunResult:
+    """以 vt_symbol 为标杆，在同业池中按估值+动量打分取 top_n。
+
+    ``on_progress`` 推送步骤文案；``cancelled`` 返回 True 时抛 ReferencePeerCancelled。
+    """
     steps: list[str] = []
 
     def progress(message: str) -> None:

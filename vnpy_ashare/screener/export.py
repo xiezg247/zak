@@ -1,4 +1,7 @@
-"""选股结果导出 CSV。"""
+"""选股结果导出 CSV。
+
+``resolve_export_columns`` 按 source / 字段自动选择行情、基本面、资金流或配方列集。
+"""
 
 from __future__ import annotations
 
@@ -53,6 +56,7 @@ _MONEYFLOW_COLUMNS = [
 
 
 def resolve_export_columns(rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    """根据首行字段推断导出列（field_key, 中文标题）。"""
     if not rows:
         return _QUOTE_COLUMNS
     if "hit_reason" in rows[0] or "composite_score" in rows[0]:
@@ -66,6 +70,7 @@ def resolve_export_columns(rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
 
 
 def export_rows_to_csv(rows: list[dict[str, Any]], path: str | Path) -> Path:
+    """将选股结果写入 UTF-8 BOM CSV，返回目标路径。"""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     columns = resolve_export_columns(rows)

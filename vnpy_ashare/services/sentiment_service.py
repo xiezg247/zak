@@ -1,4 +1,7 @@
-"""A 股全市场恐贪指数（SentimentService）。"""
+"""A 股全市场恐贪指数（SentimentService）。
+
+六分项加权：涨跌广度、涨跌停、指数动量、成交活跃、波动率、北向资金；缓存 TTL 10 分钟。
+"""
 
 from __future__ import annotations
 
@@ -33,6 +36,8 @@ _CACHE_TTL_SEC = 600
 
 @dataclass
 class FearGreedComponent:
+    """恐贪指数单个分项（score 0–100，越高越贪婪）。"""
+
     name: str
     score: float
     weight: float
@@ -42,6 +47,8 @@ class FearGreedComponent:
 
 @dataclass
 class FearGreedSnapshot:
+    """某交易日恐贪指数快照。"""
+
     index: float
     label: str
     trade_date: str
@@ -76,6 +83,7 @@ class FearGreedSnapshot:
 
 
 def label_for_index(index: float) -> str:
+    """指数值 → 极度恐惧 / 恐惧 / 中性 / 贪婪 / 极度贪婪。"""
     for bound, label in FEAR_GREED_LABELS:
         if index < bound:
             return label
@@ -109,6 +117,7 @@ class SentimentService(BaseService):
         trade_date: str | None = None,
         include_components: bool = True,
     ) -> FearGreedSnapshot:
+        """计算指定交易日恐贪指数；默认最近交易日，结果缓存 10 分钟。"""
         day = self._resolve_trade_date(trade_date)
         cache_key = day.strftime("%Y%m%d")
         cached = self._cache.get(cache_key)

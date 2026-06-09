@@ -1,4 +1,10 @@
-"""本地日 K 覆盖与健康状态。"""
+"""本地日 K 覆盖与健康状态。
+
+状态语义（列表页 vs 选中扫描）::
+
+    OK / STALE / UNKNOWN — ``list_status`` 由 meta.end 与最近交易日比较
+    GAPS — 须 ``inspect_bar_gaps`` 异步扫描 bar_dates 后才能判定
+"""
 
 from __future__ import annotations
 
@@ -10,6 +16,8 @@ from vnpy_ashare.calendar import last_trading_day, trading_days_between
 
 
 class BarHealthStatus(str, Enum):
+    """日 K 健康状态。"""
+
     OK = "ok"
     STALE = "stale"
     GAPS = "gaps"
@@ -18,6 +26,8 @@ class BarHealthStatus(str, Enum):
 
 @dataclass(frozen=True)
 class BarMeta:
+    """本地 K 线元数据（起止日期与条数）。"""
+
     start: datetime
     end: datetime
     count: int
@@ -25,6 +35,8 @@ class BarMeta:
 
 @dataclass(frozen=True)
 class GapRange:
+    """连续缺失交易日区间。"""
+
     start: date
     end: date
     missing_days: int
@@ -32,6 +44,8 @@ class GapRange:
 
 @dataclass(frozen=True)
 class BarGapResult:
+    """断层扫描结果（含期望/实际交易日数）。"""
+
     status: BarHealthStatus
     gaps: list[GapRange]
     expected_days: int
@@ -39,6 +53,7 @@ class BarGapResult:
 
 
 def list_status(meta: BarMeta | None, *, as_of: date | None = None) -> BarHealthStatus:
+    """列表页快速判定：无数据 UNKNOWN；结束日早于最近交易日 STALE；否则 OK。"""
     if meta is None:
         return BarHealthStatus.UNKNOWN
     latest = last_trading_day(on_or_before=as_of)
@@ -48,6 +63,7 @@ def list_status(meta: BarMeta | None, *, as_of: date | None = None) -> BarHealth
 
 
 def status_label(status: BarHealthStatus) -> str:
+    """状态 → 表格展示文案（含 emoji）。"""
     labels = {
         BarHealthStatus.OK: "✅ 最新",
         BarHealthStatus.STALE: "⚠️ 过期",
@@ -58,12 +74,14 @@ def status_label(status: BarHealthStatus) -> str:
 
 
 def format_meta_date(value: datetime | None) -> str:
+    """格式化 meta 日期为 yyyy-MM-dd。"""
     if value is None:
         return "—"
     return value.strftime("%Y-%m-%d")
 
 
 def format_meta_datetime(value: datetime | None, *, minute: bool = False) -> str:
+    """格式化 meta 日期时间；``minute=True`` 时含时分。"""
     if value is None:
         return "—"
     if minute:
@@ -72,6 +90,7 @@ def format_meta_datetime(value: datetime | None, *, minute: bool = False) -> str
 
 
 def merge_missing_days(missing: list[date]) -> list[GapRange]:
+    """将离散缺失日合并为连续区间。"""
     if not missing:
         return []
     sorted_days = sorted(missing)
@@ -95,12 +114,14 @@ def merge_missing_days(missing: list[date]) -> list[GapRange]:
 
 
 def find_gaps(meta: BarMeta, bar_dates: set[date]) -> list[GapRange]:
+    """在 meta 覆盖范围内找出缺失的交易日。"""
     expected = trading_days_between(meta.start.date(), meta.end.date())
     missing = [day for day in expected if day not in bar_dates]
     return merge_missing_days(missing)
 
 
 def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None = None) -> BarGapResult:
+    """选中行异步扫描：有断层则 GAPS，否则回退 ``list_status``。"""
     gaps = find_gaps(meta, bar_dates)
     expected_days = len(trading_days_between(meta.start.date(), meta.end.date()))
     actual_days = len(bar_dates)
@@ -117,6 +138,7 @@ def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None 
 
 
 def format_gap_ranges(gaps: list[GapRange]) -> str:
+    """将断层区间格式化为 UI 展示字符串。"""
     if not gaps:
         return ""
     parts = [f"{gap.start.isoformat()}~{gap.end.isoformat()}" if gap.start != gap.end else gap.start.isoformat() for gap in gaps]

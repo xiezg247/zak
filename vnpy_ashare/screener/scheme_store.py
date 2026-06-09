@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS screener_schemes (
 
 @dataclass
 class SavedScheme:
+    """用户保存的选股方案。"""
+
     id: str
     name: str
     config: dict[str, Any]
@@ -53,6 +55,7 @@ def _now() -> str:
 
 
 def list_schemes() -> list[SavedScheme]:
+    """列出全部方案，按更新时间倒序。"""
     with _connect() as conn:
         rows = conn.execute("SELECT id, name, config_json, created_at, updated_at FROM screener_schemes ORDER BY updated_at DESC").fetchall()
     result: list[SavedScheme] = []
@@ -70,6 +73,7 @@ def list_schemes() -> list[SavedScheme]:
 
 
 def get_scheme(scheme_id: str) -> SavedScheme | None:
+    """按 id 读取方案。"""
     with _connect() as conn:
         row = conn.execute(
             "SELECT id, name, config_json, created_at, updated_at FROM screener_schemes WHERE id=?",
@@ -87,6 +91,7 @@ def get_scheme(scheme_id: str) -> SavedScheme | None:
 
 
 def save_scheme(name: str, config: dict[str, Any], *, scheme_id: str | None = None) -> SavedScheme:
+    """新建或更新方案；``scheme_id`` 非空时为更新。"""
     cleaned = name.strip()
     if not cleaned:
         raise ValueError("方案名称不能为空")
@@ -112,5 +117,6 @@ def save_scheme(name: str, config: dict[str, Any], *, scheme_id: str | None = No
 
 
 def delete_scheme(scheme_id: str) -> None:
+    """删除方案。"""
     with _connect() as conn:
         conn.execute("DELETE FROM screener_schemes WHERE id=?", (scheme_id,))

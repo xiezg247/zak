@@ -56,6 +56,8 @@ class BacktestSummary:
 
 @dataclass
 class ScreeningResultContext:
+    """最近一次选股结果快照（供 Skill / 悬浮球读取）。"""
+
     condition: str
     count: int
     updated_at: str | None
@@ -67,12 +69,14 @@ _diagnose_result: dict[str, Any] | None = None
 
 
 def register_context_listener(callback: Callable[[AiContextData], None]) -> None:
+    """注册 AI 上下文变更监听（如悬浮球刷新 chip / actions）。"""
     with _lock:
         if callback not in _listeners:
             _listeners.append(callback)
 
 
 def set_ai_context(data: AiContextData) -> None:
+    """写入当前页 AI 上下文；变更后异步通知已注册 listener。"""
     global _ai_context
     with _lock:
         _ai_context = data
@@ -85,26 +89,31 @@ def set_ai_context(data: AiContextData) -> None:
 
 
 def get_ai_context() -> AiContextData:
+    """读取当前页 AI 上下文（Skill / 悬浮球只读）。"""
     with _lock:
         return _ai_context
 
 
 def sync_backtest_summary_dict(summary: dict[str, Any] | None) -> None:
+    """写入回测摘要 dict（BacktestService / backtest_context 调用）。"""
     global _backtest_summary
     with _lock:
         _backtest_summary = dict(summary) if summary else None
 
 
 def get_backtest_summary_dict() -> dict[str, Any] | None:
+    """读取最近一次回测摘要 dict。"""
     with _lock:
         return dict(_backtest_summary) if _backtest_summary else None
 
 
 def set_backtest_summary(summary: BacktestSummary | None) -> None:
+    """写入回测摘要（``BacktestSummary`` 转 dict 后存 session）。"""
     sync_backtest_summary_dict(summary.to_dict() if summary else None)
 
 
 def clear_all() -> None:
+    """清空全部 session 缓存（登出 / 重置时）。"""
     global _ai_context, _backtest_summary, _market_quotes, _screening_result, _diagnose_result
     with _lock:
         _ai_context = AiContextData()
@@ -115,6 +124,7 @@ def clear_all() -> None:
 
 
 def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
+    """缓存市场页行情行（QuoteService 写入，ScreeningService 选股 fallback 读取）。"""
     global _market_quotes
     rows: list[dict[str, Any]] = []
     for item in items:
@@ -136,6 +146,7 @@ def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
 
 
 def get_market_quotes_cache() -> list[dict[str, Any]]:
+    """读取市场页行情缓存（无 Redis 时选股 fallback）。"""
     with _lock:
         return list(_market_quotes)
 
@@ -146,6 +157,7 @@ def set_screening_results(
     rows: list[dict[str, Any]],
     updated_at: str | None = None,
 ) -> None:
+    """写入选股结果快照（ScreeningService.persist_run_result 调用）。"""
     global _screening_result
     with _lock:
         _screening_result = ScreeningResultContext(
@@ -157,6 +169,7 @@ def set_screening_results(
 
 
 def get_screening_results() -> ScreeningResultContext | None:
+    """读取选股结果快照（返回副本，避免外部修改）。"""
     with _lock:
         if _screening_result is None:
             return None
@@ -170,11 +183,13 @@ def get_screening_results() -> ScreeningResultContext | None:
 
 
 def set_diagnose_result(payload: dict[str, Any] | None) -> None:
+    """写入综合诊断结果（AnalysisService 调用）。"""
     global _diagnose_result
     with _lock:
         _diagnose_result = dict(payload) if payload else None
 
 
 def get_diagnose_result() -> dict[str, Any] | None:
+    """读取综合诊断结果。"""
     with _lock:
         return dict(_diagnose_result) if _diagnose_result else None

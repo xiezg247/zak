@@ -1,4 +1,7 @@
-"""Tushare 因子拉取与字段标准化。"""
+"""Tushare 因子拉取与字段标准化。
+
+``ts_code`` ↔ ``vt_symbol`` 转换；``fetch_daily_basic`` / ``fetch_moneyflow`` 供 data_source 与选股规则使用。
+"""
 
 from __future__ import annotations
 
@@ -11,6 +14,7 @@ from vnpy_ashare.screener.tushare_client import get_tushare_pro
 
 
 def ts_code_to_vt_symbol(ts_code: str) -> str | None:
+    """Tushare ts_code（如 000001.SZ）→ vt_symbol（000001.SZSE）。"""
     if "." not in ts_code:
         return None
     code, suffix = ts_code.rsplit(".", 1)
@@ -22,6 +26,7 @@ def ts_code_to_vt_symbol(ts_code: str) -> str | None:
 
 
 def vt_symbol_to_ts_code(vt_symbol: str) -> str | None:
+    """vt_symbol → Tushare ts_code。"""
     if "." not in vt_symbol:
         return None
     code, exchange = vt_symbol.rsplit(".", 1)
@@ -69,6 +74,7 @@ def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
 
 
 def load_ts_code_name_map() -> dict[str, str]:
+    """从本地 universe 构建 ts_code → 证券名称映射。"""
     mapping: dict[str, str] = {}
     for symbol, exchange, name in load_universe_rows():
         suffix = EXCHANGE_TO_SUFFIX.get(exchange, "")
@@ -105,6 +111,7 @@ def fetch_stock_industry_map() -> dict[str, str]:
 
 
 def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
+    """拉取 daily_basic 并标准化为选股行（含 vt_symbol / pe_ttm / total_mv 等）。"""
     pro = get_tushare_pro()
     trade_date = trade_date or _latest_trade_date_str()
     frame = pro.daily_basic(
@@ -144,6 +151,7 @@ def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, 
 
 
 def fetch_moneyflow(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
+    """拉取 moneyflow 并标准化为选股行（含 net_mf_amount 等）。"""
     pro = get_tushare_pro()
     trade_date = trade_date or _latest_trade_date_str()
     frame = pro.moneyflow(

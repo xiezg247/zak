@@ -59,7 +59,7 @@ class BacktestIntent(BaseModel):
 
 
 class IntentRoute(BaseModel):
-    """第一阶段：意图分类。"""
+    """第一阶段意图路由：分类结果。"""
 
     category: IntentCategory
     confidence: Confidence = "medium"
@@ -80,7 +80,7 @@ class MarketEnrichment(BaseModel):
 
 
 class IntentAnalysis(BaseModel):
-    """单次结构化调用：分类 + 可选域内解析。"""
+    """单次 LLM 结构化输出：路由 + 域内意图 + 市场 enrichment。"""
 
     route: IntentRoute
     screening: ScreeningIntent | None = None

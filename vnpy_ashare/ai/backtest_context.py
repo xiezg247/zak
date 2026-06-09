@@ -37,6 +37,7 @@ def _fmt_metric(value: Any) -> str:
 
 
 def format_backtest_summary_text(summary: dict[str, Any] | None) -> str:
+    """将回测摘要 dict 格式化为多行可读文本。"""
     if not summary:
         return "最近回测：尚未完成回测"
     stats = dict(summary.get("statistics") or {})
@@ -102,6 +103,7 @@ def build_backtest_ai_prompt(summary: dict[str, Any]) -> str:
 
 
 def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, notify_ui: bool = True) -> None:
+    """组装回测页上下文并写入 context_store（含快捷动作 enrichment）。"""
     data = enrich_context_with_actions(build_backtest_page_context(widget, main_engine))
     set_ai_context(data)
 
@@ -118,6 +120,7 @@ def _avg(values: list[float]) -> float | None:
 
 
 def build_batch_compare_context(session, rows: list[Any]) -> AiContextData:
+    """批量回测对比页 AI 上下文（批次统计 + 最优/最差标的）。"""
     returns = [float(row.total_return) for row in rows if row.total_return is not None]
     sharpes = [float(row.sharpe_ratio) for row in rows if row.sharpe_ratio is not None]
     valid_rows = [row for row in rows if row.total_return is not None]
@@ -142,5 +145,6 @@ def build_batch_compare_context(session, rows: list[Any]) -> AiContextData:
 
 
 def sync_batch_compare_context(session, rows: list[Any], main_engine=None) -> None:
+    """写入批量回测对比页上下文。"""
     data = enrich_context_with_actions(build_batch_compare_context(session, rows))
     set_ai_context(data)

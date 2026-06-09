@@ -1,4 +1,8 @@
-"""多维度选股配方（Recipe）定义。"""
+"""多维度选股配方（Recipe）定义。
+
+``TriggerKind``：``intraday`` 盘中多因子 / ``post_close`` 盘后多因子。
+内置配方见 ``BUILTIN_RECIPES``；用户配方经 ``recipe_store`` 持久化。
+"""
 
 from __future__ import annotations
 
@@ -15,6 +19,8 @@ RECIPE_POST_CLOSE_MULTI = "post_close_multi"
 
 @dataclass(frozen=True)
 class DimensionSpec:
+    """配方内单个因子维度（权重参与 composite_score 加权）。"""
+
     dimension_id: str
     label: str
     weight: float
@@ -22,6 +28,8 @@ class DimensionSpec:
 
 @dataclass(frozen=True)
 class ScreenRecipe:
+    """多因子选股配方；``min_dimensions`` 为命中维度数下限。"""
+
     recipe_id: str
     name: str
     trigger_kind: TriggerKind
@@ -34,6 +42,8 @@ class ScreenRecipe:
 
 @dataclass(frozen=True)
 class RecipeCatalogEntry:
+    """配方目录项（内置 / 用户保存）。"""
+
     recipe_id: str
     display_name: str
     trigger_kind: TriggerKind
@@ -77,10 +87,12 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
 
 
 def list_dimension_ids(*, trigger_kind: TriggerKind) -> list[str]:
+    """列出指定触发类型可用的维度 id。"""
     return [dim_id for dim_id, meta in DIMENSION_CATALOG.items() if trigger_kind in meta["trigger_kinds"]]
 
 
 def recipe_to_config(recipe: ScreenRecipe) -> dict[str, Any]:
+    """将 ``ScreenRecipe`` 转为 UI / 持久化用的 config dict。"""
     return {
         "top_n": recipe.top_n,
         "pool_size": recipe.pool_size,
@@ -98,6 +110,7 @@ def recipe_to_config(recipe: ScreenRecipe) -> dict[str, Any]:
 
 
 def normalize_recipe_config(config: dict[str, Any]) -> dict[str, Any]:
+    """校验并归一化配方 config：启用维度权重之和归一化为 1，裁剪 top_n / pool_size。"""
     raw_dims = list(config.get("dimensions") or [])
     enabled = [item for item in raw_dims if item.get("enabled", True)]
     if not enabled:
@@ -149,6 +162,7 @@ def screen_recipe_from_config(
     config: dict[str, Any],
     builtin: bool = False,
 ) -> ScreenRecipe:
+    """从 config dict 构造 ``ScreenRecipe``；至少须有一个启用维度。"""
     normalized = normalize_recipe_config(config)
     specs: list[DimensionSpec] = []
     for item in normalized["dimensions"]:
@@ -176,6 +190,7 @@ def screen_recipe_from_config(
 
 
 def resolve_recipe(recipe_id: str) -> ScreenRecipe | None:
+    """按 id 解析配方：先查内置，再查用户保存；config 非法时返回 None。"""
     rid = recipe_id.strip()
     builtin = BUILTIN_RECIPES.get(rid)
     if builtin is not None:
@@ -197,14 +212,17 @@ def resolve_recipe(recipe_id: str) -> ScreenRecipe | None:
 
 
 def get_recipe(recipe_id: str) -> ScreenRecipe | None:
+    """``resolve_recipe`` 别名。"""
     return resolve_recipe(recipe_id)
 
 
 def list_recipe_ids(*, trigger_kind: TriggerKind | None = None) -> list[str]:
+    """列出配方 id；可按 trigger_kind 过滤。"""
     return [entry.recipe_id for entry in list_recipe_catalog(trigger_kind=trigger_kind)]
 
 
 def list_recipe_catalog(*, trigger_kind: TriggerKind | None = None) -> list[RecipeCatalogEntry]:
+    """内置 + 用户配方目录（含展示名前缀「内置 · / 我的 ·」）。"""
     entries: list[RecipeCatalogEntry] = []
     for recipe in BUILTIN_RECIPES.values():
         if trigger_kind is not None and recipe.trigger_kind != trigger_kind:
@@ -230,6 +248,7 @@ def list_recipe_catalog(*, trigger_kind: TriggerKind | None = None) -> list[Reci
 
 
 def default_config_for_trigger(trigger_kind: TriggerKind) -> dict[str, Any]:
+    """返回指定触发类型的内置配方默认 config（新建用户配方时用）。"""
     if trigger_kind == "intraday":
         recipe = BUILTIN_RECIPES[RECIPE_INTRADAY_MULTI]
     else:

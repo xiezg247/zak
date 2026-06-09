@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS screener_recipes (
 
 @dataclass
 class SavedRecipe:
+    """用户保存的多因子选股配方。"""
+
     id: str
     name: str
     trigger_kind: TriggerKind
@@ -57,6 +59,7 @@ def _now() -> str:
 
 
 def list_saved_recipes(*, trigger_kind: TriggerKind | None = None) -> list[SavedRecipe]:
+    """列出用户配方；可按 trigger_kind 过滤。"""
     with _connect() as conn:
         if trigger_kind:
             rows = conn.execute(
@@ -80,6 +83,7 @@ def list_saved_recipes(*, trigger_kind: TriggerKind | None = None) -> list[Saved
 
 
 def get_saved_recipe(recipe_id: str) -> SavedRecipe | None:
+    """按 id 读取用户配方。"""
     with _connect() as conn:
         row = conn.execute(
             """
@@ -100,6 +104,7 @@ def save_recipe(
     config: dict[str, Any],
     recipe_id: str | None = None,
 ) -> SavedRecipe:
+    """新建或更新用户配方。"""
     cleaned = name.strip()
     if not cleaned:
         raise ValueError("配方名称不能为空")
@@ -133,6 +138,7 @@ def save_recipe(
 
 
 def delete_recipe(recipe_id: str) -> bool:
+    """删除用户配方；成功返回 True。"""
     with _connect() as conn:
         cursor = conn.execute("DELETE FROM screener_recipes WHERE id=?", (recipe_id,))
         return cursor.rowcount > 0

@@ -1,4 +1,7 @@
-"""行情上下文数据模型与组装。"""
+"""行情上下文数据模型与组装。
+
+供 QuoteService / ScreeningService 写入 context_store 前构造 ``AiContextData`` 与 ``QuickAction``。
+"""
 
 from __future__ import annotations
 
@@ -29,6 +32,8 @@ class QuickAction:
 
 @dataclass
 class AiContextData:
+    """AI 助手当前会话上下文（页面、选中标的、摘要与快捷动作）。"""
+
     page: str = ""
     symbol: str = ""
     exchange: str = ""
@@ -40,6 +45,7 @@ class AiContextData:
     actions: list[QuickAction] = field(default_factory=list)
 
     def to_text(self) -> str:
+        """序列化为 System Prompt 可读的多行文本。"""
         lines: list[str] = []
         if self.page:
             lines.append(f"当前页面：{self.page}")
@@ -54,6 +60,7 @@ class AiContextData:
 
 
 def format_quote_summary(quote: QuoteSnapshot | None) -> str:
+    """将 QuoteSnapshot 格式化为单行行情摘要。"""
     if quote is None:
         return ""
     return (
@@ -70,6 +77,7 @@ def build_quote_context(
     quote: QuoteSnapshot | None = None,
     bar_count: int = 0,
 ) -> AiContextData:
+    """组装看盘页 AI 上下文（含行情摘要与本地 K 线条数）。"""
     if item is None:
         return AiContextData(page=page)
 
@@ -97,6 +105,8 @@ DEFAULT_FALLBACK_VT_SYMBOL = "002230.SZSE"
 
 @dataclass(frozen=True)
 class StockBinding:
+    """快捷动作绑定的单票标识（symbol / vt_symbol / 展示名）。"""
+
     symbol: str
     exchange_cn: str
     name: str
@@ -173,11 +183,13 @@ def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:
 
 
 def build_technical_ai_prompt(vt_symbol: str, name: str = "") -> str:
+    """生成技术形态分析预填文案（调用 technical_snapshot）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return f'请分析 {title} 的近期技术形态。请调用 technical_snapshot(symbol="{vt_symbol}")，基于工具返回的均线、量比、区间涨跌等数据做解读。'
 
 
 def build_signals_ai_prompt(vt_symbol: str, name: str = "") -> str:
+    """生成双均线策略信号分析预填文案（调用 list_strategy_signals）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f'请分析 {title} 的双均线（MA10/MA20）策略信号。请调用 list_strategy_signals(symbol="{vt_symbol}")，基于工具返回的金叉/死叉信号和当前均线状态做解读。'
@@ -190,6 +202,7 @@ def build_historical_ai_prompt(
     *,
     lookback: int = 20,
 ) -> str:
+    """生成历史走势统计预填文案（调用 historical_pattern_summary，禁止预测）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f"请分析 {title} 的近 {int(lookback)} 日走势。"
@@ -199,6 +212,7 @@ def build_historical_ai_prompt(
 
 
 def build_trend_ai_prompt(vt_symbol: str, name: str = "") -> str:
+    """近 20 日走势快捷入口（``build_historical_ai_prompt`` 默认 lookback）。"""
     return build_historical_ai_prompt(vt_symbol, name, lookback=20)
 
 
@@ -216,6 +230,7 @@ def build_stock_completion_items(
     exchange_cn: str = "",
     name: str = "",
 ) -> list[StockCompletionItem]:
+    """输入框联想项：诊断 / 技术面 / 双均线 / 近期走势。"""
     vt = resolve_vt_symbol(symbol, exchange_cn)
     display = name or symbol
     return [
@@ -243,6 +258,7 @@ def _wenda_prefix(binding: StockBinding) -> str:
 
 
 def build_diagnose_menu(binding: StockBinding) -> QuickAction:
+    """综合诊断二级菜单（全量 / 财务 / 研报 / 资金流）。"""
     prefix = _wenda_prefix(binding)
     vt = binding.vt_symbol
     name = binding.name
@@ -280,6 +296,7 @@ def build_diagnose_menu(binding: StockBinding) -> QuickAction:
 
 
 def build_technical_menu(binding: StockBinding) -> QuickAction:
+    """技术形态二级菜单（均线量比 / 指标 / 双均线）。"""
     prefix = _wenda_prefix(binding)
     vt = binding.vt_symbol
     name = binding.name
@@ -308,6 +325,7 @@ def build_technical_menu(binding: StockBinding) -> QuickAction:
 
 
 def build_recent_trend_menu(binding: StockBinding) -> QuickAction:
+    """近期走势二级菜单（5 / 20 / 60 日）。"""
     vt = binding.vt_symbol
     name = binding.name
     return QuickAction(
@@ -382,6 +400,7 @@ def build_bound_stock_menus(binding: StockBinding) -> list[QuickAction]:
 
 
 def build_sector_overview_prompt(vt_symbol: str, name: str = "") -> str:
+    """市场页：所属板块/概念行业联动分析预填文案。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f"请分析 {title} 所属板块/概念行业的近期表现与联动逻辑。"
@@ -391,6 +410,7 @@ def build_sector_overview_prompt(vt_symbol: str, name: str = "") -> str:
 
 
 def build_bar_health_prompt(vt_symbol: str, name: str = "", extra: str = "") -> str:
+    """本地页：日 K 覆盖/过期/断层检查预填文案（调用 get_bars_summary）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     context = f"当前上下文：{extra.strip()}\n" if extra.strip() else ""
     return (
@@ -401,6 +421,7 @@ def build_bar_health_prompt(vt_symbol: str, name: str = "", extra: str = "") -> 
 
 
 def build_add_watchlist_prompt(vt_symbol: str, name: str = "") -> str:
+    """非自选页：加入自选池预填文案（调用 add_to_watchlist）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return f'请将 {title} 加入自选池。请调用 add_to_watchlist(symbol="{vt_symbol}")，根据工具返回告知是否成功。'
 
@@ -477,6 +498,7 @@ def _screening_prompt(intent: str, *, detail: str = "") -> str:
 
 
 def build_pattern_screen_menu() -> QuickAction:
+    """全市场形态选股二级菜单（老鸭头 / 均线多头 / W底 / 主题）。"""
     return QuickAction(
         id="pattern_screen",
         label="形态选股",
@@ -519,6 +541,7 @@ def build_pattern_screen_menu() -> QuickAction:
 
 
 def build_condition_screen_menu() -> QuickAction:
+    """全市场条件选股二级菜单（中线 / 短线 / 长线）。"""
     return QuickAction(
         id="condition_screen",
         label="条件选股",
@@ -553,6 +576,7 @@ def build_condition_screen_menu() -> QuickAction:
 
 
 def build_reference_screen_menu() -> QuickAction:
+    """参考策略选股二级菜单（波段 / 价值 / 成长 / 周期）。"""
     return QuickAction(
         id="reference_screen",
         label="参考选股",

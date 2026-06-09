@@ -18,6 +18,12 @@ SourceKind = Literal["quote", "tushare"]
 
 @dataclass(frozen=True)
 class PresetDefinition:
+    """内置选股方案元数据。
+
+    ``source``：quote（Redis 行情）或 tushare；
+    ``rule_kind``：rules 模块内的规则分支标识。
+    """
+
     name: str
     source: SourceKind
     rule_kind: str
@@ -48,16 +54,20 @@ _PRESET_MAP = {item.name: item for item in BUILTIN_PRESETS}
 
 
 def get_preset(name: str) -> PresetDefinition | None:
+    """按显示名查找内置 preset。"""
     return _PRESET_MAP.get(name.strip())
 
 
 def list_builtin_preset_names() -> list[str]:
+    """全部内置 preset 显示名。"""
     return [item.name for item in BUILTIN_PRESETS]
 
 
 def list_quote_preset_names() -> list[str]:
+    """Redis 行情类 preset 名称。"""
     return [item.name for item in BUILTIN_PRESETS if item.source == "quote"]
 
 
 def list_tushare_preset_names() -> list[str]:
+    """Tushare 基本面类 preset 名称。"""
     return [item.name for item in BUILTIN_PRESETS if item.source == "tushare"]

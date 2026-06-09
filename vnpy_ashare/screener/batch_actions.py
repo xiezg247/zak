@@ -21,6 +21,8 @@ from vnpy_ashare.models import StockItem
 
 @dataclass(frozen=True)
 class BatchBacktestParams:
+    """批量回测共用参数（策略、区间、费率）。"""
+
     class_name: str
     start: datetime
     end: datetime
@@ -34,6 +36,8 @@ class BatchBacktestParams:
 
 @dataclass
 class BatchBacktestRow:
+    """单标的批量回测结果行。"""
+
     vt_symbol: str
     name: str
     total_return: float | None = None
@@ -55,6 +59,7 @@ class BatchBacktestRow:
 
 
 def rows_to_stock_items(rows: list[dict[str, Any]]) -> list[StockItem]:
+    """选股结果行 → 去重 StockItem 列表。"""
     items: list[StockItem] = []
     seen: set[tuple[str, Exchange]] = set()
     for row in rows:
@@ -78,6 +83,7 @@ def batch_download_daily_bars(
     end: datetime | None = None,
     delay: float = 0.3,
 ) -> JobResult:
+    """对选股结果批量下载日 K（默认 2020-01-01 至今）。"""
     items = rows_to_stock_items(rows)
     if not items:
         return JobResult(success=False, message="没有可下载的有效标的")
@@ -112,6 +118,7 @@ def batch_download_daily_bars(
 
 
 def load_batch_backtest_defaults() -> BatchBacktestParams:
+    """从 ASHARE_BACKTEST_DEFAULTS 与 vt_setting 合并读取默认回测参数。"""
     data: dict[str, Any] = dict(ASHARE_BACKTEST_DEFAULTS)
     if BACKTESTER_SETTING_FILE.is_file():
         try:
@@ -140,6 +147,7 @@ def run_batch_backtests(
     rows: list[dict[str, Any]],
     params: BatchBacktestParams,
 ) -> list[BatchBacktestRow]:
+    """逐标的调用 CTA 回测引擎，收集收益/回撤/夏普。"""
     from vnpy_ctabacktester.engine import APP_NAME, BacktesterEngine
 
     engine = main_engine.get_engine(APP_NAME)
@@ -241,4 +249,5 @@ def watchlist_items_to_rows(items: list[dict[str, str]]) -> list[dict[str, str]]
 
 
 def stock_items_to_batch_rows(stocks: list[StockItem]) -> list[dict[str, str]]:
+    """StockItem 列表 → 批量回测输入行。"""
     return [{"vt_symbol": item.vt_symbol, "name": item.name} for item in stocks]

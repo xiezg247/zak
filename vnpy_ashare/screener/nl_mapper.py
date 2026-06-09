@@ -1,4 +1,7 @@
-"""自然语言 / LLM 结构化输出 → ScreenerRequest 草案。"""
+"""自然语言 / LLM 结构化输出 → ScreenerRequest 草案。
+
+``validate_and_build`` 产出 ``pending_confirm`` 草案供 UI 确认，或 ``need_clarification`` 追问。
+"""
 
 from __future__ import annotations
 
@@ -32,6 +35,8 @@ TOP_N_DEFAULT = 20
 
 @dataclass
 class ProposeInput:
+    """LLM propose_screening 工具的结构化输入。"""
+
     intent: str
     preset: str = ""
     top_n: int = TOP_N_DEFAULT
@@ -44,6 +49,8 @@ class ProposeInput:
 
 @dataclass
 class ProposeResult:
+    """提案结果：待确认草案 / 需追问 / 错误。"""
+
     kind: ProposeKind
     draft: ScreenerDraft | None = None
     questions: list[str] | None = None
@@ -78,12 +85,14 @@ _PRESET_ALIASES: dict[str, str] = {
 
 
 def clamp_top_n(value: int | None) -> int:
+    """将 Top N 限制在 [TOP_N_MIN, TOP_N_MAX]。"""
     if value is None:
         return TOP_N_DEFAULT
     return max(TOP_N_MIN, min(TOP_N_MAX, int(value)))
 
 
 def normalize_preset_name(name: str) -> str:
+    """口语别名 / 内置名 → 标准 preset 名；「我的 · …」原样返回。"""
     key = name.strip()
     if not key:
         return ""
@@ -99,6 +108,7 @@ def normalize_preset_name(name: str) -> str:
 
 
 def build_summary(*, preset_label: str, request: ScreenerRequest) -> str:
+    """生成确认框展示的人类可读摘要。"""
     parts = [preset_label, f"Top {request.top_n}"]
     if request.min_change_pct is not None:
         parts.append(f"涨幅 ≥{request.min_change_pct:g}%")
@@ -110,6 +120,7 @@ def build_summary(*, preset_label: str, request: ScreenerRequest) -> str:
 
 
 def collect_warnings(*, source: str) -> list[str]:
+    """检查数据源前置条件（TUSHARE_TOKEN / Redis 行情）。"""
     warnings: list[str] = []
     if source == "tushare":
         token = os.getenv("TUSHARE_TOKEN") or os.getenv("TS_TOKEN")
@@ -208,6 +219,7 @@ def _clarifying_questions(data: ProposeInput, error: str) -> list[str]:
 
 
 def validate_and_build(data: ProposeInput) -> ProposeResult:
+    """校验 LLM 输入并生成待确认草案，或返回追问列表。"""
     if data.confidence == "low":
         questions = _clarifying_questions(data, "")
         return ProposeResult(
@@ -303,6 +315,7 @@ def try_fast_path(intent: str) -> ProposeInput | None:
 
 
 def preset_catalog_for_prompt() -> str:
+    """内置 preset + 已保存方案清单，注入 LLM System Prompt。"""
     lines = ["【内置选股方案】"]
     for name in list_builtin_preset_names():
         preset = get_preset(name)

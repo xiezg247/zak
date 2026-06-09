@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 
 def get_ashare_engine(main_engine: MainEngine | None) -> AshareEngine | None:
+    """从 MainEngine 获取 AshareEngine；未注册或类型不符时返回 None。"""
     if main_engine is None:
         return None
     from vnpy_ashare.engine import APP_NAME, AshareEngine
@@ -49,36 +50,43 @@ def get_service(main_engine: MainEngine | None, name: str):
 
 
 def get_analysis_service(main_engine: MainEngine | None) -> AnalysisService | None:
+    """诊断 / 研报聚合 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.analysis_service if engine is not None else None
 
 
 def get_backtest_service(main_engine: MainEngine | None) -> BacktestService | None:
+    """回测生命周期与摘要 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.backtest_service if engine is not None else None
 
 
 def get_bar_service(main_engine: MainEngine | None) -> BarService | None:
+    """K 线查询与数据管理页上下文 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.bar_service if engine is not None else None
 
 
 def get_quote_service(main_engine: MainEngine | None) -> QuoteService | None:
+    """行情查询与看盘页 AI 上下文 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.quote_service if engine is not None else None
 
 
 def get_screening_service(main_engine: MainEngine | None) -> ScreeningService | None:
+    """选股执行、历史与 AI 上下文 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.screening_service if engine is not None else None
 
 
 def get_sentiment_service(main_engine: MainEngine | None) -> SentimentService | None:
+    """恐贪指数 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.sentiment_service if engine is not None else None
 
 
 def get_watchlist_service(main_engine: MainEngine | None) -> WatchlistService | None:
+    """自选池 CRUD Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.watchlist_service if engine is not None else None
 

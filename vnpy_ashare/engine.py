@@ -1,3 +1,8 @@
+"""A 股 App 引擎：注册 Service 层与定时任务调度。
+
+挂载于 MainEngine（``APP_NAME = "Ashare"``），UI / Worker 经 ``engine_access`` 获取各 Service。
+"""
+
 from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 

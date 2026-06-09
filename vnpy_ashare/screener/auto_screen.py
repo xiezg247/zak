@@ -1,4 +1,7 @@
-"""自动选股轨：资格判断与 Request 解析。"""
+"""自动选股轨：Skill 直跑 preset 的资格判断与 Request 解析。
+
+与 ``nl_mapper`` 不同：已保存方案 / 无阈值的自定义筛选须走 ``propose_screening`` 确认。
+"""
 
 from __future__ import annotations
 
@@ -11,6 +14,8 @@ from vnpy_ashare.screener.runner import ScreenerRequest
 
 @dataclass(frozen=True)
 class AutoScreenInput:
+    """Skill screen_by_condition 的结构化输入。"""
+
     name: str
     top_n: int = 20
     min_change_pct: float | None = None
@@ -20,6 +25,8 @@ class AutoScreenInput:
 
 @dataclass
 class AutoScreenResult:
+    """解析结果：可直接执行 / 需确认 / 错误。"""
+
     ok: bool
     request: ScreenerRequest | None = None
     need_confirm: bool = False
@@ -27,6 +34,7 @@ class AutoScreenResult:
 
 
 def resolve_auto_screen_request(data: AutoScreenInput) -> AutoScreenResult:
+    """将 preset 名解析为 ScreenerRequest；不可直跑时设 need_confirm 或 error。"""
     name = (data.name or "").strip()
     if not name:
         return AutoScreenResult(ok=False, error="name 不能为空")

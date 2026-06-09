@@ -1,4 +1,8 @@
-"""看盘页 Qt Worker（从 ui.worker 迁出）。"""
+"""看盘页 Qt Worker（从 ui.worker 迁出）。
+
+读 K 线 / universe → bar_access；下载与同步 → bars / universe（写路径）。
+各 Worker 在后台线程运行，通过 Signal 回传 GUI 线程。
+"""
 
 from __future__ import annotations
 
@@ -42,6 +46,8 @@ from vnpy_ashare.universe import load_universe, sync_universe
 
 @dataclass
 class MarketPageResult:
+    """市场页分页加载结果（标的 + Redis 行情）。"""
+
     items: list[StockItem]
     quotes: dict[str, QuoteSnapshot]
     total: int
@@ -54,6 +60,8 @@ class MarketPageResult:
 
 @dataclass
 class LoadedBars:
+    """日 K 加载结果。"""
+
     item: StockItem
     bars: list[BarData]
     start: datetime
@@ -62,6 +70,8 @@ class LoadedBars:
 
 @dataclass
 class LoadedPeriodBars:
+    """分 K 加载结果（本地或 TickFlow 远端）。"""
+
     bars: list[BarData]
     from_local: bool
     period: str
@@ -73,6 +83,8 @@ FULL_BAR_START = datetime(2020, 1, 1)
 
 
 class UniverseLoadWorker(QtCore.QThread):
+    """加载 universe 列表（全部 A 股 / 自选池 / 已下载）。"""
+
     finished = QtCore.Signal(list)
     failed = QtCore.Signal(str)
 
@@ -95,6 +107,8 @@ class UniverseLoadWorker(QtCore.QThread):
 
 
 class UniverseSyncWorker(QtCore.QThread):
+    """同步 A 股列表到本地 SQLite。"""
+
     finished = QtCore.Signal(str)
     failed = QtCore.Signal(str)
 
@@ -107,6 +121,8 @@ class UniverseSyncWorker(QtCore.QThread):
 
 
 class BarsLoadWorker(QtCore.QThread):
+    """加载单标的日 K（bar_access）。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -144,6 +160,8 @@ class BarsLoadWorker(QtCore.QThread):
 
 
 class ScopeBarsLoadWorker(QtCore.QThread):
+    """加载单标的指定 scope（daily / 分 K）K 线。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -182,6 +200,8 @@ class ScopeBarsLoadWorker(QtCore.QThread):
 
 
 class DownloadWorker(QtCore.QThread):
+    """下载单标的日 K（full / incremental）。"""
+
     finished = QtCore.Signal(int)
     failed = QtCore.Signal(str)
 
@@ -232,6 +252,8 @@ class DownloadWorker(QtCore.QThread):
 
 
 class MinuteDownloadWorker(QtCore.QThread):
+    """下载单标的分 K（1m / 5m 等）。"""
+
     finished = QtCore.Signal(int)
     failed = QtCore.Signal(str)
 
@@ -284,6 +306,8 @@ class MinuteDownloadWorker(QtCore.QThread):
 
 
 class BarGapCheckWorker(QtCore.QThread):
+    """选中行异步扫描日 K 断层（inspect_bar_gaps）。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -314,6 +338,8 @@ class BarGapCheckWorker(QtCore.QThread):
 
 
 class QuotesRefreshWorker(QtCore.QThread):
+    """批量拉取 TickFlow / Redis 行情快照。"""
+
     finished = QtCore.Signal(dict)
     failed = QtCore.Signal(str)
 
@@ -331,6 +357,8 @@ class QuotesRefreshWorker(QtCore.QThread):
 
 
 class IntradayBarsWorker(QtCore.QThread):
+    """拉取 TickFlow 分时 K 线。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -347,6 +375,8 @@ class IntradayBarsWorker(QtCore.QThread):
 
 
 class MinuteBarsWorker(QtCore.QThread):
+    """加载分 K：优先本地，无数据时 fallback TickFlow。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -395,6 +425,8 @@ class MinuteBarsWorker(QtCore.QThread):
 
 
 class DepthRefreshWorker(QtCore.QThread):
+    """拉取 TickFlow 五档盘口；权限不足时 emission permission_denied。"""
+
     finished = QtCore.Signal(object)
     permission_denied = QtCore.Signal(str)
     failed = QtCore.Signal(str)
@@ -414,6 +446,8 @@ class DepthRefreshWorker(QtCore.QThread):
 
 
 class MarketPageLoadWorker(QtCore.QThread):
+    """市场页分页：universe 列表 + Redis 行情。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -474,6 +508,8 @@ class MarketPageLoadWorker(QtCore.QThread):
 
 
 class IndexQuotesWorker(QtCore.QThread):
+    """拉取大盘指数 ticker。"""
+
     finished = QtCore.Signal(list)
     failed = QtCore.Signal(str)
 
@@ -485,6 +521,8 @@ class IndexQuotesWorker(QtCore.QThread):
 
 
 class DiagnoseWorker(QtCore.QThread):
+    """后台调用 AnalysisService.diagnose。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -513,6 +551,8 @@ class DiagnoseWorker(QtCore.QThread):
 
 
 class BatchGapFillWorker(QtCore.QThread):
+    """批量补全日 K 内部断层（batch_fill_gap_daily_bars）。"""
+
     progress = QtCore.Signal(object)
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
@@ -544,6 +584,8 @@ class BatchGapFillWorker(QtCore.QThread):
 
 
 class BatchFillWorker(QtCore.QThread):
+    """批量补全过期日 K（batch_fill_stale_daily_bars）。"""
+
     progress = QtCore.Signal(object)
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)

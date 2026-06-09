@@ -13,7 +13,7 @@ from vnpy_llm.tool_result import enrich_tool_result
 
 
 class LlmClientError(Exception):
-    pass
+    """OpenAI 兼容 API 调用失败。"""
 
 
 class StreamCancelled(LlmClientError):
@@ -29,6 +29,7 @@ class _StreamingToolCall:
 
 
 def create_openai_client(config: LlmConfig) -> Any:
+    """创建 OpenAI 兼容客户端；未配置 API Key 或未安装 openai 包时抛 LlmClientError。"""
     if not config.configured:
         raise LlmClientError("未配置 LLM_API_KEY，请在 .env 中设置")
     try:
@@ -44,6 +45,7 @@ def stream_chat_completion(
     *,
     should_cancel: Callable[[], bool] | None = None,
 ) -> Iterator[str]:
+    """纯文本流式补全；``should_cancel`` 返回 True 时抛 StreamCancelled。"""
     client = create_openai_client(config)
     try:
         stream = client.chat.completions.create(

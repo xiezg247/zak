@@ -1,4 +1,7 @@
-"""多维度选股配方执行。"""
+"""多维度选股配方执行。
+
+各维度独立打分后按权重合并 ``composite_score``；须命中 ``min_dimensions`` 个维度才入选。
+"""
 
 from __future__ import annotations
 
@@ -40,6 +43,7 @@ def run_recipe(
     top_n: int | None = None,
     condition_prefix: str = "自动",
 ) -> ScreenerRunResult:
+    """按 recipe_id 执行多因子选股。"""
     recipe = resolve_recipe(recipe_id)
     if recipe is None:
         raise ValueError(f"未知选股配方：{recipe_id}")
@@ -56,6 +60,7 @@ def run_recipe_object(
     top_n: int | None = None,
     condition_prefix: str = "配方",
 ) -> ScreenerRunResult:
+    """执行配方对象：各维度取 pool_size 候选，加权合并后取 top_n。"""
     limit = top_n or recipe.top_n
     hits_by_symbol: dict[str, list[_DimensionHit]] = {}
     total_scanned = 0
@@ -102,6 +107,7 @@ def run_recipe_object(
 
 
 def build_reason_summary(*, recipe: ScreenRecipe, trigger: str, row_count: int) -> str:
+    """定时任务落库用的一行摘要（触发源 + 配方名 + 维度 + 命中数）。"""
     trigger_label = {
         "scheduled_intraday": "盘中自动",
         "scheduled_post_close": "盘后自动",

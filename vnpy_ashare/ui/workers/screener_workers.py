@@ -1,4 +1,4 @@
-"""选股页 Qt Worker。"""
+"""选股页 Qt Worker（后台执行选股 / 配方 / 批量操作）。"""
 
 from __future__ import annotations
 
@@ -10,6 +10,8 @@ from vnpy_ashare.screener.runner import ScreenerRequest, resolve_preset_input, r
 
 
 class ScreenerRunWorker(QtCore.QThread):
+    """后台执行 preset / 已保存方案选股；finished 发射 ScreenerRunResult。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -57,6 +59,8 @@ class ScreenerRunWorker(QtCore.QThread):
 
 
 class ScreenerRecipeRunWorker(QtCore.QThread):
+    """后台执行多因子配方；finished 发射 (ScreenerRunResult, recipe_id)。"""
+
     finished = QtCore.Signal(object, str)
     failed = QtCore.Signal(str)
 
@@ -74,6 +78,8 @@ class ScreenerRecipeRunWorker(QtCore.QThread):
 
 
 class ScreenerBatchDownloadWorker(QtCore.QThread):
+    """后台对选股结果批量下载日 K；finished 发射 JobResult。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
@@ -90,6 +96,8 @@ class ScreenerBatchDownloadWorker(QtCore.QThread):
 
 
 class ScreenerBatchBacktestWorker(QtCore.QThread):
+    """后台对选股结果批量回测；finished 发射 list[BatchBacktestRow]。"""
+
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 

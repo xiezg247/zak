@@ -29,6 +29,11 @@ _SCREEN_JOB_RECIPES = {
 
 
 def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
+    """定时多因子选股：``screen_intraday`` / ``screen_post_close``。
+
+    非交易日或盘中任务在非交易时段会跳过（``force=True`` 可强制执行）。
+    结果经 ``persist_scheduled_recipe_run`` 落库并写入 context_store。
+    """
     default_recipe_id = _SCREEN_JOB_RECIPES.get(job_id)
     if default_recipe_id is None:
         return JobResult(success=False, message=f"未知自动选股任务：{job_id}")

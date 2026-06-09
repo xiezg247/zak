@@ -1,4 +1,11 @@
-"""选股统一执行入口（GUI / CLI / Skill 共用）。"""
+"""选股统一执行入口（GUI / CLI / Skill 共用）。
+
+数据流::
+
+    ScreenerRequest → data_source（Redis / Tushare fallback）→ rules → ScreenerRunResult
+
+``scheme_id`` 非空时优先走已保存方案，忽略 ``preset``。
+"""
 
 from __future__ import annotations
 
@@ -24,6 +31,8 @@ from vnpy_ashare.screener.scheme_store import SavedScheme, get_scheme, list_sche
 
 @dataclass
 class ScreenerRunResult:
+    """单次选股执行结果。"""
+
     rows: list[dict[str, Any]]
     condition: str
     updated_at: str | None
@@ -34,6 +43,8 @@ class ScreenerRunResult:
 
 @dataclass
 class ScreenerRequest:
+    """选股请求；``scheme_id`` 非空时走已保存方案。"""
+
     preset: str
     top_n: int = 20
     min_change_pct: float | None = None
@@ -43,6 +54,7 @@ class ScreenerRequest:
 
 
 def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
+    """执行选股：行情 preset 走 Redis/Tushare 快照，基本面 preset 走 Tushare。"""
     if request.scheme_id:
         scheme = get_scheme(request.scheme_id)
         if scheme is None:
@@ -130,6 +142,7 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
 
 
 def build_scheme_config(request: ScreenerRequest) -> dict[str, Any]:
+    """将请求序列化为方案持久化 config。"""
     return {
         "preset": request.preset,
         "top_n": request.top_n,
@@ -140,6 +153,7 @@ def build_scheme_config(request: ScreenerRequest) -> dict[str, Any]:
 
 
 def list_all_preset_names(*, include_saved: bool = True) -> list[str]:
+    """列出内置 preset 名称；``include_saved`` 时追加「我的 · …」方案。"""
     names = list_builtin_preset_names()
     if include_saved:
         for scheme in list_schemes():
@@ -148,6 +162,7 @@ def list_all_preset_names(*, include_saved: bool = True) -> list[str]:
 
 
 def resolve_preset_input(preset_label: str) -> ScreenerRequest:
+    """将 UI / LLM 展示的 preset 标签解析为 ``ScreenerRequest``。"""
     label = preset_label.strip()
     if label.startswith("我的 · "):
         scheme_name = label.removeprefix("我的 · ").strip()

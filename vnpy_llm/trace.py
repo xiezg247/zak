@@ -25,6 +25,8 @@ def _now_str() -> str:
 
 @dataclass
 class TraceStep:
+    """单步 Trace（路由 / 工具 / 回复 / 错误）。"""
+
     id: str
     turn_id: str
     kind: TraceKind
@@ -38,6 +40,8 @@ class TraceStep:
 
 @dataclass
 class TurnTrace:
+    """一轮用户提问的完整 Trace（含多个 Step）。"""
+
     turn_id: str
     session_id: str
     user_text: str
@@ -48,6 +52,7 @@ class TurnTrace:
 
 
 def preview_text(text: str, *, limit: int = _PREVIEW_MAX) -> str:
+    """截断过长文本用于 Trace 摘要展示。"""
     text = (text or "").strip()
     if len(text) <= limit:
         return text
@@ -87,6 +92,7 @@ def map_turns_to_user_messages(
 
 
 def step_to_dict(step: TraceStep) -> dict[str, Any]:
+    """TraceStep → SQLite 持久化 dict。"""
     return {
         "id": step.id,
         "turn_id": step.turn_id,
@@ -100,6 +106,7 @@ def step_to_dict(step: TraceStep) -> dict[str, Any]:
 
 
 def step_from_dict(data: dict[str, Any]) -> TraceStep:
+    """dict → TraceStep。"""
     return TraceStep(
         id=str(data["id"]),
         turn_id=str(data["turn_id"]),
@@ -113,6 +120,7 @@ def step_from_dict(data: dict[str, Any]) -> TraceStep:
 
 
 def turn_to_dict(turn: TurnTrace) -> dict[str, Any]:
+    """TurnTrace → SQLite 持久化 dict。"""
     return {
         "turn_id": turn.turn_id,
         "session_id": turn.session_id,
@@ -124,6 +132,7 @@ def turn_to_dict(turn: TurnTrace) -> dict[str, Any]:
 
 
 def turn_from_dict(data: dict[str, Any]) -> TurnTrace:
+    """dict → TurnTrace。"""
     steps = [step_from_dict(item) for item in (data.get("steps") or [])]
     return TurnTrace(
         turn_id=str(data["turn_id"]),

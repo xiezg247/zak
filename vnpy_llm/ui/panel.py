@@ -1,4 +1,4 @@
-"""AI 对话面板（Dock / 全屏共用）。"""
+"""AI 对话面板（Dock / 全屏 / 浮动精简模式共用）。"""
 
 from __future__ import annotations
 
@@ -48,6 +48,11 @@ class AiInputEdit(QtWidgets.QPlainTextEdit):
 
 
 class AiChatPanel(QtWidgets.QWidget):
+    """主聊天 UI：消息流、快捷动作、工具状态、内嵌 Trace。
+
+    ``compact``：Dock 窄栏；``floating``：悬浮精简面板（独立 QSS）。
+    """
+
     expand_requested = QtCore.Signal()
     collapse_requested = QtCore.Signal()
 

@@ -1,4 +1,7 @@
-"""形态选股执行（扫描本地日 K）。"""
+"""形态选股执行（扫描本地日 K）。
+
+``theme_hot`` 走 Redis 行情；其余形态扫描 ``load_downloaded_stocks`` 本地日 K（最多 MAX_PATTERN_SCAN 只）。
+"""
 
 from __future__ import annotations
 
@@ -42,11 +45,14 @@ _PATTERN_LABELS: dict[str, str] = {
 
 @dataclass(frozen=True)
 class PatternScreenInput:
+    """形态选股请求（pattern 可为 id 或中文别名）。"""
+
     pattern: str
     top_n: int = 20
 
 
 def normalize_pattern_id(name: str) -> str:
+    """中文别名 / id → 标准 pattern_id；未知时返回空串。"""
     key = (name or "").strip()
     if not key:
         return ""
@@ -60,10 +66,12 @@ def normalize_pattern_id(name: str) -> str:
 
 
 def pattern_label(pattern_id: str) -> str:
+    """pattern_id → UI 展示名。"""
     return _PATTERN_LABELS.get(pattern_id, pattern_id)
 
 
 def list_pattern_screeners() -> list[str]:
+    """可用形态选股名称列表。"""
     return [pattern_label(pid) for pid in _PATTERN_LABELS]
 
 

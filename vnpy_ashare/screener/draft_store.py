@@ -21,6 +21,8 @@ _drafts: dict[str, ScreenerDraft] = {}
 
 @dataclass
 class ScreenerDraft:
+    """待用户确认的选股草案（内存，带 TTL）。"""
+
     id: str
     natural_language: str
     request: ScreenerRequest
@@ -43,15 +45,18 @@ def _fmt(dt: datetime) -> str:
 
 
 def create_draft_id() -> str:
+    """生成草案 id。"""
     return uuid.uuid4().hex
 
 
 def save_draft(draft: ScreenerDraft) -> None:
+    """保存或覆盖草案。"""
     with _lock:
         _drafts[draft.id] = draft
 
 
 def get_draft(draft_id: str) -> ScreenerDraft | None:
+    """读取草案；pending 且过期时自动标记 expired。"""
     with _lock:
         draft = _drafts.get(draft_id)
         if draft is None:
@@ -80,6 +85,7 @@ def consume_draft(draft_id: str) -> ScreenerDraft | None:
 
 
 def cancel_draft(draft_id: str) -> bool:
+    """取消 pending 草案；成功返回 True。"""
     with _lock:
         draft = _drafts.get(draft_id)
         if draft is None or draft.status != "pending":
@@ -105,6 +111,7 @@ def make_draft(
     warnings: list[str],
     ttl_minutes: int = DEFAULT_TTL_MINUTES,
 ) -> ScreenerDraft:
+    """构造并返回 pending 草案（默认 TTL 10 分钟）。"""
     now = _now()
     return ScreenerDraft(
         id=create_draft_id(),

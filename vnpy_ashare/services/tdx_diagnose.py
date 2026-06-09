@@ -1,4 +1,7 @@
-"""通达信问小达（tdx_wenda_quotes）个股综合诊断。"""
+"""通达信问小达（tdx_wenda_quotes）个股综合诊断。
+
+经 MCP 并行查询行情 / 技术 / 财务 / 资金流 / 研报，由 AnalysisService.diagnose 聚合。
+"""
 
 from __future__ import annotations
 

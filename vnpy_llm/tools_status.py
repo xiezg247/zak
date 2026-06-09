@@ -15,6 +15,8 @@ ToolProviderState = Literal["ready", "missing_env", "connect_failed", "disabled"
 
 @dataclass(frozen=True)
 class ToolProviderStatus:
+    """单个 Skill 或 MCP 提供者状态。"""
+
     kind: Literal["skill", "mcp"]
     name: str
     title: str
@@ -27,6 +29,8 @@ class ToolProviderStatus:
 
 @dataclass(frozen=True)
 class ToolsStatusSnapshot:
+    """Skills + MCP 工具能力快照（AI 工具对话框展示）。"""
+
     skills: tuple[ToolProviderStatus, ...] = ()
     mcps: tuple[ToolProviderStatus, ...] = ()
     total_tools: int = 0
@@ -41,6 +45,7 @@ class ToolsStatusSnapshot:
         return sum(1 for item in self.mcps if item.state == "ready")
 
     def compact_summary(self) -> str:
+        """一行摘要：就绪 Skills / MCP 与待配置项数。"""
         parts: list[str] = []
         ready_skills = [s.title for s in self.skills if s.state == "ready"]
         if ready_skills:
@@ -83,6 +88,7 @@ def build_tools_status(
     skill_engine: SkillEngine,
     mcp_engine: McpEngine,
 ) -> ToolsStatusSnapshot:
+    """聚合 SkillEngine 与 McpEngine 状态，供 AI 面板工具能力 UI 使用。"""
     skills: list[ToolProviderStatus] = []
     enabled_agent = {s.name for s in skill_engine.get_enabled_agent_skills()}
 

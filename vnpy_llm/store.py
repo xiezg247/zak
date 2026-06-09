@@ -1,4 +1,4 @@
-"""会话持久化。"""
+"""AI 对话会话 SQLite 持久化（~/.vntrader/llm_chat.db）。"""
 
 from __future__ import annotations
 
@@ -35,6 +35,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, id);
 
 @dataclass
 class ChatMessage:
+    """单条对话消息。"""
+
     role: str
     content: str
     created_at: str = ""
@@ -42,6 +44,8 @@ class ChatMessage:
 
 @dataclass
 class ChatSession:
+    """对话会话元数据（不含消息正文）。"""
+
     id: str
     title: str
     created_at: str
@@ -82,7 +86,10 @@ MAX_TOOL_RESULT_CHARS = 2000
 
 
 class ChatStore:
+    """会话与消息的 CRUD；单会话最多保留 MAX_MESSAGES_PER_SESSION 条。"""
+
     def get_or_create_default_session(self) -> str:
+        """获取最近会话 id，无则创建「默认会话」。"""
         with _connect() as conn:
             row = conn.execute("SELECT id FROM sessions ORDER BY updated_at DESC LIMIT 1").fetchone()
             if row:
@@ -96,6 +103,7 @@ class ChatStore:
             return session_id
 
     def create_session(self, *, title: str = "新会话", scene: str = "") -> str:
+        """创建新会话并返回 id。"""
         session_id = uuid.uuid4().hex
         now = _now()
         with _connect() as conn:
@@ -106,6 +114,7 @@ class ChatStore:
         return session_id
 
     def list_sessions(self, *, limit: int = 50) -> list[ChatSession]:
+        """按更新时间倒序列出会话。"""
         with _connect() as conn:
             rows = conn.execute(
                 """
@@ -188,6 +197,7 @@ class ChatStore:
         return messages
 
     def append_message(self, session_id: str, *, role: str, content: str) -> None:
+        """追加消息并刷新会话 updated_at。"""
         now = _now()
         with _connect() as conn:
             conn.execute(

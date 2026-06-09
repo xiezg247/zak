@@ -1,4 +1,4 @@
-"""大模型引擎。"""
+"""大模型引擎：会话管理、流式对话、工具调用与 Trace。"""
 
 from __future__ import annotations
 
@@ -31,6 +31,8 @@ APP_NAME = "Llm"
 
 
 class LlmSignals(QtCore.QObject):
+    """LlmEngine → UI 的 Qt 信号集合（流式输出、上下文、工具、Trace）。"""
+
     messages_changed = QtCore.Signal()
     sessions_changed = QtCore.Signal()
     stream_started = QtCore.Signal()

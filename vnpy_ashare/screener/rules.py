@@ -1,4 +1,7 @@
-"""选股规则（行情 / Tushare 基本面）。"""
+"""选股规则（行情 / Tushare 基本面）。
+
+行情 preset 对 ``quotes`` 行排序/过滤；Tushare preset 对 ``daily_basic`` / ``moneyflow`` 行筛选。
+"""
 
 from __future__ import annotations
 
@@ -24,6 +27,7 @@ def apply_quote_preset(
     max_change_pct: float | None = None,
     min_turnover: float | None = None,
 ) -> list[dict[str, Any]]:
+    """对行情行应用 preset 规则，返回标准化结果行（最多 top_n 条）。"""
     preset = preset.strip()
     top_n = max(1, min(int(top_n or 20), 200))
 
@@ -50,6 +54,7 @@ def apply_quote_preset(
 
 
 def apply_low_pe(rows: list[dict[str, Any]], *, top_n: int, max_pe_ttm: float = 15.0) -> list[dict[str, Any]]:
+    """PE(TTM) 在 (0, max_pe_ttm) 内升序取 top_n。"""
     filtered = [row for row in rows if row.get("pe_ttm", 0) > 0 and row.get("pe_ttm", 0) < max_pe_ttm]
     filtered.sort(key=lambda r: r.get("pe_ttm", 0))
     return [_fundamental_row(r) for r in filtered[:top_n]]
@@ -61,12 +66,14 @@ def apply_large_cap(
     top_n: int,
     min_total_mv: float = MIN_TOTAL_MV_50YI,
 ) -> list[dict[str, Any]]:
+    """总市值 ≥ min_total_mv（默认 50 亿）降序取 top_n。"""
     filtered = [row for row in rows if row.get("total_mv", 0) >= min_total_mv]
     filtered.sort(key=lambda r: r.get("total_mv", 0), reverse=True)
     return [_fundamental_row(r) for r in filtered[:top_n]]
 
 
 def apply_moneyflow_in(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[str, Any]]:
+    """主力净流入 > 0 降序取 top_n。"""
     filtered = [row for row in rows if row.get("net_mf_amount", 0) > 0]
     filtered.sort(key=lambda r: r.get("net_mf_amount", 0), reverse=True)
     return [_moneyflow_row(r) for r in filtered[:top_n]]

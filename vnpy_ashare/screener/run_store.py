@@ -1,4 +1,7 @@
-"""选股运行历史落库。"""
+"""选股运行历史落库（SQLite app_db）。
+
+UI 经 ScreeningService 访问，禁止页面直连。``config`` 含 trigger / recipe_id / read_at 等元数据。
+"""
 
 from __future__ import annotations
 
@@ -29,6 +32,8 @@ CREATE INDEX IF NOT EXISTS idx_screener_runs_created ON screener_runs(created_at
 
 @dataclass
 class ScreenerRunRecord:
+    """单次选股运行记录。"""
+
     id: str
     condition: str
     source: str
@@ -67,6 +72,7 @@ def save_run(
     total_scanned: int = 0,
     config: dict[str, Any] | None = None,
 ) -> ScreenerRunRecord:
+    """持久化选股结果并返回完整记录。"""
     run_id = uuid.uuid4().hex
     now = _now()
     payload = json.dumps(rows, ensure_ascii=False)
@@ -102,6 +108,7 @@ def save_run(
 
 
 def list_runs(*, limit: int = 20) -> list[ScreenerRunRecord]:
+    """按创建时间倒序列出历史运行。"""
     with _connect() as conn:
         rows = conn.execute(
             """
@@ -116,6 +123,7 @@ def list_runs(*, limit: int = 20) -> list[ScreenerRunRecord]:
 
 
 def get_run(run_id: str) -> ScreenerRunRecord | None:
+    """按 id 读取单次运行。"""
     with _connect() as conn:
         row = conn.execute(
             """
@@ -130,17 +138,20 @@ def get_run(run_id: str) -> ScreenerRunRecord | None:
 
 
 def get_latest_run() -> ScreenerRunRecord | None:
+    """最近一条运行记录。"""
     runs = list_runs(limit=1)
     return runs[0] if runs else None
 
 
 def delete_run(run_id: str) -> bool:
+    """删除运行记录；成功返回 True。"""
     with _connect() as conn:
         cursor = conn.execute("DELETE FROM screener_runs WHERE id=?", (run_id,))
         return cursor.rowcount > 0
 
 
 def update_run_config(run_id: str, config: dict[str, Any]) -> bool:
+    """更新运行的 config_json（如标记 read_at）。"""
     payload = json.dumps(config, ensure_ascii=False)
     with _connect() as conn:
         cursor = conn.execute(
@@ -151,6 +162,7 @@ def update_run_config(run_id: str, config: dict[str, Any]) -> bool:
 
 
 def mark_run_read(run_id: str) -> bool:
+    """定时选股结果标记已读（写入 config.read_at）。"""
     record = get_run(run_id)
     if record is None:
         return False
@@ -162,6 +174,7 @@ def mark_run_read(run_id: str) -> bool:
 
 
 def is_auto_run(config: dict[str, Any]) -> bool:
+    """是否为自动选股（定时 / AI / 配方）运行。"""
     trigger = str(config.get("trigger", ""))
     if trigger.startswith("scheduled_") or trigger.startswith("ai_"):
         return True
@@ -171,10 +184,12 @@ def is_auto_run(config: dict[str, Any]) -> bool:
 
 
 def is_strategy_run(config: dict[str, Any]) -> bool:
+    """是否为策略选股页手动运行（非自动）。"""
     return not is_auto_run(config)
 
 
 def is_run_unread(config: dict[str, Any]) -> bool:
+    """定时运行且尚未标记 read_at。"""
     trigger = str(config.get("trigger", ""))
     return trigger.startswith("scheduled_") and not config.get("read_at")
 

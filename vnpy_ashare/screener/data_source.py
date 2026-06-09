@@ -55,6 +55,7 @@ def fetch_moneyflow_with_fallback(
     max_lookback: int = DEFAULT_LOOKBACK_DAYS,
     start: date | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
+    """按交易日回退拉取 moneyflow，直到有数据或耗尽 lookback。"""
     last_tried = ""
     for trade_date in iter_trade_date_strs(max_lookback=max_lookback, start=start):
         last_tried = trade_date
@@ -144,6 +145,7 @@ def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:
 
 
 def resolve_result_source_tag(source: str) -> str:
+    """将内部 source 标签转为 UI 展示文案。"""
     if source == "quote+tushare":
         return "Redis+Tushare"
     if source == "tushare":
