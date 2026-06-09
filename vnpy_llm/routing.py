@@ -45,6 +45,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
     }),
     "screening": frozenset({
         "list_screeners",
+        "screen_by_condition",
         "propose_screening",
         "get_screening_context",
     }),
@@ -255,7 +256,12 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
             lines.append(f"- scheme_name: {s.scheme_name}")
         lines.append(f"- confidence: {s.confidence}")
         if s.clarification_needed:
-            lines.append("- 意图不够明确，请先向用户追问，勿调用 propose_screening")
+            lines.append("- 意图不够明确，请先向用户追问，勿调用选股工具")
+        elif s.confidence == "high" and s.preset and not s.scheme_name:
+            lines.append(
+                f"- 内置方案「{s.preset}」可直接调用 screen_by_condition"
+                f"（name={s.preset}, top_n={s.top_n}）"
+            )
         elif s.confidence in ("high", "medium"):
             lines.append(
                 "- 请调用 propose_screening，并传入上述 intent/preset/top_n 等参数"

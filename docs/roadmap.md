@@ -40,6 +40,8 @@
 ### 其他
 
 - 本地页 K 线健康检测与补全（`bar_health` + `local_data_controller`）
+- 本地页 **批量补全过期** 日 K（`jobs/local_fill.py`）
+- 主窗口 **日志 Dock**（vnpy `LogMonitor`，`Ctrl+Shift+L`）
 - 配置单源（`config_schema` / `config_bridge` / `settings_dialog`）
 
 ---
@@ -117,14 +119,20 @@ CTA 策略          ← 恢复挂载
 
 ## 近期可选（非阻塞）
 
-当前若无新需求，**不启动 P3–P4**。可优先考虑：
+当前若无新需求，**不启动 P3–P4**。近期已完成：
+
+- 本地页 **批量补全过期** 日 K（`jobs/local_fill.py`）
+- 主窗口 **日志 Dock**（`Ctrl+Shift+L` 切换）
+
+其余可优先考虑：
 
 - QuestDB 大数据量 K 线（见根目录 README）
 - 更多 `AShareTemplate` 示例策略（突破、RSI 等）
-- 自选页工具栏 AI 图标（`Ctrl+L` 可视化入口）
-- 状态栏显示当前行情源（TickFlow / Redis）
 - 分钟回测（B5，依赖本地分钟 K 体量）
 - `vnpy_ashare` / `vnpy_llm` 拆包发布
+- AI 对话**全自动选股**（内置 preset → `screen_by_condition`；复杂条件保留 `propose_screening` 确认）✅
+
+（日志 Dock 已实现，见主窗口「工具 → 显示/隐藏 日志 Dock」。）
 
 ---
 

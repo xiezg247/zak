@@ -93,7 +93,22 @@ class AshareMainWindow(MainWindow):
         self.event_engine.register(EVENT_AI_ACTION, self._on_ai_action_event)
 
     def init_dock(self) -> None:
-        return
+        from vnpy.trader.ui.widget import LogMonitor
+
+        _log_widget, self._log_dock = self.create_dock(
+            LogMonitor,
+            "日志",
+            QtCore.Qt.DockWidgetArea.BottomDockWidgetArea,
+        )
+        self._log_dock.setVisible(True)
+
+    def _toggle_log_dock(self) -> None:
+        dock = getattr(self, "_log_dock", None)
+        if dock is None:
+            return
+        dock.setVisible(not dock.isVisible())
+        if dock.isVisible():
+            dock.raise_()
 
     def init_toolbar(self) -> None:
         self.toolbar = QtWidgets.QToolBar(self)
@@ -102,6 +117,7 @@ class AshareMainWindow(MainWindow):
     def init_ui(self) -> None:
         self.window_title = build_window_title()
         self.setWindowTitle(self.window_title)
+        self.init_dock()
         self.init_toolbar()
         self.init_menu()
         self._init_shell()
@@ -142,6 +158,12 @@ class AshareMainWindow(MainWindow):
         quick_menu.addAction("行情采集", lambda: self._run_scheduler_job("collect_quotes"))
         quick_menu.addAction("同步 A 股列表", lambda: self._run_scheduler_job("sync_universe"))
         quick_menu.addAction("下载自选日 K", lambda: self._run_scheduler_job("batch_download"))
+
+        tools_menu.addSeparator()
+        log_dock_action = tools_menu.addAction("显示/隐藏 日志 Dock")
+        log_dock_action.setShortcut(QtGui.QKeySequence("Ctrl+Shift+L"))
+        log_dock_action.triggered.connect(self._toggle_log_dock)
+        self.addAction(log_dock_action)
 
     def edit_global_setting(self) -> None:
         show_settings_dialog(self)

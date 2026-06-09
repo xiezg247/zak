@@ -6,14 +6,12 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.screener_context import sync_screener_page_context
 from vnpy_ashare.engine_access import get_service
 from vnpy_ashare.ai_actions import AI_ACTION_FILL_SCREENER, put_ai_action
 from vnpy_ashare.events import FillScreenerRequest
 from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft_store import cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.runner import ScreenerRunResult, build_scheme_config
-from vnpy_ashare.screener.run_store import save_run
 from vnpy_ashare.ui.worker import ScreenerRunWorker
 from vnpy_llm.engine import LlmEngine
 
@@ -151,40 +149,44 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
 
     def _on_run_finished(self, result: ScreenerRunResult) -> None:
         self._worker = None
-        rows = list(result.rows)
+        draft = self._consumed_draft
         service = get_service(self.main_engine, "screening_service")
         if service is not None:
-            service.set_screening_results(
-                condition=result.condition,
-                rows=rows,
-                updated_at=result.updated_at,
+            extra_config = build_scheme_config(draft.request) if draft else {}
+            service.persist_run_result(
+                result,
+                nl_source=draft.natural_language if draft else "",
+                draft_id=self.draft_id if draft else "",
+                extra_config=extra_config,
             )
         else:
             from vnpy_ashare.ai.context_store import set_screening_results
+            from vnpy_ashare.ai.screener_context import sync_screener_page_context
+            from vnpy_ashare.screener.run_store import save_run
 
+            rows = list(result.rows)
             set_screening_results(
                 condition=result.condition,
                 rows=rows,
                 updated_at=result.updated_at,
             )
-        draft = self._consumed_draft
-        config = build_scheme_config(draft.request) if draft else {}
-        if draft is not None:
-            config = dict(config)
-            config["nl_source"] = draft.natural_language
-            config["draft_id"] = self.draft_id
-        save_run(
-            condition=result.condition,
-            source=result.source,
-            rows=rows,
-            total_scanned=result.total_scanned,
-            config=config,
-        )
-        sync_screener_page_context(self.main_engine)
+            config = build_scheme_config(draft.request) if draft else {}
+            if draft is not None:
+                config = dict(config)
+                config["nl_source"] = draft.natural_language
+                config["draft_id"] = self.draft_id
+            save_run(
+                condition=result.condition,
+                source=result.source,
+                rows=rows,
+                total_scanned=result.total_scanned,
+                config=config,
+            )
+            sync_screener_page_context(self.main_engine)
         self.llm_engine.append_local_message(
             role="assistant",
             content=(
-                f"【选股已执行】「{result.condition}」命中 {len(rows)} 条，"
+                f"【选股已执行】「{result.condition}」命中 {len(result.rows)} 条，"
                 f"扫描 {result.total_scanned} 只。"
             ),
         )

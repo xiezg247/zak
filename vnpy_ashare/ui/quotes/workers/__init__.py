@@ -3,6 +3,7 @@
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
+    BatchFillWorker,
     DepthRefreshWorker,
     DiagnoseWorker,
     DownloadWorker,
@@ -23,6 +24,7 @@ from vnpy_ashare.ui.quotes.workers.quotes_workers import (
 __all__ = [
     "BarGapCheckWorker",
     "BarsLoadWorker",
+    "BatchFillWorker",
     "DepthRefreshWorker",
     "DiagnoseWorker",
     "DownloadWorker",

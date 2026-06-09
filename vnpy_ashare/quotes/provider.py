@@ -97,3 +97,8 @@ def get_quote_provider(source: QuoteSource) -> QuoteProvider:
 
 def fetch_quotes(items: list[StockItem], source: QuoteSource) -> dict[str, QuoteSnapshot]:
     return get_quote_provider(source).get_quotes(items)
+
+
+def is_gateway_quote_active() -> bool:
+    """P4：Gateway 已连接且为行情主源时返回 True。"""
+    return False

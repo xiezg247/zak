@@ -113,8 +113,7 @@ flowchart TB
 - [x] 五档盘口（TickFlow WS）
 - [x] 定时刷新调度（`refresh_scheduler`）
 - [x] 本地页 K 线健康检测与缺口补全（`bar_health`）
-- [ ] 自选页工具栏「AI」图标（等同 `Ctrl+L`，可选）
-- [ ] 状态栏显示行情源（TickFlow / Redis；P4 后含 Gateway）
+- [x] 状态栏显示行情源（TickFlow / Redis；P4 后含 Gateway）
 
 **实盘阶段（远期 P4）**：若日后启动 P3，看盘可切换为 Gateway 行情主源。
 

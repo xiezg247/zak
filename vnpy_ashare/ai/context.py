@@ -496,8 +496,9 @@ def _screening_prompt(intent: str, *, detail: str = "") -> str:
     extra = f" {detail}" if detail else ""
     return (
         f"请按「{intent}」在 A 股中选股。{extra}"
-        "先 list_screeners 了解终端内置方案；技术/形态类可结合 tdx-stock-picker 与 mcp_tdx_tdx_wenda_quotes 探查，"
-        "再调用 propose_screening 生成待确认草案（禁止直接 screen_by_condition，须用户确认后执行）。"
+        "先 list_screeners 了解终端内置方案；"
+        "内置 preset 且条件明确时直接 screen_by_condition；"
+        "形态/技术复合条件可结合 tdx-stock-picker 与 mcp_tdx 探查，复杂或需保存时用 propose_screening。"
         "结果用 Markdown 表格展示，默认 Top 20，排除 ST，注明数据来源。"
     )
 

@@ -81,6 +81,7 @@ class DataLoaderController:
             page._render_table()
             page._pagination.update_controls()
             page.status_label.setText(page._pagination.format_status(result))
+            page._update_quote_source_label()
 
             if page.config.auto_refresh_quotes:
                 page._quote_timer.start()

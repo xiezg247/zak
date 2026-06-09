@@ -30,6 +30,7 @@ from vnpy_ashare.ui.quotes.table_controller import TableController
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
+    BatchFillWorker,
     BarsLoadWorker,
     DepthRefreshWorker,
     DiagnoseWorker,
@@ -110,6 +111,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._sync_worker: QtCore.QThread | None = None
         self._bars_worker: BarsLoadWorker | None = None
         self._download_worker: DownloadWorker | None = None
+        self._batch_fill_worker: BatchFillWorker | None = None
         self._gap_worker: BarGapCheckWorker | None = None
         self._gap_generation = 0
         self._quotes_worker: QuotesRefreshWorker | None = None
@@ -176,6 +178,7 @@ class QuotesPage(QtWidgets.QWidget):
             self.chart_panel.load_item(self.current_item, quote=quote)
         self.load_stock_list()
         self._restore_splitter()
+        self._update_quote_source_label()
 
     def deactivate(self) -> None:
         self._save_splitter()
@@ -194,6 +197,7 @@ class QuotesPage(QtWidgets.QWidget):
             "_sync_worker",
             "_bars_worker",
             "_download_worker",
+            "_batch_fill_worker",
             "_gap_worker",
             "_quotes_worker",
             "_depth_worker",
@@ -313,6 +317,21 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _emit_ai_context(self) -> None:
         self._actions.emit_ai_context()
+
+    def _update_quote_source_label(self) -> None:
+        from vnpy_ashare.quotes.provider import is_gateway_quote_active
+        from vnpy_ashare.ui.quotes_config import quote_source_label
+
+        label = getattr(self, "quote_source_label", None)
+        if label is None:
+            return
+        text = quote_source_label(
+            self.config,
+            stream_active=self._use_quote_stream(),
+            gateway_active=is_gateway_quote_active(),
+        )
+        label.setText(text)
+        label.setVisible(bool(text))
 
     def _use_quote_stream(self) -> bool:
         return self._stream.use_stream()
@@ -473,6 +492,9 @@ class QuotesPage(QtWidgets.QWidget):
     def fill_selected(self) -> None:
         self._local.fill_selected()
 
+    def batch_fill_stale(self) -> None:
+        self._local.batch_fill_stale()
+
     def redownload_selected(self) -> None:
         self._local.redownload_selected()
 
@@ -498,6 +520,8 @@ class QuotesPage(QtWidgets.QWidget):
                 self.fill_button.setEnabled(False)
             if self.config.show_redownload_button:
                 self.redownload_button.setEnabled(False)
+            if self.config.show_batch_fill_button:
+                self.batch_fill_button.setEnabled(False)
             if self.config.show_add_watchlist_button:
                 self.add_watchlist_button.setEnabled(False)
             if self.config.show_remove_watchlist_button:

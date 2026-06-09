@@ -18,6 +18,31 @@ def quote_refresh_seconds(refresh_ms: int) -> int:
     return max(refresh_ms // 1000, 1)
 
 
+def quote_source_label(
+    config: PageConfig,
+    *,
+    stream_active: bool = False,
+    gateway_active: bool = False,
+) -> str:
+    """状态栏行情源文案（TickFlow / Redis；P4 后含 Gateway）。"""
+    if gateway_active:
+        return "行情源：Gateway"
+    if config.use_local_table:
+        return "行情源：本地 K 线"
+    if not config.quote_source:
+        return ""
+    if config.use_quote_stream:
+        if stream_active:
+            return "行情源：TickFlow (WebSocket)"
+        return "行情源：TickFlow"
+    refresh_src = config.quote_refresh_source or config.quote_source
+    if config.quote_source == "market" and refresh_src == "watchlist":
+        return "行情源：Redis + TickFlow"
+    if config.quote_source == "market":
+        return "行情源：Redis"
+    return "行情源：TickFlow"
+
+
 def quote_refresh_hint(
     *,
     auto_refresh: bool,
@@ -50,6 +75,7 @@ class PageConfig:
     require_keyword: bool
     show_fill_button: bool = False
     show_redownload_button: bool = False
+    show_batch_fill_button: bool = False
     use_local_table: bool = False
     show_add_watchlist_button: bool = False
     show_remove_watchlist_button: bool = False
@@ -141,6 +167,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_download_button=False,
         show_fill_button=True,
         show_redownload_button=True,
+        show_batch_fill_button=True,
         use_local_table=True,
         show_local_column=False,
         require_keyword=False,

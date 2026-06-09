@@ -10,6 +10,7 @@
 vnpy MainWindow（基类）
 ├── 复用：MainEngine / EventEngine、App 插件注册、部分菜单、窗口配置
 ├── 禁用：init_dock() 默认交易 Dock（下单/委托/持仓/资金/TickMonitor）
+├── 保留：底部 **日志 Dock**（`LogMonitor`，`Ctrl+Shift+L` 切换）
 ├── 替换：中央区域 → 自建左侧导航 + StackedWidget
 └── 嵌入：策略回测 / 数据管理（vnpy 官方 Widget）
 ```

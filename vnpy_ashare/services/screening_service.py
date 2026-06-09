@@ -96,6 +96,37 @@ class ScreeningService(BaseService):
     def get_screening_results(self) -> ScreeningResultContext | None:
         return _get_screening_results()
 
+    def persist_run_result(
+        self,
+        result: ScreenerRunResult,
+        *,
+        nl_source: str = "",
+        draft_id: str = "",
+        extra_config: dict[str, Any] | None = None,
+    ) -> None:
+        """自动/确认选股执行后统一落库（context_store + run_store）。"""
+        from vnpy_ashare.screener.run_store import save_run
+
+        rows = list(result.rows)
+        self.set_screening_results(
+            condition=result.condition,
+            rows=rows,
+            updated_at=result.updated_at,
+        )
+        config: dict[str, Any] = dict(extra_config or {})
+        if nl_source:
+            config["nl_source"] = nl_source
+        if draft_id:
+            config["draft_id"] = draft_id
+        save_run(
+            condition=result.condition,
+            source=result.source,
+            rows=rows,
+            total_scanned=result.total_scanned,
+            config=config or None,
+        )
+        self.publish_page_context()
+
     def publish_page_context(self) -> None:
         publish_screener_page_context()
 
