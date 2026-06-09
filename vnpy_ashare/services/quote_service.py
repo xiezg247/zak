@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.ai.context import AiContextData, build_quote_context
+from vnpy_ashare.ai.session_context import get_ai_context, set_ai_context
 from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
@@ -15,12 +15,7 @@ from vnpy_ashare.services.base import BaseService
 
 
 class QuoteService(BaseService):
-    """持有当前选中标的上下文状态 + 行情查询。"""
-
-    def __init__(self, engine: "AshareEngine") -> None:  # type: ignore[name-defined]
-        super().__init__(engine)
-        self._context_cache: AiContextData | None = None
-        self._context_ts: float = 0
+    """行情查询；终端上下文读写委托 session_context。"""
 
     def set_current_selection(
         self,
@@ -30,21 +25,22 @@ class QuoteService(BaseService):
         quote: QuoteSnapshot | None = None,
         bar_count: int = 0,
     ) -> None:
-        """由 QuotesPage 选择变更时调用。"""
+        """写入 session_context（兼容旧调用方；UI 可直接 set_ai_context）。"""
         if item is None:
-            self._context_cache = AiContextData(page=page)
+            set_ai_context(AiContextData(page=page))
         else:
-            self._context_cache = build_quote_context(
-                page=page,
-                item=item,
-                quote=quote,
-                bar_count=bar_count,
+            set_ai_context(
+                build_quote_context(
+                    page=page,
+                    item=item,
+                    quote=quote,
+                    bar_count=bar_count,
+                )
             )
-        self._context_ts = time.time()
 
     def get_current_context(self) -> AiContextData:
-        """Skill 调用时 Lazy 读取。"""
-        return self._context_cache or AiContextData()
+        """Skill 读取终端当前页面与选中标的。"""
+        return get_ai_context()
 
     def get_quote(
         self, symbol: str, exchange: Exchange, quote_map: dict[str, QuoteSnapshot] | None = None

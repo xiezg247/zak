@@ -12,9 +12,9 @@ from vnpy_ashare.ai_actions import AI_ACTION_FILL_SCREENER, put_ai_action
 from vnpy_ashare.events import FillScreenerRequest
 from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft_store import cancel_draft, consume_draft, get_draft
-from vnpy_ashare.screener.runner import build_scheme_config
+from vnpy_ashare.screener.runner import ScreenerRunResult, build_scheme_config
 from vnpy_ashare.screener.run_store import save_run
-from vnpy_ashare.ui.worker import ScreenerRunResult, ScreenerRunWorker
+from vnpy_ashare.ui.worker import ScreenerRunWorker
 from vnpy_llm.engine import LlmEngine
 
 

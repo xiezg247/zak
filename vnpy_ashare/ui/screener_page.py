@@ -28,7 +28,7 @@ from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
-from vnpy_ashare.screener.runner import ScreenerRequest, build_scheme_config, list_all_preset_names
+from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult, build_scheme_config, list_all_preset_names
 from vnpy_ashare.screener.run_store import get_run, save_run
 from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.screener.batch_actions import (
@@ -43,7 +43,6 @@ from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_S
 from vnpy_ashare.ui.worker import (
     ScreenerBatchBacktestWorker,
     ScreenerBatchDownloadWorker,
-    ScreenerRunResult,
     ScreenerRunWorker,
 )
 

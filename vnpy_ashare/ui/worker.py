@@ -486,29 +486,6 @@ def _load_downloaded() -> list[StockItem]:
     return load_downloaded_stocks()
 
 
-@dataclass
-class ScreenerRunResult:
-    """GUI Worker 结果（与 screener.runner.ScreenerRunResult 结构一致）。"""
-
-    rows: list[dict]
-    condition: str
-    updated_at: str | None
-    total_scanned: int
-    source: str = "quote"
-    columns: list[tuple[str, str]] | None = None
-
-    @classmethod
-    def from_runner(cls, result) -> ScreenerRunResult:
-        return cls(
-            rows=result.rows,
-            condition=result.condition,
-            updated_at=result.updated_at,
-            total_scanned=result.total_scanned,
-            source=result.source,
-            columns=result.columns,
-        )
-
-
 class ScreenerRunWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
@@ -553,7 +530,7 @@ class ScreenerRunWorker(QtCore.QThread):
                     min_turnover=self.min_turnover,
                 )
             result = run_screener(request)
-            self.finished.emit(ScreenerRunResult.from_runner(result))
+            self.finished.emit(result)
         except Exception as ex:
             self.failed.emit(str(ex))
 
