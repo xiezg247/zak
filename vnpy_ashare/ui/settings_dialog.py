@@ -65,7 +65,8 @@ class SettingsDialog(QtWidgets.QDialog):
         root.setSpacing(10)
 
         hint = QtWidgets.QLabel(
-            f"环境变量请编辑 {ENV_FILE.name}；运行时配置保存至 {SETTING_FILE.name}，修改后需重启。"
+            f"环境变量请编辑 {ENV_FILE.name}；大模型项修改后可点「重载 LLM」立即生效。"
+            f"其余运行时配置保存至 {SETTING_FILE.name}，字体/数据库等需重启。"
         )
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
@@ -161,6 +162,10 @@ class SettingsDialog(QtWidgets.QDialog):
         sync_button = QtWidgets.QPushButton("从 .env 同步")
         sync_button.setObjectName("SettingsSecondaryButton")
         sync_button.clicked.connect(self._sync_from_env)
+        reload_llm_button = QtWidgets.QPushButton("重载 LLM")
+        reload_llm_button.setObjectName("SettingsSecondaryButton")
+        reload_llm_button.setToolTip("从 .env 重新读取 LLM_API_* 并应用到 AI 助手")
+        reload_llm_button.clicked.connect(self._reload_llm_config)
         save_button = QtWidgets.QPushButton("保存")
         save_button.setObjectName("SettingsPrimaryButton")
         save_button.clicked.connect(self._save)
@@ -168,6 +173,7 @@ class SettingsDialog(QtWidgets.QDialog):
         close_button.setObjectName("SettingsSecondaryButton")
         close_button.clicked.connect(self.reject)
         button_row.addWidget(sync_button)
+        button_row.addWidget(reload_llm_button)
         button_row.addStretch()
         button_row.addWidget(save_button)
         button_row.addWidget(close_button)
@@ -461,9 +467,31 @@ class SettingsDialog(QtWidgets.QDialog):
         QtWidgets.QMessageBox.information(
             self,
             "已保存",
-            f"配置已写入 {path}\n重启应用后生效。",
+            f"配置已写入 {path}\n字体、数据库等项需重启应用后生效。",
         )
         self.accept()
+
+    def _reload_llm_config(self) -> None:
+        parent = self.parent()
+        engine = None
+        if parent is not None and hasattr(parent, "_get_llm_engine"):
+            engine = parent._get_llm_engine()
+        if engine is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "LLM 引擎未加载")
+            return
+        cfg = engine.reload_config()
+        if cfg.configured:
+            QtWidgets.QMessageBox.information(
+                self,
+                "LLM 已重载",
+                f"模型：{cfg.model}\nAPI：{cfg.api_base}\nKey：{cfg.masked_key()}",
+            )
+        else:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "LLM 未配置",
+                "未检测到 LLM_API_KEY，请编辑 .env 后再次重载。",
+            )
 
     def _sync_from_env(self) -> None:
         reply = QtWidgets.QMessageBox.question(
@@ -480,7 +508,8 @@ class SettingsDialog(QtWidgets.QDialog):
         QtWidgets.QMessageBox.information(
             self,
             "同步完成",
-            f"已从 .env 写入 {path}\n重启应用后生效。",
+            f"已从 .env 写入 {path}\n字体、数据库等项需重启应用后生效；"
+            "大模型项可点「重载 LLM」立即应用。",
         )
 
 

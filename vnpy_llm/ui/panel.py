@@ -79,6 +79,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._pending_spinner_index = 0
         self._context_text = ""
         self._tool_hint: QtWidgets.QLabel | None = None
+        self._session_label: QtWidgets.QLabel | None = None
         self._skip_completion_once = False
         self._last_action_id = ""
         self._active_tool_name = ""
@@ -100,6 +101,14 @@ class AiChatPanel(QtWidgets.QWidget):
         self.scroll.viewport().installEventFilter(self)
         self._refresh_messages()
         self._update_model_action()
+        self._update_session_hint()
+
+    def _update_session_hint(self) -> None:
+        if self._session_label is None:
+            return
+        title = self.engine.get_current_session_title()
+        self._session_label.setText(f"· {title}")
+        self._session_label.setToolTip(title)
 
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
@@ -227,7 +236,7 @@ class AiChatPanel(QtWidgets.QWidget):
         if self.floating:
             send_size = max(44, self._input_min_height)
             self.send_btn.setFixedSize(send_size, send_size)
-        self.send_btn.clicked.connect(self._on_send)
+        self.send_btn.clicked.connect(self._on_send_or_stop)
         input_row.addWidget(self.send_btn)
 
         input_host = QtWidgets.QWidget()
@@ -244,6 +253,9 @@ class AiChatPanel(QtWidgets.QWidget):
             title = QtWidgets.QLabel("AI 助手")
             title.setObjectName("AiTitle")
             header.addWidget(title)
+            self._session_label = QtWidgets.QLabel("")
+            self._session_label.setObjectName("AiSessionChip")
+            header.addWidget(self._session_label)
             header.addStretch()
             history_btn = QtWidgets.QPushButton("历史")
             history_btn.setObjectName("AiToolBtn")
@@ -254,6 +266,7 @@ class AiChatPanel(QtWidgets.QWidget):
             expand_btn.clicked.connect(self.expand_requested.emit)
             header.addWidget(expand_btn)
         else:
+            self._session_label = None
             back_btn = QtWidgets.QPushButton("← 返回看盘")
             back_btn.setObjectName("AiToolBtn")
             back_btn.clicked.connect(self.collapse_requested.emit)
@@ -266,6 +279,7 @@ class AiChatPanel(QtWidgets.QWidget):
         more_menu = QtWidgets.QMenu(more_btn)
         more_menu.addAction("AI 工具能力…", self._on_show_tools)
         more_menu.addAction("重新加载工具", self._on_reload_tools)
+        more_menu.addAction("重载 LLM 配置", self._on_reload_llm_config)
         more_menu.addSeparator()
         more_menu.addAction("历史会话…", self._on_show_sessions)
         more_menu.addAction("新会话", self._on_new_session)
@@ -286,9 +300,11 @@ class AiChatPanel(QtWidgets.QWidget):
         signals.stream_started.connect(self._on_stream_started)
         signals.stream_delta.connect(self._on_stream_delta)
         signals.stream_finished.connect(self._on_stream_finished)
+        signals.stream_cancelled.connect(self._on_stream_cancelled)
         signals.stream_failed.connect(self._on_stream_failed)
         signals.context_changed.connect(self._on_context_changed)
         signals.tools_status_changed.connect(self._on_tools_status_changed)
+        signals.sessions_changed.connect(self._update_session_hint)
         signals.tool_call_started.connect(self._on_tool_call_started)
         signals.tool_call_finished.connect(self._on_tool_call_finished)
         signals.trace_changed.connect(self._on_trace_changed)
@@ -715,11 +731,15 @@ class AiChatPanel(QtWidgets.QWidget):
             self.scroll.verticalScrollBar().maximum()
         ))
 
+    def _on_send_or_stop(self) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            self._on_stop()
+            return
+        self._on_send()
+
     def _on_send(self) -> None:
         text = self.input_box.toPlainText().strip()
         if not text:
-            return
-        if self._worker is not None and self._worker.isRunning():
             return
         if not self.engine.config.configured:
             QtWidgets.QMessageBox.warning(self, "提示", "请先在 .env 中配置 LLM_API_KEY")
@@ -734,16 +754,26 @@ class AiChatPanel(QtWidgets.QWidget):
         self._worker = worker
         retain_thread_until_finished(self._retired_workers, worker)
         worker.finished_ok.connect(self._on_worker_done)
+        worker.cancelled.connect(self._on_worker_cancelled)
         worker.failed.connect(self._on_worker_failed)
         worker.finished.connect(worker.deleteLater)
         worker.start()
 
+    def _on_stop(self) -> None:
+        if self._worker is None or not self._worker.isRunning():
+            return
+        self.engine.request_cancel_stream()
+        self._worker.requestInterruption()
+
     def _set_busy(self, busy: bool) -> None:
-        self.send_btn.setDisabled(busy)
         self.input_box.setDisabled(busy)
         if busy:
-            self.send_btn.setToolTip("正在处理…")
+            self.send_btn.setEnabled(True)
+            self.send_btn.setText("■" if self.floating else "停止")
+            self.send_btn.setToolTip("停止生成")
         else:
+            self.send_btn.setText("↑" if self.floating else "发送")
+            self.send_btn.setEnabled(True)
             self.send_btn.setToolTip("")
             self._stop_pending_timer()
 
@@ -883,6 +913,12 @@ class AiChatPanel(QtWidgets.QWidget):
             self._sync_all_bubble_widths()
         self._streaming_bubble = None
 
+    def _on_stream_cancelled(self) -> None:
+        self._remove_pending_bubble()
+        if self._streaming_bubble is not None:
+            self._sync_all_bubble_widths()
+        self._streaming_bubble = None
+
     def _remove_streaming_bubble(self) -> None:
         if self._streaming_bubble is None:
             return
@@ -936,6 +972,13 @@ class AiChatPanel(QtWidgets.QWidget):
         self._live_trace_block = None
         self._refresh_messages()
 
+    def _on_worker_cancelled(self) -> None:
+        self._worker = None
+        self._remove_pending_bubble()
+        self._set_busy(False)
+        self._live_trace_block = None
+        self._refresh_messages()
+
     def _on_worker_failed(self, message: str) -> None:
         self._worker = None
         self._remove_pending_bubble()
@@ -983,6 +1026,25 @@ class AiChatPanel(QtWidgets.QWidget):
             return
         self.engine.reload_tools()
 
+    def _on_reload_llm_config(self) -> None:
+        if self._worker is not None and self._worker.isRunning():
+            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再重载配置")
+            return
+        cfg = self.engine.reload_config()
+        self._update_model_action()
+        if cfg.configured:
+            QtWidgets.QMessageBox.information(
+                self,
+                "LLM 已重载",
+                f"模型：{cfg.model}\nAPI：{cfg.api_base}\nKey：{cfg.masked_key()}",
+            )
+        else:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "LLM 未配置",
+                "未检测到 LLM_API_KEY，请编辑 .env 后再次重载。",
+            )
+
     def _on_input_enter(self, newline: bool) -> None:
         if newline:
             if self._completion_popup.isVisible():
@@ -998,7 +1060,7 @@ class AiChatPanel(QtWidgets.QWidget):
                 self._on_completion_selected(item)
             return
         self._completion_popup.hide()
-        self._on_send()
+        self._on_send_or_stop()
 
     def _handle_input_return(self, key_event: QtGui.QKeyEvent) -> bool:
         if key_event.key() not in (

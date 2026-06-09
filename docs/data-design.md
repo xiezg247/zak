@@ -259,7 +259,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, id);
 - `MAX_MESSAGES_PER_SESSION = 50`：每个会话 `list_messages()` 最多取最近 50 条
 - `MAX_TOOL_RESULT_CHARS = 2000`：写入 DB 前，tool_result 超过此长度的内容会被截断
 
-**当前状态：** `sessions` 表已定义但 UI 未暴露多会话切换（P2 规划中）。`ChatStore.get_or_create_default_session()` 总是返回最近活跃的单一会话。
+**当前状态：** 多会话 UI 已暴露——全屏页 `AiSessionSidebar`、Dock/悬浮「历史会话」弹窗；会话持久化于 `llm_chat.db`。
 
 ---
 

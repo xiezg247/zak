@@ -10,7 +10,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
-from vnpy_llm.client import LlmClientError, stream_chat_completion, stream_with_tools
+from vnpy_llm.client import LlmClientError, StreamCancelled, stream_chat_completion, stream_with_tools
 from vnpy_llm.routing import build_route_context
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
@@ -36,6 +36,7 @@ class LlmSignals(QtCore.QObject):
     stream_started = QtCore.Signal()
     stream_delta = QtCore.Signal(str)
     stream_finished = QtCore.Signal()
+    stream_cancelled = QtCore.Signal()
     stream_failed = QtCore.Signal(str)
     context_changed = QtCore.Signal(str)
     tools_status_changed = QtCore.Signal(object)
@@ -67,6 +68,7 @@ class LlmEngine(BaseEngine):
         self.session_id: str = assistant_id
         self._extra_context_provider: Callable[[], str] | None = None
         self._streaming = False
+        self._cancel_requested = False
         self._trace_store = TraceStore(TracePersistence())
         self._trace_store.ensure_session_loaded(self.session_id)
         self._reply_step_id: str | None = None
@@ -349,6 +351,17 @@ class LlmEngine(BaseEngine):
     def is_busy(self) -> bool:
         return self._streaming
 
+    def get_current_session_title(self) -> str:
+        session = self.store.get_session(self.session_id)
+        if session is None:
+            return "会话"
+        title = session.title.strip()
+        return title or "会话"
+
+    def request_cancel_stream(self) -> None:
+        """请求中断当前流式回复（由 UI Stop 按钮触发）。"""
+        self._cancel_requested = True
+
     def get_trace_turns(self) -> list[TurnTrace]:
         return self._trace_store.list_turns(self.session_id)
 
@@ -540,10 +553,19 @@ class LlmEngine(BaseEngine):
         if self._streaming:
             raise LlmClientError("上一条回复仍在生成中")
         self._streaming = True
+        self._cancel_requested = False
         self.signals.stream_started.emit()
         self.append_local_message(role="user", content=user_text)
         self._trace_begin_turn(user_text)
         turn_ok = True
+        cancelled = False
+        should_cancel = lambda: self._cancel_requested
+        chunks: list[str] = []
+
+        def _persist_partial() -> None:
+            content = "".join(chunks).strip()
+            if content:
+                self.append_local_message(role="assistant", content=content)
 
         try:
             all_tools = self._get_openai_tools()
@@ -562,13 +584,14 @@ class LlmEngine(BaseEngine):
                 )
                 self._trace_add_routing(route_ctx)
                 messages = self.build_api_messages(extra_system=route_ctx.routing_hint)
-                chunks: list[str] = []
+                chunks = []
                 self._trace_begin_reply()
                 for delta in stream_with_tools(
                     self.config,
                     messages,
                     route_ctx.tools,
                     self._execute_tool,
+                    should_cancel=should_cancel,
                 ):
                     chunks.append(delta)
                     self.signals.stream_delta.emit(delta)
@@ -577,9 +600,13 @@ class LlmEngine(BaseEngine):
                 if content:
                     self.append_local_message(role="assistant", content=content)
             else:
-                chunks: list[str] = []
+                chunks = []
                 self._trace_begin_reply()
-                for delta in stream_chat_completion(self.config, self.build_api_messages()):
+                for delta in stream_chat_completion(
+                    self.config,
+                    self.build_api_messages(),
+                    should_cancel=should_cancel,
+                ):
                     chunks.append(delta)
                     self.signals.stream_delta.emit(delta)
                     yield delta
@@ -587,6 +614,11 @@ class LlmEngine(BaseEngine):
                 if content:
                     self.append_local_message(role="assistant", content=content)
             self._trace_finish_reply()
+        except StreamCancelled:
+            cancelled = True
+            turn_ok = False
+            _persist_partial()
+            self.signals.stream_cancelled.emit()
         except Exception as ex:
             turn_ok = False
             self._trace_add_error(str(ex))
@@ -594,11 +626,21 @@ class LlmEngine(BaseEngine):
             raise
         finally:
             self._streaming = False
-            self._trace_finish_turn(ok=turn_ok)
+            self._cancel_requested = False
+            if not cancelled:
+                self._trace_finish_turn(ok=turn_ok)
             self.signals.stream_finished.emit()
 
-    def reload_config(self) -> None:
+    def reload_config(self) -> LlmConfig:
+        """从 .env 重新加载 LLM 配置（无需重启 GUI）。"""
+        from dotenv import load_dotenv
+
+        from vnpy_ashare.paths import ENV_FILE
+
+        if ENV_FILE.is_file():
+            load_dotenv(ENV_FILE, override=True)
         self.config = load_llm_config()
+        return self.config
 
     def close(self) -> None:
         self._bind_surface_session(self._active_surface, self.session_id)

@@ -11,7 +11,7 @@
 | P0 | 看盘终端（自选/市场/本地）、TickFlow、Redis、K 线、调度 | ✅ 已完成 |
 | P1 | AI 助手（侧栏 + 全屏、上下文、会话持久化） | ✅ 已完成 |
 | **P1.5** | **选股 + 回测联动 + Agent Skills 工具链 + Service 层** | **✅ 已完成（选股页、Skills、Service 全部落地）** |
-| P2 | AI 增强（多会话UI、流式中断、MCP远端工具） | 部分完成 |
+| P2 | AI 增强（多会话UI、流式中断、配置热重载） | ✅ 已完成 |
 | P3 | **A 股策略实盘**（Gateway、PaperAccount、CTA策略页、交易 Dock） | 已规划 |
 | P4 | 看盘页 Gateway 行情主源、TickFlow/Redis 降级 | 随 P3 推进 |
 
@@ -38,9 +38,9 @@
 - [x] 终端上下文统一（`ai/context_store.py`；已删除 `session_context.py`）
 - [x] 工具调用：查本地 K 线、自选列表、涨跌幅、技术诊断（已通过 Agent Skills 实现，见 `skills/vnpy_*_skill.py`）
 - [x] MCP 远端工具集成（`vnpy_mcp/`，从 `mcp/mcp.json` 读取远端 MCP 服务器配置）
-- [ ] 多会话列表与切换 UI（`vnpy_llm/store.py` 已有 sessions 表，ChatStore 已支持，UI 未暴露）
-- [ ] 流式输出中断（Stop 按钮）
-- [ ] 配置页：模型 / API 热重载（不必重启 GUI）
+- [x] 多会话列表与切换 UI（全屏侧栏 + 悬浮/ Dock「历史会话」弹窗）
+- [x] 流式输出中断（发送钮切换为「停止」）
+- [x] LLM 配置热重载（设置页「重载 LLM」+ 面板菜单；`.env` 中 `LLM_*` 无需重启）
 
 ---
 

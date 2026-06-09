@@ -16,6 +16,10 @@ class LlmClientError(Exception):
     pass
 
 
+class StreamCancelled(LlmClientError):
+    """用户主动中断流式生成。"""
+
+
 @dataclass
 class _StreamingToolCall:
     id: str = ""
@@ -37,6 +41,8 @@ def create_openai_client(config: LlmConfig) -> Any:
 def stream_chat_completion(
     config: LlmConfig,
     messages: list[dict[str, str]],
+    *,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> Iterator[str]:
     client = create_openai_client(config)
     try:
@@ -51,6 +57,8 @@ def stream_chat_completion(
         raise LlmClientError(str(ex)) from ex
 
     for chunk in stream:
+        if should_cancel and should_cancel():
+            raise StreamCancelled("用户已停止生成")
         delta = _extract_delta(chunk)
         if delta:
             yield delta
@@ -216,12 +224,15 @@ def stream_with_tools(
     *,
     max_rounds: int = 5,
     parallel_tool_calls: bool = True,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> Iterator[str]:
     """带工具调用的真流式对话，逐 token 产出最终回复文本。"""
     client = create_openai_client(config)
     working = list(messages)
 
     for _ in range(max_rounds):
+        if should_cancel and should_cancel():
+            raise StreamCancelled("用户已停止生成")
         kwargs: dict[str, Any] = {
             "model": config.model,
             "messages": working,
@@ -242,6 +253,8 @@ def stream_with_tools(
         finish_reason: str | None = None
 
         for chunk in stream:
+            if should_cancel and should_cancel():
+                raise StreamCancelled("用户已停止生成")
             if not chunk.choices:
                 continue
             choice = chunk.choices[0]
@@ -265,6 +278,8 @@ def stream_with_tools(
                         acc.arguments += tc.function.arguments
 
         if tool_calls_acc:
+            if should_cancel and should_cancel():
+                raise StreamCancelled("用户已停止生成")
             ordered = [tool_calls_acc[i] for i in sorted(tool_calls_acc)]
             assistant_msg: dict[str, Any] = {
                 "role": "assistant",
