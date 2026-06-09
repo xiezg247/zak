@@ -454,8 +454,8 @@ class FloatingAiPanel(QtWidgets.QWidget):
         self._update_context_bar_geometry()
         self.chat_panel.set_quick_actions(data.actions)
 
-    def submit_prompt(self, text: str, *, auto_send: bool = False) -> None:
-        self.chat_panel.submit_prompt(text, auto_send=auto_send)
+    def submit_prompt(self, text: str, *, auto_send: bool = False, action_id: str = "") -> None:
+        self.chat_panel.submit_prompt(text, auto_send=auto_send, action_id=action_id)
 
     def _on_expand(self) -> None:
         self._save_geometry()

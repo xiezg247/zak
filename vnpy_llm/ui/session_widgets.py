@@ -13,6 +13,8 @@ _SESSION_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 def _format_session_subtitle(session: ChatSession) -> str:
     parts: list[str] = []
+    if session.scene:
+        parts.append(session.scene)
     if session.message_count > 0:
         parts.append(f"{session.message_count} 条")
     if session.updated_at:

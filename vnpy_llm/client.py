@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from vnpy_llm.config import LlmConfig
+from vnpy_llm.tool_result import enrich_tool_result
 
 
 class LlmClientError(Exception):
@@ -74,6 +75,18 @@ def _tool_call_payload(call: Any) -> dict[str, Any]:
     }
 
 
+def _run_tool_call_safe(
+    tool_executor: Callable[[str, dict[str, Any]], str],
+    name: str,
+    arguments: dict[str, Any],
+) -> str:
+    try:
+        result = tool_executor(name, arguments)
+    except Exception as ex:
+        result = json.dumps({"error": str(ex)}, ensure_ascii=False)
+    return enrich_tool_result(result)
+
+
 def _execute_tool_calls_parallel(
     tool_calls: list[Any],
     tool_executor: Callable[[str, dict[str, Any]], str],
@@ -86,7 +99,11 @@ def _execute_tool_calls_parallel(
     if len(tool_calls) == 1:
         call = tool_calls[0]
         fn = call.function
-        result = tool_executor(fn.name, _parse_tool_arguments(fn.arguments))
+        result = _run_tool_call_safe(
+            tool_executor,
+            fn.name,
+            _parse_tool_arguments(fn.arguments),
+        )
         return [(call, result)]
 
     indexed: list[tuple[int, Any, str]] = []
@@ -108,7 +125,7 @@ def _execute_tool_calls_parallel(
                 result = future.result()
             except Exception as ex:
                 result = json.dumps({"error": str(ex)}, ensure_ascii=False)
-            indexed.append((index, call, result))
+            indexed.append((index, call, enrich_tool_result(result)))
 
     indexed.sort(key=lambda item: item[0])
     return [(call, result) for _, call, result in indexed]
@@ -176,7 +193,14 @@ def complete_with_tools(
             pairs = _execute_tool_calls_parallel(tool_calls, tool_executor)
         else:
             pairs = [
-                (call, tool_executor(call.function.name, _parse_tool_arguments(call.function.arguments)))
+                (
+                    call,
+                    _run_tool_call_safe(
+                        tool_executor,
+                        call.function.name,
+                        _parse_tool_arguments(call.function.arguments),
+                    ),
+                )
                 for call in tool_calls
             ]
         _append_tool_results(working, pairs)

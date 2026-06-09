@@ -80,6 +80,12 @@ class AiChatPanel(QtWidgets.QWidget):
         self._context_text = ""
         self._tool_hint: QtWidgets.QLabel | None = None
         self._skip_completion_once = False
+        self._last_action_id = ""
+        self._active_tool_name = ""
+        self._slow_tool_timer = QtCore.QTimer(self)
+        self._slow_tool_timer.setSingleShot(True)
+        self._slow_tool_timer.setInterval(3000)
+        self._slow_tool_timer.timeout.connect(self._on_tool_call_slow)
 
         self.setObjectName("AiChatPanel")
         if self.floating:
@@ -315,7 +321,8 @@ class AiChatPanel(QtWidgets.QWidget):
         self.input_box.setTextCursor(cursor)
         self.focus_input()
 
-    def submit_prompt(self, text: str, *, auto_send: bool = False) -> None:
+    def submit_prompt(self, text: str, *, auto_send: bool = False, action_id: str = "") -> None:
+        self._last_action_id = action_id.strip()
         self.set_input_text(text)
         if auto_send:
             self._on_send()
@@ -893,13 +900,30 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_tool_call_started(self, name: str) -> None:
         display = tool_display_name(name)
+        self._active_tool_name = name
+        self._slow_tool_timer.stop()
+        self._slow_tool_timer.start()
         if self.floating and self._tool_hint is not None:
             self._tool_hint.setText(f"⏳ 正在 {display}…")
             self._tool_hint.show()
         else:
             self.tools_status_bar.show_progress(f"正在 {display}…")
 
+    def _on_tool_call_slow(self) -> None:
+        name = self._active_tool_name
+        if not name:
+            return
+        display = tool_display_name(name)
+        slow_msg = f"⏳ {display} 耗时较长，仍在执行…"
+        if self.floating and self._tool_hint is not None:
+            self._tool_hint.setText(slow_msg)
+            self._tool_hint.show()
+        else:
+            self.tools_status_bar.show_progress(slow_msg)
+
     def _on_tool_call_finished(self, name: str) -> None:
+        self._slow_tool_timer.stop()
+        self._active_tool_name = ""
         if self.floating and self._tool_hint is not None:
             self._tool_hint.hide()
         else:

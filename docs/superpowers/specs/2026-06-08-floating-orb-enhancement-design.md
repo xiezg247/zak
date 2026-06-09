@@ -1,7 +1,7 @@
 # 悬浮球功能增强 — 技术设计
 
-> 版本：v0.1 · 2026-06-08  
-> 状态：Phase 1–3 已实现（会话场景标签、`EVENT_AI_ACTION` 未做）  
+> 版本：v0.2 · 2026-06-09  
+> 状态：Phase 1–3 已全部实现  
 > 关联：[架构说明](../../architecture.md) · [AI 数据路由](../../ai-data-routing.md) · [AI 能力重构设计](./2026-06-08-ai-refactor-design.md)
 
 ---
@@ -389,24 +389,9 @@ def _handle_ask_ai(self, data):
 
 ---
 
-## 8. 上下文通知链路（待实现）
+## 8. 上下文通知链路（已实现）
 
-当前 `LlmEngine.signals.context_changed` 存在，但 `set_ai_context()` **未触发** emit。Phase 1 需补齐：
-
-```python
-# vnpy_ashare/ai/session_context.py
-def set_ai_context(data: AiContextData) -> None:
-    global _ai_context
-    with _lock:
-        _ai_context = data
-    _notify_context_changed()
-
-def _notify_context_changed() -> None:
-    # 由 LlmEngine 注册回调，或 Qt Signal 桥接
-    ...
-```
-
-**推荐：** `session_context` 提供 `register_context_listener(callback)`，`LlmEngine.__init__` 注册并 `signals.context_changed.emit()`。避免 `session_context` 直接 import `LlmEngine` 造成循环依赖。
+`set_ai_context()` 通过 `register_context_listener` 回调 → `LlmEngine.signals.context_changed` → `FloatingAiController.refresh_context`。
 
 ---
 
@@ -443,8 +428,10 @@ def _notify_context_changed() -> None:
 | 选股完成角标动画 | ✅ | `EVENT_ORB_ATTENTION` → `notify_attention` → `play_attention_pulse`，不弹面板 |
 | `orb_user_hidden` 持久化 | ✅ | `QSettings("vnpy_zak", "floating_ai")` |
 | 数据管理页 context | ✅ | `data_manager_context.py` + `manager_widget.refresh_tree` |
-| 会话场景标签 | ⏭ | 可选，未做 |
-| `EVENT_AI_ACTION` | ⏭ | 复用 `EVENT_FILL_SCREENER` 等，未做 |
+| 会话场景标签 | ✅ | `sessions.scene` + 历史列表副标题 |
+| 页面 Quick Action 扩展 | ✅ | 市场「板块概览」、本地「数据健康」、非自选「加入自选」 |
+| `AskAiRequest.action_id` | ✅ | 埋点预留字段 |
+| `EVENT_AI_ACTION` | ✅ | 统一入口 `put_ai_action`，内部分发至既有 handler |
 
 ---
 
@@ -513,7 +500,8 @@ tests/llm/ui/test_floating_controller.py
 | `EVENT_ASK_AI` + `use_full_page=False` | 白名单页：开球+面板；否则跳自选 |
 | `EVENT_ASK_AI` + `use_full_page=True` | 隐藏球，开全屏 |
 | `EVENT_OPEN_BACKTEST` | 无直接影响（切页后隐藏） |
-| `EVENT_FILL_SCREENER` | 切选股页，球由 sync 显示 |
+| `EVENT_FILL_SCREENER` | 切选股页，球由 sync 显示（建议经 `EVENT_AI_ACTION` 投递） |
+| `EVENT_AI_ACTION` | 统一 AI 写操作入口，分发至 fill_screener / ask_ai / open_backtest 等 |
 
 ## 附录 B：关键文件索引
 

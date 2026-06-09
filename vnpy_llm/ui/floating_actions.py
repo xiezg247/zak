@@ -29,6 +29,8 @@ def _build_actions(data: AiContextData) -> list[QuickAction]:
             data.symbol,
             exchange_cn=data.exchange,
             name=data.name,
+            page=data.page,
+            extra=data.extra,
         )
     return _build_page_actions(data)
 
@@ -112,8 +114,21 @@ def build_quick_actions_for_panel(data: AiContextData, *, mode: str) -> list[Qui
             data.symbol,
             exchange_cn=data.exchange,
             name=data.name,
+            page=data.page,
+            extra=data.extra,
         )
     return _build_page_actions(data)
+
+
+def scene_label_from_context(data: AiContextData) -> str:
+    """从 AI 上下文生成会话场景标签。"""
+    if data.badge and data.symbol and data.name:
+        return f"{data.badge} · {data.name}"
+    if data.badge and data.page == "选股":
+        return data.badge
+    if data.chip_text and data.chip_text != "AI 助手":
+        return data.chip_text
+    return data.page or data.badge
 
 
 def orb_tooltip_text(data: AiContextData) -> str:

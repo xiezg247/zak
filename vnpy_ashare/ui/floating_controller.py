@@ -132,14 +132,24 @@ class FloatingAiController(QtCore.QObject):
             scene=data.scene or data.source_page,
         )
         if self._panel is not None:
-            self._panel.submit_prompt(data.prompt, auto_send=data.auto_send)
+            self._panel.submit_prompt(
+                data.prompt,
+                auto_send=data.auto_send,
+                action_id=data.action_id,
+            )
 
-    def run_quick_action(self, *, prompt: str, auto_send: bool) -> None:
+    def run_quick_action(
+        self,
+        *,
+        prompt: str,
+        auto_send: bool,
+        action_id: str = "",
+    ) -> None:
         if not prompt.strip():
             return
-        self.show_panel()
+        self.show_panel(scene=self._scene_from_context())
         if self._panel is not None:
-            self._panel.submit_prompt(prompt, auto_send=auto_send)
+            self._panel.submit_prompt(prompt, auto_send=auto_send, action_id=action_id)
 
     def refresh_context(self, _text: str = "") -> None:
         from vnpy_ashare.ai.session_context import get_ai_context
@@ -208,10 +218,11 @@ class FloatingAiController(QtCore.QObject):
         panel = self._panel
         if orb is None or panel is None:
             return
+        resolved_scene = scene.strip() or self._scene_from_context()
         self._prepare_floating_session(
             new_session=new_session,
             session_policy=session_policy,
-            scene=scene,
+            scene=resolved_scene,
         )
         if not orb.isVisible():
             self.show_orb()
@@ -249,7 +260,18 @@ class FloatingAiController(QtCore.QObject):
 
         if not isinstance(action, QuickAction):
             return
-        self.run_quick_action(prompt=action.prompt, auto_send=action.auto_send)
+        self.run_quick_action(
+            prompt=action.prompt,
+            auto_send=action.auto_send,
+            action_id=action.id,
+        )
+
+    @staticmethod
+    def _scene_from_context() -> str:
+        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_llm.ui.floating_actions import scene_label_from_context
+
+        return scene_label_from_context(get_ai_context())
 
     def _prepare_floating_session(
         self,

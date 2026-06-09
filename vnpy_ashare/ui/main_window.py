@@ -8,16 +8,26 @@ from types import ModuleType
 from vnpy.event import Event, EventEngine
 
 from vnpy_ashare.events import (
+    EVENT_AI_ACTION,
     EVENT_ASK_AI,
     EVENT_FILL_SCREENER,
     EVENT_OPEN_BACKTEST,
     EVENT_OPEN_BATCH_BACKTEST,
     EVENT_ORB_ATTENTION,
+    AiActionRequest,
     AskAiRequest,
     BacktestRequest,
     BatchBacktestViewRequest,
     FillScreenerRequest,
     OrbAttentionRequest,
+)
+from vnpy_ashare.ai_actions import (
+    AI_ACTION_ASK_AI,
+    AI_ACTION_FILL_SCREENER,
+    AI_ACTION_OPEN_BACKTEST,
+    AI_ACTION_OPEN_BATCH_BACKTEST,
+    AI_ACTION_ORB_ATTENTION,
+    normalize_ai_action,
 )
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import MainWindow
@@ -59,6 +69,7 @@ class AshareMainWindow(MainWindow):
     _signal_fill_screener = QtCore.Signal(object)
     _signal_ask_ai = QtCore.Signal(object)
     _signal_orb_attention = QtCore.Signal(object)
+    _signal_ai_action = QtCore.Signal(object)
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         self._page_widgets: dict[str, QtWidgets.QWidget] = {}
@@ -73,11 +84,13 @@ class AshareMainWindow(MainWindow):
         self._signal_fill_screener.connect(self._handle_fill_screener)
         self._signal_ask_ai.connect(self._handle_ask_ai)
         self._signal_orb_attention.connect(self._handle_orb_attention)
+        self._signal_ai_action.connect(self._handle_ai_action)
         self.event_engine.register(EVENT_OPEN_BACKTEST, self._on_open_backtest_event)
         self.event_engine.register(EVENT_OPEN_BATCH_BACKTEST, self._on_open_batch_backtest_event)
         self.event_engine.register(EVENT_FILL_SCREENER, self._on_fill_screener_event)
         self.event_engine.register(EVENT_ASK_AI, self._on_ask_ai_event)
         self.event_engine.register(EVENT_ORB_ATTENTION, self._on_orb_attention_event)
+        self.event_engine.register(EVENT_AI_ACTION, self._on_ai_action_event)
 
     def init_dock(self) -> None:
         return
@@ -312,6 +325,32 @@ class AshareMainWindow(MainWindow):
     def _on_orb_attention_event(self, event: Event) -> None:
         if isinstance(event.data, OrbAttentionRequest):
             self._signal_orb_attention.emit(event.data)
+
+    def _on_ai_action_event(self, event: Event) -> None:
+        if isinstance(event.data, AiActionRequest):
+            self._signal_ai_action.emit(event.data)
+
+    def _handle_ai_action(self, data: AiActionRequest) -> None:
+        try:
+            action = normalize_ai_action(data)
+        except (TypeError, ValueError):
+            return
+        payload = action.payload
+        if action.kind == AI_ACTION_FILL_SCREENER:
+            assert isinstance(payload, FillScreenerRequest)
+            self._handle_fill_screener(payload)
+        elif action.kind == AI_ACTION_ASK_AI:
+            assert isinstance(payload, AskAiRequest)
+            self._handle_ask_ai(payload)
+        elif action.kind == AI_ACTION_OPEN_BACKTEST:
+            assert isinstance(payload, BacktestRequest)
+            self._handle_open_backtest(payload)
+        elif action.kind == AI_ACTION_OPEN_BATCH_BACKTEST:
+            assert isinstance(payload, BatchBacktestViewRequest)
+            self._handle_open_batch_backtest(payload)
+        elif action.kind == AI_ACTION_ORB_ATTENTION:
+            assert isinstance(payload, OrbAttentionRequest)
+            self._handle_orb_attention(payload)
 
     def _handle_orb_attention(self, data: OrbAttentionRequest) -> None:
         if not self._ensure_floating_ai():

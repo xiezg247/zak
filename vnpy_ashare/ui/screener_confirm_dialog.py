@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from vnpy.event import Event, EventEngine
+from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.screener_context import sync_screener_page_context
 from vnpy_ashare.ai.session_context import set_screening_results
-from vnpy_ashare.events import EVENT_FILL_SCREENER, FillScreenerRequest
+from vnpy_ashare.ai_actions import AI_ACTION_FILL_SCREENER, put_ai_action
+from vnpy_ashare.events import FillScreenerRequest
 from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft_store import cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.runner import build_scheme_config
@@ -104,12 +105,15 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(self, "提示", "草案已失效，请重新描述选股条件。")
             return
         cancel_draft(self.draft_id)
-        self.event_engine.put(
-            Event(EVENT_FILL_SCREENER, FillScreenerRequest(
+        put_ai_action(
+            self.event_engine,
+            AI_ACTION_FILL_SCREENER,
+            FillScreenerRequest(
                 request=draft.request,
                 preset_label=draft.preset_label,
                 source_page="AI",
-            ))
+            ),
+            action_id="edit_screener_draft",
         )
         self.llm_engine.append_local_message(
             role="assistant",

@@ -84,6 +84,23 @@ class LlmEngineSurfaceTests(unittest.TestCase):
         self.assertEqual(engine.active_surface, "assistant")
         self.assertNotEqual(engine.session_id, before)
 
+    def test_open_session_for_ask_updates_scene(self) -> None:
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        import vnpy_llm.store as store_module
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "chat.db"
+            with patch.object(store_module, "CHAT_DB_PATH", db_path):
+                engine = self._make_engine()
+                engine.open_session_for_ask(surface="floating", scene="自选 · 茅台")
+                session = engine.store.get_session(engine.session_id)
+                self.assertIsNotNone(session)
+                assert session is not None
+                self.assertEqual(session.scene, "自选 · 茅台")
+
 
 if __name__ == "__main__":
     unittest.main()

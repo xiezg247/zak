@@ -15,6 +15,7 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL DEFAULT '',
+    scene TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -46,6 +47,7 @@ class ChatSession:
     created_at: str
     updated_at: str
     message_count: int = 0
+    scene: str = ""
 
 
 @contextmanager
@@ -55,6 +57,7 @@ def _connect():
     conn.row_factory = sqlite3.Row
     try:
         conn.executescript(_SCHEMA)
+        _ensure_session_columns(conn)
         yield conn
         conn.commit()
     except Exception:
@@ -62,6 +65,15 @@ def _connect():
         raise
     finally:
         conn.close()
+
+
+def _ensure_session_columns(conn: sqlite3.Connection) -> None:
+    columns = {
+        str(row["name"])
+        for row in conn.execute("PRAGMA table_info(sessions)").fetchall()
+    }
+    if "scene" not in columns:
+        conn.execute("ALTER TABLE sessions ADD COLUMN scene TEXT NOT NULL DEFAULT ''")
 
 
 def _now() -> str:
@@ -82,18 +94,18 @@ class ChatStore:
             session_id = uuid.uuid4().hex
             now = _now()
             conn.execute(
-                "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                (session_id, "默认会话", now, now),
+                "INSERT INTO sessions (id, title, scene, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                (session_id, "默认会话", "", now, now),
             )
             return session_id
 
-    def create_session(self, *, title: str = "新会话") -> str:
+    def create_session(self, *, title: str = "新会话", scene: str = "") -> str:
         session_id = uuid.uuid4().hex
         now = _now()
         with _connect() as conn:
             conn.execute(
-                "INSERT INTO sessions (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                (session_id, title, now, now),
+                "INSERT INTO sessions (id, title, scene, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                (session_id, title, scene.strip(), now, now),
             )
         return session_id
 
@@ -101,7 +113,7 @@ class ChatStore:
         with _connect() as conn:
             rows = conn.execute(
                 """
-                SELECT s.id, s.title, s.created_at, s.updated_at,
+                SELECT s.id, s.title, s.scene, s.created_at, s.updated_at,
                        COUNT(m.id) AS message_count
                 FROM sessions s
                 LEFT JOIN messages m ON m.session_id = s.id
@@ -118,6 +130,7 @@ class ChatStore:
                 created_at=str(row["created_at"]),
                 updated_at=str(row["updated_at"]),
                 message_count=int(row["message_count"]),
+                scene=str(row["scene"] or ""),
             )
             for row in rows
         ]
@@ -126,7 +139,7 @@ class ChatStore:
         with _connect() as conn:
             row = conn.execute(
                 """
-                SELECT s.id, s.title, s.created_at, s.updated_at,
+                SELECT s.id, s.title, s.scene, s.created_at, s.updated_at,
                        COUNT(m.id) AS message_count
                 FROM sessions s
                 LEFT JOIN messages m ON m.session_id = s.id
@@ -143,7 +156,16 @@ class ChatStore:
             created_at=str(row["created_at"]),
             updated_at=str(row["updated_at"]),
             message_count=int(row["message_count"]),
+            scene=str(row["scene"] or ""),
         )
+
+    def update_session_scene(self, session_id: str, scene: str) -> None:
+        cleaned = scene.strip()
+        with _connect() as conn:
+            conn.execute(
+                "UPDATE sessions SET scene=? WHERE id=?",
+                (cleaned, session_id),
+            )
 
     def update_session_title(self, session_id: str, title: str) -> None:
         cleaned = title.strip() or "新会话"

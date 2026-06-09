@@ -80,9 +80,59 @@ class FloatingActionsTests(unittest.TestCase):
             "002230",
             exchange_cn="深交所",
             name="科大讯飞",
+            page="自选",
         )
         self.assertEqual(len(actions), 4)
         self.assertIn("002230.SZSE", actions[0].children[0].prompt)
+
+    def test_market_page_includes_sector_overview(self) -> None:
+        with patch("vnpy_ashare.ai.context.is_symbol_in_watchlist", return_value=True):
+            actions = build_floating_stock_quick_actions(
+                "600519",
+                exchange_cn="上交所",
+                name="贵州茅台",
+                page="市场",
+            )
+        ids = [a.id for a in actions]
+        self.assertIn("sector_overview", ids)
+        self.assertNotIn("add_watchlist", ids)
+
+    def test_local_page_includes_bar_health(self) -> None:
+        with patch("vnpy_ashare.ai.context.is_symbol_in_watchlist", return_value=True):
+            actions = build_floating_stock_quick_actions(
+                "600519",
+                exchange_cn="上交所",
+                name="贵州茅台",
+                page="本地",
+                extra="本地日 K 条数：120",
+            )
+        bar_health = next(a for a in actions if a.id == "bar_health")
+        self.assertIn("get_bars_summary", bar_health.prompt)
+        self.assertIn("600519.SSE", bar_health.prompt)
+
+    def test_non_watchlist_symbol_shows_add_watchlist(self) -> None:
+        with patch("vnpy_ashare.ai.context.is_symbol_in_watchlist", return_value=False):
+            actions = build_floating_stock_quick_actions(
+                "000001",
+                exchange_cn="深交所",
+                name="平安银行",
+                page="市场",
+            )
+        add = next(a for a in actions if a.id == "add_watchlist")
+        self.assertIn("add_to_watchlist", add.prompt)
+
+    def test_scene_label_from_context(self) -> None:
+        from vnpy_llm.ui.floating_actions import scene_label_from_context
+
+        data = enrich_context_with_actions(
+            AiContextData(
+                page="市场",
+                symbol="600519",
+                exchange="上交所",
+                name="贵州茅台",
+            )
+        )
+        self.assertEqual(scene_label_from_context(data), "市场 · 贵州茅台")
 
     def test_watchlist_badge_and_chip(self) -> None:
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")

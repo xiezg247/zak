@@ -411,6 +411,87 @@ def build_bound_stock_menus(binding: StockBinding) -> list[QuickAction]:
     ]
 
 
+def build_sector_overview_prompt(vt_symbol: str, name: str = "") -> str:
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    return (
+        f"请分析 {title} 所属板块/概念行业的近期表现与联动逻辑。"
+        "可调用 mcp_tdx_tdx_wenda_quotes 查询板块关联、成分股联动与主力资金流向，"
+        "基于工具返回解读，禁止编造未在结果中的板块数据。"
+    )
+
+
+def build_bar_health_prompt(vt_symbol: str, name: str = "", extra: str = "") -> str:
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    context = f"当前上下文：{extra.strip()}\n" if extra.strip() else ""
+    return (
+        f"{context}请检查 {title} 的本地日 K 覆盖是否完整、是否过期或存在断层。"
+        f'请调用 get_bars_summary(symbol="{vt_symbol}") 获取起止日期与条数，'
+        "结合上下文说明数据健康状态，并给出补全或重下建议（不要直接执行下载）。"
+    )
+
+
+def build_add_watchlist_prompt(vt_symbol: str, name: str = "") -> str:
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    return (
+        f"请将 {title} 加入自选池。"
+        f'请调用 add_to_watchlist(symbol="{vt_symbol}")，'
+        "根据工具返回告知是否成功。"
+    )
+
+
+def is_symbol_in_watchlist(symbol: str, exchange_cn: str = "") -> bool:
+    """判断标的是否已在自选池。"""
+    from vnpy_ashare.app_db import load_watchlist_rows
+    from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE
+
+    if not symbol.strip():
+        return False
+    exchange = _CN_NAME_TO_EXCHANGE.get(exchange_cn) if exchange_cn else None
+    for row_symbol, row_exchange, _ in load_watchlist_rows():
+        if row_symbol != symbol.strip():
+            continue
+        if exchange is None or row_exchange == exchange:
+            return True
+    return False
+
+
+def build_floating_page_extras(
+    page: str,
+    binding: StockBinding,
+    *,
+    extra: str = "",
+) -> list[QuickAction]:
+    """按看盘页类型追加扁平快捷动作（板块概览 / 数据健康 / 加入自选）。"""
+    extras: list[QuickAction] = []
+    vt = binding.vt_symbol
+    name = binding.name
+    if page == "市场":
+        extras.append(
+            QuickAction(
+                id="sector_overview",
+                label="板块概览",
+                prompt=build_sector_overview_prompt(vt, name),
+            )
+        )
+    elif page == "本地":
+        extras.append(
+            QuickAction(
+                id="bar_health",
+                label="数据健康",
+                prompt=build_bar_health_prompt(vt, name, extra),
+            )
+        )
+    if page != "自选" and not is_symbol_in_watchlist(binding.symbol, binding.exchange_cn):
+        extras.append(
+            QuickAction(
+                id="add_watchlist",
+                label="加入自选",
+                prompt=build_add_watchlist_prompt(vt, name),
+            )
+        )
+    return extras
+
+
 def _screening_prompt(intent: str, *, detail: str = "") -> str:
     extra = f" {detail}" if detail else ""
     return (
@@ -561,12 +642,16 @@ def build_floating_stock_quick_actions(
     *,
     exchange_cn: str = "",
     name: str = "",
+    page: str = "",
+    extra: str = "",
 ) -> list[QuickAction]:
     """悬浮面板：绑定看盘页选中标的。"""
     binding = resolve_selected_stock_binding(symbol, exchange_cn=exchange_cn, name=name)
     if binding is None:
         return []
-    return build_bound_stock_menus(binding)
+    actions = build_bound_stock_menus(binding)
+    actions.extend(build_floating_page_extras(page, binding, extra=extra))
+    return actions
 
 
 def build_stock_quick_actions(symbol: str, *, exchange_cn: str = "", name: str = "") -> list[QuickAction]:

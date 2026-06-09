@@ -11,6 +11,7 @@ EVENT_OPEN_BATCH_BACKTEST = "eOpenBatchBacktest"
 EVENT_FILL_SCREENER = "eFillScreener"
 EVENT_ASK_AI = "eAskAi"
 EVENT_ORB_ATTENTION = "eOrbAttention"
+EVENT_AI_ACTION = "eAiAction"
 
 
 @dataclass
@@ -57,3 +58,14 @@ class AskAiRequest:
     auto_send: bool = False
     session_policy: str = "resume"  # resume | new
     scene: str = ""
+    action_id: str = ""
+
+
+@dataclass
+class AiActionRequest:
+    """AI 触发的 UI 写操作（统一入口，内部分发到既有 handler）。"""
+
+    kind: str
+    payload: object
+    action_id: str = ""
+    source: str = "AI"

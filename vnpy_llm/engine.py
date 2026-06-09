@@ -16,6 +16,7 @@ from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
 from vnpy_llm.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
+from vnpy_llm.tool_result import enrich_tool_result
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
 from vnpy_llm.trace import TraceStep, TraceStore, TurnTrace, preview_text
 from vnpy_llm.trace_persistence import TracePersistence
@@ -168,11 +169,21 @@ class LlmEngine(BaseEngine):
         scene: str = "",
     ) -> str:
         """打开悬浮/全屏 AI 前的统一会话入口。"""
-        _ = scene  # 预留 scene 策略（Phase 2）
         self.switch_surface(surface)
         if new_session or session_policy == "new":
-            return self.new_session(surface=surface)
-        return self.session_id
+            session_id = self.new_session(surface=surface, scene=scene)
+        else:
+            session_id = self.session_id
+            if scene.strip():
+                self._apply_session_scene(session_id, scene)
+        return session_id
+
+    def _apply_session_scene(self, session_id: str, scene: str) -> None:
+        cleaned = scene.strip()
+        if not cleaned:
+            return
+        self.store.update_session_scene(session_id, cleaned)
+        self.signals.sessions_changed.emit()
 
     def switch_session(self, session_id: str) -> None:
         if session_id == self.session_id:
@@ -218,9 +229,10 @@ class LlmEngine(BaseEngine):
         *,
         title: str = "新会话",
         surface: Surface | None = None,
+        scene: str = "",
     ) -> str:
         target = surface or self._active_surface
-        session_id = self.store.create_session(title=title)
+        session_id = self.store.create_session(title=title, scene=scene.strip())
         self._bind_surface_session(target, session_id)
         if target == self._active_surface:
             self.session_id = session_id
@@ -484,11 +496,11 @@ class LlmEngine(BaseEngine):
                 result = self.skill_engine.execute_tool(name, arguments)
             if name == "propose_screening":
                 self._maybe_emit_screener_draft(result)
-            return result
+            return enrich_tool_result(result)
         except Exception as ex:
             success = False
-            result = json.dumps({"error": str(ex)}, ensure_ascii=False)
-            raise
+            result = enrich_tool_result(json.dumps({"error": str(ex)}, ensure_ascii=False))
+            return result
         finally:
             self._trace_finish_tool(step_id, result=result, success=success)
             try:
