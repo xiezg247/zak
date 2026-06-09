@@ -51,6 +51,24 @@ vnpy MainWindow（基类）
 | `vnpy_mcp` | MCP 远端工具集成（从 `mcp/mcp.json` 发现工具） |
 | `vnpy_ashare/ai` | A 股上下文共享（`context.py` 等）、AI 全屏页 |
 
+### 看盘页 UI 拆分（`ui/quotes/`）
+
+`QuotesPage`（`ui/quotes_page.py`）作为薄壳组合各 controller，子包 `ui/quotes/` 按职责拆分：
+
+| 模块 | 职责 |
+|------|------|
+| `page_shell.py` | 工具栏、表格、报价头、K 线/五档/诊断区布局 |
+| `data_loader_controller.py` | 列表加载、市场榜分页数据、universe 同步 |
+| `table_controller.py` | 列配置、表格渲染、筛选、选中 |
+| `actions_controller.py` | 诊断、AI 问句、回测、右键菜单、行情刷新 |
+| `local_data_controller.py` | 本地 K 线 meta、下载、缺口检查、K 线加载 |
+| `quote_stream_controller.py` | TickFlow WebSocket 流 |
+| `pagination_controller.py` | 市场榜分页导航 |
+| `watchlist_controller.py` | 自选 CRUD |
+| `workers/quotes_workers.py` | 后台 Worker（行情/下载/加载等） |
+
+`ui/worker.py` 保留为 re-export 兼容层，旧 import 路径仍可用。
+
 ### 行情 Provider 抽象
 
 看盘 UI（`QuotesPage`）只依赖 `QuoteSnapshot`，不绑定具体数据源。`vnpy_ashare/quotes/provider.py` 已定义：
