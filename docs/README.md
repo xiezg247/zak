@@ -4,7 +4,7 @@
 
 **投研终端已基本就绪**：看盘、K 线下载、选股、策略回测（含批量对比）、AI 助手（Skills + MCP + 多会话 + 流式中断）、配置热重载均已落地。
 
-**远期规划（暂无近期计划）**：P3 策略实盘、PaperAccount 模拟盘、P4 Gateway 看盘行情 — 设计保留在 [roadmap.md](./roadmap.md)，当前不排期。
+**远期规划（暂无近期计划）**：P3 策略实盘、PaperAccount 模拟盘、P4 Gateway 看盘行情、QuestDB 大数据量 K 线 — 设计保留在 [roadmap.md](./roadmap.md)，当前不排期。
 
 ---
 
@@ -24,7 +24,7 @@
 |------|------|
 | [架构说明](./architecture.md) | GUI 分层、Service 层、行情 Provider、AI 上下文 |
 | [数据设计](./data-design.md) | 三个 SQLite + Redis + `context_store` 内存态 |
-| [演进路线](./roadmap.md) | P0–P2 ✅；P3–P4 远期规划（暂无近期计划） |
+| [演进路线](./roadmap.md) | P0–P2 ✅；P3–P4 / QuestDB 远期（暂无近期计划） |
 
 ---
 

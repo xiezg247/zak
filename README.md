@@ -86,21 +86,11 @@ uv run python scripts/export_metadata.py
 uv run python scripts/import_metadata.py --watchlist data/backup/watchlist.csv
 ```
 
-## 数据库（可选 QuestDB）
+## 数据库
 
 默认使用 **SQLite**（`vnpy_sqlite`），无需额外服务。
 
-后续若数据量增大或需要盘中高频写入，可切换 [vnpy_questdb](https://github.com/vnpy/vnpy_questdb)：
-
-```bash
-uv sync --extra questdb
-bash scripts/start_questdb.sh
-# .env: DATABASE_NAME=questdb，并取消注释 QUESTDB_* 配置
-uv run python scripts/init_config.py
-uv run python scripts/check_database.py
-```
-
-切回 SQLite：`.env` 设 `DATABASE_NAME=sqlite`，重新执行 `init_config.py`。
+**QuestDB** 为远期规划（数据量显著增大时再评估切换），详见 [演进路线 · QuestDB](docs/roadmap.md#数据层远期questdb暂无近期计划)。仓库保留 `docker-compose.yml` 与 `scripts/start_questdb.sh` 等可选接入脚本，当前不排期。
 
 ## 文档
 
@@ -158,7 +148,7 @@ zak/
 │   ├── tickflow/                  # TickFlow Agent Skill
 │   └── tushare-data/              # Tushare Agent Skill
 ├── mcp/                           # MCP 外接配置文件
-├── docker-compose.yml             # QuestDB（可选）
+├── docker-compose.yml             # QuestDB（远期可选）
 └── scripts/
     ├── init_config.py
     ├── start_questdb.sh

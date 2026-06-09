@@ -48,7 +48,7 @@
 
 ## 远期规划（P3–P4，暂无近期计划）
 
-> 以下保留设计备忘，便于日后若接入券商 Gateway 时参考。**当前产品重心为投研闭环维护与可选增强**（见下文「近期可选」），不排期实盘 / 模拟盘开发。
+> 以下保留设计备忘，便于日后若接入券商 Gateway 或切换时序库时参考。**当前产品重心为投研闭环维护与可选增强**（见下文「近期可选」），不排期实盘 / 模拟盘 / QuestDB 开发。
 
 ## P3：A 股策略实盘（远期）
 
@@ -117,6 +117,27 @@ CTA 策略          ← 恢复挂载
 
 ---
 
+## 数据层远期：QuestDB（暂无近期计划）
+
+> **现状**：K 线与回测默认 **SQLite**（`vnpy_sqlite`），已满足当前日 K 投研闭环。  
+> **触发条件（远期）**：全市场分钟 K 体量显著增大、盘中高频写入、或 SQLite 成为瓶颈时，再评估切换 [vnpy_questdb](https://github.com/vnpy/vnpy_questdb)。
+
+仓库已保留可选接入（`uv sync --extra questdb`、`docker-compose.yml`、`scripts/start_questdb.sh`、`.env` 中 `QUESTDB_*`），**当前不排期**。
+
+切换步骤备忘（日后实施时参考）：
+
+```bash
+uv sync --extra questdb
+bash scripts/start_questdb.sh
+# .env: DATABASE_NAME=questdb，并取消注释 QUESTDB_* 配置
+uv run python scripts/init_config.py
+uv run python scripts/check_database.py
+```
+
+切回 SQLite：`.env` 设 `DATABASE_NAME=sqlite`，重新执行 `init_config.py`。
+
+---
+
 ## 近期可选（非阻塞）
 
 当前若无新需求，**不启动 P3–P4**。近期已完成：
@@ -126,9 +147,7 @@ CTA 策略          ← 恢复挂载
 
 其余可优先考虑：
 
-- QuestDB 大数据量 K 线（见根目录 README）
 - 更多 `AShareTemplate` 示例策略（突破、RSI 等）
-- 分钟回测（B5，依赖本地分钟 K 体量）
 - `vnpy_ashare` / `vnpy_llm` 拆包发布
 - AI 对话**全自动选股**（内置 preset → `screen_by_condition`；形态 → `screen_by_pattern`；复杂条件保留 `propose_screening` 确认）✅
 
@@ -143,6 +162,9 @@ CTA 策略          ← 恢复挂载
 - **期货** CTP / SimNow
 - 回测与实盘维护两套策略代码
 - 废弃 TickFlow / Redis（实盘阶段为降级备用）
+- **策略回测页内嵌批量区**（批量回测已由自选/选股 →「回测对比」页承担）
+- **本地列表 count 粗估告警**（完整性以 STALE + 选中后 GAPS 扫描为准）
+- **分钟回测（B5）**（回测引擎与产品闭环以日 K 为主）
 
 ---
 

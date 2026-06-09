@@ -134,7 +134,6 @@ flowchart TB
 | **B3** | 回测结果摘要 | ✅ | `backtest/run_store.py` + `BacktestService.persist_summary()` |
 | **B4** | 回测页 AI 上下文 | ✅ | `ai/backtest_context.py` + `context_store` |
 | P2 | 更多 `AShareTemplate` 示例策略 | 持续 | 突破、RSI 等，仍只做多 |
-| B5 | 分钟回测 | 远期 | 依赖 TickFlow 分钟 K 本地量 |
 
 **与实盘关系（远期）**：回测通过的 `AShareTemplate` 子类，设计上可直接作为 CTA 策略模块的实盘策略类；若日后启动 P3，与回测共用同一套代码。
 
