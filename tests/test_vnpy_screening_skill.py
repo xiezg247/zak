@@ -27,17 +27,44 @@ def test_list_screeners():
     assert result["count"] >= 3
     assert "涨幅榜" in result["screeners"]
     assert "catalog" in result
-    assert "propose_screening" in result["note"]
+    assert "screen_by_condition" in result["note"]
 
 
 def test_screen_by_condition_no_data():
     svc = MagicMock()
-    from vnpy_ashare.ai.context_store import clear_all
-
-    clear_all()
+    svc.run_request.side_effect = RuntimeError("暂无可用的市场行情数据")
     skill = _make_skill(svc)
     result = json.loads(skill.screen_by_condition("涨幅榜"))
-    assert result["status"] == "blocked"
+    assert result["status"] == "error"
+
+
+def test_screen_by_condition_ok():
+    from vnpy_ashare.screener.runner import ScreenerRunResult
+
+    svc = MagicMock()
+    svc.run_request.return_value = ScreenerRunResult(
+        rows=[{
+            "symbol": "000001",
+            "name": "平安银行",
+            "vt_symbol": "000001.SZSE",
+            "change_pct": 5.2,
+        }],
+        condition="涨幅榜",
+        updated_at="2026-06-09",
+        total_scanned=100,
+        source="quote",
+    )
+    skill = _make_skill(svc)
+    result = json.loads(skill.screen_by_condition("涨幅榜", top_n=5))
+    assert result["status"] == "ok"
+    assert result["count"] == 1
+    svc.persist_run_result.assert_called_once()
+
+
+def test_screen_by_condition_need_confirm():
+    skill = _make_skill(MagicMock())
+    result = json.loads(skill.screen_by_condition("我的 · 测试"))
+    assert result["status"] == "need_confirm"
     assert "propose_screening" in result["message"]
 
 

@@ -71,14 +71,27 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="screen_by_condition",
                 description=(
-                    "【已禁用直接执行】请改用 propose_screening。"
-                    "选股须经用户在确认框中确认后才会运行。"
+                    "直接执行内置选股方案并返回结果（无需用户确认）。"
+                    "适用于涨幅榜/换手率/低PE等内置 preset；"
+                    "已保存方案或复杂条件请改用 propose_screening。"
                 ),
                 parameters={
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string", "description": "选股条件名"},
-                        "top_n": {"type": "integer", "description": "返回前 N 条"},
+                        "name": {"type": "string", "description": "内置选股方案名"},
+                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
+                        "min_change_pct": {
+                            "type": "number",
+                            "description": "最小涨幅（%），仅自定义筛选",
+                        },
+                        "max_change_pct": {
+                            "type": "number",
+                            "description": "最大涨幅（%），仅自定义筛选",
+                        },
+                        "min_turnover": {
+                            "type": "number",
+                            "description": "最小换手率（%），仅自定义筛选",
+                        },
                     },
                     "required": ["name"],
                 },
@@ -101,7 +114,7 @@ class VnpyScreeningSkill(SkillTemplate):
                 "count": len(names),
                 "screeners": names,
                 "catalog": preset_catalog_for_prompt(),
-                "note": "执行筛选请调用 propose_screening，禁止直接 screen_by_condition。",
+                "note": "简单内置方案可直接 screen_by_condition；复杂/保存方案用 propose_screening。",
             },
             ensure_ascii=False,
         )
@@ -221,14 +234,79 @@ class VnpyScreeningSkill(SkillTemplate):
             ensure_ascii=False,
         )
 
-    def screen_by_condition(self, name: str, top_n: int = 10) -> str:
+    def screen_by_condition(
+        self,
+        name: str,
+        top_n: int = 20,
+        min_change_pct: float | None = None,
+        max_change_pct: float | None = None,
+        min_turnover: float | None = None,
+    ) -> str:
+        from vnpy_ashare.screener.auto_screen import AutoScreenInput, resolve_auto_screen_request
+
+        resolved = resolve_auto_screen_request(
+            AutoScreenInput(
+                name=name,
+                top_n=top_n,
+                min_change_pct=min_change_pct,
+                max_change_pct=max_change_pct,
+                min_turnover=min_turnover,
+            )
+        )
+        if resolved.need_confirm:
+            return json.dumps(
+                {
+                    "status": "need_confirm",
+                    "message": resolved.error or "请改用 propose_screening 生成草案并等待用户确认。",
+                },
+                ensure_ascii=False,
+            )
+        if not resolved.ok or resolved.request is None:
+            return json.dumps(
+                {"status": "error", "message": resolved.error or "无法执行选股"},
+                ensure_ascii=False,
+            )
+
+        svc = self._get_screening_service()
+        try:
+            result = svc.run_request(resolved.request)
+        except Exception as ex:
+            return json.dumps({"status": "error", "message": str(ex)}, ensure_ascii=False)
+
+        if not result.rows:
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "condition": result.condition,
+                    "count": 0,
+                    "message": f"选股条件「{result.condition}」未匹配到标的",
+                },
+                ensure_ascii=False,
+            )
+
+        svc.persist_run_result(result, nl_source=f"auto:{name}")
         return json.dumps(
             {
-                "status": "blocked",
-                "message": (
-                    "禁止直接执行选股。请先调用 propose_screening 解析条件，"
-                    "并等待用户在确认框中点击「确认运行」。"
-                ),
+                "status": "ok",
+                "condition": result.condition,
+                "count": len(result.rows),
+                "source": result.source,
+                "updated_at": result.updated_at,
+                "total_scanned": result.total_scanned,
+                "results": [
+                    {
+                        "symbol": r.get("symbol", ""),
+                        "name": r.get("name", ""),
+                        "vt_symbol": r.get("vt_symbol", ""),
+                        "last_price": r.get("last_price"),
+                        "change_pct": r.get("change_pct"),
+                        "turnover_rate": r.get("turnover_rate"),
+                        "pe_ttm": r.get("pe_ttm"),
+                        "total_mv": r.get("total_mv"),
+                        "net_mf_amount": r.get("net_mf_amount"),
+                    }
+                    for r in result.rows
+                ],
             },
             ensure_ascii=False,
         )
