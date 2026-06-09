@@ -6,7 +6,7 @@ import threading
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -22,6 +22,7 @@ from vnpy_ashare.jobs import (
     collect_market_quotes,
     sync_universe_job,
 )
+from vnpy_ashare.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
@@ -37,6 +38,7 @@ class JobRunRecord:
     job_name: str
     success: bool
     message: str
+    skipped: bool = False
 
 
 @dataclass
@@ -89,7 +91,8 @@ class TaskSchedulerManager:
                     seconds=max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)
                 ),
                 schedule_text_builder=lambda cfg: (
-                    f"每 {max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)} 秒（上一轮结束后）"
+                    f"交易时段内每 {max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)} 秒；"
+                    "非交易时段自动休眠"
                 ),
             ),
             "sync_universe": _JobMeta(
@@ -131,20 +134,50 @@ class TaskSchedulerManager:
         cfg = self._get_job_config(_COLLECT_QUOTES_JOB_ID)
         return max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)
 
-    def _schedule_collect_quotes(self, *, delay_seconds: int | None = None) -> None:
+    def _run_collect_quotes(self, *, force: bool = False) -> JobResult:
+        now = datetime.now(_SHANGHAI_TZ)
+        if not force and not is_ashare_trading_session(now):
+            nxt = next_quotes_collect_at(
+                now,
+                interval_seconds=self._collect_quotes_interval(),
+            )
+            return JobResult(
+                success=True,
+                skipped=True,
+                message=f"非交易时段，已跳过（下次 {nxt.strftime('%Y-%m-%d %H:%M:%S')}）",
+            )
+
+        result = collect_market_quotes()
+        if force and not is_ashare_trading_session(now):
+            return JobResult(
+                success=result.success,
+                skipped=False,
+                message=f"非交易时段手动采集 · {result.message}",
+            )
+        return result
+
+    def _next_collect_quotes_run_at(self, *, prefer_immediate: bool = False) -> datetime:
+        now = datetime.now(_SHANGHAI_TZ)
+        if prefer_immediate and is_ashare_trading_session(now):
+            return now
+        return next_quotes_collect_at(
+            now,
+            interval_seconds=self._collect_quotes_interval(),
+        )
+
+    def _schedule_collect_quotes(self, *, prefer_immediate: bool = False) -> None:
         cfg = self._get_job_config(_COLLECT_QUOTES_JOB_ID)
         if not cfg.enabled:
             return
 
-        delay = self._collect_quotes_interval() if delay_seconds is None else max(delay_seconds, 0)
-        run_at = datetime.now(_SHANGHAI_TZ) + timedelta(seconds=delay)
+        run_at = self._next_collect_quotes_run_at(prefer_immediate=prefer_immediate)
         meta = self._jobs[_COLLECT_QUOTES_JOB_ID]
         self._scheduler.add_job(
             self._wrap_job,
             trigger=DateTrigger(run_date=run_at),
             id=_COLLECT_QUOTES_JOB_ID,
             name=meta.name,
-            kwargs={"job_id": _COLLECT_QUOTES_JOB_ID},
+            kwargs={"job_id": _COLLECT_QUOTES_JOB_ID, "force": False},
             replace_existing=True,
             max_instances=1,
         )
@@ -256,7 +289,7 @@ class TaskSchedulerManager:
                 continue
             if job_id == _COLLECT_QUOTES_JOB_ID:
                 if job_id not in self._running_jobs:
-                    self._schedule_collect_quotes(delay_seconds=0)
+                    self._schedule_collect_quotes(prefer_immediate=True)
                 continue
             meta = self._jobs[job_id]
             self._scheduler.add_job(
@@ -295,16 +328,17 @@ class TaskSchedulerManager:
             return False
         if job_id in self._running_jobs:
             return False
+        force = job_id == _COLLECT_QUOTES_JOB_ID
         self._scheduler.add_job(
             self._wrap_job,
-            kwargs={"job_id": job_id},
+            kwargs={"job_id": job_id, "force": force},
             id=f"{job_id}__manual__{datetime.now().timestamp()}",
             replace_existing=False,
             max_instances=1,
         )
         return True
 
-    def _wrap_job(self, job_id: str) -> None:
+    def _wrap_job(self, job_id: str, force: bool = False) -> None:
         meta = self._jobs[job_id]
         with self._lock:
             if job_id in self._running_jobs:
@@ -313,10 +347,15 @@ class TaskSchedulerManager:
         self._refresh_status_cache()
         self._notify(job_id)
 
+        skipped = False
         try:
-            result = meta.runner()
+            if job_id == _COLLECT_QUOTES_JOB_ID:
+                result = self._run_collect_quotes(force=force)
+            else:
+                result = meta.runner()
             message = result.message
-            success = result.success and not result.skipped
+            skipped = result.skipped
+            success = result.success if not skipped else True
         except Exception as ex:
             message = str(ex)
             success = False
@@ -326,7 +365,7 @@ class TaskSchedulerManager:
         if status:
             status.last_run_at = finished_at
             status.last_message = message
-            status.last_success = success
+            status.last_success = None if skipped else success
             status.running = False
 
         self._run_log.append(
@@ -336,6 +375,7 @@ class TaskSchedulerManager:
                 job_name=meta.name,
                 success=success,
                 message=message,
+                skipped=skipped,
             )
         )
 

@@ -5,8 +5,10 @@ from __future__ import annotations
 import tempfile
 import time
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.scheduler.config import SchedulerConfig, load_scheduler_config, save_scheduler_config
@@ -33,27 +35,52 @@ class TestSchedulerConfig(unittest.TestCase):
         manager._config.collect_quotes.enabled = True
         manager._config.collect_quotes.interval_seconds = 12
 
-        with patch.object(
-            manager._jobs["collect_quotes"],
-            "runner",
-            return_value=JobResult(success=True, message="ok"),
+        with patch(
+            "vnpy_ashare.scheduler.manager.is_ashare_trading_session",
+            return_value=True,
         ):
-            manager.start()
-            time.sleep(0.2)
+            with patch(
+                "vnpy_ashare.scheduler.manager.collect_market_quotes",
+                return_value=JobResult(success=True, message="ok"),
+            ):
+                manager.start()
+                time.sleep(0.2)
 
-            status = manager.get_status("collect_quotes")
-            self.assertIsNotNone(status)
-            assert status is not None
-            self.assertIn("上一轮结束后", status.schedule_text)
-            self.assertFalse(status.running)
-            self.assertEqual(status.last_message, "ok")
+                status = manager.get_status("collect_quotes")
+                self.assertIsNotNone(status)
+                assert status is not None
+                self.assertIn("交易时段内", status.schedule_text)
+                self.assertFalse(status.running)
+                self.assertEqual(status.last_message, "ok")
 
-            job = manager._scheduler.get_job("collect_quotes")
-            self.assertIsNotNone(job)
-            assert job is not None
-            self.assertIsNotNone(job.next_run_time)
+                job = manager._scheduler.get_job("collect_quotes")
+                self.assertIsNotNone(job)
+                assert job is not None
+                self.assertIsNotNone(job.next_run_time)
 
-            manager.shutdown()
+                manager.shutdown()
+
+    def test_collect_quotes_skips_off_hours(self) -> None:
+        manager = TaskSchedulerManager()
+        next_run = datetime(2026, 6, 10, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
+        with patch(
+            "vnpy_ashare.scheduler.manager.is_ashare_trading_session",
+            return_value=False,
+        ):
+            with patch(
+                "vnpy_ashare.scheduler.manager.next_quotes_collect_at",
+                return_value=next_run,
+            ):
+                manager._wrap_job("collect_quotes", force=False)
+
+        records = manager.list_run_log(limit=1)
+        self.assertEqual(len(records), 1)
+        self.assertTrue(records[0].skipped)
+        self.assertIn("非交易时段", records[0].message)
+
+        status = manager.get_status("collect_quotes")
+        assert status is not None
+        self.assertIsNone(status.last_success)
 
     def test_run_log_records_completed_jobs(self) -> None:
         manager = TaskSchedulerManager()

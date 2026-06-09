@@ -20,8 +20,12 @@ def _format_run_log_html(records: list[JobRunRecord]) -> str:
 
     lines: list[str] = []
     for record in records:
-        mark = "成功" if record.success else "失败"
-        mark_color = "#3ddc84" if record.success else "#ff4d4f"
+        if record.skipped:
+            mark = "跳过"
+            mark_color = "#8a8a8a"
+        else:
+            mark = "成功" if record.success else "失败"
+            mark_color = "#3ddc84" if record.success else "#ff4d4f"
         message = html.escape(record.message)
         lines.append(
             "<p style='margin:0 0 6px 0;line-height:1.5;'>"
@@ -61,7 +65,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         title.setObjectName("SchedulerPageTitle")
         hint = QtWidgets.QLabel(
             "生产环境建议独立运行 scripts/quote_collector.py；"
-            "此处「行情采集」适合本机调试。"
+            "行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。"
         )
         hint.setObjectName("SchedulerHint")
         hint.setWordWrap(True)

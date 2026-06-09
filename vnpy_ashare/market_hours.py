@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import datetime, timedelta, time
 
 from vnpy.trader.utility import ZoneInfo
+
+from vnpy_ashare.calendar import is_trading_day
 
 CHINA_TZ = ZoneInfo("Asia/Shanghai")
 
@@ -35,9 +37,9 @@ def _to_china_time(dt: datetime) -> datetime:
 
 
 def is_ashare_trading_session(dt: datetime | None = None) -> bool:
-    """工作日 9:30–11:30、13:00–15:00（不含节假日）。"""
+    """交易日 9:30–11:30、13:00–15:00（含节假日排除）。"""
     now = _to_china_time(dt or datetime.now(CHINA_TZ))
-    if now.weekday() >= 5:
+    if not is_trading_day(now.date()):
         return False
     current = now.time()
     if MORNING_OPEN <= current <= MORNING_CLOSE:
@@ -45,6 +47,37 @@ def is_ashare_trading_session(dt: datetime | None = None) -> bool:
     if AFTERNOON_OPEN <= current <= AFTERNOON_CLOSE:
         return True
     return False
+
+
+def _next_session_start_after(dt: datetime) -> datetime:
+    """返回严格晚于 dt 的下一段连续竞价开始时刻。"""
+    probe = dt
+    for _ in range(500):
+        day = probe.date()
+        if is_trading_day(day):
+            for session_start in (MORNING_OPEN, AFTERNOON_OPEN):
+                start = datetime.combine(day, session_start, tzinfo=CHINA_TZ)
+                if start > probe:
+                    return start
+        probe = datetime.combine(day + timedelta(days=1), time.min, tzinfo=CHINA_TZ)
+    raise RuntimeError("未找到下一交易时段")
+
+
+def next_quotes_collect_at(
+    now: datetime | None = None,
+    *,
+    interval_seconds: int = 15,
+) -> datetime:
+    """计算下一次自动行情采集时间（交易时段内按间隔，其余休眠至下一段开盘）。"""
+    current = _to_china_time(now or datetime.now(CHINA_TZ))
+    interval = max(interval_seconds, 1)
+
+    if is_ashare_trading_session(current):
+        candidate = current + timedelta(seconds=interval)
+        if is_ashare_trading_session(candidate):
+            return candidate
+
+    return _next_session_start_after(current)
 
 
 def default_chart_tab_index(dt: datetime | None = None) -> int:

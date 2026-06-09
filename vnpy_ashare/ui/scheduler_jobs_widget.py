@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.market_hours import is_ashare_trading_session
 from vnpy_ashare.scheduler import JobStatus, TaskSchedulerManager
 from vnpy_ashare.scheduler.config import JobConfig
 from vnpy_ashare.ui.styles import SCHEDULER_TABLE_STYLESHEET
@@ -347,6 +348,12 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
 
         if status.running:
             state_text = "运行中"
+        elif (
+            status.enabled
+            and status.job_id == "collect_quotes"
+            and not is_ashare_trading_session()
+        ):
+            state_text = "休眠中"
         elif status.enabled:
             state_text = "已启用"
         else:
