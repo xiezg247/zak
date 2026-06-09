@@ -23,6 +23,7 @@ from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 from vnpy_ashare.ui.quotes.actions_controller import ActionsController
+from vnpy_ashare.ui.quotes.data_loader_controller import DataLoaderController
 from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController, should_apply_loaded_bars
 from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
 from vnpy_ashare.ui.quotes.quote_stream_controller import QuoteStreamController
@@ -34,14 +35,9 @@ from vnpy_ashare.ui.quotes.workers import (
     DepthRefreshWorker,
     DiagnoseWorker,
     DownloadWorker,
-    MarketPageLoadWorker,
-    MarketPageResult,
     MinuteDownloadWorker,
     QuotesRefreshWorker,
-    UniverseLoadWorker,
-    UniverseSyncWorker,
 )
-from vnpy_ashare.app_db import universe_exists
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
 from vnpy_ashare.ui.chart_panel import ChartPanel
@@ -107,6 +103,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._local = LocalDataController(self)
         self._table = TableController(self)
         self._actions = ActionsController(self)
+        self._loader = DataLoaderController(self)
         self._retired_workers: list[QtCore.QThread] = []
         self._load_generation = 0
         self._bars_generation = 0
@@ -117,9 +114,9 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_board: str | None = None
         self._apply_default_table_sort = False
 
-        self._load_worker: UniverseLoadWorker | None = None
-        self._market_worker: MarketPageLoadWorker | None = None
-        self._sync_worker: UniverseSyncWorker | None = None
+        self._load_worker: QtCore.QThread | None = None
+        self._market_worker: QtCore.QThread | None = None
+        self._sync_worker: QtCore.QThread | None = None
         self._bars_worker: BarsLoadWorker | None = None
         self._download_worker: DownloadWorker | None = None
         self._gap_worker: BarGapCheckWorker | None = None
@@ -609,133 +606,14 @@ class QuotesPage(QtWidgets.QWidget):
     def _on_board_changed(self, _index: int) -> None:
         self._pagination.on_board_changed()
 
-    def _format_market_status(self, result: MarketPageResult) -> str:
-        return self._pagination.format_status(result)
-
     def _refresh_market_clicked(self) -> None:
-        self.load_market_page(quiet=False)
+        self._loader.refresh_market_clicked()
 
     def load_market_page(self, *, quiet: bool = False) -> None:
-        if not self._active or not self.config.use_market_rank:
-            return
-
-        if not universe_exists():
-            self.display_stocks = []
-            self.market_table.setRowCount(0)
-            self._market_total = 0
-            self._update_pagination_controls()
-            self.status_label.setText("A 股列表未同步，请点击「同步 A 股列表」")
-            return
-
-        if self._thread_active(self._market_worker):
-            return
-
-        self._load_generation += 1
-        generation = self._load_generation
-        keyword = self.search_edit.text().strip()
-        if quiet:
-            if self._thread_active(self._quotes_worker):
-                return
-        else:
-            self._set_busy(True)
-            self.status_label.setText("正在加载市场数据...")
-
-        worker = MarketPageLoadWorker(
-            keyword=keyword,
-            page=self._market_page,
-            page_size=self.config.market_page_size,
-            board=self._market_board,
-        )
-        self._market_worker = worker
-
-        def on_finished(result: object) -> None:
-            if self._market_worker is worker:
-                self._market_worker = None
-            if generation != self._load_generation or not self._active:
-                return
-            if not isinstance(result, MarketPageResult):
-                return
-
-            self.display_stocks = result.items
-            self.quote_map = dict(result.quotes)
-            self._market_total = result.total
-            self._apply_default_table_sort = True
-            self._sync_market_quotes_to_cache(result)
-            if not quiet:
-                self._set_busy(False)
-            self._render_table()
-            self._update_pagination_controls()
-            self.status_label.setText(self._format_market_status(result))
-
-            if self.config.auto_refresh_quotes:
-                self._quote_timer.start()
-            else:
-                self._quote_timer.stop()
-
-        def on_failed(msg: str) -> None:
-            if self._market_worker is worker:
-                self._market_worker = None
-            if generation != self._load_generation or not self._active:
-                return
-            if not quiet:
-                self._set_busy(False)
-                self.status_label.setText(f"加载失败: {msg}")
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._loader.load_market_page(quiet=quiet)
 
     def load_stock_list(self) -> None:
-        if not self._active:
-            return
-
-        if self.config.use_market_rank:
-            self._market_page = 0
-            self.load_market_page()
-            return
-
-        self._load_generation += 1
-        generation = self._load_generation
-        scope_key = self.config.scope_key
-
-        if scope_key == "全部A股" and not universe_exists():
-            self.all_stocks = []
-            self.display_stocks = []
-            self.market_table.setRowCount(0)
-            self.status_label.setText("A 股列表未同步，请点击「同步 A 股列表」")
-            return
-
-        self._set_busy(True)
-        self.status_label.setText(f"正在加载{self.page_name}...")
-        self.market_table.setRowCount(0)
-
-        worker = UniverseLoadWorker(scope_key, local_scope=self._local_scope)
-        self._load_worker = worker
-
-        def on_finished(stocks: list) -> None:
-            if self._load_worker is worker:
-                self._load_worker = None
-            if generation != self._load_generation or not self._active:
-                return
-            self.all_stocks = stocks
-            self._set_busy(False)
-            self.apply_filter()
-
-        def on_failed(msg: str) -> None:
-            if self._load_worker is worker:
-                self._load_worker = None
-            if generation != self._load_generation or not self._active:
-                return
-            self._set_busy(False)
-            self.status_label.setText(f"加载失败: {msg}")
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._loader.load_stock_list()
 
     def apply_filter(self) -> None:
         self._table.apply_filter()
@@ -772,14 +650,6 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _rebuild_table(self) -> None:
         self._table.rebuild_table()
-
-    def _sync_market_quotes_to_cache(self, result: object) -> None:
-        """将市场页行情写入 session_context，供 AI 选股工具使用。"""
-        if not hasattr(result, "items") or not hasattr(result, "quotes"):
-            return
-        from vnpy_ashare.ai.session_context import set_market_quotes_cache
-
-        set_market_quotes_cache(result.items, dict(result.quotes))
 
     def _emit_ai_context(self) -> None:
         self._actions.emit_ai_context()
@@ -919,33 +789,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._local.show_kline(item)
 
     def sync_universe_clicked(self) -> None:
-        if self._thread_active(self._sync_worker):
-            return
-        self._set_busy(True)
-        self.status_label.setText("后台同步 A 股列表...")
-
-        worker = UniverseSyncWorker()
-        self._sync_worker = worker
-
-        def on_finished(_path: str) -> None:
-            if self._sync_worker is worker:
-                self._sync_worker = None
-            self._set_busy(False)
-            self.status_label.setText("A 股列表同步完成")
-            if self._active:
-                self.load_stock_list()
-
-        def on_failed(msg: str) -> None:
-            if self._sync_worker is worker:
-                self._sync_worker = None
-            self._set_busy(False)
-            self.status_label.setText(f"同步失败: {msg}")
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
-        worker.start()
+        self._loader.sync_universe_clicked()
 
     def download_selected(self) -> None:
         self._local.download_selected()
