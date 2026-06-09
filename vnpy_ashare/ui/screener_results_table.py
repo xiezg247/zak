@@ -23,13 +23,18 @@ def populate_screener_results_table(
 
     header = table.horizontalHeader()
     header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+    reason_col = next(
+        (idx + 1 for idx, (key, _) in enumerate(columns) if key == "hit_reason"),
+        None,
+    )
     name_col = next(
         (idx + 1 for idx, (key, _) in enumerate(columns) if key == "name"),
         2,
     )
-    header.setSectionResizeMode(name_col, QtWidgets.QHeaderView.ResizeMode.Stretch)
+    stretch_col = reason_col if reason_col is not None else name_col
+    header.setSectionResizeMode(stretch_col, QtWidgets.QHeaderView.ResizeMode.Stretch)
     for col in range(len(headers)):
-        if col not in (0, name_col):
+        if col not in (0, stretch_col):
             header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
     for row_index, row in enumerate(rows):
@@ -44,8 +49,10 @@ def populate_screener_results_table(
         for col_index, (key, _label) in enumerate(columns, start=1):
             value = row.get(key, "")
             if isinstance(value, float):
-                if key in ("change_pct",):
+                if key in ("change_pct", "momentum_5d"):
                     text = f"{value:+.2f}"
+                elif key in ("similarity_score",):
+                    text = f"{value:.1f}"
                 elif key in ("last_price", "close", "pb", "pe_ttm"):
                     text = f"{value:.2f}"
                 elif key in ("total_mv", "circ_mv", "net_mf_amount", "volume"):
@@ -78,8 +85,31 @@ def iter_checked_table_rows(table: QtWidgets.QTableWidget) -> list[dict[str, Any
     return rows
 
 
+def all_table_rows_checked(table: QtWidgets.QTableWidget) -> bool:
+    if table.rowCount() == 0:
+        return False
+    for row_index in range(table.rowCount()):
+        item = table.item(row_index, 0)
+        if item is None or item.checkState() != QtCore.Qt.CheckState.Checked:
+            return False
+    return True
+
+
 def select_all_table_rows(table: QtWidgets.QTableWidget) -> None:
     for row_index in range(table.rowCount()):
         item = table.item(row_index, 0)
         if item is not None:
             item.setCheckState(QtCore.Qt.CheckState.Checked)
+
+
+def toggle_select_all_table_rows(table: QtWidgets.QTableWidget) -> bool:
+    """切换全选/取消全选，返回切换后是否已全部选中。"""
+    check_all = not all_table_rows_checked(table)
+    state = (
+        QtCore.Qt.CheckState.Checked if check_all else QtCore.Qt.CheckState.Unchecked
+    )
+    for row_index in range(table.rowCount()):
+        item = table.item(row_index, 0)
+        if item is not None:
+            item.setCheckState(state)
+    return check_all

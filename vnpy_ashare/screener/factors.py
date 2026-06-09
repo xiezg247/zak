@@ -90,6 +90,28 @@ def _latest_trade_date_str() -> str:
     return last_trading_day().strftime("%Y%m%d")
 
 
+def fetch_stock_industry_map() -> dict[str, str]:
+    """ts_code → 行业名称。"""
+    pro = get_tushare_pro()
+    try:
+        frame = pro.stock_basic(
+            exchange="",
+            list_status="L",
+            fields="ts_code,industry",
+        )
+    except Exception:
+        return {}
+    if frame is None or frame.empty:
+        return {}
+    mapping: dict[str, str] = {}
+    for record in frame.to_dict(orient="records"):
+        ts_code = str(record.get("ts_code", "")).strip()
+        industry = str(record.get("industry", "") or "").strip()
+        if ts_code and industry:
+            mapping[ts_code] = industry
+    return mapping
+
+
 def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
     pro = get_tushare_pro()
     trade_date = trade_date or _latest_trade_date_str()

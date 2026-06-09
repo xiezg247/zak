@@ -423,6 +423,11 @@ class ActionsController:
         ai_menu.addAction("近期走势", self.ask_ai_for_trend)
         menu.addSeparator()
 
+        if page.page_name in ("自选", "市场"):
+            action = menu.addAction("找同类…")
+            action.triggered.connect(lambda _checked=False, it=item: self.open_reference_peer(it))
+            menu.addSeparator()
+
         if page.config.show_add_watchlist_button:
             key = (item.symbol, item.exchange)
             in_watchlist = key in page._watchlist.keys
@@ -455,3 +460,22 @@ class ActionsController:
                     action.triggered.connect(lambda: page._watchlist.move_selected("down"))
 
         menu.popup(page.market_table.viewport().mapToGlobal(pos))
+
+    def open_reference_peer(self, item: StockItem) -> None:
+        from vnpy_ashare.ui.reference_peer_dialog import show_reference_peer_dialog
+
+        page = self._p
+        service = page._get_watchlist_service()
+
+        def watchlist_add(symbol: str, exchange, name: str = "") -> bool:
+            if service is None:
+                return False
+            return service.add(symbol, exchange, name)
+
+        show_reference_peer_dialog(
+            vt_symbol=item.vt_symbol,
+            reference_name=item.name,
+            watchlist_add=watchlist_add if service is not None else None,
+            retired_workers=page._retired_workers,
+            parent=page,
+        )
