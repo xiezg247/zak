@@ -1,4 +1,16 @@
-"""AshareEngine 与 Service 访问辅助。"""
+"""AshareEngine 与 Service 访问辅助。
+
+UI / Worker 获取业务能力的统一入口，避免页面散落 ``getattr(engine, "xxx_service")``。
+
+典型链路::
+
+    QuotesPage._get_quote_service()
+        → engine_access.get_quote_service(main_engine)
+        → AshareEngine.quote_service
+        → context_store（AI 上下文写入）
+
+新代码请优先使用下方类型化 getter；``get_service(name)`` 仅用于尚未封装 getter 的旧路径。
+"""
 
 from __future__ import annotations
 

@@ -380,6 +380,8 @@ class QuotesPage(QtWidgets.QWidget):
             return parent.main_engine
         return None
 
+    # ── Service 访问（统一经 engine_access，勿 getattr AshareEngine） ──
+
     def _get_watchlist_service(self):
         return get_watchlist_service(self._get_main_engine())
 

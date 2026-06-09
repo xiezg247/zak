@@ -1,4 +1,13 @@
-"""选股 Service（委托 screener.runner）。"""
+"""选股 Service（委托 screener.runner）。
+
+AI 上下文链路::
+
+    选股完成 → persist_run_result / persist_scheduled_recipe_run
+            → context_store.set_screening_results
+            → publish_screener_page_context（enrich 悬浮球 actions）
+
+UI 读写历史/方案/导出请走本类 Facade，勿直连 ``screener/run_store``。
+"""
 
 from __future__ import annotations
 
@@ -159,6 +168,7 @@ class ScreeningService(BaseService):
         self.publish_page_context()
 
     def publish_page_context(self) -> None:
+        """选股页激活或结果变更后，刷新 AI 侧栏上下文。"""
         publish_screener_page_context()
 
     # ── UI Facade（委托 screener 子模块，避免页面直连 store） ──

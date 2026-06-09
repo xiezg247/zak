@@ -20,7 +20,11 @@ from vnpy_ashare.services.base import BaseService
 
 
 class QuoteService(BaseService):
-    """行情查询；终端上下文读写委托 context_store。"""
+    """行情查询；终端 AI 上下文读写委托 context_store。
+
+    - ``set_current_selection``：内部/Skill 同步，不含悬浮球快捷动作
+    - ``publish_quote_context``：看盘页专用，写入后会 enrich 快捷动作
+    """
 
     def set_current_selection(
         self,

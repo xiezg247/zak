@@ -204,6 +204,7 @@ class ManagerWidget(VnpyManagerWidget):
 
     @staticmethod
     def _fallback_symbol_name_map():
+        """BarService 不可用时（无 Engine）经 bar_access 读取。"""
         from vnpy_ashare.bar_access import build_symbol_name_map
 
         return build_symbol_name_map()

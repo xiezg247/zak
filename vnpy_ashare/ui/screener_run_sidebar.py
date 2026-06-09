@@ -32,6 +32,9 @@ _SETTINGS_ORG = "vnpy_zak"
 _SETTINGS_APP = "screener_ui"
 
 
+# 侧栏数据访问：优先 ScreeningService Facade；无 Engine 时 fallback run_store（测试/headless）
+
+
 def _screening_from_engine(main_engine: MainEngine | None) -> ScreeningService | None:
     return get_screening_service(main_engine)
 

@@ -16,6 +16,9 @@ from vnpy_ashare.screener.recipe import (
 from vnpy_ashare.screener.recipe_runner import build_reason_summary, run_recipe
 from vnpy_ashare.services.screening_service import persist_scheduled_recipe_run
 
+# 定时 Job 无 MainEngine，落库经模块级 persist（run_store + context_store）
+
+
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 _SCREEN_JOB_RECIPES = {

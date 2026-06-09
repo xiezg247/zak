@@ -1,4 +1,8 @@
-"""AI 浮动聊天窗口 QSS。"""
+"""AI 浮动聊天窗口 QSS。
+
+``FLOATING_CHAT_STYLESHEET``：外框 + 标题栏 + quick_action；
+``FLOATING_CHAT_INNER_STYLESHEET``：内嵌聊天区（气泡样式与侧栏 panel 略有差异）。
+"""
 
 from vnpy_llm.ui.styles.quick_action import QUICK_ACTION_STYLESHEET
 

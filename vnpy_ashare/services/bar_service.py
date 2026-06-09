@@ -22,7 +22,10 @@ LOOKBACK_MAX = 250
 
 
 class BarService(BaseService):
-    """K 线概览、历史数据加载、区间统计。"""
+    """K 线概览、历史数据加载、区间统计。
+
+    读路径委托 ``bar_access``，与 Worker 共用同一 import 面，避免 UI 直连 bar_store。
+    """
 
     def get_overview(
         self,

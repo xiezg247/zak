@@ -1,4 +1,20 @@
-"""AI 会话内存存储（线程安全）；业务代码请经 Service 访问。"""
+"""AI 会话内存存储（线程安全）；业务代码请经 Service 访问。
+
+写入方（唯一）::
+
+    QuoteService.publish_quote_context / set_current_selection
+    AnalysisService.set_diagnose_result
+    ScreeningService.persist_run_result → publish_screener_page_context
+    BarService.publish_data_manager_context
+    backtest_context.sync_*（经 BacktestService 或模块函数）
+
+读取方::
+
+    vnpy_llm Skill / floating_actions（只读 get_*）
+    context_store.register_context_listener（AI 面板刷新）
+
+UI 层禁止 ``from vnpy_ashare.ai.context_store import set_*``。
+"""
 
 from __future__ import annotations
 

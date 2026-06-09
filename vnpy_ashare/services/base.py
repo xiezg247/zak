@@ -1,4 +1,8 @@
-"""Service 基类。"""
+"""Service 基类。
+
+每个 Service 挂载在 AshareEngine 上，持有 ``main_engine`` / ``event_engine``，
+作为 UI 与领域模块（bar_store、screener、context_store）之间的门面层。
+"""
 
 from __future__ import annotations
 

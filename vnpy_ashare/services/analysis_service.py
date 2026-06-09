@@ -586,6 +586,7 @@ class AnalysisService(BaseService):
         return payload
 
     def set_diagnose_result(self, payload: dict[str, Any] | None) -> None:
+        """写入最近一次诊断结果，供 AI Skill ``get_diagnose_context`` 读取。"""
         from vnpy_ashare.ai.context_store import set_diagnose_result
 
         set_diagnose_result(payload)

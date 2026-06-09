@@ -7,6 +7,7 @@ from vnpy_ashare.services.screening_service import publish_screener_page_context
 
 
 def sync_screener_page_context(main_engine=None) -> None:
+    """选股页激活时同步 AI 上下文；优先 ScreeningService，无 Engine 时走模块函数。"""
     service = get_screening_service(main_engine)
     if service is not None:
         service.publish_page_context()

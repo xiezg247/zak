@@ -1,4 +1,8 @@
-"""策略回测页 AI 上下文组装。"""
+"""策略回测页 AI 上下文组装。
+
+读取链路：BacktestService.get_last_summary → 回退 context_store.get_backtest_summary_dict。
+写入经 set_ai_context，与 QuoteService / ScreeningService 共用同一 store。
+"""
 
 from __future__ import annotations
 

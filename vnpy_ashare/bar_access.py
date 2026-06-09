@@ -1,4 +1,13 @@
-"""K 线与 A 股列表数据访问门面（Service / Worker / UI 统一 import 路径）。"""
+"""K 线与 A 股列表数据访问门面（Service / Worker / UI 统一 import 路径）。
+
+分层约定（详见 docs/coding-standards.md）::
+
+    有 MainEngine  → BarService.load_bars / get_overview（经 engine_access）
+    无 Engine      → 本模块 re-export（Worker、单元测试、manager fallback）
+    下载 / 同步    → bars.py、universe.py（写操作，不经本门面）
+
+禁止 UI 直接 ``from vnpy_ashare.bar_store import …`` 或 ``from vnpy_ashare.app_db import …``。
+"""
 
 from __future__ import annotations
 

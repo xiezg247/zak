@@ -1,4 +1,8 @@
-"""券商终端风格 QSS（按域拆分，对外保持原 import 路径）。"""
+"""券商终端风格 QSS（按域拆分，对外保持原 import 路径）。
+
+子模块按页面/控件域拆分 QSS 字符串；组合逻辑见 ``compose.TERMINAL_STYLESHEET``。
+业务代码继续 ``from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET``，勿引用子模块。
+"""
 
 from vnpy_ashare.ui.styles.colors import (
     ACCENT_COLOR,

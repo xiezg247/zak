@@ -92,6 +92,7 @@ class LocalDataController:
 
     @staticmethod
     def _fallback_overviews(scope: str):
+        """BarService 不可用时经 bar_access 枚举本地 K 线概览。"""
         from vnpy_ashare.bar_access import iter_bar_overviews
 
         return iter_bar_overviews(scope=scope)

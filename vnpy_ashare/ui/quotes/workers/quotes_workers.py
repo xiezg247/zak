@@ -36,6 +36,8 @@ from vnpy_ashare.quotes.provider import get_redis_provider
 from vnpy_ashare.tickflow_klines import fetch_intraday_bars, fetch_minute_bars
 from vnpy_ashare.universe import load_universe, sync_universe
 
+# 读 K 线 / universe 列表 → bar_access；下载与同步 → bars / universe（写路径）
+
 
 @dataclass
 class MarketPageResult:

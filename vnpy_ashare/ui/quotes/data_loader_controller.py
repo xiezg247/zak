@@ -193,6 +193,7 @@ class DataLoaderController:
             quote_svc.set_market_quotes_cache(result.items, dict(result.quotes))
 
     def _universe_exists(self) -> bool:
+        """优先 BarService；无 Engine 时经 bar_access 探测本地 universe 表。"""
         bar_svc = get_bar_service(self._p._get_main_engine())
         if bar_svc is not None:
             return bar_svc.universe_exists()

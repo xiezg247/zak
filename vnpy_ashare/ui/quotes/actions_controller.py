@@ -78,6 +78,7 @@ class ActionsController:
         self.update_action_buttons()
 
     def emit_ai_context(self) -> None:
+        """看盘页选中/行情变更 → QuoteService → context_store → AI 面板监听刷新。"""
         page = self._p
         quote = None
         bar_count = 0
@@ -334,6 +335,7 @@ class ActionsController:
         page._diagnose_worker = None
         if page.diagnose_panel is not None:
             page.diagnose_panel.show_result(payload)
+        # 诊断结果经 AnalysisService 写入 context_store，再刷新看盘 AI 上下文
         analysis = page._get_analysis_service()
         if analysis is not None:
             analysis.set_diagnose_result(payload)

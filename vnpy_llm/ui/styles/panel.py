@@ -1,4 +1,7 @@
-"""AI 侧栏聊天面板 QSS。"""
+"""AI 侧栏聊天面板 QSS。
+
+组合顺序：面板骨架 → chat_bubble → 输入/按钮 → quick_action → 会话侧栏。
+"""
 
 from vnpy_llm.ui.styles.chat_bubble import CHAT_BUBBLE_STYLESHEET
 from vnpy_llm.ui.styles.quick_action import QUICK_ACTION_STYLESHEET
