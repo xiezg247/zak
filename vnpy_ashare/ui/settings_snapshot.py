@@ -11,7 +11,7 @@ from vnpy_ashare.config_bridge import parse_env_file
 from vnpy_ashare.config_schema import (
     ENV_CONFIG_SPECS,
     ENV_DB_KEYS,
-    ENV_QUESTDB_KEYS,
+    ENV_POSTGRES_KEYS,
     ENV_SPECS_BY_GROUP,
     VT_CONFIG_SPECS,
     VT_SPECS_BY_GROUP,
@@ -100,7 +100,7 @@ def resolve_env_config_database(
                 )
             )
             continue
-        if mode != "questdb" or spec.key not in ENV_QUESTDB_KEYS:
+        if mode != "postgresql" or spec.key not in ENV_POSTGRES_KEYS:
             continue
         if spec.key in file_values:
             value = file_values[spec.key]

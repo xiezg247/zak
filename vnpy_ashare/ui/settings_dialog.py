@@ -42,7 +42,7 @@ class SettingsDialog(QtWidgets.QDialog):
     _ENV_KEY_COLUMN_WIDTH = 220
 
     _SQLITE_HINT = "本地 SQLite，K 线默认写入 database.db（可在下方修改运行时路径）。"
-    _QUESTDB_HINT = "QuestDB 模式需在 .env 配置连接参数，并确保服务已启动。"
+    _POSTGRES_HINT = "PostgreSQL 模式需在 .env 配置连接参数，并确保服务已启动。"
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -126,7 +126,7 @@ class SettingsDialog(QtWidgets.QDialog):
         db_layout.addWidget(runtime_db_label)
         self._db_runtime_stack = QtWidgets.QStackedWidget()
         self._db_runtime_stack.addWidget(self._build_sqlite_runtime_page())
-        self._db_runtime_stack.addWidget(self._build_questdb_runtime_page())
+        self._db_runtime_stack.addWidget(self._build_postgres_runtime_page())
         db_layout.addWidget(self._db_runtime_stack)
         body_layout.addWidget(db_group)
 
@@ -180,16 +180,16 @@ class SettingsDialog(QtWidgets.QDialog):
         self._db_sqlite_btn = QtWidgets.QPushButton("SQLite")
         self._db_sqlite_btn.setObjectName("SettingsSegmentLeft")
         self._db_sqlite_btn.setCheckable(True)
-        self._db_questdb_btn = QtWidgets.QPushButton("QuestDB")
-        self._db_questdb_btn.setObjectName("SettingsSegmentRight")
-        self._db_questdb_btn.setCheckable(True)
+        self._db_postgres_btn = QtWidgets.QPushButton("PostgreSQL")
+        self._db_postgres_btn.setObjectName("SettingsSegmentRight")
+        self._db_postgres_btn.setCheckable(True)
         self._db_toggle_group = QtWidgets.QButtonGroup(self)
         self._db_toggle_group.setExclusive(True)
         self._db_toggle_group.addButton(self._db_sqlite_btn, 0)
-        self._db_toggle_group.addButton(self._db_questdb_btn, 1)
+        self._db_toggle_group.addButton(self._db_postgres_btn, 1)
         self._db_toggle_group.idClicked.connect(self._on_database_toggle)
         row.addWidget(self._db_sqlite_btn)
-        row.addWidget(self._db_questdb_btn)
+        row.addWidget(self._db_postgres_btn)
         row.addStretch()
         return row
 
@@ -225,7 +225,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self._add_runtime_field(form, "database.database", "数据库文件")
         return page
 
-    def _build_questdb_runtime_page(self) -> QtWidgets.QWidget:
+    def _build_postgres_runtime_page(self) -> QtWidgets.QWidget:
         page = QtWidgets.QWidget()
         form = QtWidgets.QFormLayout(page)
         form.setContentsMargins(0, 0, 0, 0)
@@ -296,7 +296,9 @@ class SettingsDialog(QtWidgets.QDialog):
 
         settings = load_runtime_settings()
         self._effective_database_mode = detect_database_mode(runtime_settings=settings)
-        self._set_database_mode(self._effective_database_mode, refresh_tables=False)
+        # 优先按 .env 展示，避免运行时旧值（如 questdb 已移除）覆盖用户意图
+        display_mode = env_database_name()
+        self._set_database_mode(display_mode, refresh_tables=False)
 
         self._refresh_env_table(self._env_table, resolve_env_config_general())
         self._refresh_env_table(
@@ -314,14 +316,14 @@ class SettingsDialog(QtWidgets.QDialog):
         self._drift_label.setVisible(bool(summary))
 
     def _on_database_toggle(self, index: int) -> None:
-        mode = "questdb" if index == 1 else "sqlite"
+        mode = "postgresql" if index == 1 else "sqlite"
         self._set_database_mode(mode, refresh_tables=True)
 
     def _set_database_mode(self, mode: str, *, refresh_tables: bool) -> None:
         self._database_mode = normalize_database_name(mode)
         self._db_sqlite_btn.setChecked(self._database_mode == "sqlite")
-        self._db_questdb_btn.setChecked(self._database_mode == "questdb")
-        self._db_hint_label.setText(self._QUESTDB_HINT if self._database_mode == "questdb" else self._SQLITE_HINT)
+        self._db_postgres_btn.setChecked(self._database_mode == "postgresql")
+        self._db_hint_label.setText(self._POSTGRES_HINT if self._database_mode == "postgresql" else self._SQLITE_HINT)
         self._db_runtime_stack.setCurrentIndex(0 if self._database_mode == "sqlite" else 1)
         self._update_database_status()
         if refresh_tables:

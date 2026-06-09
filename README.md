@@ -44,7 +44,7 @@ uv run python scripts/list_bars.py
 | 字段 | 取值 | 说明 |
 |------|------|------|
 | 股票代码 | `600519.SSE` | 6 位代码 + `.SSE` / `.SZSE` / `.BSE` |
-| 合约乘数 | 1 | 每股乘数 |
+| 每股乘数 | 1 | 每股价钱乘数，整手归一由策略模板处理 |
 | 价格跳动 | 0.01 | 最小报价单位 |
 | 手续费率 | 0.00045 | 佣金 + 印花税折中 |
 | 滑点 | 0.01 | 1 个最小价位 |
@@ -65,9 +65,42 @@ class MyStrategy(AShareTemplate):
 
 内置示例：`AshareDoubleMaStrategy`（双均线，仅做多）
 
-## 数据与脚本
+## 数据存储
 
-元数据（自选、全 A 列表、回测/选股历史）在 `~/.vntrader/zak.db`；K 线在 `~/.vntrader/database.db`。
+项目采用**双存储结构**，元数据与行情数据分离：
+
+| 存储位置 | 数据类型 | 可否切换 |
+|----------|----------|----------|
+| `~/.vntrader/zak.db` | 自选池、全 A 股列表、交易日历、回测/选股历史 | **固定 SQLite** |
+| `~/.vntrader/llm_chat.db` | AI 对话会话与消息 | **固定 SQLite** |
+| `~/.vntrader/database.db` | K 线数据（日线/分钟线/Tick） | SQLite 或 PostgreSQL |
+
+K 线数据通过 `DATABASE_NAME` 切换存储后端，默认 `sqlite` 即可使用；如需远程共享或多进程查询，可切换为 `postgresql`。
+
+### 切换为 PostgreSQL
+
+```bash
+# 1. 修改 .env
+DATABASE_NAME=postgresql
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=zak
+POSTGRES_PASSWORD=zak
+POSTGRES_DATABASE=zak
+
+# 2. 安装依赖
+uv sync --extra postgresql
+
+# 3. 启动 PostgreSQL（本地 Docker）
+bash scripts/start_postgresql.sh
+
+# 4. 同步配置
+uv run python scripts/init_config.py
+```
+
+> **注意**：仅 K 线数据切换存储，元数据（`zak.db`）和 AI 对话（`llm_chat.db`）始终为本机 SQLite，不受 `DATABASE_NAME` 影响。
+
+## 脚本
 
 ```bash
 uv run python scripts/sync_universe.py
@@ -76,8 +109,6 @@ uv run python scripts/list_bars.py
 uv run python scripts/export_metadata.py
 uv run python -m unittest discover -s tests -v
 ```
-
-默认 **SQLite**，无需额外服务。可选 QuestDB 接入见 `docker-compose.yml` 与 `scripts/start_questdb.sh`。
 
 ## 文档
 

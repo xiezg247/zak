@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""从自选池批量下载 K 线到本地数据库（SQLite / QuestDB）"""
+"""从自选池批量下载 K 线到本地数据库（SQLite / PostgreSQL）"""
 
 from __future__ import annotations
 

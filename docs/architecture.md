@@ -77,7 +77,7 @@ QuotesPage → QuoteProvider
               └── RedisQuoteProvider
 ```
 
-数据流：TickFlow → 自选页；Redis → 市场页；SQLite → 本地 K 线。
+数据流：TickFlow → 自选页；Redis → 市场页；K 线数据根据 `DATABASE_NAME` 写入 SQLite 或 PostgreSQL。
 
 ## AI 助手
 

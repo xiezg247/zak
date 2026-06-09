@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""检查 VeighNa 数据库连接（SQLite / QuestDB）。"""
+"""检查 VeighNa 数据库连接（SQLite / PostgreSQL）。"""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ def main() -> None:
     name = SETTINGS.get("database.name", "sqlite")
     print(f"database.name = {name}")
 
-    if name == "questdb":
-        print(f"  host={SETTINGS.get('database.host')} port={SETTINGS.get('database.port')} http_port={SETTINGS.get('database.http_port')}")
+    if name == "postgresql":
+        print(f"  host={SETTINGS.get('database.host')} port={SETTINGS.get('database.port')}")
 
     db = get_database()
     overviews = db.get_bar_overview()

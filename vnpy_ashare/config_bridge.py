@@ -65,22 +65,21 @@ def sqlite_database_settings(*, database_file: str = "database.db") -> dict[str,
     }
 
 
-def questdb_database_settings(env: dict[str, str]) -> dict[str, Any]:
+def postgres_database_settings(env: dict[str, str]) -> dict[str, Any]:
     return {
-        "database.name": "questdb",
-        "database.host": _env_lookup(env, "QUESTDB_HOST", "localhost"),
-        "database.port": int(_env_lookup(env, "QUESTDB_PORT", "8812") or "8812"),
-        "database.http_port": int(_env_lookup(env, "QUESTDB_HTTP_PORT", "9000") or "9000"),
-        "database.user": _env_lookup(env, "QUESTDB_USER", "admin"),
-        "database.password": _env_lookup(env, "QUESTDB_PASSWORD", "quest"),
-        "database.database": _env_lookup(env, "QUESTDB_DATABASE", "qdb"),
+        "database.name": "postgresql",
+        "database.host": _env_lookup(env, "POSTGRES_HOST", "localhost"),
+        "database.port": int(_env_lookup(env, "POSTGRES_PORT", "5432") or "5432"),
+        "database.user": _env_lookup(env, "POSTGRES_USER", "zak"),
+        "database.password": _env_lookup(env, "POSTGRES_PASSWORD", "zak"),
+        "database.database": _env_lookup(env, "POSTGRES_DATABASE", "zak"),
     }
 
 
 def database_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
     name = normalize_database_name(_env_lookup(env, "DATABASE_NAME", "sqlite"))
-    if name == "questdb":
-        return questdb_database_settings(env)
+    if name == "postgresql":
+        return postgres_database_settings(env)
     return sqlite_database_settings()
 
 
@@ -203,13 +202,12 @@ def detect_config_drift(
                     )
                 )
 
-    if env_db == vt_db == "questdb":
+    if env_db == vt_db == "postgresql":
         mapping = (
-            ("QUESTDB_HOST", "database.host"),
-            ("QUESTDB_PORT", "database.port"),
-            ("QUESTDB_HTTP_PORT", "database.http_port"),
-            ("QUESTDB_USER", "database.user"),
-            ("QUESTDB_DATABASE", "database.database"),
+            ("POSTGRES_HOST", "database.host"),
+            ("POSTGRES_PORT", "database.port"),
+            ("POSTGRES_USER", "database.user"),
+            ("POSTGRES_DATABASE", "database.database"),
         )
         for env_key, vt_key in mapping:
             env_val = env.get(env_key, "")
@@ -224,13 +222,13 @@ def detect_config_drift(
                         vt_value=vt_val,
                     )
                 )
-        env_pwd = env.get("QUESTDB_PASSWORD", "")
+        env_pwd = env.get("POSTGRES_PASSWORD", "")
         vt_pwd = str(runtime_settings.get("database.password", ""))
         if env_pwd != vt_pwd:
             drifts.append(
                 ConfigDrift(
                     category="database",
-                    env_key="QUESTDB_PASSWORD",
+                    env_key="POSTGRES_PASSWORD",
                     vt_key="database.password",
                     env_value=mask_for_display(env_pwd),
                     vt_value=mask_for_display(vt_pwd),

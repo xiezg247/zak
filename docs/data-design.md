@@ -1,6 +1,11 @@
 # 数据设计
 
-zak 使用 **三个独立的 SQLite 数据库**（App DB 7 张表 + K 线 DB 4 张 + LLM Chat DB 2 张）和 **一个 Redis 缓存层**。建表语句在代码中内联执行（`CREATE TABLE IF NOT EXISTS`），无独立迁移文件。终端 AI 共享态在 `context_store`（内存，非 DB）。
+zak 使用 **类双存储结构**，元数据与行情数据分离：
+
+- **元数据**：App DB + LLM Chat DB — 固定为本地 SQLite，不随 `DATABASE_NAME` 切换
+- **K 线数据**：通过 VeighNa adapter 层，可选 SQLite 或 PostgreSQL（由 `DATABASE_NAME` / `database.name` 控制）
+
+建表语句在代码中内联执行（`CREATE TABLE IF NOT EXISTS`），无独立迁移文件。终端 AI 共享态在 `context_store`（内存，非 DB）。
 
 ---
 
@@ -119,14 +124,17 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 ---
 
-## 二、VeighNa K 线 DB：市场数据
+## 二、K 线 DB：市场数据（SQLite 或 PostgreSQL）
 
 | 属性 | 值 |
 |------|-----|
-| 数据库文件 | `~/.vntrader/database.db` |
-| ORM/方式 | **Peewee ORM**（`vnpy_sqlite` 包） |
-| 定义文件 | `vnpy_sqlite/sqlite_database.py`（外部依赖） |
+| **SQLite 模式** | `~/.vntrader/database.db`（默认，`DATABASE_NAME=sqlite`） |
+| **PostgreSQL 模式** | 远程 PostgreSQL（`DATABASE_NAME=postgresql`，需 `.env` 配置 `POSTGRES_*`） |
+| ORM/方式 | **Peewee ORM**（`vnpy_sqlite` 或 `vnpy_postgresql` adapter） |
 | 本项目引用 | `vnpy_ashare/bar_store.py`、`vnpy_ashare/bars.py` |
+| 切换方式 | 修改 `.env` 中 `DATABASE_NAME` → 执行 `scripts/init_config.py` → 重启 GUI |
+
+> 下表结构在 SQLite / PostgreSQL 中一致，由 Peewee ORM 自动处理方言差异。
 
 ### 2.1 `dbbardata` — K 线数据
 
@@ -335,26 +343,27 @@ REDIS_DB=0
 │  GUI 层（Views / Pages / Dialogs）                                │
 ├──────────────────────────────────────────────────────────────────┤
 │  内存 Dataclass（StockItem / QuoteSnapshot / ChatMessage 等）       │
-├──────────┬──────────────┬───────────────┬────────────────────────┤
-│ App DB   │ K 线 DB       │ LLM Chat DB   │ Redis                  │
-│ SQLite   │ SQLite        │ SQLite        │ (redis-py)             │
-│ 原生API  │ Peewee ORM    │ 原生API        │                        │
-├──────────┼──────────────┼───────────────┼────────────────────────┤
-│ meta     │ dbbardata     │ sessions      │ zak:quote:{symbol}     │
-│ watchlist│ dbtickdata    │ messages      │ zak:rank:change_pct    │
-│ universe │ dbbaroverview │               │ zak:meta:*             │
-│ trade_   │ dbtickoverview│               │                        │
-│ calendar │               │               │                        │
-│ backtest_│               │               │                        │
-│ runs     │               │               │                        │
-│ screener_│               │               │                        │
-│ schemes/ │               │               │                        │
-│ runs     │               │               │                        │
-├──────────┼──────────────┼───────────────┼────────────────────────┤
-│ 自选池   │ K 线 / Tick    │ AI 聊天历史    │ 实时行情快照 + 涨幅排名    │
-│ 全A列表  │ 历史市场数据   │               │                        │
-│ 交易日历 │               │               │                        │
-│ 回测/选股│               │               │                        │
-│ 历史     │               │               │                        │
-└──────────┴──────────────┴───────────────┴────────────────────────┘
+├──────────┬──────────────────────┬───────────────┬────────────────┤
+│ App DB   │ K 线 DB               │ LLM Chat DB   │ Redis           │
+│ SQLite   │ SQLite 或 PostgreSQL  │ SQLite        │ (redis-py)      │
+│ 原生API  │ Peewee ORM            │ 原生API        │                 │
+│          │ ← DATABASE_NAME 控制  │               │                │
+├──────────┼──────────────────────┼───────────────┼────────────────┤
+│ meta     │ dbbardata             │ sessions      │ zak:quote:{}   │
+│ watchlist│ dbtickdata            │ messages      │ zak:rank:*     │
+│ universe │ dbbaroverview         │               │ zak:meta:*     │
+│ trade_   │ dbtickoverview        │               │                │
+│ calendar │                       │               │                │
+│ backtest_│                       │               │                │
+│ runs     │                       │               │                │
+│ screener_│                       │               │                │
+│ schemes/ │                       │               │                │
+│ runs     │                       │               │                │
+├──────────┼──────────────────────┼───────────────┼────────────────┤
+│ 自选池   │ K 线 / Tick            │ AI 聊天历史    │ 实时行情快照    │
+│ 全A列表  │ 历史市场数据           │               │ 涨幅排名        │
+│ 交易日历 │ ★ 唯一可换存储的数据    │               │                │
+│ 回测/选股│                       │               │                │
+│ 历史     │                       │               │                │
+└──────────┴──────────────────────┴───────────────┴────────────────┘
 ```

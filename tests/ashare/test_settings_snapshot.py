@@ -80,46 +80,46 @@ class SettingsSnapshotTest(unittest.TestCase):
     def test_resolve_env_config_general_excludes_database(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env"
-            path.write_text("DATABASE_NAME=questdb\nQUESTDB_HOST=db.local\n", encoding="utf-8")
+            path.write_text("DATABASE_NAME=postgresql\nPOSTGRES_HOST=db.local\n", encoding="utf-8")
             keys = {item.spec.key for item in resolve_env_config_general(path)}
             self.assertNotIn("DATABASE_NAME", keys)
-            self.assertNotIn("QUESTDB_HOST", keys)
+            self.assertNotIn("POSTGRES_HOST", keys)
             self.assertIn("DATAFEED_NAME", keys)
 
     def test_resolve_env_config_database_by_mode(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env"
-            path.write_text("DATABASE_NAME=sqlite\nQUESTDB_HOST=db.local\n", encoding="utf-8")
+            path.write_text("DATABASE_NAME=sqlite\nPOSTGRES_HOST=db.local\n", encoding="utf-8")
             sqlite_keys = {item.spec.key for item in resolve_env_config_database("sqlite", path)}
-            questdb_items = resolve_env_config_database("questdb", path)
-            questdb_keys = {item.spec.key for item in questdb_items}
-            db_name = next(item for item in questdb_items if item.spec.key == "DATABASE_NAME")
+            postgres_items = resolve_env_config_database("postgresql", path)
+            postgres_keys = {item.spec.key for item in postgres_items}
+            db_name = next(item for item in postgres_items if item.spec.key == "DATABASE_NAME")
             self.assertEqual(sqlite_keys, {"DATABASE_NAME"})
-            self.assertIn("QUESTDB_HOST", questdb_keys)
-            self.assertIn("DATABASE_NAME", questdb_keys)
-            self.assertEqual(db_name.value, "questdb")
+            self.assertIn("POSTGRES_HOST", postgres_keys)
+            self.assertIn("DATABASE_NAME", postgres_keys)
+            self.assertEqual(db_name.value, "postgresql")
             self.assertEqual(db_name.file_value, "sqlite")
 
     def test_detect_database_mode_uses_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env"
-            path.write_text("DATABASE_NAME=questdb\n", encoding="utf-8")
+            path.write_text("DATABASE_NAME=postgresql\n", encoding="utf-8")
             mode = detect_database_mode(path, runtime_settings={"database.name": "sqlite"})
             self.assertEqual(mode, "sqlite")
 
     def test_env_database_name(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env"
-            path.write_text("DATABASE_NAME=questdb\n", encoding="utf-8")
-            self.assertEqual(env_database_name(path), "questdb")
+            path.write_text("DATABASE_NAME=postgresql\n", encoding="utf-8")
+            self.assertEqual(env_database_name(path), "postgresql")
 
     def test_format_database_status(self) -> None:
         text = format_database_status(
-            effective="questdb",
+            effective="postgresql",
             env_name="sqlite",
-            editing="questdb",
+            editing="postgresql",
         )
-        self.assertIn("当前生效：questdb", text)
+        self.assertIn("当前生效：postgresql", text)
         self.assertIn(".env：sqlite", text)
 
     def test_collect_editable_values(self) -> None:
@@ -138,7 +138,6 @@ class SettingsSnapshotTest(unittest.TestCase):
         items = resolve_vt_config()
         keys = {item.spec.key for item in items}
         self.assertIn("datafeed.name", keys)
-        self.assertIn("database.http_port", keys)
         self.assertIn("log.level", keys)
 
 

@@ -55,7 +55,7 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         "数据库",
         "sqlite",
         kind="choice",
-        choices=("sqlite", "questdb"),
+        choices=("sqlite", "postgresql"),
     ),
     ConfigFieldSpec(
         "REDIS_URL",
@@ -92,18 +92,17 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
     ),
     ConfigFieldSpec("LLM_MAX_TOKENS", "LLM Max Tokens", "大模型", "4096", kind="int"),
     ConfigFieldSpec("LLM_TEMPERATURE", "LLM Temperature", "大模型", "0.7"),
-    ConfigFieldSpec("QUESTDB_HOST", "QuestDB 主机", "QuestDB", "localhost"),
-    ConfigFieldSpec("QUESTDB_PORT", "QuestDB 端口", "QuestDB", "8812", kind="int"),
-    ConfigFieldSpec("QUESTDB_HTTP_PORT", "QuestDB HTTP 端口", "QuestDB", "9000", kind="int"),
-    ConfigFieldSpec("QUESTDB_USER", "QuestDB 用户名", "QuestDB", "admin"),
+    ConfigFieldSpec("POSTGRES_HOST", "PostgreSQL 主机", "PostgreSQL", "localhost"),
+    ConfigFieldSpec("POSTGRES_PORT", "PostgreSQL 端口", "PostgreSQL", "5432", kind="int"),
+    ConfigFieldSpec("POSTGRES_USER", "PostgreSQL 用户名", "PostgreSQL", "zak"),
     ConfigFieldSpec(
-        "QUESTDB_PASSWORD",
-        "QuestDB 密码",
-        "QuestDB",
-        "quest",
+        "POSTGRES_PASSWORD",
+        "PostgreSQL 密码",
+        "PostgreSQL",
+        "zak",
         sensitive=True,
     ),
-    ConfigFieldSpec("QUESTDB_DATABASE", "QuestDB 库名", "QuestDB", "qdb"),
+    ConfigFieldSpec("POSTGRES_DATABASE", "PostgreSQL 库名", "PostgreSQL", "zak"),
     ConfigFieldSpec(
         "ANALYSIS_REPORT_FALLBACK",
         "分析报告回退源",
@@ -137,11 +136,10 @@ VT_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         "数据库",
         "sqlite",
         kind="choice",
-        choices=("sqlite", "questdb"),
+        choices=("sqlite", "postgresql"),
     ),
     ConfigFieldSpec("database.host", "数据库主机", "数据库", ""),
     ConfigFieldSpec("database.port", "数据库端口", "数据库", "0", kind="int"),
-    ConfigFieldSpec("database.http_port", "QuestDB HTTP 端口", "数据库", "9000", kind="int"),
     ConfigFieldSpec("database.user", "数据库用户名", "数据库", ""),
     ConfigFieldSpec("database.password", "数据库密码", "数据库", "", sensitive=True),
     ConfigFieldSpec("database.database", "数据库名", "数据库", "database.db"),
@@ -174,15 +172,15 @@ def _index_specs(
 ENV_SPECS_BY_GROUP = _index_specs(ENV_CONFIG_SPECS)
 VT_SPECS_BY_GROUP = _index_specs(VT_CONFIG_SPECS)
 
-ENV_QUESTDB_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "QuestDB")
-ENV_DB_KEYS: frozenset[str] = frozenset({"DATABASE_NAME"}) | ENV_QUESTDB_KEYS
+ENV_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "PostgreSQL")
+ENV_DB_KEYS: frozenset[str] = frozenset({"DATABASE_NAME"}) | ENV_POSTGRES_KEYS
 
 VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database."))
 VT_NON_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if not spec.key.startswith("database."))
-VT_QUESTDB_KEYS: frozenset[str] = frozenset(spec.key for spec in VT_DB_SPECS if spec.key not in {"database.name", "database.database"})
+VT_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in VT_DB_SPECS if spec.key not in {"database.name", "database.database"})
 VT_SQLITE_KEYS: frozenset[str] = frozenset({"database.name", "database.database"})
 
 
 def normalize_database_name(name: str) -> str:
     text = name.strip().lower()
-    return text if text in {"sqlite", "questdb"} else "sqlite"
+    return text if text in {"sqlite", "postgresql"} else "sqlite"

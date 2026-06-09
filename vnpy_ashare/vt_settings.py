@@ -28,7 +28,6 @@ def default_vt_settings() -> dict:
         "log.active": True,
         "log.level": "INFO",
         **sqlite_database_settings(),
-        "database.http_port": 9000,
         "datafeed.name": "tickflow",
         "datafeed.username": "api_key",
         "datafeed.password": "",

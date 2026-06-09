@@ -1,13 +1,17 @@
+# 仅 K 线数据使用 PostgreSQL，元数据（自选池/对话）始终为本地 SQLite
 services:
-  questdb:
-    image: questdb/questdb:latest
-    container_name: zak_questdb
+  postgresql:
+    image: postgres:16-alpine
+    container_name: zak_postgres
     ports:
-      - "8812:8812"   # PGWire 查询
-      - "9000:9000"   # HTTP / ILP 写入
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: zak
+      POSTGRES_DB: zak
     volumes:
-      - questdb_data:/var/lib/questdb
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
 volumes:
-  questdb_data:
+  postgres_data:
