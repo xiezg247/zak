@@ -1,6 +1,6 @@
 # 数据设计
 
-vnpy_zak 使用 **三个独立的 SQLite 数据库**（共 10 张表）和 **一个 Redis 缓存层**。所有建表语句均通过 `CREATE TABLE IF NOT EXISTS` 在代码中内联执行，没有独立的数据库迁移文件。
+vnpy_zak 使用 **三个独立的 SQLite 数据库**（App DB 7 张表 + K 线 DB 4 张 + LLM Chat DB 2 张）和 **一个 Redis 缓存层**。终端 AI 共享状态在内存模块 `vnpy_ashare/ai/context_store.py`（非 SQLite）。所有建表语句均通过 `CREATE TABLE IF NOT EXISTS` 在代码中内联执行，没有独立的数据库迁移文件。
 
 ---
 
@@ -8,7 +8,7 @@ vnpy_zak 使用 **三个独立的 SQLite 数据库**（共 10 张表）和 **一
 
 | 属性 | 值 |
 |------|-----|
-| 数据库文件 | `~/.vntrader/vnpy_zak.db` |
+| 数据库文件 | `~/.vntrader/zak.db`（`APP_DB_PATH`） |
 | ORM/方式 | 原生 `sqlite3` |
 | 定义文件 | `vnpy_ashare/app_db.py` |
 | 初始化入口 | `init_app_db()` |
@@ -88,6 +88,34 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | `is_open` | INTEGER | 是否交易日（1=是, 0=否） |
 
 **用途：** 从 Tushare Pro 同步 SSE 交易日历，用于 K 线断层检测（`bar_health.py`）和回测日期判断。
+
+### 1.5 `backtest_runs` — 回测运行历史（B3）
+
+定义文件：`vnpy_ashare/backtest/run_store.py`。写入：`BacktestService.persist_summary()`。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | TEXT PK | UUID |
+| `vt_symbol` | TEXT | 标的（如 `600519.SSE`） |
+| `strategy` | TEXT | 策略类名 |
+| `interval` | TEXT | K 线周期（默认 `d`） |
+| `start_date` / `end_date` | TEXT | 回测区间 |
+| `total_return` / `max_drawdown` / `sharpe_ratio` | REAL | 摘要指标 |
+| `trade_count` | INTEGER | 成交笔数 |
+| `source` | TEXT | `single` / `batch` 等 |
+| `batch_id` | TEXT | 批量回测批次 ID（可空） |
+| `raw_statistics_json` | TEXT | vnpy 统计 JSON |
+| `created_at` | TEXT | 写入时间 |
+
+**用途：** AI 工具 `get_backtest_result` / `list_backtest_history` 与回测页「问 AI」读取；内存缓存同步至 `context_store`。
+
+### 1.6 `screener_schemes` — 选股方案
+
+定义文件：`vnpy_ashare/screener/scheme_store.py`。用户保存的自定义筛选条件（JSON）。
+
+### 1.7 `screener_runs` — 选股运行历史
+
+定义文件：`vnpy_ashare/screener/run_store.py`。每次选股执行的条件、结果行数与结果 JSON。
 
 ---
 
@@ -295,6 +323,8 @@ REDIS_DB=0
 | `BarGapResult` | `vnpy_ashare/bar_health.py:33` | K 线断层检测结果 |
 | `GapRange` | `vnpy_ashare/bar_health.py:27` | 断层区间 |
 | `ChatMessage` | `vnpy_llm/store.py:36` | 聊天消息（role, content, created_at） |
+| `AiContextData` | `vnpy_ashare/ai/context.py` | 当前页 / 选中标的 / K 线摘要等 AI 上下文 |
+| `BacktestSummary` 等 | `vnpy_ashare/ai/context_store.py` | 终端内存缓存（回测摘要、选股结果、诊断结果；线程安全） |
 
 ---
 
@@ -315,9 +345,16 @@ REDIS_DB=0
 │ universe │ dbbaroverview │               │ zak:meta:*             │
 │ trade_   │ dbtickoverview│               │                        │
 │ calendar │               │               │                        │
+│ backtest_│               │               │                        │
+│ runs     │               │               │                        │
+│ screener_│               │               │                        │
+│ schemes/ │               │               │                        │
+│ runs     │               │               │                        │
 ├──────────┼──────────────┼───────────────┼────────────────────────┤
 │ 自选池   │ K 线 / Tick    │ AI 聊天历史    │ 实时行情快照 + 涨幅排名    │
 │ 全A列表  │ 历史市场数据   │               │                        │
 │ 交易日历 │               │               │                        │
+│ 回测/选股│               │               │                        │
+│ 历史     │               │               │                        │
 └──────────┴──────────────┴───────────────┴────────────────────────┘
 ```

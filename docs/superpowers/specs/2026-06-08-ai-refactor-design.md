@@ -1,7 +1,9 @@
 # vnpy_zak AI 能力重构与业务整合 技术设计方案
 
-> 日期：2026-06-08
-> 状态：待评审
+> 日期：2026-06-08  
+> 状态：**已实现**（2026-06；P0–P4、P6 主体完成）
+
+**实现摘要：** `vnpy_ashare/services/` 六 Service 已落地；Skills 按业务域拆分；Agent Skill 改为摘要注入；`EVENT_AI_CONTEXT` 已移除；原 `session_context.py` 已删除，终端共享状态统一为 `ai/context_store.py`，业务写入经 Service。
 
 ---
 
@@ -13,8 +15,8 @@ vnpy_zak 已初步集成 AI 能力（LLM 对话 + Skills + MCP），但存在以
 
 1. **AI 工具与业务割裂** — 只能"读"状态（查 K 线、看自选、读回测摘要），不能"做"操作（触发回测、执行选股）
 2. **架构耦合** — Skills 直接 import `vnpy_ashare` 内部模块（`bar_store`、`bars`、`session_context`），跨层调用
-3. **全局状态依赖** — 回测摘要通过 `session_context._backtest_summary`（线程锁全局变量）传递
-4. **上下文传递低效** — `EVENT_AI_CONTEXT` 事件广播 → 全局变量 → Skill 读取，链路长且不必要
+3. **全局状态依赖** — ~~回测摘要通过 `session_context._backtest_summary` 传递~~ → 已改为 `BacktestService` + `context_store`
+4. **上下文传递低效** — ~~`EVENT_AI_CONTEXT` 事件广播~~ → 已改为 Service setter + `context_store` listener
 5. **Token 浪费** — System Prompt 中每次注入完整 SKILL.md 正文
 6. **策略知识未暴露** — `strategies/registry.py` 的 `StrategyMeta` 仅在 UI 中显示，LLM 完全不知道
 
@@ -355,12 +357,19 @@ Skill 调用时：
 | `vnpy_ashare/ui/quotes_page.py` | `_emit_ai_context` 改为 setter 调用 |
 | `vnpy_ashare/ui/backtest_widget.py` | `set_backtest_summary` 改为 backtest_service |
 
-### 删除/简化（2 文件）
+### 删除/简化
 
 | 文件 | 说明 |
 |------|------|
-| `vnpy_llm/events.py` | 删除 `EVENT_AI_CONTEXT`（不再需要） |
-| `vnpy_ashare/ai/session_context.py` | 删除全局上下文变量、BacktestSummary 全局状态 |
+| `vnpy_llm/events.py` | 已移除 `EVENT_AI_CONTEXT`（保留其它 Event 兼容导出） |
+| `vnpy_ashare/ai/session_context.py` | **已删除**；由 `context_store.py` + Service 替代 |
+
+### 新增（相对设计稿）
+
+| 文件 | 说明 |
+|------|------|
+| `vnpy_ashare/ai/context_store.py` | 线程安全内存存储（AI 上下文、回测/选股/诊断缓存） |
+| `vnpy_ashare/config_bridge.py` | `.env` ↔ `vt_setting.json` 单源与漂移检测 |
 
 ### 不变
 
@@ -377,10 +386,12 @@ Skill 调用时：
 
 ## 五、实施顺序
 
-1. **P0 — Service 层**：`vnpy_ashare/services/` 全部 7 文件 + `engine.py` 修改
-2. **P1 — SkillEngine 改造**：`vnpy_skills/engine.py` 支持 services 注入
-3. **P2 — 新增 Skills**：4 个业务 Skill + `vnpy_context_skill.py` 简化
-4. **P3 — LlmEngine 改造**：分层 prompt + services 注入
-5. **P4 — 上下文优化**：`quotes_page.py` setter 调用 + 清理 `events.py`、`session_context.py`
-6. **P5 — 体验优化**：错误处理、窗口管理、进度提示
-7. **P6 — 测试补充**：Service + Skill 单测
+| 阶段 | 状态 |
+|------|------|
+| P0 Service 层 | ✅ |
+| P1 SkillEngine services 注入 | ✅ |
+| P2 业务 Skill 拆分 | ✅ |
+| P3 LlmEngine 分层 prompt | ✅ |
+| P4 上下文优化（`context_store`、去掉 `session_context`） | ✅ |
+| P5 体验优化（错误处理、进度提示等） | 部分 / 持续 |
+| P6 Service + Skill 单测 | ✅（252 tests） |

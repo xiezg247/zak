@@ -23,8 +23,8 @@
 |------|------|------|
 | B1 | 看盘页「策略回测」按钮 → 跳转 + 预填 `vt_symbol` | ✅ 已完成 |
 | B2 | 自选池批量回测对比表 | 未开始 |
-| B3 | 回测摘要落库（AI 可读） | 未开始 |
-| B4 | 回测页 AI 上下文 | 未开始 |
+| B3 | 回测摘要落库（AI 可读） | ✅ 已完成（`backtest/run_store.py` + `BacktestService`） |
+| B4 | 回测页 AI 上下文 | ✅ 已完成（`ai/backtest_context.py` + `context_store`） |
 | S1 | 选股模块（screener/ 包 + 因子/规则/方案/NL） | ✅ 已完成 |
 | S2 | 选股 GUI 页（含批量导入自选、确认对话框） | ✅ 已完成 |
 
@@ -32,9 +32,10 @@
 
 ## P2：AI 助手增强
 
-- [x] 系统提示词按页面分化（`vnpy_ashare/ai/context.py`：`set_ai_context` / `set_backtest_summary`）
-- [x] Service 层抽取（`vnpy_ashare/services/`：BarService、QuoteService、BacktestService、ScreeningService、WatchlistService、AnalysisService）
-- [x] Skills 按业务域拆分（5 个 Python Skill + Agent Skills）
+- [x] 系统提示词按页面分化（`vnpy_ashare/ai/context.py` + `context_store`；回测摘要经 `BacktestService`）
+- [x] Service 层抽取（`vnpy_ashare/services/`：6 个 Service + `config_bridge`）
+- [x] Skills 按业务域拆分（Python Skill + Agent Skills 摘要注入）
+- [x] 终端上下文统一（`ai/context_store.py`；已删除 `session_context.py`）
 - [x] 工具调用：查本地 K 线、自选列表、涨跌幅、技术诊断（已通过 Agent Skills 实现，见 `skills/vnpy_*_skill.py`）
 - [x] MCP 远端工具集成（`vnpy_mcp/`，从 `mcp/mcp.json` 读取远端 MCP 服务器配置）
 - [ ] 多会话列表与切换 UI（`vnpy_llm/store.py` 已有 sessions 表，ChatStore 已支持，UI 未暴露）

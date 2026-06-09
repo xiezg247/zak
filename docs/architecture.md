@@ -49,7 +49,7 @@ vnpy MainWindow（基类）
 | `vnpy_llm` | 通用 LLM 对话（client / engine / panel） |
 | `vnpy_skills` | Agent Skill 引擎（工具注册、执行、系统提示词注入） |
 | `vnpy_mcp` | MCP 远端工具集成（从 `mcp/mcp.json` 发现工具） |
-| `vnpy_ashare/ai` | A 股上下文共享（`context.py` 等）、AI 全屏页 |
+| `vnpy_ashare/ai` | A 股 AI 上下文（`context.py`、`context_store.py`）、全屏页 |
 
 ### 配置单源（`.env` ↔ `vt_setting.json`）
 

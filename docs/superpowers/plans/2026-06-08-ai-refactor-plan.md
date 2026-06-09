@@ -1,5 +1,7 @@
 # AI 能力重构与业务整合 实现计划
 
+> **状态（2026-06-09）：** P0–P4 与 P6 **已完成**。`session_context.py` 已删除，终端上下文统一为 `context_store.py` + Service 写入。下文 checkbox 保留为历史实施记录，勿按「待办」执行。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 抽取 vnpy_ashare Service 层、拆分 Skills 按业务域、优化 AI 上下文传递，将 AI 工具数从 4 提升到 16+

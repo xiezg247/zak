@@ -8,7 +8,7 @@
 - 图形化 GUI：**A股日K 浏览**（全市场 5500+ 标的）、策略回测、数据管理
 - TickFlow Pro：A 股日线 / 分钟线批量下载、实时行情推送
 - Tushare：财务、资金流等（后续可扩展选股脚本）
-- **AI 助手**：侧栏/全屏对话，Agent Skills 工具调用（查行情/K线/回测）
+- **AI 助手**：侧栏/全屏对话，Agent Skills 工具调用；终端上下文经 `context_store` + Service 共享
 - **MCP 远端工具**：可通过 `mcp/mcp.json` 集成外部 MCP 服务器
 - 本地 **SQLite** 存储（默认），可选 **QuestDB**（见下文）
 
@@ -132,7 +132,7 @@ zak/
 │   ├── calendar.py                # 交易日历
 │   ├── backtester_app.py          # 回测 App 封装
 │   ├── backtester_engine.py       # 回测引擎扩展
-│   ├── ai/                        # AI 上下文共享、全屏页（7 文件）
+│   ├── ai/                        # context_store、页面上下文、全屏页
 │   ├── quotes/                    # 行情 Provider 抽象（TickFlow/Redis/Gateway）
 │   ├── services/                  # Service 业务层（6 个 Service）
 │   ├── screener/                  # 选股模块（13 文件：因子/规则/方案/执行）

@@ -54,8 +54,8 @@ vnpy_llm/ui/floating_panel.py
 vnpy_llm/ui/panel.py
   └── AiChatPanel(floating=True)  # 无顶栏、2 行输入、↑ 发送
 
-vnpy_ashare/ai/session_context.py
-  └── set_ai_context / get_ai_context / set_screening_results / ...
+vnpy_ashare/ai/context_store.py
+  └── set_ai_context / get_ai_context / set_screening_results / sync_backtest_summary_dict / ...
 
 vnpy_ashare/events.py
   └── AskAiRequest(prompt, source_page, use_full_page, new_session)
@@ -78,14 +78,19 @@ vnpy_ashare/events.py
 
 ### 2.3 已有集成 API
 
-**上下文桥接（同步，无 Event）：**
+**上下文桥接（同步，无 Event；业务页经 Service 写入，底层 `context_store`）：**
 
 ```python
-# vnpy_ashare/ai/session_context.py
+# vnpy_ashare/ai/context_store.py（只读侧 / 无 Engine 时的回退）
 set_ai_context(AiContextData)
 set_screening_results(...)
-set_backtest_summary(...)
+sync_backtest_summary_dict(...)
 set_diagnose_result(...)
+
+# 推荐：经 Service
+# QuoteService.publish_quote_context()
+# BacktestService.persist_summary()
+# ScreeningService.publish_page_context()
 ```
 
 **打开 AI（异步 Event → MainWindow Signal）：**
@@ -152,8 +157,8 @@ page_prompt = build_page_prompt(ctx.page)  # vnpy_llm/prompts.py
                              └──────────┬──────────┘
                                         │
                              ┌──────────▼──────────┐
-                             │ session_context      │
-                             │ 各功能页写入          │
+                             │ context_store        │
+                             │ 各 Service / 页写入   │
                              └─────────────────────┘
 ```
 
@@ -170,13 +175,13 @@ vnpy_llm/ui/floating_panel.py          # Orb / Panel 视图（已有，扩展）
 ```mermaid
 sequenceDiagram
     participant Page as 功能页
-    participant SC as session_context
+    participant CS as context_store
     participant LLM as LlmEngine
     participant FC as FloatingAiController
     participant UI as Orb / Panel
 
-    Page->>SC: set_ai_context(data)
-    SC->>LLM: signals.context_changed
+    Page->>CS: set_ai_context(data)
+    CS->>LLM: signals.context_changed
     LLM->>FC: context_changed
     FC->>UI: 更新角标 / Chip / Chips
 
@@ -401,7 +406,7 @@ def _handle_ask_ai(self, data):
 
 | 任务 | 文件 |
 |------|------|
-| `set_ai_context` 后触发 `context_changed` | `session_context.py`, `engine.py` |
+| `set_ai_context` 后触发 `context_changed` | `context_store.py`, `engine.py` |
 | 面板 ContextChip | `floating_panel.py` |
 | orb tooltip / badge 显示页名 | `floating_panel.py` |
 | `enrich_context_with_actions` 硬编码映射 | `floating_actions.py` |
@@ -511,7 +516,7 @@ tests/llm/ui/test_floating_controller.py
 | `vnpy_llm/ui/floating_panel.py` | Orb / Panel 视图 |
 | `vnpy_llm/ui/panel.py` | `AiChatPanel(floating=True)` |
 | `vnpy_ashare/ai/context.py` | `AiContextData` 模型 |
-| `vnpy_ashare/ai/session_context.py` | 全局上下文存储 |
+| `vnpy_ashare/ai/context_store.py` | 终端共享内存（AI 上下文、回测/选股缓存） |
 | `vnpy_ashare/events.py` | `AskAiRequest` |
 | `vnpy_llm/engine.py` | 对话、工具编排、context 注入 prompt |
 | `vnpy_llm/prompts.py` | `build_page_prompt` 分页提示 |

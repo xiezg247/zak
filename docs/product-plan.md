@@ -124,16 +124,16 @@ flowchart TB
 
 **交互与数据分阶段规格**：见 [backtest-ux.md](./backtest-ux.md)。
 
-**下一步**：
+**进度**（详见 [backtest-ux.md](./backtest-ux.md)）：
 
-| 优先级 | 项 | 说明 |
-|--------|-----|------|
-| **B1** | **看盘 → 策略回测联动** | 自选/市场/本地选中标的，一键跳转并预填代码（见 backtest-ux §B1） |
-| B2 | 自选池批量回测 | 对 watchlist 逐只跑同一策略，输出对比表 |
-| B3 | 回测结果摘要 | 收益、回撤、夏普落库，供 AI `get_backtest_summary` |
-| B4 | 回测页 AI 上下文 | 侧栏知晓当前回测标的与最近结果 |
-| P2 | 更多 `AShareTemplate` 示例策略 | 突破、RSI 等，仍只做多 |
-| B5 | 分钟回测 | 依赖 TickFlow 分钟 K 本地量 |
+| 优先级 | 项 | 状态 | 说明 |
+|--------|-----|------|------|
+| **B1** | 看盘 → 策略回测联动 | ✅ | 自选/市场/本地选中 → 跳转并预填 `vt_symbol` |
+| B2 | 自选池批量回测 | 待做 | 对 watchlist 逐只跑同一策略，输出对比表 |
+| **B3** | 回测结果摘要 | ✅ | `backtest/run_store.py` + `BacktestService.persist_summary()` |
+| **B4** | 回测页 AI 上下文 | ✅ | `ai/backtest_context.py` + `context_store` |
+| P2 | 更多 `AShareTemplate` 示例策略 | 持续 | 突破、RSI 等，仍只做多 |
+| B5 | 分钟回测 | 远期 | 依赖 TickFlow 分钟 K 本地量 |
 
 **与实盘关系**：回测通过的 `AShareTemplate` 子类，**直接作为** CTA策略模块的实盘策略类（vnpy「CTA」为框架名，非期货专用）。实盘能力在 **迭代 4 / roadmap P3** 落地。
 
@@ -205,6 +205,8 @@ scripts/run_screener.py                      # CLI 选股
 
 **现状**：侧栏 Dock、全屏、`vnpy_llm` 插件化。**Agent Skills** 体系已落地：通过 `vnpy_skills/` 引擎注册业务 Skill，每个 Skill 以 `SkillTemplate` 子类暴露工具函数供 LLM 调用。
 
+**上下文存储**：终端共享状态在 `vnpy_ashare/ai/context_store.py`（线程安全内存）。各页经 **Service** 写入（如 `QuoteService.publish_quote_context()`、`BacktestService.persist_summary()`）；Skills / LLM 只读可直接访问 `context_store`。
+
 **核心 Skill：**
 
 | Skill 文件 | 能力 |
@@ -220,7 +222,7 @@ scripts/run_screener.py                      # CLI 选股
 
 | 工具 | 作用 |
 |------|------|
-| `get_quote_context` | 当前选中标的行情摘要（通过 `set_ai_context` 共享） |
+| `get_quote_context` | 当前选中标的行情摘要（经 `QuoteService` → `context_store`） |
 | `get_bars_summary` | 本地 K 线条数、区间涨跌 |
 | `get_bars_data` | 获取指定标的最近 N 根 K 线 OHLCV 数据 |
 | `get_watchlist` | 自选列表 |
@@ -265,7 +267,7 @@ AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 
 ---
 
-## 6. 实施优先级（当前处于迭代 3）
+## 6. 实施优先级（迭代 3 主体已完成，迭代 4 待开始）
 
 ### 迭代 1：选股 MVP ✅ 已完成
 
@@ -277,14 +279,15 @@ AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 ### 迭代 2：选股 GUI + 回测联动 ✅ 已完成
 
 1. **✅** 左侧「选股」页：条件表单 + 结果表 + 加入自选（`screener_page.py`）
-2. **✅ 看盘 → 策略回测联动**（B1 已完成）
-3. 回测结果摘要落库（B3 待开始）
+2. **✅** 看盘 → 策略回测联动（B1）
+3. **✅** 回测结果摘要落库（B3：`backtest/run_store.py` + `BacktestService.persist_summary()`）
 
-### 迭代 3：AI 工具链（Agent Skills 已落地）
+### 迭代 3：AI 工具链 ✅ 主体已完成
 
-1. **✅ Agent Skills 体系**（`vnpy_skills/` 引擎 + 5 个业务 Skill）
-2. **✅ AI 可读上下文**（`session_context.py`：行情/K 线/回测摘要共享）
-3. 可选：自然语言 → 选股参数（需确认框）
+1. **✅ Agent Skills 体系**（`vnpy_skills/` 引擎 + 业务 Skill）
+2. **✅ AI 可读上下文**（`ai/context_store.py` + Service 层；`session_context.py` 已删除）
+3. **✅ Service 层与配置单源**（6 个 Service、`ui/quotes/` 拆分、`config_bridge`）
+4. 可选：自然语言 → 选股参数（需确认框）
 
 ### 迭代 4：A 股策略实盘（roadmap P3–P4，待开始）
 
@@ -344,4 +347,4 @@ AI：**不进主导航**，保持 `Ctrl+L` / `⌘L` 叠加层（方案 B）。
 | P4（roadmap） | 看盘页 `GatewayQuoteProvider`，与策略行情同源 |
 | 不在范围 | 期货 CTP、默认 Trader 全屏布局 |
 
-投研闭环（看盘 + 回测 + AI Skills）已基本可用；**选股 GUI 与策略实盘为规划的后续迭代**，与回测共用同一套 A 股策略代码。
+投研闭环（看盘 + 回测 + AI Skills + 回测摘要落库）已基本可用；**批量回测对比与策略实盘为后续迭代**，与回测共用同一套 A 股策略代码。

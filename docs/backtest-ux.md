@@ -27,15 +27,14 @@
 | 回测页包装 | `BacktesterWidget`：标题「策略回测」、字段中文化、策略下拉仅 `AShareTemplate` 子类 |
 | K 线数据 | `batch_download` / 数据管理 → SQLite `database.db`，与回测引擎 `get_database()` 同源 |
 | 数据源 | TickFlow / Tushare（`init_config.py` → `vt_setting.json`） |
+| 回测摘要落库 **B3** | `backtest/run_store.py` → `~/.vntrader/zak.db` 表 `backtest_runs`；`BacktestService.persist_summary()` 写入 |
+| 回测页 AI 上下文 **B4** | `ai/backtest_context.py` → `context_store.set_ai_context()`；「问 AI」走全屏新会话 |
 
 ### 2.2 缺口
 
 | 项 | 优先级 | 说明 |
 |----|--------|------|
-| 看盘 → 回测联动 | **B1** | 选中标的后一键跳转并预填 `vt_symbol` |
 | 自选池批量回测 | B2 | 多标的同一策略，输出对比表 |
-| 回测摘要落库 | B3 | 收益/回撤/夏普供 AI `get_backtest_summary` 读取 |
-| 回测页 AI 上下文 | B4 | 侧栏知晓当前回测标的与最近结果 |
 | 分钟回测 | B5 | 依赖 TickFlow 分钟 K 本地量（远期） |
 
 ---
@@ -111,28 +110,31 @@ QuotesPage（工具栏按钮）
 
 ---
 
-### 迭代 B3：回测摘要落库（未开始）
+### 迭代 B3：回测摘要落库 ✅ 已实现
 
 #### 目的
 
 供 AI 工具 `get_backtest_summary` 与历史对比，见 [product-plan.md](./product-plan.md) §4.4。
 
-#### 存储（拟定）
+#### 存储
 
-- 路径：`~/.vntrader/vnpy_zak.db` 新表 `backtest_runs`，或 JSON 目录 `backtest_summaries/`
-- 字段：`id`、`vt_symbol`、`strategy`、`interval`、`start`、`end`、`total_return`、`max_drawdown`、`sharpe`、`trade_count`、`created_at`、`raw_statistics`（JSON）
+- 路径：`~/.vntrader/zak.db`（`APP_DB_PATH`）表 `backtest_runs`
+- 实现：`vnpy_ashare/backtest/run_store.py`
+- 字段：`id`、`vt_symbol`、`strategy`、`interval`、`start_date`、`end_date`、`total_return`、`max_drawdown`、`sharpe_ratio`、`trade_count`、`source`、`batch_id`、`raw_statistics_json`、`created_at`
 
 #### 写入时机
 
-- 单次回测完成事件 `EVENT_BACKTESTER_BACKTESTING_FINISHED` 钩子（在 `BacktesterWidget` 或独立 listener）
+- 单次回测完成：`BacktesterWidget.process_backtesting_finished_event` → `BacktestService.persist_summary()`
+- 同步内存与 `context_store` 缓存，供回测页 AI 与 Skill 读取
 
 ---
 
-### 迭代 B4：回测页 AI 上下文（未开始）
+### 迭代 B4：回测页 AI 上下文 ✅ 已实现
 
-- 进入策略回测页或完成回测后，通过 `session_context.set_ai_context()` 推送：
-  - 当前 `vt_symbol`、策略名、最近回测摘要（依赖 B3）
-- 系统提示词分化：「你正在协助用户解读 A 股策略回测结果…」
+- 进入策略回测页：`sync_backtest_page_context()` 经 `BacktestService` / `context_store` 推送当前表单与最近摘要
+- 完成回测后：摘要落库 + `context_store` 缓存更新
+- 「问 AI」：`EVENT_ASK_AI` + `new_session=True`，prompt 含 `format_backtest_summary_text()` 输出
+- 实现：`vnpy_ashare/ai/backtest_context.py`、`ui/backtest_widget.py`
 
 ---
 
@@ -178,7 +180,11 @@ uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
 | `vnpy_ashare/events.py` | `EVENT_OPEN_BACKTEST`、`BacktestRequest` |
 | `vnpy_ashare/ui/page_shell.py` | 「策略回测」按钮与事件发送 |
 | `vnpy_ashare/ui/main_window.py` | 导航切换与事件订阅 |
-| `vnpy_ashare/ui/backtest_widget.py` | `apply_vt_symbol()` |
+| `vnpy_ashare/ui/backtest_widget.py` | `apply_vt_symbol()`、回测完成摘要落库、「问 AI」 |
+| `vnpy_ashare/backtest/run_store.py` | B3：`backtest_runs` 表读写 |
+| `vnpy_ashare/services/backtest_service.py` | 摘要内存 + 落库 + `context_store` 同步 |
+| `vnpy_ashare/ai/backtest_context.py` | B4：回测页 AI 上下文组装 |
+| `vnpy_ashare/ai/context_store.py` | 终端共享内存（AI 上下文、回测摘要缓存等） |
 | `vnpy_ashare/config.py` | A 股回测默认参数 |
 | `strategies/ashare_template.py` | 策略基类 `AShareTemplate` |
 | `strategies/double_ma_strategy.py` | 默认示例策略 `AshareDoubleMaStrategy` |
@@ -192,3 +198,4 @@ uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
 |------|------|
 | 2026-06 | 初版：盘点 + B1–B5 分阶段规格 |
 | 2026-06 | B1 实现：`EVENT_OPEN_BACKTEST`、看盘工具栏「策略回测」按钮 |
+| 2026-06 | B3/B4 实现：`run_store`、`BacktestService`、`backtest_context`；`session_context` 已移除，统一 `context_store` |
