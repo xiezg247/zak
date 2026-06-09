@@ -162,9 +162,6 @@ uv run python scripts/check_database.py
 - **期货** CTP / SimNow
 - 回测与实盘维护两套策略代码
 - 废弃 TickFlow / Redis（实盘阶段为降级备用）
-- **策略回测页内嵌批量区**（批量回测已由自选/选股 →「回测对比」页承担）
-- **本地列表 count 粗估告警**（完整性以 STALE + 选中后 GAPS 扫描为准）
-- **分钟回测（B5）**（回测引擎与产品闭环以日 K 为主）
 
 ---
 
