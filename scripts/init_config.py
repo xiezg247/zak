@@ -3,93 +3,13 @@
 
 from __future__ import annotations
 
-import json
-import os
-
-from dotenv import load_dotenv
-
 from vnpy_ashare.config import write_backtest_defaults
-from vnpy_ashare.paths import ENV_FILE, VNTRADER_DIR
-from vnpy_ashare.ui.fonts import default_font_family
-
-SETTING_FILE = VNTRADER_DIR / "vt_setting.json"
-
-
-def _sqlite_database_settings() -> dict:
-    return {
-        "database.name": "sqlite",
-        "database.database": "database.db",
-        "database.host": "",
-        "database.port": 0,
-        "database.user": "",
-        "database.password": "",
-    }
-
-
-def _questdb_database_settings() -> dict:
-    return {
-        "database.name": "questdb",
-        "database.host": os.getenv("QUESTDB_HOST", "localhost"),
-        "database.port": int(os.getenv("QUESTDB_PORT", "8812")),
-        "database.http_port": int(os.getenv("QUESTDB_HTTP_PORT", "9000")),
-        "database.user": os.getenv("QUESTDB_USER", "admin"),
-        "database.password": os.getenv("QUESTDB_PASSWORD", "quest"),
-        "database.database": os.getenv("QUESTDB_DATABASE", "qdb"),
-    }
-
-
-def _database_settings() -> dict:
-    name = os.getenv("DATABASE_NAME", "sqlite").strip().lower()
-    if name == "questdb":
-        return _questdb_database_settings()
-    return _sqlite_database_settings()
-
-
-def _base_settings() -> dict:
-    return {
-        "font.family": default_font_family(),
-        "font.size": 12,
-        "log.active": True,
-        "log.level": "INFO",
-        **_database_settings(),
-    }
-
-
-def build_settings() -> dict:
-    load_dotenv(ENV_FILE)
-
-    datafeed_name = os.getenv("DATAFEED_NAME", "tickflow").lower()
-    tushare_token = os.getenv("TUSHARE_TOKEN", "")
-    tickflow_api_key = os.getenv("TICKFLOW_API_KEY", "")
-
-    if datafeed_name == "tushare":
-        return {
-            **_base_settings(),
-            "datafeed.name": "tushare",
-            "datafeed.username": "token",
-            "datafeed.password": tushare_token,
-        }
-
-    return {
-        **_base_settings(),
-        "datafeed.name": "tickflow",
-        "datafeed.username": "api_key",
-        "datafeed.password": tickflow_api_key,
-    }
+from vnpy_ashare.vt_settings import SETTING_FILE, build_vt_settings, sync_vt_settings_from_env
 
 
 def main() -> None:
-    settings = build_settings()
-    VNTRADER_DIR.mkdir(parents=True, exist_ok=True)
-
-    if SETTING_FILE.exists():
-        backup = SETTING_FILE.with_suffix(".json.bak")
-        SETTING_FILE.rename(backup)
-        print(f"已备份原配置到: {backup}")
-
-    with SETTING_FILE.open("w", encoding="utf-8") as f:
-        json.dump(settings, f, indent=4, ensure_ascii=False)
-
+    settings = build_vt_settings()
+    sync_vt_settings_from_env(backup=True)
     backtest_file = write_backtest_defaults()
     print(f"A股回测默认参数: {backtest_file}")
 

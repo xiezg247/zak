@@ -24,27 +24,10 @@ def quote_key(tf_symbol: str) -> str:
 
 def create_redis_client():
     load_dotenv(ENV_FILE)
-    url = os.getenv("REDIS_URL", "").strip()
-    cluster = os.getenv("REDIS_CLUSTER", "").lower() in ("1", "true", "yes")
-
-    if url:
-        if cluster:
-            from redis.cluster import RedisCluster
-
-            return RedisCluster.from_url(url, decode_responses=True)
-        import redis
-
-        return redis.from_url(url, decode_responses=True)
-
+    url = os.getenv("REDIS_URL", "").strip() or "redis://127.0.0.1:6379/0"
     import redis
 
-    return redis.Redis(
-        host=os.getenv("REDIS_HOST", "127.0.0.1"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        password=os.getenv("REDIS_PASSWORD") or None,
-        db=int(os.getenv("REDIS_DB", "0")),
-        decode_responses=True,
-    )
+    return redis.from_url(url, decode_responses=True)
 
 
 class RedisQuoteStore:

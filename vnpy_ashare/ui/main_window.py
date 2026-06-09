@@ -36,6 +36,7 @@ from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, Watchli
 from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.scheduler_dialog import SchedulerDialog
+from vnpy_ashare.ui.settings_dialog import show_settings_dialog
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 
 _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
@@ -50,7 +51,7 @@ _VNPY_WIDGETS: dict[str, tuple[str, str]] = {
 }
 
 class AshareMainWindow(MainWindow):
-    """左侧图标菜单 + 中央内容区，不再使用顶部「功能」菜单。"""
+    """左侧图标菜单 + 中央内容区，不再使用顶部「功能」「微信」「帮助」菜单。"""
 
     # EventEngine 在后台线程回调，须经 Signal 切回 GUI 线程再操作控件。
     _signal_open_backtest = QtCore.Signal(object)
@@ -96,11 +97,15 @@ class AshareMainWindow(MainWindow):
     def init_menu(self) -> None:
         super().init_menu()
         bar = self.menuBar()
+        _HIDDEN_MENU_LABELS = frozenset({
+            "功能", "Func",
+            "微信", "WeChat",
+            "帮助", "Help",
+        })
         for action in bar.actions():
             text = action.text().replace("&", "")
-            if text in ("功能", "Func"):
+            if text in _HIDDEN_MENU_LABELS:
                 bar.removeAction(action)
-                break
 
         tools_menu = bar.addMenu("工具")
         self._ai_toggle_action = tools_menu.addAction("显示/隐藏 AI 悬浮球")
@@ -124,6 +129,9 @@ class AshareMainWindow(MainWindow):
         quick_menu.addAction("行情采集", lambda: self._run_scheduler_job("collect_quotes"))
         quick_menu.addAction("同步 A 股列表", lambda: self._run_scheduler_job("sync_universe"))
         quick_menu.addAction("下载自选日 K", lambda: self._run_scheduler_job("batch_download"))
+
+    def edit_global_setting(self) -> None:
+        show_settings_dialog(self)
 
     def _get_ashare_engine(self) -> AshareEngine | None:
         engine = self.main_engine.get_engine(APP_NAME)
