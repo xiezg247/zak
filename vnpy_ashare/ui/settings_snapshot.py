@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -76,9 +75,7 @@ def resolve_env_config(env_file: Path = ENV_FILE) -> list[ResolvedConfigItem]:
 
 def resolve_env_config_general(env_file: Path = ENV_FILE) -> list[ResolvedConfigItem]:
     """非数据库相关的 .env 配置项。"""
-    return [
-        item for item in resolve_env_config(env_file) if item.spec.key not in ENV_DB_KEYS
-    ]
+    return [item for item in resolve_env_config(env_file) if item.spec.key not in ENV_DB_KEYS]
 
 
 def resolve_env_config_database(
@@ -164,9 +161,7 @@ def resolve_env_config_by_group(
     env_file: Path = ENV_FILE,
 ) -> dict[str, list[ResolvedConfigItem]]:
     file_values = parse_env_file(env_file)
-    grouped: dict[str, list[ResolvedConfigItem]] = {
-        group: [] for group in ENV_SPECS_BY_GROUP
-    }
+    grouped: dict[str, list[ResolvedConfigItem]] = {group: [] for group in ENV_SPECS_BY_GROUP}
     for spec in ENV_CONFIG_SPECS:
         if spec.key in file_values:
             value = file_values[spec.key]
@@ -174,9 +169,7 @@ def resolve_env_config_by_group(
         else:
             value = spec.default
             source = "default"
-        grouped[spec.group].append(
-            ResolvedConfigItem(spec=spec, value=value, default=spec.default, source=source)
-        )
+        grouped[spec.group].append(ResolvedConfigItem(spec=spec, value=value, default=spec.default, source=source))
     return grouped
 
 

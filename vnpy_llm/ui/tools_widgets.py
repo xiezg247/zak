@@ -104,10 +104,7 @@ class AiToolsDialog(QtWidgets.QDialog):
 
     def refresh(self) -> None:
         snapshot = self.engine.get_tools_status()
-        self._meta_label.setText(
-            f"共 {snapshot.total_tools} 个 OpenAI 工具 · "
-            f"Skills {snapshot.ready_skill_count} · MCP {snapshot.ready_mcp_count}"
-        )
+        self._meta_label.setText(f"共 {snapshot.total_tools} 个 OpenAI 工具 · Skills {snapshot.ready_skill_count} · MCP {snapshot.ready_mcp_count}")
         while self._list_layout.count():
             item = self._list_layout.takeAt(0)
             widget = item.widget()

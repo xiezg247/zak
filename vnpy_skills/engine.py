@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import importlib
-import os
 import traceback
 from glob import glob
 from pathlib import Path
@@ -82,11 +81,7 @@ class SkillEngine:
 
             for attr_name in dir(module):
                 value = getattr(module, attr_name)
-                if (
-                    isinstance(value, type)
-                    and issubclass(value, SkillTemplate)
-                    and value is not SkillTemplate
-                ):
+                if isinstance(value, type) and issubclass(value, SkillTemplate) and value is not SkillTemplate:
                     self.classes[value.__name__] = value
         except Exception:
             print(f"Python Skill 模块 {module_name} 加载失败:\n{traceback.format_exc()}")

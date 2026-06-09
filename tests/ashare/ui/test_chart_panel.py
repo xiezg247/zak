@@ -5,12 +5,10 @@ from __future__ import annotations
 import unittest
 
 from vnpy.trader.constant import Exchange
-
-from vnpy_ashare.models import StockItem
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.models import StockItem
 from vnpy_ashare.ui.chart_panel import (
-    ChartPanel,
     DAILY_MISSING_HINT,
     DAILY_TAB_INDEX,
     INTRADAY_EMPTY_HINT,
@@ -19,6 +17,7 @@ from vnpy_ashare.ui.chart_panel import (
     LIVE_MINUTE_HINT,
     LOCAL_MINUTE_HINT,
     MINUTE_TAB_INDEX,
+    ChartPanel,
     chart_tab_hint,
     is_same_item_request,
     is_same_minute_request,
@@ -56,11 +55,14 @@ class ChartTabHintTests(unittest.TestCase):
             minute_end="2026-06-01 15:00",
             minute_count=1200,
         )
-        self.assertEqual(text, LOCAL_MINUTE_HINT.format(
-            start="2026-01-01",
-            end="2026-06-01 15:00",
-            count=1200,
-        ))
+        self.assertEqual(
+            text,
+            LOCAL_MINUTE_HINT.format(
+                start="2026-01-01",
+                end="2026-06-01 15:00",
+                count=1200,
+            ),
+        )
 
     def test_daily_missing_hint(self) -> None:
         self.assertEqual(
@@ -76,16 +78,12 @@ class SameItemRequestTests(unittest.TestCase):
     def test_same_intraday_symbol(self) -> None:
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         worker = IntradayBarsWorker(item)
-        self.assertTrue(
-            is_same_item_request(worker, target_key=("600519", Exchange.SSE))
-        )
+        self.assertTrue(is_same_item_request(worker, target_key=("600519", Exchange.SSE)))
 
     def test_different_daily_symbol(self) -> None:
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         worker = BarsLoadWorker(item)
-        self.assertFalse(
-            is_same_item_request(worker, target_key=("000001", Exchange.SZSE))
-        )
+        self.assertFalse(is_same_item_request(worker, target_key=("000001", Exchange.SZSE)))
 
 
 class SameMinuteRequestTests(unittest.TestCase):

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.app_db import universe_exists
+from vnpy_ashare.engine_access import get_bar_service
 from vnpy_ashare.ui.quotes.workers import (
     MarketPageLoadWorker,
     MarketPageResult,
@@ -34,7 +34,7 @@ class DataLoaderController:
         if not page._active or not page.config.use_market_rank:
             return
 
-        if not universe_exists():
+        if not self._universe_exists():
             page.display_stocks = []
             page.market_table.setRowCount(0)
             page._market_total = 0
@@ -117,7 +117,7 @@ class DataLoaderController:
         generation = page._load_generation
         scope_key = page.config.scope_key
 
-        if scope_key == "全部A股" and not universe_exists():
+        if scope_key == "全部A股" and not self._universe_exists():
             page.all_stocks = []
             page.display_stocks = []
             page.market_table.setRowCount(0)
@@ -191,7 +191,11 @@ class DataLoaderController:
         quote_svc = self._p._get_quote_service()
         if quote_svc is not None:
             quote_svc.set_market_quotes_cache(result.items, dict(result.quotes))
-            return
-        from vnpy_ashare.ai.context_store import set_market_quotes_cache
 
-        set_market_quotes_cache(result.items, dict(result.quotes))
+    def _universe_exists(self) -> bool:
+        bar_svc = get_bar_service(self._p._get_main_engine())
+        if bar_svc is not None:
+            return bar_svc.universe_exists()
+        from vnpy_ashare.bar_access import universe_exists
+
+        return universe_exists()

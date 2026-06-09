@@ -42,19 +42,13 @@ class TestWatchlistDb(unittest.TestCase):
         app_db.add_watchlist_item("600519", Exchange.SSE, "贵州茅台")
         app_db.add_watchlist_item("000001", Exchange.SZSE, "平安银行")
 
-        self.assertFalse(
-            app_db.move_watchlist_item("600000", Exchange.SSE, direction="up")
-        )
-        self.assertTrue(
-            app_db.move_watchlist_item("600519", Exchange.SSE, direction="up")
-        )
+        self.assertFalse(app_db.move_watchlist_item("600000", Exchange.SSE, direction="up"))
+        self.assertTrue(app_db.move_watchlist_item("600519", Exchange.SSE, direction="up"))
         self.assertEqual(
             [row[0] for row in app_db.load_watchlist_rows()],
             ["600519", "600000", "000001"],
         )
-        self.assertTrue(
-            app_db.move_watchlist_item("600000", Exchange.SSE, direction="down")
-        )
+        self.assertTrue(app_db.move_watchlist_item("600000", Exchange.SSE, direction="down"))
         self.assertEqual(
             [row[0] for row in app_db.load_watchlist_rows()],
             ["600519", "000001", "600000"],

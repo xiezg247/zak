@@ -222,11 +222,7 @@ def _summarize_section(section: dict[str, Any], kind: str) -> dict[str, Any]:
 
 def _summarize_reports(section: dict[str, Any]) -> list[dict[str, Any]]:
     fields = section.get("fields") or {}
-    extra = {
-        key: value
-        for key, value in fields.items()
-        if key not in {"POS", "market", "sec_code", "sec_name", "now_price", "chg", "show_url", "所属行业"}
-    }
+    extra = {key: value for key, value in fields.items() if key not in {"POS", "market", "sec_code", "sec_name", "now_price", "chg", "show_url", "所属行业"}}
     if not extra:
         return []
     return [

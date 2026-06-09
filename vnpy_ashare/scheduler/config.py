@@ -10,6 +10,7 @@ from vnpy_ashare.paths import APP_ID, VNTRADER_DIR
 
 SCHEDULER_CONFIG_PATH = VNTRADER_DIR / f"{APP_ID}_scheduler.json"
 
+
 @dataclass
 class JobConfig:
     enabled: bool = False
@@ -122,9 +123,7 @@ class SchedulerConfig:
                 cron_minute=int(raw.get("cron_minute", defaults.cron_minute)),
                 cron_day_of_week=str(raw.get("cron_day_of_week", defaults.cron_day_of_week)),
                 cron_hours=str(raw.get("cron_hours", defaults.cron_hours)),
-                cron_minute_intraday=int(
-                    raw.get("cron_minute_intraday", defaults.cron_minute_intraday)
-                ),
+                cron_minute_intraday=int(raw.get("cron_minute_intraday", defaults.cron_minute_intraday)),
             )
 
         defaults = cls()

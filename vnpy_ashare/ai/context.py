@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from vnpy.trader.constant import Exchange
-
 from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
@@ -179,19 +177,13 @@ def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:
 
 def build_technical_ai_prompt(vt_symbol: str, name: str = "") -> str:
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
-    return (
-        f"请分析 {title} 的近期技术形态。"
-        f'请调用 technical_snapshot(symbol="{vt_symbol}")，'
-        "基于工具返回的均线、量比、区间涨跌等数据做解读。"
-    )
+    return f'请分析 {title} 的近期技术形态。请调用 technical_snapshot(symbol="{vt_symbol}")，基于工具返回的均线、量比、区间涨跌等数据做解读。'
 
 
 def build_signals_ai_prompt(vt_symbol: str, name: str = "") -> str:
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
-        f"请分析 {title} 的双均线（MA10/MA20）策略信号。"
-        f'请调用 list_strategy_signals(symbol="{vt_symbol}")，'
-        "基于工具返回的金叉/死叉信号和当前均线状态做解读。"
+        f'请分析 {title} 的双均线（MA10/MA20）策略信号。请调用 list_strategy_signals(symbol="{vt_symbol}")，基于工具返回的金叉/死叉信号和当前均线状态做解读。'
     )
 
 
@@ -279,19 +271,12 @@ def build_diagnose_menu(binding: StockBinding) -> QuickAction:
             QuickAction(
                 id="diagnose_report",
                 label="研报评级",
-                prompt=(
-                    f"{prefix}请通过问小达查询最新研报与评级，"
-                    f'必要时结合 diagnose_stock(symbol="{vt}")，'
-                    "引用须注明来源与日期。"
-                ),
+                prompt=(f'{prefix}请通过问小达查询最新研报与评级，必要时结合 diagnose_stock(symbol="{vt}")，引用须注明来源与日期。'),
             ),
             QuickAction(
                 id="diagnose_flow",
                 label="资金流向",
-                prompt=(
-                    f"{prefix}请调用 mcp_tdx_tdx_wenda_quotes 查询主力资金流向，"
-                    "基于返回数据描述资金面，禁止编造。"
-                ),
+                prompt=(f"{prefix}请调用 mcp_tdx_tdx_wenda_quotes 查询主力资金流向，基于返回数据描述资金面，禁止编造。"),
             ),
         ],
     )
@@ -314,10 +299,7 @@ def build_technical_menu(binding: StockBinding) -> QuickAction:
             QuickAction(
                 id="technical_indicator",
                 label="MACD/KDJ/RSI",
-                prompt=(
-                    f"{prefix}请调用 mcp_tdx_tdx_wenda_quotes 查询 MACD、KDJ、RSI 等技术指标，"
-                    "基于返回数据做技术解读，非买卖建议。"
-                ),
+                prompt=(f"{prefix}请调用 mcp_tdx_tdx_wenda_quotes 查询 MACD、KDJ、RSI 等技术指标，基于返回数据做技术解读，非买卖建议。"),
             ),
             QuickAction(
                 id="technical_signals",
@@ -376,26 +358,17 @@ def build_trend_forecast_menu(binding: StockBinding) -> QuickAction:
             QuickAction(
                 id="trend_support",
                 label="支撑压力位",
-                prompt=(
-                    f"{prefix}请通过通达信问小达（mcp_tdx_tdx_wenda_quotes）"
-                    "查询该票支撑压力位、均线与关键价位，列出价位及依据，禁止编造。"
-                ),
+                prompt=(f"{prefix}请通过通达信问小达（mcp_tdx_tdx_wenda_quotes）查询该票支撑压力位、均线与关键价位，列出价位及依据，禁止编造。"),
             ),
             QuickAction(
                 id="trend_5d",
                 label="5日走势预测",
-                prompt=(
-                    f"{prefix}请结合问小达获取近5日走势、MACD/KDJ/RSI 与量比，"
-                    "描述短期动能并给出未来5个交易日的可能情景（场景分析，非买卖建议）。"
-                ),
+                prompt=(f"{prefix}请结合问小达获取近5日走势、MACD/KDJ/RSI 与量比，描述短期动能并给出未来5个交易日的可能情景（场景分析，非买卖建议）。"),
             ),
             QuickAction(
                 id="trend_direction",
                 label="方向预测",
-                prompt=(
-                    f"{prefix}请基于问小达的技术指标、均线排列与主力资金流向，"
-                    "分析短期多空方向倾向（倾向性判断 + 不确定性说明，非确定性预测）。"
-                ),
+                prompt=(f"{prefix}请基于问小达的技术指标、均线排列与主力资金流向，分析短期多空方向倾向（倾向性判断 + 不确定性说明，非确定性预测）。"),
             ),
         ],
     )
@@ -432,11 +405,7 @@ def build_bar_health_prompt(vt_symbol: str, name: str = "", extra: str = "") -> 
 
 def build_add_watchlist_prompt(vt_symbol: str, name: str = "") -> str:
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
-    return (
-        f"请将 {title} 加入自选池。"
-        f'请调用 add_to_watchlist(symbol="{vt_symbol}")，'
-        "根据工具返回告知是否成功。"
-    )
+    return f'请将 {title} 加入自选池。请调用 add_to_watchlist(symbol="{vt_symbol}")，根据工具返回告知是否成功。'
 
 
 def is_symbol_in_watchlist(symbol: str, exchange_cn: str = "") -> bool:

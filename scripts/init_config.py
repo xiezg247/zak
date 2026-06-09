@@ -16,10 +16,7 @@ def main() -> None:
     print(f"配置已写入: {SETTING_FILE}")
     print(f"当前数据库: {settings['database.name']}")
     if settings["database.name"] == "questdb":
-        print(
-            f"QuestDB: {settings['database.host']}:{settings['database.port']} "
-            f"(http {settings['database.http_port']})"
-        )
+        print(f"QuestDB: {settings['database.host']}:{settings['database.port']} (http {settings['database.http_port']})")
         print("提示: 需已安装 uv sync --extra questdb 并启动 scripts/start_questdb.sh")
     print(f"当前数据服务: {settings['datafeed.name']}")
     if settings["datafeed.name"] == "tickflow":

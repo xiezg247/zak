@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets

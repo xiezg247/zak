@@ -84,8 +84,7 @@ def _upsert_rows(rows: list[tuple[str, int]]) -> None:
     init_app_db()
     with sqlite3.connect(APP_DB_PATH) as conn:
         conn.executemany(
-            "INSERT INTO trade_calendar(cal_date, is_open) VALUES (?, ?) "
-            "ON CONFLICT(cal_date) DO UPDATE SET is_open = excluded.is_open",
+            "INSERT INTO trade_calendar(cal_date, is_open) VALUES (?, ?) ON CONFLICT(cal_date) DO UPDATE SET is_open = excluded.is_open",
             rows,
         )
         conn.commit()
@@ -134,12 +133,7 @@ def ensure_calendar_covers(day: date) -> bool:
     """确保本地缓存覆盖 day；成功同步返回 True。"""
     with _sync_lock:
         cached_start, cached_end = _cached_range()
-        needs_sync = (
-            cached_start is None
-            or cached_end is None
-            or not _range_covers(cached_start, cached_end, day)
-            or not _cache_is_fresh()
-        )
+        needs_sync = cached_start is None or cached_end is None or not _range_covers(cached_start, cached_end, day) or not _cache_is_fresh()
         if not needs_sync:
             return lookup_trading_day(day) is not None
 

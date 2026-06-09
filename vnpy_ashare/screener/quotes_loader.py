@@ -27,9 +27,7 @@ def load_market_quote_rows() -> MarketQuotesSnapshot:
     store = RedisQuoteStore()
     tf_symbols = store.list_all_rank_symbols()
     if not tf_symbols:
-        raise MarketQuotesLoadError(
-            "暂无全市场行情。请在「工具 → 立即执行 → 行情采集」运行后再选股。"
-        )
+        raise MarketQuotesLoadError("暂无全市场行情。请在「工具 → 立即执行 → 行情采集」运行后再选股。")
 
     quotes = store.get_quotes(tf_symbols)
     rows: list[dict[str, Any]] = []

@@ -6,7 +6,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
-
 from vnpy_ashare.services.screening_service import ScreeningService
 
 
@@ -47,10 +46,13 @@ class ScreeningServiceTests(unittest.TestCase):
 
     def test_screen_quote_preset_delegates_to_rules(self) -> None:
         rows = [{"symbol": "600519", "change_pct": 5.0}]
-        with patch.object(self.service, "load_quote_rows", return_value=(rows, None)), patch(
-            "vnpy_ashare.screener.rules.apply_quote_preset",
-            return_value=[{"symbol": "600519"}],
-        ) as mock_apply:
+        with (
+            patch.object(self.service, "load_quote_rows", return_value=(rows, None)),
+            patch(
+                "vnpy_ashare.screener.rules.apply_quote_preset",
+                return_value=[{"symbol": "600519"}],
+            ) as mock_apply,
+        ):
             result = self.service.screen_quote_preset("涨幅榜", top_n=3)
         mock_apply.assert_called_once_with("涨幅榜", rows, top_n=3)
         self.assertEqual(result, [{"symbol": "600519"}])

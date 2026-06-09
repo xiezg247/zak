@@ -3,23 +3,23 @@
 from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
-from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.chart_style import CHART_PANEL_STYLESHEET
+from vnpy_ashare.ui.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.intraday_chart import IntradayChart
 from vnpy_ashare.ui.ma_legend import MaLegendBar
+from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes_chart import (
-    AshareChartWidget,
     WATCHLIST_DAILY_BAR_PRESETS,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
+    AshareChartWidget,
     create_watchlist_chart,
     prepare_chart_bars,
 )
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
-from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.worker import (
     BarsLoadWorker,
     IntradayBarsWorker,
@@ -35,8 +35,6 @@ LIVE_MINUTE_HINT = "1分K来自 TickFlow 实时接口，不写入本地"
 LOCAL_MINUTE_HINT = "1分K来自本地，{start} ~ {end}，共 {count} 根"
 MINUTE_MISSING_HINT = "暂无本地分K，请点击上方「下载分K到本地」（建议 ≤6 个月）"
 DAILY_MISSING_HINT = "暂无本地日K，请点击上方「下载日K到本地」"
-DAILY_TAB_INDEX = 1
-MINUTE_TAB_INDEX = 2
 
 
 def should_apply_minute_bars(
@@ -200,14 +198,7 @@ class ChartPanel(QtWidgets.QWidget):
         self._daily_viewport_bars = bar_count
         self._apply_daily_viewport()
 
-    @staticmethod
-    def _thread_active(worker: QtCore.QThread | None) -> bool:
-        if worker is None:
-            return False
-        try:
-            return worker.isRunning()
-        except RuntimeError:
-            return False
+    _thread_active = staticmethod(thread_is_active)
 
     def set_active(self, active: bool) -> None:
         self._active = active
@@ -227,13 +218,7 @@ class ChartPanel(QtWidgets.QWidget):
             self._prev_close = quote.last_price - quote.change_amount
 
     def load_item(self, item: StockItem | None, *, quote: QuoteSnapshot | None = None) -> None:
-        is_new = (
-            item is not None
-            and (
-                self._item is None
-                or (item.symbol, item.exchange) != (self._item.symbol, self._item.exchange)
-            )
-        )
+        is_new = item is not None and (self._item is None or (item.symbol, item.exchange) != (self._item.symbol, self._item.exchange))
         self._item = item
         self.update_quote(quote)
         self._generation += 1
@@ -322,7 +307,6 @@ class ChartPanel(QtWidgets.QWidget):
             chart.clear_all()
 
     def _retire_worker(self, worker: QtCore.QThread) -> None:
-        from vnpy_ashare.ui.qt_helpers import release_thread
 
         release_thread(self._retired_workers, worker)
 

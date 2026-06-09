@@ -54,10 +54,7 @@ def _now() -> str:
 
 def list_schemes() -> list[SavedScheme]:
     with _connect() as conn:
-        rows = conn.execute(
-            "SELECT id, name, config_json, created_at, updated_at "
-            "FROM screener_schemes ORDER BY updated_at DESC"
-        ).fetchall()
+        rows = conn.execute("SELECT id, name, config_json, created_at, updated_at FROM screener_schemes ORDER BY updated_at DESC").fetchall()
     result: list[SavedScheme] = []
     for row in rows:
         result.append(
@@ -75,8 +72,7 @@ def list_schemes() -> list[SavedScheme]:
 def get_scheme(scheme_id: str) -> SavedScheme | None:
     with _connect() as conn:
         row = conn.execute(
-            "SELECT id, name, config_json, created_at, updated_at "
-            "FROM screener_schemes WHERE id=?",
+            "SELECT id, name, config_json, created_at, updated_at FROM screener_schemes WHERE id=?",
             (scheme_id,),
         ).fetchone()
     if row is None:
@@ -106,8 +102,7 @@ def save_scheme(name: str, config: dict[str, Any], *, scheme_id: str | None = No
         else:
             sid = uuid.uuid4().hex
             conn.execute(
-                "INSERT INTO screener_schemes (id, name, config_json, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO screener_schemes (id, name, config_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
                 (sid, cleaned, payload, now, now),
             )
     saved = get_scheme(sid)

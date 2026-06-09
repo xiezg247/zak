@@ -63,10 +63,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         title_block.setSpacing(4)
         title = QtWidgets.QLabel("定时任务")
         title.setObjectName("SchedulerPageTitle")
-        hint = QtWidgets.QLabel(
-            "生产环境建议独立运行 scripts/quote_collector.py；"
-            "行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。"
-        )
+        hint = QtWidgets.QLabel("生产环境建议独立运行 scripts/quote_collector.py；行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。")
         hint.setObjectName("SchedulerHint")
         hint.setWordWrap(True)
         title_block.addWidget(title)
@@ -105,12 +102,8 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self._log_view.setObjectName("SchedulerLogView")
         self._log_view.setReadOnly(True)
         self._log_view.setLineWrapMode(QtWidgets.QTextEdit.LineWrapMode.WidgetWidth)
-        self._log_view.setVerticalScrollBarPolicy(
-            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-        self._log_view.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
+        self._log_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._log_view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         log_layout.addWidget(self._log_view, stretch=1)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
@@ -139,9 +132,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self._scheduler = scheduler
         self._jobs_widget.set_scheduler(scheduler)
         if scheduler is None:
-            self._log_view.setHtml(
-                '<p style="color:#6a6a7a;margin:0;">A 股引擎未加载，无法管理定时任务。</p>'
-            )
+            self._log_view.setHtml('<p style="color:#6a6a7a;margin:0;">A 股引擎未加载，无法管理定时任务。</p>')
             self._log_title.setText("执行日志")
             return
         scheduler.add_listener(self._log_listener)
@@ -165,9 +156,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         if self._scheduler is None:
             return
         records = self._scheduler.list_run_log()
-        self._log_title.setText(
-            f"执行日志 · {len(records)} 条" if records else "执行日志"
-        )
+        self._log_title.setText(f"执行日志 · {len(records)} 条" if records else "执行日志")
         self._log_view.setHtml(_format_run_log_html(records))
         scrollbar = self._log_view.verticalScrollBar()
         scrollbar.setValue(scrollbar.minimum())

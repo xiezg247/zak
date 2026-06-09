@@ -352,10 +352,7 @@ class SentimentService(BaseService):
         if len(closes) < 22:
             warnings.append("波动率：样本不足")
             return None
-        returns = [
-            (closes[i] / closes[i - 1] - 1.0)
-            for i in range(1, len(closes))
-        ]
+        returns = [(closes[i] / closes[i - 1] - 1.0) for i in range(1, len(closes))]
         recent = returns[-20:]
         long = returns[-60:] if len(returns) >= 60 else returns
         vol20 = _std(recent)
@@ -393,11 +390,7 @@ class SentimentService(BaseService):
         except Exception:
             end_frame = frame
         today_val = float(frame.iloc[-1]["north_money"] or 0)
-        history = [
-            float(v)
-            for v in end_frame["north_money"].tolist()
-            if v is not None
-        ] if end_frame is not None and not end_frame.empty else [today_val]
+        history = [float(v) for v in end_frame["north_money"].tolist() if v is not None] if end_frame is not None and not end_frame.empty else [today_val]
         low = min(history) if history else today_val
         high = max(history) if history else today_val
         score = _clamp_score(_linear_map(today_val, low=low, high=high))

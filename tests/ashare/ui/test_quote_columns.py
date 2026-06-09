@@ -47,8 +47,8 @@ class TestQuoteRefreshHint(unittest.TestCase):
     def test_refresh_hint(self) -> None:
         from vnpy_ashare.ui.quotes_config import (
             MARKET_QUOTE_REFRESH_MS,
-            WATCHLIST_QUOTE_REFRESH_MS,
             PAGE_CONFIGS,
+            WATCHLIST_QUOTE_REFRESH_MS,
             quote_refresh_hint,
             quote_refresh_seconds,
         )

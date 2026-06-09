@@ -31,10 +31,7 @@ class VnpyAnalysisSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="get_screening_context",
-                description=(
-                    "获取选股结果（当前 session 或指定 run_id）。"
-                    "batch_top_n>0 时对前几只批量返回 technical_snapshot 摘要。"
-                ),
+                description=("获取选股结果（当前 session 或指定 run_id）。batch_top_n>0 时对前几只批量返回 technical_snapshot 摘要。"),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -52,8 +49,7 @@ class VnpyAnalysisSkill(SkillTemplate):
             ToolSpec(
                 name="list_strategy_signals",
                 description=(
-                    "查询指定策略在本地 K 线上的规则信号（如双均线金叉/死叉、当前均线排列）。"
-                    "用户问「双均线什么状态」「有没有金叉」时调用；禁止编造信号。"
+                    "查询指定策略在本地 K 线上的规则信号（如双均线金叉/死叉、当前均线排列）。用户问「双均线什么状态」「有没有金叉」时调用；禁止编造信号。"
                 ),
                 parameters={
                     "type": "object",
@@ -81,10 +77,7 @@ class VnpyAnalysisSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="historical_pattern_summary",
-                description=(
-                    "历史区间走势统计（涨跌幅、波动、形态标签），用于回答「最近走势如何」。"
-                    "仅描述历史，禁止包装成未来预测。"
-                ),
+                description=("历史区间走势统计（涨跌幅、波动、形态标签），用于回答「最近走势如何」。仅描述历史，禁止包装成未来预测。"),
                 parameters={
                     "type": "object",
                     "properties": {

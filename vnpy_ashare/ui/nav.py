@@ -122,11 +122,13 @@ def _draw_ai_assistant(painter: QtGui.QPainter, size: int) -> None:
     painter.drawRoundedRect(rect, 4, 4)
     painter.drawLine(m + 7, m + 11, m + 11, m + 15)
     painter.drawLine(m + 11, m + 15, m + 17, m + 9)
-    tail = QtGui.QPolygonF([
-        QtCore.QPointF(m + 8, size - m - 3),
-        QtCore.QPointF(m + 4, size - m + 1),
-        QtCore.QPointF(m + 12, size - m - 2),
-    ])
+    tail = QtGui.QPolygonF(
+        [
+            QtCore.QPointF(m + 8, size - m - 3),
+            QtCore.QPointF(m + 4, size - m + 1),
+            QtCore.QPointF(m + 12, size - m - 2),
+        ]
+    )
     painter.drawPolyline(tail)
 
 

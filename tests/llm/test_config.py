@@ -16,9 +16,7 @@ class TestLlmConfig(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             env_file = Path(tmp) / ".env"
             env_file.write_text(
-                "LLM_API_KEY=test-key-12345678\n"
-                "LLM_API_BASE=https://example.com/v1\n"
-                "LLM_MODEL=gpt-4o\n",
+                "LLM_API_KEY=test-key-12345678\nLLM_API_BASE=https://example.com/v1\nLLM_MODEL=gpt-4o\n",
                 encoding="utf-8",
             )
             with patch.dict(os.environ, {}, clear=True):

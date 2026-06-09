@@ -6,9 +6,7 @@ from vnpy_ashare.screener.auto_screen import AutoScreenInput, resolve_auto_scree
 
 
 def test_builtin_preset_ok():
-    result = resolve_auto_screen_request(
-        AutoScreenInput(name="涨幅榜", top_n=10)
-    )
+    result = resolve_auto_screen_request(AutoScreenInput(name="涨幅榜", top_n=10))
     assert result.ok is True
     assert result.request is not None
     assert result.request.preset == "涨幅榜"
@@ -16,9 +14,7 @@ def test_builtin_preset_ok():
 
 
 def test_saved_scheme_need_confirm():
-    result = resolve_auto_screen_request(
-        AutoScreenInput(name="我的 · 测试方案")
-    )
+    result = resolve_auto_screen_request(AutoScreenInput(name="我的 · 测试方案"))
     assert result.ok is False
     assert result.need_confirm is True
 
@@ -38,8 +34,6 @@ def test_custom_with_threshold_ok():
 
 
 def test_unknown_preset_error():
-    result = resolve_auto_screen_request(
-        AutoScreenInput(name="不存在方案")
-    )
+    result = resolve_auto_screen_request(AutoScreenInput(name="不存在方案"))
     assert result.ok is False
     assert result.error

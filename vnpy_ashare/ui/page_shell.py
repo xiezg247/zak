@@ -6,7 +6,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.qt_helpers import release_thread
+from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes_page import QuotesPage
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import IndexQuotesWorker
@@ -19,14 +19,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
 
     PAGE_NAME: str = ""
 
-    @staticmethod
-    def _thread_active(worker: QtCore.QThread | None) -> bool:
-        if worker is None:
-            return False
-        try:
-            return worker.isRunning()
-        except RuntimeError:
-            return False
+    _thread_active = staticmethod(thread_is_active)
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         super().__init__()
@@ -86,10 +79,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
             for label, quote in rows:
                 color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
                 pct = quote.change_pct
-                parts.append(
-                    f'<span style="color:{color}">{label} {quote.last_price:.2f} '
-                    f'{pct:+.2f}%</span>'
-                )
+                parts.append(f'<span style="color:{color}">{label} {quote.last_price:.2f} {pct:+.2f}%</span>')
             if self.index_ticker is not None:
                 self.index_ticker.setText("  |  ".join(parts) if parts else "指数暂无数据")
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.screener.batch_actions import (
     stock_items_to_batch_rows,

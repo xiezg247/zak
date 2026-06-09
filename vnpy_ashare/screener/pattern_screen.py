@@ -14,9 +14,9 @@ from vnpy_ashare.bars import load_downloaded_stocks
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.screener.export import resolve_export_columns
 from vnpy_ashare.screener.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
-from vnpy_ashare.screener.runner import ScreenerRunResult
-from vnpy_ashare.screener.rules import apply_quote_preset
 from vnpy_ashare.screener.presets import SCREENER_CUSTOM
+from vnpy_ashare.screener.rules import apply_quote_preset
+from vnpy_ashare.screener.runner import ScreenerRunResult
 
 MAX_PATTERN_SCAN = 1200
 
@@ -108,9 +108,7 @@ def run_pattern_screen(
 
     if pattern_id == "theme_hot":
         if not quote_rows:
-            raise RuntimeError(
-                "主题投资需全市场行情。请运行「工具 → 立即执行 → 行情采集」或打开市场页。"
-            )
+            raise RuntimeError("主题投资需全市场行情。请运行「工具 → 立即执行 → 行情采集」或打开市场页。")
         rows = apply_quote_preset(
             SCREENER_CUSTOM,
             quote_rows,

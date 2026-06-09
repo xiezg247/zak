@@ -51,9 +51,7 @@ class FloatingAiController(QtCore.QObject):
         orb.new_session_requested.connect(self._on_new_session)
         orb.tools_requested.connect(self._host._open_ai_tools_dialog)
         orb.hide_requested.connect(lambda: self.hide_orb(user_initiated=True))
-        orb.quick_action_requested.connect(
-            lambda prompt: self.run_quick_action(prompt=prompt, auto_send=False)
-        )
+        orb.quick_action_requested.connect(lambda prompt: self.run_quick_action(prompt=prompt, auto_send=False))
         self._orb = orb
 
         panel = FloatingAiPanel(self._engine, parent=shell)

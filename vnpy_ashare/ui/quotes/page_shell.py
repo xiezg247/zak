@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.minute_periods import LOCAL_SCOPE_OPTIONS
+from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.ui.chart_panel import ChartPanel
 from vnpy_ashare.ui.chart_style import CHART_FRAME_STYLESHEET
 from vnpy_ashare.ui.depth_panel import DepthPanel
@@ -15,7 +16,6 @@ from vnpy_ashare.ui.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS
 from vnpy_ashare.ui.quotes_chart import create_daily_chart
 from vnpy_ashare.ui.quotes_config import quote_refresh_hint, quote_source_label
-from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 
 if TYPE_CHECKING:
@@ -118,16 +118,12 @@ class QuotesPageShell:
         page.remove_watchlist_button.setVisible(page.config.show_remove_watchlist_button)
 
         page.move_watchlist_up_button = QtWidgets.QPushButton("上移")
-        page.move_watchlist_up_button.clicked.connect(
-            lambda: page._watchlist.move_selected("up")
-        )
+        page.move_watchlist_up_button.clicked.connect(lambda: page._watchlist.move_selected("up"))
         page.move_watchlist_up_button.setEnabled(False)
         page.move_watchlist_up_button.setVisible(page.config.show_watchlist_move_buttons)
 
         page.move_watchlist_down_button = QtWidgets.QPushButton("下移")
-        page.move_watchlist_down_button.clicked.connect(
-            lambda: page._watchlist.move_selected("down")
-        )
+        page.move_watchlist_down_button.clicked.connect(lambda: page._watchlist.move_selected("down"))
         page.move_watchlist_down_button.setEnabled(False)
         page.move_watchlist_down_button.setVisible(page.config.show_watchlist_move_buttons)
 
@@ -189,10 +185,12 @@ class QuotesPageShell:
         if page.config.show_remove_watchlist_button:
             toolbar.addWidget(page.remove_watchlist_button)
         if page.config.show_watchlist_move_buttons:
-            more_actions.extend([
-                ("上移", page.move_watchlist_up_button),
-                ("下移", page.move_watchlist_down_button),
-            ])
+            more_actions.extend(
+                [
+                    ("上移", page.move_watchlist_up_button),
+                    ("下移", page.move_watchlist_down_button),
+                ]
+            )
         if page.config.show_download_button and not page.config.use_local_table:
             if page.config.show_watchlist_move_buttons:
                 more_actions.append(("下载日K到本地", page.download_button))
@@ -255,22 +253,14 @@ class QuotesPageShell:
         page.market_table.setObjectName("MarketTable")
         page.market_table.setColumnCount(len(headers))
         page.market_table.setHorizontalHeaderLabels(headers)
-        page.market_table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        page.market_table.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
-        )
-        page.market_table.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
+        page.market_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        page.market_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         page.market_table.verticalHeader().setVisible(False)
         page.market_table.setAlternatingRowColors(True)
         page.market_table.setSortingEnabled(False)
         page.market_table.itemSelectionChanged.connect(page._table.on_selection_changed)
-        page.market_table.setContextMenuPolicy(
-            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
-        )
+        page.market_table.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         page.market_table.customContextMenuRequested.connect(page._actions.show_context_menu)
         if page.config.table_header_sortable:
             page.market_table.horizontalHeader().setSortIndicatorShown(True)

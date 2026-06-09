@@ -46,11 +46,7 @@ def main() -> None:
     end = datetime.strptime(args.end, "%Y-%m-%d") if args.end else datetime.now()
 
     if args.period:
-        start = (
-            datetime.strptime(args.start, "%Y-%m-%d")
-            if args.start
-            else default_minute_download_start(end)
-        )
+        start = datetime.strptime(args.start, "%Y-%m-%d") if args.start else default_minute_download_start(end)
         count = download_period_bars(
             symbol=args.symbol,
             exchange=exchange,

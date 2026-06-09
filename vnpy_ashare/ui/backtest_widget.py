@@ -10,6 +10,8 @@ from vnpy.trader.constant import Interval
 from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ctabacktester.ui.widget import (
     BacktesterManager as VnpyBacktesterManager,
+)
+from vnpy_ctabacktester.ui.widget import (
     BacktestingOrderMonitor,
     BacktestingResultDialog,
     BacktestingTradeMonitor,
@@ -30,9 +32,9 @@ from vnpy_ashare.ai.backtest_context import (
     sync_backtest_page_context,
 )
 from vnpy_ashare.ai.context_store import BacktestSummary, get_backtest_summary_dict
-from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
+from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
 from vnpy_ashare.ui.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.styles import (
@@ -109,9 +111,7 @@ class BacktesterWidget(VnpyBacktesterManager):
         for interval in Interval:
             self.interval_combo.addItem(interval.value)
 
-        self.start_date_edit = QtWidgets.QDateEdit(
-            QtCore.QDate(start_dt.year, start_dt.month, start_dt.day)
-        )
+        self.start_date_edit = QtWidgets.QDateEdit(QtCore.QDate(start_dt.year, start_dt.month, start_dt.day))
         self.end_date_edit = QtWidgets.QDateEdit(QtCore.QDate.currentDate())
 
         defaults = ASHARE_BACKTEST_DEFAULTS
@@ -275,17 +275,11 @@ class BacktesterWidget(VnpyBacktesterManager):
         if not ashare_names:
             self.class_names = []
             self.class_combo.clear()
-            self.write_log(
-                "未发现 A 股策略，请检查项目 strategies/ 目录及策略类是否继承 AShareTemplate。"
-            )
+            self.write_log("未发现 A 股策略，请检查项目 strategies/ 目录及策略类是否继承 AShareTemplate。")
             return
 
         self.class_names = ashare_names
-        self.settings = {
-            name: self.settings[name]
-            for name in ashare_names
-            if name in self.settings
-        }
+        self.settings = {name: self.settings[name] for name in ashare_names if name in self.settings}
         self.class_combo.clear()
         self.class_combo.addItems(ashare_names)
         self._ensure_class_combo_selection()
@@ -384,12 +378,14 @@ class BacktesterWidget(VnpyBacktesterManager):
         )
         summary_dict = summary.to_dict()
         self._write_backtest_summary_log(summary_dict)
-        from vnpy_ashare.engine import APP_NAME, AshareEngine
+        from vnpy_ashare.engine_access import get_backtest_service
 
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            engine.backtest_service.persist_summary(summary_dict, source="single")
+        backtest_service = get_backtest_service(self.main_engine)
+        if backtest_service is not None:
+            backtest_service.persist_summary(summary_dict, source="single")
         else:
-            from vnpy_ashare.ai.context_store import set_backtest_summary
-
-            set_backtest_summary(summary)
+            QtWidgets.QMessageBox.warning(
+                self,
+                "回测",
+                "回测服务未就绪，摘要未写入 AI 上下文",
+            )

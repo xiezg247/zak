@@ -120,9 +120,7 @@ class BatchBacktestFlow:
             params,
         )
         self._worker = worker
-        worker.finished.connect(
-            lambda result: self._on_finished(result, on_running)
-        )
+        worker.finished.connect(lambda result: self._on_finished(result, on_running))
         worker.failed.connect(lambda message: self._on_failed(message, on_running))
         worker.start()
 
@@ -137,11 +135,7 @@ class BatchBacktestFlow:
         service = get_service(self.main_engine, "backtest_service")
         if service is None:
             return []
-        return [
-            item["class_name"]
-            for item in service.list_strategies()
-            if item.get("class_name")
-        ]
+        return [item["class_name"] for item in service.list_strategies() if item.get("class_name")]
 
     def _on_finished(
         self,

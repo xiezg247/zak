@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from vnpy_ashare.engine import AshareEngine
+    from vnpy_ashare.models import StockItem
 
 from vnpy_ashare.ai.symbol import parse_stock_symbol
 from vnpy_ashare.services.base import BaseService
@@ -19,7 +23,7 @@ _F10_TOOL_KEYWORDS = ("f10", "fundamental", "financial")
 class AnalysisService(BaseService):
     """聚合本地 K 线与通达信 MCP，产出结构化分析 JSON。"""
 
-    def __init__(self, engine: "AshareEngine") -> None:  # type: ignore[name-defined]
+    def __init__(self, engine: AshareEngine) -> None:
         super().__init__(engine)
         self._mcp_execute: _MCPExecute | None = None
         self._mcp_tool_names: list[str] = []
@@ -119,7 +123,7 @@ class AnalysisService(BaseService):
             include_reports=include_reports,
         )
 
-    def _fetch_reports(self, item: "StockItem") -> dict[str, Any]:  # type: ignore[name-defined]
+    def _fetch_reports(self, item: StockItem) -> dict[str, Any]:
         from vnpy_ashare.services.report_sources import fetch_tushare_reports, report_fallback_enabled
 
         bundle = self._fetch_tdx_reports(item.vt_symbol, item.symbol)
@@ -240,13 +244,7 @@ class AnalysisService(BaseService):
                     "broker": str(row.get("broker") or row.get("org") or row.get("institution") or ""),
                     "date": str(row.get("date") or row.get("publish_date") or row.get("pub_date") or ""),
                     "rating": str(row.get("rating") or row.get("rate") or row.get("invest_rating") or ""),
-                    "summary": str(
-                        row.get("summary")
-                        or row.get("abstract")
-                        or row.get("content")
-                        or row.get("desc")
-                        or ""
-                    )[:2000],
+                    "summary": str(row.get("summary") or row.get("abstract") or row.get("content") or row.get("desc") or "")[:2000],
                     "source": "tdx_mcp",
                     "tool": tool_name,
                 }
@@ -405,7 +403,7 @@ class AnalysisService(BaseService):
         if len(daily_changes) >= 2:
             mean_change = sum(daily_changes) / len(daily_changes)
             variance = sum((value - mean_change) ** 2 for value in daily_changes) / len(daily_changes)
-            volatility_pct = round(variance ** 0.5, 2)
+            volatility_pct = round(variance**0.5, 2)
 
         range_pct = 0.0
         if first_close:
@@ -532,11 +530,7 @@ class AnalysisService(BaseService):
                 "total_scanned": record.total_scanned,
             }
         else:
-            ctx = (
-                screening_svc.get_screening_results()
-                if screening_svc is not None
-                else get_screening_results()
-            )
+            ctx = screening_svc.get_screening_results() if screening_svc is not None else get_screening_results()
             if ctx is None:
                 return {
                     "message": "暂无选股结果，请用户先在「选股」页运行方案，或提供 run_id",

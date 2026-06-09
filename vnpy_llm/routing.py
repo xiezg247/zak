@@ -16,59 +16,75 @@ from vnpy_llm.intent import (
     ScreeningIntent,
 )
 
-AGENT_TOOL_NAMES = frozenset({
-    "read_skill_file",
-    "run_python",
-    "list_skill_files",
-})
+AGENT_TOOL_NAMES = frozenset(
+    {
+        "read_skill_file",
+        "run_python",
+        "list_skill_files",
+    }
+)
 
 FEAR_GREED_TOOL = "get_ashare_fear_greed_index"
 
 TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
     "general": frozenset(),
-    "quote": frozenset({
-        "get_quote_context",
-        "get_bars_summary",
-        "get_bars_data",
-    }),
-    "technical": frozenset({
-        "get_quote_context",
-        "get_bars_summary",
-        "get_bars_data",
-        "technical_snapshot",
-        "list_strategy_signals",
-        "historical_pattern_summary",
-    }),
-    "diagnosis": frozenset({
-        "get_quote_context",
-        "diagnose_stock",
-    }),
-    "screening": frozenset({
-        "list_screeners",
-        "screen_by_condition",
-        "screen_by_pattern",
-        "propose_screening",
-        "get_screening_context",
-    }),
-    "backtest": frozenset({
-        "list_strategies",
-        "get_backtest_result",
-        "list_backtest_history",
-        "list_strategy_signals",
-    }),
-    "watchlist": frozenset({
-        "get_watchlist",
-        "add_to_watchlist",
-        "remove_from_watchlist",
-        "get_quote_context",
-    }),
-    "data": frozenset({
-        "get_bars_summary",
-        "get_bars_data",
-        "read_skill_file",
-        "run_python",
-        "list_skill_files",
-    }),
+    "quote": frozenset(
+        {
+            "get_quote_context",
+            "get_bars_summary",
+            "get_bars_data",
+        }
+    ),
+    "technical": frozenset(
+        {
+            "get_quote_context",
+            "get_bars_summary",
+            "get_bars_data",
+            "technical_snapshot",
+            "list_strategy_signals",
+            "historical_pattern_summary",
+        }
+    ),
+    "diagnosis": frozenset(
+        {
+            "get_quote_context",
+            "diagnose_stock",
+        }
+    ),
+    "screening": frozenset(
+        {
+            "list_screeners",
+            "screen_by_condition",
+            "screen_by_pattern",
+            "propose_screening",
+            "get_screening_context",
+        }
+    ),
+    "backtest": frozenset(
+        {
+            "list_strategies",
+            "get_backtest_result",
+            "list_backtest_history",
+            "list_strategy_signals",
+        }
+    ),
+    "watchlist": frozenset(
+        {
+            "get_watchlist",
+            "add_to_watchlist",
+            "remove_from_watchlist",
+            "get_quote_context",
+        }
+    ),
+    "data": frozenset(
+        {
+            "get_bars_summary",
+            "get_bars_data",
+            "read_skill_file",
+            "run_python",
+            "list_skill_files",
+        }
+    ),
 }
 
 PAGE_CATEGORY_HINT: dict[str, IntentCategory] = {
@@ -151,20 +167,13 @@ def apply_fear_greed_tools(
     all_tools: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """按 enrichment 三档加入或移除恐贪指数工具。"""
-    available = {
-        (tool.get("function") or {}).get("name", "")
-        for tool in all_tools
-    }
+    available = {(tool.get("function") or {}).get("name", "") for tool in all_tools}
     if FEAR_GREED_TOOL not in available:
         return tools
 
     level = analysis.market.fear_greed
     if level == "skip":
-        return [
-            tool
-            for tool in tools
-            if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL
-        ]
+        return [tool for tool in tools if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL]
 
     names = {(tool.get("function") or {}).get("name", "") for tool in tools}
     if FEAR_GREED_TOOL in names:
@@ -183,12 +192,29 @@ def _infer_market_enrichment(
     text = user_text.strip()
 
     highlight_keywords = (
-        "恐贪", "贪婪", "恐慌", "市场情绪", "大盘情绪", "赚钱效应",
-        "过热", "冰点", "市场冷热", "市场怎么样", "大盘怎么样",
+        "恐贪",
+        "贪婪",
+        "恐慌",
+        "市场情绪",
+        "大盘情绪",
+        "赚钱效应",
+        "过热",
+        "冰点",
+        "市场冷热",
+        "市场怎么样",
+        "大盘怎么样",
     )
     skip_keywords = (
-        "多少钱", "当前价", "涨了多少", "跌了多少", "加入自选", "移出自选",
-        "删除自选", "清空自选", "下载", "导入",
+        "多少钱",
+        "当前价",
+        "涨了多少",
+        "跌了多少",
+        "加入自选",
+        "移出自选",
+        "删除自选",
+        "清空自选",
+        "下载",
+        "导入",
     )
     if any(keyword in text for keyword in highlight_keywords):
         return MarketEnrichment(
@@ -259,14 +285,9 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
         if s.clarification_needed:
             lines.append("- 意图不够明确，请先向用户追问，勿调用选股工具")
         elif s.confidence == "high" and s.preset and not s.scheme_name:
-            lines.append(
-                f"- 内置方案「{s.preset}」可直接调用 screen_by_condition"
-                f"（name={s.preset}, top_n={s.top_n}）"
-            )
+            lines.append(f"- 内置方案「{s.preset}」可直接调用 screen_by_condition（name={s.preset}, top_n={s.top_n}）")
         elif s.confidence in ("high", "medium"):
-            lines.append(
-                "- 请调用 propose_screening，并传入上述 intent/preset/top_n 等参数"
-            )
+            lines.append("- 请调用 propose_screening，并传入上述 intent/preset/top_n 等参数")
 
     if analysis.backtest and route.category == "backtest":
         b = analysis.backtest
@@ -292,15 +313,9 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
     if fg == "skip":
         lines.append("【恐贪指数】本轮 skip：勿调用 get_ashare_fear_greed_index。")
     elif fg == "highlight":
-        lines.append(
-            "【恐贪指数】本轮 highlight：建议调用 get_ashare_fear_greed_index，"
-            "并在回答中结合工具数据简要说明市场环境（仍禁止具体买卖建议）。"
-        )
+        lines.append("【恐贪指数】本轮 highlight：建议调用 get_ashare_fear_greed_index，并在回答中结合工具数据简要说明市场环境（仍禁止具体买卖建议）。")
     else:
-        lines.append(
-            "【恐贪指数】本轮 consider：可自行判断是否调用 get_ashare_fear_greed_index；"
-            "与大盘节奏/风险/环境无关则勿调用；调用后也不必强行写入正文。"
-        )
+        lines.append("【恐贪指数】本轮 consider：可自行判断是否调用 get_ashare_fear_greed_index；与大盘节奏/风险/环境无关则勿调用；调用后也不必强行写入正文。")
     if analysis.market.reasoning:
         lines.append(f"- enrichment：{analysis.market.reasoning}")
 

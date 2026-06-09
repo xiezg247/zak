@@ -47,8 +47,7 @@ def validate_ai_action(data: AiActionRequest) -> None:
         raise ValueError(f"未知 AI 动作: {data.kind}")
     if not isinstance(data.payload, expected):
         raise TypeError(
-            f"AI 动作 {data.kind} 需要 {expected.__name__}，"
-            f"实际为 {type(data.payload).__name__}",
+            f"AI 动作 {data.kind} 需要 {expected.__name__}，实际为 {type(data.payload).__name__}",
         )
 
 

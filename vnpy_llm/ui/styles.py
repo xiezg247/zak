@@ -88,7 +88,8 @@ QLabel#AiBubbleError {
 }
 """
 
-PANEL_STYLESHEET = """
+PANEL_STYLESHEET = (
+    """
 QWidget#AiChatPanel {
     background-color: #141418;
     color: #e0e0e0;
@@ -107,7 +108,9 @@ QLabel#AiContextLabel {
     background-color: #1a1a22;
     border-radius: 4px;
 }
-""" + _AI_CHAT_BUBBLE_STYLESHEET + """
+"""
+    + _AI_CHAT_BUBBLE_STYLESHEET
+    + """
 QPlainTextEdit#AiInput {
     background-color: #1e1e24;
     border: 1px solid #333;
@@ -154,7 +157,9 @@ QPushButton#AiDeleteSessionsBtn {
     color: #d04a4a;
     font-size: 12px;
 }
-""" + _AI_QUICK_ACTION_STYLESHEET + """
+"""
+    + _AI_QUICK_ACTION_STYLESHEET
+    + """
 QWidget#AiQuickActionChips {
     margin-bottom: 4px;
 }
@@ -214,8 +219,10 @@ QListWidget#AiSessionListWidget::item:hover {
     background-color: #1e1e28;
 }
 """
+)
 
-FLOATING_CHAT_STYLESHEET = """
+FLOATING_CHAT_STYLESHEET = (
+    """
 QWidget#FloatingAiPanel {
     background-color: #141418;
     border: 1px solid #2e2e38;
@@ -266,7 +273,9 @@ QScrollArea#AiQuickActionScroll {
     background-color: #141418;
     border: none;
 }
-""" + _AI_QUICK_ACTION_STYLESHEET
+"""
+    + _AI_QUICK_ACTION_STYLESHEET
+)
 
 FLOATING_CHAT_INNER_STYLESHEET = """
 QWidget#AiChatPanel {

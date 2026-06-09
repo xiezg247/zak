@@ -39,7 +39,7 @@ def main() -> int:
             desc = (tool.description or "").replace("\n", " ")[:100]
             print(f"  {tool.name}\t{desc}")
         print(f"  共 {len(tools)} 个工具")
-        print("  LLM 调用名：mcp_{name}_<tool.name>".format(name=name))
+        print(f"  LLM 调用名：mcp_{name}_<tool.name>")
 
     return 0 if any_ok else 2
 

@@ -36,9 +36,7 @@ def test_fast_path_low_pe():
 
 @patch("vnpy_ashare.screener.nl_mapper.collect_warnings", return_value=[])
 def test_validate_builtin_preset(_mock_warnings):
-    result = validate_and_build(
-        ProposeInput(intent="今天涨最多的", preset=SCREENER_CHANGE_TOP, top_n=10, confidence="high")
-    )
+    result = validate_and_build(ProposeInput(intent="今天涨最多的", preset=SCREENER_CHANGE_TOP, top_n=10, confidence="high"))
     assert result.kind == "pending_confirm"
     assert result.draft is not None
     assert result.draft.request.preset == SCREENER_CHANGE_TOP
@@ -64,8 +62,6 @@ def test_validate_custom_preset(_mock_warnings):
 
 
 def test_low_confidence_need_clarification():
-    result = validate_and_build(
-        ProposeInput(intent="帮我选股", confidence="low")
-    )
+    result = validate_and_build(ProposeInput(intent="帮我选股", confidence="low"))
     assert result.kind == "need_clarification"
     assert result.questions

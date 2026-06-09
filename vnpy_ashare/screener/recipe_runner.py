@@ -67,7 +67,7 @@ def run_recipe_object(
             hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
 
     merged_rows: list[dict[str, Any]] = []
-    for vt_symbol, hits in hits_by_symbol.items():
+    for _vt_symbol, hits in hits_by_symbol.items():
         if len(hits) < recipe.min_dimensions:
             continue
         weight_sum = sum(item.weight for item in hits)
@@ -134,9 +134,7 @@ def _dimension_momentum(pool_size: int, *, weight: float) -> tuple[list[_Dimensi
             dimension_id="momentum",
             label="动量",
             weight=weight,
-            reason_builder=lambda row, rank: (
-                f"动量：涨幅 {float(row.get('change_pct') or 0):+.2f}%，排名第 {rank}"
-            ),
+            reason_builder=lambda row, rank: f"动量：涨幅 {float(row.get('change_pct') or 0):+.2f}%，排名第 {rank}",
         ), snapshot.total
     except MarketQuotesLoadError:
         raw_rows, trade_date, _ = fetch_fundamental_screening_rows()
@@ -177,9 +175,7 @@ def _dimension_turnover(pool_size: int, *, weight: float) -> tuple[list[_Dimensi
             dimension_id="turnover",
             label="换手",
             weight=weight,
-            reason_builder=lambda row, rank: (
-                f"换手：{float(row.get('turnover_rate') or 0):.2f}%，排名第 {rank}"
-            ),
+            reason_builder=lambda row, rank: f"换手：{float(row.get('turnover_rate') or 0):.2f}%，排名第 {rank}",
         ), snapshot.total
     except MarketQuotesLoadError:
         return [], 0

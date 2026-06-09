@@ -21,10 +21,16 @@ class ScreenerRunListWidgetTests(unittest.TestCase):
         read = MagicMock(config={"read": True, "trigger": "scheduled_post_close"})
         strategy = MagicMock(config={"read": False, "trigger": "manual"})
 
-        with patch("vnpy_ashare.ui.screener_run_sidebar.list_runs", return_value=[unread, read, strategy]):
-            with patch("vnpy_ashare.ui.screener_run_sidebar.is_auto_run", side_effect=lambda cfg: cfg.get("trigger", "").startswith("scheduled_")):
-                with patch("vnpy_ashare.ui.screener_run_sidebar.is_strategy_run", return_value=False):
-                    with patch("vnpy_ashare.ui.screener_run_sidebar.is_run_unread", side_effect=lambda cfg: not cfg.get("read", True)):
+        with patch("vnpy_ashare.ui.screener_run_sidebar._list_runs", return_value=[unread, read, strategy]):
+            with patch(
+                "vnpy_ashare.ui.screener_run_sidebar._is_auto_run",
+                side_effect=lambda _engine, cfg: cfg.get("trigger", "").startswith("scheduled_"),
+            ):
+                with patch("vnpy_ashare.ui.screener_run_sidebar._is_strategy_run", return_value=False):
+                    with patch(
+                        "vnpy_ashare.ui.screener_run_sidebar._is_run_unread",
+                        side_effect=lambda _engine, cfg: not cfg.get("read", True),
+                    ):
                         self.assertEqual(widget.unread_count(), 1)
 
                         widget._filter = "intraday"
@@ -40,7 +46,7 @@ class ScreenerRunSidebarTests(unittest.TestCase):
         cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def test_sidebar_init_does_not_crash_during_list_refresh(self) -> None:
-        with patch("vnpy_ashare.ui.screener_run_sidebar.list_runs", return_value=[]):
+        with patch("vnpy_ashare.ui.screener_run_sidebar._list_runs", return_value=[]):
             sidebar = ScreenerRunSidebar(mode="auto")
             self.assertIsNotNone(sidebar._list)
 

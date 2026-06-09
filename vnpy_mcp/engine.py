@@ -86,11 +86,7 @@ class McpEngine:
             parts.append("")
 
         errors = self._connect_errors
-        unavailable = [
-            p
-            for p in self.providers.values()
-            if p.available and not p.connected and p.provider_name in errors
-        ]
+        unavailable = [p for p in self.providers.values() if p.available and not p.connected and p.provider_name in errors]
         if unavailable:
             parts.append("【MCP 连接失败】")
             for provider in unavailable:

@@ -167,10 +167,7 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
         self._dimension_rows.clear()
 
         defaults = default_config_for_trigger(self._trigger_kind)
-        default_weights = {
-            str(item["dimension_id"]): float(item.get("weight") or 0)
-            for item in defaults.get("dimensions") or []
-        }
+        default_weights = {str(item["dimension_id"]): float(item.get("weight") or 0) for item in defaults.get("dimensions") or []}
 
         for dim_id in list_dimension_ids(trigger_kind=self._trigger_kind):
             label = str(DIMENSION_CATALOG[dim_id]["label"])
@@ -181,9 +178,7 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
             weight_spin.setDecimals(2)
             weight_spin.setSingleStep(0.05)
             weight_spin.setValue(default_weights.get(dim_id, 0.25))
-            enabled_box.toggled.connect(
-                lambda checked, spin=weight_spin: spin.setEnabled(checked)
-            )
+            enabled_box.toggled.connect(lambda checked, spin=weight_spin: spin.setEnabled(checked))
             weight_spin.setEnabled(enabled_box.isChecked())
 
             row_widget = QtWidgets.QWidget()

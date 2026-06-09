@@ -11,7 +11,7 @@ from vnpy_ashare.screener.data_source import (
     load_screening_quote_snapshot,
 )
 from vnpy_ashare.screener.export import resolve_export_columns
-from vnpy_ashare.screener.presets import PresetDefinition, get_preset
+from vnpy_ashare.screener.presets import SCREENER_CUSTOM, PresetDefinition, get_preset
 from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.rules import (
     apply_large_cap,
@@ -20,7 +20,6 @@ from vnpy_ashare.screener.rules import (
     apply_quote_preset,
 )
 from vnpy_ashare.screener.scheme_store import SavedScheme, get_scheme
-from vnpy_ashare.screener.presets import SCREENER_CUSTOM
 
 
 @dataclass
@@ -100,9 +99,7 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
     if preset.rule_kind == "moneyflow_in":
         raw_rows, trade_date = fetch_moneyflow_with_fallback()
         if not raw_rows:
-            raise RuntimeError(
-                "Tushare moneyflow 在最近多个交易日均无数据，请稍后重试或检查积分权限。"
-            )
+            raise RuntimeError("Tushare moneyflow 在最近多个交易日均无数据，请稍后重试或检查积分权限。")
         rows = apply_moneyflow_in(raw_rows, top_n=top_n)
         return ScreenerRunResult(
             rows=rows,

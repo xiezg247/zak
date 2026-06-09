@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, time
+from datetime import datetime, time, timedelta
 
 from vnpy.trader.utility import ZoneInfo
 

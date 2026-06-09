@@ -55,7 +55,5 @@ def format_pending_html(
 ) -> str:
     sub_html = ""
     if sub.strip():
-        sub_html = (
-            f'<br><span style="color:#8a8a95;font-size:11px;">{sub}</span>'
-        )
-    return f'{spinner} {main}{sub_html}'
+        sub_html = f'<br><span style="color:#8a8a95;font-size:11px;">{sub}</span>'
+    return f"{spinner} {main}{sub_html}"

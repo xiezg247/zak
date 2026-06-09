@@ -12,6 +12,11 @@ from vnpy_ashare.config_schema import (
     normalize_database_name,
 )
 from vnpy_ashare.paths import ENV_FILE
+from vnpy_ashare.ui.fonts import (
+    available_font_families,
+    resolve_font_family,
+    supports_font_family_selection,
+)
 from vnpy_ashare.ui.settings_snapshot import (
     detect_database_mode,
     env_database_name,
@@ -19,11 +24,6 @@ from vnpy_ashare.ui.settings_snapshot import (
     mask_secret,
     resolve_env_config_database,
     resolve_env_config_general,
-)
-from vnpy_ashare.ui.fonts import (
-    available_font_families,
-    resolve_font_family,
-    supports_font_family_selection,
 )
 from vnpy_ashare.ui.styles import SETTINGS_DIALOG_STYLESHEET, apply_settings_combo_style
 from vnpy_ashare.vt_settings import (
@@ -65,8 +65,7 @@ class SettingsDialog(QtWidgets.QDialog):
         root.setSpacing(10)
 
         hint = QtWidgets.QLabel(
-            f"环境变量请编辑 {ENV_FILE.name}；大模型项修改后可点「重载 LLM」立即生效。"
-            f"其余运行时配置保存至 {SETTING_FILE.name}，字体/数据库等需重启。"
+            f"环境变量请编辑 {ENV_FILE.name}；大模型项修改后可点「重载 LLM」立即生效。其余运行时配置保存至 {SETTING_FILE.name}，字体/数据库等需重启。"
         )
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
@@ -137,14 +136,10 @@ class SettingsDialog(QtWidgets.QDialog):
         runtime_host = QtWidgets.QWidget()
         self._runtime_form = QtWidgets.QFormLayout(runtime_host)
         self._runtime_form.setContentsMargins(0, 0, 0, 0)
-        self._runtime_form.setLabelAlignment(
-            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
-        )
+        self._runtime_form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
         self._runtime_form.setHorizontalSpacing(12)
         self._runtime_form.setVerticalSpacing(10)
-        self._runtime_form.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
-        )
+        self._runtime_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         for spec in VT_NON_DB_SPECS:
             widget = self._create_widget(spec)
             self._widgets[spec.key] = widget
@@ -203,26 +198,18 @@ class SettingsDialog(QtWidgets.QDialog):
         table.setObjectName("SettingsEnvTable")
         table.setHorizontalHeaderLabels(["变量", "值"])
         table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
+        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         table.setAlternatingRowColors(True)
         table.setShowGrid(True)
         table.setWordWrap(False)
         table.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight)
         table.verticalHeader().setVisible(False)
         table.verticalHeader().setDefaultSectionSize(self._ENV_ROW_HEIGHT)
-        table.verticalHeader().setSectionResizeMode(
-            QtWidgets.QHeaderView.ResizeMode.Fixed
-        )
+        table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
         table.setColumnWidth(0, self._ENV_KEY_COLUMN_WIDTH)
         table.horizontalHeader().setStretchLastSection(True)
-        table.horizontalHeader().setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.Fixed
-        )
-        table.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.ResizeMode.Stretch
-        )
+        table.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Fixed)
+        table.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setFixedHeight(self._ENV_ROW_HEIGHT)
         table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         return table
@@ -231,14 +218,10 @@ class SettingsDialog(QtWidgets.QDialog):
         page = QtWidgets.QWidget()
         form = QtWidgets.QFormLayout(page)
         form.setContentsMargins(0, 0, 0, 0)
-        form.setLabelAlignment(
-            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
-        )
+        form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
         form.setHorizontalSpacing(12)
         form.setVerticalSpacing(10)
-        form.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
-        )
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         self._add_runtime_field(form, "database.database", "数据库文件")
         return page
 
@@ -246,14 +229,10 @@ class SettingsDialog(QtWidgets.QDialog):
         page = QtWidgets.QWidget()
         form = QtWidgets.QFormLayout(page)
         form.setContentsMargins(0, 0, 0, 0)
-        form.setLabelAlignment(
-            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
-        )
+        form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
         form.setHorizontalSpacing(12)
         form.setVerticalSpacing(10)
-        form.setFieldGrowthPolicy(
-            QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
-        )
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
         for spec in VT_DB_SPECS:
             if spec.key in {"database.name", "database.database"}:
                 continue
@@ -342,9 +321,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self._database_mode = normalize_database_name(mode)
         self._db_sqlite_btn.setChecked(self._database_mode == "sqlite")
         self._db_questdb_btn.setChecked(self._database_mode == "questdb")
-        self._db_hint_label.setText(
-            self._QUESTDB_HINT if self._database_mode == "questdb" else self._SQLITE_HINT
-        )
+        self._db_hint_label.setText(self._QUESTDB_HINT if self._database_mode == "questdb" else self._SQLITE_HINT)
         self._db_runtime_stack.setCurrentIndex(0 if self._database_mode == "sqlite" else 1)
         self._update_database_status()
         if refresh_tables:
@@ -368,9 +345,7 @@ class SettingsDialog(QtWidgets.QDialog):
         items: list,
     ) -> None:
         hide = self._hide_secrets.isChecked()
-        align = (
-            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
-        )
+        align = QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
         table.setRowCount(len(items))
         for row, item in enumerate(items):
             display_value = item.value
@@ -418,11 +393,7 @@ class SettingsDialog(QtWidgets.QDialog):
                 text = resolve_font_family(text)
             if isinstance(widget, QtWidgets.QLineEdit):
                 widget.setText(text)
-                widget.setEchoMode(
-                    QtWidgets.QLineEdit.EchoMode.Password
-                    if hide and spec.sensitive
-                    else QtWidgets.QLineEdit.EchoMode.Normal
-                )
+                widget.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password if hide and spec.sensitive else QtWidgets.QLineEdit.EchoMode.Normal)
             elif isinstance(widget, QtWidgets.QSpinBox):
                 try:
                     widget.setValue(int(value))
@@ -508,8 +479,7 @@ class SettingsDialog(QtWidgets.QDialog):
         QtWidgets.QMessageBox.information(
             self,
             "同步完成",
-            f"已从 .env 写入 {path}\n字体、数据库等项需重启应用后生效；"
-            "大模型项可点「重载 LLM」立即应用。",
+            f"已从 .env 写入 {path}\n字体、数据库等项需重启应用后生效；大模型项可点「重载 LLM」立即应用。",
         )
 
 

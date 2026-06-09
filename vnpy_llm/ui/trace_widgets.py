@@ -9,7 +9,6 @@ from vnpy_llm.tool_labels import tool_display_name
 from vnpy_llm.trace import TraceStep, TurnTrace
 from vnpy_llm.ui.styles import INLINE_TRACE_STYLESHEET
 
-
 _STATUS_LABELS = {
     "running": "进行中",
     "ok": "完成",

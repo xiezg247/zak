@@ -5,7 +5,16 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy.event import Event, EventEngine
+from vnpy.trader.engine import MainEngine
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_screener_page_context
+from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.engine_access import (
+    get_backtest_service,
+    get_screening_service,
+    get_watchlist_service,
+)
 from vnpy_ashare.events import (
     EVENT_ASK_AI,
     EVENT_OPEN_BACKTEST,
@@ -14,16 +23,8 @@ from vnpy_ashare.events import (
     BacktestRequest,
     OrbAttentionRequest,
 )
-from vnpy.trader.engine import MainEngine
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
-
-from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_screener_page_context
-from vnpy_ashare.ai.symbol import parse_stock_symbol
-from vnpy_ashare.engine import APP_NAME, AshareEngine
-from vnpy_ashare.screener.data_source import resolve_result_source_tag
-from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.runner import ScreenerRunResult
-from vnpy_ashare.screener.run_store import get_run, mark_run_read, save_run
+from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_recipe_panel import ScreenerRecipePanel
@@ -55,7 +56,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._retired_workers: list[QtCore.QThread] = []
         self._results: list[dict[str, Any]] = []
         self._result_columns: list[tuple[str, str]] = []
-        self._watchlist_service = self._get_watchlist_service()
+        self._watchlist_service = get_watchlist_service(main_engine)
 
         self._build_ui()
         self._batch_backtest_flow = BatchBacktestFlow(
@@ -66,18 +67,15 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         )
         self.setStyleSheet(TERMINAL_STYLESHEET)
 
-    def _get_watchlist_service(self):
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.watchlist_service
-        return None
+    def _screening_service(self) -> ScreeningService | None:
+        return get_screening_service(self.main_engine)
 
     def _build_ui(self) -> None:
         page_layout = QtWidgets.QHBoxLayout(self)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(0)
 
-        self.run_sidebar = ScreenerRunSidebar(mode="auto", parent=self)
+        self.run_sidebar = ScreenerRunSidebar(mode="auto", main_engine=self.main_engine, parent=self)
         self.run_sidebar.run_selected.connect(self._load_historical_run)
         self.run_sidebar.copy_run_id_requested.connect(self._on_copy_run_id)
         self.run_sidebar.ask_ai_requested.connect(self._on_ask_ai_for_run)
@@ -155,10 +153,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         form_layout.setContentsMargins(0, 0, 0, 0)
         form_layout.setSpacing(6)
 
-        hint = QtWidgets.QLabel(
-            "在此配置多因子配方；定时任务仅引用配方 ID 与 Cron。"
-            "盘中/盘后任务完成后，结果会出现在左侧自动结果列表。"
-        )
+        hint = QtWidgets.QLabel("在此配置多因子配方；定时任务仅引用配方 ID 与 Cron。盘中/盘后任务完成后，结果会出现在左侧自动结果列表。")
         hint.setObjectName("ScreenerHint")
         hint.setWordWrap(True)
         form_layout.addWidget(hint)
@@ -232,13 +227,18 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._recipe_worker = None
         self._release_worker(worker)
         summary = self._apply_result(result)
-        save_run(
-            condition=result.condition,
-            source=result.source,
-            rows=self._results,
-            total_scanned=result.total_scanned,
-            config={"trigger": "manual", "recipe_id": recipe_id},
-        )
+        service = self._screening_service()
+        if service is not None:
+            service.persist_run_result(
+                result,
+                extra_config={"trigger": "manual", "recipe_id": recipe_id},
+            )
+        else:
+            self._store_screening_results(
+                condition=result.condition,
+                rows=self._results,
+                updated_at=result.updated_at,
+            )
         self.run_output_panel.complete_run(
             summary=summary,
             detail=f"配方 ID {recipe_id} · 已写入自动结果",
@@ -262,17 +262,16 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         updated_at: str | None,
         prefix: str = "",
     ) -> str:
-        source_label = resolve_result_source_tag(source)
+        service = self._screening_service()
+        source_label = service.format_source_tag(source) if service else source
         updated = updated_at or "-"
-        headline = (
-            f"「{condition}」命中 {row_count} 条 · "
-            f"扫描 {total_scanned} 只 · {source_label} · 更新 {updated}"
-        )
+        headline = f"「{condition}」命中 {row_count} 条 · 扫描 {total_scanned} 只 · {source_label} · 更新 {updated}"
         return f"{prefix}{headline}" if prefix else headline
 
     def _apply_result(self, result: ScreenerRunResult, *, prefix: str = "") -> str:
+        service = self._screening_service()
         self._results = list(result.rows)
-        self._result_columns = result.columns or resolve_export_columns(self._results)
+        self._result_columns = result.columns or (service.resolve_export_columns(self._results) if service else [])
         apply_screener_results_view(
             self.result_table,
             self._results,
@@ -296,7 +295,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
     def on_scheduled_run_complete(self, job_id: str, message: str) -> None:
         self.run_sidebar.refresh()
         self.run_sidebar.set_expanded(True)
-        latest = get_run_from_latest_auto(job_id)
+        service = self._screening_service()
+        latest = service.find_latest_auto_run_for_job(job_id) if service else None
         if latest is not None:
             self._load_historical_run(latest.id, from_scheduler=True)
         self.run_output_panel.append_log(f"[定时] {message}")
@@ -306,13 +306,15 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             )
 
     def _load_historical_run(self, run_id: str, *, from_scheduler: bool = False) -> None:
-        record = get_run(run_id)
+        service = self._screening_service()
+        record = service.get_run_record(run_id) if service else None
         if record is None:
             self._append_action_log("自动选股结果不存在或已删除")
             return
-        mark_run_read(run_id)
+        if service is not None:
+            service.mark_run_read(run_id)
         self._results = list(record.rows)
-        self._result_columns = resolve_export_columns(self._results)
+        self._result_columns = service.resolve_export_columns(self._results) if service else []
         apply_screener_results_view(
             self.result_table,
             self._results,
@@ -360,20 +362,10 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         )
         self._append_action_log(f"已打开 AI，预填解读请求：{condition}")
 
-    def _get_screening_service(self):
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.screening_service
-        return None
-
     def _store_screening_results(self, *, condition: str, rows: list, updated_at: str | None = None) -> None:
-        service = self._get_screening_service()
+        service = self._screening_service()
         if service is not None:
             service.set_screening_results(condition=condition, rows=rows, updated_at=updated_at)
-            return
-        from vnpy_ashare.ai.context_store import set_screening_results
-
-        set_screening_results(condition=condition, rows=rows, updated_at=updated_at)
 
     def _add_selected_to_watchlist(self) -> None:
         if self._watchlist_service is None:
@@ -398,12 +390,6 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         if skipped:
             msg += f" · 跳过 {skipped} 只"
         self._append_action_log(msg)
-
-    def _get_backtest_service(self):
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.backtest_service
-        return None
 
     def _download_selected_bars(self) -> None:
         if self._download_worker is not None and self._download_worker.isRunning():
@@ -461,7 +447,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         if not selected:
             QtWidgets.QMessageBox.information(self, "提示", "请先勾选要批量回测的标的")
             return
-        backtest_service = self._get_backtest_service()
+        backtest_service = get_backtest_service(self.main_engine)
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
         self._batch_backtest_flow.start(
@@ -477,13 +463,18 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             QtWidgets.QMessageBox.information(self, "提示", "暂无自动选股结果")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "导出 CSV", "auto_screener_results.csv", "CSV (*.csv)",
+            self,
+            "导出 CSV",
+            "auto_screener_results.csv",
+            "CSV (*.csv)",
         )
         if not path:
             return
         if not path.lower().endswith(".csv"):
             path += ".csv"
-        export_rows_to_csv(self._results, path)
+        service = self._screening_service()
+        if service is not None:
+            service.export_csv(self._results, path)
         self._append_action_log(f"已导出：{path}")
 
     def activate(self) -> None:
@@ -502,16 +493,3 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()
         super().closeEvent(event)
-
-
-def get_run_from_latest_auto(job_id: str):
-    from vnpy_ashare.screener.run_store import is_auto_run, list_runs
-
-    expected = f"scheduled_{job_id.removeprefix('screen_')}"
-    for record in list_runs(limit=10):
-        if not is_auto_run(record.config):
-            continue
-        if str(record.config.get("trigger", "")) == expected:
-            return record
-    runs = [r for r in list_runs(limit=5) if is_auto_run(r.config)]
-    return runs[0] if runs else None

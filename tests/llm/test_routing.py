@@ -5,11 +5,11 @@ from __future__ import annotations
 from vnpy_llm.intent import BacktestIntent, IntentAnalysis, IntentRoute, MarketEnrichment, ScreeningIntent
 from vnpy_llm.routing import (
     FEAR_GREED_TOOL,
+    _keyword_fallback,
+    _normalize_market_enrichment,
     apply_fear_greed_tools,
     build_routing_hint,
     filter_tools_by_route,
-    _keyword_fallback,
-    _normalize_market_enrichment,
 )
 
 

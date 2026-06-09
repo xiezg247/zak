@@ -16,10 +16,7 @@ class VnpyContextSkill(SkillTemplate):
         return [
             ToolSpec(
                 name="get_quote_context",
-                description=(
-                    "获取终端当前页面与选中标的上下文（页面名、代码、行情摘要）。"
-                    "用户问「当前这只」「我选中的」时优先调用。"
-                ),
+                description=("获取终端当前页面与选中标的上下文（页面名、代码、行情摘要）。用户问「当前这只」「我选中的」时优先调用。"),
                 parameters={"type": "object", "properties": {}},
             ),
         ]

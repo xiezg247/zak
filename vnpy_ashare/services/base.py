@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from vnpy.event import EventEngine
     from vnpy.trader.engine import MainEngine
+
     from vnpy_ashare.engine import AshareEngine
 
 

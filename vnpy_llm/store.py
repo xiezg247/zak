@@ -68,10 +68,7 @@ def _connect():
 
 
 def _ensure_session_columns(conn: sqlite3.Connection) -> None:
-    columns = {
-        str(row["name"])
-        for row in conn.execute("PRAGMA table_info(sessions)").fetchall()
-    }
+    columns = {str(row["name"]) for row in conn.execute("PRAGMA table_info(sessions)").fetchall()}
     if "scene" not in columns:
         conn.execute("ALTER TABLE sessions ADD COLUMN scene TEXT NOT NULL DEFAULT ''")
 
@@ -83,12 +80,11 @@ def _now() -> str:
 MAX_MESSAGES_PER_SESSION = 50
 MAX_TOOL_RESULT_CHARS = 2000
 
+
 class ChatStore:
     def get_or_create_default_session(self) -> str:
         with _connect() as conn:
-            row = conn.execute(
-                "SELECT id FROM sessions ORDER BY updated_at DESC LIMIT 1"
-            ).fetchone()
+            row = conn.execute("SELECT id FROM sessions ORDER BY updated_at DESC LIMIT 1").fetchone()
             if row:
                 return str(row["id"])
             session_id = uuid.uuid4().hex
@@ -186,10 +182,7 @@ class ChatStore:
                 "SELECT role, content, created_at FROM messages WHERE session_id=? ORDER BY id",
                 (session_id,),
             ).fetchall()
-        messages = [
-            ChatMessage(role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"]))
-            for row in rows
-        ]
+        messages = [ChatMessage(role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"])) for row in rows]
         if len(messages) > MAX_MESSAGES_PER_SESSION:
             messages = messages[-MAX_MESSAGES_PER_SESSION:]
         return messages

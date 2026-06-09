@@ -9,11 +9,13 @@ from vnpy.trader.constant import Exchange, Interval
 
 from vnpy_ashare.paths import VNTRADER_DIR
 
-STOCK_EXCHANGES: frozenset[Exchange] = frozenset({
-    Exchange.SSE,
-    Exchange.SZSE,
-    Exchange.BSE,
-})
+STOCK_EXCHANGES: frozenset[Exchange] = frozenset(
+    {
+        Exchange.SSE,
+        Exchange.SZSE,
+        Exchange.BSE,
+    }
+)
 
 EXCHANGE_CN_NAMES: dict[Exchange, str] = {
     Exchange.SSE: "上交所",
@@ -50,6 +52,7 @@ def format_decimal_field(value: float, *, places: int = 6) -> str:
     if "." in text:
         text = text.rstrip("0").rstrip(".")
     return text
+
 
 BACKTESTER_SETTING_FILE = VNTRADER_DIR / "cta_backtester_setting.json"
 

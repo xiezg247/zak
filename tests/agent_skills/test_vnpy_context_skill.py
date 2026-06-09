@@ -7,11 +7,9 @@ import unittest
 from unittest.mock import MagicMock
 
 import tests._bootstrap  # noqa: F401
-
+from skills.vnpy_context_skill import VnpyContextSkill
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_skills.engine import SkillEngine
-
-from skills.vnpy_context_skill import VnpyContextSkill
 
 
 class VnpyContextSkillTests(unittest.TestCase):

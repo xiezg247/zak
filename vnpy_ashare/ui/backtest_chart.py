@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import numpy as np
 from pandas import DataFrame
-
 from vnpy_ctabacktester.ui.widget import BacktesterChart
 
 

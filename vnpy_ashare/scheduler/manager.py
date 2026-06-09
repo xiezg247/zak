@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -105,13 +105,8 @@ class TaskSchedulerManager:
                 description="TickFlow 全市场快照写入 Redis（开发调试用，生产建议独立进程）",
                 runner=collect_market_quotes,
                 config_attr="collect_quotes",
-                schedule_builder=lambda cfg: IntervalTrigger(
-                    seconds=max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)
-                ),
-                schedule_text_builder=lambda cfg: (
-                    f"交易时段内每 {max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)} 秒；"
-                    "非交易时段自动休眠"
-                ),
+                schedule_builder=lambda cfg: IntervalTrigger(seconds=max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)),
+                schedule_text_builder=lambda cfg: f"交易时段内每 {max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)} 秒；非交易时段自动休眠",
             ),
             "sync_universe": _JobMeta(
                 job_id="sync_universe",
@@ -124,9 +119,7 @@ class TaskSchedulerManager:
                     hour=cfg.cron_hour,
                     minute=cfg.cron_minute,
                 ),
-                schedule_text_builder=lambda cfg: (
-                    f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}"
-                ),
+                schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
             ),
             "batch_download": _JobMeta(
                 job_id="batch_download",
@@ -139,10 +132,7 @@ class TaskSchedulerManager:
                     hour=cfg.cron_hour,
                     minute=cfg.cron_minute,
                 ),
-                schedule_text_builder=lambda cfg: (
-                    f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，"
-                    f"起始于 {cfg.download_start}"
-                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}",
             ),
             "screen_intraday": _JobMeta(
                 job_id="screen_intraday",
@@ -151,10 +141,7 @@ class TaskSchedulerManager:
                 runner=lambda: run_scheduled_auto_screen("screen_intraday"),
                 config_attr="screen_intraday",
                 schedule_builder=lambda _cfg: CronTrigger(hour="10,14", minute=0),
-                schedule_text_builder=lambda cfg: (
-                    f"交易日 {cfg.cron_hours}:{cfg.cron_minute_intraday:02d} · "
-                    f"{_recipe_label(cfg.recipe_id, 'intraday_multi')}"
-                ),
+                schedule_text_builder=lambda cfg: f"交易日 {cfg.cron_hours}:{cfg.cron_minute_intraday:02d} · {_recipe_label(cfg.recipe_id, 'intraday_multi')}",
             ),
             "screen_post_close": _JobMeta(
                 job_id="screen_post_close",
@@ -167,10 +154,7 @@ class TaskSchedulerManager:
                     hour=cfg.cron_hour,
                     minute=cfg.cron_minute,
                 ),
-                schedule_text_builder=lambda cfg: (
-                    f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · "
-                    f"{_recipe_label(cfg.recipe_id, 'post_close_multi')}"
-                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · {_recipe_label(cfg.recipe_id, 'post_close_multi')}",
             ),
         }
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)

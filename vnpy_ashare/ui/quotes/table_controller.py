@@ -120,9 +120,7 @@ class TableController:
             valid_cols.insert(0, "index")
             self.visible_columns = valid_cols
         if len(parts) > 1 and parts[1]:
-            self.visible_tail_columns = [
-                k for k in parts[1].split(",") if k in ALL_TAIL_COLUMNS
-            ]
+            self.visible_tail_columns = [k for k in parts[1].split(",") if k in ALL_TAIL_COLUMNS]
 
     def apply_header_layout(self, *, column_count: int | None = None) -> None:
         page = self._p
@@ -168,16 +166,10 @@ class TableController:
             page.display_stocks = []
             page.market_table.setRowCount(0)
             page._quote_timer.stop()
-            page.status_label.setText(
-                f"共 {len(page.all_stocks)} 只 A 股，请输入关键词搜索（最多 {MAX_DISPLAY_ROWS} 条）"
-            )
+            page.status_label.setText(f"共 {len(page.all_stocks)} 只 A 股，请输入关键词搜索（最多 {MAX_DISPLAY_ROWS} 条）")
             return
 
-        matched = (
-            [s for s in page.all_stocks if keyword in s.search_key]
-            if keyword
-            else list(page.all_stocks)
-        )
+        matched = [s for s in page.all_stocks if keyword in s.search_key] if keyword else list(page.all_stocks)
         page.display_stocks = matched[:MAX_DISPLAY_ROWS]
         self.render_table()
         if page.config.auto_refresh_quotes:
@@ -470,7 +462,6 @@ class TableController:
         )
         all_keys = self._all_quote_column_keys()
         visible_indices: list[int] = []
-        tail_cols = tail_values if tail_values is not None else [tail_value]
         tail_start = len(all_keys)
         for col_key in self.visible_columns:
             if col_key in all_keys:
@@ -491,13 +482,9 @@ class TableController:
                 filtered_price_cols.add(new_col)
             if src_idx < len(all_keys):
                 col_key = all_keys[src_idx]
-                filtered_sort_keys.append(
-                    self._quote_sort_key(col_key, item, quote, index_text)
-                )
+                filtered_sort_keys.append(self._quote_sort_key(col_key, item, quote, index_text))
             else:
-                filtered_sort_keys.append(
-                    values[src_idx] if src_idx < len(values) else ""
-                )
+                filtered_sort_keys.append(values[src_idx] if src_idx < len(values) else "")
 
         color = FLAT_COLOR
         if quote:
@@ -571,9 +558,7 @@ class TableController:
             action.setCheckable(True)
             action.setChecked(key in self.visible_tail_columns)
             action.setData(key)
-            action.triggered.connect(
-                lambda checked, k=key: self.on_tail_column_toggle(k, checked)
-            )
+            action.triggered.connect(lambda checked, k=key: self.on_tail_column_toggle(k, checked))
 
         button = page.column_button
         menu.popup(button.mapToGlobal(button.rect().bottomLeft()))

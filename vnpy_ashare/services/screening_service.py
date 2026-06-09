@@ -7,8 +7,12 @@ from typing import Any
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_ashare.ai.context_store import (
     ScreeningResultContext,
-    get_screening_results as _get_screening_results,
     set_ai_context,
+)
+from vnpy_ashare.ai.context_store import (
+    get_screening_results as _get_screening_results,
+)
+from vnpy_ashare.ai.context_store import (
     set_screening_results as _set_screening_results,
 )
 from vnpy_ashare.screener.presets import list_builtin_preset_names
@@ -58,10 +62,7 @@ class ScreeningService(BaseService):
 
     def quote_rows_unavailable_message(self, reason: str | None = None) -> str:
         detail = reason or "未知原因"
-        return (
-            f"暂无可用的市场行情数据（{detail}）。"
-            "请运行「工具 → 立即执行 → 行情采集」，或打开「市场」页加载行情后再选股。"
-        )
+        return f"暂无可用的市场行情数据（{detail}）。请运行「工具 → 立即执行 → 行情采集」，或打开「市场」页加载行情后再选股。"
 
     def screen_by_condition(
         self,
@@ -160,6 +161,185 @@ class ScreeningService(BaseService):
     def publish_page_context(self) -> None:
         publish_screener_page_context()
 
+    # ── UI Facade（委托 screener 子模块，避免页面直连 store） ──
+
+    def format_source_tag(self, source: str) -> str:
+        from vnpy_ashare.screener.data_source import resolve_result_source_tag
+
+        return resolve_result_source_tag(source)
+
+    def resolve_export_columns(self, rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
+        from vnpy_ashare.screener.export import resolve_export_columns
+
+        return resolve_export_columns(rows)
+
+    def export_csv(self, rows: list[dict[str, Any]], path: str) -> None:
+        from vnpy_ashare.screener.export import export_rows_to_csv
+
+        export_rows_to_csv(rows, path)
+
+    def get_run_record(self, run_id: str):
+        from vnpy_ashare.screener.run_store import get_run
+
+        return get_run(run_id)
+
+    def mark_run_read(self, run_id: str) -> None:
+        from vnpy_ashare.screener.run_store import mark_run_read
+
+        mark_run_read(run_id)
+
+    def save_manual_run(
+        self,
+        result: ScreenerRunResult,
+        request: ScreenerRequest | None,
+    ) -> None:
+        """策略选股页手动运行后落库。"""
+        from vnpy_ashare.screener.runner import build_scheme_config
+
+        config = build_scheme_config(request) if request else {}
+        config["trigger"] = "manual"
+        self.persist_run_result(result, extra_config=config)
+
+    def list_schemes(self):
+        from vnpy_ashare.screener.scheme_store import list_schemes
+
+        return list_schemes()
+
+    def save_scheme(self, name: str, config: dict[str, Any]):
+        from vnpy_ashare.screener.scheme_store import save_scheme
+
+        return save_scheme(name, config)
+
+    def delete_scheme(self, scheme_id: str) -> None:
+        from vnpy_ashare.screener.scheme_store import delete_scheme
+
+        delete_scheme(scheme_id)
+
+    def get_preset(self, name: str):
+        from vnpy_ashare.screener.presets import get_preset
+
+        return get_preset(name)
+
+    @staticmethod
+    def is_custom_preset(name: str) -> bool:
+        from vnpy_ashare.screener.presets import SCREENER_CUSTOM
+
+        return name == SCREENER_CUSTOM
+
+    def build_scheme_config(self, request: ScreenerRequest) -> dict[str, Any]:
+        from vnpy_ashare.screener.runner import build_scheme_config
+
+        return build_scheme_config(request)
+
+    # ── 运行历史（侧栏 / 收件箱） ──
+
+    def list_run_history(self, limit: int = 40):
+        from vnpy_ashare.screener.run_store import list_runs
+
+        return list_runs(limit=limit)
+
+    def delete_run_record(self, run_id: str) -> None:
+        from vnpy_ashare.screener.run_store import delete_run
+
+        delete_run(run_id)
+
+    @staticmethod
+    def is_auto_run_config(config: dict[str, Any] | None) -> bool:
+        from vnpy_ashare.screener.run_store import is_auto_run
+
+        return is_auto_run(config)
+
+    @staticmethod
+    def is_strategy_run_config(config: dict[str, Any] | None) -> bool:
+        from vnpy_ashare.screener.run_store import is_strategy_run
+
+        return is_strategy_run(config)
+
+    @staticmethod
+    def is_run_unread_config(config: dict[str, Any] | None) -> bool:
+        from vnpy_ashare.screener.run_store import is_run_unread
+
+        return is_run_unread(config)
+
+    def find_latest_auto_run_for_job(self, job_id: str):
+        """定时任务完成后定位最新自动选股记录。"""
+        from vnpy_ashare.screener.run_store import is_auto_run, list_runs
+
+        expected = f"scheduled_{job_id.removeprefix('screen_')}"
+        for record in list_runs(limit=10):
+            if not is_auto_run(record.config):
+                continue
+            if str(record.config.get("trigger", "")) == expected:
+                return record
+        runs = [r for r in list_runs(limit=5) if is_auto_run(r.config)]
+        return runs[0] if runs else None
+
+    def persist_scheduled_recipe_run(
+        self,
+        result: ScreenerRunResult,
+        *,
+        trigger: str,
+        recipe_id: str,
+    ) -> None:
+        """定时/配方自动选股落库。"""
+        from vnpy_ashare.screener.recipe import resolve_recipe
+        from vnpy_ashare.screener.recipe_runner import build_reason_summary
+
+        recipe = resolve_recipe(recipe_id)
+        reason = (
+            build_reason_summary(
+                recipe=recipe,
+                trigger=trigger,
+                row_count=len(result.rows),
+            )
+            if recipe is not None
+            else trigger
+        )
+        self.persist_run_result(
+            result,
+            trigger=trigger,
+            extra_config={"recipe_id": recipe_id, "reason_summary": reason},
+        )
+
+
+def persist_scheduled_recipe_run(
+    result: ScreenerRunResult,
+    *,
+    trigger: str,
+    recipe_id: str,
+) -> None:
+    """无 Engine 时定时选股落库（委托 run_store + context_store）。"""
+    from vnpy_ashare.screener.recipe import resolve_recipe
+    from vnpy_ashare.screener.recipe_runner import build_reason_summary
+    from vnpy_ashare.screener.run_store import save_run
+
+    recipe = resolve_recipe(recipe_id)
+    rows = list(result.rows)
+    config: dict[str, Any] = {
+        "trigger": trigger,
+        "recipe_id": recipe_id,
+        "reason_summary": build_reason_summary(
+            recipe=recipe,
+            trigger=trigger,
+            row_count=len(rows),
+        )
+        if recipe is not None
+        else trigger,
+    }
+    _set_screening_results(
+        condition=result.condition,
+        rows=rows,
+        updated_at=result.updated_at,
+    )
+    save_run(
+        condition=result.condition,
+        source=result.source,
+        rows=rows,
+        total_scanned=result.total_scanned,
+        config=config,
+    )
+    publish_screener_page_context()
+
 
 def publish_screener_page_context() -> None:
     """推送选股页 AI 上下文（含悬浮球 actions）。"""
@@ -184,9 +364,7 @@ def publish_screener_page_context() -> None:
             change = row.get("change_pct", "")
             lines.append(f"  {index}. {symbol} {name} {change}")
         if ctx.count > len(preview):
-            lines.append(
-                f"  … 另有 {ctx.count - len(preview)} 条，可调用 get_screening_context 查看"
-            )
+            lines.append(f"  … 另有 {ctx.count - len(preview)} 条，可调用 get_screening_context 查看")
         data = AiContextData(page="选股", extra="\n".join(lines))
 
     set_ai_context(enrich_context_with_actions(data))

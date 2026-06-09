@@ -11,7 +11,7 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare import app_db
 from vnpy_ashare.app_db import add_watchlist_item, build_symbol_name_map, init_app_db, save_universe_rows
-from vnpy_ashare.ui.manager_widget import ManagerWidget, _DOWNLOAD_HINT, _TREE_LABELS
+from vnpy_ashare.ui.manager_widget import _DOWNLOAD_HINT, _TREE_LABELS, ManagerWidget
 
 
 class ManagerWidgetUiTests(unittest.TestCase):

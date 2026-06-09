@@ -7,12 +7,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import tests._bootstrap  # noqa: F401
-
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtWidgets
 
+import tests._bootstrap  # noqa: F401
 from vnpy_llm.client import StreamCancelled
 from vnpy_llm.config import LlmConfig
 from vnpy_llm.engine import LlmEngine
@@ -32,9 +31,12 @@ class StreamCancelTests(unittest.TestCase):
         self.main_engine = MagicMock(spec=MainEngine)
         self.main_engine.engines = {}
         self.event_engine = EventEngine()
-        with patch("vnpy_ashare.ai.context_store.register_context_listener"), patch.object(
-            LlmEngine,
-            "_emit_tools_status",
+        with (
+            patch("vnpy_ashare.ai.context_store.register_context_listener"),
+            patch.object(
+                LlmEngine,
+                "_emit_tools_status",
+            ),
         ):
             self.engine = LlmEngine(self.main_engine, self.event_engine)
         self.engine.config = LlmConfig(
@@ -65,10 +67,13 @@ class StreamCancelTests(unittest.TestCase):
                 raise StreamCancelled("用户已停止生成")
             yield "不应出现"
 
-        with patch("vnpy_llm.engine.stream_chat_completion", side_effect=fake_stream), patch.object(
-            self.engine,
-            "_get_openai_tools",
-            return_value=[],
+        with (
+            patch("vnpy_llm.engine.stream_chat_completion", side_effect=fake_stream),
+            patch.object(
+                self.engine,
+                "_get_openai_tools",
+                return_value=[],
+            ),
         ):
             gen = self.engine.stream_reply("你好")
             self.assertEqual(next(gen), "部分")
@@ -91,9 +96,12 @@ class ReloadConfigTests(unittest.TestCase):
     def test_reload_config_returns_new_config(self) -> None:
         main_engine = MagicMock(spec=MainEngine)
         main_engine.engines = {}
-        with patch("vnpy_ashare.ai.context_store.register_context_listener"), patch.object(
-            LlmEngine,
-            "_emit_tools_status",
+        with (
+            patch("vnpy_ashare.ai.context_store.register_context_listener"),
+            patch.object(
+                LlmEngine,
+                "_emit_tools_status",
+            ),
         ):
             engine = LlmEngine(main_engine, EventEngine())
         new_cfg = LlmConfig(

@@ -6,9 +6,8 @@ import unittest
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-from tests._bootstrap import PROJECT_ROOT
-
 from skills.registry import OFFICIAL_SKILLS, format_skills_prompt
+from tests._bootstrap import PROJECT_ROOT
 from vnpy_skills.agent_skill import AgentSkill
 from vnpy_skills.engine import SkillEngine
 

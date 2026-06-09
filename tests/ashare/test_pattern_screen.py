@@ -5,10 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-import tests._bootstrap  # noqa: F401
-
 from vnpy.trader.constant import Exchange
 
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.screener.pattern_rules import BarSeries
 from vnpy_ashare.screener.pattern_screen import (
@@ -47,9 +46,10 @@ class PatternScreenTests(unittest.TestCase):
 
         def _load_bars(symbol: str, exchange: Exchange) -> list:
             _ = symbol, exchange
-            from vnpy.trader.object import BarData
-            from vnpy.trader.constant import Interval
             from datetime import datetime, timedelta
+
+            from vnpy.trader.constant import Interval
+            from vnpy.trader.object import BarData
 
             bars = []
             anchor = datetime(2024, 1, 1, 15, 0, 0)

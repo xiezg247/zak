@@ -11,9 +11,15 @@ from vnpy.trader.database import get_database
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.app_db import load_universe_page, search_universe
+from vnpy_ashare.bar_access import (
+    get_period_overview,
+    get_scope_overview,
+    load_period_bars,
+    load_scope_bars,
+    load_universe_page,
+    search_universe,
+)
 from vnpy_ashare.bar_health import BarMeta, inspect_bar_gaps
-from vnpy_ashare.bar_store import get_period_overview, get_scope_overview, load_period_bars, load_scope_bars
 from vnpy_ashare.bars import (
     default_minute_download_start,
     download_bars,
@@ -435,10 +441,7 @@ class MarketPageLoadWorker(QtCore.QThread):
                     offset=offset,
                     board=self.board,
                 )
-                items = [
-                    StockItem(symbol=symbol, exchange=exchange, name=name)
-                    for symbol, exchange, name in rows
-                ]
+                items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "search"
             else:
@@ -447,10 +450,7 @@ class MarketPageLoadWorker(QtCore.QThread):
                     limit=self.page_size,
                     board=self.board,
                 )
-                items = [
-                    StockItem(symbol=symbol, exchange=exchange, name=name)
-                    for symbol, exchange, name in rows
-                ]
+                items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "list"
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_llm.intent import IntentAnalysis, IntentRoute, MarketEnrichment
-from vnpy_llm.routing import FEAR_GREED_TOOL, apply_fear_greed_tools, _normalize_market_enrichment
+from vnpy_llm.routing import FEAR_GREED_TOOL, _normalize_market_enrichment, apply_fear_greed_tools
 
 
 def _tool(name: str) -> dict:

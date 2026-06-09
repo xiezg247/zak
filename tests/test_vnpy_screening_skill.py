@@ -45,12 +45,14 @@ def test_screen_by_condition_ok():
 
     svc = MagicMock()
     svc.run_request.return_value = ScreenerRunResult(
-        rows=[{
-            "symbol": "000001",
-            "name": "平安银行",
-            "vt_symbol": "000001.SZSE",
-            "change_pct": 5.2,
-        }],
+        rows=[
+            {
+                "symbol": "000001",
+                "name": "平安银行",
+                "vt_symbol": "000001.SZSE",
+                "change_pct": 5.2,
+            }
+        ],
         condition="涨幅榜",
         updated_at="2026-06-09",
         total_scanned=100,
@@ -75,13 +77,15 @@ def test_screen_by_pattern_ok():
 
     svc = MagicMock()
     svc.run_pattern_screen.return_value = ScreenerRunResult(
-        rows=[{
-            "symbol": "600519",
-            "name": "贵州茅台",
-            "vt_symbol": "600519.SSE",
-            "pattern_score": 12.5,
-            "pattern_hint": "MA5>MA10>MA20>MA60",
-        }],
+        rows=[
+            {
+                "symbol": "600519",
+                "name": "贵州茅台",
+                "vt_symbol": "600519.SSE",
+                "pattern_score": 12.5,
+                "pattern_hint": "MA5>MA10>MA20>MA60",
+            }
+        ],
         condition="形态 · 均线多头",
         updated_at="2026-06-09",
         total_scanned=50,
@@ -107,9 +111,7 @@ def test_propose_screening_builtin():
 
     skill = _make_skill(MagicMock())
     with patch("vnpy_ashare.screener.nl_mapper.collect_warnings", return_value=[]):
-        result = json.loads(
-            skill.propose_screening("今天涨最多的", preset="涨幅榜", top_n=5, confidence="high")
-        )
+        result = json.loads(skill.propose_screening("今天涨最多的", preset="涨幅榜", top_n=5, confidence="high"))
     assert result["status"] == "pending_confirm"
     assert result["draft_id"]
     assert result["preset"] == "涨幅榜"

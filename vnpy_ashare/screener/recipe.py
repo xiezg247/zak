@@ -75,11 +75,7 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
 
 
 def list_dimension_ids(*, trigger_kind: TriggerKind) -> list[str]:
-    return [
-        dim_id
-        for dim_id, meta in DIMENSION_CATALOG.items()
-        if trigger_kind in meta["trigger_kinds"]
-    ]
+    return [dim_id for dim_id, meta in DIMENSION_CATALOG.items() if trigger_kind in meta["trigger_kinds"]]
 
 
 def recipe_to_config(recipe: ScreenRecipe) -> dict[str, Any]:

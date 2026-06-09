@@ -5,10 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-import vnpy_ashare.quotes.tickflow_stream as tickflow_stream_module
-
 from vnpy.trader.ui import QtWidgets
 
+import vnpy_ashare.quotes.tickflow_stream as tickflow_stream_module
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tickflow_stream
 
 
@@ -68,7 +67,6 @@ class TickflowStreamBridgeTests(unittest.TestCase):
         mock_stream.close.assert_called_once()
         self.assertTrue(bridge._disabled)
         self.assertFalse(bridge.is_connected)
-
 
     @patch.dict("os.environ", {"ALL_PROXY": "socks5://127.0.0.1:7890"}, clear=False)
     def test_can_use_stream_without_python_socks(self) -> None:

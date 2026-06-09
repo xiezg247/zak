@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.screener.recipe_runner import _DimensionHit, build_reason_summary, run_recipe
 from vnpy_ashare.screener.recipe import get_recipe
+from vnpy_ashare.screener.recipe_runner import _DimensionHit, build_reason_summary, run_recipe
 
 
 def test_run_recipe_merges_dimensions():

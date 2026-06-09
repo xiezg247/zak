@@ -103,7 +103,7 @@ def build_strategy_prompt() -> str:
         return ""
 
     lines = ["【可用回测策略】"]
-    for name, meta in sorted(STRATEGY_REGISTRY.items()):
+    for _name, meta in sorted(STRATEGY_REGISTRY.items()):
         tags = " · ".join(meta.tags)
         lines.append(f"- {meta.title}（{tags}）")
         lines.append(f"  说明：{meta.summary}")
@@ -114,8 +114,6 @@ def build_strategy_prompt() -> str:
             anti = "；".join(meta.anti_scenarios)
             lines.append(f"  不适用：{anti}")
         if meta.param_hints:
-            params = "，".join(
-                f"{n}={hint.split('，')[0]}" for n, hint in meta.param_hints
-            )
+            params = "，".join(f"{n}={hint.split('，')[0]}" for n, hint in meta.param_hints)
             lines.append(f"  参数：{params}")
     return "\n".join(lines)

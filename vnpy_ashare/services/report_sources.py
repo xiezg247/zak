@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timedelta
 from typing import Any
 
+from vnpy.trader.constant import Exchange
+
 
 def report_fallback_enabled() -> bool:
     value = (os.getenv("ANALYSIS_REPORT_FALLBACK") or "tushare").strip().lower()

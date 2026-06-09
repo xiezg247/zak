@@ -16,7 +16,7 @@ Confidence = Literal["high", "medium", "low"]
 DEFAULT_TTL_MINUTES = 10
 
 _lock = threading.Lock()
-_drafts: dict[str, "ScreenerDraft"] = {}
+_drafts: dict[str, ScreenerDraft] = {}
 
 
 @dataclass

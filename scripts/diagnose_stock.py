@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -60,9 +60,7 @@ def describe_ma_alignment(
     return detail
 
 
-def technical_snapshot(
-    symbol: str, exchange: Exchange, lookback: int = 60
-) -> dict[str, Any]:
+def technical_snapshot(symbol: str, exchange: Exchange, lookback: int = 60) -> dict[str, Any]:
     bars = load_daily_bars(symbol, exchange)
     warnings: list[str] = []
 
@@ -118,7 +116,7 @@ def technical_snapshot(
 
 def fetch_mcp_reports(symbol: str, exchange: Exchange) -> dict[str, Any]:
     """通过通达信 MCP 获取研报。"""
-    from vnpy_mcp.client import McpClientError, list_remote_tools, call_remote_tool
+    from vnpy_mcp.client import McpClientError, call_remote_tool, list_remote_tools
     from vnpy_mcp.config import load_all_mcp_servers
 
     configs = load_all_mcp_servers()
@@ -135,9 +133,7 @@ def fetch_mcp_reports(symbol: str, exchange: Exchange) -> dict[str, Any]:
         return {"reports": [], "warnings": [f"通达信 MCP 连接失败: {ex}"]}
 
     # 找研报/F10 工具
-    report_tools = [t for t in tools if any(
-        kw in t.name.lower() for kw in ("report", "research", "yanbao", "研报", "rating", "f10", "fundamental")
-    )]
+    report_tools = [t for t in tools if any(kw in t.name.lower() for kw in ("report", "research", "yanbao", "研报", "rating", "f10", "fundamental"))]
     if not report_tools:
         return {"reports": [], "warnings": [f"通达信 MCP 未提供研报工具（共 {len(tools)} 个工具）"]}
 
@@ -217,7 +213,7 @@ def historical_summary(symbol: str, exchange: Exchange, lookback: int = 20) -> d
     if len(daily_changes) >= 2:
         mean_change = sum(daily_changes) / len(daily_changes)
         variance = sum((v - mean_change) ** 2 for v in daily_changes) / len(daily_changes)
-        volatility_pct = round(variance ** 0.5, 2)
+        volatility_pct = round(variance**0.5, 2)
 
     up_streak = down_streak = 0
     max_up = max_down = 0
@@ -292,11 +288,11 @@ def main() -> int:
 
     # 格式化输出
     print("=" * 64)
-    print(f"  📊 科大讯飞 (002230.SZSE) 综合诊断报告")
+    print("  📊 科大讯飞 (002230.SZSE) 综合诊断报告")
     print(f"  生成时间：{result['as_of']}")
     print("=" * 64)
 
-    print(f"\n── 技术面 ──")
+    print("\n── 技术面 ──")
     print(f"  最新收盘价：{tech.get('last_close')}")
     print(f"  均线排列：{tech.get('ma_alignment')}")
     ma = tech.get("ma", {})
@@ -306,7 +302,7 @@ def main() -> int:
     if return_key:
         print(f"  区间涨跌：{return_key[0]} = {tech.get(return_key[0])}%")
 
-    print(f"\n── 近20日走势 ──")
+    print("\n── 近20日走势 ──")
     print(f"  区间：{hist.get('start')} → {hist.get('end')}")
     print(f"  涨跌幅：{hist.get('return_pct')}%")
     print(f"  波动率：{hist.get('volatility_pct')}%")
@@ -315,14 +311,14 @@ def main() -> int:
     print(f"  趋势标签：{hist.get('trend_label')}")
 
     if reports_data.get("reports"):
-        print(f"\n── 券商研报 ──")
+        print("\n── 券商研报 ──")
         for r in reports_data["reports"]:
             print(f"  来源：{r.get('source', '')} · {r.get('tool', '')}")
             print(f"  标题：{r.get('title', '')}")
-            if r.get('summary'):
+            if r.get("summary"):
                 print(f"  摘要：{r['summary'][:500]}")
     elif reports_data.get("warnings"):
-        print(f"\n── 研报 ──")
+        print("\n── 研报 ──")
         for w in reports_data["warnings"]:
             print(f"  ⚠️ {w}")
 

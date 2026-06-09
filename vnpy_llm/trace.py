@@ -59,11 +59,7 @@ def map_turns_to_user_messages(
     turns: list[TurnTrace],
 ) -> dict[int, TurnTrace]:
     """将 Trace 轮次对齐到 user 消息（优先文本匹配，否则从末尾配对）。"""
-    user_entries = [
-        (index, str(msg.content).strip())
-        for index, msg in enumerate(messages)
-        if getattr(msg, "role", "") == "user"
-    ]
+    user_entries = [(index, str(msg.content).strip()) for index, msg in enumerate(messages) if getattr(msg, "role", "") == "user"]
     if not user_entries or not turns:
         return {}
 
@@ -254,11 +250,7 @@ class TraceStore:
             removed_ids.add(self._current.turn_id)
             self._current = None
         if removed_ids:
-            self._step_index = {
-                sid: step
-                for sid, step in self._step_index.items()
-                if step.turn_id not in removed_ids
-            }
+            self._step_index = {sid: step for sid, step in self._step_index.items() if step.turn_id not in removed_ids}
         self._loaded_sessions.discard(session_id)
         if self._persistence is not None:
             self._persistence.delete_session(session_id)

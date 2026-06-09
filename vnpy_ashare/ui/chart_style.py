@@ -48,7 +48,9 @@ QWidget#MaLegendBar {
 }
 """
 
-CHART_PANEL_STYLESHEET = CHART_FRAME_STYLESHEET + """
+CHART_PANEL_STYLESHEET = (
+    CHART_FRAME_STYLESHEET
+    + """
 QWidget#ChartPanel {
     background-color: #141414;
     border: 1px solid #2a2a2a;
@@ -93,6 +95,7 @@ QComboBox QAbstractItemView {
     border: 1px solid #3a3a3a;
 }
 """
+)
 
 
 def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:

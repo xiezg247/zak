@@ -23,9 +23,7 @@ CHINA_TZ = ZoneInfo("Asia/Shanghai")
 
 class DataSourceRoutingTests(unittest.TestCase):
     def test_iter_trade_date_strs(self) -> None:
-        dates = list(
-            iter_trade_date_strs(max_lookback=3, start=date(2026, 6, 8))
-        )
+        dates = list(iter_trade_date_strs(max_lookback=3, start=date(2026, 6, 8)))
         self.assertEqual(dates[0], "20260608")
         self.assertEqual(len(dates), 3)
 

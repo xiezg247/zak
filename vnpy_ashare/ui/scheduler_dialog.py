@@ -24,10 +24,7 @@ class SchedulerDialog(QtWidgets.QDialog):
         self.resize(1080, 520)
         self.setStyleSheet(TERMINAL_STYLESHEET)
 
-        hint = QtWidgets.QLabel(
-            "生产环境建议独立运行 scripts/quote_collector.py；"
-            "此处「行情采集」适合本机调试。"
-        )
+        hint = QtWidgets.QLabel("生产环境建议独立运行 scripts/quote_collector.py；此处「行情采集」适合本机调试。")
         hint.setWordWrap(True)
 
         self._jobs_widget = SchedulerJobsWidget(scheduler, self)

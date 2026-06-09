@@ -1,5 +1,3 @@
-import numpy as np
-
 from vnpy_ctastrategy import (
     ArrayManager,
     BarData,

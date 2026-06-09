@@ -2,65 +2,59 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 from vnpy.event import EventEngine
-
-from vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.bar_health import (
     BarGapResult,
     BarHealthStatus,
     BarMeta,
-    format_meta_date,
 )
 from vnpy_ashare.bars import cleanup_invalid_daily_bars
-from vnpy_ashare.calendar import last_trading_day
 from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.engine_access import (
+    get_analysis_service,
+    get_bar_service,
+    get_quote_service,
+    get_watchlist_service,
+)
+from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
+from vnpy_ashare.ui.chart_panel import ChartPanel
+from vnpy_ashare.ui.depth_panel import DepthPanel
+from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
+from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes.actions_controller import ActionsController
 from vnpy_ashare.ui.quotes.batch_backtest_controller import WatchlistBatchBacktestController
 from vnpy_ashare.ui.quotes.data_loader_controller import DataLoaderController
-from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController, should_apply_loaded_bars
+from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController
 from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
 from vnpy_ashare.ui.quotes.quote_stream_controller import QuoteStreamController
 from vnpy_ashare.ui.quotes.table_controller import TableController
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
+    BarsLoadWorker,
     BatchFillWorker,
     BatchGapFillWorker,
-    BarsLoadWorker,
     DepthRefreshWorker,
     DiagnoseWorker,
     DownloadWorker,
-    MinuteDownloadWorker,
     QuotesRefreshWorker,
 )
-from vnpy_ashare.models import StockItem
-from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
-from vnpy_ashare.ui.chart_panel import ChartPanel
-from vnpy_ashare.ui.depth_panel import DepthPanel
-from vnpy_ashare.ui.qt_helpers import release_thread
-from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
 from vnpy_ashare.ui.quotes_config import (
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
 )
 
+
 class QuotesPage(QtWidgets.QWidget):
     """单页行情：列表 + 报价头 + 日 K。"""
 
-    @staticmethod
-    def _thread_active(worker: QtCore.QThread | None) -> bool:
-        if worker is None:
-            return False
-        try:
-            return worker.isRunning()
-        except RuntimeError:
-            return False
+    _thread_active = staticmethod(thread_is_active)
 
     def _wait_worker_release(self, attr: str, *, timeout_ms: int = 3000) -> None:
         worker = getattr(self, attr, None)
@@ -169,9 +163,7 @@ class QuotesPage(QtWidgets.QWidget):
         if self.config.use_local_table:
             removed = cleanup_invalid_daily_bars()
             if removed:
-                symbols = "、".join(
-                    format_vt_symbol_cn(symbol, exchange) for symbol, exchange in removed[:5]
-                )
+                symbols = "、".join(format_vt_symbol_cn(symbol, exchange) for symbol, exchange in removed[:5])
                 suffix = "..." if len(removed) > 5 else ""
                 self.status_label.setText(f"已清理 {len(removed)} 条无效日K：{symbols}{suffix}")
         self._local.refresh_meta()
@@ -389,19 +381,16 @@ class QuotesPage(QtWidgets.QWidget):
         return None
 
     def _get_watchlist_service(self):
-        from vnpy_ashare.engine_access import get_service
-
-        return get_service(self._get_main_engine(), "watchlist_service")
+        return get_watchlist_service(self._get_main_engine())
 
     def _get_analysis_service(self):
-        from vnpy_ashare.engine_access import get_service
-
-        return get_service(self._get_main_engine(), "analysis_service")
+        return get_analysis_service(self._get_main_engine())
 
     def _get_quote_service(self):
-        from vnpy_ashare.engine_access import get_service
+        return get_quote_service(self._get_main_engine())
 
-        return get_service(self._get_main_engine(), "quote_service")
+    def _get_bar_service(self):
+        return get_bar_service(self._get_main_engine())
 
     def run_watchlist_batch_backtest(self) -> None:
         self._batch_backtest.run_batch_backtest()

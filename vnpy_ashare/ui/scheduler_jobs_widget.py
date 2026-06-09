@@ -50,10 +50,7 @@ class _JobSettingsDialog(QtWidgets.QDialog):
                 self.start_edit = QtWidgets.QLineEdit(config.download_start)
                 form.addRow("K 线起始日", self.start_edit)
 
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
-        )
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
@@ -123,10 +120,7 @@ class _AutoScreenSettingsDialog(QtWidgets.QDialog):
         hint.setWordWrap(True)
         form.addRow(hint)
 
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
-        )
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
@@ -167,33 +161,17 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
 
         self.table = QtWidgets.QTableWidget(0, 7)
         self.table.setObjectName("SchedulerTable")
-        self.table.setHorizontalHeaderLabels(
-            ["启用", "任务", "调度", "状态", "上次执行", "下次执行", "操作"]
-        )
-        self.table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.table.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
+        self.table.setHorizontalHeaderLabels(["启用", "任务", "调度", "状态", "上次执行", "下次执行", "操作"])
+        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setWordWrap(not embedded)
-        self.table.setTextElideMode(
-            QtCore.Qt.TextElideMode.ElideRight
-            if embedded
-            else QtCore.Qt.TextElideMode.ElideNone
-        )
-        self.table.setHorizontalScrollMode(
-            QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel
-        )
+        self.table.setTextElideMode(QtCore.Qt.TextElideMode.ElideRight if embedded else QtCore.Qt.TextElideMode.ElideNone)
+        self.table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setSectionResizeMode(
-            QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-        )
+        self.table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.table.verticalHeader().setMinimumSectionSize(36)
         if embedded:
-            self.table.setVerticalScrollBarPolicy(
-                QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-            )
+            self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             self.table.setSizePolicy(
                 QtWidgets.QSizePolicy.Policy.Expanding,
                 QtWidgets.QSizePolicy.Policy.Fixed,
@@ -220,9 +198,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
 
         self.setStyleSheet(SCHEDULER_TABLE_STYLESHEET)
         if embedded:
-            self.table.setStyleSheet(
-                "QTableWidget#SchedulerTable { border: none; background-color: transparent; }"
-            )
+            self.table.setStyleSheet("QTableWidget#SchedulerTable { border: none; background-color: transparent; }")
 
     def set_scheduler(self, scheduler: TaskSchedulerManager | None) -> None:
         if self._monitoring and self._scheduler is not None:
@@ -280,13 +256,9 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         fixed_columns = (0, 1, 3, 6)
         content_columns = (2, 4, 5)
         for column in fixed_columns:
-            header.setSectionResizeMode(
-                column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-            )
+            header.setSectionResizeMode(column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         for column in content_columns:
-            header.setSectionResizeMode(
-                column, QtWidgets.QHeaderView.ResizeMode.Interactive
-            )
+            header.setSectionResizeMode(column, QtWidgets.QHeaderView.ResizeMode.Interactive)
 
         self.table.setColumnWidth(1, 108)
         self.table.setColumnWidth(2, 320)
@@ -373,9 +345,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
             return widget
 
         enabled_box = QtWidgets.QCheckBox()
-        enabled_box.toggled.connect(
-            lambda checked, bound_job_id=job_id: self._toggle_job(bound_job_id, checked)
-        )
+        enabled_box.toggled.connect(lambda checked, bound_job_id=job_id: self._toggle_job(bound_job_id, checked))
         self.table.setCellWidget(row, 0, enabled_box)
         return enabled_box
 
@@ -398,16 +368,12 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         run_button = QtWidgets.QPushButton("▶ 立即执行")
         run_button.setObjectName("ActionButton")
         run_button.setMinimumWidth(92)
-        run_button.clicked.connect(
-            lambda _checked=False, bound_job_id=job_id: self._run_now(bound_job_id)
-        )
+        run_button.clicked.connect(lambda _checked=False, bound_job_id=job_id: self._run_now(bound_job_id))
 
         settings_button = QtWidgets.QPushButton("设置")
         settings_button.setObjectName("SecondaryButton")
         settings_button.setMinimumWidth(52)
-        settings_button.clicked.connect(
-            lambda _checked=False, bound_job_id=job_id: self._open_settings(bound_job_id)
-        )
+        settings_button.clicked.connect(lambda _checked=False, bound_job_id=job_id: self._open_settings(bound_job_id))
 
         action_layout.addWidget(run_button)
         action_layout.addWidget(settings_button)
@@ -425,23 +391,15 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
 
         if status.running:
             state_text = "运行中"
-        elif (
-            status.enabled
-            and status.job_id == "collect_quotes"
-            and not is_ashare_trading_session()
-        ):
+        elif status.enabled and status.job_id == "collect_quotes" and not is_ashare_trading_session():
             state_text = "休眠中"
         elif status.enabled:
             state_text = "已启用"
         else:
             state_text = "已停止"
         self._set_table_text(row, 3, state_text)
-        self._set_table_text(
-            row, 4, status.last_run_at or "—", show_tooltip=True
-        )
-        self._set_table_text(
-            row, 5, status.next_run_at or "—", show_tooltip=True
-        )
+        self._set_table_text(row, 4, status.last_run_at or "—", show_tooltip=True)
+        self._set_table_text(row, 5, status.next_run_at or "—", show_tooltip=True)
         self._ensure_action_widget(row, status.job_id)
 
     def _toggle_job(self, job_id: str, enabled: bool) -> None:

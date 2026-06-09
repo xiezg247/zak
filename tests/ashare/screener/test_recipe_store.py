@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.screener import recipe_store
 from vnpy_ashare.screener.recipe import (
     list_recipe_catalog,
     normalize_recipe_config,
     resolve_recipe,
     screen_recipe_from_config,
 )
-from vnpy_ashare.screener import recipe_store
 
 
 def test_save_and_resolve_custom_recipe(tmp_path, monkeypatch):

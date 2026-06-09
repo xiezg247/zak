@@ -6,13 +6,12 @@ from functools import partial
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.ui import QtWidgets
+from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
-from vnpy_ashare.app_db import build_symbol_name_map
-from vnpy_ashare.bar_store import iter_bar_overviews
 from vnpy_ashare.config import EXCHANGE_CN_NAMES
+from vnpy_ashare.engine_access import get_bar_service
 from vnpy_ashare.minute_periods import bar_interval, is_daily_scope
 from vnpy_ashare.ui.styles import apply_legacy_page_style, style_legacy_push_buttons
-from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
 _VALUE_TO_CN = {ex.value: name for ex, name in EXCHANGE_CN_NAMES.items()}
 
@@ -30,10 +29,7 @@ _TREE_LABELS: list[str] = [
     "",
 ]
 
-_DOWNLOAD_HINT = (
-    "K 线下载与补全请使用「自选 / 本地」页，"
-    "或「工具 → 立即执行 → 下载自选日 K / 同步 A 股列表」"
-)
+_DOWNLOAD_HINT = "K 线下载与补全请使用「自选 / 本地」页，或「工具 → 立即执行 → 下载自选日 K / 同步 A 股列表」"
 
 _INTERVAL_GROUP_LABELS: dict[str, str] = {
     "daily": "日线",
@@ -89,9 +85,13 @@ class ManagerWidget(VnpyManagerWidget):
     def activate(self) -> None:
         self.refresh_tree()
 
+    def _bar_service(self):
+        return get_bar_service(getattr(self, "main_engine", None))
+
     def refresh_tree(self) -> None:
         self.tree.clear()
-        name_map = build_symbol_name_map()
+        bar_svc = self._bar_service()
+        name_map = bar_svc.build_symbol_name_map() if bar_svc else self._fallback_symbol_name_map()
 
         group_keys = ["daily", "1m"]
         interval_childs: dict[str, QtWidgets.QTreeWidgetItem] = {}
@@ -105,7 +105,8 @@ class ManagerWidget(VnpyManagerWidget):
         scopes = ["daily", "1m"]
         seen: set[tuple[str, Exchange, str]] = set()
         for scope in scopes:
-            for overview in iter_bar_overviews(scope=scope):
+            overviews = bar_svc.iter_overviews(scope) if bar_svc else self._fallback_iter_overviews(scope)
+            for overview in overviews:
                 dedupe_key = (overview.symbol, overview.exchange, overview.period)
                 if dedupe_key in seen:
                     continue
@@ -200,3 +201,15 @@ class ManagerWidget(VnpyManagerWidget):
 
         for i in range(item.childCount()):
             self._localize_item(item.child(i))
+
+    @staticmethod
+    def _fallback_symbol_name_map():
+        from vnpy_ashare.bar_access import build_symbol_name_map
+
+        return build_symbol_name_map()
+
+    @staticmethod
+    def _fallback_iter_overviews(scope: str):
+        from vnpy_ashare.bar_access import iter_bar_overviews
+
+        return iter_bar_overviews(scope=scope)

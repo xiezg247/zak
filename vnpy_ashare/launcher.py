@@ -4,25 +4,23 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 
+import vnpy_tushare  # noqa: F401
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.setting import SETTINGS
 from vnpy.trader.ui import create_qapp
+from vnpy_datamanager import DataManagerApp
 
+import vnpy_tickflow  # noqa: F401
 from vnpy_ashare import AshareApp
+from vnpy_ashare.backtester_app import AshareCtaBacktesterApp
 from vnpy_ashare.branding import QAPP_NAME
 from vnpy_ashare.config import ensure_runtime_config
 from vnpy_ashare.paths import PROJECT_ROOT
 from vnpy_ashare.ui.fonts import resolve_font_family
 from vnpy_ashare.ui.main_window import AshareMainWindow
-from vnpy_ashare.backtester_app import AshareCtaBacktesterApp
-from vnpy_datamanager import DataManagerApp
 from vnpy_llm import LlmApp
-
-import vnpy_tushare  # noqa: F401
-import vnpy_tickflow  # noqa: F401
 
 
 def _prepare_runtime() -> None:

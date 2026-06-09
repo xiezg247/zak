@@ -16,7 +16,7 @@ class McpClientError(Exception):
 def _run_async(coro: Any) -> Any:
     """在同步上下文中执行 async MCP 调用。"""
     try:
-        loop = asyncio.get_running_loop()
+        _ = asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
     # Qt / 已有事件循环：在新线程中跑独立 loop
@@ -33,12 +33,11 @@ async def _list_tools_async(
     timeout: float = 30.0,
 ) -> list[McpToolInfo]:
     try:
-        from mcp import ClientSession
         from mcp.client.streamable_http import streamablehttp_client
+
+        from mcp import ClientSession
     except ImportError as ex:
-        raise McpClientError(
-            "未安装 mcp 包，请执行：uv pip install mcp"
-        ) from ex
+        raise McpClientError("未安装 mcp 包，请执行：uv pip install mcp") from ex
 
     timeout_delta = timedelta(seconds=timeout)
     async with streamablehttp_client(
@@ -73,12 +72,11 @@ async def _call_tool_async(
     timeout: float = 60.0,
 ) -> Any:
     try:
-        from mcp import ClientSession
         from mcp.client.streamable_http import streamablehttp_client
+
+        from mcp import ClientSession
     except ImportError as ex:
-        raise McpClientError(
-            "未安装 mcp 包，请执行：uv pip install mcp"
-        ) from ex
+        raise McpClientError("未安装 mcp 包，请执行：uv pip install mcp") from ex
 
     timeout_delta = timedelta(seconds=timeout)
     async with streamablehttp_client(
@@ -110,6 +108,4 @@ def call_remote_tool(
     *,
     timeout: float = 60.0,
 ) -> Any:
-    return _run_async(
-        _call_tool_async(url, headers or {}, tool_name, arguments, timeout=timeout)
-    )
+    return _run_async(_call_tool_async(url, headers or {}, tool_name, arguments, timeout=timeout))

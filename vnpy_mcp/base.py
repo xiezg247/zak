@@ -37,6 +37,7 @@ class McpProvider(ABC):
 
     def on_init(self) -> None:
         """初始化（检查 API Key 等）。"""
+        pass
 
     @property
     @abstractmethod

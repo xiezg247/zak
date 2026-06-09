@@ -47,6 +47,7 @@ class SkillTemplate(ABC):
 
     def on_init(self) -> None:
         """初始化（检查 API Key、预热客户端等）。"""
+        pass
 
     @property
     def available(self) -> bool:
@@ -65,9 +66,7 @@ class SkillTemplate(ABC):
             handler_name = spec.handler or spec.name
             handler = getattr(self, handler_name, None)
             if handler is None or not callable(handler):
-                raise AttributeError(
-                    f"{type(self).__name__} 缺少工具处理函数 {handler_name}"
-                )
+                raise AttributeError(f"{type(self).__name__} 缺少工具处理函数 {handler_name}")
             self._handlers[spec.name] = handler
 
     def get_tools(self) -> list[ToolSpec]:
@@ -76,21 +75,30 @@ class SkillTemplate(ABC):
     def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
         handler = self._handlers.get(name)
         if handler is None:
-            return json.dumps({
-                "error": f"未知工具: {name}",
-                "suggestion": "请使用 list_strategies 或 get_watchlist 查看可用功能",
-            }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "error": f"未知工具: {name}",
+                    "suggestion": "请使用 list_strategies 或 get_watchlist 查看可用功能",
+                },
+                ensure_ascii=False,
+            )
         try:
             return handler(**arguments)
         except TypeError as ex:
-            return json.dumps({
-                "error": f"参数错误: {ex}",
-                "suggestion": "请检查工具参数格式，或尝试不带参数调用此工具",
-            }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "error": f"参数错误: {ex}",
+                    "suggestion": "请检查工具参数格式，或尝试不带参数调用此工具",
+                },
+                ensure_ascii=False,
+            )
         except RuntimeError as ex:
-            return json.dumps({
-                "error": str(ex),
-                "suggestion": "所需服务未就绪，请确认终端已完全启动",
-            }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "error": str(ex),
+                    "suggestion": "所需服务未就绪，请确认终端已完全启动",
+                },
+                ensure_ascii=False,
+            )
         except Exception as ex:
             return json.dumps({"error": str(ex)}, ensure_ascii=False)

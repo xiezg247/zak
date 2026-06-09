@@ -39,10 +39,10 @@ def format_diagnose_html(payload: dict[str, Any]) -> str:
         lines.append(
             '<p style="margin:0 0 4px 0;color:#4a9eff;">行情</p>'
             f'<ul style="margin:0 0 8px 16px;padding:0;color:#c8c8c8;">'
-            f'<li>现价：{quote.get("last_price", "-")} · '
+            f"<li>现价：{quote.get('last_price', '-')} · "
             f'涨跌：<span style="color:{ret_color};">{ret_text}</span></li>'
-            f'{f"<li>行业：{industry}</li>" if industry else ""}'
-            f'</ul>'
+            f"{f'<li>行业：{industry}</li>' if industry else ''}"
+            f"</ul>"
         )
 
     technical = payload.get("technical") or {}
@@ -53,10 +53,10 @@ def format_diagnose_html(payload: dict[str, Any]) -> str:
         lines.append(
             '<p style="margin:0 0 4px 0;color:#4a9eff;">技术面</p>'
             f'<ul style="margin:0 0 8px 16px;padding:0;color:#c8c8c8;">'
-            f'<li>MACD {macd if macd is not None else "-"} · '
-            f'DIF {dif if dif is not None else "-"} · '
-            f'DEA {dea if dea is not None else "-"}</li>'
-            f'</ul>'
+            f"<li>MACD {macd if macd is not None else '-'} · "
+            f"DIF {dif if dif is not None else '-'} · "
+            f"DEA {dea if dea is not None else '-'}</li>"
+            f"</ul>"
         )
 
     fundamental = payload.get("fundamental") or {}
@@ -66,9 +66,9 @@ def format_diagnose_html(payload: dict[str, Any]) -> str:
         lines.append(
             '<p style="margin:0 0 4px 0;color:#4a9eff;">基本面</p>'
             f'<ul style="margin:0 0 8px 16px;padding:0;color:#c8c8c8;">'
-            f'<li>PE(TTM) {pe if pe is not None else "-"} · '
-            f'ROE {roe if roe is not None else "-"}%</li>'
-            f'</ul>'
+            f"<li>PE(TTM) {pe if pe is not None else '-'} · "
+            f"ROE {roe if roe is not None else '-'}%</li>"
+            f"</ul>"
         )
 
     capital_flow = payload.get("capital_flow") or {}
@@ -77,8 +77,8 @@ def format_diagnose_html(payload: dict[str, Any]) -> str:
         lines.append(
             '<p style="margin:0 0 4px 0;color:#4a9eff;">资金面</p>'
             f'<ul style="margin:0 0 8px 16px;padding:0;color:#c8c8c8;">'
-            f'<li>主力净额：{main_net:,.0f}</li>'
-            f'</ul>'
+            f"<li>主力净额：{main_net:,.0f}</li>"
+            f"</ul>"
         )
 
     # 兼容旧版本地技术面字段
@@ -92,11 +92,11 @@ def format_diagnose_html(payload: dict[str, Any]) -> str:
             lines.append(
                 '<p style="margin:0 0 4px 0;color:#4a9eff;">技术面</p>'
                 f'<ul style="margin:0 0 8px 16px;padding:0;color:#c8c8c8;">'
-                f'<li>收盘：{technical.get("last_close", "-")} · 截至 {technical.get("as_of", "-")}</li>'
-                f'<li>均线：MA5 {ma.get("ma5", "-")} / MA20 {ma.get("ma20", "-")}</li>'
-                f'<li>{technical.get("ma_alignment", "")}</li>'
+                f"<li>收盘：{technical.get('last_close', '-')} · 截至 {technical.get('as_of', '-')}</li>"
+                f"<li>均线：MA5 {ma.get('ma5', '-')} / MA20 {ma.get('ma20', '-')}</li>"
+                f"<li>{technical.get('ma_alignment', '')}</li>"
                 f'<li>区间涨跌：<span style="color:{ret_color};">{ret_text}</span></li>'
-                f'</ul>'
+                f"</ul>"
             )
 
     reports = payload.get("reports") or []
@@ -110,11 +110,7 @@ def format_diagnose_html(payload: dict[str, Any]) -> str:
             title_text = row.get("title") or "研报"
             meta = " · ".join(part for part in (broker, date, rating) if part)
             summary = (row.get("summary") or "")[:120]
-            lines.append(
-                f"<li><b>{title_text}</b>"
-                f'{f"（{meta}）" if meta else ""}'
-                f"{f'<br/>{summary}…' if summary else ''}</li>"
-            )
+            lines.append(f"<li><b>{title_text}</b>{f'（{meta}）' if meta else ''}{f'<br/>{summary}…' if summary else ''}</li>")
         if len(reports) > 3:
             lines.append(f"<li>… 另有 {len(reports) - 3} 条</li>")
         lines.append("</ul>")
@@ -129,9 +125,7 @@ def format_diagnose_html(payload: dict[str, Any]) -> str:
 
     disclaimer = payload.get("disclaimer") or ""
     if disclaimer:
-        lines.append(
-            f'<p style="margin:8px 0 0 0;color:#6a6a6a;font-size:11px;">{disclaimer}</p>'
-        )
+        lines.append(f'<p style="margin:8px 0 0 0;color:#6a6a6a;font-size:11px;">{disclaimer}</p>')
     return "".join(lines)
 
 
@@ -163,9 +157,7 @@ class DiagnosePanel(QtWidgets.QWidget):
         self.body = QtWidgets.QLabel("选中标的后点击「诊断」或此处刷新")
         self.body.setWordWrap(True)
         self.body.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self.body.setAlignment(
-            QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft
-        )
+        self.body.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
         self.body.setObjectName("DiagnoseBody")
 
         scroll = QtWidgets.QScrollArea()

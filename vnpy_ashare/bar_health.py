@@ -119,10 +119,5 @@ def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None 
 def format_gap_ranges(gaps: list[GapRange]) -> str:
     if not gaps:
         return ""
-    parts = [
-        f"{gap.start.isoformat()}~{gap.end.isoformat()}"
-        if gap.start != gap.end
-        else gap.start.isoformat()
-        for gap in gaps
-    ]
+    parts = [f"{gap.start.isoformat()}~{gap.end.isoformat()}" if gap.start != gap.end else gap.start.isoformat() for gap in gaps]
     return "、".join(parts)

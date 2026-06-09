@@ -37,11 +37,7 @@ def merge_quotes_into_fundamentals(
     quote_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
-    quote_map = {
-        str(row.get("vt_symbol", "")): row
-        for row in quote_rows
-        if row.get("vt_symbol")
-    }
+    quote_map = {str(row.get("vt_symbol", "")): row for row in quote_rows if row.get("vt_symbol")}
     merged: list[dict[str, Any]] = []
     for row in fund_rows:
         item = dict(row)
@@ -69,11 +65,7 @@ def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
         return {}
     if frame is None or frame.empty:
         return {}
-    return {
-        str(record.get("ts_code", "")): _float(record.get("pct_chg"))
-        for record in frame.to_dict(orient="records")
-        if record.get("ts_code")
-    }
+    return {str(record.get("ts_code", "")): _float(record.get("pct_chg")) for record in frame.to_dict(orient="records") if record.get("ts_code")}
 
 
 def load_ts_code_name_map() -> dict[str, str]:
@@ -117,10 +109,7 @@ def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, 
     trade_date = trade_date or _latest_trade_date_str()
     frame = pro.daily_basic(
         trade_date=trade_date,
-        fields=(
-            "ts_code,trade_date,close,pe,pe_ttm,pb,ps,total_mv,circ_mv,"
-            "turnover_rate,volume_ratio"
-        ),
+        fields=("ts_code,trade_date,close,pe,pe_ttm,pb,ps,total_mv,circ_mv,turnover_rate,volume_ratio"),
     )
     if frame is None or frame.empty:
         return [], trade_date

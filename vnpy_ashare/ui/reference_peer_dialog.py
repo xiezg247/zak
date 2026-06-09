@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
@@ -15,13 +16,13 @@ from vnpy_ashare.screener.reference_peer import (
     clamp_reference_peer_top_n,
     env_default_reference_peer_top_n,
 )
+from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_results_table import (
     all_table_rows_checked,
     iter_checked_table_rows,
     populate_screener_results_table,
     toggle_select_all_table_rows,
 )
-from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 from vnpy_ashare.ui.workers.reference_peer_worker import ReferencePeerWorker
 
@@ -66,9 +67,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         self._vt_symbol = vt_symbol
         self._reference_name = reference_name
         self._watchlist_add = watchlist_add
-        self._retired_workers: list[QtCore.QThread] = (
-            retired_workers if retired_workers is not None else []
-        )
+        self._retired_workers: list[QtCore.QThread] = retired_workers if retired_workers is not None else []
         self._worker: ReferencePeerWorker | None = None
         self._result: ReferencePeerRunResult | None = None
         self._closing = False
@@ -84,9 +83,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(10)
 
-        self._head_label = QtWidgets.QLabel(
-            f"标杆：{self._reference_name}（{self._vt_symbol}）"
-        )
+        self._head_label = QtWidgets.QLabel(f"标杆：{self._reference_name}（{self._vt_symbol}）")
         self._head_label.setObjectName("ResultSummary")
         layout.addWidget(self._head_label)
 
@@ -115,9 +112,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
 
         self._table = QtWidgets.QTableWidget(0, 1)
         self._table.setObjectName("MarketTable")
-        self._table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
+        self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.verticalHeader().setVisible(False)
         self._table.setAlternatingRowColors(True)
@@ -200,8 +195,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         self._worker = None
         self._result = result
         self._head_label.setText(
-            f"标杆：{result.reference_name}（{result.reference_vt_symbol}）"
-            f" · 行业 {result.reference_industry} · 交易日 {result.trade_date}"
+            f"标杆：{result.reference_name}（{result.reference_vt_symbol}） · 行业 {result.reference_industry} · 交易日 {result.trade_date}"
         )
         if not result.rows:
             self._summary_label.setText("未找到符合条件的同类标的")
@@ -210,9 +204,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
             return
 
         self._populate_results(result.rows)
-        self._summary_label.setText(
-            f"命中 {len(result.rows)} 条 · 扫描同业 {result.total_scanned} 只"
-        )
+        self._summary_label.setText(f"命中 {len(result.rows)} 条 · 扫描同业 {result.total_scanned} 只")
         self._select_all_btn.setEnabled(True)
         self._add_watchlist_btn.setEnabled(self._watchlist_add is not None)
         self._set_running(False)
@@ -246,9 +238,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         if self._table.rowCount() == 0:
             self._select_all_btn.setText("全选")
             return
-        self._select_all_btn.setText(
-            "取消全选" if all_table_rows_checked(self._table) else "全选"
-        )
+        self._select_all_btn.setText("取消全选" if all_table_rows_checked(self._table) else "全选")
 
     def _select_all(self) -> None:
         self._table.blockSignals(True)

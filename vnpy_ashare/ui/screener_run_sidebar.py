@@ -2,18 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.screener.run_store import (
-    delete_run,
-    is_auto_run,
-    is_run_unread,
-    is_strategy_run,
-    list_runs,
-)
+from vnpy_ashare.engine_access import get_screening_service
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+
+if TYPE_CHECKING:
+    from vnpy.trader.engine import MainEngine
+
+    from vnpy_ashare.services.screening_service import ScreeningService
 
 _RUN_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 _RUN_CONDITION_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -31,6 +30,56 @@ _TRIGGER_TAGS = {
 
 _SETTINGS_ORG = "vnpy_zak"
 _SETTINGS_APP = "screener_ui"
+
+
+def _screening_from_engine(main_engine: MainEngine | None) -> ScreeningService | None:
+    return get_screening_service(main_engine)
+
+
+def _list_runs(main_engine: MainEngine | None, limit: int = 40):
+    service = _screening_from_engine(main_engine)
+    if service is not None:
+        return service.list_run_history(limit)
+    from vnpy_ashare.screener.run_store import list_runs
+
+    return list_runs(limit=limit)
+
+
+def _delete_run(main_engine: MainEngine | None, run_id: str) -> None:
+    service = _screening_from_engine(main_engine)
+    if service is not None:
+        service.delete_run_record(run_id)
+        return
+    from vnpy_ashare.screener.run_store import delete_run
+
+    delete_run(run_id)
+
+
+def _is_auto_run(main_engine: MainEngine | None, config) -> bool:
+    service = _screening_from_engine(main_engine)
+    if service is not None:
+        return service.is_auto_run_config(config)
+    from vnpy_ashare.screener.run_store import is_auto_run
+
+    return is_auto_run(config)
+
+
+def _is_strategy_run(main_engine: MainEngine | None, config) -> bool:
+    service = _screening_from_engine(main_engine)
+    if service is not None:
+        return service.is_strategy_run_config(config)
+    from vnpy_ashare.screener.run_store import is_strategy_run
+
+    return is_strategy_run(config)
+
+
+def _is_run_unread(main_engine: MainEngine | None, config) -> bool:
+    service = _screening_from_engine(main_engine)
+    if service is not None:
+        return service.is_run_unread_config(config)
+    from vnpy_ashare.screener.run_store import is_run_unread
+
+    return is_run_unread(config)
 
 
 def _run_filter_label(record) -> str:
@@ -55,15 +104,28 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self,
         *,
         mode: SidebarMode = "strategy",
+        main_engine: MainEngine | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("ScreenerRunList")
         self.setStyleSheet(TERMINAL_STYLESHEET)
         self._mode = mode
+        self._main_engine = main_engine
         self._filter = _FILTER_ALL
         self._build_ui()
         self.refresh()
+
+    def _resolve_main_engine(self) -> MainEngine | None:
+        if self._main_engine is not None:
+            return self._main_engine
+        parent = self.parent()
+        while parent is not None:
+            engine = getattr(parent, "main_engine", None)
+            if engine is not None:
+                return engine
+            parent = parent.parent()
+        return None
 
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
@@ -108,13 +170,14 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._update_action_buttons()
 
     def unread_count(self) -> int:
+        main_engine = self._resolve_main_engine()
         count = 0
-        for record in list_runs(limit=40):
-            if not self._matches_mode(record):
+        for record in _list_runs(main_engine, limit=40):
+            if not self._matches_mode(record, main_engine):
                 continue
             if not self._matches_subfilter(record):
                 continue
-            if is_run_unread(record.config):
+            if _is_run_unread(main_engine, record.config):
                 count += 1
         return count
 
@@ -123,10 +186,10 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._filter = filters[index] if 0 <= index < len(filters) else _FILTER_ALL
         self.refresh()
 
-    def _matches_mode(self, record) -> bool:
+    def _matches_mode(self, record, main_engine: MainEngine | None) -> bool:
         if self._mode == "strategy":
-            return is_strategy_run(record.config)
-        return is_auto_run(record.config)
+            return _is_strategy_run(main_engine, record.config)
+        return _is_auto_run(main_engine, record.config)
 
     def _matches_subfilter(self, record) -> bool:
         if self._mode != "auto" or self._filter == _FILTER_ALL:
@@ -157,14 +220,15 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._ask_ai_btn.setEnabled(enabled)
 
     def refresh(self) -> None:
+        main_engine = self._resolve_main_engine()
         selected_id = None
         current = self._selected_run()
         if current is not None:
             selected_id = current[0]
         self._list.clear()
         restore_row = -1
-        for record in list_runs(limit=40):
-            if not self._matches_mode(record):
+        for record in _list_runs(main_engine, limit=40):
+            if not self._matches_mode(record, main_engine):
                 continue
             if not self._matches_subfilter(record):
                 continue
@@ -174,18 +238,13 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             item = QtWidgets.QListWidgetItem(display)
             item.setData(_RUN_ID_ROLE, record.id)
             item.setData(_RUN_CONDITION_ROLE, record.condition)
-            if is_run_unread(record.config):
+            if _is_run_unread(main_engine, record.config):
                 font = item.font()
                 font.setBold(True)
                 item.setFont(font)
                 item.setForeground(QtGui.QColor("#7dd3fc"))
             reason = record.config.get("reason_summary") or record.config.get("trigger", "")
-            item.setToolTip(
-                f"{title}\n"
-                f"run_id: {record.id}\n"
-                f"来源 {record.source} · 扫描 {record.total_scanned} · {record.created_at}\n"
-                f"{reason}"
-            )
+            item.setToolTip(f"{title}\nrun_id: {record.id}\n来源 {record.source} · 扫描 {record.total_scanned} · {record.created_at}\n{reason}")
             self._list.addItem(item)
             if selected_id and record.id == selected_id:
                 restore_row = self._list.count() - 1
@@ -252,7 +311,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
                 QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                delete_run(str(run_id))
+                _delete_run(self._resolve_main_engine(), str(run_id))
                 self.refresh()
 
 
@@ -270,9 +329,11 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         self,
         *,
         mode: SidebarMode = "strategy",
+        main_engine: MainEngine | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
+        self._main_engine = main_engine
         self.setObjectName("AiSessionSidebar")
         self._expanded = False
         self.setFixedWidth(self.RAIL_WIDTH)
@@ -288,7 +349,7 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         content_layout = QtWidgets.QVBoxLayout(self._content)
         content_layout.setContentsMargins(12, 12, 4, 12)
         content_layout.setSpacing(0)
-        self._list = ScreenerRunListWidget(mode=mode, parent=self._content)
+        self._list = ScreenerRunListWidget(mode=mode, main_engine=main_engine, parent=self._content)
         self._list.run_selected.connect(self.run_selected.emit)
         self._list.copy_run_id_requested.connect(self.copy_run_id_requested.emit)
         self._list.ask_ai_requested.connect(self.ask_ai_requested.emit)
@@ -367,15 +428,11 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         if expanded:
             self.setFixedWidth(self.CONTENT_WIDTH + self.RAIL_WIDTH)
             self._toggle_btn.setText("◀")
-            self._toggle_btn.setToolTip(
-                "收起自动结果" if self._mode == "auto" else "收起历史运行"
-            )
+            self._toggle_btn.setToolTip("收起自动结果" if self._mode == "auto" else "收起历史运行")
         else:
             self.setFixedWidth(self.RAIL_WIDTH)
             self._toggle_btn.setText("▶")
-            self._toggle_btn.setToolTip(
-                "展开自动结果" if self._mode == "auto" else "展开历史运行"
-            )
+            self._toggle_btn.setToolTip("展开自动结果" if self._mode == "auto" else "展开历史运行")
         if persist:
             self._save_expanded_preference()
         self._update_rail_badge()

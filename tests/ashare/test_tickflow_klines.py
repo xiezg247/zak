@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from datetime import datetime
 
 import pandas as pd
 from vnpy.trader.constant import Exchange, Interval

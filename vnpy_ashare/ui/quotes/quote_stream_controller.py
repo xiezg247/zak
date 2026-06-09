@@ -19,12 +19,7 @@ class QuoteStreamController:
 
     def use_stream(self) -> bool:
         page = self._page
-        return (
-            page.config.use_quote_stream
-            and page._stream_bridge is not None
-            and page._stream_bridge.is_connected
-            and not page._stream_fallback
-        )
+        return page.config.use_quote_stream and page._stream_bridge is not None and page._stream_bridge.is_connected and not page._stream_fallback
 
     def start(self) -> None:
         page = self._page

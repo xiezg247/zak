@@ -5,28 +5,28 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy.event import Event, EventEngine
-
-from vnpy_ashare.events import (
-    EVENT_ASK_AI,
-    EVENT_OPEN_BACKTEST,
-    EVENT_ORB_ATTENTION,
-    AskAiRequest,
-    OrbAttentionRequest,
-    BacktestRequest,
-    FillScreenerRequest,
-)
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_screener_page_context
 from vnpy_ashare.ai.symbol import parse_stock_symbol
-from vnpy_ashare.engine import APP_NAME, AshareEngine
-from vnpy_ashare.screener.data_source import resolve_result_source_tag
-from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
-from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
-from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult, build_scheme_config, list_all_preset_names
-from vnpy_ashare.screener.run_store import get_run, save_run
-from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
+from vnpy_ashare.engine_access import (
+    get_backtest_service,
+    get_screening_service,
+    get_watchlist_service,
+)
+from vnpy_ashare.events import (
+    EVENT_ASK_AI,
+    EVENT_OPEN_BACKTEST,
+    EVENT_ORB_ATTENTION,
+    AskAiRequest,
+    BacktestRequest,
+    FillScreenerRequest,
+    OrbAttentionRequest,
+)
+from vnpy_ashare.screener.presets import SCREENER_CUSTOM
+from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult
+from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_results_table import (
@@ -58,7 +58,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._retired_workers: list[QtCore.QThread] = []
         self._results: list[dict[str, Any]] = []
         self._result_columns: list[tuple[str, str]] = []
-        self._watchlist_service = self._get_watchlist_service()
+        self._watchlist_service = get_watchlist_service(main_engine)
 
         self._build_ui()
         self._batch_backtest_flow = BatchBacktestFlow(
@@ -71,18 +71,15 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._on_preset_changed(0)
         self.setStyleSheet(TERMINAL_STYLESHEET)
 
-    def _get_watchlist_service(self):
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.watchlist_service
-        return None
+    def _screening_service(self) -> ScreeningService | None:
+        return get_screening_service(self.main_engine)
 
     def _build_ui(self) -> None:
         page_layout = QtWidgets.QHBoxLayout(self)
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(0)
 
-        self.run_sidebar = ScreenerRunSidebar(mode="strategy", parent=self)
+        self.run_sidebar = ScreenerRunSidebar(mode="strategy", main_engine=self.main_engine, parent=self)
         self.run_sidebar.run_selected.connect(self._load_historical_run)
         self.run_sidebar.copy_run_id_requested.connect(self._on_copy_run_id)
         self.run_sidebar.ask_ai_requested.connect(self._on_ask_ai_for_run)
@@ -278,14 +275,17 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         return spin
 
     def _reload_preset_combo(self) -> None:
+        service = self._screening_service()
+        preset_names = service.list_screeners() if service else []
+        schemes = service.list_schemes() if service else []
         current = self.preset_combo.currentText()
         self.preset_combo.blockSignals(True)
         self.preset_combo.clear()
-        for name in list_all_preset_names(include_saved=True):
+        for name in preset_names:
             self.preset_combo.addItem(name)
             if name.startswith("我的 · "):
                 scheme_name = name.removeprefix("我的 · ")
-                for scheme in list_schemes():
+                for scheme in schemes:
                     if scheme.name == scheme_name:
                         self.preset_combo.setItemData(
                             self.preset_combo.count() - 1,
@@ -303,23 +303,19 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         return str(data) if data else None
 
     def _on_preset_changed(self, _index: int) -> None:
+        service = self._screening_service()
         label = self.preset_combo.currentText()
-        preset = get_preset(label.removeprefix("我的 · ") if label.startswith("我的 · ") else label)
+        preset_key = label.removeprefix("我的 · ") if label.startswith("我的 · ") else label
+        preset = service.get_preset(preset_key) if service else None
         if label.startswith("我的 · "):
             scheme_id = self._current_scheme_id()
-            if scheme_id:
-                for scheme in list_schemes():
+            if scheme_id and service:
+                for scheme in service.list_schemes():
                     if scheme.id == scheme_id:
                         self.top_n_spin.setValue(int(scheme.config.get("top_n", 20)))
-                        self.min_change_spin.setValue(
-                            scheme.config.get("min_change_pct") if scheme.config.get("min_change_pct") is not None else -1
-                        )
-                        self.max_change_spin.setValue(
-                            scheme.config.get("max_change_pct") if scheme.config.get("max_change_pct") is not None else -1
-                        )
-                        self.min_turnover_spin.setValue(
-                            scheme.config.get("min_turnover") if scheme.config.get("min_turnover") is not None else -1
-                        )
+                        self.min_change_spin.setValue(scheme.config.get("min_change_pct") if scheme.config.get("min_change_pct") is not None else -1)
+                        self.max_change_spin.setValue(scheme.config.get("max_change_pct") if scheme.config.get("max_change_pct") is not None else -1)
+                        self.min_turnover_spin.setValue(scheme.config.get("min_turnover") if scheme.config.get("min_turnover") is not None else -1)
                         break
             self.custom_box.setVisible(False)
             self.hint_label.setText("已保存方案：运行后将按保存的条件执行。")
@@ -334,14 +330,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self.hint_label.setText("")
             return
         if preset.source == "tushare":
-            self.hint_label.setText(
-                f"{preset.description}\n需要 .env 中配置 TUSHARE_TOKEN。"
-            )
+            self.hint_label.setText(f"{preset.description}\n需要 .env 中配置 TUSHARE_TOKEN。")
         else:
-            self.hint_label.setText(
-                f"{preset.description}\n"
-                "若 Redis 无快照，请运行「工具 → 立即执行 → 行情采集」。"
-            )
+            self.hint_label.setText(f"{preset.description}\n若 Redis 无快照，请运行「工具 → 立即执行 → 行情采集」。")
 
     def _optional_float(self, spin: QtWidgets.QDoubleSpinBox) -> float | None:
         if not spin.isEnabled() or spin.value() < 0:
@@ -370,15 +361,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
         req = data.request
         self.top_n_spin.setValue(int(req.top_n or 20))
-        self.min_change_spin.setValue(
-            req.min_change_pct if req.min_change_pct is not None else -1
-        )
-        self.max_change_spin.setValue(
-            req.max_change_pct if req.max_change_pct is not None else -1
-        )
-        self.min_turnover_spin.setValue(
-            req.min_turnover if req.min_turnover is not None else -1
-        )
+        self.min_change_spin.setValue(req.min_change_pct if req.min_change_pct is not None else -1)
+        self.max_change_spin.setValue(req.max_change_pct if req.max_change_pct is not None else -1)
+        self.min_turnover_spin.setValue(req.min_turnover if req.min_turnover is not None else -1)
         self._on_preset_changed(self.preset_combo.currentIndex())
         source = data.source_page or "AI"
         self._append_action_log(f"已从 {source} 预填策略选股条件，请核对后点击「运行策略选股」")
@@ -421,34 +406,26 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._release_worker(worker)
         self.run_btn.setDisabled(False)
         self._results = list(result.rows)
-        self._result_columns = result.columns or resolve_export_columns(self._results)
+        service = self._screening_service()
+        self._result_columns = result.columns or (service.resolve_export_columns(self._results) if service else [])
         apply_screener_results_view(
             self.result_table,
             self._results,
             self._result_columns,
             empty_label=self._empty_result_label,
         )
-        self._store_screening_results(
-            condition=result.condition,
-            rows=self._results,
-            updated_at=result.updated_at,
-        )
         request, _ = self._build_request()
-        config = build_scheme_config(request) if request else {}
-        config["trigger"] = "manual"
-        save_run(
-            condition=result.condition,
-            source=result.source,
-            rows=self._results,
-            total_scanned=result.total_scanned,
-            config=config,
-        )
+        if service is not None:
+            service.save_manual_run(result, request)
+        else:
+            self._store_screening_results(
+                condition=result.condition,
+                rows=self._results,
+                updated_at=result.updated_at,
+            )
         updated = result.updated_at or "-"
-        source_label = resolve_result_source_tag(result.source)
-        summary = (
-            f"「{result.condition}」命中 {len(self._results)} 条 · "
-            f"扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
-        )
+        source_label = service.format_source_tag(result.source) if service else result.source
+        summary = f"「{result.condition}」命中 {len(self._results)} 条 · 扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
         self.run_output_panel.complete_run(
             summary=summary,
             detail=f"数据源 {result.source} · 已写入历史运行",
@@ -477,12 +454,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._append_action_log(f"已打开 AI，预填解读请求：{condition}")
 
     def _load_historical_run(self, run_id: str) -> None:
-        record = get_run(run_id)
+        service = self._screening_service()
+        record = service.get_run_record(run_id) if service else None
         if record is None:
             self._append_action_log("历史运行不存在或已删除")
             return
         self._results = list(record.rows)
-        self._result_columns = resolve_export_columns(self._results)
+        self._result_columns = service.resolve_export_columns(self._results) if service else []
         apply_screener_results_view(
             self.result_table,
             self._results,
@@ -494,11 +472,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             rows=self._results,
             updated_at=record.created_at,
         )
-        source_label = resolve_result_source_tag(record.source)
-        summary = (
-            f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · "
-            f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
-        )
+        source_label = service.format_source_tag(record.source) if service else record.source
+        summary = f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · 扫描 {record.total_scanned} · {source_label} · {record.created_at}"
         self.run_output_panel.load_history(summary=summary)
         sync_screener_page_context(self.main_engine)
 
@@ -540,12 +515,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             msg += f" · 跳过 {skipped} 只"
         self._append_action_log(msg)
 
-    def _get_screening_service(self):
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.screening_service
-        return None
-
     def _store_screening_results(
         self,
         *,
@@ -553,23 +522,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         rows: list,
         updated_at: str | None = None,
     ) -> None:
-        service = self._get_screening_service()
+        service = self._screening_service()
         if service is not None:
             service.set_screening_results(
                 condition=condition,
                 rows=rows,
                 updated_at=updated_at,
             )
-            return
-        from vnpy_ashare.ai.context_store import set_screening_results
-
-        set_screening_results(condition=condition, rows=rows, updated_at=updated_at)
-
-    def _get_backtest_service(self):
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine.backtest_service
-        return None
 
     def _download_selected_bars(self) -> None:
         if self._download_worker is not None and self._download_worker.isRunning():
@@ -642,7 +601,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             QtWidgets.QMessageBox.information(self, "提示", "请先勾选要批量回测的标的")
             return
 
-        backtest_service = self._get_backtest_service()
+        backtest_service = get_backtest_service(self.main_engine)
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
         self._batch_backtest_flow.start(
@@ -665,7 +624,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if request is None or not request.preset:
             return
         try:
-            save_scheme(text.strip(), build_scheme_config(request))
+            service = self._screening_service()
+            if service is None:
+                QtWidgets.QMessageBox.warning(self, "提示", "选股服务未就绪")
+                return
+            service.save_scheme(text.strip(), service.build_scheme_config(request))
             self._reload_preset_combo()
             saved_name = f"我的 · {text.strip()}"
             index = self.preset_combo.findText(saved_name)
@@ -688,7 +651,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         if reply != QtWidgets.QMessageBox.StandardButton.Yes:
             return
-        delete_scheme(scheme_id)
+        service = self._screening_service()
+        if service is None:
+            QtWidgets.QMessageBox.warning(self, "提示", "选股服务未就绪")
+            return
+        service.delete_scheme(scheme_id)
         self._reload_preset_combo()
         self._append_action_log("方案已删除")
 
@@ -706,7 +673,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
         if not path.lower().endswith(".csv"):
             path += ".csv"
-        export_rows_to_csv(self._results, path)
+        service = self._screening_service()
+        if service is not None:
+            service.export_csv(self._results, path)
         self._append_action_log(f"已导出：{path}")
 
     def activate(self) -> None:

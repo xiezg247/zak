@@ -20,10 +20,7 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareDoubleMaStrategy": StrategyMeta(
         class_name="AshareDoubleMaStrategy",
         title="A 股双均线",
-        summary=(
-            "快均线上穿慢均线买入，下穿卖出。"
-            "继承 AShareTemplate：仅做多、100 股整手、T+1 卖出。"
-        ),
+        summary=("快均线上穿慢均线买入，下穿卖出。继承 AShareTemplate：仅做多、100 股整手、T+1 卖出。"),
         tags=("趋势跟踪", "日 K", "仅做多"),
         scenarios=(
             "均线趋势较明显的蓝筹或行业龙头",
@@ -53,10 +50,7 @@ def format_strategy_guide(meta: StrategyMeta) -> str:
     tags = " · ".join(meta.tags)
     scenarios = "".join(f"<li>{item}</li>" for item in meta.scenarios)
     anti = "".join(f"<li>{item}</li>" for item in meta.anti_scenarios)
-    params = "".join(
-        f"<li><code>{name}</code>：{hint}</li>"
-        for name, hint in meta.param_hints
-    )
+    params = "".join(f"<li><code>{name}</code>：{hint}</li>" for name, hint in meta.param_hints)
     return (
         f'<p style="margin:0 0 6px 0;"><b>{meta.title}</b>'
         f'<span style="color:#8a8a8a;"> · {tags}</span></p>'
@@ -74,7 +68,4 @@ def format_strategy_guide(meta: StrategyMeta) -> str:
 
 
 def format_missing_strategy_guide(class_name: str) -> str:
-    return (
-        f'<p style="color:#8a8a8a;">暂无 <code>{class_name}</code> 的说明，'
-        "可在 <code>strategies/registry.py</code> 补充。</p>"
-    )
+    return f'<p style="color:#8a8a8a;">暂无 <code>{class_name}</code> 的说明，可在 <code>strategies/registry.py</code> 补充。</p>'

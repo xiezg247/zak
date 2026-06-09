@@ -90,9 +90,7 @@ class SettingsSnapshotTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env"
             path.write_text("DATABASE_NAME=sqlite\nQUESTDB_HOST=db.local\n", encoding="utf-8")
-            sqlite_keys = {
-                item.spec.key for item in resolve_env_config_database("sqlite", path)
-            }
+            sqlite_keys = {item.spec.key for item in resolve_env_config_database("sqlite", path)}
             questdb_items = resolve_env_config_database("questdb", path)
             questdb_keys = {item.spec.key for item in questdb_items}
             db_name = next(item for item in questdb_items if item.spec.key == "DATABASE_NAME")

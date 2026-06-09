@@ -6,10 +6,7 @@ from vnpy_skills.base import ToolSpec
 
 READ_SKILL_FILE = ToolSpec(
     name="read_skill_file",
-    description=(
-        "读取 skill 包内文件（如 references/数据接口.md、scripts/*.py、SKILL.md）。"
-        "查 Tushare 接口文档或 TickFlow 示例时优先使用。"
-    ),
+    description=("读取 skill 包内文件（如 references/数据接口.md、scripts/*.py、SKILL.md）。查 Tushare 接口文档或 TickFlow 示例时优先使用。"),
     parameters={
         "type": "object",
         "properties": {

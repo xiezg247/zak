@@ -58,6 +58,7 @@ def quote_refresh_hint(
         return f"行情/五档 WebSocket，图表每 {seconds} 秒刷新"
     return f"行情每 {seconds} 秒自动刷新"
 
+
 from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS, quote_table_headers
 
 TABLE_HEADERS_WITH_LOCAL = quote_table_headers(tail_header="本地")
@@ -102,13 +103,30 @@ class PageConfig:
 
 
 DEFAULT_WATCHLIST_COLUMNS: list[str] = [
-    "symbol", "name", "last_price", "change_pct", "change_amount",
-    "amplitude", "volume", "amount", "high_price", "low_price", "trade_time",
+    "symbol",
+    "name",
+    "last_price",
+    "change_pct",
+    "change_amount",
+    "amplitude",
+    "volume",
+    "amount",
+    "high_price",
+    "low_price",
+    "trade_time",
 ]
 
 MARKET_VISIBLE_COLUMNS: list[str] = [
-    "symbol", "name", "last_price", "change_pct", "change_amount",
-    "volume", "amount", "turnover_rate", "amplitude", "trade_time",
+    "symbol",
+    "name",
+    "last_price",
+    "change_pct",
+    "change_amount",
+    "volume",
+    "amount",
+    "turnover_rate",
+    "amplitude",
+    "trade_time",
 ]
 
 ALL_TAIL_COLUMNS: dict[str, str] = {

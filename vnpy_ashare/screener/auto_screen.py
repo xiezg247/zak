@@ -48,11 +48,7 @@ def resolve_auto_screen_request(data: AutoScreenInput) -> AutoScreenResult:
 
     top_n = clamp_top_n(data.top_n)
     if preset.name == SCREENER_CUSTOM:
-        if (
-            data.min_change_pct is None
-            and data.max_change_pct is None
-            and data.min_turnover is None
-        ):
+        if data.min_change_pct is None and data.max_change_pct is None and data.min_turnover is None:
             return AutoScreenResult(
                 ok=False,
                 need_confirm=True,

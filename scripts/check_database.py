@@ -12,11 +12,7 @@ def main() -> None:
     print(f"database.name = {name}")
 
     if name == "questdb":
-        print(
-            f"  host={SETTINGS.get('database.host')} "
-            f"port={SETTINGS.get('database.port')} "
-            f"http_port={SETTINGS.get('database.http_port')}"
-        )
+        print(f"  host={SETTINGS.get('database.host')} port={SETTINGS.get('database.port')} http_port={SETTINGS.get('database.http_port')}")
 
     db = get_database()
     overviews = db.get_bar_overview()

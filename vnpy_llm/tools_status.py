@@ -8,7 +8,6 @@ from typing import Literal
 
 from skills.registry import OFFICIAL_SKILLS
 from vnpy_mcp.engine import McpEngine
-from vnpy_mcp.registry import BUILTIN_MCP_PROVIDERS
 from vnpy_skills.engine import SkillEngine
 
 ToolProviderState = Literal["ready", "missing_env", "connect_failed", "disabled"]
@@ -51,9 +50,7 @@ class ToolsStatusSnapshot:
         ready_mcps = [m.title for m in self.mcps if m.state == "ready"]
         if ready_mcps:
             parts.append("MCP: " + " · ".join(ready_mcps))
-        issues = [s for s in self.skills if s.state != "ready"] + [
-            m for m in self.mcps if m.state != "ready"
-        ]
+        issues = [s for s in self.skills if s.state != "ready"] + [m for m in self.mcps if m.state != "ready"]
         if issues and not parts:
             parts.append(f"{len(issues)} 项待配置")
         elif issues:
@@ -101,8 +98,7 @@ def build_tools_status(
                 state=state,
                 tool_count=0,
                 missing_env=tuple(skill.missing_env),
-                summary=_skill_summary(name, skill.description)
-                + "（通过 read_skill_file / run_python 调用）",
+                summary=_skill_summary(name, skill.description) + "（通过 read_skill_file / run_python 调用）",
             )
         )
 

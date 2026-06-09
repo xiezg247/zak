@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock
-
-import tests._bootstrap  # noqa: F401
+from unittest.mock import MagicMock, patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.engine_access import get_ashare_engine, get_service
+import tests._bootstrap  # noqa: F401
+from vnpy_ashare.engine_access import (
+    get_ashare_engine,
+    get_service,
+    get_watchlist_service,
+)
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
 
@@ -18,9 +21,18 @@ class EngineAccessTests(unittest.TestCase):
     def test_get_ashare_engine_none(self) -> None:
         self.assertIsNone(get_ashare_engine(None))
 
-    def test_get_service_returns_watchlist(self) -> None:
-        from unittest.mock import patch
+    def test_get_watchlist_service(self) -> None:
+        watchlist_service = MagicMock()
+        ashare_engine = MagicMock()
+        ashare_engine.watchlist_service = watchlist_service
+        with patch(
+            "vnpy_ashare.engine_access.get_ashare_engine",
+            return_value=ashare_engine,
+        ):
+            result = get_watchlist_service(MagicMock())
+        self.assertIs(result, watchlist_service)
 
+    def test_get_service_returns_watchlist(self) -> None:
         watchlist_service = MagicMock()
         ashare_engine = MagicMock()
         ashare_engine.watchlist_service = watchlist_service

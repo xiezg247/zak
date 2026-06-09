@@ -6,7 +6,21 @@ from importlib import import_module
 from types import ModuleType
 
 from vnpy.event import Event, EventEngine
+from vnpy.trader.engine import MainEngine
+from vnpy.trader.ui import MainWindow
+from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ai.page import AiPageWidget
+from vnpy_ashare.ai_actions import (
+    AI_ACTION_ASK_AI,
+    AI_ACTION_FILL_SCREENER,
+    AI_ACTION_OPEN_BACKTEST,
+    AI_ACTION_OPEN_BATCH_BACKTEST,
+    AI_ACTION_ORB_ATTENTION,
+    normalize_ai_action,
+)
+from vnpy_ashare.branding import window_title as build_window_title
+from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.events import (
     EVENT_AI_ACTION,
     EVENT_ASK_AI,
@@ -21,34 +35,20 @@ from vnpy_ashare.events import (
     FillScreenerRequest,
     OrbAttentionRequest,
 )
-from vnpy_ashare.ai_actions import (
-    AI_ACTION_ASK_AI,
-    AI_ACTION_FILL_SCREENER,
-    AI_ACTION_OPEN_BACKTEST,
-    AI_ACTION_OPEN_BATCH_BACKTEST,
-    AI_ACTION_ORB_ATTENTION,
-    normalize_ai_action,
-)
-from vnpy.trader.engine import MainEngine
-from vnpy.trader.ui import MainWindow
-from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
-
-from vnpy_ashare.ai.page import AiPageWidget
-from vnpy_ashare.branding import window_title as build_window_title
-from vnpy_ashare.engine import APP_NAME, AshareEngine
-from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
-from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
-from vnpy_ashare.ui.floating_controller import FloatingAiController
-from vnpy_llm.ui.tools_widgets import show_ai_tools_dialog
-from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
+from vnpy_ashare.ui.auto_screener_page import AutoScreenerPageWidget
 from vnpy_ashare.ui.batch_backtest_page import BatchBacktestPageWidget
+from vnpy_ashare.ui.floating_controller import FloatingAiController
+from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
-from vnpy_ashare.ui.auto_screener_page import AutoScreenerPageWidget
-from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.scheduler_page import SchedulerPageWidget
+from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.settings_dialog import show_settings_dialog
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_llm.engine import APP_NAME as LLM_APP_NAME
+from vnpy_llm.engine import LlmEngine
+from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
+from vnpy_llm.ui.tools_widgets import show_ai_tools_dialog
 
 _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
     "market": MarketPageWidget,
@@ -60,6 +60,7 @@ _VNPY_WIDGETS: dict[str, tuple[str, str]] = {
     "cta_backtest": ("vnpy_ashare.ui.backtest_widget", "BacktesterWidget"),
     "data_manager": ("vnpy_ashare.ui.manager_widget", "ManagerWidget"),
 }
+
 
 class AshareMainWindow(MainWindow):
     """左侧图标菜单 + 中央内容区，不再使用顶部「功能」「微信」「帮助」菜单。"""
@@ -115,11 +116,16 @@ class AshareMainWindow(MainWindow):
     def init_menu(self) -> None:
         super().init_menu()
         bar = self.menuBar()
-        _HIDDEN_MENU_LABELS = frozenset({
-            "功能", "Func",
-            "微信", "WeChat",
-            "帮助", "Help",
-        })
+        _HIDDEN_MENU_LABELS = frozenset(
+            {
+                "功能",
+                "Func",
+                "微信",
+                "WeChat",
+                "帮助",
+                "Help",
+            }
+        )
         for action in bar.actions():
             text = action.text().replace("&", "")
             if text in _HIDDEN_MENU_LABELS:
@@ -127,10 +133,12 @@ class AshareMainWindow(MainWindow):
 
         tools_menu = bar.addMenu("工具")
         self._ai_toggle_action = tools_menu.addAction("显示/隐藏 AI 悬浮球")
-        self._ai_toggle_action.setShortcuts([
-            QtGui.QKeySequence("Ctrl+L"),
-            QtGui.QKeySequence("Meta+L"),
-        ])
+        self._ai_toggle_action.setShortcuts(
+            [
+                QtGui.QKeySequence("Ctrl+L"),
+                QtGui.QKeySequence("Meta+L"),
+            ]
+        )
         self._ai_toggle_action.triggered.connect(self._toggle_floating_orb)
         self.addAction(self._ai_toggle_action)
         tools_menu.addSeparator()

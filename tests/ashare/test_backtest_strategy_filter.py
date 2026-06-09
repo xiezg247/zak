@@ -23,11 +23,7 @@ def _load_engine_classes(*, strategy_file_order: list[str] | None = None) -> dic
         importlib.reload(module)
         for attr in dir(module):
             value = getattr(module, attr)
-            if (
-                isinstance(value, type)
-                and issubclass(value, CtaTemplate)
-                and value not in {CtaTemplate, TargetPosTemplate}
-            ):
+            if isinstance(value, type) and issubclass(value, CtaTemplate) and value not in {CtaTemplate, TargetPosTemplate}:
                 classes[value.__name__] = value
 
     project_path = Path.cwd() / "strategies"
@@ -38,11 +34,7 @@ def _load_engine_classes(*, strategy_file_order: list[str] | None = None) -> dic
         importlib.reload(module)
         for attr in dir(module):
             value = getattr(module, attr)
-            if (
-                isinstance(value, type)
-                and issubclass(value, CtaTemplate)
-                and value not in {CtaTemplate, TargetPosTemplate}
-            ):
+            if isinstance(value, type) and issubclass(value, CtaTemplate) and value not in {CtaTemplate, TargetPosTemplate}:
                 classes[value.__name__] = value
     return classes
 

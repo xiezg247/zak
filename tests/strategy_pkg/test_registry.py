@@ -5,11 +5,10 @@ from __future__ import annotations
 import unittest
 
 import tests._bootstrap  # noqa: F401
-
 from strategies.registry import (
+    STRATEGY_REGISTRY,
     format_strategy_guide,
     get_strategy_meta,
-    STRATEGY_REGISTRY,
 )
 
 

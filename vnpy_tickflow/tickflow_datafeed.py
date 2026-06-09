@@ -1,10 +1,9 @@
+import os
 from collections.abc import Callable
 from datetime import datetime, timedelta
-import os
 
 import pandas as pd
 from tickflow import TickFlow
-
 from vnpy.trader.constant import Exchange, Interval
 
 # 本项目聚焦 A 股，其他市场仅作扩展保留
@@ -114,10 +113,7 @@ class TickflowDatafeed(BaseDatafeed):
         assert self.client is not None
 
         if req.exchange not in ASHARE_EXCHANGES:
-            output(
-                f"提示: {req.exchange.value} 非 A 股交易所，"
-                "本项目主要针对沪深京 A 股优化"
-            )
+            output(f"提示: {req.exchange.value} 非 A 股交易所，本项目主要针对沪深京 A 股优化")
 
         tf_symbol = to_tf_symbol(req.symbol, req.exchange)
         if not tf_symbol:
@@ -130,10 +126,7 @@ class TickflowDatafeed(BaseDatafeed):
             return []
 
         if self.free_mode and period not in FREE_PERIODS:
-            output(
-                "免费 TickFlow 服务仅支持日K及以上周期，"
-                "请配置 TICKFLOW_API_KEY 后使用分钟线"
-            )
+            output("免费 TickFlow 服务仅支持日K及以上周期，请配置 TICKFLOW_API_KEY 后使用分钟线")
             return []
 
         start_ms = int(req.start.replace(tzinfo=CHINA_TZ).timestamp() * 1000)
@@ -148,9 +141,7 @@ class TickflowDatafeed(BaseDatafeed):
         if not frames:
             return []
 
-        df = pd.concat(frames, ignore_index=True).drop_duplicates(
-            subset=["timestamp"], keep="last"
-        )
+        df = pd.concat(frames, ignore_index=True).drop_duplicates(subset=["timestamp"], keep="last")
 
         bars: list[BarData] = []
         for _, row in df.iterrows():

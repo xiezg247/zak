@@ -120,9 +120,7 @@ def collect_warnings(*, source: str) -> list[str]:
 
             load_market_quote_rows()
         except Exception as ex:
-            warnings.append(
-                f"Redis 全市场行情不可用（{ex}）。请先运行「工具 → 立即执行 → 行情采集」。"
-            )
+            warnings.append(f"Redis 全市场行情不可用（{ex}）。请先运行「工具 → 立即执行 → 行情采集」。")
     return warnings
 
 
@@ -163,11 +161,7 @@ def _resolve_request(data: ProposeInput) -> tuple[ScreenerRequest, str, str] | t
 
     preset_name = normalize_preset_name(data.preset)
     if not preset_name:
-        if (
-            data.min_change_pct is not None
-            or data.max_change_pct is not None
-            or data.min_turnover is not None
-        ):
+        if data.min_change_pct is not None or data.max_change_pct is not None or data.min_turnover is not None:
             preset_name = SCREENER_CUSTOM
         else:
             return None, None, "未指定选股方案"
@@ -323,7 +317,5 @@ def preset_catalog_for_prompt() -> str:
         lines.append("【已保存方案】")
         for scheme in schemes:
             lines.append(f"- 我的 · {scheme.name}")
-    lines.append(
-        "自定义区间请用 preset=自定义筛选，并填写 min_change_pct / max_change_pct / min_turnover。"
-    )
+    lines.append("自定义区间请用 preset=自定义筛选，并填写 min_change_pct / max_change_pct / min_turnover。")
     return "\n".join(lines)

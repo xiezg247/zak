@@ -13,9 +13,7 @@ ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 def configure_screener_results_table(table: QtWidgets.QTableWidget) -> None:
     """选股结果表通用配置：勾选列操作，禁用行高亮选中。"""
-    table.setSelectionBehavior(
-        QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-    )
+    table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
     table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
     table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
     table.verticalHeader().setVisible(False)
@@ -82,9 +80,7 @@ def populate_screener_results_table(
 
     for row_index, row in enumerate(rows):
         check_item = QtWidgets.QTableWidgetItem()
-        check_item.setFlags(
-            QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled
-        )
+        check_item.setFlags(QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled)
         check_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
         check_item.setData(ROW_DATA_ROLE, row)
         table.setItem(row_index, 0, check_item)
@@ -111,9 +107,7 @@ def populate_screener_results_table(
                 color = RISE_COLOR if change_pct > 0 else FALL_COLOR if change_pct < 0 else FLAT_COLOR
                 item.setForeground(QtGui.QColor(color))
             elif key == "hit_reason":
-                item.setTextAlignment(
-                    QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
-                )
+                item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
             table.setItem(row_index, col_index, item)
 
     table.clearSelection()
@@ -151,9 +145,7 @@ def select_all_table_rows(table: QtWidgets.QTableWidget) -> None:
 def toggle_select_all_table_rows(table: QtWidgets.QTableWidget) -> bool:
     """切换全选/取消全选，返回切换后是否已全部选中。"""
     check_all = not all_table_rows_checked(table)
-    state = (
-        QtCore.Qt.CheckState.Checked if check_all else QtCore.Qt.CheckState.Unchecked
-    )
+    state = QtCore.Qt.CheckState.Checked if check_all else QtCore.Qt.CheckState.Unchecked
     for row_index in range(table.rowCount()):
         item = table.item(row_index, 0)
         if item is not None:

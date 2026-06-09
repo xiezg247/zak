@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy.trader.constant import Exchange
-from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy.trader.object import BarData
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.bar_health import (
     BarGapResult,
@@ -16,12 +16,11 @@ from vnpy_ashare.bar_health import (
     format_meta_datetime,
     list_status,
 )
-from vnpy_ashare.bar_store import iter_bar_overviews
 from vnpy_ashare.calendar import last_trading_day
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS, is_daily_scope, scope_display
 from vnpy_ashare.models import StockItem
-from vnpy_ashare.ui.chart_panel import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
+from vnpy_ashare.ui.chart_panel import MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
@@ -82,12 +81,20 @@ class LocalDataController:
         page.downloaded_keys = set()
         page.bar_meta = {}
         page.bar_list_status = {}
-        for row in iter_bar_overviews(scope=page._local_scope):
+        bar_svc = page._get_bar_service()
+        rows = bar_svc.iter_overviews(page._local_scope) if bar_svc else self._fallback_overviews(page._local_scope)
+        for row in rows:
             key = (row.symbol, row.exchange)
             meta = BarMeta(start=row.start, end=row.end, count=row.count)
             page.downloaded_keys.add(key)
             page.bar_meta[key] = meta
             page.bar_list_status[key] = list_status(meta)
+
+    @staticmethod
+    def _fallback_overviews(scope: str):
+        from vnpy_ashare.bar_access import iter_bar_overviews
+
+        return iter_bar_overviews(scope=scope)
 
     def update_batch_toolbar_buttons(self) -> None:
         self.update_batch_fill_button()
@@ -110,11 +117,7 @@ class LocalDataController:
 
         stale_count = count_stale_daily_items(page.all_stocks, page.bar_meta)
         button.setEnabled(stale_count > 0)
-        button.setToolTip(
-            f"对 {stale_count} 只过期标的增量补全日 K 到最新交易日"
-            if stale_count
-            else "当前列表无过期日 K"
-        )
+        button.setToolTip(f"对 {stale_count} 只过期标的增量补全日 K 到最新交易日" if stale_count else "当前列表无过期日 K")
 
     def update_batch_gap_fill_button(self) -> None:
         page = self._page
@@ -136,17 +139,11 @@ class LocalDataController:
 
         scannable = count_scannable_daily_items(page.all_stocks, page.bar_meta)
         button.setEnabled(scannable > 0)
-        button.setToolTip(
-            f"扫描并修复列表内 {scannable} 只日 K 的内部断层"
-            if scannable
-            else "当前列表无本地日 K"
-        )
+        button.setToolTip(f"扫描并修复列表内 {scannable} 只日 K 的内部断层" if scannable else "当前列表无本地日 K")
 
     def _batch_worker_active(self) -> bool:
         page = self._page
-        return page._thread_active(getattr(page, "_batch_fill_worker", None)) or page._thread_active(
-            getattr(page, "_batch_gap_fill_worker", None)
-        )
+        return page._thread_active(getattr(page, "_batch_fill_worker", None)) or page._thread_active(getattr(page, "_batch_gap_fill_worker", None))
 
     def batch_fill_stale(self) -> None:
         page = self._page
@@ -186,9 +183,7 @@ class LocalDataController:
 
             if not isinstance(progress, BatchFillProgress):
                 return
-            page.status_label.setText(
-                f"批量补全 ({progress.current}/{progress.total}) {progress.label}..."
-            )
+            page.status_label.setText(f"批量补全 ({progress.current}/{progress.total}) {progress.label}...")
 
         def on_finished(result: object) -> None:
             if page._batch_fill_worker is worker:
@@ -257,9 +252,7 @@ class LocalDataController:
             if not isinstance(progress, BatchGapFillProgress):
                 return
             phase_label = "扫描断层" if progress.phase == "scan" else "修复断层"
-            page.status_label.setText(
-                f"{phase_label} ({progress.current}/{progress.total}) {progress.label}..."
-            )
+            page.status_label.setText(f"{phase_label} ({progress.current}/{progress.total}) {progress.label}...")
 
         def on_finished(result: object) -> None:
             if page._batch_gap_fill_worker is worker:
@@ -331,22 +324,12 @@ class LocalDataController:
             return
 
         minute = not self.is_daily_scope()
-        lines = [
-            f"{scope_label}："
-            f"{format_meta_datetime(meta.start, minute=minute)} ~ "
-            f"{format_meta_datetime(meta.end, minute=minute)}，共 {meta.count} 根"
-        ]
+        lines = [f"{scope_label}：{format_meta_datetime(meta.start, minute=minute)} ~ {format_meta_datetime(meta.end, minute=minute)}，共 {meta.count} 根"]
         status = page.bar_list_status.get(key, list_status(meta))
         if status == BarHealthStatus.STALE:
             latest = last_trading_day()
-            lines.append(
-                f"⚠️ 数据过期，最新应为 {latest.isoformat()}，请点击「补全到最新」"
-            )
-        elif (
-            self.is_daily_scope()
-            and status == BarHealthStatus.GAPS
-            and page._selected_gap_result is not None
-        ):
+            lines.append(f"⚠️ 数据过期，最新应为 {latest.isoformat()}，请点击「补全到最新」")
+        elif self.is_daily_scope() and status == BarHealthStatus.GAPS and page._selected_gap_result is not None:
             gap_text = format_gap_ranges(page._selected_gap_result.gaps)
             lines.append(f"🔴 发现 {len(page._selected_gap_result.gaps)} 处断层：{gap_text}")
         self.set_chart_hint("\n".join(lines))
@@ -520,11 +503,7 @@ class LocalDataController:
 
     def download_selected(self) -> None:
         page = self._page
-        if (
-            page.config.show_chart_tabs
-            and page.chart_panel is not None
-            and page.chart_panel.current_tab_index() == MINUTE_TAB_INDEX
-        ):
+        if page.config.show_chart_tabs and page.chart_panel is not None and page.chart_panel.current_tab_index() == MINUTE_TAB_INDEX:
             self.run_minute_download(mode="full")
             return
         self.run_download(mode="full", action_label="下载")
@@ -562,10 +541,7 @@ class LocalDataController:
         if mode == "incremental":
             status_text = f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} {period_label}..."
         else:
-            status_text = (
-                f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} "
-                f"{period_label}（近{DEFAULT_MINUTE_DOWNLOAD_MONTHS}个月）..."
-            )
+            status_text = f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} {period_label}（近{DEFAULT_MINUTE_DOWNLOAD_MONTHS}个月）..."
         page.status_label.setText(status_text)
 
         worker = MinuteDownloadWorker(item, period=period, mode=mode)
@@ -609,9 +585,7 @@ class LocalDataController:
 
         item = page.current_item
         page._set_busy(True)
-        page.status_label.setText(
-            f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} 日K..."
-        )
+        page.status_label.setText(f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} 日K...")
 
         worker = DownloadWorker(item, mode=mode)
         page._download_worker = worker

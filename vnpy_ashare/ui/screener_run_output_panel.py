@@ -41,12 +41,8 @@ class ScreenerRunOutputPanel(QtWidgets.QWidget):
         self._log_view.setObjectName("ScreenerRunLogView")
         self._log_view.setReadOnly(True)
         self._log_view.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.WidgetWidth)
-        self._log_view.setVerticalScrollBarPolicy(
-            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded
-        )
-        self._log_view.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
+        self._log_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._log_view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._log_view.setPlaceholderText(self._log_placeholder)
         root.addWidget(self._log_view, stretch=1)
 

@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.events import BacktestRequest, EVENT_OPEN_BACKTEST
+from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
 from vnpy_ashare.models import StockItem, parse_tickflow_symbol
 
 

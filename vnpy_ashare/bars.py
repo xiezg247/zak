@@ -5,21 +5,19 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import vnpy_tushare  # noqa: F401
 from vnpy.trader.constant import Exchange, Interval
-from vnpy.trader.datafeed import get_datafeed
 from vnpy.trader.database import get_database
+from vnpy.trader.datafeed import get_datafeed
 from vnpy.trader.object import HistoryRequest
 
-import vnpy_tushare  # noqa: F401
 import vnpy_tickflow  # noqa: F401
-
 from vnpy_ashare.app_db import import_watchlist_csv, load_universe_rows, load_watchlist_rows
 from vnpy_ashare.bar_store import iter_bar_overviews
 from vnpy_ashare.config import is_ashare_exchange
 from vnpy_ashare.minute_periods import (
     DEFAULT_MINUTE_DOWNLOAD_MONTHS,
     bar_interval,
-    is_daily_scope,
     normalize_period,
 )
 from vnpy_ashare.models import StockItem
@@ -34,10 +32,7 @@ def load_watchlist(path: Path | None = None, ashare_only: bool = True) -> list[S
     items: list[StockItem] = []
     for symbol, exchange, name in load_watchlist_rows():
         if ashare_only and not is_ashare_exchange(exchange):
-            raise ValueError(
-                f"自选池含非 A 股交易所 {exchange.value}（{symbol}），"
-                "本项目仅支持 SSE/SZSE/BJ"
-            )
+            raise ValueError(f"自选池含非 A 股交易所 {exchange.value}（{symbol}），本项目仅支持 SSE/SZSE/BJ")
         items.append(StockItem(symbol=symbol, exchange=exchange, name=name))
     return items
 
@@ -116,12 +111,7 @@ def cleanup_invalid_daily_bars() -> list[tuple[str, Exchange]]:
             continue
         if row.exchange is None:
             continue
-        invalid = (
-            row.start is None
-            or row.end is None
-            or row.count <= 0
-            or row.start > row.end
-        )
+        invalid = row.start is None or row.end is None or row.count <= 0 or row.start > row.end
         if not invalid:
             continue
         database.delete_bar_data(row.symbol, row.exchange, Interval.DAILY)
@@ -131,9 +121,7 @@ def cleanup_invalid_daily_bars() -> list[tuple[str, Exchange]]:
 
 def load_downloaded_stocks(*, scope: str = "daily") -> list[StockItem]:
     """读取本地已下载 K 线列表，并尽量补全证券名称。"""
-    name_map = {
-        (symbol, exchange): name for symbol, exchange, name in load_universe_rows()
-    }
+    name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
     items: list[StockItem] = []
     for row in iter_bar_overviews(scope=scope):
         name = name_map.get((row.symbol, row.exchange), "")

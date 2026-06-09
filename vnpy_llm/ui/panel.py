@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+# 股票代码正则：6位数字
+import re
+
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.qt_helpers import release_thread, retain_thread_until_finished
-
-from vnpy_llm.engine import LlmEngine
-from vnpy_llm.tools_status import ToolsStatusSnapshot
-from vnpy_llm.ui.styles import PANEL_STYLESHEET
-from vnpy_llm.ui.tools_widgets import AiToolsDialog, AiToolsStatusBar
-from vnpy_llm.ui.session_widgets import show_ai_session_dialog
 from vnpy_ashare.ai.context import QuickAction
+from vnpy_ashare.ui.qt_helpers import release_thread, retain_thread_until_finished
+from vnpy_llm.engine import LlmEngine
+from vnpy_llm.tool_labels import tool_display_name
+from vnpy_llm.tools_status import ToolsStatusSnapshot
+from vnpy_llm.trace import TurnTrace, map_turns_to_user_messages
 from vnpy_llm.ui.floating_widgets import QuickActionChips
 from vnpy_llm.ui.md_renderer import render_markdown
 from vnpy_llm.ui.pending_bubble import (
@@ -19,13 +20,12 @@ from vnpy_llm.ui.pending_bubble import (
     format_pending_html,
     pending_status_from_turn,
 )
+from vnpy_llm.ui.session_widgets import show_ai_session_dialog
+from vnpy_llm.ui.styles import PANEL_STYLESHEET
+from vnpy_llm.ui.tools_widgets import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.trace_widgets import AiInlineTraceBlock
 from vnpy_llm.ui.worker import ChatWorker
-from vnpy_llm.tool_labels import tool_display_name
-from vnpy_llm.trace import TurnTrace, map_turns_to_user_messages
 
-# 股票代码正则：6位数字
-import re
 _STOCK_CODE_RE = re.compile(r"\b(\d{6})\b")
 
 
@@ -38,13 +38,7 @@ class AiInputEdit(QtWidgets.QPlainTextEdit):
         key = event.key()
         if key in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
             mods = event.modifiers()
-            newline = bool(
-                mods
-                & (
-                    QtCore.Qt.KeyboardModifier.ControlModifier
-                    | QtCore.Qt.KeyboardModifier.MetaModifier
-                )
-            )
+            newline = bool(mods & (QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.MetaModifier))
             self.enter_pressed.emit(newline)
             event.accept()
             return
@@ -153,16 +147,12 @@ class AiChatPanel(QtWidgets.QWidget):
         self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         if self.floating:
             self.scroll.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-            self.scroll.viewport().setAttribute(
-                QtCore.Qt.WidgetAttribute.WA_StyledBackground, True
-            )
+            self.scroll.viewport().setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self.message_container = QtWidgets.QWidget()
         self.message_container.setObjectName("AiMessageContainer")
         if self.floating:
-            self.message_container.setAttribute(
-                QtCore.Qt.WidgetAttribute.WA_StyledBackground, True
-            )
+            self.message_container.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         self.message_layout = QtWidgets.QVBoxLayout(self.message_container)
         self.message_layout.setContentsMargins(0, 0, 0, 0)
         self.message_layout.setSpacing(6)
@@ -183,13 +173,9 @@ class AiChatPanel(QtWidgets.QWidget):
         # ── 代码补全弹窗 ──
         self._completion_popup = QtWidgets.QListWidget()
         self._completion_popup.setObjectName("AiCompletionPopup")
-        self._completion_popup.setWindowFlags(
-            QtCore.Qt.WindowType.Popup | QtCore.Qt.WindowType.FramelessWindowHint
-        )
+        self._completion_popup.setWindowFlags(QtCore.Qt.WindowType.Popup | QtCore.Qt.WindowType.FramelessWindowHint)
         self._completion_popup.setMaximumHeight(240)
-        self._completion_popup.setHorizontalScrollBarPolicy(
-            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
+        self._completion_popup.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._completion_popup.itemClicked.connect(self._on_completion_selected)
         self._completion_popup.itemActivated.connect(self._on_completion_selected)
         self._completion_popup.hide()
@@ -212,8 +198,7 @@ class AiChatPanel(QtWidgets.QWidget):
             self._input_max_height = line_height * max_lines + 16
         self.input_box.document().setDocumentMargin(4 if self.floating else 2)
         self.input_box.setVerticalScrollBarPolicy(
-            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded if self.floating
-            else QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded if self.floating else QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
         self.input_box.setMinimumHeight(self._input_min_height)
         self.input_box.setMaximumHeight(self._input_max_height)
@@ -222,9 +207,7 @@ class AiChatPanel(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Minimum,
         )
         self.input_box.setFixedHeight(self._input_min_height)
-        self.input_box.document().documentLayout().documentSizeChanged.connect(
-            self._on_input_document_changed
-        )
+        self.input_box.document().documentLayout().documentSizeChanged.connect(self._on_input_document_changed)
         self.input_box.textChanged.connect(self._on_input_text_changed)
         # 方向键在不显示补全时正常导航
         self.input_box.installEventFilter(self)
@@ -287,9 +270,7 @@ class AiChatPanel(QtWidgets.QWidget):
         more_menu.addSeparator()
         self._model_action = more_menu.addAction("")
         self._model_action.setEnabled(False)
-        more_btn.clicked.connect(
-            lambda: more_menu.exec(more_btn.mapToGlobal(more_btn.rect().bottomLeft()))
-        )
+        more_btn.clicked.connect(lambda: more_menu.exec(more_btn.mapToGlobal(more_btn.rect().bottomLeft())))
         header.addWidget(more_btn)
 
         root.addLayout(header)
@@ -322,9 +303,7 @@ class AiChatPanel(QtWidgets.QWidget):
         if abs(ideal - current) > 2:
             self.input_box.setFixedHeight(ideal)
         if not self.floating:
-            self.input_box.verticalScrollBar().setVisible(
-                content_height > self._input_max_height
-            )
+            self.input_box.verticalScrollBar().setVisible(content_height > self._input_max_height)
 
     def set_input_text(self, text: str) -> None:
         self._completion_popup.hide()
@@ -411,12 +390,8 @@ class AiChatPanel(QtWidgets.QWidget):
             list_item.setData(QtCore.Qt.ItemDataRole.UserRole, entry.prompt)
             self._completion_popup.addItem(list_item)
 
-        self._completion_popup.setFixedWidth(
-            max(280, self.input_box.width())
-        )
-        pos = self.input_box.mapToGlobal(
-            QtCore.QPoint(0, self.input_box.height())
-        )
+        self._completion_popup.setFixedWidth(max(280, self.input_box.width()))
+        pos = self.input_box.mapToGlobal(QtCore.QPoint(0, self.input_box.height()))
         self._completion_popup.move(pos)
         self._completion_popup.show()
 
@@ -485,11 +460,7 @@ class AiChatPanel(QtWidgets.QWidget):
                 name = label.objectName()
                 if name == "AiBubblePending":
                     return index
-                if (
-                    name == "AiBubbleAssistant"
-                    and self._streaming_bubble is not None
-                    and label is self._streaming_bubble
-                ):
+                if name == "AiBubbleAssistant" and self._streaming_bubble is not None and label is self._streaming_bubble:
                     return index
         for index in range(self.message_layout.count() - 2, -1, -1):
             row = self.message_layout.itemAt(index).widget()
@@ -529,8 +500,7 @@ class AiChatPanel(QtWidgets.QWidget):
             row = self.message_layout.itemAt(index).widget()
             if row is None:
                 continue
-            for block in row.findChildren(AiInlineTraceBlock):
-                yield block
+            yield from row.findChildren(AiInlineTraceBlock)
 
     def _refresh_messages(self) -> None:
         if self._worker is not None and self._worker.isRunning():
@@ -669,19 +639,13 @@ class AiChatPanel(QtWidgets.QWidget):
         )
         if role == "user":
             bubble.setObjectName("AiBubbleUser")
-            bubble.setAlignment(
-                QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignTop
-            )
+            bubble.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignTop)
         elif role == "error":
             bubble.setObjectName("AiBubbleError")
-            bubble.setAlignment(
-                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
-            )
+            bubble.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
         else:
             bubble.setObjectName("AiBubbleAssistant")
-            bubble.setAlignment(
-                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
-            )
+            bubble.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
         return bubble
 
     def _insert_bubble_row(self, role: str, bubble: QtWidgets.QWidget) -> None:
@@ -727,9 +691,7 @@ class AiChatPanel(QtWidgets.QWidget):
         return bubble
 
     def _scroll_to_bottom(self) -> None:
-        QtCore.QTimer.singleShot(0, lambda: self.scroll.verticalScrollBar().setValue(
-            self.scroll.verticalScrollBar().maximum()
-        ))
+        QtCore.QTimer.singleShot(0, lambda: self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum()))
 
     def _on_send_or_stop(self) -> None:
         if self._worker is not None and self._worker.isRunning():
@@ -792,9 +754,7 @@ class AiChatPanel(QtWidgets.QWidget):
                 QtWidgets.QSizePolicy.Policy.Preferred,
                 QtWidgets.QSizePolicy.Policy.Preferred,
             )
-            bubble.setAlignment(
-                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
-            )
+            bubble.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
             self._insert_bubble_row("assistant", bubble)
             self._pending_bubble = bubble
             self._start_pending_timer()
@@ -805,9 +765,7 @@ class AiChatPanel(QtWidgets.QWidget):
         if self._pending_bubble is None:
             return
         spinner = SPINNER_FRAMES[self._pending_spinner_index % len(SPINNER_FRAMES)]
-        self._pending_bubble.setText(
-            format_pending_html(self._pending_main, self._pending_sub, spinner=spinner)
-        )
+        self._pending_bubble.setText(format_pending_html(self._pending_main, self._pending_sub, spinner=spinner))
         self._sync_label_bubble(self._pending_bubble)
         if self.floating and self._tool_hint is not None:
             hint = self._pending_main
@@ -990,7 +948,9 @@ class AiChatPanel(QtWidgets.QWidget):
         if self._worker is not None and self._worker.isRunning():
             return
         reply = QtWidgets.QMessageBox.question(
-            self, "确认", "清空当前会话的所有消息？",
+            self,
+            "确认",
+            "清空当前会话的所有消息？",
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
@@ -1015,9 +975,7 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_show_tools(self) -> None:
         dialog = AiToolsDialog(self.engine, self)
-        dialog.reload_requested.connect(
-            lambda: self._on_tools_status_changed(self.engine.get_tools_status())
-        )
+        dialog.reload_requested.connect(lambda: self._on_tools_status_changed(self.engine.get_tools_status()))
         dialog.exec()
 
     def _on_reload_tools(self) -> None:
@@ -1069,21 +1027,12 @@ class AiChatPanel(QtWidgets.QWidget):
         ):
             return False
         mods = key_event.modifiers()
-        newline = bool(
-            mods
-            & (
-                QtCore.Qt.KeyboardModifier.ControlModifier
-                | QtCore.Qt.KeyboardModifier.MetaModifier
-            )
-        )
+        newline = bool(mods & (QtCore.Qt.KeyboardModifier.ControlModifier | QtCore.Qt.KeyboardModifier.MetaModifier))
         self._on_input_enter(newline)
         return True
 
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        if (
-            obj is self.scroll.viewport()
-            and event.type() == QtCore.QEvent.Type.Resize
-        ):
+        if obj is self.scroll.viewport() and event.type() == QtCore.QEvent.Type.Resize:
             self.message_container.setMinimumWidth(self._message_viewport_width())
             self._sync_all_bubble_widths()
         input_targets = (self.input_box, self.input_box.viewport())

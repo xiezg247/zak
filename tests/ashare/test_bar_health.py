@@ -66,9 +66,7 @@ class BarHealthTests(unittest.TestCase):
         self.assertEqual(status_label(BarHealthStatus.STALE), "⚠️ 过期")
 
     def test_merge_missing_days(self) -> None:
-        gaps = merge_missing_days(
-            [date(2026, 6, 1), date(2026, 6, 2), date(2026, 6, 5)]
-        )
+        gaps = merge_missing_days([date(2026, 6, 1), date(2026, 6, 2), date(2026, 6, 5)])
         self.assertEqual(len(gaps), 2)
         self.assertEqual(gaps[0].missing_days, 2)
         self.assertEqual(gaps[1].missing_days, 1)

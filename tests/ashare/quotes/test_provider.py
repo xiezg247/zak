@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
+from vnpy_ashare.quotes import provider as provider_module
 from vnpy_ashare.quotes.provider import (
     QuoteProviderError,
     RedisQuoteProvider,
@@ -12,7 +13,6 @@ from vnpy_ashare.quotes.provider import (
     get_quote_provider,
     get_redis_provider,
 )
-from vnpy_ashare.quotes import provider as provider_module
 
 
 class TestQuoteProviderRouting(unittest.TestCase):

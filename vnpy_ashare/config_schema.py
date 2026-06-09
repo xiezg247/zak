@@ -5,9 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from vnpy_llm.config import DEFAULT_BASE_URL, DEFAULT_MODEL
-
 from vnpy_ashare.ui.fonts import default_font_family
+from vnpy_llm.config import DEFAULT_BASE_URL, DEFAULT_MODEL
 
 ValueKind = Literal["text", "secret", "bool", "int", "choice"]
 ConfigSource = Literal["env", "default", "vt_file"]
@@ -175,22 +174,12 @@ def _index_specs(
 ENV_SPECS_BY_GROUP = _index_specs(ENV_CONFIG_SPECS)
 VT_SPECS_BY_GROUP = _index_specs(VT_CONFIG_SPECS)
 
-ENV_QUESTDB_KEYS: frozenset[str] = frozenset(
-    spec.key for spec in ENV_CONFIG_SPECS if spec.group == "QuestDB"
-)
+ENV_QUESTDB_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "QuestDB")
 ENV_DB_KEYS: frozenset[str] = frozenset({"DATABASE_NAME"}) | ENV_QUESTDB_KEYS
 
-VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(
-    spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.")
-)
-VT_NON_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(
-    spec for spec in VT_CONFIG_SPECS if not spec.key.startswith("database.")
-)
-VT_QUESTDB_KEYS: frozenset[str] = frozenset(
-    spec.key
-    for spec in VT_DB_SPECS
-    if spec.key not in {"database.name", "database.database"}
-)
+VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database."))
+VT_NON_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if not spec.key.startswith("database."))
+VT_QUESTDB_KEYS: frozenset[str] = frozenset(spec.key for spec in VT_DB_SPECS if spec.key not in {"database.name", "database.database"})
 VT_SQLITE_KEYS: frozenset[str] = frozenset({"database.name", "database.database"})
 
 

@@ -7,16 +7,16 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context import build_diagnose_ai_prompt, build_quote_context
+from vnpy_ashare.ai.context import build_diagnose_ai_prompt
 from vnpy_ashare.bar_health import BarHealthStatus, list_status
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
-from vnpy_ashare.ui.chart_panel import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
+from vnpy_ashare.ui.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quote_columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
-from vnpy_ashare.ui.styles import FALL_COLOR, NAV_MUTED_COLOR, RISE_COLOR
+from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, NAV_MUTED_COLOR, RISE_COLOR
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage
@@ -37,11 +37,7 @@ class ActionsController:
         item = page.current_item
         if page.config.show_download_button:
             if page.config.show_chart_tabs:
-                on_download_tab = (
-                    page.chart_panel is not None
-                    and page.chart_panel.current_tab_index()
-                    in (DAILY_TAB_INDEX, MINUTE_TAB_INDEX)
-                )
+                on_download_tab = page.chart_panel is not None and page.chart_panel.current_tab_index() in (DAILY_TAB_INDEX, MINUTE_TAB_INDEX)
                 page.download_button.setVisible(on_download_tab)
                 page.download_button.setEnabled(item is not None and on_download_tab)
             else:
@@ -52,20 +48,14 @@ class ActionsController:
             else:
                 key = (item.symbol, item.exchange)
                 status = page.bar_list_status.get(key, list_status(page.bar_meta.get(key)))
-                page.fill_button.setEnabled(
-                    status in (BarHealthStatus.STALE, BarHealthStatus.GAPS)
-                )
+                page.fill_button.setEnabled(status in (BarHealthStatus.STALE, BarHealthStatus.GAPS))
         if page.config.show_redownload_button:
             if item is None:
                 page.redownload_button.setEnabled(False)
             else:
                 key = (item.symbol, item.exchange)
                 page.redownload_button.setEnabled(key in page.bar_meta)
-        if (
-            page.config.show_add_watchlist_button
-            or page.config.show_remove_watchlist_button
-            or page.config.show_watchlist_move_buttons
-        ):
+        if page.config.show_add_watchlist_button or page.config.show_remove_watchlist_button or page.config.show_watchlist_move_buttons:
             page._watchlist.update_action_buttons(item)
         if page.config.show_backtest_button:
             page.backtest_button.setEnabled(item is not None)
@@ -98,35 +88,20 @@ class ActionsController:
             bar_count = meta.count if meta else 0
 
         quote_service = page._get_quote_service()
-        if quote_service is not None:
-            quote_service.publish_quote_context(
-                page=page.page_name,
-                item=page.current_item,
-                quote=quote,
-                bar_count=bar_count,
-            )
+        if quote_service is None:
             return
-
-        from vnpy_ashare.ai.context_store import set_ai_context
-        from vnpy_llm.ui.floating_actions import enrich_context_with_actions
-
-        data = enrich_context_with_actions(
-            build_quote_context(
-                page=page.page_name,
-                item=page.current_item,
-                quote=quote,
-                bar_count=bar_count,
-            )
+        quote_service.publish_quote_context(
+            page=page.page_name,
+            item=page.current_item,
+            quote=quote,
+            bar_count=bar_count,
         )
-        set_ai_context(data)
 
     def update_quote_header(self, item: StockItem) -> None:
         page = self._p
         quote = page.quote_map.get(item.tickflow_symbol)
         page.quote_name_label.setText(quote.name if quote and quote.name else item.name)
-        page.quote_code_label.setText(
-            f"  {format_vt_symbol_cn(item.symbol, item.exchange)}"
-        )
+        page.quote_code_label.setText(f"  {format_vt_symbol_cn(item.symbol, item.exchange)}")
 
         if not quote:
             page.quote_price_label.setText("—")
@@ -136,21 +111,15 @@ class ActionsController:
         color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
         page.quote_price_label.setText(f"{quote.last_price:.2f}")
         page.quote_price_label.setStyleSheet(f"color: {color};")
-        page.quote_change_label.setText(
-            f"  {quote.change_amount:+.2f}  ({quote.change_pct:+.2f}%)"
-        )
+        page.quote_change_label.setText(f"  {quote.change_amount:+.2f}  ({quote.change_pct:+.2f}%)")
         page.quote_change_label.setStyleSheet(f"color: {color}; font-size: 14px;")
 
         if page._open_label is not None:
             open_text = f"今开 {quote.open_price:.2f}" if quote.open_price else "今开 —"
             page._open_label.setText(open_text)
-            page._high_label.setText(
-                f"最高 {quote.high_price:.2f}" if quote.high_price else "最高 —"
-            )
+            page._high_label.setText(f"最高 {quote.high_price:.2f}" if quote.high_price else "最高 —")
             page._high_label.setStyleSheet(f"color: {RISE_COLOR}; font-size: 12px;")
-            page._low_label.setText(
-                f"最低 {quote.low_price:.2f}" if quote.low_price else "最低 —"
-            )
+            page._low_label.setText(f"最低 {quote.low_price:.2f}" if quote.low_price else "最低 —")
             page._low_label.setStyleSheet(f"color: {FALL_COLOR}; font-size: 12px;")
             vol_text = format_volume(quote.volume) if quote.volume else "—"
             page._volume_label.setText(f"量 {vol_text}")
@@ -239,9 +208,7 @@ class ActionsController:
         if page.config.show_depth_panel:
             self.refresh_depth()
 
-        refresh_source = (
-            page.config.quote_refresh_source or page.config.quote_source or "watchlist"
-        )
+        refresh_source = page.config.quote_refresh_source or page.config.quote_source or "watchlist"
         worker = QuotesRefreshWorker(list(page.display_stocks), refresh_source)
         page._quotes_worker = worker
         current = page.current_item
@@ -336,11 +303,7 @@ class ActionsController:
             return
         item = self._p.current_item
         assert item is not None
-        self._ask_ai(
-            f"请分析 {title} 的近期技术形态。"
-            f'请调用 technical_snapshot(symbol="{item.vt_symbol}")，'
-            "基于工具返回的均线、量比、区间涨跌等数据做解读。"
-        )
+        self._ask_ai(f'请分析 {title} 的近期技术形态。请调用 technical_snapshot(symbol="{item.vt_symbol}")，基于工具返回的均线、量比、区间涨跌等数据做解读。')
 
     def ask_ai_for_signals(self) -> None:
         title = self._item_title()
@@ -374,10 +337,6 @@ class ActionsController:
         analysis = page._get_analysis_service()
         if analysis is not None:
             analysis.set_diagnose_result(payload)
-        else:
-            from vnpy_ashare.ai.context_store import set_diagnose_result
-
-            set_diagnose_result(payload)
         self.emit_ai_context()
 
     def on_diagnose_failed(self, message: str) -> None:

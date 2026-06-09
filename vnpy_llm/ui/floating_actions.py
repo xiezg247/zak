@@ -10,7 +10,6 @@ from vnpy_ashare.ai.context import (
     QuickAction,
     build_assistant_quick_actions,
     build_floating_stock_quick_actions,
-    build_stock_quick_actions,
 )
 from vnpy_ashare.ai.context_store import get_screening_results
 
@@ -43,10 +42,7 @@ def _build_page_actions(data: AiContextData) -> list[QuickAction]:
                 QuickAction(
                     id="interpret_screen",
                     label="解读选股结果",
-                    prompt=(
-                        f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
-                        "请调用 get_screening_context 获取数据后解读前几只标的。"
-                    ),
+                    prompt=(f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。请调用 get_screening_context 获取数据后解读前几只标的。"),
                 ),
             ]
     if data.page == "数据管理":
@@ -54,10 +50,7 @@ def _build_page_actions(data: AiContextData) -> list[QuickAction]:
             QuickAction(
                 id="data_gap",
                 label="检查数据缺口",
-                prompt=(
-                    "请根据当前本地 K 线覆盖情况，分析可能存在的数据缺口，"
-                    "并说明建议优先补全哪些标的或周期。可结合 get_bars_summary 等工具。"
-                ),
+                prompt=("请根据当前本地 K 线覆盖情况，分析可能存在的数据缺口，并说明建议优先补全哪些标的或周期。可结合 get_bars_summary 等工具。"),
             ),
         ]
     return []

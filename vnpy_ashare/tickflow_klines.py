@@ -123,9 +123,7 @@ def _fetch_klines_paged(
 
     if not frames:
         return pd.DataFrame()
-    return pd.concat(frames, ignore_index=True).drop_duplicates(
-        subset=["timestamp"], keep="last"
-    )
+    return pd.concat(frames, ignore_index=True).drop_duplicates(subset=["timestamp"], keep="last")
 
 
 def fetch_history_bars(

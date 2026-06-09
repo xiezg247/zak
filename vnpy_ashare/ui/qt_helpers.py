@@ -7,6 +7,16 @@ import warnings
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 
+def thread_is_active(worker: QtCore.QThread | None) -> bool:
+    """QThread 是否仍在运行（已销毁的 worker 视为未运行）。"""
+    if worker is None:
+        return False
+    try:
+        return worker.isRunning()
+    except RuntimeError:
+        return False
+
+
 def disconnect_worker_auto_delete(worker: QtCore.QThread) -> None:
     """断开 finished/failed → deleteLater，避免 deactivate 与自动销毁竞态。"""
     for signal_name in ("finished", "failed"):

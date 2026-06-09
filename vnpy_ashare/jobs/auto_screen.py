@@ -14,7 +14,7 @@ from vnpy_ashare.screener.recipe import (
     resolve_recipe,
 )
 from vnpy_ashare.screener.recipe_runner import build_reason_summary, run_recipe
-from vnpy_ashare.screener.runner import ScreenerRunResult
+from vnpy_ashare.services.screening_service import persist_scheduled_recipe_run
 
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
@@ -79,7 +79,7 @@ def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
             message=f"{recipe.name} 完成，未命中标的",
         )
 
-    persist_auto_screen_result(
+    persist_scheduled_recipe_run(
         result,
         trigger=trigger,
         recipe_id=recipe_id,
@@ -92,41 +92,4 @@ def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
     return JobResult(
         success=True,
         message=f"{summary}（扫描约 {result.total_scanned} 只）",
-    )
-
-
-def persist_auto_screen_result(
-    result: ScreenerRunResult,
-    *,
-    trigger: str,
-    recipe_id: str,
-) -> None:
-    from vnpy_ashare.ai.context_store import set_screening_results
-    from vnpy_ashare.screener.recipe import resolve_recipe
-    from vnpy_ashare.screener.run_store import save_run
-
-    recipe = resolve_recipe(recipe_id)
-    rows = list(result.rows)
-    config: dict = {
-        "trigger": trigger,
-        "recipe_id": recipe_id,
-        "reason_summary": build_reason_summary(
-            recipe=recipe,
-            trigger=trigger,
-            row_count=len(rows),
-        )
-        if recipe is not None
-        else trigger,
-    }
-    set_screening_results(
-        condition=result.condition,
-        rows=rows,
-        updated_at=result.updated_at,
-    )
-    save_run(
-        condition=result.condition,
-        source=result.source,
-        rows=rows,
-        total_scanned=result.total_scanned,
-        config=config,
     )

@@ -138,13 +138,8 @@ class AgentSkill:
         if self.description:
             lines.append(self.description)
         if self.missing_env:
-            lines.append(
-                f"（缺少环境变量: {', '.join(self.missing_env)}，部分功能可能受限）"
-            )
-        lines.append(
-            "详细 API 与示例请按需调用 read_skill_file(skill="
-            f'"{self.name}", path="SKILL.md") 或 references/ 下文档。'
-        )
+            lines.append(f"（缺少环境变量: {', '.join(self.missing_env)}，部分功能可能受限）")
+        lines.append(f'详细 API 与示例请按需调用 read_skill_file(skill="{self.name}", path="SKILL.md") 或 references/ 下文档。')
         return "\n".join(lines)
 
     def prompt_section_full(self) -> str:

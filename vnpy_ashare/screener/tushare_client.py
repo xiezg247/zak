@@ -24,9 +24,7 @@ def get_tushare_pro():
         except Exception:
             token = ""
     if not token:
-        raise TushareNotConfiguredError(
-            "未配置 TUSHARE_TOKEN。请在 .env 中设置后重试。"
-        )
+        raise TushareNotConfiguredError("未配置 TUSHARE_TOKEN。请在 .env 中设置后重试。")
     import tushare as ts
 
     ts.set_token(token)

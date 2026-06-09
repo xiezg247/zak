@@ -127,14 +127,16 @@ class VnpyDataSkill(SkillTemplate):
 
         rows = []
         for bar in tail:
-            rows.append({
-                "date": bar.datetime.strftime("%Y-%m-%d"),
-                "open": round(bar.open_price, 2),
-                "high": round(bar.high_price, 2),
-                "low": round(bar.low_price, 2),
-                "close": round(bar.close_price, 2),
-                "volume": int(bar.volume),
-            })
+            rows.append(
+                {
+                    "date": bar.datetime.strftime("%Y-%m-%d"),
+                    "open": round(bar.open_price, 2),
+                    "high": round(bar.high_price, 2),
+                    "low": round(bar.low_price, 2),
+                    "close": round(bar.close_price, 2),
+                    "volume": int(bar.volume),
+                }
+            )
 
         return json.dumps(
             {

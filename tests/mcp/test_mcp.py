@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-
 from vnpy_llm.tools_status import build_tools_status
 from vnpy_mcp.base import McpToolInfo
 from vnpy_mcp.config import (
@@ -122,9 +121,7 @@ class McpConfigTests(unittest.TestCase):
                 encoding="utf-8",
             )
             (mcp_dir / "tdx.json").write_text(
-                json.dumps(
-                    {"url": "https://override.example/mcp", "headers": {"tdx-api-key": "k"}}
-                ),
+                json.dumps({"url": "https://override.example/mcp", "headers": {"tdx-api-key": "k"}}),
                 encoding="utf-8",
             )
             configs = load_mcp_dir(mcp_dir)
@@ -144,9 +141,7 @@ class McpConfigTests(unittest.TestCase):
 
 class McpEngineTests(unittest.TestCase):
     def test_tool_prefix(self) -> None:
-        with _mcp_dir(
-            ("mcp.json", {"mcpServers": {"tdx": {"url": DEFAULT_TDX_MCP_URL, "headers": {"tdx-api-key": "k"}}}})
-        ):
+        with _mcp_dir(("mcp.json", {"mcpServers": {"tdx": {"url": DEFAULT_TDX_MCP_URL, "headers": {"tdx-api-key": "k"}}}})):
             engine = McpEngine()
             engine.load_all()
             provider = engine.providers["tdx"]

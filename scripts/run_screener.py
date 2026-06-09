@@ -13,8 +13,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from vnpy_ashare.ai.symbol import parse_stock_symbol
 from vnpy_ashare.app_db import add_watchlist_item, init_app_db
-from vnpy_ashare.screener.export import export_rows_to_csv
 from vnpy_ashare.screener.batch_actions import batch_download_daily_bars
+from vnpy_ashare.screener.export import export_rows_to_csv
+from vnpy_ashare.screener.run_store import save_run
 from vnpy_ashare.screener.runner import (
     ScreenerRequest,
     build_scheme_config,
@@ -22,7 +23,6 @@ from vnpy_ashare.screener.runner import (
     resolve_preset_input,
     run_screener,
 )
-from vnpy_ashare.screener.run_store import save_run
 from vnpy_ashare.screener.scheme_store import list_schemes
 
 

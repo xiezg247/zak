@@ -129,10 +129,7 @@ def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:
 
     rows, trade_date = fetch_daily_basic_with_fallback(start=start)
     if not rows:
-        raise RuntimeError(
-            f"Tushare daily_basic 在最近 {DEFAULT_LOOKBACK_DAYS} 个交易日均无数据，"
-            "请稍后重试或检查积分权限。"
-        )
+        raise RuntimeError(f"Tushare daily_basic 在最近 {DEFAULT_LOOKBACK_DAYS} 个交易日均无数据，请稍后重试或检查积分权限。")
 
     source = "tushare"
     if trading:

@@ -10,10 +10,7 @@ def is_ashare_strategy_class(cls: type) -> bool:
     """策略是否继承 strategies.ashare_template.AShareTemplate（按 MRO 名称判定）。"""
     if cls.__name__ == _ASHARE_BASE_NAME:
         return False
-    return any(
-        base.__name__ == _ASHARE_BASE_NAME and base.__module__ == _ASHARE_BASE_MODULE
-        for base in cls.__mro__
-    )
+    return any(base.__name__ == _ASHARE_BASE_NAME and base.__module__ == _ASHARE_BASE_MODULE for base in cls.__mro__)
 
 
 def filter_ashare_strategy_names(classes: dict[str, type]) -> list[str]:

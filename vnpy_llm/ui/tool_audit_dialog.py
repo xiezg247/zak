@@ -103,12 +103,8 @@ class AiToolAuditDialog(QtWidgets.QDialog):
 
         self.table = QtWidgets.QTableWidget(0, 5)
         self.table.setHorizontalHeaderLabels(["时间", "工具", "状态", "参数", "结果预览"])
-        self.table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.table.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
-        )
+        self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
@@ -157,9 +153,7 @@ class AiToolAuditDialog(QtWidgets.QDialog):
             tool_item.setToolTip(tool_name)
             status_item = QtWidgets.QTableWidgetItem(status_text)
             status_item.setForeground(QtGui.QColor(status_color))
-            args_item = QtWidgets.QTableWidgetItem(
-                _args_summary(dict(row_data.get("arguments") or {}))
-            )
+            args_item = QtWidgets.QTableWidgetItem(_args_summary(dict(row_data.get("arguments") or {})))
             preview_item = QtWidgets.QTableWidgetItem(str(row_data.get("result_preview", "")))
 
             for item in (time_item, tool_item, status_item, args_item, preview_item):

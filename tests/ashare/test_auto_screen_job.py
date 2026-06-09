@@ -7,7 +7,6 @@ from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
-from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.screener.runner import ScreenerRunResult
 
 
@@ -43,7 +42,7 @@ def test_screen_intraday_force_runs():
             "vnpy_ashare.jobs.auto_screen.run_recipe",
             return_value=fake_result,
         ):
-            with patch("vnpy_ashare.jobs.auto_screen.persist_auto_screen_result"):
+            with patch("vnpy_ashare.jobs.auto_screen.persist_scheduled_recipe_run"):
                 result = run_scheduled_auto_screen("screen_intraday", force=True)
 
     assert result.success is True

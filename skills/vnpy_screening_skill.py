@@ -21,10 +21,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="propose_screening",
-                description=(
-                    "解析用户选股意图并生成待确认草案，不会直接执行筛选。"
-                    "用户须在确认框中点击「确认运行」后才会执行。"
-                ),
+                description=("解析用户选股意图并生成待确认草案，不会直接执行筛选。用户须在确认框中点击「确认运行」后才会执行。"),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -34,10 +31,7 @@ class VnpyScreeningSkill(SkillTemplate):
                         },
                         "preset": {
                             "type": "string",
-                            "description": (
-                                "内置方案名：涨幅榜/换手率排行/成交量放大/自定义筛选/"
-                                "低 PE/中大盘/主力净流入；或留空由系统推断"
-                            ),
+                            "description": ("内置方案名：涨幅榜/换手率排行/成交量放大/自定义筛选/低 PE/中大盘/主力净流入；或留空由系统推断"),
                         },
                         "top_n": {
                             "type": "integer",
@@ -70,11 +64,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="screen_by_pattern",
-                description=(
-                    "直接执行 A 股形态选股并返回结果（无需确认）。"
-                    "支持：老鸭头形态/均线多头/W底形态/主题投资。"
-                    "依赖本地日 K（主题投资需全市场行情）。"
-                ),
+                description=("直接执行 A 股形态选股并返回结果（无需确认）。支持：老鸭头形态/均线多头/W底形态/主题投资。依赖本地日 K（主题投资需全市场行情）。"),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -90,9 +80,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="screen_by_condition",
                 description=(
-                    "直接执行内置选股方案并返回结果（无需用户确认）。"
-                    "适用于涨幅榜/换手率/低PE等内置 preset；"
-                    "已保存方案或复杂条件请改用 propose_screening。"
+                    "直接执行内置选股方案并返回结果（无需用户确认）。适用于涨幅榜/换手率/低PE等内置 preset；已保存方案或复杂条件请改用 propose_screening。"
                 ),
                 parameters={
                     "type": "object",
@@ -239,17 +227,19 @@ class VnpyScreeningSkill(SkillTemplate):
     def _format_results(self, name: str, results: list[dict]) -> str:
         summary = []
         for r in results:
-            summary.append({
-                "symbol": r.get("symbol", ""),
-                "name": r.get("name", ""),
-                "vt_symbol": r.get("vt_symbol", ""),
-                "last_price": r.get("last_price"),
-                "change_pct": r.get("change_pct"),
-                "turnover_rate": r.get("turnover_rate"),
-                "pe_ttm": r.get("pe_ttm"),
-                "total_mv": r.get("total_mv"),
-                "net_mf_amount": r.get("net_mf_amount"),
-            })
+            summary.append(
+                {
+                    "symbol": r.get("symbol", ""),
+                    "name": r.get("name", ""),
+                    "vt_symbol": r.get("vt_symbol", ""),
+                    "last_price": r.get("last_price"),
+                    "change_pct": r.get("change_pct"),
+                    "turnover_rate": r.get("turnover_rate"),
+                    "pe_ttm": r.get("pe_ttm"),
+                    "total_mv": r.get("total_mv"),
+                    "net_mf_amount": r.get("net_mf_amount"),
+                }
+            )
         return json.dumps(
             {"condition": name, "count": len(summary), "results": summary},
             ensure_ascii=False,

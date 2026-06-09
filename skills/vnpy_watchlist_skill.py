@@ -82,11 +82,7 @@ class VnpyWatchlistSkill(SkillTemplate):
             {
                 "success": ok,
                 "symbol": item.vt_symbol,
-                "message": (
-                    f"{item.vt_symbol} 已加入自选"
-                    if ok
-                    else f"{item.vt_symbol} 已在自选池中"
-                ),
+                "message": (f"{item.vt_symbol} 已加入自选" if ok else f"{item.vt_symbol} 已在自选池中"),
             },
             ensure_ascii=False,
         )
@@ -104,11 +100,7 @@ class VnpyWatchlistSkill(SkillTemplate):
             {
                 "success": ok,
                 "symbol": item.vt_symbol,
-                "message": (
-                    f"{item.vt_symbol} 已移出自选"
-                    if ok
-                    else f"{item.vt_symbol} 不在自选池中"
-                ),
+                "message": (f"{item.vt_symbol} 已移出自选" if ok else f"{item.vt_symbol} 不在自选池中"),
             },
             ensure_ascii=False,
         )

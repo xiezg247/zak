@@ -7,12 +7,8 @@ from typing import Any
 from vnpy_ashare.screener.presets import (
     SCREENER_CHANGE_TOP,
     SCREENER_CUSTOM,
-    SCREENER_LARGE_CAP,
-    SCREENER_LOW_PE,
-    SCREENER_MONEYFLOW_IN,
     SCREENER_TURNOVER,
     SCREENER_VOLUME_SURGE,
-    list_builtin_preset_names,
 )
 
 # Tushare daily_basic.total_mv 单位为万元；50 亿 = 500000 万元
@@ -54,10 +50,7 @@ def apply_quote_preset(
 
 
 def apply_low_pe(rows: list[dict[str, Any]], *, top_n: int, max_pe_ttm: float = 15.0) -> list[dict[str, Any]]:
-    filtered = [
-        row for row in rows
-        if row.get("pe_ttm", 0) > 0 and row.get("pe_ttm", 0) < max_pe_ttm
-    ]
+    filtered = [row for row in rows if row.get("pe_ttm", 0) > 0 and row.get("pe_ttm", 0) < max_pe_ttm]
     filtered.sort(key=lambda r: r.get("pe_ttm", 0))
     return [_fundamental_row(r) for r in filtered[:top_n]]
 

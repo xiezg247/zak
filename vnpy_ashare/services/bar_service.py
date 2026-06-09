@@ -8,11 +8,13 @@ from typing import Any
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.bar_store import (
+from vnpy_ashare.bar_access import (
     PeriodBarOverview,
+    build_symbol_name_map,
     get_period_overview,
     iter_bar_overviews,
     load_scope_bars,
+    universe_exists,
 )
 from vnpy_ashare.services.base import BaseService
 
@@ -68,15 +70,23 @@ class BarService(BaseService):
             "lookback_days": len(tail),
             "start": tail[0].datetime.strftime("%Y-%m-%d"),
             "end": tail[-1].datetime.strftime("%Y-%m-%d"),
-            "return_pct": round(
-                (last_close - first_close) / first_close * 100, 2
-            ),
+            "return_pct": round((last_close - first_close) / first_close * 100, 2),
             "close_start": round(first_close, 2),
             "close_end": round(last_close, 2),
         }
 
     def list_downloaded(self, scope: str = "daily") -> list[PeriodBarOverview]:
         return iter_bar_overviews(scope=scope)
+
+    def iter_overviews(self, scope: str) -> list[PeriodBarOverview]:
+        """遍历指定 scope 的 K 线概览。"""
+        return iter_bar_overviews(scope=scope)
+
+    def build_symbol_name_map(self) -> dict[tuple[str, Exchange], str]:
+        return build_symbol_name_map()
+
+    def universe_exists(self) -> bool:
+        return universe_exists()
 
     def publish_data_manager_context(self) -> None:
         publish_data_manager_page_context()
@@ -107,8 +117,4 @@ def publish_data_manager_page_context() -> None:
         f"分钟线：{len(minute_symbols)} 组标的，共 {minute_bars} 根 K 线",
         "补全数据请引导用户使用「自选 / 本地」页或「工具 → 立即执行」。",
     ]
-    set_ai_context(
-        enrich_context_with_actions(
-            AiContextData(page="数据管理", extra="\n".join(extra_lines))
-        )
-    )
+    set_ai_context(enrich_context_with_actions(AiContextData(page="数据管理", extra="\n".join(extra_lines))))

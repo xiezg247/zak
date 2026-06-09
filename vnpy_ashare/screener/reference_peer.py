@@ -106,12 +106,7 @@ def run_reference_peer_screen(
     if not ref_industry or ref_industry == "未知":
         raise RuntimeError("标杆股缺少行业分类，暂无法做同业对标")
 
-    candidates = [
-        row
-        for row in fund_rows
-        if str(row.get("vt_symbol")) != vt_symbol
-        and _resolve_industry(row, industry_map) == ref_industry
-    ]
+    candidates = [row for row in fund_rows if str(row.get("vt_symbol")) != vt_symbol and _resolve_industry(row, industry_map) == ref_industry]
     progress(f"同业池 {len(candidates)} 只，拉取近 {_MOMENTUM_DAYS} 日涨跌幅…")
     if not candidates:
         return ReferencePeerRunResult(
@@ -151,9 +146,7 @@ def run_reference_peer_screen(
         mom_score = _momentum_score(ref_momentum, cand_momentum)
         industry_score = 100.0
         composite = round(
-            industry_score * _WEIGHT_INDUSTRY
-            + val_score * _WEIGHT_VALUATION
-            + mom_score * _WEIGHT_MOMENTUM,
+            industry_score * _WEIGHT_INDUSTRY + val_score * _WEIGHT_VALUATION + mom_score * _WEIGHT_MOMENTUM,
             1,
         )
         reasons = [
@@ -179,9 +172,7 @@ def run_reference_peer_screen(
         )
 
     scored.sort(
-        key=lambda item: (
-            float(item.get("similarity_score") or 0),
-        ),
+        key=lambda item: (float(item.get("similarity_score") or 0),),
         reverse=True,
     )
     rows = scored[: clamp_reference_peer_top_n(top_n)]

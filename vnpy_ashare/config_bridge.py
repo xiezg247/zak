@@ -40,10 +40,7 @@ def parse_env_file(path: Path) -> dict[str, str]:
 def load_effective_env_values(env_file: Path = ENV_FILE) -> dict[str, str]:
     """合并 .env 文件与 schema 默认值，得到生效的 ENV 配置。"""
     file_values = parse_env_file(env_file)
-    return {
-        spec.key: file_values[spec.key] if spec.key in file_values else spec.default
-        for spec in ENV_CONFIG_SPECS
-    }
+    return {spec.key: file_values[spec.key] if spec.key in file_values else spec.default for spec in ENV_CONFIG_SPECS}
 
 
 def normalize_datafeed_name(name: str) -> str:

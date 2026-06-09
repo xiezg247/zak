@@ -7,12 +7,12 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
-
 from typing import Literal
 
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.paths import APP_DB_PATH
+
 UNIVERSE_SYNCED_AT_KEY = "universe_synced_at"
 CACHE_MAX_AGE = timedelta(days=7)
 
@@ -70,8 +70,7 @@ def init_app_db() -> Path:
 
 def _set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:
     conn.execute(
-        "INSERT INTO meta(key, value) VALUES (?, ?) "
-        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        "INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         (key, value),
     )
 
@@ -136,9 +135,7 @@ def _row_to_stock(row: sqlite3.Row) -> tuple[str, Exchange, str]:
 def load_watchlist_rows() -> list[tuple[str, Exchange, str]]:
     init_app_db()
     with _connect() as conn:
-        rows = conn.execute(
-            "SELECT symbol, exchange, name FROM watchlist ORDER BY sort_order, symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT symbol, exchange, name FROM watchlist ORDER BY sort_order, symbol").fetchall()
     return [_row_to_stock(row) for row in rows]
 
 
@@ -179,9 +176,7 @@ def remove_watchlist_item(symbol: str, exchange: Exchange) -> bool:
         )
         if cursor.rowcount == 0:
             return False
-        rows = conn.execute(
-            "SELECT symbol, exchange, name FROM watchlist ORDER BY sort_order, symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT symbol, exchange, name FROM watchlist ORDER BY sort_order, symbol").fetchall()
         conn.execute("DELETE FROM watchlist")
         for index, row in enumerate(rows):
             conn.execute(
@@ -280,9 +275,7 @@ def load_universe_page(
             board_params,
         ).fetchone()[0]
         rows = conn.execute(
-            f"SELECT symbol, exchange, name FROM universe "
-            f"WHERE 1=1{board_sql} "
-            f"ORDER BY symbol LIMIT ? OFFSET ?",
+            f"SELECT symbol, exchange, name FROM universe WHERE 1=1{board_sql} ORDER BY symbol LIMIT ? OFFSET ?",
             (*board_params, limit, offset),
         ).fetchall()
     return [_row_to_stock(row) for row in rows], int(total)
@@ -297,11 +290,7 @@ def move_watchlist_item(
     """调整自选池顺序（按加入先后，上移/下移一行）。"""
     items = load_watchlist_rows()
     index = next(
-        (
-            idx
-            for idx, (row_symbol, row_exchange, _name) in enumerate(items)
-            if row_symbol == symbol and row_exchange == exchange
-        ),
+        (idx for idx, (row_symbol, row_exchange, _name) in enumerate(items) if row_symbol == symbol and row_exchange == exchange),
         None,
     )
     if index is None:
@@ -317,9 +306,7 @@ def move_watchlist_item(
 def load_universe_rows() -> list[tuple[str, Exchange, str]]:
     init_app_db()
     with _connect() as conn:
-        rows = conn.execute(
-            "SELECT symbol, exchange, name FROM universe ORDER BY symbol"
-        ).fetchall()
+        rows = conn.execute("SELECT symbol, exchange, name FROM universe ORDER BY symbol").fetchall()
     return [_row_to_stock(row) for row in rows]
 
 
@@ -383,14 +370,11 @@ def search_universe(
     board_sql, board_params = _board_where_clause(board)
     with _connect() as conn:
         total = conn.execute(
-            f"SELECT COUNT(*) FROM universe "
-            f"WHERE (lower(symbol) LIKE ? OR lower(name) LIKE ?){board_sql}",
+            f"SELECT COUNT(*) FROM universe WHERE (lower(symbol) LIKE ? OR lower(name) LIKE ?){board_sql}",
             (pattern, pattern, *board_params),
         ).fetchone()[0]
         rows = conn.execute(
-            f"SELECT symbol, exchange, name FROM universe "
-            f"WHERE (lower(symbol) LIKE ? OR lower(name) LIKE ?){board_sql} "
-            f"ORDER BY symbol LIMIT ? OFFSET ?",
+            f"SELECT symbol, exchange, name FROM universe WHERE (lower(symbol) LIKE ? OR lower(name) LIKE ?){board_sql} ORDER BY symbol LIMIT ? OFFSET ?",
             (pattern, pattern, *board_params, limit, offset),
         ).fetchall()
     return [_row_to_stock(row) for row in rows], int(total)

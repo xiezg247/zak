@@ -98,7 +98,7 @@ def summarize_double_ma_state(
     fast_ma0 = _sma(closes, fast_window, last_index)
     fast_ma1 = _sma(closes, fast_window, last_index - 1)
     slow_ma0 = _sma(closes, slow_window, last_index)
-    slow_ma1 = _sma(closes, slow_window, last_index - 1)
+    _ = _sma(closes, slow_window, last_index - 1)
     assert fast_ma0 is not None and slow_ma0 is not None
 
     if fast_ma0 > slow_ma0:

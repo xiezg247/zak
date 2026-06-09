@@ -13,7 +13,6 @@ from vnpy_ashare.ui.qt_helpers import (
     restore_child_position,
     restore_geometry_on_screen,
 )
-
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.ui.floating_actions import orb_tooltip_text
 from vnpy_llm.ui.panel import AiChatPanel
@@ -185,9 +184,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.setBrush(badge_bg)
         painter.drawRoundedRect(rect, 4, 4)
-        painter.setPen(
-            QtGui.QColor(255, 220, 160) if self._attention_strength > 0.05 else QtGui.QColor(200, 220, 255)
-        )
+        painter.setPen(QtGui.QColor(255, 220, 160) if self._attention_strength > 0.05 else QtGui.QColor(200, 220, 255))
         painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, text)
 
     def enterEvent(self, event: QtCore.QEvent) -> None:
@@ -208,10 +205,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        if (
-            self._drag_offset is not None
-            and event.buttons() & QtCore.Qt.MouseButton.LeftButton
-        ):
+        if self._drag_offset is not None and event.buttons() & QtCore.Qt.MouseButton.LeftButton:
             if self._press_global is not None:
                 delta = event.globalPosition().toPoint() - self._press_global
                 if delta.manhattanLength() > 4:

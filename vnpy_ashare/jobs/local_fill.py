@@ -261,9 +261,7 @@ def batch_fill_gap_daily_bars(
     as_of: date | None = None,
 ) -> BatchGapFillResult:
     """扫描列表内日 K 并修复内部断层。"""
-    candidates = [
-        item for item in stocks if bar_meta.get((item.symbol, item.exchange)) is not None
-    ]
+    candidates = [item for item in stocks if bar_meta.get((item.symbol, item.exchange)) is not None]
     if not candidates:
         return BatchGapFillResult(
             scanned=0,

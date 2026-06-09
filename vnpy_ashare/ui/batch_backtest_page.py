@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy.event import Event, EventEngine
+from vnpy.trader.engine import MainEngine
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.backtest_context import sync_batch_compare_context
 from vnpy_ashare.backtest.run_store import (
@@ -17,8 +19,6 @@ from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
 from vnpy_ashare.screener.export import export_rows_to_csv
 from vnpy_ashare.ui.batch_backtest_table import BatchBacktestTableWidget, record_to_row
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
-from vnpy.trader.engine import MainEngine
-from vnpy.trader.ui import QtCore, QtWidgets
 
 
 class BatchBacktestPageWidget(QtWidgets.QWidget):
@@ -106,17 +106,10 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         sessions = list_batch_sessions(limit=50)
         selected_row = -1
         for index, session in enumerate(sessions):
-            subtitle = (
-                f"{session.success_count}/{session.row_count} 成功 · "
-                f"{session.start_date}~{session.end_date} · {session.created_at[5:16]}"
-            )
+            subtitle = f"{session.success_count}/{session.row_count} 成功 · {session.start_date}~{session.end_date} · {session.created_at[5:16]}"
             item = QtWidgets.QListWidgetItem(f"{session.strategy}\n{subtitle}")
             item.setData(QtCore.Qt.ItemDataRole.UserRole, session.batch_id)
-            item.setToolTip(
-                f"策略 {session.strategy}\n"
-                f"来源 {session.source} · {session.created_at}\n"
-                f"批次 ID {session.batch_id}"
-            )
+            item.setToolTip(f"策略 {session.strategy}\n来源 {session.source} · {session.created_at}\n批次 ID {session.batch_id}")
             self.session_list.addItem(item)
             if session.batch_id == current_id:
                 selected_row = index

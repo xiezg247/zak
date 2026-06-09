@@ -51,8 +51,7 @@ class BacktestIntent(BaseModel):
 
     action: BacktestAction = Field(
         default="general",
-        description="query_result=查最近结果; list_strategies=列策略; "
-        "list_history=历史对比; interpret_signals=解读策略信号",
+        description="query_result=查最近结果; list_strategies=列策略; list_history=历史对比; interpret_signals=解读策略信号",
     )
     strategy_hint: str = Field(default="", description="用户提到的策略名或关键词")
     history_limit: int = Field(default=10, ge=1, le=50)

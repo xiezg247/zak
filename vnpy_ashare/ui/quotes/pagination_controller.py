@@ -52,12 +52,8 @@ class MarketPaginationController:
         page_count = self.page_count()
         self._page.home_button.setEnabled(not busy and self._page._market_page > 0)
         self._page.prev_page_button.setEnabled(not busy and self._page._market_page > 0)
-        self._page.next_page_button.setEnabled(
-            not busy and self._page._market_page + 1 < page_count
-        )
-        self._page.end_button.setEnabled(
-            not busy and self._page._market_page + 1 < page_count
-        )
+        self._page.next_page_button.setEnabled(not busy and self._page._market_page + 1 < page_count)
+        self._page.end_button.setEnabled(not busy and self._page._market_page + 1 < page_count)
         self._page.page_jump_input.setEnabled(not busy)
 
     def go_prev(self) -> None:

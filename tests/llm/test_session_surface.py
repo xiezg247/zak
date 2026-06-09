@@ -56,9 +56,11 @@ class LlmEngineSurfaceTests(unittest.TestCase):
         main_engine = MagicMock()
         main_engine.engines = {}
         event_engine = MagicMock()
-        with patch.object(LlmEngine, "register_event"), patch.object(
-            LlmEngine, "_emit_tools_status"
-        ), patch("vnpy_ashare.ai.context_store.register_context_listener"):
+        with (
+            patch.object(LlmEngine, "register_event"),
+            patch.object(LlmEngine, "_emit_tools_status"),
+            patch("vnpy_ashare.ai.context_store.register_context_listener"),
+        ):
             engine = LlmEngine(main_engine, event_engine)
         return engine
 

@@ -211,19 +211,13 @@ def format_intraday_summary(
     delta_text, pct_text = format_change(bar.close_price, prev_close)
     parts = [
         f"<span style='color:#8a8a8a'>时间</span> {time_label}",
-        f"<span style='color:#8a8a8a'>现价</span> "
-        f"<span style='color:{change_color(bar.close_price, prev_close)}'>"
-        f"{bar.close_price:.2f}</span>",
-        f"<span style='color:#8a8a8a'>均价</span> "
-        f"<span style='color:{AVG_LINE_COLOR}'>{avg_price:.2f}</span>",
+        f"<span style='color:#8a8a8a'>现价</span> <span style='color:{change_color(bar.close_price, prev_close)}'>{bar.close_price:.2f}</span>",
+        f"<span style='color:#8a8a8a'>均价</span> <span style='color:{AVG_LINE_COLOR}'>{avg_price:.2f}</span>",
         f"<span style='color:#8a8a8a'>成交量</span> {format_volume_lots(bar.volume)}",
     ]
     if prev_close > 0:
         color = change_color(bar.close_price, prev_close)
-        parts.append(
-            f"<span style='color:#8a8a8a'>涨跌</span> "
-            f"<span style='color:{color}'>{delta_text} ({pct_text})</span>"
-        )
+        parts.append(f"<span style='color:#8a8a8a'>涨跌</span> <span style='color:{color}'>{delta_text} ({pct_text})</span>")
     return "  ·  ".join(parts)
 
 
@@ -242,9 +236,7 @@ def format_intraday_idle_summary(
         f"  ·  量 {format_volume_lots(bar.volume)}"
     )
     if prev_close > 0:
-        text += (
-            f"  ·  涨跌 <span style='color:{color}'>{delta_text} ({pct_text})</span>"
-        )
+        text += f"  ·  涨跌 <span style='color:{color}'>{delta_text} ({pct_text})</span>"
     text += "  ·  <span style='color:#6a6a6a'>移动鼠标查看历史分时</span>"
     return text
 

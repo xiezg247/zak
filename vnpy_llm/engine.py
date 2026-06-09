@@ -10,22 +10,21 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.ai.context import AiContextData
+from vnpy_ashare.ai.context_store import register_context_listener
 from vnpy_llm.client import LlmClientError, StreamCancelled, stream_chat_completion, stream_with_tools
-from vnpy_llm.routing import build_route_context
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
+from vnpy_llm.routing import build_route_context
 from vnpy_llm.session_surface import SessionSurfaceStore, Surface
-from vnpy_llm.store import MAX_MESSAGES_PER_SESSION, MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
+from vnpy_llm.store import MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
+from vnpy_llm.tool_labels import tool_display_name
 from vnpy_llm.tool_result import enrich_tool_result
 from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
 from vnpy_llm.trace import TraceStep, TraceStore, TurnTrace, preview_text
 from vnpy_llm.trace_persistence import TracePersistence
-from vnpy_llm.tool_labels import tool_display_name
 from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
-
-from vnpy_ashare.ai.context import AiContextData
-from vnpy_ashare.ai.context_store import register_context_listener
 
 APP_NAME = "Llm"
 
@@ -114,6 +113,7 @@ class LlmEngine(BaseEngine):
         parts: list[str] = []
         # 从 context_store 读取（QuotesPage 通过 set_ai_context 写入）
         from vnpy_ashare.ai.context_store import get_ai_context
+
         ctx = get_ai_context()
         context_text = ctx.to_text()
         if context_text:
@@ -305,11 +305,13 @@ class LlmEngine(BaseEngine):
             elif name.startswith("vnpy-sentiment"):
                 capabilities.append("全市场恐贪指数")
         if capabilities:
-            return "\n".join([
-                "【可用工具能力】",
-                "你拥有以下工具能力，涉及行情、K线、财务数据时必须调用工具获取真实数据，禁止编造。",
-                "  " + "、".join(sorted(set(capabilities))),
-            ])
+            return "\n".join(
+                [
+                    "【可用工具能力】",
+                    "你拥有以下工具能力，涉及行情、K线、财务数据时必须调用工具获取真实数据，禁止编造。",
+                    "  " + "、".join(sorted(set(capabilities))),
+                ]
+            )
         return ""
 
     def reload_skills(self) -> list[str]:
@@ -559,7 +561,10 @@ class LlmEngine(BaseEngine):
         self._trace_begin_turn(user_text)
         turn_ok = True
         cancelled = False
-        should_cancel = lambda: self._cancel_requested
+
+        def should_cancel() -> bool:
+            return self._cancel_requested
+
         chunks: list[str] = []
 
         def _persist_partial() -> None:
@@ -572,9 +577,7 @@ class LlmEngine(BaseEngine):
             if all_tools:
                 from vnpy_ashare.ai.context_store import get_ai_context
 
-                mcp_names = frozenset(
-                    spec.name for spec in self.mcp_engine.get_tool_specs()
-                )
+                mcp_names = frozenset(spec.name for spec in self.mcp_engine.get_tool_specs())
                 route_ctx = build_route_context(
                     self.config,
                     user_text,

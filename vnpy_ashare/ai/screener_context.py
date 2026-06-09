@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.engine_access import get_service
+from vnpy_ashare.engine_access import get_screening_service
 from vnpy_ashare.services.screening_service import publish_screener_page_context
 
 
 def sync_screener_page_context(main_engine=None) -> None:
-    service = get_service(main_engine, "screening_service")
+    service = get_screening_service(main_engine)
     if service is not None:
         service.publish_page_context()
     else:
