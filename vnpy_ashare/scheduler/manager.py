@@ -25,11 +25,28 @@ from vnpy_ashare.jobs import (
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
+from vnpy_ashare.screener.recipe import resolve_recipe
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 _MAX_RUN_LOG = 200
+
+
+def _recipe_label(recipe_id: str, fallback: str) -> str:
+    recipe = resolve_recipe(recipe_id or fallback)
+    if recipe is None:
+        return recipe_id or fallback
+    prefix = "内置" if recipe.builtin else "我的"
+    return f"{prefix} · {recipe.name}"
+
+
+def _normalize_cron_hours(raw: str, *, default: str = "10,14") -> str:
+    """APScheduler CronTrigger.hour 须为逗号分隔字符串，不能传 list。"""
+    parts = [part.strip() for part in str(raw or "").split(",") if part.strip()]
+    if not parts:
+        return default
+    return ",".join(parts)
 
 
 @dataclass
@@ -136,7 +153,7 @@ class TaskSchedulerManager:
                 schedule_builder=lambda _cfg: CronTrigger(hour="10,14", minute=0),
                 schedule_text_builder=lambda cfg: (
                     f"交易日 {cfg.cron_hours}:{cfg.cron_minute_intraday:02d} · "
-                    f"配方 {cfg.recipe_id or 'intraday_multi'}"
+                    f"{_recipe_label(cfg.recipe_id, 'intraday_multi')}"
                 ),
             ),
             "screen_post_close": _JobMeta(
@@ -152,7 +169,7 @@ class TaskSchedulerManager:
                 ),
                 schedule_text_builder=lambda cfg: (
                     f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · "
-                    f"配方 {cfg.recipe_id or 'post_close_multi'}"
+                    f"{_recipe_label(cfg.recipe_id, 'post_close_multi')}"
                 ),
             ),
         }
@@ -322,10 +339,10 @@ class TaskSchedulerManager:
                 continue
             meta = self._jobs[job_id]
             if job_id == "screen_intraday":
-                hours = [h.strip() for h in cfg.cron_hours.split(",") if h.strip()]
+                hours = _normalize_cron_hours(cfg.cron_hours)
                 trigger = CronTrigger(
                     day_of_week=cfg.cron_day_of_week,
-                    hour=hours or "10,14",
+                    hour=hours,
                     minute=cfg.cron_minute_intraday,
                 )
             elif job_id == "screen_post_close":

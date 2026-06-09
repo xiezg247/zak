@@ -1,8 +1,7 @@
-"""选股页（P0 行情 + P1 Tushare 基本面）。"""
+"""策略选股页（Preset / 自定义条件）。"""
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from vnpy.event import Event, EventEngine
@@ -26,23 +25,24 @@ from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.presets import SCREENER_CUSTOM, get_preset
 from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult, build_scheme_config, list_all_preset_names
-from vnpy_ashare.screener.run_store import get_run, mark_run_read, save_run
+from vnpy_ashare.screener.run_store import get_run, save_run
 from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.qt_helpers import release_thread
-from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
-from vnpy_ashare.ui.worker import (
-    ScreenerBatchDownloadWorker,
-    ScreenerRunWorker,
+from vnpy_ashare.ui.screener_results_table import (
+    iter_checked_table_rows,
+    populate_screener_results_table,
+    select_all_table_rows,
 )
+from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
+from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.worker import ScreenerBatchDownloadWorker, ScreenerRunWorker
 
-_ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
 _SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
 
 class ScreenerPageWidget(QtWidgets.QWidget):
-    """左侧导航「选股」页。"""
+    """左侧导航「策略选股」页。"""
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         super().__init__()
@@ -79,7 +79,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(0)
 
-        self.run_sidebar = ScreenerRunSidebar(parent=self)
+        self.run_sidebar = ScreenerRunSidebar(mode="strategy", parent=self)
         self.run_sidebar.run_selected.connect(self._load_historical_run)
         self.run_sidebar.copy_run_id_requested.connect(self._on_copy_run_id)
         self.run_sidebar.ask_ai_requested.connect(self._on_ask_ai_for_run)
@@ -97,7 +97,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         toolbar.setSpacing(8)
 
         # 主操作
-        self.run_btn = QtWidgets.QPushButton("▶  运行选股")
+        self.run_btn = QtWidgets.QPushButton("▶  运行策略选股")
         self.run_btn.setObjectName("PrimaryRunButton")
         self.run_btn.clicked.connect(self._run_screening)
         toolbar.addWidget(self.run_btn)
@@ -236,7 +236,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._status_bar = QtWidgets.QStatusBar()
         self._status_bar.setObjectName("ScreenerStatusBar")
         self._status_bar.setSizeGripEnabled(False)
-        self._status_label = QtWidgets.QLabel("设定条件后点击「运行选股」")
+        self._status_label = QtWidgets.QLabel("设定条件后点击「运行策略选股」")
         self._status_bar.addWidget(self._status_label, stretch=1)
         root.addWidget(self._status_bar)
 
@@ -366,7 +366,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         self._on_preset_changed(self.preset_combo.currentIndex())
         source = data.source_page or "AI"
-        self._status_label.setText(f"已从 {source} 预填选股条件，请核对后点击「运行选股」")
+        self._status_label.setText(f"已从 {source} 预填策略选股条件，请核对后点击「运行策略选股」")
 
     def _release_worker(self, worker: QtCore.QThread | None) -> None:
         release_thread(self._retired_workers, worker)
@@ -404,7 +404,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.run_btn.setDisabled(False)
         self._results = list(result.rows)
         self._result_columns = result.columns or resolve_export_columns(self._results)
-        self._populate_results(self._results)
+        populate_screener_results_table(self.result_table, self._results, self._result_columns)
         self._store_screening_results(
             condition=result.condition,
             rows=self._results,
@@ -448,7 +448,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.event_engine.put(
             Event(
                 EVENT_ASK_AI,
-                AskAiRequest(prompt=prompt, source_page="选股"),
+                AskAiRequest(prompt=prompt, source_page="策略选股"),
             )
         )
         self._status_label.setText(f"已打开 AI，预填解读请求：{condition}")
@@ -458,32 +458,23 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if record is None:
             self._status_label.setText("历史运行不存在或已删除")
             return
-        mark_run_read(run_id)
         self._results = list(record.rows)
         self._result_columns = resolve_export_columns(self._results)
-        self._populate_results(self._results)
+        populate_screener_results_table(self.result_table, self._results, self._result_columns)
         self._store_screening_results(
             condition=record.condition,
             rows=self._results,
             updated_at=record.created_at,
         )
         source_label = resolve_result_source_tag(record.source)
-        trigger = str(record.config.get("trigger", ""))
-        trigger_note = ""
-        if trigger == "manual":
-            trigger_note = "手动 · "
-        elif trigger.startswith("scheduled_"):
-            reason = record.config.get("reason_summary") or trigger.removeprefix("scheduled_")
-            trigger_note = f"自动 · {reason} · "
         self._summary_label.setText(
-            f"[历史] {trigger_note}「{record.condition}」命中 {len(self._results)} 条 · "
+            f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · "
             f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
         )
         self._status_label.setText(
-            f"[历史] {trigger_note}「{record.condition}」{len(self._results)} 条 · "
+            f"[历史] 「{record.condition}」{len(self._results)} 条 · "
             f"扫描 {record.total_scanned} · {source_label} · {record.created_at}"
         )
-        self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
 
     def _on_screen_failed(self, message: str) -> None:
@@ -494,72 +485,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._summary_label.setText("")
         self._status_label.setText(message)
 
-    def _populate_results(self, rows: list[dict[str, Any]]) -> None:
-        headers = ["选择"] + [label for _, label in self._result_columns]
-        self.result_table.setColumnCount(len(headers))
-        self.result_table.setHorizontalHeaderLabels(headers)
-        self.result_table.setRowCount(len(rows))
-
-        header = self.result_table.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        name_col = next(
-            (idx + 1 for idx, (key, _) in enumerate(self._result_columns) if key == "name"),
-            2,
-        )
-        header.setSectionResizeMode(name_col, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        for col in range(len(headers)):
-            if col not in (0, name_col):
-                header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-
-        for row_index, row in enumerate(rows):
-            check_item = QtWidgets.QTableWidgetItem()
-            check_item.setFlags(
-                QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled
-            )
-            check_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
-            check_item.setData(_ROW_DATA_ROLE, row)
-            self.result_table.setItem(row_index, 0, check_item)
-
-            for col_index, (key, _label) in enumerate(self._result_columns, start=1):
-                value = row.get(key, "")
-                if isinstance(value, float):
-                    if key in ("change_pct",):
-                        text = f"{value:+.2f}"
-                    elif key in ("last_price", "close", "pb", "pe_ttm"):
-                        text = f"{value:.2f}"
-                    elif key in ("total_mv", "circ_mv", "net_mf_amount", "volume"):
-                        text = f"{value:,.0f}"
-                    else:
-                        text = f"{value:.2f}"
-                else:
-                    text = str(value)
-                item = QtWidgets.QTableWidgetItem(text)
-                item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-                if key == "change_pct":
-                    change_pct = float(value or 0)
-                    color = RISE_COLOR if change_pct > 0 else FALL_COLOR if change_pct < 0 else FLAT_COLOR
-                    item.setForeground(QtGui.QColor(color))
-                elif key == "hit_reason":
-                    item.setTextAlignment(
-                        QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
-                    )
-                self.result_table.setItem(row_index, col_index, item)
+    def _select_all(self) -> None:
+        select_all_table_rows(self.result_table)
 
     def _iter_checked_rows(self) -> list[dict[str, Any]]:
-        rows: list[dict[str, Any]] = []
-        for row_index in range(self.result_table.rowCount()):
-            item = self.result_table.item(row_index, 0)
-            if item and item.checkState() == QtCore.Qt.CheckState.Checked:
-                data = item.data(_ROW_DATA_ROLE)
-                if isinstance(data, dict):
-                    rows.append(data)
-        return rows
-
-    def _select_all(self) -> None:
-        for row_index in range(self.result_table.rowCount()):
-            item = self.result_table.item(row_index, 0)
-            if item is not None:
-                item.setCheckState(QtCore.Qt.CheckState.Checked)
+        return iter_checked_table_rows(self.result_table)
 
     def _add_selected_to_watchlist(self) -> None:
         if self._watchlist_service is None:
@@ -674,7 +604,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
                 EVENT_OPEN_BACKTEST,
                 BacktestRequest(
                     vt_symbol=vt_symbol,
-                    source_page="选股",
+                    source_page="策略选股",
                     name=name,
                 ),
             )

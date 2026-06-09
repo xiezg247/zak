@@ -22,6 +22,7 @@ from vnpy_ashare.ui.quotes.workers import (
 from vnpy_ashare.ui.workers.screener_workers import (
     ScreenerBatchBacktestWorker,
     ScreenerBatchDownloadWorker,
+    ScreenerRecipeRunWorker,
     ScreenerRunWorker,
 )
 
@@ -43,6 +44,7 @@ __all__ = [
     "ScopeBarsLoadWorker",
     "ScreenerBatchBacktestWorker",
     "ScreenerBatchDownloadWorker",
+    "ScreenerRecipeRunWorker",
     "ScreenerRunWorker",
     "UniverseLoadWorker",
     "UniverseSyncWorker",

@@ -54,6 +54,25 @@ class ScreenerRunWorker(QtCore.QThread):
             self.failed.emit(str(ex))
 
 
+class ScreenerRecipeRunWorker(QtCore.QThread):
+    finished = QtCore.Signal(object, str)
+    failed = QtCore.Signal(str)
+
+    def __init__(self, recipe, recipe_id: str, parent: QtCore.QObject | None = None) -> None:
+        super().__init__(parent)
+        self.recipe = recipe
+        self.recipe_id = recipe_id
+
+    def run(self) -> None:
+        try:
+            from vnpy_ashare.screener.recipe_runner import run_recipe_object
+
+            result = run_recipe_object(self.recipe, condition_prefix="配方")
+            self.finished.emit(result, self.recipe_id)
+        except Exception as ex:
+            self.failed.emit(str(ex))
+
+
 class ScreenerBatchDownloadWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)

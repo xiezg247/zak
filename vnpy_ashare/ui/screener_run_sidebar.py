@@ -1,6 +1,8 @@
-"""选股页历史运行侧栏。"""
+"""选股历史侧栏（策略选股 / 自动选股共用）。"""
 
 from __future__ import annotations
+
+from typing import Literal
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -8,6 +10,7 @@ from vnpy_ashare.screener.run_store import (
     delete_run,
     is_auto_run,
     is_run_unread,
+    is_strategy_run,
     list_runs,
 )
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
@@ -15,9 +18,11 @@ from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 _RUN_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 _RUN_CONDITION_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
+SidebarMode = Literal["strategy", "auto"]
+
 _FILTER_ALL = "all"
-_FILTER_MANUAL = "manual"
-_FILTER_AUTO = "auto"
+_FILTER_INTRADAY = "intraday"
+_FILTER_POST_CLOSE = "post_close"
 
 _TRIGGER_TAGS = {
     "scheduled_intraday": "[盘中]",
@@ -28,6 +33,8 @@ _TRIGGER_TAGS = {
 def _run_filter_label(record) -> str:
     trigger = str(record.config.get("trigger", ""))
     tag = _TRIGGER_TAGS.get(trigger, "")
+    if trigger.startswith("ai_"):
+        tag = "[AI]"
     title = record.condition
     if tag and not title.startswith("["):
         title = f"{tag} {title}"
@@ -41,10 +48,16 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
     copy_run_id_requested = QtCore.Signal(str, str)
     ask_ai_requested = QtCore.Signal(str, str)
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        mode: SidebarMode = "strategy",
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("ScreenerRunList")
         self.setStyleSheet(TERMINAL_STYLESHEET)
+        self._mode = mode
         self._filter = _FILTER_ALL
         self._build_ui()
         self.refresh()
@@ -54,17 +67,18 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(8)
 
-        title = QtWidgets.QLabel("历史运行")
+        title = QtWidgets.QLabel("自动结果" if self._mode == "auto" else "历史运行")
         title.setObjectName("AiSessionTitle")
         root.addWidget(title)
 
-        self._filter_tabs = QtWidgets.QTabBar()
-        self._filter_tabs.setObjectName("ScreenerRunFilterTabs")
-        self._filter_tabs.addTab("全部")
-        self._filter_tabs.addTab("手动")
-        self._filter_tabs.addTab("自动")
-        self._filter_tabs.currentChanged.connect(self._on_filter_changed)
-        root.addWidget(self._filter_tabs)
+        if self._mode == "auto":
+            self._filter_tabs = QtWidgets.QTabBar()
+            self._filter_tabs.setObjectName("ScreenerRunFilterTabs")
+            self._filter_tabs.addTab("全部")
+            self._filter_tabs.addTab("盘中")
+            self._filter_tabs.addTab("盘后")
+            self._filter_tabs.currentChanged.connect(self._on_filter_changed)
+            root.addWidget(self._filter_tabs)
 
         self._list = QtWidgets.QListWidget()
         self._list.setObjectName("AiSessionListWidget")
@@ -91,17 +105,24 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._update_action_buttons()
 
     def _on_filter_changed(self, index: int) -> None:
-        filters = [_FILTER_ALL, _FILTER_MANUAL, _FILTER_AUTO]
+        filters = [_FILTER_ALL, _FILTER_INTRADAY, _FILTER_POST_CLOSE]
         self._filter = filters[index] if 0 <= index < len(filters) else _FILTER_ALL
         self.refresh()
 
-    def _matches_filter(self, record) -> bool:
-        if self._filter == _FILTER_ALL:
+    def _matches_mode(self, record) -> bool:
+        if self._mode == "strategy":
+            return is_strategy_run(record.config)
+        return is_auto_run(record.config)
+
+    def _matches_subfilter(self, record) -> bool:
+        if self._mode != "auto" or self._filter == _FILTER_ALL:
             return True
-        auto = is_auto_run(record.config)
-        if self._filter == _FILTER_AUTO:
-            return auto
-        return not auto
+        trigger = str(record.config.get("trigger", ""))
+        if self._filter == _FILTER_INTRADAY:
+            return trigger == "scheduled_intraday"
+        if self._filter == _FILTER_POST_CLOSE:
+            return trigger == "scheduled_post_close"
+        return True
 
     def _selected_item(self) -> QtWidgets.QListWidgetItem | None:
         return self._list.currentItem()
@@ -128,8 +149,10 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             selected_id = current[0]
         self._list.clear()
         restore_row = -1
-        for record in list_runs(limit=30):
-            if not self._matches_filter(record):
+        for record in list_runs(limit=40):
+            if not self._matches_mode(record):
+                continue
+            if not self._matches_subfilter(record):
                 continue
             title = _run_filter_label(record)
             subtitle = f"{record.row_count} 条 · {record.created_at[5:16]}"
@@ -212,7 +235,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
 
 
 class ScreenerRunSidebar(QtWidgets.QWidget):
-    """选股页左侧历史栏（可折叠）。"""
+    """左侧历史栏（可折叠）。"""
 
     run_selected = QtCore.Signal(str)
     copy_run_id_requested = QtCore.Signal(str, str)
@@ -221,7 +244,12 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
     CONTENT_WIDTH = 200
     RAIL_WIDTH = 36
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        mode: SidebarMode = "strategy",
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("AiSessionSidebar")
         self._expanded = False
@@ -238,7 +266,7 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         content_layout = QtWidgets.QVBoxLayout(self._content)
         content_layout.setContentsMargins(12, 12, 4, 12)
         content_layout.setSpacing(0)
-        self._list = ScreenerRunListWidget(parent=self._content)
+        self._list = ScreenerRunListWidget(mode=mode, parent=self._content)
         self._list.run_selected.connect(self.run_selected.emit)
         self._list.copy_run_id_requested.connect(self.copy_run_id_requested.emit)
         self._list.ask_ai_requested.connect(self.ask_ai_requested.emit)
@@ -254,18 +282,17 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         self._toggle_btn = QtWidgets.QToolButton()
         self._toggle_btn.setObjectName("AiSessionToggle")
         self._toggle_btn.setText("▶")
-        self._toggle_btn.setToolTip("展开历史运行")
+        tooltip = "展开自动结果" if mode == "auto" else "展开历史运行"
+        self._toggle_btn.setToolTip(tooltip)
         self._toggle_btn.setFixedSize(28, 28)
         self._toggle_btn.clicked.connect(self._toggle_expanded)
         rail_layout.addWidget(self._toggle_btn, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
         rail_layout.addStretch()
         root.addWidget(rail)
+        self._mode = mode
 
     def refresh(self) -> None:
         self._list.refresh()
-
-    def _toggle_expanded(self) -> None:
-        self.set_expanded(not self._expanded)
 
     def set_expanded(self, expanded: bool) -> None:
         if self._expanded == expanded:
@@ -275,8 +302,15 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         if expanded:
             self.setFixedWidth(self.CONTENT_WIDTH + self.RAIL_WIDTH)
             self._toggle_btn.setText("◀")
-            self._toggle_btn.setToolTip("收起历史运行")
+            self._toggle_btn.setToolTip(
+                "收起自动结果" if self._mode == "auto" else "收起历史运行"
+            )
         else:
             self.setFixedWidth(self.RAIL_WIDTH)
             self._toggle_btn.setText("▶")
-            self._toggle_btn.setToolTip("展开历史运行")
+            self._toggle_btn.setToolTip(
+                "展开自动结果" if self._mode == "auto" else "展开历史运行"
+            )
+
+    def _toggle_expanded(self) -> None:
+        self.set_expanded(not self._expanded)

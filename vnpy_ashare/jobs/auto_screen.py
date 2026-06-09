@@ -11,7 +11,7 @@ from vnpy_ashare.market_hours import is_ashare_trading_session, next_quotes_coll
 from vnpy_ashare.screener.recipe import (
     RECIPE_INTRADAY_MULTI,
     RECIPE_POST_CLOSE_MULTI,
-    get_recipe,
+    resolve_recipe,
 )
 from vnpy_ashare.screener.recipe_runner import build_reason_summary, run_recipe
 from vnpy_ashare.screener.runner import ScreenerRunResult
@@ -38,9 +38,8 @@ def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
         job_cfg = scheduler_cfg.screen_post_close
 
     recipe_id = job_cfg.recipe_id or default_recipe_id
-    top_n = max(1, min(int(job_cfg.top_n), 200))
 
-    recipe = get_recipe(recipe_id)
+    recipe = resolve_recipe(recipe_id)
     if recipe is None:
         return JobResult(success=False, message=f"未知选股配方：{recipe_id}")
 
@@ -70,7 +69,7 @@ def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
             )
 
     try:
-        result = run_recipe(recipe_id, top_n=top_n)
+        result = run_recipe(recipe_id)
     except Exception as ex:
         return JobResult(success=False, message=str(ex))
 
@@ -103,10 +102,10 @@ def persist_auto_screen_result(
     recipe_id: str,
 ) -> None:
     from vnpy_ashare.ai.context_store import set_screening_results
-    from vnpy_ashare.screener.recipe import get_recipe
+    from vnpy_ashare.screener.recipe import resolve_recipe
     from vnpy_ashare.screener.run_store import save_run
 
-    recipe = get_recipe(recipe_id)
+    recipe = resolve_recipe(recipe_id)
     rows = list(result.rows)
     config: dict = {
         "trigger": trigger,

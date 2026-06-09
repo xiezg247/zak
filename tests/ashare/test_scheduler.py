@@ -44,6 +44,16 @@ class TestSchedulerConfig(unittest.TestCase):
             self.assertEqual(loaded.screen_intraday.recipe_id, "intraday_multi")
             self.assertEqual(loaded.screen_post_close.top_n, 15)
 
+    def test_screen_intraday_cron_trigger_accepts_multi_hours(self) -> None:
+        from apscheduler.triggers.cron import CronTrigger
+
+        from vnpy_ashare.scheduler.manager import _normalize_cron_hours
+
+        hours = _normalize_cron_hours("10, 14")
+        trigger = CronTrigger(day_of_week="mon-fri", hour=hours, minute=0)
+        self.assertEqual(hours, "10,14")
+        self.assertIsNotNone(trigger)
+
     def test_screen_jobs_listed(self) -> None:
         manager = TaskSchedulerManager()
         job_ids = {item.job_id for item in manager.list_status()}

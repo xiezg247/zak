@@ -64,7 +64,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
 
         btn_row = QtWidgets.QHBoxLayout()
         self.confirm_btn = QtWidgets.QPushButton("确认运行")
-        self.edit_btn = QtWidgets.QPushButton("在选股页修改")
+        self.edit_btn = QtWidgets.QPushButton("在策略选股页修改")
         self.cancel_btn = QtWidgets.QPushButton("取消")
         btn_row.addWidget(self.confirm_btn)
         btn_row.addWidget(self.edit_btn)
@@ -115,7 +115,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
         )
         self.llm_engine.append_local_message(
             role="assistant",
-            content=f"【选股草案】已填入选股页「{draft.preset_label}」，请在选股页核对后点击「运行选股」。",
+            content=f"【选股草案】已填入策略选股页「{draft.preset_label}」，请在策略选股页核对后点击「运行策略选股」。",
         )
         self.accept()
 

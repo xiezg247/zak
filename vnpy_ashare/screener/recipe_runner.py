@@ -14,7 +14,7 @@ from vnpy_ashare.screener.data_source import (
 from vnpy_ashare.screener.export import resolve_export_columns
 from vnpy_ashare.screener.presets import SCREENER_CHANGE_TOP, SCREENER_TURNOVER
 from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.recipe import ScreenRecipe, get_recipe
+from vnpy_ashare.screener.recipe import DimensionSpec, ScreenRecipe, resolve_recipe
 from vnpy_ashare.screener.rules import (
     apply_low_pe,
     apply_moneyflow_in,
@@ -34,11 +34,28 @@ class _DimensionHit:
     row: dict[str, Any]
 
 
-def run_recipe(recipe_id: str, *, top_n: int | None = None) -> ScreenerRunResult:
-    recipe = get_recipe(recipe_id)
+def run_recipe(
+    recipe_id: str,
+    *,
+    top_n: int | None = None,
+    condition_prefix: str = "自动",
+) -> ScreenerRunResult:
+    recipe = resolve_recipe(recipe_id)
     if recipe is None:
         raise ValueError(f"未知选股配方：{recipe_id}")
+    return run_recipe_object(
+        recipe,
+        top_n=top_n,
+        condition_prefix=condition_prefix,
+    )
 
+
+def run_recipe_object(
+    recipe: ScreenRecipe,
+    *,
+    top_n: int | None = None,
+    condition_prefix: str = "配方",
+) -> ScreenerRunResult:
     limit = top_n or recipe.top_n
     hits_by_symbol: dict[str, list[_DimensionHit]] = {}
     total_scanned = 0
@@ -76,7 +93,7 @@ def run_recipe(recipe_id: str, *, top_n: int | None = None) -> ScreenerRunResult
 
     return ScreenerRunResult(
         rows=rows,
-        condition=f"自动 · {recipe.name}",
+        condition=f"{condition_prefix} · {recipe.name}",
         updated_at=now,
         total_scanned=total_scanned,
         source="recipe",
@@ -94,21 +111,21 @@ def build_reason_summary(*, recipe: ScreenRecipe, trigger: str, row_count: int) 
 
 
 def _run_dimension(
-    spec,
+    spec: DimensionSpec,
     pool_size: int,
 ) -> tuple[list[_DimensionHit], int]:
     if spec.dimension_id == "momentum":
-        return _dimension_momentum(pool_size)
+        return _dimension_momentum(pool_size, weight=spec.weight)
     if spec.dimension_id == "turnover":
-        return _dimension_turnover(pool_size)
+        return _dimension_turnover(pool_size, weight=spec.weight)
     if spec.dimension_id == "moneyflow":
-        return _dimension_moneyflow(pool_size)
+        return _dimension_moneyflow(pool_size, weight=spec.weight)
     if spec.dimension_id == "low_pe":
-        return _dimension_low_pe(pool_size)
+        return _dimension_low_pe(pool_size, weight=spec.weight)
     return [], 0
 
 
-def _dimension_momentum(pool_size: int) -> tuple[list[_DimensionHit], int]:
+def _dimension_momentum(pool_size: int, *, weight: float) -> tuple[list[_DimensionHit], int]:
     try:
         snapshot = load_screening_quote_snapshot()
         rows = apply_quote_preset(SCREENER_CHANGE_TOP, snapshot.rows, top_n=pool_size)
@@ -116,7 +133,7 @@ def _dimension_momentum(pool_size: int) -> tuple[list[_DimensionHit], int]:
             rows,
             dimension_id="momentum",
             label="动量",
-            weight=_weight_for("momentum"),
+            weight=weight,
             reason_builder=lambda row, rank: (
                 f"动量：涨幅 {float(row.get('change_pct') or 0):+.2f}%，排名第 {rank}"
             ),
@@ -142,7 +159,7 @@ def _dimension_momentum(pool_size: int) -> tuple[list[_DimensionHit], int]:
                     vt_symbol=vt_symbol,
                     dimension_id="momentum",
                     label="动量",
-                    weight=_weight_for("momentum"),
+                    weight=weight,
                     score=score,
                     reason=f"动量：日涨幅 {pct:+.2f}%，排名第 {index}",
                     row=_fundamental_base_row(row),
@@ -151,7 +168,7 @@ def _dimension_momentum(pool_size: int) -> tuple[list[_DimensionHit], int]:
         return hits, len(raw_rows)
 
 
-def _dimension_turnover(pool_size: int) -> tuple[list[_DimensionHit], int]:
+def _dimension_turnover(pool_size: int, *, weight: float) -> tuple[list[_DimensionHit], int]:
     try:
         snapshot = load_screening_quote_snapshot()
         rows = apply_quote_preset(SCREENER_TURNOVER, snapshot.rows, top_n=pool_size)
@@ -159,7 +176,7 @@ def _dimension_turnover(pool_size: int) -> tuple[list[_DimensionHit], int]:
             rows,
             dimension_id="turnover",
             label="换手",
-            weight=_weight_for("turnover"),
+            weight=weight,
             reason_builder=lambda row, rank: (
                 f"换手：{float(row.get('turnover_rate') or 0):.2f}%，排名第 {rank}"
             ),
@@ -168,7 +185,7 @@ def _dimension_turnover(pool_size: int) -> tuple[list[_DimensionHit], int]:
         return [], 0
 
 
-def _dimension_moneyflow(pool_size: int) -> tuple[list[_DimensionHit], int]:
+def _dimension_moneyflow(pool_size: int, *, weight: float) -> tuple[list[_DimensionHit], int]:
     raw_rows, _trade_date = fetch_moneyflow_with_fallback()
     if not raw_rows:
         return [], 0
@@ -184,7 +201,7 @@ def _dimension_moneyflow(pool_size: int) -> tuple[list[_DimensionHit], int]:
                 vt_symbol=vt_symbol,
                 dimension_id="moneyflow",
                 label="资金",
-                weight=_weight_for("moneyflow"),
+                weight=weight,
                 score=_rank_score(index, len(rows)),
                 reason=f"资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
                 row=dict(row),
@@ -193,7 +210,7 @@ def _dimension_moneyflow(pool_size: int) -> tuple[list[_DimensionHit], int]:
     return hits, len(raw_rows)
 
 
-def _dimension_low_pe(pool_size: int) -> tuple[list[_DimensionHit], int]:
+def _dimension_low_pe(pool_size: int, *, weight: float) -> tuple[list[_DimensionHit], int]:
     raw_rows, _trade_date, _ = fetch_fundamental_screening_rows()
     if not raw_rows:
         return [], 0
@@ -209,7 +226,7 @@ def _dimension_low_pe(pool_size: int) -> tuple[list[_DimensionHit], int]:
                 vt_symbol=vt_symbol,
                 dimension_id="low_pe",
                 label="估值",
-                weight=_weight_for("low_pe"),
+                weight=weight,
                 score=_rank_score(index, len(rows)),
                 reason=f"估值：PE(TTM) {pe:.2f}，排名第 {index}",
                 row=dict(row),
@@ -249,16 +266,6 @@ def _rank_score(rank: int, total: int) -> float:
     if total <= 0:
         return 0.0
     return round(max(0.0, (total - rank + 1) / total * 100), 1)
-
-
-def _weight_for(dimension_id: str) -> float:
-    for recipe in (get_recipe("intraday_multi"), get_recipe("post_close_multi")):
-        if recipe is None:
-            continue
-        for spec in recipe.dimensions:
-            if spec.dimension_id == dimension_id:
-                return spec.weight
-    return 1.0
 
 
 def _merge_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:

@@ -35,6 +35,7 @@ from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.page import AiPageWidget
 from vnpy_ashare.branding import window_title as build_window_title
+from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
 from vnpy_ashare.ui.floating_controller import FloatingAiController
@@ -43,6 +44,7 @@ from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
 from vnpy_ashare.ui.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
+from vnpy_ashare.ui.auto_screener_page import AutoScreenerPageWidget
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.scheduler_page import SchedulerPageWidget
 from vnpy_ashare.ui.settings_dialog import show_settings_dialog
@@ -69,6 +71,7 @@ class AshareMainWindow(MainWindow):
     _signal_ask_ai = QtCore.Signal(object)
     _signal_orb_attention = QtCore.Signal(object)
     _signal_ai_action = QtCore.Signal(object)
+    _signal_scheduler_job = QtCore.Signal(str)
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         self._page_widgets: dict[str, QtWidgets.QWidget] = {}
@@ -77,6 +80,7 @@ class AshareMainWindow(MainWindow):
         self._page_before_ai: int = 0
         self._ai_toggle_action: QtGui.QAction | None = None
         self._screener_draft_connected = False
+        self._scheduler_listener_connected = False
         super().__init__(main_engine, event_engine)
         self._signal_open_backtest.connect(self._handle_open_backtest)
         self._signal_open_batch_backtest.connect(self._handle_open_batch_backtest)
@@ -84,6 +88,7 @@ class AshareMainWindow(MainWindow):
         self._signal_ask_ai.connect(self._handle_ask_ai)
         self._signal_orb_attention.connect(self._handle_orb_attention)
         self._signal_ai_action.connect(self._handle_ai_action)
+        self._signal_scheduler_job.connect(self._handle_scheduler_job)
         self.event_engine.register(EVENT_OPEN_BACKTEST, self._on_open_backtest_event)
         self.event_engine.register(EVENT_OPEN_BATCH_BACKTEST, self._on_open_batch_backtest_event)
         self.event_engine.register(EVENT_FILL_SCREENER, self._on_fill_screener_event)
@@ -156,6 +161,7 @@ class AshareMainWindow(MainWindow):
 
         self.setCentralWidget(shell)
         self._init_floating_ai(shell)
+        self._bind_scheduler_notifications()
         self._show_page(0)
 
     def _get_llm_engine(self) -> LlmEngine | None:
@@ -423,6 +429,9 @@ class AshareMainWindow(MainWindow):
             widget = page
         elif key == "screener":
             widget = ScreenerPageWidget(self.main_engine, self.event_engine)
+        elif key == "auto_screener":
+            widget = AutoScreenerPageWidget(self.main_engine, self.event_engine)
+            widget.open_scheduler_requested.connect(self._open_scheduler_page)
         elif key == "batch_backtest":
             widget = BatchBacktestPageWidget(self.main_engine, self.event_engine)
         elif key == "scheduler":
@@ -433,6 +442,43 @@ class AshareMainWindow(MainWindow):
             self.widgets[key] = widget
 
         return widget
+
+    def _open_scheduler_page(self) -> None:
+        index = self._nav_index_for_key("scheduler")
+        if index is not None:
+            self._show_page(index)
+
+    def _bind_scheduler_notifications(self) -> None:
+        if self._scheduler_listener_connected:
+            return
+        engine = self.main_engine.get_engine(APP_NAME)
+        if not isinstance(engine, AshareEngine):
+            return
+        engine.scheduler.add_listener(self._on_scheduler_job_event)
+        self._scheduler_listener_connected = True
+
+    def _on_scheduler_job_event(self, job_id: str) -> None:
+        self._signal_scheduler_job.emit(job_id)
+
+    def _handle_scheduler_job(self, job_id: str) -> None:
+        if job_id not in ("screen_intraday", "screen_post_close"):
+            return
+        engine = self.main_engine.get_engine(APP_NAME)
+        if not isinstance(engine, AshareEngine):
+            return
+        status = engine.scheduler.get_status(job_id)
+        if status is None or status.last_success is not True:
+            return
+        message = status.last_message or "自动选股已完成"
+        if message and "跳过" in message:
+            return
+        widget = self._page_widgets.get("auto_screener")
+        if widget is not None and hasattr(widget, "on_scheduled_run_complete"):
+            widget.on_scheduled_run_complete(job_id, message)
+        if self._current_key != "auto_screener":
+            self.event_engine.put(
+                Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="auto_screener")),
+            )
 
     def open_widget(self, widget_class: type[QtWidgets.QWidget], name: str) -> None:
         name_map = {

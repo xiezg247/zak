@@ -40,6 +40,8 @@ def test_mark_run_read(tmp_path, monkeypatch):
         config={"trigger": "scheduled_intraday", "recipe_id": "intraday_multi"},
     )
     assert run_store.is_auto_run(record.config) is True
+    assert run_store.is_strategy_run({"trigger": "manual"}) is True
+    assert run_store.is_auto_run({"trigger": "manual", "recipe_id": "abc"}) is True
     assert run_store.is_run_unread(record.config) is True
 
     assert run_store.mark_run_read(record.id) is True

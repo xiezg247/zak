@@ -6,7 +6,8 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.market_hours import is_ashare_trading_session
 from vnpy_ashare.scheduler import JobStatus, TaskSchedulerManager
-from vnpy_ashare.scheduler.config import JobConfig
+from vnpy_ashare.scheduler.config import AutoScreenJobConfig, JobConfig
+from vnpy_ashare.screener.recipe import list_recipe_catalog
 from vnpy_ashare.ui.styles import SCHEDULER_TABLE_STYLESHEET
 
 
@@ -67,6 +68,82 @@ class _JobSettingsDialog(QtWidgets.QDialog):
         }
         if self.job_id == "batch_download":
             values["download_start"] = self.start_edit.text().strip()
+        return values
+
+
+class _AutoScreenSettingsDialog(QtWidgets.QDialog):
+    def __init__(
+        self,
+        job_id: str,
+        status: JobStatus,
+        config: AutoScreenJobConfig,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.job_id = job_id
+        self.setWindowTitle(f"调度设置 - {status.name}")
+        self.setMinimumWidth(400)
+
+        form = QtWidgets.QFormLayout(self)
+        trigger_kind = "intraday" if job_id == "screen_intraday" else "post_close"
+
+        self.recipe_combo = QtWidgets.QComboBox()
+        self._recipe_ids: list[str] = []
+        selected_index = 0
+        for index, entry in enumerate(list_recipe_catalog(trigger_kind=trigger_kind)):
+            self.recipe_combo.addItem(entry.display_name)
+            self._recipe_ids.append(entry.recipe_id)
+            if entry.recipe_id == (config.recipe_id or ""):
+                selected_index = index
+        if self._recipe_ids:
+            self.recipe_combo.setCurrentIndex(selected_index)
+        form.addRow("引用配方", self.recipe_combo)
+
+        self.day_edit = QtWidgets.QLineEdit(config.cron_day_of_week)
+        form.addRow("星期 (cron)", self.day_edit)
+
+        if job_id == "screen_intraday":
+            self.hours_edit = QtWidgets.QLineEdit(config.cron_hours)
+            form.addRow("小时 (逗号分隔)", self.hours_edit)
+            self.minute_spin = QtWidgets.QSpinBox()
+            self.minute_spin.setRange(0, 59)
+            self.minute_spin.setValue(config.cron_minute_intraday)
+            form.addRow("分钟", self.minute_spin)
+        else:
+            self.hour_spin = QtWidgets.QSpinBox()
+            self.hour_spin.setRange(0, 23)
+            self.hour_spin.setValue(config.cron_hour)
+            form.addRow("小时", self.hour_spin)
+            self.minute_spin = QtWidgets.QSpinBox()
+            self.minute_spin.setRange(0, 59)
+            self.minute_spin.setValue(config.cron_minute)
+            form.addRow("分钟", self.minute_spin)
+
+        hint = QtWidgets.QLabel("Top N 与因子权重请在「选股」页配方区配置。")
+        hint.setWordWrap(True)
+        form.addRow(hint)
+
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        form.addRow(buttons)
+
+    def values(self) -> dict:
+        index = self.recipe_combo.currentIndex()
+        recipe_id = self._recipe_ids[index] if 0 <= index < len(self._recipe_ids) else ""
+        values = {
+            "recipe_id": recipe_id,
+            "cron_day_of_week": self.day_edit.text().strip(),
+        }
+        if self.job_id == "screen_intraday":
+            values["cron_hours"] = self.hours_edit.text().strip()
+            values["cron_minute_intraday"] = self.minute_spin.value()
+        else:
+            values["cron_hour"] = self.hour_spin.value()
+            values["cron_minute"] = self.minute_spin.value()
         return values
 
 
@@ -388,7 +465,10 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         if not status:
             return
         config = self._scheduler.get_job_config(job_id)
-        dialog = _JobSettingsDialog(job_id, status, config, self)
+        if job_id in ("screen_intraday", "screen_post_close"):
+            dialog = _AutoScreenSettingsDialog(job_id, status, config, self)
+        else:
+            dialog = _JobSettingsDialog(job_id, status, config, self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
         self._scheduler.update_job_config(job_id, **dialog.values())

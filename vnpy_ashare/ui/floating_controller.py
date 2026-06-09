@@ -14,7 +14,7 @@ from vnpy_llm.ui.floating_panel import FloatingAiOrb, FloatingAiPanel
 if TYPE_CHECKING:
     from vnpy_ashare.ui.main_window import AshareMainWindow
 
-FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "local", "screener"})
+FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "local", "screener", "auto_screener"})
 
 
 class FloatingAiController(QtCore.QObject):
@@ -101,7 +101,7 @@ class FloatingAiController(QtCore.QObject):
             QtWidgets.QMessageBox.information(
                 self._host,
                 "提示",
-                "AI 悬浮球仅在自选、市场、本地、选股页可用。",
+                "AI 悬浮球仅在自选、市场、本地、策略选股、自动选股页可用。",
             )
             return
         if self.orb_visible():

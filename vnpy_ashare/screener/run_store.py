@@ -163,11 +163,20 @@ def mark_run_read(run_id: str) -> bool:
 
 def is_auto_run(config: dict[str, Any]) -> bool:
     trigger = str(config.get("trigger", ""))
-    return trigger.startswith("scheduled_")
+    if trigger.startswith("scheduled_") or trigger.startswith("ai_"):
+        return True
+    if config.get("recipe_id"):
+        return True
+    return False
+
+
+def is_strategy_run(config: dict[str, Any]) -> bool:
+    return not is_auto_run(config)
 
 
 def is_run_unread(config: dict[str, Any]) -> bool:
-    return is_auto_run(config) and not config.get("read_at")
+    trigger = str(config.get("trigger", ""))
+    return trigger.startswith("scheduled_") and not config.get("read_at")
 
 
 def _row_to_record(row: sqlite3.Row) -> ScreenerRunRecord:
