@@ -31,7 +31,7 @@ vnpy MainWindow（基类）
 ├────┬──────────────────────────────────────────┬─────────┤
 │左侧│  中央内容区（StackedWidget）                │ AI Dock │
 │导航│  · 自选 / 市场 / 本地（看盘三页）          │（可选）  │
-│    │  · 策略回测 / 数据管理                    │         │
+│    │  · 策略回测 / 回测对比 / 数据管理              │         │
 └────┴──────────────────────────────────────────┴─────────┘
 ```
 
@@ -77,7 +77,10 @@ vnpy MainWindow（基类）
 | `quote_stream_controller.py` | TickFlow WebSocket 流 |
 | `pagination_controller.py` | 市场榜分页导航 |
 | `watchlist_controller.py` | 自选 CRUD |
+| `batch_backtest_controller.py` | 自选页批量回测（委托 `batch_backtest_flow`） |
 | `workers/quotes_workers.py` | 后台 Worker（行情/下载/加载等） |
+
+批量回测共用流程：`ui/batch_backtest_flow.py`；对比页：`ui/batch_backtest_page.py`（导航「回测对比」）。
 
 `ui/worker.py` 保留为 re-export 兼容层，旧 import 路径仍可用。
 

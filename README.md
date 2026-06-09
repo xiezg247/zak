@@ -107,7 +107,7 @@ uv run python scripts/check_database.py
 - [产品方案](docs/product-plan.md) — A 股回测 + 看盘 + AI + 选股 + 策略实盘路径
 - [架构说明](docs/architecture.md) — 与 vnpy 默认 Trader 的关系、当前 UI 分层
 - [数据设计](docs/data-design.md) — 三个 SQLite 数据库 + Redis 缓存层
-- [策略回测交互规格](docs/backtest-ux.md) — 看盘→回测联动、批量回测分阶段设计
+- [策略回测交互规格](docs/backtest-ux.md) — 看盘→回测联动、自选/选股批量回测、回测对比页
 - [AI 数据路由说明](docs/ai-data-routing.md) — AI 助手各类问题对应的数据源与工具
 - [后续规划](docs/roadmap.md) — A 股 Gateway 实盘、PaperAccount、看盘行情切换等
 
@@ -139,7 +139,7 @@ zak/
 │   ├── backtest/                  # 回测结果落地
 │   ├── scheduler/                 # 定时任务调度
 │   ├── jobs/                      # 任务定义（下载/行情/同步）
-│   └── ui/                        # 主窗口、导航、行情页、回测页、选股页
+│   └── ui/                        # 主窗口、导航、行情页、回测对比页、选股页
 ├── vnpy_llm/                      # 大模型对话插件（client / engine / panel）
 ├── vnpy_skills/                   # Agent Skill 引擎（工具注册/执行/注入）
 ├── vnpy_mcp/                      # MCP 远端工具集成

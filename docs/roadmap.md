@@ -22,7 +22,7 @@
 | 迭代 | 内容 | 状态 |
 |------|------|------|
 | B1 | 看盘页「策略回测」按钮 → 跳转 + 预填 `vt_symbol` | ✅ 已完成 |
-| B2 | 自选池批量回测对比表 | 未开始 |
+| B2 | 自选 / 选股批量回测对比表 | ✅ 已完成（`batch_backtest_flow` + `batch_backtest_page`） |
 | B3 | 回测摘要落库（AI 可读） | ✅ 已完成（`backtest/run_store.py` + `BacktestService`） |
 | B4 | 回测页 AI 上下文 | ✅ 已完成（`ai/backtest_context.py` + `context_store`） |
 | S1 | 选股模块（screener/ 包 + 因子/规则/方案/NL） | ✅ 已完成 |

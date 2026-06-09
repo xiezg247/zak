@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | `start_date` / `end_date` | TEXT | 回测区间 |
 | `total_return` / `max_drawdown` / `sharpe_ratio` | REAL | 摘要指标 |
 | `trade_count` | INTEGER | 成交笔数 |
-| `source` | TEXT | `single` / `batch` 等 |
+| `source` | TEXT | `single` / `batch_screener` / `batch_watchlist` 等 |
 | `batch_id` | TEXT | 批量回测批次 ID（可空） |
 | `raw_statistics_json` | TEXT | vnpy 统计 JSON |
 | `created_at` | TEXT | 写入时间 |

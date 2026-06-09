@@ -29,12 +29,12 @@
 | 数据源 | TickFlow / Tushare（`init_config.py` → `vt_setting.json`） |
 | 回测摘要落库 **B3** | `backtest/run_store.py` → `~/.vntrader/zak.db` 表 `backtest_runs`；`BacktestService.persist_summary()` 写入 |
 | 回测页 AI 上下文 **B4** | `ai/backtest_context.py` → `context_store.set_ai_context()`；「问 AI」走全屏新会话 |
+| 批量回测对比 **B2** | 自选页 / 选股页「批量回测」→ `batch_backtest_flow.py` →「回测对比」页；落库 `source=batch_watchlist` / `batch_screener` |
 
 ### 2.2 缺口
 
 | 项 | 优先级 | 说明 |
 |----|--------|------|
-| 自选池批量回测 | B2 | 多标的同一策略，输出对比表 |
 | 分钟回测 | B5 | 依赖 TickFlow 分钟 K 本地量（远期） |
 
 ---
@@ -88,25 +88,43 @@ QuotesPage（工具栏按钮）
 
 ---
 
-### 迭代 B2：自选池批量回测（未开始）
+### 迭代 B2：批量回测对比 ✅ 已实现
 
-#### 入口（拟定）
+#### 入口
 
-- 策略回测页新增「批量回测」子区，或
-- 自选页工具栏「批量回测」
+| 页面 | 操作 | 数据源 |
+|------|------|--------|
+| **自选** | 工具栏「批量回测」 | 自选池（`WatchlistService` / `load_watchlist_rows`） |
+| **选股** | 勾选结果 →「批量回测」 | 当前选股结果表 |
+| **回测对比** | 左侧导航独立页 | 历史批次（`backtest_runs.batch_id`） |
 
-#### 行为（拟定）
+#### 行为
 
-1. 数据源：当前自选池列表（`app_db.load_watchlist_rows`）
-2. 共用：策略类、日期区间、费率/滑点/资金
-3. 逐只调用 `BacktesterEngine.run_backtesting`（或封装 runner）
-4. 输出：表格列 = 代码、名称、总收益、最大回撤、夏普、交易次数
-5. 支持导出 CSV
+1. 弹出策略 / 日期配置对话框（共用 `ScreenerBatchBacktestConfigDialog`）
+2. 后台逐只调用 `BacktesterEngine.run_backtesting`（`screener/batch_actions.run_batch_backtests`）
+3. 结果落库 `backtest_runs`（带 `batch_id`），并跳转 **回测对比** 页
+4. 对比表列：代码、名称、总收益、最大回撤、夏普、交易次数；支持导出 CSV、删除批次、跳转单只策略回测
+
+#### 技术方案
+
+```text
+自选页 QuotesPage / 选股页 ScreenerPage
+    → ui/batch_backtest_flow.BatchBacktestFlow
+        → ScreenerBatchBacktestWorker
+        → persist_batch_backtest_results(source=batch_watchlist | batch_screener)
+        → EVENT_OPEN_BATCH_BACKTEST → ui/batch_backtest_page.py
+```
+
+#### 验收标准
+
+- [x] 自选池非空时可发起批量回测
+- [x] 选股页勾选多行可批量回测
+- [x] 完成后可在「回测对比」查看批次并导出 CSV
+- [ ] 策略回测页内嵌批量子区（非必须，已有独立对比页）
 
 #### 依赖
 
-- B1 完成单标的流程验证
-- 本地日 K 已下载（或批量前提示下载）
+- 本地日 K 已下载（无数据时单只回测失败，错误写入对比表「备注」列）
 
 ---
 
@@ -177,8 +195,12 @@ uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
 
 | 文件 | 职责 |
 |------|------|
-| `vnpy_ashare/events.py` | `EVENT_OPEN_BACKTEST`、`BacktestRequest` |
-| `vnpy_ashare/ui/page_shell.py` | 「策略回测」按钮与事件发送 |
+| `vnpy_ashare/events.py` | `EVENT_OPEN_BACKTEST`、`EVENT_OPEN_BATCH_BACKTEST`、`BacktestRequest` |
+| `vnpy_ashare/ui/quotes/page_shell.py` | 自选页「策略回测」「批量回测」按钮 |
+| `vnpy_ashare/ui/quotes/batch_backtest_controller.py` | 自选页批量回测入口 |
+| `vnpy_ashare/ui/batch_backtest_flow.py` | 自选 / 选股共用批量回测流程 |
+| `vnpy_ashare/ui/batch_backtest_page.py` | B2：回测对比页 |
+| `vnpy_ashare/screener/batch_actions.py` | 批量回测执行与落库 |
 | `vnpy_ashare/ui/main_window.py` | 导航切换与事件订阅 |
 | `vnpy_ashare/ui/backtest_widget.py` | `apply_vt_symbol()`、回测完成摘要落库、「问 AI」 |
 | `vnpy_ashare/backtest/run_store.py` | B3：`backtest_runs` 表读写 |
@@ -199,3 +221,4 @@ uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
 | 2026-06 | 初版：盘点 + B1–B5 分阶段规格 |
 | 2026-06 | B1 实现：`EVENT_OPEN_BACKTEST`、看盘工具栏「策略回测」按钮 |
 | 2026-06 | B3/B4 实现：`run_store`、`BacktestService`、`backtest_context`；`session_context` 已移除，统一 `context_store` |
+| 2026-06 | B2 实现：自选 / 选股批量回测、`batch_backtest_flow`、回测对比页 |

@@ -3,7 +3,7 @@
 | 文档 | 说明 |
 |------|------|
 | [产品方案](./product-plan.md) | **北极星**：回测 + 看盘 + AI + 选股 + A 股策略实盘 |
-| [策略回测交互规格](./backtest-ux.md) | 看盘→回测联动（B1✅）、摘要落库（B3✅）、回测 AI 上下文（B4✅）、批量回测（B2 待做） |
+| [策略回测交互规格](./backtest-ux.md) | B1–B4 已实现（含自选/选股批量回测与回测对比页） |
 | [架构说明](./architecture.md) | 与 vnpy 默认 Trader 的关系、当前 UI 分层、Service 层 |
 | [数据设计](./data-design.md) | 三个 SQLite 数据库 + Redis 缓存层设计 |
 | [AI 数据路由说明](./ai-data-routing.md) | AI 助手各类问题对应的数据源与工具 |

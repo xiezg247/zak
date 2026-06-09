@@ -18,4 +18,4 @@ main_engine.add_app(AshareApp)
 
 核心模块：`launcher`（GUI 启动）、`paths`（路径）、`config`（A 股常量）、`models`（StockItem）、`bars`（K 线下载）、`app_db`（元数据库）、`universe`（全市场同步）、`services/`（业务 Service）、`ai/context_store.py`（终端 AI 共享内存）。
 
-元数据库默认路径：`~/.vntrader/zak.db`。UI 在 `ui/`（`main_window`、`quotes_page`、`fonts` 等）；看盘页逻辑拆分在 `ui/quotes/`。
+元数据库默认路径：`~/.vntrader/zak.db`。UI 在 `ui/`（`main_window`、`quotes_page`、`batch_backtest_page` 等）；看盘页逻辑拆分在 `ui/quotes/`；批量回测流程在 `ui/batch_backtest_flow.py`。
