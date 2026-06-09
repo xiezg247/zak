@@ -25,6 +25,7 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = (
     NavEntry("ai_assistant", "AI 助手"),
     NavEntry("cta_backtest", "策略回测"),
     NavEntry("batch_backtest", "回测对比"),
+    NavEntry("scheduler", "定时任务"),
     NavEntry("data_manager", "数据管理"),
 )
 
@@ -95,6 +96,13 @@ def _draw_backtest(painter: QtGui.QPainter, size: int) -> None:
     painter.drawPolyline(QtGui.QPolygonF(pts))
 
 
+def _draw_scheduler(painter: QtGui.QPainter, size: int) -> None:
+    m = 4
+    painter.drawEllipse(m + 1, m + 1, size - m * 2 - 2, size - m * 2 - 2)
+    painter.drawLine(size // 2, size // 2, size // 2, m + 8)
+    painter.drawLine(size // 2, size // 2, size - m - 6, size // 2 + 3)
+
+
 def _draw_data(painter: QtGui.QPainter, size: int) -> None:
     m = 5
     w = size - m * 2
@@ -147,6 +155,7 @@ _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "local": _draw_local,
     "cta_backtest": _draw_backtest,
     "batch_backtest": _draw_batch_backtest,
+    "scheduler": _draw_scheduler,
     "data_manager": _draw_data,
     "ai_assistant": _draw_ai_assistant,
 }

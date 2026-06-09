@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -26,6 +27,16 @@ from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_schedu
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
+_MAX_RUN_LOG = 200
+
+
+@dataclass
+class JobRunRecord:
+    finished_at: str
+    job_id: str
+    job_name: str
+    success: bool
+    message: str
 
 
 @dataclass
@@ -65,6 +76,7 @@ class TaskSchedulerManager:
         self._lock = threading.Lock()
         self._status: dict[str, JobStatus] = {}
         self._listeners: list[Callable[[str], None]] = []
+        self._run_log: deque[JobRunRecord] = deque(maxlen=_MAX_RUN_LOG)
 
         self._jobs: dict[str, _JobMeta] = {
             "collect_quotes": _JobMeta(
@@ -213,6 +225,14 @@ class TaskSchedulerManager:
         self._refresh_status_cache()
         return [self._status[job_id] for job_id in self._jobs]
 
+    def list_run_log(self, *, limit: int = _MAX_RUN_LOG) -> list[JobRunRecord]:
+        if limit <= 0:
+            return []
+        records = list(self._run_log)
+        if limit >= len(records):
+            return list(reversed(records))
+        return list(reversed(records[-limit:]))
+
     def get_status(self, job_id: str) -> JobStatus | None:
         self._refresh_status_cache()
         return self._status.get(job_id)
@@ -308,6 +328,16 @@ class TaskSchedulerManager:
             status.last_message = message
             status.last_success = success
             status.running = False
+
+        self._run_log.append(
+            JobRunRecord(
+                finished_at=finished_at,
+                job_id=job_id,
+                job_name=meta.name,
+                success=success,
+                message=message,
+            )
+        )
 
         with self._lock:
             self._running_jobs.discard(job_id)

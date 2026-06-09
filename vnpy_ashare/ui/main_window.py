@@ -35,7 +35,6 @@ from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.page import AiPageWidget
 from vnpy_ashare.branding import window_title as build_window_title
-from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME, LlmEngine
 from vnpy_ashare.ui.floating_controller import FloatingAiController
@@ -45,7 +44,7 @@ from vnpy_ashare.ui.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
-from vnpy_ashare.ui.scheduler_dialog import SchedulerDialog
+from vnpy_ashare.ui.scheduler_page import SchedulerPageWidget
 from vnpy_ashare.ui.settings_dialog import show_settings_dialog
 from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 
@@ -134,40 +133,9 @@ class AshareMainWindow(MainWindow):
         ai_tools_action.triggered.connect(self._open_ai_tools_dialog)
         audit_action = tools_menu.addAction("AI 工具审计…")
         audit_action.triggered.connect(self._open_ai_tool_audit_dialog)
-        tools_menu.addSeparator()
-
-        scheduler_action = tools_menu.addAction("定时任务...")
-        scheduler_action.triggered.connect(self._open_scheduler_dialog)
-
-        quick_menu = tools_menu.addMenu("立即执行")
-        quick_menu.addAction("行情采集", lambda: self._run_scheduler_job("collect_quotes"))
-        quick_menu.addAction("同步 A 股列表", lambda: self._run_scheduler_job("sync_universe"))
-        quick_menu.addAction("下载自选日 K", lambda: self._run_scheduler_job("batch_download"))
 
     def edit_global_setting(self) -> None:
         show_settings_dialog(self)
-
-    def _get_ashare_engine(self) -> AshareEngine | None:
-        engine = self.main_engine.get_engine(APP_NAME)
-        if isinstance(engine, AshareEngine):
-            return engine
-        return None
-
-    def _open_scheduler_dialog(self) -> None:
-        ashare_engine = self._get_ashare_engine()
-        if ashare_engine is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "A 股引擎未加载")
-            return
-        dialog = SchedulerDialog(ashare_engine.scheduler, self)
-        dialog.exec()
-
-    def _run_scheduler_job(self, job_id: str) -> None:
-        ashare_engine = self._get_ashare_engine()
-        if ashare_engine is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "A 股引擎未加载")
-            return
-        if not ashare_engine.scheduler.run_now(job_id):
-            QtWidgets.QMessageBox.information(self, "提示", "任务正在运行中")
 
     def _init_shell(self) -> None:
         self.sidebar = SidebarNav(APP_NAV_ENTRIES, self)
@@ -457,6 +425,8 @@ class AshareMainWindow(MainWindow):
             widget = ScreenerPageWidget(self.main_engine, self.event_engine)
         elif key == "batch_backtest":
             widget = BatchBacktestPageWidget(self.main_engine, self.event_engine)
+        elif key == "scheduler":
+            widget = SchedulerPageWidget(self.main_engine, self.event_engine)
 
         if widget is not None:
             self._page_widgets[key] = widget

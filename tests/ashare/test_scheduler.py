@@ -55,6 +55,38 @@ class TestSchedulerConfig(unittest.TestCase):
 
             manager.shutdown()
 
+    def test_run_log_records_completed_jobs(self) -> None:
+        manager = TaskSchedulerManager()
+
+        with patch.object(
+            manager._jobs["sync_universe"],
+            "runner",
+            return_value=JobResult(success=True, message="synced 100"),
+        ):
+            manager._wrap_job("sync_universe")
+
+        records = manager.list_run_log(limit=10)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0].job_name, "同步 A 股列表")
+        self.assertTrue(records[0].success)
+        self.assertEqual(records[0].message, "synced 100")
+
+    def test_run_log_keeps_recent_entries_only(self) -> None:
+        from collections import deque
+
+        manager = TaskSchedulerManager()
+        manager._run_log = deque(maxlen=3)
+
+        with patch.object(
+            manager._jobs["sync_universe"],
+            "runner",
+            return_value=JobResult(success=True, message="ok"),
+        ):
+            for _ in range(5):
+                manager._wrap_job("sync_universe")
+
+        self.assertEqual(len(manager.list_run_log()), 3)
+
 
 if __name__ == "__main__":
     unittest.main()
