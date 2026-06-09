@@ -76,6 +76,7 @@ class PageConfig:
     show_fill_button: bool = False
     show_redownload_button: bool = False
     show_batch_fill_button: bool = False
+    show_batch_gap_fill_button: bool = False
     use_local_table: bool = False
     show_add_watchlist_button: bool = False
     show_remove_watchlist_button: bool = False
@@ -168,6 +169,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_fill_button=True,
         show_redownload_button=True,
         show_batch_fill_button=True,
+        show_batch_gap_fill_button=True,
         use_local_table=True,
         show_local_column=False,
         require_keyword=False,

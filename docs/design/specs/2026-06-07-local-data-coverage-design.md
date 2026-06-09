@@ -152,6 +152,7 @@ TABLE_HEADERS_LOCAL = quote_table_headers(
 | **补全到最新** | 选中且 STALE/GAPS | 增量下载 `overview.end + 1天 → now` |
 | **重新下载** | 选中任意有数据行 | 全量下载 `2020-01-01 → now`（与现有 DownloadWorker 一致） |
 | **批量补全过期** | 日 K 视图且有过期标的 | 对列表内全部 STALE 标的增量补全 |
+| **批量修复断层** | 日 K 视图 | 扫描列表并下载 GAPS 缺失区间 |
 
 `PageConfig` 新增：
 

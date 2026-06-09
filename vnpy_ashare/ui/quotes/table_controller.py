@@ -206,7 +206,7 @@ class TableController:
             if stale:
                 status += f"，{stale} 只需补全"
             page.status_label.setText(status)
-            page._local.update_batch_fill_button()
+            page._local.update_batch_toolbar_buttons()
         else:
             page.status_label.setText(f"{page.page_name}  匹配 {len(matched)} 只{extra}")
 

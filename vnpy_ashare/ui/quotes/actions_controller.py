@@ -72,7 +72,7 @@ class ActionsController:
         if page.config.show_batch_backtest_button:
             page._batch_backtest.update_action_buttons()
         if page.config.show_batch_fill_button:
-            page._local.update_batch_fill_button()
+            page._local.update_batch_toolbar_buttons()
         if page.config.show_diagnose_button:
             page.diagnose_button.setEnabled(item is not None)
 

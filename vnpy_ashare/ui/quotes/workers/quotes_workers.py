@@ -509,6 +509,39 @@ class DiagnoseWorker(QtCore.QThread):
             self.failed.emit(str(ex))
 
 
+class BatchGapFillWorker(QtCore.QThread):
+    progress = QtCore.Signal(object)
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        items: list[StockItem],
+        bar_meta: dict[tuple[str, Exchange], BarMeta],
+        *,
+        delay: float = 0.3,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.items = items
+        self.bar_meta = bar_meta
+        self.delay = delay
+
+    def run(self) -> None:
+        try:
+            from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars
+
+            result = batch_fill_gap_daily_bars(
+                self.items,
+                self.bar_meta,
+                delay=self.delay,
+                progress=lambda item: self.progress.emit(item),
+            )
+            self.finished.emit(result)
+        except Exception as ex:
+            self.failed.emit(str(ex))
+
+
 class BatchFillWorker(QtCore.QThread):
     progress = QtCore.Signal(object)
     finished = QtCore.Signal(object)

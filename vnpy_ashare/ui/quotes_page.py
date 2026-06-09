@@ -31,6 +31,7 @@ from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
     BatchFillWorker,
+    BatchGapFillWorker,
     BarsLoadWorker,
     DepthRefreshWorker,
     DiagnoseWorker,
@@ -112,6 +113,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._bars_worker: BarsLoadWorker | None = None
         self._download_worker: DownloadWorker | None = None
         self._batch_fill_worker: BatchFillWorker | None = None
+        self._batch_gap_fill_worker: BatchGapFillWorker | None = None
         self._gap_worker: BarGapCheckWorker | None = None
         self._gap_generation = 0
         self._quotes_worker: QuotesRefreshWorker | None = None
@@ -198,6 +200,7 @@ class QuotesPage(QtWidgets.QWidget):
             "_bars_worker",
             "_download_worker",
             "_batch_fill_worker",
+            "_batch_gap_fill_worker",
             "_gap_worker",
             "_quotes_worker",
             "_depth_worker",
@@ -495,6 +498,9 @@ class QuotesPage(QtWidgets.QWidget):
     def batch_fill_stale(self) -> None:
         self._local.batch_fill_stale()
 
+    def batch_fill_gaps(self) -> None:
+        self._local.batch_fill_gaps()
+
     def redownload_selected(self) -> None:
         self._local.redownload_selected()
 
@@ -522,6 +528,8 @@ class QuotesPage(QtWidgets.QWidget):
                 self.redownload_button.setEnabled(False)
             if self.config.show_batch_fill_button:
                 self.batch_fill_button.setEnabled(False)
+            if self.config.show_batch_gap_fill_button:
+                self.batch_gap_fill_button.setEnabled(False)
             if self.config.show_add_watchlist_button:
                 self.add_watchlist_button.setEnabled(False)
             if self.config.show_remove_watchlist_button:

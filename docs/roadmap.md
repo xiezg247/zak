@@ -41,6 +41,7 @@
 
 - 本地页 K 线健康检测与补全（`bar_health` + `local_data_controller`）
 - 本地页 **批量补全过期** 日 K（`jobs/local_fill.py`）
+- 本地页 **批量修复断层** 日 K（`jobs/local_fill.py`）
 - 主窗口 **日志 Dock**（vnpy `LogMonitor`，`Ctrl+Shift+L`）
 - 配置单源（`config_schema` / `config_bridge` / `settings_dialog`）
 
@@ -143,6 +144,7 @@ uv run python scripts/check_database.py
 当前若无新需求，**不启动 P3–P4**。近期已完成：
 
 - 本地页 **批量补全过期** 日 K（`jobs/local_fill.py`）
+- 本地页 **批量修复断层** 日 K（`jobs/local_fill.py`）
 - 主窗口 **日志 Dock**（`Ctrl+Shift+L` 切换）
 
 其余可优先考虑：

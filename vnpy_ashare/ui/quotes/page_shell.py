@@ -72,6 +72,12 @@ class QuotesPageShell:
         page.batch_fill_button.setEnabled(False)
         page.batch_fill_button.setVisible(page.config.show_batch_fill_button)
 
+        page.batch_gap_fill_button = QtWidgets.QPushButton("批量修复断层")
+        page.batch_gap_fill_button.setObjectName("SecondaryButton")
+        page.batch_gap_fill_button.clicked.connect(page.batch_fill_gaps)
+        page.batch_gap_fill_button.setEnabled(False)
+        page.batch_gap_fill_button.setVisible(page.config.show_batch_gap_fill_button)
+
         page.local_period_combo = QtWidgets.QComboBox()
         for label, value in LOCAL_SCOPE_OPTIONS:
             page.local_period_combo.addItem(label, value)
@@ -171,6 +177,8 @@ class QuotesPageShell:
             toolbar.addWidget(page.redownload_button)
         if page.config.show_batch_fill_button:
             toolbar.addWidget(page.batch_fill_button)
+        if page.config.show_batch_gap_fill_button:
+            toolbar.addWidget(page.batch_gap_fill_button)
         if page.config.show_backtest_button:
             toolbar.addWidget(page.backtest_button)
         if page.config.show_batch_backtest_button:
