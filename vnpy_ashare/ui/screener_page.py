@@ -22,7 +22,6 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_screener_page_context
-from vnpy_ashare.ai.session_context import set_screening_results
 from vnpy_ashare.ai.symbol import parse_stock_symbol
 from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.screener.data_source import resolve_result_source_tag
@@ -407,7 +406,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._results = list(result.rows)
         self._result_columns = result.columns or resolve_export_columns(self._results)
         self._populate_results(self._results)
-        set_screening_results(
+        self._store_screening_results(
             condition=result.condition,
             rows=self._results,
             updated_at=result.updated_at,
@@ -461,7 +460,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._results = list(record.rows)
         self._result_columns = resolve_export_columns(self._results)
         self._populate_results(self._results)
-        set_screening_results(
+        self._store_screening_results(
             condition=record.condition,
             rows=self._results,
             updated_at=record.created_at,
@@ -570,6 +569,31 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if skipped:
             msg += f" · 跳过 {skipped} 只"
         self._status_label.setText(msg)
+
+    def _get_screening_service(self):
+        engine = self.main_engine.get_engine(APP_NAME)
+        if isinstance(engine, AshareEngine):
+            return engine.screening_service
+        return None
+
+    def _store_screening_results(
+        self,
+        *,
+        condition: str,
+        rows: list,
+        updated_at: str | None = None,
+    ) -> None:
+        service = self._get_screening_service()
+        if service is not None:
+            service.set_screening_results(
+                condition=condition,
+                rows=rows,
+                updated_at=updated_at,
+            )
+            return
+        from vnpy_ashare.ai.context_store import set_screening_results
+
+        set_screening_results(condition=condition, rows=rows, updated_at=updated_at)
 
     def _get_backtest_service(self):
         engine = self.main_engine.get_engine(APP_NAME)

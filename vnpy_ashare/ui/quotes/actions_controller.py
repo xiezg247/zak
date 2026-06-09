@@ -103,7 +103,7 @@ class ActionsController:
             )
             return
 
-        from vnpy_ashare.ai.session_context import set_ai_context
+        from vnpy_ashare.ai.context_store import set_ai_context
         from vnpy_llm.ui.floating_actions import enrich_context_with_actions
 
         data = enrich_context_with_actions(
@@ -362,13 +362,17 @@ class ActionsController:
         )
 
     def on_diagnose_finished(self, payload: dict) -> None:
-        from vnpy_ashare.ai.session_context import set_diagnose_result
-
         page = self._p
         page._diagnose_worker = None
         if page.diagnose_panel is not None:
             page.diagnose_panel.show_result(payload)
-        set_diagnose_result(payload)
+        analysis = page._get_analysis_service()
+        if analysis is not None:
+            analysis.set_diagnose_result(payload)
+        else:
+            from vnpy_ashare.ai.context_store import set_diagnose_result
+
+            set_diagnose_result(payload)
         self.emit_ai_context()
 
     def on_diagnose_failed(self, message: str) -> None:

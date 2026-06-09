@@ -7,7 +7,12 @@ from typing import Any
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.ai.context import AiContextData, build_quote_context
-from vnpy_ashare.ai.session_context import get_ai_context, set_ai_context
+from vnpy_ashare.ai.context_store import (
+    get_ai_context,
+    get_market_quotes_cache,
+    set_ai_context,
+    set_market_quotes_cache,
+)
 from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
@@ -15,7 +20,7 @@ from vnpy_ashare.services.base import BaseService
 
 
 class QuoteService(BaseService):
-    """行情查询；终端上下文读写委托 session_context。"""
+    """行情查询；终端上下文读写委托 context_store。"""
 
     def set_current_selection(
         self,
@@ -25,7 +30,7 @@ class QuoteService(BaseService):
         quote: QuoteSnapshot | None = None,
         bar_count: int = 0,
     ) -> None:
-        """写入 session_context（不含悬浮球快捷动作 enrichment）。"""
+        """写入 context_store（不含悬浮球快捷动作 enrichment）。"""
         if item is None:
             set_ai_context(AiContextData(page=page))
         else:
@@ -63,6 +68,13 @@ class QuoteService(BaseService):
     def get_current_context(self) -> AiContextData:
         """Skill 读取终端当前页面与选中标的。"""
         return get_ai_context()
+
+    def set_market_quotes_cache(self, items: list[Any], quotes: dict[str, QuoteSnapshot]) -> None:
+        """缓存市场页行情，供 ScreeningService / AI 选股使用。"""
+        set_market_quotes_cache(items, quotes)
+
+    def get_market_quotes_cache(self) -> list[dict[str, Any]]:
+        return get_market_quotes_cache()
 
     def get_quote(
         self, symbol: str, exchange: Exchange, quote_map: dict[str, QuoteSnapshot] | None = None

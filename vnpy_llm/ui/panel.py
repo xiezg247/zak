@@ -338,7 +338,7 @@ class AiChatPanel(QtWidgets.QWidget):
         """根据当前 AI 上下文刷新快捷指令按钮。"""
         if self.quick_actions is None:
             return
-        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_ashare.ai.context_store import get_ai_context
         from vnpy_llm.ui.floating_actions import build_quick_actions_for_panel
 
         ctx = get_ai_context()
@@ -379,7 +379,7 @@ class AiChatPanel(QtWidgets.QWidget):
     def _show_completions(self, code: str) -> None:
         """在输入框下方弹出操作联想。"""
         from vnpy_ashare.ai.context import build_stock_completion_items
-        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_ashare.ai.context_store import get_ai_context
 
         ctx = get_ai_context()
         exchange_cn = ctx.exchange if ctx.symbol == code else ""

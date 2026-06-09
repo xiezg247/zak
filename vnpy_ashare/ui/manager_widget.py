@@ -176,7 +176,7 @@ class ManagerWidget(VnpyManagerWidget):
 
         from vnpy_ashare.ai.data_manager_context import sync_data_manager_context
 
-        sync_data_manager_context()
+        sync_data_manager_context(getattr(self, "main_engine", None))
 
     def _localize_item(self, item) -> None:
         text = item.text(0)

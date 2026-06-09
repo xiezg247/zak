@@ -41,11 +41,11 @@ class BacktestService(BaseService):
         self._last_summary = dict(summary) if summary else None
 
     def persist_summary(self, summary: dict[str, Any], *, source: str = "single") -> None:
-        """写入内存、落库，并同步 session_context 供回测页 AI 读取。"""
+        """写入内存、落库，并同步 context_store 供回测页 AI 读取。"""
         payload = dict(summary)
         self.set_last_summary(payload)
         save_backtest_summary_dict(payload, source=source)
-        from vnpy_ashare.ai.session_context import sync_backtest_summary_dict
+        from vnpy_ashare.ai.context_store import sync_backtest_summary_dict
 
         sync_backtest_summary_dict(payload)
 
@@ -58,7 +58,7 @@ class BacktestService(BaseService):
             return None
         summary = latest.to_summary_dict()
         self._last_summary = summary
-        from vnpy_ashare.ai.session_context import sync_backtest_summary_dict
+        from vnpy_ashare.ai.context_store import sync_backtest_summary_dict
 
         sync_backtest_summary_dict(summary)
         return dict(summary)

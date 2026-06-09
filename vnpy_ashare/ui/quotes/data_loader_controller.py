@@ -183,11 +183,14 @@ class DataLoaderController:
         worker.failed.connect(worker.deleteLater)
         worker.start()
 
-    @staticmethod
-    def sync_market_quotes_to_cache(result: object) -> None:
-        """将市场页行情写入 session_context，供 AI 选股工具使用。"""
+    def sync_market_quotes_to_cache(self, result: object) -> None:
+        """将市场页行情写入 QuoteService 缓存，供 AI 选股工具使用。"""
         if not hasattr(result, "items") or not hasattr(result, "quotes"):
             return
-        from vnpy_ashare.ai.session_context import set_market_quotes_cache
+        quote_svc = self._p._get_quote_service()
+        if quote_svc is not None:
+            quote_svc.set_market_quotes_cache(result.items, dict(result.quotes))
+            return
+        from vnpy_ashare.ai.context_store import set_market_quotes_cache
 
         set_market_quotes_cache(result.items, dict(result.quotes))

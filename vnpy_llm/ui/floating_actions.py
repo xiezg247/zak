@@ -12,7 +12,7 @@ from vnpy_ashare.ai.context import (
     build_floating_stock_quick_actions,
     build_stock_quick_actions,
 )
-from vnpy_ashare.ai.session_context import get_screening_results
+from vnpy_ashare.ai.context_store import get_screening_results
 
 
 def enrich_context_with_actions(data: AiContextData) -> AiContextData:

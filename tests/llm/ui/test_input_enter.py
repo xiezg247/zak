@@ -32,7 +32,7 @@ class AiInputEnterTests(unittest.TestCase):
             patch.object(AiChatPanel, "_refresh_messages"),
             patch.object(AiChatPanel, "_update_model_action"),
             patch("vnpy_llm.ui.floating_actions.build_quick_actions_for_panel", return_value=[]),
-            patch("vnpy_ashare.ai.session_context.get_ai_context", return_value=MagicMock(page="AI 助手")),
+            patch("vnpy_ashare.ai.context_store.get_ai_context", return_value=MagicMock(page="AI 助手")),
         ]
         for item in patches:
             item.start()

@@ -1,4 +1,4 @@
-"""AI 会话共享上下文（终端 UI → Skills 工具）。"""
+"""AI 会话内存存储（线程安全）；业务代码请经 Service 访问。"""
 
 from __future__ import annotations
 
@@ -38,8 +38,19 @@ class BacktestSummary:
         }
 
 
+@dataclass
+class ScreeningResultContext:
+    condition: str
+    count: int
+    updated_at: str | None
+    rows: list[dict[str, Any]]
+
+
+_screening_result: ScreeningResultContext | None = None
+_diagnose_result: dict[str, Any] | None = None
+
+
 def register_context_listener(callback: Callable[[AiContextData], None]) -> None:
-    """注册上下文变更回调（如 LlmEngine 转发为 Qt Signal）。"""
     with _lock:
         if callback not in _listeners:
             _listeners.append(callback)
@@ -62,23 +73,22 @@ def get_ai_context() -> AiContextData:
         return _ai_context
 
 
-def set_backtest_summary(summary: BacktestSummary | None) -> None:
-    sync_backtest_summary_dict(summary.to_dict() if summary else None)
-
-
 def sync_backtest_summary_dict(summary: dict[str, Any] | None) -> None:
-    """同步回测摘要到 session 缓存（BacktestService 写入时调用）。"""
     global _backtest_summary
     with _lock:
         _backtest_summary = dict(summary) if summary else None
 
 
-def get_backtest_summary() -> dict[str, Any] | None:
+def get_backtest_summary_dict() -> dict[str, Any] | None:
     with _lock:
         return dict(_backtest_summary) if _backtest_summary else None
 
 
-def clear_session_context() -> None:
+def set_backtest_summary(summary: BacktestSummary | None) -> None:
+    sync_backtest_summary_dict(summary.to_dict() if summary else None)
+
+
+def clear_all() -> None:
     global _ai_context, _backtest_summary, _market_quotes, _screening_result, _diagnose_result
     with _lock:
         _ai_context = AiContextData()
@@ -89,22 +99,22 @@ def clear_session_context() -> None:
 
 
 def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
-    """缓存市场页行情（行情页加载时调用），转为 skill 可用的 dict 列表。"""
     global _market_quotes
     rows: list[dict[str, Any]] = []
     for item in items:
         tickflow_symbol = getattr(item, "tickflow_symbol", "")
         quote = quotes.get(tickflow_symbol)
-        row = {
-            "symbol": getattr(item, "symbol", ""),
-            "name": getattr(item, "name", ""),
-            "vt_symbol": getattr(item, "vt_symbol", ""),
-            "last_price": getattr(quote, "last_price", 0) if quote else 0,
-            "change_pct": getattr(quote, "change_pct", 0) if quote else 0,
-            "turnover_rate": getattr(quote, "turnover_rate", 0) if quote else 0,
-            "volume": getattr(quote, "volume", 0) if quote else 0,
-        }
-        rows.append(row)
+        rows.append(
+            {
+                "symbol": getattr(item, "symbol", ""),
+                "name": getattr(item, "name", ""),
+                "vt_symbol": getattr(item, "vt_symbol", ""),
+                "last_price": getattr(quote, "last_price", 0) if quote else 0,
+                "change_pct": getattr(quote, "change_pct", 0) if quote else 0,
+                "turnover_rate": getattr(quote, "turnover_rate", 0) if quote else 0,
+                "volume": getattr(quote, "volume", 0) if quote else 0,
+            }
+        )
     with _lock:
         _market_quotes = rows
 
@@ -112,18 +122,6 @@ def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
 def get_market_quotes_cache() -> list[dict[str, Any]]:
     with _lock:
         return list(_market_quotes)
-
-
-@dataclass
-class ScreeningResultContext:
-    condition: str
-    count: int
-    updated_at: str | None
-    rows: list[dict[str, Any]]
-
-
-_screening_result: ScreeningResultContext | None = None
-_diagnose_result: dict[str, Any] | None = None
 
 
 def set_screening_results(
@@ -164,12 +162,3 @@ def set_diagnose_result(payload: dict[str, Any] | None) -> None:
 def get_diagnose_result() -> dict[str, Any] | None:
     with _lock:
         return dict(_diagnose_result) if _diagnose_result else None
-
-
-def sync_backtest_to_service(backtest_service: object) -> None:
-    """兼容旧调用：改为从 Service/DB 预热摘要缓存。"""
-    if backtest_service is None or not hasattr(backtest_service, "get_last_summary"):
-        return
-    summary = backtest_service.get_last_summary()
-    if summary:
-        sync_backtest_summary_dict(summary)

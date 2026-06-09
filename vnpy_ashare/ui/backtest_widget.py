@@ -19,7 +19,7 @@ from vnpy_ashare.ai.backtest_context import (
     format_backtest_summary_text,
     sync_backtest_page_context,
 )
-from vnpy_ashare.ai.session_context import BacktestSummary, get_backtest_summary
+from vnpy_ashare.ai.context_store import BacktestSummary, get_backtest_summary_dict, sync_backtest_summary_dict
 from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
@@ -272,7 +272,7 @@ class BacktesterWidget(VnpyBacktesterManager):
         engine = self.main_engine.get_engine(APP_NAME)
         if isinstance(engine, AshareEngine):
             return engine.backtest_service.get_last_summary()
-        return get_backtest_summary()
+        return get_backtest_summary_dict()
 
     def _ask_ai_for_backtest(self) -> None:
         summary = self._get_last_backtest_summary()
@@ -331,6 +331,6 @@ class BacktesterWidget(VnpyBacktesterManager):
         if isinstance(engine, AshareEngine):
             engine.backtest_service.persist_summary(summary_dict, source="single")
         else:
-            from vnpy_ashare.ai.session_context import set_backtest_summary
+            from vnpy_ashare.ai.context_store import set_backtest_summary
 
             set_backtest_summary(summary)

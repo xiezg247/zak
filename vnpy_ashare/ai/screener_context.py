@@ -1,36 +1,17 @@
-"""选股页 AI 上下文。"""
+"""选股页 AI 上下文（委托 ScreeningService）。"""
 
 from __future__ import annotations
 
-from vnpy_ashare.ai.context import AiContextData
-from vnpy_ashare.ai.session_context import get_screening_results, set_ai_context
-from vnpy_llm.ui.floating_actions import enrich_context_with_actions
+from vnpy_ashare.engine_access import get_service
+from vnpy_ashare.services.screening_service import publish_screener_page_context
 
 
 def sync_screener_page_context(main_engine=None) -> None:
-    ctx = get_screening_results()
-    if ctx is None or ctx.count == 0:
-        extra = "当前无选股结果。请用户先在选股页运行方案，或询问如何设置筛选条件。"
-        data = AiContextData(page="选股", extra=extra)
+    service = get_service(main_engine, "screening_service")
+    if service is not None:
+        service.publish_page_context()
     else:
-        preview = ctx.rows[:5]
-        lines = [
-            "你正在协助用户解读选股结果；数值来自规则引擎，禁止编造。",
-            f"最近选股：「{ctx.condition}」命中 {ctx.count} 条",
-        ]
-        if ctx.updated_at:
-            lines.append(f"更新时间：{ctx.updated_at}")
-        lines.append("Top 预览：")
-        for index, row in enumerate(preview, start=1):
-            symbol = row.get("vt_symbol") or row.get("symbol", "")
-            name = row.get("name", "")
-            change = row.get("change_pct", "")
-            lines.append(f"  {index}. {symbol} {name} {change}")
-        if ctx.count > len(preview):
-            lines.append(f"  … 另有 {ctx.count - len(preview)} 条，可调用 get_screening_context 查看")
-        data = AiContextData(page="选股", extra="\n".join(lines))
-
-    set_ai_context(enrich_context_with_actions(data))
+        publish_screener_page_context()
 
 
 def build_ask_ai_prompt_for_run(run_id: str, condition: str) -> str:

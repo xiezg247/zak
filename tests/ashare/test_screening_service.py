@@ -12,25 +12,22 @@ from vnpy_ashare.services.screening_service import ScreeningService
 
 class ScreeningServiceTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.service = ScreeningService(MagicMock())
+        self.engine = MagicMock()
+        self.engine.quote_service = MagicMock()
+        self.service = ScreeningService(self.engine)
 
     def test_load_quote_rows_from_cache(self) -> None:
         rows = [{"symbol": "600519", "change_pct": 1.2}]
-        with patch(
-            "vnpy_ashare.ai.session_context.get_market_quotes_cache",
-            return_value=rows,
-        ):
-            loaded, err = self.service.load_quote_rows()
+        self.engine.quote_service.get_market_quotes_cache.return_value = rows
+        loaded, err = self.service.load_quote_rows()
         self.assertEqual(loaded, rows)
         self.assertIsNone(err)
 
     def test_load_quote_rows_from_redis_when_cache_empty(self) -> None:
         snapshot = MagicMock()
         snapshot.rows = [{"symbol": "000001", "change_pct": -0.5}]
+        self.engine.quote_service.get_market_quotes_cache.return_value = []
         with patch(
-            "vnpy_ashare.ai.session_context.get_market_quotes_cache",
-            return_value=[],
-        ), patch(
             "vnpy_ashare.screener.quotes_loader.load_market_quote_rows",
             return_value=snapshot,
         ):

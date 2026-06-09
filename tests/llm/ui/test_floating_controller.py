@@ -106,7 +106,7 @@ class FloatingAiControllerTests(unittest.TestCase):
 
         controller = self._make_controller()
         with patch(
-            "vnpy_ashare.ai.session_context.get_ai_context",
+            "vnpy_ashare.ai.context_store.get_ai_context",
             return_value=AiContextData(
                 page="市场",
                 symbol="600519",

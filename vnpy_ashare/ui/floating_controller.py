@@ -152,7 +152,7 @@ class FloatingAiController(QtCore.QObject):
             self._panel.submit_prompt(prompt, auto_send=auto_send, action_id=action_id)
 
     def refresh_context(self, _text: str = "") -> None:
-        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_ashare.ai.context_store import get_ai_context
 
         data = get_ai_context()
         if self._orb is not None:
@@ -268,7 +268,7 @@ class FloatingAiController(QtCore.QObject):
 
     @staticmethod
     def _scene_from_context() -> str:
-        from vnpy_ashare.ai.session_context import get_ai_context
+        from vnpy_ashare.ai.context_store import get_ai_context
         from vnpy_llm.ui.floating_actions import scene_label_from_context
 
         return scene_label_from_context(get_ai_context())

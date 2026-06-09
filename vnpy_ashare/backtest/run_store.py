@@ -65,7 +65,7 @@ class BacktestRunRecord:
     created_at: str
 
     def to_summary_dict(self) -> dict[str, Any]:
-        """与 session_context BacktestSummary.to_dict() 对齐。"""
+        """与 context_store BacktestSummary.to_dict() 对齐。"""
         return {
             "strategy": self.strategy,
             "vt_symbol": self.vt_symbol,

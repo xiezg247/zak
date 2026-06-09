@@ -7,7 +7,7 @@ from typing import Any
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import AiContextData
-from vnpy_ashare.ai.session_context import get_backtest_summary, set_ai_context
+from vnpy_ashare.ai.context_store import get_backtest_summary_dict, set_ai_context
 from vnpy_ashare.engine_access import get_service
 
 
@@ -18,7 +18,7 @@ def resolve_backtest_summary(main_engine=None) -> dict[str, Any] | None:
         summary = service.get_last_summary()
         if summary:
             return summary
-    return get_backtest_summary()
+    return get_backtest_summary_dict()
 
 
 def _fmt_metric(value: Any) -> str:

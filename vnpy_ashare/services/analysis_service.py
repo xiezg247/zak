@@ -513,8 +513,10 @@ class AnalysisService(BaseService):
         batch_top_n: int = 0,
     ) -> dict[str, Any]:
         """读取选股结果；可选历史 run_id 与批量技术面快照。"""
-        from vnpy_ashare.ai.session_context import get_screening_results
+        from vnpy_ashare.ai.context_store import get_screening_results
         from vnpy_ashare.screener.run_store import get_run
+
+        screening_svc = getattr(self.engine, "screening_service", None)
 
         if run_id:
             record = get_run(run_id.strip())
@@ -530,7 +532,11 @@ class AnalysisService(BaseService):
                 "total_scanned": record.total_scanned,
             }
         else:
-            ctx = get_screening_results()
+            ctx = (
+                screening_svc.get_screening_results()
+                if screening_svc is not None
+                else get_screening_results()
+            )
             if ctx is None:
                 return {
                     "message": "暂无选股结果，请用户先在「选股」页运行方案，或提供 run_id",
@@ -584,3 +590,13 @@ class AnalysisService(BaseService):
             payload["batch_top_n"] = batch_n
 
         return payload
+
+    def set_diagnose_result(self, payload: dict[str, Any] | None) -> None:
+        from vnpy_ashare.ai.context_store import set_diagnose_result
+
+        set_diagnose_result(payload)
+
+    def get_diagnose_result(self) -> dict[str, Any] | None:
+        from vnpy_ashare.ai.context_store import get_diagnose_result
+
+        return get_diagnose_result()

@@ -15,8 +15,8 @@ def _make_skill(screening_svc: MagicMock) -> VnpyScreeningSkill:
 
 
 def _set_cache(rows: list[dict]) -> None:
-    """向 session_context 注入缓存行情（替代实际行情页数据源）。"""
-    from vnpy_ashare.ai.session_context import set_market_quotes_cache
+    """向 context_store 注入缓存行情（替代实际行情页数据源）。"""
+    from vnpy_ashare.ai.context_store import set_market_quotes_cache
 
     set_market_quotes_cache(rows, {})
 
@@ -32,9 +32,9 @@ def test_list_screeners():
 
 def test_screen_by_condition_no_data():
     svc = MagicMock()
-    from vnpy_ashare.ai.session_context import clear_session_context
+    from vnpy_ashare.ai.context_store import clear_all
 
-    clear_session_context()
+    clear_all()
     skill = _make_skill(svc)
     result = json.loads(skill.screen_by_condition("涨幅榜"))
     assert result["status"] == "blocked"

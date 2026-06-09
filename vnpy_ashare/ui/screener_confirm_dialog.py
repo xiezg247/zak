@@ -7,7 +7,7 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.screener_context import sync_screener_page_context
-from vnpy_ashare.ai.session_context import set_screening_results
+from vnpy_ashare.engine_access import get_service
 from vnpy_ashare.ai_actions import AI_ACTION_FILL_SCREENER, put_ai_action
 from vnpy_ashare.events import FillScreenerRequest
 from vnpy_ashare.screener.data_source import resolve_result_source_tag
@@ -152,11 +152,21 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
     def _on_run_finished(self, result: ScreenerRunResult) -> None:
         self._worker = None
         rows = list(result.rows)
-        set_screening_results(
-            condition=result.condition,
-            rows=rows,
-            updated_at=result.updated_at,
-        )
+        service = get_service(self.main_engine, "screening_service")
+        if service is not None:
+            service.set_screening_results(
+                condition=result.condition,
+                rows=rows,
+                updated_at=result.updated_at,
+            )
+        else:
+            from vnpy_ashare.ai.context_store import set_screening_results
+
+            set_screening_results(
+                condition=result.condition,
+                rows=rows,
+                updated_at=result.updated_at,
+            )
         draft = self._consumed_draft
         config = build_scheme_config(draft.request) if draft else {}
         if draft is not None:

@@ -16,7 +16,7 @@ from vnpy_ashare.ai.context import (
     format_quote_summary,
     resolve_assistant_stock_binding,
 )
-from vnpy_ashare.ai.session_context import set_screening_results
+from vnpy_ashare.ai.context_store import set_screening_results
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_llm.ui.floating_actions import enrich_context_with_actions, build_quick_actions_for_panel
