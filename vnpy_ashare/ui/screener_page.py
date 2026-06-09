@@ -741,10 +741,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
     def deactivate(self) -> None:
         self._active = False
-        for attr in ("_worker", "_download_worker", "_batch_bt_worker"):
-            worker = getattr(self, attr)
+        for attr in ("_worker", "_download_worker"):
+            worker = getattr(self, attr, None)
             setattr(self, attr, None)
             release_thread(self._retired_workers, worker)
+        self._batch_backtest_flow.release_worker(self._retired_workers)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()

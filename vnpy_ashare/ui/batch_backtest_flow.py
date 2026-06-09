@@ -42,6 +42,18 @@ class BatchBacktestFlow:
     def is_running(self) -> bool:
         return self._worker is not None and self._worker.isRunning()
 
+    def release_worker(
+        self,
+        retired: list[QtCore.QThread],
+        *,
+        timeout_ms: int = 500,
+    ) -> None:
+        from vnpy_ashare.ui.qt_helpers import release_thread
+
+        worker = self._worker
+        self._worker = None
+        release_thread(retired, worker, timeout_ms=timeout_ms)
+
     def start(
         self,
         rows: list[dict[str, Any]],
