@@ -368,6 +368,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         source = data.source_page or "AI"
         self._status_label.setText(f"已从 {source} 预填选股条件，请核对后点击「运行选股」")
 
+    def _release_worker(self, worker: QtCore.QThread | None) -> None:
+        release_thread(self._retired_workers, worker)
+
     def _run_screening(self) -> None:
         if self._worker is not None and self._worker.isRunning():
             return
@@ -392,12 +395,12 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._worker = worker
         worker.finished.connect(self._on_screen_finished)
         worker.failed.connect(self._on_screen_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def _on_screen_finished(self, result: ScreenerRunResult) -> None:
+        worker = self._worker
         self._worker = None
+        self._release_worker(worker)
         self.run_btn.setDisabled(False)
         self._results = list(result.rows)
         self._result_columns = result.columns or resolve_export_columns(self._results)
@@ -473,7 +476,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         sync_screener_page_context(self.main_engine)
 
     def _on_screen_failed(self, message: str) -> None:
+        worker = self._worker
         self._worker = None
+        self._release_worker(worker)
         self.run_btn.setDisabled(False)
         self._summary_label.setText("")
         self._status_label.setText(message)
@@ -607,16 +612,16 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
         self.download_btn.setDisabled(True)
         self._status_label.setText(f"正在下载 {len(selected)} 只日 K…")
-        worker = ScreenerBatchDownloadWorker(selected, parent=self)
+        worker = ScreenerBatchDownloadWorker(selected)
         self._download_worker = worker
         worker.finished.connect(self._on_download_finished)
         worker.failed.connect(self._on_download_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def _on_download_finished(self, result) -> None:
+        worker = self._download_worker
         self._download_worker = None
+        self._release_worker(worker)
         self.download_btn.setDisabled(False)
         message = getattr(result, "message", str(result))
         self._status_label.setText(message)
@@ -624,7 +629,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "下载日 K", message)
 
     def _on_download_failed(self, message: str) -> None:
+        worker = self._download_worker
         self._download_worker = None
+        self._release_worker(worker)
         self.download_btn.setDisabled(False)
         self._status_label.setText(message)
         QtWidgets.QMessageBox.warning(self, "下载日 K", message)

@@ -81,6 +81,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
         def on_finished(rows: list) -> None:
             if self._index_worker is worker:
                 self._index_worker = None
+            release_thread(self._retired_workers, worker)
             parts: list[str] = []
             for label, quote in rows:
                 color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
@@ -95,11 +96,10 @@ class QuotesShellWidget(QtWidgets.QWidget):
         def on_failed(_msg: str) -> None:
             if self._index_worker is worker:
                 self._index_worker = None
+            release_thread(self._retired_workers, worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:

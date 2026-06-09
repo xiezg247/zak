@@ -62,7 +62,7 @@ class QuotesPage(QtWidgets.QWidget):
         except RuntimeError:
             return False
 
-    def _wait_worker_release(self, attr: str, *, timeout_ms: int = 500) -> None:
+    def _wait_worker_release(self, attr: str, *, timeout_ms: int = 3000) -> None:
         worker = getattr(self, attr, None)
         if worker is None:
             return
@@ -207,6 +207,7 @@ class QuotesPage(QtWidgets.QWidget):
             "_diagnose_worker",
         ):
             self._wait_worker_release(attr)
+        self._batch_backtest.release_workers(self._retired_workers)
 
     def _splitter_settings_key(self) -> str:
         return f"quotes/splitter/{self.page_name}"

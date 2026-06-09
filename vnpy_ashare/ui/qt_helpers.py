@@ -2,7 +2,23 @@
 
 from __future__ import annotations
 
+import warnings
+
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+
+
+def disconnect_worker_auto_delete(worker: QtCore.QThread) -> None:
+    """断开 finished/failed → deleteLater，避免 deactivate 与自动销毁竞态。"""
+    for signal_name in ("finished", "failed"):
+        signal = getattr(worker, signal_name, None)
+        if signal is None:
+            continue
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            try:
+                signal.disconnect(worker.deleteLater)
+            except (TypeError, RuntimeError):
+                pass
 
 
 def retain_thread_until_finished(
@@ -12,12 +28,20 @@ def retain_thread_until_finished(
     """保留 QThread 引用直至 run() 结束，避免 destroy-while-running。"""
     if worker in retired:
         return
+    try:
+        worker.setParent(None)
+    except RuntimeError:
+        return
     retired.append(worker)
 
     def _release(*_args: object) -> None:
         try:
             retired.remove(worker)
         except ValueError:
+            pass
+        try:
+            worker.deleteLater()
+        except RuntimeError:
             pass
 
     for signal_name in ("finished", "failed"):
@@ -34,10 +58,15 @@ def release_thread(
     retired: list[QtCore.QThread],
     worker: QtCore.QThread | None,
     *,
-    timeout_ms: int = 500,
+    timeout_ms: int = 3000,
 ) -> None:
     """短暂等待线程结束；超时则转入 retired 列表直至自然结束。"""
     if worker is None:
+        return
+    disconnect_worker_auto_delete(worker)
+    try:
+        worker.setParent(None)
+    except RuntimeError:
         return
     try:
         if worker.isRunning():
@@ -47,6 +76,8 @@ def release_thread(
     try:
         if worker.isRunning():
             retain_thread_until_finished(retired, worker)
+            return
+        worker.deleteLater()
     except RuntimeError:
         pass
 

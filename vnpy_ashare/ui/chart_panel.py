@@ -19,7 +19,7 @@ from vnpy_ashare.ui.quotes_chart import (
     prepare_chart_bars,
 )
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
-from vnpy_ashare.ui.qt_helpers import retain_thread_until_finished
+from vnpy_ashare.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.worker import (
     BarsLoadWorker,
     IntradayBarsWorker,
@@ -322,7 +322,9 @@ class ChartPanel(QtWidgets.QWidget):
             chart.clear_all()
 
     def _retire_worker(self, worker: QtCore.QThread) -> None:
-        retain_thread_until_finished(self._retired_workers, worker)
+        from vnpy_ashare.ui.qt_helpers import release_thread
+
+        release_thread(self._retired_workers, worker)
 
     def _abandon_minute_worker(self) -> None:
         worker = self._minute_worker

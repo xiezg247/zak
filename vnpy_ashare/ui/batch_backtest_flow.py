@@ -35,6 +35,7 @@ class BatchBacktestFlow:
         self.parent = parent
         self._on_status = on_status or (lambda _msg: None)
         self._worker: ScreenerBatchBacktestWorker | None = None
+        self._retired_workers: list[QtCore.QThread] = []
         self._last_params: BatchBacktestParams | None = None
         self._batch_source = "batch_screener"
         self._source_page = ""
@@ -46,13 +47,16 @@ class BatchBacktestFlow:
         self,
         retired: list[QtCore.QThread],
         *,
-        timeout_ms: int = 500,
+        timeout_ms: int = 3000,
     ) -> None:
         from vnpy_ashare.ui.qt_helpers import release_thread
 
         worker = self._worker
         self._worker = None
         release_thread(retired, worker, timeout_ms=timeout_ms)
+        for pending in list(self._retired_workers):
+            release_thread(retired, pending, timeout_ms=0)
+        self._retired_workers.clear()
 
     def start(
         self,
@@ -114,16 +118,18 @@ class BatchBacktestFlow:
             self.main_engine,
             rows,
             params,
-            parent=self.parent,
         )
         self._worker = worker
         worker.finished.connect(
             lambda result: self._on_finished(result, on_running)
         )
         worker.failed.connect(lambda message: self._on_failed(message, on_running))
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
+
+    def _release_worker(self, worker: ScreenerBatchBacktestWorker | None) -> None:
+        from vnpy_ashare.ui.qt_helpers import release_thread
+
+        release_thread(self._retired_workers, worker)
 
     def _default_strategies(self) -> list[str]:
         from vnpy_ashare.engine_access import get_service
@@ -142,7 +148,9 @@ class BatchBacktestFlow:
         rows: object,
         on_running: Callable[[bool], None] | None,
     ) -> None:
+        worker = self._worker
         self._worker = None
+        self._release_worker(worker)
         if on_running is not None:
             on_running(False)
         result_rows = list(rows) if isinstance(rows, list) else []
@@ -172,7 +180,9 @@ class BatchBacktestFlow:
         message: str,
         on_running: Callable[[bool], None] | None,
     ) -> None:
+        worker = self._worker
         self._worker = None
+        self._release_worker(worker)
         if on_running is not None:
             on_running(False)
         self._on_status(message)
