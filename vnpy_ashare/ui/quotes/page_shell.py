@@ -14,7 +14,8 @@ from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
 from vnpy_ashare.ui.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS
 from vnpy_ashare.ui.quotes_chart import create_daily_chart
-from vnpy_ashare.ui.quotes_config import quote_refresh_hint
+from vnpy_ashare.ui.quotes_config import quote_refresh_hint, quote_source_label
+from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR, apply_toolbar_combo_style
 
 if TYPE_CHECKING:
@@ -64,6 +65,12 @@ class QuotesPageShell:
         page.redownload_button.clicked.connect(page.redownload_selected)
         page.redownload_button.setEnabled(False)
         page.redownload_button.setVisible(page.config.show_redownload_button)
+
+        page.batch_fill_button = QtWidgets.QPushButton("批量补全过期")
+        page.batch_fill_button.setObjectName("SecondaryButton")
+        page.batch_fill_button.clicked.connect(page.batch_fill_stale)
+        page.batch_fill_button.setEnabled(False)
+        page.batch_fill_button.setVisible(page.config.show_batch_fill_button)
 
         page.local_period_combo = QtWidgets.QComboBox()
         for label, value in LOCAL_SCOPE_OPTIONS:
@@ -162,6 +169,8 @@ class QuotesPageShell:
             toolbar.addWidget(page.fill_button)
         if page.config.show_redownload_button:
             toolbar.addWidget(page.redownload_button)
+        if page.config.show_batch_fill_button:
+            toolbar.addWidget(page.batch_fill_button)
         if page.config.show_backtest_button:
             toolbar.addWidget(page.backtest_button)
         if page.config.show_batch_backtest_button:
@@ -344,6 +353,13 @@ class QuotesPageShell:
             splitter.addWidget(center_widget)
 
         page.status_label = QtWidgets.QLabel("就绪")
+        page.quote_source_label = QtWidgets.QLabel(
+            quote_source_label(
+                page.config,
+                gateway_active=is_gateway_quote_active(),
+            )
+        )
+        page.quote_source_label.setStyleSheet(f"color: {NAV_MUTED_COLOR};")
         page.refresh_hint_label = QtWidgets.QLabel(
             quote_refresh_hint(
                 auto_refresh=page.config.auto_refresh_quotes,
@@ -356,6 +372,7 @@ class QuotesPageShell:
         bottom_bar = QtWidgets.QHBoxLayout()
         bottom_bar.setContentsMargins(8, 2, 8, 4)
         bottom_bar.addWidget(page.status_label, stretch=1)
+        bottom_bar.addWidget(page.quote_source_label)
         bottom_bar.addStretch()
         bottom_bar.addWidget(page.home_button)
         bottom_bar.addWidget(page.prev_page_button)

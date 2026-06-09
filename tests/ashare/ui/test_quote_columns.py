@@ -79,5 +79,32 @@ class TestQuoteRefreshHint(unittest.TestCase):
         self.assertEqual(PAGE_CONFIGS["自选"].quote_source, "watchlist")
 
 
+class TestQuoteSourceLabel(unittest.TestCase):
+    def test_quote_source_labels(self) -> None:
+        from vnpy_ashare.ui.quotes_config import PAGE_CONFIGS, quote_source_label
+
+        market = PAGE_CONFIGS["市场"]
+        watchlist = PAGE_CONFIGS["自选"]
+        local = PAGE_CONFIGS["本地"]
+
+        self.assertEqual(
+            quote_source_label(market),
+            "行情源：Redis + TickFlow",
+        )
+        self.assertEqual(
+            quote_source_label(watchlist, stream_active=True),
+            "行情源：TickFlow (WebSocket)",
+        )
+        self.assertEqual(
+            quote_source_label(watchlist, stream_active=False),
+            "行情源：TickFlow",
+        )
+        self.assertEqual(quote_source_label(local), "行情源：本地 K 线")
+        self.assertEqual(
+            quote_source_label(watchlist, gateway_active=True),
+            "行情源：Gateway",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

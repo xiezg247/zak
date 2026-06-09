@@ -32,16 +32,19 @@ class QuoteStreamController:
             return
         if not can_use_tickflow_stream():
             page._stream_fallback = True
+            page._update_quote_source_label()
             return
         bridge = TickflowStreamBridge(page)
         bridge.quotes_updated.connect(self.on_quotes)
         bridge.depth_updated.connect(self.on_depth)
         bridge.depth_permission_denied.connect(self.on_depth_denied)
+        bridge.connected.connect(self._on_connected)
         bridge.disconnected.connect(self.on_disconnected)
         bridge.error.connect(self.on_error)
         page._stream_bridge = bridge
         page._stream_fallback = False
         bridge.start()
+        page._update_quote_source_label()
 
     def stop(self) -> None:
         page = self._page
@@ -69,11 +72,17 @@ class QuoteStreamController:
             return
         page._stream_bridge.set_depth_symbol(page.current_item.tickflow_symbol)
 
+    def _on_connected(self) -> None:
+        page = self._page
+        page._stream_fallback = False
+        page._update_quote_source_label()
+
     def on_quotes(self, quotes: dict) -> None:
         page = self._page
         if not page._active:
             return
         page._stream_fallback = False
+        page._update_quote_source_label()
         page.quote_map.update(quotes)
         page._refresh_table_quotes()
         if page.current_item:
@@ -98,11 +107,14 @@ class QuoteStreamController:
         self.sync_depth_subscription()
 
     def on_disconnected(self) -> None:
-        self._page._stream_fallback = True
+        page = self._page
+        page._stream_fallback = True
+        page._update_quote_source_label()
 
     def on_error(self, _message: str) -> None:
         page = self._page
         page._stream_fallback = True
+        page._update_quote_source_label()
         self.stop()
         if page._active:
             page._refresh_quotes_rest()

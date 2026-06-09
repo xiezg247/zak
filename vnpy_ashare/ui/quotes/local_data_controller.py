@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy.trader.constant import Exchange
+from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.bar_health import (
@@ -24,6 +25,7 @@ from vnpy_ashare.ui.chart_panel import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
+    BatchFillWorker,
     DownloadWorker,
     LoadedBars,
     MinuteDownloadWorker,
@@ -86,6 +88,102 @@ class LocalDataController:
             page.bar_meta[key] = meta
             page.bar_list_status[key] = list_status(meta)
 
+    def update_batch_fill_button(self) -> None:
+        page = self._page
+        button = getattr(page, "batch_fill_button", None)
+        if button is None or not page.config.show_batch_fill_button:
+            return
+        visible = page.config.use_local_table and self.is_daily_scope()
+        button.setVisible(visible)
+        if not visible:
+            button.setEnabled(False)
+            return
+        if page._thread_active(getattr(page, "_batch_fill_worker", None)):
+            button.setEnabled(False)
+            return
+        from vnpy_ashare.jobs.local_fill import count_stale_daily_items
+
+        stale_count = count_stale_daily_items(page.all_stocks, page.bar_meta)
+        button.setEnabled(stale_count > 0)
+        button.setToolTip(
+            f"对 {stale_count} 只过期标的增量补全日 K 到最新交易日"
+            if stale_count
+            else "当前列表无过期日 K"
+        )
+
+    def batch_fill_stale(self) -> None:
+        page = self._page
+        if not page.config.show_batch_fill_button or not self.is_daily_scope():
+            return
+        if page._thread_active(page._download_worker) or page._thread_active(
+            getattr(page, "_batch_fill_worker", None)
+        ):
+            return
+
+        from vnpy_ashare.jobs.local_fill import count_stale_daily_items, select_stale_daily_items
+
+        items = select_stale_daily_items(page.all_stocks, page.bar_meta)
+        if not items:
+            QtWidgets.QMessageBox.information(page, "批量补全", "当前没有需要补全的过期日 K")
+            self.update_batch_fill_button()
+            return
+
+        stale_count = count_stale_daily_items(page.all_stocks, page.bar_meta)
+        reply = QtWidgets.QMessageBox.question(
+            page,
+            "批量补全过期日 K",
+            f"将为 {stale_count} 只过期标的增量补全日 K 到最新交易日，可能耗时较长。\n\n是否继续？",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+
+        page._set_busy(True)
+        self.update_batch_fill_button()
+        page.status_label.setText(f"批量补全过期日 K（0/{len(items)}）...")
+
+        worker = BatchFillWorker(items, dict(page.bar_meta))
+        page._batch_fill_worker = worker
+
+        def on_progress(progress: object) -> None:
+            from vnpy_ashare.jobs.local_fill import BatchFillProgress
+
+            if not isinstance(progress, BatchFillProgress):
+                return
+            page.status_label.setText(
+                f"批量补全 ({progress.current}/{progress.total}) {progress.label}..."
+            )
+
+        def on_finished(result: object) -> None:
+            if page._batch_fill_worker is worker:
+                page._batch_fill_worker = None
+            page._set_busy(False)
+            self.refresh_meta()
+            page.apply_filter()
+            if page.current_item is not None and self.is_daily_scope():
+                page.show_kline(page.current_item)
+                self.check_bar_gaps(page.current_item)
+            self.update_batch_fill_button()
+            from vnpy_ashare.jobs.local_fill import BatchFillResult
+
+            if isinstance(result, BatchFillResult):
+                page.status_label.setText(result.message)
+
+        def on_failed(msg: str) -> None:
+            if page._batch_fill_worker is worker:
+                page._batch_fill_worker = None
+            page._set_busy(False)
+            self.update_batch_fill_button()
+            page.status_label.setText(f"批量补全失败: {msg}")
+
+        worker.progress.connect(on_progress)
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.start()
+
     def on_period_changed(self) -> None:
         page = self._page
         if not page.config.use_local_table:
@@ -96,6 +194,7 @@ class LocalDataController:
         page._local_scope = value
         page._selected_gap_result = None
         self.refresh_meta()
+        self.update_batch_fill_button()
         page.load_stock_list()
         if page.current_item is not None:
             page.show_kline(page.current_item)

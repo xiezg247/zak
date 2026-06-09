@@ -71,6 +71,8 @@ class ActionsController:
             page.backtest_button.setEnabled(item is not None)
         if page.config.show_batch_backtest_button:
             page._batch_backtest.update_action_buttons()
+        if page.config.show_batch_fill_button:
+            page._local.update_batch_fill_button()
         if page.config.show_diagnose_button:
             page.diagnose_button.setEnabled(item is not None)
 
@@ -251,6 +253,7 @@ class ActionsController:
                 return
             page.quote_map.update(quotes)
             page._refresh_table_quotes()
+            page._update_quote_source_label()
             if current:
                 self.update_quote_header(current)
                 if page.chart_panel is not None:
