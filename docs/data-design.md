@@ -1,8 +1,6 @@
 # 数据设计
 
-> **2026-06 状态**：下文表结构均已落地；LLM 多会话 UI 已暴露；终端 AI 共享态在 `context_store`（内存，非 DB）。
-
-vnpy_zak 使用 **三个独立的 SQLite 数据库**（App DB 7 张表 + K 线 DB 4 张 + LLM Chat DB 2 张）和 **一个 Redis 缓存层**。所有建表语句均通过 `CREATE TABLE IF NOT EXISTS` 在代码中内联执行，没有独立的数据库迁移文件。
+zak 使用 **三个独立的 SQLite 数据库**（App DB 7 张表 + K 线 DB 4 张 + LLM Chat DB 2 张）和 **一个 Redis 缓存层**。建表语句在代码中内联执行（`CREATE TABLE IF NOT EXISTS`），无独立迁移文件。终端 AI 共享态在 `context_store`（内存，非 DB）。
 
 ---
 
@@ -91,7 +89,7 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 **用途：** 从 Tushare Pro 同步 SSE 交易日历，用于 K 线断层检测（`bar_health.py`）和回测日期判断。
 
-### 1.5 `backtest_runs` — 回测运行历史（B3）
+### 1.5 `backtest_runs` — 回测运行历史
 
 定义文件：`vnpy_ashare/backtest/run_store.py`。写入：`BacktestService.persist_summary()`。
 
@@ -261,7 +259,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, id);
 - `MAX_MESSAGES_PER_SESSION = 50`：每个会话 `list_messages()` 最多取最近 50 条
 - `MAX_TOOL_RESULT_CHARS = 2000`：写入 DB 前，tool_result 超过此长度的内容会被截断
 
-**当前状态：** 多会话 UI 已暴露——全屏页 `AiSessionSidebar`、Dock/悬浮「历史会话」弹窗；会话持久化于 `llm_chat.db`。
+多会话 UI：全屏页 `AiSessionSidebar`、Dock/悬浮「历史会话」弹窗；会话持久化于 `llm_chat.db`。
 
 ---
 
