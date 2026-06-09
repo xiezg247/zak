@@ -14,7 +14,6 @@ _ERROR_HINTS: tuple[tuple[str, str], ...] = (
     (r"未注册的 MCP 工具|未注册的工具|未知工具", "该工具当前不可用，请换用其他工具或检查 Skills/MCP 配置"),
     (r"Service 未就绪", "A 股引擎未完全加载，请重启终端或确认 vnpy_ashare 插件已启用"),
     (r"选股方案不存在", "请调用 list_screeners 查看可用 preset 或 scheme_id"),
-    (r"screen_by_condition", "请改用 propose_screening 生成草案，待用户在确认框中确认后再执行"),
     (r"超时|timeout", "数据源响应较慢，请稍后重试或缩小查询范围"),
 )
 

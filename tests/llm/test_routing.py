@@ -19,6 +19,7 @@ def _tool(name: str) -> dict:
 
 ALL_TOOLS = [
     _tool("get_quote_context"),
+    _tool("screen_by_condition"),
     _tool("propose_screening"),
     _tool("list_screeners"),
     _tool("get_backtest_result"),
@@ -31,6 +32,7 @@ ALL_TOOLS = [
 def test_filter_screening_subset():
     filtered = filter_tools_by_route(ALL_TOOLS, "screening")
     names = {t["function"]["name"] for t in filtered}
+    assert "screen_by_condition" in names
     assert "propose_screening" in names
     assert "list_screeners" in names
     assert "read_skill_file" in names
@@ -71,9 +73,24 @@ def test_build_routing_hint_screening():
         ),
     )
     hint = build_routing_hint(analysis, page="选股")
-    assert "propose_screening" in hint
+    assert "screen_by_condition" in hint
     assert "涨幅榜" in hint
     assert "选股" in hint
+
+
+def test_build_routing_hint_screening_medium():
+    analysis = IntentAnalysis(
+        route=IntentRoute(category="screening", confidence="medium", reasoning="用户要选股"),
+        screening=ScreeningIntent(
+            intent="找一些低估值的",
+            preset="",
+            top_n=20,
+            confidence="medium",
+        ),
+    )
+    hint = build_routing_hint(analysis, page="选股")
+    assert "propose_screening" in hint
+    assert "可直接调用 screen_by_condition" not in hint
 
 
 def test_build_routing_hint_backtest():
