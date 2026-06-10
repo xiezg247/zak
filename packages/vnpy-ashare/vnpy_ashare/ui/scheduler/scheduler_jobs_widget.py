@@ -161,6 +161,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         self._refresh_pending = False
         self._monitoring = False
         self._on_scheduler_event = self._request_refresh
+        self._manual_run_job_id: str | None = None
 
         self.table = QtWidgets.QTableWidget(0, 7)
         self.table.setObjectName("SchedulerTable")
@@ -235,6 +236,55 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
     def hideEvent(self, event) -> None:
         self.stop_monitoring()
         super().hideEvent(event)
+
+    def _page(self) -> QtWidgets.QWidget | None:
+        parent = self.parentWidget()
+        return parent if parent is not None else None
+
+    def _task_guard(self):
+        page = self._page()
+        if page is not None:
+            return getattr(page, "_task_guard", None)
+        return None
+
+    def _page_toast(self):
+        page = self._page()
+        if page is not None:
+            return getattr(page, "_toast", None)
+        return None
+
+    def _lock_widgets(self) -> list[QtWidgets.QWidget]:
+        widgets: list[QtWidgets.QWidget] = [self.table]
+        page = self._page()
+        if page is not None:
+            refresh_btn = getattr(page, "_refresh_btn", None)
+            if refresh_btn is not None:
+                widgets.append(refresh_btn)
+        return widgets
+
+    def _check_manual_run_finished(self) -> None:
+        job_id = self._manual_run_job_id
+        if not job_id or self._scheduler is None:
+            return
+        guard = self._task_guard()
+        if guard is None or not guard.active:
+            self._manual_run_job_id = None
+            return
+        status = self._scheduler.get_status(job_id)
+        if status is None or status.running:
+            return
+        guard.end()
+        self._manual_run_job_id = None
+        toast = self._page_toast()
+        if toast is None:
+            return
+        message = (status.last_message or "").strip()
+        if status.last_success is False:
+            toast.error(message or f"{status.name} 执行失败")
+        elif message:
+            toast.success(message)
+        else:
+            toast.success(f"{status.name} 执行完成")
 
     def _configure_table_columns(self) -> None:
         header = self.table.horizontalHeader()
@@ -316,6 +366,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
             if self._embedded:
                 self._apply_embedded_column_widths()
             self._sync_table_height()
+            self._check_manual_run_finished()
         finally:
             self._refreshing = False
             if self._refresh_pending:
@@ -416,8 +467,18 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
     def _run_now(self, job_id: str) -> None:
         if self._scheduler is None:
             return
+        guard = self._task_guard()
+        if guard is not None and guard.active:
+            page_notify(self, "已有任务正在执行，请稍后再试")
+            return
         if not self._scheduler.run_now(job_id):
             page_notify(self, "任务正在运行中，请稍后再试")
+            return
+        status = self._scheduler.get_status(job_id)
+        name = status.name if status is not None else job_id
+        if guard is not None:
+            self._manual_run_job_id = job_id
+            guard.begin(f"正在执行：{name}…", widgets=self._lock_widgets(), on_cancel=None)
 
     def _open_settings(self, job_id: str) -> None:
         if self._scheduler is None:

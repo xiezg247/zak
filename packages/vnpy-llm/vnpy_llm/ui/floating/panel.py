@@ -14,7 +14,7 @@ from vnpy_common.ui.qt_helpers import (
     frame_intersects_any_screen,
     restore_child_position,
 )
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.theme.orb_palette import OrbPalette, orb_palette
 from vnpy_common.ui.theme.tokens import ThemeTokens
 from vnpy_llm.app.engine import LlmEngine
@@ -335,6 +335,9 @@ class FloatingAiPanel(QtWidgets.QWidget):
         )
         self.chat_panel.expand_requested.connect(self._on_expand)
         root.addWidget(self.chat_panel, 1)
+
+        self._toast = PageToastHost(self)
+        root.addWidget(self._toast)
 
         bind_ai_floating_style(self)
         self._update_context_bar_geometry()

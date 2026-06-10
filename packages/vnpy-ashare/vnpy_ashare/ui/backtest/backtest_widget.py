@@ -42,7 +42,7 @@ from vnpy_ashare.ui.styles import (
     style_legacy_form_inputs,
 )
 from vnpy_common.ui.theme import theme_manager
-from vnpy_common.ui.feedback import page_notify
+from vnpy_common.ui.feedback import TaskGuard, page_notify
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 
 _LOG_MAP: dict[str, str] = {
@@ -95,6 +95,11 @@ class BacktesterWidget(VnpyBacktesterManager):
         self._prepare_strategy_guide_button()
         self._prepare_ask_ai_button()
         BacktestPageShell(self).build()
+        self._task_guard = TaskGuard(self._toast)
+        self._backtest_task_kind: str | None = None
+        self._thread_poll = QtCore.QTimer(self)
+        self._thread_poll.setInterval(400)
+        self._thread_poll.timeout.connect(self._poll_backtester_thread)
         self.symbol_line.setPlaceholderText("如 600519.SSE / 000001.SZSE")
         apply_toolbar_combo_style(self.class_combo)
         apply_toolbar_combo_style(self.interval_combo)
@@ -364,8 +369,123 @@ class BacktesterWidget(VnpyBacktesterManager):
                 self.write_log(text)
         self.write_log("如需 AI 解读，请点击「问 AI」")
 
+    def _backtest_lock_widgets(self) -> list[QtWidgets.QWidget]:
+        widgets: list[QtWidgets.QWidget] = [
+            self.run_button,
+            self.download_button,
+            self.optimization_button,
+            self.class_combo,
+            self.symbol_line,
+            self.interval_combo,
+            self.start_date_edit,
+            self.end_date_edit,
+            self.rate_line,
+            self.slippage_line,
+            self.size_line,
+            self.pricetick_line,
+            self.capital_line,
+            self.trade_button,
+            self.order_button,
+            self.daily_button,
+            self.candle_button,
+            self.edit_button,
+            self.reload_button,
+            self.result_button,
+            self.strategy_guide_button,
+            self.ask_ai_button,
+        ]
+        return widgets
+
+    def _engine_busy(self) -> bool:
+        thread = self.backtester_engine.thread
+        return thread is not None and thread.is_alive()
+
+    def _begin_backtest_task(self, kind: str, message: str) -> None:
+        if self._task_guard.active:
+            return
+        self._backtest_task_kind = kind
+        self._task_guard.begin(message, widgets=self._backtest_lock_widgets(), on_cancel=None)
+        self._thread_poll.start()
+
+    def _end_backtest_task_if_active(self) -> None:
+        if not self._task_guard.active:
+            return
+        self._thread_poll.stop()
+        self._task_guard.end()
+        self._backtest_task_kind = None
+
+    def _poll_backtester_thread(self) -> None:
+        if not self._task_guard.active:
+            self._thread_poll.stop()
+            return
+        if self._engine_busy():
+            return
+        kind = self._backtest_task_kind
+        if kind == "download":
+            self._end_backtest_task_if_active()
+            self._toast.success("历史数据下载完成")
+            return
+        if kind in ("backtest", "optimization"):
+            QtCore.QTimer.singleShot(120, self, self._finish_backtest_task_if_still_active)
+
+    def _finish_backtest_task_if_still_active(self) -> None:
+        if not self._task_guard.active or self._engine_busy():
+            return
+        self._end_backtest_task_if_active()
+
+    def start_backtesting(self) -> None:
+        if self._task_guard.active or self._engine_busy():
+            page_notify(self, "已有任务在运行中，请等待完成", level="warning")
+            return
+        super().start_backtesting()
+        if self._engine_busy():
+            self._begin_backtest_task("backtest", "正在回测…")
+
+    def start_downloading(self) -> None:
+        if self._task_guard.active or self._engine_busy():
+            page_notify(self, "已有任务在运行中，请等待完成", level="warning")
+            return
+        super().start_downloading()
+        if self._engine_busy():
+            self._begin_backtest_task("download", "正在下载历史数据…")
+
+    def start_optimization(self) -> None:
+        if self._task_guard.active or self._engine_busy():
+            page_notify(self, "已有任务在运行中，请等待完成", level="warning")
+            return
+        super().start_optimization()
+        if self._engine_busy():
+            self._begin_backtest_task("optimization", "正在参数优化…")
+
+    def edit_strategy_code(self) -> None:
+        import platform
+        import shutil
+        import subprocess
+
+        class_name = self.class_combo.currentText()
+        if not class_name:
+            return
+
+        file_path = self.backtester_engine.get_strategy_class_file(class_name)
+        editor_cmds = ["code", "cursor", "pycharm64", "charm"]
+        editor_cmd = next((cmd for cmd in editor_cmds if shutil.which(cmd)), "")
+        if editor_cmd:
+            if platform.system() == "Windows":
+                subprocess.run([editor_cmd, file_path], shell=True)
+            else:
+                subprocess.run([editor_cmd, file_path])
+            return
+        page_notify(
+            self,
+            "未检测到可用的代码编辑器，请安装 Cursor、VS Code 或 PyCharm 并加入 PATH",
+            level="warning",
+        )
+
     def process_backtesting_finished_event(self, event: Event) -> None:
         super().process_backtesting_finished_event(event)
+        if self._backtest_task_kind == "backtest":
+            self._end_backtest_task_if_active()
+            self._toast.success("回测完成")
         statistics = self.backtester_engine.get_result_statistics()
         if not statistics:
             return
@@ -386,3 +506,9 @@ class BacktesterWidget(VnpyBacktesterManager):
             backtest_service.persist_summary(summary_dict, source="single")
         else:
             page_notify(self, "回测服务未就绪，摘要未写入 AI 上下文", level="warning", title="回测")
+
+    def process_optimization_finished_event(self, event: Event) -> None:
+        super().process_optimization_finished_event(event)
+        if self._backtest_task_kind == "optimization":
+            self._end_backtest_task_if_active()
+            self._toast.success("参数优化完成")
