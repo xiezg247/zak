@@ -113,17 +113,23 @@ def merge_missing_days(missing: list[date]) -> list[GapRange]:
     return ranges
 
 
-def find_gaps(meta: BarMeta, bar_dates: set[date]) -> list[GapRange]:
+def find_gaps(
+    meta: BarMeta,
+    bar_dates: set[date],
+    *,
+    expected: list[date] | None = None,
+) -> list[GapRange]:
     """在 meta 覆盖范围内找出缺失的交易日。"""
-    expected = trading_days_between(meta.start.date(), meta.end.date())
-    missing = [day for day in expected if day not in bar_dates]
+    expected_days = expected if expected is not None else trading_days_between(meta.start.date(), meta.end.date())
+    missing = [day for day in expected_days if day not in bar_dates]
     return merge_missing_days(missing)
 
 
 def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None = None) -> BarGapResult:
     """选中行异步扫描：有断层则 GAPS，否则回退 ``list_status``。"""
-    gaps = find_gaps(meta, bar_dates)
-    expected_days = len(trading_days_between(meta.start.date(), meta.end.date()))
+    expected_days = trading_days_between(meta.start.date(), meta.end.date())
+    gaps = find_gaps(meta, bar_dates, expected=expected_days)
+    expected_count = len(expected_days)
     actual_days = len(bar_dates)
     if gaps:
         status = BarHealthStatus.GAPS
@@ -132,7 +138,7 @@ def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None 
     return BarGapResult(
         status=status,
         gaps=gaps,
-        expected_days=expected_days,
+        expected_days=expected_count,
         actual_days=actual_days,
     )
 

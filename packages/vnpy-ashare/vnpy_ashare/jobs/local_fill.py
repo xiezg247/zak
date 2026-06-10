@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 
+from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -20,7 +21,7 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.data.bar_store import get_scope_overview
 from vnpy_ashare.data.bars import download_bars
-from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
 from vnpy_ashare.domain.models import StockItem
 
 
@@ -103,6 +104,35 @@ def fill_stale_daily_bar(
     )
 
 
+@dataclass(frozen=True)
+class _StaleFillOutcome:
+    label: str
+    success: bool
+    added: int
+    failed: bool
+
+
+def _fill_stale_item(
+    item: StockItem,
+    bar_meta: dict[tuple[str, Exchange], BarMeta],
+    *,
+    end: datetime | None,
+) -> _StaleFillOutcome:
+    label = format_vt_symbol_cn(item.symbol, item.exchange)
+    key = (item.symbol, item.exchange)
+    meta = bar_meta.get(key)
+    if meta is None:
+        overview = get_scope_overview(item.symbol, item.exchange, "daily")
+        if overview is None:
+            return _StaleFillOutcome(label=label, success=False, added=0, failed=True)
+        meta = BarMeta(start=overview.start, end=overview.end, count=overview.count)
+    try:
+        added = fill_stale_daily_bar(item, meta, end=end)
+        return _StaleFillOutcome(label=label, success=True, added=added, failed=False)
+    except Exception:
+        return _StaleFillOutcome(label=label, success=False, added=0, failed=True)
+
+
 def batch_fill_stale_daily_bars(
     items: list[StockItem],
     bar_meta: dict[tuple[str, Exchange], BarMeta],
@@ -110,43 +140,51 @@ def batch_fill_stale_daily_bars(
     delay: float = 0.3,
     progress: Callable[[BatchFillProgress], None] | None = None,
     end: datetime | None = None,
+    max_workers: int | None = None,
 ) -> BatchFillResult:
-    """对过期标的逐个增量补全日 K。"""
+    """对过期标的增量补全日 K（多 worker 并发，单 worker 时保留 delay）。"""
     if not items:
         return BatchFillResult(attempted=0, success=0, failed=[], bars_added=0, up_to_date=0)
+
+    total = len(items)
+    workers = max_workers if max_workers is not None else download_max_workers(item_count=total)
+    completed = 0
+
+    def on_complete(_index: int, item: StockItem, outcome: _StaleFillOutcome) -> None:
+        nonlocal completed
+        completed += 1
+        if progress is not None:
+            progress(BatchFillProgress(current=completed, total=total, label=outcome.label))
+
+    if workers <= 1:
+        outcomes: list[_StaleFillOutcome] = []
+        for index, item in enumerate(items, start=1):
+            outcome = _fill_stale_item(item, bar_meta, end=end)
+            outcomes.append(outcome)
+            if progress is not None:
+                progress(BatchFillProgress(current=index, total=total, label=outcome.label))
+            if index < total and delay > 0:
+                time.sleep(delay)
+    else:
+
+        def worker(item: StockItem) -> _StaleFillOutcome:
+            return _fill_stale_item(item, bar_meta, end=end)
+
+        outcomes = run_parallel_map(items, worker, max_workers=workers, on_complete=on_complete)
 
     success = 0
     failed: list[str] = []
     bars_added = 0
     up_to_date = 0
-    total = len(items)
-
-    for index, item in enumerate(items, start=1):
-        label = format_vt_symbol_cn(item.symbol, item.exchange)
-        if progress is not None:
-            progress(BatchFillProgress(current=index, total=total, label=label))
-
-        key = (item.symbol, item.exchange)
-        meta = bar_meta.get(key)
-        if meta is None:
-            overview = get_scope_overview(item.symbol, item.exchange, "daily")
-            if overview is None:
-                failed.append(label)
-                continue
-            meta = BarMeta(start=overview.start, end=overview.end, count=overview.count)
-
-        try:
-            added = fill_stale_daily_bar(item, meta, end=end)
-            if added == 0:
-                up_to_date += 1
-            else:
-                bars_added += added
-            success += 1
-        except Exception:
-            failed.append(label)
-
-        if index < total and delay > 0:
-            time.sleep(delay)
+    for outcome in outcomes:
+        if outcome.failed:
+            failed.append(outcome.label)
+            continue
+        success += 1
+        if outcome.added == 0:
+            up_to_date += 1
+        else:
+            bars_added += outcome.added
 
     return BatchFillResult(
         attempted=total,
@@ -252,6 +290,24 @@ def count_scannable_daily_items(
     return sum(1 for item in stocks if bar_meta.get((item.symbol, item.exchange)))
 
 
+@dataclass(frozen=True)
+class _GapFixOutcome:
+    label: str
+    success: bool
+    added: int
+    gap_count: int
+
+
+def _fix_gap_item(entry: tuple[StockItem, BarMeta, list[GapRange]]) -> _GapFixOutcome:
+    item, meta, gaps = entry
+    label = format_vt_symbol_cn(item.symbol, item.exchange)
+    try:
+        added = fill_gap_ranges(item, gaps, anchor_time=meta.start)
+        return _GapFixOutcome(label=label, success=True, added=added, gap_count=len(gaps))
+    except Exception:
+        return _GapFixOutcome(label=label, success=False, added=0, gap_count=0)
+
+
 def batch_fill_gap_daily_bars(
     stocks: list[StockItem],
     bar_meta: dict[tuple[str, Exchange], BarMeta],
@@ -259,6 +315,7 @@ def batch_fill_gap_daily_bars(
     delay: float = 0.3,
     progress: Callable[[BatchGapFillProgress], None] | None = None,
     as_of: date | None = None,
+    max_workers: int | None = None,
 ) -> BatchGapFillResult:
     """扫描列表内日 K 并修复内部断层。"""
     candidates = [item for item in stocks if bar_meta.get((item.symbol, item.exchange)) is not None]
@@ -309,21 +366,39 @@ def batch_fill_gap_daily_bars(
     bars_added = 0
     gap_ranges_fixed = 0
     total_fix = len(with_gaps_items)
+    workers = max_workers if max_workers is not None else download_max_workers(item_count=total_fix)
+    completed = 0
 
-    for index, (item, meta, gaps) in enumerate(with_gaps_items, start=1):
-        label = format_vt_symbol_cn(item.symbol, item.exchange)
+    def on_fix_complete(_index: int, entry: tuple[StockItem, BarMeta, list[GapRange]], outcome: _GapFixOutcome) -> None:
+        nonlocal completed
+        completed += 1
         if progress is not None:
-            progress(BatchGapFillProgress("fix", index, total_fix, label))
-        try:
-            added = fill_gap_ranges(item, gaps, anchor_time=meta.start)
-            bars_added += added
-            gap_ranges_fixed += len(gaps)
-            success += 1
-        except Exception:
-            failed.append(label)
+            progress(BatchGapFillProgress("fix", completed, total_fix, outcome.label))
 
-        if index < total_fix and delay > 0:
-            time.sleep(delay)
+    if workers <= 1:
+        outcomes: list[_GapFixOutcome] = []
+        for index, entry in enumerate(with_gaps_items, start=1):
+            outcome = _fix_gap_item(entry)
+            outcomes.append(outcome)
+            if progress is not None:
+                progress(BatchGapFillProgress("fix", index, total_fix, outcome.label))
+            if index < total_fix and delay > 0:
+                time.sleep(delay)
+    else:
+        outcomes = run_parallel_map(
+            with_gaps_items,
+            _fix_gap_item,
+            max_workers=workers,
+            on_complete=on_fix_complete,
+        )
+
+    for outcome in outcomes:
+        if not outcome.success:
+            failed.append(outcome.label)
+            continue
+        bars_added += outcome.added
+        gap_ranges_fixed += outcome.gap_count
+        success += 1
 
     return BatchGapFillResult(
         scanned=scanned,

@@ -394,7 +394,7 @@ class ActionsController:
 
     def show_context_menu(self, pos: QtCore.QPoint) -> None:
         page = self._p
-        row = page.market_table.rowAt(pos.y())
+        row = page.market_table.indexAt(pos).row()
         if row < 0:
             return
         item = page._stock_at_row(row)

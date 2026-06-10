@@ -17,6 +17,11 @@ class McpClientError(Exception):
 _mcp_import_lock = threading.Lock()
 _mcp_sdk: tuple[Any, Any] | None = None
 
+_loop: asyncio.AbstractEventLoop | None = None
+_loop_thread: threading.Thread | None = None
+_loop_ready = threading.Event()
+_loop_lock = threading.Lock()
+
 
 def _load_mcp_sdk() -> tuple[Any, Any]:
     """线程安全加载 mcp SDK（避免 Qt 线程池并发首次 import 触发 anyio KeyError）。"""
@@ -42,17 +47,34 @@ def _load_mcp_sdk() -> tuple[Any, Any]:
         return _mcp_sdk
 
 
-def _run_async(coro: Any) -> Any:
-    """在同步上下文中执行 async MCP 调用。"""
-    try:
-        _ = asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
-    # Qt / 已有事件循环：在新线程中跑独立 loop
-    import concurrent.futures
+def _loop_runner() -> None:
+    global _loop
+    _loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(_loop)
+    _loop_ready.set()
+    _loop.run_forever()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-        return pool.submit(asyncio.run, coro).result()
+
+def _ensure_event_loop() -> asyncio.AbstractEventLoop:
+    """后台常驻 asyncio loop，避免每次 MCP 调用 asyncio.run 重建 loop。"""
+    global _loop_thread
+    with _loop_lock:
+        if _loop is not None and _loop.is_running():
+            return _loop
+        _loop_ready.clear()
+        _loop_thread = threading.Thread(target=_loop_runner, name="mcp-async-loop", daemon=True)
+        _loop_thread.start()
+    if not _loop_ready.wait(timeout=10):
+        raise McpClientError("MCP 异步事件循环启动超时")
+    assert _loop is not None
+    return _loop
+
+
+def _run_async(coro: Any) -> Any:
+    """在同步上下文中执行 async MCP 调用（提交到常驻 loop）。"""
+    loop = _ensure_event_loop()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result()
 
 
 async def _list_tools_async(

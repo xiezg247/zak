@@ -47,7 +47,8 @@ QFrame#NavGroupSeparator {
     min-height: 1px;
     margin: 6px 10px;
 }
-QTableWidget#MarketTable {
+QTableWidget#MarketTable,
+QTableView#MarketTable {
     background-color: #1a1a1a;
     gridline-color: #2a2a2a;
     border: none;

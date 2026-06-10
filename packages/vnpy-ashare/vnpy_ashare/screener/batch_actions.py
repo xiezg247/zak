@@ -21,6 +21,7 @@ from vnpy_ashare.backtest.batch_runner import (
 from vnpy_ashare.backtest.run_store import save_backtest_run
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.data.bars import download_bars
+from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.jobs.result import JobResult
 
@@ -88,6 +89,7 @@ def batch_download_daily_bars(
     start: datetime | None = None,
     end: datetime | None = None,
     delay: float = 0.3,
+    max_workers: int | None = None,
 ) -> JobResult:
     """对选股结果批量下载日 K（默认 2020-01-01 至今）。"""
     items = rows_to_stock_items(rows)
@@ -96,10 +98,9 @@ def batch_download_daily_bars(
 
     start_dt = start or datetime(2020, 1, 1)
     end_dt = end or datetime.now()
-    success = 0
-    failed: list[str] = []
+    workers = max_workers if max_workers is not None else download_max_workers(item_count=len(items))
 
-    for index, item in enumerate(items, start=1):
+    def _download_one(item: StockItem) -> tuple[str, bool]:
         try:
             download_bars(
                 symbol=item.symbol,
@@ -109,11 +110,25 @@ def batch_download_daily_bars(
                 end=end_dt,
                 output=lambda _msg: None,
             )
-            success += 1
+            return item.vt_symbol, True
         except Exception:
-            failed.append(item.vt_symbol)
-        if index < len(items) and delay > 0:
-            time.sleep(delay)
+            return item.vt_symbol, False
+
+    if workers <= 1:
+        success = 0
+        failed: list[str] = []
+        for index, item in enumerate(items, start=1):
+            _, ok = _download_one(item)
+            if ok:
+                success += 1
+            else:
+                failed.append(item.vt_symbol)
+            if index < len(items) and delay > 0:
+                time.sleep(delay)
+    else:
+        results = run_parallel_map(items, _download_one, max_workers=workers)
+        success = sum(1 for _, ok in results if ok)
+        failed = [symbol for symbol, ok in results if not ok]
 
     if failed:
         return JobResult(

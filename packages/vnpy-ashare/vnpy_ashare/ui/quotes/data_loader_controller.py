@@ -37,7 +37,7 @@ class DataLoaderController:
 
         if not self._universe_exists():
             page.display_stocks = []
-            page.market_table.setRowCount(0)
+            page.quote_table_model.set_row_count(0)
             page._market_total = 0
             page._pagination.update_controls()
             page.status_label.setText("A 股列表未同步，请点击「同步 A 股列表」")
@@ -121,13 +121,13 @@ class DataLoaderController:
         if scope_key == "全部A股" and not self._universe_exists():
             page.all_stocks = []
             page.display_stocks = []
-            page.market_table.setRowCount(0)
+            page.quote_table_model.set_row_count(0)
             page.status_label.setText("A 股列表未同步，请点击「同步 A 股列表」")
             return
 
         page._set_busy(True)
         page.status_label.setText(f"正在加载{page.page_name}...")
-        page.market_table.setRowCount(0)
+        page.quote_table_model.set_row_count(0)
 
         worker = UniverseLoadWorker(scope_key, local_scope=page._local_scope)
         page._load_worker = worker

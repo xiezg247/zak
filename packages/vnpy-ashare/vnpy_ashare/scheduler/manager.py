@@ -299,6 +299,7 @@ class TaskSchedulerManager:
         save_scheduler_config(self._config)
 
     def list_status(self) -> list[JobStatus]:
+        self.ensure_started()
         self._refresh_status_cache()
         return [self._status[job_id] for job_id in self._jobs]
 
@@ -311,8 +312,15 @@ class TaskSchedulerManager:
         return list(reversed(records[-limit:]))
 
     def get_status(self, job_id: str) -> JobStatus | None:
+        self.ensure_started()
         self._refresh_status_cache()
         return self._status.get(job_id)
+
+    def ensure_started(self) -> None:
+        """按需启动调度器（冷启动延迟，首次访问时再加载任务）。"""
+        if self._scheduler.running:
+            return
+        self.start()
 
     def start(self) -> None:
         if self._scheduler.running:
@@ -369,12 +377,14 @@ class TaskSchedulerManager:
             self._scheduler.remove_job(job_id)
 
     def set_enabled(self, job_id: str, enabled: bool) -> None:
+        self.ensure_started()
         cfg = self._get_job_config(job_id)
         cfg.enabled = enabled
         self.save_config()
         self.reload_jobs()
 
     def update_job_config(self, job_id: str, **kwargs: Any) -> None:
+        self.ensure_started()
         cfg = self._get_job_config(job_id)
         for key, value in kwargs.items():
             if hasattr(cfg, key):
@@ -387,6 +397,7 @@ class TaskSchedulerManager:
             return False
         if job_id in self._running_jobs:
             return False
+        self.ensure_started()
         force = job_id in (
             _COLLECT_QUOTES_JOB_ID,
             "screen_intraday",

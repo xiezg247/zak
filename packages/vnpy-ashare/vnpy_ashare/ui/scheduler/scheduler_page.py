@@ -123,6 +123,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
             self._log_title.setText("执行日志")
             return
         self._scheduler_unavailable = False
+        scheduler.ensure_started()
         scheduler.add_listener(self._log_listener)
         self._jobs_widget.start_monitoring()
         self._refresh_all()

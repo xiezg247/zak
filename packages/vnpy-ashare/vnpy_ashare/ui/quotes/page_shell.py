@@ -15,6 +15,7 @@ from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
 from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
 from vnpy_ashare.ui.quotes.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.quote_columns import LOCAL_TABLE_HEADERS
+from vnpy_ashare.ui.quotes.quote_table_model import QuoteTableModel
 from vnpy_ashare.ui.quotes.quotes_chart import create_daily_chart
 from vnpy_ashare.ui.quotes.quotes_config import quote_refresh_hint, quote_source_label
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
@@ -284,17 +285,18 @@ class QuotesPageShell:
         page.stats_label.setObjectName("StatsLabel")
         page.stats_label.setVisible(page.config.column_configurable)
 
-        page.market_table = QtWidgets.QTableWidget()
+        page.quote_table_model = QuoteTableModel(page)
+        page.quote_table_model.set_headers(headers)
+        page.market_table = QtWidgets.QTableView()
         page.market_table.setObjectName("MarketTable")
-        page.market_table.setColumnCount(len(headers))
-        page.market_table.setHorizontalHeaderLabels(headers)
+        page.market_table.setModel(page.quote_table_model)
         page.market_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         page.market_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         page.market_table.verticalHeader().setVisible(False)
         page.market_table.setAlternatingRowColors(True)
         page.market_table.setSortingEnabled(False)
-        page.market_table.itemSelectionChanged.connect(page._table.on_selection_changed)
+        page.market_table.selectionModel().selectionChanged.connect(page._table.on_selection_changed)
         page.market_table.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         page.market_table.customContextMenuRequested.connect(page._actions.show_context_menu)
         if page.config.table_header_sortable:

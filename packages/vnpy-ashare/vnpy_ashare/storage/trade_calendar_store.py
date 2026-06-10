@@ -158,6 +158,39 @@ def lookup_trading_day(day: date) -> bool | None:
     return bool(row[0])
 
 
+def load_open_trading_days(start: date, end: date) -> list[date]:
+    """一次性读取 [start, end] 内开市日（升序）；无缓存时降级为周一至周五。"""
+    if start > end:
+        return []
+
+    ensure_calendar_covers(start)
+    ensure_calendar_covers(end)
+
+    import sqlite3
+
+    init_app_db()
+    with sqlite3.connect(get_app_db_path()) as conn:
+        rows = conn.execute(
+            """
+            SELECT cal_date FROM trade_calendar
+            WHERE cal_date >= ? AND cal_date <= ? AND is_open = 1
+            ORDER BY cal_date
+            """,
+            (_format_date(start), _format_date(end)),
+        ).fetchall()
+
+    if rows:
+        return [_parse_date(str(row[0])) for row in rows]
+
+    days: list[date] = []
+    current = start
+    while current <= end:
+        if current.weekday() < 5:
+            days.append(current)
+        current += timedelta(days=1)
+    return days
+
+
 def clear_trade_calendar_cache() -> None:
     """测试用：清空交易日历缓存。"""
     import sqlite3

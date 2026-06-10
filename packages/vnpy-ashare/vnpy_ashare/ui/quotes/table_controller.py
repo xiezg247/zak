@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy.trader.constant import Exchange
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.data.bar_health import (
     BarHealthStatus,
@@ -15,7 +15,6 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ui.components.sortable_table import SortableTableItem
 from vnpy_ashare.ui.quotes.quote_columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
@@ -27,6 +26,7 @@ from vnpy_ashare.ui.quotes.quotes_config import (
     DEFAULT_WATCHLIST_COLUMNS,
     MARKET_VISIBLE_COLUMNS,
     MAX_DISPLAY_ROWS,
+    STATS_DEBOUNCE_MS,
 )
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
@@ -46,10 +46,21 @@ class TableController:
         self._page = page
         self.visible_columns: list[str] = []
         self.visible_tail_columns: list[str] = []
+        self._symbol_row_index: dict[str, int] | None = None
+        self._stats_timer = QtCore.QTimer(page)
+        self._stats_timer.setSingleShot(True)
+        self._stats_timer.setInterval(STATS_DEBOUNCE_MS)
+        self._stats_timer.timeout.connect(self.update_stats)
 
     @property
     def _p(self) -> QuotesPage:
         return self._page
+
+    def _model(self):
+        return self._p.quote_table_model
+
+    def _view(self) -> QtWidgets.QTableView:
+        return self._p.market_table
 
     def init_columns(self) -> None:
         page = self._p
@@ -125,8 +136,8 @@ class TableController:
 
     def apply_header_layout(self, *, column_count: int | None = None) -> None:
         page = self._p
-        table = page.market_table
-        header = table.horizontalHeader()
+        view = self._view()
+        header = view.horizontalHeader()
         header.setStretchLastSection(False)
         if page.config.use_local_table:
             for idx, mode in enumerate(
@@ -141,10 +152,10 @@ class TableController:
                     QtWidgets.QHeaderView.ResizeMode.ResizeToContents,
                 ]
             ):
-                if idx < table.columnCount():
+                if idx < self._model().column_count():
                     header.setSectionResizeMode(idx, mode)
             return
-        count = column_count if column_count is not None else table.columnCount()
+        count = column_count if column_count is not None else self._model().column_count()
         for col in range(count):
             header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         if "name" in self.visible_columns:
@@ -165,7 +176,7 @@ class TableController:
 
         if page.config.require_keyword and not keyword:
             page.display_stocks = []
-            page.market_table.setRowCount(0)
+            self._model().set_row_count(0)
             page._quote_timer.stop()
             page.status_label.setText(f"共 {len(page.all_stocks)} 只 A 股，请输入关键词搜索（最多 {MAX_DISPLAY_ROWS} 条）")
             return
@@ -203,15 +214,32 @@ class TableController:
         else:
             page.status_label.setText(f"{page.page_name}  匹配 {len(matched)} 只{extra}")
 
+    def invalidate_symbol_row_index(self) -> None:
+        self._symbol_row_index = None
+
+    def _build_symbol_row_index(self) -> dict[str, int]:
+        page = self._p
+        symbol_rows: dict[str, int] = {}
+        for row in range(self._model().row_count()):
+            item = self.stock_at_row(row)
+            if item is not None:
+                symbol_rows[item.tickflow_symbol] = row
+        self._symbol_row_index = symbol_rows
+        return symbol_rows
+
+    def schedule_stats_update(self) -> None:
+        """WebSocket 高频推送时合并涨跌统计刷新。"""
+        if self._p.stats_label is None:
+            return
+        self._stats_timer.start()
+
     def stock_at_row(self, row: int) -> StockItem | None:
         page = self._p
         if row < 0:
             return None
-        cell = page.market_table.item(row, 0)
-        if cell is not None:
-            item = cell.data(QtCore.Qt.ItemDataRole.UserRole)
-            if isinstance(item, StockItem):
-                return item
+        item = self._model().stock_at_row(row)
+        if item is not None:
+            return item
         if row < len(page.display_stocks):
             return page.display_stocks[row]
         return None
@@ -223,46 +251,49 @@ class TableController:
         return (item.symbol, item.exchange)
 
     def select_stock_key(self, key: tuple[str, Exchange]) -> None:
-        page = self._p
-        for row in range(page.market_table.rowCount()):
+        view = self._view()
+        for row in range(self._model().row_count()):
             item = self.stock_at_row(row)
             if item and (item.symbol, item.exchange) == key:
-                page.market_table.selectRow(row)
+                view.selectRow(row)
                 return
 
     def render_table(self, *, preserve_selection: bool = True) -> None:
         page = self._p
+        self.invalidate_symbol_row_index()
         selected_key = self.selected_stock_key() if preserve_selection else None
-        table = page.market_table
+        model = self._model()
+        view = self._view()
 
-        table.blockSignals(True)
-        sorting_enabled = table.isSortingEnabled()
-        table.setSortingEnabled(False)
+        view.blockSignals(True)
+        sorting_enabled = view.isSortingEnabled()
+        view.setSortingEnabled(False)
         try:
-            table.setRowCount(len(page.display_stocks))
+            model.set_row_count(len(page.display_stocks))
             for row, item in enumerate(page.display_stocks):
                 quote = page.quote_map.get(item.tickflow_symbol)
                 self.set_row(row, item, quote)
 
             if selected_key:
                 self.select_stock_key(selected_key)
-            if table.currentRow() < 0 and page.display_stocks:
-                table.selectRow(0)
+            if view.currentIndex().row() < 0 and page.display_stocks:
+                view.selectRow(0)
         finally:
-            table.blockSignals(False)
+            view.blockSignals(False)
 
         if page.config.table_header_sortable:
-            table.setSortingEnabled(True)
+            view.setSortingEnabled(True)
             if page._apply_default_table_sort:
                 page._apply_default_table_sort = False
                 symbol_col = quote_column_index("symbol")
-                table.sortItems(symbol_col, QtCore.Qt.SortOrder.AscendingOrder)
+                view.sortByColumn(symbol_col, QtCore.Qt.SortOrder.AscendingOrder)
         elif sorting_enabled:
-            table.setSortingEnabled(False)
+            view.setSortingEnabled(False)
 
-        if table.currentRow() >= 0:
+        if view.currentIndex().row() >= 0:
             self.on_selection_changed()
         page._sync_stream_subscriptions()
+        self._build_symbol_row_index()
         self.update_stats()
 
     def update_stats(self) -> None:
@@ -308,18 +339,16 @@ class TableController:
         if not symbols:
             return
         page = self._p
-        table = page.market_table
-        symbol_rows: dict[str, int] = {}
-        for row in range(table.rowCount()):
-            item = self.stock_at_row(row)
-            if item is not None:
-                symbol_rows[item.tickflow_symbol] = row
+        view = self._view()
+        symbol_rows = self._symbol_row_index
+        if symbol_rows is None:
+            symbol_rows = self._build_symbol_row_index()
 
-        sorting_enabled = table.isSortingEnabled()
+        sorting_enabled = view.isSortingEnabled()
         if sorting_enabled:
-            table.setSortingEnabled(False)
-        table.setUpdatesEnabled(False)
-        table.blockSignals(True)
+            view.setSortingEnabled(False)
+        view.setUpdatesEnabled(False)
+        view.blockSignals(True)
         try:
             for tf_symbol in symbols:
                 row = symbol_rows.get(tf_symbol)
@@ -331,14 +360,16 @@ class TableController:
                 quote = page.quote_map.get(tf_symbol)
                 self.set_row(row, item, quote)
         finally:
-            table.blockSignals(False)
-            table.setUpdatesEnabled(True)
+            view.blockSignals(False)
+            view.setUpdatesEnabled(True)
         if sorting_enabled:
-            table.setSortingEnabled(True)
+            view.setSortingEnabled(True)
+            self.invalidate_symbol_row_index()
+        self.schedule_stats_update()
 
     def refresh_row_for_item(self, item: StockItem) -> None:
         page = self._p
-        for row in range(page.market_table.rowCount()):
+        for row in range(self._model().row_count()):
             row_item = self.stock_at_row(row)
             if row_item is None:
                 continue
@@ -412,26 +443,6 @@ class TableController:
             return quote.trade_time or ""
         return ""
 
-    def _make_table_cell(
-        self,
-        text: str,
-        *,
-        item: StockItem | None = None,
-        sort_key: float | str | None = None,
-        color: str | None = None,
-    ) -> QtWidgets.QTableWidgetItem:
-        page = self._p
-        if page.config.table_header_sortable and sort_key is not None:
-            cell: QtWidgets.QTableWidgetItem = SortableTableItem(text, sort_key)
-        else:
-            cell = QtWidgets.QTableWidgetItem(text)
-        cell.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        if item is not None:
-            cell.setData(QtCore.Qt.ItemDataRole.UserRole, item)
-        if color is not None:
-            cell.setForeground(QtGui.QColor(color))
-        return cell
-
     def _apply_table_cell(
         self,
         row: int,
@@ -443,24 +454,14 @@ class TableController:
         color: str | None = None,
     ) -> None:
         page = self._p
-        table = page.market_table
-        existing = table.item(row, col)
-        if existing is None:
-            table.setItem(row, col, self._make_table_cell(text, item=item, sort_key=sort_key, color=color))
-            return
-
-        if existing.text() != text:
-            existing.setText(text)
-        if sort_key is not None:
-            if isinstance(existing, SortableTableItem):
-                existing.update_sort_key(sort_key)
-            elif page.config.table_header_sortable:
-                table.setItem(row, col, self._make_table_cell(text, item=item, sort_key=sort_key, color=color))
-                return
-        if item is not None:
-            existing.setData(QtCore.Qt.ItemDataRole.UserRole, item)
-        if color is not None:
-            existing.setForeground(QtGui.QColor(color))
+        self._model().apply_cell(
+            row,
+            col,
+            text,
+            sort_key=sort_key if page.config.table_header_sortable else None,
+            color=color,
+            stock_item=item,
+        )
 
     def _set_local_row(self, row: int, item: StockItem) -> None:
         page = self._p
@@ -564,7 +565,7 @@ class TableController:
 
     def on_selection_changed(self) -> None:
         page = self._p
-        rows = page.market_table.selectionModel().selectedRows()
+        rows = self._view().selectionModel().selectedRows()
         if not rows:
             return
         idx = rows[0].row()
@@ -629,9 +630,7 @@ class TableController:
         self.rebuild_table()
 
     def rebuild_table(self) -> None:
-        page = self._p
         headers = self.build_visible_headers()
-        page.market_table.setColumnCount(len(headers))
-        page.market_table.setHorizontalHeaderLabels(headers)
+        self._model().set_headers(headers)
         self.apply_header_layout(column_count=len(headers))
         self.render_table()

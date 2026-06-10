@@ -89,3 +89,36 @@ def test_build_reason_summary():
     )
     assert "盘后自动" in summary
     assert "命中 3 条" in summary
+
+
+def test_run_recipe_parallel_dimensions():
+    recipe = get_recipe("intraday_multi")
+    assert recipe is not None
+    with patch(
+        "vnpy_ashare.screener.recipe_runner.run_parallel_map",
+    ) as parallel_mock:
+        parallel_mock.return_value = [
+            (
+                recipe.dimensions[0],
+                [
+                    _DimensionHit(
+                        vt_symbol="600000.SSE",
+                        dimension_id="momentum",
+                        label="动量",
+                        weight=0.55,
+                        score=90.0,
+                        reason="动量",
+                        row={"vt_symbol": "600000.SSE", "symbol": "600000", "name": "浦发银行"},
+                    )
+                ],
+                100,
+            ),
+            (
+                recipe.dimensions[1],
+                [],
+                0,
+            ),
+        ]
+        result = run_recipe("intraday_multi", top_n=5)
+    parallel_mock.assert_called_once()
+    assert result.rows

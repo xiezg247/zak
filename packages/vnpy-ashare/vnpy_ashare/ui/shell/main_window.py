@@ -58,6 +58,8 @@ _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
     "local": LocalPageWidget,
 }
 
+_DEFERRED_PAGE_KEYS = frozenset({"cta_backtest", "data_manager", "batch_backtest"})
+
 _VNPY_WIDGETS: dict[str, tuple[str, str]] = {
     "cta_backtest": ("vnpy_ashare.ui.backtest.backtest_widget", "BacktesterWidget"),
     "data_manager": ("vnpy_ashare.ui.shell.manager_widget", "ManagerWidget"),
@@ -84,6 +86,7 @@ class AshareMainWindow(MainWindow):
         self._ai_toggle_action: QtGui.QAction | None = None
         self._screener_draft_connected = False
         self._scheduler_listener_connected = False
+        self._deferred_apps_registered = False
         self._theme_manager = theme_manager()
         self._theme_dark_action: QtGui.QAction | None = None
         self._theme_system_action: QtGui.QAction | None = None
@@ -221,7 +224,17 @@ class AshareMainWindow(MainWindow):
         self.setCentralWidget(shell)
         self._init_floating_ai(shell)
         self._bind_scheduler_notifications()
+        self._schedule_deferred_scheduler_start()
         self._show_page(0)
+
+    def _schedule_deferred_scheduler_start(self) -> None:
+        """冷启动：窗口就绪后再启动 APScheduler。"""
+        QtCore.QTimer.singleShot(2000, self._deferred_scheduler_start)
+
+    def _deferred_scheduler_start(self) -> None:
+        engine = self.main_engine.get_engine(APP_NAME)
+        if isinstance(engine, AshareEngine):
+            engine.scheduler.ensure_started()
 
     def _nav_width_settings(self) -> QtCore.QSettings:
         return QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
@@ -490,7 +503,17 @@ class AshareMainWindow(MainWindow):
         self.raise_()
         self.activateWindow()
 
+    def _ensure_deferred_apps(self) -> None:
+        if self._deferred_apps_registered:
+            return
+        from vnpy_ashare.app.launcher import _register_deferred_apps
+
+        _register_deferred_apps(self.main_engine)
+        self._deferred_apps_registered = True
+
     def _get_or_create_page(self, key: str) -> QtWidgets.QWidget | None:
+        if key in _DEFERRED_PAGE_KEYS:
+            self._ensure_deferred_apps()
         if key in self._page_widgets:
             return self._page_widgets[key]
 

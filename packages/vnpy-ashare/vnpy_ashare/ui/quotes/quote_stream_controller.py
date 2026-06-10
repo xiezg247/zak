@@ -105,9 +105,7 @@ class QuoteStreamController:
 
         page._table.refresh_table_quotes_for_symbols(symbols)
         current = page.current_item
-        if current is None:
-            return
-        if current.tickflow_symbol not in symbols:
+        if current is None or current.tickflow_symbol not in symbols:
             return
         page._update_quote_header(current)
         if page.chart_panel is not None:

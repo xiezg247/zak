@@ -13,6 +13,7 @@ from vnpy_ashare.storage.trade_calendar_store import (
     _upsert_rows,
     clear_trade_calendar_cache,
     ensure_calendar_covers,
+    load_open_trading_days,
     lookup_trading_day,
     sync_trade_calendar,
 )
@@ -83,6 +84,28 @@ class TradeCalendarStoreTests(unittest.TestCase):
         ]
         sync_trade_calendar(date(2026, 2, 13), date(2026, 2, 23))
         self.assertEqual(last_trading_day(on_or_before=date(2026, 2, 20)), date(2026, 2, 13))
+
+    def test_load_open_trading_days_bulk(self) -> None:
+        _upsert_rows(
+            [
+                ("2026-06-01", 1),
+                ("2026-06-02", 1),
+                ("2026-06-03", 0),
+                ("2026-06-04", 1),
+                ("2026-06-05", 1),
+                ("2026-06-06", 0),
+                ("2026-06-07", 0),
+            ]
+        )
+        set_meta(TRADE_CAL_SYNCED_AT_KEY, datetime.now().isoformat())
+        set_meta("trade_calendar_range_start", "2026-01-01")
+        set_meta("trade_calendar_range_end", "2026-12-31")
+
+        days = load_open_trading_days(date(2026, 6, 1), date(2026, 6, 7))
+        self.assertEqual(days, [date(2026, 6, 1), date(2026, 6, 2), date(2026, 6, 4), date(2026, 6, 5)])
+
+    def test_load_open_trading_days_empty_range(self) -> None:
+        self.assertEqual(load_open_trading_days(date(2026, 6, 7), date(2026, 6, 1)), [])
 
 
 if __name__ == "__main__":

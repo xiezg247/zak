@@ -80,16 +80,20 @@ QStatusBar#ScreenerStatusBar {
 }
 
 /* ── 结果表格增强 ── */
-QTableWidget#MarketTable::item {
+QTableWidget#MarketTable::item,
+QTableView#MarketTable::item {
     padding: 5px 4px;
 }
-QTableWidget#MarketTable::item:selected {
+QTableWidget#MarketTable::item:selected,
+QTableView#MarketTable::item:selected {
     background-color: #2a4a7a;
 }
-QTableWidget#MarketTable::item:hover {
+QTableWidget#MarketTable::item:hover,
+QTableView#MarketTable::item:hover {
     background-color: #242428;
 }
-QTableWidget#MarketTable::item:alternate {
+QTableWidget#MarketTable::item:alternate,
+QTableView#MarketTable::item:alternate {
     background-color: #1e1e22;
 }
 

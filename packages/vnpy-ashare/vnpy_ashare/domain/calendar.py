@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from vnpy_ashare.storage.trade_calendar_store import ensure_calendar_covers, lookup_trading_day
+from vnpy_ashare.storage.trade_calendar_store import (
+    ensure_calendar_covers,
+    load_open_trading_days,
+    lookup_trading_day,
+)
 
 
 def _fallback_is_trading_day(day: date) -> bool:
@@ -33,14 +37,5 @@ def last_trading_day(*, on_or_before: date | None = None) -> date:
 
 
 def trading_days_between(start: date, end: date) -> list[date]:
-    if start > end:
-        return []
-    ensure_calendar_covers(start)
-    ensure_calendar_covers(end)
-    days: list[date] = []
-    current = start
-    while current <= end:
-        if is_trading_day(current):
-            days.append(current)
-        current += timedelta(days=1)
-    return days
+    """返回区间内 A 股交易日列表（bulk 读 trade_calendar 表）。"""
+    return load_open_trading_days(start, end)

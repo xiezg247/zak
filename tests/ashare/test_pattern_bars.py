@@ -70,6 +70,23 @@ class PatternBarsTests(unittest.TestCase):
         self.assertEqual(len(result), 1)
         tail_mock.assert_called_once()
 
+    @patch("vnpy_ashare.data.pattern_bars.run_parallel_map")
+    @patch("vnpy_ashare.data.pattern_bars.load_daily_bars_tail")
+    def test_load_daily_bars_batch_uses_parallel_map(self, tail_mock: MagicMock, parallel_mock: MagicMock) -> None:
+        tail_mock.return_value = []
+        parallel_mock.return_value = [
+            (("600519", Exchange.SSE), []),
+            (("000001", Exchange.SZSE), []),
+        ]
+        items = [
+            StockItem(symbol="600519", exchange=Exchange.SSE, name="茅台"),
+            StockItem(symbol="000001", exchange=Exchange.SZSE, name="平安"),
+        ]
+        result = load_daily_bars_batch(items, max_workers=2)
+        parallel_mock.assert_called_once()
+        self.assertEqual(len(result), 2)
+        tail_mock.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

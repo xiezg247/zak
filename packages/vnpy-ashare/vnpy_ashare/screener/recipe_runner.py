@@ -5,10 +5,12 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.screener.data_source import (
     fetch_fundamental_screening_rows,
     fetch_moneyflow_with_fallback,
@@ -24,6 +26,19 @@ from vnpy_ashare.screener.rules import (
     apply_quote_preset,
 )
 from vnpy_ashare.screener.runner import ScreenerRunResult
+
+DEFAULT_RECIPE_DIMENSION_MAX_WORKERS = 4
+
+
+def recipe_dimension_max_workers(*, dimension_count: int) -> int:
+    """配方维度并行数（RECIPE_DIMENSION_MAX_WORKERS，默认 4，上限 8）。"""
+    raw = os.getenv("RECIPE_DIMENSION_MAX_WORKERS", str(DEFAULT_RECIPE_DIMENSION_MAX_WORKERS)).strip()
+    try:
+        configured = int(raw)
+    except ValueError:
+        configured = DEFAULT_RECIPE_DIMENSION_MAX_WORKERS
+    configured = max(1, min(configured, 8))
+    return min(configured, dimension_count)
 
 
 @dataclass
@@ -65,8 +80,8 @@ def run_recipe_object(
     hits_by_symbol: dict[str, list[_DimensionHit]] = {}
     total_scanned = 0
 
-    for spec in recipe.dimensions:
-        dimension_hits, scanned = _run_dimension(spec, recipe.pool_size)
+    dimension_results = _run_all_dimensions(recipe.dimensions, recipe.pool_size)
+    for _spec, dimension_hits, scanned in dimension_results:
         total_scanned = max(total_scanned, scanned)
         for hit in dimension_hits:
             hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
@@ -114,6 +129,24 @@ def build_reason_summary(*, recipe: ScreenRecipe, trigger: str, row_count: int) 
     }.get(trigger, trigger)
     dims = " + ".join(spec.label for spec in recipe.dimensions)
     return f"{trigger_label} · {recipe.name}（{dims}）· 命中 {row_count} 条"
+
+
+def _run_all_dimensions(
+    specs: list[DimensionSpec],
+    pool_size: int,
+) -> list[tuple[DimensionSpec, list[_DimensionHit], int]]:
+    if not specs:
+        return []
+
+    workers = recipe_dimension_max_workers(dimension_count=len(specs))
+    if workers <= 1 or len(specs) <= 1:
+        return [(spec, *_run_dimension(spec, pool_size)) for spec in specs]
+
+    def worker(spec: DimensionSpec) -> tuple[DimensionSpec, list[_DimensionHit], int]:
+        hits, scanned = _run_dimension(spec, pool_size)
+        return spec, hits, scanned
+
+    return run_parallel_map(specs, worker, max_workers=workers)
 
 
 def _run_dimension(

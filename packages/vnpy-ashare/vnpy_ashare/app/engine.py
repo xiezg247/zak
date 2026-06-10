@@ -26,7 +26,6 @@ class AshareEngine(BaseEngine):
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         super().__init__(main_engine, event_engine, APP_NAME)
         self.scheduler = TaskSchedulerManager()
-        self.scheduler.start()
 
         self.bar_service = BarService(self)
         self.quote_service = QuoteService(self)

@@ -447,13 +447,14 @@ class QuotesPage(QtWidgets.QWidget):
         """上下方向键切换选中股票。"""
         if event.key() in (QtCore.Qt.Key.Key_Up, QtCore.Qt.Key.Key_Down):
             table = self.market_table
-            if table.rowCount() == 0:
+            row_count = self.quote_table_model.row_count()
+            if row_count == 0:
                 return
-            current = table.currentRow()
+            current = table.currentIndex().row()
             if event.key() == QtCore.Qt.Key.Key_Up:
                 next_row = current - 1 if current > 0 else 0
             else:
-                next_row = current + 1 if current < table.rowCount() - 1 else table.rowCount() - 1
+                next_row = current + 1 if current < row_count - 1 else row_count - 1
             if next_row != current and next_row >= 0:
                 table.selectRow(next_row)
             return

@@ -8,6 +8,7 @@ from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.scheduler import JobStatus, TaskSchedulerManager
 from vnpy_ashare.scheduler.config import AutoScreenJobConfig, JobConfig
 from vnpy_ashare.screener.recipe import list_recipe_catalog
+from vnpy_ashare.ui.quotes.quotes_config import SCHEDULER_UI_FALLBACK_REFRESH_MS
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_extra import build_scheduler_table_stylesheet
 
@@ -193,9 +194,9 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
             layout.addSpacing(8)
             layout.addLayout(button_row)
 
-        self._timer = QtCore.QTimer(self)
-        self._timer.setInterval(2000)
-        self._timer.timeout.connect(self.refresh_table)
+        self._fallback_timer = QtCore.QTimer(self)
+        self._fallback_timer.setInterval(SCHEDULER_UI_FALLBACK_REFRESH_MS)
+        self._fallback_timer.timeout.connect(self.refresh_table)
 
         theme_manager().bind_stylesheet(self, extra=build_scheduler_table_stylesheet)
         if embedded:
@@ -204,7 +205,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
     def set_scheduler(self, scheduler: TaskSchedulerManager | None) -> None:
         if self._monitoring and self._scheduler is not None:
             self._scheduler.remove_listener(self._on_scheduler_event)
-            self._timer.stop()
+            self._fallback_timer.stop()
             self._monitoring = False
         self._scheduler = scheduler
         if scheduler is not None and self.isVisible():
@@ -214,7 +215,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         if self._scheduler is None or self._monitoring:
             return
         self._scheduler.add_listener(self._on_scheduler_event)
-        self._timer.start()
+        self._fallback_timer.start()
         self._monitoring = True
         self.refresh_table()
 
@@ -222,7 +223,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         if not self._monitoring or self._scheduler is None:
             return
         self._scheduler.remove_listener(self._on_scheduler_event)
-        self._timer.stop()
+        self._fallback_timer.stop()
         self._monitoring = False
 
     def showEvent(self, event) -> None:

@@ -9,6 +9,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.setting import SETTINGS
 from vnpy.trader.ui import create_qapp
+from vnpy.trader.ui.qt import QtCore
 from vnpy_datamanager import DataManagerApp
 
 from vnpy_ashare import AshareApp
@@ -20,6 +21,8 @@ from vnpy_ashare.ui.shell.fonts import resolve_font_family
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_vnpy_settings
 from vnpy_common.paths import PROJECT_ROOT
+
+_DEFERRED_APP_DELAY_MS = 0
 
 
 def _optional_llm_app():
@@ -40,6 +43,12 @@ def _prepare_runtime() -> None:
     SETTINGS["font.size"] = int(SETTINGS.get("font.size", 12))
 
 
+def _register_deferred_apps(main_engine: MainEngine) -> None:
+    """首屏渲染后再加载非核心 App，缩短冷启动。"""
+    main_engine.add_app(AshareCtaBacktesterApp)
+    main_engine.add_app(DataManagerApp)
+
+
 def main() -> None:
     _prepare_runtime()
     install_shared_bridges()
@@ -58,13 +67,16 @@ def main() -> None:
     main_engine = MainEngine(event_engine)
 
     main_engine.add_app(AshareApp)
-    main_engine.add_app(AshareCtaBacktesterApp)
-    main_engine.add_app(DataManagerApp)
     llm_app = _optional_llm_app()
     if llm_app is not None:
         main_engine.add_app(llm_app)
 
     main_window = AshareMainWindow(main_engine, event_engine)
     main_window.showMaximized()
+
+    QtCore.QTimer.singleShot(
+        _DEFERRED_APP_DELAY_MS,
+        lambda: _register_deferred_apps(main_engine),
+    )
 
     qapp.exec()
