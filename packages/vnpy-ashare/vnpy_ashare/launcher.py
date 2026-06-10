@@ -15,16 +15,26 @@ from vnpy_datamanager import DataManagerApp
 import vnpy_tickflow  # noqa: F401
 from vnpy_ashare import AshareApp
 from vnpy_ashare.backtester_app import AshareCtaBacktesterApp
+from vnpy_ashare.bootstrap import install_shared_bridges
 from vnpy_ashare.branding import QAPP_NAME
 from vnpy_ashare.config import ensure_runtime_config
-from vnpy_ashare.paths import PROJECT_ROOT
 from vnpy_ashare.ui.fonts import resolve_font_family
 from vnpy_ashare.ui.main_window import AshareMainWindow
 from vnpy_ashare.vt_settings import ensure_vt_settings_from_env, reload_vnpy_settings
-from vnpy_llm import LlmApp
+from vnpy_common.paths import PROJECT_ROOT
+
+
+def _optional_llm_app():
+    try:
+        from vnpy_llm import LlmApp
+
+        return LlmApp
+    except ImportError:
+        return None
 
 
 def _prepare_runtime() -> None:
+    os.environ.setdefault("ZAK_PROJECT_ROOT", str(PROJECT_ROOT))
     if str(PROJECT_ROOT) not in sys.path:
         sys.path.insert(0, str(PROJECT_ROOT))
     os.chdir(PROJECT_ROOT)
@@ -34,6 +44,7 @@ def _prepare_runtime() -> None:
 
 def main() -> None:
     _prepare_runtime()
+    install_shared_bridges()
 
     if ensure_vt_settings_from_env():
         reload_vnpy_settings()
@@ -51,7 +62,9 @@ def main() -> None:
     main_engine.add_app(AshareApp)
     main_engine.add_app(AshareCtaBacktesterApp)
     main_engine.add_app(DataManagerApp)
-    main_engine.add_app(LlmApp)
+    llm_app = _optional_llm_app()
+    if llm_app is not None:
+        main_engine.add_app(llm_app)
 
     main_window = AshareMainWindow(main_engine, event_engine)
     main_window.showMaximized()

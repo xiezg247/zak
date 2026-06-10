@@ -2,8 +2,8 @@
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.theme.build_extra import build_legacy_page_stylesheet
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS
+from vnpy_common.ui.theme.build_extra import build_legacy_page_stylesheet
+from vnpy_common.ui.theme.tokens import DARK_TOKENS
 
 LEGACY_PAGE_STYLESHEET = build_legacy_page_stylesheet(DARK_TOKENS)
 
@@ -12,7 +12,7 @@ _PRIMARY_ACTION_LABELS = frozenset({"开始回测"})
 
 def apply_legacy_page_style(widget, *, page_id: str) -> None:
     """vnpy 继承页：表单 / 表格 / 日志随主题切换。"""
-    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_common.ui.theme import theme_manager
 
     widget.setObjectName(page_id)
     theme_manager().bind_stylesheet(widget, extra=build_legacy_page_stylesheet)

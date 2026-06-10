@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.ui.theme.tokens import ThemeId, ThemeTokens, get_tokens
+from vnpy_common.ui.theme.tokens import ThemeId, ThemeTokens, get_tokens
 
 
 def build_terminal_stylesheet(tokens: ThemeTokens) -> str:

@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from vnpy.trader.constant import Interval
 
 from vnpy_ashare.bars import download_bars, load_watchlist
-from vnpy_ashare.paths import ENV_FILE
+from vnpy_common.paths import ENV_FILE
 
 
 def parse_args() -> argparse.Namespace:

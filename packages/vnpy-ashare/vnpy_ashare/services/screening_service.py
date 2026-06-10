@@ -62,7 +62,7 @@ from vnpy_ashare.screener.runner import (
 )
 from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.services.base import BaseService
-from vnpy_llm.ui.floating_actions import enrich_context_with_actions
+from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
 
 AVAILABLE_SCREENERS = list_builtin_preset_names()
 

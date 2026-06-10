@@ -11,7 +11,7 @@ from typing import Literal
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.paths import get_app_db_path
+from vnpy_common.paths import get_app_db_path
 
 UNIVERSE_SYNCED_AT_KEY = "universe_synced_at"
 CACHE_MAX_AGE = timedelta(days=7)

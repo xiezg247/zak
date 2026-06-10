@@ -28,8 +28,8 @@ from vnpy_ashare.ui.quotes_config import (
     MAX_DISPLAY_ROWS,
 )
 from vnpy_ashare.ui.sortable_table import SortableTableItem
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.market_colors import market_colors, quote_change_color
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage

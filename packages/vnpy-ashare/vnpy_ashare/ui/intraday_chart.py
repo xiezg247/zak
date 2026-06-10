@@ -26,9 +26,9 @@ from vnpy_ashare.ui.chart_style import (
     style_intraday_price_plot,
     style_intraday_volume_plot,
 )
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.market_colors import market_colors, market_rgb, price_change_color
-from vnpy_ashare.ui.theme.tokens import ThemeTokens
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.market_colors import market_colors, market_rgb, price_change_color
+from vnpy_common.ui.theme.tokens import ThemeTokens
 
 VOLUME_BAR_WIDTH = 0.75
 PRICE_ROW_STRETCH = 3
@@ -205,8 +205,8 @@ def format_intraday_summary(
     tokens: ThemeTokens | None = None,
 ) -> str:
     """顶部信息栏文案。"""
-    from vnpy_ashare.ui.theme import theme_manager
-    from vnpy_ashare.ui.theme.html_palette import html_palette
+    from vnpy_common.ui.theme import theme_manager
+    from vnpy_common.ui.theme.html_palette import html_palette
 
     colors = html_palette(tokens or theme_manager().tokens())
     time_label = bar.datetime.strftime("%H:%M")
@@ -232,8 +232,8 @@ def format_intraday_idle_summary(
     tokens: ThemeTokens | None = None,
 ) -> str:
     """无鼠标悬停时展示最新价。"""
-    from vnpy_ashare.ui.theme import theme_manager
-    from vnpy_ashare.ui.theme.html_palette import html_palette
+    from vnpy_common.ui.theme import theme_manager
+    from vnpy_common.ui.theme.html_palette import html_palette
 
     colors = html_palette(tokens or theme_manager().tokens())
     delta_text, pct_text = format_change(bar.close_price, prev_close)

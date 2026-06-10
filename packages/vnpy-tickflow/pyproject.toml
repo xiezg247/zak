@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vnpy-tickflow"
+version = "0.1.0"
+description = "VeighNa TickFlow 数据源适配"
+requires-python = ">=3.10"
+dependencies = [
+    "vnpy>=4.0.0",
+    "tickflow[all]>=0.1.22",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vnpy_tickflow*"]

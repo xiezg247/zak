@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.paths import (
+from vnpy_common.paths import (
     VNTRADER_DIR,
     get_app_db_path,
     get_chat_db_path,

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from vnpy_ashare.paths import get_chat_db_path
+from vnpy_common.paths import get_chat_db_path
 
 # 测试可 patch 此函数
 def _chat_db_path() -> Path:

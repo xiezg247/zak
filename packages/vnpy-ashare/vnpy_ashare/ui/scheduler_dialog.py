@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.scheduler import TaskSchedulerManager
 from vnpy_ashare.ui.scheduler_jobs_widget import SchedulerJobsWidget
-from vnpy_ashare.ui.theme import theme_manager
+from vnpy_common.ui.theme import theme_manager
 
 
 class SchedulerDialog(QtWidgets.QDialog):

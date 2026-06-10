@@ -3,13 +3,13 @@
 子模块保留以兼容旧引用；``PANEL_STYLESHEET`` 等常量由主题 token 生成。
 """
 
-from vnpy_ashare.ui.theme.build_ai import (
+from vnpy_common.ui.theme.build_ai import (
     INLINE_TRACE_STYLESHEET,
     PANEL_STYLESHEET,
     TOOLS_WIDGET_STYLESHEET,
     build_ai_floating_stylesheet,
 )
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS
+from vnpy_common.ui.theme.tokens import DARK_TOKENS
 
 FLOATING_CHAT_STYLESHEET = build_ai_floating_stylesheet(DARK_TOKENS)
 FLOATING_CHAT_INNER_STYLESHEET = ""

@@ -7,7 +7,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.paths import ENV_FILE
+from vnpy_common.paths import ENV_FILE
 from vnpy_mcp.base import McpProvider
 from vnpy_mcp.client import McpClientError, call_remote_tool, list_remote_tools
 from vnpy_mcp.config import load_all_mcp_servers

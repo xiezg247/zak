@@ -10,8 +10,8 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.ai.context import AiContextData
-from vnpy_ashare.ai.context_store import get_ai_context, register_context_listener
+from vnpy_common.ai.protocol import AiContextData
+from vnpy_common.ai.access import get_ai_context, register_context_listener
 from vnpy_llm.client import LlmClientError, StreamCancelled, stream_chat_completion, stream_with_tools
 from vnpy_llm.config import LlmConfig, load_llm_config
 from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
@@ -633,7 +633,7 @@ class LlmEngine(BaseEngine):
         """从 .env 重新加载 LLM 配置（无需重启 GUI）。"""
         from dotenv import load_dotenv
 
-        from vnpy_ashare.paths import ENV_FILE
+        from vnpy_common.paths import ENV_FILE
 
         if ENV_FILE.is_file():
             load_dotenv(ENV_FILE, override=True)

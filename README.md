@@ -87,8 +87,8 @@ POSTGRES_USER=zak
 POSTGRES_PASSWORD=zak
 POSTGRES_DATABASE=zak
 
-# 2. 安装依赖
-uv sync --extra postgresql
+# 2. 确认依赖已安装（vnpy_postgresql 已随 vnpy-ashare 默认安装）
+uv sync
 
 # 3. 启动 PostgreSQL（本地 Docker）
 bash scripts/start_postgresql.sh
@@ -123,18 +123,34 @@ uv run python -m unittest discover -s tests -v
 ## 项目结构
 
 ```
-zak/
-├── run.py                    # GUI 入口
-├── strategies/               # AShareTemplate 策略
-├── vnpy_ashare/              # 主 App：看盘、选股、回测、调度、AI 上下文
-├── vnpy_llm/                 # LLM 对话插件
-├── vnpy_skills/              # Agent Skill 引擎
-├── vnpy_mcp/                 # MCP 远端工具
-├── vnpy_tickflow/            # TickFlow 适配器
-├── skills/                   # 业务 Skill（context / data / screening / backtest 等）
-├── mcp/                      # MCP 配置
-├── docs/                     # 产品与架构文档
-└── scripts/                  # 安装、下载、同步、选股 CLI
+zak/                                    # workspace 根（uv workspace）
+├── run.py                              # GUI 入口
+├── pyproject.toml                      # workspace 配置 + zak 元依赖
+├── packages/
+│   ├── vnpy-common/                    # 共享：路径、AI 协议、终端主题
+│   ├── vnpy-tickflow/                  # TickFlow 适配器
+│   ├── vnpy-mcp/                       # MCP 远端工具
+│   ├── vnpy-skills/                    # Agent Skill 引擎
+│   ├── vnpy-llm/                       # LLM 对话插件
+│   └── vnpy-ashare/                    # 主 App：看盘、选股、回测、调度
+├── strategies/                         # AShareTemplate 策略
+├── skills/                             # 业务 Skill（context / data / screening 等）
+├── mcp/                                # MCP 配置
+├── docs/                               # 产品与架构文档
+└── scripts/                            # 安装、下载、同步、选股 CLI
+```
+
+### 按需安装
+
+```bash
+# 完整 zak（默认）
+uv sync
+
+# 仅 A 股核心，不含 AI
+uv pip install vnpy-ashare
+
+# 核心 + AI
+uv pip install "vnpy-ashare[full]"
 ```
 
 ## 常见问题

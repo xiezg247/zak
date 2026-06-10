@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import html
 
-from vnpy_ashare.ui.theme.tokens import ThemeTokens
+from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 def build_settings_stylesheet(t: ThemeTokens) -> str:

@@ -27,7 +27,7 @@ from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
 from vnpy_ashare.ui.chart_panel import ChartPanel
 from vnpy_ashare.ui.depth_panel import DepthPanel
 from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
-from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
+from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes.actions_controller import ActionsController
 from vnpy_ashare.ui.quotes.batch_backtest_controller import WatchlistBatchBacktestController
 from vnpy_ashare.ui.quotes.data_loader_controller import DataLoaderController
@@ -52,7 +52,7 @@ from vnpy_ashare.ui.quotes_config import (
     SEARCH_DEBOUNCE_MS,
     quote_source_label,
 )
-from vnpy_ashare.ui.theme import theme_manager
+from vnpy_common.ui.theme import theme_manager
 
 
 class QuotesPage(QtWidgets.QWidget):

@@ -6,7 +6,7 @@ from typing import Literal
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.paths import QSETTINGS_ORG
+from vnpy_common.paths import QSETTINGS_ORG
 
 Surface = Literal["floating", "assistant"]
 SURFACES: tuple[Surface, ...] = ("floating", "assistant")

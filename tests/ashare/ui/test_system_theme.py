@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.theme.system import detect_system_theme_id, resolve_theme_id
+from vnpy_common.ui.theme.system import detect_system_theme_id, resolve_theme_id
 
 
 class SystemThemeTests(unittest.TestCase):

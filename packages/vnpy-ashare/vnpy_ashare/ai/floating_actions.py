@@ -5,9 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
+from vnpy_common.ai.protocol import AiContextData, QuickAction
 from vnpy_ashare.ai.context import (
-    AiContextData,
-    QuickAction,
     build_assistant_quick_actions,
     build_floating_stock_quick_actions,
 )

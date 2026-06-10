@@ -11,7 +11,7 @@ from vnpy_ashare.config_schema import (
     ConfigFieldSpec,
     normalize_database_name,
 )
-from vnpy_ashare.paths import ENV_FILE
+from vnpy_common.paths import ENV_FILE
 from vnpy_ashare.ui.fonts import (
     available_font_families,
     resolve_font_family,
@@ -30,8 +30,8 @@ from vnpy_ashare.ui.settings_snapshot import (
     resolve_env_config_kline,
 )
 from vnpy_ashare.ui.styles import apply_settings_combo_style
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.build_extra import build_settings_stylesheet
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 from vnpy_ashare.vt_settings import (
     SETTING_FILE,
     load_runtime_settings,

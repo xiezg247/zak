@@ -42,8 +42,8 @@ from vnpy_ashare.ui.styles import (
     apply_toolbar_combo_style,
     style_legacy_form_inputs,
 )
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.build_extra import build_settings_stylesheet
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 
 _LOG_MAP: dict[str, str] = {
     "初始化CTA回测引擎": "初始化策略回测引擎",
@@ -234,8 +234,8 @@ class BacktesterWidget(VnpyBacktesterManager):
         self._on_strategy_changed(self.class_combo.currentText())
 
     def _build_strategy_guide_html(self, class_name: str) -> str:
-        from vnpy_ashare.ui.theme import theme_manager
-        from vnpy_ashare.ui.theme.html_palette import html_palette
+        from vnpy_common.ui.theme import theme_manager
+        from vnpy_common.ui.theme.html_palette import html_palette
 
         name = class_name.strip()
         tokens = theme_manager().tokens()

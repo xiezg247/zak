@@ -5,8 +5,8 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.market_colors import market_colors
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.market_colors import market_colors
 
 
 class DepthPanel(QtWidgets.QFrame):

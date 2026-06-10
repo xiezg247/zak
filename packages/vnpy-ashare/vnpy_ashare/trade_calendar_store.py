@@ -7,7 +7,7 @@ import threading
 from datetime import date, datetime, timedelta
 
 from vnpy_ashare.app_db import get_meta, init_app_db, set_meta
-from vnpy_ashare.paths import get_app_db_path
+from vnpy_common.paths import get_app_db_path
 
 TRADE_CAL_SYNCED_AT_KEY = "trade_calendar_synced_at"
 TRADE_CAL_RANGE_START_KEY = "trade_calendar_range_start"
@@ -34,7 +34,7 @@ def _default_cal_end(today: date | None = None) -> date:
 def _get_tushare_pro():
     from dotenv import load_dotenv
 
-    from vnpy_ashare.paths import ENV_FILE
+    from vnpy_common.paths import ENV_FILE
 
     load_dotenv(ENV_FILE)
     token = os.getenv("TUSHARE_TOKEN") or os.getenv("TS_TOKEN")

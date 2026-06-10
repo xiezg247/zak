@@ -6,8 +6,8 @@ import unittest
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.paths import QSETTINGS_ORG
-from vnpy_ashare.ui.theme import (
+from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_common.ui.theme import (
     ThemeManager,
     build_ai_panel_stylesheet,
     build_chart_panel_stylesheet,
@@ -16,7 +16,7 @@ from vnpy_ashare.ui.theme import (
     stylesheet_for,
     theme_manager,
 )
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS
+from vnpy_common.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS
 
 
 class ThemeManagerTests(unittest.TestCase):
@@ -55,7 +55,7 @@ class ThemeManagerTests(unittest.TestCase):
 
     def test_scheduler_log_html_uses_semantic_colors(self) -> None:
         from vnpy_ashare.scheduler import JobRunRecord
-        from vnpy_ashare.ui.theme.build_extra import format_scheduler_run_log_html
+        from vnpy_common.ui.theme.build_extra import format_scheduler_run_log_html
 
         record = JobRunRecord(
             job_id="test",
@@ -70,7 +70,7 @@ class ThemeManagerTests(unittest.TestCase):
         self.assertIn(LIGHT_TOKENS.text_primary, html)
 
     def test_orb_palette_follows_accent(self) -> None:
-        from vnpy_ashare.ui.theme.orb_palette import orb_palette
+        from vnpy_common.ui.theme.orb_palette import orb_palette
 
         dark_orb = orb_palette(DARK_TOKENS)
         light_orb = orb_palette(LIGHT_TOKENS)
@@ -78,7 +78,7 @@ class ThemeManagerTests(unittest.TestCase):
 
     def test_html_palette_and_diagnose_html(self) -> None:
         from vnpy_ashare.ui.diagnose_panel import format_diagnose_html
-        from vnpy_ashare.ui.theme.html_palette import html_palette
+        from vnpy_common.ui.theme.html_palette import html_palette
 
         palette = html_palette(LIGHT_TOKENS)
         self.assertEqual(palette.section, LIGHT_TOKENS.accent)
@@ -106,7 +106,7 @@ class ThemeManagerTests(unittest.TestCase):
         self.assertEqual(get_tokens("light").nav_bg, LIGHT_TOKENS.nav_bg)
 
     def test_set_system_theme_persists_and_resolves(self) -> None:
-        from vnpy_ashare.ui.theme.system import detect_system_theme_id, resolve_theme_id
+        from vnpy_common.ui.theme.system import detect_system_theme_id, resolve_theme_id
 
         manager = theme_manager()
         manager.set_theme("system")

@@ -18,8 +18,8 @@ from vnpy_ashare.ui.quote_columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.market_colors import market_colors, quote_change_color
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage

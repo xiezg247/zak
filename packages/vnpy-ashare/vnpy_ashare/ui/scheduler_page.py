@@ -9,9 +9,9 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.engine import APP_NAME, AshareEngine
 from vnpy_ashare.scheduler import TaskSchedulerManager
 from vnpy_ashare.ui.scheduler_jobs_widget import SchedulerJobsWidget
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.build_extra import format_scheduler_empty_html, format_scheduler_run_log_html
-from vnpy_ashare.ui.theme.tokens import ThemeTokens
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.build_extra import format_scheduler_empty_html, format_scheduler_run_log_html
+from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 class SchedulerPageWidget(QtWidgets.QWidget):

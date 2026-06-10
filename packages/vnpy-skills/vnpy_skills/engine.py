@@ -15,7 +15,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.paths import ENV_FILE, PROJECT_ROOT
+from vnpy_common.paths import ENV_FILE, PROJECT_ROOT
 from vnpy_skills.agent_skill import AgentSkill
 from vnpy_skills.base import SkillTemplate, ToolSpec
 from vnpy_skills.builtin_tools import AGENT_TOOL_SPECS

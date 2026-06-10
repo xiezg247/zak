@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS, ThemeTokens
+from vnpy_common.ui.theme.tokens import DARK_TOKENS, ThemeTokens
 
 
 def _build_chat_bubble_stylesheet(t: ThemeTokens) -> str:

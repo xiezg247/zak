@@ -1,6 +1,6 @@
 """终端配色常量（深色默认值，新代码请用 theme.market_colors）。"""
 
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS
+from vnpy_common.ui.theme.tokens import DARK_TOKENS
 
 RISE_COLOR = DARK_TOKENS.market_rise
 FALL_COLOR = DARK_TOKENS.market_fall

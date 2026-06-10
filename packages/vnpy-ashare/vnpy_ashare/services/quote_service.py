@@ -17,7 +17,7 @@ from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.base import BaseService
-from vnpy_llm.ui.floating_actions import enrich_context_with_actions
+from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
 
 
 class QuoteService(BaseService):

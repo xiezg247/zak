@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vnpy-common"
+version = "0.1.0"
+description = "zak 共享基础设施：路径、AI 协议、终端主题"
+requires-python = ">=3.10"
+dependencies = [
+    "vnpy>=4.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vnpy_common*"]

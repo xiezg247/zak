@@ -7,7 +7,7 @@ from pathlib import Path
 import vnpy_ctastrategy
 from vnpy_ctabacktester.engine import BacktesterEngine
 
-from vnpy_ashare.paths import PROJECT_ROOT
+from vnpy_common.paths import PROJECT_ROOT
 
 _PROJECT_STRATEGIES = PROJECT_ROOT / "strategies"
 _PROJECT_STRATEGY_PRIORITY = ("ashare_template.py",)

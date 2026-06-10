@@ -8,11 +8,11 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.chart_style import build_chart_panel_stylesheet
-from vnpy_ashare.ui.theme import theme_manager
+from vnpy_common.ui.theme import theme_manager
 from vnpy_ashare.ui.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.intraday_chart import IntradayChart
 from vnpy_ashare.ui.ma_legend import MaLegendBar
-from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
+from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes_chart import (
     WATCHLIST_DAILY_BAR_PRESETS,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,

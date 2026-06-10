@@ -16,7 +16,7 @@ from vnpy_ashare.screener.batch_actions import (
     load_batch_backtest_defaults,
     persist_batch_backtest_results,
 )
-from vnpy_ashare.ui.qt_helpers import release_thread
+from vnpy_common.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.worker import ScreenerBatchBacktestWorker
 

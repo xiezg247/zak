@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_ashare.ui.theme.tokens import ThemeTokens
+from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 @dataclass(frozen=True)

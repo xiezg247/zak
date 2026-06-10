@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS, ThemeTokens
+from vnpy_common.ui.theme.tokens import DARK_TOKENS, ThemeTokens
 
 GRID_ALPHA = 0.12
 AVG_LINE_COLOR = "#e6b422"

@@ -38,15 +38,15 @@ from vnpy_ashare.events import (
 from vnpy_ashare.ui.auto_screener_page import AutoScreenerPageWidget
 from vnpy_ashare.ui.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.floating_controller import FloatingAiController
-from vnpy_ashare.paths import QSETTINGS_ORG
+from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
-from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
+from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.scheduler_page import SchedulerPageWidget
 from vnpy_ashare.ui.screener_confirm_dialog import show_screener_confirm_dialog
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.settings_dialog import show_settings_dialog
-from vnpy_ashare.ui.theme import theme_manager
+from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
@@ -522,7 +522,7 @@ class AshareMainWindow(MainWindow):
             self.widgets[key] = widget
             extra = ""
             if key == "scheduler":
-                from vnpy_ashare.ui.theme.build_extra import build_scheduler_page_stylesheet
+                from vnpy_common.ui.theme.build_extra import build_scheduler_page_stylesheet
 
                 extra = build_scheduler_page_stylesheet
             self._theme_manager.bind_stylesheet(widget, extra=extra)

@@ -23,7 +23,7 @@ from vnpy_ashare.ui.chart_panel import (
     is_same_minute_request,
     should_apply_minute_bars,
 )
-from vnpy_ashare.ui.qt_helpers import retain_thread_until_finished
+from vnpy_common.ui.qt_helpers import retain_thread_until_finished
 from vnpy_ashare.ui.quotes_chart import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
 from vnpy_ashare.ui.worker import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
 

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from vnpy_ashare.paths import get_app_db_path
+from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS backtest_runs (

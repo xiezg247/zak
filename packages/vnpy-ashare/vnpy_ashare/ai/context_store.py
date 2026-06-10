@@ -23,7 +23,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from vnpy_ashare.ai.context import AiContextData
+from vnpy_common.ai.protocol import AiContextData
 
 _lock = threading.Lock()
 _listeners: list[Callable[[AiContextData], None]] = []

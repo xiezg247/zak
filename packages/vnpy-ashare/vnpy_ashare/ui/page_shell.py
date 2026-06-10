@@ -6,10 +6,10 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
+from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes_page import QuotesPage
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.market_colors import quote_change_color
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.market_colors import quote_change_color
 from vnpy_ashare.ui.worker import IndexQuotesWorker
 
 INDEX_REFRESH_MS = 30000

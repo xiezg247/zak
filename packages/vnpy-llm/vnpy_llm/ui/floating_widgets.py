@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context import QuickAction
+from vnpy_common.ai.protocol import QuickAction
 
 
 class QuickActionChips(QtWidgets.QWidget):

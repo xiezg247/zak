@@ -7,7 +7,7 @@ import argparse
 from pathlib import Path
 
 from vnpy_ashare.app_db import import_universe_csv, import_watchlist_csv
-from vnpy_ashare.paths import get_app_db_path
+from vnpy_common.paths import get_app_db_path
 
 
 def parse_args() -> argparse.Namespace:

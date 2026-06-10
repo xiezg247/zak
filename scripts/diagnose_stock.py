@@ -19,7 +19,7 @@ from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.paths import ENV_FILE
+from vnpy_common.paths import ENV_FILE
 
 load_dotenv(ENV_FILE)
 

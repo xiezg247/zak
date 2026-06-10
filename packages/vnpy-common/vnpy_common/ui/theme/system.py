@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.theme.tokens import DEFAULT_THEME, ThemeId, ThemePreference
+from vnpy_common.ui.theme.tokens import DEFAULT_THEME, ThemeId, ThemePreference
 
 
 def detect_system_theme_id() -> ThemeId:

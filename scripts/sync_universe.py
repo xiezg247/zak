@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.app_db import universe_count
-from vnpy_ashare.paths import get_app_db_path
+from vnpy_common.paths import get_app_db_path
 from vnpy_ashare.universe import sync_universe
 
 

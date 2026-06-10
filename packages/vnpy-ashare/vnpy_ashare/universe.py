@@ -18,7 +18,7 @@ from vnpy_ashare.app_db import (
     universe_is_fresh,
 )
 from vnpy_ashare.models import StockItem, parse_tickflow_symbol
-from vnpy_ashare.paths import ENV_FILE, get_app_db_path
+from vnpy_common.paths import ENV_FILE, get_app_db_path
 
 UNIVERSE_ID = "CN_Equity_A"
 BATCH_SIZE = 200

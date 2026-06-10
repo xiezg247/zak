@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tool_audit import list_recent_tool_calls
-from vnpy_ashare.ui.theme import theme_manager
+from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.ui.themed_styles import bind_ai_tools_dialog_style
 
 _TOOL_LABELS: dict[str, str] = {

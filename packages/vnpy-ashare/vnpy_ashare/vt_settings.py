@@ -15,7 +15,7 @@ from vnpy_ashare.config_bridge import (
     meta_database_settings,
     sqlite_database_settings,
 )
-from vnpy_ashare.paths import ENV_FILE, VNTRADER_DIR
+from vnpy_common.paths import ENV_FILE, VNTRADER_DIR
 from vnpy_ashare.ui.fonts import default_font_family
 
 SETTING_FILE = VNTRADER_DIR / SETTING_FILENAME

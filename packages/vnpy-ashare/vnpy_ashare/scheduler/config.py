@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from vnpy_ashare.paths import APP_ID, VNTRADER_DIR
+from vnpy_common.paths import APP_ID, VNTRADER_DIR
 
 SCHEDULER_CONFIG_PATH = VNTRADER_DIR / f"{APP_ID}_scheduler.json"
 

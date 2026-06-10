@@ -7,7 +7,7 @@ from pathlib import Path
 
 from vnpy.trader.constant import Exchange, Interval
 
-from vnpy_ashare.paths import VNTRADER_DIR
+from vnpy_common.paths import VNTRADER_DIR
 
 STOCK_EXCHANGES: frozenset[Exchange] = frozenset(
     {

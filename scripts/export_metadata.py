@@ -12,7 +12,7 @@ from vnpy_ashare.app_db import (
     load_watchlist_rows,
     universe_count,
 )
-from vnpy_ashare.paths import BACKUP_DIR, get_app_db_path
+from vnpy_common.paths import BACKUP_DIR, get_app_db_path
 
 
 def parse_args() -> argparse.Namespace:

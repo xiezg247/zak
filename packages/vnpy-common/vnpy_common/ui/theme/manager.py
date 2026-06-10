@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.paths import QSETTINGS_ORG
-from vnpy_ashare.ui.theme.build import build_terminal_stylesheet, stylesheet_for
-from vnpy_ashare.ui.theme.system import detect_system_theme_id, resolve_theme_id
-from vnpy_ashare.ui.theme.tokens import (
+from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_common.ui.theme.build import build_terminal_stylesheet, stylesheet_for
+from vnpy_common.ui.theme.system import detect_system_theme_id, resolve_theme_id
+from vnpy_common.ui.theme.tokens import (
     DEFAULT_THEME_PREFERENCE,
     THEME_PREFERENCES,
     ThemeId,
@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from vnpy.chart import ChartWidget
 
 ExtraStyles = str | Callable[[ThemeTokens], str]
+ChartRefreshHandler = Callable[[ThemeTokens, list[Any]], None]
+
+_chart_refresh_handler: ChartRefreshHandler | None = None
 
 _SETTINGS_APP = "ashare_ui"
 _SETTINGS_KEY = "ui_theme"
@@ -95,6 +98,10 @@ class ThemeManager(QtCore.QObject):
             return
         self._charts.append(chart)
 
+    def register_chart_refresh_handler(self, handler: ChartRefreshHandler) -> None:
+        global _chart_refresh_handler
+        _chart_refresh_handler = handler
+
     def bind_stylesheet(self, widget: QtWidgets.QWidget, *, extra: ExtraStyles = "") -> None:
         """绑定 widget：主题切换时重设 setStyleSheet。"""
         self._bound.append((widget, extra))
@@ -156,16 +163,8 @@ class ThemeManager(QtCore.QObject):
         widget.setStyleSheet(build_terminal_stylesheet(tokens) + self._resolve_extra(extra, tokens))
 
     def _refresh_charts(self, tokens: ThemeTokens) -> None:
-        from vnpy_ashare.ui.chart_style import _apply_chart_theme, chart_palette
-
-        palette = chart_palette(tokens)
-        for chart in self._charts:
-            _apply_chart_theme(chart, palette)
-            for item in getattr(chart, "_items", {}).values():
-                if hasattr(item, "_up_pen"):
-                    from vnpy_ashare.ui.chart_style import apply_candle_colors
-
-                    apply_candle_colors(item, tokens=tokens)
+        if _chart_refresh_handler is not None:
+            _chart_refresh_handler(tokens, self._charts)
 
 
 def theme_manager() -> ThemeManager:

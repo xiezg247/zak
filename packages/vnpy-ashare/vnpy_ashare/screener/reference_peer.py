@@ -44,7 +44,7 @@ def env_default_reference_peer_top_n() -> int:
 
     from dotenv import load_dotenv
 
-    from vnpy_ashare.paths import ENV_FILE
+    from vnpy_common.paths import ENV_FILE
 
     load_dotenv(ENV_FILE)
     raw = os.getenv("REFERENCE_PEER_TOP_N", "").strip()

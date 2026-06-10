@@ -7,7 +7,7 @@ import os
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.paths import ENV_FILE
+from vnpy_common.paths import ENV_FILE
 from vnpy_skills.base import SkillTemplate, ToolSpec
 
 

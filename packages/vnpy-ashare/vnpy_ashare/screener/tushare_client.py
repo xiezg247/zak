@@ -12,7 +12,7 @@ class TushareNotConfiguredError(RuntimeError):
 def get_tushare_pro():
     from dotenv import load_dotenv
 
-    from vnpy_ashare.paths import ENV_FILE
+    from vnpy_common.paths import ENV_FILE
 
     load_dotenv(ENV_FILE)
     token = os.getenv("TUSHARE_TOKEN") or os.getenv("TS_TOKEN")

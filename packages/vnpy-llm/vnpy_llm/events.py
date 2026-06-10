@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.ai.context import AiContextData
+from vnpy_common.ai.protocol import AiContextData
 
 __all__ = ["AiContextData"]

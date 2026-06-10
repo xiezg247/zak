@@ -10,7 +10,7 @@ from vnpy_ashare.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.ui.chart_panel import ChartPanel
 from vnpy_ashare.ui.chart_style import build_chart_frame_stylesheet
-from vnpy_ashare.ui.theme import theme_manager
+from vnpy_common.ui.theme import theme_manager
 from vnpy_ashare.ui.depth_panel import DepthPanel
 from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
 from vnpy_ashare.ui.ma_legend import MaLegendBar

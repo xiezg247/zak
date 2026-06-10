@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
-from vnpy_ashare.paths import get_app_db_path
+from vnpy_common.paths import get_app_db_path
 
 TriggerKind = Literal["intraday", "post_close"]
 

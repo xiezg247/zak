@@ -11,6 +11,17 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 
+[manifest]
+members = [
+    "vnpy-ashare",
+    "vnpy-common",
+    "vnpy-llm",
+    "vnpy-mcp",
+    "vnpy-skills",
+    "vnpy-tickflow",
+    "zak",
+]
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -2416,6 +2427,72 @@ wheels = [
 ]
 
 [[package]]
+name = "vnpy-ashare"
+version = "0.1.0"
+source = { editable = "packages/vnpy-ashare" }
+dependencies = [
+    { name = "apscheduler" },
+    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "psycopg2-binary" },
+    { name = "python-dotenv" },
+    { name = "redis" },
+    { name = "vnpy" },
+    { name = "vnpy-common" },
+    { name = "vnpy-ctabacktester" },
+    { name = "vnpy-ctastrategy" },
+    { name = "vnpy-datamanager" },
+    { name = "vnpy-postgresql" },
+    { name = "vnpy-sqlite" },
+    { name = "vnpy-tickflow" },
+    { name = "vnpy-tushare" },
+]
+
+[package.optional-dependencies]
+full = [
+    { name = "vnpy-llm" },
+]
+llm = [
+    { name = "vnpy-llm" },
+]
+postgresql = [
+    { name = "vnpy-postgresql" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "apscheduler", specifier = ">=3.10.0" },
+    { name = "pandas", specifier = ">=2.0.0" },
+    { name = "psycopg2-binary", specifier = ">=2.9.12" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "redis", specifier = ">=5.0.0" },
+    { name = "vnpy", specifier = ">=4.0.0" },
+    { name = "vnpy-common", editable = "packages/vnpy-common" },
+    { name = "vnpy-ctabacktester", specifier = ">=1.3.0" },
+    { name = "vnpy-ctastrategy", specifier = ">=1.3.0" },
+    { name = "vnpy-datamanager", specifier = ">=1.2.0" },
+    { name = "vnpy-llm", marker = "extra == 'full'", editable = "packages/vnpy-llm" },
+    { name = "vnpy-llm", marker = "extra == 'llm'", editable = "packages/vnpy-llm" },
+    { name = "vnpy-postgresql", specifier = ">=1.0.0" },
+    { name = "vnpy-postgresql", marker = "extra == 'postgresql'", specifier = ">=1.0.0" },
+    { name = "vnpy-sqlite", specifier = ">=1.1.0" },
+    { name = "vnpy-tickflow", editable = "packages/vnpy-tickflow" },
+    { name = "vnpy-tushare", specifier = ">=1.4.0" },
+]
+provides-extras = ["llm", "full", "postgresql"]
+
+[[package]]
+name = "vnpy-common"
+version = "0.1.0"
+source = { editable = "packages/vnpy-common" }
+dependencies = [
+    { name = "vnpy" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "vnpy", specifier = ">=4.0.0" }]
+
+[[package]]
 name = "vnpy-ctabacktester"
 version = "1.3.0"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -2456,6 +2533,54 @@ wheels = [
 ]
 
 [[package]]
+name = "vnpy-llm"
+version = "0.1.0"
+source = { editable = "packages/vnpy-llm" }
+dependencies = [
+    { name = "markdown" },
+    { name = "openai" },
+    { name = "pygments" },
+    { name = "python-dotenv" },
+    { name = "vnpy" },
+    { name = "vnpy-common" },
+    { name = "vnpy-mcp" },
+    { name = "vnpy-skills" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "markdown", specifier = ">=3.5" },
+    { name = "openai", specifier = ">=1.0.0" },
+    { name = "pygments", specifier = ">=2.17" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "vnpy", specifier = ">=4.0.0" },
+    { name = "vnpy-common", editable = "packages/vnpy-common" },
+    { name = "vnpy-mcp", editable = "packages/vnpy-mcp" },
+    { name = "vnpy-skills", editable = "packages/vnpy-skills" },
+]
+
+[[package]]
+name = "vnpy-mcp"
+version = "0.1.0"
+source = { editable = "packages/vnpy-mcp" }
+dependencies = [
+    { name = "anyio" },
+    { name = "mcp" },
+    { name = "python-dotenv" },
+    { name = "vnpy" },
+    { name = "vnpy-common" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = ">=4.12.1" },
+    { name = "mcp", specifier = ">=1.0.0" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "vnpy", specifier = ">=4.0.0" },
+    { name = "vnpy-common", editable = "packages/vnpy-common" },
+]
+
+[[package]]
 name = "vnpy-postgresql"
 version = "1.1.2"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -2468,6 +2593,23 @@ wheels = [
 ]
 
 [[package]]
+name = "vnpy-skills"
+version = "0.1.0"
+source = { editable = "packages/vnpy-skills" }
+dependencies = [
+    { name = "python-dotenv" },
+    { name = "vnpy" },
+    { name = "vnpy-common" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "vnpy", specifier = ">=4.0.0" },
+    { name = "vnpy-common", editable = "packages/vnpy-common" },
+]
+
+[[package]]
 name = "vnpy-sqlite"
 version = "1.1.3"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -2477,6 +2619,21 @@ dependencies = [
 sdist = { url = "https://pypi.tuna.tsinghua.edu.cn/packages/87/76/39b4c7207ed8603354530ac1228f6ad8073db8fcb1a200c5b5b4b02bebff/vnpy_sqlite-1.1.3.tar.gz", hash = "sha256:ed7d76f255b1acd335f479bb8a5ff14931eeec436147ef275ed834208bfd592c", size = 6592, upload-time = "2025-10-02T14:42:21.39Z" }
 wheels = [
     { url = "https://pypi.tuna.tsinghua.edu.cn/packages/13/81/5acf1010985d725e0733c40f591f89a60cf752311ef22e6bb06f37d19af0/vnpy_sqlite-1.1.3-py3-none-any.whl", hash = "sha256:50f80c45737ef9a491aeebb9bfac0cec57f087461b6d7867838ef678cfbe67bb", size = 6482, upload-time = "2025-10-02T14:42:20.118Z" },
+]
+
+[[package]]
+name = "vnpy-tickflow"
+version = "0.1.0"
+source = { editable = "packages/vnpy-tickflow" }
+dependencies = [
+    { name = "tickflow", extra = ["all"] },
+    { name = "vnpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "tickflow", extras = ["all"], specifier = ">=0.1.22" },
+    { name = "vnpy", specifier = ">=4.0.0" },
 ]
 
 [[package]]
@@ -2580,26 +2737,9 @@ wheels = [
 [[package]]
 name = "zak"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
-    { name = "anyio" },
-    { name = "apscheduler" },
-    { name = "markdown" },
-    { name = "mcp" },
-    { name = "openai" },
-    { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pandas", version = "3.0.3", source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "psycopg2-binary" },
-    { name = "pygments" },
-    { name = "python-dotenv" },
-    { name = "redis" },
-    { name = "tickflow", extra = ["all"] },
-    { name = "vnpy" },
-    { name = "vnpy-ctabacktester" },
-    { name = "vnpy-ctastrategy" },
-    { name = "vnpy-datamanager" },
-    { name = "vnpy-sqlite" },
-    { name = "vnpy-tushare" },
+    { name = "vnpy-ashare", extra = ["full"] },
 ]
 
 [package.optional-dependencies]
@@ -2607,30 +2747,14 @@ dev = [
     { name = "ruff" },
 ]
 postgresql = [
-    { name = "vnpy-postgresql" },
+    { name = "vnpy-ashare", extra = ["postgresql"] },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "anyio", specifier = ">=4.12.1" },
-    { name = "apscheduler", specifier = ">=3.10.0" },
-    { name = "markdown", specifier = ">=3.5" },
-    { name = "mcp", specifier = ">=1.0.0" },
-    { name = "openai", specifier = ">=1.0.0" },
-    { name = "pandas", specifier = ">=2.0.0" },
-    { name = "psycopg2-binary", specifier = ">=2.9.12" },
-    { name = "pygments", specifier = ">=2.17" },
-    { name = "python-dotenv", specifier = ">=1.0.0" },
-    { name = "redis", specifier = ">=5.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.0" },
-    { name = "tickflow", extras = ["all"], specifier = ">=0.1.22" },
-    { name = "vnpy", specifier = ">=4.0.0" },
-    { name = "vnpy-ctabacktester", specifier = ">=1.3.0" },
-    { name = "vnpy-ctastrategy", specifier = ">=1.3.0" },
-    { name = "vnpy-datamanager", specifier = ">=1.2.0" },
-    { name = "vnpy-postgresql", marker = "extra == 'postgresql'", specifier = ">=1.0.0" },
-    { name = "vnpy-sqlite", specifier = ">=1.1.0" },
-    { name = "vnpy-tushare", specifier = ">=1.4.0" },
+    { name = "vnpy-ashare", extras = ["full"], editable = "packages/vnpy-ashare" },
+    { name = "vnpy-ashare", extras = ["postgresql"], marker = "extra == 'postgresql'", editable = "packages/vnpy-ashare" },
 ]
 provides-extras = ["dev", "postgresql"]
 

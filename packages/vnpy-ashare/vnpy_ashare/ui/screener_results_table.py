@@ -6,8 +6,8 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.market_colors import pct_change_color
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.market_colors import pct_change_color
 
 ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
 

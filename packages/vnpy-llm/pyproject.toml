@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vnpy-llm"
+version = "0.1.0"
+description = "VeighNa LLM 对话插件"
+requires-python = ">=3.10"
+dependencies = [
+    "vnpy>=4.0.0",
+    "openai>=1.0.0",
+    "markdown>=3.5",
+    "Pygments>=2.17",
+    "python-dotenv>=1.0.0",
+    "vnpy-common",
+    "vnpy-skills",
+    "vnpy-mcp",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["vnpy_llm*"]

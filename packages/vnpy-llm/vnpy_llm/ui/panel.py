@@ -7,15 +7,14 @@ import re
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.context import QuickAction, build_stock_completion_items
-from vnpy_ashare.ai.context_store import get_ai_context
-from vnpy_ashare.ui.qt_helpers import release_thread, retain_thread_until_finished
-from vnpy_ashare.ui.theme import theme_manager
+from vnpy_common.ai.access import build_quick_actions_for_panel, build_stock_completion_items, get_ai_context
+from vnpy_common.ai.protocol import QuickAction
+from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished
+from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tool_labels import tool_display_name
 from vnpy_llm.tools_status import ToolsStatusSnapshot
 from vnpy_llm.trace import TurnTrace, map_turns_to_user_messages
-from vnpy_llm.ui.floating_actions import build_quick_actions_for_panel
 from vnpy_llm.ui.floating_widgets import QuickActionChips
 from vnpy_llm.ui.md_renderer import render_markdown
 from vnpy_llm.ui.pending_bubble import (

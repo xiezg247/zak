@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.build_ai import (
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.build_ai import (
     build_ai_floating_stylesheet,
     build_ai_panel_stylesheet,
     build_ai_tools_stylesheet,
@@ -38,8 +38,8 @@ def bind_ai_trace_style(widget: QtWidgets.QWidget) -> None:
 
 def apply_settings_dialog_style(widget: QtWidgets.QWidget) -> None:
     """模态对话框：打开时应用当前主题（不长期绑定）。"""
-    from vnpy_ashare.ui.theme.build import build_terminal_stylesheet
-    from vnpy_ashare.ui.theme.build_extra import build_settings_stylesheet
+    from vnpy_common.ui.theme.build import build_terminal_stylesheet
+    from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 
     manager = theme_manager()
     tokens = manager.tokens()

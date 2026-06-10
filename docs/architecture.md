@@ -28,16 +28,17 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 
 | 包 | 职责 |
 |----|------|
-| `vnpy_ashare` | 主 App：看盘、选股、回测、调度、AI 全屏 |
-| `vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
-| `vnpy_ashare/screener/` | 因子、规则、方案、配方、标杆对标、NL 解析 |
-| `vnpy_ashare/backtest/` | 回测结果落库（`run_store.py`） |
-| `vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
-| `vnpy_tickflow` | TickFlow 适配 |
-| `vnpy_llm` | LLM 对话 |
-| `vnpy_skills` | Agent Skill 引擎 |
-| `vnpy_mcp` | MCP 远端工具（`mcp/mcp.json`） |
-| `vnpy_ashare/ai` | `context_store`、全屏页 |
+| `packages/vnpy-ashare` | 主 App：看盘、选股、回测、调度、AI 全屏 |
+| `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
+| `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方、标杆对标、NL 解析 |
+| `packages/vnpy-ashare/vnpy_ashare/backtest/` | 回测结果落库（`run_store.py`） |
+| `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
+| `packages/vnpy-tickflow` | TickFlow 适配 |
+| `packages/vnpy-llm` | LLM 对话 |
+| `packages/vnpy-skills` | Agent Skill 引擎 |
+| `packages/vnpy-mcp` | MCP 远端工具（`mcp/mcp.json`） |
+| `packages/vnpy-common` | 路径、AI 协议、终端主题 |
+| `packages/vnpy-ashare/vnpy_ashare/ai` | `context_store`、全屏页 |
 
 ## 配置
 

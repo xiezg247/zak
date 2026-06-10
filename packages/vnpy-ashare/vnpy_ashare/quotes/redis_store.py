@@ -7,7 +7,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.paths import ENV_FILE
+from vnpy_common.paths import ENV_FILE
 from vnpy_ashare.quote_time import normalize_datetime_text
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 

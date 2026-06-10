@@ -8,9 +8,9 @@ from pandas import DataFrame
 from vnpy_ctabacktester.ui.widget import BacktesterChart, StatisticsMonitor
 
 from vnpy_ashare.ui.chart_style import GRID_ALPHA
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.build_chart import ChartPalette, chart_palette
-from vnpy_ashare.ui.theme.tokens import ThemeTokens
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.build_chart import ChartPalette, chart_palette
+from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 def _style_backtest_plot(plot: pg.PlotItem, palette: ChartPalette) -> None:

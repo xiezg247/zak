@@ -18,7 +18,7 @@ from vnpy_ashare.ai.context import (
 from vnpy_ashare.ai.context_store import set_screening_results
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_llm.ui.floating_actions import build_quick_actions_for_panel, enrich_context_with_actions
+from vnpy_ashare.ai.floating_actions import build_quick_actions_for_panel, enrich_context_with_actions
 
 
 class FloatingActionsTests(unittest.TestCase):
@@ -121,7 +121,7 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertIn("add_to_watchlist", add.prompt)
 
     def test_scene_label_from_context(self) -> None:
-        from vnpy_llm.ui.floating_actions import scene_label_from_context
+        from vnpy_ashare.ai.floating_actions import scene_label_from_context
 
         data = enrich_context_with_actions(
             AiContextData(

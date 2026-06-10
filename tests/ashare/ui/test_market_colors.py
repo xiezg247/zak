@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.ui.theme.market_colors import market_colors, quote_change_color
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS
+from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
+from vnpy_common.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS
 
 
 class _QuoteStub:

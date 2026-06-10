@@ -6,7 +6,7 @@ import pyqtgraph as pg
 from vnpy.chart import ChartWidget
 from vnpy.trader.ui import QtGui
 
-from vnpy_ashare.ui.theme.build_chart import (
+from vnpy_common.ui.theme.build_chart import (
     AVG_LINE_COLOR,
     CHART_BG,
     CHART_FRAME_STYLESHEET,
@@ -29,8 +29,8 @@ from vnpy_ashare.ui.theme.build_chart import (
     build_intraday_info_stylesheet,
     chart_palette,
 )
-from vnpy_ashare.ui.theme.market_colors import hex_to_rgb, market_rgb
-from vnpy_ashare.ui.theme.tokens import DARK_TOKENS, ThemeTokens
+from vnpy_common.ui.theme.market_colors import hex_to_rgb, market_rgb
+from vnpy_common.ui.theme.tokens import DARK_TOKENS, ThemeTokens
 
 __all__ = [
     "AVG_LINE_COLOR",
@@ -70,7 +70,7 @@ FALL_RGB = hex_to_rgb(DARK_TOKENS.market_fall)
 
 def apply_candle_colors(item: object, *, tokens: ThemeTokens | None = None) -> None:
     """A 股红涨绿跌实心 K 线。"""
-    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_common.ui.theme import theme_manager
 
     if tokens is None:
         tokens = theme_manager().tokens()
@@ -83,7 +83,7 @@ def apply_candle_colors(item: object, *, tokens: ThemeTokens | None = None) -> N
 
 
 def apply_ashare_chart_theme(chart: ChartWidget, tokens: ThemeTokens | None = None) -> None:
-    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_common.ui.theme import theme_manager
 
     manager = theme_manager()
     if tokens is None:
@@ -132,7 +132,7 @@ def _style_plot_axes(plot: pg.PlotItem, palette: ChartPalette, *, sides: tuple[s
 
 def style_intraday_price_plot(plot: pg.PlotItem, palette: ChartPalette | None = None) -> None:
     if palette is None:
-        from vnpy_ashare.ui.theme import theme_manager
+        from vnpy_common.ui.theme import theme_manager
 
         palette = chart_palette(theme_manager().tokens())
     plot.showGrid(x=True, y=True, alpha=GRID_ALPHA)
@@ -143,10 +143,20 @@ def style_intraday_price_plot(plot: pg.PlotItem, palette: ChartPalette | None = 
 
 def style_intraday_volume_plot(plot: pg.PlotItem, palette: ChartPalette | None = None) -> None:
     if palette is None:
-        from vnpy_ashare.ui.theme import theme_manager
+        from vnpy_common.ui.theme import theme_manager
 
         palette = chart_palette(theme_manager().tokens())
     plot.showGrid(x=False, y=True, alpha=0.08)
     plot.setLabel("left", "")
     plot.setMaximumHeight(96)
     _style_plot_axes(plot, palette, sides=("left", "bottom"))
+
+
+def refresh_charts_for_theme(tokens: ThemeTokens, charts: list[object]) -> None:
+    """ThemeManager 回调：刷新已注册图表配色。"""
+    palette = chart_palette(tokens)
+    for chart in charts:
+        _apply_chart_theme(chart, palette)
+        for item in getattr(chart, "_items", {}).values():
+            if hasattr(item, "_up_pen"):
+                apply_candle_colors(item, tokens=tokens)

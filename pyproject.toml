@@ -2,6 +2,9 @@
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv.workspace]
+members = ["packages/*"]
+
 [project]
 name = "zak"
 version = "0.1.0"
@@ -9,40 +12,28 @@ description = "zak — 基于 VeighNa 的 A 股量化终端，集成 TickFlow �
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "vnpy>=4.0.0",
-    "vnpy_ctastrategy>=1.3.0",
-    "vnpy_ctabacktester>=1.3.0",
-    "vnpy_datamanager>=1.2.0",
-    "vnpy_sqlite>=1.1.0",
-    "vnpy_tushare>=1.4.0",
-    "tickflow[all]>=0.1.22",
-    "pandas>=2.0.0",
-    "python-dotenv>=1.0.0",
-    "redis>=5.0.0",
-    "apscheduler>=3.10.0",
-    "openai>=1.0.0",
-    "anyio>=4.12.1",
-    "mcp>=1.0.0",
-    "markdown>=3.5",
-    "Pygments>=2.17",
-    "psycopg2-binary>=2.9.12",
+    "vnpy-ashare[full]",
 ]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["vnpy_tickflow*", "vnpy_ashare*", "vnpy_llm*", "vnpy_skills*", "vnpy_mcp*"]
-
-[[tool.uv.index]]
-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-default = true
 
 [project.optional-dependencies]
 dev = [
     "ruff>=0.9.0",
 ]
 postgresql = [
-    "vnpy_postgresql>=1.0.0",
+    "vnpy-ashare[postgresql]",
 ]
+
+[tool.uv.sources]
+vnpy-common = { workspace = true }
+vnpy-tickflow = { workspace = true }
+vnpy-mcp = { workspace = true }
+vnpy-skills = { workspace = true }
+vnpy-llm = { workspace = true }
+vnpy-ashare = { workspace = true }
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
 
 [tool.ruff]
 line-length = 160
@@ -50,29 +41,35 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = [
-    "E",   # pycodestyle errors
-    "F",   # pyflakes
-    "I",   # isort
-    "UP",  # pyupgrade
-    "B",   # flake8-bugbear
+    "E",
+    "F",
+    "I",
+    "UP",
+    "B",
 ]
 ignore = [
-    "E501",  # 行宽由 formatter 处理；QSS 长行较多
+    "E501",
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/**" = ["E402"]  # CLI 先改 sys.path 再 import
-"vnpy_tickflow/**" = ["E402"]
+"scripts/**" = ["E402"]
+"packages/vnpy-tickflow/**" = ["E402"]
 "tests/_bootstrap.py" = ["E402"]
-"tests/**" = ["F841"]  # 测试里常保留 setup 变量
-"vnpy_ashare/ui/quotes_config.py" = ["E402"]  # dataclass 后延迟 import 避免循环
-"vnpy_mcp/base.py" = ["B027"]
-"vnpy_skills/base.py" = ["B027"]
+"tests/**" = ["F841"]
+"packages/vnpy-ashare/vnpy_ashare/ui/quotes_config.py" = ["E402"]
+"packages/vnpy-mcp/vnpy_mcp/base.py" = ["B027"]
+"packages/vnpy-skills/vnpy_skills/base.py" = ["B027"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["vnpy_ashare", "vnpy_llm", "vnpy_skills", "vnpy_mcp", "vnpy_tickflow"]
+known-first-party = [
+    "vnpy_common",
+    "vnpy_ashare",
+    "vnpy_llm",
+    "vnpy_skills",
+    "vnpy_mcp",
+    "vnpy_tickflow",
+]
 
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
-
-[tool.uv.sources]
+package = false

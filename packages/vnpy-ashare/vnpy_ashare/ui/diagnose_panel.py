@@ -6,10 +6,10 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ui.theme import theme_manager
-from vnpy_ashare.ui.theme.html_palette import html_palette
-from vnpy_ashare.ui.theme.market_colors import pct_change_color
-from vnpy_ashare.ui.theme.tokens import ThemeTokens
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.html_palette import html_palette
+from vnpy_common.ui.theme.market_colors import pct_change_color
+from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 def _pct_color(value: float | None, *, tokens: ThemeTokens | None = None) -> str:

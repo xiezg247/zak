@@ -26,7 +26,7 @@ from vnpy_ashare.events import (
 from vnpy_ashare.screener.runner import ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
-from vnpy_ashare.ui.qt_helpers import release_thread
+from vnpy_common.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener_recipe_panel import ScreenerRecipePanel
 from vnpy_ashare.ui.screener_results_table import (
     apply_screener_results_view,

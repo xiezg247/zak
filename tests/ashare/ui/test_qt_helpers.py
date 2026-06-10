@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ui.qt_helpers import (
+from vnpy_common.ui.qt_helpers import (
     clamp_point_in_parent,
     frame_intersects_any_screen,
     restore_child_position,
