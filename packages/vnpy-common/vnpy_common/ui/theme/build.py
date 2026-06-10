@@ -372,11 +372,9 @@ QToolButton#NavButton:checked {{
 QWidget#NavBody {{
     background-color: transparent;
 }}
-QFrame#NavGroupSeparator {{
-    background-color: {t.nav_separator};
-    max-height: 1px;
-    min-height: 1px;
-    margin: 6px 10px;
+QWidget#NavGroupSpacer {{
+    background-color: transparent;
+    margin: 2px 0;
 }}
 QTableWidget#MarketTable {{
     background-color: {t.table_bg};

@@ -20,22 +20,44 @@ class NavEntry:
     label: str
 
 
-# 主窗口左侧菜单（自选首页，市场用于搜索发现）
-APP_NAV_ENTRIES: tuple[NavEntry, ...] = (
-    NavEntry("watchlist", "自选"),
-    NavEntry("market", "市场"),
-    NavEntry("screener", "策略选股"),
-    NavEntry("auto_screener", "自动选股"),
-    NavEntry("local", "本地"),
-    NavEntry("ai_assistant", "AI 助手"),
-    NavEntry("cta_backtest", "策略回测"),
-    NavEntry("batch_backtest", "回测对比"),
-    NavEntry("scheduler", "定时任务"),
-    NavEntry("data_manager", "数据管理"),
+@dataclass(frozen=True)
+class NavGroup:
+    entries: tuple[NavEntry, ...]
+
+
+# 主窗口左侧菜单（自选首页；组间以分隔线区分）
+APP_NAV_GROUPS: tuple[NavGroup, ...] = (
+    NavGroup(
+        (
+            NavEntry("watchlist", "自选"),
+            NavEntry("market", "市场"),
+            NavEntry("local", "本地"),
+        ),
+    ),
+    NavGroup(
+        (
+            NavEntry("screener", "策略选股"),
+            NavEntry("auto_screener", "自动选股"),
+        ),
+    ),
+    NavGroup((NavEntry("ai_assistant", "AI 助手"),)),
+    NavGroup(
+        (
+            NavEntry("cta_backtest", "策略回测"),
+            NavEntry("batch_backtest", "回测对比"),
+        ),
+    ),
+    NavGroup(
+        (
+            NavEntry("scheduler", "定时任务"),
+            NavEntry("data_manager", "数据管理"),
+        ),
+    ),
 )
 
-# 导航分组分隔线（显示在该 key 的按钮之后）
-_NAV_GROUP_AFTER: frozenset[str] = frozenset({"local", "ai_assistant", "batch_backtest"})
+APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(
+    entry for group in APP_NAV_GROUPS for entry in group.entries
+)
 
 
 def _tinted_icon(
@@ -206,6 +228,37 @@ class NavButton(QtWidgets.QToolButton):
         self._update_icon(active)
 
 
+class NavGroupSpacer(QtWidgets.QWidget):
+    """组间留白，中心绘制短分隔线（避免 QFrame.HLine 原生通栏线）。"""
+
+    _LINE_WIDTH = 28
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("NavGroupSpacer")
+        self.setFixedHeight(14)
+        self._line_color = QtGui.QColor(NAV_MUTED_COLOR)
+        self._line_color.setAlpha(72)
+
+    def set_line_color(self, color: QtGui.QColor) -> None:
+        self._line_color = color
+        self.update()
+
+    def paintEvent(self, _event: QtGui.QPaintEvent) -> None:
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        line_width = min(self._LINE_WIDTH, max(0, self.width() - 16))
+        if line_width <= 0:
+            return
+        x = (self.width() - line_width) // 2
+        y = self.height() // 2
+        pen = QtGui.QPen(self._line_color)
+        pen.setWidthF(1.0)
+        pen.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        painter.drawLine(x, y, x + line_width, y)
+
+
 class SidebarNav(QtWidgets.QWidget):
     """主窗口左侧垂直导航。"""
 
@@ -217,7 +270,7 @@ class SidebarNav(QtWidgets.QWidget):
 
     def __init__(
         self,
-        entries: tuple[NavEntry, ...] = APP_NAV_ENTRIES,
+        groups: tuple[NavGroup, ...] = APP_NAV_GROUPS,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -227,7 +280,7 @@ class SidebarNav(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
-        self._entries = entries
+        self._entries = tuple(entry for group in groups for entry in group.entries)
 
         self._scroll = QtWidgets.QScrollArea()
         self._scroll.setObjectName("NavScroll")
@@ -247,19 +300,22 @@ class SidebarNav(QtWidgets.QWidget):
         self._group = QtWidgets.QButtonGroup(self)
         self._group.setExclusive(True)
         self._buttons: list[NavButton] = []
+        self._spacers: list[NavGroupSpacer] = []
 
-        for index, entry in enumerate(entries):
-            btn = NavButton(entry, nav_body)
-            btn.clicked.connect(lambda checked, i=index: self._on_click(i))
-            self._group.addButton(btn, index)
-            layout.addWidget(btn)
-            self._buttons.append(btn)
+        index = 0
+        for group_index, group in enumerate(groups):
+            for entry in group.entries:
+                btn = NavButton(entry, nav_body)
+                btn.clicked.connect(lambda checked, i=index: self._on_click(i))
+                self._group.addButton(btn, index)
+                layout.addWidget(btn)
+                self._buttons.append(btn)
+                index += 1
 
-            if entry.key in _NAV_GROUP_AFTER:
-                line = QtWidgets.QFrame()
-                line.setObjectName("NavGroupSeparator")
-                line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-                layout.addWidget(line)
+            if group_index < len(groups) - 1:
+                spacer = NavGroupSpacer(nav_body)
+                layout.addWidget(spacer)
+                self._spacers.append(spacer)
 
         layout.addStretch()
         self._scroll.setWidget(nav_body)
@@ -288,6 +344,10 @@ class SidebarNav(QtWidgets.QWidget):
             btn._muted = QtGui.QColor(tokens.nav_muted)
             btn._accent = QtGui.QColor(tokens.accent)
             btn._update_icon(btn.isChecked())
+        line_color = QtGui.QColor(tokens.nav_muted)
+        line_color.setAlpha(72)
+        for spacer in self._spacers:
+            spacer.set_line_color(line_color)
 
     def _on_click(self, index: int) -> None:
         self.set_active_index(index)

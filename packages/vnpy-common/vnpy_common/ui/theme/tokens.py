@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from typing import Literal
 
 ThemeId = Literal["dark", "light"]
-ThemePreference = Literal["dark", "system"]
+ThemePreference = Literal["dark", "light", "system"]
 
 THEME_IDS: tuple[ThemeId, ...] = ("dark", "light")
-THEME_PREFERENCES: tuple[ThemePreference, ...] = ("dark", "system")
+THEME_PREFERENCES: tuple[ThemePreference, ...] = ("dark", "light", "system")
 DEFAULT_THEME: ThemeId = "dark"
 DEFAULT_THEME_PREFERENCE: ThemePreference = "dark"
 

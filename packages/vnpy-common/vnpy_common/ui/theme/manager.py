@@ -69,10 +69,7 @@ class ThemeManager(QtCore.QObject):
     def load_saved(self) -> ThemePreference:
         settings = QtCore.QSettings(QSETTINGS_ORG, _SETTINGS_APP)
         raw = settings.value(_SETTINGS_KEY, DEFAULT_THEME_PREFERENCE)
-        if raw == "light":
-            preference = "system"
-            settings.setValue(_SETTINGS_KEY, "system")
-        elif raw in THEME_PREFERENCES:
+        if raw in THEME_PREFERENCES:
             preference = raw
         else:
             preference = DEFAULT_THEME_PREFERENCE

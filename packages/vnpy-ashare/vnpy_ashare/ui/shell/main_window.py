@@ -39,7 +39,7 @@ from vnpy_ashare.ui.screener.auto_screener_page import AutoScreenerPageWidget
 from vnpy_ashare.ui.backtest.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_common.paths import QSETTINGS_ORG
-from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, SidebarNav
+from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, APP_NAV_GROUPS, SidebarNav
 from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
@@ -89,6 +89,7 @@ class AshareMainWindow(MainWindow):
         self._deferred_apps_registered = False
         self._theme_manager = theme_manager()
         self._theme_dark_action: QtGui.QAction | None = None
+        self._theme_light_action: QtGui.QAction | None = None
         self._theme_system_action: QtGui.QAction | None = None
         super().__init__(main_engine, event_engine)
         self._signal_open_backtest.connect(self._handle_open_backtest)
@@ -163,6 +164,10 @@ class AshareMainWindow(MainWindow):
         self._theme_dark_action.setCheckable(True)
         self._theme_dark_action.setData("dark")
         theme_group.addAction(self._theme_dark_action)
+        self._theme_light_action = theme_menu.addAction("浅色")
+        self._theme_light_action.setCheckable(True)
+        self._theme_light_action.setData("light")
+        theme_group.addAction(self._theme_light_action)
         self._theme_system_action = theme_menu.addAction("跟随系统")
         self._theme_system_action.setCheckable(True)
         self._theme_system_action.setData("system")
@@ -174,12 +179,14 @@ class AshareMainWindow(MainWindow):
         current = self._theme_manager.current()
         if self._theme_dark_action is not None:
             self._theme_dark_action.setChecked(current == "dark")
+        if self._theme_light_action is not None:
+            self._theme_light_action.setChecked(current == "light")
         if self._theme_system_action is not None:
             self._theme_system_action.setChecked(current == "system")
 
     def _on_theme_menu_triggered(self, action: QtGui.QAction) -> None:
         theme_id = action.data()
-        if theme_id not in ("dark", "system"):
+        if theme_id not in ("dark", "light", "system"):
             return
         self._theme_manager.set_theme(theme_id)
         self._sync_theme_menu_checks()
@@ -188,7 +195,7 @@ class AshareMainWindow(MainWindow):
         show_settings_dialog(self)
 
     def _init_shell(self) -> None:
-        self.sidebar = SidebarNav(APP_NAV_ENTRIES, self)
+        self.sidebar = SidebarNav(APP_NAV_GROUPS, self)
         self.sidebar.page_changed.connect(self._on_nav_changed)
 
         self.stack = QtWidgets.QStackedWidget()

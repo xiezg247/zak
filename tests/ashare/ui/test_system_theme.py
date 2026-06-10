@@ -17,6 +17,9 @@ class SystemThemeTests(unittest.TestCase):
     def test_resolve_theme_id_honors_dark_preference(self) -> None:
         self.assertEqual(resolve_theme_id("dark"), "dark")
 
+    def test_resolve_theme_id_honors_light_preference(self) -> None:
+        self.assertEqual(resolve_theme_id("light"), "light")
+
     def test_resolve_system_delegates_to_detector(self) -> None:
         self.assertEqual(resolve_theme_id("system"), detect_system_theme_id())
 

@@ -27,4 +27,6 @@ def detect_system_theme_id() -> ThemeId:
 def resolve_theme_id(preference: ThemePreference) -> ThemeId:
     if preference == "dark":
         return "dark"
+    if preference == "light":
+        return "light"
     return detect_system_theme_id()

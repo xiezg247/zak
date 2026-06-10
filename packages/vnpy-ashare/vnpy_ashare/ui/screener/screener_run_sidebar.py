@@ -280,32 +280,28 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             self._filter_tabs.currentChanged.connect(self._on_filter_changed)
             root.addWidget(self._filter_tabs)
 
-            actions_row = QtWidgets.QHBoxLayout()
-            actions_row.setSpacing(6)
-            self._multi_btn = QtWidgets.QPushButton("多选")
-            self._multi_btn.setObjectName("SecondaryButton")
-            self._multi_btn.setCheckable(True)
-            self._multi_btn.setToolTip("多选删除自动结果")
-            self._multi_btn.toggled.connect(self._on_multi_select_toggled)
-            actions_row.addWidget(self._multi_btn)
-            self._del_btn = QtWidgets.QPushButton("删除选中")
-            self._del_btn.setObjectName("DangerButton")
-            self._del_btn.setVisible(False)
-            self._del_btn.clicked.connect(self._on_delete_selected)
-            actions_row.addWidget(self._del_btn)
-            actions_row.addStretch()
-            root.addLayout(actions_row)
+        actions_row = QtWidgets.QHBoxLayout()
+        actions_row.setSpacing(6)
+        self._multi_btn = QtWidgets.QPushButton("多选")
+        self._multi_btn.setObjectName("SecondaryButton")
+        self._multi_btn.setCheckable(True)
+        self._multi_btn.setToolTip(self._multi_select_tooltip())
+        self._multi_btn.toggled.connect(self._on_multi_select_toggled)
+        actions_row.addWidget(self._multi_btn)
+        self._del_btn = QtWidgets.QPushButton("删除选中")
+        self._del_btn.setObjectName("DangerButton")
+        self._del_btn.setVisible(False)
+        self._del_btn.clicked.connect(self._on_delete_selected)
+        actions_row.addWidget(self._del_btn)
+        actions_row.addStretch()
+        root.addLayout(actions_row)
 
         self._list = QtWidgets.QListWidget()
         self._list.setObjectName("AiSessionListWidget")
         self._list.setSpacing(2)
-        if self._mode == "auto":
-            self._list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
+        self._list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
         self._list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._on_context_menu)
-        if self._mode != "auto":
-            self._list.itemClicked.connect(self._on_item_clicked)
-            self._list.itemSelectionChanged.connect(self._update_action_buttons)
         root.addWidget(self._list, stretch=1)
 
         action_row = QtWidgets.QHBoxLayout()
@@ -335,6 +331,12 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
                 count += 1
         return count
 
+    def _run_kind_label(self) -> str:
+        return "自动结果" if self._mode == "auto" else "历史运行"
+
+    def _multi_select_tooltip(self) -> str:
+        return f"多选删除{self._run_kind_label()}"
+
     def _on_filter_changed(self, index: int) -> None:
         filters = [_FILTER_ALL, _FILTER_INTRADAY, _FILTER_POST_CLOSE]
         self._filter = filters[index] if 0 <= index < len(filters) else _FILTER_ALL
@@ -356,35 +358,24 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         return True
 
     def _selected_item(self) -> QtWidgets.QListWidgetItem | None:
-        if self._mode == "auto":
-            if not self._current_run_id:
-                return None
-            return self._items_by_id.get(self._current_run_id)
-        return self._list.currentItem()
+        if not self._current_run_id:
+            return None
+        return self._items_by_id.get(self._current_run_id)
 
     def _selected_run(self) -> tuple[str, str] | None:
-        if self._mode == "auto":
-            run_id = self._current_run_id
-            if not run_id:
-                return None
-            row = self._rows_by_id.get(run_id)
-            item = self._items_by_id.get(run_id)
-            if row is None and item is None:
-                return None
-            condition = ""
-            if item is not None:
-                condition = str(item.data(_RUN_CONDITION_ROLE) or "")
-            if not condition and row is not None:
-                condition = row.title_text()
-            return run_id, condition
-        item = self._selected_item()
-        if item is None:
-            return None
-        run_id = item.data(_RUN_ID_ROLE)
+        run_id = self._current_run_id
         if not run_id:
             return None
-        condition = str(item.data(_RUN_CONDITION_ROLE) or item.text().split("\n", 1)[0])
-        return str(run_id), condition
+        row = self._rows_by_id.get(run_id)
+        item = self._items_by_id.get(run_id)
+        if row is None and item is None:
+            return None
+        condition = ""
+        if item is not None:
+            condition = str(item.data(_RUN_CONDITION_ROLE) or "")
+        if not condition and row is not None:
+            condition = row.title_text()
+        return run_id, condition
 
     def _update_action_buttons(self) -> None:
         enabled = self._selected_run() is not None and not self._multi_select_mode
@@ -400,8 +391,6 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         *,
         preselect_run_id: str | None = None,
     ) -> None:
-        if self._mode != "auto":
-            return
         if self._multi_select_mode == enabled and preselect_run_id is None:
             return
         self._multi_select_mode = enabled
@@ -418,7 +407,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         else:
             if self._multi_btn is not None:
                 self._multi_btn.setText("多选")
-                self._multi_btn.setToolTip("多选删除自动结果")
+                self._multi_btn.setToolTip(self._multi_select_tooltip())
             self._multi_checked_ids.clear()
         self._sync_active_run_highlight()
         for run_id, row in self._rows_by_id.items():
@@ -429,8 +418,6 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._update_action_buttons()
 
     def _sync_active_run_highlight(self) -> None:
-        if self._mode != "auto":
-            return
         for run_id, row in self._rows_by_id.items():
             active = run_id == self._current_run_id
             if not self._multi_select_mode:
@@ -450,10 +437,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             self._del_btn.setText("删除选中")
 
     def refresh(self) -> None:
-        if self._mode == "auto":
-            self._refresh_auto_list()
-        else:
-            self._refresh_strategy_list()
+        self._refresh_list()
         self._notify_sidebar_badge()
 
     def _notify_sidebar_badge(self) -> None:
@@ -465,7 +449,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
                 break
             parent = parent.parent()
 
-    def _refresh_auto_list(self) -> None:
+    def _refresh_list(self) -> None:
         main_engine = self._resolve_main_engine()
         checked_ids = set(self._multi_checked_ids)
         selected_id = self._current_run_id
@@ -505,9 +489,9 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             run_id = record.id
             self._rows_by_id[run_id] = row
             self._items_by_id[run_id] = item
-            row.clicked.connect(lambda rid=run_id: self._on_auto_row_clicked(rid))
+            row.clicked.connect(lambda rid=run_id: self._on_row_clicked(rid))
             row.check_changed.connect(
-                lambda checked, rid=run_id: self._on_auto_row_check_changed(rid, checked),
+                lambda checked, rid=run_id: self._on_row_check_changed(rid, checked),
             )
             if selected_id and record.id == selected_id:
                 restore_id = record.id
@@ -525,56 +509,21 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             self._sync_active_run_highlight()
         self._update_action_buttons()
 
-    def _refresh_strategy_list(self) -> None:
-        main_engine = self._resolve_main_engine()
-        selected_id = None
-        current = self._selected_run()
-        if current is not None:
-            selected_id = current[0]
-        self._list.clear()
-        restore_row = -1
-        for record in _list_runs(main_engine, limit=40):
-            if not self._matches_mode(record, main_engine):
-                continue
-            if not self._matches_subfilter(record):
-                continue
-            title = _run_filter_label(record)
-            subtitle = f"{record.row_count} 条 · {record.created_at[5:16]}"
-            display = f"{title}\n{subtitle}"
-            item = QtWidgets.QListWidgetItem(display)
-            item.setData(_RUN_ID_ROLE, record.id)
-            item.setData(_RUN_CONDITION_ROLE, record.condition)
-            if _is_run_unread(main_engine, record.config):
-                font = item.font()
-                font.setBold(True)
-                item.setFont(font)
-                item.setForeground(QtGui.QColor("#7dd3fc"))
-            reason = record.config.get("reason_summary") or record.config.get("trigger", "")
-            item.setToolTip(f"{title}\nrun_id: {record.id}\n来源 {record.source} · 扫描 {record.total_scanned} · {record.created_at}\n{reason}")
-            self._list.addItem(item)
-            if selected_id and record.id == selected_id:
-                restore_row = self._list.count() - 1
-        if restore_row >= 0:
-            self._list.setCurrentRow(restore_row)
-        elif self._list.count() > 0:
-            self._list.setCurrentRow(0)
-        self._update_action_buttons()
-
-    def _on_auto_row_clicked(self, run_id: str) -> None:
+    def _on_row_clicked(self, run_id: str) -> None:
         if self._multi_select_mode:
             return
         self._current_run_id = run_id
         self._sync_active_run_highlight()
         self.run_selected.emit(run_id)
 
-    def _on_auto_row_check_changed(self, run_id: str, checked: bool) -> None:
+    def _on_row_check_changed(self, run_id: str, checked: bool) -> None:
         if checked:
             self._multi_checked_ids.add(run_id)
         else:
             self._multi_checked_ids.discard(run_id)
         self._update_multi_select_ui()
 
-    def _selected_auto_runs(self) -> list[tuple[str, str]]:
+    def _selected_runs(self) -> list[tuple[str, str]]:
         result: list[tuple[str, str]] = []
         for run_id in self._multi_checked_ids:
             row = self._rows_by_id.get(run_id)
@@ -583,15 +532,14 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         return result
 
     def _on_delete_selected(self) -> None:
-        if self._mode != "auto":
-            return
-        selected = self._selected_auto_runs()
+        selected = self._selected_runs()
         if not selected:
             return
         count = len(selected)
-        title_line = f"确定要删除选中的 {count} 条自动结果吗？"
+        kind = self._run_kind_label()
+        title_line = f"确定要删除选中的 {count} 条{kind}吗？"
         if count == 1:
-            title_line = f"确定要删除自动结果「{selected[0][1]}」？"
+            title_line = f"确定要删除{kind}「{selected[0][1]}」？"
         reply = QtWidgets.QMessageBox.question(
             self,
             "确认删除",
@@ -610,7 +558,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._set_multi_select_mode(False)
         self.refresh()
 
-    def _select_all_auto_runs(self) -> None:
+    def _select_all_runs(self) -> None:
         for run_id, row in self._rows_by_id.items():
             row.set_checked(True)
             self._multi_checked_ids.add(run_id)
@@ -620,21 +568,16 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         reply = QtWidgets.QMessageBox.question(
             self,
             "确认删除",
-            f"删除历史运行「{title}」？",
+            f"删除{self._run_kind_label()}「{title}」？",
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply != QtWidgets.QMessageBox.StandardButton.Yes:
             return
         _delete_run(self._resolve_main_engine(), run_id)
-        if self._mode == "auto" and self._current_run_id == run_id:
+        if self._current_run_id == run_id:
             self._current_run_id = None
         self.runs_deleted.emit([run_id])
         self.refresh()
-
-    def _on_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
-        run_id = item.data(_RUN_ID_ROLE)
-        if run_id:
-            self.run_selected.emit(str(run_id))
 
     def _copy_selected_run_id(self) -> None:
         selected = self._selected_run()
@@ -660,65 +603,47 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             raw = item.data(_RUN_ID_ROLE)
             run_id = str(raw) if raw else None
             condition = str(item.data(_RUN_CONDITION_ROLE) or "")
-            if self._mode == "auto" and run_id in self._rows_by_id:
+            if run_id in self._rows_by_id:
                 title = self._rows_by_id[run_id].title_text()
             else:
                 title = item.text().split("\n", 1)[0]
             if not condition:
                 condition = title
 
-        if self._mode == "auto":
-            selected = self._selected_auto_runs()
-            menu = QtWidgets.QMenu(self)
-            if self._multi_select_mode:
-                if selected:
-                    menu.addAction(
-                        f"删除选中的 {len(selected)} 条",
-                        self._on_delete_selected,
-                    )
-                menu.addAction("全选", self._select_all_auto_runs)
-                menu.addAction("取消多选", lambda: self._set_multi_select_mode(False))
-                menu.exec(self._list.mapToGlobal(pos))
-                return
-            enter_multi = menu.addAction("多选")
-            if run_id is not None:
-                menu.addSeparator()
-                copy_action = menu.addAction("复制 run_id")
-                ask_action = menu.addAction("发给 AI 解读")
-                menu.addSeparator()
-                delete_action = menu.addAction("删除")
-                action = menu.exec(self._list.mapToGlobal(pos))
-                if action is copy_action:
-                    QtWidgets.QApplication.clipboard().setText(run_id)
-                    self.copy_run_id_requested.emit(run_id, condition)
-                elif action is ask_action:
-                    self.ask_ai_requested.emit(run_id, condition)
-                elif action is delete_action:
-                    self._delete_run_with_confirm(run_id, title)
-                elif action is enter_multi:
-                    self._set_multi_select_mode(True, preselect_run_id=run_id)
-            else:
-                action = menu.exec(self._list.mapToGlobal(pos))
-                if action is enter_multi:
-                    self._set_multi_select_mode(True)
+        selected = self._selected_runs()
+        menu = QtWidgets.QMenu(self)
+        if self._multi_select_mode:
+            if selected:
+                menu.addAction(
+                    f"删除选中的 {len(selected)} 条",
+                    self._on_delete_selected,
+                )
+            menu.addAction("全选", self._select_all_runs)
+            menu.addAction("取消多选", lambda: self._set_multi_select_mode(False))
+            menu.exec(self._list.mapToGlobal(pos))
             return
 
-        if item is None or not run_id:
-            return
-        self._list.setCurrentItem(item)
-        menu = QtWidgets.QMenu(self)
-        copy_action = menu.addAction("复制 run_id")
-        ask_action = menu.addAction("发给 AI 解读")
-        menu.addSeparator()
-        delete_action = menu.addAction("删除")
-        action = menu.exec(self._list.mapToGlobal(pos))
-        if action is copy_action:
-            QtWidgets.QApplication.clipboard().setText(run_id)
-            self.copy_run_id_requested.emit(run_id, condition)
-        elif action is ask_action:
-            self.ask_ai_requested.emit(run_id, condition)
-        elif action is delete_action:
-            self._delete_run_with_confirm(run_id, title)
+        enter_multi = menu.addAction("多选")
+        if run_id is not None:
+            menu.addSeparator()
+            copy_action = menu.addAction("复制 run_id")
+            ask_action = menu.addAction("发给 AI 解读")
+            menu.addSeparator()
+            delete_action = menu.addAction("删除")
+            action = menu.exec(self._list.mapToGlobal(pos))
+            if action is copy_action:
+                QtWidgets.QApplication.clipboard().setText(run_id)
+                self.copy_run_id_requested.emit(run_id, condition)
+            elif action is ask_action:
+                self.ask_ai_requested.emit(run_id, condition)
+            elif action is delete_action:
+                self._delete_run_with_confirm(run_id, title)
+            elif action is enter_multi:
+                self._set_multi_select_mode(True, preselect_run_id=run_id)
+        else:
+            action = menu.exec(self._list.mapToGlobal(pos))
+            if action is enter_multi:
+                self._set_multi_select_mode(True)
 
 
 class ScreenerRunSidebar(QtWidgets.QWidget):

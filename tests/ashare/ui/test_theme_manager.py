@@ -92,6 +92,10 @@ class ThemeManagerTests(unittest.TestCase):
 
         panel = QtWidgets.QWidget()
         manager.bind_stylesheet(panel, extra=build_settings_stylesheet)
+        manager.set_theme("light")
+        self.assertEqual(manager.current(), "light")
+        self.assertIn(LIGHT_TOKENS.app_bg, panel.styleSheet())
+
         manager.set_theme("system")
         self.assertEqual(manager.current(), "system")
         expected = LIGHT_TOKENS if manager.resolved() == "light" else DARK_TOKENS
@@ -129,12 +133,12 @@ class ThemeManagerTests(unittest.TestCase):
         manager = theme_manager()
         self.assertEqual(manager.load_saved(), "system")
 
-    def test_load_saved_migrates_legacy_light_to_system(self) -> None:
+    def test_load_saved_accepts_light(self) -> None:
         settings = QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
         settings.setValue("ui_theme", "light")
         manager = theme_manager()
-        self.assertEqual(manager.load_saved(), "system")
-        self.assertEqual(manager.current(), "system")
+        self.assertEqual(manager.load_saved(), "light")
+        self.assertEqual(manager.current(), "light")
 
 
 if __name__ == "__main__":

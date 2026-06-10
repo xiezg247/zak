@@ -41,11 +41,9 @@ QToolButton#NavButton:checked {
 QWidget#NavBody {
     background-color: transparent;
 }
-QFrame#NavGroupSeparator {
-    background-color: #2a2a30;
-    max-height: 1px;
-    min-height: 1px;
-    margin: 6px 10px;
+QWidget#NavGroupSpacer {
+    background-color: transparent;
+    margin: 2px 0;
 }
 QTableWidget#MarketTable,
 QTableView#MarketTable {
