@@ -18,6 +18,7 @@ from vnpy_ashare.backtest.run_store import (
 from vnpy_ashare.app.events import EVENT_OPEN_BACKTEST, BacktestRequest
 from vnpy_ashare.screener.export import export_rows_to_csv
 from vnpy_ashare.ui.backtest.batch_backtest_table import BatchBacktestTableWidget, record_to_row
+from vnpy_common.ui.feedback import PageToastHost, confirm_action
 
 
 class BatchBacktestPageWidget(QtWidgets.QWidget):
@@ -97,6 +98,9 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([260, 900])
         root.addWidget(splitter, stretch=1)
+
+        self._toast = PageToastHost(self)
+        root.addWidget(self._toast)
 
     def refresh_sessions(self) -> None:
         current_id = self._current_batch_id
@@ -213,22 +217,23 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         if not path.lower().endswith(".csv"):
             path += ".csv"
         export_rows_to_csv([row.to_dict() for row in self._current_rows], path)
-        QtWidgets.QMessageBox.information(self, "提示", f"已导出：{path}")
+        self._toast.success(f"已导出 CSV：{path}")
 
     def _delete_current_batch(self) -> None:
         if not self._current_batch_id:
             return
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             self,
             "确认删除",
             "删除当前批次的全部回测记录？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="删除",
+            destructive=True,
+        ):
             return
         delete_batch(self._current_batch_id)
         self._current_batch_id = None
         self.refresh_sessions()
+        self._toast.success("批次已删除")
 
     def activate(self) -> None:
         self.refresh_sessions()

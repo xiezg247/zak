@@ -18,6 +18,7 @@ from vnpy_ashare.screener.recipe import (
     screen_recipe_from_config,
 )
 from vnpy_ashare.screener.recipe_store import delete_recipe, get_saved_recipe, save_recipe
+from vnpy_common.ui.feedback import confirm_action, page_notify
 
 _RECIPE_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 _BUILTIN_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -270,7 +271,7 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
                 recipe_id=recipe_id,
             )
         except ValueError as ex:
-            QtWidgets.QMessageBox.warning(self, "提示", str(ex))
+            page_notify(self, str(ex), level="warning")
             return
         self._reload_recipe_combo(saved.id)
 
@@ -279,13 +280,13 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
         if not recipe_id or bool(self._recipe_combo.currentData(_BUILTIN_ROLE)):
             return
         name = self._recipe_combo.currentText()
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             self,
             "确认删除",
             f"删除配方「{name}」？\n引用该配方的定时任务将失效。",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="删除",
+            destructive=True,
+        ):
             return
         delete_recipe(recipe_id)
         self._reload_recipe_combo(None)
@@ -294,7 +295,7 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
         try:
             recipe = self.build_runtime_recipe()
         except ValueError as ex:
-            QtWidgets.QMessageBox.warning(self, "提示", str(ex))
+            page_notify(self, str(ex), level="warning")
             return
         recipe_id = self.current_recipe_id() or recipe.recipe_id
         self.run_requested.emit(recipe, recipe_id)

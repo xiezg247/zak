@@ -10,6 +10,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_common.ai.access import build_quick_actions_for_panel, build_stock_completion_items, get_ai_context
 from vnpy_common.ai.protocol import QuickAction
 from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished
+from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.tools.labels import tool_display_name
@@ -710,7 +711,7 @@ class AiChatPanel(QtWidgets.QWidget):
         if not text:
             return
         if not self.engine.config.configured:
-            QtWidgets.QMessageBox.warning(self, "提示", "请先在 .env 中配置 LLM_API_KEY")
+            page_notify(self, "请先在 .env 中配置 LLM_API_KEY", level="warning")
             return
 
         self.input_box.clear()
@@ -953,13 +954,13 @@ class AiChatPanel(QtWidgets.QWidget):
     def _on_clear(self) -> None:
         if self._worker is not None and self._worker.isRunning():
             return
-        reply = QtWidgets.QMessageBox.question(
+        if confirm_action(
             self,
             "确认",
             "清空当前会话的所有消息？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="清空",
+            destructive=True,
+        ):
             self.engine.clear_session()
 
     def _on_new_session(self) -> None:
@@ -969,10 +970,10 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_show_sessions(self) -> None:
         if self._worker is not None and self._worker.isRunning():
-            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再切换会话")
+            page_notify(self, "请等待当前回复完成后再切换会话")
             return
         if self.engine.is_busy():
-            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再切换会话")
+            page_notify(self, "请等待当前回复完成后再切换会话")
             return
         show_ai_session_dialog(self.engine, self)
 
@@ -986,28 +987,24 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_reload_tools(self) -> None:
         if self._worker is not None and self._worker.isRunning():
-            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再重新加载")
+            page_notify(self, "请等待当前回复完成后再重新加载")
             return
         self.engine.reload_tools()
 
     def _on_reload_llm_config(self) -> None:
         if self._worker is not None and self._worker.isRunning():
-            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再重载配置")
+            page_notify(self, "请等待当前回复完成后再重载配置")
             return
         cfg = self.engine.reload_config()
         self._update_model_action()
         if cfg.configured:
-            QtWidgets.QMessageBox.information(
+            page_notify(
                 self,
-                "LLM 已重载",
-                f"模型：{cfg.model}\nAPI：{cfg.api_base}\nKey：{cfg.masked_key()}",
+                f"LLM 已重载：{cfg.model} · {cfg.api_base} · Key {cfg.masked_key()}",
+                level="success",
             )
         else:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "LLM 未配置",
-                "未检测到 LLM_API_KEY，请编辑 .env 后再次重载。",
-            )
+            page_notify(self, "未检测到 LLM_API_KEY，请编辑 .env 后再次重载。", level="warning")
 
     def _on_input_enter(self, newline: bool) -> None:
         if newline:

@@ -10,6 +10,7 @@ from vnpy_ashare.scheduler.config import AutoScreenJobConfig, JobConfig
 from vnpy_ashare.screener.recipe import list_recipe_catalog
 from vnpy_ashare.ui.quotes.quotes_config import SCHEDULER_UI_FALLBACK_REFRESH_MS
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.theme.build_extra import build_scheduler_table_stylesheet
 
 
@@ -416,7 +417,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         if self._scheduler is None:
             return
         if not self._scheduler.run_now(job_id):
-            QtWidgets.QMessageBox.information(self, "提示", "任务正在运行中，请稍后再试")
+            page_notify(self, "任务正在运行中，请稍后再试")
 
     def _open_settings(self, job_id: str) -> None:
         if self._scheduler is None:

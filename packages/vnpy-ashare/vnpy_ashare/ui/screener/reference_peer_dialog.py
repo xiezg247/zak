@@ -24,6 +24,7 @@ from vnpy_ashare.ui.screener.screener_results_table import (
     toggle_select_all_table_rows,
 )
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.feedback import page_notify
 from vnpy_ashare.ui.workers.reference_peer_worker import ReferencePeerWorker
 
 _RESULT_COLUMNS: list[tuple[str, str]] = [
@@ -218,7 +219,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         self._append_log(f"失败：{message}")
         self._summary_label.setText(message)
         self._set_running(False)
-        QtWidgets.QMessageBox.warning(self, "参考选股", message)
+        page_notify(self, message, level="warning", title="参考选股")
         self._cleanup_worker(worker)
 
     def _populate_results(self, rows: list[dict[str, Any]]) -> None:
@@ -253,7 +254,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
             return
         selected = iter_checked_table_rows(self._table)
         if not selected:
-            QtWidgets.QMessageBox.information(self, "提示", "请先勾选要加入自选的标的")
+            page_notify(self, "请先勾选要加入自选的标的")
             return
         added = skipped = 0
         for row in selected:

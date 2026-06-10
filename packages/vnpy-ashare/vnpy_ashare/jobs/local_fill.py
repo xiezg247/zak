@@ -141,6 +141,7 @@ def batch_fill_stale_daily_bars(
     progress: Callable[[BatchFillProgress], None] | None = None,
     end: datetime | None = None,
     max_workers: int | None = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> BatchFillResult:
     """对过期标的增量补全日 K（多 worker 并发，单 worker 时保留 delay）。"""
     if not items:
@@ -159,6 +160,8 @@ def batch_fill_stale_daily_bars(
     if workers <= 1:
         outcomes: list[_StaleFillOutcome] = []
         for index, item in enumerate(items, start=1):
+            if should_cancel is not None and should_cancel():
+                break
             outcome = _fill_stale_item(item, bar_meta, end=end)
             outcomes.append(outcome)
             if progress is not None:
@@ -316,6 +319,7 @@ def batch_fill_gap_daily_bars(
     progress: Callable[[BatchGapFillProgress], None] | None = None,
     as_of: date | None = None,
     max_workers: int | None = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> BatchGapFillResult:
     """扫描列表内日 K 并修复内部断层。"""
     candidates = [item for item in stocks if bar_meta.get((item.symbol, item.exchange)) is not None]
@@ -334,6 +338,8 @@ def batch_fill_gap_daily_bars(
     scanned = 0
 
     for index, item in enumerate(candidates, start=1):
+        if should_cancel is not None and should_cancel():
+            break
         label = format_vt_symbol_cn(item.symbol, item.exchange)
         if progress is not None:
             progress(BatchGapFillProgress("scan", index, len(candidates), label))
@@ -378,6 +384,8 @@ def batch_fill_gap_daily_bars(
     if workers <= 1:
         outcomes: list[_GapFixOutcome] = []
         for index, entry in enumerate(with_gaps_items, start=1):
+            if should_cancel is not None and should_cancel():
+                break
             outcome = _fix_gap_item(entry)
             outcomes.append(outcome)
             if progress is not None:

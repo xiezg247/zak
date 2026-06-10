@@ -48,6 +48,7 @@ from vnpy_ashare.ui.quotes.workers import (
     ScopeBarsLoadWorker,
 )
 from vnpy_ashare.ui.quotes.quotes_chart import AshareChartWidget, prepare_chart_bars
+from vnpy_common.ui.feedback import confirm_action
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
@@ -161,6 +162,8 @@ class LocalDataController:
         page = self._page
         if not page.config.show_batch_fill_button or not self.is_daily_scope():
             return
+        if page._task_guard.active:
+            return
         if page._thread_active(page._download_worker) or self._batch_worker_active():
             return
 
@@ -170,19 +173,22 @@ class LocalDataController:
             return
 
         stale_count = count_stale_daily_items(page.all_stocks, page.bar_meta)
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             page,
             "批量补全过期日 K",
             f"将为 {stale_count} 只过期标的增量补全日 K 到最新交易日，可能耗时较长。\n\n是否继续？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="开始补全",
+        ):
             return
 
-        page._set_busy(True)
+        page._begin_cancellable_task(
+            f"批量补全过期日 K（0/{len(items)}）…",
+            worker_attr="_batch_fill_worker",
+            primary=page.batch_fill_button,
+            primary_text="批量补全过期",
+            primary_handler=page.batch_fill_stale,
+        )
         self.update_batch_toolbar_buttons()
-        page.status_label.setText(f"批量补全过期日 K（0/{len(items)}）...")
         begin_run_log(page, f"批量补全过期日 K · {len(items)} 只")
 
         worker = BatchFillWorker(items, dict(page.bar_meta))
@@ -193,12 +199,16 @@ class LocalDataController:
                 return
             line = f"({progress.current}/{progress.total}) {progress.label}"
             page.status_label.setText(f"批量补全 {line}...")
+            page._task_guard.update_message(f"批量补全 {line}…")
             append_run_log(page, line)
 
         def on_finished(result: object) -> None:
             if page._batch_fill_worker is worker:
                 page._batch_fill_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="批量补全已取消"):
+                fail_run_log(page, "已取消")
+                self.update_batch_toolbar_buttons()
+                return
             self.refresh_meta()
             page.apply_filter()
             if page.current_item is not None and self.is_daily_scope():
@@ -207,6 +217,7 @@ class LocalDataController:
             self.update_batch_toolbar_buttons()
             if isinstance(result, BatchFillResult):
                 page.status_label.setText(result.message)
+                page._toast.success(result.message)
                 detail = None
                 if result.failed:
                     preview = "、".join(result.failed[:8])
@@ -217,9 +228,13 @@ class LocalDataController:
         def on_failed(msg: str) -> None:
             if page._batch_fill_worker is worker:
                 page._batch_fill_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="批量补全已取消"):
+                fail_run_log(page, "已取消")
+                self.update_batch_toolbar_buttons()
+                return
             self.update_batch_toolbar_buttons()
             page.status_label.setText(f"批量补全失败: {msg}")
+            page._toast.error(msg)
             fail_run_log(page, msg)
 
         worker.progress.connect(on_progress)
@@ -233,6 +248,8 @@ class LocalDataController:
         page = self._page
         if not page.config.show_batch_gap_fill_button or not self.is_daily_scope():
             return
+        if page._task_guard.active:
+            return
         if page._thread_active(page._download_worker) or self._batch_worker_active():
             return
 
@@ -241,19 +258,22 @@ class LocalDataController:
             self.update_batch_toolbar_buttons()
             return
 
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             page,
             "批量修复断层",
             f"将扫描列表内 {scannable} 只日 K 的内部断层并下载缺失区间，可能耗时较长。\n\n是否继续？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="开始修复",
+        ):
             return
 
-        page._set_busy(True)
+        page._begin_cancellable_task(
+            f"扫描断层（0/{scannable}）…",
+            worker_attr="_batch_gap_fill_worker",
+            primary=page.batch_gap_fill_button,
+            primary_text="批量修复断层",
+            primary_handler=page.batch_fill_gaps,
+        )
         self.update_batch_toolbar_buttons()
-        page.status_label.setText(f"扫描断层（0/{scannable}）...")
         begin_run_log(page, f"批量修复断层 · 扫描 {scannable} 只")
 
         worker = BatchGapFillWorker(page.all_stocks, dict(page.bar_meta))
@@ -265,12 +285,16 @@ class LocalDataController:
             phase_label = "扫描断层" if progress.phase == "scan" else "修复断层"
             line = f"{phase_label} ({progress.current}/{progress.total}) {progress.label}"
             page.status_label.setText(f"{line}...")
+            page._task_guard.update_message(f"{line}…")
             append_run_log(page, line)
 
         def on_finished(result: object) -> None:
             if page._batch_gap_fill_worker is worker:
                 page._batch_gap_fill_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="批量修复已取消"):
+                fail_run_log(page, "已取消")
+                self.update_batch_toolbar_buttons()
+                return
             self.refresh_meta()
             page.apply_filter()
             if page.current_item is not None and self.is_daily_scope():
@@ -279,6 +303,7 @@ class LocalDataController:
             self.update_batch_toolbar_buttons()
             if isinstance(result, BatchGapFillResult):
                 page.status_label.setText(result.message)
+                page._toast.success(result.message)
                 detail = None
                 if result.failed:
                     preview = "、".join(result.failed[:8])
@@ -289,9 +314,13 @@ class LocalDataController:
         def on_failed(msg: str) -> None:
             if page._batch_gap_fill_worker is worker:
                 page._batch_gap_fill_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="批量修复已取消"):
+                fail_run_log(page, "已取消")
+                self.update_batch_toolbar_buttons()
+                return
             self.update_batch_toolbar_buttons()
             page.status_label.setText(f"批量修复断层失败: {msg}")
+            page._toast.error(msg)
             fail_run_log(page, msg)
 
         worker.progress.connect(on_progress)
@@ -557,14 +586,13 @@ class LocalDataController:
         scope_label = self.scope_label()
         label = format_vt_symbol_cn(item.symbol, item.exchange)
         display = f"{item.name}（{label}）" if item.name else label
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             page,
             "删除本地数据",
             f"确定删除 {display} 的本地{scope_label}？\n\n此操作不可恢复。",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="删除",
+            destructive=True,
+        ):
             return
 
         begin_run_log(page, f"删除本地{scope_label} · {display}")
@@ -593,11 +621,20 @@ class LocalDataController:
         page._update_action_buttons()
         summary = f"已删除 {display} 的本地{scope_label}"
         page.status_label.setText(summary)
+        page._toast.success(summary)
         complete_run_log(page, summary)
+
+    @staticmethod
+    def _download_primary(page: QuotesPage, action_label: str) -> tuple[QtWidgets.QPushButton, str, object]:
+        if action_label == "补全":
+            return page.fill_button, "补全", page.fill_selected
+        if action_label == "重新下载":
+            return page.redownload_button, "重新下载", page.redownload_selected
+        return page.download_button, page.download_button.text(), page.download_selected
 
     def run_minute_download(self, *, mode: str = "full", action_label: str = "下载") -> None:
         page = self._page
-        if not page.current_item or page._thread_active(page._download_worker):
+        if page._task_guard.active or not page.current_item or page._thread_active(page._download_worker):
             return
         if page.chart_panel is None and not page.config.use_local_table:
             return
@@ -611,11 +648,18 @@ class LocalDataController:
             period = page.chart_panel.current_period()
             period_label = page.chart_panel.current_period_label()
 
-        page._set_busy(True)
         if mode == "incremental":
-            status_text = f"{action_label} {label} {period_label}..."
+            status_text = f"{action_label} {label} {period_label}…"
         else:
-            status_text = f"{action_label} {label} {period_label}（近{DEFAULT_MINUTE_DOWNLOAD_MONTHS}个月）..."
+            status_text = f"{action_label} {label} {period_label}（近{DEFAULT_MINUTE_DOWNLOAD_MONTHS}个月）…"
+        primary, primary_text, primary_handler = self._download_primary(page, action_label)
+        page._begin_cancellable_task(
+            status_text,
+            worker_attr="_download_worker",
+            primary=primary,
+            primary_text=primary_text,
+            primary_handler=primary_handler,
+        )
         page.status_label.setText(status_text)
         if page.config.show_run_output_panel:
             begin_run_log(page, f"{action_label} {label} {period_label}")
@@ -628,7 +672,10 @@ class LocalDataController:
         def on_finished(count: int) -> None:
             if page._download_worker is worker:
                 page._download_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message=f"{action_label}已取消"):
+                if page.config.show_run_output_panel:
+                    fail_run_log(page, "已取消")
+                return
             if page.config.use_local_table:
                 self.refresh_meta()
                 page.apply_filter()
@@ -643,14 +690,19 @@ class LocalDataController:
             else:
                 summary = f"{label} {action_label}完成，新增 {count} 根"
             page.status_label.setText(summary)
+            page._toast.success(summary)
             if page.config.show_run_output_panel:
                 complete_run_log(page, summary)
 
         def on_failed(msg: str) -> None:
             if page._download_worker is worker:
                 page._download_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message=f"{action_label}已取消"):
+                if page.config.show_run_output_panel:
+                    fail_run_log(page, "已取消")
+                return
             page.status_label.setText(f"{action_label}分K失败: {msg}")
+            page._toast.error(msg)
             if page.config.show_run_output_panel:
                 fail_run_log(page, msg)
 
@@ -662,13 +714,21 @@ class LocalDataController:
 
     def run_download(self, *, mode: str, action_label: str) -> None:
         page = self._page
-        if not page.current_item or page._thread_active(page._download_worker):
+        if page._task_guard.active or not page.current_item or page._thread_active(page._download_worker):
             return
 
         item = page.current_item
         label = format_vt_symbol_cn(item.symbol, item.exchange)
-        page._set_busy(True)
-        page.status_label.setText(f"{action_label} {label} 日K...")
+        status_text = f"{action_label} {label} 日K…"
+        primary, primary_text, primary_handler = self._download_primary(page, action_label)
+        page._begin_cancellable_task(
+            status_text,
+            worker_attr="_download_worker",
+            primary=primary,
+            primary_text=primary_text,
+            primary_handler=primary_handler,
+        )
+        page.status_label.setText(status_text)
         if page.config.show_run_output_panel:
             begin_run_log(page, f"{action_label} {label} 日K")
 
@@ -680,12 +740,15 @@ class LocalDataController:
         def on_finished(count: int) -> None:
             if page._download_worker is worker:
                 page._download_worker = None
+            if page._finish_cancellable_task(cancelled_message=f"{action_label}已取消"):
+                if page.config.show_run_output_panel:
+                    fail_run_log(page, "已取消")
+                return
             self.refresh_meta()
             page.apply_filter()
             page.show_kline(item)
             if page.config.show_fill_button and self.is_daily_scope():
                 self.check_bar_gaps(item)
-            page._set_busy(False)
             if mode == "incremental" and count == 0:
                 summary = f"{label} 已是最新，无新增 K 线"
             elif action_label == "下载":
@@ -693,14 +756,19 @@ class LocalDataController:
             else:
                 summary = f"{label} {action_label}完成，新增 {count} 根日K"
             page.status_label.setText(summary)
+            page._toast.success(summary)
             if page.config.show_run_output_panel:
                 complete_run_log(page, summary)
 
         def on_failed(msg: str) -> None:
             if page._download_worker is worker:
                 page._download_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message=f"{action_label}已取消"):
+                if page.config.show_run_output_panel:
+                    fail_run_log(page, "已取消")
+                return
             page.status_label.setText(f"{action_label}失败: {msg}")
+            page._toast.error(msg)
             if page.config.show_run_output_panel:
                 fail_run_log(page, msg)
 

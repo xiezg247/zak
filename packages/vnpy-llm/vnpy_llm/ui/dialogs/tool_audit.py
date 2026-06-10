@@ -10,6 +10,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.tools.audit import list_recent_tool_calls
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.feedback import page_notify
 from vnpy_llm.ui.themed_styles import bind_ai_tools_dialog_style
 
 _TOOL_LABELS: dict[str, str] = {
@@ -199,7 +200,7 @@ class AiToolAuditDialog(QtWidgets.QDialog):
     def _copy_detail(self) -> None:
         text = self.detail.toPlainText().strip()
         if not text:
-            QtWidgets.QMessageBox.information(self, "提示", "请先选中一条审计记录")
+            page_notify(self, "请先选中一条审计记录")
             return
         QtWidgets.QApplication.clipboard().setText(text)
 

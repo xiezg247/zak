@@ -61,6 +61,7 @@ from vnpy_ashare.ui.quotes.quotes_config import (
     save_market_auto_refresh_pref,
 )
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.feedback import TaskGuard
 
 
 class QuotesPage(QtWidgets.QWidget):
@@ -179,6 +180,9 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_cache_sync_timer.timeout.connect(self._loader.flush_market_cache_sync)
 
         self._init_ui()
+        self._task_guard = TaskGuard(self._toast)
+        self._task_lock_table = True
+        self._active_worker_attr: str | None = None
         theme_manager().register_callback(self._on_theme_changed)
 
     def _on_theme_changed(self, _tokens) -> None:
@@ -236,6 +240,12 @@ class QuotesPage(QtWidgets.QWidget):
             self.chart_panel.set_active(False)
         self._stream.stop()
         self._quote_timer.stop()
+        for attr in ("_download_worker", "_batch_fill_worker", "_batch_gap_fill_worker"):
+            worker = getattr(self, attr, None)
+            if worker is not None and hasattr(worker, "request_cancel"):
+                worker.request_cancel()
+        self._task_guard.end()
+        self._set_busy(False, lock_table=self._task_lock_table)
         for attr in (
             "_load_worker",
             "_market_worker",
@@ -664,6 +674,88 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _run_download(self, *, mode: str, action_label: str) -> None:
         self._local.run_download(mode=mode, action_label=action_label)
+
+    def _collect_busy_widgets(self, *, lock_table: bool = True) -> list[QtWidgets.QWidget]:
+        widgets: list[QtWidgets.QWidget] = [self.search_edit]
+        if self.config.use_local_table:
+            widgets.append(self.local_period_combo)
+        if self.config.show_board_filter:
+            widgets.append(self.board_combo)
+        if self.config.use_market_rank:
+            widgets.append(self.refresh_quotes_button)
+        if self.config.show_sync_button:
+            widgets.append(self.sync_button)
+        for name in (
+            "download_button",
+            "fill_button",
+            "redownload_button",
+            "delete_local_button",
+            "batch_fill_button",
+            "batch_gap_fill_button",
+            "add_watchlist_button",
+            "remove_watchlist_button",
+            "move_watchlist_up_button",
+            "move_watchlist_down_button",
+            "backtest_button",
+            "batch_backtest_button",
+            "diagnose_button",
+        ):
+            button = getattr(self, name, None)
+            if button is not None:
+                widgets.append(button)
+        if lock_table and self.config.use_market_rank and not self.config.market_full_list:
+            for name in (
+                "home_button",
+                "prev_page_button",
+                "next_page_button",
+                "end_button",
+                "page_jump_input",
+            ):
+                control = getattr(self, name, None)
+                if control is not None:
+                    widgets.append(control)
+        return widgets
+
+    def _begin_cancellable_task(
+        self,
+        message: str,
+        *,
+        worker_attr: str,
+        primary: QtWidgets.QPushButton | None = None,
+        primary_text: str = "",
+        primary_handler=None,
+        lock_table: bool = True,
+    ) -> None:
+        self._active_worker_attr = worker_attr
+        self._task_lock_table = lock_table
+        self._set_busy(True, lock_table=lock_table)
+
+        def on_cancel() -> None:
+            worker = getattr(self, worker_attr, None)
+            if worker is not None and hasattr(worker, "request_cancel"):
+                worker.request_cancel()
+
+        self._task_guard.begin(
+            message,
+            widgets=self._collect_busy_widgets(lock_table=lock_table),
+            primary=primary,
+            primary_text=primary_text,
+            primary_handler=primary_handler,
+            on_cancel=on_cancel,
+        )
+
+    def _end_cancellable_task(self) -> bool:
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        self._set_busy(False, lock_table=self._task_lock_table)
+        self._active_worker_attr = None
+        return cancelled
+
+    def _finish_cancellable_task(self, *, cancelled_message: str = "任务已取消") -> bool:
+        if self._end_cancellable_task():
+            self._toast.info(cancelled_message)
+            return True
+        return False
 
     def _set_busy(self, busy: bool, *, lock_table: bool = True) -> None:
         self.search_edit.setEnabled(not busy)

@@ -12,6 +12,7 @@ from vnpy_ashare.config.schema import (
     normalize_database_name,
 )
 from vnpy_common.paths import ENV_FILE
+from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_ashare.ui.shell.fonts import (
     available_font_families,
     resolve_font_family,
@@ -533,10 +534,10 @@ class SettingsDialog(QtWidgets.QDialog):
 
     def _save(self) -> None:
         path = save_runtime_settings(self._collect_updates())
-        QtWidgets.QMessageBox.information(
+        page_notify(
             self,
-            "已保存",
             f"配置已写入 {path}\n字体、K 线存储等项需重启应用后生效。",
+            level="success",
         )
         self.accept()
 
@@ -546,38 +547,32 @@ class SettingsDialog(QtWidgets.QDialog):
         if parent is not None and hasattr(parent, "_get_llm_engine"):
             engine = parent._get_llm_engine()
         if engine is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "LLM 引擎未加载")
+            page_notify(self, "LLM 引擎未加载", level="warning")
             return
         cfg = engine.reload_config()
         if cfg.configured:
-            QtWidgets.QMessageBox.information(
+            page_notify(
                 self,
-                "LLM 已重载",
-                f"模型：{cfg.model}\nAPI：{cfg.api_base}\nKey：{cfg.masked_key()}",
+                f"LLM 已重载：{cfg.model} · {cfg.api_base} · Key {cfg.masked_key()}",
+                level="success",
             )
         else:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "LLM 未配置",
-                "未检测到 LLM_API_KEY，请编辑 .env 后再次重载。",
-            )
+            page_notify(self, "未检测到 LLM_API_KEY，请编辑 .env 后再次重载。", level="warning")
 
     def _sync_from_env(self) -> None:
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             self,
             "从 .env 同步",
             f"将用 .env 重建 {SETTING_FILE.name}，并覆盖当前运行时配置。\n是否继续？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="同步",
+        ):
             return
         path = sync_vt_settings_from_env(backup=True)
         self.refresh()
-        QtWidgets.QMessageBox.information(
+        page_notify(
             self,
-            "同步完成",
             f"已从 .env 写入 {path}\n字体、K 线存储等项需重启应用后生效；大模型项可点「重载 LLM」立即应用。",
+            level="success",
         )
 
 

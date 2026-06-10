@@ -17,6 +17,7 @@ from vnpy_ashare.screener.batch_actions import (
     persist_batch_backtest_results,
 )
 from vnpy_common.ui.qt_helpers import release_thread
+from vnpy_common.ui.feedback import page_notify
 from vnpy_ashare.ui.screener.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.workers import ScreenerBatchBacktestWorker
 
@@ -70,13 +71,13 @@ class BatchBacktestFlow:
         if self.is_running():
             return
         if not rows:
-            QtWidgets.QMessageBox.information(self.parent, "提示", "没有可批量回测的标的")
+            page_notify(self.parent, "没有可批量回测的标的")
             return
         if self.main_engine is None:
-            QtWidgets.QMessageBox.warning(self.parent, "批量回测", "主引擎未就绪")
+            page_notify(self.parent, "主引擎未就绪", level="warning", title="批量回测")
             return
         if self.event_engine is None:
-            QtWidgets.QMessageBox.warning(self.parent, "批量回测", "事件引擎未就绪")
+            page_notify(self.parent, "事件引擎未就绪", level="warning", title="批量回测")
             return
 
         strategies = list_strategies() if list_strategies is not None else self._default_strategies()
@@ -104,7 +105,7 @@ class BatchBacktestFlow:
                 capital=defaults.capital,
             )
         except ValueError:
-            QtWidgets.QMessageBox.warning(self.parent, "提示", "日期格式应为 YYYY-MM-DD")
+            page_notify(self.parent, "日期格式应为 YYYY-MM-DD", level="warning")
             return
 
         self._last_params = params
@@ -176,4 +177,4 @@ class BatchBacktestFlow:
         if on_running is not None:
             on_running(False)
         self._on_status(message)
-        QtWidgets.QMessageBox.warning(self.parent, "批量回测", message)
+        page_notify(self.parent, message, level="warning", title="批量回测")

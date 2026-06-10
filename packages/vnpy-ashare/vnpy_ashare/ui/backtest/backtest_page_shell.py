@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_common.ui.feedback import PageToastHost
+
 if TYPE_CHECKING:
     from vnpy_ashare.ui.backtest.backtest_widget import BacktesterWidget
 
@@ -168,3 +170,6 @@ class BacktestPageShell:
         bottom_split.setSizes([360, 240])
 
         root.addWidget(main_split, stretch=1)
+
+        page._toast = PageToastHost(page)
+        root.addWidget(page._toast)

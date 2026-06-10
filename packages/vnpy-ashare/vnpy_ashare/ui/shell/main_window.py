@@ -39,13 +39,14 @@ from vnpy_ashare.ui.screener.auto_screener_page import AutoScreenerPageWidget
 from vnpy_ashare.ui.backtest.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_common.paths import QSETTINGS_ORG
-from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, APP_NAV_GROUPS, SidebarNav
+from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, APP_NAV_GROUPS, NAV_SHORTCUTS, SidebarNav
 from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
 from vnpy_ashare.ui.screener.screener_confirm_dialog import show_screener_confirm_dialog
 from vnpy_ashare.ui.screener.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.shell.settings_dialog import show_settings_dialog
+from vnpy_common.ui.feedback import PageToastHost, page_notify
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.app.engine import APP_NAME as LLM_APP_NAME
 from vnpy_llm.app.engine import LlmEngine
@@ -59,6 +60,8 @@ _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
 }
 
 _DEFERRED_PAGE_KEYS = frozenset({"cta_backtest", "data_manager", "batch_backtest"})
+
+_AI_NOT_LOADED_MSG = "AI 助手未加载，请确认已安装并启用 vnpy_llm"
 
 _VNPY_WIDGETS: dict[str, tuple[str, str]] = {
     "cta_backtest": ("vnpy_ashare.ui.backtest.backtest_widget", "BacktesterWidget"),
@@ -158,6 +161,10 @@ class AshareMainWindow(MainWindow):
         audit_action = tools_menu.addAction("AI 工具审计…")
         audit_action.triggered.connect(self._open_ai_tool_audit_dialog)
 
+        help_menu = bar.addMenu("帮助")
+        shortcuts_action = help_menu.addAction("键盘快捷键…")
+        shortcuts_action.triggered.connect(self._show_shortcuts_help)
+
         theme_menu = bar.addMenu("主题")
         theme_group = QtGui.QActionGroup(self)
         theme_group.setExclusive(True)
@@ -230,10 +237,23 @@ class AshareMainWindow(MainWindow):
         self._theme_manager.apply()
 
         self.setCentralWidget(shell)
+        self._toast = PageToastHost(self)
+        self.setStatusBar(self._toast)
         self._init_floating_ai(shell)
         self._bind_scheduler_notifications()
         self._schedule_deferred_scheduler_start()
         self._show_page(0)
+
+    def _show_shortcuts_help(self) -> None:
+        lines = [
+            "页面切换",
+            *(f"  {NAV_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}" for entry in APP_NAV_ENTRIES[:10]),
+            "",
+            "全局",
+            "  Ctrl+F    聚焦当前页搜索框",
+            "  Ctrl+L    显示/隐藏 AI 悬浮球",
+        ]
+        QtWidgets.QMessageBox.information(self, "键盘快捷键", "\n".join(lines))
 
     def _bind_nav_shortcuts(self) -> None:
         """Ctrl+1~9 / Ctrl+0 切换侧栏页面；Ctrl+F 聚焦行情搜索。"""
@@ -318,14 +338,14 @@ class AshareMainWindow(MainWindow):
     def _open_ai_tools_dialog(self) -> None:
         llm_engine = self._get_llm_engine()
         if llm_engine is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+            page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
             return
         show_ai_tools_dialog(llm_engine, self)
 
     def _open_ai_tool_audit_dialog(self) -> None:
         llm_engine = self._get_llm_engine()
         if llm_engine is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+            page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
             return
         show_ai_tool_audit_dialog(llm_engine, self)
 
@@ -353,7 +373,7 @@ class AshareMainWindow(MainWindow):
     def _ensure_floating_ai(self) -> bool:
         if self._init_floating_ai():
             return True
-        QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+        page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
         return False
 
     def _toggle_floating_orb(self) -> None:
@@ -374,7 +394,7 @@ class AshareMainWindow(MainWindow):
     def _open_ai_page(self) -> None:
         llm_engine = self._get_llm_engine()
         if llm_engine is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+            page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
             return
         llm_engine.open_session_for_ask(surface="assistant")
         index = self._nav_index_for_key("ai_assistant")
@@ -467,7 +487,7 @@ class AshareMainWindow(MainWindow):
         if data.use_full_page:
             llm_engine = self._get_llm_engine()
             if llm_engine is None:
-                QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+                page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
                 return
             llm_engine.open_session_for_ask(
                 surface="assistant",
@@ -497,7 +517,7 @@ class AshareMainWindow(MainWindow):
     def _on_nav_changed(self, index: int) -> None:
         entry = self.sidebar.entry_at(index)
         if entry.key == "ai_assistant" and self._get_llm_engine() is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "AI 助手未加载，请确认已安装并启用 vnpy_llm")
+            page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
             if self._current_key:
                 prev = self._nav_index_for_key(self._current_key)
                 if prev is not None:

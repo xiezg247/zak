@@ -38,7 +38,7 @@ from vnpy_ashare.ui.screener.screener_results_table import (
 from vnpy_ashare.ui.screener.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.workers import ScreenerBatchDownloadWorker, ScreenerRunWorker
-from vnpy_common.ui.feedback import PageToastHost, TaskGuard
+from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action
 
 _SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
@@ -750,13 +750,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if not scheme_id:
             self._toast.info("请先选择「我的 · …」方案")
             return
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             self,
             "确认删除",
             f"删除方案「{self.preset_combo.currentText()}」？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="删除",
+            destructive=True,
+        ):
             return
         service = self._screening_service()
         if service is None:

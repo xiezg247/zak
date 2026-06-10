@@ -189,6 +189,10 @@ class TaskGuard:
         self._on_cancel = None
         self._toast.hide_task()
 
+    def update_message(self, message: str) -> None:
+        if self._active:
+            self._toast.update_task(message)
+
     def _trigger_cancel(self) -> None:
         if not self._active or self._cancelled:
             return
@@ -208,3 +212,90 @@ class TaskGuard:
         self._primary = None
         self._primary_text = ""
         self._primary_handler = None
+
+
+class ConfirmDialog(QtWidgets.QDialog):
+    """统一样式的确认对话框（破坏性操作等）。"""
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None,
+        title: str,
+        message: str,
+        *,
+        confirm_text: str = "确定",
+        cancel_text: str = "取消",
+        destructive: bool = False,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setMinimumWidth(400)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        label = QtWidgets.QLabel(message)
+        label.setWordWrap(True)
+        layout.addWidget(label)
+
+        buttons = QtWidgets.QDialogButtonBox()
+        cancel_btn = buttons.addButton(cancel_text, QtWidgets.QDialogButtonBox.ButtonRole.RejectRole)
+        confirm_btn = buttons.addButton(confirm_text, QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole)
+        if destructive:
+            confirm_btn.setObjectName("DangerButton")
+        else:
+            confirm_btn.setObjectName("PrimaryRunButton")
+        cancel_btn.setObjectName("SecondaryButton")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        theme_manager().bind_stylesheet(self)
+
+
+def confirm_action(
+    parent: QtWidgets.QWidget | None,
+    title: str,
+    message: str,
+    *,
+    confirm_text: str = "确定",
+    cancel_text: str = "取消",
+    destructive: bool = False,
+) -> bool:
+    dialog = ConfirmDialog(
+        parent,
+        title,
+        message,
+        confirm_text=confirm_text,
+        cancel_text=cancel_text,
+        destructive=destructive,
+    )
+    return dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+
+
+def find_page_toast(widget: QtWidgets.QWidget | None) -> PageToastHost | None:
+    """沿父链查找页面级 Toast。"""
+    current = widget
+    while current is not None:
+        toast = getattr(current, "_toast", None)
+        if isinstance(toast, PageToastHost):
+            return toast
+        current = current.parentWidget()
+    return None
+
+
+def page_notify(
+    widget: QtWidgets.QWidget | None,
+    message: str,
+    *,
+    level: str = "info",
+    title: str = "提示",
+) -> None:
+    """优先 Toast，找不到则回退模态提示。"""
+    toast = find_page_toast(widget)
+    if toast is not None:
+        notifier = getattr(toast, level, toast.info)
+        notifier(message)
+        return
+    if level in ("error", "warning"):
+        QtWidgets.QMessageBox.warning(widget, title, message)
+    else:
+        QtWidgets.QMessageBox.information(widget, title, message)

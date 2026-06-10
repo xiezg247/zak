@@ -13,6 +13,7 @@ from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft_store import cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.runner import ScreenerRunResult
 from vnpy_ashare.ui.workers import ScreenerRunWorker
+from vnpy_common.ui.feedback import page_notify
 from vnpy_llm.app.engine import LlmEngine
 
 
@@ -100,7 +101,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
     def _on_edit_in_page(self) -> None:
         draft = get_draft(self.draft_id)
         if draft is None or draft.status != "pending":
-            QtWidgets.QMessageBox.warning(self, "提示", "草案已失效，请重新描述选股条件。")
+            page_notify(self, "草案已失效，请重新描述选股条件。", level="warning")
             return
         cancel_draft(self.draft_id)
         put_ai_action(
@@ -122,7 +123,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
     def _on_confirm(self) -> None:
         draft = consume_draft(self.draft_id)
         if draft is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "草案已过期或已被处理，请重新描述选股条件。")
+            page_notify(self, "草案已过期或已被处理，请重新描述选股条件。", level="warning")
             self.reject()
             return
         self._consumed_draft = draft
@@ -152,7 +153,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
         draft = self._consumed_draft
         service = get_screening_service(self.main_engine)
         if service is None:
-            QtWidgets.QMessageBox.warning(self, "选股失败", "选股服务未就绪")
+            page_notify(self, "选股服务未就绪", level="warning", title="选股失败")
             self.reject()
             return
         extra_config = service.build_scheme_config(draft.request) if draft else {}
@@ -170,7 +171,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
 
     def _on_run_failed(self, message: str) -> None:
         self._worker = None
-        QtWidgets.QMessageBox.warning(self, "选股失败", message)
+        page_notify(self, message, level="warning", title="选股失败")
         self.reject()
 
 

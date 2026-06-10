@@ -9,6 +9,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import QuickAction
 from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_common.ui.feedback import page_notify
 from vnpy_ashare.ai.context_store import get_ai_context
 from vnpy_ashare.app.events import AskAiRequest
 from vnpy_llm.app.engine import LlmEngine
@@ -103,9 +104,8 @@ class FloatingAiController(QtCore.QObject):
             self.return_from_fullscreen()
             return
         if page_key and not self.is_page_allowed(page_key):
-            QtWidgets.QMessageBox.information(
+            page_notify(
                 self._host,
-                "提示",
                 "AI 悬浮球仅在自选、市场、本地、策略选股、自动选股页可用。",
             )
             return
@@ -287,7 +287,7 @@ class FloatingAiController(QtCore.QObject):
 
     def _on_new_session(self) -> None:
         if self._engine.is_busy():
-            QtWidgets.QMessageBox.information(self._host, "提示", "请等待当前回复完成后再新建会话")
+            page_notify(self._host, "请等待当前回复完成后再新建会话")
             return
         self._engine.new_session(surface="floating")
         self.show_panel()

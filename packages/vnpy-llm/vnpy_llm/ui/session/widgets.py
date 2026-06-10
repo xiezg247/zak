@@ -7,6 +7,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.chat.store import ChatSession
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
+from vnpy_common.ui.feedback import confirm_action, page_notify
 
 _SESSION_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
@@ -330,13 +331,14 @@ class AiSessionListWidget(QtWidgets.QWidget):
         title_line = f"确定要删除选中的 {count} 个会话及其全部消息吗？"
         if count == 1:
             title_line = f"确定要删除会话「{selected[0][1]}」及其全部消息吗？"
-        reply = QtWidgets.QMessageBox.question(
+        detail = title_line + ("\n\n" + "\n".join(f"  · {title}" for _, title in selected) if count > 1 else "")
+        if not confirm_action(
             self,
             "确认删除",
-            title_line + ("\n\n" + "\n".join(f"  · {title}" for _, title in selected) if count > 1 else ""),
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            detail,
+            confirm_text="删除",
+            destructive=True,
+        ):
             return
         for session_id, _ in selected:
             self.engine.delete_session(session_id)
@@ -346,7 +348,7 @@ class AiSessionListWidget(QtWidgets.QWidget):
         if self._multi_select_mode:
             return
         if self.engine.is_busy():
-            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再切换会话")
+            page_notify(self, "请等待当前回复完成后再切换会话")
             return
         self.engine.switch_session(session_id)
         self._sync_active_session_highlight()
@@ -371,7 +373,7 @@ class AiSessionListWidget(QtWidgets.QWidget):
 
     def _on_new_session(self) -> None:
         if self.engine.is_busy():
-            QtWidgets.QMessageBox.information(self, "提示", "请等待当前回复完成后再新建会话")
+            page_notify(self, "请等待当前回复完成后再新建会话")
             return
         self.engine.new_session()
 
@@ -434,13 +436,13 @@ class AiSessionListWidget(QtWidgets.QWidget):
             self.engine.rename_session(session_id, text.strip())
 
     def _delete_session(self, session_id: str, title: str) -> None:
-        reply = QtWidgets.QMessageBox.question(
+        if confirm_action(
             self,
             "确认删除",
             f"删除会话「{title}」及其全部消息？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="删除",
+            destructive=True,
+        ):
             self.engine.delete_session(session_id)
 
 

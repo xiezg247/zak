@@ -59,6 +59,19 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(
     entry for group in APP_NAV_GROUPS for entry in group.entries
 )
 
+NAV_SHORTCUTS: dict[str, str] = {
+    "watchlist": "Ctrl+1",
+    "market": "Ctrl+2",
+    "local": "Ctrl+3",
+    "screener": "Ctrl+4",
+    "auto_screener": "Ctrl+5",
+    "ai_assistant": "Ctrl+6",
+    "cta_backtest": "Ctrl+7",
+    "batch_backtest": "Ctrl+8",
+    "scheduler": "Ctrl+9",
+    "data_manager": "Ctrl+0",
+}
+
 
 def _tinted_icon(
     draw: Callable[[QtGui.QPainter, int], None],
@@ -210,6 +223,9 @@ class NavButton(QtWidgets.QToolButton):
         self.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.setIconSize(QtCore.QSize(28, 28))
         self.setText(entry.label)
+        shortcut = NAV_SHORTCUTS.get(entry.key, "")
+        if shortcut:
+            self.setToolTip(f"{entry.label}（{shortcut}）")
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Fixed,

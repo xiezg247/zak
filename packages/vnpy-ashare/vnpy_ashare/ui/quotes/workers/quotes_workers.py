@@ -237,9 +237,16 @@ class DownloadWorker(QtCore.QThread):
         self.start_dt = start
         self.end_dt = end
         self.mode = mode
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             start = self.start_dt
             end = self.end_dt or datetime.now()
             if self.mode == "incremental" and start is None:
@@ -267,8 +274,14 @@ class DownloadWorker(QtCore.QThread):
                 end=end,
                 output=lambda msg: _emit_worker_log(self.log, msg),
             )
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(count)
         except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.failed.emit(str(ex))
 
 
@@ -294,9 +307,16 @@ class MinuteDownloadWorker(QtCore.QThread):
         self.start_dt = start
         self.end_dt = end
         self.mode = mode
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             end = self.end_dt or datetime.now()
             start = self.start_dt
             if self.mode == "incremental" and start is None:
@@ -324,8 +344,14 @@ class MinuteDownloadWorker(QtCore.QThread):
                 end=end,
                 output=lambda msg: _emit_worker_log(self.log, msg),
             )
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(count)
         except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.failed.emit(str(ex))
 
 
@@ -663,17 +689,31 @@ class BatchGapFillWorker(QtCore.QThread):
         self.items = items
         self.bar_meta = bar_meta
         self.delay = delay
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             result = batch_fill_gap_daily_bars(
                 self.items,
                 self.bar_meta,
                 delay=self.delay,
                 progress=lambda item: self.progress.emit(item),
+                should_cancel=lambda: self._cancel_requested,
             )
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(result)
         except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.failed.emit(str(ex))
 
 
@@ -696,15 +736,29 @@ class BatchFillWorker(QtCore.QThread):
         self.items = items
         self.bar_meta = bar_meta
         self.delay = delay
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             result = batch_fill_stale_daily_bars(
                 self.items,
                 self.bar_meta,
                 delay=self.delay,
                 progress=lambda item: self.progress.emit(item),
+                should_cancel=lambda: self._cancel_requested,
             )
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(result)
         except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.failed.emit(str(ex))

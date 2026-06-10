@@ -42,6 +42,7 @@ from vnpy_ashare.ui.styles import (
     style_legacy_form_inputs,
 )
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 
 _LOG_MAP: dict[str, str] = {
@@ -338,7 +339,7 @@ class BacktesterWidget(VnpyBacktesterManager):
     def _ask_ai_for_backtest(self) -> None:
         summary = self._get_last_backtest_summary()
         if not summary:
-            QtWidgets.QMessageBox.information(self, "提示", "请先完成一次回测")
+            page_notify(self, "请先完成一次回测")
             return
         sync_backtest_page_context(self, self.main_engine)
         if self.event_engine is None:
@@ -384,8 +385,4 @@ class BacktesterWidget(VnpyBacktesterManager):
         if backtest_service is not None:
             backtest_service.persist_summary(summary_dict, source="single")
         else:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "回测",
-                "回测服务未就绪，摘要未写入 AI 上下文",
-            )
+            page_notify(self, "回测服务未就绪，摘要未写入 AI 上下文", level="warning", title="回测")

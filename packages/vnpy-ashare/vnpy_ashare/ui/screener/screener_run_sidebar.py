@@ -16,6 +16,7 @@ from vnpy_ashare.screener.run_store import (
     list_runs,
 )
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.feedback import confirm_action
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
@@ -540,13 +541,14 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         title_line = f"确定要删除选中的 {count} 条{kind}吗？"
         if count == 1:
             title_line = f"确定要删除{kind}「{selected[0][1]}」？"
-        reply = QtWidgets.QMessageBox.question(
+        detail = title_line + ("\n\n" + "\n".join(f"  · {title}" for _, title in selected) if count > 1 else "")
+        if not confirm_action(
             self,
             "确认删除",
-            title_line + ("\n\n" + "\n".join(f"  · {title}" for _, title in selected) if count > 1 else ""),
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            detail,
+            confirm_text="删除",
+            destructive=True,
+        ):
             return
         deleted_ids = [run_id for run_id, _ in selected]
         main_engine = self._resolve_main_engine()
@@ -565,13 +567,13 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._update_multi_select_ui()
 
     def _delete_run_with_confirm(self, run_id: str, title: str) -> None:
-        reply = QtWidgets.QMessageBox.question(
+        if not confirm_action(
             self,
             "确认删除",
             f"删除{self._run_kind_label()}「{title}」？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            confirm_text="删除",
+            destructive=True,
+        ):
             return
         _delete_run(self._resolve_main_engine(), run_id)
         if self._current_run_id == run_id:
