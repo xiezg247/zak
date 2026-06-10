@@ -20,8 +20,10 @@ from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quot
 from vnpy_ashare.jobs import (
     JobResult,
     batch_download_watchlist,
+    batch_fill_downloaded_stale_job,
     collect_market_quotes,
     prefetch_tushare_factors,
+    sync_trade_calendar_job,
     sync_universe_job,
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
@@ -122,6 +124,19 @@ class TaskSchedulerManager:
                 ),
                 schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
             ),
+            "sync_trade_calendar": _JobMeta(
+                job_id="sync_trade_calendar",
+                name="同步交易日历",
+                description="从 Tushare 更新 A 股交易日历到本地 SQLite",
+                runner=sync_trade_calendar_job,
+                config_attr="sync_trade_calendar",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
+            ),
             "batch_download": _JobMeta(
                 job_id="batch_download",
                 name="下载自选日 K",
@@ -138,7 +153,7 @@ class TaskSchedulerManager:
             "prefetch_tushare": _JobMeta(
                 job_id="prefetch_tushare",
                 name="Tushare 因子预拉",
-                description="收盘后拉取 daily_basic / moneyflow 等写入本地缓存，供基本面选股与盘后自动选股使用",
+                description="收盘后拉取 daily_basic / moneyflow / 涨跌停 / 指数 / 北向 / stock_basic 等写入本地缓存",
                 runner=prefetch_tushare_factors,
                 config_attr="prefetch_tushare",
                 schedule_builder=lambda cfg: CronTrigger(
@@ -147,6 +162,19 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于盘后自动选股）",
+            ),
+            "batch_fill_stale": _JobMeta(
+                job_id="batch_fill_stale",
+                name="补全本地日 K",
+                description="为本地已下载列表中过期的日 K 增量补全到最近交易日",
+                runner=batch_fill_downloaded_stale_job,
+                config_attr="batch_fill_stale",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在下载自选日 K 之后）",
             ),
             "screen_intraday": _JobMeta(
                 job_id="screen_intraday",

@@ -44,6 +44,14 @@ class SchedulerConfig:
             cron_day_of_week="mon",
         )
     )
+    sync_trade_calendar: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=7,
+            cron_minute=50,
+            cron_day_of_week="mon",
+        )
+    )
     batch_download: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=False,
@@ -58,6 +66,14 @@ class SchedulerConfig:
             enabled=False,
             cron_hour=16,
             cron_minute=32,
+            cron_day_of_week="mon-fri",
+        )
+    )
+    batch_fill_stale: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=17,
+            cron_minute=0,
             cron_day_of_week="mon-fri",
         )
     )
@@ -103,8 +119,10 @@ class SchedulerConfig:
         return {
             "collect_quotes": dump_job(self.collect_quotes),
             "sync_universe": dump_job(self.sync_universe),
+            "sync_trade_calendar": dump_job(self.sync_trade_calendar),
             "batch_download": dump_job(self.batch_download),
             "prefetch_tushare": dump_job(self.prefetch_tushare),
+            "batch_fill_stale": dump_job(self.batch_fill_stale),
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
         }
@@ -139,8 +157,10 @@ class SchedulerConfig:
         return cls(
             collect_quotes=load_job("collect_quotes", defaults.collect_quotes),
             sync_universe=load_job("sync_universe", defaults.sync_universe),
+            sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
             batch_download=load_job("batch_download", defaults.batch_download),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
+            batch_fill_stale=load_job("batch_fill_stale", defaults.batch_fill_stale),
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
         )

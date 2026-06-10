@@ -5,13 +5,19 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Any
 
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.models import EXCHANGE_TO_SUFFIX
 from vnpy_ashare.screener.tushare_cache import (
     DATASET_DAILY_BASIC,
+    DATASET_INDEX_DAILY,
+    DATASET_LIMIT_LIST,
     DATASET_MONEYFLOW,
+    DATASET_MONEYFLOW_HSGT,
+    DATASET_STOCK_BASIC,
+    INDUSTRY_MAX_AGE,
     get_cached_industry_map,
     get_cached_pct_map,
     get_cached_rows,
@@ -105,11 +111,70 @@ def _latest_trade_date_str() -> str:
     return last_trading_day().strftime("%Y%m%d")
 
 
+_INDEX_PREFETCH_CODES = ("000001.SH", "000300.SH")
+_INDEX_LOOKBACK_CALENDAR_DAYS = 120
+_HSGT_LOOKBACK_CALENDAR_DAYS = 40
+
+
+def fetch_stock_basic_snapshot() -> tuple[list[dict[str, Any]], int]:
+    """拉取上市标的基础信息（行业、板块、上市日期等）并写入缓存。"""
+    cached = get_cached_rows(DATASET_STOCK_BASIC, "", max_age=INDUSTRY_MAX_AGE)
+    if cached is not None:
+        return cached, len(cached)
+
+    pro = get_tushare_pro()
+    try:
+        frame = pro.stock_basic(
+            exchange="",
+            list_status="L",
+            fields="ts_code,name,industry,market,list_date,list_status,is_hs",
+        )
+    except Exception:
+        return [], 0
+    if frame is None or frame.empty:
+        return [], 0
+
+    rows: list[dict[str, Any]] = []
+    for record in frame.to_dict(orient="records"):
+        ts_code = str(record.get("ts_code", "")).strip()
+        if not ts_code:
+            continue
+        rows.append(
+            {
+                "ts_code": ts_code,
+                "name": str(record.get("name", "") or "").strip(),
+                "industry": str(record.get("industry", "") or "").strip(),
+                "market": str(record.get("market", "") or "").strip(),
+                "list_date": str(record.get("list_date", "") or "").strip(),
+                "list_status": str(record.get("list_status", "") or "").strip(),
+                "is_hs": str(record.get("is_hs", "") or "").strip(),
+            }
+        )
+    if rows:
+        set_cached_rows(DATASET_STOCK_BASIC, "", rows)
+        industry_map = {
+            str(item["ts_code"]): str(item["industry"])
+            for item in rows
+            if item.get("industry")
+        }
+        if industry_map:
+            set_cached_industry_map(industry_map)
+    return rows, len(rows)
+
+
 def fetch_stock_industry_map() -> dict[str, str]:
     """ts_code → 行业名称。"""
     cached = get_cached_industry_map()
     if cached is not None:
         return cached
+
+    rows, _ = fetch_stock_basic_snapshot()
+    if rows:
+        return {
+            str(item["ts_code"]): str(item["industry"])
+            for item in rows
+            if item.get("industry")
+        }
 
     pro = get_tushare_pro()
     try:
@@ -131,6 +196,114 @@ def fetch_stock_industry_map() -> dict[str, str]:
     if mapping:
         set_cached_industry_map(mapping)
     return mapping
+
+
+def fetch_limit_list_d(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
+    """拉取涨跌停列表（limit_list_d）。"""
+    trade_date = trade_date or _latest_trade_date_str()
+    cached = get_cached_rows(DATASET_LIMIT_LIST, trade_date)
+    if cached is not None:
+        return cached, trade_date
+
+    pro = get_tushare_pro()
+    try:
+        frame = pro.limit_list_d(trade_date=trade_date, fields="ts_code,trade_date,name,limit")
+    except Exception:
+        return [], trade_date
+    if frame is None or frame.empty:
+        return [], trade_date
+
+    rows: list[dict[str, Any]] = []
+    for record in frame.to_dict(orient="records"):
+        ts_code = str(record.get("ts_code", "")).strip()
+        if not ts_code:
+            continue
+        rows.append(
+            {
+                "ts_code": ts_code,
+                "trade_date": str(record.get("trade_date", trade_date)),
+                "name": str(record.get("name", "") or "").strip(),
+                "limit": str(record.get("limit", "") or "").strip(),
+            }
+        )
+    if rows:
+        set_cached_rows(DATASET_LIMIT_LIST, trade_date, rows)
+    return rows, trade_date
+
+
+def fetch_index_daily_snapshot(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
+    """拉取主要指数近期日线（供恐贪指数等复用）。"""
+    trade_date = trade_date or _latest_trade_date_str()
+    cached = get_cached_rows(DATASET_INDEX_DAILY, trade_date)
+    if cached is not None:
+        return cached, trade_date
+
+    end_dt = datetime.strptime(trade_date, "%Y%m%d")
+    start_date = (end_dt - timedelta(days=_INDEX_LOOKBACK_CALENDAR_DAYS)).strftime("%Y%m%d")
+
+    pro = get_tushare_pro()
+    rows: list[dict[str, Any]] = []
+    for ts_code in _INDEX_PREFETCH_CODES:
+        try:
+            frame = pro.index_daily(
+                ts_code=ts_code,
+                start_date=start_date,
+                end_date=trade_date,
+                fields="ts_code,trade_date,close,pct_chg,amount",
+            )
+        except Exception:
+            continue
+        if frame is None or frame.empty:
+            continue
+        for record in frame.to_dict(orient="records"):
+            rows.append(
+                {
+                    "ts_code": str(record.get("ts_code", ts_code)),
+                    "trade_date": str(record.get("trade_date", "")),
+                    "close": _float(record.get("close")),
+                    "pct_chg": _float(record.get("pct_chg")),
+                    "amount": _float(record.get("amount")),
+                }
+            )
+    if rows:
+        set_cached_rows(DATASET_INDEX_DAILY, trade_date, rows)
+    return rows, trade_date
+
+
+def fetch_moneyflow_hsgt_window(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
+    """拉取沪深港通资金流近期窗口。"""
+    trade_date = trade_date or _latest_trade_date_str()
+    cached = get_cached_rows(DATASET_MONEYFLOW_HSGT, trade_date)
+    if cached is not None:
+        return cached, trade_date
+
+    end_dt = datetime.strptime(trade_date, "%Y%m%d")
+    start_date = (end_dt - timedelta(days=_HSGT_LOOKBACK_CALENDAR_DAYS)).strftime("%Y%m%d")
+
+    pro = get_tushare_pro()
+    try:
+        frame = pro.moneyflow_hsgt(
+            start_date=start_date,
+            end_date=trade_date,
+            fields="trade_date,north_money,south_money",
+        )
+    except Exception:
+        return [], trade_date
+    if frame is None or frame.empty:
+        return [], trade_date
+
+    rows: list[dict[str, Any]] = []
+    for record in frame.to_dict(orient="records"):
+        rows.append(
+            {
+                "trade_date": str(record.get("trade_date", "")),
+                "north_money": _float(record.get("north_money")),
+                "south_money": _float(record.get("south_money")),
+            }
+        )
+    if rows:
+        set_cached_rows(DATASET_MONEYFLOW_HSGT, trade_date, rows)
+    return rows, trade_date
 
 
 def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:

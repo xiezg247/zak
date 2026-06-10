@@ -15,6 +15,10 @@ DATASET_DAILY_BASIC = "daily_basic"
 DATASET_MONEYFLOW = "moneyflow"
 DATASET_DAILY_PCT = "daily_pct"
 DATASET_STOCK_INDUSTRY = "stock_industry"
+DATASET_STOCK_BASIC = "stock_basic"
+DATASET_LIMIT_LIST = "limit_list_d"
+DATASET_INDEX_DAILY = "index_daily"
+DATASET_MONEYFLOW_HSGT = "moneyflow_hsgt"
 
 DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)
@@ -106,10 +110,7 @@ def set_cached_pct_map(trade_date: str, pct_map: dict[str, float]) -> None:
     set_cached_rows(DATASET_DAILY_PCT, trade_date, rows)
 
 
-def get_cached_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
-    rows = get_cached_rows(DATASET_STOCK_INDUSTRY, "", max_age=max_age)
-    if rows is None:
-        return None
+def _industry_map_from_rows(rows: list[dict[str, Any]]) -> dict[str, str]:
     result: dict[str, str] = {}
     for item in rows:
         if not isinstance(item, dict):
@@ -119,6 +120,18 @@ def get_cached_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[st
         if ts_code and industry:
             result[ts_code] = industry
     return result
+
+
+def get_cached_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
+    basic_rows = get_cached_rows(DATASET_STOCK_BASIC, "", max_age=max_age)
+    if basic_rows is not None:
+        mapping = _industry_map_from_rows(basic_rows)
+        return mapping or None
+    rows = get_cached_rows(DATASET_STOCK_INDUSTRY, "", max_age=max_age)
+    if rows is None:
+        return None
+    mapping = _industry_map_from_rows(rows)
+    return mapping or None
 
 
 def set_cached_industry_map(mapping: dict[str, str]) -> None:

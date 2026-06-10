@@ -60,6 +60,30 @@ class TestSchedulerConfig(unittest.TestCase):
         self.assertIn("screen_intraday", job_ids)
         self.assertIn("screen_post_close", job_ids)
 
+    def test_new_tushare_jobs_listed(self) -> None:
+        manager = TaskSchedulerManager()
+        job_ids = {item.job_id for item in manager.list_status()}
+        self.assertIn("sync_trade_calendar", job_ids)
+        self.assertIn("batch_fill_stale", job_ids)
+
+    def test_new_job_config_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scheduler.json"
+            config = SchedulerConfig()
+            config.sync_trade_calendar.enabled = True
+            config.sync_trade_calendar.cron_hour = 7
+            config.sync_trade_calendar.cron_minute = 45
+            config.batch_fill_stale.enabled = True
+            config.batch_fill_stale.cron_hour = 17
+            config.batch_fill_stale.cron_minute = 5
+            save_scheduler_config(config, path)
+
+            loaded = load_scheduler_config(path)
+            self.assertTrue(loaded.sync_trade_calendar.enabled)
+            self.assertEqual(loaded.sync_trade_calendar.cron_minute, 45)
+            self.assertTrue(loaded.batch_fill_stale.enabled)
+            self.assertEqual(loaded.batch_fill_stale.cron_hour, 17)
+
     def test_screen_intraday_skips_off_hours(self) -> None:
         manager = TaskSchedulerManager()
         next_run = datetime(2026, 6, 10, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
