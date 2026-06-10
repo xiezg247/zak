@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.screener.recipe import get_recipe
+from vnpy_ashare.screener.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe_runner import _DimensionHit, build_reason_summary, run_recipe
 
 
@@ -80,7 +80,7 @@ def test_run_recipe_merges_dimensions():
 
 
 def test_build_reason_summary():
-    recipe = get_recipe("post_close_multi")
+    recipe = resolve_recipe("post_close_multi")
     assert recipe is not None
     summary = build_reason_summary(
         recipe=recipe,
@@ -92,7 +92,7 @@ def test_build_reason_summary():
 
 
 def test_run_recipe_parallel_dimensions():
-    recipe = get_recipe("intraday_multi")
+    recipe = resolve_recipe("intraday_multi")
     assert recipe is not None
     with patch(
         "vnpy_ashare.screener.recipe_runner.run_parallel_map",

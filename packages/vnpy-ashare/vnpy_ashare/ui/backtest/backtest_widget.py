@@ -26,7 +26,6 @@ from strategies.registry import (
 )
 from vnpy_ashare.ai.backtest_context import (
     build_backtest_ai_prompt,
-    connect_backtest_context_sync,
     format_backtest_summary_text,
     sync_backtest_page_context,
 )
@@ -99,7 +98,6 @@ class BacktesterWidget(VnpyBacktesterManager):
         apply_toolbar_combo_style(self.class_combo)
         apply_toolbar_combo_style(self.interval_combo)
         self._finalize_strategy_guide()
-        connect_backtest_context_sync(self)
         self._apply_page_theme()
 
     def _create_form_controls(self) -> None:

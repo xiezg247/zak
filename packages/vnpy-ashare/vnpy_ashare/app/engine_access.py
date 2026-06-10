@@ -9,7 +9,7 @@ UI / Worker 获取业务能力的统一入口，避免页面散落 ``getattr(eng
         → AshareEngine.quote_service
         → context_store（AI 上下文写入）
 
-新代码请优先使用下方类型化 getter；``get_service(name)`` 仅用于尚未封装 getter 的旧路径。
+优先使用下方类型化 getter；``get_service(name)`` 用于尚未封装 getter 的 Service。
 """
 
 from __future__ import annotations

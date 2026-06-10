@@ -495,7 +495,3 @@ class FloatingAiPanel(QtWidgets.QWidget):
     def closeEvent(self, event) -> None:
         self._save_geometry()
         super().closeEvent(event)
-
-
-# 向后兼容别名
-FloatingAiButton = FloatingAiOrb

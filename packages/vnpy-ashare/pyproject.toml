@@ -28,8 +28,6 @@ dependencies = [
 [project.optional-dependencies]
 llm = ["vnpy-llm"]
 full = ["vnpy-llm"]
-# 保留 postgresql extra 以兼容旧文档；驱动已纳入默认依赖
-postgresql = ["vnpy_postgresql>=1.0.0"]
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -206,7 +206,3 @@ class SkillEngine:
         names = [s.name for s in self.get_enabled_agent_skills()]
         names.extend(self.instances.keys())
         return names
-
-    # 兼容旧 API
-    def load_skill_class(self) -> None:
-        self.load_all()

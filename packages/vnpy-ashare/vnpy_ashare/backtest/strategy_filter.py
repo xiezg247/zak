@@ -1,4 +1,4 @@
-"""A 股回测策略识别（兼容 importlib.reload 导致的基类 identity 变化）。"""
+"""A 股回测策略识别（按 MRO 名称判定，避免 reload 后基类 identity 变化）。"""
 
 from __future__ import annotations
 

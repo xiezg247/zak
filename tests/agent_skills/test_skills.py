@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-from skills.registry import OFFICIAL_SKILLS, format_skills_prompt
+from skills.registry import OFFICIAL_SKILLS
 from tests._bootstrap import PROJECT_ROOT
 from vnpy_skills.agent import AgentSkill
 from vnpy_skills.app.engine import SkillEngine
@@ -124,10 +124,7 @@ class RegistryTests(unittest.TestCase):
     def test_official_meta(self) -> None:
         self.assertIn("tushare-data", OFFICIAL_SKILLS)
         self.assertIn("tickflow", OFFICIAL_SKILLS)
-
-    def test_format_prompt(self) -> None:
-        text = format_skills_prompt(["tushare-data", "tickflow"])
-        self.assertIn("Tushare", text)
+        self.assertIn("Tushare", OFFICIAL_SKILLS["tushare-data"].title)
 
 
 if __name__ == "__main__":

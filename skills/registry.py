@@ -59,17 +59,3 @@ OFFICIAL_SKILLS: dict[str, SkillMeta] = {
         tags=("诊断", "通达信", "MCP", "A 股"),
     ),
 }
-
-
-def format_skills_prompt(enabled: list[str]) -> str:
-    """兼容 LlmEngine：实际 prompt 由 SkillEngine.build_skills_prompt() 生成。"""
-    if not enabled:
-        return ""
-    lines = ["【已启用 Skills】"]
-    for name in enabled:
-        meta = OFFICIAL_SKILLS.get(name)
-        if meta:
-            lines.append(f"- {meta.title}（{name}）：{meta.summary}")
-        else:
-            lines.append(f"- {name}（自编写 Python Skill）")
-    return "\n".join(lines)

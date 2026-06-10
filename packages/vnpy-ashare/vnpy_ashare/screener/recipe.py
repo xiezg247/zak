@@ -211,11 +211,6 @@ def resolve_recipe(recipe_id: str) -> ScreenRecipe | None:
         return None
 
 
-def get_recipe(recipe_id: str) -> ScreenRecipe | None:
-    """``resolve_recipe`` 别名。"""
-    return resolve_recipe(recipe_id)
-
-
 def list_recipe_ids(*, trigger_kind: TriggerKind | None = None) -> list[str]:
     """列出配方 id；可按 trigger_kind 过滤。"""
     return [entry.recipe_id for entry in list_recipe_catalog(trigger_kind=trigger_kind)]

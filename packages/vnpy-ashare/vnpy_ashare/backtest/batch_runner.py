@@ -83,7 +83,7 @@ def _load_strategy_from_module(module_stem: str, class_name: str) -> type | None
 
 
 def run_single_backtest_task(task: BacktestTask) -> dict[str, Any]:
-    """在子进程中执行单标的回测，返回 BatchBacktestRow 兼容 dict。"""
+    """在子进程中执行单标的回测，返回 BatchBacktestRow 字段结构的 dict。"""
     from vnpy_ctastrategy.backtesting import BacktestingEngine, BacktestingMode
 
     row: dict[str, Any] = {

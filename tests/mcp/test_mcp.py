@@ -19,7 +19,6 @@ from vnpy_mcp.config import (
     load_all_mcp_servers,
     load_mcp_dir,
     BUILTIN_MCP_PROVIDERS,
-    format_mcp_prompt,
 )
 from vnpy_mcp.app.engine import McpEngine
 from vnpy_mcp.remote import RemoteMcpProvider
@@ -243,10 +242,7 @@ class ToolsStatusTests(unittest.TestCase):
 class RegistryTests(unittest.TestCase):
     def test_builtin_meta(self) -> None:
         self.assertIn("tdx", BUILTIN_MCP_PROVIDERS)
-
-    def test_format_prompt(self) -> None:
-        text = format_mcp_prompt(["tdx"])
-        self.assertIn("通达信", text)
+        self.assertIn("通达信", BUILTIN_MCP_PROVIDERS["tdx"].title)
 
 
 if __name__ == "__main__":

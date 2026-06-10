@@ -19,9 +19,6 @@ dependencies = [
 dev = [
     "ruff>=0.9.0",
 ]
-postgresql = [
-    "vnpy-ashare[postgresql]",
-]
 
 [tool.uv.sources]
 vnpy-common = { workspace = true }

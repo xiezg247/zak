@@ -18,7 +18,6 @@ from vnpy_ashare.ui.shell.settings_snapshot import (
     detect_database_mode,
     env_database_name,
     format_bar_database_status,
-    format_database_status,
     is_configured,
     mask_secret,
     metadata_storage_entries,
@@ -26,7 +25,6 @@ from vnpy_ashare.ui.shell.settings_snapshot import (
     parse_env_file,
     resolve_database_runtime_display,
     resolve_env_config,
-    resolve_env_config_database,
     resolve_env_config_general,
     resolve_env_config_kline,
     resolve_vt_config,
@@ -143,15 +141,6 @@ class SettingsSnapshotTest(unittest.TestCase):
             path.write_text("DATABASE_NAME=postgresql\n", encoding="utf-8")
             self.assertEqual(env_database_name(path), "postgresql")
 
-    def test_format_database_status(self) -> None:
-        text = format_database_status(
-            effective="postgresql",
-            env_name="sqlite",
-            editing="postgresql",
-        )
-        self.assertIn("运行时 (vt_setting.json)：postgresql", text)
-        self.assertIn(".env：sqlite", text)
-
     def test_format_bar_database_status_labels(self) -> None:
         text = format_bar_database_status(
             effective="sqlite",
@@ -161,11 +150,6 @@ class SettingsSnapshotTest(unittest.TestCase):
         self.assertIn("运行时 (vt_setting.json)：sqlite", text)
         self.assertIn("未同步", text)
         self.assertIn("未保存：postgresql", text)
-
-    def test_format_bar_database_status_alias(self) -> None:
-        legacy = format_database_status(effective="sqlite", env_name="sqlite")
-        current = format_bar_database_status(effective="sqlite", env_name="sqlite")
-        self.assertEqual(legacy, current)
 
     def test_metadata_storage_entries(self) -> None:
         entries = metadata_storage_entries(

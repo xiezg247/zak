@@ -1,4 +1,4 @@
-"""回测结果图表：兼容 pandas 2.x + pyqtgraph，并接入终端主题。"""
+"""回测结果图表：适配 pandas 2.x 与 pyqtgraph，并接入终端主题。"""
 
 from __future__ import annotations
 

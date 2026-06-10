@@ -217,15 +217,6 @@ def resolve_env_config_kline(env_file: Path = ENV_FILE) -> list[ResolvedConfigIt
     return items
 
 
-def resolve_env_config_database(
-    database: str,
-    env_file: Path = ENV_FILE,
-) -> list[ResolvedConfigItem]:
-    """兼容旧调用；K 线 .env 展示与 ``database`` 参数无关，始终读 .env。"""
-    _ = database
-    return resolve_env_config_kline(env_file)
-
-
 def env_database_name(env_file: Path = ENV_FILE) -> str:
     """.env 中的 DATABASE_NAME（未定义则用默认值）。"""
     for item in resolve_env_config(env_file):
@@ -264,21 +255,6 @@ def format_bar_database_status(
         if pending != effective:
             parts.append(f"未保存：{pending}")
     return " · ".join(parts)
-
-
-def format_database_status(
-    *,
-    effective: str,
-    env_name: str,
-    editing: str | None = None,
-    pending: str | None = None,
-) -> str:
-    """兼容旧名；``editing`` 为 ``pending`` 别名。"""
-    return format_bar_database_status(
-        effective=effective,
-        env_name=env_name,
-        pending=pending if pending is not None else editing,
-    )
 
 
 def resolve_env_config_by_group(

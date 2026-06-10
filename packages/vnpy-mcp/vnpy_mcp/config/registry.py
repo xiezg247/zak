@@ -23,17 +23,3 @@ BUILTIN_MCP_PROVIDERS: dict[str, McpProviderMeta] = {
         tags=("行情", "K 线", "通达信", "MCP", "研报", "F10"),
     ),
 }
-
-
-def format_mcp_prompt(enabled: list[str]) -> str:
-    """兼容 LlmEngine：实际 prompt 由 McpEngine.build_mcp_prompt() 生成。"""
-    if not enabled:
-        return ""
-    lines = ["【已启用 MCP】"]
-    for name in enabled:
-        meta = BUILTIN_MCP_PROVIDERS.get(name)
-        if meta:
-            lines.append(f"- {meta.title}（{name}）：{meta.summary}")
-        else:
-            lines.append(f"- {name}")
-    return "\n".join(lines)

@@ -108,11 +108,6 @@ def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, n
     set_ai_context(data)
 
 
-def connect_backtest_context_sync(widget: QtWidgets.QWidget) -> None:
-    """保留接口；回测页不再自动推送 AI 上下文，由用户点击「问 AI」触发。"""
-    return
-
-
 def _avg(values: list[float]) -> float | None:
     if not values:
         return None

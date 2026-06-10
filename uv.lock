@@ -2455,9 +2455,6 @@ full = [
 llm = [
     { name = "vnpy-llm" },
 ]
-postgresql = [
-    { name = "vnpy-postgresql" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -2474,12 +2471,11 @@ requires-dist = [
     { name = "vnpy-llm", marker = "extra == 'full'", editable = "packages/vnpy-llm" },
     { name = "vnpy-llm", marker = "extra == 'llm'", editable = "packages/vnpy-llm" },
     { name = "vnpy-postgresql", specifier = ">=1.0.0" },
-    { name = "vnpy-postgresql", marker = "extra == 'postgresql'", specifier = ">=1.0.0" },
     { name = "vnpy-sqlite", specifier = ">=1.1.0" },
     { name = "vnpy-tickflow", editable = "packages/vnpy-tickflow" },
     { name = "vnpy-tushare", specifier = ">=1.4.0" },
 ]
-provides-extras = ["llm", "full", "postgresql"]
+provides-extras = ["llm", "full"]
 
 [[package]]
 name = "vnpy-common"
@@ -2750,17 +2746,13 @@ dependencies = [
 dev = [
     { name = "ruff" },
 ]
-postgresql = [
-    { name = "vnpy-ashare", extra = ["postgresql"] },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.0" },
     { name = "vnpy-ashare", extras = ["full"], editable = "packages/vnpy-ashare" },
-    { name = "vnpy-ashare", extras = ["postgresql"], marker = "extra == 'postgresql'", editable = "packages/vnpy-ashare" },
 ]
-provides-extras = ["dev", "postgresql"]
+provides-extras = ["dev"]
 
 [[package]]
 name = "zipp"

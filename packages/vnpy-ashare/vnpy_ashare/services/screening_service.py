@@ -345,27 +345,3 @@ def publish_screener_page_context() -> None:
         data = AiContextData(page="选股", extra="\n".join(lines))
 
     set_ai_context(enrich_context_with_actions(data))
-
-
-def run_screening(
-    quotes: list[dict[str, Any]] | None = None,
-    *,
-    preset: str,
-    top_n: int = 20,
-    min_change_pct: float | None = None,
-    max_change_pct: float | None = None,
-    min_turnover: float | None = None,
-    scheme_id: str | None = None,
-) -> ScreenerRunResult:
-    """兼容旧入口；quotes 参数已弃用，统一走 runner。"""
-    _ = quotes
-    return run_screener(
-        ScreenerRequest(
-            preset=preset,
-            top_n=top_n,
-            min_change_pct=min_change_pct,
-            max_change_pct=max_change_pct,
-            min_turnover=min_turnover,
-            scheme_id=scheme_id,
-        )
-    )
