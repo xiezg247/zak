@@ -656,6 +656,20 @@ QStatusBar#ScreenerStatusBar {{
     font-size: 12px;
     min-height: 28px;
 }}
+QLabel#PageTaskLabel {{
+    color: {t.text_secondary};
+    font-size: 12px;
+}}
+QProgressBar#PageTaskProgress {{
+    background-color: {t.input_bg};
+    border: 1px solid {t.input_border};
+    border-radius: 3px;
+    max-height: 14px;
+}}
+QProgressBar#PageTaskProgress::chunk {{
+    background-color: {t.accent};
+    border-radius: 2px;
+}}
 QTableWidget#MarketTable::item {{
     padding: 5px 4px;
 }}

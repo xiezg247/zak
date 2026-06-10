@@ -38,6 +38,7 @@ from vnpy_ashare.ui.screener.screener_results_table import (
 from vnpy_ashare.ui.screener.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.workers import ScreenerBatchDownloadWorker, ScreenerRunWorker
+from vnpy_common.ui.feedback import PageToastHost, TaskGuard
 
 _SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
@@ -61,6 +62,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._watchlist_service = get_watchlist_service(main_engine)
 
         self._build_ui()
+        self._task_guard = TaskGuard(self._toast)
         self._batch_backtest_flow = BatchBacktestFlow(
             main_engine=main_engine,
             event_engine=event_engine,
@@ -247,6 +249,27 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         splitter.setSizes([260, 740])
         root.addWidget(splitter, stretch=1)
 
+        self._toast = PageToastHost(main_panel)
+        root.addWidget(self._toast)
+
+    def _task_lock_widgets(self) -> list[QtWidgets.QWidget]:
+        return [
+            self.run_btn,
+            self.save_scheme_btn,
+            self.delete_scheme_btn,
+            self.select_all_btn,
+            self.add_watchlist_btn,
+            self.download_btn,
+            self.backtest_btn,
+            self.batch_backtest_btn,
+            self.export_btn,
+            self.preset_combo,
+            self.top_n_spin,
+            self.min_change_spin,
+            self.max_change_spin,
+            self.min_turnover_spin,
+        ]
+
     def _append_action_log(self, message: str) -> None:
         if message:
             self.run_output_panel.append_log(message)
@@ -376,6 +399,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         release_thread(self._retired_workers, worker, timeout_ms=timeout_ms)
 
     def _run_screening(self) -> None:
+        if self._task_guard.active:
+            return
         if self._worker is not None and self._worker.isRunning():
             return
 
@@ -383,7 +408,14 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if request is None:
             return
 
-        self.run_btn.setDisabled(True)
+        self._task_guard.begin(
+            "正在运行策略选股…",
+            widgets=self._task_lock_widgets(),
+            primary=self.run_btn,
+            primary_text="▶  运行策略选股",
+            primary_handler=self._run_screening,
+            on_cancel=self._cancel_screening,
+        )
         self.run_output_panel.begin_run(
             label=self.preset_combo.currentText(),
             top_n=self.top_n_spin.value(),
@@ -404,13 +436,23 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         worker.failed.connect(self._on_screen_failed)
         worker.start()
 
+    def _cancel_screening(self) -> None:
+        if self._worker is not None:
+            self._worker.request_cancel()
+
     def _on_screen_finished(self, result: ScreenerRunResult) -> None:
         worker = self._worker
         self._worker = None
         self._release_worker(worker)
         if not self._active:
+            self._task_guard.end()
             return
-        self.run_btn.setDisabled(False)
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled:
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("策略选股已取消")
+            return
         self._results = list(result.rows)
         service = self._screening_service()
         self._result_columns = result.columns or (service.resolve_export_columns(self._results) if service else [])
@@ -438,6 +480,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
+        self._toast.success(f"选股完成，命中 {len(self._results)} 条")
         if self.event_engine is not None:
             self.event_engine.put(
                 Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="screener")),
@@ -507,9 +550,17 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._worker = None
         self._release_worker(worker)
         if not self._active:
+            self._task_guard.end()
             return
-        self.run_btn.setDisabled(False)
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled or message == "已取消":
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("策略选股已取消")
+            return
         self.run_output_panel.fail_run(message)
+        if message != "已取消":
+            self._toast.error(message)
 
     def _select_all(self) -> None:
         select_all_table_rows(self.result_table)
@@ -519,11 +570,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
     def _add_selected_to_watchlist(self) -> None:
         if self._watchlist_service is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "自选服务未就绪")
+            self._toast.warning("自选服务未就绪")
             return
         selected = self._iter_checked_rows()
         if not selected:
-            QtWidgets.QMessageBox.information(self, "提示", "请先勾选要加入自选的标的")
+            self._toast.warning("请先勾选要加入自选的标的")
             return
 
         added = skipped = 0
@@ -541,6 +592,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if skipped:
             msg += f" · 跳过 {skipped} 只"
         self._append_action_log(msg)
+        self._toast.success(msg)
 
     def _store_screening_results(
         self,
@@ -558,14 +610,23 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             )
 
     def _download_selected_bars(self) -> None:
+        if self._task_guard.active:
+            return
         if self._download_worker is not None and self._download_worker.isRunning():
             return
         selected = self._iter_checked_rows()
         if not selected:
-            QtWidgets.QMessageBox.information(self, "提示", "请先勾选要下载日 K 的标的")
+            self._toast.warning("请先勾选要下载日 K 的标的")
             return
 
-        self.download_btn.setDisabled(True)
+        self._task_guard.begin(
+            f"正在下载 {len(selected)} 只日 K…",
+            widgets=self._task_lock_widgets(),
+            primary=self.download_btn,
+            primary_text="下载日K",
+            primary_handler=self._download_selected_bars,
+            on_cancel=self._cancel_download,
+        )
         self._append_action_log(f"正在下载 {len(selected)} 只日 K…")
         worker = ScreenerBatchDownloadWorker(selected)
         self._download_worker = worker
@@ -573,44 +634,58 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         worker.failed.connect(self._on_download_failed)
         worker.start()
 
+    def _cancel_download(self) -> None:
+        if self._download_worker is not None:
+            self._download_worker.request_cancel()
+
     def _on_download_finished(self, result) -> None:
         worker = self._download_worker
         self._download_worker = None
         self._release_worker(worker)
         if not self._active:
+            self._task_guard.end()
             return
-        self.download_btn.setDisabled(False)
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
         message = getattr(result, "message", str(result))
+        if cancelled or "已取消" in message:
+            self._append_action_log("日 K 下载已取消")
+            self._toast.info("日 K 下载已取消")
+            return
         self._append_action_log(message)
-        if not getattr(result, "success", True):
-            QtWidgets.QMessageBox.warning(self, "下载日 K", message)
+        if getattr(result, "success", True):
+            self._toast.success(message)
+        else:
+            self._toast.error(message)
 
     def _on_download_failed(self, message: str) -> None:
         worker = self._download_worker
         self._download_worker = None
         self._release_worker(worker)
         if not self._active:
+            self._task_guard.end()
             return
-        self.download_btn.setDisabled(False)
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled:
+            self._append_action_log("日 K 下载已取消")
+            self._toast.info("日 K 下载已取消")
+            return
         self._append_action_log(message)
-        QtWidgets.QMessageBox.warning(self, "下载日 K", message)
+        self._toast.error(message)
 
     def _open_backtest_for_selection(self) -> None:
         selected = self._iter_checked_rows()
         if not selected:
-            QtWidgets.QMessageBox.information(self, "提示", "请先勾选一只标的进行回测")
+            self._toast.warning("请先勾选一只标的进行回测")
             return
         if len(selected) > 1:
-            QtWidgets.QMessageBox.information(
-                self,
-                "提示",
-                "「策略回测」仅打开单只；批量请用「批量回测」",
-            )
+            self._toast.info("「策略回测」仅打开单只；批量请用「批量回测」")
             return
         row = selected[0]
         vt_symbol = str(row.get("vt_symbol", ""))
         if not vt_symbol:
-            QtWidgets.QMessageBox.warning(self, "提示", "缺少 vt_symbol")
+            self._toast.warning("缺少 vt_symbol")
             return
         name = str(row.get("name", ""))
         self.event_engine.put(
@@ -629,7 +704,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
         selected = self._iter_checked_rows()
         if not selected:
-            QtWidgets.QMessageBox.information(self, "提示", "请先勾选要批量回测的标的")
+            self._toast.warning("请先勾选要批量回测的标的")
             return
 
         backtest_service = get_backtest_service(self.main_engine)
@@ -646,7 +721,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
     def _save_scheme(self) -> None:
         label = self.preset_combo.currentText()
         if label.startswith("我的 · "):
-            QtWidgets.QMessageBox.information(self, "提示", "请选择内置方案或自定义条件后再保存")
+            self._toast.info("请选择内置方案或自定义条件后再保存")
             return
         text, ok = QtWidgets.QInputDialog.getText(self, "保存方案", "方案名称")
         if not ok or not text.strip():
@@ -657,7 +732,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         try:
             service = self._screening_service()
             if service is None:
-                QtWidgets.QMessageBox.warning(self, "提示", "选股服务未就绪")
+                self._toast.warning("选股服务未就绪")
                 return
             service.save_scheme(text.strip(), service.build_scheme_config(request))
             self._reload_preset_combo()
@@ -666,13 +741,14 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             if index >= 0:
                 self.preset_combo.setCurrentIndex(index)
             self._append_action_log(f"已保存方案：{text.strip()}")
+            self._toast.success(f"已保存方案：{text.strip()}")
         except Exception as ex:
-            QtWidgets.QMessageBox.warning(self, "提示", str(ex))
+            self._toast.error(str(ex))
 
     def _delete_scheme(self) -> None:
         scheme_id = self._current_scheme_id()
         if not scheme_id:
-            QtWidgets.QMessageBox.information(self, "提示", "请先选择「我的 · …」方案")
+            self._toast.info("请先选择「我的 · …」方案")
             return
         reply = QtWidgets.QMessageBox.question(
             self,
@@ -684,15 +760,16 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
         service = self._screening_service()
         if service is None:
-            QtWidgets.QMessageBox.warning(self, "提示", "选股服务未就绪")
+            self._toast.warning("选股服务未就绪")
             return
         service.delete_scheme(scheme_id)
         self._reload_preset_combo()
         self._append_action_log("方案已删除")
+        self._toast.success("方案已删除")
 
     def _export_csv(self) -> None:
         if not self._results:
-            QtWidgets.QMessageBox.information(self, "提示", "请先运行选股")
+            self._toast.warning("请先运行选股")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
@@ -708,6 +785,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if service is not None:
             service.export_csv(self._results, path)
         self._append_action_log(f"已导出：{path}")
+        self._toast.success(f"已导出 CSV：{path}")
 
     def activate(self) -> None:
         self._active = True
@@ -717,6 +795,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
     def deactivate(self) -> None:
         self._active = False
+        if self._worker is not None:
+            self._worker.request_cancel()
+        if self._download_worker is not None:
+            self._download_worker.request_cancel()
+        self._task_guard.end()
         for attr in ("_worker", "_download_worker"):
             worker = getattr(self, attr, None)
             setattr(self, attr, None)

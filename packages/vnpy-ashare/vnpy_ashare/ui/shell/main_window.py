@@ -121,6 +121,7 @@ class AshareMainWindow(MainWindow):
         self._theme_manager.load_saved()
         self.init_menu()
         self._init_shell()
+        self._bind_nav_shortcuts()
         self.load_window_setting("custom")
 
     def init_menu(self) -> None:
@@ -233,6 +234,35 @@ class AshareMainWindow(MainWindow):
         self._bind_scheduler_notifications()
         self._schedule_deferred_scheduler_start()
         self._show_page(0)
+
+    def _bind_nav_shortcuts(self) -> None:
+        """Ctrl+1~9 / Ctrl+0 切换侧栏页面；Ctrl+F 聚焦行情搜索。"""
+        for index, entry in enumerate(APP_NAV_ENTRIES):
+            if index >= 10:
+                break
+            digit = (index + 1) if index < 9 else 0
+            action = QtGui.QAction(f"打开{entry.label}", self)
+            action.setShortcut(QtGui.QKeySequence(f"Ctrl+{digit}"))
+            action.triggered.connect(lambda _checked=False, i=index: self._show_page(i))
+            self.addAction(action)
+
+        focus_search = QtGui.QAction("聚焦搜索", self)
+        focus_search.setShortcut(QtGui.QKeySequence("Ctrl+F"))
+        focus_search.triggered.connect(self._focus_quotes_search)
+        self.addAction(focus_search)
+
+    def _focus_quotes_search(self) -> None:
+        key = self._current_key
+        if key not in _QUOTES_WIDGETS:
+            return
+        widget = self._page_widgets.get(key)
+        if widget is None or not hasattr(widget, "page"):
+            return
+        search = getattr(widget.page, "search_edit", None)
+        if search is None:
+            return
+        search.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+        search.selectAll()
 
     def _schedule_deferred_scheduler_start(self) -> None:
         """冷启动：窗口就绪后再启动 APScheduler。"""

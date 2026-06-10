@@ -98,6 +98,21 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
         action_row.addStretch()
         layout.addLayout(action_row)
 
+    def task_lock_widgets(self) -> list[QtWidgets.QWidget]:
+        widgets: list[QtWidgets.QWidget] = [
+            self._kind_tabs,
+            self._recipe_combo,
+            self._top_n_spin,
+            self._pool_spin,
+            self._min_dim_spin,
+            self._save_btn,
+            self._delete_btn,
+            self._run_btn,
+        ]
+        for checkbox, spin in self._dimension_rows.values():
+            widgets.extend((checkbox, spin))
+        return widgets
+
     def reload(self) -> None:
         selected_id = self.current_recipe_id()
         self._reload_recipe_combo(selected_id)

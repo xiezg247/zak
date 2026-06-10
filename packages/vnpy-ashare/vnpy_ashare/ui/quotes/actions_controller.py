@@ -316,7 +316,7 @@ class ActionsController:
             return
         service = page._get_analysis_service()
         if service is None:
-            QtWidgets.QMessageBox.warning(page, "提示", "分析服务未就绪")
+            page._toast.warning("分析服务未就绪")
             return
 
         vt_symbol = page.current_item.vt_symbol

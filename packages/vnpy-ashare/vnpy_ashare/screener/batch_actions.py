@@ -8,7 +8,7 @@ import uuid
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 from vnpy.trader.constant import Exchange, Interval
 
@@ -90,6 +90,7 @@ def batch_download_daily_bars(
     end: datetime | None = None,
     delay: float = 0.3,
     max_workers: int | None = None,
+    should_cancel: Callable[[], bool] | None = None,
 ) -> JobResult:
     """对选股结果批量下载日 K（默认 2020-01-01 至今）。"""
     items = rows_to_stock_items(rows)
@@ -118,6 +119,8 @@ def batch_download_daily_bars(
         success = 0
         failed: list[str] = []
         for index, item in enumerate(items, start=1):
+            if should_cancel is not None and should_cancel():
+                return JobResult(success=False, message="日 K 下载已取消")
             _, ok = _download_one(item)
             if ok:
                 success += 1

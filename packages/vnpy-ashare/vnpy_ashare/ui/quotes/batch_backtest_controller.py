@@ -73,11 +73,7 @@ class WatchlistBatchBacktestController:
     def run_batch_backtest(self) -> None:
         rows = self.collect_watchlist_rows()
         if not rows:
-            QtWidgets.QMessageBox.information(
-                self._page,
-                "提示",
-                "自选池为空，请先添加标的",
-            )
+            self._page._toast.warning("自选池为空，请先添加标的")
             return
         begin_run_log(self._page, f"批量回测 · {len(rows)} 只")
         flow = self._get_flow()

@@ -25,6 +25,7 @@ from vnpy_ashare.ui.quotes.quotes_config import (
 )
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+from vnpy_common.ui.feedback import PageToastHost
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
@@ -92,6 +93,9 @@ class QuotesPageShell:
             QtWidgets.QSizePolicy.Policy.Fixed,
         )
         page.search_edit.textChanged.connect(lambda _: page._search_timer.start())
+        page.search_edit.returnPressed.connect(page.apply_filter)
+        page._search_key_filter = _SearchKeyFilter(page)
+        page.search_edit.installEventFilter(page._search_key_filter)
 
         page.board_combo = QtWidgets.QComboBox()
         page.board_combo.setObjectName("BoardCombo")
@@ -488,3 +492,30 @@ class QuotesPageShell:
         root.setContentsMargins(0, 0, 0, 0)
         root.addWidget(splitter, stretch=1)
         root.addLayout(bottom_bar)
+        page._toast = PageToastHost(page)
+        root.addWidget(page._toast)
+
+
+class _SearchKeyFilter(QtCore.QObject):
+    """搜索框 Enter 立即过滤、Esc 清空。"""
+
+    def __init__(self, page: QuotesPage) -> None:
+        super().__init__(page)
+        self._page = page
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if watched is not self._page.search_edit:
+            return super().eventFilter(watched, event)
+        if event.type() != QtCore.QEvent.Type.KeyPress:
+            return super().eventFilter(watched, event)
+        key = event.key()
+        if key == QtCore.Qt.Key.Key_Escape:
+            self._page.search_edit.clear()
+            self._page._search_timer.stop()
+            self._page.apply_filter()
+            return True
+        if key in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
+            self._page._search_timer.stop()
+            self._page.apply_filter()
+            return True
+        return super().eventFilter(watched, event)

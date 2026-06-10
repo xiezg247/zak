@@ -32,9 +32,16 @@ class ScreenerRunWorker(QtCore.QThread):
         self.max_change_pct = max_change_pct
         self.min_turnover = min_turnover
         self.scheme_id = scheme_id
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             if self.scheme_id:
                 request = ScreenerRequest(
                     preset="",
@@ -53,8 +60,14 @@ class ScreenerRunWorker(QtCore.QThread):
                     min_turnover=self.min_turnover,
                 )
             result = run_screener(request)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(result)
         except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.failed.emit(str(ex))
 
 
@@ -68,12 +81,25 @@ class ScreenerRecipeRunWorker(QtCore.QThread):
         super().__init__(parent)
         self.recipe = recipe
         self.recipe_id = recipe_id
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             result = run_recipe_object(self.recipe, condition_prefix="配方")
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(result, self.recipe_id)
         except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.failed.emit(str(ex))
 
 
@@ -86,12 +112,28 @@ class ScreenerBatchDownloadWorker(QtCore.QThread):
     def __init__(self, rows: list[dict], parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
         self.rows = rows
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
-            result = batch_download_daily_bars(self.rows)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            result = batch_download_daily_bars(
+                self.rows,
+                should_cancel=lambda: self._cancel_requested,
+            )
+            if self._cancel_requested or "已取消" in result.message:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(result)
         except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.failed.emit(str(ex))
 
 
