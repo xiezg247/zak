@@ -12,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from vnpy_ashare.ai.symbol import parse_stock_symbol
-from vnpy_ashare.app_db import add_watchlist_item, init_app_db
+from vnpy_ashare.storage.app_db import add_watchlist_item, init_app_db
 from vnpy_ashare.screener.batch_actions import batch_download_daily_bars
 from vnpy_ashare.screener.export import export_rows_to_csv
 from vnpy_ashare.screener.run_store import save_run

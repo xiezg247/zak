@@ -10,9 +10,9 @@ from vnpy.chart.manager import BarManager
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.ui.chart_style import FALL_RGB, RISE_RGB
-from vnpy_ashare.ui.ma_line_item import calc_sma, ma_line_item_class
-from vnpy_ashare.ui.quotes_chart import (
+from vnpy_ashare.ui.components.chart_style import FALL_RGB, RISE_RGB
+from vnpy_ashare.ui.quotes.ma_line_item import calc_sma, ma_line_item_class
+from vnpy_ashare.ui.quotes.quotes_chart import (
     DAILY_BAR_COUNT,
     MINUTE_BAR_COUNT,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,

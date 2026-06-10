@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from datetime import date, datetime
 
-from vnpy_ashare.bar_health import (
+from vnpy_ashare.data.bar_health import (
     BarHealthStatus,
     BarMeta,
     find_gaps,
@@ -15,7 +15,7 @@ from vnpy_ashare.bar_health import (
     merge_missing_days,
     status_label,
 )
-from vnpy_ashare.calendar import is_trading_day, last_trading_day, trading_days_between
+from vnpy_ashare.domain.calendar import is_trading_day, last_trading_day, trading_days_between
 
 
 class CalendarTests(unittest.TestCase):
@@ -94,7 +94,7 @@ class BarHealthTests(unittest.TestCase):
         self.assertTrue(result.gaps)
 
     def test_format_gap_ranges(self) -> None:
-        from vnpy_ashare.bar_health import GapRange
+        from vnpy_ashare.data.bar_health import GapRange
 
         text = format_gap_ranges(
             [

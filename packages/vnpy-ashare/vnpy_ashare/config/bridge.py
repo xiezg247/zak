@@ -9,9 +9,9 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.config_schema import ENV_CONFIG_SPECS, normalize_database_name
+from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, normalize_database_name
 from vnpy_common.paths import ENV_FILE
-from vnpy_ashare.ui.fonts import default_font_family
+from vnpy_ashare.ui.shell.fonts import default_font_family
 
 
 def parse_env_file(path: Path) -> dict[str, str]:

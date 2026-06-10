@@ -8,7 +8,7 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.screener.pattern_rules import BarSeries
 from vnpy_ashare.screener.pattern_screen import (
     PatternScreenInput,

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Literal
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.engine_access import get_screening_service
+from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_ashare.screener.run_store import (
     delete_run,

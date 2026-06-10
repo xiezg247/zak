@@ -9,10 +9,10 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
 from vnpy_ashare.ai.data_manager_context import sync_data_manager_context
-from vnpy_ashare.bar_access import build_symbol_name_map, iter_bar_overviews
+from vnpy_ashare.data.bar_access import build_symbol_name_map, iter_bar_overviews
 from vnpy_ashare.config import EXCHANGE_CN_NAMES
-from vnpy_ashare.engine_access import get_bar_service
-from vnpy_ashare.minute_periods import bar_interval, is_daily_scope
+from vnpy_ashare.app.engine_access import get_bar_service
+from vnpy_ashare.data.minute_periods import bar_interval, is_daily_scope
 from vnpy_ashare.ui.styles import apply_legacy_page_style, style_legacy_push_buttons
 
 _VALUE_TO_CN = {ex.value: name for ex, name in EXCHANGE_CN_NAMES.items()}

@@ -16,21 +16,21 @@ from vnpy_ashare.ai.context import (
     resolve_assistant_stock_binding,
 )
 from vnpy_ashare.ai.context_store import set_screening_results
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ai.floating_actions import build_quick_actions_for_panel, enrich_context_with_actions
 
 
 class FloatingActionsTests(unittest.TestCase):
     def test_assistant_default_fallback_binding(self) -> None:
-        with patch("vnpy_ashare.app_db.load_watchlist_rows", return_value=[]):
+        with patch("vnpy_ashare.storage.app_db.load_watchlist_rows", return_value=[]):
             binding = resolve_assistant_stock_binding()
         self.assertEqual(binding.vt_symbol, "002230.SZSE")
         self.assertEqual(binding.name, "科大讯飞")
 
     def test_assistant_watchlist_first_binding(self) -> None:
         with patch(
-            "vnpy_ashare.app_db.load_watchlist_rows",
+            "vnpy_ashare.storage.app_db.load_watchlist_rows",
             return_value=[("600519", Exchange.SSE, "贵州茅台")],
         ):
             binding = resolve_assistant_stock_binding()

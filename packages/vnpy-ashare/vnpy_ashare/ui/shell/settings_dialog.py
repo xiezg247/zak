@@ -4,20 +4,20 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.config_bridge import detect_config_drift, format_config_drift_summary
-from vnpy_ashare.config_schema import (
+from vnpy_ashare.config.bridge import detect_config_drift, format_config_drift_summary
+from vnpy_ashare.config.schema import (
     VT_DB_SPECS,
     VT_NON_DB_SPECS,
     ConfigFieldSpec,
     normalize_database_name,
 )
 from vnpy_common.paths import ENV_FILE
-from vnpy_ashare.ui.fonts import (
+from vnpy_ashare.ui.shell.fonts import (
     available_font_families,
     resolve_font_family,
     supports_font_family_selection,
 )
-from vnpy_ashare.ui.settings_snapshot import (
+from vnpy_ashare.ui.shell.settings_snapshot import (
     collect_database_runtime_updates,
     detect_database_mode,
     env_database_name,
@@ -32,7 +32,7 @@ from vnpy_ashare.ui.settings_snapshot import (
 from vnpy_ashare.ui.styles import apply_settings_combo_style
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
-from vnpy_ashare.vt_settings import (
+from vnpy_ashare.config.vt_settings import (
     SETTING_FILE,
     load_runtime_settings,
     save_runtime_settings,

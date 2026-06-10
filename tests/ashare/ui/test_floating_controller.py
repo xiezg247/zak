@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.floating_controller import FLOATING_ORB_PAGE_KEYS, FloatingAiController
+from vnpy_ashare.ui.shell.floating_controller import FLOATING_ORB_PAGE_KEYS, FloatingAiController
 
 
 class FloatingControllerTests(unittest.TestCase):
@@ -25,7 +25,7 @@ class FloatingControllerTests(unittest.TestCase):
         )
 
     def test_load_orb_user_hidden(self) -> None:
-        with patch("vnpy_ashare.ui.floating_controller.QtCore.QSettings") as mock_settings:
+        with patch("vnpy_ashare.ui.shell.floating_controller.QtCore.QSettings") as mock_settings:
             mock_settings.return_value.value.return_value = True
             self.assertTrue(FloatingAiController._load_orb_user_hidden())
 

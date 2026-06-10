@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.bar_store import (
+from vnpy_ashare.data.bar_store import (
     get_scope_overview,
     iter_bar_overviews,
     load_period_bars,
@@ -17,7 +17,7 @@ from vnpy_ashare.bar_store import (
 
 
 class BarStoreTests(unittest.TestCase):
-    @patch("vnpy_ashare.bar_store.get_database")
+    @patch("vnpy_ashare.data.bar_store.get_database")
     def test_load_period_bars(self, get_database_mock) -> None:
         database = MagicMock()
         get_database_mock.return_value = database
@@ -53,7 +53,7 @@ class BarStoreTests(unittest.TestCase):
             datetime(2026, 6, 1, 15, 0),
         )
 
-    @patch("vnpy_ashare.bar_store.get_database")
+    @patch("vnpy_ashare.data.bar_store.get_database")
     def test_get_scope_overview_uses_configured_database(self, get_database_mock) -> None:
         database = MagicMock()
         get_database_mock.return_value = database
@@ -83,7 +83,7 @@ class BarStoreTests(unittest.TestCase):
         self.assertEqual(overview.count, 1280)
         database.get_bar_overview.assert_called_once()
 
-    @patch("vnpy_ashare.bar_store.get_database")
+    @patch("vnpy_ashare.data.bar_store.get_database")
     def test_iter_bar_overviews_filters_by_interval(self, get_database_mock) -> None:
         database = MagicMock()
         get_database_mock.return_value = database

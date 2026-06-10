@@ -8,7 +8,7 @@ import vnpy_ctabacktester
 from vnpy.trader.app import BaseApp
 from vnpy_ctabacktester.engine import APP_NAME
 
-from vnpy_ashare.backtester_engine import AshareBacktesterEngine
+from vnpy_ashare.backtest.engine import AshareBacktesterEngine
 
 _CTAB_ROOT = Path(vnpy_ctabacktester.__file__).resolve().parent
 

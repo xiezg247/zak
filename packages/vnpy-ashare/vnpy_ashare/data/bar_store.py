@@ -9,7 +9,7 @@ from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import BarOverview, get_database
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.minute_periods import (
+from vnpy_ashare.data.minute_periods import (
     bar_interval,
     is_daily_scope,
     normalize_period,

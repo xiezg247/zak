@@ -77,7 +77,7 @@ class ThemeManagerTests(unittest.TestCase):
         self.assertNotEqual(dark_orb.idle_gradient, light_orb.idle_gradient)
 
     def test_html_palette_and_diagnose_html(self) -> None:
-        from vnpy_ashare.ui.diagnose_panel import format_diagnose_html
+        from vnpy_ashare.ui.quotes.diagnose_panel import format_diagnose_html
         from vnpy_common.ui.theme.html_palette import html_palette
 
         palette = html_palette(LIGHT_TOKENS)

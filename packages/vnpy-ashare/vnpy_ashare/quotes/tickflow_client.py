@@ -7,9 +7,9 @@ import os
 from dotenv import load_dotenv
 from tickflow import TickFlow
 
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_common.paths import ENV_FILE
-from vnpy_ashare.quote_time import resolve_trade_time_from_tickflow_row
+from vnpy_ashare.domain.quote_time import resolve_trade_time_from_tickflow_row
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 
 MARKET_INDICES: list[tuple[str, str]] = [

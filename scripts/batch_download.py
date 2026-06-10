@@ -11,7 +11,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from vnpy.trader.constant import Interval
 
-from vnpy_ashare.bars import download_bars, load_watchlist
+from vnpy_ashare.data.bars import download_bars, load_watchlist
 from vnpy_common.paths import ENV_FILE
 
 

@@ -8,8 +8,8 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.bar_access import delete_scope_bars, iter_bar_overviews
-from vnpy_ashare.bar_health import (
+from vnpy_ashare.data.bar_access import delete_scope_bars, iter_bar_overviews
+from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
     BarMeta,
@@ -17,7 +17,7 @@ from vnpy_ashare.bar_health import (
     format_meta_datetime,
     list_status,
 )
-from vnpy_ashare.calendar import last_trading_day
+from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.jobs.local_fill import (
     BatchFillProgress,
@@ -28,9 +28,9 @@ from vnpy_ashare.jobs.local_fill import (
     count_stale_daily_items,
     select_stale_daily_items,
 )
-from vnpy_ashare.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS, is_daily_scope, scope_display
-from vnpy_ashare.models import StockItem
-from vnpy_ashare.ui.chart_panel import MINUTE_TAB_INDEX
+from vnpy_ashare.data.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS, is_daily_scope, scope_display
+from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.ui.quotes.chart_panel import MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.run_log import (
     append_run_log,
     begin_run_log,
@@ -47,10 +47,10 @@ from vnpy_ashare.ui.quotes.workers import (
     MinuteDownloadWorker,
     ScopeBarsLoadWorker,
 )
-from vnpy_ashare.ui.quotes_chart import AshareChartWidget, prepare_chart_bars
+from vnpy_ashare.ui.quotes.quotes_chart import AshareChartWidget, prepare_chart_bars
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
 
 def should_apply_loaded_bars(

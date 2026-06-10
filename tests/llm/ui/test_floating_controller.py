@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.events import AskAiRequest
-from vnpy_ashare.ui.floating_controller import FLOATING_ORB_PAGE_KEYS, FloatingAiController
+from vnpy_ashare.app.events import AskAiRequest
+from vnpy_ashare.ui.shell.floating_controller import FLOATING_ORB_PAGE_KEYS, FloatingAiController
 
 
 class FloatingAiControllerTests(unittest.TestCase):
@@ -39,7 +39,7 @@ class FloatingAiControllerTests(unittest.TestCase):
         mock_panel = MagicMock()
         with (
             patch(
-                "vnpy_ashare.ui.floating_controller.FloatingAiPanel",
+                "vnpy_ashare.ui.shell.floating_controller.FloatingAiPanel",
                 return_value=mock_panel,
             ),
             patch.object(

@@ -6,7 +6,7 @@ from datetime import datetime, time, timedelta
 
 from vnpy.trader.utility import ZoneInfo
 
-from vnpy_ashare.calendar import is_trading_day
+from vnpy_ashare.domain.calendar import is_trading_day
 
 CHINA_TZ = ZoneInfo("Asia/Shanghai")
 

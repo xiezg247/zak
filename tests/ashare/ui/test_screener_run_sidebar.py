@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunListWidget, ScreenerRunSidebar
+from vnpy_ashare.ui.screener.screener_run_sidebar import ScreenerRunListWidget, ScreenerRunSidebar
 
 
 def _auto_record(run_id: str, *, trigger: str = "scheduled_intraday", read: bool = True):
@@ -33,14 +33,14 @@ class ScreenerRunListWidgetTests(unittest.TestCase):
         read = MagicMock(config={"read": True, "trigger": "scheduled_post_close"})
         strategy = MagicMock(config={"read": False, "trigger": "manual"})
 
-        with patch("vnpy_ashare.ui.screener_run_sidebar._list_runs", return_value=[unread, read, strategy]):
+        with patch("vnpy_ashare.ui.screener.screener_run_sidebar._list_runs", return_value=[unread, read, strategy]):
             with patch(
-                "vnpy_ashare.ui.screener_run_sidebar._is_auto_run",
+                "vnpy_ashare.ui.screener.screener_run_sidebar._is_auto_run",
                 side_effect=lambda _engine, cfg: cfg.get("trigger", "").startswith("scheduled_"),
             ):
-                with patch("vnpy_ashare.ui.screener_run_sidebar._is_strategy_run", return_value=False):
+                with patch("vnpy_ashare.ui.screener.screener_run_sidebar._is_strategy_run", return_value=False):
                     with patch(
-                        "vnpy_ashare.ui.screener_run_sidebar._is_run_unread",
+                        "vnpy_ashare.ui.screener.screener_run_sidebar._is_run_unread",
                         side_effect=lambda _engine, cfg: not cfg.get("read", True),
                     ):
                         self.assertEqual(widget.unread_count(), 1)
@@ -56,11 +56,11 @@ class ScreenerRunListWidgetTests(unittest.TestCase):
         records = [_auto_record("run-a"), _auto_record("run-b")]
         deleted: list[str] = []
 
-        with patch("vnpy_ashare.ui.screener_run_sidebar._list_runs", return_value=records):
-            with patch("vnpy_ashare.ui.screener_run_sidebar._is_auto_run", return_value=True):
-                with patch("vnpy_ashare.ui.screener_run_sidebar._is_run_unread", return_value=False):
+        with patch("vnpy_ashare.ui.screener.screener_run_sidebar._list_runs", return_value=records):
+            with patch("vnpy_ashare.ui.screener.screener_run_sidebar._is_auto_run", return_value=True):
+                with patch("vnpy_ashare.ui.screener.screener_run_sidebar._is_run_unread", return_value=False):
                     with patch(
-                        "vnpy_ashare.ui.screener_run_sidebar._delete_run",
+                        "vnpy_ashare.ui.screener.screener_run_sidebar._delete_run",
                         side_effect=lambda _engine, run_id: deleted.append(run_id),
                     ):
                         widget.refresh()
@@ -83,7 +83,7 @@ class ScreenerRunSidebarTests(unittest.TestCase):
         cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def test_sidebar_init_does_not_crash_during_list_refresh(self) -> None:
-        with patch("vnpy_ashare.ui.screener_run_sidebar._list_runs", return_value=[]):
+        with patch("vnpy_ashare.ui.screener.screener_run_sidebar._list_runs", return_value=[]):
             sidebar = ScreenerRunSidebar(mode="auto")
             self.assertIsNotNone(sidebar._list)
 

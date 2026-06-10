@@ -1,7 +1,7 @@
-"""A 股 UI 包 barrel（页面 Widget 与兼容 Worker re-export）。"""
+"""A 股 UI 包。"""
 
-from .page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
-from .worker import UniverseSyncWorker
+from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
+from vnpy_ashare.ui.workers import UniverseSyncWorker
 
 __all__ = [
     "LocalPageWidget",

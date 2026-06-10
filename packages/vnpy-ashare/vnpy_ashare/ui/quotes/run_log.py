@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes_page import QuotesPage
-    from vnpy_ashare.ui.task_run_output_panel import TaskRunOutputPanel
+    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 
 
 def run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:

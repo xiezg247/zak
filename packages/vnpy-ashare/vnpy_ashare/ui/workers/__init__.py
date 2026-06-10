@@ -1,13 +1,51 @@
-"""UI Worker 子包。"""
+"""UI 后台 Worker（看盘 quotes.workers + 选股 screener_workers）。"""
 
+from vnpy_ashare.ui.quotes.workers import (
+    BarGapCheckWorker,
+    BarsLoadWorker,
+    DepthRefreshWorker,
+    DiagnoseWorker,
+    DownloadWorker,
+    IndexQuotesWorker,
+    IntradayBarsWorker,
+    LoadedBars,
+    LoadedPeriodBars,
+    MarketPageLoadWorker,
+    MarketPageResult,
+    MinuteBarsWorker,
+    MinuteDownloadWorker,
+    QuotesRefreshWorker,
+    ScopeBarsLoadWorker,
+    UniverseLoadWorker,
+    UniverseSyncWorker,
+)
 from vnpy_ashare.ui.workers.screener_workers import (
     ScreenerBatchBacktestWorker,
     ScreenerBatchDownloadWorker,
+    ScreenerRecipeRunWorker,
     ScreenerRunWorker,
 )
 
 __all__ = [
+    "BarGapCheckWorker",
+    "BarsLoadWorker",
+    "DepthRefreshWorker",
+    "DiagnoseWorker",
+    "DownloadWorker",
+    "IndexQuotesWorker",
+    "IntradayBarsWorker",
+    "LoadedBars",
+    "LoadedPeriodBars",
+    "MarketPageLoadWorker",
+    "MarketPageResult",
+    "MinuteBarsWorker",
+    "MinuteDownloadWorker",
+    "QuotesRefreshWorker",
+    "ScopeBarsLoadWorker",
     "ScreenerBatchBacktestWorker",
     "ScreenerBatchDownloadWorker",
+    "ScreenerRecipeRunWorker",
     "ScreenerRunWorker",
+    "UniverseLoadWorker",
+    "UniverseSyncWorker",
 ]

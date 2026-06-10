@@ -7,8 +7,8 @@ def install_shared_bridges() -> None:
     from vnpy_ashare.ai import context_store
     from vnpy_ashare.ai.context import build_stock_completion_items
     from vnpy_ashare.ai.floating_actions import build_quick_actions_for_panel
-    from vnpy_ashare.ui.chart_style import refresh_charts_for_theme
-    from vnpy_ashare.vt_settings import load_runtime_settings
+    from vnpy_ashare.ui.components.chart_style import refresh_charts_for_theme
+    from vnpy_ashare.config.vt_settings import load_runtime_settings
     from vnpy_common.ai import access
     from vnpy_common.paths import register_settings_loader
     from vnpy_common.ui.theme.manager import theme_manager

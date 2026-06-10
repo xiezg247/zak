@@ -9,15 +9,15 @@ from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 from vnpy.trader.utility import ZoneInfo
 
-from vnpy_ashare.market_hours import (
+from vnpy_ashare.domain.market_hours import (
     INTRADAY_SESSION_MINUTES,
     MORNING_SESSION_MINUTES,
     bar_session_minute,
     session_minute_to_time_label,
     vwap_price,
 )
-from vnpy_ashare.ui.chart_style import FALL_RGB, RISE_RGB
-from vnpy_ashare.ui.intraday_chart import (
+from vnpy_ashare.ui.components.chart_style import FALL_RGB, RISE_RGB
+from vnpy_ashare.ui.quotes.intraday_chart import (
     build_price_segments,
     calc_intraday_avg_prices,
     format_intraday_summary,

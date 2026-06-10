@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from vnpy_ashare.ui.fonts import default_font_family
+from vnpy_ashare.ui.shell.fonts import default_font_family
 from vnpy_llm.config import DEFAULT_BASE_URL, DEFAULT_MODEL
 
 ValueKind = Literal["text", "secret", "bool", "int", "choice"]

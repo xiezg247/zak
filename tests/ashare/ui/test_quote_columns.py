@@ -6,9 +6,9 @@ import unittest
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
-from vnpy_ashare.ui.quote_columns import build_quote_row, format_amount, format_volume
+from vnpy_ashare.ui.quotes.quote_columns import build_quote_row, format_amount, format_volume
 
 
 class TestQuoteColumns(unittest.TestCase):
@@ -45,7 +45,7 @@ class TestQuoteColumns(unittest.TestCase):
 
 class TestQuoteRefreshHint(unittest.TestCase):
     def test_refresh_hint(self) -> None:
-        from vnpy_ashare.ui.quotes_config import (
+        from vnpy_ashare.ui.quotes.quotes_config import (
             MARKET_QUOTE_REFRESH_MS,
             PAGE_CONFIGS,
             WATCHLIST_QUOTE_REFRESH_MS,
@@ -81,7 +81,7 @@ class TestQuoteRefreshHint(unittest.TestCase):
 
 class TestQuoteSourceLabel(unittest.TestCase):
     def test_quote_source_labels(self) -> None:
-        from vnpy_ashare.ui.quotes_config import PAGE_CONFIGS, quote_source_label
+        from vnpy_ashare.ui.quotes.quotes_config import PAGE_CONFIGS, quote_source_label
 
         market = PAGE_CONFIGS["市场"]
         watchlist = PAGE_CONFIGS["自选"]

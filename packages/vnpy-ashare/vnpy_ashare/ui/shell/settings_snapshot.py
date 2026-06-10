@@ -7,12 +7,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.config_bridge import (
+from vnpy_ashare.config.bridge import (
     database_settings_from_env,
     load_effective_env_values,
     parse_env_file,
 )
-from vnpy_ashare.config_schema import (
+from vnpy_ashare.config.schema import (
     ENV_CONFIG_SPECS,
     ENV_DB_KEYS,
     ENV_POSTGRES_KEYS,
@@ -26,7 +26,7 @@ from vnpy_ashare.config_schema import (
     normalize_database_name,
 )
 from vnpy_common.paths import ENV_FILE, VNTRADER_DIR, get_app_db_path, get_chat_db_path, meta_db_filenames
-from vnpy_ashare.vt_settings import build_vt_settings, default_vt_settings, load_runtime_settings
+from vnpy_ashare.config.vt_settings import build_vt_settings, default_vt_settings, load_runtime_settings
 
 
 def mask_secret(value: str) -> str:

@@ -7,7 +7,7 @@ from typing import Literal
 
 from vnpy.event import Event, EventEngine
 
-from vnpy_ashare.events import (
+from vnpy_ashare.app.events import (
     EVENT_AI_ACTION,
     AiActionRequest,
     AskAiRequest,

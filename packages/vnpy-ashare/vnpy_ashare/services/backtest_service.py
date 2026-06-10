@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from vnpy_ashare.engine import AshareEngine
+    from vnpy_ashare.app.engine import AshareEngine
 
 from strategies.registry import (
     STRATEGY_REGISTRY,

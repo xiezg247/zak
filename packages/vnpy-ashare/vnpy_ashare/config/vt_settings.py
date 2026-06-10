@@ -10,13 +10,13 @@ from dotenv import load_dotenv
 from vnpy.trader.setting import SETTING_FILENAME, SETTINGS
 from vnpy.trader.utility import load_json, save_json
 
-from vnpy_ashare.config_bridge import (
+from vnpy_ashare.config.bridge import (
     build_vt_settings_from_env_file,
     meta_database_settings,
     sqlite_database_settings,
 )
 from vnpy_common.paths import ENV_FILE, VNTRADER_DIR
-from vnpy_ashare.ui.fonts import default_font_family
+from vnpy_ashare.ui.shell.fonts import default_font_family
 
 SETTING_FILE = VNTRADER_DIR / SETTING_FILENAME
 

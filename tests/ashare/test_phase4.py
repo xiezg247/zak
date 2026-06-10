@@ -17,7 +17,7 @@ def _load_module(name: str, rel_path: str):
 
 
 def test_report_fallback_flag():
-    mod = _load_module("report_sources_mod", "vnpy_ashare/services/report_sources.py")
+    mod = _load_module("report_sources_mod", "packages/vnpy-ashare/vnpy_ashare/services/report_sources.py")
     with patch.dict("os.environ", {"ANALYSIS_REPORT_FALLBACK": "off"}):
         assert mod.report_fallback_enabled() is False
     with patch.dict("os.environ", {"ANALYSIS_REPORT_FALLBACK": "tushare"}):
@@ -25,7 +25,7 @@ def test_report_fallback_flag():
 
 
 def test_to_ts_code():
-    mod = _load_module("report_sources_mod2", "vnpy_ashare/services/report_sources.py")
+    mod = _load_module("report_sources_mod2", "packages/vnpy-ashare/vnpy_ashare/services/report_sources.py")
     assert mod.to_ts_code("600000", "SSE") == "600000.SH"
     assert mod.to_ts_code("000001", "SZSE") == "000001.SZ"
 

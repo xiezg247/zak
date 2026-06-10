@@ -6,7 +6,7 @@ from __future__ import annotations
 from vnpy.trader.constant import Interval
 from vnpy.trader.database import get_database
 
-from vnpy_ashare.bars import load_watchlist
+from vnpy_ashare.data.bars import load_watchlist
 
 
 def main() -> None:

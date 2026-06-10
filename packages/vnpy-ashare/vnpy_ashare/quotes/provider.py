@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from vnpy_ashare.models import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
 from vnpy_ashare.quotes.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.tickflow_client import fetch_quotes_from_tickflow

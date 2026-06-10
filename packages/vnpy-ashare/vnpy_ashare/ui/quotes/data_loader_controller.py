@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.bar_access import universe_exists
-from vnpy_ashare.engine_access import get_bar_service
+from vnpy_ashare.data.bar_access import universe_exists
+from vnpy_ashare.app.engine_access import get_bar_service
 from vnpy_ashare.ui.quotes.workers import (
     MarketPageLoadWorker,
     MarketPageResult,
@@ -14,7 +14,7 @@ from vnpy_ashare.ui.quotes.workers import (
 )
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
 
 class DataLoaderController:

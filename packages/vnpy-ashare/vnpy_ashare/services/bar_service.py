@@ -10,7 +10,7 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_ashare.ai.context_store import set_ai_context
-from vnpy_ashare.bar_access import (
+from vnpy_ashare.data.bar_access import (
     PeriodBarOverview,
     build_symbol_name_map,
     get_period_overview,

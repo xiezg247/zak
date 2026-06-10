@@ -8,8 +8,8 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from vnpy_ashare.engine import AshareEngine
-    from vnpy_ashare.models import StockItem
+    from vnpy_ashare.app.engine import AshareEngine
+    from vnpy_ashare.domain.models import StockItem
 
 from strategies.registry import get_strategy_meta
 from strategies.signals import (

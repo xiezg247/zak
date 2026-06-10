@@ -8,7 +8,7 @@ from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tickflow_stream
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
 
 class QuoteStreamController:

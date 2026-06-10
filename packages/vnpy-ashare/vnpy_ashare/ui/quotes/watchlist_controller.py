@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.config import format_vt_symbol_cn
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.services.watchlist_service import WatchlistService
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
 
 class WatchlistController:

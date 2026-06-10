@@ -17,7 +17,7 @@ from vnpy_ashare.screener.reference_peer import (
     env_default_reference_peer_top_n,
 )
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_ashare.ui.screener_results_table import (
+from vnpy_ashare.ui.screener.screener_results_table import (
     all_table_rows_checked,
     iter_checked_table_rows,
     populate_screener_results_table,

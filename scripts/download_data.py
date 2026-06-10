@@ -9,8 +9,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 from vnpy.trader.constant import Exchange, Interval
 
-from vnpy_ashare.bars import default_minute_download_start, download_bars, download_period_bars
-from vnpy_ashare.minute_periods import MINUTE_PERIODS
+from vnpy_ashare.data.bars import default_minute_download_start, download_bars, download_period_bars
+from vnpy_ashare.data.minute_periods import MINUTE_PERIODS
 from vnpy_common.paths import ENV_FILE
 
 

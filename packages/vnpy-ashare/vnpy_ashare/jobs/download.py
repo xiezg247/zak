@@ -9,7 +9,7 @@ from datetime import datetime
 
 from vnpy.trader.constant import Interval
 
-from vnpy_ashare.bars import download_bars, load_watchlist
+from vnpy_ashare.data.bars import download_bars, load_watchlist
 from vnpy_ashare.jobs.result import JobResult
 
 _logger = logging.getLogger(__name__)

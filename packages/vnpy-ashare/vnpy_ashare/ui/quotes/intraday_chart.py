@@ -8,14 +8,14 @@ import pyqtgraph as pg
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.market_hours import (
+from vnpy_ashare.domain.market_hours import (
     INTRADAY_SESSION_MINUTES,
     MORNING_SESSION_MINUTES,
     bar_session_minute,
     intraday_axis_ticks,
     vwap_price,
 )
-from vnpy_ashare.ui.chart_style import (
+from vnpy_ashare.ui.components.chart_style import (
     AVG_LINE_COLOR,
     INTRADAY_AVG_LINE_WIDTH,
     INTRADAY_LAST_DOT_SIZE,

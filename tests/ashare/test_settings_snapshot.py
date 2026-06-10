@@ -8,12 +8,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from vnpy_ashare.config_bridge import (
+from vnpy_ashare.config.bridge import (
     build_vt_settings_from_env_values,
     detect_config_drift,
     format_config_drift_summary,
 )
-from vnpy_ashare.ui.settings_snapshot import (
+from vnpy_ashare.ui.shell.settings_snapshot import (
     collect_editable_values,
     detect_database_mode,
     env_database_name,
@@ -31,7 +31,7 @@ from vnpy_ashare.ui.settings_snapshot import (
     resolve_env_config_kline,
     resolve_vt_config,
 )
-from vnpy_ashare.vt_settings import (
+from vnpy_ashare.config.vt_settings import (
     build_vt_settings,
     default_vt_settings,
     ensure_vt_settings_from_env,
@@ -233,8 +233,8 @@ class VtSettingsTest(unittest.TestCase):
                 "DATAFEED_NAME=tickflow\nTICKFLOW_API_KEY=tf-key\nDATABASE_NAME=sqlite\n",
                 encoding="utf-8",
             )
-            import vnpy_ashare.config_bridge as config_bridge
-            import vnpy_ashare.vt_settings as vt_settings
+            import vnpy_ashare.config.bridge as config_bridge
+            import vnpy_ashare.config.vt_settings as vt_settings
 
             original = vt_settings.ENV_FILE
             original_bridge = config_bridge.ENV_FILE
@@ -256,14 +256,14 @@ class VtSettingsTest(unittest.TestCase):
                 json.dumps({"datafeed.name": "tickflow", "email.server": "keep-me"}),
                 encoding="utf-8",
             )
-            import vnpy_ashare.vt_settings as vt_settings
+            import vnpy_ashare.config.vt_settings as vt_settings
 
             original = vt_settings.SETTING_FILE
             try:
                 vt_settings.SETTING_FILE = setting_file
-                with patch("vnpy_ashare.vt_settings.SETTING_FILENAME", setting_file.name):
-                    with patch("vnpy_ashare.vt_settings.load_json", return_value=json.loads(setting_file.read_text())):
-                        with patch("vnpy_ashare.vt_settings.save_json") as save_json:
+                with patch("vnpy_ashare.config.vt_settings.SETTING_FILENAME", setting_file.name):
+                    with patch("vnpy_ashare.config.vt_settings.load_json", return_value=json.loads(setting_file.read_text())):
+                        with patch("vnpy_ashare.config.vt_settings.save_json") as save_json:
                             save_runtime_settings({"font.size": 14})
                             saved = save_json.call_args[0][1]
                             self.assertEqual(saved["font.size"], 14)
@@ -278,7 +278,7 @@ class VtSettingsTest(unittest.TestCase):
     )
     def test_sync_vt_settings_from_env(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            import vnpy_ashare.vt_settings as vt_settings
+            import vnpy_ashare.config.vt_settings as vt_settings
 
             target = Path(tmp) / "vt_setting.json"
             original_file = vt_settings.SETTING_FILE
@@ -309,7 +309,7 @@ class VtSettingsTest(unittest.TestCase):
 
     def test_ensure_vt_settings_from_env_bootstraps_empty_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            import vnpy_ashare.vt_settings as vt_settings
+            import vnpy_ashare.config.vt_settings as vt_settings
 
             target = Path(tmp) / "vt_setting.json"
             original_file = vt_settings.SETTING_FILE
@@ -329,7 +329,7 @@ class VtSettingsTest(unittest.TestCase):
 
     def test_ensure_vt_settings_from_env_only_when_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            import vnpy_ashare.vt_settings as vt_settings
+            import vnpy_ashare.config.vt_settings as vt_settings
 
             target = Path(tmp) / "vt_setting.json"
             original_file = vt_settings.SETTING_FILE

@@ -7,8 +7,8 @@ import unittest
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.models import StockItem
-from vnpy_ashare.ui.chart_panel import (
+from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.ui.quotes.chart_panel import (
     DAILY_MISSING_HINT,
     DAILY_TAB_INDEX,
     INTRADAY_EMPTY_HINT,
@@ -24,8 +24,8 @@ from vnpy_ashare.ui.chart_panel import (
     should_apply_minute_bars,
 )
 from vnpy_common.ui.qt_helpers import retain_thread_until_finished
-from vnpy_ashare.ui.quotes_chart import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
-from vnpy_ashare.ui.worker import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
+from vnpy_ashare.ui.quotes.quotes_chart import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
+from vnpy_ashare.ui.workers import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
 
 
 class ChartTabHintTests(unittest.TestCase):

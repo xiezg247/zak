@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
 
-    from vnpy_ashare.engine import AshareEngine
+    from vnpy_ashare.app.engine import AshareEngine
     from vnpy_ashare.services.analysis_service import AnalysisService
     from vnpy_ashare.services.backtest_service import BacktestService
     from vnpy_ashare.services.bar_service import BarService
@@ -33,7 +33,7 @@ def get_ashare_engine(main_engine: MainEngine | None) -> AshareEngine | None:
     """从 MainEngine 获取 AshareEngine；未注册或类型不符时返回 None。"""
     if main_engine is None:
         return None
-    from vnpy_ashare.engine import APP_NAME, AshareEngine
+    from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 
     engine = main_engine.get_engine(APP_NAME)
     if isinstance(engine, AshareEngine):

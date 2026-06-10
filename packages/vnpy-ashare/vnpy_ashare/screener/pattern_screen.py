@@ -13,8 +13,8 @@ from typing import Any
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.bars import load_downloaded_stocks
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.data.bars import load_downloaded_stocks
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.screener.export import resolve_export_columns
 from vnpy_ashare.screener.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
 from vnpy_ashare.screener.presets import SCREENER_CUSTOM

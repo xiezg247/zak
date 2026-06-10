@@ -1,5 +1,5 @@
-"""看盘页 UI 子包（Controller / Worker / page_shell）。"""
+"""看盘页：QuotesPage 及其 controller、图表子组件。"""
 
-# 不在包初始化时 eager import 子模块，避免 chart_panel ↔ quotes 循环依赖。
+from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
-__all__: list[str] = []
+__all__ = ["QuotesPage"]

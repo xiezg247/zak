@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from vnpy_ashare.calendar import last_trading_day
+from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.services.base import BaseService
 
 FEAR_GREED_LABELS: tuple[tuple[float, str], ...] = (

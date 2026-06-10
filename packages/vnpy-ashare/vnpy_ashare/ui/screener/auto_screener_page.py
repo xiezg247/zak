@@ -10,12 +10,12 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_screener_page_context
 from vnpy_ashare.ai.symbol import parse_stock_symbol
-from vnpy_ashare.engine_access import (
+from vnpy_ashare.app.engine_access import (
     get_backtest_service,
     get_screening_service,
     get_watchlist_service,
 )
-from vnpy_ashare.events import (
+from vnpy_ashare.app.events import (
     EVENT_ASK_AI,
     EVENT_OPEN_BACKTEST,
     EVENT_ORB_ATTENTION,
@@ -25,18 +25,18 @@ from vnpy_ashare.events import (
 )
 from vnpy_ashare.screener.runner import ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
-from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
+from vnpy_ashare.ui.backtest.batch_backtest_flow import BatchBacktestFlow
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_ashare.ui.screener_recipe_panel import ScreenerRecipePanel
-from vnpy_ashare.ui.screener_results_table import (
+from vnpy_ashare.ui.screener.screener_recipe_panel import ScreenerRecipePanel
+from vnpy_ashare.ui.screener.screener_results_table import (
     apply_screener_results_view,
     configure_screener_results_table,
     iter_checked_table_rows,
     select_all_table_rows,
 )
-from vnpy_ashare.ui.screener_run_output_panel import ScreenerRunOutputPanel
-from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
-from vnpy_ashare.ui.worker import ScreenerBatchDownloadWorker, ScreenerRecipeRunWorker
+from vnpy_ashare.ui.screener.screener_run_output_panel import ScreenerRunOutputPanel
+from vnpy_ashare.ui.screener.screener_run_sidebar import ScreenerRunSidebar
+from vnpy_ashare.ui.workers import ScreenerBatchDownloadWorker, ScreenerRecipeRunWorker
 
 
 class AutoScreenerPageWidget(QtWidgets.QWidget):

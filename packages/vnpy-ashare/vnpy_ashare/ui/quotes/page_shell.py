@@ -6,22 +6,22 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.minute_periods import LOCAL_SCOPE_OPTIONS
+from vnpy_ashare.data.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
-from vnpy_ashare.ui.chart_panel import ChartPanel
-from vnpy_ashare.ui.chart_style import build_chart_frame_stylesheet
+from vnpy_ashare.ui.quotes.chart_panel import ChartPanel
+from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_common.ui.theme import theme_manager
-from vnpy_ashare.ui.depth_panel import DepthPanel
-from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
-from vnpy_ashare.ui.ma_legend import MaLegendBar
-from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS
-from vnpy_ashare.ui.quotes_chart import create_daily_chart
-from vnpy_ashare.ui.quotes_config import quote_refresh_hint, quote_source_label
+from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
+from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
+from vnpy_ashare.ui.quotes.ma_legend import MaLegendBar
+from vnpy_ashare.ui.quotes.quote_columns import LOCAL_TABLE_HEADERS
+from vnpy_ashare.ui.quotes.quotes_chart import create_daily_chart
+from vnpy_ashare.ui.quotes.quotes_config import quote_refresh_hint, quote_source_label
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
-from vnpy_ashare.ui.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
 
 def _toolbar_separator() -> QtWidgets.QFrame:

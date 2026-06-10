@@ -9,8 +9,8 @@ from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 from vnpy.trader.utility import ZoneInfo
 
-from vnpy_ashare.minute_periods import MAX_BARS_PER_REQUEST, bar_interval, normalize_period
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.data.minute_periods import MAX_BARS_PER_REQUEST, bar_interval, normalize_period
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.tickflow_client import get_tickflow_client
 
 CHINA_TZ = ZoneInfo("Asia/Shanghai")

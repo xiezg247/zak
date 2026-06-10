@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from vnpy.event import EventEngine
     from vnpy.trader.engine import MainEngine
 
-    from vnpy_ashare.engine import AshareEngine
+    from vnpy_ashare.app.engine import AshareEngine
 
 
 class BaseService:

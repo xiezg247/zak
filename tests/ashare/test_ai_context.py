@@ -7,7 +7,7 @@ import unittest
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.ai.context import build_quote_context, format_quote_summary
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 
 

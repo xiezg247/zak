@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.scheduler import TaskSchedulerManager
-from vnpy_ashare.ui.scheduler_jobs_widget import SchedulerJobsWidget
+from vnpy_ashare.ui.scheduler.scheduler_jobs_widget import SchedulerJobsWidget
 from vnpy_common.ui.theme import theme_manager
 
 

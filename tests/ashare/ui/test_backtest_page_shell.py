@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.backtest_page_shell import BacktestPageShell
+from vnpy_ashare.ui.backtest.backtest_page_shell import BacktestPageShell
 
 
 class _BacktestPageStub(QtWidgets.QWidget):

@@ -51,7 +51,7 @@ def test_compute_fear_greed_with_mock_pro():
         def moneyflow_hsgt(self, **kwargs):
             return north
 
-    with patch("vnpy_ashare.calendar.last_trading_day", return_value=date(2025, 6, 9)):
+    with patch("vnpy_ashare.domain.calendar.last_trading_day", return_value=date(2025, 6, 9)):
         with patch(
             "vnpy_ashare.screener.tushare_client.get_tushare_pro",
             return_value=FakePro(),

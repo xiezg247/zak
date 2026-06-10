@@ -59,7 +59,7 @@ def quote_refresh_hint(
     return f"行情每 {seconds} 秒自动刷新"
 
 
-from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS, quote_table_headers
+from vnpy_ashare.ui.quotes.quote_columns import LOCAL_TABLE_HEADERS, quote_table_headers
 
 TABLE_HEADERS_WITH_LOCAL = quote_table_headers(tail_header="本地")
 TABLE_HEADERS_LOCAL = LOCAL_TABLE_HEADERS

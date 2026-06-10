@@ -6,9 +6,9 @@ import unittest
 from datetime import date, datetime
 from unittest.mock import patch
 
-from vnpy_ashare.app_db import get_meta, set_meta
-from vnpy_ashare.calendar import is_trading_day, last_trading_day
-from vnpy_ashare.trade_calendar_store import (
+from vnpy_ashare.storage.app_db import get_meta, set_meta
+from vnpy_ashare.domain.calendar import is_trading_day, last_trading_day
+from vnpy_ashare.storage.trade_calendar_store import (
     TRADE_CAL_SYNCED_AT_KEY,
     _upsert_rows,
     clear_trade_calendar_cache,
@@ -45,7 +45,7 @@ class TradeCalendarStoreTests(unittest.TestCase):
 
         self.assertTrue(is_trading_day(date(2026, 1, 31)))
 
-    @patch("vnpy_ashare.trade_calendar_store._fetch_trade_calendar")
+    @patch("vnpy_ashare.storage.trade_calendar_store._fetch_trade_calendar")
     def test_sync_trade_calendar_writes_cache(self, fetch_mock) -> None:
         fetch_mock.return_value = [
             ("2026-06-01", 1),
@@ -58,7 +58,7 @@ class TradeCalendarStoreTests(unittest.TestCase):
         self.assertFalse(lookup_trading_day(date(2026, 6, 3)))
         self.assertIsNotNone(get_meta(TRADE_CAL_SYNCED_AT_KEY))
 
-    @patch("vnpy_ashare.trade_calendar_store.sync_trade_calendar")
+    @patch("vnpy_ashare.storage.trade_calendar_store.sync_trade_calendar")
     def test_ensure_calendar_covers_skips_when_fresh(self, sync_mock) -> None:
         _upsert_rows([("2026-06-05", 1)])
         set_meta(TRADE_CAL_SYNCED_AT_KEY, datetime.now().isoformat())
@@ -68,7 +68,7 @@ class TradeCalendarStoreTests(unittest.TestCase):
         self.assertTrue(ensure_calendar_covers(date(2026, 6, 5)))
         sync_mock.assert_not_called()
 
-    @patch("vnpy_ashare.trade_calendar_store._fetch_trade_calendar")
+    @patch("vnpy_ashare.storage.trade_calendar_store._fetch_trade_calendar")
     def test_last_trading_day_uses_cached_holiday(self, fetch_mock) -> None:
         fetch_mock.return_value = [
             ("2026-02-13", 1),

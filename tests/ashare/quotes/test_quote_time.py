@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.quote_time import (
+from vnpy_ashare.domain.quote_time import (
     format_batch_updated_at,
     format_trade_time_display,
     resolve_trade_time_from_tickflow_row,

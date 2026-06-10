@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from vnpy_ashare.app_db import (
+from vnpy_ashare.storage.app_db import (
     export_universe_csv,
     export_watchlist_csv,
     load_watchlist_rows,

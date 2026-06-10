@@ -7,32 +7,32 @@ from typing import TYPE_CHECKING
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.bar_health import (
+from vnpy_ashare.data.bar_health import (
     BarHealthStatus,
     format_meta_datetime,
     list_status,
     status_label,
 )
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ui.quote_columns import (
+from vnpy_ashare.ui.quotes.quote_columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
     build_quote_row,
     quote_column_index,
 )
-from vnpy_ashare.ui.quotes_config import (
+from vnpy_ashare.ui.quotes.quotes_config import (
     ALL_TAIL_COLUMNS,
     DEFAULT_WATCHLIST_COLUMNS,
     MARKET_VISIBLE_COLUMNS,
     MAX_DISPLAY_ROWS,
 )
-from vnpy_ashare.ui.sortable_table import SortableTableItem
+from vnpy_ashare.ui.components.sortable_table import SortableTableItem
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
 STATUS_OK_COLOR = "#3ddc84"
 STATUS_STALE_COLOR = "#f0b429"

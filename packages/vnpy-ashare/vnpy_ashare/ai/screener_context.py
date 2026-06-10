@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.engine_access import get_screening_service
+from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_ashare.services.screening_service import publish_screener_page_context
 
 

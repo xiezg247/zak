@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from vnpy.trader.constant import Interval
 
-from vnpy_ashare.minute_periods import (
+from vnpy_ashare.data.minute_periods import (
     LOCAL_SCOPE_OPTIONS,
     MINUTE_PERIOD,
     bar_interval,
@@ -30,7 +30,7 @@ class MinutePeriodTests(unittest.TestCase):
             normalize_period("5m")
 
     def test_period_step(self) -> None:
-        from vnpy_ashare.minute_periods import period_step
+        from vnpy_ashare.data.minute_periods import period_step
 
         self.assertEqual(period_step("1m"), timedelta(minutes=1))
 

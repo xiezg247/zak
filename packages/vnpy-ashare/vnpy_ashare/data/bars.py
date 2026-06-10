@@ -5,23 +5,21 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import vnpy_tushare  # noqa: F401
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 from vnpy.trader.datafeed import get_datafeed
 from vnpy.trader.object import HistoryRequest
 
-import vnpy_tickflow  # noqa: F401
-from vnpy_ashare.app_db import import_watchlist_csv, load_universe_rows, load_watchlist_rows
-from vnpy_ashare.bar_store import iter_bar_overviews
+from vnpy_ashare.storage.app_db import import_watchlist_csv, load_universe_rows, load_watchlist_rows
+from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.config import is_ashare_exchange
-from vnpy_ashare.minute_periods import (
+from vnpy_ashare.data.minute_periods import (
     DEFAULT_MINUTE_DOWNLOAD_MONTHS,
     bar_interval,
     normalize_period,
 )
-from vnpy_ashare.models import StockItem
-from vnpy_ashare.tickflow_klines import fetch_history_bars
+from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.data.tickflow_klines import fetch_history_bars
 
 
 def load_watchlist(path: Path | None = None, ashare_only: bool = True) -> list[StockItem]:

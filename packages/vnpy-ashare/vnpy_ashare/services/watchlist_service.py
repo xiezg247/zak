@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.app_db import (
+from vnpy_ashare.storage.app_db import (
     add_watchlist_item,
     load_watchlist_rows,
     move_watchlist_item,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from vnpy_ashare.trade_calendar_store import ensure_calendar_covers, lookup_trading_day
+from vnpy_ashare.storage.trade_calendar_store import ensure_calendar_covers, lookup_trading_day
 
 
 def _fallback_is_trading_day(day: date) -> bool:

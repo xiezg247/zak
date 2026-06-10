@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.sortable_table import SortableTableItem
+from vnpy_ashare.ui.components.sortable_table import SortableTableItem
 
 
 class SortableTableItemTests(unittest.TestCase):

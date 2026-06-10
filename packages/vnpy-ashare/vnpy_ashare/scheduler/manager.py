@@ -23,7 +23,7 @@ from vnpy_ashare.jobs import (
     sync_universe_job,
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
-from vnpy_ashare.market_hours import is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
 from vnpy_ashare.screener.recipe import resolve_recipe
 

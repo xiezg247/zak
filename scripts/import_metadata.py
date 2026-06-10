@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from vnpy_ashare.app_db import import_universe_csv, import_watchlist_csv
+from vnpy_ashare.storage.app_db import import_universe_csv, import_watchlist_csv
 from vnpy_common.paths import get_app_db_path
 
 

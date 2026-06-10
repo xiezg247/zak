@@ -12,7 +12,7 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ai.context import AiContextData
 from vnpy_ashare.ai.context_store import get_backtest_summary_dict, set_ai_context
-from vnpy_ashare.engine_access import get_service
+from vnpy_ashare.app.engine_access import get_service
 from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
 
 

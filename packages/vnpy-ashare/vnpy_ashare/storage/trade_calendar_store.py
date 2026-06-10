@@ -6,7 +6,7 @@ import os
 import threading
 from datetime import date, datetime, timedelta
 
-from vnpy_ashare.app_db import get_meta, init_app_db, set_meta
+from vnpy_ashare.storage.app_db import get_meta, init_app_db, set_meta
 from vnpy_common.paths import get_app_db_path
 
 TRADE_CAL_SYNCED_AT_KEY = "trade_calendar_synced_at"

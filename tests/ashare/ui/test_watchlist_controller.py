@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, patch
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.engine_access import (
+from vnpy_ashare.app.engine_access import (
     get_ashare_engine,
     get_service,
     get_watchlist_service,
 )
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
 
 
@@ -26,7 +26,7 @@ class EngineAccessTests(unittest.TestCase):
         ashare_engine = MagicMock()
         ashare_engine.watchlist_service = watchlist_service
         with patch(
-            "vnpy_ashare.engine_access.get_ashare_engine",
+            "vnpy_ashare.app.engine_access.get_ashare_engine",
             return_value=ashare_engine,
         ):
             result = get_watchlist_service(MagicMock())
@@ -37,7 +37,7 @@ class EngineAccessTests(unittest.TestCase):
         ashare_engine = MagicMock()
         ashare_engine.watchlist_service = watchlist_service
         with patch(
-            "vnpy_ashare.engine_access.get_ashare_engine",
+            "vnpy_ashare.app.engine_access.get_ashare_engine",
             return_value=ashare_engine,
         ):
             result = get_service(MagicMock(), "watchlist_service")

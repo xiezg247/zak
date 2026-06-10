@@ -15,9 +15,9 @@ from vnpy_ashare.backtest.run_store import (
     list_batch_sessions,
     list_runs_by_batch,
 )
-from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
+from vnpy_ashare.app.events import EVENT_OPEN_BACKTEST, BacktestRequest
 from vnpy_ashare.screener.export import export_rows_to_csv
-from vnpy_ashare.ui.batch_backtest_table import BatchBacktestTableWidget, record_to_row
+from vnpy_ashare.ui.backtest.batch_backtest_table import BatchBacktestTableWidget, record_to_row
 
 
 class BatchBacktestPageWidget(QtWidgets.QWidget):

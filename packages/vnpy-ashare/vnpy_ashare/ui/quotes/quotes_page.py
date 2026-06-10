@@ -6,27 +6,27 @@ from vnpy.event import EventEngine
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.bar_health import (
+from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
     BarMeta,
 )
-from vnpy_ashare.bars import cleanup_invalid_daily_bars
+from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
 from vnpy_ashare.config import format_vt_symbol_cn
-from vnpy_ashare.engine_access import (
+from vnpy_ashare.app.engine_access import (
     get_analysis_service,
     get_bar_service,
     get_quote_service,
     get_watchlist_service,
 )
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
-from vnpy_ashare.ui.chart_panel import ChartPanel
-from vnpy_ashare.ui.depth_panel import DepthPanel
-from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
+from vnpy_ashare.ui.quotes.chart_panel import ChartPanel
+from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
+from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes.actions_controller import ActionsController
 from vnpy_ashare.ui.quotes.batch_backtest_controller import WatchlistBatchBacktestController
@@ -47,7 +47,7 @@ from vnpy_ashare.ui.quotes.workers import (
     DownloadWorker,
     QuotesRefreshWorker,
 )
-from vnpy_ashare.ui.quotes_config import (
+from vnpy_ashare.ui.quotes.quotes_config import (
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
     quote_source_label,

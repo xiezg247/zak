@@ -28,11 +28,20 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 
 | 包 | 职责 |
 |----|------|
-| `packages/vnpy-ashare` | 主 App：看盘、选股、回测、调度、AI 全屏 |
+| `packages/vnpy-ashare/vnpy_ashare/app/` | 启动、引擎、事件 |
+| `packages/vnpy-ashare/vnpy_ashare/config/` | 常量、schema、.env 桥接 |
+| `packages/vnpy-ashare/vnpy_ashare/domain/` | models、calendar、market_hours |
+| `packages/vnpy-ashare/vnpy_ashare/data/` | K 线下载、bar_store、健康检测 |
+| `packages/vnpy-ashare/vnpy_ashare/storage/` | app_db、universe、交易日历 |
+| `packages/vnpy-ashare/vnpy_ashare/backtest/` | CTA App/Engine、run_store |
 | `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
 | `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方、标杆对标、NL 解析 |
-| `packages/vnpy-ashare/vnpy_ashare/backtest/` | 回测结果落库（`run_store.py`） |
 | `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
+| `packages/vnpy-ashare/vnpy_ashare/ui/shell/` | 主窗口、导航、设置、数据管理 |
+| `packages/vnpy-ashare/vnpy_ashare/ui/quotes/` | 看盘页（QuotesPage + controller + 图表） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/screener/` | 选股页 |
+| `packages/vnpy-ashare/vnpy_ashare/ui/backtest/` | 回测页 |
+| `packages/vnpy-ashare/vnpy_ashare/ui/components/` | 跨页复用（chart_style、表格、任务输出） |
 | `packages/vnpy-tickflow` | TickFlow 适配 |
 | `packages/vnpy-llm` | LLM 对话 |
 | `packages/vnpy-skills` | Agent Skill 引擎 |

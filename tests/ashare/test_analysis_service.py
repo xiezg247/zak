@@ -46,7 +46,7 @@ def analysis_service():
     import importlib.util
     from pathlib import Path
 
-    path = Path(__file__).resolve().parents[2] / "vnpy_ashare/services/analysis_service.py"
+    path = Path(__file__).resolve().parents[2] / "packages/vnpy-ashare/vnpy_ashare/services/analysis_service.py"
     spec = importlib.util.spec_from_file_location("analysis_service_mod", path)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None

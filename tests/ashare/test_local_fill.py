@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.bar_health import BarHealthStatus, BarMeta, GapRange
+from vnpy_ashare.data.bar_health import BarHealthStatus, BarMeta, GapRange
 from vnpy_ashare.jobs.local_fill import (
     batch_fill_gap_daily_bars,
     batch_fill_stale_daily_bars,
@@ -18,7 +18,7 @@ from vnpy_ashare.jobs.local_fill import (
     fill_stale_daily_bar,
     select_stale_daily_items,
 )
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 
 
 class LocalFillTests(unittest.TestCase):
@@ -97,7 +97,7 @@ class LocalFillTests(unittest.TestCase):
     @patch("vnpy_ashare.jobs.local_fill.inspect_item_gaps")
     @patch("vnpy_ashare.jobs.local_fill.download_bars", return_value=1)
     def test_batch_fill_gap_daily_bars(self, _mock_download, mock_inspect) -> None:
-        from vnpy_ashare.bar_health import BarGapResult
+        from vnpy_ashare.data.bar_health import BarGapResult
 
         mock_inspect.side_effect = [
             BarGapResult(

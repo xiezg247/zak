@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.backtest_widget import BacktesterWidget
+    from vnpy_ashare.ui.backtest.backtest_widget import BacktesterWidget
 
 
 def _toolbar_separator() -> QtWidgets.QFrame:

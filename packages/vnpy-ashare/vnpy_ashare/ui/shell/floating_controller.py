@@ -10,14 +10,14 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.ai.context import QuickAction
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_ashare.ai.context_store import get_ai_context
-from vnpy_ashare.events import AskAiRequest
+from vnpy_ashare.app.events import AskAiRequest
 from vnpy_llm.engine import LlmEngine
 from vnpy_ashare.ai.floating_actions import scene_label_from_context
 from vnpy_llm.ui.floating_panel import FloatingAiOrb, FloatingAiPanel
 from vnpy_llm.ui.session_widgets import show_ai_session_dialog
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.main_window import AshareMainWindow
+    from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
 FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "local", "screener", "auto_screener"})
 

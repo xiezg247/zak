@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
 
-from vnpy_ashare.calendar import last_trading_day, trading_days_between
+from vnpy_ashare.domain.calendar import last_trading_day, trading_days_between
 
 
 class BarHealthStatus(str, Enum):

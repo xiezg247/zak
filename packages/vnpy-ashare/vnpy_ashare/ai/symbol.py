@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 from vnpy.trader.utility import extract_vt_symbol
 
-from vnpy_ashare.models import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
 
 
 def parse_stock_symbol(symbol: str) -> StockItem | None:

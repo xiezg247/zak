@@ -9,7 +9,7 @@ from pathlib import Path
 import vnpy_ctastrategy
 from vnpy_ctastrategy import CtaTemplate, TargetPosTemplate
 
-from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
+from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 
 
 def _load_engine_classes(*, strategy_file_order: list[str] | None = None) -> dict[str, type]:

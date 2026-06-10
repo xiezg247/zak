@@ -62,17 +62,17 @@ class AshareBacktestConfigTest(unittest.TestCase):
                 json.dumps({"vt_symbol": "IF88.CFFEX", "size": 300}),
                 encoding="utf-8",
             )
-            import vnpy_ashare.config as config_module
+            import vnpy_ashare.config.runtime as runtime
 
-            original = config_module.BACKTESTER_SETTING_FILE
+            original = runtime.BACKTESTER_SETTING_FILE
             try:
-                config_module.BACKTESTER_SETTING_FILE = path
+                runtime.BACKTESTER_SETTING_FILE = path
                 changed = ensure_runtime_config(force=False)
                 self.assertTrue(changed)
                 data = json.loads(path.read_text(encoding="utf-8"))
                 self.assertEqual(data["vt_symbol"], "600519.SSE")
             finally:
-                config_module.BACKTESTER_SETTING_FILE = original
+                runtime.BACKTESTER_SETTING_FILE = original
 
 
 class BacktestChartDataTest(unittest.TestCase):

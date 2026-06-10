@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.ui.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 
 
 class ScreenerRunOutputPanel(TaskRunOutputPanel):

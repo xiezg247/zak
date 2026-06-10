@@ -56,7 +56,7 @@ ignore = [
 "packages/vnpy-tickflow/**" = ["E402"]
 "tests/_bootstrap.py" = ["E402"]
 "tests/**" = ["F841"]
-"packages/vnpy-ashare/vnpy_ashare/ui/quotes_config.py" = ["E402"]
+"packages/vnpy-ashare/vnpy_ashare/ui/components/quotes_config.py" = ["E402"]
 "packages/vnpy-mcp/vnpy_mcp/base.py" = ["B027"]
 "packages/vnpy-skills/vnpy_skills/base.py" = ["B027"]
 

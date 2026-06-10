@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 
 
 class TaskRunOutputPanelTests(unittest.TestCase):

@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 
-from vnpy_ashare.bar_health import (
+from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
     BarMeta,
@@ -18,10 +18,10 @@ from vnpy_ashare.bar_health import (
     inspect_bar_gaps,
     list_status,
 )
-from vnpy_ashare.bar_store import get_scope_overview
-from vnpy_ashare.bars import download_bars
+from vnpy_ashare.data.bar_store import get_scope_overview
+from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.config import format_vt_symbol_cn
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 
 
 @dataclass(frozen=True)

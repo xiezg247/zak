@@ -13,10 +13,10 @@ from vnpy.trader.constant import Exchange, Interval
 
 from vnpy_ashare.ai.symbol import parse_stock_symbol
 from vnpy_ashare.backtest.run_store import save_backtest_run
-from vnpy_ashare.bars import download_bars
+from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.jobs.result import JobResult
-from vnpy_ashare.models import StockItem
+from vnpy_ashare.domain.models import StockItem
 
 
 @dataclass(frozen=True)
