@@ -17,18 +17,24 @@ from vnpy_ashare.ui.settings_snapshot import (
     collect_editable_values,
     detect_database_mode,
     env_database_name,
+    format_bar_database_status,
     format_database_status,
     is_configured,
     mask_secret,
+    metadata_storage_entries,
+    normalize_sqlite_database_file,
     parse_env_file,
+    resolve_database_runtime_display,
     resolve_env_config,
     resolve_env_config_database,
     resolve_env_config_general,
+    resolve_env_config_kline,
     resolve_vt_config,
 )
 from vnpy_ashare.vt_settings import (
     build_vt_settings,
     default_vt_settings,
+    ensure_vt_settings_from_env,
     save_runtime_settings,
     sync_vt_settings_from_env,
 )
@@ -86,19 +92,42 @@ class SettingsSnapshotTest(unittest.TestCase):
             self.assertNotIn("POSTGRES_HOST", keys)
             self.assertIn("DATAFEED_NAME", keys)
 
-    def test_resolve_env_config_database_by_mode(self) -> None:
+    def test_resolve_env_config_kline_follows_env_mode(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env"
             path.write_text("DATABASE_NAME=sqlite\nPOSTGRES_HOST=db.local\n", encoding="utf-8")
-            sqlite_keys = {item.spec.key for item in resolve_env_config_database("sqlite", path)}
-            postgres_items = resolve_env_config_database("postgresql", path)
-            postgres_keys = {item.spec.key for item in postgres_items}
-            db_name = next(item for item in postgres_items if item.spec.key == "DATABASE_NAME")
+            sqlite_keys = {item.spec.key for item in resolve_env_config_kline(path)}
             self.assertEqual(sqlite_keys, {"DATABASE_NAME"})
-            self.assertIn("POSTGRES_HOST", postgres_keys)
-            self.assertIn("DATABASE_NAME", postgres_keys)
+
+            path.write_text(
+                "DATABASE_NAME=postgresql\nPOSTGRES_HOST=db.local\nPOSTGRES_USER=u\n",
+                encoding="utf-8",
+            )
+            pg_items = resolve_env_config_kline(path)
+            pg_keys = {item.spec.key for item in pg_items}
+            db_name = next(item for item in pg_items if item.spec.key == "DATABASE_NAME")
             self.assertEqual(db_name.value, "postgresql")
-            self.assertEqual(db_name.file_value, "sqlite")
+            self.assertIn("POSTGRES_HOST", pg_keys)
+            self.assertIn("DATABASE_NAME", pg_keys)
+
+    def test_normalize_sqlite_database_file(self) -> None:
+        self.assertEqual(normalize_sqlite_database_file("database.db"), "database.db")
+        self.assertEqual(normalize_sqlite_database_file("zak"), "database.db")
+        self.assertEqual(normalize_sqlite_database_file("/tmp/bars.db"), "/tmp/bars.db")
+
+    def test_resolve_database_runtime_display_when_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / ".env"
+            path.write_text("DATABASE_NAME=postgresql\nPOSTGRES_DATABASE=zak\n", encoding="utf-8")
+            runtime = {
+                "database.name": "sqlite",
+                "database.database": "zak",
+            }
+            sqlite_view = resolve_database_runtime_display(runtime, toggle_mode="sqlite", env_file=path)
+            pg_view = resolve_database_runtime_display(runtime, toggle_mode="postgresql", env_file=path)
+            self.assertEqual(sqlite_view["database.database"], "database.db")
+            self.assertEqual(pg_view["database.name"], "postgresql")
+            self.assertEqual(pg_view["database.database"], "zak")
 
     def test_detect_database_mode_uses_runtime(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -119,8 +148,48 @@ class SettingsSnapshotTest(unittest.TestCase):
             env_name="sqlite",
             editing="postgresql",
         )
-        self.assertIn("当前生效：postgresql", text)
+        self.assertIn("运行时 (vt_setting.json)：postgresql", text)
         self.assertIn(".env：sqlite", text)
+
+    def test_format_bar_database_status_labels(self) -> None:
+        text = format_bar_database_status(
+            effective="sqlite",
+            env_name="postgresql",
+            pending="postgresql",
+        )
+        self.assertIn("运行时 (vt_setting.json)：sqlite", text)
+        self.assertIn("未同步", text)
+        self.assertIn("未保存：postgresql", text)
+
+    def test_format_bar_database_status_alias(self) -> None:
+        legacy = format_database_status(effective="sqlite", env_name="sqlite")
+        current = format_bar_database_status(effective="sqlite", env_name="sqlite")
+        self.assertEqual(legacy, current)
+
+    def test_metadata_storage_entries(self) -> None:
+        entries = metadata_storage_entries(
+            {
+                "database.meta.app": "zak.db",
+                "database.meta.chat": "llm_chat.db",
+            }
+        )
+        self.assertEqual(len(entries), 2)
+        keys = {entry.key for entry in entries}
+        self.assertEqual(keys, {"database.meta.app", "database.meta.chat"})
+        names = {entry.path.name for entry in entries}
+        self.assertIn("zak.db", names)
+        self.assertIn("llm_chat.db", names)
+
+    def test_default_vt_settings_includes_meta_db(self) -> None:
+        defaults = default_vt_settings()
+        self.assertEqual(defaults["database.meta.app"], "zak.db")
+        self.assertEqual(defaults["database.meta.chat"], "llm_chat.db")
+
+    def test_build_vt_settings_from_env_values_includes_meta(self) -> None:
+        settings = build_vt_settings_from_env_values({"DATABASE_NAME": "postgresql"})
+        self.assertEqual(settings["database.name"], "postgresql")
+        self.assertEqual(settings["database.meta.app"], "zak.db")
+        self.assertEqual(settings["database.meta.chat"], "llm_chat.db")
 
     def test_collect_editable_values(self) -> None:
         values = collect_editable_values(
@@ -220,6 +289,23 @@ class VtSettingsTest(unittest.TestCase):
                 self.assertEqual(path, target)
                 data = json.loads(target.read_text(encoding="utf-8"))
                 self.assertEqual(data["datafeed.name"], "tickflow")
+            finally:
+                vt_settings.SETTING_FILE = original_file
+                vt_settings.VNTRADER_DIR = original_dir
+
+    def test_ensure_vt_settings_from_env_only_when_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            import vnpy_ashare.vt_settings as vt_settings
+
+            target = Path(tmp) / "vt_setting.json"
+            original_file = vt_settings.SETTING_FILE
+            original_dir = vt_settings.VNTRADER_DIR
+            try:
+                vt_settings.VNTRADER_DIR = Path(tmp)
+                vt_settings.SETTING_FILE = target
+                self.assertTrue(ensure_vt_settings_from_env())
+                self.assertTrue(target.is_file())
+                self.assertFalse(ensure_vt_settings_from_env())
             finally:
                 vt_settings.SETTING_FILE = original_file
                 vt_settings.VNTRADER_DIR = original_dir

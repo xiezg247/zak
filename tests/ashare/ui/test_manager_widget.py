@@ -35,7 +35,7 @@ class SymbolNameMapTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = Path(self._tmp.name)
-        self._patcher = patch.object(app_db, "APP_DB_PATH", self.db_path)
+        self._patcher = patch("vnpy_ashare.app_db.get_app_db_path", return_value=self.db_path)
         self._patcher.start()
         init_app_db()
 

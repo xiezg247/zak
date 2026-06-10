@@ -18,7 +18,7 @@ from vnpy_ashare.app_db import (
     universe_is_fresh,
 )
 from vnpy_ashare.models import StockItem, parse_tickflow_symbol
-from vnpy_ashare.paths import APP_DB_PATH, ENV_FILE
+from vnpy_ashare.paths import ENV_FILE, get_app_db_path
 
 UNIVERSE_ID = "CN_Equity_A"
 BATCH_SIZE = 200
@@ -28,7 +28,7 @@ def sync_universe(force: bool = False) -> Path:
     """从 TickFlow 同步全 A 股标的列表到本地 SQLite"""
     init_app_db()
     if not force and universe_is_fresh(CACHE_MAX_AGE):
-        return APP_DB_PATH
+        return get_app_db_path()
 
     load_dotenv(ENV_FILE)
     api_key = os.getenv("TICKFLOW_API_KEY", "")
@@ -51,7 +51,7 @@ def sync_universe(force: bool = False) -> Path:
         [(row.symbol, row.exchange, row.name) for row in rows],
         synced_at=datetime.now(),
     )
-    return APP_DB_PATH
+    return get_app_db_path()
 
 
 def load_universe(*, allow_sync: bool = False) -> list[StockItem]:

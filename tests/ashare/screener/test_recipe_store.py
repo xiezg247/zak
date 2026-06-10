@@ -13,7 +13,7 @@ from vnpy_ashare.screener.recipe import (
 
 def test_save_and_resolve_custom_recipe(tmp_path, monkeypatch):
     db_path = tmp_path / "app.db"
-    monkeypatch.setattr(recipe_store, "APP_DB_PATH", db_path)
+    monkeypatch.setattr(recipe_store, "get_app_db_path", lambda settings=None: db_path)
 
     config = normalize_recipe_config(
         {

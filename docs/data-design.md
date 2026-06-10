@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | **PostgreSQL 模式** | 远程 PostgreSQL（`DATABASE_NAME=postgresql`，需 `.env` 配置 `POSTGRES_*`） |
 | ORM/方式 | **Peewee ORM**（`vnpy_sqlite` 或 `vnpy_postgresql` adapter） |
 | 本项目引用 | `vnpy_ashare/bar_store.py`、`vnpy_ashare/bars.py` |
-| 切换方式 | 修改 `.env` 中 `DATABASE_NAME` → 执行 `scripts/init_config.py` → 重启 GUI |
+| 切换方式 | 修改 `.env` 中 `DATABASE_NAME` → 设置页「从 .env 同步」→ 重启 GUI |
 
 > 下表结构在 SQLite / PostgreSQL 中一致，由 Peewee ORM 自动处理方言差异。
 

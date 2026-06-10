@@ -7,7 +7,7 @@ import argparse
 from pathlib import Path
 
 from vnpy_ashare.app_db import import_universe_csv, import_watchlist_csv
-from vnpy_ashare.paths import APP_DB_PATH
+from vnpy_ashare.paths import get_app_db_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -36,7 +36,7 @@ def main() -> None:
         count = import_universe_csv(path)
         print(f"已导入全 A 股 {count} 只 <- {path}")
 
-    print(f"写入: {APP_DB_PATH}")
+    print(f"写入: {get_app_db_path()}")
 
 
 if __name__ == "__main__":

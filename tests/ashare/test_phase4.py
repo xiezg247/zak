@@ -33,7 +33,7 @@ def test_to_ts_code():
 def test_tool_audit_roundtrip(tmp_path, monkeypatch):
     audit_mod = _load_module("tool_audit_mod", "vnpy_llm/tool_audit.py")
     db_path = tmp_path / "test.db"
-    monkeypatch.setattr(audit_mod, "APP_DB_PATH", db_path)
+    monkeypatch.setattr(audit_mod, "get_app_db_path", lambda settings=None: db_path)
 
     audit_mod.log_tool_call(
         session_id="sess1",

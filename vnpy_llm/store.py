@@ -9,7 +9,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-CHAT_DB_PATH = Path.home() / ".vntrader" / "llm_chat.db"
+from vnpy_ashare.paths import get_chat_db_path
+
+# 测试可 patch 此函数
+def _chat_db_path() -> Path:
+    return get_chat_db_path()
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
@@ -56,8 +60,9 @@ class ChatSession:
 
 @contextmanager
 def _connect():
-    CHAT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(CHAT_DB_PATH)
+    path = _chat_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     try:
         conn.executescript(_SCHEMA)

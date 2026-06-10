@@ -11,7 +11,7 @@ from typing import Literal
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.paths import APP_DB_PATH
+from vnpy_ashare.paths import get_app_db_path
 
 UNIVERSE_SYNCED_AT_KEY = "universe_synced_at"
 CACHE_MAX_AGE = timedelta(days=7)
@@ -48,8 +48,9 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 @contextmanager
 def _connect():
-    APP_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(APP_DB_PATH)
+    path = get_app_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
@@ -65,7 +66,7 @@ def init_app_db() -> Path:
     """初始化数据库表结构。"""
     with _connect() as conn:
         conn.executescript(_SCHEMA)
-    return APP_DB_PATH
+    return get_app_db_path()
 
 
 def _set_meta(conn: sqlite3.Connection, key: str, value: str) -> None:

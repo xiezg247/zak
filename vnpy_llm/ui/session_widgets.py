@@ -83,6 +83,8 @@ class AiSessionListWidget(QtWidgets.QWidget):
         self._list = QtWidgets.QListWidget()
         self._list.setObjectName("AiSessionListWidget")
         self._list.setSpacing(2)
+        self._list.setWordWrap(True)
+        self._list.setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
         self._list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         self._list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._on_context_menu)
@@ -298,16 +300,25 @@ class AiSessionListWidget(QtWidgets.QWidget):
 
 
 class AiSessionSidebar(QtWidgets.QWidget):
-    """全屏页左侧会话栏（可折叠）。"""
+    """全屏页左侧会话栏（可折叠、可拖拽调宽）。"""
 
-    CONTENT_WIDTH = 248
+    CONTENT_MIN_WIDTH = 240
+    DEFAULT_CONTENT_WIDTH = 300
     RAIL_WIDTH = 32
+
+    @classmethod
+    def default_width(cls) -> int:
+        return cls.DEFAULT_CONTENT_WIDTH + cls.RAIL_WIDTH
 
     def __init__(self, engine: LlmEngine, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("AiSessionSidebar")
         self._expanded = True
-        self.setFixedWidth(self.CONTENT_WIDTH + self.RAIL_WIDTH)
+        self._apply_width_constraints(expanded=True)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self.setStyleSheet(PANEL_STYLESHEET)
 
         root = QtWidgets.QHBoxLayout(self)
@@ -315,13 +326,17 @@ class AiSessionSidebar(QtWidgets.QWidget):
         root.setSpacing(0)
 
         self._content = QtWidgets.QWidget(self)
-        self._content.setFixedWidth(self.CONTENT_WIDTH)
+        self._content.setMinimumWidth(self.CONTENT_MIN_WIDTH)
+        self._content.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         content_layout = QtWidgets.QVBoxLayout(self._content)
         content_layout.setContentsMargins(10, 10, 6, 10)
         content_layout.setSpacing(0)
         self._list = AiSessionListWidget(engine, parent=self._content)
         content_layout.addWidget(self._list)
-        root.addWidget(self._content)
+        root.addWidget(self._content, stretch=1)
 
         rail = QtWidgets.QWidget(self)
         rail.setObjectName("AiSessionRail")
@@ -339,6 +354,18 @@ class AiSessionSidebar(QtWidgets.QWidget):
         rail_layout.addStretch()
         root.addWidget(rail)
 
+    def _splitter(self) -> QtWidgets.QSplitter | None:
+        parent = self.parentWidget()
+        return parent if isinstance(parent, QtWidgets.QSplitter) else None
+
+    def _apply_width_constraints(self, *, expanded: bool) -> None:
+        if expanded:
+            self.setMinimumWidth(self.CONTENT_MIN_WIDTH + self.RAIL_WIDTH)
+            self.setMaximumWidth(16777215)
+        else:
+            self.setMinimumWidth(self.RAIL_WIDTH)
+            self.setMaximumWidth(self.RAIL_WIDTH)
+
     def _toggle_expanded(self) -> None:
         self.set_expanded(not self._expanded)
 
@@ -347,12 +374,20 @@ class AiSessionSidebar(QtWidgets.QWidget):
             return
         self._expanded = expanded
         self._content.setVisible(expanded)
+        self._apply_width_constraints(expanded=expanded)
+        splitter = self._splitter()
+        if splitter is not None:
+            sizes = splitter.sizes()
+            total = max(sum(sizes), self.default_width() + 400)
+            if expanded:
+                restored = max(self.default_width(), min(sizes[0], total // 2))
+                splitter.setSizes([restored, total - restored])
+            else:
+                splitter.setSizes([self.RAIL_WIDTH, total - self.RAIL_WIDTH])
         if expanded:
-            self.setFixedWidth(self.CONTENT_WIDTH + self.RAIL_WIDTH)
             self._toggle_btn.setText("◀")
             self._toggle_btn.setToolTip("收起历史会话")
         else:
-            self.setFixedWidth(self.RAIL_WIDTH)
             self._toggle_btn.setText("▶")
             self._toggle_btn.setToolTip("展开历史会话")
 

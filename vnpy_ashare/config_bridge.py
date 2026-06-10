@@ -83,6 +83,16 @@ def database_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
     return sqlite_database_settings()
 
 
+def meta_database_settings() -> dict[str, str]:
+    """元数据 SQLite 路径（固定本地，不随 DATABASE_NAME 切换）。"""
+    from vnpy_ashare.paths import DEFAULT_META_APP_FILE, DEFAULT_META_CHAT_FILE, META_APP_SETTING_KEY, META_CHAT_SETTING_KEY
+
+    return {
+        META_APP_SETTING_KEY: DEFAULT_META_APP_FILE,
+        META_CHAT_SETTING_KEY: DEFAULT_META_CHAT_FILE,
+    }
+
+
 def datafeed_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
     name = normalize_datafeed_name(_env_lookup(env, "DATAFEED_NAME", "tickflow"))
     if name == "tushare":
@@ -105,6 +115,7 @@ def base_vt_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
         "log.active": True,
         "log.level": "INFO",
         **database_settings_from_env(env),
+        **meta_database_settings(),
     }
 
 

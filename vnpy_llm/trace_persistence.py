@@ -30,8 +30,9 @@ CREATE INDEX IF NOT EXISTS idx_llm_turn_traces_session
 
 @contextmanager
 def _connect():
-    store.CHAT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(store.CHAT_DB_PATH)
+    path = store._chat_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     try:
         conn.executescript(_SCHEMA)

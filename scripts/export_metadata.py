@@ -12,7 +12,7 @@ from vnpy_ashare.app_db import (
     load_watchlist_rows,
     universe_count,
 )
-from vnpy_ashare.paths import APP_DB_PATH, BACKUP_DIR
+from vnpy_ashare.paths import BACKUP_DIR, get_app_db_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -57,7 +57,7 @@ def main() -> None:
     if export_watchlist_flag and len(load_watchlist_rows()) == 0:
         print("提示: 自选池为空，可在 GUI 中维护或通过 batch_download --watchlist 导入")
 
-    print(f"数据源: {APP_DB_PATH}")
+    print(f"数据源: {get_app_db_path()}")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ from vnpy_ashare.backtest import run_store
 
 def test_save_and_list_backtest_runs(tmp_path, monkeypatch):
     db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "APP_DB_PATH", db_path)
+    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
 
     record = run_store.save_backtest_run(
         vt_symbol="600000.SSE",
@@ -65,7 +65,7 @@ def test_save_and_list_backtest_runs(tmp_path, monkeypatch):
 
 def test_save_statistics_with_date(tmp_path, monkeypatch):
     db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "APP_DB_PATH", db_path)
+    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
 
     record = run_store.save_backtest_run(
         vt_symbol="600000.SSE",

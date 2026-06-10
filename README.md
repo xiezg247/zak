@@ -27,10 +27,9 @@ cd zak
 bash scripts/install.sh
 
 cp .env.example .env          # 填入 TICKFLOW_API_KEY、TUSHARE_TOKEN 等
-uv run python scripts/init_config.py
+uv run python run.py                     # 启动 GUI（首次会自动从 .env 生成 vt_setting.json）
 
 uv run python scripts/sync_universe.py   # 首次建议：同步全 A 股列表
-uv run python run.py                     # 启动 GUI
 
 # 自选池有标的后，批量下载日 K：
 uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
@@ -94,8 +93,8 @@ uv sync --extra postgresql
 # 3. 启动 PostgreSQL（本地 Docker）
 bash scripts/start_postgresql.sh
 
-# 4. 同步配置
-uv run python scripts/init_config.py
+# 4. 同步配置并重启 GUI
+# 在设置页点「从 .env 同步」，或删除 ~/.vntrader/vt_setting.json 后重启
 ```
 
 > **注意**：仅 K 线数据切换存储，元数据（`zak.db`）和 AI 对话（`llm_chat.db`）始终为本机 SQLite，不受 `DATABASE_NAME` 影响。

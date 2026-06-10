@@ -1,4 +1,4 @@
-"""vt_setting.json 构建与读写（GUI 与 init_config 共用）。"""
+"""vt_setting.json 构建与读写（GUI 与启动入口共用）。"""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from vnpy.trader.utility import load_json, save_json
 
 from vnpy_ashare.config_bridge import (
     build_vt_settings_from_env_file,
+    meta_database_settings,
     sqlite_database_settings,
 )
 from vnpy_ashare.paths import ENV_FILE, VNTRADER_DIR
@@ -28,6 +29,7 @@ def default_vt_settings() -> dict:
         "log.active": True,
         "log.level": "INFO",
         **sqlite_database_settings(),
+        **meta_database_settings(),
         "datafeed.name": "tickflow",
         "datafeed.username": "api_key",
         "datafeed.password": "",
@@ -68,3 +70,19 @@ def sync_vt_settings_from_env(*, backup: bool = True) -> Path:
         json.dump(settings, handle, indent=4, ensure_ascii=False)
 
     return SETTING_FILE
+
+
+def ensure_vt_settings_from_env() -> bool:
+    """首次启动时从 .env 生成 vt_setting.json；已存在则不动。"""
+    if SETTING_FILE.exists():
+        return False
+    sync_vt_settings_from_env(backup=False)
+    return True
+
+
+def reload_vnpy_settings() -> None:
+    """将 vt_setting.json 合并进 vnpy 全局 SETTINGS（生成新文件后调用）。"""
+    from vnpy.trader.setting import SETTINGS, SETTING_FILENAME
+    from vnpy.trader.utility import load_json
+
+    SETTINGS.update(load_json(SETTING_FILENAME))

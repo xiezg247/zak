@@ -94,6 +94,12 @@ QWidget#AiSessionSidebar {
     background-color: #101014;
     border-right: 1px solid #2a2a30;
 }
+QSplitter#AiPageSplitter::handle {
+    background-color: #2a2a30;
+}
+QSplitter#AiPageSplitter::handle:hover {
+    background-color: #4a9eff;
+}
 QWidget#AiSessionRail {
     background-color: #101014;
     border-left: 1px solid #2a2a30;

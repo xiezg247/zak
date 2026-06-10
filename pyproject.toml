@@ -21,6 +21,7 @@ dependencies = [
     "redis>=5.0.0",
     "apscheduler>=3.10.0",
     "openai>=1.0.0",
+    "anyio>=4.12.1",
     "mcp>=1.0.0",
     "markdown>=3.5",
     "Pygments>=2.17",

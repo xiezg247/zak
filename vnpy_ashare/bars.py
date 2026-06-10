@@ -60,7 +60,7 @@ def download_bars(
 
     datafeed = get_datafeed()
     if not datafeed.init(output):
-        raise RuntimeError("数据服务初始化失败，请先运行 scripts/init_config.py")
+        raise RuntimeError("数据服务初始化失败，请检查 .env 中的 API Key / Token，并在设置页「从 .env 同步」")
 
     bars = datafeed.query_bar_history(req, output=output)
     if not bars:

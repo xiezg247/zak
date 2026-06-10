@@ -22,5 +22,4 @@ uv sync
 echo ""
 echo "安装完成。下一步："
 echo "  cp .env.example .env"
-echo "  uv run python scripts/init_config.py"
 echo "  uv run python run.py"

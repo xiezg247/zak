@@ -20,6 +20,7 @@ from vnpy_ashare.config import ensure_runtime_config
 from vnpy_ashare.paths import PROJECT_ROOT
 from vnpy_ashare.ui.fonts import resolve_font_family
 from vnpy_ashare.ui.main_window import AshareMainWindow
+from vnpy_ashare.vt_settings import ensure_vt_settings_from_env, reload_vnpy_settings
 from vnpy_llm import LlmApp
 
 
@@ -33,6 +34,10 @@ def _prepare_runtime() -> None:
 
 def main() -> None:
     _prepare_runtime()
+
+    if ensure_vt_settings_from_env():
+        reload_vnpy_settings()
+        print("已从 .env 生成 vt_setting.json（~/.vntrader/）")
 
     if ensure_runtime_config():
         print("已应用 A 股回测默认参数（~/.vntrader/cta_backtester_setting.json）")

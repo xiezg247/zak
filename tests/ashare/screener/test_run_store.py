@@ -7,7 +7,7 @@ from vnpy_ashare.screener import run_store
 
 def test_save_and_list_runs(tmp_path, monkeypatch):
     db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "APP_DB_PATH", db_path)
+    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
 
     record = run_store.save_run(
         condition="涨幅榜",
@@ -31,7 +31,7 @@ def test_save_and_list_runs(tmp_path, monkeypatch):
 
 def test_mark_run_read(tmp_path, monkeypatch):
     db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "APP_DB_PATH", db_path)
+    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
 
     record = run_store.save_run(
         condition="自动 · 盘中多因子",

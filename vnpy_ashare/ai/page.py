@@ -35,11 +35,21 @@ class AiPageWidget(QtWidgets.QWidget):
         self.panel.collapse_requested.connect(self._on_collapse_requested)
         self.session_sidebar = AiSessionSidebar(engine, parent=self)
 
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        splitter.setObjectName("AiPageSplitter")
+        splitter.setHandleWidth(6)
+        splitter.setChildrenCollapsible(False)
+        splitter.addWidget(self.session_sidebar)
+        splitter.addWidget(self.panel)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        default_sidebar = AiSessionSidebar.default_width()
+        splitter.setSizes([default_sidebar, 960])
+
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self.session_sidebar)
-        layout.addWidget(self.panel, stretch=1)
+        layout.addWidget(splitter)
         self.setStyleSheet(TERMINAL_STYLESHEET)
 
     def _on_collapse_requested(self) -> None:

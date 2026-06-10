@@ -2582,6 +2582,7 @@ name = "zak"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anyio" },
     { name = "apscheduler" },
     { name = "markdown" },
     { name = "mcp" },
@@ -2611,6 +2612,7 @@ postgresql = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", specifier = ">=4.12.1" },
     { name = "apscheduler", specifier = ">=3.10.0" },
     { name = "markdown", specifier = ">=3.5" },
     { name = "mcp", specifier = ">=1.0.0" },

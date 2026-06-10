@@ -7,10 +7,9 @@ import sqlite3
 import uuid
 from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
-APP_DB_PATH = Path.home() / ".vntrader" / "zak.db"
+from vnpy_ashare.paths import get_app_db_path
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS llm_tool_calls (
@@ -31,8 +30,9 @@ _PREVIEW_MAX = 800
 
 @contextmanager
 def _connect():
-    APP_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(APP_DB_PATH)
+    path = get_app_db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     try:
         conn.executescript(_SCHEMA)
         yield conn

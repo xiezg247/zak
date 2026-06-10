@@ -132,17 +132,31 @@ VT_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
     ),
     ConfigFieldSpec(
         "database.name",
-        "数据库类型",
-        "数据库",
+        "K 线数据库类型",
+        "K 线",
         "sqlite",
         kind="choice",
         choices=("sqlite", "postgresql"),
     ),
-    ConfigFieldSpec("database.host", "数据库主机", "数据库", ""),
-    ConfigFieldSpec("database.port", "数据库端口", "数据库", "0", kind="int"),
-    ConfigFieldSpec("database.user", "数据库用户名", "数据库", ""),
-    ConfigFieldSpec("database.password", "数据库密码", "数据库", "", sensitive=True),
-    ConfigFieldSpec("database.database", "数据库名", "数据库", "database.db"),
+    ConfigFieldSpec("database.host", "PostgreSQL 主机", "K 线", ""),
+    ConfigFieldSpec("database.port", "PostgreSQL 端口", "K 线", "0", kind="int"),
+    ConfigFieldSpec("database.user", "PostgreSQL 用户名", "K 线", ""),
+    ConfigFieldSpec("database.password", "PostgreSQL 密码", "K 线", "", sensitive=True),
+    ConfigFieldSpec("database.database", "K 线 SQLite 文件", "K 线", "database.db"),
+    ConfigFieldSpec(
+        "database.meta.app",
+        "元数据 SQLite 文件",
+        "元数据",
+        "zak.db",
+        description="相对 ~/.vntrader/；自选、universe、回测/选股历史",
+    ),
+    ConfigFieldSpec(
+        "database.meta.chat",
+        "AI 对话 SQLite 文件",
+        "元数据",
+        "llm_chat.db",
+        description="相对 ~/.vntrader/；不受 database.name 影响",
+    ),
     ConfigFieldSpec("font.family", "字体", "界面与日志", default_font_family()),
     ConfigFieldSpec("font.size", "字号", "界面与日志", "12", kind="int"),
     ConfigFieldSpec("log.active", "启用日志", "界面与日志", "true", kind="bool"),
@@ -175,7 +189,10 @@ VT_SPECS_BY_GROUP = _index_specs(VT_CONFIG_SPECS)
 ENV_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "PostgreSQL")
 ENV_DB_KEYS: frozenset[str] = frozenset({"DATABASE_NAME"}) | ENV_POSTGRES_KEYS
 
-VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database."))
+VT_META_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.meta."))
+VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(
+    spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.") and not spec.key.startswith("database.meta.")
+)
 VT_NON_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if not spec.key.startswith("database."))
 VT_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in VT_DB_SPECS if spec.key not in {"database.name", "database.database"})
 VT_SQLITE_KEYS: frozenset[str] = frozenset({"database.name", "database.database"})

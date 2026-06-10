@@ -95,7 +95,7 @@ class LlmEngineSurfaceTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "chat.db"
-            with patch.object(store_module, "CHAT_DB_PATH", db_path):
+            with patch.object(store_module, "_chat_db_path", return_value=db_path):
                 engine = self._make_engine()
                 engine.open_session_for_ask(surface="floating", scene="自选 · 茅台")
                 session = engine.store.get_session(engine.session_id)

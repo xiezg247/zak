@@ -7,7 +7,7 @@ import threading
 from datetime import date, datetime, timedelta
 
 from vnpy_ashare.app_db import get_meta, init_app_db, set_meta
-from vnpy_ashare.paths import APP_DB_PATH
+from vnpy_ashare.paths import get_app_db_path
 
 TRADE_CAL_SYNCED_AT_KEY = "trade_calendar_synced_at"
 TRADE_CAL_RANGE_START_KEY = "trade_calendar_range_start"
@@ -82,7 +82,7 @@ def _upsert_rows(rows: list[tuple[str, int]]) -> None:
     import sqlite3
 
     init_app_db()
-    with sqlite3.connect(APP_DB_PATH) as conn:
+    with sqlite3.connect(get_app_db_path()) as conn:
         conn.executemany(
             "INSERT INTO trade_calendar(cal_date, is_open) VALUES (?, ?) ON CONFLICT(cal_date) DO UPDATE SET is_open = excluded.is_open",
             rows,
@@ -148,7 +148,7 @@ def lookup_trading_day(day: date) -> bool | None:
     import sqlite3
 
     init_app_db()
-    with sqlite3.connect(APP_DB_PATH) as conn:
+    with sqlite3.connect(get_app_db_path()) as conn:
         row = conn.execute(
             "SELECT is_open FROM trade_calendar WHERE cal_date = ?",
             (_format_date(day),),
@@ -163,7 +163,7 @@ def clear_trade_calendar_cache() -> None:
     import sqlite3
 
     init_app_db()
-    with sqlite3.connect(APP_DB_PATH) as conn:
+    with sqlite3.connect(get_app_db_path()) as conn:
         conn.execute("DELETE FROM trade_calendar")
         conn.execute(
             "DELETE FROM meta WHERE key IN (?, ?, ?)",

@@ -25,7 +25,7 @@ class StreamCancelTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp_dir = tempfile.TemporaryDirectory()
         self._db_path = Path(self._tmp_dir.name) / "chat.db"
-        self._store_patcher = patch("vnpy_llm.store.CHAT_DB_PATH", self._db_path)
+        self._store_patcher = patch("vnpy_llm.store._chat_db_path", return_value=self._db_path)
         self._store_patcher.start()
 
         self.main_engine = MagicMock(spec=MainEngine)

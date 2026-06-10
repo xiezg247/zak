@@ -18,12 +18,16 @@ from vnpy_ashare.ui.fonts import (
     supports_font_family_selection,
 )
 from vnpy_ashare.ui.settings_snapshot import (
+    collect_database_runtime_updates,
     detect_database_mode,
     env_database_name,
-    format_database_status,
+    format_bar_database_status,
+    format_meta_storage_root,
     mask_secret,
-    resolve_env_config_database,
+    metadata_storage_entries,
+    resolve_database_runtime_display,
     resolve_env_config_general,
+    resolve_env_config_kline,
 )
 from vnpy_ashare.ui.styles import SETTINGS_DIALOG_STYLESHEET, apply_settings_combo_style
 from vnpy_ashare.vt_settings import (
@@ -41,8 +45,12 @@ class SettingsDialog(QtWidgets.QDialog):
     _ENV_ROW_HEIGHT = 34
     _ENV_KEY_COLUMN_WIDTH = 220
 
-    _SQLITE_HINT = "本地 SQLite，K 线默认写入 database.db（可在下方修改运行时路径）。"
+    _SQLITE_HINT = "本地 SQLite；K 线写入下方「K 线 SQLite 文件」路径（默认 database.db）。"
     _POSTGRES_HINT = "PostgreSQL 模式需在 .env 配置连接参数，并确保服务已启动。"
+    _METADATA_HINT = (
+        "固定为本机 SQLite，不受下方 K 线存储切换影响。"
+        "路径由 vt_setting.json 的 database.meta.* 定义，此处只读展示。"
+    )
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -54,7 +62,6 @@ class SettingsDialog(QtWidgets.QDialog):
 
         self._widgets: dict[str, QtWidgets.QWidget] = {}
         self._db_runtime_labels: dict[str, QtWidgets.QLabel] = {}
-        self._database_mode = "sqlite"
         self._effective_database_mode = "sqlite"
         self._build_ui()
         self.refresh()
@@ -65,7 +72,9 @@ class SettingsDialog(QtWidgets.QDialog):
         root.setSpacing(10)
 
         hint = QtWidgets.QLabel(
-            f"环境变量请编辑 {ENV_FILE.name}；大模型项修改后可点「重载 LLM」立即生效。其余运行时配置保存至 {SETTING_FILE.name}，字体/数据库等需重启。"
+            f"环境变量请编辑 {ENV_FILE.name}；大模型项修改后可点「重载 LLM」立即生效。"
+            f"其余运行时配置保存至 {SETTING_FILE.name}，字体、K 线存储等需重启。"
+            f"元数据与 AI 对话始终为本机 SQLite，不受 K 线存储切换影响。"
         )
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
@@ -105,25 +114,31 @@ class SettingsDialog(QtWidgets.QDialog):
         env_layout.addWidget(self._env_table)
         body_layout.addWidget(env_group)
 
-        db_group = QtWidgets.QGroupBox("数据库")
+        body_layout.addWidget(self._build_metadata_group())
+
+        db_group = QtWidgets.QGroupBox("K 线数据")
         db_group.setObjectName("SettingsGroup")
         db_layout = QtWidgets.QVBoxLayout(db_group)
         db_layout.setSpacing(8)
-        db_layout.addLayout(self._build_database_toggle_row())
         self._db_status_label = QtWidgets.QLabel()
         self._db_status_label.setObjectName("SettingsMeta")
         self._db_status_label.setWordWrap(True)
         db_layout.addWidget(self._db_status_label)
+
+        env_db_label = QtWidgets.QLabel(".env（只读，请编辑 .env 文件）")
+        env_db_label.setObjectName("SettingsSubheading")
+        db_layout.addWidget(env_db_label)
+        self._db_env_table = self._create_env_table()
+        db_layout.addWidget(self._db_env_table)
+
+        runtime_db_label = QtWidgets.QLabel("运行时 vt_setting.json（可编辑，保存后需重启）")
+        runtime_db_label.setObjectName("SettingsSubheading")
+        db_layout.addWidget(runtime_db_label)
+        db_layout.addWidget(self._build_kline_runtime_mode_row())
         self._db_hint_label = QtWidgets.QLabel()
         self._db_hint_label.setObjectName("SettingsMeta")
         self._db_hint_label.setWordWrap(True)
         db_layout.addWidget(self._db_hint_label)
-        self._db_env_table = self._create_env_table()
-        db_layout.addWidget(self._db_env_table)
-
-        runtime_db_label = QtWidgets.QLabel("运行时")
-        runtime_db_label.setObjectName("SettingsSubheading")
-        db_layout.addWidget(runtime_db_label)
         self._db_runtime_stack = QtWidgets.QStackedWidget()
         self._db_runtime_stack.addWidget(self._build_sqlite_runtime_page())
         self._db_runtime_stack.addWidget(self._build_postgres_runtime_page())
@@ -174,24 +189,40 @@ class SettingsDialog(QtWidgets.QDialog):
         button_row.addWidget(close_button)
         root.addLayout(button_row)
 
-    def _build_database_toggle_row(self) -> QtWidgets.QHBoxLayout:
-        row = QtWidgets.QHBoxLayout()
-        row.setSpacing(0)
-        self._db_sqlite_btn = QtWidgets.QPushButton("SQLite")
-        self._db_sqlite_btn.setObjectName("SettingsSegmentLeft")
-        self._db_sqlite_btn.setCheckable(True)
-        self._db_postgres_btn = QtWidgets.QPushButton("PostgreSQL")
-        self._db_postgres_btn.setObjectName("SettingsSegmentRight")
-        self._db_postgres_btn.setCheckable(True)
-        self._db_toggle_group = QtWidgets.QButtonGroup(self)
-        self._db_toggle_group.setExclusive(True)
-        self._db_toggle_group.addButton(self._db_sqlite_btn, 0)
-        self._db_toggle_group.addButton(self._db_postgres_btn, 1)
-        self._db_toggle_group.idClicked.connect(self._on_database_toggle)
-        row.addWidget(self._db_sqlite_btn)
-        row.addWidget(self._db_postgres_btn)
-        row.addStretch()
-        return row
+    def _build_metadata_group(self) -> QtWidgets.QGroupBox:
+        group = QtWidgets.QGroupBox("元数据（本地 SQLite）")
+        group.setObjectName("SettingsGroup")
+        layout = QtWidgets.QVBoxLayout(group)
+        layout.setSpacing(8)
+
+        hint = QtWidgets.QLabel(self._METADATA_HINT)
+        hint.setObjectName("SettingsMeta")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+
+        self._meta_root_label = QtWidgets.QLabel()
+        self._meta_root_label.setObjectName("SettingsMeta")
+        self._meta_root_label.setWordWrap(True)
+        layout.addWidget(self._meta_root_label)
+
+        self._meta_table = self._create_env_table()
+        self._meta_table.setHorizontalHeaderLabels(["配置项", "路径与说明"])
+        layout.addWidget(self._meta_table)
+        return group
+
+    def _build_kline_runtime_mode_row(self) -> QtWidgets.QWidget:
+        host = QtWidgets.QWidget()
+        form = QtWidgets.QFormLayout(host)
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        form.setHorizontalSpacing(12)
+        form.setVerticalSpacing(10)
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        self._add_runtime_field(form, "database.name", "K 线数据库类型")
+        name_widget = self._widgets["database.name"]
+        if isinstance(name_widget, QtWidgets.QComboBox):
+            name_widget.currentTextChanged.connect(self._on_kline_runtime_mode_changed)
+        return host
 
     def _create_env_table(self) -> QtWidgets.QTableWidget:
         table = QtWidgets.QTableWidget(0, 2)
@@ -222,7 +253,7 @@ class SettingsDialog(QtWidgets.QDialog):
         form.setHorizontalSpacing(12)
         form.setVerticalSpacing(10)
         form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
-        self._add_runtime_field(form, "database.database", "数据库文件")
+        self._add_runtime_field(form, "database.database", "K 线 SQLite 文件")
         return page
 
     def _build_postgres_runtime_page(self) -> QtWidgets.QWidget:
@@ -296,18 +327,37 @@ class SettingsDialog(QtWidgets.QDialog):
 
         settings = load_runtime_settings()
         self._effective_database_mode = detect_database_mode(runtime_settings=settings)
-        # 优先按 .env 展示，避免运行时旧值（如 questdb 已移除）覆盖用户意图
-        display_mode = env_database_name()
-        self._set_database_mode(display_mode, refresh_tables=False)
 
         self._refresh_env_table(self._env_table, resolve_env_config_general())
-        self._refresh_env_table(
-            self._db_env_table,
-            resolve_env_config_database(self._database_mode),
-        )
-        self._update_database_status()
+        self._refresh_env_table(self._db_env_table, resolve_env_config_kline())
         self._populate_runtime_fields(settings)
+        self._set_kline_runtime_mode(self._effective_database_mode, refresh_fields=True)
+        self._update_database_status()
+        self._refresh_metadata_table(settings)
         self._update_drift_warning(settings)
+
+    def _refresh_metadata_table(self, settings: dict) -> None:
+        self._meta_root_label.setText(format_meta_storage_root())
+        entries = metadata_storage_entries(settings)
+        align = QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        self._meta_table.setRowCount(len(entries))
+        for row, entry in enumerate(entries):
+            key_item = QtWidgets.QTableWidgetItem(entry.key)
+            key_item.setTextAlignment(align)
+            key_item.setFlags(key_item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
+            key_item.setToolTip(entry.relative)
+
+            value_text = f"{entry.relative} → {entry.path}\n{entry.description}"
+            value_item = QtWidgets.QTableWidgetItem(value_text)
+            value_item.setTextAlignment(align)
+            value_item.setToolTip(value_text)
+            value_item.setFlags(value_item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
+
+            self._meta_table.setItem(row, 0, key_item)
+            self._meta_table.setItem(row, 1, value_item)
+            self._meta_table.setRowHeight(row, self._ENV_ROW_HEIGHT)
+
+        self._fit_env_table_height(self._meta_table)
 
     def _update_drift_warning(self, settings: dict) -> None:
         drifts = detect_config_drift(settings)
@@ -315,29 +365,36 @@ class SettingsDialog(QtWidgets.QDialog):
         self._drift_label.setText(summary)
         self._drift_label.setVisible(bool(summary))
 
-    def _on_database_toggle(self, index: int) -> None:
-        mode = "postgresql" if index == 1 else "sqlite"
-        self._set_database_mode(mode, refresh_tables=True)
+    def _current_kline_runtime_mode(self) -> str:
+        widget = self._widgets.get("database.name")
+        if isinstance(widget, QtWidgets.QComboBox):
+            return normalize_database_name(widget.currentText())
+        return self._effective_database_mode
 
-    def _set_database_mode(self, mode: str, *, refresh_tables: bool) -> None:
-        self._database_mode = normalize_database_name(mode)
-        self._db_sqlite_btn.setChecked(self._database_mode == "sqlite")
-        self._db_postgres_btn.setChecked(self._database_mode == "postgresql")
-        self._db_hint_label.setText(self._POSTGRES_HINT if self._database_mode == "postgresql" else self._SQLITE_HINT)
-        self._db_runtime_stack.setCurrentIndex(0 if self._database_mode == "sqlite" else 1)
+    def _on_kline_runtime_mode_changed(self, _text: str) -> None:
+        self._set_kline_runtime_mode(self._current_kline_runtime_mode(), refresh_fields=True)
         self._update_database_status()
-        if refresh_tables:
-            self._refresh_env_table(
-                self._db_env_table,
-                resolve_env_config_database(self._database_mode),
-            )
+
+    def _set_kline_runtime_mode(self, mode: str, *, refresh_fields: bool) -> None:
+        mode = normalize_database_name(mode)
+        name_widget = self._widgets.get("database.name")
+        if isinstance(name_widget, QtWidgets.QComboBox):
+            if name_widget.findText(mode) < 0:
+                name_widget.addItem(mode)
+            name_widget.blockSignals(True)
+            name_widget.setCurrentText(mode)
+            name_widget.blockSignals(False)
+        self._db_hint_label.setText(self._POSTGRES_HINT if mode == "postgresql" else self._SQLITE_HINT)
+        self._db_runtime_stack.setCurrentIndex(0 if mode == "sqlite" else 1)
+        if refresh_fields:
+            self._populate_database_runtime_fields(load_runtime_settings())
 
     def _update_database_status(self) -> None:
         self._db_status_label.setText(
-            format_database_status(
+            format_bar_database_status(
                 effective=self._effective_database_mode,
                 env_name=env_database_name(),
-                editing=self._database_mode,
+                pending=self._current_kline_runtime_mode(),
             )
         )
 
@@ -362,7 +419,7 @@ class SettingsDialog(QtWidgets.QDialog):
             value_item.setTextAlignment(align)
             tooltip = item.value or item.spec.default
             if item.file_value and item.file_value != item.value:
-                tooltip = f"当前模式：{item.value}\n.env 文件：{item.file_value}"
+                tooltip = f".env：{item.value}\n标注：{item.file_value}"
             value_item.setToolTip(tooltip)
             value_item.setFlags(value_item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
 
@@ -384,63 +441,100 @@ class SettingsDialog(QtWidgets.QDialog):
 
     def _populate_runtime_fields(self, settings: dict) -> None:
         hide = self._hide_secrets.isChecked()
-        all_specs = (*VT_NON_DB_SPECS, *VT_DB_SPECS)
-        for spec in all_specs:
+        for spec in VT_NON_DB_SPECS:
             widget = self._widgets.get(spec.key)
             if widget is None:
                 continue
             value = settings.get(spec.key, spec.default)
-            text = str(value)
-            if spec.key == "font.family":
-                text = resolve_font_family(text)
-            if isinstance(widget, QtWidgets.QLineEdit):
-                widget.setText(text)
-                widget.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password if hide and spec.sensitive else QtWidgets.QLineEdit.EchoMode.Normal)
-            elif isinstance(widget, QtWidgets.QSpinBox):
-                try:
-                    widget.setValue(int(value))
-                except (TypeError, ValueError):
-                    widget.setValue(int(spec.default or 0))
-            elif isinstance(widget, QtWidgets.QComboBox):
-                if widget.findText(text) < 0:
-                    widget.addItem(text)
-                widget.setCurrentText(text)
-            elif isinstance(widget, QtWidgets.QCheckBox):
-                widget.setChecked(str(value).lower() in {"true", "1"} or value is True)
+            self._apply_widget_value(widget, spec, value, hide=hide)
 
-    def _collect_updates(self) -> dict:
-        updates: dict = {}
-        all_specs = (*VT_NON_DB_SPECS, *VT_DB_SPECS)
-        for spec in all_specs:
+    def _populate_database_runtime_fields(self, settings: dict) -> None:
+        hide = self._hide_secrets.isChecked()
+        db_settings = resolve_database_runtime_display(
+            settings,
+            toggle_mode=self._current_kline_runtime_mode(),
+        )
+        for spec in VT_DB_SPECS:
             widget = self._widgets.get(spec.key)
             if widget is None:
                 continue
-            if isinstance(widget, QtWidgets.QLineEdit):
-                raw = widget.text().strip()
-                if spec.kind == "bool":
-                    updates[spec.key] = raw.lower() in {"true", "1", "yes"}
-                elif spec.kind == "int":
-                    try:
-                        updates[spec.key] = int(raw)
-                    except ValueError:
-                        updates[spec.key] = int(spec.default or 0)
-                else:
-                    updates[spec.key] = raw
-            elif isinstance(widget, QtWidgets.QSpinBox):
-                updates[spec.key] = widget.value()
-            elif isinstance(widget, QtWidgets.QComboBox):
-                updates[spec.key] = widget.currentText()
-            elif isinstance(widget, QtWidgets.QCheckBox):
-                updates[spec.key] = widget.isChecked()
-        updates["database.name"] = self._database_mode
+            value = db_settings.get(spec.key, spec.default)
+            self._apply_widget_value(widget, spec, value, hide=hide)
+
+    def _apply_widget_value(
+        self,
+        widget: QtWidgets.QWidget,
+        spec: ConfigFieldSpec,
+        value: object,
+        *,
+        hide: bool,
+    ) -> None:
+        text = str(value)
+        if spec.key == "font.family":
+            text = resolve_font_family(text)
+        if isinstance(widget, QtWidgets.QLineEdit):
+            widget.setText(text)
+            widget.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password if hide and spec.sensitive else QtWidgets.QLineEdit.EchoMode.Normal)
+        elif isinstance(widget, QtWidgets.QSpinBox):
+            try:
+                widget.setValue(int(value))
+            except (TypeError, ValueError):
+                widget.setValue(int(spec.default or 0))
+        elif isinstance(widget, QtWidgets.QComboBox):
+            if widget.findText(text) < 0:
+                widget.addItem(text)
+            widget.setCurrentText(text)
+        elif isinstance(widget, QtWidgets.QCheckBox):
+            widget.setChecked(str(value).lower() in {"true", "1"} or value is True)
+
+    def _collect_updates(self) -> dict:
+        updates: dict = {}
+        for spec in VT_NON_DB_SPECS:
+            widget = self._widgets.get(spec.key)
+            if widget is None:
+                continue
+            updates[spec.key] = self._read_widget_value(widget, spec)
+
+        db_widget_values: dict[str, object] = {}
+        for spec in VT_DB_SPECS:
+            widget = self._widgets.get(spec.key)
+            if widget is None:
+                continue
+            db_widget_values[spec.key] = self._read_widget_value(widget, spec)
+
+        updates.update(
+            collect_database_runtime_updates(
+                db_widget_values,
+                toggle_mode=self._current_kline_runtime_mode(),
+            )
+        )
         return updates
+
+    def _read_widget_value(self, widget: QtWidgets.QWidget, spec: ConfigFieldSpec) -> object:
+        if isinstance(widget, QtWidgets.QLineEdit):
+            raw = widget.text().strip()
+            if spec.kind == "bool":
+                return raw.lower() in {"true", "1", "yes"}
+            if spec.kind == "int":
+                try:
+                    return int(raw)
+                except ValueError:
+                    return int(spec.default or 0)
+            return raw
+        if isinstance(widget, QtWidgets.QSpinBox):
+            return widget.value()
+        if isinstance(widget, QtWidgets.QComboBox):
+            return widget.currentText()
+        if isinstance(widget, QtWidgets.QCheckBox):
+            return widget.isChecked()
+        return spec.default
 
     def _save(self) -> None:
         path = save_runtime_settings(self._collect_updates())
         QtWidgets.QMessageBox.information(
             self,
             "已保存",
-            f"配置已写入 {path}\n字体、数据库等项需重启应用后生效。",
+            f"配置已写入 {path}\n字体、K 线存储等项需重启应用后生效。",
         )
         self.accept()
 
@@ -481,7 +575,7 @@ class SettingsDialog(QtWidgets.QDialog):
         QtWidgets.QMessageBox.information(
             self,
             "同步完成",
-            f"已从 .env 写入 {path}\n字体、数据库等项需重启应用后生效；大模型项可点「重载 LLM」立即应用。",
+            f"已从 .env 写入 {path}\n字体、K 线存储等项需重启应用后生效；大模型项可点「重载 LLM」立即应用。",
         )
 
 
