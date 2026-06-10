@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.ui.theme import theme_manager
 
@@ -269,6 +269,53 @@ def confirm_action(
         destructive=destructive,
     )
     return dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+
+
+class InfoDialog(QtWidgets.QDialog):
+    """统一样式的只读信息对话框（快捷键帮助等）。"""
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None,
+        title: str,
+        message: str,
+        *,
+        ok_text: str = "关闭",
+        monospace: bool = False,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setMinimumWidth(420)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        label = QtWidgets.QLabel(message)
+        label.setWordWrap(not monospace)
+        label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+        if monospace:
+            font = label.font()
+            font.setStyleHint(QtGui.QFont.StyleHint.Monospace)
+            font.setFamily("Menlo, Consolas, monospace")
+            label.setFont(font)
+        layout.addWidget(label)
+
+        buttons = QtWidgets.QDialogButtonBox()
+        ok_btn = buttons.addButton(ok_text, QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole)
+        ok_btn.setObjectName("PrimaryRunButton")
+        buttons.accepted.connect(self.accept)
+        layout.addWidget(buttons)
+
+        theme_manager().bind_stylesheet(self)
+
+
+def show_info_dialog(
+    parent: QtWidgets.QWidget | None,
+    title: str,
+    message: str,
+    *,
+    ok_text: str = "关闭",
+    monospace: bool = False,
+) -> None:
+    InfoDialog(parent, title, message, ok_text=ok_text, monospace=monospace).exec()
 
 
 def find_page_toast(widget: QtWidgets.QWidget | None) -> PageToastHost | None:

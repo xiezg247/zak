@@ -110,15 +110,25 @@ class UniverseLoadWorker(QtCore.QThread):
         super().__init__()
         self.scope = scope
         self.local_scope = local_scope
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             if self.scope == "全部A股":
                 stocks = load_universe(allow_sync=False)
             elif self.scope == "自选池":
                 stocks = load_watchlist()
             else:
                 stocks = load_downloaded_stocks(scope=self.local_scope)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(stocks)
         except Exception as ex:
             self.failed.emit(str(ex))
@@ -130,9 +140,22 @@ class UniverseSyncWorker(QtCore.QThread):
     finished = QtCore.Signal(str)
     failed = QtCore.Signal(str)
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
+
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             path = sync_universe(force=True)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(str(path))
         except Exception as ex:
             self.failed.emit(str(ex))
@@ -516,9 +539,16 @@ class MarketPageLoadWorker(QtCore.QThread):
         self.page_size = page_size
         self.board = board if board and board != "全部" else None
         self.cached_total = cached_total
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
 
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             provider = get_redis_provider()
             offset = self.page * self.page_size
             updated_at: str | None = provider.updated_at()
@@ -554,6 +584,9 @@ class MarketPageLoadWorker(QtCore.QThread):
                 quotes = provider.get_quotes(items)
                 mode = "list"
 
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(
                 MarketPageResult(
                     items=items,
@@ -576,8 +609,18 @@ class MarketFullLoadWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
+
     def run(self) -> None:
         try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             provider = get_redis_provider()
             updated_at: str | None = provider.updated_at()
             store = provider._store
@@ -616,6 +659,9 @@ class MarketFullLoadWorker(QtCore.QThread):
                     reverse=True,
                 )
 
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
             self.finished.emit(
                 MarketFullResult(
                     items=items,

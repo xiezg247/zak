@@ -46,7 +46,7 @@ from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
 from vnpy_ashare.ui.screener.screener_confirm_dialog import show_screener_confirm_dialog
 from vnpy_ashare.ui.screener.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.shell.settings_dialog import show_settings_dialog
-from vnpy_common.ui.feedback import PageToastHost, page_notify
+from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.app.engine import APP_NAME as LLM_APP_NAME
 from vnpy_llm.app.engine import LlmEngine
@@ -253,7 +253,7 @@ class AshareMainWindow(MainWindow):
             "  Ctrl+F    聚焦当前页搜索框",
             "  Ctrl+L    显示/隐藏 AI 悬浮球",
         ]
-        QtWidgets.QMessageBox.information(self, "键盘快捷键", "\n".join(lines))
+        show_info_dialog(self, "键盘快捷键", "\n".join(lines), monospace=True)
 
     def _bind_nav_shortcuts(self) -> None:
         """Ctrl+1~9 / Ctrl+0 切换侧栏页面；Ctrl+F 聚焦行情搜索。"""

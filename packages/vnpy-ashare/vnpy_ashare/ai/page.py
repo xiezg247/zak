@@ -10,6 +10,7 @@ from vnpy_llm.app.engine import APP_NAME, LlmEngine
 from vnpy_llm.ui.panel.chat import AiChatPanel
 from vnpy_llm.ui.session.widgets import AiSessionSidebar
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
+from vnpy_common.ui.feedback import PageToastHost
 
 
 class AiPageWidget(QtWidgets.QWidget):
@@ -46,10 +47,12 @@ class AiPageWidget(QtWidgets.QWidget):
         default_sidebar = AiSessionSidebar.default_width()
         splitter.setSizes([default_sidebar, 960])
 
-        layout = QtWidgets.QHBoxLayout(self)
+        layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, stretch=1)
+        self._toast = PageToastHost(self)
+        layout.addWidget(self._toast)
         bind_ai_panel_style(self.panel)
         bind_ai_panel_style(self.session_sidebar)
     def _on_collapse_requested(self) -> None:

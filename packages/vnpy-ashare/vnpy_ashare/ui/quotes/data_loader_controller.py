@@ -30,6 +30,29 @@ class DataLoaderController:
     def _p(self) -> QuotesPage:
         return self._page
 
+    def _begin_loader_task(
+        self,
+        message: str,
+        *,
+        worker_attr: str,
+        primary=None,
+        primary_text: str = "",
+        primary_handler=None,
+        lock_table: bool = True,
+    ) -> bool:
+        page = self._p
+        if page._task_guard.active:
+            return False
+        page._begin_cancellable_task(
+            message,
+            worker_attr=worker_attr,
+            primary=primary,
+            primary_text=primary_text,
+            primary_handler=primary_handler,
+            lock_table=lock_table,
+        )
+        return True
+
     def refresh_market_clicked(self) -> None:
         page = self._p
         if page.market_auto_refresh_enabled():
@@ -94,13 +117,21 @@ class DataLoaderController:
 
         page._load_generation += 1
         generation = page._load_generation
+        loading_text = (
+            "正在加载全市场数据（排序）…"
+            if page.market_auto_refresh_enabled()
+            else "正在加载全市场数据…"
+        )
         if not quiet:
-            page._set_busy(True, lock_table=True)
-            loading_text = (
-                "正在加载全市场数据（排序）…"
-                if page.market_auto_refresh_enabled()
-                else "正在加载全市场数据…"
-            )
+            if not self._begin_loader_task(
+                loading_text,
+                worker_attr="_market_worker",
+                primary=page.refresh_quotes_button,
+                primary_text="刷新行情",
+                primary_handler=page._refresh_market_clicked,
+                lock_table=True,
+            ):
+                return
             page._show_market_loading(loading_text)
             page.status_label.setText(loading_text)
 
@@ -122,7 +153,9 @@ class DataLoaderController:
             page.quote_map = dict(result.quotes)
             self.sync_market_quotes_to_cache_from_catalog()
             if not quiet:
-                page._set_busy(False)
+                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                    page._hide_market_loading()
+                    return
                 page._hide_market_loading()
             page._table.filter_market_display()
             if page.market_auto_refresh_enabled():
@@ -139,9 +172,12 @@ class DataLoaderController:
             if generation != page._load_generation or not page._active:
                 return
             if not quiet:
-                page._set_busy(False)
+                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                    page._hide_market_loading()
+                    return
                 page._hide_market_loading()
                 page.status_label.setText(f"加载失败: {msg}")
+                page._toast.error(msg)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
@@ -193,7 +229,15 @@ class DataLoaderController:
             if page._thread_active(page._quotes_worker):
                 return
         elif not append:
-            page._set_busy(True, lock_table=False)
+            if not self._begin_loader_task(
+                "正在加载市场数据…",
+                worker_attr="_market_worker",
+                primary=page.refresh_quotes_button,
+                primary_text="刷新行情",
+                primary_handler=page._refresh_market_clicked,
+                lock_table=False,
+            ):
+                return
             page._show_market_loading("正在加载市场数据…")
             page.status_label.setText("正在加载市场数据...")
 
@@ -240,10 +284,13 @@ class DataLoaderController:
                 )
                 page.status_label.setText(f"{status}（加载失败: {msg}）")
                 return
-            if not quiet:
-                page._set_busy(False)
+            if not quiet and not append:
+                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                    page._hide_market_loading()
+                    return
                 page._hide_market_loading()
                 page.status_label.setText(f"加载失败: {msg}")
+                page._toast.error(msg)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
@@ -287,7 +334,9 @@ class DataLoaderController:
         else:
             self.sync_market_quotes_to_cache_from_display()
         if not quiet and not append:
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                page._hide_market_loading()
+                return
             page._hide_market_loading()
 
         if page.config.market_scroll_paging:
@@ -391,8 +440,13 @@ class DataLoaderController:
             page.status_label.setText("A 股列表未同步，请点击「同步 A 股列表」")
             return
 
-        page._set_busy(True, lock_table=True)
         loading_text = f"正在加载{page.page_name}…"
+        if not self._begin_loader_task(
+            loading_text,
+            worker_attr="_load_worker",
+            lock_table=True,
+        ):
+            return
         page._show_market_loading(loading_text)
         page.status_label.setText(loading_text)
         page.quote_table_model.set_row_count(0)
@@ -407,7 +461,9 @@ class DataLoaderController:
                 return
             page.all_stocks = stocks
             page.apply_filter()
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                page._hide_market_loading()
+                return
             page._hide_market_loading()
 
         def on_failed(msg: str) -> None:
@@ -415,9 +471,12 @@ class DataLoaderController:
                 page._load_worker = None
             if generation != page._load_generation or not page._active:
                 return
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                page._hide_market_loading()
+                return
             page._hide_market_loading()
             page.status_label.setText(f"加载失败: {msg}")
+            page._toast.error(msg)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
@@ -429,7 +488,15 @@ class DataLoaderController:
         page = self._p
         if page._thread_active(page._sync_worker):
             return
-        page._set_busy(True)
+        if not self._begin_loader_task(
+            "后台同步 A 股列表…",
+            worker_attr="_sync_worker",
+            primary=page.sync_button,
+            primary_text="同步 A 股列表",
+            primary_handler=page.sync_universe_clicked,
+            lock_table=False,
+        ):
+            return
         page.status_label.setText("后台同步 A 股列表...")
 
         worker = UniverseSyncWorker()
@@ -438,8 +505,10 @@ class DataLoaderController:
         def on_finished(_path: str) -> None:
             if page._sync_worker is worker:
                 page._sync_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="同步已取消"):
+                return
             page.status_label.setText("A 股列表同步完成")
+            page._toast.success("A 股列表同步完成")
             if page._active:
                 page._market_catalog_loaded = False
                 page._market_page_cache.clear()
@@ -449,8 +518,10 @@ class DataLoaderController:
         def on_failed(msg: str) -> None:
             if page._sync_worker is worker:
                 page._sync_worker = None
-            page._set_busy(False)
+            if page._finish_cancellable_task(cancelled_message="同步已取消"):
+                return
             page.status_label.setText(f"同步失败: {msg}")
+            page._toast.error(msg)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
