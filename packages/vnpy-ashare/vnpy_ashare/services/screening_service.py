@@ -129,13 +129,9 @@ class ScreeningService(BaseService):
             if not quote_rows:
                 raise RuntimeError(self.quote_rows_unavailable_message(err))
 
-        def _load_bars(symbol: str, exchange) -> list:
-            return self.engine.bar_service.load_bars(symbol, exchange, "daily")
-
         return run_pattern_screen(
             pattern_id,
             top_n=top_n,
-            load_bars=_load_bars,
             quote_rows=quote_rows,
         )
 

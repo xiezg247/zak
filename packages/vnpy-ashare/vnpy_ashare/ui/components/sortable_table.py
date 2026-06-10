@@ -21,3 +21,6 @@ class SortableTableItem(QtWidgets.QTableWidgetItem):
             except TypeError:
                 return str(left) < str(right)
         return super().__lt__(other)
+
+    def update_sort_key(self, sort_key: float | str) -> None:
+        self._sort_key = sort_key

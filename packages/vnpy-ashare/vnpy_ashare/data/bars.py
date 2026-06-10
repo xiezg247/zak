@@ -10,16 +10,16 @@ from vnpy.trader.database import get_database
 from vnpy.trader.datafeed import get_datafeed
 from vnpy.trader.object import HistoryRequest
 
-from vnpy_ashare.storage.app_db import import_watchlist_csv, load_universe_rows, load_watchlist_rows
-from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.config import is_ashare_exchange
+from vnpy_ashare.data.bar_store import invalidate_bar_overview_cache, iter_bar_overviews
 from vnpy_ashare.data.minute_periods import (
     DEFAULT_MINUTE_DOWNLOAD_MONTHS,
     bar_interval,
     normalize_period,
 )
-from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.data.tickflow_klines import fetch_history_bars
+from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.storage.app_db import import_watchlist_csv, load_universe_rows, load_watchlist_rows
 
 
 def load_watchlist(path: Path | None = None, ashare_only: bool = True) -> list[StockItem]:
@@ -66,6 +66,7 @@ def download_bars(
 
     database = get_database()
     database.save_bar_data(bars)
+    invalidate_bar_overview_cache()
     return len(bars)
 
 
@@ -97,6 +98,7 @@ def download_period_bars(
     for bar in bars:
         bar.interval = bar_interval(period)
     database.save_bar_data(bars)
+    invalidate_bar_overview_cache()
     return len(bars)
 
 
@@ -114,6 +116,8 @@ def cleanup_invalid_daily_bars() -> list[tuple[str, Exchange]]:
             continue
         database.delete_bar_data(row.symbol, row.exchange, Interval.DAILY)
         removed.append((row.symbol, row.exchange))
+    if removed:
+        invalidate_bar_overview_cache()
     return removed
 
 

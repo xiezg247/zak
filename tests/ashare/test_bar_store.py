@@ -11,12 +11,18 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bar_store import (
     get_scope_overview,
+    invalidate_bar_overview_cache,
     iter_bar_overviews,
     load_period_bars,
 )
 
 
 class BarStoreTests(unittest.TestCase):
+    def setUp(self) -> None:
+        invalidate_bar_overview_cache()
+
+    def tearDown(self) -> None:
+        invalidate_bar_overview_cache()
     @patch("vnpy_ashare.data.bar_store.get_database")
     def test_load_period_bars(self, get_database_mock) -> None:
         database = MagicMock()
@@ -110,6 +116,29 @@ class BarStoreTests(unittest.TestCase):
         self.assertEqual(len(daily_rows), 1)
         self.assertEqual(daily_rows[0].period, "daily")
         self.assertEqual(daily_rows[0].count, 1280)
+
+    @patch("vnpy_ashare.data.bar_store.get_database")
+    def test_overview_cache_reuses_database(self, get_database_mock) -> None:
+        database = MagicMock()
+        get_database_mock.return_value = database
+        database.get_bar_overview.return_value = [
+            MagicMock(
+                symbol="600519",
+                exchange=Exchange.SSE,
+                interval=Interval.DAILY,
+                start=datetime(2020, 1, 2),
+                end=datetime(2026, 6, 5),
+                count=1280,
+            ),
+        ]
+
+        get_scope_overview("600519", Exchange.SSE, "daily")
+        get_scope_overview("600519", Exchange.SSE, "daily")
+        database.get_bar_overview.assert_called_once()
+
+        invalidate_bar_overview_cache()
+        get_scope_overview("600519", Exchange.SSE, "daily")
+        self.assertEqual(database.get_bar_overview.call_count, 2)
 
 
 if __name__ == "__main__":

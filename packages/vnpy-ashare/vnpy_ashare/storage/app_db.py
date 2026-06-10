@@ -43,6 +43,14 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
     cal_date TEXT PRIMARY KEY,
     is_open INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS tushare_factor_cache (
+    dataset TEXT NOT NULL,
+    trade_date TEXT NOT NULL DEFAULT '',
+    fetched_at TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    PRIMARY KEY (dataset, trade_date)
+);
 """
 
 

@@ -7,10 +7,20 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.storage.app_db import load_universe_rows
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.models import EXCHANGE_TO_SUFFIX
+from vnpy_ashare.screener.tushare_cache import (
+    DATASET_DAILY_BASIC,
+    DATASET_MONEYFLOW,
+    get_cached_industry_map,
+    get_cached_pct_map,
+    get_cached_rows,
+    set_cached_industry_map,
+    set_cached_pct_map,
+    set_cached_rows,
+)
 from vnpy_ashare.screener.tushare_client import get_tushare_pro
+from vnpy_ashare.storage.app_db import load_universe_rows
 
 
 def ts_code_to_vt_symbol(ts_code: str) -> str | None:
@@ -63,6 +73,10 @@ def merge_quotes_into_fundamentals(
 
 def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
     """拉取指定交易日全市场涨跌幅（供非交易时段涨幅榜）。"""
+    cached = get_cached_pct_map(trade_date)
+    if cached is not None:
+        return cached
+
     pro = get_tushare_pro()
     try:
         frame = pro.daily(trade_date=trade_date, fields="ts_code,pct_chg")
@@ -70,7 +84,10 @@ def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
         return {}
     if frame is None or frame.empty:
         return {}
-    return {str(record.get("ts_code", "")): _float(record.get("pct_chg")) for record in frame.to_dict(orient="records") if record.get("ts_code")}
+    pct_map = {str(record.get("ts_code", "")): _float(record.get("pct_chg")) for record in frame.to_dict(orient="records") if record.get("ts_code")}
+    if pct_map:
+        set_cached_pct_map(trade_date, pct_map)
+    return pct_map
 
 
 def load_ts_code_name_map() -> dict[str, str]:
@@ -90,6 +107,10 @@ def _latest_trade_date_str() -> str:
 
 def fetch_stock_industry_map() -> dict[str, str]:
     """ts_code → 行业名称。"""
+    cached = get_cached_industry_map()
+    if cached is not None:
+        return cached
+
     pro = get_tushare_pro()
     try:
         frame = pro.stock_basic(
@@ -107,13 +128,19 @@ def fetch_stock_industry_map() -> dict[str, str]:
         industry = str(record.get("industry", "") or "").strip()
         if ts_code and industry:
             mapping[ts_code] = industry
+    if mapping:
+        set_cached_industry_map(mapping)
     return mapping
 
 
 def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
     """拉取 daily_basic 并标准化为选股行（含 vt_symbol / pe_ttm / total_mv 等）。"""
-    pro = get_tushare_pro()
     trade_date = trade_date or _latest_trade_date_str()
+    cached = get_cached_rows(DATASET_DAILY_BASIC, trade_date)
+    if cached is not None:
+        return cached, trade_date
+
+    pro = get_tushare_pro()
     frame = pro.daily_basic(
         trade_date=trade_date,
         fields=("ts_code,trade_date,close,pe,pe_ttm,pb,ps,total_mv,circ_mv,turnover_rate,volume_ratio"),
@@ -147,13 +174,19 @@ def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, 
                 "volume_ratio": _float(record.get("volume_ratio")),
             }
         )
+    if rows:
+        set_cached_rows(DATASET_DAILY_BASIC, trade_date, rows)
     return rows, trade_date
 
 
 def fetch_moneyflow(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
     """拉取 moneyflow 并标准化为选股行（含 net_mf_amount 等）。"""
-    pro = get_tushare_pro()
     trade_date = trade_date or _latest_trade_date_str()
+    cached = get_cached_rows(DATASET_MONEYFLOW, trade_date)
+    if cached is not None:
+        return cached, trade_date
+
+    pro = get_tushare_pro()
     frame = pro.moneyflow(
         trade_date=trade_date,
         fields="ts_code,trade_date,net_mf_amount,buy_elg_amount,sell_elg_amount",
@@ -181,6 +214,8 @@ def fetch_moneyflow(*, trade_date: str | None = None) -> tuple[list[dict[str, An
                 "sell_elg_amount": _float(record.get("sell_elg_amount")),
             }
         )
+    if rows:
+        set_cached_rows(DATASET_MONEYFLOW, trade_date, rows)
     return rows, trade_date
 
 

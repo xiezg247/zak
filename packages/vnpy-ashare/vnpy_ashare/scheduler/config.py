@@ -53,6 +53,14 @@ class SchedulerConfig:
             download_start="2020-01-01",
         )
     )
+    prefetch_tushare: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=32,
+            cron_day_of_week="mon-fri",
+        )
+    )
     screen_intraday: AutoScreenJobConfig = field(
         default_factory=lambda: AutoScreenJobConfig(
             enabled=False,
@@ -96,6 +104,7 @@ class SchedulerConfig:
             "collect_quotes": dump_job(self.collect_quotes),
             "sync_universe": dump_job(self.sync_universe),
             "batch_download": dump_job(self.batch_download),
+            "prefetch_tushare": dump_job(self.prefetch_tushare),
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
         }
@@ -131,6 +140,7 @@ class SchedulerConfig:
             collect_quotes=load_job("collect_quotes", defaults.collect_quotes),
             sync_universe=load_job("sync_universe", defaults.sync_universe),
             batch_download=load_job("batch_download", defaults.batch_download),
+            prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
         )

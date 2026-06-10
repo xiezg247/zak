@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -12,11 +13,16 @@ from typing import Any
 from vnpy.trader.constant import Exchange, Interval
 
 from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.backtest.batch_runner import (
+    batch_backtest_max_workers,
+    run_single_backtest_task,
+    task_from_params,
+)
 from vnpy_ashare.backtest.run_store import save_backtest_run
-from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.jobs.result import JobResult
 
 
 @dataclass(frozen=True)
@@ -147,7 +153,7 @@ def run_batch_backtests(
     rows: list[dict[str, Any]],
     params: BatchBacktestParams,
 ) -> list[BatchBacktestRow]:
-    """逐标的调用 CTA 回测引擎，收集收益/回撤/夏普。"""
+    """批量回测：多标的时进程池并行，单标的走 MainEngine 回测引擎。"""
     from vnpy_ctabacktester.engine import APP_NAME, BacktesterEngine
 
     engine = main_engine.get_engine(APP_NAME)
@@ -158,9 +164,15 @@ def run_batch_backtests(
     if not items:
         return []
 
-    results: list[BatchBacktestRow] = []
     setting: dict[str, Any] = {}
+    workers = batch_backtest_max_workers(item_count=len(items))
+    if workers > 1:
+        tasks = [task_from_params(item, params, class_name=params.class_name, setting=setting) for item in items]
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            payloads = list(pool.map(run_single_backtest_task, tasks, chunksize=1))
+        return [_batch_row_from_payload(payload) for payload in payloads]
 
+    results: list[BatchBacktestRow] = []
     for item in items:
         row = BatchBacktestRow(vt_symbol=item.vt_symbol, name=item.name)
         try:
@@ -187,6 +199,18 @@ def run_batch_backtests(
             row.error = str(ex)
         results.append(row)
     return results
+
+
+def _batch_row_from_payload(payload: dict[str, Any]) -> BatchBacktestRow:
+    return BatchBacktestRow(
+        vt_symbol=str(payload.get("vt_symbol", "")),
+        name=str(payload.get("name", "")),
+        total_return=payload.get("total_return"),
+        max_drawdown=payload.get("max_drawdown"),
+        sharpe_ratio=payload.get("sharpe_ratio"),
+        total_trade_count=payload.get("total_trade_count"),
+        error=str(payload.get("error") or ""),
+    )
 
 
 def persist_batch_backtest_results(

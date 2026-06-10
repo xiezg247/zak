@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -10,10 +11,14 @@ from vnpy.trader.database import BarOverview, get_database
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.minute_periods import (
+    MINUTE_PERIOD,
     bar_interval,
     is_daily_scope,
     normalize_period,
 )
+
+_overview_cache_lock = threading.Lock()
+_overview_by_interval: dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]] | None = None
 
 
 @dataclass(frozen=True)
@@ -64,19 +69,44 @@ def _row_to_overview(row: BarOverview, period: str) -> PeriodBarOverview:
     )
 
 
+def _period_for_interval(interval: Interval) -> str:
+    if interval == Interval.DAILY:
+        return "daily"
+    return MINUTE_PERIOD
+
+
+def invalidate_bar_overview_cache() -> None:
+    """K 线写入/删除后清 overview 内存索引。"""
+    global _overview_by_interval
+    with _overview_cache_lock:
+        _overview_by_interval = None
+
+
+def _ensure_overview_cache() -> dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]]:
+    global _overview_by_interval
+    with _overview_cache_lock:
+        if _overview_by_interval is not None:
+            return _overview_by_interval
+
+        cache: dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]] = {}
+        for row in get_database().get_bar_overview():
+            if not _overview_row_valid(row):
+                continue
+            period = _period_for_interval(row.interval)
+            bucket = cache.setdefault(row.interval, {})
+            bucket[(row.symbol, row.exchange)] = _row_to_overview(row, period)
+        _overview_by_interval = cache
+        return cache
+
+
 def get_scope_overview(
     symbol: str,
     exchange: Exchange,
     scope: str,
 ) -> PeriodBarOverview | None:
-    period, interval = _interval_for_scope(scope)
-    for row in get_database().get_bar_overview():
-        if row.symbol != symbol or row.exchange != exchange or row.interval != interval:
-            continue
-        if not _overview_row_valid(row):
-            return None
-        return _row_to_overview(row, period)
-    return None
+    _, interval = _interval_for_scope(scope)
+    cache = _ensure_overview_cache()
+    return cache.get(interval, {}).get((symbol, exchange))
 
 
 def load_scope_bars(
@@ -118,12 +148,8 @@ def load_period_bars(
 
 def iter_bar_overviews(*, scope: str) -> list[PeriodBarOverview]:
     """读取 K 线概览（跟随 vt_setting 中的 database.name）。"""
-    period, interval = _interval_for_scope(scope)
-    rows: list[PeriodBarOverview] = []
-    for row in get_database().get_bar_overview():
-        if row.interval != interval or not _overview_row_valid(row):
-            continue
-        rows.append(_row_to_overview(row, period))
+    _, interval = _interval_for_scope(scope)
+    rows = list(_ensure_overview_cache().get(interval, {}).values())
     rows.sort(key=lambda item: (item.symbol, item.exchange.value))
     return rows
 
@@ -134,4 +160,5 @@ def delete_scope_bars(symbol: str, exchange: Exchange, scope: str) -> bool:
         return False
     _, interval = _interval_for_scope(scope)
     get_database().delete_bar_data(symbol, exchange, interval)
+    invalidate_bar_overview_cache()
     return True

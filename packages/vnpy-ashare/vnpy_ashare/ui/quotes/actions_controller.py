@@ -8,13 +8,14 @@ from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import build_diagnose_ai_prompt
-from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
-from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
+from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.quotes.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.quote_columns import format_volume
+from vnpy_ashare.ui.quotes.quotes_config import AI_CONTEXT_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
@@ -30,6 +31,10 @@ class ActionsController:
 
     def __init__(self, page: QuotesPage) -> None:
         self._page = page
+        self._ai_context_timer = QtCore.QTimer(page)
+        self._ai_context_timer.setSingleShot(True)
+        self._ai_context_timer.setInterval(AI_CONTEXT_DEBOUNCE_MS)
+        self._ai_context_timer.timeout.connect(self._publish_ai_context)
 
     @property
     def _p(self) -> QuotesPage:
@@ -88,7 +93,16 @@ class ActionsController:
                 page.download_button.setText("下载日K到本地")
         self.update_action_buttons()
 
+    def schedule_ai_context(self) -> None:
+        """WebSocket 高频推送时合并 AI 上下文写入。"""
+        self._ai_context_timer.start()
+
     def emit_ai_context(self) -> None:
+        """选中变更等须立即同步的场景。"""
+        self._ai_context_timer.stop()
+        self._publish_ai_context()
+
+    def _publish_ai_context(self) -> None:
         """看盘页选中/行情变更 → QuoteService → context_store → AI 面板监听刷新。"""
         page = self._p
         quote = None

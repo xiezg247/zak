@@ -14,6 +14,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bars import load_downloaded_stocks
+from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.screener.export import resolve_export_columns
 from vnpy_ashare.screener.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
@@ -106,11 +107,14 @@ def run_pattern_screen(
     pattern_id: str,
     *,
     top_n: int = 20,
-    load_bars: Callable[[str, Exchange], list[BarData]],
+    load_bars: Callable[[str, Exchange], list[BarData]] | None = None,
     quote_rows: list[dict[str, Any]] | None = None,
     max_scan: int = MAX_PATTERN_SCAN,
 ) -> ScreenerRunResult:
-    """扫描本地日 K（或行情快照）执行形态选股。"""
+    """扫描本地日 K（或行情快照）执行形态选股。
+
+    ``load_bars`` 仅供测试注入；生产路径使用 ``load_daily_bars_batch`` 尾部窗口加载。
+    """
     top_n = max(1, min(int(top_n or 20), 200))
     label = pattern_label(pattern_id)
 
@@ -148,11 +152,20 @@ def run_pattern_screen(
     if not stocks:
         raise RuntimeError("本地暂无日 K 数据。请先在自选/本地页下载日 K 后再做形态选股。")
 
+    scan_items = stocks[:max_scan]
+    if load_bars is None:
+        bars_by_key = load_daily_bars_batch(scan_items)
+    else:
+        bars_by_key = None
+
     scanned = 0
     hits: list[tuple[float, dict[str, Any]]] = []
-    for item in stocks[:max_scan]:
-        bars = load_bars(item.symbol, item.exchange)
-        if len(bars) < 60:
+    for item in scan_items:
+        if bars_by_key is not None:
+            bars = bars_by_key.get((item.symbol, item.exchange), [])
+        else:
+            bars = load_bars(item.symbol, item.exchange)
+        if len(bars) < PATTERN_MIN_BARS:
             continue
         scanned += 1
         series = BarSeries.from_bars(bars)

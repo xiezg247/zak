@@ -15,6 +15,7 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.ui.components.sortable_table import SortableTableItem
 from vnpy_ashare.ui.quotes.quote_columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
@@ -27,7 +28,6 @@ from vnpy_ashare.ui.quotes.quotes_config import (
     MARKET_VISIBLE_COLUMNS,
     MAX_DISPLAY_ROWS,
 )
-from vnpy_ashare.ui.components.sortable_table import SortableTableItem
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
 
@@ -301,20 +301,38 @@ class TableController:
 
     def refresh_table_quotes(self) -> None:
         page = self._p
+        symbols = {item.tickflow_symbol for item in page.display_stocks}
+        self.refresh_table_quotes_for_symbols(symbols)
+
+    def refresh_table_quotes_for_symbols(self, symbols: set[str]) -> None:
+        if not symbols:
+            return
+        page = self._p
         table = page.market_table
+        symbol_rows: dict[str, int] = {}
+        for row in range(table.rowCount()):
+            item = self.stock_at_row(row)
+            if item is not None:
+                symbol_rows[item.tickflow_symbol] = row
+
         sorting_enabled = table.isSortingEnabled()
         if sorting_enabled:
             table.setSortingEnabled(False)
+        table.setUpdatesEnabled(False)
         table.blockSignals(True)
         try:
-            for row in range(table.rowCount()):
+            for tf_symbol in symbols:
+                row = symbol_rows.get(tf_symbol)
+                if row is None:
+                    continue
                 item = self.stock_at_row(row)
                 if item is None:
                     continue
-                quote = page.quote_map.get(item.tickflow_symbol)
+                quote = page.quote_map.get(tf_symbol)
                 self.set_row(row, item, quote)
         finally:
             table.blockSignals(False)
+            table.setUpdatesEnabled(True)
         if sorting_enabled:
             table.setSortingEnabled(True)
 
@@ -414,6 +432,36 @@ class TableController:
             cell.setForeground(QtGui.QColor(color))
         return cell
 
+    def _apply_table_cell(
+        self,
+        row: int,
+        col: int,
+        text: str,
+        *,
+        item: StockItem | None = None,
+        sort_key: float | str | None = None,
+        color: str | None = None,
+    ) -> None:
+        page = self._p
+        table = page.market_table
+        existing = table.item(row, col)
+        if existing is None:
+            table.setItem(row, col, self._make_table_cell(text, item=item, sort_key=sort_key, color=color))
+            return
+
+        if existing.text() != text:
+            existing.setText(text)
+        if sort_key is not None:
+            if isinstance(existing, SortableTableItem):
+                existing.update_sort_key(sort_key)
+            elif page.config.table_header_sortable:
+                table.setItem(row, col, self._make_table_cell(text, item=item, sort_key=sort_key, color=color))
+                return
+        if item is not None:
+            existing.setData(QtCore.Qt.ItemDataRole.UserRole, item)
+        if color is not None:
+            existing.setForeground(QtGui.QColor(color))
+
     def _set_local_row(self, row: int, item: StockItem) -> None:
         page = self._p
         key = (item.symbol, item.exchange)
@@ -430,10 +478,8 @@ class TableController:
         )
         status_col = len(values) - 1
         for col, text in enumerate(values):
-            cell = self._make_table_cell(text, item=item if col == 0 else None)
-            if col == status_col:
-                cell.setForeground(QtGui.QColor(self._status_color(status)))
-            page.market_table.setItem(row, col, cell)
+            cell_color = self._status_color(status) if col == status_col else None
+            self._apply_table_cell(row, col, text, item=item if col == 0 else None, color=cell_color)
 
     def set_row(self, row: int, item: StockItem, quote: QuoteSnapshot | None) -> None:
         page = self._p
@@ -507,13 +553,14 @@ class TableController:
             if status_col is not None and col == status_col and status is not None:
                 cell_color = self._status_color(status)
             sort_key = filtered_sort_keys[col] if col < len(filtered_sort_keys) else text
-            cell = self._make_table_cell(
+            self._apply_table_cell(
+                row,
+                col,
                 text,
                 item=item if col == 0 else None,
                 sort_key=sort_key,
                 color=cell_color,
             )
-            page.market_table.setItem(row, col, cell)
 
     def on_selection_changed(self) -> None:
         page = self._p

@@ -16,14 +16,15 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs import (
     JobResult,
     batch_download_watchlist,
     collect_market_quotes,
+    prefetch_tushare_factors,
     sync_universe_job,
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
 from vnpy_ashare.screener.recipe import resolve_recipe
 
@@ -133,6 +134,19 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}",
+            ),
+            "prefetch_tushare": _JobMeta(
+                job_id="prefetch_tushare",
+                name="Tushare 因子预拉",
+                description="收盘后拉取 daily_basic / moneyflow 等写入本地缓存，供基本面选股与盘后自动选股使用",
+                runner=prefetch_tushare_factors,
+                config_attr="prefetch_tushare",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于盘后自动选股）",
             ),
             "screen_intraday": _JobMeta(
                 job_id="screen_intraday",

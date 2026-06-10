@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+from concurrent.futures import ThreadPoolExecutor
+
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.domain.quote_time import resolve_trade_time_from_tickflow_row
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
@@ -16,6 +19,18 @@ MARKET_INDICES: list[tuple[str, str]] = [
 ]
 
 QUOTE_BATCH_SIZE = 80
+DEFAULT_QUOTE_FETCH_MAX_WORKERS = 4
+
+
+def quote_fetch_max_workers(*, batch_count: int) -> int:
+    """TickFlow 行情 batch 并发数（QUOTE_FETCH_MAX_WORKERS，默认 4）。"""
+    raw = os.getenv("QUOTE_FETCH_MAX_WORKERS", str(DEFAULT_QUOTE_FETCH_MAX_WORKERS)).strip()
+    try:
+        configured = int(raw)
+    except ValueError:
+        configured = DEFAULT_QUOTE_FETCH_MAX_WORKERS
+    configured = max(1, min(configured, 8))
+    return min(configured, batch_count)
 
 
 def parse_quote_row(row: dict) -> QuoteSnapshot:
@@ -43,26 +58,52 @@ def parse_quote_row(row: dict) -> QuoteSnapshot:
     )
 
 
-def fetch_quotes_from_tickflow(items: list[StockItem]) -> dict[str, QuoteSnapshot]:
+def _quotes_from_dataframe(df) -> dict[str, QuoteSnapshot]:
+    if df is None or df.empty:
+        return {}
+    result: dict[str, QuoteSnapshot] = {}
+    for idx, row in df.iterrows():
+        data = row.to_dict()
+        if not data.get("symbol"):
+            data["symbol"] = str(idx)
+        quote = parse_quote_row(data)
+        result[quote.symbol] = quote
+    return result
+
+
+def _fetch_quote_batch(tf_symbols: list[str]) -> dict[str, QuoteSnapshot]:
+    """单 batch 拉取（每线程独立 client）。"""
+    if not tf_symbols:
+        return {}
+    client = get_tickflow_client()
+    df = client.quotes.get(symbols=tf_symbols, as_dataframe=True)
+    return _quotes_from_dataframe(df)
+
+
+def fetch_quotes_from_tickflow(
+    items: list[StockItem],
+    *,
+    max_workers: int | None = None,
+) -> dict[str, QuoteSnapshot]:
     if not items:
         return {}
 
-    client = get_tickflow_client()
     tf_symbols = [item.tickflow_symbol for item in items]
+    batches = [tf_symbols[start : start + QUOTE_BATCH_SIZE] for start in range(0, len(tf_symbols), QUOTE_BATCH_SIZE)]
+    workers = max_workers if max_workers is not None else quote_fetch_max_workers(batch_count=len(batches))
+
+    if workers <= 1 or len(batches) <= 1:
+        client = get_tickflow_client()
+        result: dict[str, QuoteSnapshot] = {}
+        for batch in batches:
+            df = client.quotes.get(symbols=batch, as_dataframe=True)
+            result.update(_quotes_from_dataframe(df))
+        return result
+
     result: dict[str, QuoteSnapshot] = {}
-
-    for start in range(0, len(tf_symbols), QUOTE_BATCH_SIZE):
-        batch = tf_symbols[start : start + QUOTE_BATCH_SIZE]
-        df = client.quotes.get(symbols=batch, as_dataframe=True)
-        if df is None or df.empty:
-            continue
-        for idx, row in df.iterrows():
-            data = row.to_dict()
-            if not data.get("symbol"):
-                data["symbol"] = str(idx)
-            quote = parse_quote_row(data)
-            result[quote.symbol] = quote
-
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for part in pool.map(_fetch_quote_batch, batches):
+            result.update(part)
     return result
 
 
@@ -84,10 +125,12 @@ def fetch_index_ticker() -> list[tuple[str, QuoteSnapshot]]:
 
 
 __all__ = [
+    "DEFAULT_QUOTE_FETCH_MAX_WORKERS",
     "MARKET_INDICES",
     "QUOTE_BATCH_SIZE",
     "fetch_index_ticker",
     "fetch_quotes_from_tickflow",
     "get_tickflow_client",
     "parse_quote_row",
+    "quote_fetch_max_workers",
 ]
