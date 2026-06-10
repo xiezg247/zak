@@ -131,16 +131,55 @@ QListWidget#AiSessionListWidget {
     font-size: 12px;
 }
 QListWidget#AiSessionListWidget::item {
-    padding: 8px 10px;
+    padding: 0;
     border-radius: 6px;
     margin: 2px 0;
 }
 QListWidget#AiSessionListWidget::item:selected {
-    background-color: #2a3a55;
-    color: #ffffff;
+    background-color: transparent;
 }
 QListWidget#AiSessionListWidget::item:hover {
+    background-color: transparent;
+}
+QFrame#AiSessionRow {
+    background-color: transparent;
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+}
+QFrame#AiSessionRow[active="true"] {
+    background-color: #1a2438;
+    border-left: 3px solid #4a9eff;
+}
+QFrame#AiSessionRow:hover {
     background-color: #1e1e28;
+}
+QLabel#AiSessionRowTitle {
+    color: #d0d0d8;
+    font-size: 12px;
+    min-height: 16px;
+}
+QLabel#AiSessionRowSubtitle {
+    color: #6a6a72;
+    font-size: 10px;
+    min-height: 14px;
+}
+QCheckBox#AiSessionCheck {
+    spacing: 0;
+}
+QCheckBox#AiSessionCheck::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #4a4a55;
+    border-radius: 3px;
+    background-color: #1a1a22;
+}
+QCheckBox#AiSessionCheck::indicator:checked {
+    background-color: #4a9eff;
+    border-color: #4a9eff;
+}
+QCheckBox#AiSessionCheck::indicator:disabled {
+    background-color: #252530;
+    border-color: #3a3a42;
 }
 """
 )
