@@ -16,10 +16,10 @@ from vnpy_ashare.screener.batch_actions import (
     load_batch_backtest_defaults,
     persist_batch_backtest_results,
 )
-from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_common.ui.feedback import page_notify
 from vnpy_ashare.ui.screener.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.workers import ScreenerBatchBacktestWorker
+from vnpy_common.ui.feedback import page_notify
+from vnpy_common.ui.qt_helpers import release_thread
 
 
 class BatchBacktestFlow:

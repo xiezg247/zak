@@ -5,9 +5,9 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.data.bar_health import BarMeta
-from vnpy_ashare.jobs.local_fill import batch_fill_stale_daily_bars, select_stale_daily_items
 from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.data.bars import load_downloaded_stocks
+from vnpy_ashare.jobs.local_fill import batch_fill_stale_daily_bars, select_stale_daily_items
 from vnpy_ashare.jobs.result import JobResult
 
 

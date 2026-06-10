@@ -7,7 +7,8 @@ from functools import partial
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.ui import QtWidgets
-from vnpy_datamanager.ui.widget import DataCell, DateRangeDialog, ManagerWidget as VnpyManagerWidget
+from vnpy_datamanager.ui.widget import DataCell, DateRangeDialog
+from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
 from vnpy_ashare.ai.data_manager_context import sync_data_manager_context
 from vnpy_ashare.config import EXCHANGE_CN_NAMES
@@ -197,14 +198,10 @@ class ManagerWidget(VnpyManagerWidget):
 
             output_button = QtWidgets.QPushButton("导出")
             output_button.setObjectName("SecondaryButton")
-            output_button.clicked.connect(
-                partial(self.output_data, row.symbol, row.exchange, row.interval, row.start, row.end)
-            )
+            output_button.clicked.connect(partial(self.output_data, row.symbol, row.exchange, row.interval, row.start, row.end))
             show_button = QtWidgets.QPushButton("查看")
             show_button.setObjectName("SecondaryButton")
-            show_button.clicked.connect(
-                partial(self.show_data, row.symbol, row.exchange, row.interval, row.start, row.end)
-            )
+            show_button.clicked.connect(partial(self.show_data, row.symbol, row.exchange, row.interval, row.start, row.end))
             delete_button = QtWidgets.QPushButton("删除")
             delete_button.setObjectName("DangerButton")
             delete_button.clicked.connect(partial(self.delete_data, row.symbol, row.exchange, row.interval))

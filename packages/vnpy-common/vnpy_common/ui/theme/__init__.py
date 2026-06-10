@@ -21,10 +21,10 @@ from vnpy_common.ui.theme.build_extra import (
     format_scheduler_empty_html,
     format_scheduler_run_log_html,
 )
-from vnpy_common.ui.theme.manager import ExtraStyles, ThemeManager, theme_manager
-from vnpy_common.ui.theme.orb_palette import OrbPalette, orb_palette
 from vnpy_common.ui.theme.html_palette import HtmlPalette, html_palette
+from vnpy_common.ui.theme.manager import ExtraStyles, ThemeManager, theme_manager
 from vnpy_common.ui.theme.market_colors import MarketColors, market_colors
+from vnpy_common.ui.theme.orb_palette import OrbPalette, orb_palette
 from vnpy_common.ui.theme.tokens import DEFAULT_THEME, DEFAULT_THEME_PREFERENCE, ThemeId, ThemePreference, ThemeTokens, get_tokens
 
 __all__ = [

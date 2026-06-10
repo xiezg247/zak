@@ -116,8 +116,8 @@ def technical_snapshot(symbol: str, exchange: Exchange, lookback: int = 60) -> d
 
 def fetch_mcp_reports(symbol: str, exchange: Exchange) -> dict[str, Any]:
     """通过通达信 MCP 获取研报。"""
-    from vnpy_mcp.remote import McpClientError, call_remote_tool, list_remote_tools
     from vnpy_mcp.config import load_all_mcp_servers
+    from vnpy_mcp.remote import McpClientError, call_remote_tool, list_remote_tools
 
     configs = load_all_mcp_servers()
     if not configs:

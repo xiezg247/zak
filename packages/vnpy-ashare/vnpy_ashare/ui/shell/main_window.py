@@ -11,14 +11,6 @@ from vnpy.trader.ui import MainWindow
 from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.page import AiPageWidget
-from vnpy_ashare.domain.ai_actions import (
-    AI_ACTION_ASK_AI,
-    AI_ACTION_FILL_SCREENER,
-    AI_ACTION_OPEN_BACKTEST,
-    AI_ACTION_OPEN_BATCH_BACKTEST,
-    AI_ACTION_ORB_ATTENTION,
-    normalize_ai_action,
-)
 from vnpy_ashare.app.branding import window_title as build_window_title
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import (
@@ -35,18 +27,26 @@ from vnpy_ashare.app.events import (
     FillScreenerRequest,
     OrbAttentionRequest,
 )
-from vnpy_ashare.ui.screener.auto_screener_page import AutoScreenerPageWidget
+from vnpy_ashare.domain.ai_actions import (
+    AI_ACTION_ASK_AI,
+    AI_ACTION_FILL_SCREENER,
+    AI_ACTION_OPEN_BACKTEST,
+    AI_ACTION_OPEN_BATCH_BACKTEST,
+    AI_ACTION_ORB_ATTENTION,
+    normalize_ai_action,
+)
 from vnpy_ashare.ui.backtest.batch_backtest_page import BatchBacktestPageWidget
-from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
-from vnpy_common.paths import QSETTINGS_ORG
-from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, APP_NAV_GROUPS, NAV_SHORTCUTS, SidebarNav
-from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
-from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
+from vnpy_ashare.ui.screener.auto_screener_page import AutoScreenerPageWidget
 from vnpy_ashare.ui.screener.screener_confirm_dialog import show_screener_confirm_dialog
 from vnpy_ashare.ui.screener.screener_page import ScreenerPageWidget
+from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
+from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, APP_NAV_GROUPS, NAV_SHORTCUTS, SidebarNav
+from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings_dialog import show_settings_dialog
+from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
+from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.app.engine import APP_NAME as LLM_APP_NAME
 from vnpy_llm.app.engine import LlmEngine

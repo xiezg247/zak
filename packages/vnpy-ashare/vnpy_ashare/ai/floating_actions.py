@@ -5,12 +5,12 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from vnpy_common.ai.protocol import AiContextData, QuickAction
 from vnpy_ashare.ai.context import (
     build_assistant_quick_actions,
     build_floating_stock_quick_actions,
 )
 from vnpy_ashare.ai.context_store import get_screening_results
+from vnpy_common.ai.protocol import AiContextData, QuickAction
 
 
 def enrich_context_with_actions(data: AiContextData) -> AiContextData:

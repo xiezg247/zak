@@ -34,15 +34,13 @@ def _load_mcp_sdk() -> tuple[Any, Any]:
         try:
             import anyio  # noqa: F401
             import anyio.lowlevel  # noqa: F401
-            from mcp import ClientSession
             from mcp.client.streamable_http import streamablehttp_client
+
+            from mcp import ClientSession
         except ImportError as ex:
             raise McpClientError("未安装 mcp 包，请执行：uv pip install mcp") from ex
         except KeyError as ex:
-            raise McpClientError(
-                "mcp/anyio 导入失败（虚拟环境可能损坏），请执行："
-                "uv pip install --force-reinstall anyio mcp"
-            ) from ex
+            raise McpClientError("mcp/anyio 导入失败（虚拟环境可能损坏），请执行：uv pip install --force-reinstall anyio mcp") from ex
         _mcp_sdk = (streamablehttp_client, ClientSession)
         return _mcp_sdk
 

@@ -1,6 +1,7 @@
 """配置：A 股常量、.env ↔ vt_setting.json 桥接。"""
 
 from vnpy_ashare.config.runtime import (
+    _CN_NAME_TO_EXCHANGE,
     ASHARE_BACKTEST_DEFAULTS,
     BACKTESTER_SETTING_FILE,
     COMMISSION_RATE,
@@ -11,7 +12,7 @@ from vnpy_ashare.config.runtime import (
     PRICE_TICK,
     STAMP_TAX_RATE,
     STOCK_EXCHANGES,
-    _CN_NAME_TO_EXCHANGE,
+    _looks_like_futures_config,
     ensure_runtime_config,
     exchange_to_cn,
     format_decimal_field,
@@ -19,7 +20,6 @@ from vnpy_ashare.config.runtime import (
     is_ashare_exchange,
     normalize_volume,
     write_backtest_defaults,
-    _looks_like_futures_config,
 )
 
 __all__ = [

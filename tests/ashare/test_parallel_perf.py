@@ -5,9 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.constant import Exchange
 
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.backtest.batch_runner import batch_backtest_max_workers, resolve_strategy_class
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.tickflow_client import (

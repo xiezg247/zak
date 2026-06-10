@@ -81,12 +81,7 @@ def load_daily_bars_batch(
 
     workers = max_workers if max_workers is not None else pattern_load_max_workers(item_count=len(unique))
     if workers <= 1 or len(unique) <= 1:
-        return {
-            key: bars
-            for key, bars in (
-                _load_daily_bars_entry(item, lookback_bars=lookback_bars) for item in unique
-            )
-        }
+        return {key: bars for key, bars in (_load_daily_bars_entry(item, lookback_bars=lookback_bars) for item in unique)}
 
     def worker(item: StockItem) -> tuple[tuple[str, Exchange], list[BarData]]:
         return _load_daily_bars_entry(item, lookback_bars=lookback_bars)

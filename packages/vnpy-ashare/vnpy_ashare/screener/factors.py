@@ -152,11 +152,7 @@ def fetch_stock_basic_snapshot() -> tuple[list[dict[str, Any]], int]:
         )
     if rows:
         set_cached_rows(DATASET_STOCK_BASIC, "", rows)
-        industry_map = {
-            str(item["ts_code"]): str(item["industry"])
-            for item in rows
-            if item.get("industry")
-        }
+        industry_map = {str(item["ts_code"]): str(item["industry"]) for item in rows if item.get("industry")}
         if industry_map:
             set_cached_industry_map(industry_map)
     return rows, len(rows)
@@ -170,11 +166,7 @@ def fetch_stock_industry_map() -> dict[str, str]:
 
     rows, _ = fetch_stock_basic_snapshot()
     if rows:
-        return {
-            str(item["ts_code"]): str(item["industry"])
-            for item in rows
-            if item.get("industry")
-        }
+        return {str(item["ts_code"]): str(item["industry"]) for item in rows if item.get("industry")}
 
     pro = get_tushare_pro()
     try:

@@ -12,9 +12,9 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtWidgets
 
 import tests._bootstrap  # noqa: F401
+from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.chat.client import StreamCancelled
 from vnpy_llm.config.settings import LlmConfig
-from vnpy_llm.app.engine import LlmEngine
 
 
 class StreamCancelTests(unittest.TestCase):

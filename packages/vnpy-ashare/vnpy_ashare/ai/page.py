@@ -6,11 +6,11 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_common.ui.feedback import PageToastHost
 from vnpy_llm.app.engine import APP_NAME, LlmEngine
 from vnpy_llm.ui.panel.chat import AiChatPanel
 from vnpy_llm.ui.session.widgets import AiSessionSidebar
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
-from vnpy_common.ui.feedback import PageToastHost
 
 
 class AiPageWidget(QtWidgets.QWidget):
@@ -55,6 +55,7 @@ class AiPageWidget(QtWidgets.QWidget):
         layout.addWidget(self._toast)
         bind_ai_panel_style(self.panel)
         bind_ai_panel_style(self.session_sidebar)
+
     def _on_collapse_requested(self) -> None:
         self.collapse_to_dock.emit()
 

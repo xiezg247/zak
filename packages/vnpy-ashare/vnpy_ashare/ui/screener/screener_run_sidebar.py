@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_screening_service
-from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_ashare.screener.run_store import (
     delete_run,
     is_auto_run,
@@ -15,8 +14,9 @@ from vnpy_ashare.screener.run_store import (
     is_strategy_run,
     list_runs,
 )
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import confirm_action
+from vnpy_common.ui.theme import theme_manager
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine

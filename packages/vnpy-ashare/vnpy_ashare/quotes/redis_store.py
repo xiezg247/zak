@@ -7,9 +7,9 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from vnpy_common.paths import ENV_FILE
 from vnpy_ashare.domain.quote_time import normalize_datetime_text
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_common.paths import ENV_FILE
 
 KEY_PREFIX = "zak"
 QUOTE_KEY_FMT = f"{KEY_PREFIX}:quote:{{symbol}}"

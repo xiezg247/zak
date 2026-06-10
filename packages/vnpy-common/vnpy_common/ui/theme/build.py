@@ -7,13 +7,7 @@ from vnpy_common.ui.theme.tokens import ThemeId, ThemeTokens, get_tokens
 
 def build_terminal_stylesheet(tokens: ThemeTokens) -> str:
     t = tokens
-    return (
-        _build_global_base(t)
-        + _build_menu_styles(t)
-        + _build_terminal_base(t)
-        + _build_toolbar_combo(t)
-        + _build_screener(t)
-    )
+    return _build_global_base(t) + _build_menu_styles(t) + _build_terminal_base(t) + _build_toolbar_combo(t) + _build_screener(t)
 
 
 def stylesheet_for(theme: ThemeId) -> str:

@@ -11,10 +11,10 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.jobs import collect_market_quotes
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
-from vnpy_common.paths import ENV_FILE
+from vnpy_ashare.jobs import collect_market_quotes
 from vnpy_ashare.quotes.redis_store import RedisQuoteStore
+from vnpy_common.paths import ENV_FILE
 
 
 def _sleep_until_next_collect(interval: int) -> None:

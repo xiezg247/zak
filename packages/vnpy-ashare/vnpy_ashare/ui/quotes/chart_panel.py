@@ -8,11 +8,9 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet
-from vnpy_common.ui.theme import theme_manager
 from vnpy_ashare.ui.quotes.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.intraday_chart import IntradayChart
 from vnpy_ashare.ui.quotes.ma_legend import MaLegendBar
-from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes.quotes_chart import (
     WATCHLIST_DAILY_BAR_PRESETS,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
@@ -27,6 +25,8 @@ from vnpy_ashare.ui.workers import (
     LoadedPeriodBars,
     MinuteBarsWorker,
 )
+from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
+from vnpy_common.ui.theme import theme_manager
 
 LIVE_INTRADAY_HINT = "分时来自 TickFlow 实时接口，不写入本地"
 INTRADAY_EMPTY_HINT = "暂无分时数据（可能为非交易时段、标的无分钟线或 TickFlow 未返回当日数据）"

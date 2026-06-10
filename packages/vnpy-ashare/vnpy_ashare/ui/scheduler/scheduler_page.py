@@ -33,9 +33,8 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         if self._scheduler is not None:
             self._refresh_logs()
         elif self._scheduler_unavailable:
-            self._log_view.setHtml(
-                format_scheduler_empty_html(theme_manager().tokens(), "A 股引擎未加载，无法管理定时任务。")
-            )
+            self._log_view.setHtml(format_scheduler_empty_html(theme_manager().tokens(), "A 股引擎未加载，无法管理定时任务。"))
+
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
@@ -122,9 +121,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self._jobs_widget.set_scheduler(scheduler)
         if scheduler is None:
             self._scheduler_unavailable = True
-            self._log_view.setHtml(
-                format_scheduler_empty_html(theme_manager().tokens(), "A 股引擎未加载，无法管理定时任务。")
-            )
+            self._log_view.setHtml(format_scheduler_empty_html(theme_manager().tokens(), "A 股引擎未加载，无法管理定时任务。"))
             self._log_title.setText("执行日志")
             return
         self._scheduler_unavailable = False

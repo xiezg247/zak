@@ -13,11 +13,11 @@ from vnpy_ashare.ai.context_store import (
     set_ai_context,
     set_market_quotes_cache,
 )
+from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
 from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
 
 
 class QuoteService(BaseService):

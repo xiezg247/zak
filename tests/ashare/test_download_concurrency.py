@@ -6,7 +6,6 @@ import unittest
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
 
 

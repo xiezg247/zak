@@ -8,8 +8,8 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.utility import TRADER_DIR
 
-from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.backtest.app import AshareCtaBacktesterApp
+from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 
 
 def test_load_project_strategies_after_main_engine_chdir() -> None:

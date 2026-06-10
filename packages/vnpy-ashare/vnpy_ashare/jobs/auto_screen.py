@@ -6,8 +6,8 @@ from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 from vnpy_ashare.domain.calendar import is_trading_day
-from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.scheduler.config import load_scheduler_config
 from vnpy_ashare.screener.recipe import (
     RECIPE_INTRADAY_MULTI,

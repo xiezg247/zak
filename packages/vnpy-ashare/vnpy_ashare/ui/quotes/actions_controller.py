@@ -11,11 +11,11 @@ from vnpy_ashare.ai.context import build_diagnose_ai_prompt
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.quotes.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.quote_columns import format_volume
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.ui.quotes.quotes_config import AI_CONTEXT_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener.reference_peer_dialog import show_reference_peer_dialog
@@ -248,12 +248,7 @@ class ActionsController:
             self.refresh_depth()
 
         refresh_source = page.config.quote_refresh_source or page.config.quote_source or "watchlist"
-        if (
-            page.config.use_market_rank
-            and page.config.market_full_list
-            and page._market_catalog_loaded
-            and page.market_auto_refresh_enabled()
-        ):
+        if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and page.market_auto_refresh_enabled():
             refresh_items = list(page._market_catalog)
         elif page.config.market_scroll_paging:
             refresh_items = page._table.visible_market_items()
@@ -273,12 +268,7 @@ class ActionsController:
             page.quote_map.update(quotes)
             if page.config.market_full_list and page._market_catalog_loaded:
                 page._market_catalog_quotes.update(quotes)
-            if (
-                page.config.use_market_rank
-                and page.config.market_full_list
-                and page._market_catalog_loaded
-                and page.market_auto_refresh_enabled()
-            ):
+            if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and page.market_auto_refresh_enabled():
                 page._table.apply_market_display()
             elif page.config.market_scroll_paging:
                 page._table.refresh_visible_table_quotes()

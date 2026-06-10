@@ -28,7 +28,6 @@ from vnpy_ashare.screener.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.backtest.batch_backtest_flow import BatchBacktestFlow
-from vnpy_common.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener.screener_results_table import (
     apply_screener_results_view,
     configure_screener_results_table,
@@ -39,6 +38,7 @@ from vnpy_ashare.ui.screener.screener_run_output_panel import ScreenerRunOutputP
 from vnpy_ashare.ui.screener.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.workers import ScreenerBatchDownloadWorker, ScreenerRunWorker
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action
+from vnpy_common.ui.qt_helpers import release_thread
 
 _SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
@@ -71,6 +71,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         self._reload_preset_combo()
         self._on_preset_changed(0)
+
     def _screening_service(self) -> ScreeningService | None:
         return get_screening_service(self.main_engine)
 

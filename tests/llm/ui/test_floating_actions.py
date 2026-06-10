@@ -16,9 +16,9 @@ from vnpy_ashare.ai.context import (
     resolve_assistant_stock_binding,
 )
 from vnpy_ashare.ai.context_store import set_screening_results
+from vnpy_ashare.ai.floating_actions import build_quick_actions_for_panel, enrich_context_with_actions
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ai.floating_actions import build_quick_actions_for_panel, enrich_context_with_actions
 
 
 class FloatingActionsTests(unittest.TestCase):

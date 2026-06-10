@@ -16,7 +16,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from vnpy_common.paths import ENV_FILE, PROJECT_ROOT
-from vnpy_skills.agent import AgentSkill, AGENT_TOOL_SPECS, read_skill_file, run_python_in_skill
+from vnpy_skills.agent import AGENT_TOOL_SPECS, AgentSkill, read_skill_file, run_python_in_skill
 from vnpy_skills.domain import SkillTemplate, ToolSpec
 
 APP_NAME = "Skills"

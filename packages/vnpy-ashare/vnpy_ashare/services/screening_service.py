@@ -25,6 +25,7 @@ from vnpy_ashare.ai.context_store import (
 from vnpy_ashare.ai.context_store import (
     set_screening_results as _set_screening_results,
 )
+from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
 from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.pattern_screen import (
@@ -62,7 +63,6 @@ from vnpy_ashare.screener.runner import (
 )
 from vnpy_ashare.screener.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
 
 AVAILABLE_SCREENERS = list_builtin_preset_names()
 

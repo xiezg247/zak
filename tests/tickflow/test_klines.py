@@ -14,9 +14,7 @@ from vnpy_tickflow.klines import MAX_BARS_PER_REQUEST, fetch_klines_paged
 class KlinesPagedTests(unittest.TestCase):
     def test_single_page(self) -> None:
         client = MagicMock()
-        client.klines.get.return_value = pd.DataFrame(
-            [{"timestamp": 1000, "open": 1.0}, {"timestamp": 2000, "open": 2.0}]
-        )
+        client.klines.get.return_value = pd.DataFrame([{"timestamp": 1000, "open": 1.0}, {"timestamp": 2000, "open": 2.0}])
         df = fetch_klines_paged(client, "600519.SH", "1m", 1000, 5000)
         self.assertEqual(len(df), 2)
         client.klines.get.assert_called_once()

@@ -19,13 +19,13 @@ from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.domain.quote_time import format_batch_updated_at
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.quotes.market_display import slice_market_display, sort_market_items
-from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
 from vnpy_ashare.ui.quotes.quote_columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
     build_quote_row,
     quote_column_index,
 )
+from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
 from vnpy_ashare.ui.quotes.quotes_config import (
     ALL_TAIL_COLUMNS,
     DEFAULT_WATCHLIST_COLUMNS,
@@ -318,11 +318,7 @@ class TableController:
         if not col_key or col_key not in self.visible_columns:
             return
         section = self.visible_columns.index(col_key)
-        order = (
-            QtCore.Qt.SortOrder.AscendingOrder
-            if page._market_sort_ascending
-            else QtCore.Qt.SortOrder.DescendingOrder
-        )
+        order = QtCore.Qt.SortOrder.AscendingOrder if page._market_sort_ascending else QtCore.Qt.SortOrder.DescendingOrder
         self._view().horizontalHeader().setSortIndicator(section, order)
 
     def _sort_market_items(self, items: list[StockItem]) -> list[StockItem]:
@@ -366,7 +362,6 @@ class TableController:
         self._symbol_row_index = None
 
     def _build_symbol_row_index(self) -> dict[str, int]:
-        page = self._p
         symbol_rows: dict[str, int] = {}
         for row in range(self._model().row_count()):
             item = self.stock_at_row(row)
@@ -425,10 +420,7 @@ class TableController:
         sorting_enabled = view.isSortingEnabled()
         view.setSortingEnabled(False)
         try:
-            row_cells = [
-                self._build_row_cells(row, item, page.quote_map.get(item.tickflow_symbol))
-                for row, item in enumerate(page.display_stocks)
-            ]
+            row_cells = [self._build_row_cells(row, item, page.quote_map.get(item.tickflow_symbol)) for row, item in enumerate(page.display_stocks)]
             model.set_rows(row_cells)
 
             if selected_key:
@@ -637,9 +629,7 @@ class TableController:
 
     def display_index(self, row: int) -> int:
         page = self._p
-        if page.config.use_market_rank and (
-            page.market_auto_refresh_enabled() or not page.config.market_scroll_paging
-        ):
+        if page.config.use_market_rank and (page.market_auto_refresh_enabled() or not page.config.market_scroll_paging):
             return page._market_page * page.config.market_page_size + row + 1
         return row + 1
 

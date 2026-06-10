@@ -8,35 +8,45 @@ from vnpy.event import EventEngine
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.data.bar_health import (
-    BarGapResult,
-    BarHealthStatus,
-    BarMeta,
-)
-from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
-from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.app.engine_access import (
     get_analysis_service,
     get_bar_service,
     get_quote_service,
     get_watchlist_service,
 )
+from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.data.bar_health import (
+    BarGapResult,
+    BarHealthStatus,
+    BarMeta,
+)
+from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
+from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
-from vnpy_ashare.ui.quotes.chart_panel import ChartPanel
-from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
-from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
-from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes.actions_controller import ActionsController
 from vnpy_ashare.ui.quotes.batch_backtest_controller import WatchlistBatchBacktestController
+from vnpy_ashare.ui.quotes.chart_panel import ChartPanel
 from vnpy_ashare.ui.quotes.data_loader_controller import DataLoaderController
+from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
+from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
 from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController
 from vnpy_ashare.ui.quotes.page_shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
 from vnpy_ashare.ui.quotes.quote_stream_controller import QuoteStreamController
+from vnpy_ashare.ui.quotes.quotes_config import (
+    MARKET_AUTO_REFRESH_DEFAULT,
+    MARKET_SCROLL_DEBOUNCE_MS,
+    PAGE_CONFIGS,
+    SEARCH_DEBOUNCE_MS,
+    quote_refresh_hint,
+    quote_refresh_seconds,
+    quote_source_label,
+    save_market_auto_refresh_pref,
+)
 from vnpy_ashare.ui.quotes.table_controller import TableController
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
 from vnpy_ashare.ui.quotes.workers import (
@@ -49,19 +59,9 @@ from vnpy_ashare.ui.quotes.workers import (
     DownloadWorker,
     QuotesRefreshWorker,
 )
-from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
-from vnpy_ashare.ui.quotes.quotes_config import (
-    MARKET_AUTO_REFRESH_DEFAULT,
-    MARKET_SCROLL_DEBOUNCE_MS,
-    PAGE_CONFIGS,
-    SEARCH_DEBOUNCE_MS,
-    quote_refresh_hint,
-    quote_refresh_seconds,
-    quote_source_label,
-    save_market_auto_refresh_pref,
-)
-from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.feedback import TaskGuard
+from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
+from vnpy_common.ui.theme import theme_manager
 
 
 class QuotesPage(QtWidgets.QWidget):
@@ -354,12 +354,7 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _market_quote_refresh_paused(self) -> bool:
         """滚动加载中暂停定时行情刷新，避免与追加渲染争抢主线程。"""
-        return (
-            self._market_scroll_blocked
-            or self._market_loading_more
-            or self._market_scroll_timer.isActive()
-            or self._thread_active(self._market_worker)
-        )
+        return self._market_scroll_blocked or self._market_loading_more or self._market_scroll_timer.isActive() or self._thread_active(self._market_worker)
 
     def load_market_full(self, *, quiet: bool = False) -> None:
         self._loader.load_market_full(quiet=quiet)
@@ -422,11 +417,7 @@ class QuotesPage(QtWidgets.QWidget):
         return self.config.auto_refresh_quotes
 
     def market_uses_client_pagination(self) -> bool:
-        return (
-            self.config.use_market_rank
-            and self.market_auto_refresh_enabled()
-            and self._market_catalog_loaded
-        )
+        return self.config.use_market_rank and self.market_auto_refresh_enabled() and self._market_catalog_loaded
 
     def apply_market_page_view(self) -> None:
         if self.market_uses_client_pagination():

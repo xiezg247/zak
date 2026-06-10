@@ -30,10 +30,10 @@ from vnpy_ashare.ai.backtest_context import (
     sync_backtest_page_context,
 )
 from vnpy_ashare.ai.context_store import BacktestSummary, get_backtest_summary_dict
-from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
-from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.app.engine_access import get_backtest_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
+from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
+from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest.backtest_chart import AshareBacktesterChart, AshareStatisticsMonitor
 from vnpy_ashare.ui.backtest.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.styles import (
@@ -41,8 +41,8 @@ from vnpy_ashare.ui.styles import (
     apply_toolbar_combo_style,
     style_legacy_form_inputs,
 )
-from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.feedback import TaskGuard, page_notify
+from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 
 _LOG_MAP: dict[str, str] = {

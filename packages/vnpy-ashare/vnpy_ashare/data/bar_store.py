@@ -47,12 +47,7 @@ def _interval_for_scope(scope: str) -> tuple[str, Interval]:
 
 
 def _overview_row_valid(row: BarOverview) -> bool:
-    return (
-        row.exchange is not None
-        and row.start is not None
-        and row.end is not None
-        and row.count > 0
-    )
+    return row.exchange is not None and row.start is not None and row.end is not None and row.count > 0
 
 
 def _row_to_overview(row: BarOverview, period: str) -> PeriodBarOverview:

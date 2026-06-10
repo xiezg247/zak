@@ -65,14 +65,8 @@ class MarketDisplayTests(unittest.TestCase):
         self.assertEqual([item.symbol for item in sorted_items], ["600519", "300750", "000001"])
 
     def test_live_mode_paginates_sorted_rows(self) -> None:
-        items = [
-            StockItem(symbol=f"{idx:06d}", exchange=Exchange.SZSE, name=str(idx))
-            for idx in range(150)
-        ]
-        quote_map = {
-            item.tickflow_symbol: _quote(item.tickflow_symbol, change_pct=float(idx), amount=float(idx))
-            for idx, item in enumerate(items)
-        }
+        items = [StockItem(symbol=f"{idx:06d}", exchange=Exchange.SZSE, name=str(idx)) for idx in range(150)]
+        quote_map = {item.tickflow_symbol: _quote(item.tickflow_symbol, change_pct=float(idx), amount=float(idx)) for idx, item in enumerate(items)}
         sorted_items = sort_market_items(
             items,
             sort_column="change_pct",
@@ -91,10 +85,7 @@ class MarketDisplayTests(unittest.TestCase):
         self.assertEqual(page1[0].symbol, "000049")
 
     def test_snapshot_mode_shows_all(self) -> None:
-        items = [
-            StockItem(symbol=f"{idx:06d}", exchange=Exchange.SZSE, name=str(idx))
-            for idx in range(5)
-        ]
+        items = [StockItem(symbol=f"{idx:06d}", exchange=Exchange.SZSE, name=str(idx)) for idx in range(5)]
         display = slice_market_display(items, live_mode=False, live_display_limit=100)
         self.assertEqual(len(display), 5)
 

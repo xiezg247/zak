@@ -13,13 +13,13 @@ from vnpy.trader.ui.qt import QtCore
 from vnpy_datamanager import DataManagerApp
 
 from vnpy_ashare import AshareApp
-from vnpy_ashare.backtest.app import AshareCtaBacktesterApp
 from vnpy_ashare.app.bootstrap import install_shared_bridges
 from vnpy_ashare.app.branding import QAPP_NAME
+from vnpy_ashare.backtest.app import AshareCtaBacktesterApp
 from vnpy_ashare.config import ensure_runtime_config
+from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_vnpy_settings
 from vnpy_ashare.ui.shell.fonts import resolve_font_family
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
-from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_vnpy_settings
 from vnpy_common.paths import PROJECT_ROOT
 
 _DEFERRED_APP_DELAY_MS = 0

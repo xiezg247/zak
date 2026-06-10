@@ -7,6 +7,13 @@ from unittest.mock import MagicMock
 
 from vnpy.event import Event
 
+from vnpy_ashare.app.events import (
+    EVENT_AI_ACTION,
+    AiActionRequest,
+    AskAiRequest,
+    FillScreenerRequest,
+    OrbAttentionRequest,
+)
 from vnpy_ashare.domain.ai_actions import (
     AI_ACTION_ASK_AI,
     AI_ACTION_FILL_SCREENER,
@@ -14,13 +21,6 @@ from vnpy_ashare.domain.ai_actions import (
     normalize_ai_action,
     put_ai_action,
     validate_ai_action,
-)
-from vnpy_ashare.app.events import (
-    EVENT_AI_ACTION,
-    AiActionRequest,
-    AskAiRequest,
-    FillScreenerRequest,
-    OrbAttentionRequest,
 )
 from vnpy_ashare.screener.runner import ScreenerRequest
 

@@ -23,9 +23,9 @@ from vnpy_ashare.ui.quotes.chart_panel import (
     is_same_minute_request,
     should_apply_minute_bars,
 )
-from vnpy_common.ui.qt_helpers import retain_thread_until_finished
 from vnpy_ashare.ui.quotes.quotes_chart import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
 from vnpy_ashare.ui.workers import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
+from vnpy_common.ui.qt_helpers import retain_thread_until_finished
 
 
 class ChartTabHintTests(unittest.TestCase):

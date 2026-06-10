@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import pyqtgraph as pg
 from vnpy.chart import ChartWidget
-from vnpy.trader.ui import QtGui
 
 from vnpy_common.ui.theme.build_chart import (
     AVG_LINE_COLOR,
+    AXIS_COLOR,
+    AXIS_TEXT_COLOR,
     CHART_BG,
     CHART_FRAME_STYLESHEET,
     CHART_PANEL_BG,
@@ -22,8 +23,6 @@ from vnpy_common.ui.theme.build_chart import (
     INTRADAY_PRICE_LINE_WIDTH,
     PREV_CLOSE_COLOR,
     ChartPalette,
-    AXIS_COLOR,
-    AXIS_TEXT_COLOR,
     build_chart_frame_stylesheet,
     build_chart_panel_stylesheet,
     build_intraday_info_stylesheet,

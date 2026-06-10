@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.theme.build import build_terminal_stylesheet, stylesheet_for
-from vnpy_common.ui.theme.system import detect_system_theme_id, resolve_theme_id
+from vnpy_common.ui.theme.system import resolve_theme_id
 from vnpy_common.ui.theme.tokens import (
     DEFAULT_THEME_PREFERENCE,
     THEME_PREFERENCES,

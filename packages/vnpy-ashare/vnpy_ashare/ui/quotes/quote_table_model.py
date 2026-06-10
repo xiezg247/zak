@@ -10,6 +10,8 @@ from vnpy.trader.ui import QtCore, QtGui
 if TYPE_CHECKING:
     from vnpy_ashare.domain.models import StockItem
 
+_INVALID_PARENT = QtCore.QModelIndex()
+
 
 @dataclass
 class QuoteCell:
@@ -156,12 +158,12 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             if len(row) > width:
                 del row[width:]
 
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:  # noqa: N802
+    def rowCount(self, parent: QtCore.QModelIndex = _INVALID_PARENT) -> int:  # noqa: N802
         if parent.isValid():
             return 0
         return len(self._rows)
 
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:  # noqa: N802
+    def columnCount(self, parent: QtCore.QModelIndex = _INVALID_PARENT) -> int:  # noqa: N802
         if parent.isValid():
             return 0
         return len(self._headers)

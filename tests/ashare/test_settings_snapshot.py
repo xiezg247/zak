@@ -13,6 +13,14 @@ from vnpy_ashare.config.bridge import (
     detect_config_drift,
     format_config_drift_summary,
 )
+from vnpy_ashare.config.vt_settings import (
+    build_vt_settings,
+    default_vt_settings,
+    ensure_vt_settings_from_env,
+    save_runtime_settings,
+    sync_vt_settings_from_env,
+    vt_settings_needs_env_bootstrap,
+)
 from vnpy_ashare.ui.shell.settings_snapshot import (
     collect_editable_values,
     detect_database_mode,
@@ -28,14 +36,6 @@ from vnpy_ashare.ui.shell.settings_snapshot import (
     resolve_env_config_general,
     resolve_env_config_kline,
     resolve_vt_config,
-)
-from vnpy_ashare.config.vt_settings import (
-    build_vt_settings,
-    default_vt_settings,
-    ensure_vt_settings_from_env,
-    save_runtime_settings,
-    sync_vt_settings_from_env,
-    vt_settings_needs_env_bootstrap,
 )
 
 

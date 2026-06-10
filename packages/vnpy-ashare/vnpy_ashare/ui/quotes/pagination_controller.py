@@ -114,10 +114,7 @@ class MarketPaginationController:
         if self._page.market_uses_client_pagination():
             self._page._table.filter_market_display()
             return
-        if (
-            self._page.config.market_full_list
-            and not self._page.market_auto_refresh_enabled()
-        ):
+        if self._page.config.market_full_list and not self._page.market_auto_refresh_enabled():
             if self._page._market_catalog_loaded:
                 self._page._table.filter_market_display()
             else:

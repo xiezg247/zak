@@ -15,8 +15,8 @@ from vnpy_ashare.config.bridge import (
     meta_database_settings,
     sqlite_database_settings,
 )
-from vnpy_common.paths import ENV_FILE, VNTRADER_DIR
 from vnpy_ashare.ui.shell.fonts import default_font_family
+from vnpy_common.paths import ENV_FILE, VNTRADER_DIR
 
 SETTING_FILE = VNTRADER_DIR / SETTING_FILENAME
 
@@ -96,7 +96,7 @@ def ensure_vt_settings_from_env() -> bool:
 
 def reload_vnpy_settings() -> None:
     """将 vt_setting.json 合并进 vnpy 全局 SETTINGS（生成新文件后调用）。"""
-    from vnpy.trader.setting import SETTINGS, SETTING_FILENAME
+    from vnpy.trader.setting import SETTING_FILENAME, SETTINGS
     from vnpy.trader.utility import load_json
 
     SETTINGS.update(load_json(SETTING_FILENAME))

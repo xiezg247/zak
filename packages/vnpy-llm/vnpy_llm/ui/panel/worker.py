@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_llm.chat.client import StreamCancelled
 from vnpy_llm.app.engine import LlmEngine
+from vnpy_llm.chat.client import StreamCancelled
 
 
 class ChatWorker(QtCore.QThread):

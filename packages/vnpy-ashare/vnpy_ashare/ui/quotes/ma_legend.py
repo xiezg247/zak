@@ -35,7 +35,4 @@ class MaLegendBar(QtWidgets.QWidget):
 
     def _apply_theme(self, tokens: ThemeTokens) -> None:
         for label, color, ma_label, color_name in self._entries:
-            label.setText(
-                f'<span style="color:{color}; font-weight:600;">{ma_label}</span>'
-                f'<span style="color:{tokens.text_muted};">（{color_name}）</span>'
-            )
+            label.setText(f'<span style="color:{color}; font-weight:600;">{ma_label}</span><span style="color:{tokens.text_muted};">（{color_name}）</span>')

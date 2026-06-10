@@ -9,13 +9,14 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.ai.access import build_quick_actions_for_panel, build_stock_completion_items, get_ai_context
 from vnpy_common.ai.protocol import QuickAction
-from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished
 from vnpy_common.ui.feedback import confirm_action, page_notify
+from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.tools.labels import tool_display_name
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TurnTrace, map_turns_to_user_messages
+from vnpy_llm.ui.dialogs.tools import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.floating.widgets import QuickActionChips
 from vnpy_llm.ui.panel.md_renderer import render_markdown
 from vnpy_llm.ui.panel.pending_bubble import (
@@ -23,11 +24,10 @@ from vnpy_llm.ui.panel.pending_bubble import (
     format_pending_html,
     pending_status_from_turn,
 )
+from vnpy_llm.ui.panel.worker import ChatWorker
 from vnpy_llm.ui.session.widgets import show_ai_session_dialog
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
-from vnpy_llm.ui.dialogs.tools import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.trace.widgets import AiInlineTraceBlock
-from vnpy_llm.ui.panel.worker import ChatWorker
 
 _STOCK_CODE_RE = re.compile(r"\b(\d{6})\b")
 

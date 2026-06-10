@@ -26,7 +26,6 @@ from vnpy_ashare.app.events import (
 from vnpy_ashare.screener.runner import ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.backtest.batch_backtest_flow import BatchBacktestFlow
-from vnpy_common.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener.screener_recipe_panel import ScreenerRecipePanel
 from vnpy_ashare.ui.screener.screener_results_table import (
     apply_screener_results_view,
@@ -38,6 +37,7 @@ from vnpy_ashare.ui.screener.screener_run_output_panel import ScreenerRunOutputP
 from vnpy_ashare.ui.screener.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.workers import ScreenerBatchDownloadWorker, ScreenerRecipeRunWorker
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard
+from vnpy_common.ui.qt_helpers import release_thread
 
 
 class AutoScreenerPageWidget(QtWidgets.QWidget):
@@ -68,6 +68,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             parent=self,
             on_status=self._append_action_log,
         )
+
     def _screening_service(self) -> ScreeningService | None:
         return get_screening_service(self.main_engine)
 

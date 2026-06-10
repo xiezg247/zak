@@ -11,8 +11,12 @@ from vnpy_ashare.config.schema import (
     ConfigFieldSpec,
     normalize_database_name,
 )
-from vnpy_common.paths import ENV_FILE
-from vnpy_common.ui.feedback import confirm_action, page_notify
+from vnpy_ashare.config.vt_settings import (
+    SETTING_FILE,
+    load_runtime_settings,
+    save_runtime_settings,
+    sync_vt_settings_from_env,
+)
 from vnpy_ashare.ui.shell.fonts import (
     available_font_families,
     resolve_font_family,
@@ -31,14 +35,10 @@ from vnpy_ashare.ui.shell.settings_snapshot import (
     resolve_env_config_kline,
 )
 from vnpy_ashare.ui.styles import apply_settings_combo_style
+from vnpy_common.paths import ENV_FILE
+from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
-from vnpy_ashare.config.vt_settings import (
-    SETTING_FILE,
-    load_runtime_settings,
-    save_runtime_settings,
-    sync_vt_settings_from_env,
-)
 
 
 class SettingsDialog(QtWidgets.QDialog):
@@ -50,10 +50,7 @@ class SettingsDialog(QtWidgets.QDialog):
 
     _SQLITE_HINT = "本地 SQLite；K 线写入下方「K 线 SQLite 文件」路径（默认 database.db）。"
     _POSTGRES_HINT = "PostgreSQL 模式需在 .env 配置连接参数，并确保服务已启动。"
-    _METADATA_HINT = (
-        "固定为本机 SQLite，不受下方 K 线存储切换影响。"
-        "路径由 vt_setting.json 的 database.meta.* 定义，此处只读展示。"
-    )
+    _METADATA_HINT = "固定为本机 SQLite，不受下方 K 线存储切换影响。路径由 vt_setting.json 的 database.meta.* 定义，此处只读展示。"
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)

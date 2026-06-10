@@ -9,6 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from tickflow import TickFlow
 
+from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
 from vnpy_ashare.storage.app_db import (
     CACHE_MAX_AGE,
     init_app_db,
@@ -17,7 +18,6 @@ from vnpy_ashare.storage.app_db import (
     universe_exists,
     universe_is_fresh,
 )
-from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
 from vnpy_common.paths import ENV_FILE, get_app_db_path
 
 UNIVERSE_ID = "CN_Equity_A"

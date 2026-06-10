@@ -7,12 +7,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_common.ai.protocol import AiContextData, QuickAction, StockCompletionItem
 from vnpy_ashare.ai.symbol import parse_stock_symbol
-from vnpy_ashare.storage.app_db import load_watchlist_rows
 from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE, exchange_to_cn
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.storage.app_db import load_watchlist_rows
+from vnpy_common.ai.protocol import AiContextData, QuickAction, StockCompletionItem
 
 
 def format_quote_summary(quote: QuoteSnapshot | None) -> str:

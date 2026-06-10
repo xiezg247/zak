@@ -25,7 +25,6 @@ from vnpy_ashare.data.bar_access import (
     load_universe_slice,
     search_universe,
 )
-from vnpy_ashare.domain.models import parse_tickflow_symbol
 from vnpy_ashare.data.bar_health import BarMeta, inspect_bar_gaps
 from vnpy_ashare.data.bars import (
     default_minute_download_start,
@@ -34,14 +33,14 @@ from vnpy_ashare.data.bars import (
     load_downloaded_stocks,
     load_watchlist,
 )
-from vnpy_ashare.domain.calendar import last_trading_day
-from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.data.minute_periods import period_step
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.data.tickflow_klines import fetch_intraday_bars, fetch_minute_bars
+from vnpy_ashare.domain.calendar import last_trading_day
+from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
+from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
 from vnpy_ashare.quotes.depth_client import DepthPermissionError, fetch_depth_from_tickflow
 from vnpy_ashare.quotes.provider import get_redis_provider
-from vnpy_ashare.data.tickflow_klines import fetch_intraday_bars, fetch_minute_bars
 from vnpy_ashare.storage.universe import load_universe, sync_universe
 
 # 读 K 线 / universe 列表 → bar_access；下载与同步 → bars / universe（写路径）
@@ -626,10 +625,7 @@ class MarketFullLoadWorker(QtCore.QThread):
             store = provider._store
             tf_symbols = store.list_all_rank_symbols()
 
-            name_map = {
-                (symbol, exchange): name
-                for symbol, exchange, name in load_universe_rows()
-            }
+            name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
 
             if tf_symbols:
                 quotes = store.get_quotes(tf_symbols)
@@ -647,15 +643,10 @@ class MarketFullLoadWorker(QtCore.QThread):
                         item = StockItem(symbol=item.symbol, exchange=item.exchange, name=fallback_name)
                     items.append(item)
             else:
-                items = [
-                    StockItem(symbol=symbol, exchange=exchange, name=name)
-                    for symbol, exchange, name in load_universe_rows()
-                ]
+                items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
                 quotes = provider.get_quotes(items)
                 items.sort(
-                    key=lambda stock: quotes.get(stock.tickflow_symbol).change_pct
-                    if quotes.get(stock.tickflow_symbol) is not None
-                    else float("-inf"),
+                    key=lambda stock: quotes.get(stock.tickflow_symbol).change_pct if quotes.get(stock.tickflow_symbol) is not None else float("-inf"),
                     reverse=True,
                 )
 

@@ -23,6 +23,7 @@ class BarStoreTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         invalidate_bar_overview_cache()
+
     @patch("vnpy_ashare.data.bar_store.get_database")
     def test_load_period_bars(self, get_database_mock) -> None:
         database = MagicMock()

@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 from vnpy.trader.constant import Exchange, Interval
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.data.bar_access import count_universe, universe_exists
 from vnpy_ashare.app.engine_access import get_bar_service
+from vnpy_ashare.data.bar_access import count_universe, universe_exists
 from vnpy_ashare.ui.quotes.workers import (
     MarketFullLoadWorker,
     MarketFullResult,
@@ -117,11 +117,7 @@ class DataLoaderController:
 
         page._load_generation += 1
         generation = page._load_generation
-        loading_text = (
-            "正在加载全市场数据（排序）…"
-            if page.market_auto_refresh_enabled()
-            else "正在加载全市场数据…"
-        )
+        loading_text = "正在加载全市场数据（排序）…" if page.market_auto_refresh_enabled() else "正在加载全市场数据…"
         if not quiet:
             if not self._begin_loader_task(
                 loading_text,

@@ -8,13 +8,13 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.ai.protocol import AiContextData
 from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.qt_helpers import (
     clamp_point_in_parent,
     ensure_geometry_on_screen,
     frame_intersects_any_screen,
     restore_child_position,
 )
-from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.orb_palette import OrbPalette, orb_palette
 from vnpy_common.ui.theme.tokens import ThemeTokens

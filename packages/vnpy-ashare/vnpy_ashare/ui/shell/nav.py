@@ -55,9 +55,7 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     ),
 )
 
-APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(
-    entry for group in APP_NAV_GROUPS for entry in group.entries
-)
+APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS for entry in group.entries)
 
 NAV_SHORTCUTS: dict[str, str] = {
     "watchlist": "Ctrl+1",

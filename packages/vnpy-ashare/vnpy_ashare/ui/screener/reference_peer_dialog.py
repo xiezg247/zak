@@ -16,16 +16,16 @@ from vnpy_ashare.screener.reference_peer import (
     clamp_reference_peer_top_n,
     env_default_reference_peer_top_n,
 )
-from vnpy_common.ui.qt_helpers import release_thread
 from vnpy_ashare.ui.screener.screener_results_table import (
     all_table_rows_checked,
     iter_checked_table_rows,
     populate_screener_results_table,
     toggle_select_all_table_rows,
 )
-from vnpy_common.ui.theme import theme_manager
-from vnpy_common.ui.feedback import page_notify
 from vnpy_ashare.ui.workers.reference_peer_worker import ReferencePeerWorker
+from vnpy_common.ui.feedback import page_notify
+from vnpy_common.ui.qt_helpers import release_thread
+from vnpy_common.ui.theme import theme_manager
 
 _RESULT_COLUMNS: list[tuple[str, str]] = [
     ("symbol", "代码"),

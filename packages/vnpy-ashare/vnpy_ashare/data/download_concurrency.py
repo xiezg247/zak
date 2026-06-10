@@ -70,10 +70,7 @@ def run_parallel_map(
 
     ordered: list[R | None] = [None] * len(items)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        future_map = {
-            pool.submit(run_with_retry, lambda item=item: worker(item)): (index, item)
-            for index, item in enumerate(items)
-        }
+        future_map = {pool.submit(run_with_retry, lambda item=item: worker(item)): (index, item) for index, item in enumerate(items)}
         for future in as_completed(future_map):
             index, item = future_map[future]
             result = future.result()

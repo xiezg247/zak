@@ -22,10 +22,7 @@ def sort_market_items(
 
     reverse = not ascending
     if sort_column == "index":
-        catalog_index = {
-            (item.symbol, item.exchange): index
-            for index, item in enumerate(catalog)
-        }
+        catalog_index = {(item.symbol, item.exchange): index for index, item in enumerate(catalog)}
         return sorted(
             items,
             key=lambda item: catalog_index.get((item.symbol, item.exchange), 0),

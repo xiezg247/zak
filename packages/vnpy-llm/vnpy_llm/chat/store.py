@@ -11,9 +11,11 @@ from pathlib import Path
 
 from vnpy_common.paths import get_chat_db_path
 
+
 # 测试可 patch 此函数
 def _chat_db_path() -> Path:
     return get_chat_db_path()
+
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
