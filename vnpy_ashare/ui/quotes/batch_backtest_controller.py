@@ -11,6 +11,7 @@ from vnpy_ashare.screener.batch_actions import (
     watchlist_items_to_rows,
 )
 from vnpy_ashare.ui.batch_backtest_flow import BatchBacktestFlow
+from vnpy_ashare.ui.quotes.run_log import append_run_log, begin_run_log, complete_run_log, fail_run_log
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage
@@ -23,6 +24,18 @@ class WatchlistBatchBacktestController:
         self._page = page
         self._flow: BatchBacktestFlow | None = None
 
+    def _on_flow_status(self, message: str) -> None:
+        page = self._page
+        page.status_label.setText(message)
+        if not page.config.show_run_output_panel:
+            return
+        if message.startswith("批量回测完成"):
+            complete_run_log(page, message)
+        elif "失败" in message or message.startswith("批量回测失败"):
+            fail_run_log(page, message)
+        else:
+            append_run_log(page, message)
+
     def _get_flow(self) -> BatchBacktestFlow:
         if self._flow is None:
             page = self._page
@@ -30,7 +43,7 @@ class WatchlistBatchBacktestController:
                 main_engine=page._get_main_engine(),
                 event_engine=page.event_engine,
                 parent=page,
-                on_status=lambda message: page.status_label.setText(message),
+                on_status=self._on_flow_status,
             )
         return self._flow
 
@@ -66,6 +79,7 @@ class WatchlistBatchBacktestController:
                 "自选池为空，请先添加标的",
             )
             return
+        begin_run_log(self._page, f"批量回测 · {len(rows)} 只")
         flow = self._get_flow()
         flow.start(
             rows,

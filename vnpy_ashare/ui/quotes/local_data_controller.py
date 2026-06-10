@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
-from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.bar_access import delete_scope_bars, iter_bar_overviews
 from vnpy_ashare.bar_health import (
@@ -31,6 +31,12 @@ from vnpy_ashare.jobs.local_fill import (
 from vnpy_ashare.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS, is_daily_scope, scope_display
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.ui.chart_panel import MINUTE_TAB_INDEX
+from vnpy_ashare.ui.quotes.run_log import (
+    append_run_log,
+    begin_run_log,
+    complete_run_log,
+    fail_run_log,
+)
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
@@ -85,6 +91,11 @@ class LocalDataController:
 
     def scope_label(self) -> str:
         return scope_display(self._page._local_scope)
+
+    def _connect_worker_log(self, worker: QtCore.QThread) -> None:
+        log_signal = getattr(worker, "log", None)
+        if log_signal is not None:
+            log_signal.connect(lambda message: append_run_log(self._page, message))
 
     def refresh_meta(self) -> None:
         page = self._page
@@ -172,6 +183,7 @@ class LocalDataController:
         page._set_busy(True)
         self.update_batch_toolbar_buttons()
         page.status_label.setText(f"批量补全过期日 K（0/{len(items)}）...")
+        begin_run_log(page, f"批量补全过期日 K · {len(items)} 只")
 
         worker = BatchFillWorker(items, dict(page.bar_meta))
         page._batch_fill_worker = worker
@@ -179,7 +191,9 @@ class LocalDataController:
         def on_progress(progress: object) -> None:
             if not isinstance(progress, BatchFillProgress):
                 return
-            page.status_label.setText(f"批量补全 ({progress.current}/{progress.total}) {progress.label}...")
+            line = f"({progress.current}/{progress.total}) {progress.label}"
+            page.status_label.setText(f"批量补全 {line}...")
+            append_run_log(page, line)
 
         def on_finished(result: object) -> None:
             if page._batch_fill_worker is worker:
@@ -193,6 +207,12 @@ class LocalDataController:
             self.update_batch_toolbar_buttons()
             if isinstance(result, BatchFillResult):
                 page.status_label.setText(result.message)
+                detail = None
+                if result.failed:
+                    preview = "、".join(result.failed[:8])
+                    suffix = "…" if len(result.failed) > 8 else ""
+                    detail = f"失败 {len(result.failed)} 只：{preview}{suffix}"
+                complete_run_log(page, result.message, detail=detail)
 
         def on_failed(msg: str) -> None:
             if page._batch_fill_worker is worker:
@@ -200,6 +220,7 @@ class LocalDataController:
             page._set_busy(False)
             self.update_batch_toolbar_buttons()
             page.status_label.setText(f"批量补全失败: {msg}")
+            fail_run_log(page, msg)
 
         worker.progress.connect(on_progress)
         worker.finished.connect(on_finished)
@@ -233,6 +254,7 @@ class LocalDataController:
         page._set_busy(True)
         self.update_batch_toolbar_buttons()
         page.status_label.setText(f"扫描断层（0/{scannable}）...")
+        begin_run_log(page, f"批量修复断层 · 扫描 {scannable} 只")
 
         worker = BatchGapFillWorker(page.all_stocks, dict(page.bar_meta))
         page._batch_gap_fill_worker = worker
@@ -241,7 +263,9 @@ class LocalDataController:
             if not isinstance(progress, BatchGapFillProgress):
                 return
             phase_label = "扫描断层" if progress.phase == "scan" else "修复断层"
-            page.status_label.setText(f"{phase_label} ({progress.current}/{progress.total}) {progress.label}...")
+            line = f"{phase_label} ({progress.current}/{progress.total}) {progress.label}"
+            page.status_label.setText(f"{line}...")
+            append_run_log(page, line)
 
         def on_finished(result: object) -> None:
             if page._batch_gap_fill_worker is worker:
@@ -255,6 +279,12 @@ class LocalDataController:
             self.update_batch_toolbar_buttons()
             if isinstance(result, BatchGapFillResult):
                 page.status_label.setText(result.message)
+                detail = None
+                if result.failed:
+                    preview = "、".join(result.failed[:8])
+                    suffix = "…" if len(result.failed) > 8 else ""
+                    detail = f"失败 {len(result.failed)} 只：{preview}{suffix}"
+                complete_run_log(page, result.message, detail=detail)
 
         def on_failed(msg: str) -> None:
             if page._batch_gap_fill_worker is worker:
@@ -262,6 +292,7 @@ class LocalDataController:
             page._set_busy(False)
             self.update_batch_toolbar_buttons()
             page.status_label.setText(f"批量修复断层失败: {msg}")
+            fail_run_log(page, msg)
 
         worker.progress.connect(on_progress)
         worker.finished.connect(on_finished)
@@ -536,8 +567,11 @@ class LocalDataController:
         if reply != QtWidgets.QMessageBox.StandardButton.Yes:
             return
 
+        begin_run_log(page, f"删除本地{scope_label} · {display}")
         if not delete_scope_bars(item.symbol, item.exchange, page._local_scope):
-            page.status_label.setText(f"{label} 无本地{scope_label}可删除")
+            message = f"{label} 无本地{scope_label}可删除"
+            page.status_label.setText(message)
+            fail_run_log(page, message)
             return
 
         page._selected_gap_result = None
@@ -557,7 +591,9 @@ class LocalDataController:
             if page.config.show_fill_button and self.is_daily_scope():
                 self.check_bar_gaps(page.current_item)
         page._update_action_buttons()
-        page.status_label.setText(f"已删除 {display} 的本地{scope_label}")
+        summary = f"已删除 {display} 的本地{scope_label}"
+        page.status_label.setText(summary)
+        complete_run_log(page, summary)
 
     def run_minute_download(self, *, mode: str = "full", action_label: str = "下载") -> None:
         page = self._page
@@ -567,6 +603,7 @@ class LocalDataController:
             return
 
         item = page.current_item
+        label = format_vt_symbol_cn(item.symbol, item.exchange)
         if page.config.use_local_table:
             period = page._local_scope
             period_label = self.scope_label()
@@ -576,19 +613,22 @@ class LocalDataController:
 
         page._set_busy(True)
         if mode == "incremental":
-            status_text = f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} {period_label}..."
+            status_text = f"{action_label} {label} {period_label}..."
         else:
-            status_text = f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} {period_label}（近{DEFAULT_MINUTE_DOWNLOAD_MONTHS}个月）..."
+            status_text = f"{action_label} {label} {period_label}（近{DEFAULT_MINUTE_DOWNLOAD_MONTHS}个月）..."
         page.status_label.setText(status_text)
+        if page.config.show_run_output_panel:
+            begin_run_log(page, f"{action_label} {label} {period_label}")
 
         worker = MinuteDownloadWorker(item, period=period, mode=mode)
         page._download_worker = worker
+        if page.config.show_run_output_panel:
+            self._connect_worker_log(worker)
 
         def on_finished(count: int) -> None:
             if page._download_worker is worker:
                 page._download_worker = None
             page._set_busy(False)
-            label = format_vt_symbol_cn(item.symbol, item.exchange)
             if page.config.use_local_table:
                 self.refresh_meta()
                 page.apply_filter()
@@ -597,17 +637,22 @@ class LocalDataController:
             elif page.current_item is not None:
                 page.show_kline(page.current_item)
             if mode == "incremental" and count == 0:
-                page.status_label.setText(f"{label} 已是最新，无新增 K 线")
+                summary = f"{label} 已是最新，无新增 K 线"
             elif action_label == "下载":
-                page.status_label.setText(f"{label} 已下载 {count} 根{period_label}")
+                summary = f"{label} 已下载 {count} 根{period_label}"
             else:
-                page.status_label.setText(f"{label} {action_label}完成，新增 {count} 根")
+                summary = f"{label} {action_label}完成，新增 {count} 根"
+            page.status_label.setText(summary)
+            if page.config.show_run_output_panel:
+                complete_run_log(page, summary)
 
         def on_failed(msg: str) -> None:
             if page._download_worker is worker:
                 page._download_worker = None
             page._set_busy(False)
             page.status_label.setText(f"{action_label}分K失败: {msg}")
+            if page.config.show_run_output_panel:
+                fail_run_log(page, msg)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
@@ -621,11 +666,16 @@ class LocalDataController:
             return
 
         item = page.current_item
+        label = format_vt_symbol_cn(item.symbol, item.exchange)
         page._set_busy(True)
-        page.status_label.setText(f"{action_label} {format_vt_symbol_cn(item.symbol, item.exchange)} 日K...")
+        page.status_label.setText(f"{action_label} {label} 日K...")
+        if page.config.show_run_output_panel:
+            begin_run_log(page, f"{action_label} {label} 日K")
 
         worker = DownloadWorker(item, mode=mode)
         page._download_worker = worker
+        if page.config.show_run_output_panel:
+            self._connect_worker_log(worker)
 
         def on_finished(count: int) -> None:
             if page._download_worker is worker:
@@ -636,19 +686,23 @@ class LocalDataController:
             if page.config.show_fill_button and self.is_daily_scope():
                 self.check_bar_gaps(item)
             page._set_busy(False)
-            label = format_vt_symbol_cn(item.symbol, item.exchange)
             if mode == "incremental" and count == 0:
-                page.status_label.setText(f"{label} 已是最新，无新增 K 线")
+                summary = f"{label} 已是最新，无新增 K 线"
             elif action_label == "下载":
-                page.status_label.setText(f"{label} 已下载 {count} 根日K")
+                summary = f"{label} 已下载 {count} 根日K"
             else:
-                page.status_label.setText(f"{label} {action_label}完成，新增 {count} 根日K")
+                summary = f"{label} {action_label}完成，新增 {count} 根日K"
+            page.status_label.setText(summary)
+            if page.config.show_run_output_panel:
+                complete_run_log(page, summary)
 
         def on_failed(msg: str) -> None:
             if page._download_worker is worker:
                 page._download_worker = None
             page._set_busy(False)
             page.status_label.setText(f"{action_label}失败: {msg}")
+            if page.config.show_run_output_panel:
+                fail_run_log(page, msg)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)

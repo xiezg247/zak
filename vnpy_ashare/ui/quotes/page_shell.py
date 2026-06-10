@@ -17,6 +17,7 @@ from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS
 from vnpy_ashare.ui.quotes_chart import create_daily_chart
 from vnpy_ashare.ui.quotes_config import quote_refresh_hint, quote_source_label
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
+from vnpy_ashare.ui.task_run_output_panel import TaskRunOutputPanel
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage
@@ -388,7 +389,25 @@ class QuotesPageShell:
             center_layout.addWidget(toolbar_host)
             if page.stats_label is not None:
                 center_layout.addWidget(page.stats_label)
-            center_layout.addWidget(page.market_table)
+            if page.config.show_run_output_panel:
+                run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
+                page.run_output_panel = TaskRunOutputPanel(
+                    title="运行输出",
+                    log_placeholder="暂无执行日志",
+                    object_name=f"{run_prefix}RunOutputPanel",
+                    section_label_object_name=f"{run_prefix}SectionLabel",
+                    summary_object_name=f"{run_prefix}RunSummary",
+                    log_view_object_name=f"{run_prefix}RunLogView",
+                )
+                page.run_output_panel.setMinimumHeight(120)
+                center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+                center_split.addWidget(page.market_table)
+                center_split.addWidget(page.run_output_panel)
+                center_split.setStretchFactor(0, 3)
+                center_split.setStretchFactor(1, 1)
+                center_layout.addWidget(center_split, stretch=1)
+            else:
+                center_layout.addWidget(page.market_table)
             splitter.addWidget(center_widget)
 
             right_widget = QtWidgets.QWidget()

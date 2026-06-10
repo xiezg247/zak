@@ -77,6 +77,7 @@ class PageConfig:
     show_fill_button: bool = False
     show_redownload_button: bool = False
     show_delete_button: bool = False
+    show_run_output_panel: bool = False
     show_batch_fill_button: bool = False
     show_batch_gap_fill_button: bool = False
     use_local_table: bool = False
@@ -181,6 +182,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_diagnose_button=True,
         show_diagnose_panel=False,
         show_batch_backtest_button=True,
+        show_run_output_panel=True,
     ),
     "本地": PageConfig(
         title="本地",
@@ -192,6 +194,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_fill_button=True,
         show_redownload_button=True,
         show_delete_button=True,
+        show_run_output_panel=True,
         show_batch_fill_button=True,
         show_batch_gap_fill_button=True,
         use_local_table=True,

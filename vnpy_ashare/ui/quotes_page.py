@@ -122,6 +122,7 @@ class QuotesPage(QtWidgets.QWidget):
         self.diagnose_panel: DiagnosePanel | None = None
         self.chart_panel: ChartPanel | None = None
         self.chart_hint: QtWidgets.QLabel | None = None
+        self.run_output_panel = None
         self._stream_bridge: TickflowStreamBridge | None = None
         self._stream_fallback = False
         self._local_scope = "daily"

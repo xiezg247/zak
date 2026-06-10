@@ -82,6 +82,12 @@ class LoadedPeriodBars:
 FULL_BAR_START = datetime(2020, 1, 1)
 
 
+def _emit_worker_log(signal: QtCore.Signal, message: object) -> None:
+    text = str(message).strip()
+    if text:
+        signal.emit(text)
+
+
 class UniverseLoadWorker(QtCore.QThread):
     """加载 universe 列表（全部 A 股 / 自选池 / 已下载）。"""
 
@@ -204,6 +210,7 @@ class DownloadWorker(QtCore.QThread):
 
     finished = QtCore.Signal(int)
     failed = QtCore.Signal(str)
+    log = QtCore.Signal(str)
 
     def __init__(
         self,
@@ -233,18 +240,20 @@ class DownloadWorker(QtCore.QThread):
                     raise RuntimeError("无本地数据，请先下载")
                 start = overview.end + timedelta(days=1)
                 if start.date() > end.date():
+                    _emit_worker_log(self.log, "已是最新，无新增 K 线")
                     self.finished.emit(0)
                     return
             if start is None:
                 start = FULL_BAR_START
 
+            _emit_worker_log(self.log, f"下载区间 {start.date()} ~ {end.date()}")
             count = download_bars(
                 symbol=self.item.symbol,
                 exchange=self.item.exchange,
                 interval=Interval.DAILY,
                 start=start,
                 end=end,
-                output=lambda _msg: None,
+                output=lambda msg: _emit_worker_log(self.log, msg),
             )
             self.finished.emit(count)
         except Exception as ex:
@@ -256,6 +265,7 @@ class MinuteDownloadWorker(QtCore.QThread):
 
     finished = QtCore.Signal(int)
     failed = QtCore.Signal(str)
+    log = QtCore.Signal(str)
 
     def __init__(
         self,
@@ -287,18 +297,20 @@ class MinuteDownloadWorker(QtCore.QThread):
                     raise RuntimeError("无本地数据，请先下载")
                 start = overview.end + period_step(self.period)
                 if start >= end:
+                    _emit_worker_log(self.log, "已是最新，无新增 K 线")
                     self.finished.emit(0)
                     return
             if start is None:
                 start = default_minute_download_start(end)
 
+            _emit_worker_log(self.log, f"下载区间 {start} ~ {end}")
             count = download_period_bars(
                 symbol=self.item.symbol,
                 exchange=self.item.exchange,
                 period=self.period,
                 start=start,
                 end=end,
-                output=lambda _msg: None,
+                output=lambda msg: _emit_worker_log(self.log, msg),
             )
             self.finished.emit(count)
         except Exception as ex:
