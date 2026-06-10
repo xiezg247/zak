@@ -38,6 +38,7 @@ from vnpy_ashare.events import (
 from vnpy_ashare.ui.auto_screener_page import AutoScreenerPageWidget
 from vnpy_ashare.ui.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.floating_controller import FloatingAiController
+from vnpy_ashare.paths import QSETTINGS_ORG
 from vnpy_ashare.ui.nav import APP_NAV_ENTRIES, SidebarNav
 from vnpy_ashare.ui.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.qt_helpers import restore_geometry_on_screen
@@ -158,11 +159,22 @@ class AshareMainWindow(MainWindow):
         self.stack = QtWidgets.QStackedWidget()
         self.stack.setObjectName("MainStack")
 
+        self._nav_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        self._nav_splitter.setObjectName("MainNavSplitter")
+        self._nav_splitter.setHandleWidth(6)
+        self._nav_splitter.setChildrenCollapsible(False)
+        self._nav_splitter.addWidget(self.sidebar)
+        self._nav_splitter.addWidget(self.stack)
+        self._nav_splitter.setStretchFactor(0, 0)
+        self._nav_splitter.setStretchFactor(1, 1)
+        nav_width = self._load_nav_width()
+        self._nav_splitter.setSizes([nav_width, max(640, self.width() - nav_width)])
+        self._nav_splitter.splitterMoved.connect(self._on_nav_splitter_moved)
+
         body = QtWidgets.QHBoxLayout()
         body.setSpacing(0)
         body.setContentsMargins(0, 0, 0, 0)
-        body.addWidget(self.sidebar)
-        body.addWidget(self.stack, stretch=1)
+        body.addWidget(self._nav_splitter, stretch=1)
 
         shell = QtWidgets.QWidget()
         shell.setLayout(body)
@@ -172,6 +184,29 @@ class AshareMainWindow(MainWindow):
         self._init_floating_ai(shell)
         self._bind_scheduler_notifications()
         self._show_page(0)
+
+    def _nav_width_settings(self) -> QtCore.QSettings:
+        return QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
+
+    def _load_nav_width(self) -> int:
+        value = self._nav_width_settings().value("nav_width", SidebarNav.DEFAULT_WIDTH)
+        try:
+            width = int(value)
+        except (TypeError, ValueError):
+            width = SidebarNav.DEFAULT_WIDTH
+        return max(SidebarNav.MIN_WIDTH, min(SidebarNav.MAX_WIDTH, width))
+
+    def _on_nav_splitter_moved(self, _pos: int, _index: int) -> None:
+        sizes = self._nav_splitter.sizes()
+        if not sizes:
+            return
+        nav_width = max(SidebarNav.MIN_WIDTH, min(SidebarNav.MAX_WIDTH, sizes[0]))
+        if nav_width != sizes[0]:
+            total = max(sum(sizes), nav_width + sizes[1])
+            self._nav_splitter.blockSignals(True)
+            self._nav_splitter.setSizes([nav_width, total - nav_width])
+            self._nav_splitter.blockSignals(False)
+        self._nav_width_settings().setValue("nav_width", nav_width)
 
     def _get_llm_engine(self) -> LlmEngine | None:
         engine = self.main_engine.get_engine(LLM_APP_NAME)

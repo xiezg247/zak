@@ -207,6 +207,10 @@ class SidebarNav(QtWidgets.QWidget):
 
     page_changed = QtCore.Signal(int)
 
+    DEFAULT_WIDTH = 72
+    MIN_WIDTH = 64
+    MAX_WIDTH = 140
+
     def __init__(
         self,
         entries: tuple[NavEntry, ...] = APP_NAV_ENTRIES,
@@ -214,14 +218,27 @@ class SidebarNav(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("SidebarNav")
-        self.setFixedWidth(72)
+        self.setMinimumWidth(self.MIN_WIDTH)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self._entries = entries
 
         scroll = QtWidgets.QScrollArea()
         scroll.setObjectName("NavScroll")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        scroll.setAutoFillBackground(True)
+        scroll.viewport().setAutoFillBackground(True)
+        nav_bg = QtGui.QColor("#0f0f12")
+        scroll.setStyleSheet("QScrollArea#NavScroll { border: none; background-color: #0f0f12; }")
+        scroll.viewport().setStyleSheet("background-color: #0f0f12;")
+        palette = scroll.viewport().palette()
+        palette.setColor(scroll.viewport().backgroundRole(), nav_bg)
+        scroll.viewport().setPalette(palette)
 
         nav_body = QtWidgets.QWidget()
         nav_body.setObjectName("NavBody")

@@ -56,6 +56,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._retired_workers: list[QtCore.QThread] = []
         self._results: list[dict[str, Any]] = []
         self._result_columns: list[tuple[str, str]] = []
+        self._loaded_run_id: str | None = None
         self._watchlist_service = get_watchlist_service(main_engine)
 
         self._build_ui()
@@ -79,6 +80,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.run_sidebar.run_selected.connect(self._load_historical_run)
         self.run_sidebar.copy_run_id_requested.connect(self._on_copy_run_id)
         self.run_sidebar.ask_ai_requested.connect(self._on_ask_ai_for_run)
+        self.run_sidebar.runs_deleted.connect(self._on_runs_deleted)
         page_layout.addWidget(self.run_sidebar)
 
         main_panel = QtWidgets.QWidget()
@@ -310,7 +312,9 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         record = service.get_run_record(run_id) if service else None
         if record is None:
             self._append_action_log("自动选股结果不存在或已删除")
+            self._clear_loaded_run_view()
             return
+        self._loaded_run_id = run_id
         if service is not None:
             service.mark_run_read(run_id)
         self._results = list(record.rows)
@@ -345,6 +349,23 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.run_output_panel.load_history(summary=summary, log_tag=log_tag)
         self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
+
+    def _clear_loaded_run_view(self) -> None:
+        self._loaded_run_id = None
+        self._results = []
+        self._result_columns = []
+        apply_screener_results_view(
+            self.result_table,
+            self._results,
+            self._result_columns,
+            empty_label=self._empty_result_label,
+        )
+        self._store_screening_results(condition="", rows=[])
+
+    def _on_runs_deleted(self, run_ids: list) -> None:
+        if self._loaded_run_id is not None and self._loaded_run_id in run_ids:
+            self._clear_loaded_run_view()
+            self._append_action_log("已删除当前展示的自动结果")
 
     def _on_copy_run_id(self, run_id: str, condition: str) -> None:
         short = run_id[:8] + "…" if len(run_id) > 8 else run_id

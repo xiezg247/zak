@@ -10,6 +10,18 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunListWidget, ScreenerRunSidebar
 
 
+def _auto_record(run_id: str, *, trigger: str = "scheduled_intraday", read: bool = True):
+    return MagicMock(
+        id=run_id,
+        condition=f"条件-{run_id}",
+        source="test",
+        row_count=3,
+        total_scanned=100,
+        created_at="2026-06-09 20:17:00",
+        config={"trigger": trigger, "read": read},
+    )
+
+
 class ScreenerRunListWidgetTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -38,6 +50,31 @@ class ScreenerRunListWidgetTests(unittest.TestCase):
 
                         widget._filter = "post_close"
                         self.assertEqual(widget.unread_count(), 0)
+
+    def test_auto_mode_supports_multi_select_delete(self) -> None:
+        widget = ScreenerRunListWidget(mode="auto")
+        records = [_auto_record("run-a"), _auto_record("run-b")]
+        deleted: list[str] = []
+
+        with patch("vnpy_ashare.ui.screener_run_sidebar._list_runs", return_value=records):
+            with patch("vnpy_ashare.ui.screener_run_sidebar._is_auto_run", return_value=True):
+                with patch("vnpy_ashare.ui.screener_run_sidebar._is_run_unread", return_value=False):
+                    with patch(
+                        "vnpy_ashare.ui.screener_run_sidebar._delete_run",
+                        side_effect=lambda _engine, run_id: deleted.append(run_id),
+                    ):
+                        widget.refresh()
+                        widget._set_multi_select_mode(True, preselect_run_id="run-a")
+                        widget._multi_checked_ids.add("run-b")
+                        with patch.object(QtWidgets.QMessageBox, "question", return_value=QtWidgets.QMessageBox.StandardButton.Yes):
+                            widget._on_delete_selected()
+                        self.assertEqual(set(deleted), {"run-a", "run-b"})
+                        self.assertFalse(widget._multi_select_mode)
+
+    def test_strategy_mode_has_no_multi_select_controls(self) -> None:
+        widget = ScreenerRunListWidget(mode="strategy")
+        self.assertIsNone(widget._multi_btn)
+        self.assertIsNone(widget._del_btn)
 
 
 class ScreenerRunSidebarTests(unittest.TestCase):

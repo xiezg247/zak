@@ -224,4 +224,50 @@ QLabel#ScreenerUnreadBadge {
     min-height: 16px;
     padding: 0 4px;
 }
+
+QListWidget#AiSessionListWidget::item {
+    padding: 0;
+    border-radius: 6px;
+    margin: 2px 0;
+}
+QListWidget#AiSessionListWidget::item:selected,
+QListWidget#AiSessionListWidget::item:hover {
+    background-color: transparent;
+}
+QFrame#ScreenerRunRow {
+    background-color: transparent;
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+}
+QFrame#ScreenerRunRow[active="true"] {
+    background-color: #1a2438;
+    border-left: 3px solid #4a9eff;
+}
+QFrame#ScreenerRunRow:hover {
+    background-color: #1e1e28;
+}
+QLabel#ScreenerRunRowTitle {
+    color: #d0d0d8;
+    font-size: 12px;
+    min-height: 16px;
+}
+QLabel#ScreenerRunRowSubtitle {
+    color: #6a6a72;
+    font-size: 10px;
+    min-height: 14px;
+}
+QCheckBox#ScreenerRunCheck {
+    spacing: 0;
+}
+QCheckBox#ScreenerRunCheck::indicator {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #4a4a55;
+    border-radius: 3px;
+    background-color: #1a1a22;
+}
+QCheckBox#ScreenerRunCheck::indicator:checked {
+    background-color: #4a9eff;
+    border-color: #4a9eff;
+}
 """

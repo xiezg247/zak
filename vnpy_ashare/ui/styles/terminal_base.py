@@ -6,7 +6,20 @@ QWidget#MarketRoot {
 }
 QWidget#SidebarNav {
     background-color: #0f0f12;
-    border-right: 1px solid #252528;
+    border-right: none;
+}
+QSplitter#MainNavSplitter {
+    background-color: #0f0f12;
+}
+QSplitter#MainNavSplitter::handle {
+    background-color: #252528;
+}
+QSplitter#MainNavSplitter::handle:hover {
+    background-color: #4a9eff;
+}
+QScrollArea#NavScroll {
+    background-color: #0f0f12;
+    border: none;
 }
 QToolButton#NavButton {
     background-color: transparent;
@@ -24,10 +37,6 @@ QToolButton#NavButton:hover {
 QToolButton#NavButton:checked {
     background-color: #1a2438;
     color: #4a9eff;
-}
-QScrollArea#NavScroll {
-    background-color: transparent;
-    border: none;
 }
 QWidget#NavBody {
     background-color: transparent;
