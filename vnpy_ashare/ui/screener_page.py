@@ -37,7 +37,6 @@ from vnpy_ashare.ui.screener_results_table import (
 )
 from vnpy_ashare.ui.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import ScreenerBatchDownloadWorker, ScreenerRunWorker
 
 _SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -69,8 +68,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         self._reload_preset_combo()
         self._on_preset_changed(0)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
-
     def _screening_service(self) -> ScreeningService | None:
         return get_screening_service(self.main_engine)
 

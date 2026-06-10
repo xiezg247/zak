@@ -23,7 +23,7 @@ from vnpy_ashare.ui.screener_results_table import (
     populate_screener_results_table,
     toggle_select_all_table_rows,
 )
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
 from vnpy_ashare.ui.workers.reference_peer_worker import ReferencePeerWorker
 
 _RESULT_COLUMNS: list[tuple[str, str]] = [
@@ -75,7 +75,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         title = reference_name or vt_symbol
         self.setWindowTitle(f"找同类 · {title}")
         self.setMinimumSize(760, 520)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
+        theme_manager().bind_stylesheet(self)
         self._build_ui()
 
     def _build_ui(self) -> None:

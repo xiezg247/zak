@@ -10,6 +10,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.ai.context import QuickAction, build_stock_completion_items
 from vnpy_ashare.ai.context_store import get_ai_context
 from vnpy_ashare.ui.qt_helpers import release_thread, retain_thread_until_finished
+from vnpy_ashare.ui.theme import theme_manager
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tool_labels import tool_display_name
 from vnpy_llm.tools_status import ToolsStatusSnapshot
@@ -23,7 +24,7 @@ from vnpy_llm.ui.pending_bubble import (
     pending_status_from_turn,
 )
 from vnpy_llm.ui.session_widgets import show_ai_session_dialog
-from vnpy_llm.ui.styles import PANEL_STYLESHEET
+from vnpy_llm.ui.themed_styles import bind_ai_panel_style
 from vnpy_llm.ui.tools_widgets import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.trace_widgets import AiInlineTraceBlock
 from vnpy_llm.ui.worker import ChatWorker
@@ -93,12 +94,13 @@ class AiChatPanel(QtWidgets.QWidget):
         if self.floating:
             self.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         else:
-            self.setStyleSheet(PANEL_STYLESHEET)
+            bind_ai_panel_style(self)
         self._build_ui()
         self._pending_timer = QtCore.QTimer(self)
         self._pending_timer.setInterval(400)
         self._pending_timer.timeout.connect(self._tick_pending_spinner)
         self._connect_signals()
+        theme_manager().register_callback(self._on_theme_changed)
         self.scroll.viewport().installEventFilter(self)
         self._refresh_messages()
         self._update_model_action()
@@ -502,6 +504,10 @@ class AiChatPanel(QtWidgets.QWidget):
             if row is None:
                 continue
             yield from row.findChildren(AiInlineTraceBlock)
+
+    def _on_theme_changed(self, _tokens) -> None:
+        """主题切换后重渲染 Markdown 气泡（HTML 内联样式不随 QSS 更新）。"""
+        self._refresh_messages()
 
     def _refresh_messages(self) -> None:
         if self._worker is not None and self._worker.isRunning():

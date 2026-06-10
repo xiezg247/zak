@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.store import ChatSession
-from vnpy_llm.ui.styles import PANEL_STYLESHEET
+from vnpy_llm.ui.themed_styles import bind_ai_panel_style
 
 _SESSION_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
@@ -161,7 +161,7 @@ class AiSessionListWidget(QtWidgets.QWidget):
         self._rows_by_id: dict[str, AiSessionRowWidget] = {}
         self._items_by_id: dict[str, QtWidgets.QListWidgetItem] = {}
         self.setObjectName("AiSessionList")
-        self.setStyleSheet(PANEL_STYLESHEET)
+        bind_ai_panel_style(self)
         self._build_ui()
         self.engine.signals.sessions_changed.connect(self.refresh)
         self.engine.signals.messages_changed.connect(self._sync_active_session_highlight)
@@ -464,7 +464,7 @@ class AiSessionSidebar(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Preferred,
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
-        self.setStyleSheet(PANEL_STYLESHEET)
+        bind_ai_panel_style(self)
 
         root = QtWidgets.QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -551,7 +551,7 @@ class AiSessionDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("历史会话")
         self.setMinimumSize(360, 480)
-        self.setStyleSheet(PANEL_STYLESHEET)
+        bind_ai_panel_style(self)
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)

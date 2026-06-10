@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.styles import ACCENT_COLOR, NAV_MUTED_COLOR
+
+if TYPE_CHECKING:
+    from vnpy_ashare.ui.theme import ThemeTokens
 
 
 @dataclass(frozen=True)
@@ -225,20 +229,14 @@ class SidebarNav(QtWidgets.QWidget):
         )
         self._entries = entries
 
-        scroll = QtWidgets.QScrollArea()
-        scroll.setObjectName("NavScroll")
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        scroll.setAutoFillBackground(True)
-        scroll.viewport().setAutoFillBackground(True)
-        nav_bg = QtGui.QColor("#0f0f12")
-        scroll.setStyleSheet("QScrollArea#NavScroll { border: none; background-color: #0f0f12; }")
-        scroll.viewport().setStyleSheet("background-color: #0f0f12;")
-        palette = scroll.viewport().palette()
-        palette.setColor(scroll.viewport().backgroundRole(), nav_bg)
-        scroll.viewport().setPalette(palette)
+        self._scroll = QtWidgets.QScrollArea()
+        self._scroll.setObjectName("NavScroll")
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self._scroll.setAutoFillBackground(True)
+        self._scroll.viewport().setAutoFillBackground(True)
 
         nav_body = QtWidgets.QWidget()
         nav_body.setObjectName("NavBody")
@@ -264,12 +262,32 @@ class SidebarNav(QtWidgets.QWidget):
                 layout.addWidget(line)
 
         layout.addStretch()
-        scroll.setWidget(nav_body)
+        self._scroll.setWidget(nav_body)
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
-        root.addWidget(scroll, stretch=1)
+        root.addWidget(self._scroll, stretch=1)
+
+        self.refresh_theme()
+
+    def refresh_theme(self, tokens: ThemeTokens | None = None) -> None:
+        if tokens is None:
+            from vnpy_ashare.ui.theme import theme_manager
+
+            tokens = theme_manager().tokens()
+        nav_bg = tokens.nav_bg
+        self._scroll.setStyleSheet(
+            f"QScrollArea#NavScroll {{ border: none; background-color: {nav_bg}; }}",
+        )
+        self._scroll.viewport().setStyleSheet(f"background-color: {nav_bg};")
+        palette = self._scroll.viewport().palette()
+        palette.setColor(self._scroll.viewport().backgroundRole(), QtGui.QColor(nav_bg))
+        self._scroll.viewport().setPalette(palette)
+        for btn in self._buttons:
+            btn._muted = QtGui.QColor(tokens.nav_muted)
+            btn._accent = QtGui.QColor(tokens.accent)
+            btn._update_icon(btn.isChecked())
 
     def _on_click(self, index: int) -> None:
         self.set_active_index(index)

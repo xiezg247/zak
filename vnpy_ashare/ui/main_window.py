@@ -46,7 +46,7 @@ from vnpy_ashare.ui.scheduler_page import SchedulerPageWidget
 from vnpy_ashare.ui.screener_confirm_dialog import show_screener_confirm_dialog
 from vnpy_ashare.ui.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.settings_dialog import show_settings_dialog
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
 from vnpy_llm.engine import APP_NAME as LLM_APP_NAME
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
@@ -84,6 +84,9 @@ class AshareMainWindow(MainWindow):
         self._ai_toggle_action: QtGui.QAction | None = None
         self._screener_draft_connected = False
         self._scheduler_listener_connected = False
+        self._theme_manager = theme_manager()
+        self._theme_dark_action: QtGui.QAction | None = None
+        self._theme_light_action: QtGui.QAction | None = None
         super().__init__(main_engine, event_engine)
         self._signal_open_backtest.connect(self._handle_open_backtest)
         self._signal_open_batch_backtest.connect(self._handle_open_batch_backtest)
@@ -111,6 +114,7 @@ class AshareMainWindow(MainWindow):
         self.setWindowTitle(self.window_title)
         self.init_dock()
         self.init_toolbar()
+        self._theme_manager.load_saved()
         self.init_menu()
         self._init_shell()
         self.load_window_setting("custom")
@@ -149,6 +153,34 @@ class AshareMainWindow(MainWindow):
         audit_action = tools_menu.addAction("AI 工具审计…")
         audit_action.triggered.connect(self._open_ai_tool_audit_dialog)
 
+        theme_menu = bar.addMenu("主题")
+        theme_group = QtGui.QActionGroup(self)
+        theme_group.setExclusive(True)
+        self._theme_dark_action = theme_menu.addAction("深色")
+        self._theme_dark_action.setCheckable(True)
+        self._theme_dark_action.setData("dark")
+        theme_group.addAction(self._theme_dark_action)
+        self._theme_light_action = theme_menu.addAction("浅色")
+        self._theme_light_action.setCheckable(True)
+        self._theme_light_action.setData("light")
+        theme_group.addAction(self._theme_light_action)
+        self._sync_theme_menu_checks()
+        theme_group.triggered.connect(self._on_theme_menu_triggered)
+
+    def _sync_theme_menu_checks(self) -> None:
+        current = self._theme_manager.current()
+        if self._theme_dark_action is not None:
+            self._theme_dark_action.setChecked(current == "dark")
+        if self._theme_light_action is not None:
+            self._theme_light_action.setChecked(current == "light")
+
+    def _on_theme_menu_triggered(self, action: QtGui.QAction) -> None:
+        theme_id = action.data()
+        if theme_id not in ("dark", "light"):
+            return
+        self._theme_manager.set_theme(theme_id)
+        self._sync_theme_menu_checks()
+
     def edit_global_setting(self) -> None:
         show_settings_dialog(self)
 
@@ -178,7 +210,13 @@ class AshareMainWindow(MainWindow):
 
         shell = QtWidgets.QWidget()
         shell.setLayout(body)
-        shell.setStyleSheet(TERMINAL_STYLESHEET)
+
+        self._theme_manager.bind_stylesheet(shell)
+        self._theme_manager.bind_stylesheet(self.sidebar)
+        self._theme_manager.bind_stylesheet(self.stack)
+        self._theme_manager.bind_stylesheet(self)
+        self._theme_manager.register_callback(self.sidebar.refresh_theme)
+        self._theme_manager.apply()
 
         self.setCentralWidget(shell)
         self._init_floating_ai(shell)
@@ -482,6 +520,12 @@ class AshareMainWindow(MainWindow):
         if widget is not None:
             self._page_widgets[key] = widget
             self.widgets[key] = widget
+            extra = ""
+            if key == "scheduler":
+                from vnpy_ashare.ui.theme.build_extra import build_scheduler_page_stylesheet
+
+                extra = build_scheduler_page_stylesheet
+            self._theme_manager.bind_stylesheet(widget, extra=extra)
 
         return widget
 

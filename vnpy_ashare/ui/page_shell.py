@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes_page import QuotesPage
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR, TERMINAL_STYLESHEET
+from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
 from vnpy_ashare.ui.worker import IndexQuotesWorker
 
 INDEX_REFRESH_MS = 30000
@@ -47,8 +47,6 @@ class QuotesShellWidget(QtWidgets.QWidget):
             self._index_timer.timeout.connect(self.refresh_indices)
 
         root.addWidget(self.page, stretch=1)
-
-        self.setStyleSheet(TERMINAL_STYLESHEET)
 
     def activate(self) -> None:
         self.page.activate()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
 
 
 class TaskRunOutputPanel(QtWidgets.QWidget):
@@ -23,13 +23,13 @@ class TaskRunOutputPanel(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName(object_name)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
         self._title = title
         self._log_placeholder = log_placeholder
         self._section_label_object_name = section_label_object_name
         self._summary_object_name = summary_object_name
         self._log_view_object_name = log_view_object_name
         self._build_ui()
+        theme_manager().bind_stylesheet(self)
 
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)

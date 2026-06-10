@@ -18,7 +18,6 @@ from vnpy_ashare.backtest.run_store import (
 from vnpy_ashare.events import EVENT_OPEN_BACKTEST, BacktestRequest
 from vnpy_ashare.screener.export import export_rows_to_csv
 from vnpy_ashare.ui.batch_backtest_table import BatchBacktestTableWidget, record_to_row
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 
 
 class BatchBacktestPageWidget(QtWidgets.QWidget):
@@ -32,7 +31,6 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         self._current_batch_id: str | None = None
         self._current_rows: list[Any] = []
         self._build_ui()
-        self.setStyleSheet(TERMINAL_STYLESHEET)
         self.refresh_sessions()
 
     def _build_ui(self) -> None:

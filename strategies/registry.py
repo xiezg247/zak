@@ -45,27 +45,35 @@ def get_strategy_meta(class_name: str) -> StrategyMeta | None:
     return STRATEGY_REGISTRY.get(class_name)
 
 
-def format_strategy_guide(meta: StrategyMeta) -> str:
+def format_strategy_guide(meta: StrategyMeta, *, tokens=None) -> str:
     """渲染策略说明（HTML，供 QLabel RichText 使用）。"""
+    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_ashare.ui.theme.html_palette import html_palette
+
+    colors = html_palette(tokens or theme_manager().tokens())
     tags = " · ".join(meta.tags)
     scenarios = "".join(f"<li>{item}</li>" for item in meta.scenarios)
     anti = "".join(f"<li>{item}</li>" for item in meta.anti_scenarios)
     params = "".join(f"<li><code>{name}</code>：{hint}</li>" for name, hint in meta.param_hints)
     return (
         f'<p style="margin:0 0 6px 0;"><b>{meta.title}</b>'
-        f'<span style="color:#8a8a8a;"> · {tags}</span></p>'
-        f'<p style="margin:0 0 8px 0;color:#c8c8c8;">{meta.summary}</p>'
-        f'<p style="margin:0 0 4px 0;color:#4a9eff;">适用</p>'
+        f'<span style="color:{colors.label};"> · {tags}</span></p>'
+        f'<p style="margin:0 0 8px 0;color:{colors.body};">{meta.summary}</p>'
+        f'<p style="margin:0 0 4px 0;color:{colors.section};">适用</p>'
         f"<ul style='margin:0 0 8px 16px;padding:0;'>{scenarios}</ul>"
-        f'<p style="margin:0 0 4px 0;color:#f0b429;">不适用</p>'
+        f'<p style="margin:0 0 4px 0;color:{colors.warning};">不适用</p>'
         f"<ul style='margin:0 0 8px 16px;padding:0;'>{anti}</ul>"
-        f'<p style="margin:0 0 4px 0;color:#8a8a8a;">关键参数</p>'
+        f'<p style="margin:0 0 4px 0;color:{colors.label};">关键参数</p>'
         f"<ul style='margin:0 0 0 16px;padding:0;'>{params}</ul>"
-        '<p style="margin:8px 0 0 0;color:#6a6a6a;font-size:11px;">'
+        f'<p style="margin:8px 0 0 0;color:{colors.muted};font-size:11px;">'
         "请选用 Ashare* 策略，勿选 vnpy 内置含做空逻辑的策略。"
         "</p>"
     )
 
 
-def format_missing_strategy_guide(class_name: str) -> str:
-    return f'<p style="color:#8a8a8a;">暂无 <code>{class_name}</code> 的说明，可在 <code>strategies/registry.py</code> 补充。</p>'
+def format_missing_strategy_guide(class_name: str, *, tokens=None) -> str:
+    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_ashare.ui.theme.html_palette import html_palette
+
+    colors = html_palette(tokens or theme_manager().tokens())
+    return f'<p style="color:{colors.label};">暂无 <code>{class_name}</code> 的说明，可在 <code>strategies/registry.py</code> 补充。</p>'

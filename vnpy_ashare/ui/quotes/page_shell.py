@@ -9,7 +9,8 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.ui.chart_panel import ChartPanel
-from vnpy_ashare.ui.chart_style import CHART_FRAME_STYLESHEET
+from vnpy_ashare.ui.chart_style import build_chart_frame_stylesheet
+from vnpy_ashare.ui.theme import theme_manager
 from vnpy_ashare.ui.depth_panel import DepthPanel
 from vnpy_ashare.ui.diagnose_panel import DiagnosePanel
 from vnpy_ashare.ui.ma_legend import MaLegendBar
@@ -348,7 +349,7 @@ class QuotesPageShell:
             page.chart = create_daily_chart()
             chart_frame = QtWidgets.QWidget()
             chart_frame.setObjectName("ChartFrame")
-            chart_frame.setStyleSheet(CHART_FRAME_STYLESHEET)
+            theme_manager().bind_stylesheet(chart_frame, extra=build_chart_frame_stylesheet)
             frame_layout = QtWidgets.QVBoxLayout(chart_frame)
             frame_layout.setContentsMargins(4, 4, 4, 4)
             frame_layout.setSpacing(0)

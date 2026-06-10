@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.scheduler import TaskSchedulerManager
 from vnpy_ashare.ui.scheduler_jobs_widget import SchedulerJobsWidget
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
 
 
 class SchedulerDialog(QtWidgets.QDialog):
@@ -22,7 +22,7 @@ class SchedulerDialog(QtWidgets.QDialog):
         self.setWindowTitle("定时任务")
         self.setMinimumSize(1020, 480)
         self.resize(1080, 520)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
+        theme_manager().bind_stylesheet(self)
 
         hint = QtWidgets.QLabel("生产环境建议独立运行 scripts/quote_collector.py；此处「行情采集」适合本机调试。")
         hint.setWordWrap(True)

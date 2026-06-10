@@ -7,7 +7,8 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ui.chart_style import CHART_PANEL_STYLESHEET
+from vnpy_ashare.ui.chart_style import build_chart_panel_stylesheet
+from vnpy_ashare.ui.theme import theme_manager
 from vnpy_ashare.ui.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.intraday_chart import IntradayChart
 from vnpy_ashare.ui.ma_legend import MaLegendBar
@@ -19,7 +20,6 @@ from vnpy_ashare.ui.quotes_chart import (
     create_watchlist_chart,
     prepare_chart_bars,
 )
-from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
 from vnpy_ashare.ui.worker import (
     BarsLoadWorker,
     IntradayBarsWorker,
@@ -115,7 +115,7 @@ class ChartPanel(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("ChartPanel")
-        self.setStyleSheet(CHART_PANEL_STYLESHEET)
+        theme_manager().bind_stylesheet(self, extra=build_chart_panel_stylesheet)
         self._item: StockItem | None = None
         self._prev_close = 0.0
         self._generation = 0
@@ -171,7 +171,6 @@ class ChartPanel(QtWidgets.QWidget):
         self.hint_label.setObjectName("ChartHint")
         self.hint_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.hint_label.setWordWrap(True)
-        self.hint_label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px; padding: 4px 8px;")
         self.hint_label.hide()
 
         layout = QtWidgets.QVBoxLayout(self)

@@ -43,6 +43,7 @@ def main() -> None:
         print("已应用 A 股回测默认参数（~/.vntrader/cta_backtester_setting.json）")
 
     qapp = create_qapp(QAPP_NAME)
+    qapp.setStyle("Fusion")
 
     event_engine = EventEngine()
     main_engine = MainEngine(event_engine)

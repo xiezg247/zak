@@ -6,7 +6,8 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tools_status import ToolProviderState, ToolProviderStatus, ToolsStatusSnapshot
-from vnpy_llm.ui.styles import PANEL_STYLESHEET, TOOLS_WIDGET_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_llm.ui.themed_styles import bind_ai_tools_bar_style, bind_ai_tools_dialog_style
 from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
 
 _STATE_LABELS: dict[ToolProviderState, str] = {
@@ -25,7 +26,7 @@ class AiToolsStatusBar(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("AiToolsStatusBar")
-        self.setStyleSheet(TOOLS_WIDGET_STYLESHEET)
+        bind_ai_tools_bar_style(self)
         self._layout = QtWidgets.QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(6)
@@ -44,7 +45,7 @@ class AiToolsStatusBar(QtWidgets.QWidget):
 
     def show_progress(self, text: str) -> None:
         self._summary.setText(f"⏳ {text}")
-        self._summary.setStyleSheet("color: #4a9eff;")
+        self._summary.setStyleSheet(f"color: {theme_manager().tokens().accent};")
 
     def hide_progress(self) -> None:
         self._summary.setStyleSheet("")
@@ -64,7 +65,7 @@ class AiToolsDialog(QtWidgets.QDialog):
         self.engine = engine
         self.setWindowTitle("AI 工具能力")
         self.setMinimumSize(520, 420)
-        self.setStyleSheet(PANEL_STYLESHEET + TOOLS_WIDGET_STYLESHEET)
+        bind_ai_tools_dialog_style(self)
         self._build_ui()
         self.refresh()
 

@@ -29,7 +29,9 @@ from vnpy_ashare.ui.settings_snapshot import (
     resolve_env_config_general,
     resolve_env_config_kline,
 )
-from vnpy_ashare.ui.styles import SETTINGS_DIALOG_STYLESHEET, apply_settings_combo_style
+from vnpy_ashare.ui.styles import apply_settings_combo_style
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.build_extra import build_settings_stylesheet
 from vnpy_ashare.vt_settings import (
     SETTING_FILE,
     load_runtime_settings,
@@ -58,7 +60,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self.setWindowTitle("系统配置")
         self.setMinimumSize(680, 560)
         self.resize(760, 640)
-        self.setStyleSheet(SETTINGS_DIALOG_STYLESHEET)
+        theme_manager().bind_stylesheet(self, extra=build_settings_stylesheet)
 
         self._widgets: dict[str, QtWidgets.QWidget] = {}
         self._db_runtime_labels: dict[str, QtWidgets.QLabel] = {}

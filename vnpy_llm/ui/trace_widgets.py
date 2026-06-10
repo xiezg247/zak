@@ -7,7 +7,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tool_labels import tool_display_name
 from vnpy_llm.trace import TraceStep, TurnTrace
-from vnpy_llm.ui.styles import INLINE_TRACE_STYLESHEET
+from vnpy_llm.ui.themed_styles import bind_ai_trace_style
 
 _STATUS_LABELS = {
     "running": "进行中",
@@ -97,7 +97,7 @@ class AiInlineTraceBlock(QtWidgets.QFrame):
         self._selected_step_id: str | None = None
         self._turn: TurnTrace | None = None
         self.setObjectName("AiInlineTraceBlock")
-        self.setStyleSheet(INLINE_TRACE_STYLESHEET)
+        bind_ai_trace_style(self)
         self._build_ui()
 
     def _build_ui(self) -> None:

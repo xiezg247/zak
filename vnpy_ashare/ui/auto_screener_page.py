@@ -36,7 +36,6 @@ from vnpy_ashare.ui.screener_results_table import (
 )
 from vnpy_ashare.ui.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener_run_sidebar import ScreenerRunSidebar
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 from vnpy_ashare.ui.worker import ScreenerBatchDownloadWorker, ScreenerRecipeRunWorker
 
 
@@ -66,8 +65,6 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             parent=self,
             on_status=self._append_action_log,
         )
-        self.setStyleSheet(TERMINAL_STYLESHEET)
-
     def _screening_service(self) -> ScreeningService | None:
         return get_screening_service(self.main_engine)
 

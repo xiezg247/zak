@@ -6,10 +6,10 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
 from vnpy_llm.engine import APP_NAME, LlmEngine
 from vnpy_llm.ui.panel import AiChatPanel
 from vnpy_llm.ui.session_widgets import AiSessionSidebar
+from vnpy_llm.ui.themed_styles import bind_ai_panel_style
 
 
 class AiPageWidget(QtWidgets.QWidget):
@@ -50,8 +50,8 @@ class AiPageWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(splitter)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
-
+        bind_ai_panel_style(self.panel)
+        bind_ai_panel_style(self.session_sidebar)
     def _on_collapse_requested(self) -> None:
         self.collapse_to_dock.emit()
 

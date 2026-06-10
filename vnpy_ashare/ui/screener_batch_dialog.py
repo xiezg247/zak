@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.screener.batch_actions import BatchBacktestRow
 from vnpy_ashare.screener.export import export_rows_to_csv
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
 
 
 class ScreenerBatchBacktestDialog(QtWidgets.QDialog):
@@ -21,7 +21,7 @@ class ScreenerBatchBacktestDialog(QtWidgets.QDialog):
         self._rows = rows
         self.setWindowTitle("批量回测结果")
         self.setMinimumSize(720, 420)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
+        theme_manager().bind_stylesheet(self)
         self._build_ui(class_name)
 
     def _build_ui(self, class_name: str) -> None:
@@ -105,7 +105,7 @@ class ScreenerBatchBacktestConfigDialog(QtWidgets.QDialog):
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("批量回测")
-        self.setStyleSheet(TERMINAL_STYLESHEET)
+        theme_manager().bind_stylesheet(self)
         self.class_name = default_class
         self.start_text = default_start
         self.end_text = default_end

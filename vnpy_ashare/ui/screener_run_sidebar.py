@@ -15,7 +15,7 @@ from vnpy_ashare.screener.run_store import (
     is_strategy_run,
     list_runs,
 )
-from vnpy_ashare.ui.styles import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
@@ -142,7 +142,7 @@ class ScreenerRunRowWidget(QtWidgets.QFrame):
             font = self._title.font()
             font.setBold(True)
             self._title.setFont(font)
-            self._title.setStyleSheet("color: #7dd3fc;")
+            self._title.setStyleSheet(f"color: {theme_manager().tokens().run_row_unread};")
         text_col.addWidget(self._title)
         self._subtitle = QtWidgets.QLabel(subtitle)
         self._subtitle.setObjectName("ScreenerRunRowSubtitle")
@@ -236,7 +236,6 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("ScreenerRunList")
-        self.setStyleSheet(TERMINAL_STYLESHEET)
         self._mode = mode
         self._main_engine = main_engine
         self._filter = _FILTER_ALL
@@ -248,6 +247,8 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._multi_btn: QtWidgets.QPushButton | None = None
         self._del_btn: QtWidgets.QPushButton | None = None
         self._build_ui()
+        theme_manager().bind_stylesheet(self)
+        theme_manager().register_callback(lambda _tokens: self.refresh())
         self.refresh()
 
     def _resolve_main_engine(self) -> MainEngine | None:
@@ -746,7 +747,6 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         self.setObjectName("AiSessionSidebar")
         self._expanded = False
         self.setFixedWidth(self.RAIL_WIDTH)
-        self.setStyleSheet(TERMINAL_STYLESHEET)
 
         root = QtWidgets.QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -791,6 +791,7 @@ class ScreenerRunSidebar(QtWidgets.QWidget):
         rail_layout.addWidget(self._toggle_btn, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
         rail_layout.addStretch()
         root.addWidget(rail)
+        theme_manager().bind_stylesheet(self)
         self._restore_expanded_preference()
 
     def _settings_key(self) -> str:

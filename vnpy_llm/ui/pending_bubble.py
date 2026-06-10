@@ -53,7 +53,11 @@ def format_pending_html(
     *,
     spinner: str = SPINNER_FRAMES[0],
 ) -> str:
+    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_ashare.ui.theme.html_palette import html_palette
+
     sub_html = ""
     if sub.strip():
-        sub_html = f'<br><span style="color:#8a8a95;font-size:11px;">{sub}</span>'
+        sub_color = html_palette(theme_manager().tokens()).label
+        sub_html = f'<br><span style="color:{sub_color};font-size:11px;">{sub}</span>'
     return f"{spinner} {main}{sub_html}"

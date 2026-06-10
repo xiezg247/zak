@@ -9,7 +9,8 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.tool_audit import list_recent_tool_calls
-from vnpy_llm.ui.styles import PANEL_STYLESHEET, TOOLS_WIDGET_STYLESHEET
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_llm.ui.themed_styles import bind_ai_tools_dialog_style
 
 _TOOL_LABELS: dict[str, str] = {
     "get_quote_context": "读取当前上下文",
@@ -62,7 +63,7 @@ class AiToolAuditDialog(QtWidgets.QDialog):
         self._rows: list[dict[str, Any]] = []
         self.setWindowTitle("AI 工具审计")
         self.setMinimumSize(760, 520)
-        self.setStyleSheet(PANEL_STYLESHEET + TOOLS_WIDGET_STYLESHEET)
+        bind_ai_tools_dialog_style(self)
         self._build_ui()
         self.refresh()
 
@@ -146,7 +147,8 @@ class AiToolAuditDialog(QtWidgets.QDialog):
             tool_name = str(row_data.get("tool_name", ""))
             success = bool(row_data.get("success", True))
             status_text = "成功" if success else "失败"
-            status_color = "#3ddc84" if success else "#ff5c5c"
+            tokens = theme_manager().tokens()
+            status_color = tokens.semantic_success if success else tokens.semantic_error
 
             time_item = QtWidgets.QTableWidgetItem(str(row_data.get("created_at", "")))
             tool_item = QtWidgets.QTableWidgetItem(_tool_display(tool_name))

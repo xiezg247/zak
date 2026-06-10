@@ -17,19 +17,19 @@ from vnpy_ashare.market_hours import (
 )
 from vnpy_ashare.ui.chart_style import (
     AVG_LINE_COLOR,
-    CHART_BG,
     FALL_RGB,
     INTRADAY_AVG_LINE_WIDTH,
-    INTRADAY_CROSSHAIR_COLOR,
-    INTRADAY_INFO_STYLESHEET,
     INTRADAY_LAST_DOT_SIZE,
-    INTRADAY_LUNCH_LINE_COLOR,
     INTRADAY_PRICE_LINE_WIDTH,
     PREV_CLOSE_COLOR,
     RISE_RGB,
+    build_intraday_info_stylesheet,
+    chart_palette,
     style_intraday_price_plot,
     style_intraday_volume_plot,
 )
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.tokens import ThemeTokens
 from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
 
 VOLUME_BAR_WIDTH = 0.75
@@ -205,19 +205,25 @@ def format_intraday_summary(
     *,
     avg_price: float,
     prev_close: float,
+    tokens: ThemeTokens | None = None,
 ) -> str:
     """顶部信息栏文案。"""
+    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_ashare.ui.theme.html_palette import html_palette
+
+    colors = html_palette(tokens or theme_manager().tokens())
     time_label = bar.datetime.strftime("%H:%M")
     delta_text, pct_text = format_change(bar.close_price, prev_close)
+    label = colors.label
     parts = [
-        f"<span style='color:#8a8a8a'>时间</span> {time_label}",
-        f"<span style='color:#8a8a8a'>现价</span> <span style='color:{change_color(bar.close_price, prev_close)}'>{bar.close_price:.2f}</span>",
-        f"<span style='color:#8a8a8a'>均价</span> <span style='color:{AVG_LINE_COLOR}'>{avg_price:.2f}</span>",
-        f"<span style='color:#8a8a8a'>成交量</span> {format_volume_lots(bar.volume)}",
+        f"<span style='color:{label}'>时间</span> {time_label}",
+        f"<span style='color:{label}'>现价</span> <span style='color:{change_color(bar.close_price, prev_close)}'>{bar.close_price:.2f}</span>",
+        f"<span style='color:{label}'>均价</span> <span style='color:{AVG_LINE_COLOR}'>{avg_price:.2f}</span>",
+        f"<span style='color:{label}'>成交量</span> {format_volume_lots(bar.volume)}",
     ]
     if prev_close > 0:
         color = change_color(bar.close_price, prev_close)
-        parts.append(f"<span style='color:#8a8a8a'>涨跌</span> <span style='color:{color}'>{delta_text} ({pct_text})</span>")
+        parts.append(f"<span style='color:{label}'>涨跌</span> <span style='color:{color}'>{delta_text} ({pct_text})</span>")
     return "  ·  ".join(parts)
 
 
@@ -226,8 +232,13 @@ def format_intraday_idle_summary(
     *,
     avg_price: float,
     prev_close: float,
+    tokens: ThemeTokens | None = None,
 ) -> str:
     """无鼠标悬停时展示最新价。"""
+    from vnpy_ashare.ui.theme import theme_manager
+    from vnpy_ashare.ui.theme.html_palette import html_palette
+
+    colors = html_palette(tokens or theme_manager().tokens())
     delta_text, pct_text = format_change(bar.close_price, prev_close)
     color = change_color(bar.close_price, prev_close)
     text = (
@@ -237,7 +248,7 @@ def format_intraday_idle_summary(
     )
     if prev_close > 0:
         text += f"  ·  涨跌 <span style='color:{color}'>{delta_text} ({pct_text})</span>"
-    text += "  ·  <span style='color:#6a6a6a'>移动鼠标查看历史分时</span>"
+    text += f"  ·  <span style='color:{colors.hint}'>移动鼠标查看历史分时</span>"
     return text
 
 
@@ -259,10 +270,11 @@ class IntradayChart(QtWidgets.QWidget):
         self._info_bar = QtWidgets.QLabel("—")
         self._info_bar.setObjectName("IntradayInfoBar")
         self._info_bar.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self._info_bar.setStyleSheet(INTRADAY_INFO_STYLESHEET)
+        theme_manager().bind_stylesheet(self._info_bar, extra=build_intraday_info_stylesheet)
 
         self._gfx = pg.GraphicsLayoutWidget()
-        self._gfx.setBackground(CHART_BG)
+        self._palette = chart_palette(theme_manager().tokens())
+        self._gfx.setBackground(self._palette.bg)
 
         self._pct_axis = PercentChangeAxis(orientation="right")
         self._price_plot = self._gfx.addPlot(
@@ -275,8 +287,8 @@ class IntradayChart(QtWidgets.QWidget):
         self._gfx.ci.layout.setRowStretchFactor(0, PRICE_ROW_STRETCH)
         self._gfx.ci.layout.setRowStretchFactor(1, VOLUME_ROW_STRETCH)
 
-        style_intraday_price_plot(self._price_plot)
-        style_intraday_volume_plot(self._volume_plot)
+        style_intraday_price_plot(self._price_plot, self._palette)
+        style_intraday_volume_plot(self._volume_plot, self._palette)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -284,7 +296,7 @@ class IntradayChart(QtWidgets.QWidget):
         layout.addWidget(self._info_bar)
         layout.addWidget(self._gfx, stretch=1)
 
-        cross_pen = pg.mkPen(INTRADAY_CROSSHAIR_COLOR, width=1, style=QtCore.Qt.PenStyle.DashLine)
+        cross_pen = pg.mkPen(self._palette.crosshair, width=1, style=QtCore.Qt.PenStyle.DashLine)
         self._vline = pg.InfiniteLine(angle=90, movable=False, pen=cross_pen)
         self._hline = pg.InfiniteLine(angle=0, movable=False, pen=cross_pen)
         self._vline_vol = pg.InfiniteLine(angle=90, movable=False, pen=cross_pen)
@@ -300,7 +312,7 @@ class IntradayChart(QtWidgets.QWidget):
                 angle=90,
                 pos=float(MORNING_SESSION_MINUTES),
                 movable=False,
-                pen=pg.mkPen(INTRADAY_LUNCH_LINE_COLOR, width=1, style=QtCore.Qt.PenStyle.DotLine),
+                pen=pg.mkPen(self._palette.lunch_line, width=1, style=QtCore.Qt.PenStyle.DotLine),
             )
             plot.addItem(lunch_line, ignoreBounds=True)
 
@@ -329,6 +341,21 @@ class IntradayChart(QtWidgets.QWidget):
             rateLimit=30,
             slot=self._on_mouse_moved,
         )
+        theme_manager().register_callback(self._on_theme_changed)
+
+    def _on_theme_changed(self, tokens: ThemeTokens) -> None:
+        self._palette = chart_palette(tokens)
+        self._gfx.setBackground(self._palette.bg)
+        style_intraday_price_plot(self._price_plot, self._palette)
+        style_intraday_volume_plot(self._volume_plot, self._palette)
+        cross_pen = pg.mkPen(self._palette.crosshair, width=1, style=QtCore.Qt.PenStyle.DashLine)
+        self._vline.setPen(cross_pen)
+        self._hline.setPen(cross_pen)
+        self._vline_vol.setPen(cross_pen)
+        if self._hover_index is not None:
+            self._update_hover_summary(self._hover_index, tokens=tokens)
+        else:
+            self._update_idle_summary(tokens=tokens)
 
     def leaveEvent(self, event: QtGui.QEvent) -> None:
         self._clear_hover()
@@ -400,7 +427,7 @@ class IntradayChart(QtWidgets.QWidget):
             brushes=brushes,
         )
 
-    def _update_idle_summary(self) -> None:
+    def _update_idle_summary(self, *, tokens: ThemeTokens | None = None) -> None:
         if not self._bars:
             self._info_bar.setText("—")
             return
@@ -410,15 +437,17 @@ class IntradayChart(QtWidgets.QWidget):
                 self._bars[index],
                 avg_price=self._avg_prices[index],
                 prev_close=self._prev_close,
+                tokens=tokens,
             )
         )
 
-    def _update_hover_summary(self, index: int) -> None:
+    def _update_hover_summary(self, index: int, *, tokens: ThemeTokens | None = None) -> None:
         self._info_bar.setText(
             format_intraday_summary(
                 self._bars[index],
                 avg_price=self._avg_prices[index],
                 prev_close=self._prev_close,
+                tokens=tokens,
             )
         )
 

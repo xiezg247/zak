@@ -17,7 +17,6 @@ from vnpy_ctabacktester.ui.widget import (
     BacktestingTradeMonitor,
     CandleChartDialog,
     DailyResultMonitor,
-    StatisticsMonitor,
 )
 
 from strategies.registry import (
@@ -36,14 +35,15 @@ from vnpy_ashare.backtest_strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.engine_access import get_backtest_service
 from vnpy_ashare.events import EVENT_ASK_AI, AskAiRequest
-from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart
+from vnpy_ashare.ui.backtest_chart import AshareBacktesterChart, AshareStatisticsMonitor
 from vnpy_ashare.ui.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.styles import (
-    SETTINGS_DIALOG_STYLESHEET,
     apply_legacy_page_style,
     apply_toolbar_combo_style,
     style_legacy_form_inputs,
 )
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.build_extra import build_settings_stylesheet
 
 _LOG_MAP: dict[str, str] = {
     "初始化CTA回测引擎": "初始化策略回测引擎",
@@ -81,7 +81,7 @@ class StrategyGuideDialog(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(scroll, stretch=1)
         layout.addLayout(footer)
-        self.setStyleSheet(SETTINGS_DIALOG_STYLESHEET)
+        theme_manager().bind_stylesheet(self, extra=build_settings_stylesheet)
 
 
 class BacktesterWidget(VnpyBacktesterManager):
@@ -159,7 +159,7 @@ class BacktesterWidget(VnpyBacktesterManager):
         self.reload_button.clicked.connect(self.reload_strategy_class)
 
     def _create_result_panels(self) -> None:
-        self.statistics_monitor = StatisticsMonitor()
+        self.statistics_monitor = AshareStatisticsMonitor()
         self.log_monitor = QtWidgets.QTextEdit()
         self.chart = AshareBacktesterChart()
 
@@ -234,13 +234,18 @@ class BacktesterWidget(VnpyBacktesterManager):
         self._on_strategy_changed(self.class_combo.currentText())
 
     def _build_strategy_guide_html(self, class_name: str) -> str:
+        from vnpy_ashare.ui.theme import theme_manager
+        from vnpy_ashare.ui.theme.html_palette import html_palette
+
         name = class_name.strip()
+        tokens = theme_manager().tokens()
         if not name:
-            return '<p style="color:#8a8a8a;">选择策略后显示说明与适用场景。</p>'
+            colors = html_palette(tokens)
+            return f'<p style="color:{colors.label};">选择策略后显示说明与适用场景。</p>'
         meta = get_strategy_meta(name)
         if meta is None:
-            return format_missing_strategy_guide(name)
-        return format_strategy_guide(meta)
+            return format_missing_strategy_guide(name, tokens=tokens)
+        return format_strategy_guide(meta, tokens=tokens)
 
     def _on_strategy_changed(self, class_name: str) -> None:
         self._strategy_guide_html = self._build_strategy_guide_html(class_name)

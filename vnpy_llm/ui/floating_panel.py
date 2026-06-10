@@ -14,10 +14,13 @@ from vnpy_ashare.ui.qt_helpers import (
     frame_intersects_any_screen,
     restore_child_position,
 )
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.orb_palette import OrbPalette, orb_palette
+from vnpy_ashare.ui.theme.tokens import ThemeTokens
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.ui.floating_actions import orb_tooltip_text
 from vnpy_llm.ui.panel import AiChatPanel
-from vnpy_llm.ui.styles import FLOATING_CHAT_INNER_STYLESHEET, FLOATING_CHAT_STYLESHEET
+from vnpy_llm.ui.themed_styles import bind_ai_floating_style
 
 ORB_SIZE = 52
 ORB_MARGIN = 20
@@ -58,6 +61,12 @@ class FloatingAiOrb(QtWidgets.QWidget):
         self._attention_timer = QtCore.QTimer(self)
         self._attention_timer.setInterval(80)
         self._attention_timer.timeout.connect(self._on_attention_tick)
+        self._palette: OrbPalette = orb_palette(theme_manager().tokens())
+        theme_manager().register_callback(self._on_theme_changed)
+
+    def _on_theme_changed(self, tokens: ThemeTokens) -> None:
+        self._palette = orb_palette(tokens)
+        self.update()
 
     def play_attention_pulse(self) -> None:
         """选股完成等场景：短暂高亮，不展开面板。"""
@@ -99,16 +108,19 @@ class FloatingAiOrb(QtWidgets.QWidget):
         painter.drawPath(path)
 
     def _paint_orb_icon(self, painter: QtGui.QPainter) -> None:
+        palette = self._palette
         center = QtCore.QPointF(ORB_SIZE / 2, ORB_SIZE / 2 + 0.5)
         radius = 21.0
 
         attention = self._attention_strength
-        glow_alpha = 48 + int(90 * attention)
+        glow_alpha = palette.glow_center.alpha() + int(90 * attention)
         if self._hovered:
             glow_alpha += 22
         glow = QtGui.QRadialGradient(center + QtCore.QPointF(0, 3), radius + 6 + attention * 6)
-        glow.setColorAt(0.0, QtGui.QColor(56, 132, 255, glow_alpha))
-        glow.setColorAt(1.0, QtGui.QColor(56, 132, 255, 0))
+        glow_center = QtGui.QColor(palette.glow_center)
+        glow_center.setAlpha(min(255, glow_alpha))
+        glow.setColorAt(0.0, glow_center)
+        glow.setColorAt(1.0, palette.glow_edge)
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.setBrush(glow)
         painter.drawEllipse(
@@ -117,42 +129,37 @@ class FloatingAiOrb(QtWidgets.QWidget):
             radius + 3 + attention * 3,
         )
         if attention > 0.05:
-            ring = QtGui.QPen(QtGui.QColor(120, 200, 255, int(180 * attention)), 2.0)
+            ring = QtGui.QPen(palette.attention_ring, 2.0)
+            ring_color = QtGui.QColor(ring.color())
+            ring_color.setAlpha(int(180 * attention))
+            ring.setColor(ring_color)
             painter.setPen(ring)
             painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
             painter.drawEllipse(center, radius + 2 + attention * 3, radius + 2 + attention * 3)
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
 
+        stops = palette.hover_gradient if self._hovered else palette.idle_gradient
         orb_gradient = QtGui.QRadialGradient(center + QtCore.QPointF(-7, -8), radius * 1.55)
-        if self._hovered:
-            orb_gradient.setColorAt(0.0, QtGui.QColor("#c4f1ff"))
-            orb_gradient.setColorAt(0.28, QtGui.QColor("#5ecbff"))
-            orb_gradient.setColorAt(0.62, QtGui.QColor("#3b82f6"))
-            orb_gradient.setColorAt(1.0, QtGui.QColor("#1d3f8f"))
-        else:
-            orb_gradient.setColorAt(0.0, QtGui.QColor("#b8ecff"))
-            orb_gradient.setColorAt(0.30, QtGui.QColor("#4db8ff"))
-            orb_gradient.setColorAt(0.65, QtGui.QColor("#3478f6"))
-            orb_gradient.setColorAt(1.0, QtGui.QColor("#1e3a8a"))
+        for pos, color in stops:
+            orb_gradient.setColorAt(pos, color)
 
         painter.setBrush(orb_gradient)
         painter.drawEllipse(center, radius, radius)
 
         painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
-        painter.setPen(QtGui.QPen(QtGui.QColor(255, 255, 255, 55), 1.0))
+        painter.setPen(QtGui.QPen(palette.rim, 1.0))
         painter.drawEllipse(center, radius - 0.6, radius - 0.6)
 
         specular = QtGui.QRadialGradient(center + QtCore.QPointF(-8, -10), 13)
-        specular.setColorAt(0.0, QtGui.QColor(255, 255, 255, 165))
-        specular.setColorAt(0.55, QtGui.QColor(255, 255, 255, 45))
-        specular.setColorAt(1.0, QtGui.QColor(255, 255, 255, 0))
+        for pos, color in palette.specular:
+            specular.setColorAt(pos, color)
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.setBrush(specular)
         painter.drawEllipse(center + QtCore.QPointF(-7, -9), 11.5, 8.0)
 
-        self._draw_sparkle(painter, center.x(), center.y() - 1.5, 8.5, QtGui.QColor(255, 255, 255, 245))
-        self._draw_sparkle(painter, center.x() + 10.5, center.y() - 9.0, 4.2, QtGui.QColor(220, 245, 255, 215))
-        self._draw_sparkle(painter, center.x() - 10.8, center.y() + 8.2, 3.4, QtGui.QColor(196, 228, 255, 185))
+        self._draw_sparkle(painter, center.x(), center.y() - 1.5, 8.5, palette.sparkle_primary)
+        self._draw_sparkle(painter, center.x() + 10.5, center.y() - 9.0, 4.2, palette.sparkle_secondary)
+        self._draw_sparkle(painter, center.x() - 10.8, center.y() + 8.2, 3.4, palette.sparkle_tertiary)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         painter = QtGui.QPainter(self)
@@ -164,6 +171,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
         painter.end()
 
     def _paint_badge(self, painter: QtGui.QPainter) -> None:
+        palette = self._palette
         font = painter.font()
         font.setPixelSize(9)
         font.setBold(True)
@@ -173,19 +181,12 @@ class FloatingAiOrb(QtWidgets.QWidget):
         width = min(metrics.horizontalAdvance(text) + 8, ORB_SIZE - 4)
         height = 14
         rect = QtCore.QRectF(ORB_SIZE - width - 2, 2, width, height)
-        badge_bg = QtGui.QColor(30, 36, 52, 230)
-        if self._attention_strength > 0.05:
-            mix = self._attention_strength
-            badge_bg = QtGui.QColor(
-                int(30 + 40 * mix),
-                int(36 + 50 * mix),
-                int(52 + 10 * mix),
-                240,
-            )
+        badge_bg = palette.badge_bg_attention if self._attention_strength > 0.05 else palette.badge_bg
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
         painter.setBrush(badge_bg)
         painter.drawRoundedRect(rect, 4, 4)
-        painter.setPen(QtGui.QColor(255, 220, 160) if self._attention_strength > 0.05 else QtGui.QColor(200, 220, 255))
+        badge_text = palette.badge_text_attention if self._attention_strength > 0.05 else palette.badge_text
+        painter.setPen(badge_text)
         painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, text)
 
     def enterEvent(self, event: QtCore.QEvent) -> None:
@@ -335,7 +336,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
         self.chat_panel.expand_requested.connect(self._on_expand)
         root.addWidget(self.chat_panel, 1)
 
-        self.setStyleSheet(FLOATING_CHAT_STYLESHEET + FLOATING_CHAT_INNER_STYLESHEET)
+        bind_ai_floating_style(self)
         self._update_context_bar_geometry()
 
     def _build_title_bar(self) -> QtWidgets.QWidget:

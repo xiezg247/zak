@@ -2,40 +2,16 @@
 
 from __future__ import annotations
 
-import html
-
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.engine import APP_NAME, AshareEngine
-from vnpy_ashare.scheduler import JobRunRecord, TaskSchedulerManager
+from vnpy_ashare.scheduler import TaskSchedulerManager
 from vnpy_ashare.ui.scheduler_jobs_widget import SchedulerJobsWidget
-from vnpy_ashare.ui.styles import SCHEDULER_PAGE_STYLESHEET, TERMINAL_STYLESHEET
-
-
-def _format_run_log_html(records: list[JobRunRecord]) -> str:
-    if not records:
-        return '<p style="color:#6a6a7a;margin:0;">暂无执行记录。</p>'
-
-    lines: list[str] = []
-    for record in records:
-        if record.skipped:
-            mark = "跳过"
-            mark_color = "#8a8a8a"
-        else:
-            mark = "成功" if record.success else "失败"
-            mark_color = "#3ddc84" if record.success else "#ff4d4f"
-        message = html.escape(record.message)
-        lines.append(
-            "<p style='margin:0 0 6px 0;line-height:1.5;'>"
-            f"<span style='color:#6a6a7a;'>{html.escape(record.finished_at)}</span> "
-            f"<span style='color:#d8d8d8;'>{html.escape(record.job_name)}</span> "
-            f"<span style='color:{mark_color};'>{mark}</span> "
-            f"<span style='color:#989898;'>{message}</span>"
-            "</p>"
-        )
-    return "".join(lines)
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.build_extra import format_scheduler_empty_html, format_scheduler_run_log_html
+from vnpy_ashare.ui.theme.tokens import ThemeTokens
 
 
 class SchedulerPageWidget(QtWidgets.QWidget):
@@ -47,10 +23,18 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self.event_engine = event_engine
         self.setObjectName("MarketRoot")
         self._scheduler: TaskSchedulerManager | None = None
+        self._scheduler_unavailable = False
         self._log_listener = self._on_scheduler_event
         self._build_ui()
-        self.setStyleSheet(TERMINAL_STYLESHEET + SCHEDULER_PAGE_STYLESHEET)
+        theme_manager().register_callback(self._on_theme_changed)
 
+    def _on_theme_changed(self, _tokens: ThemeTokens) -> None:
+        if self._scheduler is not None:
+            self._refresh_logs()
+        elif self._scheduler_unavailable:
+            self._log_view.setHtml(
+                format_scheduler_empty_html(theme_manager().tokens(), "A 股引擎未加载，无法管理定时任务。")
+            )
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(16, 16, 16, 16)
@@ -132,9 +116,13 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self._scheduler = scheduler
         self._jobs_widget.set_scheduler(scheduler)
         if scheduler is None:
-            self._log_view.setHtml('<p style="color:#6a6a7a;margin:0;">A 股引擎未加载，无法管理定时任务。</p>')
+            self._scheduler_unavailable = True
+            self._log_view.setHtml(
+                format_scheduler_empty_html(theme_manager().tokens(), "A 股引擎未加载，无法管理定时任务。")
+            )
             self._log_title.setText("执行日志")
             return
+        self._scheduler_unavailable = False
         scheduler.add_listener(self._log_listener)
         self._jobs_widget.start_monitoring()
         self._refresh_all()
@@ -144,6 +132,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         if self._scheduler is not None:
             self._scheduler.remove_listener(self._log_listener)
         self._scheduler = None
+        self._scheduler_unavailable = False
 
     def _on_scheduler_event(self, _job_id: str) -> None:
         QtCore.QTimer.singleShot(0, self, self._refresh_all)
@@ -157,6 +146,6 @@ class SchedulerPageWidget(QtWidgets.QWidget):
             return
         records = self._scheduler.list_run_log()
         self._log_title.setText(f"执行日志 · {len(records)} 条" if records else "执行日志")
-        self._log_view.setHtml(_format_run_log_html(records))
+        self._log_view.setHtml(format_scheduler_run_log_html(theme_manager().tokens(), records))
         scrollbar = self._log_view.verticalScrollBar()
         scrollbar.setValue(scrollbar.minimum())
