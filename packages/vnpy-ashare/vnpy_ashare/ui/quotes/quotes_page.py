@@ -23,6 +23,7 @@ from vnpy_ashare.data.bar_health import (
 from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
@@ -49,6 +50,11 @@ from vnpy_ashare.ui.quotes.quotes_config import (
 )
 from vnpy_ashare.ui.quotes.table_controller import TableController
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
+from vnpy_ashare.ui.quotes.watchlist_signal_controller import WatchlistSignalController
+from vnpy_ashare.ui.quotes.watchlist_signal_settings import (
+    WatchlistSignalConfig,
+    load_watchlist_signal_config,
+)
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
@@ -103,7 +109,11 @@ class QuotesPage(QtWidgets.QWidget):
         self._table = TableController(self)
         self._actions = ActionsController(self)
         self._batch_backtest = WatchlistBatchBacktestController(self)
+        self._signals = WatchlistSignalController(self)
         self._loader = DataLoaderController(self)
+        self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
+        self.signal_cache: dict[str, SignalSnapshot] = {}
+        self._signal_cache_config: WatchlistSignalConfig | None = None
         self._retired_workers: list[QtCore.QThread] = []
         self._load_generation = 0
         self._bars_generation = 0
@@ -227,6 +237,8 @@ class QuotesPage(QtWidgets.QWidget):
         self.load_stock_list()
         self._restore_splitter()
         self._update_quote_source_label()
+        if self.config.show_watchlist_signals:
+            self._signals.start()
 
     def deactivate(self) -> None:
         self._save_splitter()
@@ -240,6 +252,7 @@ class QuotesPage(QtWidgets.QWidget):
             self.chart_panel.set_active(False)
         self._stream.stop()
         self._quote_timer.stop()
+        self._signals.stop()
         for attr in ("_download_worker", "_batch_fill_worker", "_batch_gap_fill_worker"):
             worker = getattr(self, attr, None)
             if worker is not None and hasattr(worker, "request_cancel"):
@@ -389,6 +402,36 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _update_stats(self) -> None:
         self._table.update_stats()
+
+    def refresh_watchlist_signals(self) -> None:
+        self._signals.invalidate_cache()
+        self._signals.refresh(force=True)
+
+    def _on_signal_config_changed(self) -> None:
+        if not self.config.show_watchlist_signals:
+            return
+        combo = getattr(self, "signal_strategy_combo", None)
+        fast_spin = getattr(self, "signal_fast_spin", None)
+        slow_spin = getattr(self, "signal_slow_spin", None)
+        if combo is None or fast_spin is None or slow_spin is None:
+            return
+        class_name = combo.currentData()
+        if not class_name:
+            class_name = combo.currentText()
+        fast = int(fast_spin.value())
+        slow = int(slow_spin.value())
+        if slow <= fast:
+            slow = fast + 1
+            slow_spin.blockSignals(True)
+            slow_spin.setValue(slow)
+            slow_spin.blockSignals(False)
+        self._signals.apply_config(
+            WatchlistSignalConfig(
+                class_name=str(class_name),
+                fast_window=fast,
+                slow_window=slow,
+            )
+        )
 
     def _refresh_table_quotes(self) -> None:
         self._table.refresh_table_quotes()

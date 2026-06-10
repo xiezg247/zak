@@ -55,10 +55,14 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
     "screening": frozenset(
         {
             "list_screeners",
+            "list_recipes",
+            "run_recipe",
+            "propose_recipe",
             "screen_by_condition",
             "screen_by_pattern",
             "propose_screening",
             "get_screening_context",
+            "explain_screening_run",
         }
     ),
     "backtest": frozenset(

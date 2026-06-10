@@ -18,6 +18,7 @@ SCHEDULER_UI_FALLBACK_REFRESH_MS = 60_000
 MARKET_LIVE_DISPLAY_LIMIT = 100
 MARKET_QUOTE_REFRESH_MS = 15000
 WATCHLIST_QUOTE_REFRESH_MS = 3000
+WATCHLIST_SIGNAL_REFRESH_MS = 300_000
 MARKET_AUTO_REFRESH_DEFAULT = True
 MARKET_AUTO_REFRESH_SETTINGS_KEY = "quotes/market/auto_refresh_v2"
 
@@ -141,6 +142,7 @@ class PageConfig:
     show_board_filter: bool = False
     hide_quote_header: bool = False
     column_configurable: bool = False
+    show_watchlist_signals: bool = False
     search_max_width: int = 280
 
 
@@ -226,6 +228,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_diagnose_panel=False,
         show_batch_backtest_button=True,
         show_run_output_panel=True,
+        show_watchlist_signals=True,
     ),
     "本地": PageConfig(
         title="本地",

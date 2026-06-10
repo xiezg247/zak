@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 from strategies.registry import get_strategy_meta
 from strategies.signals import (
     SUPPORTED_SIGNAL_STRATEGIES,
+    build_double_ma_signal_payload,
     list_supported_signal_strategies,
     summarize_double_ma_state,
 )
@@ -23,7 +24,10 @@ from vnpy_ashare.ai.context_store import (
     set_diagnose_result,
 )
 from vnpy_ashare.ai.symbol import parse_stock_symbol
-from vnpy_ashare.screener.run_store import get_run
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.screener.run_diff import compute_run_diff
+from vnpy_ashare.screener.run_store import find_previous_run_by_recipe, get_run
+from vnpy_ashare.screener.sector_summary import attach_industry, compute_sector_distribution
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.report_sources import fetch_tushare_reports, report_fallback_enabled
 from vnpy_ashare.services.tdx_diagnose import run_tdx_diagnose
@@ -362,6 +366,133 @@ class AnalysisService(BaseService):
             "disclaimer": "策略信号来自历史规则计算，仅供研究参考，不构成买卖建议。",
         }
 
+    def signal_snapshot(
+        self,
+        symbol: str,
+        *,
+        class_name: str = "AshareDoubleMaStrategy",
+        lookback: int = 120,
+        fast_window: int = 10,
+        slow_window: int = 20,
+        scope: str = "daily",
+    ) -> SignalSnapshot | None:
+        """单标的策略信号快照（供自选页表格）。"""
+        payload = self._build_signal_payload(
+            symbol,
+            class_name=class_name,
+            lookback=lookback,
+            fast_window=fast_window,
+            slow_window=slow_window,
+            scope=scope,
+        )
+        if payload is None:
+            return None
+        return self._payload_to_signal_snapshot(payload)
+
+    def batch_strategy_signals(
+        self,
+        symbols: list[str],
+        *,
+        class_name: str = "AshareDoubleMaStrategy",
+        lookback: int = 120,
+        fast_window: int = 10,
+        slow_window: int = 20,
+        scope: str = "daily",
+    ) -> dict[str, SignalSnapshot]:
+        """批量计算策略信号（自选池 Worker 调用）。"""
+        results: dict[str, SignalSnapshot] = {}
+        for symbol in symbols:
+            payload = self._build_signal_payload(
+                symbol,
+                class_name=class_name,
+                lookback=lookback,
+                fast_window=fast_window,
+                slow_window=slow_window,
+                scope=scope,
+            )
+            if payload is None:
+                continue
+            results[payload["vt_symbol"]] = self._payload_to_signal_snapshot(payload)
+        return results
+
+    def _build_signal_payload(
+        self,
+        symbol: str,
+        *,
+        class_name: str,
+        lookback: int,
+        fast_window: int,
+        slow_window: int,
+        scope: str,
+    ) -> dict[str, Any] | None:
+        item = parse_stock_symbol(symbol)
+        if item is None:
+            return None
+        if class_name not in SUPPORTED_SIGNAL_STRATEGIES:
+            return None
+
+        lookback = max(30, min(int(lookback or 120), 250))
+        fast_window = max(2, int(fast_window or 10))
+        slow_window = max(fast_window + 1, int(slow_window or 20))
+
+        bars = self.engine.bar_service.load_bars(
+            item.symbol,
+            item.exchange,
+            scope or "daily",
+        )
+        if len(bars) < slow_window + 5:
+            return {
+                "vt_symbol": item.vt_symbol,
+                "strategy_id": class_name,
+                "as_of": "",
+                "signal": "na",
+                "signal_label": "—",
+                "signal_date": None,
+                "ref_buy_price": None,
+                "ref_sell_price": None,
+                "strength": None,
+                "reason_summary": "",
+                "reasons": (),
+                "warnings": ("本地 K 线不足，请先在数据管理页下载日 K",),
+            }
+
+        tail = bars[-lookback:] if len(bars) >= lookback else bars
+        closes = [bar.close_price for bar in tail]
+        highs = [bar.high_price for bar in tail]
+        volumes = [float(bar.volume) for bar in tail]
+        dates = [bar.datetime for bar in tail]
+
+        if SUPPORTED_SIGNAL_STRATEGIES[class_name] != "double_ma":
+            return None
+
+        return build_double_ma_signal_payload(
+            closes,
+            dates,
+            vt_symbol=item.vt_symbol,
+            strategy_id=class_name,
+            fast_window=fast_window,
+            slow_window=slow_window,
+            highs=highs,
+            volumes=volumes,
+        )
+
+    @staticmethod
+    def _payload_to_signal_snapshot(payload: dict[str, Any]) -> SignalSnapshot:
+        return SignalSnapshot(
+            vt_symbol=str(payload.get("vt_symbol") or ""),
+            strategy_id=str(payload.get("strategy_id") or ""),
+            as_of=str(payload.get("as_of") or ""),
+            signal=payload.get("signal") or "na",
+            signal_label=str(payload.get("signal_label") or "—"),
+            signal_date=payload.get("signal_date"),
+            ref_buy_price=payload.get("ref_buy_price"),
+            ref_sell_price=payload.get("ref_sell_price"),
+            strength=payload.get("strength"),
+            reason_summary=str(payload.get("reason_summary") or ""),
+            reasons=tuple(payload.get("reasons") or ()),
+            warnings=tuple(payload.get("warnings") or ()),
+        )
+
     def historical_pattern_summary(
         self,
         symbol: str,
@@ -583,6 +714,57 @@ class AnalysisService(BaseService):
             payload["batch_snapshots"] = snapshots
             payload["batch_top_n"] = batch_n
 
+        return payload
+
+    def build_screening_explanation(
+        self,
+        *,
+        run_id: str | None = None,
+        batch_top_n: int = 5,
+    ) -> dict[str, Any]:
+        """编排选股解读上下文：结果快照 + 板块分布 + 同配方 diff + 可选技术面。"""
+        payload = self.build_screening_context(run_id=run_id, batch_top_n=batch_top_n)
+        if payload.get("message") and not payload.get("count"):
+            return payload
+
+        rows: list[dict[str, Any]] = []
+        recipe_id = ""
+        if run_id:
+            record = get_run(run_id.strip())
+            if record is not None:
+                rows = list(record.rows)
+                recipe_id = str(record.config.get("recipe_id") or "")
+                if record.config.get("run_diff"):
+                    payload["run_diff"] = dict(record.config["run_diff"])
+        else:
+            screening_svc = getattr(self.engine, "screening_service", None)
+            ctx = screening_svc.get_screening_results() if screening_svc is not None else get_screening_results()
+            if ctx is not None:
+                rows = list(ctx.rows)
+
+        if rows:
+            enriched = attach_industry(rows)
+            payload["sector_distribution"] = compute_sector_distribution(enriched)
+            preview = payload.get("preview") or []
+            industry_by_vt = {str(r.get("vt_symbol") or ""): str(r.get("industry") or "") for r in enriched}
+            for item in preview:
+                if isinstance(item, dict):
+                    vt = str(item.get("vt_symbol") or "")
+                    if vt in industry_by_vt and industry_by_vt[vt]:
+                        item["industry"] = industry_by_vt[vt]
+
+        if recipe_id and "run_diff" not in payload:
+            previous = find_previous_run_by_recipe(recipe_id, exclude_run_id=run_id or "")
+            if previous is not None and rows:
+                payload["run_diff"] = compute_run_diff(rows, previous.rows)
+                payload["run_diff"]["previous_run_id"] = previous.id
+
+        payload["interpretation_hints"] = [
+            "先概括板块分布与新增/保留标的，再逐只解读 Top 标的",
+            "单票深度分析可继续调用 diagnose_stock",
+            "大盘环境可选 get_ashare_fear_greed_index",
+            "禁止编造未在结果中的指标或标的",
+        ]
         return payload
 
     def set_diagnose_result(self, payload: dict[str, Any] | None) -> None:

@@ -23,6 +23,10 @@ ALL_TOOLS = [
     _tool("screen_by_pattern"),
     _tool("propose_screening"),
     _tool("list_screeners"),
+    _tool("list_recipes"),
+    _tool("run_recipe"),
+    _tool("propose_recipe"),
+    _tool("explain_screening_run"),
     _tool("get_backtest_result"),
     _tool("diagnose_stock"),
     _tool("read_skill_file"),
@@ -37,6 +41,10 @@ def test_filter_screening_subset():
     assert "screen_by_pattern" in names
     assert "propose_screening" in names
     assert "list_screeners" in names
+    assert "list_recipes" in names
+    assert "run_recipe" in names
+    assert "propose_recipe" in names
+    assert "explain_screening_run" in names
     assert "read_skill_file" in names
     assert "get_backtest_result" not in names
 

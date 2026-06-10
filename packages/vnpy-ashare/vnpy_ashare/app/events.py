@@ -41,6 +41,16 @@ class FillScreenerRequest:
 
 
 @dataclass
+class FillRecipeRequest:
+    """AI 确认流：跳转自动选股页并选中配方（不自动运行）。"""
+
+    recipe_id: str
+    trigger_kind: str = "intraday"
+    top_n: int = 20
+    source_page: str = "AI"
+
+
+@dataclass
 class OrbAttentionRequest:
     """通知悬浮球展示轻量提示（如选股完成），不强制展开面板。"""
 

@@ -106,6 +106,48 @@ def test_screen_by_pattern_unknown():
     assert "未知形态" in result["message"]
 
 
+def test_list_recipes():
+    skill = _make_skill(MagicMock())
+    result = json.loads(skill.list_recipes(trigger_kind="intraday"))
+    assert result["count"] >= 1
+    assert any(item["recipe_id"] == "intraday_multi" for item in result["recipes"])
+
+
+def test_run_recipe_ok():
+    from vnpy_ashare.screener.runner import ScreenerRunResult
+
+    svc = MagicMock()
+    svc.run_recipe.return_value = ScreenerRunResult(
+        rows=[
+            {
+                "symbol": "600000",
+                "name": "浦发银行",
+                "vt_symbol": "600000.SSE",
+                "composite_score": 85.0,
+                "hit_reason": "动量；换手",
+                "dimensions": {"momentum": 90.0, "turnover": 80.0},
+            }
+        ],
+        condition="AI · 盘中多因子",
+        updated_at="2026-06-10",
+        total_scanned=100,
+        source="recipe",
+    )
+    skill = _make_skill(svc)
+    result = json.loads(skill.run_recipe("intraday_multi", top_n=5))
+    assert result["status"] == "ok"
+    assert result["count"] == 1
+    svc.persist_run_result.assert_called_once()
+
+
+def test_propose_recipe_intraday():
+    skill = _make_skill(MagicMock())
+    result = json.loads(skill.propose_recipe("盘中强势股多因子", confidence="high"))
+    assert result["status"] == "pending_confirm"
+    assert result["recipe_id"] == "intraday_multi"
+    assert result["draft_id"]
+
+
 def test_propose_screening_builtin():
     from unittest.mock import patch
 

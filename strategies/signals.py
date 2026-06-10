@@ -164,3 +164,361 @@ SUPPORTED_SIGNAL_STRATEGIES: dict[str, str] = {
 
 def list_supported_signal_strategies() -> list[str]:
     return sorted(SUPPORTED_SIGNAL_STRATEGIES.keys())
+
+
+def _parse_bar_date(value: str) -> date | None:
+    text = (value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.strptime(text[:10], "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _days_between(later: str, earlier: str) -> int | None:
+    end = _parse_bar_date(later)
+    start = _parse_bar_date(earlier)
+    if end is None or start is None:
+        return None
+    return (end - start).days
+
+
+def classify_double_ma_signal(
+    state: dict[str, Any],
+    *,
+    recent_days: int = 5,
+) -> Literal["buy", "sell", "hold", "na"]:
+    """双均线信号状态（与 AshareDoubleMaStrategy 交叉事件对齐）。"""
+    if state.get("error"):
+        return "na"
+
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    if fast_ma is None or slow_ma is None:
+        return "na"
+
+    as_of = str(state.get("as_of") or "")
+    last_cross = state.get("last_cross")
+    if not last_cross or not as_of:
+        return "hold"
+
+    cross_date = str(last_cross.get("date") or "")
+    elapsed = _days_between(as_of, cross_date)
+    if elapsed is None or elapsed > max(0, int(recent_days)):
+        return "hold"
+
+    cross_type = last_cross.get("type")
+    if cross_type == "golden_cross" and fast_ma > slow_ma:
+        return "buy"
+    if cross_type == "death_cross" and fast_ma < slow_ma:
+        return "sell"
+    return "hold"
+
+
+def build_double_ma_signal_payload(
+    closes: list[float],
+    dates: list[date | datetime],
+    *,
+    vt_symbol: str,
+    strategy_id: str = "AshareDoubleMaStrategy",
+    fast_window: int = 10,
+    slow_window: int = 20,
+    recent_days: int = 5,
+    highs: list[float] | None = None,
+    volumes: list[float] | None = None,
+) -> dict[str, Any]:
+    """汇总双均线 + 综合技术面信号快照（供 UI / AnalysisService 使用）。"""
+    return build_composite_signal_payload(
+        closes,
+        dates,
+        vt_symbol=vt_symbol,
+        strategy_id=strategy_id,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        recent_days=recent_days,
+        highs=highs,
+        volumes=volumes,
+    )
+
+
+def _sma_at(values: list[float], window: int) -> float | None:
+    if len(values) < window:
+        return None
+    segment = values[-window:]
+    return round(sum(segment) / len(segment), 2)
+
+
+def _volume_ratio_5d(volumes: list[float]) -> float | None:
+    if len(volumes) < 10:
+        return None
+    recent = volumes[-5:]
+    base = volumes[-10:-5]
+    avg_recent = sum(recent) / len(recent)
+    avg_base = sum(base) / len(base)
+    if avg_base <= 0:
+        return None
+    return round(avg_recent / avg_base, 2)
+
+
+def _ma_signal_score(signal: Literal["buy", "sell", "hold", "na"]) -> float:
+    return {"buy": 80.0, "sell": 80.0, "hold": 40.0, "na": 0.0}[signal]
+
+
+def _alignment_score(
+    *,
+    ma5: float | None,
+    ma10: float | None,
+    ma20: float | None,
+    last_close: float,
+) -> float:
+    if ma5 is None or ma10 is None or ma20 is None:
+        return 30.0
+    if ma5 > ma10 > ma20:
+        return 90.0 if last_close >= ma20 else 70.0
+    if ma5 < ma10 < ma20:
+        return 15.0
+    return 50.0
+
+
+def _volume_score(volume_ratio: float | None) -> float:
+    if volume_ratio is None:
+        return 50.0
+    if volume_ratio > 1.5:
+        return 80.0
+    if volume_ratio >= 0.8:
+        return 50.0
+    return 20.0
+
+
+def _pattern_score(closes: list[float], highs: list[float], lows: list[float], volumes: list[float]) -> float:
+    del highs, lows, volumes
+    return 90.0 if _is_ma_bull_pattern(closes) else 30.0
+
+
+def _is_ma_bull_pattern(closes: list[float]) -> bool:
+    """均线多头排列：MA5>MA10>MA20>MA60 且现价站上 MA20。"""
+    if len(closes) < 60:
+        return False
+    ma5 = _sma_at(closes, 5)
+    ma10 = _sma_at(closes, 10)
+    ma20 = _sma_at(closes, 20)
+    ma60 = _sma_at(closes, 60)
+    if None in (ma5, ma10, ma20, ma60):
+        return False
+    if not (ma5 > ma10 > ma20 > ma60):
+        return False
+    return closes[-1] >= ma20
+
+
+def classify_composite_signal(
+    state: dict[str, Any],
+    *,
+    ma5: float | None,
+    ma10: float | None,
+    ma20: float | None,
+    last_close: float,
+    volume_ratio: float | None,
+    recent_days: int = 5,
+) -> Literal["buy", "sell", "hold", "na"]:
+    """综合技术面信号（Phase A 双均线 + 均线排列 + 量比）。"""
+    base = classify_double_ma_signal(state, recent_days=recent_days)
+    if base == "na":
+        return "na"
+    if base in ("buy", "sell"):
+        return base
+    if ma5 is not None and ma10 is not None and ma20 is not None:
+        if ma5 > ma10 > ma20 and volume_ratio is not None and volume_ratio >= 1.2 and last_close >= ma20:
+            return "buy"
+        if ma5 < ma10 < ma20 and last_close < ma20:
+            return "sell"
+    return "hold"
+
+
+def _compute_ref_prices(
+    state: dict[str, Any],
+    highs: list[float],
+    *,
+    fast_window: int,
+    slow_window: int,
+    lookback_high: int = 20,
+) -> tuple[float | None, float | None]:
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    last_cross = state.get("last_cross") or {}
+
+    ref_buy = slow_ma
+    if last_cross.get("type") == "golden_cross":
+        cross_close = last_cross.get("close")
+        if isinstance(cross_close, (int, float)) and slow_ma is not None:
+            ref_buy = round(min(float(slow_ma), float(cross_close)), 2)
+        elif isinstance(cross_close, (int, float)):
+            ref_buy = round(float(cross_close), 2)
+
+    recent_high = max(highs[-lookback_high:]) if len(highs) >= 1 else None
+    ref_sell = fast_ma
+    if fast_ma is not None and recent_high is not None:
+        ref_sell = round(min(float(recent_high), float(fast_ma) * 1.05), 2)
+    elif recent_high is not None:
+        ref_sell = round(float(recent_high), 2)
+    return ref_buy, ref_sell
+
+
+def _build_reason_summary(
+    *,
+    signal: Literal["buy", "sell", "hold", "na"],
+    state: dict[str, Any],
+    ma5: float | None,
+    ma10: float | None,
+    ma20: float | None,
+    volume_ratio: float | None,
+    pattern_hit: bool,
+) -> str:
+    tags: list[str] = []
+    last_cross = state.get("last_cross") or {}
+    if last_cross.get("type_label"):
+        tags.append(str(last_cross["type_label"]))
+    if ma5 is not None and ma10 is not None and ma20 is not None:
+        if ma5 > ma10 > ma20:
+            tags.append("多头")
+        elif ma5 < ma10 < ma20:
+            tags.append("空头")
+    if volume_ratio is not None:
+        tags.append(f"量比{volume_ratio:.1f}")
+    if pattern_hit:
+        tags.append("均线多头")
+    if not tags:
+        labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
+        return labels[signal]
+    return "+".join(tags)
+
+
+def _compute_strength(
+    *,
+    signal: Literal["buy", "sell", "hold", "na"],
+    alignment: float,
+    volume: float,
+    pattern: float,
+) -> float:
+    score = 0.40 * _ma_signal_score(signal) + 0.25 * alignment + 0.20 * volume + 0.15 * pattern
+    return round(max(0.0, min(score, 100.0)), 1)
+
+
+def build_composite_signal_payload(
+    closes: list[float],
+    dates: list[date | datetime],
+    *,
+    vt_symbol: str,
+    strategy_id: str = "AshareDoubleMaStrategy",
+    fast_window: int = 10,
+    slow_window: int = 20,
+    recent_days: int = 5,
+    highs: list[float] | None = None,
+    volumes: list[float] | None = None,
+) -> dict[str, Any]:
+    """综合技术面信号快照。"""
+    state = summarize_double_ma_state(
+        closes,
+        dates,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+    warnings: list[str] = []
+    if state.get("error"):
+        warnings.append(str(state["error"]))
+        return {
+            "vt_symbol": vt_symbol,
+            "strategy_id": strategy_id,
+            "as_of": "",
+            "signal": "na",
+            "signal_label": "—",
+            "signal_date": None,
+            "ref_buy_price": None,
+            "ref_sell_price": None,
+            "strength": None,
+            "reason_summary": "",
+            "reasons": (),
+            "warnings": tuple(warnings),
+        }
+
+    high_series = highs if highs is not None else closes
+    vol_series = volumes if volumes is not None else []
+    last_close = round(closes[-1], 2)
+    ma5 = _sma_at(closes, 5)
+    ma10 = _sma_at(closes, 10)
+    ma20 = _sma_at(closes, 20)
+    volume_ratio = _volume_ratio_5d(vol_series) if vol_series else None
+
+    signal = classify_composite_signal(
+        state,
+        ma5=ma5,
+        ma10=ma10,
+        ma20=ma20,
+        last_close=last_close,
+        volume_ratio=volume_ratio,
+        recent_days=recent_days,
+    )
+    labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
+    last_cross = state.get("last_cross") or {}
+    signal_date = last_cross.get("date") if signal in ("buy", "sell") else None
+    ref_buy, ref_sell = _compute_ref_prices(
+        state,
+        high_series,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+
+    pattern_hit = _is_ma_bull_pattern(closes)
+
+    align_score = _alignment_score(ma5=ma5, ma10=ma10, ma20=ma20, last_close=last_close)
+    vol_score = _volume_score(volume_ratio)
+    pat_score = 90.0 if pattern_hit else 30.0
+    strength = _compute_strength(
+        signal=signal,
+        alignment=align_score,
+        volume=vol_score,
+        pattern=pat_score,
+    )
+    reason_summary = _build_reason_summary(
+        signal=signal,
+        state=state,
+        ma5=ma5,
+        ma10=ma10,
+        ma20=ma20,
+        volume_ratio=volume_ratio,
+        pattern_hit=pattern_hit,
+    )
+
+    reasons: list[str] = []
+    alignment = (state.get("current") or {}).get("alignment")
+    if alignment:
+        reasons.append(str(alignment))
+    if last_cross:
+        cross_label = last_cross.get("type_label") or last_cross.get("type")
+        cross_day = last_cross.get("date")
+        if cross_label and cross_day:
+            reasons.append(f"最近交叉：{cross_label}（{cross_day}）")
+    if reason_summary:
+        reasons.append(f"综合：{reason_summary}")
+    if ref_buy is not None:
+        reasons.append(f"参考买价：MA{slow_window} = {ref_buy}")
+    if ref_sell is not None:
+        reasons.append(f"参考卖价：MA{fast_window} = {ref_sell}")
+    reasons.append(f"强度：{strength:.0f}")
+
+    return {
+        "vt_symbol": vt_symbol,
+        "strategy_id": strategy_id,
+        "as_of": str(state.get("as_of") or ""),
+        "signal": signal,
+        "signal_label": labels[signal],
+        "signal_date": signal_date,
+        "ref_buy_price": ref_buy,
+        "ref_sell_price": ref_sell,
+        "strength": strength,
+        "reason_summary": reason_summary,
+        "reasons": tuple(reasons),
+        "warnings": tuple(warnings),
+    }

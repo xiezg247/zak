@@ -85,9 +85,14 @@ def _quote_row(row: dict[str, Any]) -> dict[str, Any]:
         "name": row.get("name", ""),
         "vt_symbol": row.get("vt_symbol", ""),
         "last_price": row.get("last_price", 0),
+        "prev_close": row.get("prev_close", 0),
+        "open_price": row.get("open_price", 0),
+        "high_price": row.get("high_price", 0),
+        "low_price": row.get("low_price", 0),
         "change_pct": row.get("change_pct", 0),
         "turnover_rate": row.get("turnover_rate", 0),
         "volume": row.get("volume", 0),
+        "amount": row.get("amount", 0),
         "source": "quote",
     }
 

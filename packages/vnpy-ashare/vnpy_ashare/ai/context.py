@@ -437,10 +437,11 @@ def _screening_prompt(intent: str, *, detail: str = "") -> str:
     extra = f" {detail}" if detail else ""
     return (
         f"请按「{intent}」在 A 股中选股。{extra}"
-        "先 list_screeners 了解终端内置方案；"
+        "先 list_screeners / list_recipes 了解方案与配方；"
+        "盘中/盘后多因子意图明确时直接 run_recipe；"
         "内置 preset 且条件明确时直接 screen_by_condition；"
         "形态选股（老鸭头/均线多头/W底/主题投资）直接 screen_by_pattern；"
-        "已保存方案或复杂条件用 propose_screening。"
+        "已保存方案或单一条件复杂时用 propose_screening；多因子自定义用 propose_recipe。"
         "结果用 Markdown 表格展示，默认 Top 20，排除 ST，注明数据来源。"
     )
 

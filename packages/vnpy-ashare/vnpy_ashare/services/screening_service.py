@@ -42,8 +42,9 @@ from vnpy_ashare.screener.presets import (
 )
 from vnpy_ashare.screener.quotes_loader import load_market_quote_rows
 from vnpy_ashare.screener.recipe import resolve_recipe
-from vnpy_ashare.screener.recipe_runner import build_reason_summary
+from vnpy_ashare.screener.recipe_runner import build_reason_summary, run_recipe
 from vnpy_ashare.screener.rules import apply_quote_preset
+from vnpy_ashare.screener.run_diff import enrich_recipe_run
 from vnpy_ashare.screener.run_store import (
     delete_run,
     get_run,
@@ -118,6 +119,15 @@ class ScreeningService(BaseService):
     def run_request(self, request: ScreenerRequest) -> ScreenerRunResult:
         return run_screener(request)
 
+    def run_recipe(
+        self,
+        recipe_id: str,
+        *,
+        top_n: int | None = None,
+        condition_prefix: str = "AI",
+    ) -> ScreenerRunResult:
+        return run_recipe(recipe_id, top_n=top_n, condition_prefix=condition_prefix)
+
     def run_pattern_screen(self, pattern: str, *, top_n: int = 20) -> ScreenerRunResult:
         pattern_id, error = resolve_pattern_screen(PatternScreenInput(pattern=pattern, top_n=top_n))
         if error:
@@ -157,13 +167,16 @@ class ScreeningService(BaseService):
         extra_config: dict[str, Any] | None = None,
     ) -> None:
         """自动/确认选股执行后统一落库（context_store + run_store）。"""
+        config: dict[str, Any] = dict(extra_config or {})
         rows = list(result.rows)
+        recipe_id = str(config.get("recipe_id") or "")
+        if recipe_id and result.source == "recipe":
+            rows = enrich_recipe_run(rows, recipe_id, config)
         self.set_screening_results(
             condition=result.condition,
             rows=rows,
             updated_at=result.updated_at,
         )
-        config: dict[str, Any] = dict(extra_config or {})
         if nl_source:
             config["nl_source"] = nl_source
         if draft_id:
@@ -305,6 +318,8 @@ def persist_scheduled_recipe_run(
         if recipe is not None
         else trigger,
     }
+    if result.source == "recipe":
+        rows = enrich_recipe_run(rows, recipe_id, config)
     _set_screening_results(
         condition=result.condition,
         rows=rows,

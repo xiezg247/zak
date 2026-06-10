@@ -45,6 +45,7 @@ class LlmSignals(QtCore.QObject):
     tool_call_started = QtCore.Signal(str)
     tool_call_finished = QtCore.Signal(str)
     screener_draft_ready = QtCore.Signal(str)
+    recipe_draft_ready = QtCore.Signal(str)
     trace_changed = QtCore.Signal()
 
 
@@ -510,6 +511,8 @@ class LlmEngine(BaseEngine):
                 result = self.skill_engine.execute_tool(name, arguments)
             if name == "propose_screening":
                 self._maybe_emit_screener_draft(result)
+            if name == "propose_recipe":
+                self._maybe_emit_recipe_draft(result)
             return enrich_tool_result(result)
         except Exception as ex:
             success = False
@@ -531,6 +534,12 @@ class LlmEngine(BaseEngine):
             self.signals.tool_call_finished.emit(name)
 
     def _maybe_emit_screener_draft(self, result: str) -> None:
+        self._maybe_emit_draft_signal(result, signal_name="screener_draft_ready")
+
+    def _maybe_emit_recipe_draft(self, result: str) -> None:
+        self._maybe_emit_draft_signal(result, signal_name="recipe_draft_ready")
+
+    def _maybe_emit_draft_signal(self, result: str, *, signal_name: str) -> None:
         try:
             payload = json.loads(result)
         except json.JSONDecodeError:
@@ -539,7 +548,9 @@ class LlmEngine(BaseEngine):
             return
         draft_id = payload.get("draft_id")
         if isinstance(draft_id, str) and draft_id:
-            self.signals.screener_draft_ready.emit(draft_id)
+            signal = getattr(self.signals, signal_name, None)
+            if signal is not None:
+                signal.emit(draft_id)
 
     def append_local_message(self, *, role: str, content: str) -> None:
         if role == "user":

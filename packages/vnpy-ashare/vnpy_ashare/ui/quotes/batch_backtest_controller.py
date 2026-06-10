@@ -77,9 +77,12 @@ class WatchlistBatchBacktestController:
             return
         begin_run_log(self._page, f"批量回测 · {len(rows)} 只")
         flow = self._get_flow()
+        signal_config = self._page.signal_config.normalized()
         flow.start(
             rows,
             source_page="自选",
             batch_source="batch_watchlist",
+            default_class_name=signal_config.class_name,
+            default_strategy_setting=signal_config.to_strategy_setting(),
             on_running=lambda running: self._page.batch_backtest_button.setDisabled(running),
         )

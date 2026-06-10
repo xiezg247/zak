@@ -29,6 +29,7 @@ from vnpy_ashare.app.events import (
 )
 from vnpy_ashare.domain.ai_actions import (
     AI_ACTION_ASK_AI,
+    AI_ACTION_FILL_RECIPE,
     AI_ACTION_FILL_SCREENER,
     AI_ACTION_OPEN_BACKTEST,
     AI_ACTION_OPEN_BATCH_BACKTEST,
@@ -38,6 +39,7 @@ from vnpy_ashare.domain.ai_actions import (
 from vnpy_ashare.ui.backtest.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
 from vnpy_ashare.ui.screener.auto_screener_page import AutoScreenerPageWidget
+from vnpy_ashare.ui.screener.recipe_confirm_dialog import show_recipe_confirm_dialog
 from vnpy_ashare.ui.screener.screener_confirm_dialog import show_screener_confirm_dialog
 from vnpy_ashare.ui.screener.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
@@ -327,6 +329,7 @@ class AshareMainWindow(MainWindow):
         if self._screener_draft_connected:
             return
         engine.signals.screener_draft_ready.connect(self._on_screener_draft_ready)
+        engine.signals.recipe_draft_ready.connect(self._on_recipe_draft_ready)
         self._screener_draft_connected = True
 
     def _on_screener_draft_ready(self, draft_id: str) -> None:
@@ -334,6 +337,12 @@ class AshareMainWindow(MainWindow):
         if not isinstance(engine, LlmEngine):
             return
         show_screener_confirm_dialog(draft_id, engine, parent=self)
+
+    def _on_recipe_draft_ready(self, draft_id: str) -> None:
+        engine = self.main_engine.get_engine(LLM_APP_NAME)
+        if not isinstance(engine, LlmEngine):
+            return
+        show_recipe_confirm_dialog(draft_id, engine, parent=self)
 
     def _open_ai_tools_dialog(self) -> None:
         llm_engine = self._get_llm_engine()
@@ -443,6 +452,15 @@ class AshareMainWindow(MainWindow):
         if widget is not None and hasattr(widget, "apply_request"):
             widget.apply_request(data)
 
+    def _handle_fill_recipe(self, data) -> None:
+        index = self._nav_index_for_key("auto_screener")
+        if index is None:
+            return
+        self._show_page(index)
+        widget = self._page_widgets.get("auto_screener")
+        if widget is not None and hasattr(widget, "apply_recipe_request"):
+            widget.apply_recipe_request(data)
+
     def _on_ask_ai_event(self, event: Event) -> None:
         if isinstance(event.data, AskAiRequest):
             self._signal_ask_ai.emit(event.data)
@@ -464,6 +482,11 @@ class AshareMainWindow(MainWindow):
         if action.kind == AI_ACTION_FILL_SCREENER:
             assert isinstance(payload, FillScreenerRequest)
             self._handle_fill_screener(payload)
+        elif action.kind == AI_ACTION_FILL_RECIPE:
+            from vnpy_ashare.app.events import FillRecipeRequest
+
+            assert isinstance(payload, FillRecipeRequest)
+            self._handle_fill_recipe(payload)
         elif action.kind == AI_ACTION_ASK_AI:
             assert isinstance(payload, AskAiRequest)
             self._handle_ask_ai(payload)

@@ -77,10 +77,20 @@ class ScreenerRecipeRunWorker(QtCore.QThread):
     finished = QtCore.Signal(object, str)
     failed = QtCore.Signal(str)
 
-    def __init__(self, recipe, recipe_id: str, parent: QtCore.QObject | None = None) -> None:
+    def __init__(
+        self,
+        recipe,
+        recipe_id: str,
+        *,
+        top_n: int | None = None,
+        condition_prefix: str = "配方",
+        parent: QtCore.QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self.recipe = recipe
         self.recipe_id = recipe_id
+        self.top_n = top_n
+        self.condition_prefix = condition_prefix
         self._cancel_requested = False
 
     def request_cancel(self) -> None:
@@ -91,7 +101,11 @@ class ScreenerRecipeRunWorker(QtCore.QThread):
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            result = run_recipe_object(self.recipe, condition_prefix="配方")
+            result = run_recipe_object(
+                self.recipe,
+                top_n=self.top_n,
+                condition_prefix=self.condition_prefix,
+            )
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return

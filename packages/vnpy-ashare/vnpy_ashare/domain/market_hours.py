@@ -63,6 +63,35 @@ def _next_session_start_after(dt: datetime) -> datetime:
     raise RuntimeError("未找到下一交易时段")
 
 
+def screen_after_collect_delay_seconds() -> int:
+    """盘中选股相对行情采集的默认延迟（秒）。"""
+    import os
+
+    raw = os.getenv("SCREEN_AFTER_COLLECT_SEC", "90").strip()
+    try:
+        return max(30, int(raw))
+    except ValueError:
+        return 90
+
+
+def next_intraday_screen_at(
+    now: datetime | None = None,
+    *,
+    collect_interval_seconds: int = 30,
+) -> datetime:
+    """建议的下次盘中选股时刻：交易时段内为「下次采集 + 延迟」，其余为下一段开盘后延迟。"""
+    current = _to_china_time(now or datetime.now(CHINA_TZ))
+    delay = timedelta(seconds=screen_after_collect_delay_seconds())
+    interval = max(collect_interval_seconds, 1)
+
+    if is_ashare_trading_session(current):
+        next_collect = next_quotes_collect_at(current, interval_seconds=interval)
+        if is_ashare_trading_session(next_collect):
+            return next_collect + delay
+        return _next_session_start_after(current) + delay
+    return _next_session_start_after(current) + delay
+
+
 def next_quotes_collect_at(
     now: datetime | None = None,
     *,

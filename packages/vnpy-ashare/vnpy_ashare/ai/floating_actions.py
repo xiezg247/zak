@@ -41,7 +41,10 @@ def _build_page_actions(data: AiContextData) -> list[QuickAction]:
                 QuickAction(
                     id="interpret_screen",
                     label="解读选股结果",
-                    prompt=(f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。请调用 get_screening_context 获取数据后解读前几只标的。"),
+                    prompt=(
+                        f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
+                        "请调用 explain_screening_run(batch_top_n=5) 获取板块分布、变动 diff 与技术面后解读。"
+                    ),
                 ),
             ]
     if data.page == "数据管理":

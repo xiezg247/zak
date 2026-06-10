@@ -67,6 +67,8 @@ class BatchBacktestFlow:
         batch_source: str = "batch_screener",
         list_strategies: Callable[[], list[str]] | None = None,
         on_running: Callable[[bool], None] | None = None,
+        default_class_name: str | None = None,
+        default_strategy_setting: dict[str, Any] | None = None,
     ) -> None:
         if self.is_running():
             return
@@ -82,9 +84,10 @@ class BatchBacktestFlow:
 
         strategies = list_strategies() if list_strategies is not None else self._default_strategies()
         defaults = load_batch_backtest_defaults()
+        class_default = (default_class_name or defaults.class_name).strip() or defaults.class_name
         dialog = ScreenerBatchBacktestConfigDialog(
             class_names=strategies,
-            default_class=defaults.class_name,
+            default_class=class_default,
             default_start=defaults.start.strftime("%Y-%m-%d"),
             default_end=defaults.end.strftime("%Y-%m-%d"),
             count=len(rows),
@@ -103,6 +106,7 @@ class BatchBacktestFlow:
                 size=defaults.size,
                 pricetick=defaults.pricetick,
                 capital=defaults.capital,
+                strategy_setting=default_strategy_setting,
             )
         except ValueError:
             page_notify(self.parent, "日期格式应为 YYYY-MM-DD", level="warning")

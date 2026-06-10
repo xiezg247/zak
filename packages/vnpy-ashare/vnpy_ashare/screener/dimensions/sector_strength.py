@@ -1,0 +1,46 @@
+"""板块维度：强势行业成分股加分。"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from vnpy_ashare.screener.data_source import load_screening_quote_snapshot
+from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
+from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.rules import _quote_row
+from vnpy_ashare.screener.sector_summary import attach_industry, top_industries_by_momentum
+
+
+def run_sector_strength(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
+    try:
+        snapshot = load_screening_quote_snapshot()
+    except MarketQuotesLoadError:
+        return [], 0
+
+    enriched = attach_industry(snapshot.rows)
+    if not enriched:
+        return [], snapshot.total
+
+    strong_industries = set(top_industries_by_momentum(enriched, top_industry_count=5, min_stocks_per_industry=3))
+    if not strong_industries:
+        return [], snapshot.total
+
+    candidates: list[dict[str, Any]] = []
+    for row in enriched:
+        industry = str(row.get("industry") or "")
+        if industry not in strong_industries:
+            continue
+        base = _quote_row(row)
+        base["industry"] = industry
+        candidates.append(base)
+
+    candidates.sort(key=lambda item: float(item.get("change_pct") or 0), reverse=True)
+    top_rows = candidates[:pool_size]
+
+    return quote_hits(
+        top_rows,
+        dimension_id="sector_strength",
+        label="板块",
+        weight=weight,
+        reason_builder=lambda row, rank: f"板块：{str(row.get('industry') or '未知')} 强势，涨幅 {float(row.get('change_pct') or 0):+.2f}%，排名第 {rank}",
+    ), snapshot.total

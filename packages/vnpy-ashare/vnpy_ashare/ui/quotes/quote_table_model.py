@@ -19,6 +19,7 @@ class QuoteCell:
     sort_key: float | str = ""
     color: str | None = None
     stock_item: StockItem | None = None
+    tooltip: str | None = None
 
 
 class QuoteTableModel(QtCore.QAbstractTableModel):
@@ -96,6 +97,7 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
         sort_key: float | str | None = None,
         color: str | None = None,
         stock_item: StockItem | None = None,
+        tooltip: str | None = None,
         replace: bool = False,
     ) -> None:
         if row < 0 or column < 0:
@@ -121,6 +123,9 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
         if stock_item is not None and cell.stock_item is not stock_item:
             cell.stock_item = stock_item
             changed_roles.append(self.StockItemRole)
+        if tooltip is not None and cell.tooltip != tooltip:
+            cell.tooltip = tooltip
+            changed_roles.append(QtCore.Qt.ItemDataRole.ToolTipRole)
 
         if changed_roles:
             top_left = self.index(row, column)
@@ -186,6 +191,8 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             return cell.stock_item
         if role == self.SortKeyRole:
             return cell.sort_key
+        if role == QtCore.Qt.ItemDataRole.ToolTipRole:
+            return cell.tooltip or None
         return None
 
     def headerData(  # noqa: N802

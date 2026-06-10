@@ -7,7 +7,7 @@ from datetime import datetime
 import pyqtgraph as pg
 from vnpy.chart import CandleItem, ChartWidget, VolumeItem
 from vnpy.trader.object import BarData
-from vnpy.trader.ui import QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.components.chart_style import apply_ashare_chart_theme, apply_candle_colors
 from vnpy_ashare.ui.quotes.ma_line_item import register_ma_items
@@ -95,6 +95,10 @@ class AshareVolumeItem(ChineseVolumeItem):
         apply_candle_colors(self)
 
 
+REF_BUY_LINE_COLOR = "#3ddc84"
+REF_SELL_LINE_COLOR = "#ff5c5c"
+
+
 class AshareChartWidget(ChartWidget):
     """A 股 K 线图：切换周期时重置视口，避免坐标与数据错位。"""
 
@@ -107,6 +111,45 @@ class AshareChartWidget(ChartWidget):
         super().__init__(parent)
         self._default_bar_count = bar_count
         self._bar_count = bar_count
+        self._ref_buy_line: pg.InfiniteLine | None = None
+        self._ref_sell_line: pg.InfiniteLine | None = None
+
+    def clear_reference_lines(self) -> None:
+        plot = self._plots.get("candle")
+        if plot is None:
+            return
+        for attr in ("_ref_buy_line", "_ref_sell_line"):
+            line = getattr(self, attr, None)
+            if line is not None:
+                plot.removeItem(line)
+                setattr(self, attr, None)
+
+    def set_reference_lines(
+        self,
+        *,
+        ref_buy: float | None = None,
+        ref_sell: float | None = None,
+    ) -> None:
+        """日 K 叠加参考买/卖价水平线。"""
+        plot = self._plots.get("candle")
+        if plot is None:
+            return
+        self.clear_reference_lines()
+        dash = QtCore.Qt.PenStyle.DashLine
+        if ref_buy is not None and ref_buy > 0:
+            self._ref_buy_line = pg.InfiniteLine(
+                angle=0,
+                pos=ref_buy,
+                pen=pg.mkPen(REF_BUY_LINE_COLOR, width=1, style=dash),
+            )
+            plot.addItem(self._ref_buy_line)
+        if ref_sell is not None and ref_sell > 0:
+            self._ref_sell_line = pg.InfiniteLine(
+                angle=0,
+                pos=ref_sell,
+                pen=pg.mkPen(REF_SELL_LINE_COLOR, width=1, style=dash),
+            )
+            plot.addItem(self._ref_sell_line)
 
     def configure_scope(self, *, minute: bool) -> None:
         """按日 K / 分 K 调整默认可见根数。"""
@@ -202,6 +245,7 @@ class AshareChartWidget(ChartWidget):
 
     def replace_history(self, history: list[BarData]) -> None:
         """全量替换 K 线，避免 BarManager 按 datetime 合并旧周期。"""
+        self.clear_reference_lines()
         history = prepare_chart_bars(history)
         self._manager.clear_all()
         for item in self._items.values():

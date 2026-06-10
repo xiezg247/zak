@@ -30,6 +30,23 @@ class VnpyAnalysisSkill(SkillTemplate):
                 },
             ),
             ToolSpec(
+                name="explain_screening_run",
+                description=("编排选股解读上下文：结果快照、板块分布、同配方与上次 diff、可选技术面 batch。解读选股结果时优先于 get_screening_context。"),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "run_id": {
+                            "type": "string",
+                            "description": "选股历史 run id（可选）",
+                        },
+                        "batch_top_n": {
+                            "type": "integer",
+                            "description": "对前 N 只（最多 10）附加技术面快照，默认 5",
+                        },
+                    },
+                },
+            ),
+            ToolSpec(
                 name="get_screening_context",
                 description=("获取选股结果（当前 session 或指定 run_id）。batch_top_n>0 时对前几只批量返回 technical_snapshot 摘要。"),
                 parameters={
@@ -101,6 +118,14 @@ class VnpyAnalysisSkill(SkillTemplate):
     def technical_snapshot(self, symbol: str, lookback: int = 60) -> str:
         svc = self._get_analysis_service()
         result = svc.technical_snapshot(symbol, lookback=int(lookback or 60))
+        return json.dumps(result, ensure_ascii=False)
+
+    def explain_screening_run(self, run_id: str = "", batch_top_n: int = 5) -> str:
+        svc = self._get_analysis_service()
+        result = svc.build_screening_explanation(
+            run_id=run_id.strip() or None,
+            batch_top_n=int(batch_top_n or 5),
+        )
         return json.dumps(result, ensure_ascii=False)
 
     def get_screening_context(self, run_id: str = "", batch_top_n: int = 0) -> str:

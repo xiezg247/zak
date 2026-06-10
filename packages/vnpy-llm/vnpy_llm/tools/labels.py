@@ -12,6 +12,7 @@ _TOOL_LABELS: dict[str, str] = {
     "list_strategy_signals": "查询策略信号",
     "historical_pattern_summary": "统计历史走势",
     "get_screening_context": "读取选股结果",
+    "explain_screening_run": "编排选股解读",
     "list_strategies": "列出可用策略",
     "get_backtest_result": "读取回测结果",
     "list_backtest_history": "查询回测历史",

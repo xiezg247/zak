@@ -178,6 +178,11 @@ class QuotesPageShell:
         page.batch_backtest_button.setEnabled(False)
         page.batch_backtest_button.setVisible(page.config.show_batch_backtest_button)
 
+        page.refresh_signals_button = QtWidgets.QPushButton("刷新信号", page)
+        page.refresh_signals_button.setObjectName("SecondaryButton")
+        page.refresh_signals_button.clicked.connect(page.refresh_watchlist_signals)
+        page.refresh_signals_button.setVisible(page.config.show_watchlist_signals)
+
         page.diagnose_button = QtWidgets.QPushButton("诊断", page)
         page.diagnose_button.clicked.connect(page._actions.run_diagnose_for_selected)
         page.diagnose_button.setEnabled(False)
@@ -260,6 +265,45 @@ class QuotesPageShell:
             toolbar.addWidget(page.backtest_button)
         if page.config.show_batch_backtest_button:
             more_actions.append(("批量回测", page.batch_backtest_button))
+        if page.config.show_watchlist_signals:
+            from strategies.registry import get_strategy_meta
+            from strategies.signals import list_supported_signal_strategies
+
+            toolbar.addWidget(_toolbar_separator())
+            toolbar.addWidget(QtWidgets.QLabel("信号"))
+            page.signal_strategy_combo = QtWidgets.QComboBox(page)
+            apply_toolbar_combo_style(page.signal_strategy_combo)
+            for class_name in list_supported_signal_strategies():
+                meta = get_strategy_meta(class_name)
+                label = meta.title if meta else class_name
+                page.signal_strategy_combo.addItem(label, class_name)
+            page.signal_strategy_combo.blockSignals(True)
+            index = page.signal_strategy_combo.findData(page.signal_config.class_name)
+            if index >= 0:
+                page.signal_strategy_combo.setCurrentIndex(index)
+            page.signal_strategy_combo.blockSignals(False)
+            page.signal_strategy_combo.currentIndexChanged.connect(page._on_signal_config_changed)
+
+            page.signal_fast_spin = QtWidgets.QSpinBox(page)
+            page.signal_fast_spin.setRange(2, 60)
+            page.signal_fast_spin.setPrefix("快 ")
+            page.signal_fast_spin.blockSignals(True)
+            page.signal_fast_spin.setValue(page.signal_config.fast_window)
+            page.signal_fast_spin.blockSignals(False)
+            page.signal_fast_spin.valueChanged.connect(page._on_signal_config_changed)
+
+            page.signal_slow_spin = QtWidgets.QSpinBox(page)
+            page.signal_slow_spin.setRange(3, 120)
+            page.signal_slow_spin.setPrefix("慢 ")
+            page.signal_slow_spin.blockSignals(True)
+            page.signal_slow_spin.setValue(page.signal_config.slow_window)
+            page.signal_slow_spin.blockSignals(False)
+            page.signal_slow_spin.valueChanged.connect(page._on_signal_config_changed)
+
+            toolbar.addWidget(page.signal_strategy_combo)
+            toolbar.addWidget(page.signal_fast_spin)
+            toolbar.addWidget(page.signal_slow_spin)
+            more_actions.append(("刷新信号", page.refresh_signals_button))
         if page.config.show_diagnose_button:
             toolbar.addWidget(page.diagnose_button)
         if page.config.column_configurable:

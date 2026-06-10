@@ -21,8 +21,10 @@ from vnpy_ashare.app.events import (
     EVENT_ORB_ATTENTION,
     AskAiRequest,
     BacktestRequest,
+    FillRecipeRequest,
     OrbAttentionRequest,
 )
+from vnpy_ashare.screener.recipe import TriggerKind
 from vnpy_ashare.screener.runner import ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.backtest.batch_backtest_flow import BatchBacktestFlow
@@ -218,6 +220,14 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self.export_btn,
             *self.recipe_panel.task_lock_widgets(),
         ]
+
+    def apply_recipe_request(self, data: FillRecipeRequest) -> None:
+        """AI 配方草案：选中配方面板，不自动运行。"""
+        trigger: TriggerKind = "intraday" if data.trigger_kind == "intraday" else "post_close"
+        self.recipe_panel.select_recipe(data.recipe_id, trigger_kind=trigger)
+        if data.top_n:
+            self.recipe_panel._top_n_spin.setValue(int(data.top_n))
+        self._append_action_log(f"已从 {data.source_page or 'AI'} 预填配方 {data.recipe_id}，请核对后试跑")
 
     def _append_action_log(self, message: str) -> None:
         if message:

@@ -109,6 +109,8 @@ def populate_screener_results_table(
                 item.setForeground(QtGui.QColor(color))
             elif key == "hit_reason":
                 item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            elif key == "diff_status" and text == "新增":
+                item.setForeground(QtGui.QColor(pct_change_color(3.0, theme_manager().tokens())))
             table.setItem(row_index, col_index, item)
 
     table.clearSelection()

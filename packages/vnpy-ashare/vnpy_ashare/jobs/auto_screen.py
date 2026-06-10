@@ -6,9 +6,13 @@ from datetime import datetime, time
 from zoneinfo import ZoneInfo
 
 from vnpy_ashare.domain.calendar import is_trading_day
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.domain.market_hours import (
+    is_ashare_trading_session,
+    next_intraday_screen_at,
+)
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.scheduler.config import load_scheduler_config
+from vnpy_ashare.screener.quote_freshness import ensure_fresh_quotes_for_screening
 from vnpy_ashare.screener.recipe import (
     RECIPE_INTRADAY_MULTI,
     RECIPE_POST_CLOSE_MULTI,
@@ -55,7 +59,7 @@ def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
 
     if job_id == "screen_intraday" and not force:
         if not is_ashare_trading_session(now):
-            nxt = next_quotes_collect_at(now, interval_seconds=60)
+            nxt = next_intraday_screen_at(now)
             return JobResult(
                 success=True,
                 skipped=True,
@@ -74,6 +78,12 @@ def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
                 skipped=True,
                 message="尚未收盘，已跳过",
             )
+
+    quote_note = ""
+    if job_id == "screen_intraday":
+        fresh, quote_note = ensure_fresh_quotes_for_screening()
+        if not fresh:
+            return JobResult(success=False, message=quote_note)
 
     try:
         result = run_recipe(recipe_id)
@@ -96,7 +106,8 @@ def run_scheduled_auto_screen(job_id: str, *, force: bool = False) -> JobResult:
         trigger=trigger,
         row_count=len(result.rows),
     )
+    suffix = f"；{quote_note}" if quote_note else ""
     return JobResult(
         success=True,
-        message=f"{summary}（扫描约 {result.total_scanned} 只）",
+        message=f"{summary}（扫描约 {result.total_scanned} 只）{suffix}",
     )

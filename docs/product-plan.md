@@ -76,7 +76,7 @@ AI 与选股不编造行情；数值来自上述数据源。工具路由见 [ai-
 |-------|------|
 | vnpy-context | 当前页面与选中标的 |
 | vnpy-data | K 线查询 |
-| vnpy-screening | 选股 |
+| vnpy-screening | 选股、多因子配方（run_recipe） |
 | vnpy-backtest | 回测结果 |
 | vnpy-watchlist | 自选 CRUD |
 | vnpy-analysis | 技术面、综合诊断 |

@@ -13,7 +13,7 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python scri
 | 券商研报 / 评级 | `diagnose_stock` 或 `mcp_tdx_tdx_wenda_quotes` | — |
 | 实时行情 / 板块 / F10 | 通达信 MCP `mcp_tdx_*` | TickFlow / Redis |
 | 财务 / 估值 / 宏观 | `tushare-data` Skill | — |
-| 选股结果解读 | `get_screening_context` | 选股页运行方案 |
+| 选股结果解读 | `explain_screening_run` / `get_screening_context` | 选股页运行方案 |
 | 回测解读 | `get_backtest_result` / `list_backtest_history` | — |
 
 ## 通达信 MCP
@@ -30,10 +30,10 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python scri
 |-------|------|
 | vnpy-context | get_quote_context |
 | vnpy-data | get_bars_summary, get_bars_data |
-| vnpy-analysis | technical_snapshot, list_strategy_signals, historical_pattern_summary |
+| vnpy-analysis | explain_screening_run, get_screening_context, technical_snapshot, list_strategy_signals, historical_pattern_summary |
 | tdx-stock-diagnose | diagnose_stock |
 | vnpy-backtest | list_strategies, get_backtest_result, list_backtest_history |
-| vnpy-screening | list_screeners, screen_by_condition, screen_by_pattern, propose_screening |
+| vnpy-screening | list_screeners, list_recipes, run_recipe, propose_recipe, screen_by_condition, screen_by_pattern, propose_screening |
 | vnpy-watchlist | get_watchlist, add_to_watchlist, remove_from_watchlist |
 | vnpy-sentiment | get_ashare_fear_greed_index |
 
@@ -41,9 +41,11 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python scri
 
 | 路径 | 工具 | 条件 |
 |------|------|------|
+| 盘中/盘后多因子 | `run_recipe` | 意图明确（如 intraday_multi） |
+| 多因子草案 | `propose_recipe` | 自定义配方、意图待确认 |
 | 自动 preset | `screen_by_condition` | 内置 preset |
 | 自动形态 | `screen_by_pattern` | 老鸭头/均线多头/W底/主题投资 |
-| 确认 | `propose_screening` | 已保存方案、复杂条件 |
+| 确认 | `propose_screening` | 已保存方案、单一条件复杂 |
 
 内置 preset：涨幅榜、换手率排行、成交量放大、自定义筛选、低 PE、中大盘、主力净流入。`top_n` 1–200，默认 20。
 

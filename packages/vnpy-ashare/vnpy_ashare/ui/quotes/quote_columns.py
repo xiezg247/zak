@@ -34,6 +34,13 @@ QUOTE_TABLE_COLUMNS: tuple[QuoteTableColumn, ...] = (
     QuoteTableColumn("open_price", "今开", True),
     QuoteTableColumn("prev_close", "昨收"),
     QuoteTableColumn("trade_time", "更新时间"),
+    QuoteTableColumn("signal", "信号"),
+    QuoteTableColumn("signal_date", "信号日"),
+    QuoteTableColumn("ref_buy_price", "参考买价", True),
+    QuoteTableColumn("ref_sell_price", "参考卖价", True),
+    QuoteTableColumn("dist_buy_pct", "距买价%", True),
+    QuoteTableColumn("signal_strength", "强度"),
+    QuoteTableColumn("signal_reason", "理由"),
 )
 
 

@@ -30,7 +30,7 @@ class AutoScreenJobConfig:
     cron_minute: int = 35
     cron_day_of_week: str = "mon-fri"
     cron_hours: str = "10,14"
-    cron_minute_intraday: int = 0
+    cron_minute_intraday: int = 2
 
 
 @dataclass
@@ -82,6 +82,7 @@ class SchedulerConfig:
             enabled=False,
             recipe_id="intraday_multi",
             cron_hours="10,14",
+            cron_minute_intraday=2,
         )
     )
     screen_post_close: AutoScreenJobConfig = field(

@@ -13,11 +13,13 @@ from vnpy_ashare.app.events import (
     AskAiRequest,
     BacktestRequest,
     BatchBacktestViewRequest,
+    FillRecipeRequest,
     FillScreenerRequest,
     OrbAttentionRequest,
 )
 
 AI_ACTION_FILL_SCREENER = "fill_screener"
+AI_ACTION_FILL_RECIPE = "fill_recipe"
 AI_ACTION_ASK_AI = "ask_ai"
 AI_ACTION_OPEN_BACKTEST = "open_backtest"
 AI_ACTION_OPEN_BATCH_BACKTEST = "open_batch_backtest"
@@ -25,6 +27,7 @@ AI_ACTION_ORB_ATTENTION = "orb_attention"
 
 AiActionKind = Literal[
     "fill_screener",
+    "fill_recipe",
     "ask_ai",
     "open_backtest",
     "open_batch_backtest",
@@ -33,6 +36,7 @@ AiActionKind = Literal[
 
 _PAYLOAD_TYPES: dict[str, type[object]] = {
     AI_ACTION_FILL_SCREENER: FillScreenerRequest,
+    AI_ACTION_FILL_RECIPE: FillRecipeRequest,
     AI_ACTION_ASK_AI: AskAiRequest,
     AI_ACTION_OPEN_BACKTEST: BacktestRequest,
     AI_ACTION_OPEN_BATCH_BACKTEST: BatchBacktestViewRequest,

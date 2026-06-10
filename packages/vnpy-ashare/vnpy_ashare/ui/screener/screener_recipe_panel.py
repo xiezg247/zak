@@ -61,7 +61,7 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
         self._pool_spin.setRange(10, 500)
         self._pool_spin.setValue(50)
         self._min_dim_spin = QtWidgets.QSpinBox()
-        self._min_dim_spin.setRange(1, 4)
+        self._min_dim_spin.setRange(1, 6)
         self._min_dim_spin.setValue(1)
         params_row.addWidget(QtWidgets.QLabel("Top N"))
         params_row.addWidget(self._top_n_spin)
@@ -121,6 +121,16 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
     def current_recipe_id(self) -> str | None:
         data = self._recipe_combo.currentData(_RECIPE_ID_ROLE)
         return str(data) if data else None
+
+    def select_recipe(self, recipe_id: str, *, trigger_kind: TriggerKind | None = None) -> None:
+        """选中指定配方（可选切换盘中/盘后 Tab）。"""
+        rid = (recipe_id or "").strip()
+        if not rid:
+            return
+        if trigger_kind is not None:
+            self._kind_tabs.setCurrentIndex(0 if trigger_kind == "intraday" else 1)
+            self._trigger_kind = trigger_kind
+        self._reload_recipe_combo(rid)
 
     def _on_kind_changed(self, index: int) -> None:
         self._trigger_kind = "intraday" if index == 0 else "post_close"

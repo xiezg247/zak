@@ -18,6 +18,9 @@ from vnpy_ashare.screener.pattern_screen import (
     resolve_pattern_screen,
 )
 from vnpy_ashare.screener.presets import get_preset
+from vnpy_ashare.screener.recipe import list_recipe_catalog
+from vnpy_ashare.screener.recipe_draft_store import save_recipe_draft
+from vnpy_ashare.screener.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
 from vnpy_ashare.screener.runner import ScreenerRequest, list_all_preset_names, run_screener
 from vnpy_skills.domain import SkillTemplate, ToolSpec
 
@@ -93,6 +96,61 @@ class VnpyScreeningSkill(SkillTemplate):
                 },
             ),
             ToolSpec(
+                name="list_recipes",
+                description="列出多因子选股配方（内置与用户保存）；可按 trigger_kind 过滤盘中/盘后",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "trigger_kind": {
+                            "type": "string",
+                            "enum": ["intraday", "post_close", ""],
+                            "description": "可选：intraday 盘中 / post_close 盘后；留空返回全部",
+                        },
+                    },
+                },
+            ),
+            ToolSpec(
+                name="run_recipe",
+                description=("直接执行多因子选股配方并返回结果（无需用户确认）。适用于盘中多因子、盘后多因子等意图明确的场景。"),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "recipe_id": {
+                            "type": "string",
+                            "description": "配方 id，如 intraday_multi、post_close_multi；可先 list_recipes",
+                        },
+                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
+                    },
+                    "required": ["recipe_id"],
+                },
+            ),
+            ToolSpec(
+                name="propose_recipe",
+                description=("解析用户多因子选股意图并生成待确认配方草案，不会直接执行。复杂或自定义配方时使用；意图明确时优先 run_recipe。"),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "intent": {"type": "string", "description": "用户原话或归纳后的选股意图"},
+                        "trigger_kind": {
+                            "type": "string",
+                            "enum": ["intraday", "post_close", ""],
+                            "description": "可选触发类型；留空则从 intent 推断",
+                        },
+                        "recipe_id": {
+                            "type": "string",
+                            "description": "指定配方 id；留空则从 intent 匹配内置配方",
+                        },
+                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
+                        "confidence": {
+                            "type": "string",
+                            "enum": ["high", "medium", "low"],
+                            "description": "解析置信度；low 时不创建草案",
+                        },
+                    },
+                    "required": ["intent"],
+                },
+            ),
+            ToolSpec(
                 name="screen_by_condition",
                 description=(
                     "直接执行内置选股方案并返回结果（无需用户确认）。适用于涨幅榜/换手率/低PE等内置 preset；已保存方案或复杂条件请改用 propose_screening。"
@@ -134,7 +192,146 @@ class VnpyScreeningSkill(SkillTemplate):
                 "screeners": names,
                 "patterns": list_pattern_screeners(),
                 "catalog": preset_catalog_for_prompt(),
-                "note": "内置 preset 用 screen_by_condition；形态用 screen_by_pattern；复杂/保存方案用 propose_screening。",
+                "note": (
+                    "盘中/盘后多因子用 run_recipe 或 propose_recipe；"
+                    "内置 preset 用 screen_by_condition；形态用 screen_by_pattern；"
+                    "复杂/保存方案用 propose_screening。"
+                ),
+                "recipes": [
+                    {
+                        "recipe_id": entry.recipe_id,
+                        "display_name": entry.display_name,
+                        "trigger_kind": entry.trigger_kind,
+                    }
+                    for entry in list_recipe_catalog()
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+    def list_recipes(self, trigger_kind: str = "") -> str:
+        kind = (trigger_kind or "").strip().lower()
+        if kind and kind not in ("intraday", "post_close"):
+            kind = ""
+        catalog = list_recipe_catalog(trigger_kind=kind or None)
+        return json.dumps(
+            {
+                "count": len(catalog),
+                "trigger_kind": kind or "all",
+                "recipes": [
+                    {
+                        "recipe_id": entry.recipe_id,
+                        "display_name": entry.display_name,
+                        "trigger_kind": entry.trigger_kind,
+                        "builtin": entry.builtin,
+                    }
+                    for entry in catalog
+                ],
+                "note": "意图明确时 run_recipe(recipe_id)；复杂条件 propose_recipe(intent)。",
+            },
+            ensure_ascii=False,
+        )
+
+    def run_recipe(self, recipe_id: str, top_n: int = 20) -> str:
+        rid = (recipe_id or "").strip()
+        if not rid:
+            return json.dumps({"status": "error", "message": "recipe_id 不能为空"}, ensure_ascii=False)
+
+        svc = self._get_screening_service()
+        try:
+            result = svc.run_recipe(rid, top_n=int(top_n or 20), condition_prefix="AI")
+        except Exception as ex:
+            return json.dumps({"status": "error", "message": str(ex)}, ensure_ascii=False)
+
+        if not result.rows:
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "recipe_id": rid,
+                    "condition": result.condition,
+                    "count": 0,
+                    "total_scanned": result.total_scanned,
+                    "message": f"配方「{result.condition}」未命中标的（已扫描约 {result.total_scanned} 只）",
+                },
+                ensure_ascii=False,
+            )
+
+        svc.persist_run_result(result, nl_source=f"recipe:{rid}")
+        return json.dumps(
+            {
+                "status": "ok",
+                "recipe_id": rid,
+                "condition": result.condition,
+                "count": len(result.rows),
+                "source": result.source,
+                "updated_at": result.updated_at,
+                "total_scanned": result.total_scanned,
+                "results": [
+                    {
+                        "symbol": r.get("symbol", ""),
+                        "name": r.get("name", ""),
+                        "vt_symbol": r.get("vt_symbol", ""),
+                        "composite_score": r.get("composite_score"),
+                        "hit_reason": r.get("hit_reason"),
+                        "dimensions": r.get("dimensions"),
+                        "change_pct": r.get("change_pct"),
+                        "turnover_rate": r.get("turnover_rate"),
+                        "volume_ratio": r.get("volume_ratio"),
+                    }
+                    for r in result.rows
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+    def propose_recipe(
+        self,
+        intent: str,
+        trigger_kind: str = "",
+        recipe_id: str = "",
+        top_n: int = 20,
+        confidence: str = "medium",
+    ) -> str:
+        intent_text = (intent or "").strip()
+        if not intent_text:
+            return json.dumps({"status": "error", "message": "intent 不能为空"}, ensure_ascii=False)
+
+        conf = confidence if confidence in ("high", "medium", "low") else "medium"
+        result = validate_and_build_recipe(
+            ProposeRecipeInput(
+                intent=intent_text,
+                trigger_kind=trigger_kind or "",
+                recipe_id=recipe_id or "",
+                top_n=top_n,
+                confidence=conf,  # type: ignore[arg-type]
+            )
+        )
+        if result.kind == "need_clarification":
+            return json.dumps(
+                {
+                    "status": "need_clarification",
+                    "questions": result.questions or [],
+                    "message": result.message,
+                },
+                ensure_ascii=False,
+            )
+        if result.kind == "error" or result.draft is None:
+            return json.dumps(
+                {"status": "error", "message": result.message or "无法生成配方草案"},
+                ensure_ascii=False,
+            )
+
+        save_recipe_draft(result.draft)
+        return json.dumps(
+            {
+                "status": "pending_confirm",
+                "draft_id": result.draft.id,
+                "recipe_id": result.draft.recipe_id,
+                "trigger_kind": result.draft.trigger_kind,
+                "summary": result.draft.summary,
+                "top_n": result.draft.top_n,
+                "confidence": result.draft.confidence,
+                "message": result.message,
             },
             ensure_ascii=False,
         )

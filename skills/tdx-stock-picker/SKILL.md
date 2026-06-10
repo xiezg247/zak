@@ -1,6 +1,6 @@
 ---
 name: tdx-stock-picker
-description: 通达信 AI 选股技能。利用通达信 MCP 提供的行情、财务、技术指标、板块、F10、研报等工具，按用户意图组合多条件筛选 A 股标的。支持强势股挖掘、低估值发现、技术突破识别、资金异动检测等场景。与终端自建选股页协同：复杂条件走 propose_screening 确认流程，轻量查询直接在对话中返回表格结果。
+description: 通达信 AI 选股技能。利用通达信 MCP 提供的行情、财务、技术指标、板块、F10、研报等工具，按用户意图组合多条件筛选 A 股标的。支持强势股挖掘、低估值发现、技术突破识别、资金异动检测等场景。与终端自建选股页协同：盘中/盘后多因子走 run_recipe / propose_recipe；单一 preset 走 screen_by_condition；复杂条件走 propose_screening 确认流程；板块探查后可 propose_recipe 固化配方。
 author: zak
 version: 1.0.0
 ---
@@ -31,7 +31,11 @@ version: 1.0.0
 | 工具 | 用途 |
 |------|------|
 | `list_screeners` | 列出所有可用选股方案 |
-| `propose_screening` | 解析意图 → 生成待确认草案（用户点击后实际执行） |
+| `list_recipes` | 列出多因子配方（盘中/盘后） |
+| `run_recipe` | 直接执行多因子配方 |
+| `propose_recipe` | 解析多因子意图 → 生成配方草案待确认 |
+| `propose_screening` | 解析单一 preset 意图 → 生成待确认草案 |
+| `explain_screening_run` | 编排选股解读（板块分布、diff、技术面） |
 | `get_quote_context` | 读取终端当前上下文（当前选中标的、自选池等） |
 
 ### 通达信 MCP 工具（由服务端动态注册）
@@ -92,7 +96,14 @@ version: 1.0.0
 
 1. TDX MCP 工具查询板块热度、PE 分布区间
 2. 根据数据调整参数（如"当前该板块 PE 中位数 25"→ 调整阈值）
-3. `propose_screening` 提交经数据验证的合理条件
+3. 多因子意图用 `propose_recipe`；单一 preset 用 `propose_screening`
+
+### 场景 D：板块轮动 + 盘中配方
+
+1. MCP 查询当日强势板块/行业
+2. `list_recipes(trigger_kind=intraday)` 确认内置配方含 `sector_strength` 维度
+3. 意图明确时 `run_recipe(recipe_id=intraday_multi)`；需用户确认时用 `propose_recipe`
+4. 结果解读调用 `explain_screening_run(batch_top_n=5)`
 
 ---
 

@@ -53,6 +53,12 @@ class RecipeCatalogEntry:
 DIMENSION_CATALOG: dict[str, dict[str, Any]] = {
     "momentum": {"label": "动量", "trigger_kinds": ("intraday", "post_close")},
     "turnover": {"label": "换手", "trigger_kinds": ("intraday",)},
+    "volume_ratio": {"label": "量比", "trigger_kinds": ("intraday",)},
+    "volume_surge": {"label": "放量", "trigger_kinds": ("intraday",)},
+    "sector_strength": {"label": "板块", "trigger_kinds": ("intraday",)},
+    "intraday_breakout": {"label": "突破", "trigger_kinds": ("intraday",)},
+    "moneyflow_intraday": {"label": "盘中资金", "trigger_kinds": ("intraday",)},
+    "sentiment_gate": {"label": "环境", "trigger_kinds": ("intraday",)},
     "moneyflow": {"label": "资金", "trigger_kinds": ("post_close",)},
     "low_pe": {"label": "估值", "trigger_kinds": ("post_close",)},
 }
@@ -63,12 +69,15 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="盘中多因子",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("momentum", "动量", 0.55),
-            DimensionSpec("turnover", "换手", 0.45),
+            DimensionSpec("momentum", "动量", 0.30),
+            DimensionSpec("volume_ratio", "量比", 0.25),
+            DimensionSpec("sector_strength", "板块", 0.20),
+            DimensionSpec("turnover", "换手", 0.15),
+            DimensionSpec("volume_surge", "放量", 0.10),
         ),
         top_n=20,
-        pool_size=50,
-        min_dimensions=1,
+        pool_size=80,
+        min_dimensions=2,
     ),
     RECIPE_POST_CLOSE_MULTI: ScreenRecipe(
         recipe_id=RECIPE_POST_CLOSE_MULTI,

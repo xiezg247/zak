@@ -58,7 +58,12 @@ def _row_from_item_quote(item: StockItem, quote: QuoteSnapshot) -> dict[str, Any
         "vt_symbol": item.vt_symbol,
         "exchange": item.exchange.value,
         "last_price": quote.last_price,
+        "prev_close": quote.prev_close,
+        "open_price": quote.open_price,
+        "high_price": quote.high_price,
+        "low_price": quote.low_price,
         "change_pct": quote.change_pct,
         "turnover_rate": quote.turnover_rate,
         "volume": quote.volume,
+        "amount": quote.amount,
     }

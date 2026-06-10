@@ -6,6 +6,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet
 from vnpy_ashare.ui.quotes.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
@@ -131,6 +132,7 @@ class ChartPanel(QtWidgets.QWidget):
         self._intraday_error: str | None = None
         self._intraday_empty = False
         self._daily_viewport_bars = WATCHLIST_DAILY_DEFAULT_BAR_COUNT
+        self._signal_snapshot: SignalSnapshot | None = None
 
         self._intraday_worker: IntradayBarsWorker | None = None
         self._minute_worker: MinuteBarsWorker | None = None
@@ -216,6 +218,17 @@ class ChartPanel(QtWidgets.QWidget):
         elif quote and quote.last_price > 0:
             self._prev_close = quote.last_price - quote.change_amount
 
+    def apply_signal_reference(self, snapshot: SignalSnapshot | None) -> None:
+        """日 K 叠加策略参考买/卖价水平线。"""
+        self._signal_snapshot = snapshot
+        if snapshot is None:
+            self.daily_chart.clear_reference_lines()
+            return
+        self.daily_chart.set_reference_lines(
+            ref_buy=snapshot.ref_buy_price,
+            ref_sell=snapshot.ref_sell_price,
+        )
+
     def load_item(self, item: StockItem | None, *, quote: QuoteSnapshot | None = None) -> None:
         is_new = item is not None and (self._item is None or (item.symbol, item.exchange) != (self._item.symbol, self._item.exchange))
         self._item = item
@@ -234,6 +247,8 @@ class ChartPanel(QtWidgets.QWidget):
         self._intraday_error = None
         self._intraday_empty = False
         if is_new:
+            self._signal_snapshot = None
+            self.daily_chart.clear_reference_lines()
             if self.tab_bar.currentIndex() == MINUTE_TAB_INDEX:
                 self._reset_minute_chart()
             else:
@@ -452,6 +467,8 @@ class ChartPanel(QtWidgets.QWidget):
             if loaded.bars:
                 self.daily_chart.replace_history(loaded.bars)
                 self._apply_daily_viewport()
+                if self._signal_snapshot is not None:
+                    self.apply_signal_reference(self._signal_snapshot)
                 self._update_hint(daily_missing=False)
             else:
                 self.daily_chart.clear_all()

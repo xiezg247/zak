@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
@@ -40,6 +40,7 @@ class BatchBacktestParams:
     size: int = ASHARE_BACKTEST_DEFAULTS["size"]
     pricetick: float = ASHARE_BACKTEST_DEFAULTS["pricetick"]
     capital: float = ASHARE_BACKTEST_DEFAULTS["capital"]
+    strategy_setting: Mapping[str, Any] | None = None
 
 
 @dataclass
@@ -183,7 +184,7 @@ def run_batch_backtests(
     if not items:
         return []
 
-    setting: dict[str, Any] = {}
+    setting: dict[str, Any] = dict(params.strategy_setting or {})
     workers = batch_backtest_max_workers(item_count=len(items))
     if workers > 1:
         tasks = [task_from_params(item, params, class_name=params.class_name, setting=setting) for item in items]

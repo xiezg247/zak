@@ -14,6 +14,7 @@ class StrategyMeta:
     scenarios: tuple[str, ...]
     anti_scenarios: tuple[str, ...]
     param_hints: tuple[tuple[str, str], ...]
+    supports_signals: bool = False
 
 
 STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
@@ -37,8 +38,14 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
             ("slow_window", "慢线周期，默认 20，需大于 fast_window"),
             ("trade_volume", "每次交易股数，100 的整数倍"),
         ),
+        supports_signals=True,
     ),
 }
+
+
+def list_signal_strategy_metas() -> list[StrategyMeta]:
+    """返回支持自选信号计算的已注册策略元数据。"""
+    return [meta for meta in STRATEGY_REGISTRY.values() if meta.supports_signals]
 
 
 def get_strategy_meta(class_name: str) -> StrategyMeta | None:

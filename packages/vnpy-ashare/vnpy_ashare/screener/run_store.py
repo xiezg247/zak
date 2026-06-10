@@ -144,6 +144,23 @@ def get_latest_run() -> ScreenerRunRecord | None:
     return runs[0] if runs else None
 
 
+def find_previous_run_by_recipe(
+    recipe_id: str,
+    *,
+    exclude_run_id: str = "",
+) -> ScreenerRunRecord | None:
+    """查找同配方的上一次运行（按 created_at 倒序，跳过 exclude_run_id）。"""
+    rid = recipe_id.strip()
+    if not rid:
+        return None
+    for record in list_runs(limit=50):
+        if exclude_run_id and record.id == exclude_run_id:
+            continue
+        if str(record.config.get("recipe_id", "")) == rid:
+            return record
+    return None
+
+
 def delete_run(run_id: str) -> bool:
     """删除运行记录；成功返回 True。"""
     with _connect() as conn:
