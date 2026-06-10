@@ -7,8 +7,8 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 
-from vnpy_llm import store
-from vnpy_llm.trace import TurnTrace, turn_from_dict, turn_to_dict
+from vnpy_llm.chat import store
+from vnpy_llm.trace.trace import TurnTrace, turn_from_dict, turn_to_dict
 
 MAX_TURNS_PER_SESSION = 50
 

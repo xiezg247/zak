@@ -6,8 +6,8 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_llm.engine import APP_NAME, LlmEngine
-from vnpy_llm.ui.panel import AiChatPanel
+from vnpy_llm.app.engine import APP_NAME, LlmEngine
+from vnpy_llm.ui.panel.chat import AiChatPanel
 
 
 class LlmManagerWidget(QtWidgets.QWidget):

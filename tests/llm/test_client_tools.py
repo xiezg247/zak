@@ -6,12 +6,12 @@ import json
 import time
 from unittest.mock import MagicMock, patch
 
-from vnpy_llm.client import (
+from vnpy_llm.chat.client import (
     _execute_tool_calls_parallel,
     complete_with_tools,
     stream_with_tools,
 )
-from vnpy_llm.config import LlmConfig
+from vnpy_llm.config.settings import LlmConfig
 
 
 def _config() -> LlmConfig:
@@ -79,7 +79,7 @@ def test_complete_with_tools_parallel_round():
         executed.append(name)
         return json.dumps({"tool": name})
 
-    with patch("vnpy_llm.client.create_openai_client", return_value=mock_client):
+    with patch("vnpy_llm.chat.client.create_openai_client", return_value=mock_client):
         content, messages = complete_with_tools(
             config,
             [{"role": "user", "content": "hi"}],
@@ -104,7 +104,7 @@ def test_stream_with_tools_yields_deltas():
     mock_client = MagicMock()
     mock_client.chat.completions.create.return_value = mock_stream
 
-    with patch("vnpy_llm.client.create_openai_client", return_value=mock_client):
+    with patch("vnpy_llm.chat.client.create_openai_client", return_value=mock_client):
         deltas = list(
             stream_with_tools(
                 config,

@@ -2,7 +2,7 @@
 
 import unittest
 
-from vnpy_llm.trace import TraceStore, preview_text
+from vnpy_llm.trace.trace import TraceStore, preview_text
 
 
 class TraceStoreTest(unittest.TestCase):

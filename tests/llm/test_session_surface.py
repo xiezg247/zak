@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_llm.session_surface import SessionSurfaceStore
+from vnpy_llm.chat.session_surface import SessionSurfaceStore
 
 
 class SessionSurfaceStoreTests(unittest.TestCase):
@@ -51,7 +51,7 @@ class LlmEngineSurfaceTests(unittest.TestCase):
         cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
     def _make_engine(self) -> object:
-        from vnpy_llm.engine import LlmEngine
+        from vnpy_llm.app.engine import LlmEngine
 
         main_engine = MagicMock()
         main_engine.engines = {}
@@ -91,7 +91,7 @@ class LlmEngineSurfaceTests(unittest.TestCase):
         from pathlib import Path
         from unittest.mock import patch
 
-        import vnpy_llm.store as store_module
+        import vnpy_llm.chat.store as store_module
 
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "chat.db"

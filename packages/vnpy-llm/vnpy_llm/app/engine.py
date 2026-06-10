@@ -12,18 +12,18 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_common.ai.protocol import AiContextData
 from vnpy_common.ai.access import get_ai_context, register_context_listener
-from vnpy_llm.client import LlmClientError, StreamCancelled, stream_chat_completion, stream_with_tools
-from vnpy_llm.config import LlmConfig, load_llm_config
-from vnpy_llm.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
-from vnpy_llm.routing import build_route_context
-from vnpy_llm.session_surface import SessionSurfaceStore, Surface
-from vnpy_llm.store import MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
-from vnpy_llm.tool_audit import log_tool_call
-from vnpy_llm.tool_labels import tool_display_name
-from vnpy_llm.tool_result import enrich_tool_result
-from vnpy_llm.tools_status import ToolsStatusSnapshot, build_tools_status
-from vnpy_llm.trace import TraceStep, TraceStore, TurnTrace, preview_text
-from vnpy_llm.trace_persistence import TracePersistence
+from vnpy_llm.chat.client import LlmClientError, StreamCancelled, stream_chat_completion, stream_with_tools
+from vnpy_llm.config.settings import LlmConfig, load_llm_config
+from vnpy_llm.routing.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
+from vnpy_llm.routing.router import build_route_context
+from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
+from vnpy_llm.chat.store import MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
+from vnpy_llm.tools.audit import log_tool_call
+from vnpy_llm.tools.labels import tool_display_name
+from vnpy_llm.tools.result import enrich_tool_result
+from vnpy_llm.tools.status import ToolsStatusSnapshot, build_tools_status
+from vnpy_llm.trace.trace import TraceStep, TraceStore, TurnTrace, preview_text
+from vnpy_llm.trace.persistence import TracePersistence
 from vnpy_mcp import McpEngine
 from vnpy_skills import SkillEngine
 

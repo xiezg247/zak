@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_llm.trace import TraceStep, TurnTrace
-from vnpy_llm.ui.pending_bubble import format_pending_html, pending_status_from_turn
+from vnpy_llm.trace.trace import TraceStep, TurnTrace
+from vnpy_llm.ui.panel.pending_bubble import format_pending_html, pending_status_from_turn
 
 
 def _turn(*steps: TraceStep) -> TurnTrace:

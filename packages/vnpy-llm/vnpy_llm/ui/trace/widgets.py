@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_llm.engine import LlmEngine
-from vnpy_llm.tool_labels import tool_display_name
-from vnpy_llm.trace import TraceStep, TurnTrace
+from vnpy_llm.app.engine import LlmEngine
+from vnpy_llm.tools.labels import tool_display_name
+from vnpy_llm.trace.trace import TraceStep, TurnTrace
 from vnpy_llm.ui.themed_styles import bind_ai_trace_style
 
 _STATUS_LABELS = {

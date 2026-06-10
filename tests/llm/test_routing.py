@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from vnpy_llm.intent import BacktestIntent, IntentAnalysis, IntentRoute, MarketEnrichment, ScreeningIntent
-from vnpy_llm.routing import (
+from vnpy_llm.routing.intent import BacktestIntent, IntentAnalysis, IntentRoute, MarketEnrichment, ScreeningIntent
+from vnpy_llm.routing.router import (
     FEAR_GREED_TOOL,
     _keyword_fallback,
     _normalize_market_enrichment,

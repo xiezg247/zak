@@ -17,9 +17,9 @@ from vnpy_common.ui.qt_helpers import (
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.orb_palette import OrbPalette, orb_palette
 from vnpy_common.ui.theme.tokens import ThemeTokens
-from vnpy_llm.engine import LlmEngine
-from vnpy_llm.ui.context_labels import orb_tooltip_text
-from vnpy_llm.ui.panel import AiChatPanel
+from vnpy_llm.app.engine import LlmEngine
+from vnpy_llm.ui.floating.context_labels import orb_tooltip_text
+from vnpy_llm.ui.panel.chat import AiChatPanel
 from vnpy_llm.ui.themed_styles import bind_ai_floating_style
 
 ORB_SIZE = 52

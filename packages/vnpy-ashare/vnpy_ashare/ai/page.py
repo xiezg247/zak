@@ -6,9 +6,9 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_llm.engine import APP_NAME, LlmEngine
-from vnpy_llm.ui.panel import AiChatPanel
-from vnpy_llm.ui.session_widgets import AiSessionSidebar
+from vnpy_llm.app.engine import APP_NAME, LlmEngine
+from vnpy_llm.ui.panel.chat import AiChatPanel
+from vnpy_llm.ui.session.widgets import AiSessionSidebar
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
 
 

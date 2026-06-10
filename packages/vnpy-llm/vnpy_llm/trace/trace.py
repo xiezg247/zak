@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from vnpy_llm.trace_persistence import TracePersistence
+    from vnpy_llm.trace.persistence import TracePersistence
 
 TraceKind = Literal["routing", "tool", "reply", "error"]
 TraceStatus = Literal["running", "ok", "error"]

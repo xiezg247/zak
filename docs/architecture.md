@@ -43,7 +43,7 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/ui/backtest/` | 回测页 |
 | `packages/vnpy-ashare/vnpy_ashare/ui/components/` | 跨页复用（chart_style、表格、任务输出） |
 | `packages/vnpy-tickflow` | TickFlow 适配 |
-| `packages/vnpy-llm` | LLM 对话 |
+| `packages/vnpy-llm` | LLM 对话（`app/`、`chat/`、`routing/`、`tools/`、`trace/`、`ui/`） |
 | `packages/vnpy-skills` | Agent Skill 引擎 |
 | `packages/vnpy-mcp` | MCP 远端工具（`mcp/mcp.json`） |
 | `packages/vnpy-common` | 路径、AI 协议、终端主题 |

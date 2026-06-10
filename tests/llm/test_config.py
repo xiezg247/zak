@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from vnpy_llm.config import load_llm_config
+from vnpy_llm.config.settings import load_llm_config
 
 
 class TestLlmConfig(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestLlmConfig(unittest.TestCase):
                 encoding="utf-8",
             )
             with patch.dict(os.environ, {}, clear=True):
-                with patch("vnpy_llm.config.Path.cwd", return_value=Path(tmp)):
+                with patch("vnpy_llm.config.settings.Path.cwd", return_value=Path(tmp)):
                     cfg = load_llm_config()
             self.assertTrue(cfg.configured)
             self.assertEqual(cfg.api_base, "https://example.com/v1")
@@ -29,8 +29,8 @@ class TestLlmConfig(unittest.TestCase):
 
     def test_not_configured_without_key(self) -> None:
         with patch.dict(os.environ, {}, clear=True):
-            with patch("vnpy_llm.config.Path.cwd", return_value=Path("/nonexistent")):
-                with patch("vnpy_llm.config.load_dotenv"):
+            with patch("vnpy_llm.config.settings.Path.cwd", return_value=Path("/nonexistent")):
+                with patch("vnpy_llm.config.settings.load_dotenv"):
                     cfg = load_llm_config()
         self.assertFalse(cfg.configured)
 

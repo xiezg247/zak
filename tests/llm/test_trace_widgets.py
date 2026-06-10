@@ -2,9 +2,9 @@
 
 import unittest
 
-from vnpy_llm.store import ChatMessage
-from vnpy_llm.trace import TraceStep, TurnTrace, map_turns_to_user_messages
-from vnpy_llm.ui.trace_widgets import format_step_line, trace_header_text
+from vnpy_llm.chat.store import ChatMessage
+from vnpy_llm.trace.trace import TraceStep, TurnTrace, map_turns_to_user_messages
+from vnpy_llm.ui.trace.widgets import format_step_line, trace_header_text
 
 
 class InlineTraceWidgetTest(unittest.TestCase):

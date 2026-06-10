@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-from vnpy_llm.tools_status import build_tools_status
+from vnpy_llm.tools.status import build_tools_status
 from vnpy_mcp.base import McpToolInfo
 from vnpy_mcp.config import (
     DEFAULT_TDX_MCP_URL,

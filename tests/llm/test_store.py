@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from vnpy_llm import store
+from vnpy_llm.chat import store
 
 
 class TestChatStore(unittest.TestCase):

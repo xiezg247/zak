@@ -7,9 +7,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from vnpy_llm import store
-from vnpy_llm.trace import TraceStore
-from vnpy_llm.trace_persistence import TracePersistence
+from vnpy_llm.chat import store
+from vnpy_llm.trace.trace import TraceStore
+from vnpy_llm.trace.persistence import TracePersistence
 
 
 class TracePersistenceTest(unittest.TestCase):

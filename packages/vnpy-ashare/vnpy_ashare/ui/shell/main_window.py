@@ -47,10 +47,10 @@ from vnpy_ashare.ui.screener.screener_confirm_dialog import show_screener_confir
 from vnpy_ashare.ui.screener.screener_page import ScreenerPageWidget
 from vnpy_ashare.ui.shell.settings_dialog import show_settings_dialog
 from vnpy_common.ui.theme import theme_manager
-from vnpy_llm.engine import APP_NAME as LLM_APP_NAME
-from vnpy_llm.engine import LlmEngine
-from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
-from vnpy_llm.ui.tools_widgets import show_ai_tools_dialog
+from vnpy_llm.app.engine import APP_NAME as LLM_APP_NAME
+from vnpy_llm.app.engine import LlmEngine
+from vnpy_llm.ui.dialogs.tool_audit import show_ai_tool_audit_dialog
+from vnpy_llm.ui.dialogs.tools import show_ai_tools_dialog
 
 _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
     "market": MarketPageWidget,

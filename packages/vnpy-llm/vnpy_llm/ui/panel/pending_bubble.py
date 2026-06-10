@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from vnpy_llm.tool_labels import tool_display_name
-from vnpy_llm.trace import TraceStep, TurnTrace
+from vnpy_llm.tools.labels import tool_display_name
+from vnpy_llm.trace.trace import TraceStep, TurnTrace
 
 SPINNER_FRAMES = ("◌", "○", "●", "○")
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 
 from vnpy_common.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS
-from vnpy_llm.ui.md_renderer import render_markdown
+from vnpy_llm.ui.panel.md_renderer import render_markdown
 
 
 class MarkdownRendererThemeTests(unittest.TestCase):

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from vnpy_llm.tool_result import enrich_tool_result, match_error_hint
+from vnpy_llm.tools.result import enrich_tool_result, match_error_hint
 
 
 class ToolResultTests(unittest.TestCase):

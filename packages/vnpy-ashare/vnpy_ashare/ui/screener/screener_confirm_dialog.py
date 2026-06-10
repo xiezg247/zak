@@ -13,7 +13,7 @@ from vnpy_ashare.screener.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft_store import cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.runner import ScreenerRunResult
 from vnpy_ashare.ui.workers import ScreenerRunWorker
-from vnpy_llm.engine import LlmEngine
+from vnpy_llm.app.engine import LlmEngine
 
 
 class ScreenerConfirmDialog(QtWidgets.QDialog):

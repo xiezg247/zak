@@ -6,9 +6,9 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
-from vnpy_llm.client import LlmClientError, create_openai_client
-from vnpy_llm.config import LlmConfig
-from vnpy_llm.intent import (
+from vnpy_llm.chat.client import LlmClientError, create_openai_client
+from vnpy_llm.config.settings import LlmConfig
+from vnpy_llm.routing.intent import (
     BacktestIntent,
     IntentAnalysis,
     IntentCategory,

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_llm.engine import LlmEngine
-from vnpy_llm.tools_status import ToolProviderState, ToolProviderStatus, ToolsStatusSnapshot
+from vnpy_llm.app.engine import LlmEngine
+from vnpy_llm.tools.status import ToolProviderState, ToolProviderStatus, ToolsStatusSnapshot
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.ui.themed_styles import bind_ai_tools_bar_style, bind_ai_tools_dialog_style
-from vnpy_llm.ui.tool_audit_dialog import show_ai_tool_audit_dialog
+from vnpy_llm.ui.dialogs.tool_audit import show_ai_tool_audit_dialog
 
 _STATE_LABELS: dict[ToolProviderState, str] = {
     "ready": "已就绪",

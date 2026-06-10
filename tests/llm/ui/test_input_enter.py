@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_llm.ui.panel import AiChatPanel, AiInputEdit
+from vnpy_llm.ui.panel.chat import AiChatPanel, AiInputEdit
 
 
 class AiInputEnterTests(unittest.TestCase):

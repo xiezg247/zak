@@ -8,8 +8,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
 
-from vnpy_llm.config import LlmConfig
-from vnpy_llm.tool_result import enrich_tool_result
+from vnpy_llm.config.settings import LlmConfig
+from vnpy_llm.tools.result import enrich_tool_result
 
 
 class LlmClientError(Exception):

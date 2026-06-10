@@ -12,9 +12,9 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtWidgets
 
 import tests._bootstrap  # noqa: F401
-from vnpy_llm.client import StreamCancelled
-from vnpy_llm.config import LlmConfig
-from vnpy_llm.engine import LlmEngine
+from vnpy_llm.chat.client import StreamCancelled
+from vnpy_llm.config.settings import LlmConfig
+from vnpy_llm.app.engine import LlmEngine
 
 
 class StreamCancelTests(unittest.TestCase):
@@ -25,7 +25,7 @@ class StreamCancelTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp_dir = tempfile.TemporaryDirectory()
         self._db_path = Path(self._tmp_dir.name) / "chat.db"
-        self._store_patcher = patch("vnpy_llm.store._chat_db_path", return_value=self._db_path)
+        self._store_patcher = patch("vnpy_llm.chat.store._chat_db_path", return_value=self._db_path)
         self._store_patcher.start()
 
         self.main_engine = MagicMock(spec=MainEngine)
@@ -68,7 +68,7 @@ class StreamCancelTests(unittest.TestCase):
             yield "不应出现"
 
         with (
-            patch("vnpy_llm.engine.stream_chat_completion", side_effect=fake_stream),
+            patch("vnpy_llm.app.engine.stream_chat_completion", side_effect=fake_stream),
             patch.object(
                 self.engine,
                 "_get_openai_tools",
@@ -111,7 +111,7 @@ class ReloadConfigTests(unittest.TestCase):
             max_tokens=2048,
             temperature=0.5,
         )
-        with patch("vnpy_llm.engine.load_llm_config", return_value=new_cfg):
+        with patch("vnpy_llm.app.engine.load_llm_config", return_value=new_cfg):
             loaded = engine.reload_config()
         self.assertEqual(loaded.model, "new-model")
         self.assertEqual(engine.config.model, "new-model")

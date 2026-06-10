@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_llm.engine import LlmEngine
-from vnpy_llm.store import ChatSession
+from vnpy_llm.app.engine import LlmEngine
+from vnpy_llm.chat.store import ChatSession
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
 
 _SESSION_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole

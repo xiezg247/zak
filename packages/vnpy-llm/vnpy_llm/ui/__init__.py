@@ -1,6 +1,6 @@
-"""LLM UI 包 barrel（AiChatPanel / LlmManagerWidget re-export）。"""
+"""LLM UI 包。"""
 
-from vnpy_llm.ui.panel import AiChatPanel
-from vnpy_llm.ui.widget import LlmManagerWidget
+from vnpy_llm.ui.panel.chat import AiChatPanel
+from vnpy_llm.ui.panel.manager_widget import LlmManagerWidget
 
 __all__ = ["AiChatPanel", "LlmManagerWidget"]
