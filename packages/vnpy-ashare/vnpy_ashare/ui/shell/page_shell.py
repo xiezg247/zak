@@ -80,7 +80,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
             self._index_timer.stop()
         worker = self._index_worker
         self._index_worker = None
-        release_thread(self._retired_workers, worker)
+        release_thread(self._retired_workers, worker, timeout_ms=0)
 
     def refresh_indices(self) -> None:
         if self.index_ticker is None or self._thread_active(self._index_worker):

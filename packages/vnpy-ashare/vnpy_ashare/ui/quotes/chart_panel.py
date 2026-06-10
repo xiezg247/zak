@@ -306,8 +306,7 @@ class ChartPanel(QtWidgets.QWidget):
             chart.clear_all()
 
     def _retire_worker(self, worker: QtCore.QThread) -> None:
-
-        release_thread(self._retired_workers, worker)
+        release_thread(self._retired_workers, worker, timeout_ms=0)
 
     def _abandon_minute_worker(self) -> None:
         worker = self._minute_worker

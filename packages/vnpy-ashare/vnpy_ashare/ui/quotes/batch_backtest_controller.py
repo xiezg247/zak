@@ -49,7 +49,7 @@ class WatchlistBatchBacktestController:
 
     def release_workers(self, retired: list[QtCore.QThread]) -> None:
         if self._flow is not None:
-            self._flow.release_worker(retired)
+            self._flow.release_worker(retired, timeout_ms=0)
 
     def collect_watchlist_rows(self) -> list[dict[str, str]]:
         page = self._page

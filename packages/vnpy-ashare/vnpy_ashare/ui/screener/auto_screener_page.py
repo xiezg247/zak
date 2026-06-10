@@ -57,6 +57,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._result_columns: list[tuple[str, str]] = []
         self._loaded_run_id: str | None = None
         self._watchlist_service = get_watchlist_service(main_engine)
+        self._active = False
 
         self._build_ui()
         self._batch_backtest_flow = BatchBacktestFlow(
@@ -204,8 +205,13 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         if message:
             self.run_output_panel.append_log(message)
 
-    def _release_worker(self, worker: QtCore.QThread | None) -> None:
-        release_thread(self._retired_workers, worker)
+    def _release_worker(
+        self,
+        worker: QtCore.QThread | None,
+        *,
+        timeout_ms: int = 3000,
+    ) -> None:
+        release_thread(self._retired_workers, worker, timeout_ms=timeout_ms)
 
     def _run_recipe(self, recipe, recipe_id: str) -> None:
         if self._recipe_worker is not None and self._recipe_worker.isRunning():
@@ -225,6 +231,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         worker = self._recipe_worker
         self._recipe_worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         summary = self._apply_result(result)
         service = self._screening_service()
         if service is not None:
@@ -249,6 +257,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         worker = self._recipe_worker
         self._recipe_worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         self.run_output_panel.fail_run(message)
 
     def _format_result_summary(
@@ -428,6 +438,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         worker = self._download_worker
         self._download_worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         self.download_btn.setDisabled(False)
         message = getattr(result, "message", str(result))
         self._append_action_log(message)
@@ -436,6 +448,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         worker = self._download_worker
         self._download_worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         self.download_btn.setDisabled(False)
         self._append_action_log(message)
 
@@ -496,17 +510,19 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._append_action_log(f"已导出：{path}")
 
     def activate(self) -> None:
+        self._active = True
         self.recipe_panel.reload()
         self.run_sidebar.refresh()
         sync_screener_page_context(self.main_engine)
 
     def deactivate(self) -> None:
+        self._active = False
         for attr in ("_recipe_worker", "_download_worker"):
             worker = getattr(self, attr, None)
             setattr(self, attr, None)
-            release_thread(self._retired_workers, worker)
+            self._release_worker(worker, timeout_ms=0)
         if self._batch_backtest_flow is not None:
-            self._batch_backtest_flow.release_worker(self._retired_workers)
+            self._batch_backtest_flow.release_worker(self._retired_workers, timeout_ms=0)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()

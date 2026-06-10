@@ -365,8 +365,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         source = data.source_page or "AI"
         self._append_action_log(f"已从 {source} 预填策略选股条件，请核对后点击「运行策略选股」")
 
-    def _release_worker(self, worker: QtCore.QThread | None) -> None:
-        release_thread(self._retired_workers, worker)
+    def _release_worker(
+        self,
+        worker: QtCore.QThread | None,
+        *,
+        timeout_ms: int = 3000,
+    ) -> None:
+        release_thread(self._retired_workers, worker, timeout_ms=timeout_ms)
 
     def _run_screening(self) -> None:
         if self._worker is not None and self._worker.isRunning():
@@ -401,6 +406,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         worker = self._worker
         self._worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         self.run_btn.setDisabled(False)
         self._results = list(result.rows)
         service = self._screening_service()
@@ -478,6 +485,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         worker = self._worker
         self._worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         self.run_btn.setDisabled(False)
         self.run_output_panel.fail_run(message)
 
@@ -547,6 +556,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         worker = self._download_worker
         self._download_worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         self.download_btn.setDisabled(False)
         message = getattr(result, "message", str(result))
         self._append_action_log(message)
@@ -557,6 +568,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         worker = self._download_worker
         self._download_worker = None
         self._release_worker(worker)
+        if not self._active:
+            return
         self.download_btn.setDisabled(False)
         self._append_action_log(message)
         QtWidgets.QMessageBox.warning(self, "下载日 K", message)
@@ -686,9 +699,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         for attr in ("_worker", "_download_worker"):
             worker = getattr(self, attr, None)
             setattr(self, attr, None)
-            release_thread(self._retired_workers, worker)
+            self._release_worker(worker, timeout_ms=0)
         if self._batch_backtest_flow is not None:
-            self._batch_backtest_flow.release_worker(self._retired_workers)
+            self._batch_backtest_flow.release_worker(self._retired_workers, timeout_ms=0)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()

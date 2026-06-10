@@ -1103,7 +1103,7 @@ class AiChatPanel(QtWidgets.QWidget):
         if final and worker is not None:
             worker.safe_stop()
         else:
-            release_thread(self._retired_workers, worker, timeout_ms=5000)
+            release_thread(self._retired_workers, worker, timeout_ms=0)
         if final:
             for retired in list(self._retired_workers):
                 if isinstance(retired, ChatWorker):
