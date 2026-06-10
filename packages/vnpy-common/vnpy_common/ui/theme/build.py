@@ -207,6 +207,44 @@ QScrollBar::add-line:vertical,
 QScrollBar::sub-line:vertical {{
     height: 0;
 }}
+QScrollBar#MarketTableScroll:vertical {{
+    background-color: {t.combo_popup_border};
+    width: 18px;
+    margin: 0;
+    border: none;
+    border-left: 1px solid {t.combo_hover_border};
+}}
+QScrollBar#MarketTableScroll::handle:vertical {{
+    background-color: {t.combo_hover_border};
+    min-height: 52px;
+    border-radius: 9px;
+    margin: 3px;
+    border: 1px solid {t.action_btn_hover_border};
+}}
+QScrollBar#MarketTableScroll::handle:vertical:hover {{
+    background-color: {t.action_btn_border};
+    border-color: {t.action_btn_hover_border};
+}}
+QScrollBar#MarketTableScroll::handle:vertical:pressed {{
+    background-color: {t.action_btn_hover_bg};
+    border-color: {t.action_btn_border};
+}}
+QScrollBar#MarketTableScroll:vertical:disabled {{
+    background-color: {t.combo_popup_border};
+}}
+QScrollBar#MarketTableScroll::handle:vertical:disabled {{
+    background-color: {t.combo_border};
+    border-color: {t.header_border};
+}}
+QScrollBar#MarketTableScroll::add-line:vertical,
+QScrollBar#MarketTableScroll::sub-line:vertical {{
+    background: none;
+    height: 0;
+}}
+QScrollBar#MarketTableScroll::add-page:vertical,
+QScrollBar#MarketTableScroll::sub-page:vertical {{
+    background: {t.panel_border};
+}}
 QScrollBar:horizontal {{
     background: {t.panel_bg};
     height: 10px;

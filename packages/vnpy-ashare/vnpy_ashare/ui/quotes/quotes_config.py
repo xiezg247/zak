@@ -6,14 +6,45 @@ from dataclasses import dataclass
 from typing import Literal
 
 MAX_DISPLAY_ROWS = 300
-MARKET_PAGE_SIZE = 50
+MARKET_PAGE_SIZE = 100
+MARKET_SCROLL_DEBOUNCE_MS = 180
+MARKET_SCROLL_LOAD_COOLDOWN_MS = 500
+MARKET_SCROLL_REFRESH_VISIBLE_BUFFER = 8
 SEARCH_DEBOUNCE_MS = 300
 STREAM_QUOTE_DEBOUNCE_MS = 150
 AI_CONTEXT_DEBOUNCE_MS = 500
 STATS_DEBOUNCE_MS = 500
 SCHEDULER_UI_FALLBACK_REFRESH_MS = 60_000
+MARKET_LIVE_DISPLAY_LIMIT = 100
 MARKET_QUOTE_REFRESH_MS = 15000
 WATCHLIST_QUOTE_REFRESH_MS = 3000
+MARKET_AUTO_REFRESH_DEFAULT = True
+MARKET_AUTO_REFRESH_SETTINGS_KEY = "quotes/market/auto_refresh_v2"
+
+
+def _coerce_settings_bool(value: object, *, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def load_market_auto_refresh_pref() -> bool:
+    from vnpy.trader.ui import QtCore
+
+    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    return _coerce_settings_bool(
+        settings.value(MARKET_AUTO_REFRESH_SETTINGS_KEY),
+        default=MARKET_AUTO_REFRESH_DEFAULT,
+    )
+
+
+def save_market_auto_refresh_pref(enabled: bool) -> None:
+    from vnpy.trader.ui import QtCore
+
+    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings.setValue(MARKET_AUTO_REFRESH_SETTINGS_KEY, enabled)
 
 
 def quote_refresh_seconds(refresh_ms: int) -> int:
@@ -50,15 +81,18 @@ def quote_refresh_hint(
     auto_refresh: bool,
     refresh_ms: int,
     quote_source: Literal["market", "watchlist"] | None = None,
+    paused_for_hours: bool = False,
 ) -> str:
     if not auto_refresh:
         return "行情不自动刷新"
+    if paused_for_hours:
+        return "非交易时段，行情暂停自动刷新"
     seconds = quote_refresh_seconds(refresh_ms)
     if quote_source == "market":
-        return f"行情每 {seconds} 秒自动刷新（Redis）"
+        return f"行情每 {seconds} 秒自动刷新（Redis，交易时段）"
     if quote_source == "watchlist":
-        return f"行情/五档 WebSocket，图表每 {seconds} 秒刷新"
-    return f"行情每 {seconds} 秒自动刷新"
+        return f"行情/五档 WebSocket，图表每 {seconds} 秒刷新（交易时段）"
+    return f"行情每 {seconds} 秒自动刷新（交易时段）"
 
 
 from vnpy_ashare.ui.quotes.quote_columns import LOCAL_TABLE_HEADERS, quote_table_headers
@@ -93,7 +127,10 @@ class PageConfig:
     show_chart_tabs: bool = False
     use_quote_stream: bool = False
     use_market_rank: bool = False
+    market_full_list: bool = False
+    market_scroll_paging: bool = False
     market_page_size: int = MARKET_PAGE_SIZE
+    market_live_display_limit: int = MARKET_LIVE_DISPLAY_LIMIT
     table_header_sortable: bool = False
     show_watchlist_move_buttons: bool = False
     show_backtest_button: bool = True
@@ -155,11 +192,15 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         require_keyword=False,
         show_add_watchlist_button=True,
         use_market_rank=True,
+        market_full_list=True,
+        market_scroll_paging=False,
         market_page_size=MARKET_PAGE_SIZE,
+        market_live_display_limit=MARKET_LIVE_DISPLAY_LIMIT,
         table_header_sortable=True,
+        auto_refresh_quotes=MARKET_AUTO_REFRESH_DEFAULT,
         quote_refresh_ms=MARKET_QUOTE_REFRESH_MS,
         quote_source="market",
-        quote_refresh_source="watchlist",  # auto-refresh 直连 TickFlow 实时行情
+        quote_refresh_source="market",
         show_kline=False,
         show_board_filter=True,
         hide_quote_header=True,

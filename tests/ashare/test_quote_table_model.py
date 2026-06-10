@@ -24,6 +24,31 @@ class QuoteTableModelTests(unittest.TestCase):
         index = model.index(0, 0)
         self.assertEqual(model.data(index), "600519")
 
+    def test_set_rows_batch(self) -> None:
+        model = QuoteTableModel()
+        model.set_headers(["代码", "名称"])
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="茅台")
+        from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
+
+        model.set_rows(
+            [
+                [QuoteCell(text="600519", stock_item=item), QuoteCell(text="茅台")],
+                [QuoteCell(text="000001"), QuoteCell(text="平安")],
+            ]
+        )
+        self.assertEqual(model.row_count(), 2)
+        self.assertEqual(model.stock_at_row(0), item)
+
+    def test_append_rows(self) -> None:
+        from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
+
+        model = QuoteTableModel()
+        model.set_headers(["代码"])
+        model.set_rows([[QuoteCell(text="600519")]])
+        model.append_rows([[QuoteCell(text="000001")]])
+        self.assertEqual(model.row_count(), 2)
+        self.assertEqual(model.data(model.index(1, 0)), "000001")
+
     def test_sort_by_sort_key(self) -> None:
         model = QuoteTableModel()
         model.set_headers(["分数"])

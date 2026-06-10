@@ -55,6 +55,25 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
                 self._rows.append([QuoteCell(cell.text, cell.sort_key, cell.color, cell.stock_item) for cell in empty_row])
         self.endResetModel()
 
+    def set_rows(self, rows: list[list[QuoteCell]]) -> None:
+        """批量替换全部行（单次 model reset，避免逐格 dataChanged）。"""
+        self.beginResetModel()
+        self._rows = [list(row) for row in rows]
+        self._ensure_row_widths()
+        self.endResetModel()
+
+    def append_rows(self, rows: list[list[QuoteCell]]) -> None:
+        """在末尾追加行（下拉分页）。"""
+        if not rows:
+            return
+        start = len(self._rows)
+        end = start + len(rows) - 1
+        self.beginInsertRows(QtCore.QModelIndex(), start, end)
+        for row in rows:
+            self._rows.append(list(row))
+        self._ensure_row_widths()
+        self.endInsertRows()
+
     def row_count(self) -> int:
         return len(self._rows)
 

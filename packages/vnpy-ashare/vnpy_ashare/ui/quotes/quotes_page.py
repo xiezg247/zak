@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from vnpy.event import EventEngine
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -47,10 +49,16 @@ from vnpy_ashare.ui.quotes.workers import (
     DownloadWorker,
     QuotesRefreshWorker,
 )
+from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.ui.quotes.quotes_config import (
+    MARKET_AUTO_REFRESH_DEFAULT,
+    MARKET_SCROLL_DEBOUNCE_MS,
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
+    quote_refresh_hint,
+    quote_refresh_seconds,
     quote_source_label,
+    save_market_auto_refresh_pref,
 )
 from vnpy_common.ui.theme import theme_manager
 
@@ -103,10 +111,26 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_page = 0
         self._market_total = 0
         self._market_board: str | None = None
+        self._market_catalog: list = []
+        self._market_catalog_quotes: dict = {}
+        self._market_catalog_loaded = False
+        self._market_updated_at: str | None = None
+        self._market_page_cache: dict = {}
+        self._market_count_cache: dict = {}
+        self._market_loading_more = False
+        self._market_load_mode = "rank"
+        self._market_scroll_blocked = False
+        self._market_last_load_more_at = 0.0
         self._apply_default_table_sort = False
+        self._market_table_host = None
+        self._market_matched: list[StockItem] = []
+        self._market_sort_column: str | None = "change_pct"
+        self._market_sort_ascending = False
+        self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
 
         self._load_worker: QtCore.QThread | None = None
         self._market_worker: QtCore.QThread | None = None
+        self._prefetch_worker: QtCore.QThread | None = None
         self._sync_worker: QtCore.QThread | None = None
         self._bars_worker: BarsLoadWorker | None = None
         self._download_worker: DownloadWorker | None = None
@@ -141,8 +165,18 @@ class QuotesPage(QtWidgets.QWidget):
         self._search_timer.timeout.connect(self.apply_filter)
 
         self._quote_timer = QtCore.QTimer(self)
-        self._quote_timer.setInterval(self.config.quote_refresh_ms)
+        self._quote_timer.setSingleShot(True)
         self._quote_timer.timeout.connect(self.refresh_quotes)
+
+        self._market_scroll_timer = QtCore.QTimer(self)
+        self._market_scroll_timer.setSingleShot(True)
+        self._market_scroll_timer.setInterval(MARKET_SCROLL_DEBOUNCE_MS)
+        self._market_scroll_timer.timeout.connect(self._check_market_scroll_load)
+
+        self._market_cache_sync_timer = QtCore.QTimer(self)
+        self._market_cache_sync_timer.setSingleShot(True)
+        self._market_cache_sync_timer.setInterval(400)
+        self._market_cache_sync_timer.timeout.connect(self._loader.flush_market_cache_sync)
 
         self._init_ui()
         theme_manager().register_callback(self._on_theme_changed)
@@ -194,6 +228,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._save_splitter()
         self._save_column_config()
         self._active = False
+        self._load_generation += 1
         self._bars_generation += 1
         self._depth_generation += 1
         self._gap_generation += 1
@@ -204,6 +239,7 @@ class QuotesPage(QtWidgets.QWidget):
         for attr in (
             "_load_worker",
             "_market_worker",
+            "_prefetch_worker",
             "_sync_worker",
             "_bars_worker",
             "_download_worker",
@@ -214,7 +250,7 @@ class QuotesPage(QtWidgets.QWidget):
             "_depth_worker",
             "_diagnose_worker",
         ):
-            self._wait_worker_release(attr)
+            self._wait_worker_release(attr, timeout_ms=0)
         self._batch_backtest.release_workers(self._retired_workers)
 
     def _splitter_settings_key(self) -> str:
@@ -285,8 +321,48 @@ class QuotesPage(QtWidgets.QWidget):
     def _refresh_market_clicked(self) -> None:
         self._loader.refresh_market_clicked()
 
-    def load_market_page(self, *, quiet: bool = False) -> None:
-        self._loader.load_market_page(quiet=quiet)
+    def load_market_page(self, *, quiet: bool = False, append: bool = False) -> None:
+        self._loader.load_market_page(quiet=quiet, append=append)
+
+    def _on_market_scroll(self, _value: int) -> None:
+        if not self.config.market_scroll_paging or self._market_scroll_blocked:
+            return
+        self._market_scroll_timer.start()
+
+    def _check_market_scroll_load(self) -> None:
+        if not self.config.market_scroll_paging or self._market_scroll_blocked:
+            return
+        bar = self.market_table.verticalScrollBar()
+        if bar.maximum() <= 0:
+            return
+        if bar.value() >= bar.maximum() - 120:
+            self._loader.try_load_more_market()
+
+    def _schedule_market_cache_sync(self) -> None:
+        if self.config.use_market_rank:
+            self._market_cache_sync_timer.start()
+
+    def _market_quote_refresh_paused(self) -> bool:
+        """滚动加载中暂停定时行情刷新，避免与追加渲染争抢主线程。"""
+        return (
+            self._market_scroll_blocked
+            or self._market_loading_more
+            or self._market_scroll_timer.isActive()
+            or self._thread_active(self._market_worker)
+        )
+
+    def load_market_full(self, *, quiet: bool = False) -> None:
+        self._loader.load_market_full(quiet=quiet)
+
+    def _show_market_loading(self, text: str) -> None:
+        host = self._market_table_host
+        if host is not None:
+            host.show_loading(text)
+
+    def _hide_market_loading(self) -> None:
+        host = self._market_table_host
+        if host is not None:
+            host.hide_loading()
 
     def load_stock_list(self) -> None:
         self._loader.load_stock_list()
@@ -329,6 +405,79 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _emit_ai_context(self) -> None:
         self._actions.emit_ai_context()
+
+    def market_auto_refresh_enabled(self) -> bool:
+        if self.config.use_market_rank:
+            return self._market_auto_refresh
+        return self.config.auto_refresh_quotes
+
+    def market_uses_client_pagination(self) -> bool:
+        return (
+            self.config.use_market_rank
+            and self.market_auto_refresh_enabled()
+            and self._market_catalog_loaded
+        )
+
+    def apply_market_page_view(self) -> None:
+        if self.market_uses_client_pagination():
+            self._table.apply_market_display()
+        else:
+            self.load_market_page()
+
+    def quote_auto_refresh_enabled(self) -> bool:
+        if not self.config.quote_source:
+            return False
+        return self.market_auto_refresh_enabled()
+
+    def quote_auto_refresh_paused_for_hours(self) -> bool:
+        return self.quote_auto_refresh_enabled() and not is_ashare_trading_session()
+
+    def schedule_quote_auto_refresh(self) -> None:
+        """按交易时段调度下一次自动刷新（非交易时段休眠至下一段开盘）。"""
+        if not self._active or not self.quote_auto_refresh_enabled():
+            self._quote_timer.stop()
+            self._update_refresh_hint_label()
+            return
+
+        now = datetime.now(CHINA_TZ)
+        interval_sec = quote_refresh_seconds(self.config.quote_refresh_ms)
+        next_at = next_quotes_collect_at(now, interval_seconds=interval_sec)
+        delay_ms = max(int((next_at - now).total_seconds() * 1000), 1)
+        self._quote_timer.setInterval(delay_ms)
+        self._quote_timer.start()
+        self._update_refresh_hint_label()
+
+    def _on_market_auto_refresh_toggled(self, checked: bool) -> None:
+        self._market_auto_refresh = checked
+        save_market_auto_refresh_pref(checked)
+        self._update_refresh_hint_label()
+        self._market_page = 0
+        self._market_page_cache.clear()
+        self._pagination.set_visible()
+        if checked:
+            self._market_catalog_loaded = False
+            self.load_market_page()
+            self._loader.load_market_full(quiet=True)
+            if is_ashare_trading_session():
+                self.refresh_quotes()
+            self.schedule_quote_auto_refresh()
+        else:
+            self._quote_timer.stop()
+            self.load_market_full()
+
+    def _update_refresh_hint_label(self) -> None:
+        label = getattr(self, "refresh_hint_label", None)
+        if label is None:
+            return
+        auto_refresh = self.quote_auto_refresh_enabled()
+        label.setText(
+            quote_refresh_hint(
+                auto_refresh=auto_refresh,
+                refresh_ms=self.config.quote_refresh_ms,
+                quote_source=self.config.quote_source,
+                paused_for_hours=self.quote_auto_refresh_paused_for_hours(),
+            )
+        )
 
     def _update_quote_source_label(self) -> None:
         label = getattr(self, "quote_source_label", None)
@@ -516,7 +665,7 @@ class QuotesPage(QtWidgets.QWidget):
     def _run_download(self, *, mode: str, action_label: str) -> None:
         self._local.run_download(mode=mode, action_label=action_label)
 
-    def _set_busy(self, busy: bool) -> None:
+    def _set_busy(self, busy: bool, *, lock_table: bool = True) -> None:
         self.search_edit.setEnabled(not busy)
         if self.config.use_local_table:
             self.local_period_combo.setEnabled(not busy)
@@ -526,7 +675,7 @@ class QuotesPage(QtWidgets.QWidget):
             self.refresh_quotes_button.setEnabled(not busy)
         if self.config.show_sync_button:
             self.sync_button.setEnabled(not busy)
-        if self.config.use_market_rank:
+        if self.config.use_market_rank and not self.config.market_full_list:
             self._pagination.update_busy_state(busy)
         if busy:
             if self.config.show_download_button:
@@ -550,4 +699,5 @@ class QuotesPage(QtWidgets.QWidget):
                 self.move_watchlist_down_button.setEnabled(False)
         else:
             self._update_action_buttons()
-        self.market_table.setEnabled(not busy)
+        if lock_table:
+            self.market_table.setEnabled(not busy)

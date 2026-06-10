@@ -21,8 +21,11 @@ from vnpy_ashare.data.bar_access import (
     load_period_bars,
     load_scope_bars,
     load_universe_page,
+    load_universe_rows,
+    load_universe_slice,
     search_universe,
 )
+from vnpy_ashare.domain.models import parse_tickflow_symbol
 from vnpy_ashare.data.bar_health import BarMeta, inspect_bar_gaps
 from vnpy_ashare.data.bars import (
     default_minute_download_start,
@@ -56,6 +59,15 @@ class MarketPageResult:
     mode: str
     updated_at: str | None = None
     board: str | None = None
+
+
+@dataclass
+class MarketFullResult:
+    """市场页全量加载结果（涨幅榜序 + Redis 行情）。"""
+
+    items: list[StockItem]
+    quotes: dict[str, QuoteSnapshot]
+    updated_at: str | None = None
 
 
 @dataclass
@@ -458,7 +470,7 @@ class DepthRefreshWorker(QtCore.QThread):
 
 
 class MarketPageLoadWorker(QtCore.QThread):
-    """市场页分页：universe 列表 + Redis 行情。"""
+    """市场页分页：Redis 涨幅榜或 universe 列表 + 行情。"""
 
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
@@ -470,12 +482,14 @@ class MarketPageLoadWorker(QtCore.QThread):
         page: int,
         page_size: int,
         board: str | None = None,
+        cached_total: int | None = None,
     ) -> None:
         super().__init__()
         self.keyword = keyword.strip()
         self.page = max(page, 0)
         self.page_size = page_size
         self.board = board if board and board != "全部" else None
+        self.cached_total = cached_total
 
     def run(self) -> None:
         try:
@@ -493,12 +507,23 @@ class MarketPageLoadWorker(QtCore.QThread):
                 items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "search"
+            elif self.board is None:
+                items, quotes, total = provider.get_rank_page(offset, self.page_size)
+                mode = "rank"
             else:
-                rows, total = load_universe_page(
-                    offset=offset,
-                    limit=self.page_size,
-                    board=self.board,
-                )
+                if self.cached_total is not None:
+                    total = self.cached_total
+                    rows = load_universe_slice(
+                        offset=offset,
+                        limit=self.page_size,
+                        board=self.board,
+                    )
+                else:
+                    rows, total = load_universe_page(
+                        offset=offset,
+                        limit=self.page_size,
+                        board=self.board,
+                    )
                 items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in rows]
                 quotes = provider.get_quotes(items)
                 mode = "list"
@@ -513,6 +538,63 @@ class MarketPageLoadWorker(QtCore.QThread):
                     mode=mode,
                     updated_at=updated_at,
                     board=self.board,
+                )
+            )
+        except Exception as ex:
+            self.failed.emit(str(ex))
+
+
+class MarketFullLoadWorker(QtCore.QThread):
+    """市场页全量：Redis 涨幅榜 + 全量行情（无榜时回退 universe）。"""
+
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def run(self) -> None:
+        try:
+            provider = get_redis_provider()
+            updated_at: str | None = provider.updated_at()
+            store = provider._store
+            tf_symbols = store.list_all_rank_symbols()
+
+            name_map = {
+                (symbol, exchange): name
+                for symbol, exchange, name in load_universe_rows()
+            }
+
+            if tf_symbols:
+                quotes = store.get_quotes(tf_symbols)
+                items: list[StockItem] = []
+                for tf_symbol in tf_symbols:
+                    quote = quotes.get(tf_symbol)
+                    item = parse_tickflow_symbol(
+                        tf_symbol,
+                        quote.name if quote and quote.name else "",
+                    )
+                    if item is None:
+                        continue
+                    fallback_name = name_map.get((item.symbol, item.exchange), "")
+                    if fallback_name and not item.name:
+                        item = StockItem(symbol=item.symbol, exchange=item.exchange, name=fallback_name)
+                    items.append(item)
+            else:
+                items = [
+                    StockItem(symbol=symbol, exchange=exchange, name=name)
+                    for symbol, exchange, name in load_universe_rows()
+                ]
+                quotes = provider.get_quotes(items)
+                items.sort(
+                    key=lambda stock: quotes.get(stock.tickflow_symbol).change_pct
+                    if quotes.get(stock.tickflow_symbol) is not None
+                    else float("-inf"),
+                    reverse=True,
+                )
+
+            self.finished.emit(
+                MarketFullResult(
+                    items=items,
+                    quotes=quotes,
+                    updated_at=updated_at,
                 )
             )
         except Exception as ex:

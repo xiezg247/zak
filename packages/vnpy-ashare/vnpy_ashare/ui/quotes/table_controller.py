@@ -13,8 +13,13 @@ from vnpy_ashare.data.bar_health import (
     list_status,
     status_label,
 )
+from vnpy_ashare.domain.board import matches_board
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.quote_time import format_batch_updated_at
 from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.ui.quotes.market_display import slice_market_display, sort_market_items
+from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
 from vnpy_ashare.ui.quotes.quote_columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
@@ -24,12 +29,14 @@ from vnpy_ashare.ui.quotes.quote_columns import (
 from vnpy_ashare.ui.quotes.quotes_config import (
     ALL_TAIL_COLUMNS,
     DEFAULT_WATCHLIST_COLUMNS,
+    MARKET_SCROLL_REFRESH_VISIBLE_BUFFER,
     MARKET_VISIBLE_COLUMNS,
     MAX_DISPLAY_ROWS,
     STATS_DEBOUNCE_MS,
 )
 from vnpy_common.ui.theme import theme_manager
-from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
+from vnpy_common.ui.theme.market_colors import MarketColors, market_colors
+from vnpy_common.ui.theme.tokens import ThemeTokens
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
@@ -168,7 +175,26 @@ class TableController:
             return
 
         if page.config.use_market_rank:
+            if page.market_auto_refresh_enabled():
+                page._market_page = 0
+                page._market_page_cache.clear()
+                page._pagination.set_visible()
+                if page.market_uses_client_pagination():
+                    self.filter_market_display()
+                else:
+                    page.load_market_page()
+                return
+            if page.config.market_full_list:
+                page._pagination.set_visible(False)
+                if page._market_catalog_loaded:
+                    self.filter_market_display()
+                else:
+                    page.load_market_full()
+                return
             page._market_page = 0
+            page._market_page_cache.clear()
+            page._market_loading_more = False
+            page._market_last_load_more_at = 0.0
             page.load_market_page()
             return
 
@@ -185,8 +211,9 @@ class TableController:
         page.display_stocks = matched[:MAX_DISPLAY_ROWS]
         self.render_table()
         if page.config.auto_refresh_quotes:
-            page.refresh_quotes()
-            page._quote_timer.start()
+            if is_ashare_trading_session():
+                page.refresh_quotes()
+            page.schedule_quote_auto_refresh()
         else:
             page._quote_timer.stop()
 
@@ -214,6 +241,127 @@ class TableController:
         else:
             page.status_label.setText(f"{page.page_name}  匹配 {len(matched)} 只{extra}")
 
+    def filter_market_display(self) -> None:
+        """全量市场列表：内存筛选板块与关键词。"""
+        page = self._p
+        keyword = page.search_edit.text().strip().lower()
+        board = page._market_board
+        matched: list[StockItem] = []
+        for item in page._market_catalog:
+            if not matches_board(item.symbol, board):
+                continue
+            if keyword and keyword not in item.search_key:
+                continue
+            matched.append(item)
+
+        page._market_matched = matched
+        self.apply_market_display()
+
+    def apply_market_display(self) -> None:
+        """对筛选结果全量排序，再按模式切片展示。"""
+        page = self._p
+        sorted_items = self._sort_market_items(page._market_matched)
+        page._market_total = len(sorted_items)
+        page.display_stocks = slice_market_display(
+            sorted_items,
+            live_mode=page.market_auto_refresh_enabled(),
+            page=page._market_page,
+            page_size=page.config.market_page_size,
+            live_display_limit=page.config.market_live_display_limit,
+        )
+
+        page._apply_default_table_sort = False
+        self.render_table()
+        if page.market_auto_refresh_enabled():
+            page.schedule_quote_auto_refresh()
+        else:
+            page._quote_timer.stop()
+
+        page.status_label.setText(self._format_market_status(len(sorted_items)))
+        page._update_quote_source_label()
+        if page.market_auto_refresh_enabled():
+            page._pagination.set_visible()
+            page._pagination.update_controls()
+        else:
+            page._pagination.set_visible(False)
+            page._pagination.update_controls()
+
+    def on_market_header_clicked(self, section: int) -> None:
+        page = self._p
+        if page.market_auto_refresh_enabled() and not page._market_catalog_loaded:
+            if section < 0 or section >= len(self.visible_columns):
+                return
+            col_key = self.visible_columns[section]
+            if page._market_sort_column == col_key:
+                page._market_sort_ascending = not page._market_sort_ascending
+            else:
+                page._market_sort_column = col_key
+                page._market_sort_ascending = True
+            page._market_page = 0
+            page.load_market_full(quiet=False)
+            return
+        if section < 0 or section >= len(self.visible_columns):
+            return
+        col_key = self.visible_columns[section]
+        if page._market_sort_column == col_key:
+            page._market_sort_ascending = not page._market_sort_ascending
+        else:
+            page._market_sort_column = col_key
+            page._market_sort_ascending = True
+        page._market_page = 0
+        self._sync_market_sort_indicator()
+        self.apply_market_display()
+
+    def _sync_market_sort_indicator(self) -> None:
+        page = self._p
+        col_key = page._market_sort_column
+        if not col_key or col_key not in self.visible_columns:
+            return
+        section = self.visible_columns.index(col_key)
+        order = (
+            QtCore.Qt.SortOrder.AscendingOrder
+            if page._market_sort_ascending
+            else QtCore.Qt.SortOrder.DescendingOrder
+        )
+        self._view().horizontalHeader().setSortIndicator(section, order)
+
+    def _sort_market_items(self, items: list[StockItem]) -> list[StockItem]:
+        page = self._p
+        return sort_market_items(
+            items,
+            sort_column=page._market_sort_column,
+            ascending=page._market_sort_ascending,
+            catalog=page._market_catalog,
+            quote_map=page.quote_map,
+            sort_key_fn=self._quote_sort_key,
+        )
+
+    def _format_market_status(self, matched_count: int) -> str:
+        page = self._p
+        keyword = page.search_edit.text().strip()
+        board = page._market_board
+        catalog_count = len(page._market_catalog)
+        batch_time = format_batch_updated_at(page._market_updated_at)
+
+        if page.market_auto_refresh_enabled():
+            page_size = max(page.config.market_page_size, 1)
+            page_count = max((matched_count + page_size - 1) // page_size, 1)
+            current = min(page._market_page + 1, page_count)
+            if keyword or board:
+                status = f"筛选 {matched_count} 只，排序后第 {current}/{page_count} 页（全市场 {catalog_count} 只）"
+            else:
+                status = f"全市场 {matched_count} 只，排序后第 {current}/{page_count} 页"
+        elif keyword or board:
+            status = f"筛选 {matched_count} 只（全市场 {catalog_count} 只）"
+        else:
+            status = f"共 {catalog_count} 只"
+
+        if batch_time:
+            status += f"，行情更新于 {batch_time}"
+        elif catalog_count == 0:
+            status += "（Redis 暂无行情，请运行 quote_collector）"
+        return status
+
     def invalidate_symbol_row_index(self) -> None:
         self._symbol_row_index = None
 
@@ -226,6 +374,13 @@ class TableController:
                 symbol_rows[item.tickflow_symbol] = row
         self._symbol_row_index = symbol_rows
         return symbol_rows
+
+    def _extend_symbol_row_index(self, start_row: int, items: list[StockItem]) -> None:
+        if self._symbol_row_index is None:
+            self._build_symbol_row_index()
+            return
+        for offset, item in enumerate(items):
+            self._symbol_row_index[item.tickflow_symbol] = start_row + offset
 
     def schedule_stats_update(self) -> None:
         """WebSocket 高频推送时合并涨跌统计刷新。"""
@@ -266,27 +421,34 @@ class TableController:
         view = self._view()
 
         view.blockSignals(True)
+        view.setUpdatesEnabled(False)
         sorting_enabled = view.isSortingEnabled()
         view.setSortingEnabled(False)
         try:
-            model.set_row_count(len(page.display_stocks))
-            for row, item in enumerate(page.display_stocks):
-                quote = page.quote_map.get(item.tickflow_symbol)
-                self.set_row(row, item, quote)
+            row_cells = [
+                self._build_row_cells(row, item, page.quote_map.get(item.tickflow_symbol))
+                for row, item in enumerate(page.display_stocks)
+            ]
+            model.set_rows(row_cells)
 
             if selected_key:
                 self.select_stock_key(selected_key)
             if view.currentIndex().row() < 0 and page.display_stocks:
                 view.selectRow(0)
         finally:
+            view.setUpdatesEnabled(True)
             view.blockSignals(False)
 
-        if page.config.table_header_sortable:
+        market_custom_sort = page.config.use_market_rank and page.config.market_full_list
+        if page.config.table_header_sortable and not market_custom_sort:
             view.setSortingEnabled(True)
             if page._apply_default_table_sort:
                 page._apply_default_table_sort = False
                 symbol_col = quote_column_index("symbol")
                 view.sortByColumn(symbol_col, QtCore.Qt.SortOrder.AscendingOrder)
+        elif market_custom_sort:
+            view.setSortingEnabled(False)
+            self._sync_market_sort_indicator()
         elif sorting_enabled:
             view.setSortingEnabled(False)
 
@@ -295,6 +457,57 @@ class TableController:
         page._sync_stream_subscriptions()
         self._build_symbol_row_index()
         self.update_stats()
+        self._refresh_market_scrollbar()
+
+    def _refresh_market_scrollbar(self) -> None:
+        page = self._p
+        if not page.config.use_market_rank:
+            return
+        host = getattr(page, "_market_table_host", None)
+        if host is not None:
+            host.refresh_scrollbar()
+
+    def append_rows(
+        self,
+        start_row: int,
+        items: list[StockItem],
+        quotes: dict[str, QuoteSnapshot],
+    ) -> None:
+        """下拉分页：在表格末尾追加一批行。"""
+        if not items:
+            return
+        page = self._p
+        view = self._view()
+        bar = view.verticalScrollBar()
+        scroll_value = bar.value()
+
+        tokens = theme_manager().tokens()
+        colors = market_colors(tokens)
+        row_cells = [
+            self._build_row_cells(
+                start_row + offset,
+                item,
+                quotes.get(item.tickflow_symbol),
+                colors=colors,
+            )
+            for offset, item in enumerate(items)
+        ]
+
+        page._market_scroll_blocked = True
+        sorting_enabled = view.isSortingEnabled()
+        bar.blockSignals(True)
+        view.setUpdatesEnabled(False)
+        view.setSortingEnabled(False)
+        try:
+            self._model().append_rows(row_cells)
+            self._extend_symbol_row_index(start_row, items)
+        finally:
+            view.setSortingEnabled(sorting_enabled)
+            view.setUpdatesEnabled(True)
+            bar.blockSignals(False)
+            bar.setValue(min(scroll_value, bar.maximum()))
+            page._market_scroll_blocked = False
+        self._refresh_market_scrollbar()
 
     def update_stats(self) -> None:
         page = self._p
@@ -330,8 +543,39 @@ class TableController:
             parts.append(f" | 均涨幅 {avg_pct:+.2f}%")
         page.stats_label.setText("  |  ".join(parts))
 
+    def visible_market_items(self) -> list[StockItem]:
+        """市场页下拉模式：仅取视口内（含缓冲）标的，供增量行情刷新。"""
+        view = self._view()
+        row_count = self._model().row_count()
+        if row_count <= 0:
+            return []
+
+        top = view.rowAt(0)
+        if top < 0:
+            top = 0
+        bottom = view.rowAt(view.viewport().height() - 1)
+        if bottom < 0:
+            bottom = row_count - 1
+
+        buffer = MARKET_SCROLL_REFRESH_VISIBLE_BUFFER
+        start = max(0, top - buffer)
+        end = min(row_count - 1, bottom + buffer)
+        items: list[StockItem] = []
+        for row in range(start, end + 1):
+            item = self.stock_at_row(row)
+            if item is not None:
+                items.append(item)
+        return items
+
+    def refresh_visible_table_quotes(self) -> None:
+        symbols = {item.tickflow_symbol for item in self.visible_market_items()}
+        self.refresh_table_quotes_for_symbols(symbols)
+
     def refresh_table_quotes(self) -> None:
         page = self._p
+        if page.config.market_scroll_paging:
+            self.refresh_visible_table_quotes()
+            return
         symbols = {item.tickflow_symbol for item in page.display_stocks}
         self.refresh_table_quotes_for_symbols(symbols)
 
@@ -349,6 +593,8 @@ class TableController:
             view.setSortingEnabled(False)
         view.setUpdatesEnabled(False)
         view.blockSignals(True)
+        tokens = theme_manager().tokens()
+        colors = market_colors(tokens)
         try:
             for tf_symbol in symbols:
                 row = symbol_rows.get(tf_symbol)
@@ -358,13 +604,23 @@ class TableController:
                 if item is None:
                     continue
                 quote = page.quote_map.get(tf_symbol)
-                self.set_row(row, item, quote)
+                row_cells = self._build_row_cells(row, item, quote, colors=colors)
+                model = self._model()
+                sortable = page.config.table_header_sortable
+                for col, cell in enumerate(row_cells):
+                    model.apply_cell(
+                        row,
+                        col,
+                        cell.text,
+                        sort_key=cell.sort_key if sortable else None,
+                        color=cell.color,
+                        stock_item=cell.stock_item,
+                    )
         finally:
             view.blockSignals(False)
             view.setUpdatesEnabled(True)
         if sorting_enabled:
             view.setSortingEnabled(True)
-            self.invalidate_symbol_row_index()
         self.schedule_stats_update()
 
     def refresh_row_for_item(self, item: StockItem) -> None:
@@ -381,7 +637,9 @@ class TableController:
 
     def display_index(self, row: int) -> int:
         page = self._p
-        if page.config.use_market_rank:
+        if page.config.use_market_rank and (
+            page.market_auto_refresh_enabled() or not page.config.market_scroll_paging
+        ):
             return page._market_page * page.config.market_page_size + row + 1
         return row + 1
 
@@ -463,30 +721,18 @@ class TableController:
             stock_item=item,
         )
 
-    def _set_local_row(self, row: int, item: StockItem) -> None:
-        page = self._p
-        key = (item.symbol, item.exchange)
-        meta = page.bar_meta.get(key)
-        status = page.bar_list_status.get(key, list_status(meta))
-        minute = not page._is_daily_local_scope()
-        values = build_local_data_row(
-            item,
-            str(self.display_index(row)),
-            start=format_meta_datetime(meta.start if meta else None, minute=minute),
-            end=format_meta_datetime(meta.end if meta else None, minute=minute),
-            count=str(meta.count) if meta else "—",
-            status=status_label(status),
-        )
-        status_col = len(values) - 1
-        for col, text in enumerate(values):
-            cell_color = self._status_color(status) if col == status_col else None
-            self._apply_table_cell(row, col, text, item=item if col == 0 else None, color=cell_color)
-
-    def set_row(self, row: int, item: StockItem, quote: QuoteSnapshot | None) -> None:
+    def _build_row_cells(
+        self,
+        row: int,
+        item: StockItem,
+        quote: QuoteSnapshot | None,
+        *,
+        colors: MarketColors | None = None,
+        tokens: ThemeTokens | None = None,
+    ) -> list[QuoteCell]:
         page = self._p
         if page.config.use_local_table:
-            self._set_local_row(row, item)
-            return
+            return self._build_local_row_cells(row, item)
 
         index_text = str(self.display_index(row))
         key = (item.symbol, item.exchange)
@@ -535,11 +781,16 @@ class TableController:
             else:
                 filtered_sort_keys.append(values[src_idx] if src_idx < len(values) else "")
 
-        tokens = theme_manager().tokens()
-        colors = market_colors(tokens)
+        if tokens is None:
+            tokens = theme_manager().tokens()
+        if colors is None:
+            colors = market_colors(tokens)
         color = colors.flat
         if quote:
-            color = quote_change_color(quote, tokens)
+            if quote.is_rise:
+                color = colors.rise
+            elif quote.is_fall:
+                color = colors.fall
 
         status_col: int | None = None
         status: BarHealthStatus | None = None
@@ -547,6 +798,8 @@ class TableController:
             status_col = len(filtered_values) - 1
             status = page.bar_list_status.get(key, list_status(page.bar_meta.get(key)))
 
+        cells: list[QuoteCell] = []
+        sortable = page.config.table_header_sortable
         for col, text in enumerate(filtered_values):
             cell_color = None
             if quote and col in filtered_price_cols:
@@ -554,13 +807,59 @@ class TableController:
             if status_col is not None and col == status_col and status is not None:
                 cell_color = self._status_color(status)
             sort_key = filtered_sort_keys[col] if col < len(filtered_sort_keys) else text
-            self._apply_table_cell(
+            cells.append(
+                QuoteCell(
+                    text=text,
+                    sort_key=sort_key if sortable else "",
+                    color=cell_color,
+                    stock_item=item if col == 0 else None,
+                )
+            )
+        return cells
+
+    def _build_local_row_cells(self, row: int, item: StockItem) -> list[QuoteCell]:
+        page = self._p
+        key = (item.symbol, item.exchange)
+        meta = page.bar_meta.get(key)
+        status = page.bar_list_status.get(key, list_status(meta))
+        minute = not page._is_daily_local_scope()
+        values = build_local_data_row(
+            item,
+            str(self.display_index(row)),
+            start=format_meta_datetime(meta.start if meta else None, minute=minute),
+            end=format_meta_datetime(meta.end if meta else None, minute=minute),
+            count=str(meta.count) if meta else "—",
+            status=status_label(status),
+        )
+        status_col = len(values) - 1
+        cells: list[QuoteCell] = []
+        for col, text in enumerate(values):
+            cell_color = self._status_color(status) if col == status_col else None
+            cells.append(
+                QuoteCell(
+                    text=text,
+                    color=cell_color,
+                    stock_item=item if col == 0 else None,
+                )
+            )
+        return cells
+
+    def set_row(self, row: int, item: StockItem, quote: QuoteSnapshot | None) -> None:
+        page = self._p
+        if page.config.use_local_table:
+            cells = self._build_local_row_cells(row, item)
+        else:
+            cells = self._build_row_cells(row, item, quote)
+        model = self._model()
+        sortable = page.config.table_header_sortable
+        for col, cell in enumerate(cells):
+            model.apply_cell(
                 row,
                 col,
-                text,
-                item=item if col == 0 else None,
-                sort_key=sort_key,
-                color=cell_color,
+                cell.text,
+                sort_key=cell.sort_key if sortable else None,
+                color=cell.color,
+                stock_item=cell.stock_item,
             )
 
     def on_selection_changed(self) -> None:

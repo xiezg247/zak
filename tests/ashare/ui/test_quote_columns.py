@@ -43,6 +43,22 @@ class TestQuoteColumns(unittest.TestCase):
         self.assertIn(4, colored)
 
 
+class TestMarketAutoRefreshPref(unittest.TestCase):
+    def test_default_is_true_when_unset(self) -> None:
+        from vnpy.trader.ui import QtCore
+
+        from vnpy_ashare.ui.quotes.quotes_config import (
+            MARKET_AUTO_REFRESH_DEFAULT,
+            MARKET_AUTO_REFRESH_SETTINGS_KEY,
+            load_market_auto_refresh_pref,
+        )
+
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings.remove(MARKET_AUTO_REFRESH_SETTINGS_KEY)
+        self.assertTrue(MARKET_AUTO_REFRESH_DEFAULT)
+        self.assertTrue(load_market_auto_refresh_pref())
+
+
 class TestQuoteRefreshHint(unittest.TestCase):
     def test_refresh_hint(self) -> None:
         from vnpy_ashare.ui.quotes.quotes_config import (
@@ -61,7 +77,7 @@ class TestQuoteRefreshHint(unittest.TestCase):
                 refresh_ms=MARKET_QUOTE_REFRESH_MS,
                 quote_source="market",
             ),
-            "行情每 15 秒自动刷新（Redis）",
+            "行情每 15 秒自动刷新（Redis，交易时段）",
         )
         self.assertEqual(
             quote_refresh_hint(
@@ -69,13 +85,24 @@ class TestQuoteRefreshHint(unittest.TestCase):
                 refresh_ms=WATCHLIST_QUOTE_REFRESH_MS,
                 quote_source="watchlist",
             ),
-            "行情/五档 WebSocket，图表每 3 秒刷新",
+            "行情/五档 WebSocket，图表每 3 秒刷新（交易时段）",
+        )
+        self.assertEqual(
+            quote_refresh_hint(
+                auto_refresh=True,
+                refresh_ms=MARKET_QUOTE_REFRESH_MS,
+                paused_for_hours=True,
+            ),
+            "非交易时段，行情暂停自动刷新",
         )
         self.assertEqual(
             quote_refresh_hint(auto_refresh=False, refresh_ms=MARKET_QUOTE_REFRESH_MS),
             "行情不自动刷新",
         )
         self.assertEqual(PAGE_CONFIGS["市场"].quote_source, "market")
+        self.assertTrue(PAGE_CONFIGS["市场"].market_full_list)
+        self.assertTrue(PAGE_CONFIGS["市场"].auto_refresh_quotes)
+        self.assertEqual(PAGE_CONFIGS["市场"].market_live_display_limit, 100)
         self.assertEqual(PAGE_CONFIGS["自选"].quote_source, "watchlist")
 
 
@@ -89,7 +116,7 @@ class TestQuoteSourceLabel(unittest.TestCase):
 
         self.assertEqual(
             quote_source_label(market),
-            "行情源：Redis + TickFlow",
+            "行情源：Redis",
         )
         self.assertEqual(
             quote_source_label(watchlist, stream_active=True),

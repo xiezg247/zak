@@ -269,13 +269,8 @@ def _board_where_clause(board: str | None) -> tuple[str, list]:
     return f" AND ({rule})", []
 
 
-def load_universe_page(
-    *,
-    offset: int = 0,
-    limit: int = 50,
-    board: str | None = None,
-) -> tuple[list[tuple[str, Exchange, str]], int]:
-    """分页读取全 A 股列表（按证券代码升序）。"""
+def count_universe(board: str | None = None) -> int:
+    """统计 universe 行数（按板块可选过滤）。"""
     init_app_db()
     board_sql, board_params = _board_where_clause(board)
     with _connect() as conn:
@@ -283,11 +278,36 @@ def load_universe_page(
             f"SELECT COUNT(*) FROM universe WHERE 1=1{board_sql}",
             board_params,
         ).fetchone()[0]
+    return int(total)
+
+
+def load_universe_slice(
+    *,
+    offset: int = 0,
+    limit: int = 50,
+    board: str | None = None,
+) -> list[tuple[str, Exchange, str]]:
+    """分页读取 universe 切片（不含 COUNT）。"""
+    init_app_db()
+    board_sql, board_params = _board_where_clause(board)
+    with _connect() as conn:
         rows = conn.execute(
             f"SELECT symbol, exchange, name FROM universe WHERE 1=1{board_sql} ORDER BY symbol LIMIT ? OFFSET ?",
             (*board_params, limit, offset),
         ).fetchall()
-    return [_row_to_stock(row) for row in rows], int(total)
+    return [_row_to_stock(row) for row in rows]
+
+
+def load_universe_page(
+    *,
+    offset: int = 0,
+    limit: int = 50,
+    board: str | None = None,
+) -> tuple[list[tuple[str, Exchange, str]], int]:
+    """分页读取全 A 股列表（按证券代码升序）。"""
+    total = count_universe(board)
+    rows = load_universe_slice(offset=offset, limit=limit, board=board)
+    return rows, total
 
 
 def move_watchlist_item(

@@ -97,6 +97,38 @@ QTableView#MarketTable::item:alternate {
     background-color: #1e1e22;
 }
 
+QScrollBar#MarketTableScroll:vertical {
+    background-color: #3a3a48;
+    width: 18px;
+    margin: 0;
+    border: none;
+    border-left: 1px solid #5a8fd8;
+}
+QScrollBar#MarketTableScroll::handle:vertical {
+    background-color: #8a96aa;
+    min-height: 52px;
+    border-radius: 9px;
+    margin: 3px;
+    border: 1px solid #b8c4d8;
+}
+QScrollBar#MarketTableScroll::handle:vertical:hover {
+    background-color: #4a9eff;
+    border-color: #8ec0ff;
+}
+QScrollBar#MarketTableScroll::handle:vertical:pressed {
+    background-color: #2a6fbf;
+    border-color: #4a9eff;
+}
+QScrollBar#MarketTableScroll::add-page:vertical,
+QScrollBar#MarketTableScroll::sub-page:vertical {
+    background: #2d2d38;
+}
+QScrollBar#MarketTableScroll::add-line:vertical,
+QScrollBar#MarketTableScroll::sub-line:vertical {
+    background: none;
+    height: 0;
+}
+
 /* ── 主操作按钮 ── */
 QPushButton#PrimaryRunButton {
     background-color: #2a5a9e;
@@ -118,6 +150,32 @@ QPushButton#PrimaryRunButton:disabled {
     background-color: #1a3a60;
     border-color: #3a5a80;
     color: #6688aa;
+}
+
+/* ── 市场页表格加载遮罩 ── */
+QWidget#MarketTableLoading {
+    background-color: rgba(18, 18, 20, 0.72);
+}
+QWidget#MarketTableLoadingPanel {
+    background-color: #1e1e24;
+    border: 1px solid #3a3a44;
+    border-radius: 8px;
+}
+QLabel#MarketTableLoadingLabel {
+    color: #c8c8d8;
+    font-size: 13px;
+}
+QProgressBar#MarketTableLoadingBar {
+    background-color: #2a2a32;
+    border: 1px solid #3a3a44;
+    border-radius: 4px;
+    min-height: 6px;
+    max-height: 6px;
+    text-align: center;
+}
+QProgressBar#MarketTableLoadingBar::chunk {
+    background-color: #4a9eff;
+    border-radius: 3px;
 }
 
 /* ── 底栏分页跳转输入框 ── */

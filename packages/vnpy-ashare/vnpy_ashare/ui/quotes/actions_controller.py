@@ -15,6 +15,7 @@ from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.quotes.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.quote_columns import format_volume
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.ui.quotes.quotes_config import AI_CONTEXT_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener.reference_peer_dialog import show_reference_peer_dialog
@@ -215,13 +216,22 @@ class ActionsController:
         page = self._p
         if not page._active or not page.config.quote_source:
             return
+        if page.quote_auto_refresh_enabled() and not is_ashare_trading_session():
+            page.schedule_quote_auto_refresh()
+            return
         if page.config.use_market_rank:
+            if not page.market_auto_refresh_enabled():
+                return
+            if page.config.market_scroll_paging and page._market_quote_refresh_paused():
+                return
             self.refresh_quotes_rest()
             return
         if not page.display_stocks:
+            page.schedule_quote_auto_refresh()
             return
         if page._use_quote_stream():
             self.refresh_charts_only()
+            page.schedule_quote_auto_refresh()
             return
         self.refresh_quotes_rest()
 
@@ -231,12 +241,27 @@ class ActionsController:
             return
         if page._thread_active(page._quotes_worker):
             return
+        if page.config.market_scroll_paging and page._market_quote_refresh_paused():
+            return
 
         if page.config.show_depth_panel:
             self.refresh_depth()
 
         refresh_source = page.config.quote_refresh_source or page.config.quote_source or "watchlist"
-        worker = QuotesRefreshWorker(list(page.display_stocks), refresh_source)
+        if (
+            page.config.use_market_rank
+            and page.config.market_full_list
+            and page._market_catalog_loaded
+            and page.market_auto_refresh_enabled()
+        ):
+            refresh_items = list(page._market_catalog)
+        elif page.config.market_scroll_paging:
+            refresh_items = page._table.visible_market_items()
+        else:
+            refresh_items = list(page.display_stocks)
+        if not refresh_items:
+            return
+        worker = QuotesRefreshWorker(refresh_items, refresh_source)
         page._quotes_worker = worker
         current = page.current_item
 
@@ -246,17 +271,33 @@ class ActionsController:
             if not page._active:
                 return
             page.quote_map.update(quotes)
-            page._refresh_table_quotes()
+            if page.config.market_full_list and page._market_catalog_loaded:
+                page._market_catalog_quotes.update(quotes)
+            if (
+                page.config.use_market_rank
+                and page.config.market_full_list
+                and page._market_catalog_loaded
+                and page.market_auto_refresh_enabled()
+            ):
+                page._table.apply_market_display()
+            elif page.config.market_scroll_paging:
+                page._table.refresh_visible_table_quotes()
+            else:
+                page._refresh_table_quotes()
             page._update_quote_source_label()
             if current:
                 self.update_quote_header(current)
                 if page.chart_panel is not None:
                     page.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
                     page.chart_panel.refresh_active()
+            if page.quote_auto_refresh_enabled():
+                page.schedule_quote_auto_refresh()
 
         def on_failed(_msg: str) -> None:
             if page._quotes_worker is worker:
                 page._quotes_worker = None
+            if page.quote_auto_refresh_enabled():
+                page.schedule_quote_auto_refresh()
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)

@@ -15,9 +15,14 @@ from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
 from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
 from vnpy_ashare.ui.quotes.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.quote_columns import LOCAL_TABLE_HEADERS
+from vnpy_ashare.ui.quotes.market_loading_overlay import MarketTableHost
 from vnpy_ashare.ui.quotes.quote_table_model import QuoteTableModel
 from vnpy_ashare.ui.quotes.quotes_chart import create_daily_chart
-from vnpy_ashare.ui.quotes.quotes_config import quote_refresh_hint, quote_source_label
+from vnpy_ashare.ui.quotes.quotes_config import (
+    load_market_auto_refresh_pref,
+    quote_refresh_hint,
+    quote_source_label,
+)
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 
@@ -179,6 +184,14 @@ class QuotesPageShell:
         page.refresh_quotes_button.clicked.connect(page._refresh_market_clicked)
         page.refresh_quotes_button.setVisible(page.config.use_market_rank)
 
+        page.market_auto_refresh_checkbox = QtWidgets.QCheckBox("自动刷新行情", page)
+        page.market_auto_refresh_checkbox.setVisible(page.config.use_market_rank)
+        page._market_auto_refresh = load_market_auto_refresh_pref()
+        page.market_auto_refresh_checkbox.blockSignals(True)
+        page.market_auto_refresh_checkbox.setChecked(page._market_auto_refresh)
+        page.market_auto_refresh_checkbox.blockSignals(False)
+        page.market_auto_refresh_checkbox.toggled.connect(page._on_market_auto_refresh_toggled)
+
         more_actions: list[tuple[str, QtWidgets.QPushButton]] = []
 
         toolbar = QtWidgets.QHBoxLayout()
@@ -193,6 +206,7 @@ class QuotesPageShell:
             toolbar.addWidget(_toolbar_separator())
 
         if page.config.use_market_rank:
+            toolbar.addWidget(page.market_auto_refresh_checkbox)
             toolbar.addWidget(page.refresh_quotes_button)
         if page.config.show_sync_button:
             toolbar.addWidget(page.sync_button)
@@ -279,7 +293,7 @@ class QuotesPageShell:
         page.page_jump_input.setFixedWidth(52)
         page.page_jump_input.returnPressed.connect(page._page_jump)
 
-        page._set_pagination_visible(page.config.use_market_rank)
+        page._pagination.set_visible()
 
         page.stats_label = QtWidgets.QLabel("")
         page.stats_label.setObjectName("StatsLabel")
@@ -300,8 +314,11 @@ class QuotesPageShell:
         page.market_table.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         page.market_table.customContextMenuRequested.connect(page._actions.show_context_menu)
         if page.config.table_header_sortable:
-            page.market_table.horizontalHeader().setSortIndicatorShown(True)
-            page.market_table.horizontalHeader().setSectionsClickable(True)
+            header = page.market_table.horizontalHeader()
+            header.setSortIndicatorShown(True)
+            header.setSectionsClickable(True)
+            if page.config.use_market_rank and page.config.market_full_list:
+                header.sectionClicked.connect(page._table.on_market_header_clicked)
 
         page._table.apply_header_layout(column_count=len(headers))
 
@@ -403,14 +420,22 @@ class QuotesPageShell:
                     log_view_object_name=f"{run_prefix}RunLogView",
                 )
                 page.run_output_panel.setMinimumHeight(120)
+                page._market_table_host = MarketTableHost(
+                    page.market_table,
+                    external_scrollbar=False,
+                )
                 center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
-                center_split.addWidget(page.market_table)
+                center_split.addWidget(page._market_table_host)
                 center_split.addWidget(page.run_output_panel)
                 center_split.setStretchFactor(0, 3)
                 center_split.setStretchFactor(1, 1)
                 center_layout.addWidget(center_split, stretch=1)
             else:
-                center_layout.addWidget(page.market_table)
+                page._market_table_host = MarketTableHost(
+                    page.market_table,
+                    external_scrollbar=False,
+                )
+                center_layout.addWidget(page._market_table_host)
             splitter.addWidget(center_widget)
 
             right_widget = QtWidgets.QWidget()
@@ -428,7 +453,8 @@ class QuotesPageShell:
             center_layout.addWidget(toolbar_host)
             if page.stats_label is not None:
                 center_layout.addWidget(page.stats_label)
-            center_layout.addWidget(page.market_table)
+            page._market_table_host = MarketTableHost(page.market_table)
+            center_layout.addWidget(page._market_table_host)
             splitter.addWidget(center_widget)
 
         page.status_label = QtWidgets.QLabel("就绪")
@@ -439,13 +465,8 @@ class QuotesPageShell:
             )
         )
         page.quote_source_label.setObjectName("BottomBarMeta")
-        page.refresh_hint_label = QtWidgets.QLabel(
-            quote_refresh_hint(
-                auto_refresh=page.config.auto_refresh_quotes,
-                refresh_ms=page.config.quote_refresh_ms,
-                quote_source=page.config.quote_source,
-            )
-        )
+        page.refresh_hint_label = QtWidgets.QLabel("")
+        page._update_refresh_hint_label()
         page.refresh_hint_label.setObjectName("BottomBarMeta")
 
         bottom_bar = QtWidgets.QHBoxLayout()

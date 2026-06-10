@@ -13,7 +13,10 @@ from __future__ import annotations
 
 from vnpy_ashare.storage.app_db import (
     build_symbol_name_map,
+    count_universe,
     load_universe_page,
+    load_universe_rows,
+    load_universe_slice,
     search_universe,
     universe_exists,
 )
@@ -36,7 +39,10 @@ __all__ = [
     "iter_bar_overviews",
     "load_period_bars",
     "load_scope_bars",
+    "count_universe",
     "load_universe_page",
+    "load_universe_rows",
+    "load_universe_slice",
     "search_universe",
     "universe_exists",
 ]
