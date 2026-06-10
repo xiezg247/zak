@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.bar_access import iter_bar_overviews
+from vnpy_ashare.bar_access import delete_scope_bars, iter_bar_overviews
 from vnpy_ashare.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -114,9 +114,7 @@ class LocalDataController:
         button = getattr(page, "batch_fill_button", None)
         if button is None or not page.config.show_batch_fill_button:
             return
-        visible = page.config.use_local_table and self.is_daily_scope()
-        button.setVisible(visible)
-        if not visible:
+        if not page.config.use_local_table or not self.is_daily_scope():
             button.setEnabled(False)
             return
         if page._thread_active(getattr(page, "_batch_fill_worker", None)):
@@ -131,9 +129,7 @@ class LocalDataController:
         button = getattr(page, "batch_gap_fill_button", None)
         if button is None or not page.config.show_batch_gap_fill_button:
             return
-        visible = page.config.use_local_table and self.is_daily_scope()
-        button.setVisible(visible)
-        if not visible:
+        if not page.config.use_local_table or not self.is_daily_scope():
             button.setEnabled(False)
             return
         if page._thread_active(getattr(page, "_batch_gap_fill_worker", None)):
@@ -159,7 +155,6 @@ class LocalDataController:
 
         items = select_stale_daily_items(page.all_stocks, page.bar_meta)
         if not items:
-            QtWidgets.QMessageBox.information(page, "批量补全", "当前没有需要补全的过期日 K")
             self.update_batch_toolbar_buttons()
             return
 
@@ -222,7 +217,6 @@ class LocalDataController:
 
         scannable = count_scannable_daily_items(page.all_stocks, page.bar_meta)
         if scannable == 0:
-            QtWidgets.QMessageBox.information(page, "批量修复断层", "当前列表无本地日 K 可扫描")
             self.update_batch_toolbar_buttons()
             return
 
@@ -514,6 +508,56 @@ class LocalDataController:
             self.run_minute_download(mode="full", action_label="重新下载")
             return
         self.run_download(mode="full", action_label="重新下载")
+
+    def delete_selected(self) -> None:
+        page = self._page
+        if not page.config.show_delete_button or not page.config.use_local_table:
+            return
+        if not page.current_item:
+            return
+        if page._thread_active(page._download_worker) or self._batch_worker_active():
+            return
+
+        item = page.current_item
+        key = (item.symbol, item.exchange)
+        if key not in page.bar_meta:
+            return
+
+        scope_label = self.scope_label()
+        label = format_vt_symbol_cn(item.symbol, item.exchange)
+        display = f"{item.name}（{label}）" if item.name else label
+        reply = QtWidgets.QMessageBox.question(
+            page,
+            "删除本地数据",
+            f"确定删除 {display} 的本地{scope_label}？\n\n此操作不可恢复。",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+
+        if not delete_scope_bars(item.symbol, item.exchange, page._local_scope):
+            page.status_label.setText(f"{label} 无本地{scope_label}可删除")
+            return
+
+        page._selected_gap_result = None
+        self.refresh_meta()
+        page.all_stocks = [
+            stock
+            for stock in page.all_stocks
+            if (stock.symbol, stock.exchange) in page.downloaded_keys
+        ]
+        if page.current_item is not None and (page.current_item.symbol, page.current_item.exchange) not in page.downloaded_keys:
+            page.current_item = None
+            self.clear_chart()
+            self.set_chart_hint(None)
+        page.apply_filter()
+        if page.current_item is not None:
+            page.show_kline(page.current_item)
+            if page.config.show_fill_button and self.is_daily_scope():
+                self.check_bar_gaps(page.current_item)
+        page._update_action_buttons()
+        page.status_label.setText(f"已删除 {display} 的本地{scope_label}")
 
     def run_minute_download(self, *, mode: str = "full", action_label: str = "下载") -> None:
         page = self._page

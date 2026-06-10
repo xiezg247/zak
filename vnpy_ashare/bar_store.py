@@ -126,3 +126,12 @@ def iter_bar_overviews(*, scope: str) -> list[PeriodBarOverview]:
         rows.append(_row_to_overview(row, period))
     rows.sort(key=lambda item: (item.symbol, item.exchange.value))
     return rows
+
+
+def delete_scope_bars(symbol: str, exchange: Exchange, scope: str) -> bool:
+    """删除指定 scope 下的本地 K 线；无数据时返回 False。"""
+    if get_scope_overview(symbol, exchange, scope) is None:
+        return False
+    _, interval = _interval_for_scope(scope)
+    get_database().delete_bar_data(symbol, exchange, interval)
+    return True

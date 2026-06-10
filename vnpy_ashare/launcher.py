@@ -37,7 +37,7 @@ def main() -> None:
 
     if ensure_vt_settings_from_env():
         reload_vnpy_settings()
-        print("已从 .env 生成 vt_setting.json（~/.vntrader/）")
+        print("已从 .env 生成或重建 vt_setting.json（~/.vntrader/）")
 
     if ensure_runtime_config():
         print("已应用 A 股回测默认参数（~/.vntrader/cta_backtester_setting.json）")

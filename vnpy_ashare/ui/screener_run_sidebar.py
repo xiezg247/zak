@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.engine_access import get_screening_service
+from vnpy_ashare.paths import QSETTINGS_ORG
 from vnpy_ashare.screener.run_store import (
     delete_run,
     is_auto_run,
@@ -35,7 +36,7 @@ _TRIGGER_TAGS = {
     "scheduled_post_close": "[盘后]",
 }
 
-_SETTINGS_ORG = "vnpy_zak"
+_SETTINGS_ORG = QSETTINGS_ORG
 _SETTINGS_APP = "screener_ui"
 
 

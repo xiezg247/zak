@@ -72,9 +72,23 @@ def sync_vt_settings_from_env(*, backup: bool = True) -> Path:
     return SETTING_FILE
 
 
+def vt_settings_needs_env_bootstrap(setting_file: Path = SETTING_FILE) -> bool:
+    """vt_setting.json 缺失、为空、仅 {} 或非法 JSON 时需从 .env 重建。"""
+    if not setting_file.is_file():
+        return True
+    text = setting_file.read_text(encoding="utf-8").strip()
+    if not text:
+        return True
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return True
+    return not isinstance(data, dict) or not data
+
+
 def ensure_vt_settings_from_env() -> bool:
-    """首次启动时从 .env 生成 vt_setting.json；已存在则不动。"""
-    if SETTING_FILE.exists():
+    """启动时若 vt_setting.json 无效或为空，则从 .env 生成。"""
+    if not vt_settings_needs_env_bootstrap(SETTING_FILE):
         return False
     sync_vt_settings_from_env(backup=False)
     return True

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.backtest_widget import BacktesterWidget
@@ -18,6 +18,11 @@ def _toolbar_separator() -> QtWidgets.QFrame:
     return sep
 
 
+def _invoke_toolbar_action(button: QtWidgets.QPushButton) -> None:
+    if button.isEnabled():
+        button.click()
+
+
 def _add_more_menu(
     toolbar: QtWidgets.QHBoxLayout,
     actions: list[tuple[str, QtWidgets.QPushButton]],
@@ -28,8 +33,19 @@ def _add_more_menu(
     menu_btn = QtWidgets.QPushButton("更多 ▾")
     menu_btn.setObjectName("SecondaryButton")
     menu = QtWidgets.QMenu(menu_btn)
+    action_pairs: list[tuple[QtGui.QAction, QtWidgets.QPushButton]] = []
     for label, action_btn in visible:
-        menu.addAction(label, action_btn.click)
+        action = menu.addAction(label)
+        action.triggered.connect(
+            lambda _checked=False, btn=action_btn: _invoke_toolbar_action(btn),
+        )
+        action_pairs.append((action, action_btn))
+
+    def _sync_menu_actions() -> None:
+        for action, btn in action_pairs:
+            action.setEnabled(btn.isEnabled())
+
+    menu.aboutToShow.connect(_sync_menu_actions)
     menu_btn.setMenu(menu)
     toolbar.addWidget(menu_btn)
 

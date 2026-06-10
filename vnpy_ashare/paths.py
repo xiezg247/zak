@@ -11,6 +11,8 @@ BACKUP_DIR = DATA_DIR / "backup"
 ENV_FILE = PROJECT_ROOT / ".env"
 VNTRADER_DIR = Path.home() / ".vntrader"
 APP_ID = "zak"
+# Qt QSettings 组织名（macOS ~/Library/Preferences、Windows 注册表等）
+QSETTINGS_ORG = APP_ID
 
 META_APP_SETTING_KEY = "database.meta.app"
 META_CHAT_SETTING_KEY = "database.meta.chat"

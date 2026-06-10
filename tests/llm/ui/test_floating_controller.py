@@ -60,9 +60,12 @@ class FloatingAiControllerTests(unittest.TestCase):
     def test_on_page_changed_shows_or_hides_orb(self) -> None:
         controller = self._make_controller()
         orb = controller.orb
+        panel = controller.panel
         assert orb is not None
+        assert panel is not None
         controller.on_page_changed("watchlist")
         self.assertTrue(orb.isVisible())
+        panel.hide.assert_called()
         controller.on_page_changed("cta_backtest")
         self.assertFalse(orb.isVisible())
 

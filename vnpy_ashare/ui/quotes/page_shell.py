@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
@@ -29,6 +29,11 @@ def _toolbar_separator() -> QtWidgets.QFrame:
     return sep
 
 
+def _invoke_toolbar_action(button: QtWidgets.QPushButton) -> None:
+    if button.isEnabled():
+        button.click()
+
+
 def _add_more_menu(
     toolbar: QtWidgets.QHBoxLayout,
     actions: list[tuple[str, QtWidgets.QPushButton]],
@@ -38,8 +43,19 @@ def _add_more_menu(
     menu_btn = QtWidgets.QPushButton("更多 ▾")
     menu_btn.setObjectName("SecondaryButton")
     menu = QtWidgets.QMenu(menu_btn)
+    action_pairs: list[tuple[QtGui.QAction, QtWidgets.QPushButton]] = []
     for label, action_btn in actions:
-        menu.addAction(label, action_btn.click)
+        action = menu.addAction(label)
+        action.triggered.connect(
+            lambda _checked=False, btn=action_btn: _invoke_toolbar_action(btn),
+        )
+        action_pairs.append((action, action_btn))
+
+    def _sync_menu_actions() -> None:
+        for action, btn in action_pairs:
+            action.setEnabled(btn.isEnabled())
+
+    menu.aboutToShow.connect(_sync_menu_actions)
     menu_btn.setMenu(menu)
     toolbar.addWidget(menu_btn)
 
@@ -61,6 +77,12 @@ class QuotesPageShell:
         page.search_edit = QtWidgets.QLineEdit()
         page.search_edit.setObjectName("SearchBox")
         page.search_edit.setPlaceholderText(page.config.search_placeholder)
+        page.search_edit.setMinimumWidth(160)
+        page.search_edit.setMaximumWidth(page.config.search_max_width)
+        page.search_edit.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
         page.search_edit.textChanged.connect(lambda _: page._search_timer.start())
 
         page.board_combo = QtWidgets.QComboBox()
@@ -69,36 +91,42 @@ class QuotesPageShell:
         page.board_combo.setVisible(page.config.show_board_filter)
         page.board_combo.currentIndexChanged.connect(page._on_board_changed)
 
-        page.sync_button = QtWidgets.QPushButton("同步 A 股列表")
+        page.sync_button = QtWidgets.QPushButton("同步 A 股列表", page)
         page.sync_button.clicked.connect(page.sync_universe_clicked)
         page.sync_button.setVisible(page.config.show_sync_button)
 
-        page.download_button = QtWidgets.QPushButton("下载日K到本地")
+        page.download_button = QtWidgets.QPushButton("下载日K到本地", page)
         page.download_button.clicked.connect(page.download_selected)
         page.download_button.setEnabled(False)
         page.download_button.setVisible(page.config.show_download_button)
 
-        page.fill_button = QtWidgets.QPushButton("补全到最新")
+        page.fill_button = QtWidgets.QPushButton("补全到最新", page)
         page.fill_button.clicked.connect(page.fill_selected)
         page.fill_button.setEnabled(False)
         page.fill_button.setVisible(page.config.show_fill_button)
 
-        page.redownload_button = QtWidgets.QPushButton("重新下载")
+        page.redownload_button = QtWidgets.QPushButton("重新下载", page)
         page.redownload_button.clicked.connect(page.redownload_selected)
         page.redownload_button.setEnabled(False)
         page.redownload_button.setVisible(page.config.show_redownload_button)
 
-        page.batch_fill_button = QtWidgets.QPushButton("批量补全过期")
+        page.delete_local_button = QtWidgets.QPushButton("删除本地数据", page)
+        page.delete_local_button.setObjectName("DangerButton")
+        page.delete_local_button.clicked.connect(page.delete_selected_local)
+        page.delete_local_button.setEnabled(False)
+        page.delete_local_button.hide()
+
+        page.batch_fill_button = QtWidgets.QPushButton("批量补全过期", page)
         page.batch_fill_button.setObjectName("SecondaryButton")
         page.batch_fill_button.clicked.connect(page.batch_fill_stale)
         page.batch_fill_button.setEnabled(False)
-        page.batch_fill_button.setVisible(page.config.show_batch_fill_button)
+        page.batch_fill_button.hide()
 
-        page.batch_gap_fill_button = QtWidgets.QPushButton("批量修复断层")
+        page.batch_gap_fill_button = QtWidgets.QPushButton("批量修复断层", page)
         page.batch_gap_fill_button.setObjectName("SecondaryButton")
         page.batch_gap_fill_button.clicked.connect(page.batch_fill_gaps)
         page.batch_gap_fill_button.setEnabled(False)
-        page.batch_gap_fill_button.setVisible(page.config.show_batch_gap_fill_button)
+        page.batch_gap_fill_button.hide()
 
         page.local_period_combo = QtWidgets.QComboBox()
         for label, value in LOCAL_SCOPE_OPTIONS:
@@ -107,44 +135,44 @@ class QuotesPageShell:
         page.local_period_combo.setVisible(page.config.use_local_table)
         page.local_period_combo.currentIndexChanged.connect(page._on_local_period_changed)
 
-        page.add_watchlist_button = QtWidgets.QPushButton("加入自选")
+        page.add_watchlist_button = QtWidgets.QPushButton("加入自选", page)
         page.add_watchlist_button.clicked.connect(page._watchlist.add_selected)
         page.add_watchlist_button.setEnabled(False)
         page.add_watchlist_button.setVisible(page.config.show_add_watchlist_button)
 
-        page.remove_watchlist_button = QtWidgets.QPushButton("移出自选")
+        page.remove_watchlist_button = QtWidgets.QPushButton("移出自选", page)
         page.remove_watchlist_button.clicked.connect(page._watchlist.remove_selected)
         page.remove_watchlist_button.setEnabled(False)
         page.remove_watchlist_button.setVisible(page.config.show_remove_watchlist_button)
 
-        page.move_watchlist_up_button = QtWidgets.QPushButton("上移")
+        page.move_watchlist_up_button = QtWidgets.QPushButton("上移", page)
         page.move_watchlist_up_button.clicked.connect(lambda: page._watchlist.move_selected("up"))
         page.move_watchlist_up_button.setEnabled(False)
         page.move_watchlist_up_button.setVisible(page.config.show_watchlist_move_buttons)
 
-        page.move_watchlist_down_button = QtWidgets.QPushButton("下移")
+        page.move_watchlist_down_button = QtWidgets.QPushButton("下移", page)
         page.move_watchlist_down_button.clicked.connect(lambda: page._watchlist.move_selected("down"))
         page.move_watchlist_down_button.setEnabled(False)
         page.move_watchlist_down_button.setVisible(page.config.show_watchlist_move_buttons)
 
-        page.backtest_button = QtWidgets.QPushButton("策略回测")
+        page.backtest_button = QtWidgets.QPushButton("策略回测", page)
         page.backtest_button.setObjectName("SecondaryButton")
         page.backtest_button.clicked.connect(page._actions.open_backtest_for_selected)
         page.backtest_button.setEnabled(False)
         page.backtest_button.setVisible(page.config.show_backtest_button)
 
-        page.batch_backtest_button = QtWidgets.QPushButton("批量回测")
+        page.batch_backtest_button = QtWidgets.QPushButton("批量回测", page)
         page.batch_backtest_button.setObjectName("SecondaryButton")
         page.batch_backtest_button.clicked.connect(page.run_watchlist_batch_backtest)
         page.batch_backtest_button.setEnabled(False)
         page.batch_backtest_button.setVisible(page.config.show_batch_backtest_button)
 
-        page.diagnose_button = QtWidgets.QPushButton("诊断")
+        page.diagnose_button = QtWidgets.QPushButton("诊断", page)
         page.diagnose_button.clicked.connect(page._actions.run_diagnose_for_selected)
         page.diagnose_button.setEnabled(False)
         page.diagnose_button.setVisible(page.config.show_diagnose_button)
 
-        page.refresh_quotes_button = QtWidgets.QPushButton("刷新行情")
+        page.refresh_quotes_button = QtWidgets.QPushButton("刷新行情", page)
         page.refresh_quotes_button.clicked.connect(page._refresh_market_clicked)
         page.refresh_quotes_button.setVisible(page.config.use_market_rank)
 
@@ -152,7 +180,7 @@ class QuotesPageShell:
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.setSpacing(8)
-        toolbar.addWidget(page.search_edit, stretch=1)
+        toolbar.addWidget(page.search_edit)
         if page.config.show_board_filter:
             toolbar.addWidget(page.board_combo)
 
@@ -202,6 +230,8 @@ class QuotesPageShell:
             more_actions.append(("补全到最新", page.fill_button))
         if page.config.show_redownload_button:
             more_actions.append(("重新下载", page.redownload_button))
+        if page.config.show_delete_button:
+            more_actions.append(("删除本地数据", page.delete_local_button))
         if page.config.show_batch_fill_button:
             more_actions.append(("批量补全过期", page.batch_fill_button))
         if page.config.show_batch_gap_fill_button:
@@ -218,6 +248,9 @@ class QuotesPageShell:
             page.column_button.clicked.connect(page._table.show_column_menu)
             toolbar.addWidget(page.column_button)
         _add_more_menu(toolbar, more_actions)
+        for _, menu_btn in more_actions:
+            menu_btn.hide()
+        toolbar.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget()
         toolbar_host.setObjectName("QuotesToolbarHost")

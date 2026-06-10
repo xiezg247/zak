@@ -19,6 +19,7 @@ from vnpy_ashare.app_db import (
 )
 from vnpy_ashare.bar_store import (
     PeriodBarOverview,
+    delete_scope_bars,
     get_period_overview,
     get_scope_overview,
     iter_bar_overviews,
@@ -29,6 +30,7 @@ from vnpy_ashare.bar_store import (
 __all__ = [
     "PeriodBarOverview",
     "build_symbol_name_map",
+    "delete_scope_bars",
     "get_period_overview",
     "get_scope_overview",
     "iter_bar_overviews",

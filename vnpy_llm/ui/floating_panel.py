@@ -7,11 +7,12 @@ import math
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.context import AiContextData
+from vnpy_ashare.paths import QSETTINGS_ORG
 from vnpy_ashare.ui.qt_helpers import (
     clamp_point_in_parent,
     ensure_geometry_on_screen,
+    frame_intersects_any_screen,
     restore_child_position,
-    restore_geometry_on_screen,
 )
 from vnpy_llm.engine import LlmEngine
 from vnpy_llm.ui.floating_actions import orb_tooltip_text
@@ -250,7 +251,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
             shell = self.parentWidget()
         if shell is None:
             return
-        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
+        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
         pos = settings.value("orb_position")
         restore_child_position(
             shell,
@@ -261,7 +262,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
         )
 
     def _save_position(self) -> None:
-        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
+        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
         settings.setValue("orb_position", self.pos())
 
     def clamp_to_parent(self, shell: QtWidgets.QWidget | None = None) -> None:
@@ -390,11 +391,19 @@ class FloatingAiPanel(QtWidgets.QWidget):
         return bar
 
     def _restore_geometry(self) -> None:
-        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
-        restore_geometry_on_screen(self, settings.value("panel_geometry"))
+        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
+        geometry = settings.value("panel_geometry")
+        if isinstance(geometry, QtCore.QByteArray) and not geometry.isEmpty():
+            self.restoreGeometry(geometry)
+            if not frame_intersects_any_screen(self.frameGeometry()):
+                ensure_geometry_on_screen(self)
+        else:
+            ensure_geometry_on_screen(self)
+        # 仅恢复位置/尺寸，不沿用上次可见状态（默认收起面板）
+        self.hide()
 
     def _save_geometry(self) -> None:
-        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
+        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
         settings.setValue("panel_geometry", self.saveGeometry())
 
     def show_near_orb(self, orb: FloatingAiOrb) -> None:

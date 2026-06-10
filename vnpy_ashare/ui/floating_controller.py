@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import QuickAction
+from vnpy_ashare.paths import QSETTINGS_ORG
 from vnpy_ashare.ai.context_store import get_ai_context
 from vnpy_ashare.events import AskAiRequest
 from vnpy_llm.engine import LlmEngine
@@ -69,6 +70,7 @@ class FloatingAiController(QtCore.QObject):
         self._engine.signals.context_changed.connect(self.refresh_context)
         orb.restore_position(shell)
         orb.hide()
+        panel.hide()
         self.refresh_context()
         return True
 
@@ -80,6 +82,7 @@ class FloatingAiController(QtCore.QObject):
         if self._orb is None:
             return
         if self.is_page_allowed(page_key):
+            self.hide_panel()
             if not self._orb_user_hidden:
                 self.show_orb()
         else:
@@ -296,10 +299,10 @@ class FloatingAiController(QtCore.QObject):
 
     @staticmethod
     def _load_orb_user_hidden() -> bool:
-        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
+        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
         value = settings.value("orb_user_hidden", False)
         return value is True or value == "true"
 
     def _save_orb_user_hidden(self) -> None:
-        settings = QtCore.QSettings("vnpy_zak", "floating_ai")
+        settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
         settings.setValue("orb_user_hidden", self._orb_user_hidden)

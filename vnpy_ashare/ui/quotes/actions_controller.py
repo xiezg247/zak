@@ -56,6 +56,14 @@ class ActionsController:
             else:
                 key = (item.symbol, item.exchange)
                 page.redownload_button.setEnabled(key in page.bar_meta)
+        if page.config.show_delete_button:
+            button = getattr(page, "delete_local_button", None)
+            if button is not None:
+                if item is None:
+                    button.setEnabled(False)
+                else:
+                    key = (item.symbol, item.exchange)
+                    button.setEnabled(key in page.bar_meta)
         if page.config.show_add_watchlist_button or page.config.show_remove_watchlist_button or page.config.show_watchlist_move_buttons:
             page._watchlist.update_action_buttons(item)
         if page.config.show_backtest_button:

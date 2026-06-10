@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.constant import Exchange, Interval
 
+from vnpy_ashare.bar_store import delete_scope_bars
 from vnpy_ashare.bars import cleanup_invalid_daily_bars, load_downloaded_stocks
 from vnpy_ashare.models import StockItem
 from vnpy_ashare.ui.quote_columns import LOCAL_TABLE_HEADERS, build_local_data_row
@@ -109,6 +110,31 @@ class CleanupDailyBarsTests(unittest.TestCase):
         items = load_downloaded_stocks(scope="1m")
         self.assertEqual(len(items), 1)
         iter_mock.assert_called_once_with(scope="1m")
+
+
+class DeleteScopeBarsTests(unittest.TestCase):
+    @patch("vnpy_ashare.bar_store.get_database")
+    @patch("vnpy_ashare.bar_store.get_scope_overview")
+    def test_delete_scope_bars(self, overview_mock, get_database_mock) -> None:
+        from vnpy_ashare.bar_store import PeriodBarOverview
+
+        overview_mock.return_value = PeriodBarOverview(
+            symbol="600519",
+            exchange=Exchange.SSE,
+            period="daily",
+            start=datetime(2020, 1, 2),
+            end=datetime(2026, 6, 5),
+            count=100,
+        )
+        database = MagicMock()
+        get_database_mock.return_value = database
+
+        self.assertTrue(delete_scope_bars("600519", Exchange.SSE, "daily"))
+        database.delete_bar_data.assert_called_once_with("600519", Exchange.SSE, Interval.DAILY)
+
+    @patch("vnpy_ashare.bar_store.get_scope_overview", return_value=None)
+    def test_delete_scope_bars_missing(self, _overview_mock) -> None:
+        self.assertFalse(delete_scope_bars("600519", Exchange.SSE, "daily"))
 
 
 if __name__ == "__main__":

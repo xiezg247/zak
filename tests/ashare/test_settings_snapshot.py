@@ -37,6 +37,7 @@ from vnpy_ashare.vt_settings import (
     ensure_vt_settings_from_env,
     save_runtime_settings,
     sync_vt_settings_from_env,
+    vt_settings_needs_env_bootstrap,
 )
 
 
@@ -289,6 +290,39 @@ class VtSettingsTest(unittest.TestCase):
                 self.assertEqual(path, target)
                 data = json.loads(target.read_text(encoding="utf-8"))
                 self.assertEqual(data["datafeed.name"], "tickflow")
+            finally:
+                vt_settings.SETTING_FILE = original_file
+                vt_settings.VNTRADER_DIR = original_dir
+
+    def test_vt_settings_needs_env_bootstrap(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "vt_setting.json"
+            self.assertTrue(vt_settings_needs_env_bootstrap(path))
+            path.write_text("{}", encoding="utf-8")
+            self.assertTrue(vt_settings_needs_env_bootstrap(path))
+            path.write_text("  \n", encoding="utf-8")
+            self.assertTrue(vt_settings_needs_env_bootstrap(path))
+            path.write_text("{not-json", encoding="utf-8")
+            self.assertTrue(vt_settings_needs_env_bootstrap(path))
+            path.write_text('{"database.name": "postgresql"}', encoding="utf-8")
+            self.assertFalse(vt_settings_needs_env_bootstrap(path))
+
+    def test_ensure_vt_settings_from_env_bootstraps_empty_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            import vnpy_ashare.vt_settings as vt_settings
+
+            target = Path(tmp) / "vt_setting.json"
+            original_file = vt_settings.SETTING_FILE
+            original_dir = vt_settings.VNTRADER_DIR
+            try:
+                vt_settings.VNTRADER_DIR = Path(tmp)
+                vt_settings.SETTING_FILE = target
+                target.write_text("{}", encoding="utf-8")
+                self.assertTrue(ensure_vt_settings_from_env())
+                data = json.loads(target.read_text(encoding="utf-8"))
+                self.assertIn("datafeed.name", data)
+                self.assertIn("database.meta.app", data)
+                self.assertFalse(ensure_vt_settings_from_env())
             finally:
                 vt_settings.SETTING_FILE = original_file
                 vt_settings.VNTRADER_DIR = original_dir

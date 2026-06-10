@@ -76,6 +76,7 @@ class PageConfig:
     require_keyword: bool
     show_fill_button: bool = False
     show_redownload_button: bool = False
+    show_delete_button: bool = False
     show_batch_fill_button: bool = False
     show_batch_gap_fill_button: bool = False
     use_local_table: bool = False
@@ -100,6 +101,7 @@ class PageConfig:
     show_board_filter: bool = False
     hide_quote_header: bool = False
     column_configurable: bool = False
+    search_max_width: int = 280
 
 
 DEFAULT_WATCHLIST_COLUMNS: list[str] = [
@@ -143,6 +145,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         title="市场",
         scope_key="全部A股",
         search_placeholder="输入代码 / 名称搜索 A 股",
+        search_max_width=320,
         show_sync_button=True,
         show_download_button=True,
         show_local_column=True,
@@ -162,6 +165,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         title="自选",
         scope_key="自选池",
         search_placeholder="搜索自选池代码 / 名称",
+        search_max_width=240,
         show_sync_button=False,
         show_download_button=True,
         show_local_column=True,
@@ -182,10 +186,12 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         title="本地",
         scope_key="已下载",
         search_placeholder="搜索本地已下载标的",
+        search_max_width=260,
         show_sync_button=False,
         show_download_button=False,
         show_fill_button=True,
         show_redownload_button=True,
+        show_delete_button=True,
         show_batch_fill_button=True,
         show_batch_gap_fill_button=True,
         use_local_table=True,
@@ -193,6 +199,6 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         require_keyword=False,
         auto_refresh_quotes=False,
         show_diagnose_button=True,
-        show_diagnose_panel=True,
+        show_diagnose_panel=False,
     ),
 }

@@ -494,6 +494,9 @@ class QuotesPage(QtWidgets.QWidget):
     def redownload_selected(self) -> None:
         self._local.redownload_selected()
 
+    def delete_selected_local(self) -> None:
+        self._local.delete_selected()
+
     def _run_download(self, *, mode: str, action_label: str) -> None:
         self._local.run_download(mode=mode, action_label=action_label)
 
@@ -516,6 +519,8 @@ class QuotesPage(QtWidgets.QWidget):
                 self.fill_button.setEnabled(False)
             if self.config.show_redownload_button:
                 self.redownload_button.setEnabled(False)
+            if self.config.show_delete_button:
+                self.delete_local_button.setEnabled(False)
             if self.config.show_batch_fill_button:
                 self.batch_fill_button.setEnabled(False)
             if self.config.show_batch_gap_fill_button:
