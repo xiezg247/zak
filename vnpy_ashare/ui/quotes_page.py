@@ -52,6 +52,7 @@ from vnpy_ashare.ui.quotes_config import (
     SEARCH_DEBOUNCE_MS,
     quote_source_label,
 )
+from vnpy_ashare.ui.theme import theme_manager
 
 
 class QuotesPage(QtWidgets.QWidget):
@@ -144,6 +145,19 @@ class QuotesPage(QtWidgets.QWidget):
         self._quote_timer.timeout.connect(self.refresh_quotes)
 
         self._init_ui()
+        theme_manager().register_callback(self._on_theme_changed)
+
+    def _on_theme_changed(self, _tokens) -> None:
+        if not self._active:
+            return
+        self._refresh_table_quotes()
+        self._table.update_stats()
+        if self.current_item is not None:
+            self._actions.update_quote_header(self.current_item)
+        if self.depth_panel is not None:
+            self.depth_panel.refresh_colors()
+        if self.chart_panel is not None:
+            self._actions.refresh_charts_only()
 
     def _init_columns(self) -> None:
         self._table.init_columns()

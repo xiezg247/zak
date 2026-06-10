@@ -49,6 +49,9 @@ class ThemeManagerTests(unittest.TestCase):
         dark_ai = build_ai_panel_stylesheet(DARK_TOKENS)
         light_ai = build_ai_panel_stylesheet(LIGHT_TOKENS)
         self.assertNotEqual(dark_ai, light_ai)
+        self.assertIn(LIGHT_TOKENS.ai_assistant_bg, light_ai)
+        self.assertIn(LIGHT_TOKENS.ai_chat_bg, light_ai)
+        self.assertNotIn(LIGHT_TOKENS.panel_bg, light_ai.split("AiBubbleAssistant")[1].split("}")[0])
 
     def test_scheduler_log_html_uses_semantic_colors(self) -> None:
         from vnpy_ashare.scheduler import JobRunRecord
@@ -89,9 +92,10 @@ class ThemeManagerTests(unittest.TestCase):
 
         panel = QtWidgets.QWidget()
         manager.bind_stylesheet(panel, extra=build_settings_stylesheet)
-        manager.set_theme("light")
-        self.assertEqual(manager.current(), "light")
-        self.assertIn(LIGHT_TOKENS.app_bg, panel.styleSheet())
+        manager.set_theme("system")
+        self.assertEqual(manager.current(), "system")
+        expected = LIGHT_TOKENS if manager.resolved() == "light" else DARK_TOKENS
+        self.assertIn(expected.app_bg, panel.styleSheet())
 
         manager.set_theme("dark")
         saved = QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
@@ -100,6 +104,37 @@ class ThemeManagerTests(unittest.TestCase):
     def test_get_tokens_returns_expected_palette(self) -> None:
         self.assertEqual(get_tokens("dark").accent, DARK_TOKENS.accent)
         self.assertEqual(get_tokens("light").nav_bg, LIGHT_TOKENS.nav_bg)
+
+    def test_set_system_theme_persists_and_resolves(self) -> None:
+        from vnpy_ashare.ui.theme.system import detect_system_theme_id, resolve_theme_id
+
+        manager = theme_manager()
+        manager.set_theme("system")
+        self.assertEqual(manager.current(), "system")
+        self.assertIn(manager.resolved(), ("dark", "light"))
+        self.assertEqual(manager.resolved(), resolve_theme_id("system"))
+        self.assertEqual(manager.resolved(), detect_system_theme_id())
+
+        saved = QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
+        self.assertEqual(saved.value("ui_theme"), "system")
+
+        panel = QtWidgets.QWidget()
+        manager.bind_stylesheet(panel, extra=build_settings_stylesheet)
+        expected = LIGHT_TOKENS if manager.resolved() == "light" else DARK_TOKENS
+        self.assertIn(expected.app_bg, panel.styleSheet())
+
+    def test_load_saved_accepts_system(self) -> None:
+        settings = QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
+        settings.setValue("ui_theme", "system")
+        manager = theme_manager()
+        self.assertEqual(manager.load_saved(), "system")
+
+    def test_load_saved_migrates_legacy_light_to_system(self) -> None:
+        settings = QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
+        settings.setValue("ui_theme", "light")
+        manager = theme_manager()
+        self.assertEqual(manager.load_saved(), "system")
+        self.assertEqual(manager.current(), "system")
 
 
 if __name__ == "__main__":

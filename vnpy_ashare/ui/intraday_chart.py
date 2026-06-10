@@ -17,20 +17,18 @@ from vnpy_ashare.market_hours import (
 )
 from vnpy_ashare.ui.chart_style import (
     AVG_LINE_COLOR,
-    FALL_RGB,
     INTRADAY_AVG_LINE_WIDTH,
     INTRADAY_LAST_DOT_SIZE,
     INTRADAY_PRICE_LINE_WIDTH,
     PREV_CLOSE_COLOR,
-    RISE_RGB,
     build_intraday_info_stylesheet,
     chart_palette,
     style_intraday_price_plot,
     style_intraday_volume_plot,
 )
 from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.market_colors import market_colors, market_rgb, price_change_color
 from vnpy_ashare.ui.theme.tokens import ThemeTokens
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
 
 VOLUME_BAR_WIDTH = 0.75
 PRICE_ROW_STRETCH = 3
@@ -122,14 +120,10 @@ def format_pct_tick(price: float, prev_close: float) -> str:
     return f"{pct_change(price, prev_close):+.2f}%"
 
 
-def change_color(price: float, prev_close: float) -> str:
-    if prev_close <= 0:
-        return FLAT_COLOR
-    if price > prev_close:
-        return RISE_COLOR
-    if price < prev_close:
-        return FALL_COLOR
-    return FLAT_COLOR
+def change_color(price: float, prev_close: float, *, tokens: ThemeTokens | None = None) -> str:
+    if tokens is None:
+        tokens = theme_manager().tokens()
+    return price_change_color(price, prev_close, tokens)
 
 
 def format_change(price: float, prev_close: float) -> tuple[str, str]:
@@ -140,11 +134,14 @@ def format_change(price: float, prev_close: float) -> tuple[str, str]:
     return f"{delta:+.2f}", f"{pct:+.2f}%"
 
 
-def volume_bar_color(bar: BarData) -> tuple[int, int, int]:
+def volume_bar_color(bar: BarData, *, tokens: ThemeTokens | None = None) -> tuple[int, int, int]:
     """A 股分钟量柱：收涨红、收跌绿。"""
+    if tokens is None:
+        tokens = theme_manager().tokens()
+    rise_rgb, fall_rgb = market_rgb(tokens)
     if bar.close_price >= bar.open_price:
-        return RISE_RGB
-    return FALL_RGB
+        return rise_rgb
+    return fall_rgb
 
 
 def _interp_cross_x(x0: float, y0: float, x1: float, y1: float, y_target: float) -> float:
@@ -217,12 +214,12 @@ def format_intraday_summary(
     label = colors.label
     parts = [
         f"<span style='color:{label}'>时间</span> {time_label}",
-        f"<span style='color:{label}'>现价</span> <span style='color:{change_color(bar.close_price, prev_close)}'>{bar.close_price:.2f}</span>",
+        f"<span style='color:{label}'>现价</span> <span style='color:{change_color(bar.close_price, prev_close, tokens=tokens)}'>{bar.close_price:.2f}</span>",
         f"<span style='color:{label}'>均价</span> <span style='color:{AVG_LINE_COLOR}'>{avg_price:.2f}</span>",
         f"<span style='color:{label}'>成交量</span> {format_volume_lots(bar.volume)}",
     ]
     if prev_close > 0:
-        color = change_color(bar.close_price, prev_close)
+        color = change_color(bar.close_price, prev_close, tokens=tokens)
         parts.append(f"<span style='color:{label}'>涨跌</span> <span style='color:{color}'>{delta_text} ({pct_text})</span>")
     return "  ·  ".join(parts)
 
@@ -240,7 +237,7 @@ def format_intraday_idle_summary(
 
     colors = html_palette(tokens or theme_manager().tokens())
     delta_text, pct_text = format_change(bar.close_price, prev_close)
-    color = change_color(bar.close_price, prev_close)
+    color = change_color(bar.close_price, prev_close, tokens=tokens)
     text = (
         f"最新 <span style='color:{color}; font-weight:600'>{bar.close_price:.2f}</span>"
         f"  ·  均价 <span style='color:{AVG_LINE_COLOR}'>{avg_price:.2f}</span>"
@@ -323,7 +320,7 @@ class IntradayChart(QtWidgets.QWidget):
         self._last_dot = pg.ScatterPlotItem(
             size=INTRADAY_LAST_DOT_SIZE,
             pen=pg.mkPen(width=1.5),
-            brush=pg.mkBrush(RISE_COLOR),
+            brush=pg.mkBrush(market_colors(theme_manager().tokens()).rise),
         )
         self._price_plot.addItem(self._last_dot)
 
@@ -352,6 +349,11 @@ class IntradayChart(QtWidgets.QWidget):
         self._vline.setPen(cross_pen)
         self._hline.setPen(cross_pen)
         self._vline_vol.setPen(cross_pen)
+        if self._xs and self._prices:
+            if self._prev_close > 0:
+                self._update_price_layers(self._xs, self._prices, self._prev_close, tokens=tokens)
+            self._update_last_dot(self._xs[-1], self._prices[-1], self._prev_close, tokens=tokens)
+            self._update_volume_bars(self._xs, self._bars, tokens=tokens)
         if self._hover_index is not None:
             self._update_hover_summary(self._hover_index, tokens=tokens)
         else:
@@ -391,14 +393,24 @@ class IntradayChart(QtWidgets.QWidget):
             self._price_plot.removeItem(item)
         self._price_segments.clear()
 
-    def _update_price_layers(self, xs: list[float], prices: list[float], prev_close: float) -> None:
+    def _update_price_layers(
+        self,
+        xs: list[float],
+        prices: list[float],
+        prev_close: float,
+        *,
+        tokens: ThemeTokens | None = None,
+    ) -> None:
         """涨跌分段 2px 双色价格线。"""
+        if tokens is None:
+            tokens = theme_manager().tokens()
+        colors = market_colors(tokens)
         self._clear_price_segments()
         if not xs or prev_close <= 0:
             return
 
         for seg_x, seg_y, rising in build_price_segments(xs, prices, prev_close):
-            color = RISE_COLOR if rising else FALL_COLOR
+            color = colors.rise if rising else colors.fall
             price_seg = pg.PlotDataItem(
                 seg_x,
                 seg_y,
@@ -411,15 +423,28 @@ class IntradayChart(QtWidgets.QWidget):
         self._avg_curve.setZValue(1)
         self._last_dot.setZValue(3)
 
-    def _update_last_dot(self, x: float, price: float, prev_close: float) -> None:
-        color = change_color(price, prev_close)
+    def _update_last_dot(
+        self,
+        x: float,
+        price: float,
+        prev_close: float,
+        *,
+        tokens: ThemeTokens | None = None,
+    ) -> None:
+        color = change_color(price, prev_close, tokens=tokens)
         self._last_dot.setData([x], [price])
         self._last_dot.setPen(pg.mkPen(color, width=1.5))
         self._last_dot.setBrush(pg.mkBrush(color))
 
-    def _update_volume_bars(self, xs: list[float], bars: list[BarData]) -> None:
+    def _update_volume_bars(
+        self,
+        xs: list[float],
+        bars: list[BarData],
+        *,
+        tokens: ThemeTokens | None = None,
+    ) -> None:
         volumes = [bar.volume for bar in bars]
-        brushes = [pg.mkBrush(volume_bar_color(bar)) for bar in bars]
+        brushes = [pg.mkBrush(volume_bar_color(bar, tokens=tokens)) for bar in bars]
         self._volume_bars.setOpts(
             x=xs,
             height=volumes,
@@ -519,7 +544,7 @@ class IntradayChart(QtWidgets.QWidget):
             fallback = pg.PlotDataItem(
                 xs,
                 prices,
-                pen=pg.mkPen(FLAT_COLOR, width=INTRADAY_PRICE_LINE_WIDTH),
+                pen=pg.mkPen(market_colors(theme_manager().tokens()).flat, width=INTRADAY_PRICE_LINE_WIDTH),
             )
             fallback.setZValue(2)
             self._price_plot.addItem(fallback)

@@ -17,7 +17,9 @@ from vnpy_ashare.ui.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quote_columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.reference_peer_dialog import show_reference_peer_dialog
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, NAV_MUTED_COLOR, RISE_COLOR
+from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.market_colors import market_colors, quote_change_color
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage
@@ -118,7 +120,8 @@ class ActionsController:
             page.quote_change_label.setText("")
             return
 
-        color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
+        colors = market_colors(theme_manager().tokens())
+        color = quote_change_color(quote, theme_manager().tokens())
         page.quote_price_label.setText(f"{quote.last_price:.2f}")
         page.quote_price_label.setStyleSheet(f"color: {color};")
         page.quote_change_label.setText(f"  {quote.change_amount:+.2f}  ({quote.change_pct:+.2f}%)")
@@ -128,9 +131,9 @@ class ActionsController:
             open_text = f"今开 {quote.open_price:.2f}" if quote.open_price else "今开 —"
             page._open_label.setText(open_text)
             page._high_label.setText(f"最高 {quote.high_price:.2f}" if quote.high_price else "最高 —")
-            page._high_label.setStyleSheet(f"color: {RISE_COLOR}; font-size: 12px;")
+            page._high_label.setStyleSheet(f"color: {colors.rise}; font-size: 12px;")
             page._low_label.setText(f"最低 {quote.low_price:.2f}" if quote.low_price else "最低 —")
-            page._low_label.setStyleSheet(f"color: {FALL_COLOR}; font-size: 12px;")
+            page._low_label.setStyleSheet(f"color: {colors.fall}; font-size: 12px;")
             vol_text = format_volume(quote.volume) if quote.volume else "—"
             page._volume_label.setText(f"量 {vol_text}")
             page._volume_label.setStyleSheet(f"color: {NAV_MUTED_COLOR}; font-size: 12px;")

@@ -24,13 +24,16 @@ from vnpy_ashare.ui.theme.build_extra import (
 from vnpy_ashare.ui.theme.manager import ExtraStyles, ThemeManager, theme_manager
 from vnpy_ashare.ui.theme.orb_palette import OrbPalette, orb_palette
 from vnpy_ashare.ui.theme.html_palette import HtmlPalette, html_palette
-from vnpy_ashare.ui.theme.tokens import DEFAULT_THEME, ThemeId, ThemeTokens, get_tokens
+from vnpy_ashare.ui.theme.market_colors import MarketColors, market_colors
+from vnpy_ashare.ui.theme.tokens import DEFAULT_THEME, DEFAULT_THEME_PREFERENCE, ThemeId, ThemePreference, ThemeTokens, get_tokens
 
 __all__ = [
     "DEFAULT_THEME",
+    "DEFAULT_THEME_PREFERENCE",
     "ExtraStyles",
     "ThemeId",
     "ThemeManager",
+    "ThemePreference",
     "ThemeTokens",
     "build_ai_floating_stylesheet",
     "build_ai_panel_stylesheet",
@@ -50,6 +53,8 @@ __all__ = [
     "get_tokens",
     "HtmlPalette",
     "html_palette",
+    "MarketColors",
+    "market_colors",
     "orb_palette",
     "OrbPalette",
     "stylesheet_for",

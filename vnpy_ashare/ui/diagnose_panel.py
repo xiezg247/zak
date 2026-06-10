@@ -6,20 +6,14 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
 from vnpy_ashare.ui.theme import theme_manager
 from vnpy_ashare.ui.theme.html_palette import html_palette
+from vnpy_ashare.ui.theme.market_colors import pct_change_color
 from vnpy_ashare.ui.theme.tokens import ThemeTokens
 
 
-def _pct_color(value: float | None) -> str:
-    if value is None:
-        return FLAT_COLOR
-    if value > 0:
-        return RISE_COLOR
-    if value < 0:
-        return FALL_COLOR
-    return FLAT_COLOR
+def _pct_color(value: float | None, *, tokens: ThemeTokens | None = None) -> str:
+    return pct_change_color(value, tokens or theme_manager().tokens())
 
 
 def format_diagnose_html(payload: dict[str, Any], *, tokens: ThemeTokens | None = None) -> str:
@@ -37,7 +31,7 @@ def format_diagnose_html(payload: dict[str, Any], *, tokens: ThemeTokens | None 
     quote = payload.get("quote") or {}
     if quote:
         change_pct = quote.get("change_pct")
-        ret_color = _pct_color(change_pct if isinstance(change_pct, (int, float)) else None)
+        ret_color = _pct_color(change_pct if isinstance(change_pct, (int, float)) else None, tokens=tokens)
         ret_text = f"{change_pct:+.2f}%" if isinstance(change_pct, (int, float)) else "-"
         industry = quote.get("industry") or ""
         lines.append(
@@ -90,7 +84,7 @@ def format_diagnose_html(payload: dict[str, Any], *, tokens: ThemeTokens | None 
         if technical:
             ma = technical.get("ma") or {}
             ret = (technical.get("period_return") or {}).get("return_pct")
-            ret_color = _pct_color(ret if isinstance(ret, (int, float)) else None)
+            ret_color = _pct_color(ret if isinstance(ret, (int, float)) else None, tokens=tokens)
             ret_text = f"{ret:+.2f}%" if isinstance(ret, (int, float)) else "-"
             lines.append(
                 f'<p style="margin:0 0 4px 0;color:{colors.section};">技术面</p>'

@@ -6,7 +6,6 @@ import pyqtgraph as pg
 from vnpy.chart import ChartWidget
 from vnpy.trader.ui import QtGui
 
-from vnpy_ashare.ui.styles import FALL_COLOR, RISE_COLOR
 from vnpy_ashare.ui.theme.build_chart import (
     AVG_LINE_COLOR,
     CHART_BG,
@@ -30,7 +29,8 @@ from vnpy_ashare.ui.theme.build_chart import (
     build_intraday_info_stylesheet,
     chart_palette,
 )
-from vnpy_ashare.ui.theme.tokens import ThemeTokens
+from vnpy_ashare.ui.theme.market_colors import hex_to_rgb, market_rgb
+from vnpy_ashare.ui.theme.tokens import DARK_TOKENS, ThemeTokens
 
 __all__ = [
     "AVG_LINE_COLOR",
@@ -58,26 +58,27 @@ __all__ = [
     "build_chart_panel_stylesheet",
     "build_intraday_info_stylesheet",
     "chart_palette",
+    "hex_to_rgb",
     "style_intraday_price_plot",
     "style_intraday_volume_plot",
 ]
 
 
-def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
-    color = QtGui.QColor(hex_color)
-    return color.red(), color.green(), color.blue()
+RISE_RGB = hex_to_rgb(DARK_TOKENS.market_rise)
+FALL_RGB = hex_to_rgb(DARK_TOKENS.market_fall)
 
 
-RISE_RGB = hex_to_rgb(RISE_COLOR)
-FALL_RGB = hex_to_rgb(FALL_COLOR)
-
-
-def apply_candle_colors(item: object) -> None:
+def apply_candle_colors(item: object, *, tokens: ThemeTokens | None = None) -> None:
     """A 股红涨绿跌实心 K 线。"""
-    item._up_pen = pg.mkPen(color=RISE_RGB, width=1)
-    item._up_brush = pg.mkBrush(color=RISE_RGB)
-    item._down_pen = pg.mkPen(color=FALL_RGB, width=1)
-    item._down_brush = pg.mkBrush(color=FALL_RGB)
+    from vnpy_ashare.ui.theme import theme_manager
+
+    if tokens is None:
+        tokens = theme_manager().tokens()
+    rise_rgb, fall_rgb = market_rgb(tokens)
+    item._up_pen = pg.mkPen(color=rise_rgb, width=1)
+    item._up_brush = pg.mkBrush(color=rise_rgb)
+    item._down_pen = pg.mkPen(color=fall_rgb, width=1)
+    item._down_brush = pg.mkBrush(color=fall_rgb)
     item._black_brush = item._up_brush
 
 
@@ -89,6 +90,9 @@ def apply_ashare_chart_theme(chart: ChartWidget, tokens: ThemeTokens | None = No
         tokens = manager.tokens()
     palette = chart_palette(tokens)
     _apply_chart_theme(chart, palette)
+    for item in getattr(chart, "_items", {}).values():
+        if hasattr(item, "_up_pen"):
+            apply_candle_colors(item, tokens=tokens)
     manager.register_chart(chart)
 
 

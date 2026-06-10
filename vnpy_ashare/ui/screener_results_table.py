@@ -6,7 +6,8 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.market_colors import pct_change_color
 
 ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
@@ -104,7 +105,7 @@ def populate_screener_results_table(
             item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
             if key == "change_pct":
                 change_pct = float(value or 0)
-                color = RISE_COLOR if change_pct > 0 else FALL_COLOR if change_pct < 0 else FLAT_COLOR
+                color = pct_change_color(change_pct, theme_manager().tokens())
                 item.setForeground(QtGui.QColor(color))
             elif key == "hit_reason":
                 item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)

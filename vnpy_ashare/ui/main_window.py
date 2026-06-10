@@ -86,7 +86,7 @@ class AshareMainWindow(MainWindow):
         self._scheduler_listener_connected = False
         self._theme_manager = theme_manager()
         self._theme_dark_action: QtGui.QAction | None = None
-        self._theme_light_action: QtGui.QAction | None = None
+        self._theme_system_action: QtGui.QAction | None = None
         super().__init__(main_engine, event_engine)
         self._signal_open_backtest.connect(self._handle_open_backtest)
         self._signal_open_batch_backtest.connect(self._handle_open_batch_backtest)
@@ -160,10 +160,10 @@ class AshareMainWindow(MainWindow):
         self._theme_dark_action.setCheckable(True)
         self._theme_dark_action.setData("dark")
         theme_group.addAction(self._theme_dark_action)
-        self._theme_light_action = theme_menu.addAction("浅色")
-        self._theme_light_action.setCheckable(True)
-        self._theme_light_action.setData("light")
-        theme_group.addAction(self._theme_light_action)
+        self._theme_system_action = theme_menu.addAction("跟随系统")
+        self._theme_system_action.setCheckable(True)
+        self._theme_system_action.setData("system")
+        theme_group.addAction(self._theme_system_action)
         self._sync_theme_menu_checks()
         theme_group.triggered.connect(self._on_theme_menu_triggered)
 
@@ -171,12 +171,12 @@ class AshareMainWindow(MainWindow):
         current = self._theme_manager.current()
         if self._theme_dark_action is not None:
             self._theme_dark_action.setChecked(current == "dark")
-        if self._theme_light_action is not None:
-            self._theme_light_action.setChecked(current == "light")
+        if self._theme_system_action is not None:
+            self._theme_system_action.setChecked(current == "system")
 
     def _on_theme_menu_triggered(self, action: QtGui.QAction) -> None:
         theme_id = action.data()
-        if theme_id not in ("dark", "light"):
+        if theme_id not in ("dark", "system"):
             return
         self._theme_manager.set_theme(theme_id)
         self._sync_theme_menu_checks()

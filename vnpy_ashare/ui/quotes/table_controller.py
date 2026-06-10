@@ -28,7 +28,8 @@ from vnpy_ashare.ui.quotes_config import (
     MAX_DISPLAY_ROWS,
 )
 from vnpy_ashare.ui.sortable_table import SortableTableItem
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.market_colors import market_colors, quote_change_color
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes_page import QuotesPage
@@ -286,11 +287,12 @@ class TableController:
             else:
                 flat_count += 1
         avg_pct = (up_total_pct / up_count) if up_count > 0 else 0.0
+        colors = market_colors(theme_manager().tokens())
         parts = [f"自选池 {total} 只"]
         if up_count:
-            parts.append(f'<span style="color:{RISE_COLOR}">涨 {up_count}</span>')
+            parts.append(f'<span style="color:{colors.rise}">涨 {up_count}</span>')
         if down_count:
-            parts.append(f'<span style="color:{FALL_COLOR}">跌 {down_count}</span>')
+            parts.append(f'<span style="color:{colors.fall}">跌 {down_count}</span>')
         if flat_count:
             parts.append(f"平 {flat_count}")
         if up_count:
@@ -341,7 +343,7 @@ class TableController:
             return STATUS_STALE_COLOR
         if status == BarHealthStatus.GAPS:
             return STATUS_GAP_COLOR
-        return FLAT_COLOR
+        return market_colors(theme_manager().tokens()).flat
 
     def _local_tail_values(self, item: StockItem) -> list[str]:
         page = self._p
@@ -486,9 +488,11 @@ class TableController:
             else:
                 filtered_sort_keys.append(values[src_idx] if src_idx < len(values) else "")
 
-        color = FLAT_COLOR
+        tokens = theme_manager().tokens()
+        colors = market_colors(tokens)
+        color = colors.flat
         if quote:
-            color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
+            color = quote_change_color(quote, tokens)
 
         status_col: int | None = None
         status: BarHealthStatus | None = None

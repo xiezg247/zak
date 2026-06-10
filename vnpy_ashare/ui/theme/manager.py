@@ -9,7 +9,15 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.paths import QSETTINGS_ORG
 from vnpy_ashare.ui.theme.build import build_terminal_stylesheet, stylesheet_for
-from vnpy_ashare.ui.theme.tokens import DEFAULT_THEME, ThemeId, ThemeTokens, get_tokens
+from vnpy_ashare.ui.theme.system import detect_system_theme_id, resolve_theme_id
+from vnpy_ashare.ui.theme.tokens import (
+    DEFAULT_THEME_PREFERENCE,
+    THEME_PREFERENCES,
+    ThemeId,
+    ThemePreference,
+    ThemeTokens,
+    get_tokens,
+)
 
 if TYPE_CHECKING:
     from vnpy.chart import ChartWidget
@@ -29,10 +37,11 @@ class ThemeManager(QtCore.QObject):
 
     def __init__(self) -> None:
         super().__init__()
-        self._theme: ThemeId = DEFAULT_THEME
+        self._preference: ThemePreference = DEFAULT_THEME_PREFERENCE
         self._bound: list[tuple[QtWidgets.QWidget, ExtraStyles]] = []
         self._callbacks: list[Callable[[ThemeTokens], None]] = []
         self._charts: list[ChartWidget] = []
+        self._system_listener_installed = False
 
     @classmethod
     def instance(cls) -> ThemeManager:
@@ -40,25 +49,39 @@ class ThemeManager(QtCore.QObject):
             cls._instance = cls()
         return cls._instance
 
-    def current(self) -> ThemeId:
-        return self._theme
+    def preference(self) -> ThemePreference:
+        return self._preference
+
+    def current(self) -> ThemePreference:
+        """用户选择的主题偏好（含 system）。"""
+        return self._preference
+
+    def resolved(self) -> ThemeId:
+        """当前实际生效的深浅色 id。"""
+        return resolve_theme_id(self._preference)
 
     def tokens(self) -> ThemeTokens:
-        return get_tokens(self._theme)
+        return get_tokens(self.resolved())
 
-    def load_saved(self) -> ThemeId:
+    def load_saved(self) -> ThemePreference:
         settings = QtCore.QSettings(QSETTINGS_ORG, _SETTINGS_APP)
-        raw = settings.value(_SETTINGS_KEY, DEFAULT_THEME)
-        theme = raw if raw in ("dark", "light") else DEFAULT_THEME
-        self._theme = theme
-        return theme
+        raw = settings.value(_SETTINGS_KEY, DEFAULT_THEME_PREFERENCE)
+        if raw == "light":
+            preference = "system"
+            settings.setValue(_SETTINGS_KEY, "system")
+        elif raw in THEME_PREFERENCES:
+            preference = raw
+        else:
+            preference = DEFAULT_THEME_PREFERENCE
+        self._preference = preference
+        return preference
 
-    def set_theme(self, theme: ThemeId, *, persist: bool = True) -> None:
-        if theme not in ("dark", "light"):
+    def set_theme(self, theme: ThemePreference, *, persist: bool = True) -> None:
+        if theme not in THEME_PREFERENCES:
             return
-        if theme == self._theme:
+        if theme == self._preference:
             return
-        self._theme = theme
+        self._preference = theme
         if persist:
             QtCore.QSettings(QSETTINGS_ORG, _SETTINGS_APP).setValue(_SETTINGS_KEY, theme)
         self.apply()
@@ -78,6 +101,7 @@ class ThemeManager(QtCore.QObject):
         self._apply_widget_stylesheet(widget, extra)
 
     def apply(self) -> None:
+        self._ensure_system_listener()
         tokens = self.tokens()
         qss = build_terminal_stylesheet(tokens)
         app = QtWidgets.QApplication.instance()
@@ -89,6 +113,21 @@ class ThemeManager(QtCore.QObject):
         for callback in self._callbacks:
             callback(tokens)
         self._refresh_charts(tokens)
+
+    def _ensure_system_listener(self) -> None:
+        if self._system_listener_installed:
+            return
+        hints = QtGui.QGuiApplication.styleHints()
+        if not hasattr(hints, "colorSchemeChanged"):
+            return
+        hints.colorSchemeChanged.connect(self._on_system_color_scheme_changed)
+        self._system_listener_installed = True
+
+    def _on_system_color_scheme_changed(self, _scheme: QtCore.Qt.ColorScheme) -> None:
+        if self._preference != "system":
+            return
+        self.apply()
+        self.theme_changed.emit("system")
 
     @staticmethod
     def _apply_palette(app: QtWidgets.QApplication, tokens: ThemeTokens) -> None:
@@ -122,6 +161,11 @@ class ThemeManager(QtCore.QObject):
         palette = chart_palette(tokens)
         for chart in self._charts:
             _apply_chart_theme(chart, palette)
+            for item in getattr(chart, "_items", {}).values():
+                if hasattr(item, "_up_pen"):
+                    from vnpy_ashare.ui.chart_style import apply_candle_colors
+
+                    apply_candle_colors(item, tokens=tokens)
 
 
 def theme_manager() -> ThemeManager:

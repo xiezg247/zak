@@ -7,7 +7,6 @@ from vnpy_ashare.ui.theme.tokens import DARK_TOKENS, ThemeTokens
 
 def _build_chat_bubble_stylesheet(t: ThemeTokens) -> str:
     user_bg = t.table_selected if t.id == "light" else t.run_row_active_bg
-    assistant_bg = t.panel_bg
     pending_bg = t.run_row_active_bg
     error_bg = t.danger_btn_bg
     return f"""
@@ -20,8 +19,9 @@ QLabel#AiBubbleUser {{
 }}
 QLabel#AiBubbleAssistant,
 QTextBrowser#AiBubbleAssistant {{
-    background-color: {assistant_bg};
+    background-color: {t.ai_assistant_bg};
     color: {t.text_primary};
+    border: 1px solid {t.ai_assistant_border};
     border-radius: 10px;
     padding: 10px 14px;
     font-size: 14px;
@@ -103,7 +103,7 @@ QWidget#AiQuickActionChips {{
 
 
 def build_ai_panel_stylesheet(t: ThemeTokens) -> str:
-    chat_bg = t.screener_log_bg
+    chat_bg = t.ai_chat_bg
     sidebar_bg = t.nav_bg
     context_bg = t.panel_bg
     return (
@@ -284,11 +284,10 @@ QCheckBox#AiSessionCheck::indicator:disabled {{
 
 
 def build_ai_floating_stylesheet(t: ThemeTokens) -> str:
-    chat_bg = t.screener_log_bg
+    chat_bg = t.ai_chat_bg
     title_bg = t.panel_bg
     chip_bg = t.panel_bg
     user_bg = t.table_selected if t.id == "light" else t.run_row_active_bg
-    assistant_bg = t.panel_bg
     return (
         f"""
 QWidget#FloatingAiPanel {{
@@ -369,9 +368,9 @@ QLabel#AiBubbleUser {{
 }}
 QLabel#AiBubbleAssistant,
 QTextBrowser#AiBubbleAssistant {{
-    background-color: {assistant_bg};
+    background-color: {t.ai_assistant_bg};
     color: {t.text_primary};
-    border: 1px solid {t.panel_border};
+    border: 1px solid {t.ai_assistant_border};
     border-radius: 10px;
     padding: 10px 14px;
     font-size: 14px;

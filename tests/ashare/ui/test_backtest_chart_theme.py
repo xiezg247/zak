@@ -19,10 +19,11 @@ class BacktestChartThemeTests(unittest.TestCase):
 
     def setUp(self) -> None:
         ThemeManager._instance = None
-        theme_manager().set_theme("light", persist=False)
+        theme_manager().set_theme("system", persist=False)
 
     def test_backtest_chart_uses_light_background(self) -> None:
         chart = AshareBacktesterChart()
+        apply_backtest_chart_theme(chart, tokens=LIGHT_TOKENS)
         palette = chart_palette(LIGHT_TOKENS)
         bg = chart.backgroundBrush().color()
         expected = QtGui.QColor(palette.panel_bg)
@@ -35,8 +36,8 @@ class BacktestChartThemeTests(unittest.TestCase):
         apply_backtest_chart_theme(chart, tokens=theme_manager().tokens())
         dark_bg = chart.backgroundBrush().color().name()
 
-        theme_manager().set_theme("light", persist=False)
-        chart._on_theme_changed(theme_manager().tokens())
+        apply_backtest_chart_theme(chart, tokens=LIGHT_TOKENS)
+        chart._on_theme_changed(LIGHT_TOKENS)
         light_bg = chart.backgroundBrush().color().name()
 
         self.assertNotEqual(dark_bg, light_bg)

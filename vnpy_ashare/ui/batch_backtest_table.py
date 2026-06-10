@@ -8,7 +8,8 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.backtest.run_store import BacktestRunRecord
 from vnpy_ashare.screener.batch_actions import BatchBacktestRow
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.market_colors import pct_change_color
 
 
 class _RowLike(Protocol):
@@ -77,7 +78,7 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
                 if col_index == 2:
                     metric = getattr(row, "total_return", None)
                     if isinstance(metric, (int, float)):
-                        color = RISE_COLOR if metric > 0 else FALL_COLOR if metric < 0 else FLAT_COLOR
+                        color = pct_change_color(float(metric), theme_manager().tokens())
                         item.setForeground(QtGui.QColor(color))
                 if col_index in (2, 3, 4, 5):
                     metric = self._metric_value(row, col_index)

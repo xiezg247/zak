@@ -6,9 +6,12 @@ from dataclasses import dataclass
 from typing import Literal
 
 ThemeId = Literal["dark", "light"]
+ThemePreference = Literal["dark", "system"]
 
 THEME_IDS: tuple[ThemeId, ...] = ("dark", "light")
+THEME_PREFERENCES: tuple[ThemePreference, ...] = ("dark", "system")
 DEFAULT_THEME: ThemeId = "dark"
+DEFAULT_THEME_PREFERENCE: ThemePreference = "dark"
 
 
 @dataclass(frozen=True)
@@ -82,6 +85,9 @@ class ThemeTokens:
     diagnose_border: str
     index_ticker_bg: str
     index_ticker_text: str
+    market_rise: str
+    market_fall: str
+    market_flat: str
     combo_bg: str
     combo_border: str
     combo_text: str
@@ -99,6 +105,9 @@ class ThemeTokens:
     screener_log_bg: str
     screener_log_border: str
     screener_log_text: str
+    ai_chat_bg: str
+    ai_assistant_bg: str
+    ai_assistant_border: str
     statusbar_bg: str
     statusbar_border: str
     statusbar_text: str
@@ -197,6 +206,9 @@ DARK_TOKENS = ThemeTokens(
     diagnose_border="#2d2d32",
     index_ticker_bg="#141414",
     index_ticker_text="#d0d0d0",
+    market_rise="#ff4d4f",
+    market_fall="#3ddc84",
+    market_flat="#c8c8c8",
     combo_bg="#252525",
     combo_border="#4a4a4a",
     combo_text="#f0f0f0",
@@ -214,6 +226,9 @@ DARK_TOKENS = ThemeTokens(
     screener_log_bg="#141418",
     screener_log_border="#2a2a30",
     screener_log_text="#a8a8b0",
+    ai_chat_bg="#141418",
+    ai_assistant_bg="#1e1e22",
+    ai_assistant_border="#2d2d32",
     statusbar_bg="#1a1a20",
     statusbar_border="#2a2a2a",
     statusbar_text="#888888",
@@ -312,6 +327,9 @@ LIGHT_TOKENS = ThemeTokens(
     diagnose_border="#c8ccd6",
     index_ticker_bg="#dfe3eb",
     index_ticker_text="#3a4050",
+    market_rise="#dc2626",
+    market_fall="#15803d",
+    market_flat="#6a7080",
     combo_bg="#f2f4f8",
     combo_border="#c4c8d4",
     combo_text="#1c1c22",
@@ -329,6 +347,9 @@ LIGHT_TOKENS = ThemeTokens(
     screener_log_bg="#dfe3eb",
     screener_log_border="#c8ccd6",
     screener_log_text="#4a5060",
+    ai_chat_bg="#dfe3eb",
+    ai_assistant_bg="#f8f9fc",
+    ai_assistant_border="#c8ccd6",
     statusbar_bg="#dfe3eb",
     statusbar_border="#c8ccd6",
     statusbar_text="#5a6070",

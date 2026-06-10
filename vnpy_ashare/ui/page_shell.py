@@ -8,7 +8,8 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_ashare.ui.quotes_page import QuotesPage
-from vnpy_ashare.ui.styles import FALL_COLOR, FLAT_COLOR, RISE_COLOR
+from vnpy_ashare.ui.theme import theme_manager
+from vnpy_ashare.ui.theme.market_colors import quote_change_color
 from vnpy_ashare.ui.worker import IndexQuotesWorker
 
 INDEX_REFRESH_MS = 30000
@@ -31,6 +32,7 @@ class QuotesShellWidget(QtWidgets.QWidget):
         self._index_worker: IndexQuotesWorker | None = None
         self._retired_workers: list[QtCore.QThread] = []
         self._index_timer: QtCore.QTimer | None = None
+        self._index_rows: list = []
         self.index_ticker: QtWidgets.QLabel | None = None
 
         root = QtWidgets.QVBoxLayout(self)
@@ -45,8 +47,26 @@ class QuotesShellWidget(QtWidgets.QWidget):
             self._index_timer = QtCore.QTimer(self)
             self._index_timer.setInterval(INDEX_REFRESH_MS)
             self._index_timer.timeout.connect(self.refresh_indices)
+            theme_manager().register_callback(self._on_theme_changed)
 
         root.addWidget(self.page, stretch=1)
+
+    def _on_theme_changed(self, tokens) -> None:
+        if self.index_ticker is None or not self._index_rows:
+            return
+        self._render_index_ticker(self._index_rows, tokens=tokens)
+
+    def _render_index_ticker(self, rows: list, *, tokens=None) -> None:
+        if self.index_ticker is None:
+            return
+        if tokens is None:
+            tokens = theme_manager().tokens()
+        parts: list[str] = []
+        for label, quote in rows:
+            color = quote_change_color(quote, tokens)
+            pct = quote.change_pct
+            parts.append(f'<span style="color:{color}">{label} {quote.last_price:.2f} {pct:+.2f}%</span>')
+        self.index_ticker.setText("  |  ".join(parts) if parts else "指数暂无数据")
 
     def activate(self) -> None:
         self.page.activate()
@@ -73,13 +93,8 @@ class QuotesShellWidget(QtWidgets.QWidget):
             if self._index_worker is worker:
                 self._index_worker = None
             release_thread(self._retired_workers, worker)
-            parts: list[str] = []
-            for label, quote in rows:
-                color = RISE_COLOR if quote.is_rise else FALL_COLOR if quote.is_fall else FLAT_COLOR
-                pct = quote.change_pct
-                parts.append(f'<span style="color:{color}">{label} {quote.last_price:.2f} {pct:+.2f}%</span>')
-            if self.index_ticker is not None:
-                self.index_ticker.setText("  |  ".join(parts) if parts else "指数暂无数据")
+            self._index_rows = rows
+            self._render_index_ticker(rows)
 
         def on_failed(_msg: str) -> None:
             if self._index_worker is worker:
