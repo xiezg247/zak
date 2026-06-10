@@ -7,13 +7,12 @@ from datetime import datetime
 import pandas as pd
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
-from vnpy.trader.utility import ZoneInfo
 
-from vnpy_ashare.data.minute_periods import MAX_BARS_PER_REQUEST, bar_interval, normalize_period
+from vnpy_ashare.data.minute_periods import bar_interval, normalize_period
 from vnpy_ashare.domain.models import StockItem
-from vnpy_ashare.quotes.tickflow_client import get_tickflow_client
-
-CHINA_TZ = ZoneInfo("Asia/Shanghai")
+from vnpy_tickflow.client import get_tickflow_client
+from vnpy_tickflow.klines import fetch_klines_paged
+from vnpy_tickflow.mapping import CHINA_TZ
 
 PERIOD_TO_INTERVAL: dict[str, Interval] = {
     "1m": Interval.MINUTE,
@@ -89,43 +88,6 @@ def fetch_minute_bars(item: StockItem, *, period: str = "1m", count: int = 240) 
     )
 
 
-def _fetch_klines_paged(
-    tf_symbol: str,
-    period: str,
-    start_ms: int,
-    end_ms: int,
-) -> pd.DataFrame:
-    client = get_tickflow_client()
-    frames: list[pd.DataFrame] = []
-    cursor_start = start_ms
-
-    while cursor_start <= end_ms:
-        df = client.klines.get(
-            tf_symbol,
-            period=period,
-            start_time=cursor_start,
-            end_time=end_ms,
-            count=MAX_BARS_PER_REQUEST,
-            adjust="forward",
-            as_dataframe=True,
-        )
-        if df is None or df.empty:
-            break
-
-        frames.append(df)
-        if len(df) < MAX_BARS_PER_REQUEST:
-            break
-
-        last_ts = int(df.iloc[-1]["timestamp"])
-        if last_ts >= end_ms:
-            break
-        cursor_start = last_ts + 1
-
-    if not frames:
-        return pd.DataFrame()
-    return pd.concat(frames, ignore_index=True).drop_duplicates(subset=["timestamp"], keep="last")
-
-
 def fetch_history_bars(
     item: StockItem,
     *,
@@ -137,7 +99,8 @@ def fetch_history_bars(
     period = normalize_period(period)
     start_ms = int(start.replace(tzinfo=CHINA_TZ).timestamp() * 1000)
     end_ms = int(end.replace(tzinfo=CHINA_TZ).timestamp() * 1000)
-    df = _fetch_klines_paged(item.tickflow_symbol, period, start_ms, end_ms)
+    client = get_tickflow_client()
+    df = fetch_klines_paged(client, item.tickflow_symbol, period, start_ms, end_ms)
     return dataframe_to_bars(
         df,
         symbol=item.symbol,

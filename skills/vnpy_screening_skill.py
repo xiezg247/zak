@@ -19,7 +19,7 @@ from vnpy_ashare.screener.pattern_screen import (
 )
 from vnpy_ashare.screener.presets import get_preset
 from vnpy_ashare.screener.runner import ScreenerRequest, list_all_preset_names, run_screener
-from vnpy_skills.base import SkillTemplate, ToolSpec
+from vnpy_skills.domain import SkillTemplate, ToolSpec
 
 
 class VnpyScreeningSkill(SkillTemplate):

@@ -1,4 +1,4 @@
-"""MCP Provider 加载与管理（对标 vnpy_skills.engine.SkillEngine）。"""
+"""MCP Provider 加载与管理（对标 vnpy_skills.app.engine.SkillEngine）。"""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from typing import Any
 from dotenv import load_dotenv
 
 from vnpy_common.paths import ENV_FILE
-from vnpy_mcp.base import McpProvider
-from vnpy_mcp.client import McpClientError, call_remote_tool, list_remote_tools
+from vnpy_mcp.domain.provider import McpProvider
+from vnpy_mcp.remote.client import McpClientError, call_remote_tool, list_remote_tools
 from vnpy_mcp.config import load_all_mcp_servers
-from vnpy_mcp.providers.remote import RemoteMcpProvider
-from vnpy_skills.base import ToolSpec
+from vnpy_mcp.remote.provider import RemoteMcpProvider
+from vnpy_skills.domain import ToolSpec
 
 APP_NAME = "MCP"
 

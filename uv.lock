@@ -2626,14 +2626,18 @@ name = "vnpy-tickflow"
 version = "0.1.0"
 source = { editable = "packages/vnpy-tickflow" }
 dependencies = [
+    { name = "python-dotenv" },
     { name = "tickflow", extra = ["all"] },
     { name = "vnpy" },
+    { name = "vnpy-common" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "tickflow", extras = ["all"], specifier = ">=0.1.22" },
     { name = "vnpy", specifier = ">=4.0.0" },
+    { name = "vnpy-common", editable = "packages/vnpy-common" },
 ]
 
 [[package]]

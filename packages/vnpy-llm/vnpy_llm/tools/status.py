@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from skills.registry import OFFICIAL_SKILLS
-from vnpy_mcp.engine import McpEngine
-from vnpy_skills.engine import SkillEngine
+from vnpy_mcp.app.engine import McpEngine
+from vnpy_skills.app.engine import SkillEngine
 
 ToolProviderState = Literal["ready", "missing_env", "connect_failed", "disabled"]
 

@@ -1,4 +1,4 @@
-"""MCP Provider 基类（对标 vnpy_skills.base.SkillTemplate）。"""
+"""MCP Provider 基类（对标 vnpy_skills.domain.SkillTemplate）。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-from vnpy_skills.base import ToolSpec
+from vnpy_skills.domain import ToolSpec
 
 
 @dataclass

@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from vnpy_skills.agent_skill import AgentSkill
+from vnpy_skills.agent.skill import AgentSkill
 
 MAX_OUTPUT_CHARS = 60_000
 DEFAULT_TIMEOUT = 90

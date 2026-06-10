@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from vnpy_common.paths import PROJECT_ROOT
-from vnpy_mcp.registry import BUILTIN_MCP_PROVIDERS
+from vnpy_mcp.config.registry import BUILTIN_MCP_PROVIDERS
 
 DEFAULT_MCP_DIR = PROJECT_ROOT / "mcp"
 DEFAULT_TDX_MCP_URL = "https://mcp.tdx.com.cn:3001/mcp"

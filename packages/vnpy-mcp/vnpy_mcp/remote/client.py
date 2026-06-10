@@ -7,7 +7,7 @@ import threading
 from datetime import timedelta
 from typing import Any
 
-from vnpy_mcp.base import McpToolInfo
+from vnpy_mcp.domain.provider import McpToolInfo
 
 
 class McpClientError(Exception):

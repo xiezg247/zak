@@ -10,6 +10,8 @@ requires-python = ">=3.10"
 dependencies = [
     "vnpy>=4.0.0",
     "tickflow[all]>=0.1.22",
+    "python-dotenv>=1.0.0",
+    "vnpy-common",
 ]
 
 [tool.setuptools.packages.find]

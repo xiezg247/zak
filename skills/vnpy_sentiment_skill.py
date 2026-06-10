@@ -8,7 +8,7 @@ import os
 from dotenv import load_dotenv
 
 from vnpy_common.paths import ENV_FILE
-from vnpy_skills.base import SkillTemplate, ToolSpec
+from vnpy_skills.domain import SkillTemplate, ToolSpec
 
 
 class VnpySentimentSkill(SkillTemplate):

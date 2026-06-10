@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-import os
-
-from dotenv import load_dotenv
-from tickflow import TickFlow
-
 from vnpy_ashare.domain.models import StockItem
-from vnpy_common.paths import ENV_FILE
 from vnpy_ashare.domain.quote_time import resolve_trade_time_from_tickflow_row
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_tickflow.client import get_tickflow_client
 
 MARKET_INDICES: list[tuple[str, str]] = [
     ("000001.SH", "上证指数"),
@@ -21,14 +16,6 @@ MARKET_INDICES: list[tuple[str, str]] = [
 ]
 
 QUOTE_BATCH_SIZE = 80
-
-
-def get_tickflow_client() -> TickFlow:
-    load_dotenv(ENV_FILE)
-    api_key = os.getenv("TICKFLOW_API_KEY", "")
-    if api_key:
-        return TickFlow(api_key=api_key)
-    return TickFlow.free()
 
 
 def parse_quote_row(row: dict) -> QuoteSnapshot:
@@ -94,3 +81,13 @@ def fetch_index_ticker() -> list[tuple[str, QuoteSnapshot]]:
         label = name_map.get(quote.symbol, quote.symbol)
         rows.append((label, quote))
     return rows
+
+
+__all__ = [
+    "MARKET_INDICES",
+    "QUOTE_BATCH_SIZE",
+    "fetch_index_ticker",
+    "fetch_quotes_from_tickflow",
+    "get_tickflow_client",
+    "parse_quote_row",
+]

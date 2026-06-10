@@ -12,7 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 
 def main() -> int:
-    from vnpy_mcp.client import McpClientError, list_remote_tools
+    from vnpy_mcp.remote import McpClientError, list_remote_tools
     from vnpy_mcp.config import load_all_mcp_servers
 
     configs = load_all_mcp_servers()

@@ -12,17 +12,18 @@ from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
 from vnpy_llm.tools.status import build_tools_status
-from vnpy_mcp.base import McpToolInfo
+from vnpy_mcp.domain import McpToolInfo
 from vnpy_mcp.config import (
     DEFAULT_TDX_MCP_URL,
     McpServerConfig,
     load_all_mcp_servers,
     load_mcp_dir,
+    BUILTIN_MCP_PROVIDERS,
+    format_mcp_prompt,
 )
-from vnpy_mcp.engine import McpEngine
-from vnpy_mcp.providers.remote import RemoteMcpProvider
-from vnpy_mcp.registry import BUILTIN_MCP_PROVIDERS, format_mcp_prompt
-from vnpy_skills.engine import SkillEngine
+from vnpy_mcp.app.engine import McpEngine
+from vnpy_mcp.remote import RemoteMcpProvider
+from vnpy_skills.app.engine import SkillEngine
 
 
 @contextmanager
@@ -155,7 +156,7 @@ class McpEngineTests(unittest.TestCase):
             self.assertFalse(provider.available)
             self.assertIn("mcp/mcp.json", provider.missing_env[0])
 
-    @patch("vnpy_mcp.engine.list_remote_tools")
+    @patch("vnpy_mcp.app.engine.list_remote_tools")
     def test_init_with_mock_tools(self, mock_list: unittest.mock.MagicMock) -> None:
         mock_list.return_value = [McpToolInfo(name="stock_quotes", description="个股报价")]
         with _mcp_dir(
@@ -177,7 +178,7 @@ class McpEngineTests(unittest.TestCase):
         self.assertIn("tdx", enabled)
         self.assertEqual(len(engine.get_tool_specs()), 1)
 
-    @patch("vnpy_mcp.engine.list_remote_tools")
+    @patch("vnpy_mcp.app.engine.list_remote_tools")
     def test_multiple_servers(self, mock_list: unittest.mock.MagicMock) -> None:
         mock_list.return_value = [McpToolInfo(name="tool_a", description="A")]
         with _mcp_dir(
@@ -211,7 +212,7 @@ class McpEngineTests(unittest.TestCase):
 
 
 class ToolsStatusTests(unittest.TestCase):
-    @patch("vnpy_mcp.engine.list_remote_tools")
+    @patch("vnpy_mcp.app.engine.list_remote_tools")
     def test_build_snapshot(self, mock_list: unittest.mock.MagicMock) -> None:
         mock_list.return_value = [McpToolInfo(name="stock_quotes", description="个股报价")]
         with _mcp_dir(

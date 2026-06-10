@@ -8,8 +8,8 @@ from unittest.mock import patch
 import tests._bootstrap  # noqa: F401
 from skills.registry import OFFICIAL_SKILLS, format_skills_prompt
 from tests._bootstrap import PROJECT_ROOT
-from vnpy_skills.agent_skill import AgentSkill
-from vnpy_skills.engine import SkillEngine
+from vnpy_skills.agent import AgentSkill
+from vnpy_skills.app.engine import SkillEngine
 
 
 class AgentSkillTests(unittest.TestCase):
@@ -101,7 +101,7 @@ class SkillEngineTests(unittest.TestCase):
         )
         self.assertIn("TickFlow", result)
 
-    @patch("vnpy_skills.runner.subprocess.run")
+    @patch("vnpy_skills.agent.runner.subprocess.run")
     def test_execute_run_python(self, mock_run) -> None:
         if not (PROJECT_ROOT / "skills" / "tickflow" / "SKILL.md").is_file():
             self.skipTest("请先运行 scripts/sync_skills.py")

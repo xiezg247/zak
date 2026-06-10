@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_skills.base import ToolSpec
+from vnpy_skills.domain.template import ToolSpec
 
 READ_SKILL_FILE = ToolSpec(
     name="read_skill_file",

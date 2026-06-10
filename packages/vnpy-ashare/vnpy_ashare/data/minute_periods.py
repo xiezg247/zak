@@ -17,7 +17,6 @@ LOCAL_SCOPE_OPTIONS: tuple[tuple[str, str], ...] = (
 PERIOD_LABELS: dict[str, str] = {MINUTE_PERIOD: "1分"}
 
 DEFAULT_MINUTE_DOWNLOAD_MONTHS = 6
-MAX_BARS_PER_REQUEST = 10000
 
 
 def normalize_period(period: str) -> str:
