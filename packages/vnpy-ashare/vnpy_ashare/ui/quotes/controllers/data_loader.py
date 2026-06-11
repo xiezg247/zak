@@ -144,6 +144,9 @@ class DataLoaderController:
 
             page._market_catalog = list(result.items)
             page._market_catalog_quotes = dict(result.quotes)
+            page._market_board_base = None
+            page._market_board_base_key = None
+            page._market_filter_keyword = ""
             page._market_catalog_loaded = True
             page._market_updated_at = result.updated_at
             page.quote_map = dict(result.quotes)

@@ -71,11 +71,10 @@ class WatchlistSignalController:
         return [symbol for symbol in symbols if not self._cache_valid(symbol)]
 
     def start(self) -> None:
+        """启动定时刷新；搜索过滤时不强制全量重算（避免输入卡顿）。"""
         if not self._page.config.show_watchlist_signals:
             return
         self._timer.setInterval(WATCHLIST_SIGNAL_REFRESH_MS)
-        if self._enabled():
-            self.refresh(force=True)
         if not self._timer.isActive():
             self._timer.start()
 

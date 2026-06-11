@@ -33,7 +33,9 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     apply_screener_results_view,
     configure_screener_results_table,
     iter_checked_table_rows,
-    select_all_table_rows,
+    toggle_select_all_table_rows,
+    update_select_all_button,
+    wire_screener_results_table,
 )
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
@@ -109,7 +111,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
 
         self.select_all_btn = QtWidgets.QPushButton("全 选")
         self.select_all_btn.setObjectName("SecondaryButton")
-        self.select_all_btn.clicked.connect(lambda: select_all_table_rows(self.result_table))
+        self.select_all_btn.clicked.connect(self._select_all)
         toolbar.addWidget(self.select_all_btn)
 
         self.add_watchlist_btn = QtWidgets.QPushButton("加入自选")
@@ -196,6 +198,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.result_table = QtWidgets.QTableWidget(0, 0)
         self.result_table.setObjectName("MarketTable")
         configure_screener_results_table(self.result_table)
+        wire_screener_results_table(self.result_table, select_all_btn=self.select_all_btn)
         self.result_table.hide()
         result_body_layout.addWidget(self.result_table, stretch=1)
         result_layout.addWidget(result_body, stretch=1)
@@ -342,6 +345,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self._results,
             self._result_columns,
             empty_label=self._empty_result_label,
+            select_all_btn=self.select_all_btn,
         )
         self._store_screening_results(
             condition=result.condition,
@@ -387,6 +391,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self._results,
             self._result_columns,
             empty_label=self._empty_result_label,
+            select_all_btn=self.select_all_btn,
         )
         self._store_screening_results(
             condition=record.condition,
@@ -422,6 +427,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self._results,
             self._result_columns,
             empty_label=self._empty_result_label,
+            select_all_btn=self.select_all_btn,
         )
         self._store_screening_results(condition="", rows=[])
 
@@ -450,6 +456,10 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         service = self._screening_service()
         if service is not None:
             service.set_screening_results(condition=condition, rows=rows, updated_at=updated_at)
+
+    def _select_all(self) -> None:
+        toggle_select_all_table_rows(self.result_table)
+        update_select_all_button(self.result_table, self.select_all_btn)
 
     def _add_selected_to_watchlist(self) -> None:
         if self._watchlist_service is None:

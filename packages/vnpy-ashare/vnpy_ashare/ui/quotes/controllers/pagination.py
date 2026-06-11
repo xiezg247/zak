@@ -110,6 +110,9 @@ class MarketPaginationController:
     def on_board_changed(self) -> None:
         board = self._page.board_combo.currentText()
         self._page._market_board = board if board != "全部" else None
+        self._page._market_board_base = None
+        self._page._market_board_base_key = None
+        self._page._market_filter_keyword = ""
         self._page._market_page = 0
         if self._page.market_uses_client_pagination():
             self._page._table.filter_market_display()

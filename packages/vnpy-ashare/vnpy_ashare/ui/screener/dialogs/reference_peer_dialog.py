@@ -17,10 +17,12 @@ from vnpy_ashare.screener.reference.reference_peer import (
     env_default_reference_peer_top_n,
 )
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
-    all_table_rows_checked,
+    configure_screener_results_table,
     iter_checked_table_rows,
     populate_screener_results_table,
     toggle_select_all_table_rows,
+    update_select_all_button,
+    wire_screener_results_table,
 )
 from vnpy_ashare.ui.screener.workers.reference_peer_worker import ReferencePeerWorker
 from vnpy_common.ui.feedback import page_notify
@@ -113,11 +115,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
 
         self._table = QtWidgets.QTableWidget(0, 1)
         self._table.setObjectName("MarketTable")
-        self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self._table.verticalHeader().setVisible(False)
-        self._table.setAlternatingRowColors(True)
-        self._table.itemChanged.connect(self._on_table_item_changed)
+        configure_screener_results_table(self._table)
         layout.addWidget(self._table, stretch=1)
 
         action_row = QtWidgets.QHBoxLayout()
@@ -125,6 +123,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         self._select_all_btn.setObjectName("SecondaryButton")
         self._select_all_btn.clicked.connect(self._select_all)
         self._select_all_btn.setEnabled(False)
+        wire_screener_results_table(self._table, select_all_btn=self._select_all_btn)
         action_row.addWidget(self._select_all_btn)
 
         self._add_watchlist_btn = QtWidgets.QPushButton("加入自选")
@@ -228,26 +227,11 @@ class ReferencePeerDialog(QtWidgets.QDialog):
             populate_screener_results_table(self._table, rows, _RESULT_COLUMNS)
         finally:
             self._table.blockSignals(False)
-        self._update_select_all_button()
-
-    def _on_table_item_changed(self, item: QtWidgets.QTableWidgetItem) -> None:
-        if item.column() != 0:
-            return
-        self._update_select_all_button()
-
-    def _update_select_all_button(self) -> None:
-        if self._table.rowCount() == 0:
-            self._select_all_btn.setText("全选")
-            return
-        self._select_all_btn.setText("取消全选" if all_table_rows_checked(self._table) else "全选")
+        update_select_all_button(self._table, self._select_all_btn)
 
     def _select_all(self) -> None:
-        self._table.blockSignals(True)
-        try:
-            toggle_select_all_table_rows(self._table)
-        finally:
-            self._table.blockSignals(False)
-        self._update_select_all_button()
+        toggle_select_all_table_rows(self._table)
+        update_select_all_button(self._table, self._select_all_btn)
 
     def _add_to_watchlist(self) -> None:
         if self._watchlist_add is None:

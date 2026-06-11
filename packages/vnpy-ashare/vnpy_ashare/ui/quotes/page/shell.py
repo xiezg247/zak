@@ -253,10 +253,9 @@ class QuotesPageShell:
                     ("下移", page.move_watchlist_down_button),
                 ]
             )
+        # 自选页：下载入口仅在右键菜单；市场页保留工具栏按钮
         if page.config.show_download_button and not page.config.use_local_table:
-            if page.config.show_watchlist_move_buttons:
-                more_actions.append(("下载日K到本地", page.download_button))
-            else:
+            if not page.config.show_watchlist_move_buttons:
                 toolbar.addWidget(page.download_button)
         elif page.config.show_download_button:
             toolbar.addWidget(page.download_button)

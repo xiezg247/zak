@@ -222,8 +222,11 @@ class TableController:
             return
 
         matched = [s for s in page.all_stocks if keyword in s.search_key] if keyword else list(page.all_stocks)
-        page.display_stocks = matched[:MAX_DISPLAY_ROWS]
-        self.render_table()
+        next_display = matched[:MAX_DISPLAY_ROWS]
+        display_unchanged = self._same_stock_list(page.display_stocks, next_display)
+        page.display_stocks = next_display
+        if not display_unchanged:
+            self.render_table()
         if page.config.show_watchlist_signals:
             page._signals.start()
         if page.config.auto_refresh_quotes:
@@ -257,18 +260,41 @@ class TableController:
         else:
             page.status_label.setText(f"{page.page_name}  匹配 {len(matched)} 只{extra}")
 
+    def _market_board_base_items(self, page: QuotesPage) -> list[StockItem]:
+        board_key = page._market_board or ""
+        if page._market_board_base is not None and page._market_board_base_key == board_key:
+            return page._market_board_base
+        base = [item for item in page._market_catalog if matches_board(item.symbol, page._market_board)]
+        page._market_board_base = base
+        page._market_board_base_key = board_key
+        return base
+
+    @staticmethod
+    def _same_stock_list(left: list[StockItem], right: list[StockItem]) -> bool:
+        if len(left) != len(right):
+            return False
+        for left_item, right_item in zip(left, right):
+            if (left_item.symbol, left_item.exchange) != (right_item.symbol, right_item.exchange):
+                return False
+        return True
+
     def filter_market_display(self) -> None:
         """全量市场列表：内存筛选板块与关键词。"""
         page = self._p
         keyword = page.search_edit.text().strip().lower()
-        board = page._market_board
-        matched: list[StockItem] = []
-        for item in page._market_catalog:
-            if not matches_board(item.symbol, board):
-                continue
-            if keyword and keyword not in item.search_key:
-                continue
-            matched.append(item)
+        prev_keyword = page._market_filter_keyword
+        base = self._market_board_base_items(page)
+
+        if not keyword:
+            matched = base
+        elif prev_keyword and keyword.startswith(prev_keyword) and page._market_matched:
+            matched = [item for item in page._market_matched if keyword in item.search_key]
+        else:
+            matched = [item for item in base if keyword in item.search_key]
+
+        page._market_filter_keyword = keyword
+        if self._same_stock_list(matched, page._market_matched):
+            return
 
         page._market_matched = matched
         self.apply_market_display()

@@ -138,6 +138,9 @@ class QuotesPage(QtWidgets.QWidget):
         self._apply_default_table_sort = False
         self._market_table_host = None
         self._market_matched: list[StockItem] = []
+        self._market_board_base: list[StockItem] | None = None
+        self._market_board_base_key: str | None = None
+        self._market_filter_keyword: str = ""
         self._market_sort_column: str | None = "change_pct"
         self._market_sort_ascending = False
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
@@ -244,6 +247,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._update_quote_source_label()
         if self.config.show_watchlist_signals:
             self._signals.start()
+            self._signals.refresh(force=True)
 
     def deactivate(self) -> None:
         self._save_splitter()
