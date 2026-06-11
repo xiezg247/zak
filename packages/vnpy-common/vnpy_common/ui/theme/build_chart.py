@@ -79,7 +79,8 @@ QLabel#ChartHint {{
     color: {p.hint_text};
     font-size: 13px;
 }}
-QWidget#MaLegendBar {{
+QWidget#MaLegendBar,
+QWidget#ReferenceLineLegendBar {{
     background-color: {p.legend_bg};
     border-bottom: 1px solid {p.legend_border};
     font-size: 11px;

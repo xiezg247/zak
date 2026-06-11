@@ -26,6 +26,7 @@ from vnpy_ashare.ui.quotes.chart.minute_bars import (
 )
 from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
+from vnpy_ashare.ui.quotes.chart.reference_line_legend import ReferenceLineLegendBar
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.workers import (
     BarsLoadWorker,
@@ -176,6 +177,9 @@ class ChartPanel(QtWidgets.QWidget):
         self.ma_legend = MaLegendBar()
         self.ma_legend.setVisible(False)
 
+        self.ref_legend = ReferenceLineLegendBar()
+        self.ref_legend.setVisible(False)
+
         self.hint_label = QtWidgets.QLabel()
         self.hint_label.setObjectName("ChartHint")
         self.hint_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -187,6 +191,7 @@ class ChartPanel(QtWidgets.QWidget):
         layout.setSpacing(4)
         layout.addLayout(toolbar)
         layout.addWidget(self.ma_legend)
+        layout.addWidget(self.ref_legend)
         layout.addWidget(self.stack, stretch=1)
         layout.addWidget(self.hint_label)
         self._update_daily_range_visibility()
@@ -238,6 +243,8 @@ class ChartPanel(QtWidgets.QWidget):
         self._signal_snapshot = snapshot
         if snapshot is None:
             self.daily_chart.clear_reference_lines()
+            self.ref_legend.clear()
+            self._update_ref_legend_visibility()
             return
         last_price = quote.last_price if quote and quote.last_price > 0 else None
         ref_buy, ref_sell, _ = resolve_display_anchor_prices(
@@ -259,6 +266,17 @@ class ChartPanel(QtWidgets.QWidget):
             action_buy=action_buy,
             action_sell=action_sell,
         )
+        self.ref_legend.set_reference_lines(
+            ref_buy=ref_buy,
+            ref_sell=ref_sell,
+            last_price=last_price,
+        )
+        self._update_ref_legend_visibility()
+
+    def _update_ref_legend_visibility(self) -> None:
+        on_daily = self.tab_bar.currentIndex() == DAILY_TAB_INDEX
+        has_lines = self.ref_legend.has_entries()
+        self.ref_legend.setVisible(on_daily and has_lines)
 
     def load_item(self, item: StockItem | None, *, quote: QuoteSnapshot | None = None) -> None:
         is_new = item is not None and (self._item is None or (item.symbol, item.exchange) != (self._item.symbol, self._item.exchange))
@@ -277,11 +295,13 @@ class ChartPanel(QtWidgets.QWidget):
         if is_new:
             self._signal_snapshot = None
             self.daily_chart.clear_reference_lines()
+            self.ref_legend.clear()
             if self.tab_bar.currentIndex() == MINUTE_TAB_INDEX:
                 self._reset_minute_chart()
             else:
                 self._apply_default_tab()
         self.ma_legend.setVisible(self.tab_bar.currentIndex() in (1, 2))
+        self._update_ref_legend_visibility()
         self._update_daily_range_visibility()
         self._update_hint()
         self.tab_changed.emit(self.tab_bar.currentIndex())
@@ -352,6 +372,7 @@ class ChartPanel(QtWidgets.QWidget):
 
     def _on_tab_changed(self, index: int) -> None:
         self.ma_legend.setVisible(index in (1, 2))
+        self._update_ref_legend_visibility()
         self._update_daily_range_visibility()
         self.stack.setCurrentIndex(index)
         self._update_hint()
