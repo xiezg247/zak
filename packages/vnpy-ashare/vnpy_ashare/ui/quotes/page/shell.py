@@ -84,6 +84,9 @@ class QuotesPageShell:
 
     def build(self) -> None:
         page = self._page
+        if page.config.use_radar_cards:
+            self._build_radar_layout(page)
+            return
         page._init_columns()
         if page.config.use_local_table:
             headers = LOCAL_TABLE_HEADERS
@@ -523,7 +526,7 @@ class QuotesPageShell:
             splitter.setStretchFactor(0, 3)
             splitter.setStretchFactor(1, 2)
         else:
-            # 市场 / 榜单页：单栏全宽布局
+            # 市场页：单栏全宽布局
             center_widget = QtWidgets.QWidget()
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
@@ -582,6 +585,69 @@ class QuotesPageShell:
         root = QtWidgets.QVBoxLayout(page)
         root.setContentsMargins(0, 0, 0, 0)
         root.addWidget(splitter, stretch=1)
+        root.addLayout(bottom_bar)
+        page._toast = PageToastHost(page)
+        root.addWidget(page._toast)
+
+
+    def _build_radar_layout(self, page: QuotesPage) -> None:
+        from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController
+
+        page.refresh_radar_button = QtWidgets.QPushButton("刷新雷达", page)
+
+        page.market_auto_refresh_checkbox = QtWidgets.QCheckBox("自动刷新", page)
+        page._market_auto_refresh = load_market_auto_refresh_pref()
+        page.market_auto_refresh_checkbox.blockSignals(True)
+        page.market_auto_refresh_checkbox.setChecked(page._market_auto_refresh)
+        page.market_auto_refresh_checkbox.blockSignals(False)
+        page.market_auto_refresh_checkbox.toggled.connect(page._on_market_auto_refresh_toggled)
+
+        toolbar = QtWidgets.QHBoxLayout()
+        toolbar.setSpacing(8)
+        toolbar.addWidget(page.market_auto_refresh_checkbox)
+        toolbar.addWidget(page.refresh_radar_button)
+        toolbar.addStretch(1)
+
+        toolbar_host = QtWidgets.QWidget()
+        toolbar_host.setObjectName("QuotesToolbarHost")
+        toolbar_host_layout = QtWidgets.QVBoxLayout(toolbar_host)
+        toolbar_host_layout.setContentsMargins(8, 8, 8, 4)
+        toolbar_host_layout.setSpacing(0)
+        toolbar_host_layout.addLayout(toolbar)
+
+        page.radar_board = RadarBoard(page)
+        from vnpy_common.ui.theme.build_extra import build_radar_stylesheet
+
+        theme_manager().bind_stylesheet(page.radar_board, extra=build_radar_stylesheet)
+        page._radar_controller = RadarController(page, page.radar_board)
+        page.refresh_radar_button.clicked.connect(page._radar_controller.refresh)
+
+        center = QtWidgets.QWidget()
+        center_layout = QtWidgets.QVBoxLayout(center)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        center_layout.setSpacing(0)
+        center_layout.addWidget(toolbar_host)
+        center_layout.addWidget(page.radar_board, stretch=1)
+
+        page.status_label = QtWidgets.QLabel("就绪")
+        page.quote_source_label = QtWidgets.QLabel(
+            quote_source_label(page.config, gateway_active=is_gateway_quote_active()),
+        )
+        page.quote_source_label.setObjectName("BottomBarMeta")
+        page.refresh_hint_label = QtWidgets.QLabel("")
+        page._update_refresh_hint_label()
+        page.refresh_hint_label.setObjectName("BottomBarMeta")
+
+        bottom_bar = QtWidgets.QHBoxLayout()
+        bottom_bar.setContentsMargins(8, 2, 8, 4)
+        bottom_bar.addWidget(page.status_label, stretch=1)
+        bottom_bar.addWidget(page.quote_source_label)
+        bottom_bar.addStretch()
+        bottom_bar.addWidget(page.refresh_hint_label)
+
+        root = QtWidgets.QVBoxLayout(page)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(center, stretch=1)
         root.addLayout(bottom_bar)
         page._toast = PageToastHost(page)
         root.addWidget(page._toast)

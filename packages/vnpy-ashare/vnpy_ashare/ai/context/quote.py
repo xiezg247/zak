@@ -509,7 +509,7 @@ def build_floating_page_extras(
     extras: list[QuickAction] = []
     vt = binding.vt_symbol
     name = binding.name
-    if page == "市场" or page == "榜单":
+    if page == "市场" or page == "雷达":
         extras.append(
             QuickAction(
                 id="sector_overview",

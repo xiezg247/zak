@@ -594,7 +594,7 @@ class ActionsController:
         ai_menu.addAction("近期走势", self.ask_ai_for_trend)
         menu.addSeparator()
 
-        if page.page_name in ("自选", "市场", "榜单"):
+        if page.page_name in ("自选", "市场", "雷达"):
             action = menu.addAction("找同类…")
             action.triggered.connect(lambda _checked=False, it=item: self.open_reference_peer(it))
             menu.addSeparator()

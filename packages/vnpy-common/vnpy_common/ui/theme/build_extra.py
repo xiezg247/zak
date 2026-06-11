@@ -402,3 +402,48 @@ def format_scheduler_run_log_html(t: ThemeTokens, records: list[object]) -> str:
 
 def format_scheduler_empty_html(t: ThemeTokens, message: str) -> str:
     return f'<p style="color:{t.text_muted};margin:0;">{html.escape(message)}</p>'
+
+
+def build_radar_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QFrame#RadarCard {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+}}
+QLabel#RadarCardTitle {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#RadarCardSubtitle {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QLabel#RadarCardEmpty {{
+    color: {t.text_muted};
+    font-size: 12px;
+    padding: 12px 8px;
+}}
+QListWidget#RadarCardList {{
+    background: transparent;
+    border: none;
+    color: {t.text_primary};
+    font-size: 12px;
+}}
+QListWidget#RadarCardList::item {{
+    padding: 6px 2px;
+    border-bottom: 1px solid {t.panel_border};
+}}
+QListWidget#RadarCardList::item:selected {{
+    background-color: {t.menu_selected_bg};
+}}
+QComboBox#RadarCardVariant {{
+    min-width: 88px;
+}}
+"""
+
+
+def build_insight_rank_stylesheet(t: ThemeTokens) -> str:
+    """Deprecated: use build_radar_stylesheet."""
+    return build_radar_stylesheet(t)

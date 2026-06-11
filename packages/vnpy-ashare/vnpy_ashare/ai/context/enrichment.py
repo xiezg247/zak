@@ -45,7 +45,7 @@ def build_page_quick_actions(data: AiContextData) -> list[QuickAction]:
 
 
 def _build_actions(data: AiContextData) -> list[QuickAction]:
-    if data.page in ("自选", "市场", "榜单", "本地") and data.symbol:
+    if data.page in ("自选", "市场", "雷达", "本地") and data.symbol:
         return build_floating_stock_quick_actions(
             data.symbol,
             exchange_cn=data.exchange,
@@ -62,7 +62,7 @@ def _build_badge(data: AiContextData) -> str:
         if ctx is not None and ctx.count > 0:
             return f"选股·{ctx.count}"
         return "选股"
-    if data.page in ("自选", "市场", "榜单", "本地", "数据管理"):
+    if data.page in ("自选", "市场", "雷达", "本地", "数据管理"):
         return data.page[:2] if data.page == "数据管理" else data.page
     if data.page:
         return data.page[:2]

@@ -20,7 +20,7 @@ from vnpy_llm.ui.session.widgets import show_ai_session_dialog
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
-FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "rankings", "local", "screener", "auto_screener"})
+FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "radar", "local", "screener", "auto_screener"})
 ORB_POSITION_KEY = "orb_position_content"
 
 
@@ -121,7 +121,7 @@ class FloatingAiController(QtCore.QObject):
         if page_key and not self.is_page_allowed(page_key):
             page_notify(
                 self._host,
-                "AI 悬浮球仅在自选、市场、榜单、本地、策略选股、自动选股页可用。",
+                "AI 悬浮球仅在自选、市场、雷达、本地、策略选股、自动选股页可用。",
             )
             return
         if self.orb_visible():

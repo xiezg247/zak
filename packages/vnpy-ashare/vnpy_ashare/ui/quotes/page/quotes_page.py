@@ -1,4 +1,4 @@
-"""行情列表页：市场 / 榜单 / 自选 / 本地 各自独立。"""
+"""行情列表页：市场 / 雷达 / 自选 / 本地 各自独立。"""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
 
 
-RANK_SETTINGS_KEY = "quotes/rankings/active_rank_id_v1"
+RANK_SETTINGS_KEY = "quotes/market/active_rank_id_v1"
 
 
 class QuotesPage(QtWidgets.QWidget):
@@ -255,6 +255,12 @@ class QuotesPage(QtWidgets.QWidget):
 
     def activate(self) -> None:
         self._active = True
+        if self.config.use_radar_cards:
+            self._update_quote_source_label()
+            controller = getattr(self, "_radar_controller", None)
+            if controller is not None:
+                controller.activate()
+            return
         if self.chart_panel is not None:
             self.chart_panel.set_active(True)
         if self.config.use_quote_stream:
@@ -288,6 +294,12 @@ class QuotesPage(QtWidgets.QWidget):
                 self._positions.on_stock_list_loaded()
 
     def deactivate(self) -> None:
+        if self.config.use_radar_cards:
+            controller = getattr(self, "_radar_controller", None)
+            if controller is not None:
+                controller.deactivate()
+            self._active = False
+            return
         self._save_splitter()
         self._save_column_config()
         self._active = False
@@ -767,6 +779,15 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_auto_refresh = checked
         save_market_auto_refresh_pref(checked)
         self._update_refresh_hint_label()
+        if self.config.use_radar_cards:
+            controller = getattr(self, "_radar_controller", None)
+            if controller is None:
+                return
+            if checked:
+                controller.activate()
+            else:
+                controller.deactivate()
+            return
         self._market_page = 0
         self._market_page_cache.clear()
         self._pagination.set_visible()
