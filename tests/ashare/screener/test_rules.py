@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.rules import (
+from vnpy_ashare.screener.preset.rules import (
     apply_large_cap,
     apply_low_pe,
     apply_moneyflow_in,

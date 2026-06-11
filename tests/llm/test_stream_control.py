@@ -32,7 +32,7 @@ class StreamCancelTests(unittest.TestCase):
         self.main_engine.engines = {}
         self.event_engine = EventEngine()
         with (
-            patch("vnpy_ashare.ai.context_store.register_context_listener"),
+            patch("vnpy_ashare.ai.context.store.register_context_listener"),
             patch.object(
                 LlmEngine,
                 "_emit_tools_status",
@@ -97,7 +97,7 @@ class ReloadConfigTests(unittest.TestCase):
         main_engine = MagicMock(spec=MainEngine)
         main_engine.engines = {}
         with (
-            patch("vnpy_ashare.ai.context_store.register_context_listener"),
+            patch("vnpy_ashare.ai.context.store.register_context_listener"),
             patch.object(
                 LlmEngine,
                 "_emit_tools_status",

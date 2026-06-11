@@ -24,7 +24,7 @@ from vnpy_ashare.ui.quotes.chart.panel import (
     is_same_minute_request,
     should_apply_minute_bars,
 )
-from vnpy_ashare.ui.workers import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
+from vnpy_ashare.ui.quotes.workers import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
 from vnpy_common.ui.qt_helpers import retain_thread_until_finished
 
 

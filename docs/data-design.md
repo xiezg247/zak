@@ -332,7 +332,7 @@ REDIS_DB=0
 | `GapRange` | `vnpy_ashare/bar_health.py:27` | 断层区间 |
 | `ChatMessage` | `vnpy_llm/store.py:36` | 聊天消息（role, content, created_at） |
 | `AiContextData` | `vnpy_ashare/ai/context.py` | 当前页 / 选中标的 / K 线摘要等 AI 上下文 |
-| `BacktestSummary` 等 | `vnpy_ashare/ai/context_store.py` | 终端内存缓存（回测摘要、选股结果、诊断结果；线程安全） |
+| `BacktestSummary` 等 | `vnpy_ashare/ai/context/store.py` | 终端内存缓存（回测摘要、选股结果、诊断结果；线程安全） |
 
 ---
 

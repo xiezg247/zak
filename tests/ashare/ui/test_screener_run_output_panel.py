@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.screener.screener_run_output_panel import ScreenerRunOutputPanel
+from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 
 
 class ScreenerRunOutputPanelTests(unittest.TestCase):

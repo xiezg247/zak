@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.sector_summary import compute_sector_distribution, top_industries_by_momentum
+from vnpy_ashare.screener.sector.sector_summary import compute_sector_distribution, top_industries_by_momentum
 
 
 def test_compute_sector_distribution():

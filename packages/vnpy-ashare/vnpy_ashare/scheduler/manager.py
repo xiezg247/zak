@@ -28,7 +28,7 @@ from vnpy_ashare.jobs import (
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
-from vnpy_ashare.screener.recipe import resolve_recipe
+from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5

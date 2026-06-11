@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.screener.pattern_rules import (
+from vnpy_ashare.screener.pattern.pattern_rules import (
     BarSeries,
     match_ma_bull,
     match_old_duck,

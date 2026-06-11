@@ -8,8 +8,8 @@ from vnpy.event import Event, EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.screener_context import build_ask_ai_prompt_for_run, sync_screener_page_context
-from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.ai.context.screener import build_ask_ai_prompt_for_run, sync_screener_page_context
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.app.engine_access import (
     get_backtest_service,
     get_screening_service,
@@ -24,19 +24,19 @@ from vnpy_ashare.app.events import (
     FillScreenerRequest,
     OrbAttentionRequest,
 )
-from vnpy_ashare.screener.presets import SCREENER_CUSTOM
-from vnpy_ashare.screener.runner import ScreenerRequest, ScreenerRunResult
+from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
+from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
-from vnpy_ashare.ui.backtest.batch_backtest_flow import BatchBacktestFlow
-from vnpy_ashare.ui.screener.screener_results_table import (
+from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
+from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     apply_screener_results_view,
     configure_screener_results_table,
     iter_checked_table_rows,
     select_all_table_rows,
 )
-from vnpy_ashare.ui.screener.screener_run_output_panel import ScreenerRunOutputPanel
-from vnpy_ashare.ui.screener.screener_run_sidebar import ScreenerRunSidebar
-from vnpy_ashare.ui.workers import ScreenerBatchDownloadWorker, ScreenerRunWorker
+from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
+from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
+from vnpy_ashare.ui.screener.workers import ScreenerBatchDownloadWorker, ScreenerRunWorker
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action
 from vnpy_common.ui.qt_helpers import release_thread
 

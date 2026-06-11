@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.ai.context import parse_stock_symbol
 from vnpy_skills.domain import SkillTemplate, ToolSpec
 
 

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.recipe import RECIPE_INTRADAY_MULTI
-from vnpy_ashare.screener.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
+from vnpy_ashare.screener.recipe.recipe import RECIPE_INTRADAY_MULTI
+from vnpy_ashare.screener.recipe.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
 
 
 def test_propose_recipe_intraday_intent():

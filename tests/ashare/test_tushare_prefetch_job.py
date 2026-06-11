@@ -11,7 +11,7 @@ from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.jobs.batch_fill_downloaded import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.local_fill import BatchFillResult
 from vnpy_ashare.jobs.tushare_prefetch import prefetch_tushare_factors
-from vnpy_ashare.screener.tushare_client import TushareNotConfiguredError
+from vnpy_ashare.screener.data.tushare_client import TushareNotConfiguredError
 
 
 class TusharePrefetchJobTests(unittest.TestCase):

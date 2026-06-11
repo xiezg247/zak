@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Literal
 
-from vnpy_ashare.screener.recipe import TriggerKind
+from vnpy_ashare.screener.recipe.recipe import TriggerKind
 
 DraftStatus = Literal["pending", "confirmed", "cancelled", "expired"]
 Confidence = Literal["high", "medium", "low"]

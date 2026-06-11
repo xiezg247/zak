@@ -7,7 +7,7 @@ from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
-from vnpy_ashare.screener.runner import ScreenerRunResult
+from vnpy_ashare.screener.run.runner import ScreenerRunResult
 
 
 def test_screen_intraday_skips_off_hours():
@@ -17,7 +17,7 @@ def test_screen_intraday_skips_off_hours():
         return_value=False,
     ):
         with patch(
-            "vnpy_ashare.jobs.auto_screen.next_quotes_collect_at",
+            "vnpy_ashare.jobs.auto_screen.next_intraday_screen_at",
             return_value=next_run,
         ):
             result = run_scheduled_auto_screen("screen_intraday", force=False)

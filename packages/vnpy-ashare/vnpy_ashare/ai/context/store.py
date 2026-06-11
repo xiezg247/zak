@@ -13,7 +13,7 @@
     vnpy_llm Skill / floating_actions（只读 get_*）
     context_store.register_context_listener（AI 面板刷新）
 
-UI 层禁止 ``from vnpy_ashare.ai.context_store import set_*``。
+UI 层禁止 ``from vnpy_ashare.ai.context.store import set_*``。
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ from typing import Any, Protocol
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.backtest.run_store import BacktestRunRecord
-from vnpy_ashare.screener.batch_actions import BatchBacktestRow
+from vnpy_ashare.screener.batch.batch_actions import BatchBacktestRow
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 

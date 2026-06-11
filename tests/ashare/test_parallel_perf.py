@@ -15,7 +15,7 @@ from vnpy_ashare.quotes.tickflow_client import (
     fetch_quotes_from_tickflow,
     quote_fetch_max_workers,
 )
-from vnpy_ashare.screener.batch_actions import (
+from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     BatchBacktestRow,
     _batch_row_from_payload,
@@ -84,8 +84,8 @@ class BatchBacktestParallelTests(unittest.TestCase):
         self.assertIsInstance(row, BatchBacktestRow)
         self.assertEqual(row.vt_symbol, "600519.SSE")
 
-    @patch("vnpy_ashare.screener.batch_actions.ProcessPoolExecutor")
-    @patch("vnpy_ashare.screener.batch_actions.batch_backtest_max_workers", return_value=2)
+    @patch("vnpy_ashare.screener.batch.batch_actions.ProcessPoolExecutor")
+    @patch("vnpy_ashare.screener.batch.batch_actions.batch_backtest_max_workers", return_value=2)
     def test_run_batch_backtests_uses_process_pool(self, _workers_mock, pool_cls: MagicMock) -> None:
         class _FakeBacktesterEngine:
             pass

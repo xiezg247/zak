@@ -1,6 +1,18 @@
-"""选股（P0 行情 + P1 Tushare 基本面）。"""
+"""选股（P0 行情 + P1 Tushare 基本面）。
 
-from vnpy_ashare.screener.batch_actions import (
+目录约定：
+- ``run/``：执行、run_store、导出
+- ``recipe/``：多维度配方
+- ``preset/``：内置方案与规则
+- ``pattern/``：形态选股
+- ``data/``：数据源与 Tushare
+- ``dimensions/``：配方维度实现
+- ``batch/``：批量回测 / 下载
+- ``draft/``：AI 草稿与 NL
+- ``auto/``、``reference/``、``sector/``、``sentiment/``
+"""
+
+from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     BatchBacktestRow,
     batch_download_daily_bars,
@@ -8,26 +20,21 @@ from vnpy_ashare.screener.batch_actions import (
     rows_to_stock_items,
     run_batch_backtests,
 )
-from vnpy_ashare.screener.export import export_rows_to_csv, resolve_export_columns
-from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
-from vnpy_ashare.screener.run_store import (
-    ScreenerRunRecord,
-    delete_run,
-    get_latest_run,
-    get_run,
-    list_runs,
-    save_run,
-)
-from vnpy_ashare.screener.runner import (
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_ashare.screener.data.tushare_client import TushareNotConfiguredError
+from vnpy_ashare.screener.preset.scheme_store import SavedScheme, delete_scheme, list_schemes, save_scheme
+from vnpy_ashare.screener.run import (
     ScreenerRequest,
+    ScreenerRunRecord,
     ScreenerRunResult,
     build_scheme_config,
+    export_rows_to_csv,
     list_all_preset_names,
+    resolve_export_columns,
     resolve_preset_input,
     run_screener,
 )
-from vnpy_ashare.screener.scheme_store import SavedScheme, delete_scheme, list_schemes, save_scheme
-from vnpy_ashare.screener.tushare_client import TushareNotConfiguredError
+from vnpy_ashare.screener.run.run_store import delete_run, get_latest_run, get_run, list_runs, save_run
 
 __all__ = [
     "BatchBacktestParams",

@@ -16,7 +16,7 @@ def _make_skill(screening_svc: MagicMock) -> VnpyScreeningSkill:
 
 def _set_cache(rows: list[dict]) -> None:
     """向 context_store 注入缓存行情（替代实际行情页数据源）。"""
-    from vnpy_ashare.ai.context_store import set_market_quotes_cache
+    from vnpy_ashare.ai.context import set_market_quotes_cache
 
     set_market_quotes_cache(rows, {})
 
@@ -41,7 +41,7 @@ def test_screen_by_condition_no_data():
 
 
 def test_screen_by_condition_ok():
-    from vnpy_ashare.screener.runner import ScreenerRunResult
+    from vnpy_ashare.screener.run.runner import ScreenerRunResult
 
     svc = MagicMock()
     svc.run_request.return_value = ScreenerRunResult(
@@ -73,7 +73,7 @@ def test_screen_by_condition_need_confirm():
 
 
 def test_screen_by_pattern_ok():
-    from vnpy_ashare.screener.runner import ScreenerRunResult
+    from vnpy_ashare.screener.run.runner import ScreenerRunResult
 
     svc = MagicMock()
     svc.run_pattern_screen.return_value = ScreenerRunResult(
@@ -114,7 +114,7 @@ def test_list_recipes():
 
 
 def test_run_recipe_ok():
-    from vnpy_ashare.screener.runner import ScreenerRunResult
+    from vnpy_ashare.screener.run.runner import ScreenerRunResult
 
     svc = MagicMock()
     svc.run_recipe.return_value = ScreenerRunResult(
@@ -152,7 +152,7 @@ def test_propose_screening_builtin():
     from unittest.mock import patch
 
     skill = _make_skill(MagicMock())
-    with patch("vnpy_ashare.screener.nl_mapper.collect_warnings", return_value=[]):
+    with patch("vnpy_ashare.screener.draft.nl_mapper.collect_warnings", return_value=[]):
         result = json.loads(skill.propose_screening("今天涨最多的", preset="涨幅榜", top_n=5, confidence="high"))
     assert result["status"] == "pending_confirm"
     assert result["draft_id"]

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.screener.data_source import load_screening_quote_snapshot
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
-from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.rules import _quote_row
-from vnpy_ashare.screener.sector_summary import attach_industry, top_industries_by_momentum
+from vnpy_ashare.screener.preset.rules import _quote_row
+from vnpy_ashare.screener.sector.sector_summary import attach_industry, top_industries_by_momentum
 
 
 def run_sector_strength(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.data_source import fetch_fundamental_screening_rows
+from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
-from vnpy_ashare.screener.rules import apply_low_pe
+from vnpy_ashare.screener.preset.rules import apply_low_pe
 
 
 def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:

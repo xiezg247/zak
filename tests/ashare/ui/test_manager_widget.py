@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.storage.app_db import add_watchlist_item, build_symbol_name_map, init_app_db, save_universe_rows
-from vnpy_ashare.ui.shell.manager_widget import _DOWNLOAD_HINT, _TREE_LABELS, ManagerWidget
+from vnpy_ashare.ui.shell.manager.widget import _DOWNLOAD_HINT, _TREE_LABELS, ManagerWidget
 
 
 class ManagerWidgetUiTests(unittest.TestCase):

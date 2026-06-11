@@ -17,12 +17,12 @@ from vnpy_ashare.config.vt_settings import (
     save_runtime_settings,
     sync_vt_settings_from_env,
 )
-from vnpy_ashare.ui.shell.fonts import (
+from vnpy_ashare.config.fonts import (
     available_font_families,
     resolve_font_family,
     supports_font_family_selection,
 )
-from vnpy_ashare.ui.shell.settings_snapshot import (
+from vnpy_ashare.ui.shell.settings.snapshot import (
     collect_database_runtime_updates,
     detect_database_mode,
     env_database_name,

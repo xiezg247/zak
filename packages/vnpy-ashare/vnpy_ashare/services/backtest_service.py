@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 from strategies.registry import (
     STRATEGY_REGISTRY,
 )
-from vnpy_ashare.ai.context_store import sync_backtest_summary_dict
+from vnpy_ashare.ai.context import sync_backtest_summary_dict
 from vnpy_ashare.backtest.run_store import (
     get_latest_backtest_run,
     list_backtest_runs,

@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.screener.screener_results_table import (
+from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     apply_screener_results_view,
     configure_screener_results_table,
 )

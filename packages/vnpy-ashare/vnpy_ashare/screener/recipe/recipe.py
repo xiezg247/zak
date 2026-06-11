@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from vnpy_ashare.screener.recipe_store import get_saved_recipe, list_saved_recipes
+from vnpy_ashare.screener.recipe.recipe_store import get_saved_recipe, list_saved_recipes
 
 TriggerKind = Literal["intraday", "post_close"]
 

@@ -24,18 +24,19 @@ from strategies.registry import (
     format_strategy_guide,
     get_strategy_meta,
 )
-from vnpy_ashare.ai.backtest_context import (
+from vnpy_ashare.ai.context import (
+    BacktestSummary,
     build_backtest_ai_prompt,
     format_backtest_summary_text,
+    get_backtest_summary_dict,
     sync_backtest_page_context,
 )
-from vnpy_ashare.ai.context_store import BacktestSummary, get_backtest_summary_dict
 from vnpy_ashare.app.engine_access import get_backtest_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
-from vnpy_ashare.ui.backtest.backtest_chart import AshareBacktesterChart, AshareStatisticsMonitor
-from vnpy_ashare.ui.backtest.backtest_page_shell import BacktestPageShell
+from vnpy_ashare.ui.backtest.chart.backtest_chart import AshareBacktesterChart, AshareStatisticsMonitor
+from vnpy_ashare.ui.backtest.pages.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.styles import (
     apply_legacy_page_style,
     apply_toolbar_combo_style,

@@ -6,14 +6,15 @@ from typing import Any
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.ai.context import AiContextData, build_quote_context
-from vnpy_ashare.ai.context_store import (
+from vnpy_ashare.ai.context import (
+    AiContextData,
+    build_quote_context,
     get_ai_context,
     get_market_quotes_cache,
     set_ai_context,
     set_market_quotes_cache,
 )
-from vnpy_ashare.ai.floating_actions import enrich_context_with_actions
+from vnpy_ashare.ai.ui.floating_actions import enrich_context_with_actions
 from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot

@@ -6,7 +6,7 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.screener.recipe import (
+from vnpy_ashare.screener.recipe.recipe import (
     DIMENSION_CATALOG,
     TriggerKind,
     default_config_for_trigger,
@@ -17,7 +17,7 @@ from vnpy_ashare.screener.recipe import (
     resolve_recipe,
     screen_recipe_from_config,
 )
-from vnpy_ashare.screener.recipe_store import delete_recipe, get_saved_recipe, save_recipe
+from vnpy_ashare.screener.recipe.recipe_store import delete_recipe, get_saved_recipe, save_recipe
 from vnpy_common.ui.feedback import confirm_action, page_notify
 
 _RECIPE_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole

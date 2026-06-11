@@ -15,7 +15,7 @@ from vnpy_ashare.screener.dimensions.sentiment_gate_dim import run_sentiment_gat
 from vnpy_ashare.screener.dimensions.turnover import run_turnover
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
-from vnpy_ashare.screener.recipe import DimensionSpec
+from vnpy_ashare.screener.recipe.recipe import DimensionSpec
 
 DimensionRunner = Callable[..., tuple[list[DimensionHit], int]]
 

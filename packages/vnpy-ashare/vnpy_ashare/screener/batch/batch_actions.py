@@ -13,7 +13,7 @@ from typing import Any
 
 from vnpy.trader.constant import Exchange, Interval
 
-from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.backtest.batch_runner import (
     batch_backtest_max_workers,
     run_single_backtest_task,

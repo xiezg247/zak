@@ -18,7 +18,7 @@ from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.table.columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
-from vnpy_ashare.ui.screener.reference_peer_dialog import show_reference_peer_dialog
+from vnpy_ashare.ui.screener import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color

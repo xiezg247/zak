@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.ui import QtGui, QtWidgets
 
-from vnpy_ashare.ui.backtest.backtest_chart import AshareBacktesterChart, apply_backtest_chart_theme
+from vnpy_ashare.ui.backtest.chart.backtest_chart import AshareBacktesterChart, apply_backtest_chart_theme
 from vnpy_common.ui.theme import ThemeManager, theme_manager
 from vnpy_common.ui.theme.build_chart import chart_palette
 from vnpy_common.ui.theme.tokens import LIGHT_TOKENS

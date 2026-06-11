@@ -6,8 +6,7 @@ import unittest
 from unittest.mock import MagicMock
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.ai.context import AiContextData
-from vnpy_ashare.ai.context_store import clear_all, get_ai_context, set_ai_context
+from vnpy_ashare.ai.context import AiContextData, clear_all, get_ai_context, set_ai_context
 from vnpy_ashare.services.quote_service import QuoteService
 
 

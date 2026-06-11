@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.auto_screen import AutoScreenInput, resolve_auto_screen_request
+from vnpy_ashare.screener.auto.auto_screen import AutoScreenInput, resolve_auto_screen_request
 
 
 def test_builtin_preset_ok():

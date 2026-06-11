@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.screener.nl_mapper import (
+from vnpy_ashare.screener.draft.nl_mapper import (
     ProposeInput,
     clamp_top_n,
     try_fast_path,
     validate_and_build,
 )
-from vnpy_ashare.screener.presets import SCREENER_CHANGE_TOP, SCREENER_CUSTOM, SCREENER_LOW_PE
+from vnpy_ashare.screener.preset.presets import SCREENER_CHANGE_TOP, SCREENER_CUSTOM, SCREENER_LOW_PE
 
 
 def test_clamp_top_n():
@@ -34,7 +34,7 @@ def test_fast_path_low_pe():
     assert fast.preset == SCREENER_LOW_PE
 
 
-@patch("vnpy_ashare.screener.nl_mapper.collect_warnings", return_value=[])
+@patch("vnpy_ashare.screener.draft.nl_mapper.collect_warnings", return_value=[])
 def test_validate_builtin_preset(_mock_warnings):
     result = validate_and_build(ProposeInput(intent="今天涨最多的", preset=SCREENER_CHANGE_TOP, top_n=10, confidence="high"))
     assert result.kind == "pending_confirm"
@@ -43,7 +43,7 @@ def test_validate_builtin_preset(_mock_warnings):
     assert result.draft.request.top_n == 10
 
 
-@patch("vnpy_ashare.screener.nl_mapper.collect_warnings", return_value=[])
+@patch("vnpy_ashare.screener.draft.nl_mapper.collect_warnings", return_value=[])
 def test_validate_custom_preset(_mock_warnings):
     result = validate_and_build(
         ProposeInput(

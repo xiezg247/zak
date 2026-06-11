@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_ashare.screener.runner import ScreenerRequest
+from vnpy_ashare.screener.run.runner import ScreenerRequest
 
 EVENT_OPEN_BACKTEST = "eOpenBacktest"
 EVENT_OPEN_BATCH_BACKTEST = "eOpenBatchBacktest"

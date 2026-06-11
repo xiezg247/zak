@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.screener.auto_screener_page import AutoScreenerPageWidget
+from vnpy_ashare.ui.screener.pages.auto_screener_page import AutoScreenerPageWidget
 
 
 class AutoScreenerPageWidgetTests(unittest.TestCase):

@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_common.ui.feedback import PageToastHost
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.backtest.backtest_widget import BacktesterWidget
+    from vnpy_ashare.ui.backtest.pages.backtest_widget import BacktesterWidget
 
 
 def _toolbar_separator() -> QtWidgets.QFrame:

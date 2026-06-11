@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from vnpy_ashare.screener.factors import fetch_stock_industry_map, vt_symbol_to_ts_code
+from vnpy_ashare.screener.data.factors import fetch_stock_industry_map, vt_symbol_to_ts_code
 
 
 def attach_industry(rows: list[dict[str, Any]], industry_map: dict[str, str] | None = None) -> list[dict[str, Any]]:

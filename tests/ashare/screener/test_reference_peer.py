@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.screener.reference_peer import (
+from vnpy_ashare.screener.reference.reference_peer import (
     clamp_reference_peer_top_n,
     env_default_reference_peer_top_n,
     run_reference_peer_screen,
@@ -42,10 +42,10 @@ def _fund_row(
     }
 
 
-@patch("vnpy_ashare.screener.reference_peer.fetch_daily_pct_map")
-@patch("vnpy_ashare.screener.reference_peer.iter_trade_date_strs")
-@patch("vnpy_ashare.screener.reference_peer.fetch_stock_industry_map")
-@patch("vnpy_ashare.screener.reference_peer.fetch_daily_basic_with_fallback")
+@patch("vnpy_ashare.screener.reference.reference_peer.fetch_daily_pct_map")
+@patch("vnpy_ashare.screener.reference.reference_peer.iter_trade_date_strs")
+@patch("vnpy_ashare.screener.reference.reference_peer.fetch_stock_industry_map")
+@patch("vnpy_ashare.screener.reference.reference_peer.fetch_daily_basic_with_fallback")
 def test_run_reference_peer_screen_ranks_same_industry(
     mock_basic,
     mock_industry,
@@ -89,8 +89,8 @@ def test_run_reference_peer_screen_ranks_same_industry(
     assert any("同业" in row["hit_reason"] for row in result.rows)
 
 
-@patch("vnpy_ashare.screener.reference_peer.fetch_stock_industry_map")
-@patch("vnpy_ashare.screener.reference_peer.fetch_daily_basic_with_fallback")
+@patch("vnpy_ashare.screener.reference.reference_peer.fetch_stock_industry_map")
+@patch("vnpy_ashare.screener.reference.reference_peer.fetch_daily_basic_with_fallback")
 def test_run_reference_peer_screen_requires_industry(mock_basic, mock_industry):
     mock_basic.return_value = (
         [_fund_row("REF", ts_code="600000.SH", pe_ttm=20, circ_mv=1_000_000)],

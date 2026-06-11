@@ -8,7 +8,7 @@ from vnpy.event import Event, EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.backtest_context import sync_batch_compare_context
+from vnpy_ashare.ai.context import sync_batch_compare_context
 from vnpy_ashare.app.events import EVENT_OPEN_BACKTEST, BacktestRequest
 from vnpy_ashare.backtest.run_store import (
     BatchBacktestSession,
@@ -16,8 +16,8 @@ from vnpy_ashare.backtest.run_store import (
     list_batch_sessions,
     list_runs_by_batch,
 )
-from vnpy_ashare.screener.export import export_rows_to_csv
-from vnpy_ashare.ui.backtest.batch_backtest_table import BatchBacktestTableWidget, record_to_row
+from vnpy_ashare.screener.run.export import export_rows_to_csv
+from vnpy_ashare.ui.backtest.table.batch_backtest_table import BatchBacktestTableWidget, record_to_row
 from vnpy_common.ui.feedback import PageToastHost, confirm_action
 
 

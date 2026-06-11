@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.screener.reference_peer import ReferencePeerCancelled, run_reference_peer_screen
+from vnpy_ashare.screener.reference.reference_peer import ReferencePeerCancelled, run_reference_peer_screen
 
 
 class ReferencePeerWorker(QtCore.QThread):

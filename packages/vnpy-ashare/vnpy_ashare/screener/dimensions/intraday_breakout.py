@@ -7,9 +7,9 @@ from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.models import parse_tickflow_symbol
-from vnpy_ashare.screener.data_source import load_screening_quote_snapshot
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
-from vnpy_ashare.screener.quotes_loader import MarketQuotesLoadError
 
 _META_DIMENSION_ID = "intraday_breakout"
 _MIN_CHANGE_PCT = 0.5

@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 from vnpy_ashare.screener.dimensions.base import DimensionHit
 from vnpy_ashare.screener.dimensions.filters import apply_recipe_filters
-from vnpy_ashare.screener.recipe import resolve_recipe
-from vnpy_ashare.screener.recipe_runner import build_reason_summary, run_recipe
+from vnpy_ashare.screener.recipe.recipe import resolve_recipe
+from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_recipe
 
 
 def _momentum_hit(row: dict, *, weight: float = 0.35) -> DimensionHit:
@@ -63,7 +63,7 @@ def test_run_recipe_merges_dimensions():
             return [_turnover_hit(turnover_rows[0], weight=spec.weight)], 100
         return [], 0
 
-    with patch("vnpy_ashare.screener.recipe_runner.run_dimension", side_effect=fake_run_dimension):
+    with patch("vnpy_ashare.screener.recipe.recipe_runner.run_dimension", side_effect=fake_run_dimension):
         result = run_recipe("intraday_multi", top_n=5)
 
     assert len(result.rows) == 1
@@ -96,7 +96,7 @@ def test_run_recipe_parallel_dimensions():
         "amount": 50_000_000,
     }
     with patch(
-        "vnpy_ashare.screener.recipe_runner.run_parallel_map",
+        "vnpy_ashare.screener.recipe.recipe_runner.run_parallel_map",
     ) as parallel_mock:
         parallel_mock.return_value = [
             (recipe.dimensions[0], [_momentum_hit(row)], 100),

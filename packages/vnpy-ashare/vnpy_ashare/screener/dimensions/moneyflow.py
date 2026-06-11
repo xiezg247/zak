@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.data_source import fetch_moneyflow_with_fallback
+from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
-from vnpy_ashare.screener.rules import apply_moneyflow_in
+from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
 
 
 def run_moneyflow(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:

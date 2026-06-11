@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.screener.presets import (
+from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,
     SCREENER_CUSTOM,
     SCREENER_TURNOVER,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.run_diff import annotate_rows_with_diff, compute_run_diff, enrich_recipe_run
+from vnpy_ashare.screener.run.run_diff import annotate_rows_with_diff, compute_run_diff, enrich_recipe_run
 
 
 def test_compute_run_diff():
@@ -34,7 +34,7 @@ def test_enrich_recipe_run_without_previous():
 
     config: dict = {}
     rows = [{"vt_symbol": "600000.SSE", "amount": 50_000_000}]
-    with patch("vnpy_ashare.screener.run_store.find_previous_run_by_recipe", return_value=None):
+    with patch("vnpy_ashare.screener.run.run_store.find_previous_run_by_recipe", return_value=None):
         result = enrich_recipe_run(rows, "intraday_multi", config)
     assert result == rows
     assert "run_diff" not in config

@@ -19,7 +19,7 @@ from vnpy_ashare.ui.quotes.chart.daily import (
 from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.workers import (
+from vnpy_ashare.ui.quotes.workers import (
     BarsLoadWorker,
     IntradayBarsWorker,
     LoadedBars,

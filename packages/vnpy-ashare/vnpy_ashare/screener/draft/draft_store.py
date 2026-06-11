@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Literal
 
-from vnpy_ashare.screener.runner import ScreenerRequest
+from vnpy_ashare.screener.run.runner import ScreenerRequest
 
 DraftStatus = Literal["pending", "confirmed", "cancelled", "expired"]
 Confidence = Literal["high", "medium", "low"]

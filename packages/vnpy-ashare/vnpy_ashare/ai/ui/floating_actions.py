@@ -5,11 +5,11 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from vnpy_ashare.ai.context import (
+from vnpy_ashare.ai.context.quote import (
     build_assistant_quick_actions,
     build_floating_stock_quick_actions,
 )
-from vnpy_ashare.ai.context_store import get_screening_results
+from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_common.ai.protocol import AiContextData, QuickAction
 
 

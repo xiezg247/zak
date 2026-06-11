@@ -10,9 +10,9 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_datamanager.ui.widget import DataCell, DateRangeDialog
 from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
-from vnpy_ashare.ai.data_manager_context import sync_data_manager_context
+from vnpy_ashare.ai.context.data_manager import sync_data_manager_context
 from vnpy_ashare.config import EXCHANGE_CN_NAMES
-from vnpy_ashare.ui.shell.manager_workers import (
+from vnpy_ashare.ui.shell.manager.workers import (
     DeleteBarsWorker,
     ExportCsvWorker,
     LoadBarsWorker,

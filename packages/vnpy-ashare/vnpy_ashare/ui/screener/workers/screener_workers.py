@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.screener.batch_actions import batch_download_daily_bars, run_batch_backtests
-from vnpy_ashare.screener.recipe_runner import run_recipe_object
-from vnpy_ashare.screener.runner import ScreenerRequest, resolve_preset_input, run_screener
+from vnpy_ashare.screener.batch.batch_actions import batch_download_daily_bars, run_batch_backtests
+from vnpy_ashare.screener.recipe.recipe_runner import run_recipe_object
+from vnpy_ashare.screener.run.runner import ScreenerRequest, resolve_preset_input, run_screener
 
 
 class ScreenerRunWorker(QtCore.QThread):

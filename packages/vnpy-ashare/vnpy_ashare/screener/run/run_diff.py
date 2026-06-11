@@ -42,7 +42,7 @@ def enrich_recipe_run(
     rid = (recipe_id or "").strip()
     if not rid:
         return rows
-    from vnpy_ashare.screener.run_store import find_previous_run_by_recipe
+    from vnpy_ashare.screener.run.run_store import find_previous_run_by_recipe
 
     previous = find_previous_run_by_recipe(rid)
     if previous is None:

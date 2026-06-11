@@ -11,7 +11,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.ai.context import parse_stock_symbol
 
 _MCPExecute = Callable[[str, dict[str, Any]], str]
 

@@ -9,8 +9,8 @@ from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.models import StockItem
-from vnpy_ashare.screener.pattern_rules import BarSeries
-from vnpy_ashare.screener.pattern_screen import (
+from vnpy_ashare.screener.pattern.pattern_rules import BarSeries
+from vnpy_ashare.screener.pattern.pattern_screen import (
     PatternScreenInput,
     normalize_pattern_id,
     resolve_pattern_screen,
@@ -71,7 +71,7 @@ class PatternScreenTests(unittest.TestCase):
             return bars
 
         with patch(
-            "vnpy_ashare.screener.pattern_screen.load_downloaded_stocks",
+            "vnpy_ashare.screener.pattern.pattern_screen.load_downloaded_stocks",
             return_value=[item],
         ):
             result = run_pattern_screen(

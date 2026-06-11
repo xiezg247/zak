@@ -11,13 +11,13 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_service
 from vnpy_ashare.app.events import EVENT_OPEN_BATCH_BACKTEST, BatchBacktestViewRequest
-from vnpy_ashare.screener.batch_actions import (
+from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     load_batch_backtest_defaults,
     persist_batch_backtest_results,
 )
-from vnpy_ashare.ui.screener.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
-from vnpy_ashare.ui.workers import ScreenerBatchBacktestWorker
+from vnpy_ashare.ui.screener.dialogs.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
+from vnpy_ashare.ui.screener.workers import ScreenerBatchBacktestWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread
 

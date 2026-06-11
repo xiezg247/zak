@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener import run_store
+from vnpy_ashare.screener.run import run_store
 
 
 def test_save_and_list_runs(tmp_path, monkeypatch):

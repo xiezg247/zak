@@ -35,42 +35,41 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/storage/` | app_db、universe、交易日历 |
 | `packages/vnpy-ashare/vnpy_ashare/backtest/` | CTA App/Engine、run_store |
 | `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
-| `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方、标杆对标、NL 解析 |
+| `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方（`run/`、`recipe/`、`preset/`、`data/`、`dimensions/`） |
 | `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
-| `packages/vnpy-ashare/vnpy_ashare/ui/shell/` | 主窗口、导航、设置、数据管理 |
-| `packages/vnpy-ashare/vnpy_ashare/ui/quotes/` | 看盘页（QuotesPage + controller + 图表） |
-| `packages/vnpy-ashare/vnpy_ashare/ui/screener/` | 选股页 |
-| `packages/vnpy-ashare/vnpy_ashare/ui/backtest/` | 回测页 |
+| `packages/vnpy-ashare/vnpy_ashare/ui/shell/` | 主窗口、导航（`settings/`、`manager/`） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/quotes/` | 看盘页（`page/`、`controllers/`、`chart/`、`table/`、`panels/`、`workers/`） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/screener/` | 选股页（`pages/`、`widgets/`、`dialogs/`、`workers/`） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/backtest/` | 回测页（`pages/`、`flow/`、`chart/`、`table/`） |
 | `packages/vnpy-ashare/vnpy_ashare/ui/components/` | 跨页复用（chart_style、表格、任务输出） |
 | `packages/vnpy-tickflow` | TickFlow 适配（`client/`、`klines/`、`mapping/`、`datafeed/`） |
 | `packages/vnpy-llm` | LLM 对话（`app/`、`chat/`、`routing/`、`tools/`、`trace/`、`ui/`） |
 | `packages/vnpy-skills` | Agent Skill 引擎（`app/`、`domain/`、`agent/`） |
 | `packages/vnpy-mcp` | MCP 远端工具（`app/`、`config/`、`domain/`、`remote/`） |
 | `packages/vnpy-common` | 路径、AI 协议、终端主题 |
-| `packages/vnpy-ashare/vnpy_ashare/ai` | `context_store`、全屏页 |
+| `packages/vnpy-ashare/vnpy_ashare/ai` | `context/`（store、组装）、`ui/`（全屏页） |
 
 ## 配置
 
 `.env` 为密钥真源；`vt_setting.json` 为 VeighNa 运行时配置。
 
-`config_schema` → `config_bridge` → `vt_settings`；GUI 编辑在 `ui/settings_dialog.py`。
+`config_schema` → `config_bridge` → `vt_settings`；GUI 编辑在 `ui/shell/settings/`。
 
 ## 看盘页（`ui/quotes/`）
 
-`QuotesPage` 组合各 controller：
+`QuotesPage` 组合各子包：
 
-| 模块 | 职责 |
+| 子包 | 职责 |
 |------|------|
-| `page_shell.py` | 布局 |
-| `data_loader_controller.py` | 列表、市场榜、universe |
-| `table_controller.py` | 表格与选中 |
-| `actions_controller.py` | 诊断、AI、回测、标杆对标 |
-| `local_data_controller.py` | 本地 K 线 meta、下载、缺口 |
-| `quote_stream_controller.py` | TickFlow WebSocket |
-| `watchlist_controller.py` | 自选 CRUD |
-| `batch_backtest_controller.py` | 批量回测 |
+| `page/` | QuotesPage、布局 shell、配置、运行输出 |
+| `controllers/` | 表格、数据加载、操作、自选、分页 |
+| `table/` | 列定义、Model、市场展示 |
+| `chart/` | ChartPanel、日 K / 分时 / 分 K |
+| `panels/` | 盘口、诊断、loading |
+| `watchlist_signals/` | 自选策略信号区 |
+| `workers/` | K 线 / 行情后台 Worker |
 
-批量回测：`batch_backtest_flow.py`；对比页：`batch_backtest_page.py`。
+批量回测：`ui/backtest/flow/`；对比页：`ui/backtest/pages/`。
 
 ## 行情 Provider
 

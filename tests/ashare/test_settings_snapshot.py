@@ -21,7 +21,7 @@ from vnpy_ashare.config.vt_settings import (
     sync_vt_settings_from_env,
     vt_settings_needs_env_bootstrap,
 )
-from vnpy_ashare.ui.shell.settings_snapshot import (
+from vnpy_ashare.ui.shell.settings.snapshot import (
     collect_editable_values,
     detect_database_mode,
     env_database_name,

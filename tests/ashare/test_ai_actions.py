@@ -22,7 +22,7 @@ from vnpy_ashare.domain.ai_actions import (
     put_ai_action,
     validate_ai_action,
 )
-from vnpy_ashare.screener.runner import ScreenerRequest
+from vnpy_ashare.screener.run.runner import ScreenerRequest
 
 
 class AiActionsTests(unittest.TestCase):

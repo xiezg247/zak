@@ -10,7 +10,7 @@ from typing import Any
 
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.models import EXCHANGE_TO_SUFFIX
-from vnpy_ashare.screener.tushare_cache import (
+from vnpy_ashare.screener.data.tushare_cache import (
     DATASET_DAILY_BASIC,
     DATASET_INDEX_DAILY,
     DATASET_LIMIT_LIST,
@@ -25,7 +25,7 @@ from vnpy_ashare.screener.tushare_cache import (
     set_cached_pct_map,
     set_cached_rows,
 )
-from vnpy_ashare.screener.tushare_client import get_tushare_pro
+from vnpy_ashare.screener.data.tushare_client import get_tushare_pro
 from vnpy_ashare.storage.app_db import load_universe_rows
 
 

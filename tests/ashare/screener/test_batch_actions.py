@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.batch_actions import rows_to_stock_items, watchlist_items_to_rows
+from vnpy_ashare.screener.batch.batch_actions import rows_to_stock_items, watchlist_items_to_rows
 
 
 def test_rows_to_stock_items_deduplicates():

@@ -6,7 +6,7 @@ import unittest
 from datetime import datetime, timedelta
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.screener.tushare_cache import (
+from vnpy_ashare.screener.data.tushare_cache import (
     DATASET_DAILY_BASIC,
     clear_tushare_cache,
     get_cached_rows,
@@ -28,7 +28,7 @@ class TushareCacheTests(unittest.TestCase):
         self.assertEqual(cached, rows)
 
     def test_cache_miss_on_expired(self) -> None:
-        from vnpy_ashare.screener.tushare_cache import _connect
+        from vnpy_ashare.screener.data.tushare_cache import _connect
 
         stale_at = (datetime.now() - timedelta(hours=25)).isoformat(timespec="seconds")
         payload = '[{"vt_symbol": "600519.SSE"}]'

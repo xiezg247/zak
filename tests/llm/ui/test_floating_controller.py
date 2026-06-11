@@ -53,7 +53,10 @@ class FloatingAiControllerTests(unittest.TestCase):
         return controller
 
     def test_page_whitelist(self) -> None:
-        self.assertEqual(FLOATING_ORB_PAGE_KEYS, frozenset({"watchlist", "market", "local", "screener"}))
+        self.assertEqual(
+            FLOATING_ORB_PAGE_KEYS,
+            frozenset({"watchlist", "market", "local", "screener", "auto_screener"}),
+        )
         self.assertTrue(FloatingAiController.is_page_allowed("watchlist"))
         self.assertFalse(FloatingAiController.is_page_allowed("cta_backtest"))
 
@@ -112,7 +115,7 @@ class FloatingAiControllerTests(unittest.TestCase):
 
         controller = self._make_controller()
         with patch(
-            "vnpy_ashare.ai.context_store.get_ai_context",
+            "vnpy_ashare.ui.shell.floating_controller.get_ai_context",
             return_value=AiContextData(
                 page="市场",
                 symbol="600519",
