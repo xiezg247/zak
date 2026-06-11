@@ -11,28 +11,13 @@ from typing import Any
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.domain.symbols import symbol_exchange_to_ts_code
+
 
 def report_fallback_enabled() -> bool:
     """是否启用 Tushare research_report 降级（默认启用）。"""
     value = (os.getenv("ANALYSIS_REPORT_FALLBACK") or "tushare").strip().lower()
     return value not in {"0", "false", "off", "none", "no"}
-
-
-def to_ts_code(symbol: str, exchange) -> str:
-    """A 股代码 + Exchange → Tushare ts_code。"""
-    value = getattr(exchange, "value", str(exchange)).upper()
-    name = getattr(exchange, "name", str(exchange)).upper()
-    if value in {"SSE", "SH"} or name == "SSE":
-        return f"{symbol}.SH"
-    if value in {"SZSE", "SZ"} or name == "SZSE":
-        return f"{symbol}.SZ"
-    if value in {"BSE", "BJ"} or name == "BSE":
-        return f"{symbol}.BJ"
-    if symbol.startswith(("5", "6", "9")):
-        return f"{symbol}.SH"
-    if symbol.startswith(("0", "3")):
-        return f"{symbol}.SZ"
-    return f"{symbol}.BJ"
 
 
 def fetch_tushare_reports(symbol: str, exchange: Exchange, *, limit: int = 10) -> dict[str, Any]:
@@ -44,7 +29,7 @@ def fetch_tushare_reports(symbol: str, exchange: Exchange, *, limit: int = 10) -
     except TushareNotConfiguredError as ex:
         return {"reports": [], "warnings": [str(ex)]}
 
-    ts_code = to_ts_code(symbol, exchange)
+    ts_code = symbol_exchange_to_ts_code(symbol, exchange)
     end = datetime.now().strftime("%Y%m%d")
     start = (datetime.now() - timedelta(days=365)).strftime("%Y%m%d")
     try:

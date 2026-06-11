@@ -1,6 +1,6 @@
 """Tushare 因子拉取与字段标准化。
 
-``ts_code`` ↔ ``vt_symbol`` 转换；``fetch_daily_basic`` / ``fetch_moneyflow`` 供 data_source 与选股规则使用。
+符号互转见 ``domain.symbols``；``fetch_daily_basic`` / ``fetch_moneyflow`` 供 data_source 与选股规则使用。
 """
 
 from __future__ import annotations
@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from vnpy_ashare.domain.calendar import last_trading_day
-from vnpy_ashare.domain.models import EXCHANGE_TO_SUFFIX
+from vnpy_ashare.domain.numbers import safe_float
+from vnpy_ashare.domain.symbols import EXCHANGE_TO_SUFFIX, ts_code_to_vt_symbol
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_DAILY_BASIC,
     DATASET_INDEX_DAILY,
@@ -29,30 +30,6 @@ from vnpy_ashare.integrations.tushare.client import get_tushare_pro
 from vnpy_ashare.storage.app_db import load_universe_rows
 
 
-def ts_code_to_vt_symbol(ts_code: str) -> str | None:
-    """Tushare ts_code（如 000001.SZ）→ vt_symbol（000001.SZSE）。"""
-    if "." not in ts_code:
-        return None
-    code, suffix = ts_code.rsplit(".", 1)
-    exchange_map = {"SH": "SSE", "SZ": "SZSE", "BJ": "BSE"}
-    exchange = exchange_map.get(suffix.upper())
-    if not exchange:
-        return None
-    return f"{code}.{exchange}"
-
-
-def vt_symbol_to_ts_code(vt_symbol: str) -> str | None:
-    """vt_symbol → Tushare ts_code。"""
-    if "." not in vt_symbol:
-        return None
-    code, exchange = vt_symbol.rsplit(".", 1)
-    suffix_map = {"SSE": "SH", "SZSE": "SZ", "BSE": "BJ"}
-    suffix = suffix_map.get(exchange.upper())
-    if not suffix:
-        return None
-    return f"{code}.{suffix}"
-
-
 def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
     """拉取指定交易日全市场涨跌幅（供非交易时段涨幅榜）。"""
     cached = get_cached_pct_map(trade_date)
@@ -66,7 +43,7 @@ def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
         return {}
     if frame is None or frame.empty:
         return {}
-    pct_map = {str(record.get("ts_code", "")): _float(record.get("pct_chg")) for record in frame.to_dict(orient="records") if record.get("ts_code")}
+    pct_map = {str(record.get("ts_code", "")): safe_float(record.get("pct_chg")) for record in frame.to_dict(orient="records") if record.get("ts_code")}
     if pct_map:
         set_cached_pct_map(trade_date, pct_map)
     return pct_map
@@ -228,9 +205,9 @@ def fetch_index_daily_snapshot(*, trade_date: str | None = None) -> tuple[list[d
                 {
                     "ts_code": str(record.get("ts_code", ts_code)),
                     "trade_date": str(record.get("trade_date", "")),
-                    "close": _float(record.get("close")),
-                    "pct_chg": _float(record.get("pct_chg")),
-                    "amount": _float(record.get("amount")),
+                    "close": safe_float(record.get("close")),
+                    "pct_chg": safe_float(record.get("pct_chg")),
+                    "amount": safe_float(record.get("amount")),
                 }
             )
     if rows:
@@ -265,8 +242,8 @@ def fetch_moneyflow_hsgt_window(*, trade_date: str | None = None) -> tuple[list[
         rows.append(
             {
                 "trade_date": str(record.get("trade_date", "")),
-                "north_money": _float(record.get("north_money")),
-                "south_money": _float(record.get("south_money")),
+                "north_money": safe_float(record.get("north_money")),
+                "south_money": safe_float(record.get("south_money")),
             }
         )
     if rows:
@@ -304,15 +281,15 @@ def fetch_daily_basic(*, trade_date: str | None = None) -> tuple[list[dict[str, 
                 "name": names.get(ts_code, ""),
                 "vt_symbol": vt_symbol,
                 "trade_date": str(record.get("trade_date", trade_date)),
-                "close": _float(record.get("close")),
-                "pe": _float(record.get("pe")),
-                "pe_ttm": _float(record.get("pe_ttm")),
-                "pb": _float(record.get("pb")),
-                "ps": _float(record.get("ps")),
-                "total_mv": _float(record.get("total_mv")),
-                "circ_mv": _float(record.get("circ_mv")),
-                "turnover_rate": _float(record.get("turnover_rate")),
-                "volume_ratio": _float(record.get("volume_ratio")),
+                "close": safe_float(record.get("close")),
+                "pe": safe_float(record.get("pe")),
+                "pe_ttm": safe_float(record.get("pe_ttm")),
+                "pb": safe_float(record.get("pb")),
+                "ps": safe_float(record.get("ps")),
+                "total_mv": safe_float(record.get("total_mv")),
+                "circ_mv": safe_float(record.get("circ_mv")),
+                "turnover_rate": safe_float(record.get("turnover_rate")),
+                "volume_ratio": safe_float(record.get("volume_ratio")),
             }
         )
     if rows:
@@ -350,20 +327,11 @@ def fetch_moneyflow(*, trade_date: str | None = None) -> tuple[list[dict[str, An
                 "name": names.get(ts_code, ""),
                 "vt_symbol": vt_symbol,
                 "trade_date": str(record.get("trade_date", trade_date)),
-                "net_mf_amount": _float(record.get("net_mf_amount")),
-                "buy_elg_amount": _float(record.get("buy_elg_amount")),
-                "sell_elg_amount": _float(record.get("sell_elg_amount")),
+                "net_mf_amount": safe_float(record.get("net_mf_amount")),
+                "buy_elg_amount": safe_float(record.get("buy_elg_amount")),
+                "sell_elg_amount": safe_float(record.get("sell_elg_amount")),
             }
         )
     if rows:
         set_cached_rows(DATASET_MONEYFLOW, trade_date, rows)
     return rows, trade_date
-
-
-def _float(value: Any) -> float:
-    try:
-        if value is None or value == "":
-            return 0.0
-        return float(value)
-    except (TypeError, ValueError):
-        return 0.0

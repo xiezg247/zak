@@ -16,8 +16,8 @@ main_engine.add_app(AshareApp)
 vnpy_ashare/
 ├── app/              # launcher、bootstrap、engine、events、engine_access
 ├── config/           # runtime 常量、schema、bridge、vt_settings
-├── domain/           # models、calendar、market_hours、signal_snapshot
-├── integrations/   # 外部 API（Tushare、TickFlow 应用层、MCP；TickFlow SDK 见 vnpy_tickflow）
+├── domain/           # models、symbols、numbers、calendar、market_hours
+├── integrations/     # 外部 API（Tushare、TickFlow 应用层、MCP；TickFlow SDK 见 vnpy_tickflow）
 ├── data/             # bars、bar_store、bar_health、minute_periods
 ├── storage/          # app_db、universe、trade_calendar_store
 ├── backtest/         # CTA App/Engine、run_store、strategy_filter
@@ -49,3 +49,16 @@ vnpy_ashare/
 元数据默认在 `~/.vntrader/zak.db`；CSV 备份见 `scripts/export_metadata.py`。
 
 完整文档见 [docs/README.md](../../../docs/README.md)。
+
+## 分层约定
+
+| 目录 | 职责 | 示例 |
+|------|------|------|
+| `domain/` | A 股领域模型与纯规则 | `StockItem`、`symbols` 互转、`calendar` |
+| `integrations/` | 外部 API 薄封装 + 缓存 | Tushare 因子、TickFlow 行情、MCP |
+| `screener/data/` | 选股数据源编排 | Redis + Tushare 合并 |
+| `quotes/` | 行情 Provider 抽象 | `QuoteProvider`、Redis 快照 |
+| `services/` | 业务 Service | `QuoteService`、`ScreeningService` |
+| `vnpy_common`（独立包） | 跨 App 基础设施 | paths、UI 主题 |
+
+符号互转统一从 `domain.symbols` 导入；数值解析用 `domain.numbers.safe_float`。

@@ -15,8 +15,7 @@ from vnpy_ashare.ai.context import (
     set_market_quotes_cache,
 )
 from vnpy_ashare.ai.ui.floating_actions import enrich_context_with_actions
-from vnpy_ashare.config import exchange_to_cn
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem, symbol_exchange_to_tickflow
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.base import BaseService
 
@@ -84,7 +83,7 @@ class QuoteService(BaseService):
         """从行情映射查询快照（需外部提供 quote_map）。"""
         if quote_map is None:
             return None
-        tickflow_symbol = f"{symbol}.{exchange_to_cn(exchange)}"
+        tickflow_symbol = symbol_exchange_to_tickflow(symbol, exchange)
         return quote_map.get(tickflow_symbol)
 
     def get_market_rank(self, quotes: list[dict[str, Any]], *, top_n: int = 20) -> list[dict[str, Any]]:

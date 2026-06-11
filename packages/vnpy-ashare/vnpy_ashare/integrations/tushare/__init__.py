@@ -1,5 +1,6 @@
 """Tushare Pro 客户端、因子缓存与拉取。"""
 
+from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol, vt_symbol_to_ts_code
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_DAILY_BASIC,
     DATASET_DAILY_PCT,
@@ -31,8 +32,6 @@ from vnpy_ashare.integrations.tushare.factors import (
     fetch_stock_basic_snapshot,
     fetch_stock_industry_map,
     load_ts_code_name_map,
-    ts_code_to_vt_symbol,
-    vt_symbol_to_ts_code,
 )
 
 __all__ = [

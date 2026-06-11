@@ -7,6 +7,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from vnpy.trader.constant import Exchange
+
+from vnpy_ashare.domain.symbols import symbol_exchange_to_ts_code
 from vnpy_ashare.services import report_sources
 from vnpy_llm.tools import audit as tool_audit
 
@@ -18,9 +21,9 @@ class ReportSourcesTests(unittest.TestCase):
         with patch.dict("os.environ", {"ANALYSIS_REPORT_FALLBACK": "tushare"}):
             self.assertTrue(report_sources.report_fallback_enabled())
 
-    def test_to_ts_code(self) -> None:
-        self.assertEqual(report_sources.to_ts_code("600000", "SSE"), "600000.SH")
-        self.assertEqual(report_sources.to_ts_code("000001", "SZSE"), "000001.SZ")
+    def test_symbol_exchange_to_ts_code(self) -> None:
+        self.assertEqual(symbol_exchange_to_ts_code("600000", Exchange.SSE), "600000.SH")
+        self.assertEqual(symbol_exchange_to_ts_code("000001", Exchange.SZSE), "000001.SZ")
 
 
 class ToolAuditTests(unittest.TestCase):

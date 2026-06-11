@@ -7,6 +7,8 @@ import os
 from collections.abc import Callable
 from typing import Any
 
+from vnpy_ashare.domain.symbols import vt_symbol_to_symbol
+
 _McpExecutor = Callable[[str, dict[str, Any]], str]
 _mcp_execute: _McpExecutor | None = None
 _mcp_tool_names: list[str] | None = None
@@ -49,7 +51,7 @@ def fetch_intraday_moneyflow_map(
     symbols = symbols[: max(1, min(top_n, 60))]
     result: dict[str, float] = {}
     for vt_symbol in symbols:
-        symbol = vt_symbol.split(".", 1)[0]
+        symbol = vt_symbol_to_symbol(vt_symbol)
         amount = _query_symbol_flow(tool, vt_symbol, symbol)
         if amount is not None:
             result[vt_symbol] = amount
