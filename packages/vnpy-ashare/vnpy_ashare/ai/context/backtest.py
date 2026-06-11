@@ -66,7 +66,10 @@ def build_backtest_page_context(
     end_edit = getattr(widget, "end_date_edit", None)
 
     vt_symbol = symbol_line.text().strip() if symbol_line is not None else ""
-    strategy = class_combo.currentText().strip() if class_combo is not None else ""
+    strategy = ""
+    if class_combo is not None:
+        display_title = getattr(class_combo, "current_display_title", None)
+        strategy = (display_title() if callable(display_title) else class_combo.currentText()).strip()
     interval = interval_combo.currentText().strip() if interval_combo is not None else ""
 
     date_range = ""

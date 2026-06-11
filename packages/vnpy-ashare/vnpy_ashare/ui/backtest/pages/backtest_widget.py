@@ -37,6 +37,7 @@ from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest.chart.backtest_chart import AshareBacktesterChart, AshareStatisticsMonitor
 from vnpy_ashare.ui.backtest.pages.backtest_page_shell import BacktestPageShell
+from vnpy_ashare.ui.backtest.strategy_combo import StrategyClassCombo
 from vnpy_ashare.ui.styles import (
     apply_legacy_page_style,
     apply_toolbar_combo_style,
@@ -111,7 +112,7 @@ class BacktesterWidget(VnpyBacktesterManager):
         end_dt = datetime.now()
         start_dt = end_dt - timedelta(days=3 * 365)
 
-        self.class_combo = QtWidgets.QComboBox()
+        self.class_combo = StrategyClassCombo()
         self.symbol_line = QtWidgets.QLineEdit(str(ASHARE_BACKTEST_DEFAULTS["vt_symbol"]))
         self.interval_combo = QtWidgets.QComboBox()
         for interval in Interval:
@@ -235,8 +236,8 @@ class BacktesterWidget(VnpyBacktesterManager):
         form.addRow("交易策略", container)
 
     def _finalize_strategy_guide(self) -> None:
-        self.class_combo.currentTextChanged.connect(self._on_strategy_changed)
-        self._on_strategy_changed(self.class_combo.currentText())
+        self.class_combo.currentIndexChanged.connect(self._on_strategy_index_changed)
+        self._on_strategy_index_changed(self.class_combo.currentIndex())
 
     def _build_strategy_guide_html(self, class_name: str) -> str:
         from vnpy_common.ui.theme import theme_manager
@@ -252,12 +253,17 @@ class BacktesterWidget(VnpyBacktesterManager):
             return format_missing_strategy_guide(name, tokens=tokens)
         return format_strategy_guide(meta, tokens=tokens)
 
+    def _on_strategy_index_changed(self, index: int) -> None:
+        del index
+        class_name = self.class_combo.current_class_name()
+        self._on_strategy_changed(class_name)
+
     def _on_strategy_changed(self, class_name: str) -> None:
         self._strategy_guide_html = self._build_strategy_guide_html(class_name)
         self.strategy_guide_button.setEnabled(bool(class_name.strip()))
 
     def _show_strategy_guide_dialog(self) -> None:
-        class_name = self.class_combo.currentText().strip()
+        class_name = self.class_combo.current_class_name()
         if not class_name:
             return
         meta = get_strategy_meta(class_name)
@@ -291,10 +297,9 @@ class BacktesterWidget(VnpyBacktesterManager):
 
         self.class_names = ashare_names
         self.settings = {name: self.settings[name] for name in ashare_names if name in self.settings}
-        self.class_combo.clear()
-        self.class_combo.addItems(ashare_names)
+        self.class_combo.set_strategy_items(ashare_names)
         self._ensure_class_combo_selection()
-        self._on_strategy_changed(self.class_combo.currentText())
+        self._on_strategy_changed(self.class_combo.current_class_name())
 
     def load_backtesting_setting(self) -> None:
         super().load_backtesting_setting()
@@ -309,7 +314,7 @@ class BacktesterWidget(VnpyBacktesterManager):
             self.capital_line.setText(str(defaults["capital"]))
         else:
             self._normalize_decimal_fields()
-        self._on_strategy_changed(self.class_combo.currentText())
+        self._on_strategy_changed(self.class_combo.current_class_name())
 
     def _normalize_decimal_fields(self) -> None:
         for line, places in (
@@ -463,7 +468,7 @@ class BacktesterWidget(VnpyBacktesterManager):
         import shutil
         import subprocess
 
-        class_name = self.class_combo.currentText()
+        class_name = self.class_combo.current_class_name()
         if not class_name:
             return
 
@@ -493,7 +498,7 @@ class BacktesterWidget(VnpyBacktesterManager):
         start = cast(QtCore.QDateTime, self.start_date_edit.dateTime()).toPython()
         end = cast(QtCore.QDateTime, self.end_date_edit.dateTime()).toPython()
         summary = BacktestSummary(
-            strategy=self.class_combo.currentText(),
+            strategy=self.class_combo.current_display_title(),
             vt_symbol=self.symbol_line.text().strip(),
             interval=self.interval_combo.currentText(),
             start=start.strftime("%Y-%m-%d"),
