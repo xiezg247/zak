@@ -19,6 +19,8 @@ from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
     save_position_panel_enabled,
     save_position_panel_expanded,
 )
+from vnpy_ashare.ui.quotes.watchlist_signals.settings import WatchlistSignalConfig
+from strategies.registry import get_strategy_meta
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
@@ -81,7 +83,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._follow_check.setChecked(position_cfg.follow_signal)
         self._follow_check.toggled.connect(self._on_follow_toggled)
 
-        self._strategy_label = QtWidgets.QLabel("双均线", self)
+        self._strategy_label = QtWidgets.QLabel("", self)
         self._strategy_label.setObjectName("SectionLabel")
 
         self._fast_spin = QtWidgets.QSpinBox(self)
@@ -153,7 +155,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
 
         self._fast_spin.valueChanged.connect(self._emit_config_changed)
         self._slow_spin.valueChanged.connect(self._emit_config_changed)
-        self._sync_strategy_controls()
+        self._sync_strategy_controls(signal_config=page.signal_config)
         self._sync_expansion_ui()
         self.render()
 
@@ -196,7 +198,9 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._follow_check.blockSignals(False)
         self._fast_spin.blockSignals(False)
         self._slow_spin.blockSignals(False)
-        self._sync_strategy_controls()
+        self._sync_strategy_controls(
+            signal_config=self._page.signal_config if item.follow_signal else None,
+        )
 
     def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
         if self._expanded == expanded:
@@ -262,14 +266,35 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self.setMinimumHeight(self.minimumHeight())
         self.setMaximumHeight(16777215 if expanded else POSITION_PANEL_COLLAPSED_HEIGHT)
 
-    def _sync_strategy_controls(self) -> None:
+    def _strategy_title(self, class_name: str) -> str:
+        meta = get_strategy_meta(class_name)
+        return meta.title if meta is not None else class_name
+
+    def _sync_strategy_controls(self, signal_config: WatchlistSignalConfig | None = None) -> None:
         follow = self._follow_check.isChecked()
-        self._strategy_label.setVisible(not follow)
-        self._fast_spin.setEnabled(not follow)
-        self._slow_spin.setEnabled(not follow)
+        if follow:
+            cfg = (signal_config or self._page.signal_config).normalized()
+            self._strategy_label.setText(f"跟随·{self._strategy_title(cfg.class_name)}")
+            self._strategy_label.setVisible(True)
+            self._fast_spin.setVisible(False)
+            self._slow_spin.setVisible(False)
+            return
+        item = self._page.position_config.normalized()
+        self._strategy_label.setText(self._strategy_title(item.class_name))
+        self._strategy_label.setVisible(True)
+        self._fast_spin.setVisible(True)
+        self._slow_spin.setVisible(True)
+        self._fast_spin.setEnabled(True)
+        self._slow_spin.setEnabled(True)
+
+    def sync_follow_display(self, signal_config: WatchlistSignalConfig) -> None:
+        """跟随信号区时，同步展示当前策略名称。"""
+        if not self._follow_check.isChecked():
+            return
+        self._sync_strategy_controls(signal_config=signal_config)
 
     def _on_follow_toggled(self, _checked: bool) -> None:
-        self._sync_strategy_controls()
+        self._sync_strategy_controls(signal_config=self._page.signal_config)
         self._emit_config_changed()
 
     def _emit_config_changed(self) -> None:

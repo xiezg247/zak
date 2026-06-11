@@ -55,8 +55,13 @@ class PositionPanelSettingsTests(unittest.TestCase):
 
     def test_position_config_effective_follows_signal(self) -> None:
         pos = WatchlistPositionConfig(follow_signal=True)
-        signal = WatchlistSignalConfig(fast_window=5, slow_window=15)
+        signal = WatchlistSignalConfig(
+            class_name="AshareTrendMaStrategy",
+            fast_window=5,
+            slow_window=15,
+        )
         effective = pos.effective_signal_config(signal)
+        self.assertEqual(effective.class_name, "AshareTrendMaStrategy")
         self.assertEqual(effective.fast_window, 5)
         self.assertEqual(effective.slow_window, 15)
 

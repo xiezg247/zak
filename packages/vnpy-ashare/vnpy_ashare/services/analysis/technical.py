@@ -11,9 +11,12 @@ if TYPE_CHECKING:
 from strategies.registry import get_strategy_meta
 from strategies.signals import (
     SUPPORTED_SIGNAL_STRATEGIES,
-    build_double_ma_signal_payload,
+    build_signal_payload_for_strategy,
     list_supported_signal_strategies,
     summarize_double_ma_state,
+    summarize_short_breakout_state,
+    summarize_swing_ma_state,
+    summarize_trend_ma_state,
 )
 from vnpy_ashare.ai.context import get_screening_results, parse_stock_symbol
 from vnpy_ashare.data.download_concurrency import run_parallel_map
@@ -152,12 +155,42 @@ class TechnicalAnalyzer:
 
         tail = bars[-lookback:] if len(bars) >= lookback else bars
         closes = [bar.close_price for bar in tail]
+        highs = [bar.high_price for bar in tail]
+        volumes = [float(bar.volume) for bar in tail]
         dates = [bar.datetime for bar in tail]
 
-        if SUPPORTED_SIGNAL_STRATEGIES[class_name] == "double_ma":
+        kind = SUPPORTED_SIGNAL_STRATEGIES[class_name]
+        if kind == "double_ma":
             state = summarize_double_ma_state(
                 closes,
                 dates,
+                fast_window=fast_window,
+                slow_window=slow_window,
+            )
+        elif kind == "short_breakout":
+            state = summarize_short_breakout_state(
+                closes,
+                highs,
+                dates,
+                volumes,
+                fast_window=fast_window,
+                slow_window=slow_window,
+            )
+        elif kind == "swing_ma":
+            state = summarize_swing_ma_state(
+                closes,
+                dates,
+                volumes,
+                lows=[bar.low_price for bar in tail],
+                fast_window=fast_window,
+                slow_window=slow_window,
+            )
+        elif kind == "trend_ma":
+            state = summarize_trend_ma_state(
+                closes,
+                dates,
+                highs,
+                [bar.low_price for bar in tail],
                 fast_window=fast_window,
                 slow_window=slow_window,
             )
@@ -167,7 +200,7 @@ class TechnicalAnalyzer:
         if state.get("error"):
             warnings.append(str(state["error"]))
 
-        return {
+        result: dict[str, Any] = {
             "symbol": item.vt_symbol,
             "name": item.name,
             "strategy": class_name,
@@ -179,11 +212,27 @@ class TechnicalAnalyzer:
             "params": state.get("params"),
             "current": state.get("current"),
             "last_cross": state.get("last_cross"),
-            "recent_signals": state.get("recent_signals", []),
-            "signal_count": state.get("signal_count", 0),
             "warnings": warnings,
             "sources": ["bar"],
         }
+        if kind == "double_ma":
+            result["recent_signals"] = state.get("recent_signals", [])
+            result["signal_count"] = state.get("signal_count", 0)
+        elif kind == "short_breakout":
+            result["last_breakout"] = state.get("last_breakout")
+            result["recent_breakouts"] = state.get("recent_breakouts", [])
+            result["breakout_count"] = state.get("breakout_count", 0)
+        elif kind == "swing_ma":
+            result["last_entry"] = state.get("last_entry")
+            result["recent_entries"] = state.get("recent_entries", [])
+            result["entry_count"] = state.get("entry_count", 0)
+            result["recent_signals"] = state.get("recent_signals", [])
+            result["signal_count"] = state.get("signal_count", 0)
+        elif kind == "trend_ma":
+            result["recent_signals"] = state.get("recent_signals", [])
+            result["signal_count"] = state.get("signal_count", 0)
+            result["adx"] = (state.get("current") or {}).get("adx")
+        return result
 
     def signal_snapshot(
         self,
@@ -577,24 +626,28 @@ class TechnicalAnalyzer:
         volumes = [float(bar.volume) for bar in tail]
         dates = [bar.datetime for bar in tail]
 
-        if SUPPORTED_SIGNAL_STRATEGIES[class_name] != "double_ma":
+        if SUPPORTED_SIGNAL_STRATEGIES.get(class_name) is None:
             return None
 
-        payload = build_double_ma_signal_payload(
+        relative_index_pct = self._relative_index_excess(
+            item.symbol,
+            item.exchange,
+        )
+        payload = build_signal_payload_for_strategy(
+            class_name,
             closes,
             dates,
             vt_symbol=item.vt_symbol,
-            strategy_id=class_name,
             fast_window=fast_window,
             slow_window=slow_window,
             highs=highs,
             lows=lows,
             volumes=volumes,
+            relative_index_pct=relative_index_pct,
         )
-        payload["relative_index_pct"] = self._relative_index_excess(
-            item.symbol,
-            item.exchange,
-        )
+        if payload is None:
+            return None
+        payload["relative_index_pct"] = relative_index_pct
         return payload
 
     @staticmethod

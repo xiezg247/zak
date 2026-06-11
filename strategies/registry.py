@@ -40,6 +40,89 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
         ),
         supports_signals=True,
     ),
+    "AshareShortBreakoutStrategy": StrategyMeta(
+        class_name="AshareShortBreakoutStrategy",
+        title="A 股短线放量突破",
+        summary=(
+            "收盘价突破近 N 日高点且量比放大、快线在慢线上方时买入；"
+            "死叉/止损/止盈/持仓天数到期卖出。适合 1～5 日短线。"
+        ),
+        tags=("短线", "突破", "日 K", "仅做多"),
+        scenarios=(
+            "活跃股、题材龙头，日 K 量能配合",
+            "1～5 个交易日内了结",
+            "能接受 T+1 隔日才能止损",
+        ),
+        anti_scenarios=(
+            "低流动性、长期横盘",
+            "追涨停后无法成交",
+            "需要日内 T+0",
+        ),
+        param_hints=(
+            ("fast_window", "快均线，默认 5"),
+            ("slow_window", "慢均线，默认 10"),
+            ("breakout_lookback", "突破回看天数，默认 5"),
+            ("volume_ratio_min", "量比下限，默认 1.5"),
+            ("stop_loss_pct", "止损比例，默认 0.03"),
+            ("take_profit_pct", "止盈比例，默认 0.06"),
+            ("max_hold_days", "最长持仓天数，默认 3"),
+        ),
+        supports_signals=True,
+    ),
+    "AshareSwingMaStrategy": StrategyMeta(
+        class_name="AshareSwingMaStrategy",
+        title="A 股波段回踩均线",
+        summary=(
+            "金叉后不追高，等待缩量回踩慢均线再买入；"
+            "死叉、跌破慢线或止损卖出。适合 1～4 周波段。"
+        ),
+        tags=("波段", "回踩", "日 K", "仅做多"),
+        scenarios=(
+            "趋势明确的行业龙头或蓝筹",
+            "愿意等待回踩、避免追涨",
+            "持仓 1～4 周",
+        ),
+        anti_scenarios=(
+            "V 型反转不给回踩机会",
+            "长期阴跌无金叉",
+            "需要高频交易",
+        ),
+        param_hints=(
+            ("fast_window", "快均线，默认 10"),
+            ("slow_window", "慢均线，默认 20"),
+            ("pullback_pct", "回踩带宽（%），默认 2.0"),
+            ("pullback_wait_days", "金叉后等待回踩天数，默认 5"),
+            ("stop_loss_pct", "止损比例，默认 0.05"),
+        ),
+        supports_signals=True,
+    ),
+    "AshareTrendMaStrategy": StrategyMeta(
+        class_name="AshareTrendMaStrategy",
+        title="A 股趋势均线",
+        summary=(
+            "MA 金叉且 ADX 高于阈值、价在慢线上方、慢线向上时买入；"
+            "死叉、跌破慢线或追踪止损卖出。适合 1～6 月趋势。"
+        ),
+        tags=("趋势", "ADX", "日 K", "仅做多"),
+        scenarios=(
+            "中期趋势明确的龙头或指数成分",
+            "低频持仓，能接受滞后",
+            "配合相对指数强度选股更佳",
+        ),
+        anti_scenarios=(
+            "长期横盘 ADX 低于阈值",
+            "慢线仍向下时金叉",
+            "需要短线或日内交易",
+        ),
+        param_hints=(
+            ("fast_window", "快均线，默认 20"),
+            ("slow_window", "慢均线，默认 60"),
+            ("adx_period", "ADX 周期，默认 14"),
+            ("adx_threshold", "ADX 阈值，默认 25"),
+            ("trailing_stop_pct", "追踪止损比例，默认 0.12"),
+        ),
+        supports_signals=True,
+    ),
 }
 
 

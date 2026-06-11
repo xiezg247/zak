@@ -584,9 +584,10 @@ class QuotesPage(QtWidgets.QWidget):
         if panel is None:
             return
         self._signals.apply_config(panel.read_config())
-        if self.config.show_watchlist_positions and self.position_config.follow_signal:
-            self._positions.invalidate_cache()
-            self._positions.refresh(force=True)
+
+    def apply_signal_panel_config(self) -> None:
+        """应用信号区当前配置（构建 UI 期间也可安全调用）。"""
+        self._on_signal_panel_config_changed()
 
     def _on_signal_panel_row_activated(self, vt_symbol: str) -> None:
         item = self.find_stock_item(vt_symbol)

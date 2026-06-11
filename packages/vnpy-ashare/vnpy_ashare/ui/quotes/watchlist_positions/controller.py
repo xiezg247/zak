@@ -54,6 +54,40 @@ class WatchlistPositionController:
     def _record_map(self) -> dict[str, PositionRecord]:
         return {record.vt_symbol: record for record in self._records()}
 
+    def _follows_signal(self) -> bool:
+        panel = getattr(self._page, "position_panel", None)
+        if panel is not None:
+            return panel.read_config().follow_signal
+        return self._page.position_config.follow_signal
+
+    def _cache_strategy_mismatch(self, signal_config: WatchlistSignalConfig) -> bool:
+        expected = signal_config.class_name
+        for snap in self._page.position_cache.values():
+            signal = snap.signal_snapshot
+            if signal is not None and signal.strategy_id != expected:
+                return True
+        return False
+
+    def on_signal_config_changed(
+        self,
+        signal_config: WatchlistSignalConfig,
+        *,
+        changed: bool = True,
+    ) -> None:
+        """信号区策略变更时，跟随模式下同步刷新持仓退出信号。"""
+        if not self._page.config.show_watchlist_positions:
+            return
+        panel = getattr(self._page, "position_panel", None)
+        if panel is not None:
+            panel.sync_follow_display(signal_config)
+        if not self._follows_signal():
+            return
+        if changed or self._cache_strategy_mismatch(signal_config):
+            self.invalidate_cache()
+            self.refresh(force=True)
+        elif panel is not None:
+            panel.render()
+
     def _effective_config(self) -> WatchlistSignalConfig:
         page = self._page
         return page.position_config.normalized().effective_signal_config(page.signal_config)

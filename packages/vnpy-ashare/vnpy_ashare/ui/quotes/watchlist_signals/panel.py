@@ -22,6 +22,7 @@ from vnpy_ashare.domain.signal_snapshot import (
     signal_row_sort_key,
 )
 from strategies.registry import list_signal_strategy_metas
+from strategies.signals import STRATEGY_SIGNAL_DEFAULTS
 from vnpy_ashare.ui.quotes.watchlist_signals.columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,
     SIGNAL_PANEL_RUNTIME_KEYS,
@@ -326,6 +327,16 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._slow_spin.blockSignals(False)
 
     def _on_strategy_changed(self, _index: int) -> None:
+        class_name = str(self._strategy_combo.currentData() or DEFAULT_CLASS)
+        defaults = STRATEGY_SIGNAL_DEFAULTS.get(class_name)
+        if defaults is not None:
+            fast, slow = defaults
+            self._fast_spin.blockSignals(True)
+            self._slow_spin.blockSignals(True)
+            self._fast_spin.setValue(fast)
+            self._slow_spin.setValue(max(slow, fast + 1))
+            self._fast_spin.blockSignals(False)
+            self._slow_spin.blockSignals(False)
         self._emit_config_changed()
 
     def set_symbols(self, symbols: list[str], *, save: bool = True) -> None:
@@ -987,6 +998,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
     def _emit_config_changed(self) -> None:
         if self._building:
+            self._page.apply_signal_panel_config()
             return
         self.config_changed.emit()
 

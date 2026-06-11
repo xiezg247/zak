@@ -159,6 +159,23 @@ def summarize_double_ma_state(
 
 SUPPORTED_SIGNAL_STRATEGIES: dict[str, str] = {
     "AshareDoubleMaStrategy": "double_ma",
+    "AshareShortBreakoutStrategy": "short_breakout",
+    "AshareSwingMaStrategy": "swing_ma",
+    "AshareTrendMaStrategy": "trend_ma",
+}
+
+STRATEGY_SIGNAL_DEFAULTS: dict[str, tuple[int, int]] = {
+    "AshareDoubleMaStrategy": (10, 20),
+    "AshareShortBreakoutStrategy": (5, 10),
+    "AshareSwingMaStrategy": (10, 20),
+    "AshareTrendMaStrategy": (20, 60),
+}
+
+STRATEGY_SIGNAL_RECENT_DAYS: dict[str, int] = {
+    "AshareDoubleMaStrategy": 5,
+    "AshareShortBreakoutStrategy": 2,
+    "AshareSwingMaStrategy": 5,
+    "AshareTrendMaStrategy": 15,
 }
 
 
@@ -705,3 +722,1282 @@ def build_composite_signal_payload(
         "strength_volume": vol_score,
         "strength_pattern": pat_score,
     }
+
+
+@dataclass(frozen=True)
+class BreakoutEvent:
+    bar_date: str
+    close: float
+    breakout_level: float
+    volume_ratio: float
+    fast_ma: float
+    slow_ma: float
+
+
+def _high_max(values: list[float], end_index: int, lookback: int) -> float | None:
+    if end_index < lookback:
+        return None
+    segment = values[end_index - lookback : end_index]
+    if not segment:
+        return None
+    return max(segment)
+
+
+def compute_breakout_events(
+    closes: list[float],
+    highs: list[float],
+    dates: list[date | datetime],
+    volumes: list[float],
+    *,
+    fast_window: int = 5,
+    slow_window: int = 10,
+    breakout_lookback: int = 5,
+    volume_ratio_min: float = 1.5,
+) -> list[BreakoutEvent]:
+    """扫描放量突破事件（与 AshareShortBreakoutStrategy 判定一致）。"""
+    if len({len(closes), len(highs), len(dates), len(volumes)}) != 1:
+        raise ValueError("closes/highs/dates/volumes 长度须一致")
+    min_bars = max(slow_window, breakout_lookback) + 2
+    if len(closes) < min_bars:
+        return []
+
+    events: list[BreakoutEvent] = []
+    for index in range(min_bars - 1, len(closes)):
+        fast_ma0 = _sma(closes, fast_window, index)
+        slow_ma0 = _sma(closes, slow_window, index)
+        breakout_level = _high_max(highs, index, breakout_lookback)
+        if None in (fast_ma0, slow_ma0, breakout_level):
+            continue
+
+        vol_ratio = _volume_ratio_at(volumes, index)
+        if vol_ratio is None or vol_ratio < volume_ratio_min:
+            continue
+        if closes[index] <= breakout_level or fast_ma0 <= slow_ma0:
+            continue
+
+        bar_dt = dates[index]
+        bar_date = bar_dt.strftime("%Y-%m-%d") if isinstance(bar_dt, datetime) else bar_dt.isoformat()
+        events.append(
+            BreakoutEvent(
+                bar_date=bar_date,
+                close=round(closes[index], 2),
+                breakout_level=round(float(breakout_level), 2),
+                volume_ratio=round(vol_ratio, 2),
+                fast_ma=round(fast_ma0, 2),
+                slow_ma=round(slow_ma0, 2),
+            )
+        )
+    return events
+
+
+def _volume_ratio_at(volumes: list[float], end_index: int, window: int = 5) -> float | None:
+    if end_index + 1 < window * 2:
+        return None
+    recent = volumes[end_index + 1 - window : end_index + 1]
+    base = volumes[end_index + 1 - window * 2 : end_index + 1 - window]
+    avg_recent = sum(recent) / len(recent)
+    avg_base = sum(base) / len(base)
+    if avg_base <= 0:
+        return None
+    return avg_recent / avg_base
+
+
+def summarize_short_breakout_state(
+    closes: list[float],
+    highs: list[float],
+    dates: list[date | datetime],
+    volumes: list[float],
+    *,
+    fast_window: int = 5,
+    slow_window: int = 10,
+    breakout_lookback: int = 5,
+    volume_ratio_min: float = 1.5,
+    recent_limit: int = 5,
+) -> dict[str, Any]:
+    """汇总短线突破状态与最近事件。"""
+    min_bars = max(slow_window, breakout_lookback) + 2
+    if len(closes) < min_bars:
+        return {
+            "error": "K 线数量不足，无法计算短线突破信号",
+            "min_bars": min_bars,
+            "bars_available": len(closes),
+        }
+
+    last_index = len(closes) - 1
+    fast_ma0 = _sma(closes, fast_window, last_index)
+    slow_ma0 = _sma(closes, slow_window, last_index)
+    assert fast_ma0 is not None and slow_ma0 is not None
+
+    last_dt = dates[last_index]
+    as_of = last_dt.strftime("%Y-%m-%d") if isinstance(last_dt, datetime) else last_dt.isoformat()
+    volume_ratio = _volume_ratio_at(volumes, last_index)
+    breakout_level = _high_max(highs, last_index, breakout_lookback)
+
+    if fast_ma0 > slow_ma0:
+        alignment = "快线在慢线上方（多头均线排列）"
+    elif fast_ma0 < slow_ma0:
+        alignment = "快线在慢线下方（空头均线排列）"
+    else:
+        alignment = "快线与慢线重合"
+
+    ma_state = summarize_double_ma_state(
+        closes,
+        dates,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        recent_limit=recent_limit,
+    )
+    breakouts = compute_breakout_events(
+        closes,
+        highs,
+        dates,
+        volumes,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        breakout_lookback=breakout_lookback,
+        volume_ratio_min=volume_ratio_min,
+    )
+    last_breakout = breakouts[-1] if breakouts else None
+    last_cross = ma_state.get("last_cross")
+
+    last_breakout_payload: dict[str, Any] | None = None
+    if last_breakout is not None:
+        last_breakout_payload = {
+            "type": "breakout",
+            "type_label": "放量突破",
+            "date": last_breakout.bar_date,
+            "close": last_breakout.close,
+            "breakout_level": last_breakout.breakout_level,
+            "volume_ratio": last_breakout.volume_ratio,
+            "fast_ma": last_breakout.fast_ma,
+            "slow_ma": last_breakout.slow_ma,
+        }
+
+    return {
+        "as_of": as_of,
+        "last_close": round(closes[last_index], 2),
+        "params": {
+            "fast_window": fast_window,
+            "slow_window": slow_window,
+            "breakout_lookback": breakout_lookback,
+            "volume_ratio_min": volume_ratio_min,
+        },
+        "current": {
+            "fast_ma": round(fast_ma0, 2),
+            "slow_ma": round(slow_ma0, 2),
+            "alignment": alignment,
+            "volume_ratio": volume_ratio,
+            "breakout_level": round(breakout_level, 2) if breakout_level is not None else None,
+        },
+        "last_breakout": last_breakout_payload,
+        "last_cross": last_cross,
+        "recent_breakouts": [
+            {
+                "type": "breakout",
+                "type_label": "放量突破",
+                "date": item.bar_date,
+                "close": item.close,
+                "breakout_level": item.breakout_level,
+                "volume_ratio": item.volume_ratio,
+            }
+            for item in breakouts[-recent_limit:]
+        ],
+        "breakout_count": len(breakouts),
+    }
+
+
+def classify_short_breakout_signal(
+    state: dict[str, Any],
+    *,
+    recent_days: int = 2,
+) -> Literal["buy", "sell", "hold", "na"]:
+    """短线突破信号（突破买入 / 死叉卖出）。"""
+    if state.get("error"):
+        return "na"
+
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    if fast_ma is None or slow_ma is None:
+        return "na"
+
+    as_of = str(state.get("as_of") or "")
+    last_cross = state.get("last_cross")
+    if last_cross and as_of:
+        cross_date = str(last_cross.get("date") or "")
+        elapsed = _days_between(as_of, cross_date)
+        if (
+            elapsed is not None
+            and elapsed <= max(0, int(recent_days))
+            and last_cross.get("type") == "death_cross"
+            and fast_ma < slow_ma
+        ):
+            return "sell"
+
+    last_breakout = state.get("last_breakout")
+    if not last_breakout or not as_of:
+        return "hold"
+
+    elapsed = _days_between(as_of, str(last_breakout.get("date") or ""))
+    if elapsed is None or elapsed > max(0, int(recent_days)):
+        return "hold"
+
+    if fast_ma > slow_ma:
+        return "buy"
+    return "hold"
+
+
+def _short_breakout_strength(
+    *,
+    signal: Literal["buy", "sell", "hold", "na"],
+    volume_ratio: float | None,
+    breakout_level: float | None,
+    last_close: float,
+) -> tuple[float, float, float, float]:
+    cross_score = _ma_signal_score(signal)
+    vol_score = _volume_score(volume_ratio)
+    breakout_score = 50.0
+    if breakout_level is not None and breakout_level > 0 and signal == "buy":
+        pct = (last_close - breakout_level) / breakout_level * 100
+        breakout_score = min(90.0, 60.0 + pct * 5.0)
+    align_score = 70.0 if signal == "buy" else 50.0
+    strength = 0.30 * cross_score + 0.40 * vol_score + 0.30 * breakout_score
+    return round(strength, 1), cross_score, vol_score, breakout_score
+
+
+def build_short_breakout_signal_payload(
+    closes: list[float],
+    dates: list[date | datetime],
+    *,
+    vt_symbol: str,
+    strategy_id: str = "AshareShortBreakoutStrategy",
+    fast_window: int = 5,
+    slow_window: int = 10,
+    breakout_lookback: int = 5,
+    volume_ratio_min: float = 1.5,
+    recent_days: int = 2,
+    highs: list[float] | None = None,
+    lows: list[float] | None = None,
+    volumes: list[float] | None = None,
+) -> dict[str, Any]:
+    """短线放量突破信号快照。"""
+    high_series = highs if highs is not None else closes
+    low_series = lows if lows is not None else closes
+    vol_series = volumes if volumes is not None else []
+    state = summarize_short_breakout_state(
+        closes,
+        high_series,
+        dates,
+        vol_series,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        breakout_lookback=breakout_lookback,
+        volume_ratio_min=volume_ratio_min,
+    )
+    warnings: list[str] = []
+    if state.get("error"):
+        warnings.append(str(state["error"]))
+        return {
+            "vt_symbol": vt_symbol,
+            "strategy_id": strategy_id,
+            "as_of": "",
+            "signal": "na",
+            "signal_label": "—",
+            "signal_date": None,
+            "ref_buy_price": None,
+            "ref_sell_price": None,
+            "action_ref_buy_price": None,
+            "action_ref_sell_price": None,
+            "strength": None,
+            "reason_summary": "",
+            "reasons": (),
+            "warnings": tuple(warnings),
+            "last_close": None,
+        }
+
+    last_close = round(closes[-1], 2)
+    current = state.get("current") or {}
+    volume_ratio = current.get("volume_ratio")
+    breakout_level = current.get("breakout_level")
+    signal = classify_short_breakout_signal(state, recent_days=recent_days)
+    labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
+
+    ma_state = summarize_double_ma_state(closes, dates, fast_window=fast_window, slow_window=slow_window)
+    last_breakout = state.get("last_breakout") or {}
+    last_cross = state.get("last_cross") or {}
+    signal_date = None
+    if signal == "buy":
+        signal_date = last_breakout.get("date")
+    elif signal == "sell":
+        signal_date = last_cross.get("date")
+
+    ref_buy = current.get("breakout_level") or current.get("slow_ma")
+    ref_sell = current.get("fast_ma")
+    if isinstance(ref_buy, (int, float)):
+        ref_buy = round(float(ref_buy), 2)
+    if isinstance(ref_sell, (int, float)):
+        ref_sell = round(float(ref_sell), 2)
+
+    action_buy, action_sell = _compute_action_ref_prices(
+        ma_state,
+        high_series,
+        low_series,
+        signal=signal,
+        last_close=last_close,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+
+    strength, cross_score, vol_score, breakout_score = _short_breakout_strength(
+        signal=signal,
+        volume_ratio=volume_ratio if isinstance(volume_ratio, (int, float)) else None,
+        breakout_level=breakout_level if isinstance(breakout_level, (int, float)) else None,
+        last_close=last_close,
+    )
+
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    ma_gap_pct: float | None = None
+    if isinstance(fast_ma, (int, float)) and isinstance(slow_ma, (int, float)) and float(slow_ma) > 0:
+        ma_gap_pct = round((float(fast_ma) - float(slow_ma)) / float(slow_ma) * 100, 2)
+
+    tags: list[str] = []
+    if last_breakout.get("type_label"):
+        tags.append(str(last_breakout["type_label"]))
+    if volume_ratio is not None:
+        tags.append(f"量比{float(volume_ratio):.1f}")
+    if breakout_level is not None:
+        tags.append(f"突破{float(breakout_level):.2f}")
+    reason_summary = "+".join(tags) if tags else labels[signal]
+
+    reasons: list[str] = []
+    alignment = current.get("alignment")
+    if alignment:
+        reasons.append(str(alignment))
+    if last_breakout.get("type_label") and last_breakout.get("date"):
+        reasons.append(
+            f"最近突破：{last_breakout['type_label']}（{last_breakout['date']}）"
+            f" 量比 {last_breakout.get('volume_ratio', '—')}"
+        )
+    if last_cross.get("type_label") and last_cross.get("date"):
+        reasons.append(f"最近交叉：{last_cross['type_label']}（{last_cross['date']}）")
+    reasons.append(f"综合：{reason_summary}")
+    reasons.extend(
+        _ref_price_reason_lines(
+            signal=signal,
+            ref_buy=ref_buy,
+            ref_sell=ref_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
+    reasons.extend(
+        _action_ref_reason_lines(
+            signal=signal,
+            action_buy=action_buy,
+            action_sell=action_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
+    reasons.append(f"强度：{strength:.0f}")
+
+    return {
+        "vt_symbol": vt_symbol,
+        "strategy_id": strategy_id,
+        "as_of": str(state.get("as_of") or ""),
+        "signal": signal,
+        "signal_label": labels[signal],
+        "signal_date": signal_date,
+        "ref_buy_price": ref_buy,
+        "ref_sell_price": ref_sell,
+        "action_ref_buy_price": action_buy,
+        "action_ref_sell_price": action_sell,
+        "strength": strength,
+        "reason_summary": reason_summary,
+        "reasons": tuple(reasons),
+        "warnings": tuple(warnings),
+        "last_close": last_close,
+        "fast_ma": fast_ma,
+        "slow_ma": slow_ma,
+        "volume_ratio_5d": volume_ratio,
+        "ma_gap_pct": ma_gap_pct,
+        "strength_cross": cross_score,
+        "strength_alignment": breakout_score,
+        "strength_volume": vol_score,
+        "strength_pattern": None,
+    }
+
+
+@dataclass(frozen=True)
+class PullbackEntry:
+    bar_date: str
+    close: float
+    fast_ma: float
+    slow_ma: float
+    volume_ratio: float
+
+
+def _volume_shrink_at(volumes: list[float], end_index: int, window: int = 5) -> bool:
+    """当日量低于前 window 日均量（与 AshareSwingMaStrategy._is_pullback 一致）。"""
+    if end_index < window:
+        return False
+    base = volumes[end_index - window : end_index]
+    avg_base = sum(base) / len(base)
+    if avg_base <= 0:
+        return True
+    return volumes[end_index] < avg_base
+
+
+def compute_swing_pullback_entries(
+    closes: list[float],
+    lows: list[float],
+    dates: list[date | datetime],
+    volumes: list[float],
+    *,
+    fast_window: int = 10,
+    slow_window: int = 20,
+    pullback_pct: float = 2.0,
+    pullback_wait_days: int = 5,
+) -> list[PullbackEntry]:
+    """扫描金叉后缩量回踩慢线入场事件（与 AshareSwingMaStrategy 一致）。"""
+    if len({len(closes), len(lows), len(dates), len(volumes)}) != 1:
+        raise ValueError("closes/lows/dates/volumes 长度须一致")
+
+    crosses = compute_double_ma_crosses(
+        closes,
+        dates,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+    if not crosses:
+        return []
+
+    date_to_index = {}
+    for index, bar_dt in enumerate(dates):
+        key = bar_dt.strftime("%Y-%m-%d") if isinstance(bar_dt, datetime) else bar_dt.isoformat()
+        date_to_index[key] = index
+
+    band = pullback_pct / 100.0
+    entries: list[PullbackEntry] = []
+    for cross in crosses:
+        if cross.signal_type != "golden_cross":
+            continue
+        start_index = date_to_index.get(cross.bar_date)
+        if start_index is None:
+            continue
+        end_index = min(start_index + pullback_wait_days, len(closes) - 1)
+        for index in range(start_index + 1, end_index + 1):
+            slow_ma0 = _sma(closes, slow_window, index)
+            fast_ma0 = _sma(closes, fast_window, index)
+            if slow_ma0 is None or fast_ma0 is None or fast_ma0 <= slow_ma0:
+                continue
+            close = closes[index]
+            lower = slow_ma0 * (1 - band)
+            upper = slow_ma0 * (1 + band)
+            if not (lower <= close <= upper):
+                continue
+            if not _volume_shrink_at(volumes, index):
+                continue
+            vol_ratio = _volume_ratio_at(volumes, index) or 0.0
+            bar_dt = dates[index]
+            bar_date = bar_dt.strftime("%Y-%m-%d") if isinstance(bar_dt, datetime) else bar_dt.isoformat()
+            entries.append(
+                PullbackEntry(
+                    bar_date=bar_date,
+                    close=round(close, 2),
+                    fast_ma=round(fast_ma0, 2),
+                    slow_ma=round(slow_ma0, 2),
+                    volume_ratio=round(vol_ratio, 2),
+                )
+            )
+            break
+    return entries
+
+
+def summarize_swing_ma_state(
+    closes: list[float],
+    dates: list[date | datetime],
+    volumes: list[float],
+    *,
+    lows: list[float] | None = None,
+    fast_window: int = 10,
+    slow_window: int = 20,
+    pullback_pct: float = 2.0,
+    pullback_wait_days: int = 5,
+    recent_limit: int = 5,
+) -> dict[str, Any]:
+    """汇总波段回踩状态与最近入场事件。"""
+    min_bars = slow_window + 2
+    if len(closes) < min_bars:
+        return {
+            "error": "K 线数量不足，无法计算波段回踩信号",
+            "min_bars": min_bars,
+            "bars_available": len(closes),
+        }
+
+    ma_state = summarize_double_ma_state(
+        closes,
+        dates,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        recent_limit=recent_limit,
+    )
+    low_series = lows if lows is not None else closes
+    entries = compute_swing_pullback_entries(
+        closes,
+        low_series,
+        dates,
+        volumes,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        pullback_pct=pullback_pct,
+        pullback_wait_days=pullback_wait_days,
+    )
+    last_entry = entries[-1] if entries else None
+    last_entry_payload: dict[str, Any] | None = None
+    if last_entry is not None:
+        last_entry_payload = {
+            "type": "pullback_entry",
+            "type_label": "缩量回踩",
+            "date": last_entry.bar_date,
+            "close": last_entry.close,
+            "fast_ma": last_entry.fast_ma,
+            "slow_ma": last_entry.slow_ma,
+            "volume_ratio": last_entry.volume_ratio,
+        }
+
+    return {
+        **ma_state,
+        "params": {
+            "fast_window": fast_window,
+            "slow_window": slow_window,
+            "pullback_pct": pullback_pct,
+            "pullback_wait_days": pullback_wait_days,
+        },
+        "last_entry": last_entry_payload,
+        "recent_entries": [
+            {
+                "type": "pullback_entry",
+                "type_label": "缩量回踩",
+                "date": item.bar_date,
+                "close": item.close,
+                "volume_ratio": item.volume_ratio,
+            }
+            for item in entries[-recent_limit:]
+        ],
+        "entry_count": len(entries),
+    }
+
+
+def classify_swing_ma_signal(
+    state: dict[str, Any],
+    *,
+    recent_days: int = 5,
+) -> Literal["buy", "sell", "hold", "na"]:
+    """波段回踩信号（回踩买 / 死叉卖）。"""
+    if state.get("error"):
+        return "na"
+
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    if fast_ma is None or slow_ma is None:
+        return "na"
+
+    as_of = str(state.get("as_of") or "")
+    last_cross = state.get("last_cross")
+    if last_cross and as_of:
+        cross_date = str(last_cross.get("date") or "")
+        elapsed = _days_between(as_of, cross_date)
+        if (
+            elapsed is not None
+            and elapsed <= max(0, int(recent_days))
+            and last_cross.get("type") == "death_cross"
+            and fast_ma < slow_ma
+        ):
+            return "sell"
+
+    last_entry = state.get("last_entry")
+    if not last_entry or not as_of:
+        return "hold"
+
+    elapsed = _days_between(as_of, str(last_entry.get("date") or ""))
+    if elapsed is None or elapsed > max(0, int(recent_days)):
+        return "hold"
+
+    if fast_ma > slow_ma:
+        return "buy"
+    return "hold"
+
+
+def build_swing_ma_signal_payload(
+    closes: list[float],
+    dates: list[date | datetime],
+    *,
+    vt_symbol: str,
+    strategy_id: str = "AshareSwingMaStrategy",
+    fast_window: int = 10,
+    slow_window: int = 20,
+    pullback_pct: float = 2.0,
+    pullback_wait_days: int = 5,
+    recent_days: int = 5,
+    highs: list[float] | None = None,
+    lows: list[float] | None = None,
+    volumes: list[float] | None = None,
+) -> dict[str, Any]:
+    """波段回踩均线信号快照。"""
+    high_series = highs if highs is not None else closes
+    low_series = lows if lows is not None else closes
+    vol_series = volumes if volumes is not None else []
+
+    if not vol_series:
+        warnings = ["缺少成交量序列，无法计算波段回踩信号"]
+        return {
+            "vt_symbol": vt_symbol,
+            "strategy_id": strategy_id,
+            "as_of": "",
+            "signal": "na",
+            "signal_label": "—",
+            "signal_date": None,
+            "ref_buy_price": None,
+            "ref_sell_price": None,
+            "action_ref_buy_price": None,
+            "action_ref_sell_price": None,
+            "strength": None,
+            "reason_summary": "",
+            "reasons": (),
+            "warnings": tuple(warnings),
+            "last_close": None,
+        }
+
+    state = summarize_swing_ma_state(
+        closes,
+        dates,
+        vol_series,
+        lows=low_series,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        pullback_pct=pullback_pct,
+        pullback_wait_days=pullback_wait_days,
+    )
+    warnings: list[str] = []
+    if state.get("error"):
+        warnings.append(str(state["error"]))
+        return {
+            "vt_symbol": vt_symbol,
+            "strategy_id": strategy_id,
+            "as_of": "",
+            "signal": "na",
+            "signal_label": "—",
+            "signal_date": None,
+            "ref_buy_price": None,
+            "ref_sell_price": None,
+            "action_ref_buy_price": None,
+            "action_ref_sell_price": None,
+            "strength": None,
+            "reason_summary": "",
+            "reasons": (),
+            "warnings": tuple(warnings),
+            "last_close": None,
+        }
+
+    last_close = round(closes[-1], 2)
+    ma5 = _sma_at(closes, 5)
+    ma10 = _sma_at(closes, 10)
+    ma20 = _sma_at(closes, 20)
+    volume_ratio = _volume_ratio_5d(vol_series)
+
+    signal = classify_swing_ma_signal(state, recent_days=recent_days)
+    labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
+    last_entry = state.get("last_entry") or {}
+    last_cross = state.get("last_cross") or {}
+    signal_date = None
+    if signal == "buy":
+        signal_date = last_entry.get("date")
+    elif signal == "sell":
+        signal_date = last_cross.get("date")
+
+    ref_buy, ref_sell = _compute_ref_prices(
+        state,
+        high_series,
+        signal=signal,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+    action_buy, action_sell = _compute_action_ref_prices(
+        state,
+        high_series,
+        low_series,
+        signal=signal,
+        last_close=last_close,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+
+    pattern_hit = _is_ma_bull_pattern(closes)
+    align_score = _alignment_score(ma5=ma5, ma10=ma10, ma20=ma20, last_close=last_close)
+    vol_score = _volume_score(volume_ratio)
+    pat_score = 90.0 if pattern_hit else 30.0
+    cross_score = _ma_signal_score(signal)
+    strength = _compute_strength(
+        signal=signal,
+        alignment=align_score,
+        volume=vol_score,
+        pattern=pat_score,
+    )
+
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    ma_gap_pct: float | None = None
+    if isinstance(fast_ma, (int, float)) and isinstance(slow_ma, (int, float)) and float(slow_ma) > 0:
+        ma_gap_pct = round((float(fast_ma) - float(slow_ma)) / float(slow_ma) * 100, 2)
+
+    tags: list[str] = []
+    if last_entry.get("type_label"):
+        tags.append(str(last_entry["type_label"]))
+    if last_cross.get("type_label"):
+        tags.append(str(last_cross["type_label"]))
+    if volume_ratio is not None:
+        tags.append(f"量比{volume_ratio:.1f}")
+    reason_summary = "+".join(tags) if tags else labels[signal]
+
+    reasons: list[str] = []
+    alignment = current.get("alignment")
+    if alignment:
+        reasons.append(str(alignment))
+    if last_entry.get("type_label") and last_entry.get("date"):
+        reasons.append(
+            f"最近回踩：{last_entry['type_label']}（{last_entry['date']}）"
+            f" 量比 {last_entry.get('volume_ratio', '—')}"
+        )
+    if last_cross.get("type_label") and last_cross.get("date"):
+        reasons.append(f"最近交叉：{last_cross['type_label']}（{last_cross['date']}）")
+    reasons.append(f"综合：{reason_summary}")
+    reasons.extend(
+        _ref_price_reason_lines(
+            signal=signal,
+            ref_buy=ref_buy,
+            ref_sell=ref_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
+    reasons.extend(
+        _action_ref_reason_lines(
+            signal=signal,
+            action_buy=action_buy,
+            action_sell=action_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
+    reasons.append(f"强度：{strength:.0f}")
+
+    return {
+        "vt_symbol": vt_symbol,
+        "strategy_id": strategy_id,
+        "as_of": str(state.get("as_of") or ""),
+        "signal": signal,
+        "signal_label": labels[signal],
+        "signal_date": signal_date,
+        "ref_buy_price": ref_buy,
+        "ref_sell_price": ref_sell,
+        "action_ref_buy_price": action_buy,
+        "action_ref_sell_price": action_sell,
+        "strength": strength,
+        "reason_summary": reason_summary,
+        "reasons": tuple(reasons),
+        "warnings": tuple(warnings),
+        "last_close": last_close,
+        "fast_ma": fast_ma,
+        "slow_ma": slow_ma,
+        "volume_ratio_5d": volume_ratio,
+        "ma_gap_pct": ma_gap_pct,
+        "strength_cross": cross_score,
+        "strength_alignment": align_score,
+        "strength_volume": vol_score,
+        "strength_pattern": pat_score,
+    }
+
+
+def _wilder_smooth(values: list[float], period: int) -> list[float | None]:
+    """Wilder 平滑序列。"""
+    if len(values) < period:
+        return [None] * len(values)
+    result: list[float | None] = [None] * len(values)
+    seed = sum(values[:period]) / period
+    result[period - 1] = seed
+    prev = seed
+    for index in range(period, len(values)):
+        prev = (prev * (period - 1) + values[index]) / period
+        result[index] = prev
+    return result
+
+
+def _compute_adx_at(
+    highs: list[float],
+    lows: list[float],
+    closes: list[float],
+    end_index: int,
+    *,
+    period: int = 14,
+) -> float | None:
+    """单点 ADX（与 vnpy ArrayManager.adx 算法一致）。"""
+    if end_index + 1 < period * 2:
+        return None
+    segment_highs = highs[: end_index + 1]
+    segment_lows = lows[: end_index + 1]
+    segment_closes = closes[: end_index + 1]
+    count = len(segment_closes)
+    tr_values = [0.0] * count
+    plus_dm = [0.0] * count
+    minus_dm = [0.0] * count
+    for index in range(1, count):
+        up_move = segment_highs[index] - segment_highs[index - 1]
+        down_move = segment_lows[index - 1] - segment_lows[index]
+        plus_dm[index] = up_move if up_move > down_move and up_move > 0 else 0.0
+        minus_dm[index] = down_move if down_move > up_move and down_move > 0 else 0.0
+        tr_values[index] = max(
+            segment_highs[index] - segment_lows[index],
+            abs(segment_highs[index] - segment_closes[index - 1]),
+            abs(segment_lows[index] - segment_closes[index - 1]),
+        )
+
+    atr = _wilder_smooth(tr_values, period)
+    smooth_plus = _wilder_smooth(plus_dm, period)
+    smooth_minus = _wilder_smooth(minus_dm, period)
+    if atr[end_index] is None or smooth_plus[end_index] is None or smooth_minus[end_index] is None:
+        return None
+    if atr[end_index] <= 0:
+        return None
+
+    plus_di = 100.0 * smooth_plus[end_index] / atr[end_index]
+    minus_di = 100.0 * smooth_minus[end_index] / atr[end_index]
+    di_sum = plus_di + minus_di
+    if di_sum <= 0:
+        return None
+    dx = 100.0 * abs(plus_di - minus_di) / di_sum
+
+    dx_values = [0.0] * count
+    for index in range(1, count):
+        atr_val = atr[index]
+        sp = smooth_plus[index]
+        sm = smooth_minus[index]
+        if atr_val is None or sp is None or sm is None or atr_val <= 0:
+            continue
+        pdi = 100.0 * sp / atr_val
+        mdi = 100.0 * sm / atr_val
+        total = pdi + mdi
+        if total > 0:
+            dx_values[index] = 100.0 * abs(pdi - mdi) / total
+
+    adx_series = _wilder_smooth(dx_values, period)
+    value = adx_series[end_index]
+    if value is None:
+        return None
+    return round(float(value), 2)
+
+
+def _adx_score(adx: float | None, *, threshold: float = 25.0) -> float:
+    if adx is None:
+        return 30.0
+    if adx >= threshold + 10:
+        return 90.0
+    if adx >= threshold:
+        return 75.0
+    if adx >= threshold - 5:
+        return 50.0
+    return 20.0
+
+
+def _trend_alignment_score(
+    *,
+    fast_ma: float | None,
+    slow_ma: float | None,
+    last_close: float,
+    slow_slope: float | None,
+) -> float:
+    if fast_ma is None or slow_ma is None:
+        return 30.0
+    if fast_ma > slow_ma and last_close >= slow_ma:
+        if slow_slope is not None and slow_slope > 0:
+            return 95.0
+        return 85.0
+    if fast_ma < slow_ma and last_close < slow_ma:
+        return 15.0
+    return 50.0
+
+
+def _trend_strength(
+    *,
+    signal: Literal["buy", "sell", "hold", "na"],
+    alignment: float,
+    adx: float,
+    cross: float,
+    relative_index_pct: float | None = None,
+) -> float:
+    rel_score = 50.0
+    if relative_index_pct is not None:
+        if relative_index_pct > 2:
+            rel_score = 85.0
+        elif relative_index_pct > 0:
+            rel_score = 70.0
+        elif relative_index_pct < -2:
+            rel_score = 20.0
+        else:
+            rel_score = 45.0
+    score = 0.35 * alignment + 0.25 * adx + 0.20 * rel_score + 0.20 * cross
+    if signal in ("buy", "sell"):
+        score = max(score, 55.0)
+    return round(max(0.0, min(score, 100.0)), 1)
+
+
+def summarize_trend_ma_state(
+    closes: list[float],
+    dates: list[date | datetime],
+    highs: list[float],
+    lows: list[float],
+    *,
+    fast_window: int = 20,
+    slow_window: int = 60,
+    adx_period: int = 14,
+    adx_threshold: float = 25.0,
+    recent_limit: int = 5,
+) -> dict[str, Any]:
+    """汇总趋势均线 + ADX 状态。"""
+    min_bars = max(slow_window, adx_period * 2) + 2
+    if len(closes) < min_bars:
+        return {
+            "error": "K 线数量不足，无法计算趋势信号",
+            "min_bars": min_bars,
+            "bars_available": len(closes),
+        }
+
+    ma_state = summarize_double_ma_state(
+        closes,
+        dates,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        recent_limit=recent_limit,
+    )
+    last_index = len(closes) - 1
+    adx_value = _compute_adx_at(highs, lows, closes, last_index, period=adx_period)
+    slow_ma0 = _sma(closes, slow_window, last_index)
+    slow_ma1 = _sma(closes, slow_window, last_index - 1)
+    slow_slope = None
+    if slow_ma0 is not None and slow_ma1 is not None:
+        slow_slope = round(slow_ma0 - slow_ma1, 4)
+
+    current = dict(ma_state.get("current") or {})
+    current["adx"] = adx_value
+    current["slow_slope"] = slow_slope
+    current["above_slow_ma"] = (
+        slow_ma0 is not None and closes[last_index] >= slow_ma0
+    )
+    current["adx_pass"] = adx_value is not None and adx_value >= adx_threshold
+
+    return {
+        **ma_state,
+        "params": {
+            "fast_window": fast_window,
+            "slow_window": slow_window,
+            "adx_period": adx_period,
+            "adx_threshold": adx_threshold,
+        },
+        "current": current,
+    }
+
+
+def classify_trend_ma_signal(
+    state: dict[str, Any],
+    *,
+    recent_days: int = 15,
+    adx_threshold: float = 25.0,
+) -> Literal["buy", "sell", "hold", "na"]:
+    """趋势均线信号（金叉+ADX 过滤买 / 死叉卖）。"""
+    if state.get("error"):
+        return "na"
+
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    adx_value = current.get("adx")
+    if fast_ma is None or slow_ma is None:
+        return "na"
+
+    as_of = str(state.get("as_of") or "")
+    last_cross = state.get("last_cross")
+    if not last_cross or not as_of:
+        return "hold"
+
+    cross_date = str(last_cross.get("date") or "")
+    elapsed = _days_between(as_of, cross_date)
+    if elapsed is None or elapsed > max(0, int(recent_days)):
+        return "hold"
+
+    cross_type = last_cross.get("type")
+    if cross_type == "death_cross" and fast_ma < slow_ma:
+        return "sell"
+    if cross_type == "golden_cross" and fast_ma > slow_ma:
+        if adx_value is None or float(adx_value) < adx_threshold:
+            return "hold"
+        if not current.get("above_slow_ma"):
+            return "hold"
+        slow_slope = current.get("slow_slope")
+        if slow_slope is not None and float(slow_slope) < 0:
+            return "hold"
+        return "buy"
+    return "hold"
+
+
+def build_trend_ma_signal_payload(
+    closes: list[float],
+    dates: list[date | datetime],
+    *,
+    vt_symbol: str,
+    strategy_id: str = "AshareTrendMaStrategy",
+    fast_window: int = 20,
+    slow_window: int = 60,
+    adx_period: int = 14,
+    adx_threshold: float = 25.0,
+    recent_days: int = 15,
+    highs: list[float] | None = None,
+    lows: list[float] | None = None,
+    volumes: list[float] | None = None,
+    relative_index_pct: float | None = None,
+) -> dict[str, Any]:
+    """趋势均线 + ADX 信号快照。"""
+    high_series = highs if highs is not None else closes
+    low_series = lows if lows is not None else closes
+    vol_series = volumes if volumes is not None else []
+
+    state = summarize_trend_ma_state(
+        closes,
+        dates,
+        high_series,
+        low_series,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        adx_period=adx_period,
+        adx_threshold=adx_threshold,
+    )
+    warnings: list[str] = []
+    if state.get("error"):
+        warnings.append(str(state["error"]))
+        return {
+            "vt_symbol": vt_symbol,
+            "strategy_id": strategy_id,
+            "as_of": "",
+            "signal": "na",
+            "signal_label": "—",
+            "signal_date": None,
+            "ref_buy_price": None,
+            "ref_sell_price": None,
+            "action_ref_buy_price": None,
+            "action_ref_sell_price": None,
+            "strength": None,
+            "reason_summary": "",
+            "reasons": (),
+            "warnings": tuple(warnings),
+            "last_close": None,
+        }
+
+    last_close = round(closes[-1], 2)
+    volume_ratio = _volume_ratio_5d(vol_series) if vol_series else None
+    signal = classify_trend_ma_signal(
+        state,
+        recent_days=recent_days,
+        adx_threshold=adx_threshold,
+    )
+    labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
+    last_cross = state.get("last_cross") or {}
+    signal_date = last_cross.get("date") if signal in ("buy", "sell") else None
+
+    ref_buy, ref_sell = _compute_ref_prices(
+        state,
+        high_series,
+        signal=signal,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        lookback_high=60,
+    )
+    action_buy, action_sell = _compute_action_ref_prices(
+        state,
+        high_series,
+        low_series,
+        signal=signal,
+        last_close=last_close,
+        fast_window=fast_window,
+        slow_window=slow_window,
+        lookback=60,
+    )
+
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    adx_value = current.get("adx")
+    slow_slope = current.get("slow_slope")
+    ma_gap_pct: float | None = None
+    if isinstance(fast_ma, (int, float)) and isinstance(slow_ma, (int, float)) and float(slow_ma) > 0:
+        ma_gap_pct = round((float(fast_ma) - float(slow_ma)) / float(slow_ma) * 100, 2)
+
+    align_score = _trend_alignment_score(
+        fast_ma=fast_ma if isinstance(fast_ma, (int, float)) else None,
+        slow_ma=slow_ma if isinstance(slow_ma, (int, float)) else None,
+        last_close=last_close,
+        slow_slope=float(slow_slope) if isinstance(slow_slope, (int, float)) else None,
+    )
+    adx_score = _adx_score(
+        float(adx_value) if isinstance(adx_value, (int, float)) else None,
+        threshold=adx_threshold,
+    )
+    cross_score = _ma_signal_score(signal)
+    strength = _trend_strength(
+        signal=signal,
+        alignment=align_score,
+        adx=adx_score,
+        cross=cross_score,
+        relative_index_pct=relative_index_pct,
+    )
+
+    tags: list[str] = []
+    if last_cross.get("type_label"):
+        tags.append(str(last_cross["type_label"]))
+    if isinstance(adx_value, (int, float)):
+        tags.append(f"ADX{float(adx_value):.0f}")
+    if current.get("adx_pass"):
+        tags.append("趋势")
+    if relative_index_pct is not None:
+        tags.append(f"超额{relative_index_pct:+.1f}%")
+    reason_summary = "+".join(tags) if tags else labels[signal]
+
+    reasons: list[str] = []
+    alignment = current.get("alignment")
+    if alignment:
+        reasons.append(str(alignment))
+    if isinstance(adx_value, (int, float)):
+        reasons.append(f"ADX({adx_period}) = {float(adx_value):.1f}，阈值 {adx_threshold:.0f}")
+    if last_cross.get("type_label") and last_cross.get("date"):
+        reasons.append(f"最近交叉：{last_cross['type_label']}（{last_cross['date']}）")
+    if isinstance(slow_slope, (int, float)):
+        reasons.append(f"慢线斜率：{float(slow_slope):+.4f}")
+    reasons.append(f"综合：{reason_summary}")
+    reasons.extend(
+        _ref_price_reason_lines(
+            signal=signal,
+            ref_buy=ref_buy,
+            ref_sell=ref_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
+    reasons.extend(
+        _action_ref_reason_lines(
+            signal=signal,
+            action_buy=action_buy,
+            action_sell=action_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
+    reasons.append(f"强度：{strength:.0f}")
+
+    return {
+        "vt_symbol": vt_symbol,
+        "strategy_id": strategy_id,
+        "as_of": str(state.get("as_of") or ""),
+        "signal": signal,
+        "signal_label": labels[signal],
+        "signal_date": signal_date,
+        "ref_buy_price": ref_buy,
+        "ref_sell_price": ref_sell,
+        "action_ref_buy_price": action_buy,
+        "action_ref_sell_price": action_sell,
+        "strength": strength,
+        "reason_summary": reason_summary,
+        "reasons": tuple(reasons),
+        "warnings": tuple(warnings),
+        "last_close": last_close,
+        "fast_ma": fast_ma,
+        "slow_ma": slow_ma,
+        "volume_ratio_5d": volume_ratio,
+        "ma_gap_pct": ma_gap_pct,
+        "strength_cross": cross_score,
+        "strength_alignment": align_score,
+        "strength_volume": adx_score,
+        "strength_pattern": None,
+    }
+
+
+def build_signal_payload_for_strategy(
+    strategy_id: str,
+    closes: list[float],
+    dates: list[date | datetime],
+    *,
+    vt_symbol: str,
+    fast_window: int,
+    slow_window: int,
+    highs: list[float] | None = None,
+    lows: list[float] | None = None,
+    volumes: list[float] | None = None,
+    relative_index_pct: float | None = None,
+) -> dict[str, Any] | None:
+    """按策略 ID 构建信号快照 payload。"""
+    kind = SUPPORTED_SIGNAL_STRATEGIES.get(strategy_id)
+    recent_days = STRATEGY_SIGNAL_RECENT_DAYS.get(strategy_id, 5)
+    if kind == "double_ma":
+        return build_double_ma_signal_payload(
+            closes,
+            dates,
+            vt_symbol=vt_symbol,
+            strategy_id=strategy_id,
+            fast_window=fast_window,
+            slow_window=slow_window,
+            recent_days=recent_days,
+            highs=highs,
+            lows=lows,
+            volumes=volumes,
+        )
+    if kind == "short_breakout":
+        return build_short_breakout_signal_payload(
+            closes,
+            dates,
+            vt_symbol=vt_symbol,
+            strategy_id=strategy_id,
+            fast_window=fast_window,
+            slow_window=slow_window,
+            recent_days=recent_days,
+            highs=highs,
+            lows=lows,
+            volumes=volumes,
+        )
+    if kind == "swing_ma":
+        return build_swing_ma_signal_payload(
+            closes,
+            dates,
+            vt_symbol=vt_symbol,
+            strategy_id=strategy_id,
+            fast_window=fast_window,
+            slow_window=slow_window,
+            recent_days=recent_days,
+            highs=highs,
+            lows=lows,
+            volumes=volumes,
+        )
+    if kind == "trend_ma":
+        return build_trend_ma_signal_payload(
+            closes,
+            dates,
+            vt_symbol=vt_symbol,
+            strategy_id=strategy_id,
+            fast_window=fast_window,
+            slow_window=slow_window,
+            recent_days=recent_days,
+            highs=highs,
+            lows=lows,
+            volumes=volumes,
+            relative_index_pct=relative_index_pct,
+        )
+    return None

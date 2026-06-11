@@ -99,16 +99,17 @@ class WatchlistSignalController:
 
     def apply_config(self, config: WatchlistSignalConfig, *, save: bool = True) -> None:
         normalized = config.normalized()
-        if self._page.signal_config == normalized:
-            return
-        if save:
-            save_watchlist_signal_config(normalized)
-        self._page.signal_config = normalized
-        panel = getattr(self._page, "signal_panel", None)
-        if panel is not None:
-            panel.apply_config(normalized)
-        self.invalidate_cache()
-        self.refresh(force=True)
+        changed = self._page.signal_config != normalized
+        if changed:
+            if save:
+                save_watchlist_signal_config(normalized)
+            self._page.signal_config = normalized
+            panel = getattr(self._page, "signal_panel", None)
+            if panel is not None:
+                panel.apply_config(normalized)
+            self.invalidate_cache()
+            self.refresh(force=True)
+        self._page._positions.on_signal_config_changed(normalized, changed=changed)
 
     def _apply_refresh_result(self) -> None:
         symbols = self._panel_symbols()
