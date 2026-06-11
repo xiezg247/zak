@@ -55,7 +55,7 @@ class FloatingAiControllerTests(unittest.TestCase):
     def test_page_whitelist(self) -> None:
         self.assertEqual(
             FLOATING_ORB_PAGE_KEYS,
-            frozenset({"watchlist", "market", "local", "screener", "auto_screener"}),
+            frozenset({"watchlist", "market", "radar", "local", "screener", "auto_screener"}),
         )
         self.assertTrue(FloatingAiController.is_page_allowed("watchlist"))
         self.assertFalse(FloatingAiController.is_page_allowed("cta_backtest"))
@@ -84,6 +84,31 @@ class FloatingAiControllerTests(unittest.TestCase):
         self.assertFalse(orb.isVisible())
         controller.on_page_changed("market")
         self.assertFalse(orb.isVisible())
+
+    def test_prefers_floating_for_ask(self) -> None:
+        controller = self._make_controller()
+        controller.bind_page_key(lambda: "watchlist")
+        self.assertTrue(controller.prefers_floating_for_ask())
+
+        controller._orb_user_hidden = True
+        self.assertFalse(controller.prefers_floating_for_ask())
+
+        controller._orb_user_hidden = False
+        controller.bind_page_key(lambda: "cta_backtest")
+        self.assertFalse(controller.prefers_floating_for_ask())
+
+    def test_handle_ask_ai_skips_when_orb_user_hidden(self) -> None:
+        controller = self._make_controller()
+        panel = controller.panel
+        assert panel is not None
+        panel.submit_prompt = MagicMock()
+        controller.show_panel = MagicMock()
+        controller._orb_user_hidden = True
+
+        controller.handle_ask_ai(AskAiRequest(prompt="诊断一下", source_page="自选"))
+
+        controller.show_panel.assert_not_called()
+        panel.submit_prompt.assert_not_called()
 
     def test_handle_ask_ai_opens_panel_with_scene(self) -> None:
         controller = self._make_controller()

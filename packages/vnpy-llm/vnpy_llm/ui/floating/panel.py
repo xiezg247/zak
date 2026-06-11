@@ -27,9 +27,29 @@ ORB_SIZE = 52
 ORB_MARGIN = 20
 PANEL_WIDTH = 360
 PANEL_HEIGHT = 480
+PANEL_MIN_WIDTH = 300
+PANEL_MIN_HEIGHT = 380
 TITLE_BAR_HEIGHT = 32
+RESIZE_MARGIN = 10
 
 BTN_MARGIN = ORB_MARGIN
+
+
+class _PanelResizeHandle(QtWidgets.QWidget):
+    """面板边缘拖拽拉伸句柄（透明覆盖层）。"""
+
+    def __init__(self, panel: FloatingAiPanel, edges: QtCore.Qt.Edges) -> None:
+        super().__init__(panel)
+        self._panel = panel
+        self._edges = edges
+        self.setCursor(panel._cursor_for_edges(edges))
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            self._panel._begin_resize(self._edges, event.globalPosition().toPoint())
+            event.accept()
+            return
+        super().mousePressEvent(event)
 
 
 class FloatingAiOrb(QtWidgets.QWidget):
@@ -307,10 +327,26 @@ class FloatingAiPanel(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("FloatingAiPanel")
-        self.setMinimumSize(300, 380)
+        self.setMinimumSize(PANEL_MIN_WIDTH, PANEL_MIN_HEIGHT)
         self.resize(PANEL_WIDTH, PANEL_HEIGHT)
 
         self._drag_pos: QtCore.QPoint | None = None
+        self._resizing = False
+        self._resize_edges = QtCore.Qt.Edges()
+        self._resize_start_geom: QtCore.QRect | None = None
+        self._resize_start_global: QtCore.QPoint | None = None
+        self._resize_right = _PanelResizeHandle(
+            self,
+            QtCore.Qt.Edge.RightEdge,
+        )
+        self._resize_bottom = _PanelResizeHandle(
+            self,
+            QtCore.Qt.Edge.BottomEdge,
+        )
+        self._resize_corner = _PanelResizeHandle(
+            self,
+            QtCore.Qt.Edge.RightEdge | QtCore.Qt.Edge.BottomEdge,
+        )
 
         self._build_ui(engine)
         QtCore.QTimer.singleShot(0, self._restore_geometry)
@@ -357,6 +393,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
         root.addWidget(self._toast)
 
         bind_ai_floating_style(self)
+        self._layout_resize_handles()
         self._update_context_bar_geometry()
 
     def _build_title_bar(self) -> QtWidgets.QWidget:
@@ -447,6 +484,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
             ensure_geometry_on_screen(self)
         self.show()
         self.raise_()
+        self._layout_resize_handles()
         self._update_context_bar_geometry()
         self.chat_panel.on_floating_shown()
         self.chat_panel.focus_input()
@@ -458,7 +496,86 @@ class FloatingAiPanel(QtWidgets.QWidget):
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
+        self._layout_resize_handles()
         self._update_context_bar_geometry()
+
+    def clamp_geometry_to_parent(self) -> None:
+        """父窗口尺寸变化时，将面板限制在可见区域内。"""
+        clamped = self._clamp_geometry(self.geometry())
+        if clamped != self.geometry():
+            self.setGeometry(clamped)
+            self._update_context_bar_geometry()
+
+    @staticmethod
+    def _cursor_for_edges(edges: QtCore.Qt.Edges) -> QtCore.Qt.CursorShape:
+        if (
+            edges & QtCore.Qt.Edge.RightEdge
+            and edges & QtCore.Qt.Edge.BottomEdge
+        ):
+            return QtCore.Qt.CursorShape.SizeFDiagCursor
+        if edges & QtCore.Qt.Edge.RightEdge:
+            return QtCore.Qt.CursorShape.SizeHorCursor
+        if edges & QtCore.Qt.Edge.BottomEdge:
+            return QtCore.Qt.CursorShape.SizeVerCursor
+        return QtCore.Qt.CursorShape.ArrowCursor
+
+    def _layout_resize_handles(self) -> None:
+        margin = RESIZE_MARGIN
+        top = TITLE_BAR_HEIGHT
+        width = self.width()
+        height = self.height()
+        body_height = max(0, height - top)
+        self._resize_right.setGeometry(width - margin, top, margin, body_height)
+        self._resize_bottom.setGeometry(0, height - margin, max(0, width - margin), margin)
+        self._resize_corner.setGeometry(width - margin, height - margin, margin, margin)
+        for handle in (self._resize_right, self._resize_bottom, self._resize_corner):
+            handle.raise_()
+
+    def _clamp_geometry(self, geo: QtCore.QRect) -> QtCore.QRect:
+        width = max(self.minimumWidth(), geo.width())
+        height = max(self.minimumHeight(), geo.height())
+        x = geo.x()
+        y = geo.y()
+        parent = self.parentWidget()
+        if parent is not None:
+            width = min(width, max(self.minimumWidth(), parent.width() - x))
+            height = min(height, max(self.minimumHeight(), parent.height() - y))
+            x = min(max(0, x), max(0, parent.width() - width))
+            y = min(max(0, y), max(0, parent.height() - height))
+        return QtCore.QRect(x, y, width, height)
+
+    def _begin_resize(self, edges: QtCore.Qt.Edges, global_pos: QtCore.QPoint) -> None:
+        self._resizing = True
+        self._resize_edges = edges
+        self._resize_start_geom = self.geometry()
+        self._resize_start_global = global_pos
+        self.grabMouse()
+
+    def _update_resize(self, global_pos: QtCore.QPoint) -> None:
+        if (
+            not self._resizing
+            or self._resize_start_geom is None
+            or self._resize_start_global is None
+        ):
+            return
+        delta = global_pos - self._resize_start_global
+        geo = QtCore.QRect(self._resize_start_geom)
+        if self._resize_edges & QtCore.Qt.Edge.RightEdge:
+            geo.setWidth(self._resize_start_geom.width() + delta.x())
+        if self._resize_edges & QtCore.Qt.Edge.BottomEdge:
+            geo.setHeight(self._resize_start_geom.height() + delta.y())
+        self.setGeometry(self._clamp_geometry(geo))
+        self._update_context_bar_geometry()
+
+    def _end_resize(self) -> None:
+        if not self._resizing:
+            return
+        self._resizing = False
+        self._resize_edges = QtCore.Qt.Edges()
+        self._resize_start_geom = None
+        self._resize_start_global = None
+        self.releaseMouse()
+        self._save_geometry()
 
     def focus_input(self) -> None:
         self.chat_panel.focus_input()
@@ -497,11 +614,19 @@ class FloatingAiPanel(QtWidgets.QWidget):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        if self._resizing:
+            self._update_resize(event.globalPosition().toPoint())
+            event.accept()
+            return
         if self._drag_pos is not None and event.buttons() & QtCore.Qt.MouseButton.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_pos)
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if self._resizing:
+            self._end_resize()
+            event.accept()
+            return
         self._drag_pos = None
         super().mouseReleaseEvent(event)
 

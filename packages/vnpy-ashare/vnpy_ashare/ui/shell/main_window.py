@@ -537,29 +537,44 @@ class AshareMainWindow(MainWindow):
             self._floating_controller.notify_attention(data.source)
 
     def _handle_ask_ai(self, data: AskAiRequest) -> None:
-        if data.use_full_page:
-            llm_engine = self._get_llm_engine()
-            if llm_engine is None:
-                page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
-                return
-            llm_engine.open_session_for_ask(
-                surface="assistant",
-                new_session=data.new_session,
-                session_policy=data.session_policy,
-                scene=data.scene or data.source_page,
-            )
-            index = self._nav_index_for_key("ai_assistant")
-            if index is None:
-                return
-            self._show_page(index)
-            widget = self._page_widgets.get("ai_assistant")
-            if widget is not None and hasattr(widget, "set_input_text"):
-                widget.set_input_text(data.prompt)
-            return
-        if not self._ensure_floating_ai():
-            return
-        if self._floating_controller is not None:
+        if self._should_use_floating_ai(data):
+            assert self._floating_controller is not None
             self._floating_controller.handle_ask_ai(data)
+            return
+        self._open_ai_assistant_with_request(data)
+
+    def _should_use_floating_ai(self, data: AskAiRequest) -> bool:
+        if data.use_full_page:
+            return False
+        if not self._ensure_floating_ai():
+            return False
+        controller = self._floating_controller
+        return controller is not None and controller.prefers_floating_for_ask()
+
+    def _open_ai_assistant_with_request(self, data: AskAiRequest) -> None:
+        llm_engine = self._get_llm_engine()
+        if llm_engine is None:
+            page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
+            return
+        llm_engine.open_session_for_ask(
+            surface="assistant",
+            new_session=data.new_session,
+            session_policy=data.session_policy,
+            scene=data.scene or data.source_page,
+        )
+        index = self._nav_index_for_key("ai_assistant")
+        if index is None:
+            return
+        self._show_page(index)
+        widget = self._page_widgets.get("ai_assistant")
+        if widget is not None and hasattr(widget, "submit_prompt"):
+            widget.submit_prompt(
+                data.prompt,
+                auto_send=data.auto_send,
+                action_id=data.action_id,
+            )
+        elif widget is not None and hasattr(widget, "set_input_text"):
+            widget.set_input_text(data.prompt)
 
     def _nav_index_for_key(self, key: str) -> int | None:
         for index, entry in enumerate(APP_NAV_ENTRIES):

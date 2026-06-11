@@ -21,7 +21,7 @@ class FloatingControllerTests(unittest.TestCase):
         self.assertFalse(FloatingAiController.is_page_allowed("cta_backtest"))
         self.assertEqual(
             FLOATING_ORB_PAGE_KEYS,
-            frozenset({"watchlist", "market", "local", "screener", "auto_screener"}),
+            frozenset({"watchlist", "market", "radar", "local", "screener", "auto_screener"}),
         )
 
     def test_load_orb_user_hidden(self) -> None:

@@ -119,7 +119,7 @@ UI / Worker 经 Service 写上下文；Skills / LLM 只读。Agent Skill（`SKIL
 | 快捷键 | `Ctrl+L` / `⌘L` 切换显隐 |
 | ContextChip | 当前页、选中标的、选股结果数 |
 | Quick Actions | 按页的 chips / 右键菜单 |
-| 非白名单页 | `EVENT_ASK_AI` 跳转自选页再开球 |
+| 非白名单页 / 用户已隐藏悬浮球 | `EVENT_ASK_AI` 跳转全屏 AI 助手 |
 
 ## 本地 K 线健康
 

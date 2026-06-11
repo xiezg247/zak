@@ -375,7 +375,6 @@ class ActionsController:
                 AskAiRequest(
                     prompt=prompt,
                     source_page=page.page_name,
-                    use_full_page=True,
                 ),
             )
         )

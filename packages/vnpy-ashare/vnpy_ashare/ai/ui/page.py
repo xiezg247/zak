@@ -71,6 +71,10 @@ class AiPageWidget(QtWidgets.QWidget):
         if self.panel is not None:
             self.panel.set_input_text(text)
 
+    def submit_prompt(self, text: str, *, auto_send: bool = False, action_id: str = "") -> None:
+        if self.panel is not None:
+            self.panel.submit_prompt(text, auto_send=auto_send, action_id=action_id)
+
     def deactivate(self) -> None:
         if self.panel is not None:
             self.panel.deactivate()

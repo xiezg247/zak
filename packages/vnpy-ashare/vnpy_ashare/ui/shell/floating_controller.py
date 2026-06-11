@@ -84,6 +84,13 @@ class FloatingAiController(QtCore.QObject):
     def is_page_allowed(page_key: str) -> bool:
         return page_key in FLOATING_ORB_PAGE_KEYS
 
+    def prefers_floating_for_ask(self) -> bool:
+        """当前页是否应以悬浮面板承接 AskAi（白名单页且用户未隐藏悬浮球）。"""
+        page_key = self._current_page_key()
+        if not page_key or not self.is_page_allowed(page_key):
+            return False
+        return not self._orb_user_hidden
+
     def on_page_changed(self, page_key: str) -> None:
         if self._orb is None:
             return
@@ -96,11 +103,14 @@ class FloatingAiController(QtCore.QObject):
             self._orb.hide()
 
     def on_window_resize(self) -> None:
-        orb = self._orb
-        if orb is None or not orb.isVisible():
-            return
         shell = self._shell_widget()
         if shell is None:
+            return
+        panel = self._panel
+        if panel is not None and panel.isVisible():
+            panel.clamp_geometry_to_parent()
+        orb = self._orb
+        if orb is None or not orb.isVisible():
             return
         self._restore_orb_position()
         orb.move(clamp_point_in_parent(shell, orb, orb.pos()))
@@ -136,15 +146,8 @@ class FloatingAiController(QtCore.QObject):
         self.show_panel()
 
     def handle_ask_ai(self, data: AskAiRequest) -> None:
-        if not self._orb:
+        if not self._orb or not self.prefers_floating_for_ask():
             return
-        page_key = self._current_page_key()
-        if page_key and not self.is_page_allowed(page_key):
-            index = self._host._nav_index_for_key("watchlist")
-            if index is not None:
-                self._orb_user_hidden = False
-                self._host._show_page(index)
-        self._orb_user_hidden = False
         self.show_orb()
         self.show_panel(
             new_session=data.new_session,
