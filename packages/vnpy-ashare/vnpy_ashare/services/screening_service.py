@@ -18,12 +18,16 @@ from vnpy_ashare.ai.context import (
     ScreeningResultContext,
     enrich_context_with_actions,
     get_market_quotes_cache,
-    get_screening_results as _get_screening_results,
     set_ai_context,
+)
+from vnpy_ashare.ai.context import (
+    get_screening_results as _get_screening_results,
+)
+from vnpy_ashare.ai.context import (
     set_screening_results as _set_screening_results,
 )
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
-from vnpy_ashare.screener.run.export import export_rows_to_csv, resolve_export_columns
+from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
 from vnpy_ashare.screener.pattern.pattern_screen import (
     PatternScreenInput,
     resolve_pattern_screen,
@@ -36,10 +40,11 @@ from vnpy_ashare.screener.preset.presets import (
     list_quote_preset_names,
     list_tushare_preset_names,
 )
-from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
+from vnpy_ashare.screener.preset.rules import apply_quote_preset
+from vnpy_ashare.screener.preset.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_recipe
-from vnpy_ashare.screener.preset.rules import apply_quote_preset
+from vnpy_ashare.screener.run.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.run.run_diff import enrich_recipe_run
 from vnpy_ashare.screener.run.run_store import (
     delete_run,
@@ -58,7 +63,6 @@ from vnpy_ashare.screener.run.runner import (
     list_all_preset_names,
     run_screener,
 )
-from vnpy_ashare.screener.preset.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.services.base import BaseService
 
 AVAILABLE_SCREENERS = list_builtin_preset_names()

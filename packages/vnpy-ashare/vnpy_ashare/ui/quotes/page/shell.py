@@ -464,9 +464,7 @@ class QuotesPageShell:
                         log_view_object_name=f"{run_prefix}RunLogView",
                         expanded=load_run_output_expanded(page.page_name),
                     )
-                    page.run_output_panel.expansion_changed.connect(
-                        lambda expanded: on_run_output_expansion_changed(page, expanded)
-                    )
+                    page.run_output_panel.expansion_changed.connect(lambda expanded: on_run_output_expansion_changed(page, expanded))
                     center_split.addWidget(page.run_output_panel)
                 page._center_splitter = center_split
                 page._run_output_splitter = center_split

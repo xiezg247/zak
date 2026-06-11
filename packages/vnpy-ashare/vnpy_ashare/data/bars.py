@@ -17,8 +17,8 @@ from vnpy_ashare.data.minute_periods import (
     bar_interval,
     normalize_period,
 )
-from vnpy_ashare.integrations.tickflow import fetch_history_bars
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.integrations.tickflow import fetch_history_bars
 from vnpy_ashare.storage.app_db import import_watchlist_csv, load_universe_rows, load_watchlist_rows
 
 

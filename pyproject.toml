@@ -50,8 +50,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"cli.py" = ["E402"]
 "tests/_bootstrap.py" = ["E402"]
 "tests/**" = ["F841"]
+"packages/vnpy-ashare/vnpy_ashare/cli.py" = ["E402"]
 "packages/vnpy-ashare/vnpy_ashare/ui/quotes/quotes_config.py" = ["E402"]
 "packages/vnpy-mcp/vnpy_mcp/domain/provider.py" = ["B027"]
 "packages/vnpy-skills/vnpy_skills/domain/template.py" = ["B027"]

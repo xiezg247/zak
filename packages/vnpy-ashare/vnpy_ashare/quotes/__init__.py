@@ -1,5 +1,6 @@
 """行情模块：快照、Provider、TickFlow / Redis。"""
 
+from vnpy_ashare.integrations.tickflow import MARKET_INDICES, fetch_index_ticker
 from vnpy_ashare.quotes.provider import (
     QuoteProviderError,
     QuoteSource,
@@ -9,7 +10,6 @@ from vnpy_ashare.quotes.provider import (
     get_tickflow_provider,
 )
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
-from vnpy_ashare.integrations.tickflow import MARKET_INDICES, fetch_index_ticker
 
 __all__ = [
     "MARKET_INDICES",

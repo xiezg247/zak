@@ -22,12 +22,12 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
-from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
-from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.ui.quotes.chart import ChartPanel
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,

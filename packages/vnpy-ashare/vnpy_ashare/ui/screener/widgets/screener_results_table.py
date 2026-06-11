@@ -196,11 +196,7 @@ def wire_screener_results_table(
                 item = table.item(row_index, 0)
                 if item is None:
                     continue
-                item.setCheckState(
-                    QtCore.Qt.CheckState.Checked
-                    if row_index in selected_rows
-                    else QtCore.Qt.CheckState.Unchecked
-                )
+                item.setCheckState(QtCore.Qt.CheckState.Checked if row_index in selected_rows else QtCore.Qt.CheckState.Unchecked)
         finally:
             table.blockSignals(False)
             sync_state["active"] = False

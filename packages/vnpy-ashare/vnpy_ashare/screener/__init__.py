@@ -12,6 +12,7 @@
 - ``auto/``、``reference/``、``sector/``、``sentiment/``
 """
 
+from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     BatchBacktestRow,
@@ -21,7 +22,6 @@ from vnpy_ashare.screener.batch.batch_actions import (
     run_batch_backtests,
 )
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
-from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.screener.preset.scheme_store import SavedScheme, delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.screener.run import (
     ScreenerRequest,

@@ -126,10 +126,7 @@ def _cmd_list_bars(_args: argparse.Namespace) -> int:
             print(f"{item.vt_symbol:<16} {item.name:<10} {'—':>6}  {'无数据':<12}")
             missing += 1
             continue
-        print(
-            f"{item.vt_symbol:<16} {item.name:<10} {row.count:>6}  "
-            f"{str(row.start.date()):<12} {str(row.end.date()):<12}"
-        )
+        print(f"{item.vt_symbol:<16} {item.name:<10} {row.count:>6}  {str(row.start.date()):<12} {str(row.end.date()):<12}")
 
     print("-" * 62)
     print(f"共 {len(items)} 只，已入库 {len(items) - missing} 只，缺失 {missing} 只")

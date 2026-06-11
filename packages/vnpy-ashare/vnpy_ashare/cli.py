@@ -5,8 +5,9 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -25,9 +26,14 @@ def bootstrap_runtime() -> None:
 
 bootstrap_runtime()
 
-from vnpy_common.paths import ENV_FILE
 
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.commands import data as data_commands
+from vnpy_ashare.commands import diagnose as diagnose_commands
+from vnpy_ashare.commands import meta as meta_commands
+from vnpy_ashare.commands import quotes as quotes_commands
+from vnpy_ashare.commands import skills as skills_commands
+from vnpy_ashare.commands import tools as tools_commands
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs import (
     JobResult,
@@ -39,7 +45,9 @@ from vnpy_ashare.jobs import (
     sync_trade_calendar_job,
     sync_universe_job,
 )
+from vnpy_ashare.scheduler.config import load_scheduler_config
 from vnpy_ashare.screener.batch.batch_actions import batch_download_daily_bars
+from vnpy_ashare.screener.preset.scheme_store import list_schemes
 from vnpy_ashare.screener.recipe.recipe import list_recipe_catalog, resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_runner import run_recipe
 from vnpy_ashare.screener.run.export import export_rows_to_csv
@@ -51,14 +59,6 @@ from vnpy_ashare.screener.run.runner import (
     resolve_preset_input,
     run_screener,
 )
-from vnpy_ashare.screener.preset.scheme_store import list_schemes
-from vnpy_ashare.scheduler.config import load_scheduler_config
-from vnpy_ashare.commands import data as data_commands
-from vnpy_ashare.commands import diagnose as diagnose_commands
-from vnpy_ashare.commands import meta as meta_commands
-from vnpy_ashare.commands import quotes as quotes_commands
-from vnpy_ashare.commands import skills as skills_commands
-from vnpy_ashare.commands import tools as tools_commands
 from vnpy_ashare.storage.app_db import add_watchlist_item, init_app_db
 
 _COLLECT_QUOTES_INTERVAL_MIN = 5

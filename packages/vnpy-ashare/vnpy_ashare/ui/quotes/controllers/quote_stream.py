@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge, can_use_tickflow_stream
+from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.quotes.page.config import STREAM_QUOTE_DEBOUNCE_MS
 
 if TYPE_CHECKING:

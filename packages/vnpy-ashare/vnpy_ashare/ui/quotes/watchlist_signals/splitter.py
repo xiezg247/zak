@@ -165,12 +165,7 @@ def restore_center_splitter(page: QuotesPage) -> None:
         and saved[signal_index] < SIGNAL_PANEL_DEFAULT_HEIGHT - 20
     ):
         saved = []
-    if (
-        saved
-        and len(saved) == splitter.count()
-        and sum(saved) >= 320
-        and abs(sum(saved) - height) <= max(24, height // 10)
-    ):
+    if saved and len(saved) == splitter.count() and sum(saved) >= 320 and abs(sum(saved) - height) <= max(24, height // 10):
         splitter.blockSignals(True)
         splitter.setSizes(saved)
         splitter.blockSignals(False)

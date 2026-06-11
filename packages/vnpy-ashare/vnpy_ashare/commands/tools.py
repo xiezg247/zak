@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 from vnpy.trader.database import get_database
 from vnpy.trader.setting import SETTINGS

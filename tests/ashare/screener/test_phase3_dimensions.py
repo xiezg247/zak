@@ -5,9 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
+from vnpy_ashare.screener.data.quote_freshness import ensure_fresh_quotes_for_screening
 from vnpy_ashare.screener.dimensions.intraday_breakout import run_intraday_breakout
 from vnpy_ashare.screener.dimensions.moneyflow_intraday import run_moneyflow_intraday
-from vnpy_ashare.screener.data.quote_freshness import ensure_fresh_quotes_for_screening
 from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_modulation
 from vnpy_ashare.services.sentiment_service import FearGreedSnapshot
 

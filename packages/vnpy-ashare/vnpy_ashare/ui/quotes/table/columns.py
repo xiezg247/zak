@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from vnpy_ashare.config import exchange_to_cn
-from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.quote_time import format_trade_time_display
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 
 

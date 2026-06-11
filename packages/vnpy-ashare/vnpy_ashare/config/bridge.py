@@ -9,8 +9,8 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, normalize_database_name
 from vnpy_ashare.config.fonts import default_font_family
+from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, normalize_database_name
 from vnpy_common.paths import ENV_FILE
 
 

@@ -95,9 +95,7 @@ class TaskRunOutputPanel(QtWidgets.QWidget):
     def _sync_collapse_button(self) -> None:
         self._collapse_button.blockSignals(True)
         self._collapse_button.setChecked(self._expanded)
-        self._collapse_button.setArrowType(
-            QtCore.Qt.ArrowType.DownArrow if self._expanded else QtCore.Qt.ArrowType.RightArrow
-        )
+        self._collapse_button.setArrowType(QtCore.Qt.ArrowType.DownArrow if self._expanded else QtCore.Qt.ArrowType.RightArrow)
         self._collapse_button.blockSignals(False)
 
     def _on_collapse_toggled(self, expanded: bool) -> None:

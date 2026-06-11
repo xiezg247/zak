@@ -13,7 +13,6 @@ from vnpy_ashare.data.bar_access import delete_scope_bars, iter_bar_overviews
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
-    BarMeta,
     bar_meta_from_overview,
     clip_bars_from_unified_start,
     format_gap_ranges,
@@ -414,9 +413,7 @@ class LocalDataController:
         gap_result = page._selected_gap_result
         if gap_result is not None and gap_result.status == BarHealthStatus.GAPS and gap_result.gaps:
             gap_text = format_gap_ranges(gap_result.gaps)
-            message = (
-                f"将为 {display} 修复 {len(gap_result.gaps)} 处断层：\n{gap_text}\n\n是否继续？"
-            )
+            message = f"将为 {display} 修复 {len(gap_result.gaps)} 处断层：\n{gap_text}\n\n是否继续？"
         else:
             message = f"将扫描 {display} 的日 K 并修复内部断层。\n\n是否继续？"
 

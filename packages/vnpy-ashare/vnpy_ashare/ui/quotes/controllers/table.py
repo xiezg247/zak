@@ -15,9 +15,9 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.domain.board import matches_board
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
-from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.quote_time import format_batch_updated_at
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_COLUMN_KEYS
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.quotes.page.config import (
     ALL_TAIL_COLUMNS,
@@ -226,11 +226,7 @@ class TableController:
         display_unchanged = self._same_stock_list(page.display_stocks, next_display)
         page.display_stocks = next_display
         table_rows = self._model().row_count()
-        if (
-            not display_unchanged
-            or table_rows != len(next_display)
-            or page.config.use_local_table
-        ):
+        if not display_unchanged or table_rows != len(next_display) or page.config.use_local_table:
             self.render_table()
         if page.config.show_watchlist_signals:
             page._signals.start()
@@ -278,7 +274,7 @@ class TableController:
     def _same_stock_list(left: list[StockItem], right: list[StockItem]) -> bool:
         if len(left) != len(right):
             return False
-        for left_item, right_item in zip(left, right):
+        for left_item, right_item in zip(left, right, strict=True):
             if (left_item.symbol, left_item.exchange) != (right_item.symbol, right_item.exchange):
                 return False
         return True

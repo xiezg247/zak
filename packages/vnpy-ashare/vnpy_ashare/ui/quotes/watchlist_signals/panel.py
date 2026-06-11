@@ -46,9 +46,7 @@ _PANEL_COLUMNS = (
 
 _DETAIL_COLUMN_KEYS = ("signal_date", "dist_buy_pct", "signal_reason")
 
-_EMPTY_LIST_TEXT = (
-    f"暂无监控标的。请在上方自选表多选后点击「加入信号区」（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只）。"
-)
+_EMPTY_LIST_TEXT = f"暂无监控标的。请在上方自选表多选后点击「加入信号区」（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只）。"
 _FILTER_EMPTY_TEXT = "当前筛选无匹配标的，再次点击统计项可取消筛选。"
 
 

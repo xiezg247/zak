@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from vnpy_ashare.jobs.trade_calendar import sync_trade_calendar_job
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
+from vnpy_ashare.jobs.trade_calendar import sync_trade_calendar_job
 
 
 class TradeCalendarJobTests(unittest.TestCase):

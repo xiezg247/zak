@@ -11,9 +11,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback, iter_trade_date_strs
-from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_stock_industry_map
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
+from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_stock_industry_map
+from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback, iter_trade_date_strs
 
 ProgressCallback = Callable[[str], None]
 CancelledCallback = Callable[[], bool]

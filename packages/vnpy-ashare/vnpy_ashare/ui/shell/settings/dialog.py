@@ -5,6 +5,11 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.bridge import detect_config_drift, format_config_drift_summary
+from vnpy_ashare.config.fonts import (
+    available_font_families,
+    resolve_font_family,
+    supports_font_family_selection,
+)
 from vnpy_ashare.config.schema import (
     VT_DB_SPECS,
     VT_NON_DB_SPECS,
@@ -16,11 +21,6 @@ from vnpy_ashare.config.vt_settings import (
     load_runtime_settings,
     save_runtime_settings,
     sync_vt_settings_from_env,
-)
-from vnpy_ashare.config.fonts import (
-    available_font_families,
-    resolve_font_family,
-    supports_font_family_selection,
 )
 from vnpy_ashare.ui.shell.settings.snapshot import (
     collect_database_runtime_updates,

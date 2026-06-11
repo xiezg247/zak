@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
 
