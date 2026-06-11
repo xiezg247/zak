@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from vnpy_ashare.jobs.result import JobResult
-from vnpy_ashare.screener.data.tushare_client import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.storage.trade_calendar_store import DEFAULT_CAL_START, sync_trade_calendar
 
 

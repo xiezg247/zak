@@ -1,4 +1,4 @@
-"""Tushare Pro 客户端（选股基本面数据）。"""
+"""Tushare Pro 客户端。"""
 
 from __future__ import annotations
 

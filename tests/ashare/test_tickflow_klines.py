@@ -7,7 +7,7 @@ import unittest
 import pandas as pd
 from vnpy.trader.constant import Exchange, Interval
 
-from vnpy_ashare.data.tickflow_klines import dataframe_to_bars
+from vnpy_ashare.integrations.tickflow import dataframe_to_bars
 
 
 class TickflowKlinesTests(unittest.TestCase):

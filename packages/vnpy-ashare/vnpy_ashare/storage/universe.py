@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
-from tickflow import TickFlow
-
-from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.integrations.tickflow.universe import fetch_universe_items
 from vnpy_ashare.storage.app_db import (
     CACHE_MAX_AGE,
     init_app_db,
@@ -18,10 +15,7 @@ from vnpy_ashare.storage.app_db import (
     universe_exists,
     universe_is_fresh,
 )
-from vnpy_common.paths import ENV_FILE, get_app_db_path
-
-UNIVERSE_ID = "CN_Equity_A"
-BATCH_SIZE = 200
+from vnpy_common.paths import get_app_db_path
 
 
 def sync_universe(force: bool = False) -> Path:
@@ -30,23 +24,7 @@ def sync_universe(force: bool = False) -> Path:
     if not force and universe_is_fresh(CACHE_MAX_AGE):
         return get_app_db_path()
 
-    load_dotenv(ENV_FILE)
-    api_key = os.getenv("TICKFLOW_API_KEY", "")
-    client = TickFlow(api_key=api_key) if api_key else TickFlow.free()
-
-    universe = client.universes.get(UNIVERSE_ID)
-    tf_symbols: list[str] = universe["symbols"]
-
-    rows: list[StockItem] = []
-    for start in range(0, len(tf_symbols), BATCH_SIZE):
-        batch = tf_symbols[start : start + BATCH_SIZE]
-        instruments = client.instruments.batch(batch)
-        name_map = {item["symbol"]: item.get("name", "") for item in instruments}
-        for tf_symbol in batch:
-            item = parse_tickflow_symbol(tf_symbol, name_map.get(tf_symbol, ""))
-            if item:
-                rows.append(item)
-
+    rows = fetch_universe_items()
     save_universe_rows(
         [(row.symbol, row.exchange, row.name) for row in rows],
         synced_at=datetime.now(),

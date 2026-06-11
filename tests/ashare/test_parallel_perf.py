@@ -10,7 +10,7 @@ from vnpy.trader.constant import Exchange
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.backtest.batch_runner import batch_backtest_max_workers, resolve_strategy_class
 from vnpy_ashare.domain.models import StockItem
-from vnpy_ashare.quotes.tickflow_client import (
+from vnpy_ashare.integrations.tickflow import (
     QUOTE_BATCH_SIZE,
     fetch_quotes_from_tickflow,
     quote_fetch_max_workers,
@@ -28,7 +28,7 @@ class QuoteFetchConcurrencyTests(unittest.TestCase):
         self.assertEqual(quote_fetch_max_workers(batch_count=1), 1)
         self.assertLessEqual(quote_fetch_max_workers(batch_count=20), 8)
 
-    @patch("vnpy_ashare.quotes.tickflow_client.get_tickflow_client")
+    @patch("vnpy_ashare.integrations.tickflow.quotes.get_tickflow_client")
     def test_fetch_quotes_parallel_batches(self, client_mock: MagicMock) -> None:
         symbols = [f"{index:06d}.SH" for index in range(QUOTE_BATCH_SIZE * 3)]
         items = [StockItem(symbol=f"{index:06d}", exchange=Exchange.SSE, name="") for index in range(len(symbols))]

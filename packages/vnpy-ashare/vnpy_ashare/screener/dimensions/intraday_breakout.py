@@ -114,7 +114,7 @@ def _minute_bar_confirms_breakout(row: dict[str, Any]) -> bool:
     if item is None:
         return True
     try:
-        from vnpy_ashare.data.tickflow_klines import fetch_intraday_bars
+        from vnpy_ashare.integrations.tickflow import fetch_intraday_bars
 
         bars = fetch_intraday_bars(item)
     except Exception:

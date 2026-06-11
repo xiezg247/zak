@@ -5,7 +5,7 @@
 - ``recipe/``：多维度配方
 - ``preset/``：内置方案与规则
 - ``pattern/``：形态选股
-- ``data/``：数据源与 Tushare
+- ``data/``：选股数据源编排（Redis + Tushare 合并）
 - ``dimensions/``：配方维度实现
 - ``batch/``：批量回测 / 下载
 - ``draft/``：AI 草稿与 NL
@@ -21,7 +21,7 @@ from vnpy_ashare.screener.batch.batch_actions import (
     run_batch_backtests,
 )
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
-from vnpy_ashare.screener.data.tushare_client import TushareNotConfiguredError
+from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.screener.preset.scheme_store import SavedScheme, delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.screener.run import (
     ScreenerRequest,

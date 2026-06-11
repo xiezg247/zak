@@ -27,7 +27,7 @@ from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
-from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
+from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.ui.quotes.chart import ChartPanel
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,

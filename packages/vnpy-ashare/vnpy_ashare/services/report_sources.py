@@ -37,7 +37,7 @@ def to_ts_code(symbol: str, exchange) -> str:
 
 def fetch_tushare_reports(symbol: str, exchange: Exchange, *, limit: int = 10) -> dict[str, Any]:
     """拉取近一年研报；返回 ``{reports, warnings, source?}``。"""
-    from vnpy_ashare.screener.data.tushare_client import TushareNotConfiguredError, get_tushare_pro
+    from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 
     try:
         pro = get_tushare_pro()

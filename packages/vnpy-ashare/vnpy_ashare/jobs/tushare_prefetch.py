@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback, fetch_moneyflow_with_fallback
-from vnpy_ashare.screener.data.factors import (
+from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.integrations.tushare.factors import (
     fetch_daily_pct_map,
     fetch_index_daily_snapshot,
     fetch_limit_list_d,
     fetch_moneyflow_hsgt_window,
     fetch_stock_basic_snapshot,
 )
-from vnpy_ashare.screener.data.tushare_client import TushareNotConfiguredError, get_tushare_pro
 
 
 def prefetch_tushare_factors() -> JobResult:

@@ -34,12 +34,16 @@ from vnpy_ashare.data.bars import (
     load_watchlist,
 )
 from vnpy_ashare.data.minute_periods import period_step
-from vnpy_ashare.data.tickflow_klines import fetch_intraday_bars, fetch_minute_bars
+from vnpy_ashare.integrations.tickflow import (
+    DepthPermissionError,
+    fetch_depth_from_tickflow,
+    fetch_intraday_bars,
+    fetch_minute_bars,
+)
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
 from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
-from vnpy_ashare.quotes.depth_client import DepthPermissionError, fetch_depth_from_tickflow
 from vnpy_ashare.quotes.provider import get_redis_provider
 from vnpy_ashare.storage.universe import load_universe, sync_universe
 

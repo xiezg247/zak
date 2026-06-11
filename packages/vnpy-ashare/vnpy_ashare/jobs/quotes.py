@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.quotes.redis_store import RedisQuoteStore
-from vnpy_ashare.quotes.tickflow_client import fetch_quotes_from_tickflow
+from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
 from vnpy_ashare.storage.universe import load_universe
 
 

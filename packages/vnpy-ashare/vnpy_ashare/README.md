@@ -17,10 +17,11 @@ vnpy_ashare/
 ├── app/              # launcher、bootstrap、engine、events、engine_access
 ├── config/           # runtime 常量、schema、bridge、vt_settings
 ├── domain/           # models、calendar、market_hours、signal_snapshot
+├── integrations/   # 外部 API（Tushare、TickFlow 应用层、MCP；TickFlow SDK 见 vnpy_tickflow）
 ├── data/             # bars、bar_store、bar_health、minute_periods
 ├── storage/          # app_db、universe、trade_calendar_store
 ├── backtest/         # CTA App/Engine、run_store、strategy_filter
-├── quotes/           # 行情 Provider 与 TickFlow 客户端
+├── quotes/           # 行情 Provider 抽象、QuoteSnapshot、Redis 缓存
 ├── screener/         # 选股（run / recipe / preset / pattern / data / dimensions / batch）
 ├── scheduler/        # 定时任务管理
 ├── jobs/             # 下载、补全、自动选股 Job

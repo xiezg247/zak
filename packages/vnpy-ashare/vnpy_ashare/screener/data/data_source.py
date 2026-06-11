@@ -8,11 +8,10 @@ from typing import Any
 
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
-from vnpy_ashare.screener.data.factors import (
+from vnpy_ashare.integrations.tushare.factors import (
     fetch_daily_basic,
     fetch_daily_pct_map,
     fetch_moneyflow,
-    merge_quotes_into_fundamentals,
 )
 from vnpy_ashare.screener.data.quotes_loader import (
     MarketQuotesLoadError,
@@ -21,6 +20,30 @@ from vnpy_ashare.screener.data.quotes_loader import (
 )
 
 DEFAULT_LOOKBACK_DAYS = 10
+
+
+def merge_quotes_into_fundamentals(
+    fund_rows: list[dict[str, Any]],
+    quote_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
+    quote_map = {str(row.get("vt_symbol", "")): row for row in quote_rows if row.get("vt_symbol")}
+    merged: list[dict[str, Any]] = []
+    for row in fund_rows:
+        item = dict(row)
+        quote = quote_map.get(str(item.get("vt_symbol", "")))
+        if quote is None:
+            merged.append(item)
+            continue
+        last_price = quote.get("last_price")
+        if last_price:
+            item["close"] = float(last_price)
+        turnover = quote.get("turnover_rate")
+        if turnover:
+            item["turnover_rate"] = float(turnover)
+        item["source"] = "quote+tushare"
+        merged.append(item)
+    return merged
 
 
 def iter_trade_date_strs(

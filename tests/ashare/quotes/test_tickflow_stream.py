@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtWidgets
 
-import vnpy_ashare.quotes.tickflow_stream as tickflow_stream_module
-from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tickflow_stream
+import vnpy_ashare.integrations.tickflow.stream as tickflow_stream_module
+from vnpy_ashare.integrations.tickflow import TickflowStreamBridge, can_use_tickflow_stream
 
 
 class TickflowStreamBridgeTests(unittest.TestCase):
@@ -39,7 +39,7 @@ class TickflowStreamBridgeTests(unittest.TestCase):
         mock_stream.unsubscribe.assert_called_once_with("depth", ["600000.SH"])
         mock_stream.subscribe.assert_called_once_with("depth", ["600519.SH"])
 
-    @patch("vnpy_ashare.quotes.tickflow_stream.get_tickflow_client")
+    @patch("vnpy_ashare.integrations.tickflow.stream.get_tickflow_client")
     def test_start_subscribes_pending_symbols(self, mock_get_client: MagicMock) -> None:
         mock_stream = MagicMock()
         mock_client = MagicMock()

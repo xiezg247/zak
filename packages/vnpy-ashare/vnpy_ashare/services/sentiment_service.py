@@ -161,7 +161,7 @@ class SentimentService(BaseService):
         return last_trading_day()
 
     def _compute_for_day(self, day: date) -> FearGreedSnapshot:
-        from vnpy_ashare.screener.data.tushare_client import TushareNotConfiguredError, get_tushare_pro
+        from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 
         trade_date = day.strftime("%Y%m%d")
         warnings: list[str] = []

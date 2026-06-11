@@ -38,6 +38,4 @@ API Key 优先级：`get_tickflow_client(api_key=...)` 参数 → 环境变量 `
 | 模块 | 职责 |
 |------|------|
 | `vnpy_tickflow` | 客户端、K 线分页、datafeed、符号/时间映射 |
-| `vnpy_ashare/quotes/tickflow_client.py` | 实时行情 → `QuoteSnapshot` |
-| `vnpy_ashare/quotes/tickflow_stream.py` | WebSocket 流式行情 |
-| `vnpy_ashare/data/tickflow_klines.py` | UI 分 K → `BarData` |
+| `vnpy_ashare/integrations/tickflow/` | 实时行情、WebSocket、盘口、UI K 线、标的同步 |

@@ -14,9 +14,9 @@ from vnpy_ashare.screener.data.data_source import (
     fetch_fundamental_screening_rows,
     iter_trade_date_strs,
     load_screening_quote_snapshot,
+    merge_quotes_into_fundamentals,
     resolve_result_source_tag,
 )
-from vnpy_ashare.screener.data.factors import merge_quotes_into_fundamentals
 
 CHINA_TZ = ZoneInfo("Asia/Shanghai")
 

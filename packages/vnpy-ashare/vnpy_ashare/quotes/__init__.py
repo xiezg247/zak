@@ -9,7 +9,7 @@ from vnpy_ashare.quotes.provider import (
     get_tickflow_provider,
 )
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
-from vnpy_ashare.quotes.tickflow_client import MARKET_INDICES, fetch_index_ticker
+from vnpy_ashare.integrations.tickflow import MARKET_INDICES, fetch_index_ticker
 
 __all__ = [
     "MARKET_INDICES",

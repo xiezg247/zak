@@ -10,7 +10,7 @@ from typing import Any
 
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.models import EXCHANGE_TO_SUFFIX
-from vnpy_ashare.screener.data.tushare_cache import (
+from vnpy_ashare.integrations.tushare.cache import (
     DATASET_DAILY_BASIC,
     DATASET_INDEX_DAILY,
     DATASET_LIMIT_LIST,
@@ -25,7 +25,7 @@ from vnpy_ashare.screener.data.tushare_cache import (
     set_cached_pct_map,
     set_cached_rows,
 )
-from vnpy_ashare.screener.data.tushare_client import get_tushare_pro
+from vnpy_ashare.integrations.tushare.client import get_tushare_pro
 from vnpy_ashare.storage.app_db import load_universe_rows
 
 
@@ -51,30 +51,6 @@ def vt_symbol_to_ts_code(vt_symbol: str) -> str | None:
     if not suffix:
         return None
     return f"{code}.{suffix}"
-
-
-def merge_quotes_into_fundamentals(
-    fund_rows: list[dict[str, Any]],
-    quote_rows: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
-    quote_map = {str(row.get("vt_symbol", "")): row for row in quote_rows if row.get("vt_symbol")}
-    merged: list[dict[str, Any]] = []
-    for row in fund_rows:
-        item = dict(row)
-        quote = quote_map.get(str(item.get("vt_symbol", "")))
-        if quote is None:
-            merged.append(item)
-            continue
-        last_price = quote.get("last_price")
-        if last_price:
-            item["close"] = float(last_price)
-        turnover = quote.get("turnover_rate")
-        if turnover:
-            item["turnover_rate"] = float(turnover)
-        item["source"] = "quote+tushare"
-        merged.append(item)
-    return merged
 
 
 def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
