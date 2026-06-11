@@ -8,6 +8,10 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
     from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
 
+from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
+
+_RUN_OUTPUT_EXPANDED_KEY = "quotes/run_output/{page_name}/expanded"
+
 
 def run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
     if not page.config.show_run_output_panel:
@@ -16,15 +20,91 @@ def run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
     return panel
 
 
+def _run_output_splitter(page: QuotesPage):
+    from vnpy_ashare.ui.quotes.watchlist_signals.splitter import center_splitter
+
+    return center_splitter(page)
+
+
+def _settings():
+    from vnpy.trader.ui import QtCore
+
+    return QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+
+
+def _coerce_settings_bool(value: object, *, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def load_run_output_expanded(page_name: str) -> bool:
+    settings = _settings()
+    return _coerce_settings_bool(
+        settings.value(_RUN_OUTPUT_EXPANDED_KEY.format(page_name=page_name)),
+        default=False,
+    )
+
+
+def save_run_output_expanded(page_name: str, expanded: bool) -> None:
+    settings = _settings()
+    settings.setValue(_RUN_OUTPUT_EXPANDED_KEY.format(page_name=page_name), expanded)
+
+
+def _apply_splitter_sizes(page: QuotesPage, *, expanded: bool) -> None:
+    del expanded
+    apply_center_splitter_sizes(page)
+
+
+def sync_run_output_expansion(
+    page: QuotesPage,
+    expanded: bool,
+    *,
+    persist: bool = False,
+    adjust_splitter: bool = True,
+) -> None:
+    panel = run_output_panel(page)
+    if panel is None:
+        return
+    panel.set_expanded(expanded, emit=False)
+    if adjust_splitter:
+        _apply_splitter_sizes(page, expanded=expanded)
+    if persist:
+        save_run_output_expanded(page.page_name, expanded)
+
+
+def collapse_run_output(page: QuotesPage) -> None:
+    sync_run_output_expansion(page, False, adjust_splitter=True)
+
+
+def expand_run_output(page: QuotesPage) -> None:
+    sync_run_output_expansion(page, True, adjust_splitter=True)
+
+
+def restore_run_output_expansion(page: QuotesPage) -> None:
+    from vnpy_ashare.ui.quotes.watchlist_signals.splitter import restore_center_splitter
+
+    restore_center_splitter(page)
+
+
+def on_run_output_expansion_changed(page: QuotesPage, expanded: bool) -> None:
+    sync_run_output_expansion(page, expanded, persist=True, adjust_splitter=True)
+
+
 def append_run_log(page: QuotesPage, message: str) -> None:
     panel = run_output_panel(page)
     if panel is not None:
+        if not panel.is_expanded():
+            expand_run_output(page)
         panel.append_log(message)
 
 
 def begin_run_log(page: QuotesPage, title: str) -> None:
     panel = run_output_panel(page)
     if panel is not None:
+        expand_run_output(page)
         panel.begin_task(title)
 
 

@@ -50,9 +50,9 @@ from vnpy_ashare.ui.quotes.quotes_config import (
 )
 from vnpy_ashare.ui.quotes.table_controller import TableController
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
-from vnpy_ashare.ui.quotes.watchlist_signal_controller import WatchlistSignalController
-from vnpy_ashare.ui.quotes.watchlist_signal_settings import (
+from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalConfig,
+    WatchlistSignalController,
     load_watchlist_signal_config,
 )
 from vnpy_ashare.ui.quotes.workers import (
@@ -159,6 +159,8 @@ class QuotesPage(QtWidgets.QWidget):
         self.chart_panel: ChartPanel | None = None
         self.chart_hint: QtWidgets.QLabel | None = None
         self.run_output_panel = None
+        self._center_splitter: QtWidgets.QSplitter | None = None
+        self._run_output_splitter: QtWidgets.QSplitter | None = None
         self._stream_bridge: TickflowStreamBridge | None = None
         self._stream_fallback = False
         self._local_scope = "daily"
@@ -407,31 +409,69 @@ class QuotesPage(QtWidgets.QWidget):
         self._signals.invalidate_cache()
         self._signals.refresh(force=True)
 
-    def _on_signal_config_changed(self) -> None:
-        if not self.config.show_watchlist_signals:
+    def _wire_signal_panel(self) -> None:
+        panel = getattr(self, "signal_panel", None)
+        if panel is None:
             return
-        combo = getattr(self, "signal_strategy_combo", None)
-        fast_spin = getattr(self, "signal_fast_spin", None)
-        slow_spin = getattr(self, "signal_slow_spin", None)
-        if combo is None or fast_spin is None or slow_spin is None:
+        panel.symbols_changed.connect(self._signals.on_symbols_changed)
+        panel.enabled_changed.connect(self._signals.on_panel_enabled_changed)
+        panel.config_changed.connect(self._on_signal_panel_config_changed)
+        panel.refresh_requested.connect(self.refresh_watchlist_signals)
+        panel.row_activated.connect(self._on_signal_panel_row_activated)
+        panel.row_selected.connect(self._on_signal_panel_row_activated)
+        panel.expansion_changed.connect(self._on_signal_panel_expansion_changed)
+
+    def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_signals import apply_center_splitter_sizes
+
+        apply_center_splitter_sizes(self)
+
+    def _on_signal_panel_config_changed(self) -> None:
+        panel = getattr(self, "signal_panel", None)
+        if panel is None:
             return
-        class_name = combo.currentData()
-        if not class_name:
-            class_name = combo.currentText()
-        fast = int(fast_spin.value())
-        slow = int(slow_spin.value())
-        if slow <= fast:
-            slow = fast + 1
-            slow_spin.blockSignals(True)
-            slow_spin.setValue(slow)
-            slow_spin.blockSignals(False)
-        self._signals.apply_config(
-            WatchlistSignalConfig(
-                class_name=str(class_name),
-                fast_window=fast,
-                slow_window=slow,
-            )
-        )
+        self._signals.apply_config(panel.read_config())
+
+    def _on_signal_panel_row_activated(self, vt_symbol: str) -> None:
+        item = self.find_stock_item(vt_symbol)
+        if item is None:
+            return
+        self._select_stock_key((item.symbol, item.exchange))
+        snap = self.signal_cache.get(vt_symbol)
+        if snap is not None and self.chart_panel is not None:
+            self.chart_panel.apply_signal_reference(snap)
+
+    def add_selection_to_signal_panel(self) -> None:
+        panel = getattr(self, "signal_panel", None)
+        if panel is None:
+            return
+        items = self._table.selected_items()
+        if not items:
+            self._toast.warning("请先在自选表中选择标的")
+            return
+        added, skipped = panel.add_symbols([item.vt_symbol for item in items])
+        if added:
+            from vnpy_ashare.ui.quotes.watchlist_signals import SIGNAL_PANEL_MAX_SYMBOLS
+
+            message = f"已加入信号区 {added} 只"
+            if skipped:
+                message += f"，{skipped} 只因已达上限 {SIGNAL_PANEL_MAX_SYMBOLS} 未加入"
+            self._toast.success(message)
+        elif skipped:
+            from vnpy_ashare.ui.quotes.watchlist_signals import SIGNAL_PANEL_MAX_SYMBOLS
+
+            self._toast.warning(f"信号区已满（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只），请先移出后再加入")
+        else:
+            self._toast.info("所选标的已在信号区")
+
+    def find_stock_item(self, vt_symbol: str) -> StockItem | None:
+        target = (vt_symbol or "").strip()
+        if not target:
+            return None
+        for item in self.all_stocks:
+            if item.vt_symbol == target:
+                return item
+        return None
 
     def _refresh_table_quotes(self) -> None:
         self._table.refresh_table_quotes()

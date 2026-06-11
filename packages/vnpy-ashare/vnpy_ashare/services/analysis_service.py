@@ -24,6 +24,8 @@ from vnpy_ashare.ai.context_store import (
     set_diagnose_result,
 )
 from vnpy_ashare.ai.symbol import parse_stock_symbol
+from vnpy_ashare.data.download_concurrency import run_parallel_map
+from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.screener.run_diff import compute_run_diff
 from vnpy_ashare.screener.run_store import find_previous_run_by_recipe, get_run
@@ -400,19 +402,31 @@ class AnalysisService(BaseService):
         scope: str = "daily",
     ) -> dict[str, SignalSnapshot]:
         """批量计算策略信号（自选池 Worker 调用）。"""
-        results: dict[str, SignalSnapshot] = {}
-        for symbol in symbols:
-            payload = self._build_signal_payload(
-                symbol,
-                class_name=class_name,
-                lookback=lookback,
-                fast_window=fast_window,
-                slow_window=slow_window,
-                scope=scope,
-            )
+        if not symbols:
+            return {}
+
+        payload_kwargs = {
+            "class_name": class_name,
+            "lookback": lookback,
+            "fast_window": fast_window,
+            "slow_window": slow_window,
+            "scope": scope,
+        }
+
+        def worker(symbol: str) -> tuple[str, SignalSnapshot] | None:
+            payload = self._build_signal_payload(symbol, **payload_kwargs)
             if payload is None:
+                return None
+            return payload["vt_symbol"], self._payload_to_signal_snapshot(payload)
+
+        workers = pattern_load_max_workers(item_count=len(symbols))
+        pairs = run_parallel_map(symbols, worker, max_workers=workers)
+        results: dict[str, SignalSnapshot] = {}
+        for item in pairs:
+            if item is None:
                 continue
-            results[payload["vt_symbol"]] = self._payload_to_signal_snapshot(payload)
+            vt_symbol, snapshot = item
+            results[vt_symbol] = snapshot
         return results
 
     def _build_signal_payload(

@@ -799,39 +799,3 @@ class BatchFillWorker(QtCore.QThread):
                 self.failed.emit("已取消")
                 return
             self.failed.emit(str(ex))
-
-
-class WatchlistSignalWorker(QtCore.QThread):
-    """批量计算自选池策略信号。"""
-
-    finished = QtCore.Signal(object)
-    failed = QtCore.Signal(str)
-
-    def __init__(
-        self,
-        analysis_service,
-        *,
-        symbols: list[str],
-        class_name: str = "AshareDoubleMaStrategy",
-        fast_window: int = 10,
-        slow_window: int = 20,
-        parent: QtCore.QObject | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self.analysis_service = analysis_service
-        self.symbols = list(symbols)
-        self.class_name = class_name
-        self.fast_window = fast_window
-        self.slow_window = slow_window
-
-    def run(self) -> None:
-        try:
-            cache = self.analysis_service.batch_strategy_signals(
-                self.symbols,
-                class_name=self.class_name,
-                fast_window=self.fast_window,
-                slow_window=self.slow_window,
-            )
-            self.finished.emit(cache)
-        except Exception as ex:
-            self.failed.emit(str(ex))

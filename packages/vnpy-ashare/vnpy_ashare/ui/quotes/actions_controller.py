@@ -364,15 +364,32 @@ class ActionsController:
         self._ask_ai(f'请分析 {title} 的近期技术形态。请调用 technical_snapshot(symbol="{item.vt_symbol}")，基于工具返回的均线、量比、区间涨跌等数据做解读。')
 
     def ask_ai_for_signals(self) -> None:
+        page = self._p
         title = self._item_title()
         if title is None:
             return
-        item = self._p.current_item
+        item = page.current_item
         assert item is not None
+        quote = page.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        fast_window = 10
+        slow_window = 20
+        class_name = "AshareDoubleMaStrategy"
+        if page.config.show_watchlist_signals and page.page_name == "自选":
+            cfg = page.signal_config.normalized()
+            fast_window = cfg.fast_window
+            slow_window = cfg.slow_window
+            class_name = cfg.class_name
+        from vnpy_ashare.ai.context import build_signals_ai_prompt
+
         self._ask_ai(
-            f"请分析 {title} 的双均线（MA10/MA20）策略信号。"
-            f'请调用 list_strategy_signals(symbol="{item.vt_symbol}")，'
-            "基于工具返回的金叉/死叉信号和当前均线状态做解读。"
+            build_signals_ai_prompt(
+                item.vt_symbol,
+                name,
+                class_name=class_name,
+                fast_window=fast_window,
+                slow_window=slow_window,
+            )
         )
 
     def ask_ai_for_trend(self) -> None:

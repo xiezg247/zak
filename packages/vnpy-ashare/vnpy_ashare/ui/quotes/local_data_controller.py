@@ -80,6 +80,12 @@ def should_apply_loaded_bars(
     return True
 
 
+def _refresh_watchlist_signals(page: QuotesPage, vt_symbols: list[str]) -> None:
+    if not page.config.show_watchlist_signals:
+        return
+    page._signals.refresh_symbols(vt_symbols)
+
+
 class LocalDataController:
     """本地 K 线元数据、下载、缺口检查与图表加载。"""
 
@@ -224,6 +230,8 @@ class LocalDataController:
                     suffix = "…" if len(result.failed) > 8 else ""
                     detail = f"失败 {len(result.failed)} 只：{preview}{suffix}"
                 complete_run_log(page, result.message, detail=detail)
+            if isinstance(result, BatchFillResult) and (result.success or result.bars_added):
+                _refresh_watchlist_signals(page, [item.vt_symbol for item in items])
 
         def on_failed(msg: str) -> None:
             if page._batch_fill_worker is worker:
@@ -310,6 +318,10 @@ class LocalDataController:
                     suffix = "…" if len(result.failed) > 8 else ""
                     detail = f"失败 {len(result.failed)} 只：{preview}{suffix}"
                 complete_run_log(page, result.message, detail=detail)
+            if isinstance(result, BatchGapFillResult) and result.bars_added:
+                panel = getattr(page, "signal_panel", None)
+                if panel is not None:
+                    _refresh_watchlist_signals(page, panel.symbols)
 
         def on_failed(msg: str) -> None:
             if page._batch_gap_fill_worker is worker:
@@ -755,6 +767,7 @@ class LocalDataController:
             page._toast.success(summary)
             if page.config.show_run_output_panel:
                 complete_run_log(page, summary)
+            _refresh_watchlist_signals(page, [item.vt_symbol])
 
         def on_failed(msg: str) -> None:
             if page._download_worker is worker:

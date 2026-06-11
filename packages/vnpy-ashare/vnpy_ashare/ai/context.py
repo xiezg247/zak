@@ -144,11 +144,23 @@ def build_technical_ai_prompt(vt_symbol: str, name: str = "") -> str:
     return f'请分析 {title} 的近期技术形态。请调用 technical_snapshot(symbol="{vt_symbol}")，基于工具返回的均线、量比、区间涨跌等数据做解读。'
 
 
-def build_signals_ai_prompt(vt_symbol: str, name: str = "") -> str:
+def build_signals_ai_prompt(
+    vt_symbol: str,
+    name: str = "",
+    *,
+    class_name: str = "AshareDoubleMaStrategy",
+    fast_window: int = 10,
+    slow_window: int = 20,
+) -> str:
     """生成双均线策略信号分析预填文案（调用 list_strategy_signals）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    fast = max(2, int(fast_window or 10))
+    slow = max(fast + 1, int(slow_window or 20))
     return (
-        f'请分析 {title} 的双均线（MA10/MA20）策略信号。请调用 list_strategy_signals(symbol="{vt_symbol}")，基于工具返回的金叉/死叉信号和当前均线状态做解读。'
+        f"请分析 {title} 的双均线（MA{fast}/MA{slow}）策略信号。"
+        f'请调用 list_strategy_signals(symbol="{vt_symbol}", class_name="{class_name}", '
+        f"fast_window={fast}, slow_window={slow})，"
+        "基于工具返回的金叉/死叉信号和当前均线状态做解读。"
     )
 
 

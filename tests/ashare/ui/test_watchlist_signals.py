@@ -9,6 +9,12 @@ from strategies.registry import list_signal_strategy_metas
 from vnpy_ashare.ui.quotes.watchlist_signal_settings import (
     DEFAULT_CLASS,
     WatchlistSignalConfig,
+    load_signal_panel_enabled,
+    load_signal_panel_expanded,
+    load_signal_panel_symbols,
+    save_signal_panel_enabled,
+    save_signal_panel_expanded,
+    save_signal_panel_symbols,
 )
 
 
@@ -49,6 +55,230 @@ class StrategyRegistrySignalTests(unittest.TestCase):
     def test_double_ma_supports_signals(self) -> None:
         metas = list_signal_strategy_metas()
         self.assertTrue(any(meta.class_name == DEFAULT_CLASS for meta in metas))
+
+
+class SignalPanelSettingsTests(unittest.TestCase):
+    def test_panel_symbols_roundtrip(self) -> None:
+        save_signal_panel_symbols(["600000.SSE", "000001.SZSE", "600000.SSE"])
+        self.assertEqual(load_signal_panel_symbols(), ["600000.SSE", "000001.SZSE"])
+
+    def test_panel_symbols_respects_max(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_signal_settings import (
+            SIGNAL_PANEL_MAX_SYMBOLS,
+            normalize_signal_panel_symbols,
+        )
+
+        symbols = [f"60000{i}.SSE" for i in range(15)]
+        self.assertEqual(len(normalize_signal_panel_symbols(symbols)), SIGNAL_PANEL_MAX_SYMBOLS)
+        save_signal_panel_symbols(symbols)
+        self.assertEqual(len(load_signal_panel_symbols()), SIGNAL_PANEL_MAX_SYMBOLS)
+
+    def test_panel_defaults(self) -> None:
+        save_signal_panel_enabled(True)
+        save_signal_panel_expanded(True)
+        self.assertTrue(load_signal_panel_enabled())
+        self.assertTrue(load_signal_panel_expanded())
+
+
+class RunOutputSettingsTests(unittest.TestCase):
+    def test_run_output_expanded_roundtrip(self) -> None:
+        from vnpy_ashare.ui.quotes.run_log import load_run_output_expanded, save_run_output_expanded
+
+        save_run_output_expanded("自选", True)
+        self.assertTrue(load_run_output_expanded("自选"))
+        save_run_output_expanded("自选", False)
+        self.assertFalse(load_run_output_expanded("自选"))
+
+
+class SignalMissingKlineTests(unittest.TestCase):
+    def test_detects_kline_warning(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_missing_kline
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="",
+            signal="na",
+            signal_label="—",
+            signal_date=None,
+            ref_buy_price=None,
+            ref_sell_price=None,
+            strength=None,
+            reason_summary="",
+            reasons=(),
+            warnings=("本地 K 线不足，请先在数据管理页下载日 K",),
+        )
+        self.assertTrue(signal_missing_kline(snap))
+
+    def test_ignores_empty_snapshot(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import signal_missing_kline
+
+        self.assertFalse(signal_missing_kline(None))
+
+
+class SignalAsOfStaleTests(unittest.TestCase):
+    def test_stale_when_bar_end_differs(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_as_of_stale
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-06",
+            signal="hold",
+            signal_label="观望",
+            signal_date=None,
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=50.0,
+            reason_summary="测试",
+            reasons=("测试",),
+            warnings=(),
+        )
+        self.assertTrue(signal_as_of_stale(snap, bar_end_date="2026-06-09"))
+
+    def test_fresh_when_bar_end_matches(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_as_of_stale
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-09",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-08",
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=80.0,
+            reason_summary="测试",
+            reasons=("测试",),
+            warnings=(),
+        )
+        self.assertFalse(signal_as_of_stale(snap, bar_end_date="2026-06-09"))
+
+    def test_missing_kline_not_stale(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_as_of_stale
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="",
+            signal="na",
+            signal_label="—",
+            signal_date=None,
+            ref_buy_price=None,
+            ref_sell_price=None,
+            strength=None,
+            reason_summary="",
+            reasons=(),
+            warnings=("本地 K 线不足，请先在数据管理页下载日 K",),
+        )
+        self.assertFalse(signal_as_of_stale(snap, bar_end_date="2026-06-09"))
+
+
+class SignalRowSortTests(unittest.TestCase):
+    def test_buy_ranks_above_hold(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_row_sort_key
+
+        buy = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-09",
+            signal="buy",
+            signal_label="买入",
+            signal_date=None,
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=60.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )
+        hold = SignalSnapshot(
+            vt_symbol="000001.SZSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-09",
+            signal="hold",
+            signal_label="观望",
+            signal_date=None,
+            ref_buy_price=None,
+            ref_sell_price=None,
+            strength=90.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )
+        self.assertGreater(signal_row_sort_key(buy), signal_row_sort_key(hold))
+
+
+class SignalDiskCacheTests(unittest.TestCase):
+    def setUp(self) -> None:
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        self._tmp = Path(tempfile.mkdtemp())
+        self._db_path = self._tmp / "watchlist_signal_cache.db"
+        self._patcher = patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.cache._cache_db_path",
+            return_value=self._db_path,
+        )
+        self._patcher.start()
+
+    def tearDown(self) -> None:
+        self._patcher.stop()
+        if self._db_path.exists():
+            self._db_path.unlink()
+        self._tmp.rmdir()
+
+    def test_disk_cache_roundtrip(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-09",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-08",
+            ref_buy_price=10.5,
+            ref_sell_price=11.2,
+            strength=72.0,
+            reason_summary="金叉",
+            reasons=("MA 金叉",),
+            warnings=(),
+        )
+        cache = WatchlistSignalDiskCache()
+        config_key = WatchlistSignalConfig(fast_window=10, slow_window=20).cache_key()
+        cache.put(snap, config_key=config_key, bar_as_of="2026-06-09")
+        loaded = cache.get("600000.SSE", config_key, "2026-06-09")
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        self.assertEqual(loaded.signal, "buy")
+        self.assertEqual(loaded.ref_buy_price, 10.5)
+
+    def test_disk_cache_miss_when_bar_as_of_changes(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-06",
+            signal="hold",
+            signal_label="观望",
+            signal_date=None,
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=40.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )
+        cache = WatchlistSignalDiskCache()
+        config_key = WatchlistSignalConfig().cache_key()
+        cache.put(snap, config_key=config_key, bar_as_of="2026-06-06")
+        self.assertIsNone(cache.get("600000.SSE", config_key, "2026-06-09"))
 
 
 if __name__ == "__main__":

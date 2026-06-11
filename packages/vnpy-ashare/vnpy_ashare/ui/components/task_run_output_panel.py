@@ -10,16 +10,19 @@ from vnpy_common.ui.theme import theme_manager
 class TaskRunOutputPanel(QtWidgets.QWidget):
     """最近一次任务摘要 + 过程日志。"""
 
+    expansion_changed = QtCore.Signal(bool)
+
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
         *,
         title: str = "运行输出",
-        log_placeholder: str = "暂无日志",
+        log_placeholder: str = "暂无执行日志",
         object_name: str = "TaskRunOutputPanel",
         section_label_object_name: str = "TaskSectionLabel",
         summary_object_name: str = "TaskRunSummary",
         log_view_object_name: str = "TaskRunLogView",
+        expanded: bool = False,
     ) -> None:
         super().__init__(parent)
         self.setObjectName(object_name)
@@ -28,22 +31,32 @@ class TaskRunOutputPanel(QtWidgets.QWidget):
         self._section_label_object_name = section_label_object_name
         self._summary_object_name = summary_object_name
         self._log_view_object_name = log_view_object_name
+        self._expanded = expanded
         self._build_ui()
         theme_manager().bind_stylesheet(self)
+        self.set_expanded(expanded, emit=False)
 
     def _build_ui(self) -> None:
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 8, 0, 0)
         root.setSpacing(6)
 
+        header = QtWidgets.QHBoxLayout()
+        header.setSpacing(6)
+        self._collapse_button = QtWidgets.QToolButton(self)
+        self._collapse_button.setCheckable(True)
+        self._collapse_button.clicked.connect(self._on_collapse_toggled)
+        header.addWidget(self._collapse_button)
+
         title = QtWidgets.QLabel(self._title)
         title.setObjectName(self._section_label_object_name)
-        root.addWidget(title)
+        header.addWidget(title)
+        header.addStretch()
+        root.addLayout(header)
 
         self._summary_label = QtWidgets.QLabel("")
         self._summary_label.setObjectName(self._summary_object_name)
         self._summary_label.setWordWrap(True)
-        self._summary_label.hide()
         root.addWidget(self._summary_label)
 
         self._log_view = QtWidgets.QPlainTextEdit()
@@ -55,9 +68,49 @@ class TaskRunOutputPanel(QtWidgets.QWidget):
         self._log_view.setPlaceholderText(self._log_placeholder)
         root.addWidget(self._log_view, stretch=1)
 
+    def is_expanded(self) -> bool:
+        return self._expanded
+
+    def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
+        if self._expanded == expanded:
+            self._sync_collapse_button()
+            return
+        self._expanded = expanded
+        self._sync_collapse_button()
+        if expanded:
+            self._summary_label.setVisible(bool(self._summary_label.text()))
+            self._log_view.show()
+            self.setMaximumHeight(16777215)
+            self.setMinimumHeight(120)
+        else:
+            self._summary_label.hide()
+            self._log_view.hide()
+            self.setMinimumHeight(28)
+            self.setMaximumHeight(36)
+        if emit:
+            self.expansion_changed.emit(expanded)
+
+    def expand(self) -> None:
+        self.set_expanded(True)
+
+    def collapse(self) -> None:
+        self.set_expanded(False)
+
+    def _sync_collapse_button(self) -> None:
+        self._collapse_button.blockSignals(True)
+        self._collapse_button.setChecked(self._expanded)
+        self._collapse_button.setArrowType(
+            QtCore.Qt.ArrowType.DownArrow if self._expanded else QtCore.Qt.ArrowType.RightArrow
+        )
+        self._collapse_button.blockSignals(False)
+
+    def _on_collapse_toggled(self, expanded: bool) -> None:
+        self.set_expanded(expanded)
+
     def _show_summary(self, text: str) -> None:
         self._summary_label.setText(text)
-        self._summary_label.setVisible(bool(text))
+        if self._expanded:
+            self._summary_label.setVisible(bool(text))
 
     def set_summary(self, text: str) -> None:
         self._show_summary(text)

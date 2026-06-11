@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.domain.models import StockItem
-from vnpy_ashare.services.watchlist_service import WatchlistService
+from vnpy_ashare.services.watchlist_service import WATCHLIST_MAX_ITEMS, WatchlistService
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
@@ -45,7 +45,7 @@ class WatchlistController:
                 page.add_watchlist_button.setEnabled(False)
             else:
                 key = (item.symbol, item.exchange)
-                page.add_watchlist_button.setEnabled(key not in self.keys)
+                page.add_watchlist_button.setEnabled(key not in self.keys and len(self.keys) < WATCHLIST_MAX_ITEMS)
         if page.config.show_remove_watchlist_button:
             page.remove_watchlist_button.setEnabled(item is not None)
         if page.config.show_watchlist_move_buttons:
@@ -66,7 +66,11 @@ class WatchlistController:
         quote = self._page.quote_map.get(item.tickflow_symbol)
         name = quote.name if quote and quote.name else item.name
         if not service.add(item.symbol, item.exchange, name):
-            self._page.status_label.setText(f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已在自选池")
+            reason = service.add_failure_reason(item.symbol, item.exchange)
+            if reason == "full":
+                self._page.status_label.setText(f"自选池已满（最多 {WATCHLIST_MAX_ITEMS} 只）")
+            else:
+                self._page.status_label.setText(f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已在自选池")
             return
         self.refresh_keys()
         self._page._update_action_buttons()

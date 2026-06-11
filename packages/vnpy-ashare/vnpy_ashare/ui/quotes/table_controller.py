@@ -17,11 +17,7 @@ from vnpy_ashare.domain.board import matches_board
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.domain.quote_time import format_batch_updated_at
-from vnpy_ashare.domain.signal_snapshot import (
-    SIGNAL_COLUMN_KEYS,
-    signal_cell_color,
-    signal_cell_text,
-)
+from vnpy_ashare.domain.signal_snapshot import SIGNAL_COLUMN_KEYS
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.quotes.market_display import slice_market_display, sort_market_items
 from vnpy_ashare.ui.quotes.quote_columns import (
@@ -74,6 +70,17 @@ class TableController:
     def _view(self) -> QtWidgets.QTableView:
         return self._p.market_table
 
+    def _signal_column_keys(self) -> frozenset[str]:
+        if self._p.config.show_watchlist_signals:
+            return SIGNAL_COLUMN_KEYS
+        return frozenset()
+
+    def _strip_signal_columns(self, keys: list[str]) -> list[str]:
+        blocked = self._signal_column_keys()
+        if not blocked:
+            return keys
+        return [key for key in keys if key not in blocked]
+
     def init_columns(self) -> None:
         page = self._p
         if page.config.column_configurable:
@@ -82,6 +89,7 @@ class TableController:
                 default_main = [k for k in DEFAULT_WATCHLIST_COLUMNS if k in all_keys]
             else:
                 default_main = [k for k in MARKET_VISIBLE_COLUMNS if k in all_keys]
+            default_main = self._strip_signal_columns(default_main)
             for required in ("index", "symbol", "name"):
                 if required in all_keys and required not in default_main:
                     default_main.insert(0, required)
@@ -138,6 +146,7 @@ class TableController:
             saved_cols = [k for k in parts[0].split(",") if k]
             all_keys = {c.key for c in QUOTE_TABLE_COLUMNS}
             valid_cols = [k for k in saved_cols if k in all_keys and k != "index"]
+            valid_cols = self._strip_signal_columns(valid_cols)
             for required in ("symbol", "name"):
                 if required in all_keys and required not in valid_cols:
                     valid_cols.insert(0, required)
@@ -407,6 +416,15 @@ class TableController:
         item = self._p.current_item
         return (item.symbol, item.exchange)
 
+    def selected_items(self) -> list[StockItem]:
+        rows = self._view().selectionModel().selectedRows()
+        items: list[StockItem] = []
+        for model_index in rows:
+            item = self.stock_at_row(model_index.row())
+            if item is not None:
+                items.append(item)
+        return items
+
     def select_stock_key(self, key: tuple[str, Exchange]) -> None:
         view = self._view()
         for row in range(self._model().row_count()):
@@ -540,27 +558,6 @@ class TableController:
             parts.append(f"平 {flat_count}")
         if up_count:
             parts.append(f" | 均涨幅 {avg_pct:+.2f}%")
-        if page.config.show_watchlist_signals and page.signal_cache:
-            buy_n = sell_n = hold_n = 0
-            for item in page.display_stocks:
-                snap = page.signal_cache.get(item.vt_symbol)
-                if snap is None:
-                    continue
-                if snap.signal == "buy":
-                    buy_n += 1
-                elif snap.signal == "sell":
-                    sell_n += 1
-                elif snap.signal == "hold":
-                    hold_n += 1
-            if buy_n or sell_n or hold_n:
-                sig_parts: list[str] = []
-                if buy_n:
-                    sig_parts.append(f'<span style="color:{colors.rise}">买信号 {buy_n}</span>')
-                if sell_n:
-                    sig_parts.append(f'<span style="color:{colors.fall}">卖信号 {sell_n}</span>')
-                if hold_n:
-                    sig_parts.append(f"观望 {hold_n}")
-                parts.append(" | ".join(sig_parts))
         page.stats_label.setText("  |  ".join(parts))
 
     def visible_market_items(self) -> list[StockItem]:
@@ -642,6 +639,9 @@ class TableController:
         if sorting_enabled:
             view.setSortingEnabled(True)
         self.schedule_stats_update()
+        panel = getattr(page, "signal_panel", None)
+        if panel is not None and page.config.show_watchlist_signals:
+            panel.render()
 
     def refresh_row_for_item(self, item: StockItem) -> None:
         page = self._p
@@ -698,11 +698,6 @@ class TableController:
             return item.exchange.value
         if column_key == "name":
             return (quote.name if quote and quote.name else item.name).lower()
-        page = self._p
-        if column_key in SIGNAL_COLUMN_KEYS and page.config.show_watchlist_signals:
-            snapshot = page.signal_cache.get(item.vt_symbol)
-            _, sort_key = signal_cell_text(column_key, snapshot, quote=quote)
-            return sort_key
         if quote is None:
             return float("-inf")
         numeric_map = {
@@ -791,20 +786,11 @@ class TableController:
         filtered_values: list[str] = []
         filtered_price_cols: set[int] = set()
         filtered_sort_keys: list[float | str] = []
-        snapshot = page.signal_cache.get(item.vt_symbol) if page.config.show_watchlist_signals else None
-        signal_tooltip = snapshot.tooltip if snapshot else None
         for new_col, src_idx in enumerate(visible_indices):
             if src_idx < len(all_keys):
                 col_key = all_keys[src_idx]
             else:
                 col_key = ""
-            if col_key in SIGNAL_COLUMN_KEYS and page.config.show_watchlist_signals:
-                text, sort_key = signal_cell_text(col_key, snapshot, quote=quote)
-                filtered_values.append(text)
-                if col_key in ("ref_buy_price", "ref_sell_price", "dist_buy_pct") and text != "—":
-                    filtered_price_cols.add(new_col)
-                filtered_sort_keys.append(sort_key)
-                continue
             if src_idx < len(values):
                 filtered_values.append(values[src_idx])
             else:
@@ -839,28 +825,15 @@ class TableController:
             cell_color = None
             if quote and col in filtered_price_cols:
                 cell_color = color
-            if page.config.show_watchlist_signals and col < len(visible_indices):
-                src_idx = visible_indices[col]
-                if src_idx < len(all_keys):
-                    col_key = all_keys[src_idx]
-                    sig_color = signal_cell_color(col_key, snapshot, colors=colors)
-                    if sig_color is not None:
-                        cell_color = sig_color
             if status_col is not None and col == status_col and status is not None:
                 cell_color = self._status_color(status)
             sort_key = filtered_sort_keys[col] if col < len(filtered_sort_keys) else text
-            tooltip = None
-            if page.config.show_watchlist_signals and col < len(visible_indices):
-                src_idx = visible_indices[col]
-                if src_idx < len(all_keys) and all_keys[src_idx] in SIGNAL_COLUMN_KEYS:
-                    tooltip = signal_tooltip
             cells.append(
                 QuoteCell(
                     text=text,
                     sort_key=sort_key if sortable else "",
                     color=cell_color,
                     stock_item=item if col == 0 else None,
-                    tooltip=tooltip,
                 )
             )
         return cells
@@ -935,9 +908,17 @@ class TableController:
                 page.refresh_depth()
         page._sync_stream_depth_subscription()
         page._emit_ai_context()
-        if page.config.show_watchlist_signals and page.chart_panel is not None:
-            snap = page.signal_cache.get(item.vt_symbol)
-            page.chart_panel.apply_signal_reference(snap)
+        if page.config.show_watchlist_signals:
+            panel = getattr(page, "signal_panel", None)
+            if panel is not None:
+                if item.vt_symbol in panel.symbols:
+                    panel.highlight_symbol(item.vt_symbol)
+                else:
+                    panel.highlight_symbol(None)
+            if page.chart_panel is not None and page.current_item is not None:
+                snap = page.signal_cache.get(page.current_item.vt_symbol)
+                if snap is not None:
+                    page.chart_panel.apply_signal_reference(snap)
 
     def show_column_menu(self) -> None:
         page = self._p
@@ -946,6 +927,8 @@ class TableController:
 
         for key in [c.key for c in QUOTE_TABLE_COLUMNS]:
             if key == "index":
+                continue
+            if key in self._signal_column_keys():
                 continue
             action = menu.addAction(col_map.get(key, key))
             action.setCheckable(True)

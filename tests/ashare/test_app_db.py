@@ -54,6 +54,16 @@ class TestWatchlistDb(unittest.TestCase):
             ["600519", "000001", "600000"],
         )
 
+    def test_watchlist_max_items(self) -> None:
+        for index in range(app_db.WATCHLIST_MAX_ITEMS):
+            symbol = f"{600000 + index}"
+            self.assertTrue(app_db.add_watchlist_item(symbol, Exchange.SSE, f"测试{index}"))
+        self.assertEqual(app_db.watchlist_item_count(), app_db.WATCHLIST_MAX_ITEMS)
+        self.assertTrue(app_db.watchlist_at_capacity())
+        self.assertFalse(app_db.add_watchlist_item("999999", Exchange.SSE, "溢出"))
+        self.assertEqual(app_db.watchlist_add_failure_reason("999999", Exchange.SSE), "full")
+        self.assertEqual(app_db.watchlist_add_failure_reason("600000", Exchange.SSE), "duplicate")
+
     def test_load_universe_page(self) -> None:
         app_db.save_universe_rows(
             [

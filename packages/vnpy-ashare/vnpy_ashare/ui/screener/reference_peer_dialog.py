@@ -257,6 +257,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
             page_notify(self, "请先勾选要加入自选的标的")
             return
         added = skipped = 0
+        full_hit = False
         for row in selected:
             item = parse_stock_symbol(str(row.get("vt_symbol", "")))
             if item is None:
@@ -266,10 +267,20 @@ class ReferencePeerDialog(QtWidgets.QDialog):
             if self._watchlist_add(item.symbol, item.exchange, name):
                 added += 1
             else:
+                from vnpy_ashare.storage.app_db import watchlist_add_failure_reason
+
+                reason = watchlist_add_failure_reason(item.symbol, item.exchange)
+                if reason == "full":
+                    full_hit = True
+                    break
                 skipped += 1
         message = f"新加入 {added} 只"
         if skipped:
             message += f" · 跳过 {skipped} 只"
+        if full_hit:
+            from vnpy_ashare.storage.app_db import WATCHLIST_MAX_ITEMS
+
+            message += f" · 自选已满（最多 {WATCHLIST_MAX_ITEMS} 只）"
         self._summary_label.setText(message)
 
     def closeEvent(self, event) -> None:

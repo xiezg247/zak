@@ -181,7 +181,12 @@ class QuotesPageShell:
         page.refresh_signals_button = QtWidgets.QPushButton("刷新信号", page)
         page.refresh_signals_button.setObjectName("SecondaryButton")
         page.refresh_signals_button.clicked.connect(page.refresh_watchlist_signals)
-        page.refresh_signals_button.setVisible(page.config.show_watchlist_signals)
+        page.refresh_signals_button.setVisible(False)
+
+        page.add_signal_panel_button = QtWidgets.QPushButton("加入信号区", page)
+        page.add_signal_panel_button.setObjectName("SecondaryButton")
+        page.add_signal_panel_button.clicked.connect(page.add_selection_to_signal_panel)
+        page.add_signal_panel_button.setVisible(page.config.show_watchlist_signals)
 
         page.diagnose_button = QtWidgets.QPushButton("诊断", page)
         page.diagnose_button.clicked.connect(page._actions.run_diagnose_for_selected)
@@ -266,44 +271,7 @@ class QuotesPageShell:
         if page.config.show_batch_backtest_button:
             more_actions.append(("批量回测", page.batch_backtest_button))
         if page.config.show_watchlist_signals:
-            from strategies.registry import get_strategy_meta
-            from strategies.signals import list_supported_signal_strategies
-
-            toolbar.addWidget(_toolbar_separator())
-            toolbar.addWidget(QtWidgets.QLabel("信号"))
-            page.signal_strategy_combo = QtWidgets.QComboBox(page)
-            apply_toolbar_combo_style(page.signal_strategy_combo)
-            for class_name in list_supported_signal_strategies():
-                meta = get_strategy_meta(class_name)
-                label = meta.title if meta else class_name
-                page.signal_strategy_combo.addItem(label, class_name)
-            page.signal_strategy_combo.blockSignals(True)
-            index = page.signal_strategy_combo.findData(page.signal_config.class_name)
-            if index >= 0:
-                page.signal_strategy_combo.setCurrentIndex(index)
-            page.signal_strategy_combo.blockSignals(False)
-            page.signal_strategy_combo.currentIndexChanged.connect(page._on_signal_config_changed)
-
-            page.signal_fast_spin = QtWidgets.QSpinBox(page)
-            page.signal_fast_spin.setRange(2, 60)
-            page.signal_fast_spin.setPrefix("快 ")
-            page.signal_fast_spin.blockSignals(True)
-            page.signal_fast_spin.setValue(page.signal_config.fast_window)
-            page.signal_fast_spin.blockSignals(False)
-            page.signal_fast_spin.valueChanged.connect(page._on_signal_config_changed)
-
-            page.signal_slow_spin = QtWidgets.QSpinBox(page)
-            page.signal_slow_spin.setRange(3, 120)
-            page.signal_slow_spin.setPrefix("慢 ")
-            page.signal_slow_spin.blockSignals(True)
-            page.signal_slow_spin.setValue(page.signal_config.slow_window)
-            page.signal_slow_spin.blockSignals(False)
-            page.signal_slow_spin.valueChanged.connect(page._on_signal_config_changed)
-
-            toolbar.addWidget(page.signal_strategy_combo)
-            toolbar.addWidget(page.signal_fast_spin)
-            toolbar.addWidget(page.signal_slow_spin)
-            more_actions.append(("刷新信号", page.refresh_signals_button))
+            toolbar.addWidget(page.add_signal_panel_button)
         if page.config.show_diagnose_button:
             toolbar.addWidget(page.diagnose_button)
         if page.config.column_configurable:
@@ -352,7 +320,10 @@ class QuotesPageShell:
         page.market_table.setObjectName("MarketTable")
         page.market_table.setModel(page.quote_table_model)
         page.market_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        if page.config.show_watchlist_signals:
+            page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        else:
+            page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         page.market_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         page.market_table.verticalHeader().setVisible(False)
         page.market_table.setAlternatingRowColors(True)
@@ -456,33 +427,56 @@ class QuotesPageShell:
             center_layout.addWidget(toolbar_host)
             if page.stats_label is not None:
                 center_layout.addWidget(page.stats_label)
-            if page.config.show_run_output_panel:
-                run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
-                page.run_output_panel = TaskRunOutputPanel(
-                    title="运行输出",
-                    log_placeholder="暂无执行日志",
-                    object_name=f"{run_prefix}RunOutputPanel",
-                    section_label_object_name=f"{run_prefix}SectionLabel",
-                    summary_object_name=f"{run_prefix}RunSummary",
-                    log_view_object_name=f"{run_prefix}RunLogView",
-                )
-                page.run_output_panel.setMinimumHeight(120)
-                page._market_table_host = MarketTableHost(
-                    page.market_table,
-                    external_scrollbar=False,
-                )
+            page._market_table_host = MarketTableHost(
+                page.market_table,
+                external_scrollbar=False,
+            )
+            use_center_split = page.config.show_watchlist_signals or page.config.show_run_output_panel
+            if use_center_split:
+                from vnpy_ashare.ui.quotes.watchlist_signals import restore_center_splitter
+
                 center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
                 center_split.addWidget(page._market_table_host)
-                center_split.addWidget(page.run_output_panel)
-                center_split.setStretchFactor(0, 3)
-                center_split.setStretchFactor(1, 1)
+                center_split.setStretchFactor(0, 4)
+                split_index = 1
+                if page.config.show_watchlist_signals:
+                    from vnpy_ashare.ui.quotes.watchlist_signals import WatchlistSignalPanel
+
+                    page.signal_panel = WatchlistSignalPanel(page)
+                    page.signal_panel.setMinimumHeight(120)
+                    center_split.addWidget(page.signal_panel)
+                    center_split.setStretchFactor(split_index, 1)
+                    split_index += 1
+                if page.config.show_run_output_panel:
+                    from vnpy_ashare.ui.quotes.run_log import (
+                        load_run_output_expanded,
+                        on_run_output_expansion_changed,
+                    )
+
+                    run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
+                    page.run_output_panel = TaskRunOutputPanel(
+                        title="运行输出",
+                        log_placeholder="暂无执行日志",
+                        object_name=f"{run_prefix}RunOutputPanel",
+                        section_label_object_name=f"{run_prefix}SectionLabel",
+                        summary_object_name=f"{run_prefix}RunSummary",
+                        log_view_object_name=f"{run_prefix}RunLogView",
+                        expanded=load_run_output_expanded(page.page_name),
+                    )
+                    page.run_output_panel.setMinimumHeight(120)
+                    page.run_output_panel.expansion_changed.connect(
+                        lambda expanded: on_run_output_expansion_changed(page, expanded)
+                    )
+                    center_split.addWidget(page.run_output_panel)
+                    center_split.setStretchFactor(split_index, 1)
+                page._center_splitter = center_split
+                page._run_output_splitter = center_split
                 center_layout.addWidget(center_split, stretch=1)
+                QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
             else:
-                page._market_table_host = MarketTableHost(
-                    page.market_table,
-                    external_scrollbar=False,
-                )
-                center_layout.addWidget(page._market_table_host)
+                center_layout.addWidget(page._market_table_host, stretch=1)
+            if page.config.show_watchlist_signals:
+                page._wire_signal_panel()
             splitter.addWidget(center_widget)
 
             right_widget = QtWidgets.QWidget()

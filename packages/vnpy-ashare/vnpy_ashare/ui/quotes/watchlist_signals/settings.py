@@ -1,0 +1,142 @@
+"""自选页策略信号配置（QSettings 持久化）。"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+from strategies.signals import list_supported_signal_strategies
+
+SETTINGS_ORG = "vnpy_ashare"
+SETTINGS_APP = "ZakTerminal"
+SIGNAL_STRATEGY_KEY = "watchlist/signal_strategy"
+SIGNAL_FAST_KEY = "watchlist/signal_fast_window"
+SIGNAL_SLOW_KEY = "watchlist/signal_slow_window"
+SIGNAL_PANEL_SYMBOLS_KEY = "watchlist/signal_panel/symbols"
+SIGNAL_PANEL_ENABLED_KEY = "watchlist/signal_panel/enabled"
+SIGNAL_PANEL_EXPANDED_KEY = "watchlist/signal_panel/expanded"
+SIGNAL_PANEL_MAX_SYMBOLS = 10
+
+DEFAULT_CLASS = "AshareDoubleMaStrategy"
+DEFAULT_FAST = 10
+DEFAULT_SLOW = 20
+
+
+@dataclass(frozen=True)
+class WatchlistSignalConfig:
+    class_name: str = DEFAULT_CLASS
+    fast_window: int = DEFAULT_FAST
+    slow_window: int = DEFAULT_SLOW
+
+    def normalized(self) -> WatchlistSignalConfig:
+        supported = set(list_supported_signal_strategies())
+        class_name = (self.class_name or DEFAULT_CLASS).strip()
+        if class_name not in supported:
+            class_name = DEFAULT_CLASS
+        fast = max(2, min(int(self.fast_window), 60))
+        slow = max(fast + 1, min(int(self.slow_window), 120))
+        return WatchlistSignalConfig(class_name=class_name, fast_window=fast, slow_window=slow)
+
+    def cache_key(self) -> str:
+        item = self.normalized()
+        return f"{item.class_name}:{item.fast_window}:{item.slow_window}"
+
+    def to_strategy_setting(self) -> dict[str, Any]:
+        item = self.normalized()
+        return {"fast_window": item.fast_window, "slow_window": item.slow_window}
+
+
+def _settings():
+    from vnpy.trader.ui import QtCore
+
+    return QtCore.QSettings(SETTINGS_ORG, SETTINGS_APP)
+
+
+def load_watchlist_signal_config() -> WatchlistSignalConfig:
+    settings = _settings()
+    raw_class = settings.value(SIGNAL_STRATEGY_KEY, DEFAULT_CLASS)
+    raw_fast = settings.value(SIGNAL_FAST_KEY, DEFAULT_FAST)
+    raw_slow = settings.value(SIGNAL_SLOW_KEY, DEFAULT_SLOW)
+    try:
+        fast = int(raw_fast)
+    except (TypeError, ValueError):
+        fast = DEFAULT_FAST
+    try:
+        slow = int(raw_slow)
+    except (TypeError, ValueError):
+        slow = DEFAULT_SLOW
+    return WatchlistSignalConfig(
+        class_name=str(raw_class or DEFAULT_CLASS),
+        fast_window=fast,
+        slow_window=slow,
+    ).normalized()
+
+
+def save_watchlist_signal_config(config: WatchlistSignalConfig) -> None:
+    item = config.normalized()
+    settings = _settings()
+    settings.setValue(SIGNAL_STRATEGY_KEY, item.class_name)
+    settings.setValue(SIGNAL_FAST_KEY, item.fast_window)
+    settings.setValue(SIGNAL_SLOW_KEY, item.slow_window)
+
+
+def _coerce_settings_bool(value: object, *, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def normalize_signal_panel_symbols(
+    symbols: list[str],
+    *,
+    max_count: int = SIGNAL_PANEL_MAX_SYMBOLS,
+) -> list[str]:
+    """去重并截断至信号区上限（保留先出现的顺序）。"""
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    limit = max(1, int(max_count))
+    for vt in symbols:
+        text = str(vt or "").strip()
+        if text and text not in seen:
+            seen.add(text)
+            cleaned.append(text)
+            if len(cleaned) >= limit:
+                break
+    return cleaned
+
+
+def load_signal_panel_symbols() -> list[str]:
+    settings = _settings()
+    raw = settings.value(SIGNAL_PANEL_SYMBOLS_KEY, "")
+    if not isinstance(raw, str) or not raw.strip():
+        return []
+    parts = [part.strip() for part in raw.split(",") if part.strip()]
+    return normalize_signal_panel_symbols(parts)
+
+
+def save_signal_panel_symbols(symbols: list[str]) -> None:
+    settings = _settings()
+    cleaned = normalize_signal_panel_symbols(symbols)
+    settings.setValue(SIGNAL_PANEL_SYMBOLS_KEY, ",".join(cleaned))
+
+
+def load_signal_panel_enabled() -> bool:
+    settings = _settings()
+    return _coerce_settings_bool(settings.value(SIGNAL_PANEL_ENABLED_KEY), default=True)
+
+
+def save_signal_panel_enabled(enabled: bool) -> None:
+    settings = _settings()
+    settings.setValue(SIGNAL_PANEL_ENABLED_KEY, enabled)
+
+
+def load_signal_panel_expanded() -> bool:
+    settings = _settings()
+    return _coerce_settings_bool(settings.value(SIGNAL_PANEL_EXPANDED_KEY), default=True)
+
+
+def save_signal_panel_expanded(expanded: bool) -> None:
+    settings = _settings()
+    settings.setValue(SIGNAL_PANEL_EXPANDED_KEY, expanded)

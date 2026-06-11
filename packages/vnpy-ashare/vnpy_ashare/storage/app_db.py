@@ -15,6 +15,7 @@ from vnpy_common.paths import get_app_db_path
 
 UNIVERSE_SYNCED_AT_KEY = "universe_synced_at"
 CACHE_MAX_AGE = timedelta(days=7)
+WATCHLIST_MAX_ITEMS = 50
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -103,13 +104,17 @@ def set_meta(key: str, value: str) -> None:
 
 def _import_watchlist_csv(conn: sqlite3.Connection, path: Path) -> int:
     rows = _read_csv_rows(path)
+    items: list[tuple[str, Exchange, str]] = []
+    for row in rows:
+        items.append((row["symbol"], Exchange[row["exchange"]], row.get("name", "")))
+    items = _normalize_watchlist_rows(items)
     conn.execute("DELETE FROM watchlist")
-    for index, row in enumerate(rows):
+    for index, (symbol, exchange, name) in enumerate(items):
         conn.execute(
             "INSERT INTO watchlist(symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?)",
-            (row["symbol"], row["exchange"], row.get("name", ""), index),
+            (symbol, exchange.name, name, index),
         )
-    return len(rows)
+    return len(items)
 
 
 def _import_universe_csv(conn: sqlite3.Connection, path: Path) -> int:
@@ -158,15 +163,45 @@ def watchlist_contains(symbol: str, exchange: Exchange) -> bool:
     return row is not None
 
 
-def add_watchlist_item(symbol: str, exchange: Exchange, name: str = "") -> bool:
-    """加入自选池，已存在则返回 False。"""
+def watchlist_item_count() -> int:
     init_app_db()
     with _connect() as conn:
-        if conn.execute(
-            "SELECT 1 FROM watchlist WHERE symbol = ? AND exchange = ?",
-            (symbol, exchange.name),
-        ).fetchone():
-            return False
+        return int(conn.execute("SELECT COUNT(*) FROM watchlist").fetchone()[0])
+
+
+def watchlist_at_capacity() -> bool:
+    return watchlist_item_count() >= WATCHLIST_MAX_ITEMS
+
+
+def watchlist_add_failure_reason(symbol: str, exchange: Exchange) -> Literal["duplicate", "full"] | None:
+    """返回无法加入的原因；None 表示可以加入。"""
+    if watchlist_contains(symbol, exchange):
+        return "duplicate"
+    if watchlist_at_capacity():
+        return "full"
+    return None
+
+
+def _normalize_watchlist_rows(items: list[tuple[str, Exchange, str]]) -> list[tuple[str, Exchange, str]]:
+    seen: set[tuple[str, str]] = set()
+    cleaned: list[tuple[str, Exchange, str]] = []
+    for symbol, exchange, name in items:
+        key = (symbol, exchange.name)
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append((symbol, exchange, name))
+        if len(cleaned) >= WATCHLIST_MAX_ITEMS:
+            break
+    return cleaned
+
+
+def add_watchlist_item(symbol: str, exchange: Exchange, name: str = "") -> bool:
+    """加入自选池，已存在或已达上限则返回 False。"""
+    if watchlist_add_failure_reason(symbol, exchange) is not None:
+        return False
+    init_app_db()
+    with _connect() as conn:
         sort_order = conn.execute("SELECT COUNT(*) FROM watchlist").fetchone()[0]
         conn.execute(
             "INSERT INTO watchlist(symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?)",
@@ -203,6 +238,7 @@ def clear_watchlist() -> None:
 
 
 def save_watchlist_rows(items: list[tuple[str, Exchange, str]]) -> int:
+    items = _normalize_watchlist_rows(items)
     init_app_db()
     with _connect() as conn:
         conn.execute("DELETE FROM watchlist")

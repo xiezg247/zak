@@ -461,6 +461,8 @@ class DataLoaderController:
                 page._hide_market_loading()
                 return
             page._hide_market_loading()
+            if page.config.show_watchlist_signals:
+                page._signals.on_symbols_changed()
 
         def on_failed(msg: str) -> None:
             if page._load_worker is worker:

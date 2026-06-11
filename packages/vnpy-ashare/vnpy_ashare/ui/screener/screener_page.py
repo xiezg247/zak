@@ -579,6 +579,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
 
         added = skipped = 0
+        full_hit = False
         for row in selected:
             item = parse_stock_symbol(str(row.get("vt_symbol", "")))
             if item is None:
@@ -588,10 +589,16 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             if self._watchlist_service.add(item.symbol, item.exchange, name):
                 added += 1
             else:
+                reason = self._watchlist_service.add_failure_reason(item.symbol, item.exchange)
+                if reason == "full":
+                    full_hit = True
+                    break
                 skipped += 1
         msg = f"新加入 {added} 只"
         if skipped:
             msg += f" · 跳过 {skipped} 只"
+        if full_hit:
+            msg += f" · 自选已满（最多 {self._watchlist_service.max_items} 只）"
         self._append_action_log(msg)
         self._toast.success(msg)
 

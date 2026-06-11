@@ -43,6 +43,19 @@ class TestAiContext(unittest.TestCase):
         data = build_quote_context(page="市场", item=None)
         self.assertEqual(data.to_text(), "当前页面：市场")
 
+    def test_build_signals_ai_prompt_uses_custom_windows(self) -> None:
+        from vnpy_ashare.ai.context import build_signals_ai_prompt
+
+        prompt = build_signals_ai_prompt(
+            "600000.SSE",
+            "浦发银行",
+            fast_window=8,
+            slow_window=21,
+        )
+        self.assertIn("MA8/MA21", prompt)
+        self.assertIn("fast_window=8", prompt)
+        self.assertIn("slow_window=21", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()
