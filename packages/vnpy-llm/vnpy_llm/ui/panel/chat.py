@@ -10,7 +10,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_common.ai.access import build_quick_actions_for_panel, build_stock_completion_items, get_ai_context
 from vnpy_common.ai.protocol import QuickAction
 from vnpy_common.ui.feedback import confirm_action, page_notify
-from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished
+from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished, thread_is_active
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.tools.labels import tool_display_name
@@ -512,7 +512,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._refresh_messages()
 
     def _refresh_messages(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if thread_is_active(self._worker):
             return
         self._clear_message_widgets()
         messages = self.engine.get_messages()
@@ -703,7 +703,7 @@ class AiChatPanel(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(0, lambda: self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum()))
 
     def _on_send_or_stop(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if thread_is_active(self._worker):
             self._on_stop()
             return
         self._on_send()
@@ -726,15 +726,22 @@ class AiChatPanel(QtWidgets.QWidget):
         worker.finished_ok.connect(self._on_worker_done)
         worker.cancelled.connect(self._on_worker_cancelled)
         worker.failed.connect(self._on_worker_failed)
-        worker.finished.connect(worker.deleteLater)
+        worker.finished.connect(
+            lambda w=worker: self._detach_worker(w),
+            QtCore.Qt.ConnectionType.SingleShotConnection,
+        )
         worker.started.connect(
             lambda: retain_thread_until_finished(self._retired_workers, worker),
             QtCore.Qt.ConnectionType.SingleShotConnection,
         )
         worker.start()
 
+    def _detach_worker(self, worker: ChatWorker) -> None:
+        if self._worker is worker:
+            self._worker = None
+
     def _on_stop(self) -> None:
-        if self._worker is None or not self._worker.isRunning():
+        if not thread_is_active(self._worker):
             return
         self.engine.request_cancel_stream()
         self._worker.requestInterruption()
@@ -841,7 +848,7 @@ class AiChatPanel(QtWidgets.QWidget):
             turns = self.engine.get_trace_turns()
             if turns:
                 self._live_trace_block.apply_turn(turns[-1], expanded=True)
-        if self._worker is None or not self._worker.isRunning():
+        if not thread_is_active(self._worker):
             self._live_trace_block = None
 
     def _on_stream_started(self) -> None:
@@ -957,7 +964,7 @@ class AiChatPanel(QtWidgets.QWidget):
             self._append_bubble("error", message, persist=True)
 
     def _on_clear(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if thread_is_active(self._worker):
             return
         if confirm_action(
             self,
@@ -969,12 +976,12 @@ class AiChatPanel(QtWidgets.QWidget):
             self.engine.clear_session()
 
     def _on_new_session(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if thread_is_active(self._worker):
             return
         self.engine.new_session()
 
     def _on_show_sessions(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if thread_is_active(self._worker):
             page_notify(self, "请等待当前回复完成后再切换会话")
             return
         if self.engine.is_busy():
@@ -991,13 +998,13 @@ class AiChatPanel(QtWidgets.QWidget):
         dialog.exec()
 
     def _on_reload_tools(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if thread_is_active(self._worker):
             page_notify(self, "请等待当前回复完成后再重新加载")
             return
         self.engine.reload_tools()
 
     def _on_reload_llm_config(self) -> None:
-        if self._worker is not None and self._worker.isRunning():
+        if thread_is_active(self._worker):
             page_notify(self, "请等待当前回复完成后再重载配置")
             return
         cfg = self.engine.reload_config()

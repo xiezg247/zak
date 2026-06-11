@@ -137,7 +137,7 @@ def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f"请对 {title} 做综合诊断。"
-        "请通过问小达获取行情、技术指标、财务、资金流、研报等数据，"
+        "请获取行情、技术指标、财务、资金流、研报等诊断数据，"
         "基于返回结果解读，不要编造未在结果中的指标或研报观点。"
     )
 
@@ -261,7 +261,7 @@ def build_historical_ai_prompt(
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f"请分析 {title} 的近 {int(lookback)} 日走势。"
-        "优先使用本地日 K 统计，本地不足时自动补充问小达数据；"
+        "优先使用本地日 K 统计，本地不足时自动补充外部参考数据；"
         "基于涨跌幅、波动、连涨连跌等历史统计数据做描述，禁止预测未来走势。"
         "请按以下结构组织回答：\n"
         "1. **一句话总结**：趋势标签与区间涨跌幅\n"
@@ -278,10 +278,8 @@ def build_trend_ai_prompt(vt_symbol: str, name: str = "") -> str:
 
 
 _TREND_SCENARIO_OUTPUT = (
-    "按乐观/基准/悲观三情景输出（概率表述 + 触发/失效条件），"
-    "结合上下文中的信号快照交叉核对，"
-    "必要时通过问小达补充 MACD/KDJ/RSI 与主力资金，"
-    "方向类问题可酌情参考大盘情绪背景；"
+    "按乐观/基准/悲观三情景输出（概率表述 + 触发/失效条件）。"
+    "本地情景摘要已含技术面与方向提示，数据充分时直接作答，勿重复拉取行情或策略信号；"
     "禁止确定性预测与具体买卖价位。"
 )
 
@@ -296,7 +294,7 @@ def build_trend_scenario_ai_prompt(
     fast_window: int = 10,
     slow_window: int = 20,
 ) -> str:
-    """走势预测快捷入口（本地情景摘要 + 可选问小达补充）。"""
+    """走势预测快捷入口（本地情景摘要）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     horizon = max(1, min(int(horizon_days or 5), 20))
     fast = max(2, int(fast_window or 10))
@@ -307,7 +305,7 @@ def build_trend_scenario_ai_prompt(
     )
     focus_lines = {
         "price": "重点解读参考波动区间与结构锚点，给出可能的价位情景。",
-        "support": "重点列出支撑/阻力锚点及距买/卖参考价的偏离，并用问小达交叉验证。",
+        "support": "重点列出支撑/阻力锚点及距买/卖参考价的偏离。",
         "5d": f"重点结合短期动能与方向提示，描述 {horizon} 日可能情景。",
         "direction": "重点解读多空方向提示、均线排列与规则信号，给出倾向与不确定性说明。",
         "general": "综合技术面、动能、结构锚点与方向提示组织三情景。",
@@ -402,19 +400,19 @@ def build_diagnose_menu(binding: StockBinding) -> QuickAction:
                 id="diagnose_finance",
                 label="财务估值",
                 prompt=(
-                    f"{prefix}请通过问小达查询市盈率、ROE 等财务估值指标，"
-                    "必要时结合综合诊断数据，基于返回结果解读，禁止编造。"
+                    f"{prefix}请查询市盈率、ROE 等财务估值指标，"
+                    "必要时结合综合诊断，基于返回结果解读，禁止编造。"
                 ),
             ),
             QuickAction(
                 id="diagnose_report",
                 label="研报评级",
-                prompt=(f"{prefix}请通过问小达查询最新研报与评级，引用须注明来源与日期，禁止编造。"),
+                prompt=(f"{prefix}请查询最新研报与评级，引用须注明来源与日期，禁止编造。"),
             ),
             QuickAction(
                 id="diagnose_flow",
                 label="资金流向",
-                prompt=(f"{prefix}请通过问小达查询主力资金流向，基于返回数据描述资金面，禁止编造。"),
+                prompt=(f"{prefix}请查询主力资金流向，基于返回数据描述资金面，禁止编造。"),
             ),
         ],
     )
@@ -438,7 +436,7 @@ def build_technical_menu(binding: StockBinding) -> QuickAction:
             QuickAction(
                 id="technical_indicator",
                 label="MACD/KDJ/RSI",
-                prompt=(f"{prefix}请通过问小达查询 MACD、KDJ、RSI 等技术指标，基于返回数据做技术解读，非买卖建议。"),
+                prompt=(f"{prefix}请查询 MACD、KDJ、RSI 等技术指标，基于返回数据做技术解读，非买卖建议。"),
             ),
             QuickAction(
                 id="technical_signals",
@@ -484,7 +482,7 @@ def build_trend_forecast_menu(
     fast_window: int = 10,
     slow_window: int = 20,
 ) -> QuickAction:
-    """走势预测二级菜单（本地情景摘要 + MCP 补充，非确定性买卖建议）。"""
+    """走势预测二级菜单（本地情景摘要，非确定性买卖建议）。"""
     vt = binding.vt_symbol
     name = binding.name
     prompt_kwargs = {
@@ -495,7 +493,7 @@ def build_trend_forecast_menu(
     return QuickAction(
         id="trend_forecast",
         label="走势预测",
-        tooltip=f"{binding.tooltip} · 本地结构 + 问小达补充 · 情景分析",
+        tooltip=f"{binding.tooltip} · 本地结构 · 情景分析",
         children=[
             QuickAction(
                 id="trend_price",
@@ -552,7 +550,7 @@ def build_sector_overview_prompt(vt_symbol: str, name: str = "") -> str:
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f"请分析 {title} 所属板块/概念行业的近期表现与联动逻辑。"
-        "可通过问小达查询板块关联、成分股联动与主力资金流向，"
+        "可查询板块关联、成分股联动与主力资金流向，"
         "基于返回数据解读，禁止编造未在结果中的板块数据。"
     )
 
@@ -664,7 +662,7 @@ def _pattern_screen_prompt(pattern: str, *, detail: str = "") -> str:
     detail_text = f"{detail} " if detail else ""
     return (
         f"请执行形态选股「{pattern}」。{detail_text}"
-        "优先通过问小达全市场扫描，不可用时降级本地日 K。"
+        "优先全市场形态扫描，不可用时降级本地日 K。"
         "完成后用 Markdown 表格展示 Top 20（含形态得分、形态说明、数据来源），"
         "并说明扫描范围。"
     )
@@ -722,7 +720,7 @@ def build_pattern_screen_menu() -> QuickAction:
     return QuickAction(
         id="pattern_screen",
         label="形态选股",
-        tooltip="优先通达信问小达 MCP 全市场扫描，MCP 不可用时降级本地日 K",
+        tooltip="全市场形态扫描，不可用时降级本地日 K",
         children=[
             QuickAction(
                 id="pattern_old_duck",

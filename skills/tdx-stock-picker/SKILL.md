@@ -7,7 +7,11 @@ version: 1.0.0
 
 # tdx-stock-picker
 
-把自然语言选股需求，转成通达信 MCP 工具调用 + 终端选股草案的双轨工作流。
+把自然语言选股需求，转成**终端 Skill 工具**调用（非 Python 脚本）。
+
+> **重要**：本 Skill 包**只有 SKILL.md 文档**，没有 `tdx_stock_picker.py` 等可 import 模块。
+> **禁止** `run_python(skill="tdx-stock-picker", ...)` 或 `from tdx_stock_picker import ...`。
+> 执行选股请直接调用下方「终端本地工具」。
 
 ## What this skill is for
 
@@ -18,144 +22,83 @@ version: 1.0.0
 - "今天有哪些低价股异动？"
 - "选几只技术面走好的，我看看"
 
-先理解用户想要什么维度的筛选，再决定走轻量查询还是需要确认的正式选股流程。
+先理解用户想要什么维度的筛选，再决定调用哪个终端工具（见下表）。
 
 ---
 
 ## 工具盘点
 
-### 终端本地工具（始终可用）
+### 终端 Skill 工具（执行选股必须用这些）
 
-这些是终端自带的 Python Skill 工具，用于选股草案和结果执行：
+| 用户意图 | 调用工具 | 示例 |
+|----------|----------|------|
+| 形态：老鸭头 / 均线多头 / W底 / 热点 | `screen_by_pattern` | `pattern="均线多头排列"` |
+| 盘中/盘后多因子 | `run_recipe` | `recipe_id="intraday_multi"` |
+| 内置 preset（涨幅榜、低 PE 等） | `screen_by_condition` | `name="低 PE"` |
+| 了解可用方案 | `list_screeners` / `list_recipes` | — |
+| 解读选股结果 | `explain_screening_run` | — |
 
-| 工具 | 用途 |
-|------|------|
-| `list_screeners` | 列出所有可用选股方案 |
-| `list_recipes` | 列出多因子配方（盘中/盘后） |
-| `run_recipe` | 直接执行多因子配方 |
-| `screen_by_condition` | 直接执行内置 preset / 已保存方案 / 自定义区间 |
-| `screen_by_pattern` | 直接执行形态选股 |
-| `explain_screening_run` | 编排选股解读（板块分布、diff、技术面） |
-| `get_quote_context` | 读取终端当前上下文（当前选中标的、自选池等） |
+**形态名对照**（传给 `screen_by_pattern` 的 `pattern` 参数）：
 
-### 通达信 MCP 工具（由服务端动态注册）
+| 说法 | pattern 值 |
+|------|------------|
+| 老鸭头 | `老鸭头形态` |
+| 均线多头 / 多头排列 | `均线多头排列` |
+| W底 / 双底 | `W底形态` |
+| 热点 / 高换手活跃 | `主题投资` |
 
-通达信 MCP Server 提供的工具以 `mcp_tdx_` 前缀注册。可用能力包括但不限于：
+### 通达信 MCP（Skill 内部使用，LLM 勿直接调用）
 
-| 能力域 | 典型工具（以实际注册为准） |
-|--------|--------------------------|
-| 实时行情 | 个股/板块行情快照、分时数据 |
-| K 线数据 | 日/周/月 K 线、多周期 OHLCV |
-| 板块数据 | 板块成分股、板块排行、行业分类 |
-| 技术指标 | MA/MACD/KDJ/RSI/BOLL 等 |
-| 财务数据 | PE/PB/ROE/营收/净利润等 |
-| 资金流向 | 主力净流入/流出、大单统计 |
-| F10 资料 | 公司概况、股东、财务摘要 |
-| 研报评级 | 机构研报、评级变化 |
-| 龙虎榜 | 营业部买卖席位 |
-
-**重要**：执行前先调用 `list_remote_tools` 确认当前可用的具体工具名，不要假设工具名。如果你没有 `list_remote_tools` 的调用能力，优先使用终端自带的选股工具。
+形态扫描、综合诊断等场景由 `screen_by_pattern`、`diagnose_stock` 等终端工具**内部**调用 MCP；
+失败时自动降级本地日 K。**不要**自行 `run_python` 或调用 `mcp_tdx_*`。
 
 ---
 
 ## 工作流
 
-### 场景 A：轻量查询（对话内直接返回）
+### 场景 A：形态 / preset / 配方（直接执行）
 
-条件明确、不需要持久化草案时：
+1. 形态选股 → **`screen_by_pattern`**（如均线多头：`pattern="均线多头排列", top_n=20`）
+2. 内置 preset → **`screen_by_condition`**
+3. 多因子配方 → **`run_recipe`**
+4. 用 Markdown 表格返回结果，默认 Top 20，排除 ST
 
-1. 理解筛选维度（涨幅、换手、PE、资金流、技术形态等）
-2. 若条件对应终端**内置 preset**（涨幅榜、换手率、低 PE 等），优先 `screen_by_condition` 直接返回
-3. 否则 **逐一调用** TDX MCP 工具获取数据，在 Python 中交叉筛选、排序
-4. 用 **Markdown 表格** 返回结果
+### 场景 B：条件复杂或需落库
 
-输出格式：
+1. `list_screeners` / `list_recipes` 了解方案
+2. 按上表选择工具直接执行
+3. 结果写入选股页，可用 `explain_screening_run` 解读
 
-```markdown
-## 选股结果：{一句话条件}
+### 场景 C：财务 / 宏观数据研究
 
-| 代码 | 名称 | 现价 | 涨跌幅 | 换手率 | PE(TTM) | 入选理由 |
-|------|------|------|--------|--------|---------|----------|
-| 000001 | 平安 | 12.50 | +3.2% | 1.8% | 8.5 | 低估值+放量 |
-
-共 N 只标的，数据更新时间：YYYY-MM-DD HH:mm
-```
-
-### 场景 B：正式选股（终端直接执行）
-
-条件较复杂或需落库复用时：
-
-1. 调用 `list_screeners` / `list_recipes` 了解已有方案与配方
-2. 内置 preset 或已保存方案 → `screen_by_condition` 直接执行
-3. 盘中/盘后多因子 → `run_recipe` 直接执行
-4. 结果自动写入选股页运行历史，可用 `explain_screening_run` 解读
-
-### 场景 C：混合模式（TDX 辅助 + 终端执行）
-
-1. TDX MCP 工具查询板块热度、PE 分布区间
-2. 根据数据调整参数（如"当前该板块 PE 中位数 25"→ 调整阈值）
-3. 多因子意图 → `run_recipe`；单一 preset → `screen_by_condition`
-
-### 场景 D：板块轮动 + 盘中配方
-
-1. MCP 查询当日强势板块/行业
-2. `list_recipes(trigger_kind=intraday)` 确认内置配方含 `sector_strength` 维度
-3. `run_recipe(recipe_id=intraday_multi)` 直接执行
-4. 结果解读调用 `explain_screening_run(batch_top_n=5)`
+走 **tushare-data** Skill 的 `run_python`，与本 Skill 无关。
 
 ---
 
-## 常见选股模式
+## 常见选股模式（映射到工具）
 
-### 趋势追踪（强势股）
+### 趋势追踪 / 技术突破 / 均线多头
 
-```
-涨幅 > 3%，量比 > 1.5，换手率 > 2%
-按涨幅降序，取前 20
-```
+→ **`screen_by_pattern(pattern="均线多头排列")`**
 
-### 价值发现（低估值）
+### 价值发现（低 PE）
 
-```
-PE(TTM) < 15，PB < 2，ROE > 10%
-按 PE 升序，取前 20
-```
+→ **`screen_by_condition(name="低 PE")`**
 
-### 技术突破
+### 资金异动 / 盘中多因子
 
-```
-MA5 上穿 MA20，成交量 > 20日均量 1.5 倍
-当日涨幅 > 0
-```
-
-### 资金异动
-
-```
-主力净流入 > 5000万，连续流入天数 ≥ 3
-涨幅 > 0，排除 ST
-```
+→ **`run_recipe(recipe_id="intraday_multi")`**
 
 ### 板块轮动
 
-```
-找出当日涨幅前 3 的申万二级行业
-在每个行业中取涨幅前 5 的个股
-```
-
-### 事件驱动（研报/公告）
-
-```
-最近 7 天有研报覆盖，评级"买入"/"增持"
-目标价较现价溢价 > 20%
-```
+→ **`run_recipe(recipe_id="intraday_multi")`**（含板块维度）
 
 ---
 
 ## 注意事项
 
-1. **工具名动态化**：TDX MCP 工具名以服务端实际注册为准，执行前用 `list_remote_tools` 或依赖 `run_python` 的自动发现
-2. **数据消费后即释放**：处理完一批数据后及时清理中间变量，避免占用内存
-3. **ST / *ST 处理**：除非用户明确要求，否则默认排除 ST 标的
-4. **结果数量**：默认 Top 20，用户未指定时不要返回过多
-5. **交互先行**：条件模糊时先追问，不要自行假设
-6. **与终端协同**：如果选股条件值得保存复用，引导用户使用终端选股页的保存功能
+1. **禁止 run_python**：本 Skill 无 Python 模块；选股一律用终端 Skill 工具
+2. **禁止编造 import**：不存在 `tdx_stock_picker`、`screen_by_pattern` Python 包
+3. **ST 处理**：除非用户明确要求，默认排除 ST
+4. **结果数量**：默认 Top 20
+5. **交互先行**：条件模糊时先追问

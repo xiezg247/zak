@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -151,11 +152,11 @@ def filter_tools_by_route(
         return list(all_tools)
 
     allowed = set(TOOL_GROUPS.get(category, frozenset()))
-    allowed.update(AGENT_TOOL_NAMES)
+    # run_python 仅 data 域（tushare/tickflow）；选股/诊断等禁止 run_python 以免误调 Agent Skill 脚本
+    if category == "data":
+        allowed.update(AGENT_TOOL_NAMES)
 
     mcp_names = mcp_tool_names or frozenset()
-    if category == "diagnosis":
-        allowed.update(name for name in mcp_names if name.startswith("mcp_"))
     if category == "data":
         allowed.update(name for name in mcp_names)
 
@@ -271,7 +272,60 @@ def _normalize_market_enrichment(
     )
 
 
-def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
+_TREND_SCENARIO_KEYWORDS = (
+    "走势情景",
+    "情景分析",
+    "走势预测",
+    "支撑压力",
+    "方向预测",
+    "5日走势",
+    "5日情景",
+    "股价预测",
+)
+
+
+def _is_trend_scenario_request(user_text: str) -> bool:
+    text = user_text.strip()
+    return any(keyword in text for keyword in _TREND_SCENARIO_KEYWORDS)
+
+
+def _extract_trend_scenario_params(user_text: str) -> dict[str, int | str]:
+    params: dict[str, int | str] = {}
+    symbol_match = re.search(r"（(\d{6}\.[A-Z]+)）", user_text)
+    if symbol_match:
+        params["symbol"] = symbol_match.group(1)
+    horizon_match = re.search(r"展望\s*(\d+)\s*日", user_text)
+    if horizon_match:
+        params["horizon_days"] = int(horizon_match.group(1))
+    ma_match = re.search(r"MA(\d+)/MA(\d+)", user_text)
+    if ma_match:
+        params["fast_window"] = int(ma_match.group(1))
+        params["slow_window"] = int(ma_match.group(2))
+    return params
+
+
+def _trend_scenario_routing_lines(user_text: str) -> list[str]:
+    if not _is_trend_scenario_request(user_text):
+        return []
+    lines = [
+        "【走势情景路由】",
+        "- 优先且通常仅需调用一次 trend_scenario_summary，拿到结果后直接输出三情景",
+        "- 勿再调用 technical_snapshot / historical_pattern_summary / list_strategy_signals / get_bars_*",
+    ]
+    params = _extract_trend_scenario_params(user_text)
+    if params.get("symbol"):
+        args: list[str] = [f'symbol="{params["symbol"]}"']
+        if params.get("horizon_days") is not None:
+            args.append(f'horizon_days={params["horizon_days"]}')
+        if params.get("fast_window") is not None:
+            args.append(f'fast_window={params["fast_window"]}')
+        if params.get("slow_window") is not None:
+            args.append(f'slow_window={params["slow_window"]}')
+        lines.append(f"- 建议调用：trend_scenario_summary({', '.join(args)})")
+    return lines
+
+
+def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: str = "") -> str:
     """生成注入 system 的路由提示。"""
     route = analysis.route
     lines = [
@@ -339,8 +393,16 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
     if route.confidence == "low" and route.category != "general":
         lines.append("置信度较低：可先简短追问澄清，再决定是否调用工具。")
 
+    trend_scenario = _is_trend_scenario_request(user_text)
+    lines.extend(_trend_scenario_routing_lines(user_text))
+    if route.category == "screening":
+        top_n = analysis.screening.top_n if analysis.screening else 20
+        lines.extend(_pattern_screen_routing_lines(user_text, top_n=top_n))
+
     fg = analysis.market.fear_greed
-    if fg == "skip":
+    if trend_scenario:
+        lines.append("【恐贪指数】本轮 skip：走势情景分析勿调用 get_ashare_fear_greed_index。")
+    elif fg == "skip":
         lines.append("【恐贪指数】本轮 skip：勿调用 get_ashare_fear_greed_index。")
     elif fg == "highlight":
         lines.append("【恐贪指数】本轮 highlight：建议调用 get_ashare_fear_greed_index，并在回答中结合工具数据简要说明市场环境（仍禁止具体买卖建议）。")
@@ -351,10 +413,41 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
 
     group = TOOL_GROUPS.get(route.category)
     if group:
-        names = sorted(group | AGENT_TOOL_NAMES)
+        names = sorted(group)
+        if route.category == "data":
+            names = sorted(group | AGENT_TOOL_NAMES)
         lines.append(f"本轮可用工具子集：{', '.join(names)}")
 
     return "\n".join(lines)
+
+
+_PATTERN_ALIASES: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("老鸭头",), "老鸭头形态"),
+    (("均线多头", "多头排列", "bullish_alignment"), "均线多头排列"),
+    (("w底", "双底", "w_bottom"), "W底形态"),
+    (("热点活跃", "高换手", "主题投资"), "主题投资"),
+)
+
+
+def _resolve_pattern_screen_name(text: str) -> str | None:
+    lower = text.lower()
+    for keywords, pattern in _PATTERN_ALIASES:
+        if any(k in text or k in lower for k in keywords):
+            return pattern
+    if "形态" in text and "均线" in text:
+        return "均线多头排列"
+    return None
+
+
+def _pattern_screen_routing_lines(user_text: str, *, top_n: int = 20) -> list[str]:
+    pattern = _resolve_pattern_screen_name(user_text)
+    if not pattern:
+        return []
+    return [
+        "【形态选股路由】",
+        f'- 直接调用 screen_by_pattern(pattern="{pattern}", top_n={top_n})',
+        "- 禁止 run_python(skill=\"tdx-stock-picker\")：该 Skill 仅 Markdown，无 tdx_stock_picker 模块",
+    ]
 
 
 def _screening_intent_from_keywords(text: str) -> ScreeningIntent:
@@ -381,7 +474,7 @@ def _screening_intent_from_keywords(text: str) -> ScreeningIntent:
         return ScreeningIntent(intent=text, preset="成交量放大", confidence="high")
     if any(k in text for k in ("涨幅榜", "涨最多", "今天涨")):
         return ScreeningIntent(intent=text, preset="涨幅榜", confidence="high")
-    if any(k in text for k in ("老鸭头", "均线多头", "w底", "双底", "形态选股")):
+    if any(k in text for k in ("老鸭头", "均线多头", "多头排列", "w底", "双底", "形态选股")):
         return ScreeningIntent(intent=text, confidence="high")
     if "换手" in text:
         return ScreeningIntent(intent=text, preset="换手率排行", confidence="high")
@@ -429,7 +522,9 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
         )
     if any(k in text for k in ("诊断", "研报", "评级", "券商")):
         return _with_market("diagnosis")
-    if any(k in text for k in ("均线", "金叉", "死叉", "技术面", "形态")):
+    if _is_trend_scenario_request(text) or any(
+        k in text for k in ("均线", "金叉", "死叉", "技术面", "形态")
+    ):
         return _with_market("technical")
     if page and page in PAGE_CATEGORY_HINT:
         cat = PAGE_CATEGORY_HINT[page]
@@ -530,6 +625,12 @@ def build_route_context(
     else:
         tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
     tools = apply_fear_greed_tools(tools, analysis, all_tools)
+    if _is_trend_scenario_request(user_text):
+        tools = [
+            tool
+            for tool in tools
+            if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL
+        ]
 
-    hint = build_routing_hint(analysis, page=page)
+    hint = build_routing_hint(analysis, page=page, user_text=user_text)
     return RouteContext(analysis=analysis, tools=tools, routing_hint=hint)

@@ -268,7 +268,7 @@ class LlmEngine(BaseEngine):
         strategy_prompt = build_strategy_prompt()
         if strategy_prompt:
             system_parts.append(strategy_prompt)
-        mcp_text = self.mcp_engine.build_mcp_prompt()
+        mcp_text = self.mcp_engine.build_internal_status_note()
         if mcp_text:
             system_parts.append(mcp_text)
         context_text = self.get_context_text()
@@ -495,9 +495,8 @@ class LlmEngine(BaseEngine):
         self._emit_trace_changed()
 
     def _get_openai_tools(self) -> list[dict[str, Any]]:
-        tools = self.skill_engine.get_openai_tools()
-        tools.extend(self.mcp_engine.get_openai_tools())
-        return tools
+        """仅暴露 Skill 工具；通达信等 MCP 经 Skill/Service 内部调用，不向 LLM 注册原始 mcp_* 工具。"""
+        return self.skill_engine.get_openai_tools()
 
     def _execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
         step_id = self._trace_begin_tool(name, arguments)

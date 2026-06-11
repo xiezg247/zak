@@ -147,6 +147,17 @@ class McpEngineTests(unittest.TestCase):
             provider = engine.providers["tdx"]
             self.assertEqual(provider.prefixed_name("stock_quotes"), "mcp_tdx_stock_quotes")
 
+    def test_internal_status_note_connected(self) -> None:
+        with _mcp_dir(("mcp.json", {"mcpServers": {"tdx": {"url": DEFAULT_TDX_MCP_URL, "headers": {"tdx-api-key": "k"}}}})):
+            engine = McpEngine()
+            engine.load_all()
+            with patch("vnpy_mcp.app.engine.list_remote_tools", return_value=[McpToolInfo(name="wenda", description="")]):
+                engine.init_providers()
+            note = engine.build_internal_status_note()
+            self.assertIn("已连接", note)
+            self.assertIn("diagnose_stock", note)
+            self.assertNotIn("mcp_tdx_wenda", note)
+
     def test_builtin_placeholder_when_missing_file(self) -> None:
         with _empty_mcp_dir():
             engine = McpEngine()

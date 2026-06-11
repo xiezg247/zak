@@ -46,11 +46,12 @@ def test_filter_screening_subset():
     assert "propose_screening" not in names
     assert "propose_recipe" not in names
     assert "explain_screening_run" in names
-    assert "read_skill_file" in names
+    assert "run_python" not in names
+    assert "read_skill_file" not in names
     assert "get_backtest_result" not in names
 
 
-def test_filter_diagnosis_includes_mcp():
+def test_filter_diagnosis_excludes_raw_mcp():
     filtered = filter_tools_by_route(
         ALL_TOOLS,
         "diagnosis",
@@ -58,7 +59,7 @@ def test_filter_diagnosis_includes_mcp():
     )
     names = {t["function"]["name"] for t in filtered}
     assert "diagnose_stock" in names
-    assert "mcp_tdx_wenda" in names
+    assert "mcp_tdx_wenda" not in names
 
 
 def test_filter_general_returns_all():
@@ -163,3 +164,41 @@ def test_apply_fear_greed_on_filtered_tools():
     enriched = apply_fear_greed_tools(tools, analysis, all_tools)
     names = {item["function"]["name"] for item in enriched}
     assert FEAR_GREED_TOOL in names
+
+
+def test_keyword_fallback_trend_scenario():
+    text = "请对 科大讯飞（002230.SZSE） 做走势情景分析（展望 5 日）"
+    result = _keyword_fallback(text, "")
+    assert result is not None
+    assert result.route.category == "technical"
+
+
+def test_build_routing_hint_trend_scenario():
+    text = (
+        "请对 科大讯飞（002230.SZSE） 做走势情景分析（非确定性预测，展望 5 日）。"
+        "基于本地均线（MA20/MA60）、结构锚点与统计参考带组织分析。"
+    )
+    analysis = IntentAnalysis(
+        route=IntentRoute(category="technical", confidence="high", reasoning="走势情景"),
+    )
+    hint = build_routing_hint(analysis, user_text=text)
+    assert "trend_scenario_summary" in hint
+    assert 'symbol="002230.SZSE"' in hint
+    assert "horizon_days=5" in hint
+    assert "fast_window=20" in hint
+    assert "slow_window=60" in hint
+    assert "勿再调用 technical_snapshot" in hint
+    assert "get_ashare_fear_greed_index" in hint
+
+
+def test_build_routing_hint_pattern_screen():
+    text = "全市场均线多头排列选股 MA5>MA10>MA20>MA60"
+    analysis = IntentAnalysis(
+        route=IntentRoute(category="screening", confidence="high", reasoning="形态选股"),
+        screening=ScreeningIntent(intent=text, top_n=30, confidence="high"),
+    )
+    hint = build_routing_hint(analysis, user_text=text)
+    assert "screen_by_pattern" in hint
+    assert 'pattern="均线多头排列"' in hint
+    assert "tdx_stock_picker" in hint
+    assert "run_python" in hint

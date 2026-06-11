@@ -71,29 +71,27 @@ class McpEngine:
         return dict(self._connect_errors)
 
     def build_mcp_prompt(self) -> str:
+        """已废弃：原始 MCP 工具不向 LLM 暴露，请用 ``build_internal_status_note``。"""
+        return self.build_internal_status_note()
+
+    def build_internal_status_note(self) -> str:
+        """MCP 连接状态摘要（不含工具清单，供 system 提示）。"""
         providers = self.get_enabled_providers()
-        if not providers:
-            return ""
-
-        parts = [
-            "【已连接 MCP 服务】",
-            "以下工具来自远端 MCP Server，通过 mcp_<provider>_<tool> 名称调用。",
-            "涉及实时行情、K 线、板块等数据时必须调用工具，禁止编造。",
-            "",
-        ]
-        for provider in providers:
-            parts.append(provider.prompt_section())
-            parts.append("")
-
-        errors = self._connect_errors
-        unavailable = [p for p in self.providers.values() if p.available and not p.connected and p.provider_name in errors]
-        if unavailable:
-            parts.append("【MCP 连接失败】")
-            for provider in unavailable:
-                parts.append(f"- {provider.provider_name}: {errors[provider.provider_name][:200]}")
-            parts.append("")
-
-        return "\n".join(parts).strip()
+        errors = self.get_connect_errors()
+        if providers:
+            names = "、".join(p.provider_name for p in providers)
+            return (
+                f"【MCP 后端】已连接 {names}，仅供 Skill 内部调用"
+                "（如 diagnose_stock、screen_by_pattern、historical_pattern_summary 兜底）。"
+                "对话中请使用 Skill 工具，勿直接调用 mcp_* 工具。"
+            )
+        if errors:
+            detail = next(iter(errors.values()), "连接失败")[:120]
+            return (
+                "【MCP 后端】通达信未连接，综合诊断与形态选股将降级本地能力。"
+                f"（{detail}）请检查 mcp/mcp.json 中的 tdx-api-key。"
+            )
+        return ""
 
     def get_openai_tools(self) -> list[dict[str, Any]]:
         tools: list[dict[str, Any]] = []

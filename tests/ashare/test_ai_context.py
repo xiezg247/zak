@@ -117,6 +117,7 @@ class TestAiContext(unittest.TestCase):
         self.assertIn("5 日", prompt)
         self.assertIn("MA8/MA21", prompt)
         self.assertIn("乐观/基准/悲观", prompt)
+        self.assertIn("勿重复拉取", prompt)
         self.assertNotIn("trend_scenario_summary", prompt)
         self.assertNotIn("mcp_tdx_tdx_wenda_quotes", prompt)
 

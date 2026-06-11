@@ -542,11 +542,10 @@ class TechnicalAnalyzer:
             "reference_bands": reference_bands,
             "direction_hints": direction_hints,
             "output_guide": (
-                "请基于上述本地数据输出 bull/base/bear 三情景（概率表述 + 触发/失效条件），"
-                "必要时调用 mcp_tdx_tdx_wenda_quotes 补充 MACD/KDJ/RSI 与主力资金；"
-                "结合上下文 extra 中的信号快照交叉核对；禁止确定性预测与具体买卖价位。"
+                "请基于上述本地数据直接输出 bull/base/bear 三情景（概率表述 + 触发/失效条件）；"
+                "通常无需再调用其他工具；禁止确定性预测与具体买卖价位。"
             ),
-            "supplement_tools": ["mcp_tdx_tdx_wenda_quotes", "get_ashare_fear_greed_index"],
+            "supplement_tools": [],
             "warnings": list(dict.fromkeys(warnings)),
             "sources": ["bar"],
             "disclaimer": "以上为本地规则与统计参考，情景分析不构成投资建议或确定性预测。",

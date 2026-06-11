@@ -23,7 +23,7 @@ class ChatWorker(QtCore.QThread):
             for _ in self._engine.stream_reply(self._user_text):
                 if self.isInterruptionRequested():
                     self._engine.request_cancel_stream()
-                    return
+                    raise StreamCancelled("用户已停止生成")
             if not self.isInterruptionRequested():
                 self.finished_ok.emit()
         except StreamCancelled:

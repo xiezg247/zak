@@ -27,7 +27,10 @@ RUN_PYTHON = ToolSpec(
     name="run_python",
     description=(
         "在指定 skill 目录下执行 Python 代码或脚本。"
-        "用于调用 tushare / tickflow 等数据接口。"
+        "仅用于 tushare-data、tickflow 等带 scripts/ 的数据 Skill。"
+        "选股（含形态/多因子/preset）禁止用 run_python，须直接调用 "
+        "screen_by_pattern / run_recipe / screen_by_condition；"
+        "tdx-stock-picker 仅为 Markdown 指南，无可 import 模块。"
         "code 与 script_path 二选一；script_path 如 scripts/stock_data_demo.py。"
     ),
     parameters={
