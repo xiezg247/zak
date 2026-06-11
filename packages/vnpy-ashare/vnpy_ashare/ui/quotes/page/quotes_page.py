@@ -94,6 +94,9 @@ class QuotesPage(QtWidgets.QWidget):
         setattr(self, attr, None)
         release_thread(self._retired_workers, worker, timeout_ms=timeout_ms)
 
+    def _release_worker(self, worker: QtCore.QThread | None) -> None:
+        release_thread(self._retired_workers, worker, timeout_ms=0)
+
     def __init__(
         self,
         page_name: str,
@@ -282,7 +285,15 @@ class QuotesPage(QtWidgets.QWidget):
         self._quote_timer.stop()
         self._signals.stop()
         self._positions.stop()
-        for attr in ("_download_worker", "_batch_fill_worker", "_batch_gap_fill_worker"):
+        for attr in (
+            "_load_worker",
+            "_market_worker",
+            "_prefetch_worker",
+            "_sync_worker",
+            "_download_worker",
+            "_batch_fill_worker",
+            "_batch_gap_fill_worker",
+        ):
             worker = getattr(self, attr, None)
             if worker is not None and hasattr(worker, "request_cancel"):
                 worker.request_cancel()
@@ -471,6 +482,8 @@ class QuotesPage(QtWidgets.QWidget):
         panel.row_selected.connect(self._on_signal_panel_row_activated)
         panel.expansion_changed.connect(self._on_signal_panel_expansion_changed)
         panel.register_position_requested.connect(self._on_signal_register_position)
+        panel.ai_interpret_requested.connect(self._actions.ask_ai_for_signal_panel)
+        panel.ai_scan_requested.connect(self._actions.ask_ai_for_signal_panel_batch)
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
         apply_center_splitter_sizes(self)
@@ -493,7 +506,17 @@ class QuotesPage(QtWidgets.QWidget):
         if snap is not None and self.chart_panel is not None:
             item = self.find_stock_item(vt_symbol)
             quote = self.quote_map.get(item.tickflow_symbol) if item is not None else None
-            self.chart_panel.apply_signal_reference(snap, quote=quote)
+            cfg = self.signal_config.normalized()
+            self.chart_panel.apply_signal_reference(
+                snap,
+                quote=quote,
+                fast_window=cfg.fast_window,
+                slow_window=cfg.slow_window,
+            )
+
+    def _signal_chart_ref_kwargs(self) -> dict[str, int]:
+        cfg = self.signal_config.normalized()
+        return {"fast_window": cfg.fast_window, "slow_window": cfg.slow_window}
 
     def _wire_position_panel(self) -> None:
         panel = getattr(self, "position_panel", None)
@@ -551,7 +574,13 @@ class QuotesPage(QtWidgets.QWidget):
         if snap is not None and snap.signal_snapshot is not None and self.chart_panel is not None:
             item = self.find_stock_item(vt_symbol)
             quote = self.quote_map.get(item.tickflow_symbol) if item is not None else None
-            self.chart_panel.apply_signal_reference(snap.signal_snapshot, quote=quote)
+            pos_cfg = self.position_config.normalized().effective_signal_config(self.signal_config)
+            self.chart_panel.apply_signal_reference(
+                snap.signal_snapshot,
+                quote=quote,
+                fast_window=pos_cfg.fast_window,
+                slow_window=pos_cfg.slow_window,
+            )
 
     def register_position_for_selected(self) -> None:
         panel = getattr(self, "position_panel", None)

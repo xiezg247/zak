@@ -43,6 +43,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "get_bars_data",
             "technical_snapshot",
             "list_strategy_signals",
+            "list_watchlist_signal_panel",
             "historical_pattern_summary",
         }
     ),
@@ -81,6 +82,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "remove_from_watchlist",
             "get_quote_context",
             "list_strategy_signals",
+            "list_watchlist_signal_panel",
         }
     ),
     "data": frozenset(

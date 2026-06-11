@@ -115,6 +115,7 @@ class DataLoaderController:
         if page._thread_active(page._market_worker):
             return
 
+        page._wait_worker_release("_market_worker", timeout_ms=0)
         page._load_generation += 1
         generation = page._load_generation
         loading_text = "正在加载全市场数据（排序）…" if page.market_auto_refresh_enabled() else "正在加载全市场数据…"
@@ -137,51 +138,55 @@ class DataLoaderController:
         def on_finished(result: object) -> None:
             if page._market_worker is worker:
                 page._market_worker = None
-            if generation != page._load_generation or not page._active:
-                return
-            if not isinstance(result, MarketFullResult):
-                return
-
-            page._market_catalog = list(result.items)
-            page._market_catalog_quotes = dict(result.quotes)
-            page._market_board_base = None
-            page._market_board_base_key = None
-            page._market_filter_keyword = ""
-            page._market_catalog_loaded = True
-            page._market_updated_at = result.updated_at
-            page.quote_map = dict(result.quotes)
-            self.sync_market_quotes_to_cache_from_catalog()
-            if not quiet:
-                if page._finish_cancellable_task(cancelled_message="加载已取消"):
-                    page._hide_market_loading()
+            try:
+                if generation != page._load_generation or not page._active:
                     return
-                page._hide_market_loading()
-            page._table.filter_market_display()
-            if page.market_auto_refresh_enabled():
-                page._pagination.set_visible()
-                page.schedule_quote_auto_refresh()
-            else:
-                page._pagination.set_visible(False)
-                page._quote_timer.stop()
-            page._pagination.update_controls()
+                if not isinstance(result, MarketFullResult):
+                    return
+
+                page._market_catalog = list(result.items)
+                page._market_catalog_quotes = dict(result.quotes)
+                page._market_board_base = None
+                page._market_board_base_key = None
+                page._market_filter_keyword = ""
+                page._market_catalog_loaded = True
+                page._market_updated_at = result.updated_at
+                page.quote_map = dict(result.quotes)
+                self.sync_market_quotes_to_cache_from_catalog()
+                if not quiet:
+                    if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                        page._hide_market_loading()
+                        return
+                    page._hide_market_loading()
+                page._table.filter_market_display()
+                if page.market_auto_refresh_enabled():
+                    page._pagination.set_visible()
+                    page.schedule_quote_auto_refresh()
+                else:
+                    page._pagination.set_visible(False)
+                    page._quote_timer.stop()
+                page._pagination.update_controls()
+            finally:
+                page._release_worker(worker)
 
         def on_failed(msg: str) -> None:
             if page._market_worker is worker:
                 page._market_worker = None
-            if generation != page._load_generation or not page._active:
-                return
-            if not quiet:
-                if page._finish_cancellable_task(cancelled_message="加载已取消"):
-                    page._hide_market_loading()
+            try:
+                if generation != page._load_generation or not page._active:
                     return
-                page._hide_market_loading()
-                page.status_label.setText(f"加载失败: {msg}")
-                page._toast.error(msg)
+                if not quiet:
+                    if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                        page._hide_market_loading()
+                        return
+                    page._hide_market_loading()
+                    page.status_label.setText(f"加载失败: {msg}")
+                    page._toast.error(msg)
+            finally:
+                page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def load_market_page(self, *, quiet: bool = False, append: bool = False) -> None:
@@ -221,6 +226,7 @@ class DataLoaderController:
             return
 
         if not append:
+            page._wait_worker_release("_market_worker", timeout_ms=0)
             page._load_generation += 1
         generation = page._load_generation
         keyword = page.search_edit.text().strip()
@@ -253,48 +259,52 @@ class DataLoaderController:
         def on_finished(result: object) -> None:
             if page._market_worker is worker:
                 page._market_worker = None
-            if generation != page._load_generation or not page._active:
-                return
-            if not isinstance(result, MarketPageResult):
-                return
+            try:
+                if generation != page._load_generation or not page._active:
+                    return
+                if not isinstance(result, MarketPageResult):
+                    return
 
-            page._market_page_cache[cache_key] = result
-            page._market_count_cache[result.board] = result.total
-            self._apply_market_page_result(result, quiet=quiet, append=append)
-            if not append:
-                self._prefetch_market_page(page._market_page + 1, generation=generation)
-            else:
-                page._market_loading_more = False
-                self._prefetch_market_page(page._market_page + 1, generation=generation)
+                page._market_page_cache[cache_key] = result
+                page._market_count_cache[result.board] = result.total
+                self._apply_market_page_result(result, quiet=quiet, append=append)
+                if not append:
+                    self._prefetch_market_page(page._market_page + 1, generation=generation)
+                else:
+                    page._market_loading_more = False
+                    self._prefetch_market_page(page._market_page + 1, generation=generation)
+            finally:
+                page._release_worker(worker)
 
         def on_failed(msg: str) -> None:
             if page._market_worker is worker:
                 page._market_worker = None
-            if generation != page._load_generation or not page._active:
-                return
-            if append:
-                page._market_loading_more = False
-                page._market_page = max(page._market_page - 1, 0)
-                status = page._pagination.format_scroll_status(
-                    total=page._market_total,
-                    loaded=len(page.display_stocks),
-                    updated_at=page._market_updated_at,
-                    mode=page._market_load_mode,
-                )
-                page.status_label.setText(f"{status}（加载失败: {msg}）")
-                return
-            if not quiet and not append:
-                if page._finish_cancellable_task(cancelled_message="加载已取消"):
-                    page._hide_market_loading()
+            try:
+                if generation != page._load_generation or not page._active:
                     return
-                page._hide_market_loading()
-                page.status_label.setText(f"加载失败: {msg}")
-                page._toast.error(msg)
+                if append:
+                    page._market_loading_more = False
+                    page._market_page = max(page._market_page - 1, 0)
+                    status = page._pagination.format_scroll_status(
+                        total=page._market_total,
+                        loaded=len(page.display_stocks),
+                        updated_at=page._market_updated_at,
+                        mode=page._market_load_mode,
+                    )
+                    page.status_label.setText(f"{status}（加载失败: {msg}）")
+                    return
+                if not quiet and not append:
+                    if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                        page._hide_market_loading()
+                        return
+                    page._hide_market_loading()
+                    page.status_label.setText(f"加载失败: {msg}")
+                    page._toast.error(msg)
+            finally:
+                page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def _market_page_cache_key(self) -> tuple[str | None, str, int]:
@@ -376,6 +386,7 @@ class DataLoaderController:
             return
         if page._thread_active(page._prefetch_worker):
             return
+        page._wait_worker_release("_prefetch_worker", timeout_ms=0)
 
         cached_total = page._market_count_cache.get(page._market_board)
         if cached_total is None and page._market_board is not None:
@@ -394,21 +405,23 @@ class DataLoaderController:
         def on_finished(result: object) -> None:
             if page._prefetch_worker is worker:
                 page._prefetch_worker = None
-            if generation != page._load_generation or not page._active:
-                return
-            if not isinstance(result, MarketPageResult):
-                return
-            page._market_page_cache[cache_key] = result
-            page._market_count_cache[result.board] = result.total
+            try:
+                if generation != page._load_generation or not page._active:
+                    return
+                if not isinstance(result, MarketPageResult):
+                    return
+                page._market_page_cache[cache_key] = result
+                page._market_count_cache[result.board] = result.total
+            finally:
+                page._release_worker(worker)
 
         def on_failed(_msg: str) -> None:
             if page._prefetch_worker is worker:
                 page._prefetch_worker = None
+            page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def load_stock_list(self) -> None:
@@ -428,6 +441,7 @@ class DataLoaderController:
                 self.load_market_page()
             return
 
+        page._wait_worker_release("_load_worker", timeout_ms=0)
         page._load_generation += 1
         generation = page._load_generation
         scope_key = page.config.scope_key
@@ -456,44 +470,49 @@ class DataLoaderController:
         def on_finished(stocks: list) -> None:
             if page._load_worker is worker:
                 page._load_worker = None
-            if generation != page._load_generation or not page._active:
-                return
-            page.all_stocks = stocks
-            if page._finish_cancellable_task(cancelled_message="加载已取消"):
+            try:
+                if generation != page._load_generation or not page._active:
+                    return
+                page.all_stocks = stocks
+                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                    page._hide_market_loading()
+                    return
                 page._hide_market_loading()
-                return
-            page._hide_market_loading()
-            if page.config.use_local_table:
-                page._local.on_stock_list_loaded()
-            else:
-                page.apply_filter()
-                if page.config.show_watchlist_signals:
-                    page._signals.on_stock_list_loaded()
-                if page.config.show_watchlist_positions:
-                    page._positions.on_stock_list_loaded()
+                if page.config.use_local_table:
+                    page._local.on_stock_list_loaded()
+                else:
+                    page.apply_filter()
+                    if page.config.show_watchlist_signals:
+                        page._signals.on_stock_list_loaded()
+                    if page.config.show_watchlist_positions:
+                        page._positions.on_stock_list_loaded()
+            finally:
+                page._release_worker(worker)
 
         def on_failed(msg: str) -> None:
             if page._load_worker is worker:
                 page._load_worker = None
-            if generation != page._load_generation or not page._active:
-                return
-            if page._finish_cancellable_task(cancelled_message="加载已取消"):
+            try:
+                if generation != page._load_generation or not page._active:
+                    return
+                if page._finish_cancellable_task(cancelled_message="加载已取消"):
+                    page._hide_market_loading()
+                    return
                 page._hide_market_loading()
-                return
-            page._hide_market_loading()
-            page.status_label.setText(f"加载失败: {msg}")
-            page._toast.error(msg)
+                page.status_label.setText(f"加载失败: {msg}")
+                page._toast.error(msg)
+            finally:
+                page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def sync_universe_clicked(self) -> None:
         page = self._p
         if page._thread_active(page._sync_worker):
             return
+        page._wait_worker_release("_sync_worker", timeout_ms=0)
         if not self._begin_loader_task(
             "后台同步 A 股列表…",
             worker_attr="_sync_worker",
@@ -511,28 +530,32 @@ class DataLoaderController:
         def on_finished(_path: str) -> None:
             if page._sync_worker is worker:
                 page._sync_worker = None
-            if page._finish_cancellable_task(cancelled_message="同步已取消"):
-                return
-            page.status_label.setText("A 股列表同步完成")
-            page._toast.success("A 股列表同步完成")
-            if page._active:
-                page._market_catalog_loaded = False
-                page._market_page_cache.clear()
-                page._market_count_cache.clear()
-                self.load_stock_list()
+            try:
+                if page._finish_cancellable_task(cancelled_message="同步已取消"):
+                    return
+                page.status_label.setText("A 股列表同步完成")
+                page._toast.success("A 股列表同步完成")
+                if page._active:
+                    page._market_catalog_loaded = False
+                    page._market_page_cache.clear()
+                    page._market_count_cache.clear()
+                    self.load_stock_list()
+            finally:
+                page._release_worker(worker)
 
         def on_failed(msg: str) -> None:
             if page._sync_worker is worker:
                 page._sync_worker = None
-            if page._finish_cancellable_task(cancelled_message="同步已取消"):
-                return
-            page.status_label.setText(f"同步失败: {msg}")
-            page._toast.error(msg)
+            try:
+                if page._finish_cancellable_task(cancelled_message="同步已取消"):
+                    return
+                page.status_label.setText(f"同步失败: {msg}")
+                page._toast.error(msg)
+            finally:
+                page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def sync_market_quotes_to_cache(self, result: object) -> None:

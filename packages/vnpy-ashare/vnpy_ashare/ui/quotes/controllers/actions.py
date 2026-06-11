@@ -10,8 +10,11 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.ai.context import (
     build_diagnose_ai_prompt,
     build_positions_ai_prompt,
+    build_signal_panel_ai_prompt,
+    build_signal_panel_batch_ai_prompt,
     build_signals_ai_prompt,
 )
+from vnpy_ashare.domain.signal_snapshot import format_signal_context_extra
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
@@ -126,6 +129,31 @@ class ActionsController:
             item=page.current_item,
             quote=quote,
             bar_count=bar_count,
+            signal_extra=self._signal_context_extra(),
+        )
+
+    def _signal_context_extra(self) -> str:
+        page = self._p
+        if page.page_name != "自选" or not page.config.show_watchlist_signals:
+            return ""
+        item = page.current_item
+        if item is None:
+            return ""
+        panel = getattr(page, "signal_panel", None)
+        if panel is None or not panel.enabled:
+            return ""
+        if item.vt_symbol not in panel.symbols:
+            return ""
+        snap = page.signal_cache.get(item.vt_symbol)
+        if snap is None:
+            return ""
+        quote = page.quote_map.get(item.tickflow_symbol)
+        cfg = page.signal_config.normalized()
+        return format_signal_context_extra(
+            snap,
+            quote=quote,
+            fast_window=cfg.fast_window,
+            slow_window=cfg.slow_window,
         )
 
     def update_quote_header(self, item: StockItem) -> None:
@@ -185,35 +213,39 @@ class ActionsController:
         page._depth_worker = worker
 
         def on_finished(depth: object) -> None:
-            if generation != page._depth_generation:
-                return
             if page._depth_worker is worker:
                 page._depth_worker = None
-            if not page._active or page.current_item is None:
-                return
-            if (page.current_item.symbol, page.current_item.exchange) != target_key:
-                return
-            if isinstance(depth, DepthSnapshot):
-                page.depth_panel.update_depth(depth)
+            try:
+                if generation != page._depth_generation:
+                    return
+                if not page._active or page.current_item is None:
+                    return
+                if (page.current_item.symbol, page.current_item.exchange) != target_key:
+                    return
+                if isinstance(depth, DepthSnapshot):
+                    page.depth_panel.update_depth(depth)
+            finally:
+                page._release_worker(worker)
 
         def on_permission_denied(_message: str) -> None:
-            if generation != page._depth_generation:
-                return
             if page._depth_worker is worker:
                 page._depth_worker = None
-            page._depth_permission_denied = True
-            page.depth_panel.show_permission_denied("未开通市场深度权限")
+            try:
+                if generation != page._depth_generation:
+                    return
+                page._depth_permission_denied = True
+                page.depth_panel.show_permission_denied("未开通市场深度权限")
+            finally:
+                page._release_worker(worker)
 
         def on_failed(_msg: str) -> None:
             if page._depth_worker is worker:
                 page._depth_worker = None
+            page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.permission_denied.connect(on_permission_denied)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.permission_denied.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def refresh_quotes(self) -> None:
@@ -267,36 +299,40 @@ class ActionsController:
         def on_finished(quotes: dict) -> None:
             if page._quotes_worker is worker:
                 page._quotes_worker = None
-            if not page._active:
-                return
-            page.quote_map.update(quotes)
-            if page.config.market_full_list and page._market_catalog_loaded:
-                page._market_catalog_quotes.update(quotes)
-            if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and page.market_auto_refresh_enabled():
-                page._table.apply_market_display()
-            elif page.config.market_scroll_paging:
-                page._table.refresh_visible_table_quotes()
-            else:
-                page._refresh_table_quotes()
-            page._update_quote_source_label()
-            if current:
-                self.update_quote_header(current)
-                if page.chart_panel is not None:
-                    page.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
-                    page.chart_panel.refresh_active()
-            if page.quote_auto_refresh_enabled():
-                page.schedule_quote_auto_refresh()
+            try:
+                if not page._active:
+                    return
+                page.quote_map.update(quotes)
+                if page.config.market_full_list and page._market_catalog_loaded:
+                    page._market_catalog_quotes.update(quotes)
+                if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and page.market_auto_refresh_enabled():
+                    page._table.apply_market_display()
+                elif page.config.market_scroll_paging:
+                    page._table.refresh_visible_table_quotes()
+                else:
+                    page._refresh_table_quotes()
+                page._update_quote_source_label()
+                if current:
+                    self.update_quote_header(current)
+                    if page.chart_panel is not None:
+                        page.chart_panel.update_quote(quotes.get(current.tickflow_symbol))
+                        page.chart_panel.refresh_active()
+                if page.quote_auto_refresh_enabled():
+                    page.schedule_quote_auto_refresh()
+            finally:
+                page._release_worker(worker)
 
         def on_failed(_msg: str) -> None:
             if page._quotes_worker is worker:
                 page._quotes_worker = None
-            if page.quote_auto_refresh_enabled():
-                page.schedule_quote_auto_refresh()
+            try:
+                if page.quote_auto_refresh_enabled():
+                    page.schedule_quote_auto_refresh()
+            finally:
+                page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def run_diagnose_for_selected(self) -> None:
@@ -392,28 +428,96 @@ class ActionsController:
 
     def ask_ai_for_signals(self) -> None:
         page = self._p
-        title = self._item_title()
-        if title is None:
-            return
         item = page.current_item
-        assert item is not None
+        if item is None:
+            return
+        self._ask_ai_for_signal_symbol(item.vt_symbol)
+
+    def ask_ai_for_signal_panel_batch(self) -> None:
+        """信号区「AI 扫区」：批量解读名单内全部标的。"""
+        page = self._p
+        panel = getattr(page, "signal_panel", None)
+        if panel is None or not panel.enabled:
+            page._toast.warning("请先启用策略信号区")
+            return
+        if not panel.symbols:
+            page._toast.warning("信号区暂无监控标的")
+            return
+        cfg = page.signal_config.normalized()
+        self._ask_ai(
+            build_signal_panel_batch_ai_prompt(
+                class_name=cfg.class_name,
+                fast_window=cfg.fast_window,
+                slow_window=cfg.slow_window,
+                symbol_count=len(panel.symbols),
+            )
+        )
+
+    def ask_ai_for_signal_panel(self, vt_symbol: str | None = None) -> None:
+        """信号区「AI 解读」：优先选中行，否则主表当前行（须在信号区名单内）。"""
+        page = self._p
+        panel = getattr(page, "signal_panel", None)
+        if panel is None or not panel.enabled:
+            page._toast.warning("请先启用策略信号区")
+            return
+
+        target = (vt_symbol or "").strip()
+        if not target:
+            selected = panel.selected_vt_symbols()
+            if len(selected) == 1:
+                target = selected[0]
+            elif len(selected) > 1:
+                page._toast.warning("AI 解读一次仅支持单只标的")
+                return
+            elif page.current_item is not None and page.current_item.vt_symbol in panel.symbols:
+                target = page.current_item.vt_symbol
+        if not target:
+            page._toast.warning("请先在策略信号区选择标的")
+            return
+        if target not in panel.symbols:
+            page._toast.warning("该标的不在策略信号区名单内")
+            return
+
+        item = page.find_stock_item(target)
+        if item is None:
+            return
+        if page.current_item is None or page.current_item.vt_symbol != target:
+            page._select_stock_key((item.symbol, item.exchange))
+        # 延后跳转 AI 页，避免同步触发 K 线加载后立即 deactivate 导致 QThread 竞态。
+        QtCore.QTimer.singleShot(0, lambda vt=target: self._ask_ai_for_signal_symbol(vt))
+
+    def _ask_ai_for_signal_symbol(self, vt_symbol: str) -> None:
+        page = self._p
+        item = page.find_stock_item(vt_symbol)
+        if item is None:
+            return
         quote = page.quote_map.get(item.tickflow_symbol)
         name = quote.name if quote and quote.name else item.name
         fast_window = 10
         slow_window = 20
         class_name = "AshareDoubleMaStrategy"
+        context_extra = ""
         if page.config.show_watchlist_signals and page.page_name == "自选":
             cfg = page.signal_config.normalized()
             fast_window = cfg.fast_window
             slow_window = cfg.slow_window
             class_name = cfg.class_name
+            snap = page.signal_cache.get(vt_symbol)
+            if snap is not None:
+                context_extra = format_signal_context_extra(
+                    snap,
+                    quote=quote,
+                    fast_window=fast_window,
+                    slow_window=slow_window,
+                )
         self._ask_ai(
-            build_signals_ai_prompt(
-                item.vt_symbol,
+            build_signal_panel_ai_prompt(
+                vt_symbol,
                 name,
                 class_name=class_name,
                 fast_window=fast_window,
                 slow_window=slow_window,
+                context_extra=context_extra,
             )
         )
 

@@ -10,7 +10,9 @@ from vnpy_common.ui.qt_helpers import (
     clamp_point_in_parent,
     default_child_bottom_right_in_anchor,
     frame_intersects_any_screen,
+    release_thread,
     restore_child_position,
+    thread_is_active,
 )
 
 
@@ -53,6 +55,21 @@ class QtHelpersTests(unittest.TestCase):
         self.assertIsNotNone(screen)
         avail = screen.availableGeometry()
         self.assertTrue(frame_intersects_any_screen(avail))
+
+    def test_release_thread_does_not_destroy_pending_start_worker(self) -> None:
+        class SlowWorker(QtCore.QThread):
+            def run(self) -> None:
+                self.msleep(200)
+
+        retired: list[QtCore.QThread] = []
+        worker = SlowWorker()
+        worker.start()
+        release_thread(retired, worker, timeout_ms=0)
+        self.assertIn(worker, retired)
+        self.assertTrue(thread_is_active(worker) or worker.isFinished())
+        worker.wait(3000)
+        QtWidgets.QApplication.processEvents()
+        self.assertNotIn(worker, retired)
 
 
 if __name__ == "__main__":

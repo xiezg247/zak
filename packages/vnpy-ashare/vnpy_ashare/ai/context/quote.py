@@ -32,6 +32,7 @@ def build_quote_context(
     item: StockItem | None,
     quote: QuoteSnapshot | None = None,
     bar_count: int = 0,
+    signal_extra: str = "",
 ) -> AiContextData:
     """组装看盘页 AI 上下文（含行情摘要与本地 K 线条数）。"""
     if item is None:
@@ -42,6 +43,9 @@ def build_quote_context(
         extra_parts.append(f"本地日 K 条数：{bar_count}")
     else:
         extra_parts.append("本地日 K：暂无（需先下载）")
+    signal_text = (signal_extra or "").strip()
+    if signal_text:
+        extra_parts.append(signal_text)
 
     return AiContextData(
         page=page,
@@ -161,6 +165,56 @@ def build_signals_ai_prompt(
         f'请调用 list_strategy_signals(symbol="{vt_symbol}", class_name="{class_name}", '
         f"fast_window={fast}, slow_window={slow})，"
         "基于工具返回的金叉/死叉信号和当前均线状态做解读。"
+    )
+
+
+def build_signal_panel_batch_ai_prompt(
+    *,
+    class_name: str = "AshareDoubleMaStrategy",
+    fast_window: int = 10,
+    slow_window: int = 20,
+    symbol_count: int = 0,
+) -> str:
+    """信号区「AI 扫区」预填文案（调用 list_watchlist_signal_panel）。"""
+    fast = max(2, int(fast_window or 10))
+    slow = max(fast + 1, int(slow_window or 20))
+    count = max(0, int(symbol_count or 0))
+    return (
+        f"请扫描自选页策略信号区共 {count} 只监控标的的双均线（MA{fast}/MA{slow}）信号。"
+        f'请调用 list_watchlist_signal_panel(class_name="{class_name}", '
+        f"fast_window={fast}, slow_window={slow}, include_live_quote=true)，"
+        "汇总买入/卖出/观望分布，标出需关注的标的并说明理由；"
+        "结合 items 中的 live_context 与 snapshot 解读，禁止给出具体买卖价或仓位建议。"
+    )
+
+
+def build_signal_panel_ai_prompt(
+    vt_symbol: str,
+    name: str = "",
+    *,
+    class_name: str = "AshareDoubleMaStrategy",
+    fast_window: int = 10,
+    slow_window: int = 20,
+    context_extra: str = "",
+) -> str:
+    """信号区「AI 解读」预填文案：附带快照摘要 + 工具调用。"""
+    base = build_signals_ai_prompt(
+        vt_symbol,
+        name,
+        class_name=class_name,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+    snapshot_text = (context_extra or "").strip()
+    if not snapshot_text:
+        return (
+            f"{base}"
+            "结合当前行情与信号区展示字段（参考价、距买价%）做研究解读，禁止给出具体买卖价或仓位建议。"
+        )
+    return (
+        f"已知信号区快照（规则计算，非买卖建议）：\n{snapshot_text}\n\n"
+        f"{base}"
+        "结合上述快照与工具返回核对解读；盘中提示仅供参考，禁止给出具体买卖价或仓位建议。"
     )
 
 

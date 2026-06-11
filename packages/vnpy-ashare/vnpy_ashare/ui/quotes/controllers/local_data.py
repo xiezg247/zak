@@ -587,43 +587,47 @@ class LocalDataController:
         page._gap_worker = worker
 
         def on_finished(result: object) -> None:
-            if generation != page._gap_generation:
-                return
             if page._gap_worker is worker:
                 page._gap_worker = None
-            if not page._active or page.current_item is None:
-                return
-            if (page.current_item.symbol, page.current_item.exchange) != key:
-                return
-            if not isinstance(result, tuple) or len(result) != 2:
-                return
-            result_item, gap_result = result
-            if (result_item.symbol, result_item.exchange) != key:
-                return
-            if not isinstance(gap_result, BarGapResult):
-                return
+            try:
+                if generation != page._gap_generation:
+                    return
+                if not page._active or page.current_item is None:
+                    return
+                if (page.current_item.symbol, page.current_item.exchange) != key:
+                    return
+                if not isinstance(result, tuple) or len(result) != 2:
+                    return
+                result_item, gap_result = result
+                if (result_item.symbol, result_item.exchange) != key:
+                    return
+                if not isinstance(gap_result, BarGapResult):
+                    return
 
-            page._selected_gap_result = gap_result
-            page.bar_list_status[key] = gap_result.status
-            page._refresh_row_for_item(item)
-            page._update_action_buttons()
-            self.update_coverage_hint(item)
+                page._selected_gap_result = gap_result
+                page.bar_list_status[key] = gap_result.status
+                page._refresh_row_for_item(item)
+                page._update_action_buttons()
+                self.update_coverage_hint(item)
+            finally:
+                page._release_worker(worker)
 
         def on_failed(_msg: str) -> None:
-            if generation != page._gap_generation:
-                return
             if page._gap_worker is worker:
                 page._gap_worker = None
-            if page.current_item is None:
-                return
-            if (page.current_item.symbol, page.current_item.exchange) != key:
-                return
-            self.set_chart_hint("完整性检查失败，仍可查看已有 K 线")
+            try:
+                if generation != page._gap_generation:
+                    return
+                if page.current_item is None:
+                    return
+                if (page.current_item.symbol, page.current_item.exchange) != key:
+                    return
+                self.set_chart_hint("完整性检查失败，仍可查看已有 K 线")
+            finally:
+                page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def clear_chart(self) -> None:
@@ -700,38 +704,40 @@ class LocalDataController:
         def on_finished(result: object) -> None:
             if page._bars_worker is worker:
                 page._bars_worker = None
-            if not _should_apply(result):
-                return
-            scope_label = self.scope_label()
-            if result is None:
-                self.clear_chart()
-                if page.config.show_fill_button:
-                    self.set_chart_hint(f"暂无本地{scope_label}")
+            try:
+                if not _should_apply(result):
+                    return
+                scope_label = self.scope_label()
+                if result is None:
+                    self.clear_chart()
+                    if page.config.show_fill_button:
+                        self.set_chart_hint(f"暂无本地{scope_label}")
+                    else:
+                        self.set_chart_hint(f"暂无本地{scope_label}，请点击「下载日K到本地」")
+                    return
+                loaded: LoadedBars = result
+                if loaded.bars:
+                    self.render_chart(loaded.bars)
+                    if page.config.show_fill_button:
+                        self.update_coverage_hint(item)
+                    else:
+                        self.set_chart_hint(None)
                 else:
-                    self.set_chart_hint(f"暂无本地{scope_label}，请点击「下载日K到本地」")
-                return
-            loaded: LoadedBars = result
-            if loaded.bars:
-                self.render_chart(loaded.bars)
-                if page.config.show_fill_button:
-                    self.update_coverage_hint(item)
-                else:
-                    self.set_chart_hint(None)
-            else:
-                self.clear_chart()
-                if page.config.show_fill_button:
-                    self.set_chart_hint(f"暂无本地{scope_label}")
-                else:
-                    self.set_chart_hint(f"暂无本地{scope_label}，请点击「下载日K到本地」")
+                    self.clear_chart()
+                    if page.config.show_fill_button:
+                        self.set_chart_hint(f"暂无本地{scope_label}")
+                    else:
+                        self.set_chart_hint(f"暂无本地{scope_label}，请点击「下载日K到本地」")
+            finally:
+                page._release_worker(worker)
 
         def on_failed(_msg: str) -> None:
             if page._bars_worker is worker:
                 page._bars_worker = None
+            page._release_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def download_selected(self) -> None:

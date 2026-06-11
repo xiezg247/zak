@@ -121,7 +121,15 @@ class WatchlistPositionController:
             snap = self._page.position_cache.get(item.vt_symbol)
             if snap is not None and snap.signal_snapshot is not None:
                 quote = self._page.quote_map.get(item.tickflow_symbol)
-                self._page.chart_panel.apply_signal_reference(snap.signal_snapshot, quote=quote)
+                pos_cfg = self._page.position_config.normalized().effective_signal_config(
+                    self._page.signal_config
+                )
+                self._page.chart_panel.apply_signal_reference(
+                    snap.signal_snapshot,
+                    quote=quote,
+                    fast_window=pos_cfg.fast_window,
+                    slow_window=pos_cfg.slow_window,
+                )
 
     def refresh_quotes_only(self) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:

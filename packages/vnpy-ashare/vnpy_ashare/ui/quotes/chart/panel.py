@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, resolve_display_anchor_prices
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet
@@ -225,6 +225,8 @@ class ChartPanel(QtWidgets.QWidget):
         snapshot: SignalSnapshot | None,
         *,
         quote: QuoteSnapshot | None = None,
+        fast_window: int = 10,
+        slow_window: int = 20,
     ) -> None:
         """日 K 叠加策略支撑/阻力锚点与现价水平线。"""
         self._signal_snapshot = snapshot
@@ -232,9 +234,15 @@ class ChartPanel(QtWidgets.QWidget):
             self.daily_chart.clear_reference_lines()
             return
         last_price = quote.last_price if quote and quote.last_price > 0 else None
+        ref_buy, ref_sell, _ = resolve_display_anchor_prices(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
         self.daily_chart.set_reference_lines(
-            ref_buy=snapshot.ref_buy_price,
-            ref_sell=snapshot.ref_sell_price,
+            ref_buy=ref_buy,
+            ref_sell=ref_sell,
             last_price=last_price,
         )
 
@@ -388,17 +396,19 @@ class ChartPanel(QtWidgets.QWidget):
         self._intraday_worker = worker
 
         def on_finished(bars: object) -> None:
-            if generation != self._generation:
-                if self._intraday_worker is worker:
-                    self._intraday_worker = None
-                return
             if self._intraday_worker is worker:
                 self._intraday_worker = None
+            if generation != self._generation:
+                self._retire_worker(worker)
+                return
             if not self._active or self._item is None:
+                self._retire_worker(worker)
                 return
             if (self._item.symbol, self._item.exchange) != target_key:
+                self._retire_worker(worker)
                 return
             if self.tab_bar.currentIndex() != 0:
+                self._retire_worker(worker)
                 return
             bar_list = list(bars)
             if bar_list:
@@ -410,27 +420,31 @@ class ChartPanel(QtWidgets.QWidget):
                 self._intraday_error = None
                 self.intraday_chart.clear_all()
             self._update_hint()
+            self._retire_worker(worker)
 
         def on_failed(msg: str) -> None:
             if self._intraday_worker is worker:
                 self._intraday_worker = None
             if generation != self._generation:
+                self._retire_worker(worker)
                 return
             if not self._active or self._item is None:
+                self._retire_worker(worker)
                 return
             if (self._item.symbol, self._item.exchange) != target_key:
+                self._retire_worker(worker)
                 return
             if self.tab_bar.currentIndex() != 0:
+                self._retire_worker(worker)
                 return
             self._intraday_error = msg
             self._intraday_empty = False
             self.intraday_chart.clear_all()
             self._update_hint()
+            self._retire_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def _load_daily(self, *, quiet: bool = False) -> None:
@@ -456,21 +470,24 @@ class ChartPanel(QtWidgets.QWidget):
         self._daily_worker = worker
 
         def on_finished(result: object) -> None:
-            if generation != self._generation:
-                if self._daily_worker is worker:
-                    self._daily_worker = None
-                return
             if self._daily_worker is worker:
                 self._daily_worker = None
+            if generation != self._generation:
+                self._retire_worker(worker)
+                return
             if not self._active or self._item is None:
+                self._retire_worker(worker)
                 return
             if (self._item.symbol, self._item.exchange) != target_key:
+                self._retire_worker(worker)
                 return
             if self.tab_bar.currentIndex() != 1:
+                self._retire_worker(worker)
                 return
             if result is None:
                 self.daily_chart.clear_all()
                 self._update_hint(daily_missing=True)
+                self._retire_worker(worker)
                 return
             loaded: LoadedBars = result
             if loaded.bars:
@@ -482,15 +499,15 @@ class ChartPanel(QtWidgets.QWidget):
             else:
                 self.daily_chart.clear_all()
                 self._update_hint(daily_missing=True)
+            self._retire_worker(worker)
 
         def on_failed(_msg: str) -> None:
             if self._daily_worker is worker:
                 self._daily_worker = None
+            self._retire_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()
 
     def _load_minute(self, *, quiet: bool = False) -> None:
@@ -522,19 +539,19 @@ class ChartPanel(QtWidgets.QWidget):
         self._minute_worker = worker
 
         def on_finished(result: object) -> None:
-            if generation != self._generation:
-                if self._minute_worker is worker:
-                    self._minute_worker = None
-                return
-            if request_id != self._minute_request_id:
-                if self._minute_worker is worker:
-                    self._minute_worker = None
-                return
             if self._minute_worker is worker:
                 self._minute_worker = None
+            if generation != self._generation:
+                self._retire_worker(worker)
+                return
+            if request_id != self._minute_request_id:
+                self._retire_worker(worker)
+                return
             if not self._active or self._item is None:
+                self._retire_worker(worker)
                 return
             if (self._item.symbol, self._item.exchange) != target_key:
+                self._retire_worker(worker)
                 return
 
             loaded = result if isinstance(result, LoadedPeriodBars) else None
@@ -545,6 +562,7 @@ class ChartPanel(QtWidgets.QWidget):
                 tab_index=self.tab_bar.currentIndex(),
                 loaded_period=loaded_period,
             ):
+                self._retire_worker(worker)
                 return
 
             bar_list = prepare_chart_bars(loaded.bars if loaded else list(result))
@@ -567,13 +585,13 @@ class ChartPanel(QtWidgets.QWidget):
                 self._reset_minute_chart()
                 self._minute_loaded_period = None
                 self._minute_loaded_key = None
+            self._retire_worker(worker)
 
         def on_failed(_msg: str) -> None:
             if self._minute_worker is worker:
                 self._minute_worker = None
+            self._retire_worker(worker)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
-        worker.finished.connect(worker.deleteLater)
-        worker.failed.connect(worker.deleteLater)
         worker.start()

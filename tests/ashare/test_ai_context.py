@@ -56,6 +56,33 @@ class TestAiContext(unittest.TestCase):
         self.assertIn("fast_window=8", prompt)
         self.assertIn("slow_window=21", prompt)
 
+    def test_build_quote_context_includes_signal_extra(self) -> None:
+        item = StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发银行")
+        data = build_quote_context(
+            page="自选",
+            item=item,
+            bar_count=120,
+            signal_extra="策略信号：买入\n参考买价：10.00",
+        )
+        text = data.to_text()
+        self.assertIn("策略信号：买入", text)
+        self.assertIn("参考买价：10.00", text)
+
+    def test_build_signal_panel_ai_prompt_includes_snapshot(self) -> None:
+        from vnpy_ashare.ai.context import build_signal_panel_ai_prompt
+
+        prompt = build_signal_panel_ai_prompt(
+            "600000.SSE",
+            "浦发银行",
+            fast_window=8,
+            slow_window=21,
+            context_extra="策略信号：买入\n参考买价：10.00",
+        )
+        self.assertIn("已知信号区快照", prompt)
+        self.assertIn("策略信号：买入", prompt)
+        self.assertIn("MA8/MA21", prompt)
+        self.assertIn("list_strategy_signals", prompt)
+
     def test_build_positions_ai_prompt_includes_context(self) -> None:
         from vnpy_ashare.ai.context import build_positions_ai_prompt
 

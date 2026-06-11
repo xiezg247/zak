@@ -666,9 +666,8 @@ class TableController:
         if sorting_enabled:
             view.setSortingEnabled(True)
         self.schedule_stats_update()
-        panel = getattr(page, "signal_panel", None)
-        if panel is not None and page.config.show_watchlist_signals:
-            panel.render()
+        if page.config.show_watchlist_signals:
+            page._signals.refresh_quotes_only(symbols)
 
     def refresh_row_for_item(self, item: StockItem) -> None:
         page = self._p
@@ -946,7 +945,8 @@ class TableController:
                 snap = page.signal_cache.get(page.current_item.vt_symbol)
                 if snap is not None:
                     quote = page.quote_map.get(page.current_item.tickflow_symbol)
-                    page.chart_panel.apply_signal_reference(snap, quote=quote)
+                    ref_kwargs = page._signal_chart_ref_kwargs()
+                    page.chart_panel.apply_signal_reference(snap, quote=quote, **ref_kwargs)
         if page.config.show_watchlist_positions:
             position_panel = getattr(page, "position_panel", None)
             position_service = page._get_position_service()

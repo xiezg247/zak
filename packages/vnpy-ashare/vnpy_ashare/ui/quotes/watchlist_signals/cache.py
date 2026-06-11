@@ -64,6 +64,8 @@ def snapshot_to_payload(snapshot: SignalSnapshot) -> str:
             "last_close": snapshot.last_close,
             "action_ref_buy_price": snapshot.action_ref_buy_price,
             "action_ref_sell_price": snapshot.action_ref_sell_price,
+            "fast_ma": snapshot.fast_ma,
+            "slow_ma": snapshot.slow_ma,
         },
         ensure_ascii=False,
     )
@@ -87,6 +89,8 @@ def snapshot_from_payload(text: str) -> SignalSnapshot:
         last_close=data.get("last_close"),
         action_ref_buy_price=data.get("action_ref_buy_price"),
         action_ref_sell_price=data.get("action_ref_sell_price"),
+        fast_ma=data.get("fast_ma"),
+        slow_ma=data.get("slow_ma"),
     )
 
 

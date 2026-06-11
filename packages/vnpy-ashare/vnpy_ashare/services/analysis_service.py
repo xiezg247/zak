@@ -7,7 +7,14 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
 
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.ai.context.quote import format_quote_summary
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.domain.signal_snapshot import (
+    SignalSnapshot,
+    format_signal_context_extra,
+    signal_missing_kline,
+    signal_snapshot_to_dict,
+)
 from vnpy_ashare.services.analysis.diagnose import DiagnoseAnalyzer
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding, McpExecute
 from vnpy_ashare.services.analysis.reports import ReportsFetcher
@@ -107,6 +114,90 @@ class AnalysisService(BaseService):
             slow_window=slow_window,
             scope=scope,
         )
+
+    def list_watchlist_signal_panel(
+        self,
+        *,
+        class_name: str = "AshareDoubleMaStrategy",
+        fast_window: int = 10,
+        slow_window: int = 20,
+        include_live_quote: bool = False,
+    ) -> dict[str, Any]:
+        """批量返回信号区名单的策略快照（可选附带实时行情修饰）。"""
+        from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
+        from vnpy_ashare.ui.quotes.watchlist_signals.settings import load_signal_panel_symbols
+
+        symbols = load_signal_panel_symbols()
+        if not symbols:
+            return {
+                "symbols": [],
+                "items": [],
+                "class_name": class_name,
+                "fast_window": int(fast_window or 10),
+                "slow_window": int(slow_window or 20),
+                "warnings": ["信号区暂无监控标的"],
+            }
+
+        fast = max(2, int(fast_window or 10))
+        slow = max(fast + 1, int(slow_window or 20))
+        snaps = self.batch_strategy_signals(
+            symbols,
+            class_name=class_name or "AshareDoubleMaStrategy",
+            fast_window=fast,
+            slow_window=slow,
+        )
+
+        quote_map: dict[str, Any] = {}
+        stock_items = []
+        for vt_symbol in symbols:
+            item = parse_stock_symbol(vt_symbol)
+            if item is not None:
+                stock_items.append(item)
+        if include_live_quote and stock_items:
+            try:
+                quote_map = fetch_quotes_from_tickflow(stock_items)
+            except Exception:
+                quote_map = {}
+
+        stats = {"buy": 0, "sell": 0, "hold": 0, "na": 0, "missing_kline": 0}
+        items: list[dict[str, Any]] = []
+        for vt_symbol in symbols:
+            snap = snaps.get(vt_symbol)
+            if snap is None:
+                continue
+            if signal_missing_kline(snap):
+                stats["missing_kline"] += 1
+            elif snap.signal in stats:
+                stats[snap.signal] += 1
+
+            entry: dict[str, Any] = {
+                "vt_symbol": vt_symbol,
+                "snapshot": signal_snapshot_to_dict(snap),
+            }
+            item = parse_stock_symbol(vt_symbol)
+            if item is not None:
+                entry["name"] = item.name
+                quote = quote_map.get(item.tickflow_symbol)
+                if include_live_quote and quote is not None and quote.last_price > 0:
+                    entry["quote_summary"] = format_quote_summary(quote)
+                    entry["live_context"] = format_signal_context_extra(
+                        snap,
+                        quote=quote,
+                        fast_window=fast,
+                        slow_window=slow,
+                    )
+            items.append(entry)
+
+        return {
+            "class_name": class_name or "AshareDoubleMaStrategy",
+            "fast_window": fast,
+            "slow_window": slow,
+            "symbols": symbols,
+            "count": len(symbols),
+            "stats": stats,
+            "items": items,
+            "disclaimer": "规则计算结果，仅供研究，不构成买卖建议",
+        }
 
     def historical_pattern_summary(
         self,

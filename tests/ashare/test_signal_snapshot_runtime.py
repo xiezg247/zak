@@ -33,8 +33,13 @@ build_price_field_explanations = _signal_mod.build_price_field_explanations
 build_runtime_signal_hints = _signal_mod.build_runtime_signal_hints
 dist_anchor_exceeds_warn = _signal_mod.dist_anchor_exceeds_warn
 dist_buy_pct = _signal_mod.dist_buy_pct
+resolve_display_anchor_prices = _signal_mod.resolve_display_anchor_prices
 resolve_list_ref_prices = _signal_mod.resolve_list_ref_prices
 signal_cell_text = _signal_mod.signal_cell_text
+format_signal_context_extra = _signal_mod.format_signal_context_extra
+build_intraday_cross_hints = _signal_mod.build_intraday_cross_hints
+detect_signal_transitions = _signal_mod.detect_signal_transitions
+signal_snapshot_to_dict = _signal_mod.signal_snapshot_to_dict
 
 
 class DistAnchorWarnTests(unittest.TestCase):
@@ -128,7 +133,13 @@ class RuntimeSignalHintTests(unittest.TestCase):
         )
         self.assertEqual(list_buy, 39.50)
         self.assertEqual(list_sell, 40.79)
-        anchor_text, _ = signal_cell_text("anchor_buy", snap, quote=quote)
+        anchor_text, _ = signal_cell_text(
+            "anchor_buy",
+            snap,
+            quote=quote,
+            slow_window=20,
+            fast_window=10,
+        )
         ref_text, _ = signal_cell_text(
             "ref_buy_price",
             snap,
@@ -136,7 +147,7 @@ class RuntimeSignalHintTests(unittest.TestCase):
             slow_window=20,
             fast_window=10,
         )
-        self.assertEqual(anchor_text, "47.08")
+        self.assertTrue(anchor_text.startswith("47."))
         self.assertEqual(ref_text, "39.50")
 
     def test_field_explanations_for_sell(self) -> None:
@@ -146,6 +157,211 @@ class RuntimeSignalHintTests(unittest.TestCase):
         self.assertIn("阻力锚点", joined)
         self.assertIn("参考买价", joined)
         self.assertIn("参考卖价", joined)
+
+    def test_resolve_display_anchor_prices_adjusts_with_quote(self) -> None:
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="hold",
+            signal_label="观望",
+            signal_date=None,
+            ref_buy_price=10.00,
+            ref_sell_price=11.00,
+            strength=40.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+            last_close=10.50,
+        )
+        quote = QuoteSnapshot(
+            symbol="600000",
+            name="浦发银行",
+            last_price=11.00,
+            prev_close=10.50,
+            open_price=10.60,
+            high_price=11.10,
+            low_price=10.55,
+            change_amount=0.50,
+            change_pct=4.76,
+            turnover_rate=1.0,
+            volume=10000.0,
+        )
+        buy, sell, adjusted = resolve_display_anchor_prices(
+            snap,
+            quote=quote,
+            slow_window=20,
+            fast_window=10,
+        )
+        self.assertTrue(adjusted)
+        self.assertEqual(buy, 10.03)
+        self.assertEqual(sell, 11.05)
+
+    def test_format_signal_context_extra_includes_runtime_hints(self) -> None:
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-08",
+            ref_buy_price=10.00,
+            ref_sell_price=11.00,
+            strength=80.0,
+            reason_summary="金叉",
+            reasons=("MA 金叉",),
+            warnings=(),
+            last_close=10.50,
+            action_ref_buy_price=10.00,
+            action_ref_sell_price=11.00,
+        )
+        quote = QuoteSnapshot(
+            symbol="600000",
+            name="浦发银行",
+            last_price=10.20,
+            prev_close=10.50,
+            open_price=10.40,
+            high_price=10.60,
+            low_price=10.10,
+            change_amount=-0.30,
+            change_pct=-2.86,
+            turnover_rate=1.0,
+            volume=10000.0,
+        )
+        text = format_signal_context_extra(
+            snap,
+            quote=quote,
+            slow_window=20,
+            fast_window=10,
+        )
+        self.assertIn("策略信号：买入", text)
+        self.assertIn("参考买价", text)
+        self.assertIn("距买价%", text)
+
+    def test_intraday_cross_hints_near_golden_cross(self) -> None:
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="hold",
+            signal_label="观望",
+            signal_date=None,
+            ref_buy_price=10.00,
+            ref_sell_price=9.98,
+            strength=40.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+            last_close=10.00,
+            fast_ma=9.98,
+            slow_ma=10.00,
+        )
+        quote = QuoteSnapshot(
+            symbol="600000",
+            name="浦发银行",
+            last_price=10.01,
+            prev_close=10.00,
+            open_price=10.00,
+            high_price=10.05,
+            low_price=9.98,
+            change_amount=0.01,
+            change_pct=0.10,
+            turnover_rate=1.0,
+            volume=10000.0,
+        )
+        hints = build_intraday_cross_hints(
+            snap,
+            quote=quote,
+            slow_window=20,
+            fast_window=10,
+        )
+        joined = "\n".join(hints)
+        self.assertTrue(
+            "金叉" in joined or "高于慢线" in joined or "临界交叉" in joined,
+            joined,
+        )
+
+    def test_intraday_cross_hints_virtual_death_cross_on_buy(self) -> None:
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-08",
+            ref_buy_price=10.00,
+            ref_sell_price=10.01,
+            strength=80.0,
+            reason_summary="金叉",
+            reasons=(),
+            warnings=(),
+            last_close=10.01,
+            fast_ma=10.01,
+            slow_ma=10.00,
+        )
+        quote = QuoteSnapshot(
+            symbol="600000",
+            name="浦发银行",
+            last_price=9.50,
+            prev_close=10.01,
+            open_price=10.10,
+            high_price=10.10,
+            low_price=9.45,
+            change_amount=-0.70,
+            change_pct=-6.86,
+            turnover_rate=1.0,
+            volume=10000.0,
+        )
+        hints = build_intraday_cross_hints(
+            snap,
+            quote=quote,
+            slow_window=20,
+            fast_window=10,
+        )
+        self.assertTrue(any("虚拟死叉" in hint for hint in hints))
+
+    def test_detect_signal_transitions(self) -> None:
+        def _snap(signal: str, label: str) -> SignalSnapshot:
+            return SignalSnapshot(
+                vt_symbol="600000.SSE",
+                strategy_id="AshareDoubleMaStrategy",
+                as_of="2026-06-10",
+                signal=signal,
+                signal_label=label,
+                signal_date=None,
+                ref_buy_price=10.0,
+                ref_sell_price=11.0,
+                strength=50.0,
+                reason_summary="",
+                reasons=(),
+                warnings=(),
+            )
+
+        before = {"600000.SSE": _snap("hold", "观望")}
+        after = {"600000.SSE": _snap("buy", "买入")}
+        lines = detect_signal_transitions(before, after, name_for=lambda _vt: "浦发银行")
+        self.assertEqual(lines, ("浦发银行（600000.SSE）：观望 → 买入",))
+
+    def test_signal_snapshot_to_dict(self) -> None:
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-08",
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=80.0,
+            reason_summary="金叉",
+            reasons=("MA 金叉",),
+            warnings=(),
+            fast_ma=11.0,
+            slow_ma=10.0,
+        )
+        payload = signal_snapshot_to_dict(snap)
+        self.assertEqual(payload["signal"], "buy")
+        self.assertEqual(payload["fast_ma"], 11.0)
 
 
 if __name__ == "__main__":

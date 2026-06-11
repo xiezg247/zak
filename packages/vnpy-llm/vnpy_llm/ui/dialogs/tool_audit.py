@@ -21,6 +21,7 @@ _TOOL_LABELS: dict[str, str] = {
     "diagnose_stock": "综合诊断",
     "technical_snapshot": "分析技术形态",
     "list_strategy_signals": "查询策略信号",
+    "list_watchlist_signal_panel": "扫描信号区",
     "historical_pattern_summary": "统计历史走势",
     "get_screening_context": "读取选股结果",
     "explain_screening_run": "编排选股解读",

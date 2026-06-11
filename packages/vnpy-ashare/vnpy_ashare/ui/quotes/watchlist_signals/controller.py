@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.data.bar_health import format_meta_date
-from vnpy_ashare.domain.signal_snapshot import signal_as_of_stale
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
@@ -90,6 +90,11 @@ class WatchlistSignalController:
         worker = self._worker
         if worker is not None:
             self._worker = None
+            for signal in (worker.finished, worker.failed):
+                try:
+                    signal.disconnect()
+                except (TypeError, RuntimeError):
+                    pass
             self._release_worker(worker)
 
     def apply_config(self, config: WatchlistSignalConfig, *, save: bool = True) -> None:
@@ -110,12 +115,67 @@ class WatchlistSignalController:
         if panel is not None:
             panel.set_updated_at(datetime.now().strftime("%H:%M"))
             panel.render()
+        self._sync_chart_signal_reference()
+
+    def _sync_chart_signal_reference(self, *, tickflow_symbols: set[str] | None = None) -> None:
         item = self._page.current_item
-        if item is not None and self._page.chart_panel is not None:
-            snap = self._page.signal_cache.get(item.vt_symbol)
-            if snap is not None:
-                quote = self._page.quote_map.get(item.tickflow_symbol)
-                self._page.chart_panel.apply_signal_reference(snap, quote=quote)
+        if item is None or self._page.chart_panel is None:
+            return
+        if tickflow_symbols is not None and item.tickflow_symbol not in tickflow_symbols:
+            return
+        snap = self._page.signal_cache.get(item.vt_symbol)
+        if snap is None:
+            return
+        quote = self._page.quote_map.get(item.tickflow_symbol)
+        cfg = self._page.signal_config.normalized()
+        self._page.chart_panel.apply_signal_reference(
+            snap,
+            quote=quote,
+            fast_window=cfg.fast_window,
+            slow_window=cfg.slow_window,
+        )
+
+    def _resolve_symbol_name(self, vt_symbol: str) -> str:
+        item = self._page.find_stock_item(vt_symbol)
+        if item is None:
+            return ""
+        quote = self._page.quote_map.get(item.tickflow_symbol)
+        if quote and quote.name:
+            return quote.name
+        return item.name or ""
+
+    def _notify_signal_transitions(
+        self,
+        before: dict[str, SignalSnapshot | None],
+        after: dict[str, SignalSnapshot],
+    ) -> None:
+        if not self._enabled():
+            return
+        lines = detect_signal_transitions(
+            before,
+            after,
+            symbols=list(after),
+            name_for=self._resolve_symbol_name,
+        )
+        from vnpy_ashare.ui.quotes.page.run_log import append_run_log
+
+        for line in lines:
+            self._page._toast.info(f"策略信号变更：{line}")
+            append_run_log(self._page, f"[策略信号] {line}")
+
+    def refresh_quotes_only(self, tickflow_symbols: set[str] | None = None) -> None:
+        """WebSocket/REST 行情推送：仅更新信号区受影响行的展示列。"""
+        if not self._page.config.show_watchlist_signals or not self._page._active:
+            return
+        if not self._enabled():
+            return
+        symbols = tickflow_symbols or set()
+        if not symbols:
+            return
+        panel = getattr(self._page, "signal_panel", None)
+        if panel is not None:
+            panel.update_rows_for_tickflow_symbols(symbols)
+        self._sync_chart_signal_reference(tickflow_symbols=symbols)
 
     def hydrate_from_disk(self) -> bool:
         """从磁盘恢复上次快照到内存并渲染（重启后立即展示，后台再增量刷新）。"""
@@ -208,6 +268,7 @@ class WatchlistSignalController:
             class_name=config.class_name,
             fast_window=config.fast_window,
             slow_window=config.slow_window,
+            parent=self._page,
         )
         self._worker = worker
 
@@ -219,6 +280,7 @@ class WatchlistSignalController:
             if not self._page._active:
                 self._release_worker(worker)
                 return
+            before = {vt: self._page.signal_cache.get(vt) for vt in cache}
             self._page.signal_cache.update(cache)
             self._page._signal_cache_config = config
             if cache:
@@ -227,6 +289,7 @@ class WatchlistSignalController:
                     config_key=config_key,
                     bar_as_of_for=self._bar_end_date,
                 )
+            self._notify_signal_transitions(before, cache)
             self._apply_refresh_result()
             self._release_worker(worker)
             if pending is not None:

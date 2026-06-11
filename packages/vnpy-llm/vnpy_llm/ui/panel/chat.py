@@ -719,13 +719,16 @@ class AiChatPanel(QtWidgets.QWidget):
         self._set_busy(True)
         self._append_bubble("user", text, persist=True)
         self._show_pending_bubble("思考中…", "已收到你的问题")
-        worker = ChatWorker(self.engine, text, None)
+        worker = ChatWorker(self.engine, text, parent=self)
         self._worker = worker
-        retain_thread_until_finished(self._retired_workers, worker)
         worker.finished_ok.connect(self._on_worker_done)
         worker.cancelled.connect(self._on_worker_cancelled)
         worker.failed.connect(self._on_worker_failed)
         worker.finished.connect(worker.deleteLater)
+        worker.started.connect(
+            lambda: retain_thread_until_finished(self._retired_workers, worker),
+            QtCore.Qt.ConnectionType.SingleShotConnection,
+        )
         worker.start()
 
     def _on_stop(self) -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal, Mapping
 
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 
@@ -32,6 +32,7 @@ SIGNAL_COLUMN_KEYS: frozenset[str] = frozenset(
 DIST_ANCHOR_WARN_PCT = 8.0
 SIGNAL_RECENT_DAYS = 5
 INTRADAY_ANCHOR_MIN_DELTA = 0.01
+INTRADAY_CROSS_NEAR_PCT = 0.5
 
 _KLINE_WARNING_MARKERS = ("K 线不足", "暂无足够 K 线", "下载日 K")
 
@@ -71,6 +72,8 @@ class SignalSnapshot:
     last_close: float | None = None
     action_ref_buy_price: float | None = None
     action_ref_sell_price: float | None = None
+    fast_ma: float | None = None
+    slow_ma: float | None = None
 
     @property
     def tooltip(self) -> str:
@@ -78,6 +81,61 @@ class SignalSnapshot:
         if self.warnings:
             parts.extend(self.warnings)
         return "\n".join(part for part in parts if part)
+
+
+def signal_snapshot_to_dict(snapshot: SignalSnapshot) -> dict[str, Any]:
+    """序列化信号快照（供 AI 工具 JSON 返回）。"""
+    return {
+        "vt_symbol": snapshot.vt_symbol,
+        "strategy_id": snapshot.strategy_id,
+        "as_of": snapshot.as_of,
+        "signal": snapshot.signal,
+        "signal_label": snapshot.signal_label,
+        "signal_date": snapshot.signal_date,
+        "ref_buy_price": snapshot.ref_buy_price,
+        "ref_sell_price": snapshot.ref_sell_price,
+        "action_ref_buy_price": snapshot.action_ref_buy_price,
+        "action_ref_sell_price": snapshot.action_ref_sell_price,
+        "strength": snapshot.strength,
+        "reason_summary": snapshot.reason_summary,
+        "warnings": list(snapshot.warnings),
+        "last_close": snapshot.last_close,
+        "fast_ma": snapshot.fast_ma,
+        "slow_ma": snapshot.slow_ma,
+    }
+
+
+_SIGNAL_TRANSITION_TRACKED = frozenset({"buy", "sell", "hold"})
+
+
+def detect_signal_transitions(
+    before: Mapping[str, SignalSnapshot | None],
+    after: Mapping[str, SignalSnapshot],
+    *,
+    symbols: list[str] | None = None,
+    name_for: Any | None = None,
+) -> tuple[str, ...]:
+    """检测信号状态变化，返回可读通知行。"""
+    keys = symbols if symbols is not None else list(after)
+    lines: list[str] = []
+    for vt_symbol in keys:
+        old = before.get(vt_symbol)
+        new = after.get(vt_symbol)
+        if old is None or new is None or signal_missing_kline(new):
+            continue
+        if old.signal == new.signal:
+            continue
+        if new.signal not in _SIGNAL_TRANSITION_TRACKED:
+            continue
+        if old.signal not in _SIGNAL_TRANSITION_TRACKED and new.signal == "hold":
+            continue
+        title = vt_symbol
+        if name_for is not None:
+            resolved = name_for(vt_symbol)
+            if resolved:
+                title = f"{resolved}（{vt_symbol}）"
+        lines.append(f"{title}：{old.signal_label} → {new.signal_label}")
+    return tuple(lines)
 
 
 def dist_buy_pct(ref_buy_price: float | None, last_price: float | None) -> float | None:
@@ -127,6 +185,98 @@ def estimate_adjusted_ma_anchor(
     if ma_anchor is None or bar_close is None or last_price is None or window <= 0:
         return None
     return round(ma_anchor + (last_price - bar_close) / window, 2)
+
+
+def resolve_display_anchor_prices(
+    snapshot: SignalSnapshot,
+    *,
+    quote: QuoteSnapshot | None = None,
+    slow_window: int = 20,
+    fast_window: int = 10,
+) -> tuple[float | None, float | None, bool]:
+    """列表/图表展示用支撑/阻力锚点；有行情时用现价估算盘中均线。"""
+    last_price = quote.last_price if quote and quote.last_price > 0 else None
+    bar_close = snapshot.last_close
+    if last_price is None or bar_close is None:
+        return snapshot.ref_buy_price, snapshot.ref_sell_price, False
+
+    buy = estimate_adjusted_ma_anchor(
+        snapshot.ref_buy_price,
+        bar_close,
+        last_price,
+        slow_window,
+    )
+    sell = estimate_adjusted_ma_anchor(
+        snapshot.ref_sell_price,
+        bar_close,
+        last_price,
+        fast_window,
+    )
+    display_buy = buy if buy is not None else snapshot.ref_buy_price
+    display_sell = sell if sell is not None else snapshot.ref_sell_price
+    adjusted = False
+    if (
+        display_buy is not None
+        and snapshot.ref_buy_price is not None
+        and abs(display_buy - snapshot.ref_buy_price) >= INTRADAY_ANCHOR_MIN_DELTA
+    ):
+        adjusted = True
+    if (
+        display_sell is not None
+        and snapshot.ref_sell_price is not None
+        and abs(display_sell - snapshot.ref_sell_price) >= INTRADAY_ANCHOR_MIN_DELTA
+    ):
+        adjusted = True
+    return display_buy, display_sell, adjusted
+
+
+def format_signal_context_extra(
+    snapshot: SignalSnapshot,
+    *,
+    quote: QuoteSnapshot | None = None,
+    slow_window: int = 20,
+    fast_window: int = 10,
+) -> str:
+    """格式化策略信号摘要，供 AI 上下文或预填问句附加。"""
+    if signal_missing_kline(snapshot) or snapshot.signal == "na":
+        return ""
+
+    lines = [f"策略信号：{snapshot.signal_label}"]
+    if snapshot.signal_date:
+        lines.append(f"信号日：{snapshot.signal_date}")
+    if snapshot.as_of:
+        lines.append(f"K 线截止：{snapshot.as_of}")
+
+    list_buy, list_sell = resolve_list_ref_prices(
+        snapshot,
+        quote=quote,
+        slow_window=slow_window,
+        fast_window=fast_window,
+    )
+    if snapshot.ref_buy_price is not None:
+        lines.append(f"支撑锚点：{snapshot.ref_buy_price:.2f}")
+    if snapshot.ref_sell_price is not None:
+        lines.append(f"阻力锚点：{snapshot.ref_sell_price:.2f}")
+    if list_buy is not None:
+        lines.append(f"参考买价：{list_buy:.2f}")
+    if list_sell is not None:
+        lines.append(f"参考卖价：{list_sell:.2f}")
+    last_price = quote.last_price if quote and quote.last_price > 0 else None
+    pct = dist_buy_pct(list_buy, last_price)
+    if pct is not None:
+        lines.append(f"距买价%：{pct:+.2f}")
+
+    hints = build_runtime_signal_hints(
+        snapshot,
+        quote=quote,
+        slow_window=slow_window,
+        fast_window=fast_window,
+    )
+    if hints:
+        lines.append("盘中提示：" + "；".join(hints))
+    if snapshot.reason_summary:
+        lines.append(f"理由：{snapshot.reason_summary}")
+    return "\n".join(lines)
 
 
 def _fallback_action_ref_prices(snapshot: SignalSnapshot) -> tuple[float | None, float | None]:
@@ -211,6 +361,69 @@ def build_price_field_explanations(
     return (anchor_buy, anchor_sell, ref_buy, ref_sell, dist)
 
 
+def _resolve_intraday_ma_pair(
+    snapshot: SignalSnapshot,
+    *,
+    quote: QuoteSnapshot | None,
+    slow_window: int,
+    fast_window: int,
+) -> tuple[float | None, float | None]:
+    """用现价估算盘中快慢均线（虚拟末根 K）。"""
+    last_price = quote.last_price if quote and quote.last_price > 0 else None
+    bar_close = snapshot.last_close
+    if last_price is None or bar_close is None:
+        return None, None
+
+    fast_base = snapshot.fast_ma if snapshot.fast_ma is not None else snapshot.ref_sell_price
+    slow_base = snapshot.slow_ma if snapshot.slow_ma is not None else snapshot.ref_buy_price
+    fast_est = estimate_adjusted_ma_anchor(fast_base, bar_close, last_price, fast_window)
+    slow_est = estimate_adjusted_ma_anchor(slow_base, bar_close, last_price, slow_window)
+    return fast_est, slow_est
+
+
+def build_intraday_cross_hints(
+    snapshot: SignalSnapshot,
+    *,
+    quote: QuoteSnapshot | None = None,
+    slow_window: int = 20,
+    fast_window: int = 10,
+    near_pct: float = INTRADAY_CROSS_NEAR_PCT,
+) -> tuple[str, ...]:
+    """虚拟末根 K 估算快慢线间距，提示接近金叉/死叉（不改变缓存信号）。"""
+    if snapshot.signal == "na" or signal_missing_kline(snapshot):
+        return ()
+
+    fast_est, slow_est = _resolve_intraday_ma_pair(
+        snapshot,
+        quote=quote,
+        slow_window=slow_window,
+        fast_window=fast_window,
+    )
+    if fast_est is None or slow_est is None or slow_est <= 0:
+        return ()
+
+    gap = fast_est - slow_est
+    gap_pct = gap / slow_est * 100
+    hints: list[str] = []
+    if gap > 0:
+        if snapshot.signal == "sell":
+            hints.append("盘中估算：虚拟金叉（快线已上穿慢线），与卖出信号背离")
+        elif abs(gap_pct) <= near_pct:
+            hints.append(f"盘中估算：快慢线刚金叉（间距 {gap_pct:+.2f}%）")
+        elif snapshot.signal == "hold":
+            hints.append(f"盘中估算：快线高于慢线 {gap_pct:+.2f}%")
+    elif gap < 0:
+        if snapshot.signal == "buy":
+            hints.append("盘中估算：虚拟死叉（快线已下穿慢线），与买入信号背离")
+        elif abs(gap_pct) <= near_pct:
+            hints.append(f"盘中估算：距虚拟金叉约 {abs(gap_pct):.2f}%")
+        elif snapshot.signal == "hold":
+            hints.append(f"盘中估算：距虚拟金叉约 {abs(gap_pct):.2f}%")
+    else:
+        hints.append("盘中估算：快慢线重合，临界交叉")
+    return tuple(hints)
+
+
 def build_runtime_signal_hints(
     snapshot: SignalSnapshot,
     *,
@@ -250,6 +463,14 @@ def build_runtime_signal_hints(
         if last_price <= action_sell * 1.002:
             hints.append("现价接近参考卖价（离场动作区）")
 
+    hints.extend(
+        build_intraday_cross_hints(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
+    )
     return tuple(hints)
 
 
@@ -277,13 +498,27 @@ def signal_cell_text(
         text = snapshot.signal_date or "—"
         return text, text
     if column_key == "anchor_buy":
-        if snapshot.ref_buy_price is None:
+        display_buy, _, adjusted = resolve_display_anchor_prices(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
+        if display_buy is None:
             return "—", float("-inf")
-        return f"{snapshot.ref_buy_price:.2f}", snapshot.ref_buy_price
+        text = f"{display_buy:.2f}*" if adjusted else f"{display_buy:.2f}"
+        return text, display_buy
     if column_key == "anchor_sell":
-        if snapshot.ref_sell_price is None:
+        _, display_sell, adjusted = resolve_display_anchor_prices(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
+        if display_sell is None:
             return "—", float("-inf")
-        return f"{snapshot.ref_sell_price:.2f}", snapshot.ref_sell_price
+        text = f"{display_sell:.2f}*" if adjusted else f"{display_sell:.2f}"
+        return text, display_sell
     if column_key == "ref_buy_price":
         if list_ref_buy is None:
             return "—", float("-inf")

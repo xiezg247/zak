@@ -549,6 +549,8 @@ class TechnicalAnalyzer:
             last_close=payload.get("last_close"),
             action_ref_buy_price=payload.get("action_ref_buy_price"),
             action_ref_sell_price=payload.get("action_ref_sell_price"),
+            fast_ma=payload.get("fast_ma"),
+            slow_ma=payload.get("slow_ma"),
         )
 
     @staticmethod

@@ -32,6 +32,7 @@ class QuoteService(BaseService):
         item: StockItem | None = None,
         quote: QuoteSnapshot | None = None,
         bar_count: int = 0,
+        signal_extra: str = "",
     ) -> None:
         """写入 context_store（不含悬浮球快捷动作 enrichment）。"""
         if item is None:
@@ -43,6 +44,7 @@ class QuoteService(BaseService):
                     item=item,
                     quote=quote,
                     bar_count=bar_count,
+                    signal_extra=signal_extra,
                 )
             )
 
@@ -53,6 +55,7 @@ class QuoteService(BaseService):
         item: StockItem | None = None,
         quote: QuoteSnapshot | None = None,
         bar_count: int = 0,
+        signal_extra: str = "",
     ) -> None:
         """写入看盘页 AI 上下文（含悬浮球快捷动作 enrichment）。"""
         if item is None:
@@ -63,6 +66,7 @@ class QuoteService(BaseService):
                 item=item,
                 quote=quote,
                 bar_count=bar_count,
+                signal_extra=signal_extra,
             )
         set_ai_context(enrich_context_with_actions(data))
 

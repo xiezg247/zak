@@ -10,12 +10,15 @@ from vnpy_ashare.domain.signal_snapshot import (
     SignalSnapshot,
     build_price_field_explanations,
     build_runtime_signal_hints,
+    resolve_display_anchor_prices,
     signal_cell_color,
     signal_cell_text,
     signal_missing_kline,
     signal_row_sort_key,
 )
+from strategies.registry import list_signal_strategy_metas
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+    DEFAULT_CLASS,
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
     load_signal_panel_enabled,
@@ -66,6 +69,8 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     row_activated = QtCore.Signal(str)
     row_selected = QtCore.Signal(str)
     register_position_requested = QtCore.Signal(str)
+    ai_interpret_requested = QtCore.Signal(str)
+    ai_scan_requested = QtCore.Signal()
     expansion_changed = QtCore.Signal(bool)
 
     def __init__(self, page: QuotesPage) -> None:
@@ -93,8 +98,12 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._toggle.setChecked(load_signal_panel_enabled())
         self._toggle.toggled.connect(self._on_enabled_toggled)
 
-        self._strategy_label = QtWidgets.QLabel("双均线", self)
-        self._strategy_label.setObjectName("SectionLabel")
+        self._strategy_combo = QtWidgets.QComboBox(self)
+        self._strategy_combo.setObjectName("SignalStrategyCombo")
+        self._strategy_combo.setMinimumWidth(108)
+        for meta in list_signal_strategy_metas():
+            self._strategy_combo.addItem(meta.title, meta.class_name)
+        self._strategy_combo.currentIndexChanged.connect(self._on_strategy_changed)
 
         self._fast_spin = QtWidgets.QSpinBox(self)
         self._fast_spin.setRange(2, 60)
@@ -122,6 +131,16 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._refresh_button.setObjectName("SecondaryButton")
         self._refresh_button.clicked.connect(self.refresh_requested.emit)
 
+        self._ai_button = QtWidgets.QPushButton("AI 解读", self)
+        self._ai_button.setObjectName("SecondaryButton")
+        self._ai_button.setToolTip("结合信号区快照与双均线工具做研究解读")
+        self._ai_button.clicked.connect(self._on_ai_clicked)
+
+        self._ai_scan_button = QtWidgets.QPushButton("AI 扫区", self)
+        self._ai_scan_button.setObjectName("SecondaryButton")
+        self._ai_scan_button.setToolTip("批量扫描信号区全部监控标的")
+        self._ai_scan_button.clicked.connect(self.ai_scan_requested.emit)
+
         self._collapse_button = QtWidgets.QToolButton(self)
         self._collapse_button.setCheckable(True)
         self._collapse_button.setChecked(self._expanded)
@@ -132,13 +151,15 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         header.addWidget(QtWidgets.QLabel("策略信号", self))
         header.addWidget(self._toggle)
         header.addStretch()
-        header.addWidget(self._strategy_label)
+        header.addWidget(self._strategy_combo)
         header.addWidget(self._fast_spin)
         header.addWidget(self._slow_spin)
         header.addWidget(self._register_position_button)
         header.addWidget(self._remove_button)
         header.addWidget(self._clear_button)
         header.addWidget(self._refresh_button)
+        header.addWidget(self._ai_button)
+        header.addWidget(self._ai_scan_button)
         root.addLayout(header)
 
         self._stats_label = QtWidgets.QLabel("", self)
@@ -182,15 +203,18 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._stats_label,
             self._table,
             self._empty_label,
-            self._strategy_label,
+            self._strategy_combo,
             self._fast_spin,
             self._slow_spin,
             self._register_position_button,
             self._remove_button,
             self._clear_button,
             self._refresh_button,
+            self._ai_button,
+            self._ai_scan_button,
         )
         self._apply_expanded(self._expanded, emit=False)
+        self.apply_config(page.signal_config.normalized())
         self._apply_enabled(self._toggle.isChecked())
         self.render()
 
@@ -222,20 +246,29 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._slow_spin.blockSignals(True)
             self._slow_spin.setValue(slow)
             self._slow_spin.blockSignals(False)
+        class_name = str(self._strategy_combo.currentData() or DEFAULT_CLASS)
         return WatchlistSignalConfig(
-            class_name=self._page.signal_config.class_name,
+            class_name=class_name,
             fast_window=fast,
             slow_window=slow,
         ).normalized()
 
     def apply_config(self, config: WatchlistSignalConfig) -> None:
         item = config.normalized()
+        self._strategy_combo.blockSignals(True)
         self._fast_spin.blockSignals(True)
         self._slow_spin.blockSignals(True)
+        index = self._strategy_combo.findData(item.class_name)
+        if index >= 0:
+            self._strategy_combo.setCurrentIndex(index)
         self._fast_spin.setValue(item.fast_window)
         self._slow_spin.setValue(item.slow_window)
+        self._strategy_combo.blockSignals(False)
         self._fast_spin.blockSignals(False)
         self._slow_spin.blockSignals(False)
+
+    def _on_strategy_changed(self, _index: int) -> None:
+        self._emit_config_changed()
 
     def set_symbols(self, symbols: list[str], *, save: bool = True) -> None:
         self._symbols = normalize_signal_panel_symbols(symbols)
@@ -393,6 +426,30 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._fill_row(row, vt_symbol, colors=colors, warning_color=warning_color, page=page)
         self._building = False
 
+    def update_rows_for_tickflow_symbols(self, tickflow_symbols: set[str]) -> None:
+        """行情推送时仅刷新受影响行（不重建表格、不重排）。"""
+        if not self._symbols or not tickflow_symbols or not self._expanded or not self.enabled:
+            return
+        if not self._table.isVisible():
+            return
+
+        page = self._page
+        display_symbols = self._sorted_display_symbols()
+        if not display_symbols:
+            return
+
+        colors = market_colors(theme_manager().tokens())
+        warning_color = theme_manager().tokens().semantic_warning
+        self._building = True
+        try:
+            for row, vt_symbol in enumerate(display_symbols):
+                item = page.find_stock_item(vt_symbol)
+                if item is None or item.tickflow_symbol not in tickflow_symbols:
+                    continue
+                self._fill_row(row, vt_symbol, colors=colors, warning_color=warning_color, page=page)
+        finally:
+            self._building = False
+
     def _fill_row(
         self,
         row: int,
@@ -513,12 +570,21 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         )
         lines.append("")
         lines.append("【当前数值】")
-        anchor_buy = values.get("anchor_buy", "—")
-        anchor_sell = values.get("anchor_sell", "—")
-        if anchor_buy != "—":
-            lines.append(f"支撑锚点：{anchor_buy}")
-        if anchor_sell != "—":
-            lines.append(f"阻力锚点：{anchor_sell}")
+        display_buy, display_sell, adjusted = resolve_display_anchor_prices(
+            snapshot,
+            quote=quote,
+            slow_window=config.slow_window,
+            fast_window=config.fast_window,
+        )
+        if snapshot.ref_buy_price is not None:
+            lines.append(f"支撑锚点（结构）：{snapshot.ref_buy_price:.2f}")
+        if snapshot.ref_sell_price is not None:
+            lines.append(f"阻力锚点（结构）：{snapshot.ref_sell_price:.2f}")
+        if adjusted:
+            if display_buy is not None:
+                lines.append(f"支撑锚点（盘中估算）：{display_buy:.2f}")
+            if display_sell is not None:
+                lines.append(f"阻力锚点（盘中估算）：{display_sell:.2f}")
         ref_buy = values.get("ref_buy_price", "—")
         ref_sell = values.get("ref_sell_price", "—")
         if ref_buy != "—":
@@ -650,16 +716,32 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
     def _apply_enabled(self, enabled: bool) -> None:
         for widget in (
-            self._strategy_label,
+            self._strategy_combo,
             self._fast_spin,
             self._slow_spin,
             self._register_position_button,
             self._remove_button,
             self._clear_button,
             self._refresh_button,
+            self._ai_button,
+            self._ai_scan_button,
             self._table,
         ):
             widget.setEnabled(enabled)
+
+    def _on_ai_clicked(self) -> None:
+        symbols = self.selected_vt_symbols()
+        if len(symbols) == 1:
+            self.ai_interpret_requested.emit(symbols[0])
+            return
+        if len(symbols) > 1:
+            self._page._toast.warning("AI 解读一次仅支持单只标的")
+            return
+        item = self._page.current_item
+        if item is not None and item.vt_symbol in self._symbols:
+            self.ai_interpret_requested.emit(item.vt_symbol)
+            return
+        self._page._toast.warning("请先在策略信号区选择标的")
 
     def _on_register_position_clicked(self) -> None:
         symbols = self.selected_vt_symbols()

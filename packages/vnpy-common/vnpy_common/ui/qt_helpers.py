@@ -44,7 +44,13 @@ def retain_thread_until_finished(
         return
     retired.append(worker)
 
+    released = False
+
     def _release(*_args: object) -> None:
+        nonlocal released
+        if released:
+            return
+        released = True
         try:
             retired.remove(worker)
         except ValueError:
@@ -54,17 +60,35 @@ def retain_thread_until_finished(
         except RuntimeError:
             pass
 
-    if not thread_is_active(worker):
-        # finished 已触发时不会再次 emit，需立即释放。
+    def _arm_terminal_hooks() -> None:
+        for signal_name in ("finished", "failed"):
+            signal = getattr(worker, signal_name, None)
+            if signal is None:
+                continue
+            try:
+                signal.connect(_release)
+            except (RuntimeError, TypeError):
+                pass
+
+    if thread_is_active(worker):
+        _arm_terminal_hooks()
+        return
+
+    try:
+        if worker.isFinished():
+            # run() 已结束，finished 不会再 emit。
+            _release()
+            return
+    except RuntimeError:
         _release()
         return
 
-    for signal_name in ("finished", "failed"):
-        signal = getattr(worker, signal_name, None)
-        if signal is None:
-            continue
+    # start() 已调用但尚未 isRunning()：勿立即 deleteLater（否则 destroy-while-running）。
+    _arm_terminal_hooks()
+    started = getattr(worker, "started", None)
+    if started is not None:
         try:
-            signal.connect(_release)
+            started.connect(_arm_terminal_hooks, QtCore.Qt.ConnectionType.SingleShotConnection)
         except (RuntimeError, TypeError):
             pass
 

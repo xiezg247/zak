@@ -685,4 +685,6 @@ def build_composite_signal_payload(
         "reasons": tuple(reasons),
         "warnings": tuple(warnings),
         "last_close": round(closes[-1], 2),
+        "fast_ma": (state.get("current") or {}).get("fast_ma"),
+        "slow_ma": (state.get("current") or {}).get("slow_ma"),
     }

@@ -64,6 +64,34 @@ class VnpyAnalysisSkill(SkillTemplate):
                 },
             ),
             ToolSpec(
+                name="list_watchlist_signal_panel",
+                description=(
+                    "批量查询自选页策略信号区名单的规则信号快照（最多 10 只）。"
+                    "用户问「扫一遍信号区」「信号区哪些值得关注」时调用；可含实时行情修饰。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "class_name": {
+                            "type": "string",
+                            "description": "策略类名，默认 AshareDoubleMaStrategy",
+                        },
+                        "fast_window": {
+                            "type": "integer",
+                            "description": "快线周期，默认 10",
+                        },
+                        "slow_window": {
+                            "type": "integer",
+                            "description": "慢线周期，默认 20",
+                        },
+                        "include_live_quote": {
+                            "type": "boolean",
+                            "description": "是否附带实时行情与盘中提示，默认 false",
+                        },
+                    },
+                },
+            ),
+            ToolSpec(
                 name="list_strategy_signals",
                 description=(
                     "查询指定策略在本地 K 线上的规则信号（如双均线金叉/死叉、当前均线排列）。用户问「双均线什么状态」「有没有金叉」时调用；禁止编造信号。"
@@ -133,6 +161,22 @@ class VnpyAnalysisSkill(SkillTemplate):
         result = svc.build_screening_context(
             run_id=run_id.strip() or None,
             batch_top_n=int(batch_top_n or 0),
+        )
+        return json.dumps(result, ensure_ascii=False)
+
+    def list_watchlist_signal_panel(
+        self,
+        class_name: str = "AshareDoubleMaStrategy",
+        fast_window: int = 10,
+        slow_window: int = 20,
+        include_live_quote: bool = False,
+    ) -> str:
+        svc = self._get_analysis_service()
+        result = svc.list_watchlist_signal_panel(
+            class_name=class_name or "AshareDoubleMaStrategy",
+            fast_window=int(fast_window or 10),
+            slow_window=int(slow_window or 20),
+            include_live_quote=bool(include_live_quote),
         )
         return json.dumps(result, ensure_ascii=False)
 

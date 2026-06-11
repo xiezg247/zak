@@ -10,8 +10,6 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
-from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
-
 _RUN_OUTPUT_EXPANDED_KEY = "quotes/run_output/{page_name}/expanded"
 
 
@@ -49,6 +47,8 @@ def save_run_output_expanded(page_name: str, expanded: bool) -> None:
 
 def _apply_splitter_sizes(page: QuotesPage, *, expanded: bool) -> None:
     del expanded
+    from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
+
     apply_center_splitter_sizes(page)
 
 
