@@ -44,6 +44,7 @@ class PositionServiceTests(unittest.TestCase):
         items = self.service.get_items()
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0].volume, 100)
+        self.assertAlmostEqual(items[0].cost_price, 10.5)
         self.assertTrue(self.service.remove("600000", Exchange.SSE))
         self.assertEqual(self.service.get_items(), [])
 
@@ -58,6 +59,18 @@ class PositionServiceTests(unittest.TestCase):
             )
         )
         self.assertEqual(self.service.add_failure_reason("600519", Exchange.SSE), "not_in_watchlist")
+
+    def test_fractional_cost_price_preserved(self) -> None:
+        self.assertTrue(
+            self.service.add(
+                "600000",
+                Exchange.SSE,
+                cost_price=10.55,
+                volume=100,
+                buy_date="2026-06-01",
+            )
+        )
+        self.assertAlmostEqual(self.service.get_items()[0].cost_price, 10.55)
 
     def test_normalize_volume_on_add(self) -> None:
         self.assertTrue(

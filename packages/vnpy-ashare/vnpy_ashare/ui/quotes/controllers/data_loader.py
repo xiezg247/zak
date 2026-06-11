@@ -469,6 +469,8 @@ class DataLoaderController:
                 page.apply_filter()
                 if page.config.show_watchlist_signals:
                     page._signals.on_stock_list_loaded()
+                if page.config.show_watchlist_positions:
+                    page._positions.on_stock_list_loaded()
 
         def on_failed(msg: str) -> None:
             if page._load_worker is worker:

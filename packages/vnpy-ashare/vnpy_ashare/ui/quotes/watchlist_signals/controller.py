@@ -156,10 +156,13 @@ class WatchlistSignalController:
             return
 
         service = self._analysis_service()
+        panel_symbols = self._panel_symbols()
         if service is None:
+            panel = getattr(self._page, "signal_panel", None)
+            if panel is not None:
+                panel.render()
             return
 
-        panel_symbols = self._panel_symbols()
         if symbols is None:
             target = panel_symbols
         else:

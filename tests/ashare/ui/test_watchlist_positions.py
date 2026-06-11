@@ -10,11 +10,15 @@ from unittest.mock import patch
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
+from vnpy_ashare.ui.quotes.watchlist_signals.settings import WatchlistSignalConfig
 from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
+    WatchlistPositionConfig,
     load_position_panel_enabled,
     load_position_panel_expanded,
+    load_watchlist_position_config,
     save_position_panel_enabled,
     save_position_panel_expanded,
+    save_watchlist_position_config,
 )
 
 
@@ -41,6 +45,27 @@ class PositionPanelSettingsTests(unittest.TestCase):
         save_position_panel_expanded(True)
         self.assertTrue(load_position_panel_enabled())
         self.assertTrue(load_position_panel_expanded())
+
+    def test_position_config_defaults_roundtrip(self) -> None:
+        save_watchlist_position_config(WatchlistPositionConfig())
+        loaded = load_watchlist_position_config()
+        self.assertTrue(loaded.follow_signal)
+        self.assertEqual(loaded.fast_window, 10)
+        self.assertEqual(loaded.slow_window, 20)
+
+    def test_position_config_effective_follows_signal(self) -> None:
+        pos = WatchlistPositionConfig(follow_signal=True)
+        signal = WatchlistSignalConfig(fast_window=5, slow_window=15)
+        effective = pos.effective_signal_config(signal)
+        self.assertEqual(effective.fast_window, 5)
+        self.assertEqual(effective.slow_window, 15)
+
+    def test_position_config_effective_uses_own_params(self) -> None:
+        pos = WatchlistPositionConfig(follow_signal=False, fast_window=8, slow_window=18)
+        signal = WatchlistSignalConfig(fast_window=5, slow_window=15)
+        effective = pos.effective_signal_config(signal)
+        self.assertEqual(effective.fast_window, 8)
+        self.assertEqual(effective.slow_window, 18)
 
 
 class PositionDiskCacheTests(unittest.TestCase):

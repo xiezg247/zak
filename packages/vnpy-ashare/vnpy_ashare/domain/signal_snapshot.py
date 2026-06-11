@@ -29,8 +29,6 @@ SIGNAL_COLUMN_KEYS: frozenset[str] = frozenset(
     }
 )
 
-SIGNAL_DISCLAIMER = "策略信号来自历史规则计算，仅供研究参考，不构成买卖建议。"
-
 DIST_ANCHOR_WARN_PCT = 8.0
 SIGNAL_RECENT_DAYS = 5
 INTRADAY_ANCHOR_MIN_DELTA = 0.01
@@ -79,7 +77,6 @@ class SignalSnapshot:
         parts = list(self.reasons)
         if self.warnings:
             parts.extend(self.warnings)
-        parts.append(SIGNAL_DISCLAIMER)
         return "\n".join(part for part in parts if part)
 
 

@@ -315,6 +315,83 @@ class SignalDiskCacheTests(unittest.TestCase):
 
 
 class CenterSplitterSizeTests(unittest.TestCase):
+    def test_normalize_saved_sizes_expanded_signal_not_clipped(self) -> None:
+        from unittest.mock import MagicMock
+
+        from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
+            SIGNAL_PANEL_COLLAPSED_HEIGHT,
+            SIGNAL_PANEL_DEFAULT_HEIGHT,
+            _normalize_saved_sizes,
+        )
+
+        signal_panel = MagicMock()
+        signal_panel.is_expanded.return_value = True
+        signal_panel.minimumHeight.return_value = SIGNAL_PANEL_DEFAULT_HEIGHT
+
+        splitter = MagicMock()
+        splitter.count.return_value = 2
+        table_host = MagicMock()
+        splitter.widget.side_effect = lambda index: table_host if index == 0 else signal_panel
+        splitter.height.return_value = 800
+        splitter.sizes.return_value = [768, 32]
+
+        page = MagicMock()
+        page._market_table_host = table_host
+        page.signal_panel = signal_panel
+        page.position_panel = None
+
+        with unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._signal_panel",
+            return_value=signal_panel,
+        ), unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._table_host",
+            return_value=table_host,
+        ), unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._position_panel",
+            return_value=None,
+        ), unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._run_output_panel",
+            return_value=None,
+        ):
+            normalized = _normalize_saved_sizes(page, splitter, [768, 32])
+
+        self.assertGreaterEqual(normalized[1], SIGNAL_PANEL_DEFAULT_HEIGHT)
+        self.assertNotEqual(normalized[1], SIGNAL_PANEL_COLLAPSED_HEIGHT)
+
+    def test_migrate_two_segment_saved_sizes_to_three(self) -> None:
+        from unittest.mock import MagicMock
+
+        from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
+            POSITION_PANEL_DEFAULT_HEIGHT,
+            _migrate_saved_sizes,
+        )
+
+        signal_panel = MagicMock()
+        position_panel = MagicMock()
+        position_panel.is_expanded.return_value = True
+        position_panel.minimumHeight.return_value = POSITION_PANEL_DEFAULT_HEIGHT
+
+        splitter = MagicMock()
+        splitter.count.return_value = 3
+
+        page = MagicMock()
+        page.signal_panel = signal_panel
+        page.position_panel = position_panel
+
+        with unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._signal_panel",
+            return_value=signal_panel,
+        ), unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._position_panel",
+            return_value=position_panel,
+        ), unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._run_output_panel",
+            return_value=None,
+        ):
+            migrated = _migrate_saved_sizes(page, splitter, [600, 240])
+
+        self.assertEqual(migrated, [600, 240, POSITION_PANEL_DEFAULT_HEIGHT])
+
     def test_default_signal_height_increased(self) -> None:
         from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
             SIGNAL_PANEL_DEFAULT_HEIGHT,

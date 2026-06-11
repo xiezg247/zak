@@ -87,7 +87,6 @@ class AnalysisServiceTests(unittest.TestCase):
         result = self.service.strategy_signals("600000.SSE")
         self.assertEqual(result["strategy"], "AshareDoubleMaStrategy")
         self.assertIsNotNone(result["current"]["fast_ma"])
-        self.assertIn("disclaimer", result)
 
     def test_historical_pattern_summary(self) -> None:
         result = self.service.historical_pattern_summary("600000.SSE", lookback=20)

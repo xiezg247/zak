@@ -54,6 +54,11 @@ from vnpy_ashare.ui.quotes.page.config import (
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
+from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
+    WatchlistPositionConfig,
+    load_watchlist_position_config,
+    save_watchlist_position_config,
+)
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
@@ -120,6 +125,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._positions = WatchlistPositionController(self)
         self._loader = DataLoaderController(self)
         self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
+        self.position_config: WatchlistPositionConfig = load_watchlist_position_config()
         self.signal_cache: dict[str, SignalSnapshot] = {}
         self._signal_cache_config: WatchlistSignalConfig | None = None
         self.position_cache: dict[str, PositionSnapshot] = {}
@@ -464,6 +470,7 @@ class QuotesPage(QtWidgets.QWidget):
         panel.row_activated.connect(self._on_signal_panel_row_activated)
         panel.row_selected.connect(self._on_signal_panel_row_activated)
         panel.expansion_changed.connect(self._on_signal_panel_expansion_changed)
+        panel.register_position_requested.connect(self._on_signal_register_position)
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
         apply_center_splitter_sizes(self)
@@ -473,7 +480,7 @@ class QuotesPage(QtWidgets.QWidget):
         if panel is None:
             return
         self._signals.apply_config(panel.read_config())
-        if self.config.show_watchlist_positions:
+        if self.config.show_watchlist_positions and self.position_config.follow_signal:
             self._positions.invalidate_cache()
             self._positions.refresh(force=True)
 
@@ -494,6 +501,7 @@ class QuotesPage(QtWidgets.QWidget):
             return
         panel.rows_changed.connect(self._positions.on_rows_changed)
         panel.enabled_changed.connect(self._positions.on_panel_enabled_changed)
+        panel.config_changed.connect(self._on_position_panel_config_changed)
         panel.refresh_requested.connect(self.refresh_watchlist_positions)
         panel.row_activated.connect(self._on_position_panel_row_activated)
         panel.row_selected.connect(self._on_position_panel_row_selected)
@@ -501,6 +509,35 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _on_position_panel_expansion_changed(self, _expanded: bool) -> None:
         apply_center_splitter_sizes(self)
+
+    def _on_position_panel_config_changed(self) -> None:
+        panel = getattr(self, "position_panel", None)
+        if panel is None:
+            return
+        self._apply_position_config(panel.read_config())
+
+    def _apply_position_config(
+        self,
+        config: WatchlistPositionConfig,
+        *,
+        save: bool = True,
+    ) -> None:
+        normalized = config.normalized()
+        self.position_config = normalized
+        if save:
+            save_watchlist_position_config(normalized)
+        panel = getattr(self, "position_panel", None)
+        if panel is not None:
+            panel.apply_config(normalized)
+        if self.config.show_watchlist_positions:
+            self._positions.invalidate_cache()
+            self._positions.refresh(force=True)
+
+    def _on_signal_register_position(self, vt_symbol: str) -> None:
+        panel = getattr(self, "position_panel", None)
+        if panel is None:
+            return
+        panel.register_symbol(vt_symbol)
 
     def _on_position_panel_row_selected(self, vt_symbol: str) -> None:
         item = self.find_stock_item(vt_symbol)

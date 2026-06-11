@@ -13,6 +13,7 @@ from vnpy_ashare.domain.signal_snapshot import signal_as_of_stale
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
 from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
+from vnpy_ashare.ui.quotes.watchlist_signals.settings import WatchlistSignalConfig
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
@@ -53,6 +54,10 @@ class WatchlistPositionController:
     def _record_map(self) -> dict[str, PositionRecord]:
         return {record.vt_symbol: record for record in self._records()}
 
+    def _effective_config(self) -> WatchlistSignalConfig:
+        page = self._page
+        return page.position_config.normalized().effective_signal_config(page.signal_config)
+
     def _bar_end_date(self, vt_symbol: str) -> str | None:
         item = self._page.find_stock_item(vt_symbol)
         if item is None:
@@ -63,7 +68,7 @@ class WatchlistPositionController:
         return format_meta_date(meta.end)
 
     def _cache_valid(self, vt_symbol: str, record: PositionRecord) -> bool:
-        expected_config = self._page.signal_config.normalized()
+        expected_config = self._effective_config()
         if self._page._position_cache_config != expected_config:
             return False
         snap = self._page.position_cache.get(vt_symbol)
@@ -138,7 +143,7 @@ class WatchlistPositionController:
         symbols = list(record_map)
         if not symbols:
             return False
-        config = self._page.signal_config.normalized()
+        config = self._effective_config()
         hits = self._disk_cache.load_many(
             symbols,
             config_key=config.cache_key(),
@@ -205,7 +210,7 @@ class WatchlistPositionController:
             if not to_fetch:
                 return
 
-        config = self._page.signal_config.normalized()
+        config = self._effective_config()
         config_key = config.cache_key()
         disk_hits = self._disk_cache.load_many(
             to_fetch,

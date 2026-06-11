@@ -45,6 +45,26 @@ class PositionSnapshotTests(unittest.TestCase):
         self.assertTrue(position_t1_locked("2026-06-11", trading_day=date(2026, 6, 11)))
         self.assertFalse(position_t1_locked("2026-06-10", trading_day=date(2026, 6, 11)))
 
+    def test_t1_and_exit_signal_shown_separately(self) -> None:
+        record = PositionRecord(
+            symbol="000063",
+            exchange="SZSE",
+            name="中兴通讯",
+            cost_price=30.0,
+            volume=100,
+            buy_date="2026-06-11",
+        )
+        snap = build_position_snapshot(
+            record,
+            signal=_signal("buy"),
+            last_price=31.0,
+            trading_day=date(2026, 6, 11),
+        )
+        self.assertTrue(snap.t1_locked)
+        self.assertEqual(snap.t1_status_label, "T+1 锁定")
+        self.assertEqual(snap.exit_signal, "buy")
+        self.assertEqual(snap.exit_signal_label, "买入")
+
     def test_build_position_snapshot(self) -> None:
         record = PositionRecord(
             symbol="600000",

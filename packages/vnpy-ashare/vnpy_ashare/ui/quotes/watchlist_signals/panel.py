@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.domain.signal_snapshot import (
-    SIGNAL_DISCLAIMER,
     SignalSnapshot,
     build_price_field_explanations,
     build_runtime_signal_hints,
@@ -66,6 +65,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     refresh_requested = QtCore.Signal()
     row_activated = QtCore.Signal(str)
     row_selected = QtCore.Signal(str)
+    register_position_requested = QtCore.Signal(str)
     expansion_changed = QtCore.Signal(bool)
 
     def __init__(self, page: QuotesPage) -> None:
@@ -106,6 +106,10 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._slow_spin.setPrefix("慢 ")
         self._slow_spin.setValue(page.signal_config.slow_window)
 
+        self._register_position_button = QtWidgets.QPushButton("→ 登记持仓", self)
+        self._register_position_button.setObjectName("SecondaryButton")
+        self._register_position_button.clicked.connect(self._on_register_position_clicked)
+
         self._remove_button = QtWidgets.QPushButton("移出", self)
         self._remove_button.setObjectName("SecondaryButton")
         self._remove_button.clicked.connect(self._on_remove_clicked)
@@ -131,6 +135,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         header.addWidget(self._strategy_label)
         header.addWidget(self._fast_spin)
         header.addWidget(self._slow_spin)
+        header.addWidget(self._register_position_button)
         header.addWidget(self._remove_button)
         header.addWidget(self._clear_button)
         header.addWidget(self._refresh_button)
@@ -170,11 +175,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._empty_label.setWordWrap(True)
         root.addWidget(self._empty_label)
 
-        self._disclaimer_label = QtWidgets.QLabel(SIGNAL_DISCLAIMER, self)
-        self._disclaimer_label.setObjectName("BottomBarMeta")
-        self._disclaimer_label.setWordWrap(True)
-        root.addWidget(self._disclaimer_label)
-
         self._fast_spin.valueChanged.connect(self._emit_config_changed)
         self._slow_spin.valueChanged.connect(self._emit_config_changed)
 
@@ -182,10 +182,10 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._stats_label,
             self._table,
             self._empty_label,
-            self._disclaimer_label,
             self._strategy_label,
             self._fast_spin,
             self._slow_spin,
+            self._register_position_button,
             self._remove_button,
             self._clear_button,
             self._refresh_button,
@@ -472,13 +472,15 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle(f"策略信号 · {title_name}")
-        dialog.setMinimumWidth(420)
+        dialog.setMinimumSize(520, 360)
+        dialog.resize(640, 480)
         layout = QtWidgets.QVBoxLayout(dialog)
         editor = QtWidgets.QPlainTextEdit(dialog)
         editor.setReadOnly(True)
         editor.setPlainText(detail)
+        editor.setMinimumHeight(320)
         editor.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.WidgetWidth)
-        layout.addWidget(editor)
+        layout.addWidget(editor, stretch=1)
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(dialog.reject)
         buttons.accepted.connect(dialog.accept)
@@ -651,12 +653,23 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._strategy_label,
             self._fast_spin,
             self._slow_spin,
+            self._register_position_button,
             self._remove_button,
             self._clear_button,
             self._refresh_button,
             self._table,
         ):
             widget.setEnabled(enabled)
+
+    def _on_register_position_clicked(self) -> None:
+        symbols = self.selected_vt_symbols()
+        if not symbols:
+            self._page._toast.warning("请先在策略信号区选择标的")
+            return
+        if len(symbols) > 1:
+            self._page._toast.warning("登记持仓一次仅支持单只标的")
+            return
+        self.register_position_requested.emit(symbols[0])
 
     def _on_remove_clicked(self) -> None:
         item = self._page.current_item

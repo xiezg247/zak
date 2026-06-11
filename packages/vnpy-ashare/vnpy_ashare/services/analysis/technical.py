@@ -173,7 +173,6 @@ class TechnicalAnalyzer:
             "signal_count": state.get("signal_count", 0),
             "warnings": warnings,
             "sources": ["bar"],
-            "disclaimer": "策略信号来自历史规则计算，仅供研究参考，不构成买卖建议。",
         }
 
     def signal_snapshot(

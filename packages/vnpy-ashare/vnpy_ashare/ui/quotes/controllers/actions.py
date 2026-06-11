@@ -374,7 +374,7 @@ class ActionsController:
             return
         quote = page.quote_map.get(item.tickflow_symbol)
         name = quote.name if quote and quote.name else item.name
-        cfg = page.signal_config.normalized()
+        cfg = page.position_config.normalized().effective_signal_config(page.signal_config)
         snap = page.position_cache.get(item.vt_symbol)
         self._ask_ai(
             build_positions_ai_prompt(

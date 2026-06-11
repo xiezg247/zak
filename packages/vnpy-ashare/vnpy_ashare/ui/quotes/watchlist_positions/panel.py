@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.domain.position_snapshot import POSITION_DISCLAIMER, PositionRecord, position_row_sort_key
+from vnpy_ashare.domain.position_snapshot import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.signal_snapshot import signal_cell_color, signal_missing_kline
 from vnpy_ashare.storage.app_db import POSITION_MAX_ITEMS
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
     POSITION_PANEL_COLLAPSED_HEIGHT,
     POSITION_PANEL_DEFAULT_HEIGHT,
+    WatchlistPositionConfig,
     load_position_panel_enabled,
     load_position_panel_expanded,
     save_position_panel_enabled,
@@ -28,9 +29,12 @@ _PANEL_COLUMNS = (
     ("symbol", "代码"),
     ("name", "名称"),
     ("cost_price", "成本价"),
-    ("volume", "持仓量"),
+    ("volume", "持仓量(股)"),
+    ("buy_date", "买入日"),
     ("last_price", "现价"),
+    ("pnl", "浮盈(元)"),
     ("pnl_pct", "浮盈%"),
+    ("t1_status", "T+1"),
     ("exit_signal", "退出信号"),
     ("ref_sell_price", "参考卖价"),
 )
@@ -42,6 +46,7 @@ _FILTER_EMPTY_TEXT = "当前筛选无匹配标的，再次点击统计项可取�
 class WatchlistPositionPanel(QtWidgets.QWidget):
     rows_changed = QtCore.Signal()
     enabled_changed = QtCore.Signal(bool)
+    config_changed = QtCore.Signal()
     refresh_requested = QtCore.Signal()
     row_activated = QtCore.Signal(str)
     row_selected = QtCore.Signal(str)
@@ -71,8 +76,23 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._toggle.setChecked(load_position_panel_enabled())
         self._toggle.toggled.connect(self._on_enabled_toggled)
 
-        self._strategy_label = QtWidgets.QLabel("策略：跟随信号区", self)
+        position_cfg = page.position_config.normalized()
+        self._follow_check = QtWidgets.QCheckBox("跟随信号区", self)
+        self._follow_check.setChecked(position_cfg.follow_signal)
+        self._follow_check.toggled.connect(self._on_follow_toggled)
+
+        self._strategy_label = QtWidgets.QLabel("双均线", self)
         self._strategy_label.setObjectName("SectionLabel")
+
+        self._fast_spin = QtWidgets.QSpinBox(self)
+        self._fast_spin.setRange(2, 60)
+        self._fast_spin.setPrefix("快 ")
+        self._fast_spin.setValue(position_cfg.fast_window)
+
+        self._slow_spin = QtWidgets.QSpinBox(self)
+        self._slow_spin.setRange(3, 120)
+        self._slow_spin.setPrefix("慢 ")
+        self._slow_spin.setValue(position_cfg.slow_window)
 
         self._edit_button = QtWidgets.QPushButton("编辑", self)
         self._edit_button.setObjectName("SecondaryButton")
@@ -100,7 +120,10 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         header.addWidget(QtWidgets.QLabel("持仓策略", self))
         header.addWidget(self._toggle)
         header.addStretch()
+        header.addWidget(self._follow_check)
         header.addWidget(self._strategy_label)
+        header.addWidget(self._fast_spin)
+        header.addWidget(self._slow_spin)
         header.addWidget(self._edit_button)
         header.addWidget(self._remove_button)
         header.addWidget(self._clear_button)
@@ -128,11 +151,9 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         root.addWidget(self._table, stretch=1)
 
-        self._disclaimer = QtWidgets.QLabel(POSITION_DISCLAIMER, self)
-        self._disclaimer.setObjectName("DisclaimerLabel")
-        self._disclaimer.setWordWrap(True)
-        root.addWidget(self._disclaimer)
-
+        self._fast_spin.valueChanged.connect(self._emit_config_changed)
+        self._slow_spin.valueChanged.connect(self._emit_config_changed)
+        self._sync_strategy_controls()
         self._sync_expansion_ui()
         self.render()
 
@@ -148,6 +169,34 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
 
     def set_updated_at(self, text: str) -> None:
         self._updated_at = text
+
+    def read_config(self) -> WatchlistPositionConfig:
+        fast = int(self._fast_spin.value())
+        slow = int(self._slow_spin.value())
+        if slow <= fast:
+            slow = fast + 1
+            self._slow_spin.blockSignals(True)
+            self._slow_spin.setValue(slow)
+            self._slow_spin.blockSignals(False)
+        return WatchlistPositionConfig(
+            follow_signal=self._follow_check.isChecked(),
+            class_name=self._page.position_config.class_name,
+            fast_window=fast,
+            slow_window=slow,
+        ).normalized()
+
+    def apply_config(self, config: WatchlistPositionConfig) -> None:
+        item = config.normalized()
+        self._follow_check.blockSignals(True)
+        self._fast_spin.blockSignals(True)
+        self._slow_spin.blockSignals(True)
+        self._follow_check.setChecked(item.follow_signal)
+        self._fast_spin.setValue(item.fast_window)
+        self._slow_spin.setValue(item.slow_window)
+        self._follow_check.blockSignals(False)
+        self._fast_spin.blockSignals(False)
+        self._slow_spin.blockSignals(False)
+        self._sync_strategy_controls()
 
     def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
         if self._expanded == expanded:
@@ -198,10 +247,12 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._collapse_button.setArrowType(QtCore.Qt.ArrowType.DownArrow if expanded else QtCore.Qt.ArrowType.RightArrow)
         self._table.setVisible(expanded)
         self._stats_label.setVisible(expanded)
-        self._disclaimer.setVisible(expanded)
         for widget in (
             self._toggle,
+            self._follow_check,
             self._strategy_label,
+            self._fast_spin,
+            self._slow_spin,
             self._edit_button,
             self._remove_button,
             self._clear_button,
@@ -210,6 +261,21 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             widget.setVisible(expanded)
         self.setMinimumHeight(self.minimumHeight())
         self.setMaximumHeight(16777215 if expanded else POSITION_PANEL_COLLAPSED_HEIGHT)
+
+    def _sync_strategy_controls(self) -> None:
+        follow = self._follow_check.isChecked()
+        self._strategy_label.setVisible(not follow)
+        self._fast_spin.setEnabled(not follow)
+        self._slow_spin.setEnabled(not follow)
+
+    def _on_follow_toggled(self, _checked: bool) -> None:
+        self._sync_strategy_controls()
+        self._emit_config_changed()
+
+    def _emit_config_changed(self) -> None:
+        if self._building:
+            return
+        self.config_changed.emit()
 
     def _on_enabled_toggled(self, checked: bool) -> None:
         save_position_panel_enabled(checked)
@@ -427,20 +493,28 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             last_price = snap.last_price
         elif quote is not None and quote.last_price > 0:
             last_price = quote.last_price
+        buy_date = (record.buy_date or "")[:10] or "—"
         values = {
             "symbol": record.symbol,
             "name": record.name or (item.name if item else "—"),
             "cost_price": f"{record.cost_price:.2f}",
             "volume": str(record.volume),
+            "buy_date": buy_date,
             "last_price": f"{last_price:.2f}" if last_price is not None else "—",
         }
+        locked = position_t1_locked(buy_date) if buy_date != "—" else False
+        values["t1_status"] = "T+1 锁定" if locked else "可卖"
         if snap is None:
+            values["pnl"] = "—"
             values["pnl_pct"] = "—"
             values["exit_signal"] = "待计算"
             values["ref_sell_price"] = "—"
             return values, snap, quote
+        pnl = snap.unrealized_pnl
+        values["pnl"] = f"{pnl:+.2f}" if pnl is not None else "—"
         pnl_pct = snap.unrealized_pnl_pct
         values["pnl_pct"] = f"{pnl_pct:+.2f}%" if pnl_pct is not None else "—"
+        values["t1_status"] = snap.t1_status_label
         values["exit_signal"] = snap.exit_signal_label
         ref_sell = snap.exit_ref_price
         values["ref_sell_price"] = f"{ref_sell:.2f}" if ref_sell is not None else "—"
@@ -491,7 +565,15 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             for row, record in enumerate(records):
                 rendered.append(record.vt_symbol)
                 values, snap, quote = self._row_values(record)
-                config = self._page.signal_config.normalized()
+                buy_date = values.get("buy_date", "—")
+                t1_locked = (
+                    snap.t1_locked
+                    if snap is not None
+                    else (position_t1_locked(buy_date) if buy_date != "—" else False)
+                )
+                config = self._page.position_config.normalized().effective_signal_config(
+                    self._page.signal_config
+                )
                 for col, (key, _label) in enumerate(_PANEL_COLUMNS):
                     text = values.get(key, "—")
                     cell = self._table.item(row, col)
@@ -502,27 +584,45 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                         cell.setText(text)
                     cell.setData(QtCore.Qt.ItemDataRole.UserRole, record.vt_symbol)
                     fg = None
-                    if key == "pnl_pct" and snap is not None and snap.unrealized_pnl_pct is not None:
+                    if key == "pnl" and snap is not None and snap.unrealized_pnl is not None:
+                        fg = colors.rise if snap.unrealized_pnl >= 0 else colors.fall
+                    elif key == "pnl_pct" and snap is not None and snap.unrealized_pnl_pct is not None:
                         fg = colors.rise if snap.unrealized_pnl_pct >= 0 else colors.fall
-                    elif key == "exit_signal" and snap is not None:
-                        if snap.t1_locked:
+                    elif key == "t1_status":
+                        if t1_locked:
                             fg = warning_color
-                        elif snap.signal_snapshot is not None:
-                            fg = signal_cell_color(
-                                "signal",
-                                snap.signal_snapshot,
-                                colors=colors,
-                                quote=quote,
-                                warning_color=warning_color,
-                                slow_window=config.slow_window,
-                                fast_window=config.fast_window,
+                        elif snap is not None:
+                            fg = colors.flat
+                    elif key == "exit_signal" and snap is not None and snap.signal_snapshot is not None:
+                        fg = signal_cell_color(
+                            "signal",
+                            snap.signal_snapshot,
+                            colors=colors,
+                            quote=quote,
+                            warning_color=warning_color,
+                            slow_window=config.slow_window,
+                            fast_window=config.fast_window,
+                        )
+                    if key == "t1_status":
+                        if snap is not None:
+                            cell.setToolTip(snap.t1_status_tooltip)
+                        elif buy_date != "—":
+                            tip = (
+                                f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）"
+                                if t1_locked
+                                else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
                             )
+                            cell.setToolTip(tip)
+                    elif key == "exit_signal" and snap is not None:
+                        cell.setToolTip(snap.exit_signal_tooltip)
                     if fg:
                         cell.setForeground(QtGui.QColor(fg))
                     else:
                         cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
                 if snap is not None and snap.signal_snapshot is not None:
-                    self._table.item(row, 0).setToolTip(snap.signal_snapshot.tooltip)
+                    symbol_cell = self._table.item(row, 0)
+                    if symbol_cell is not None:
+                        symbol_cell.setToolTip(snap.signal_snapshot.tooltip)
 
             self._rendered_symbols = rendered
             self._refresh_stats()

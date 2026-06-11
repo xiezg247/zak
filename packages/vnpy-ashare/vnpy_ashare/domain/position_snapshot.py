@@ -7,11 +7,9 @@ from datetime import date, datetime
 from typing import Literal
 
 from vnpy_ashare.domain.market_hours import CHINA_TZ
-from vnpy_ashare.domain.signal_snapshot import SIGNAL_DISCLAIMER, SignalKind, SignalSnapshot
+from vnpy_ashare.domain.signal_snapshot import SignalKind, SignalSnapshot
 
 PositionSource = Literal["manual", "gateway", "paper"]
-
-POSITION_DISCLAIMER = SIGNAL_DISCLAIMER
 
 
 @dataclass(frozen=True)
@@ -56,11 +54,25 @@ class PositionSnapshot:
     warnings: tuple[str, ...]
 
     @property
+    def t1_status_label(self) -> str:
+        return "T+1 锁定" if self.t1_locked else "可卖"
+
+    @property
+    def t1_status_tooltip(self) -> str:
+        if self.t1_locked:
+            return f"买入日 {self.buy_date[:10]}：当日买入不可卖（A 股 T+1）"
+        return f"买入日 {self.buy_date[:10]}：已过 T+1，可按策略卖出"
+
+    @property
     def exit_signal_label(self) -> str:
-        if self.t1_locked and self.exit_signal == "sell":
-            return "T+1 锁定"
         labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
         return labels.get(self.exit_signal, "—")
+
+    @property
+    def exit_signal_tooltip(self) -> str:
+        if self.signal_snapshot is not None and self.signal_snapshot.tooltip:
+            return self.signal_snapshot.tooltip
+        return f"策略退出信号：{self.exit_signal_label}"
 
 
 def _parse_date(value: str | None) -> date | None:

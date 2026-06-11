@@ -7,7 +7,7 @@ from typing import Literal
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.config import normalize_volume
+from vnpy_ashare.config import PRICE_TICK, normalize_volume
 from vnpy_ashare.domain.market_hours import CHINA_TZ
 from vnpy_ashare.domain.position_snapshot import PositionRecord
 from vnpy_ashare.services.base import BaseService
@@ -27,6 +27,15 @@ from vnpy_ashare.storage.app_db import (
 )
 
 PositionAddFailure = Literal["duplicate", "full", "not_in_watchlist"]
+
+
+def normalize_cost_price(cost_price: float) -> float:
+    """成本价归一化为浮点，并按 A 股价档对齐。"""
+    price = float(cost_price)
+    if price <= 0:
+        return price
+    tick = PRICE_TICK
+    return round(round(price / tick) * tick, 4)
 
 
 class PositionService(BaseService):
@@ -106,7 +115,7 @@ class PositionService(BaseService):
         return add_position_item(
             symbol,
             exchange,
-            cost_price=round(cost_price, 2),
+            cost_price=normalize_cost_price(cost_price),
             volume=normalize_volume(volume),
             buy_date=buy_date[:10],
             notes=notes.strip(),
@@ -128,7 +137,7 @@ class PositionService(BaseService):
         return update_position_item(
             symbol,
             exchange,
-            cost_price=round(cost_price, 2),
+            cost_price=normalize_cost_price(cost_price),
             volume=normalize_volume(volume),
             buy_date=buy_date[:10],
             notes=notes.strip(),
