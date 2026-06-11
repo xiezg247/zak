@@ -10,6 +10,7 @@ from vnpy_ashare.data.bar_health import (
     BarMeta,
     find_gaps,
     format_gap_ranges,
+    gap_scan_range,
     inspect_bar_gaps,
     list_status,
     merge_missing_days,
@@ -92,6 +93,22 @@ class BarHealthTests(unittest.TestCase):
         result = inspect_bar_gaps(meta, {date(2026, 6, 1), date(2026, 6, 5)}, as_of=date(2026, 6, 5))
         self.assertEqual(result.status, BarHealthStatus.GAPS)
         self.assertTrue(result.gaps)
+
+    def test_gap_scan_ignores_pre_listing_download_start(self) -> None:
+        """meta.start 常为批量下载起点（2020-01-02），晚上市标的不应判为断层。"""
+        meta = BarMeta(
+            start=datetime(2020, 1, 2),
+            end=datetime(2026, 6, 5),
+            count=500,
+        )
+        listing_start = date(2023, 6, 1)
+        bar_dates = set(trading_days_between(listing_start, date(2026, 6, 5)))
+        scan_start, scan_end = gap_scan_range(meta, bar_dates)
+        self.assertEqual(scan_start, listing_start)
+        self.assertEqual(scan_end, date(2026, 6, 5))
+        result = inspect_bar_gaps(meta, bar_dates, as_of=date(2026, 6, 5))
+        self.assertEqual(result.status, BarHealthStatus.OK)
+        self.assertEqual(result.gaps, [])
 
     def test_format_gap_ranges(self) -> None:
         from vnpy_ashare.data.bar_health import GapRange

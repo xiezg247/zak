@@ -243,7 +243,9 @@ class AshareMainWindow(MainWindow):
         self.setCentralWidget(shell)
         self._toast = PageToastHost(self)
         self.setStatusBar(self._toast)
-        self._init_floating_ai(shell)
+        if self._init_floating_ai(shell):
+            assert self._floating_controller is not None
+            self._floating_controller.bind_content_anchor(self.stack)
         self._bind_scheduler_notifications()
         self._schedule_deferred_scheduler_start()
         self._show_page(0)
@@ -319,6 +321,8 @@ class AshareMainWindow(MainWindow):
             self._nav_splitter.setSizes([nav_width, total - nav_width])
             self._nav_splitter.blockSignals(False)
         self._nav_width_settings().setValue("nav_width", nav_width)
+        if self._floating_controller is not None:
+            self._floating_controller.on_window_resize()
 
     def _get_llm_engine(self) -> LlmEngine | None:
         engine = self.main_engine.get_engine(LLM_APP_NAME)
@@ -581,6 +585,7 @@ class AshareMainWindow(MainWindow):
             self._page_before_ai = index
         if self._floating_controller is not None:
             self._floating_controller.on_page_changed(entry.key)
+            self._floating_controller.raise_floating_layers()
         self.sidebar.set_active_index(index)
         self.raise_()
         self.activateWindow()

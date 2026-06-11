@@ -57,6 +57,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalController,
     apply_center_splitter_sizes,
     load_watchlist_signal_config,
+    restore_center_splitter,
 )
 from vnpy_ashare.ui.quotes.workers import (
     BarGapCheckWorker,
@@ -244,6 +245,7 @@ class QuotesPage(QtWidgets.QWidget):
             self.chart_panel.load_item(self.current_item, quote=quote)
         self.load_stock_list()
         self._restore_splitter()
+        self._schedule_center_splitter_layout()
         self._update_quote_source_label()
         if self.config.show_watchlist_signals:
             self._signals.start()
@@ -304,6 +306,16 @@ class QuotesPage(QtWidgets.QWidget):
         state = settings.value(self._splitter_settings_key())
         if state is not None:
             self._splitter.restoreState(state)
+
+    def _schedule_center_splitter_layout(self) -> None:
+        if not (self.config.show_watchlist_signals or self.config.show_run_output_panel):
+            return
+        QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self))
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        if getattr(self, "_center_splitter", None) is not None:
+            apply_center_splitter_sizes(self)
 
     def _save_column_config(self) -> None:
         self._table.save_column_config()

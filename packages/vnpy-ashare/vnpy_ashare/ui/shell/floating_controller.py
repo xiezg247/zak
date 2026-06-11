@@ -12,14 +12,16 @@ from vnpy_ashare.ai.ui.floating_actions import scene_label_from_context
 from vnpy_ashare.app.events import AskAiRequest
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import page_notify
+from vnpy_common.ui.qt_helpers import clamp_point_in_parent, default_child_bottom_right_in_anchor
 from vnpy_llm.app.engine import LlmEngine
-from vnpy_llm.ui.floating.panel import FloatingAiOrb, FloatingAiPanel
+from vnpy_llm.ui.floating.panel import ORB_MARGIN, FloatingAiOrb, FloatingAiPanel
 from vnpy_llm.ui.session.widgets import show_ai_session_dialog
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
 FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "local", "screener", "auto_screener"})
+ORB_POSITION_KEY = "orb_position_content"
 
 
 class FloatingAiController(QtCore.QObject):
@@ -31,6 +33,7 @@ class FloatingAiController(QtCore.QObject):
         self._engine = llm_engine
         self._orb: FloatingAiOrb | None = None
         self._panel: FloatingAiPanel | None = None
+        self._content_anchor: QtWidgets.QWidget | None = None
         self._orb_user_hidden = self._load_orb_user_hidden()
         self._current_page_key: Callable[[], str | None] = lambda: None
 
@@ -45,11 +48,14 @@ class FloatingAiController(QtCore.QObject):
     def bind_page_key(self, provider: Callable[[], str | None]) -> None:
         self._current_page_key = provider
 
+    def bind_content_anchor(self, anchor: QtWidgets.QWidget) -> None:
+        self._content_anchor = anchor
+
     def init(self, shell: QtWidgets.QWidget) -> bool:
         if self._orb is not None:
             return True
 
-        orb = FloatingAiOrb(shell)
+        orb = FloatingAiOrb(shell, position_key=ORB_POSITION_KEY)
         orb.clicked.connect(self._on_orb_open_chat)
         orb.fullscreen_requested.connect(self._host._open_ai_page)
         orb.history_requested.connect(self._open_history)
@@ -68,7 +74,7 @@ class FloatingAiController(QtCore.QObject):
         self._panel = panel
 
         self._engine.signals.context_changed.connect(self.refresh_context)
-        orb.restore_position(shell)
+        QtCore.QTimer.singleShot(0, self._restore_orb_position)
         orb.hide()
         panel.hide()
         self.refresh_context()
@@ -94,8 +100,18 @@ class FloatingAiController(QtCore.QObject):
         if orb is None or not orb.isVisible():
             return
         shell = self._shell_widget()
-        if shell is not None:
-            orb.clamp_to_parent(shell)
+        if shell is None:
+            return
+        self._restore_orb_position()
+        orb.move(clamp_point_in_parent(shell, orb, orb.pos()))
+
+    def raise_floating_layers(self) -> None:
+        orb = self._orb
+        panel = self._panel
+        if orb is not None and orb.isVisible():
+            orb.raise_()
+        if panel is not None and panel.isVisible():
+            panel.raise_()
 
     def toggle_orb(self) -> None:
         page_key = self._current_page_key()
@@ -201,9 +217,7 @@ class FloatingAiController(QtCore.QObject):
         page_key = self._current_page_key()
         if page_key and not self.is_page_allowed(page_key):
             return
-        shell = self._shell_widget()
-        if shell is not None:
-            orb.restore_position(shell)
+        self._restore_orb_position()
         orb.show()
         orb.raise_()
         self._orb_user_hidden = False
@@ -229,6 +243,7 @@ class FloatingAiController(QtCore.QObject):
         if not orb.isVisible():
             self.show_orb()
         panel.show_near_orb(orb)
+        panel.raise_()
         panel.focus_input()
 
     def on_ai_assistant_entered(self) -> None:
@@ -250,6 +265,33 @@ class FloatingAiController(QtCore.QObject):
                 return parent
         widget = self._host.centralWidget()
         return widget if isinstance(widget, QtWidgets.QWidget) else None
+
+    def _default_orb_position(self) -> tuple[int, int]:
+        host = self._shell_widget()
+        orb = self._orb
+        anchor = self._content_anchor
+        if host is None or orb is None:
+            return 0, 0
+        if anchor is not None and anchor.width() > 0 and anchor.height() > 0:
+            point = default_child_bottom_right_in_anchor(
+                host,
+                orb,
+                anchor,
+                margin=ORB_MARGIN,
+            )
+            return point.x(), point.y()
+        return (
+            max(0, host.width() - orb.width() - ORB_MARGIN),
+            max(0, host.height() - orb.height() - ORB_MARGIN),
+        )
+
+    def _restore_orb_position(self) -> None:
+        orb = self._orb
+        host = self._shell_widget()
+        if orb is None or host is None:
+            return
+        default_x, default_y = self._default_orb_position()
+        orb.restore_position(host, default_x=default_x, default_y=default_y)
 
     def _on_orb_open_chat(self) -> None:
         if self.panel_visible():

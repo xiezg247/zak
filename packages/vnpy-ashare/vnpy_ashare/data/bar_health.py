@@ -113,21 +113,35 @@ def merge_missing_days(missing: list[date]) -> list[GapRange]:
     return ranges
 
 
+def gap_scan_range(meta: BarMeta, bar_dates: set[date]) -> tuple[date, date]:
+    """断层扫描的有效区间：以本地已有 K 线的实际起止为准，不按统一下载起点（如 2020-01-02）推断。"""
+    if not bar_dates:
+        return meta.start.date(), meta.end.date()
+    scan_start = min(bar_dates)
+    scan_end = max(meta.end.date(), max(bar_dates))
+    if scan_start > scan_end:
+        return meta.start.date(), meta.end.date()
+    return scan_start, scan_end
+
+
 def find_gaps(
     meta: BarMeta,
     bar_dates: set[date],
     *,
     expected: list[date] | None = None,
 ) -> list[GapRange]:
-    """在 meta 覆盖范围内找出缺失的交易日。"""
-    expected_days = expected if expected is not None else trading_days_between(meta.start.date(), meta.end.date())
-    missing = [day for day in expected_days if day not in bar_dates]
+    """在扫描区间内找出缺失的交易日。"""
+    if expected is None:
+        scan_start, scan_end = gap_scan_range(meta, bar_dates)
+        expected = trading_days_between(scan_start, scan_end)
+    missing = [day for day in expected if day not in bar_dates]
     return merge_missing_days(missing)
 
 
 def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None = None) -> BarGapResult:
     """选中行异步扫描：有断层则 GAPS，否则回退 ``list_status``。"""
-    expected_days = trading_days_between(meta.start.date(), meta.end.date())
+    scan_start, scan_end = gap_scan_range(meta, bar_dates)
+    expected_days = trading_days_between(scan_start, scan_end)
     gaps = find_gaps(meta, bar_dates, expected=expected_days)
     expected_count = len(expected_days)
     actual_days = len(bar_dates)

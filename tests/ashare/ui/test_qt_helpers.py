@@ -8,6 +8,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_common.ui.qt_helpers import (
     clamp_point_in_parent,
+    default_child_bottom_right_in_anchor,
     frame_intersects_any_screen,
     restore_child_position,
 )
@@ -34,6 +35,18 @@ class QtHelpersTests(unittest.TestCase):
         child.resize(52, 52)
         restore_child_position(parent, child, None, default_x=300, default_y=200)
         self.assertEqual(child.pos(), QtCore.QPoint(300, 200))
+
+    def test_default_child_bottom_right_in_anchor(self) -> None:
+        host = QtWidgets.QWidget()
+        host.resize(1200, 800)
+        sidebar = QtWidgets.QWidget(host)
+        sidebar.setGeometry(0, 0, 200, 800)
+        content = QtWidgets.QWidget(host)
+        content.setGeometry(200, 0, 1000, 800)
+        orb = QtWidgets.QWidget(host)
+        orb.resize(52, 52)
+        point = default_child_bottom_right_in_anchor(host, orb, content, margin=20)
+        self.assertEqual(point, QtCore.QPoint(1128, 728))
 
     def test_frame_intersects_primary_screen(self) -> None:
         screen = QtWidgets.QApplication.primaryScreen()

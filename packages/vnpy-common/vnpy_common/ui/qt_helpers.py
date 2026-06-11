@@ -152,6 +152,22 @@ def clamp_point_in_parent(
     )
 
 
+def default_child_bottom_right_in_anchor(
+    parent: QtWidgets.QWidget,
+    widget: QtWidgets.QWidget,
+    anchor: QtWidgets.QWidget,
+    *,
+    margin: int = 20,
+) -> QtCore.QPoint:
+    """将子控件默认放在 anchor 区域右下角（坐标系相对 parent）。"""
+    bottom_right = anchor.mapTo(parent, QtCore.QPoint(anchor.width(), anchor.height()))
+    point = QtCore.QPoint(
+        bottom_right.x() - widget.width() - margin,
+        bottom_right.y() - widget.height() - margin,
+    )
+    return clamp_point_in_parent(parent, widget, point)
+
+
 def restore_child_position(
     parent: QtWidgets.QWidget,
     widget: QtWidgets.QWidget,

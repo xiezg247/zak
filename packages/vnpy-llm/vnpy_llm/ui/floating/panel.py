@@ -43,8 +43,14 @@ class FloatingAiOrb(QtWidgets.QWidget):
     hide_requested = QtCore.Signal()
     quick_action_requested = QtCore.Signal(str)
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        *,
+        position_key: str = "orb_position",
+    ) -> None:
         super().__init__(parent)
+        self._position_key = position_key
         self.setObjectName("FloatingAiOrb")
         self.setFixedSize(ORB_SIZE, ORB_SIZE)
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
@@ -248,24 +254,34 @@ class FloatingAiOrb(QtWidgets.QWidget):
         menu.addAction("隐藏悬浮球", self.hide_requested.emit)
         menu.exec(self.mapToGlobal(pos))
 
-    def restore_position(self, shell: QtWidgets.QWidget | None = None) -> None:
+    def restore_position(
+        self,
+        shell: QtWidgets.QWidget | None = None,
+        *,
+        default_x: int | None = None,
+        default_y: int | None = None,
+    ) -> None:
         if shell is None:
             shell = self.parentWidget()
         if shell is None:
             return
+        if default_x is None:
+            default_x = shell.width() - self.width() - ORB_MARGIN
+        if default_y is None:
+            default_y = shell.height() - self.height() - ORB_MARGIN
         settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        pos = settings.value("orb_position")
+        pos = settings.value(self._position_key)
         restore_child_position(
             shell,
             self,
             pos,
-            default_x=shell.width() - self.width() - ORB_MARGIN,
-            default_y=shell.height() - self.height() - ORB_MARGIN,
+            default_x=default_x,
+            default_y=default_y,
         )
 
     def _save_position(self) -> None:
         settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
-        settings.setValue("orb_position", self.pos())
+        settings.setValue(self._position_key, self.pos())
 
     def clamp_to_parent(self, shell: QtWidgets.QWidget | None = None) -> None:
         if shell is None:

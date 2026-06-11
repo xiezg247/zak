@@ -7,6 +7,7 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist_signals import restore_center_splitter
 from vnpy_ashare.ui.quotes.workers import IndexQuotesWorker
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
@@ -73,6 +74,13 @@ class QuotesShellWidget(QtWidgets.QWidget):
         if self._index_timer is not None:
             QtCore.QTimer.singleShot(500, self.refresh_indices)
             self._index_timer.start()
+        if self.page.config.show_watchlist_signals or self.page.config.show_run_output_panel:
+            QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        if self.page.config.show_watchlist_signals or self.page.config.show_run_output_panel:
+            QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
 
     def deactivate(self) -> None:
         self.page.deactivate()

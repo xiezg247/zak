@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy.trader.ui import QtCore
+
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import load_signal_panel_expanded
 
 if TYPE_CHECKING:
@@ -44,9 +46,16 @@ def _widget_height(widget, *, expanded: bool, expanded_height: int, collapsed_he
     return max(expanded_height, widget.minimumHeight())
 
 
-def apply_center_splitter_sizes(page: QuotesPage) -> None:
+def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
     splitter = center_splitter(page)
     if splitter is None:
+        return
+
+    if splitter.height() < 120 and _retry < 10:
+        QtCore.QTimer.singleShot(
+            50,
+            lambda: apply_center_splitter_sizes(page, _retry=_retry + 1),
+        )
         return
 
     table_host = _table_host(page)
