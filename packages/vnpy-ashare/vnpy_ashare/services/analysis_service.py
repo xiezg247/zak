@@ -115,6 +115,13 @@ class AnalysisService(BaseService):
             scope=scope,
         )
 
+    def enrich_relative_index_batch(
+        self,
+        snapshots: dict[str, SignalSnapshot],
+    ) -> dict[str, SignalSnapshot]:
+        """补算缺失的 relative_index_pct（磁盘旧快照或基准源切换后）。"""
+        return self._technical.enrich_relative_index_batch(snapshots)
+
     def list_watchlist_signal_panel(
         self,
         *,

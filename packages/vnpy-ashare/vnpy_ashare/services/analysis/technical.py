@@ -18,6 +18,7 @@ from strategies.signals import (
 from vnpy_ashare.ai.context import get_screening_results, parse_stock_symbol
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
+from vnpy_ashare.domain.signal_benchmark import compute_relative_index_excess, resolve_benchmark_return_pct
 from vnpy_ashare.domain.signal_snapshot import (
     SIGNAL_BENCHMARK_LOOKBACK,
     SignalSnapshot,
@@ -477,19 +478,9 @@ class TechnicalAnalyzer:
         return payload
 
     def _benchmark_return_pct(self, lookback: int = SIGNAL_BENCHMARK_LOOKBACK) -> float | None:
-        from vnpy.trader.constant import Exchange
-
-        from vnpy_ashare.domain.signal_snapshot import SIGNAL_BENCHMARK_SYMBOL
-
         if self._benchmark_return_cache_key == lookback:
             return self._benchmark_return_cache_val
-        result = self._engine.bar_service.get_return(
-            SIGNAL_BENCHMARK_SYMBOL,
-            Exchange.SSE,
-            lookback_days=lookback,
-        )
-        pct = result.get("return_pct")
-        value = float(pct) if isinstance(pct, (int, float)) else None
+        value = resolve_benchmark_return_pct(self._engine.bar_service, lookback=lookback)
         self._benchmark_return_cache_key = lookback
         self._benchmark_return_cache_val = value
         return value
@@ -501,16 +492,40 @@ class TechnicalAnalyzer:
         *,
         lookback: int = SIGNAL_BENCHMARK_LOOKBACK,
     ) -> float | None:
-        stock = self._engine.bar_service.get_return(
+        bench_pct = self._benchmark_return_pct(lookback)
+        return compute_relative_index_excess(
+            self._engine.bar_service,
             symbol,
             exchange,
-            lookback_days=lookback,
+            lookback=lookback,
+            benchmark_pct=bench_pct,
         )
-        stock_pct = stock.get("return_pct")
-        bench_pct = self._benchmark_return_pct(lookback)
-        if not isinstance(stock_pct, (int, float)) or bench_pct is None:
-            return None
-        return round(float(stock_pct) - bench_pct, 2)
+
+    def enrich_relative_index(self, snapshot: SignalSnapshot) -> SignalSnapshot:
+        """旧快照缺 relative_index_pct 时补算（不改动其它字段）。"""
+        if snapshot.relative_index_pct is not None or snapshot.signal == "na":
+            return snapshot
+        item = parse_stock_symbol(snapshot.vt_symbol)
+        if item is None:
+            return snapshot
+        excess = self._relative_index_excess(item.symbol, item.exchange)
+        if excess is None:
+            return snapshot
+        from dataclasses import replace
+
+        return replace(snapshot, relative_index_pct=excess)
+
+    def enrich_relative_index_batch(
+        self,
+        snapshots: dict[str, SignalSnapshot],
+    ) -> dict[str, SignalSnapshot]:
+        if not snapshots:
+            return snapshots
+        self.reset_benchmark_cache()
+        enriched: dict[str, SignalSnapshot] = {}
+        for vt_symbol, snapshot in snapshots.items():
+            enriched[vt_symbol] = self.enrich_relative_index(snapshot)
+        return enriched
 
     def _build_signal_payload(
         self,

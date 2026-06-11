@@ -132,7 +132,7 @@ class DataLoaderController:
             page._show_market_loading(loading_text)
             page.status_label.setText(loading_text)
 
-        worker = MarketFullLoadWorker()
+        worker = MarketFullLoadWorker(rank_id=page._market_rank_id)
         page._market_worker = worker
 
         def on_finished(result: object) -> None:
@@ -253,6 +253,7 @@ class DataLoaderController:
             page_size=page.config.market_page_size,
             board=page._market_board,
             cached_total=cached_total,
+            rank_id=page._market_rank_id,
         )
         page._market_worker = worker
 
@@ -307,10 +308,10 @@ class DataLoaderController:
         worker.failed.connect(on_failed)
         worker.start()
 
-    def _market_page_cache_key(self) -> tuple[str | None, str, int]:
+    def _market_page_cache_key(self) -> tuple[str | None, str, str, int]:
         page = self._p
         keyword = page.search_edit.text().strip()
-        return (page._market_board, keyword, page._market_page)
+        return (page._market_rank_id, page._market_board, keyword, page._market_page)
 
     def _apply_market_page_result(
         self,
@@ -381,7 +382,7 @@ class DataLoaderController:
             return
 
         keyword = page.search_edit.text().strip()
-        cache_key = (page._market_board, keyword, target_page)
+        cache_key = (page._market_rank_id, page._market_board, keyword, target_page)
         if cache_key in page._market_page_cache:
             return
         if page._thread_active(page._prefetch_worker):

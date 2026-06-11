@@ -46,7 +46,7 @@ from vnpy_ashare.ui.screener import (
 )
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, APP_NAV_GROUPS, NAV_SHORTCUTS, SidebarNav
-from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, WatchlistPageWidget
+from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, RankingsPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
@@ -59,6 +59,7 @@ from vnpy_llm.ui.dialogs.tools import show_ai_tools_dialog
 
 _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
     "market": MarketPageWidget,
+    "rankings": RankingsPageWidget,
     "watchlist": WatchlistPageWidget,
     "local": LocalPageWidget,
 }

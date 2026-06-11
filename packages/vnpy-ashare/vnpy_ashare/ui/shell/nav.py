@@ -31,6 +31,7 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
         (
             NavEntry("watchlist", "自选"),
             NavEntry("market", "市场"),
+            NavEntry("rankings", "榜单"),
             NavEntry("local", "本地"),
         ),
     ),
@@ -198,8 +199,17 @@ def _draw_batch_backtest(painter: QtGui.QPainter, size: int) -> None:
         painter.drawLine(m + 3 + offset, size - m - 4, m + 8 + offset, size - m - 10)
 
 
+def _draw_rankings(painter: QtGui.QPainter, size: int) -> None:
+    m = 5
+    for index, offset in enumerate((0, 8, 16)):
+        y = m + 2 + index * 6
+        painter.drawLine(m, y, size - m - 6, y)
+        painter.drawLine(size - m - 4, y - 1, size - m - 4, y + 1)
+
+
 _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "market": _draw_market,
+    "rankings": _draw_rankings,
     "watchlist": _draw_watchlist,
     "screener": _draw_screener,
     "auto_screener": _draw_auto_screener,

@@ -142,6 +142,8 @@ class PageConfig:
     show_board_filter: bool = False
     hide_quote_header: bool = False
     column_configurable: bool = False
+    show_rank_sidebar: bool = False
+    default_rank_id: str = "change_pct"
     show_watchlist_signals: bool = False
     show_watchlist_positions: bool = False
     search_max_width: int = 280
@@ -207,6 +209,32 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_kline=False,
         show_board_filter=True,
         hide_quote_header=True,
+    ),
+    "榜单": PageConfig(
+        title="榜单",
+        scope_key="全部A股",
+        search_placeholder="输入代码 / 名称搜索 A 股",
+        search_max_width=320,
+        show_sync_button=True,
+        show_download_button=True,
+        show_local_column=True,
+        require_keyword=False,
+        show_add_watchlist_button=True,
+        use_market_rank=True,
+        market_full_list=True,
+        market_scroll_paging=False,
+        market_page_size=MARKET_PAGE_SIZE,
+        market_live_display_limit=MARKET_LIVE_DISPLAY_LIMIT,
+        table_header_sortable=True,
+        auto_refresh_quotes=MARKET_AUTO_REFRESH_DEFAULT,
+        quote_refresh_ms=MARKET_QUOTE_REFRESH_MS,
+        quote_source="market",
+        quote_refresh_source="market",
+        show_kline=False,
+        show_board_filter=True,
+        hide_quote_header=True,
+        show_rank_sidebar=True,
+        default_rank_id="change_pct",
     ),
     "自选": PageConfig(
         title="自选",

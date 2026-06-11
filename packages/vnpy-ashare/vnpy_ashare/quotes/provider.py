@@ -47,8 +47,18 @@ class RedisQuoteProvider(QuoteProvider):
         self,
         offset: int,
         limit: int,
+        *,
+        rank_id: str = "change_pct",
     ) -> tuple[list[StockItem], dict[str, QuoteSnapshot], int]:
-        tf_symbols, total = self._store.get_rank_symbols(offset, limit)
+        from vnpy_ashare.quotes.rank_catalog import get_rank_definition
+
+        spec = get_rank_definition(rank_id)
+        tf_symbols, total = self._store.get_rank_symbols(
+            offset,
+            limit,
+            field=spec.redis_field,
+            ascending=spec.ascending,
+        )
         quotes = self._store.get_quotes(tf_symbols)
 
         items: list[StockItem] = []

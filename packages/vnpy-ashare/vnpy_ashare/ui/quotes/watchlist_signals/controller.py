@@ -111,6 +111,17 @@ class WatchlistSignalController:
         self.refresh(force=True)
 
     def _apply_refresh_result(self) -> None:
+        symbols = self._panel_symbols()
+        if symbols:
+            subset = {
+                vt: snap
+                for vt in symbols
+                if (snap := self._page.signal_cache.get(vt)) is not None
+                and snap.relative_index_pct is None
+                and snap.signal != "na"
+            }
+            if subset:
+                self._enrich_relative_index(subset)
         panel = getattr(self._page, "signal_panel", None)
         if panel is not None:
             panel.set_updated_at(datetime.now().strftime("%H:%M"))
@@ -177,6 +188,15 @@ class WatchlistSignalController:
             panel.update_rows_for_tickflow_symbols(symbols)
         self._sync_chart_signal_reference(tickflow_symbols=symbols)
 
+    def _enrich_relative_index(self, cache: dict[str, SignalSnapshot]) -> dict[str, SignalSnapshot]:
+        service = self._analysis_service()
+        if service is None or not cache:
+            return cache
+        enriched = service.enrich_relative_index_batch(cache)
+        cache.clear()
+        cache.update(enriched)
+        return cache
+
     def hydrate_from_disk(self) -> bool:
         """从磁盘恢复上次快照到内存并渲染（重启后立即展示，后台再增量刷新）。"""
         symbols = self._panel_symbols()
@@ -190,6 +210,7 @@ class WatchlistSignalController:
         )
         if not hits:
             return False
+        self._enrich_relative_index(hits)
         self._page.signal_cache.update(hits)
         self._page._signal_cache_config = config
         self._apply_refresh_result()
@@ -255,6 +276,7 @@ class WatchlistSignalController:
             bar_as_of_for=self._bar_end_date,
         )
         if disk_hits:
+            self._enrich_relative_index(disk_hits)
             self._page.signal_cache.update(disk_hits)
         still_need = [vt for vt in to_fetch if vt not in disk_hits]
         if not still_need:
@@ -281,6 +303,7 @@ class WatchlistSignalController:
                 self._release_worker(worker)
                 return
             before = {vt: self._page.signal_cache.get(vt) for vt in cache}
+            self._enrich_relative_index(cache)
             self._page.signal_cache.update(cache)
             self._page._signal_cache_config = config
             if cache:

@@ -14,7 +14,7 @@ def build_quick_actions_for_panel(data: AiContextData, *, mode: str) -> list[Qui
     """按面板模式组装快捷按钮（floating / compact / assistant）。"""
     if mode == "assistant":
         return build_assistant_quick_actions()
-    if data.page in ("自选", "市场", "本地") and data.symbol:
+    if data.page in ("自选", "市场", "榜单", "本地") and data.symbol:
         return build_floating_stock_quick_actions(
             data.symbol,
             exchange_cn=data.exchange,

@@ -381,6 +381,7 @@ class TableController:
         board = page._market_board
         catalog_count = len(page._market_catalog)
         batch_time = format_batch_updated_at(page._market_updated_at)
+        rank_title = page.active_rank_title() if page.config.show_rank_sidebar else None
 
         if page.market_auto_refresh_enabled():
             page_size = max(page.config.market_page_size, 1)
@@ -388,10 +389,14 @@ class TableController:
             current = min(page._market_page + 1, page_count)
             if keyword or board:
                 status = f"筛选 {matched_count} 只，排序后第 {current}/{page_count} 页（全市场 {catalog_count} 只）"
+            elif rank_title:
+                status = f"{rank_title} {matched_count} 只，第 {current}/{page_count} 页"
             else:
                 status = f"全市场 {matched_count} 只，排序后第 {current}/{page_count} 页"
         elif keyword or board:
             status = f"筛选 {matched_count} 只（全市场 {catalog_count} 只）"
+        elif rank_title:
+            status = f"{rank_title} 共 {catalog_count} 只"
         else:
             status = f"共 {catalog_count} 只"
 

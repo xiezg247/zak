@@ -1,4 +1,4 @@
-"""行情列表页：市场 / 自选 / 本地 各自独立。"""
+"""行情列表页：市场 / 榜单 / 自选 / 本地 各自独立。"""
 
 from __future__ import annotations
 
@@ -30,6 +30,11 @@ from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
+from vnpy_ashare.quotes.rank_catalog import (
+    get_rank_definition,
+    list_rank_definitions,
+    rank_definition_index,
+)
 from vnpy_ashare.ui.quotes.chart import ChartPanel
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,
@@ -80,6 +85,9 @@ from vnpy_ashare.ui.quotes.workers import (
 from vnpy_common.ui.feedback import TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
+
+
+RANK_SETTINGS_KEY = "quotes/rankings/active_rank_id_v1"
 
 
 class QuotesPage(QtWidgets.QWidget):
@@ -157,8 +165,10 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_board_base: list[StockItem] | None = None
         self._market_board_base_key: str | None = None
         self._market_filter_keyword: str = ""
-        self._market_sort_column: str | None = "change_pct"
-        self._market_sort_ascending = False
+        rank_spec = get_rank_definition(self.config.default_rank_id)
+        self._market_rank_id = self._load_rank_id_pref()
+        self._market_sort_column: str | None = rank_spec.sort_column or rank_spec.redis_field
+        self._market_sort_ascending = rank_spec.ascending
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
 
         self._load_worker: QtCore.QThread | None = None
@@ -405,6 +415,64 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _on_board_changed(self, _index: int) -> None:
         self._pagination.on_board_changed()
+
+    def _load_rank_id_pref(self) -> str:
+        if not self.config.show_rank_sidebar:
+            return self.config.default_rank_id
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        saved = str(settings.value(RANK_SETTINGS_KEY, "") or "").strip()
+        if saved:
+            return get_rank_definition(saved).id
+        return self.config.default_rank_id
+
+    def _save_rank_id_pref(self, rank_id: str) -> None:
+        if not self.config.show_rank_sidebar:
+            return
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings.setValue(RANK_SETTINGS_KEY, rank_id)
+
+    def _sync_rank_sort_from_catalog(self) -> None:
+        spec = get_rank_definition(self._market_rank_id)
+        self._market_sort_column = spec.sort_column or spec.redis_field
+        self._market_sort_ascending = spec.ascending
+
+    def _on_rank_type_changed(self, row: int) -> None:
+        if not self.config.show_rank_sidebar or row < 0:
+            return
+        from vnpy_ashare.quotes.rank_catalog import list_rank_definitions
+
+        specs = list_rank_definitions()
+        if row >= len(specs):
+            return
+        spec = specs[row]
+        if spec.id == self._market_rank_id:
+            return
+        self._market_rank_id = spec.id
+        self._sync_rank_sort_from_catalog()
+        self._save_rank_id_pref(spec.id)
+        self._market_page = 0
+        self._market_page_cache.clear()
+        self._market_catalog_loaded = False
+        self._market_board_base = None
+        self._market_board_base_key = None
+        self._market_filter_keyword = ""
+        self._market_loading_more = False
+        self._market_last_load_more_at = 0.0
+        self.load_stock_list()
+
+    def _init_rank_sidebar_selection(self) -> None:
+        rank_list = getattr(self, "rank_list", None)
+        if rank_list is None:
+            return
+        index = rank_definition_index(self._market_rank_id)
+        rank_list.blockSignals(True)
+        rank_list.setCurrentRow(index)
+        rank_list.blockSignals(False)
+
+    def active_rank_title(self) -> str:
+        if self.config.show_rank_sidebar:
+            return get_rank_definition(self._market_rank_id).title
+        return "涨幅榜"
 
     def _refresh_market_clicked(self) -> None:
         self._loader.refresh_market_clicked()
@@ -1011,6 +1079,9 @@ class QuotesPage(QtWidgets.QWidget):
             self.local_period_combo.setEnabled(not busy)
         if self.config.show_board_filter:
             self.board_combo.setEnabled(not busy)
+        rank_list = getattr(self, "rank_list", None)
+        if rank_list is not None:
+            rank_list.setEnabled(not busy)
         if self.config.use_market_rank:
             self.refresh_quotes_button.setEnabled(not busy)
         if self.config.show_sync_button:

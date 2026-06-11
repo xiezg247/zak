@@ -8,6 +8,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.data.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
+from vnpy_ashare.quotes.rank_catalog import list_rank_definitions
 from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel, create_daily_chart
@@ -522,8 +523,7 @@ class QuotesPageShell:
             splitter.setStretchFactor(0, 3)
             splitter.setStretchFactor(1, 2)
         else:
-            # 市场页：单栏全宽布局
-            splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            # 市场 / 榜单页：单栏全宽布局
             center_widget = QtWidgets.QWidget()
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
@@ -531,8 +531,26 @@ class QuotesPageShell:
             if page.stats_label is not None:
                 center_layout.addWidget(page.stats_label)
             page._market_table_host = MarketTableHost(page.market_table)
-            center_layout.addWidget(page._market_table_host)
-            splitter.addWidget(center_widget)
+            center_layout.addWidget(page._market_table_host, stretch=1)
+
+            main_content = center_widget
+            if page.config.show_rank_sidebar:
+                page.rank_list = QtWidgets.QListWidget(page)
+                page.rank_list.setObjectName("RankSidebar")
+                page.rank_list.setFixedWidth(108)
+                for spec in list_rank_definitions():
+                    page.rank_list.addItem(spec.title)
+                page.rank_list.currentRowChanged.connect(page._on_rank_type_changed)
+                rank_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+                rank_splitter.addWidget(page.rank_list)
+                rank_splitter.addWidget(center_widget)
+                rank_splitter.setStretchFactor(0, 0)
+                rank_splitter.setStretchFactor(1, 1)
+                main_content = rank_splitter
+                page._init_rank_sidebar_selection()
+
+            splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+            splitter.addWidget(main_content)
 
         page.status_label = QtWidgets.QLabel("就绪")
         page.quote_source_label = QtWidgets.QLabel(

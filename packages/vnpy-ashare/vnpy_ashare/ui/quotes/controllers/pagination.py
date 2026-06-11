@@ -137,7 +137,7 @@ class MarketPaginationController:
         if result.mode == "search":
             status = f"搜索匹配 {result.total} 只，第 {current}/{page_count} 页"
         elif result.mode == "rank":
-            status = f"涨幅榜 {result.total} 只，第 {current}/{page_count} 页"
+            status = f"{self._page.active_rank_title()} {result.total} 只，第 {current}/{page_count} 页"
         else:
             status = f"共 {result.total} 只，第 {current}/{page_count} 页"
         batch_time = format_batch_updated_at(result.updated_at)
@@ -159,7 +159,7 @@ class MarketPaginationController:
         if mode == "search":
             status = f"搜索匹配 {total} 只，已加载 {loaded}"
         elif mode == "rank":
-            status = f"涨幅榜 {total} 只，已加载 {loaded}"
+            status = f"{self._page.active_rank_title()} {total} 只，已加载 {loaded}"
         else:
             status = f"共 {total} 只，已加载 {loaded}"
         if loading_more:

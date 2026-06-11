@@ -109,6 +109,10 @@ class TestQuoteRefreshHint(unittest.TestCase):
         self.assertTrue(PAGE_CONFIGS["市场"].auto_refresh_quotes)
         self.assertEqual(PAGE_CONFIGS["市场"].market_live_display_limit, 100)
         self.assertEqual(PAGE_CONFIGS["自选"].quote_source, "watchlist")
+        rankings = PAGE_CONFIGS["榜单"]
+        self.assertTrue(rankings.show_rank_sidebar)
+        self.assertTrue(rankings.use_market_rank)
+        self.assertEqual(rankings.default_rank_id, "change_pct")
 
 
 class TestQuoteSourceLabel(unittest.TestCase):

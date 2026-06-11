@@ -503,5 +503,21 @@ class SignalPanelColumnTests(unittest.TestCase):
         self.assertNotIn(("volume_ratio", "量比"), cols)
 
 
+class SignalBenchmarkTests(unittest.TestCase):
+    def test_benchmark_return_from_index_rows(self) -> None:
+        benchmark_mod = _load_module(
+            "signal_benchmark",
+            "vnpy_ashare/domain/signal_benchmark.py",
+        )
+        rows = [
+            {"ts_code": "000300.SH", "trade_date": "20250601", "close": 3800.0},
+            {"ts_code": "000300.SH", "trade_date": "20250602", "close": 3810.0},
+            {"ts_code": "000001.SH", "trade_date": "20250602", "close": 3000.0},
+            {"ts_code": "000300.SH", "trade_date": "20250603", "close": 3900.0},
+        ]
+        pct = benchmark_mod.benchmark_return_from_index_rows(rows, lookback=20)
+        self.assertEqual(pct, round((3900 - 3800) / 3800 * 100, 2))
+
+
 if __name__ == "__main__":
     unittest.main()

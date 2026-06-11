@@ -130,6 +130,10 @@ class MarketPageWidget(QuotesShellWidget):
     PAGE_NAME = "市场"
 
 
+class RankingsPageWidget(QuotesShellWidget):
+    PAGE_NAME = "榜单"
+
+
 class WatchlistPageWidget(QuotesShellWidget):
     PAGE_NAME = "自选"
 

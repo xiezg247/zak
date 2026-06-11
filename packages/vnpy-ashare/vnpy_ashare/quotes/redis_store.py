@@ -13,13 +13,26 @@ from vnpy_common.paths import ENV_FILE
 
 KEY_PREFIX = "zak"
 QUOTE_KEY_FMT = f"{KEY_PREFIX}:quote:{{symbol}}"
+RANK_KEY_FMT = f"{KEY_PREFIX}:rank:{{field}}"
 RANK_CHANGE_PCT_KEY = f"{KEY_PREFIX}:rank:change_pct"
 META_UPDATED_AT_KEY = f"{KEY_PREFIX}:meta:updated_at"
 META_QUOTE_COUNT_KEY = f"{KEY_PREFIX}:meta:quote_count"
 
+RANK_REDIS_FIELDS: tuple[str, ...] = (
+    "change_pct",
+    "turnover_rate",
+    "amount",
+    "volume",
+    "amplitude",
+)
+
 
 def quote_key(tf_symbol: str) -> str:
     return QUOTE_KEY_FMT.format(symbol=tf_symbol)
+
+
+def rank_key(field: str) -> str:
+    return RANK_KEY_FMT.format(field=field)
 
 
 def create_redis_client():
@@ -48,15 +61,24 @@ class RedisQuoteStore:
             return 0
 
         pipe = self._client.pipeline(transaction=False)
-        rank_members: list[tuple[float, str]] = []
+        rank_members: dict[str, list[tuple[float, str]]] = {
+            field: [] for field in RANK_REDIS_FIELDS
+        }
 
         for tf_symbol, quote in quotes.items():
             pipe.hset(quote_key(tf_symbol), mapping=quote.to_redis_hash())
-            rank_members.append((quote.change_pct, tf_symbol))
+            rank_members["change_pct"].append((quote.change_pct, tf_symbol))
+            rank_members["turnover_rate"].append((quote.turnover_rate, tf_symbol))
+            rank_members["amount"].append((quote.amount, tf_symbol))
+            rank_members["volume"].append((quote.volume, tf_symbol))
+            rank_members["amplitude"].append((quote.amplitude, tf_symbol))
 
-        pipe.delete(RANK_CHANGE_PCT_KEY)
-        if rank_members:
-            pipe.zadd(RANK_CHANGE_PCT_KEY, {member: score for score, member in rank_members})
+        for field in RANK_REDIS_FIELDS:
+            key = rank_key(field)
+            pipe.delete(key)
+            members = rank_members[field]
+            if members:
+                pipe.zadd(key, {member: score for score, member in members})
         pipe.set(META_UPDATED_AT_KEY, datetime.now().isoformat(timespec="seconds"))
         pipe.set(META_QUOTE_COUNT_KEY, str(len(quotes)))
         pipe.execute()
@@ -85,19 +107,34 @@ class RedisQuoteStore:
             result[tf_symbol] = quote
         return result
 
-    def get_rank_symbols(self, offset: int, limit: int) -> tuple[list[str], int]:
-        total = int(self._client.zcard(RANK_CHANGE_PCT_KEY) or 0)
+    def get_rank_symbols(
+        self,
+        offset: int,
+        limit: int,
+        *,
+        field: str = "change_pct",
+        ascending: bool = False,
+    ) -> tuple[list[str], int]:
+        key = rank_key(field)
+        total = int(self._client.zcard(key) or 0)
         if total == 0 or limit <= 0:
             return [], total
-        symbols = self._client.zrevrange(
-            RANK_CHANGE_PCT_KEY,
-            offset,
-            offset + limit - 1,
-        )
+        if ascending:
+            symbols = self._client.zrange(key, offset, offset + limit - 1)
+        else:
+            symbols = self._client.zrevrange(key, offset, offset + limit - 1)
         return list(symbols), total
 
-    def list_all_rank_symbols(self) -> list[str]:
-        return list(self._client.zrevrange(RANK_CHANGE_PCT_KEY, 0, -1))
+    def list_all_rank_symbols(
+        self,
+        *,
+        field: str = "change_pct",
+        ascending: bool = False,
+    ) -> list[str]:
+        key = rank_key(field)
+        if ascending:
+            return list(self._client.zrange(key, 0, -1))
+        return list(self._client.zrevrange(key, 0, -1))
 
     def get_updated_at(self) -> str | None:
         value = self._client.get(META_UPDATED_AT_KEY)

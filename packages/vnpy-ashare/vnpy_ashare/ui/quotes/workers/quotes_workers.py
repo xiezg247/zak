@@ -558,6 +558,7 @@ class MarketPageLoadWorker(QtCore.QThread):
         page_size: int,
         board: str | None = None,
         cached_total: int | None = None,
+        rank_id: str = "change_pct",
     ) -> None:
         super().__init__()
         self.keyword = keyword.strip()
@@ -565,6 +566,7 @@ class MarketPageLoadWorker(QtCore.QThread):
         self.page_size = page_size
         self.board = board if board and board != "全部" else None
         self.cached_total = cached_total
+        self.rank_id = rank_id
         self._cancel_requested = False
 
     def request_cancel(self) -> None:
@@ -590,7 +592,11 @@ class MarketPageLoadWorker(QtCore.QThread):
                 quotes = provider.get_quotes(items)
                 mode = "search"
             elif self.board is None:
-                items, quotes, total = provider.get_rank_page(offset, self.page_size)
+                items, quotes, total = provider.get_rank_page(
+                    offset,
+                    self.page_size,
+                    rank_id=self.rank_id,
+                )
                 mode = "rank"
             else:
                 if self.cached_total is not None:
@@ -630,17 +636,28 @@ class MarketPageLoadWorker(QtCore.QThread):
 
 
 class MarketFullLoadWorker(QtCore.QThread):
-    """市场页全量：Redis 涨幅榜 + 全量行情（无榜时回退 universe）。"""
+    """市场/榜单页全量：Redis 指定榜 + 全量行情（无榜时回退 universe）。"""
 
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
-    def __init__(self) -> None:
+    def __init__(self, *, rank_id: str = "change_pct") -> None:
         super().__init__()
+        self.rank_id = rank_id
         self._cancel_requested = False
 
     def request_cancel(self) -> None:
         self._cancel_requested = True
+
+    @staticmethod
+    def _quote_sort_value(quote: QuoteSnapshot | None, spec) -> float:
+        if quote is None:
+            return float("-inf") if not spec.ascending else float("inf")
+        value = getattr(quote, spec.sort_column or spec.redis_field, 0.0)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float("-inf") if not spec.ascending else float("inf")
 
     def run(self) -> None:
         try:
@@ -650,7 +667,13 @@ class MarketFullLoadWorker(QtCore.QThread):
             provider = get_redis_provider()
             updated_at: str | None = provider.updated_at()
             store = provider._store
-            tf_symbols = store.list_all_rank_symbols()
+            from vnpy_ashare.quotes.rank_catalog import get_rank_definition
+
+            spec = get_rank_definition(self.rank_id)
+            tf_symbols = store.list_all_rank_symbols(
+                field=spec.redis_field,
+                ascending=spec.ascending,
+            )
 
             name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
 
@@ -673,8 +696,8 @@ class MarketFullLoadWorker(QtCore.QThread):
                 items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
                 quotes = provider.get_quotes(items)
                 items.sort(
-                    key=lambda stock: quotes.get(stock.tickflow_symbol).change_pct if quotes.get(stock.tickflow_symbol) is not None else float("-inf"),
-                    reverse=True,
+                    key=lambda stock: self._quote_sort_value(quotes.get(stock.tickflow_symbol), spec),
+                    reverse=not spec.ascending,
                 )
 
             if self._cancel_requested:
