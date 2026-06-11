@@ -443,7 +443,6 @@ class QuotesPageShell:
                 split_index = 1
                 if page.config.show_watchlist_signals:
                     page.signal_panel = WatchlistSignalPanel(page)
-                    page.signal_panel.setMinimumHeight(120)
                     center_split.addWidget(page.signal_panel)
                     center_split.setStretchFactor(split_index, 1)
                     split_index += 1
@@ -458,7 +457,6 @@ class QuotesPageShell:
                         log_view_object_name=f"{run_prefix}RunLogView",
                         expanded=load_run_output_expanded(page.page_name),
                     )
-                    page.run_output_panel.setMinimumHeight(120)
                     page.run_output_panel.expansion_changed.connect(
                         lambda expanded: on_run_output_expansion_changed(page, expanded)
                     )

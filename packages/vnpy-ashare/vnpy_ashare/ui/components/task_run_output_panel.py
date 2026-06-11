@@ -72,22 +72,18 @@ class TaskRunOutputPanel(QtWidgets.QWidget):
         return self._expanded
 
     def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
-        if self._expanded == expanded:
-            self._sync_collapse_button()
-            return
+        changed = self._expanded != expanded
         self._expanded = expanded
         self._sync_collapse_button()
+        self._summary_label.setVisible(expanded and bool(self._summary_label.text()))
+        self._log_view.setVisible(expanded)
         if expanded:
-            self._summary_label.setVisible(bool(self._summary_label.text()))
-            self._log_view.show()
             self.setMaximumHeight(16777215)
             self.setMinimumHeight(120)
         else:
-            self._summary_label.hide()
-            self._log_view.hide()
             self.setMinimumHeight(28)
             self.setMaximumHeight(36)
-        if emit:
+        if emit and changed:
             self.expansion_changed.emit(expanded)
 
     def expand(self) -> None:

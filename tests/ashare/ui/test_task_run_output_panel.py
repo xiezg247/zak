@@ -14,6 +14,16 @@ class TaskRunOutputPanelTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
+    def test_collapsed_hides_log_view(self) -> None:
+        panel = TaskRunOutputPanel(log_placeholder="暂无执行日志", expanded=False)
+        panel.setMinimumHeight(120)
+
+        panel.set_expanded(False, emit=False)
+
+        self.assertFalse(panel.is_expanded())
+        self.assertFalse(panel._log_view.isVisible())
+        self.assertLessEqual(panel.maximumHeight(), 36)
+
     def test_begin_task_and_complete(self) -> None:
         panel = TaskRunOutputPanel(log_placeholder="暂无执行日志")
         panel.begin_task("补全 002230.SZSE 日K")
