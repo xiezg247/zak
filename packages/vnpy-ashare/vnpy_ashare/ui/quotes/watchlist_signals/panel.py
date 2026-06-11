@@ -9,6 +9,8 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.domain.signal_snapshot import (
     SIGNAL_DISCLAIMER,
     SignalSnapshot,
+    build_price_field_explanations,
+    build_runtime_signal_hints,
     signal_cell_color,
     signal_cell_text,
     signal_missing_kline,
@@ -39,12 +41,17 @@ _PANEL_COLUMNS = (
     ("symbol", "代码"),
     ("name", "名称"),
     ("signal", "信号"),
+    ("anchor_buy", "支撑锚点"),
+    ("anchor_sell", "阻力锚点"),
     ("ref_buy_price", "参考买价"),
     ("ref_sell_price", "参考卖价"),
+    ("dist_buy_pct", "距买价%"),
     ("signal_strength", "强度"),
 )
 
-_DETAIL_COLUMN_KEYS = ("signal_date", "dist_buy_pct", "signal_reason")
+_INFO_COLUMN_INDEX = len(_PANEL_COLUMNS)
+
+_DETAIL_COLUMN_KEYS = ("signal_date", "signal_reason")
 
 _EMPTY_LIST_TEXT = f"暂无监控标的。请在上方自选表多选后点击「加入信号区」（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只）。"
 _FILTER_EMPTY_TEXT = "当前筛选无匹配标的，再次点击统计项可取消筛选。"
@@ -139,8 +146,8 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
         self._table = QtWidgets.QTableWidget(self)
         self._table.setObjectName("WatchlistSignalTable")
-        self._table.setColumnCount(len(_PANEL_COLUMNS))
-        self._table.setHorizontalHeaderLabels([label for _, label in _PANEL_COLUMNS])
+        self._table.setColumnCount(_INFO_COLUMN_INDEX + 1)
+        self._table.setHorizontalHeaderLabels([label for _, label in _PANEL_COLUMNS] + [""])
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -148,8 +155,11 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.setMinimumHeight(140)
         header_view = self._table.horizontalHeader()
-        header_view.setStretchLastSection(True)
-        header_view.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        header_view.setStretchLastSection(False)
+        header_view.setSectionResizeMode(_INFO_COLUMN_INDEX, QtWidgets.QHeaderView.ResizeMode.Fixed)
+        self._table.setColumnWidth(_INFO_COLUMN_INDEX, 52)
+        for col in range(_INFO_COLUMN_INDEX):
+            header_view.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self._table.cellDoubleClicked.connect(self._on_cell_activated)
         self._table.itemSelectionChanged.connect(self._on_table_selection_changed)
         root.addWidget(self._table, stretch=1)
@@ -397,7 +407,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         snapshot = page.signal_cache.get(vt_symbol)
         missing_kline = signal_missing_kline(snapshot)
         values = self._row_values(item, snapshot, quote)
-        tooltip = self._row_tooltip(snapshot, values)
+        tooltip = self._row_tooltip(snapshot, values, quote=quote)
         for col, (key, _label) in enumerate(_PANEL_COLUMNS):
             text = values.get(key, "—")
             cell = self._table.item(row, col)
@@ -407,9 +417,16 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             elif cell.text() != text:
                 cell.setText(text)
             cell.setData(QtCore.Qt.ItemDataRole.UserRole, vt_symbol)
-            fg = None
-            if key == "signal":
-                fg = signal_cell_color(key, snapshot, colors=colors)
+            config = page.signal_config.normalized()
+            fg = signal_cell_color(
+                key,
+                snapshot,
+                colors=colors,
+                quote=quote,
+                warning_color=warning_color,
+                slow_window=config.slow_window,
+                fast_window=config.fast_window,
+            )
             if missing_kline and key == "signal":
                 fg = warning_color
             if fg:
@@ -417,8 +434,61 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             else:
                 cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
             cell.setToolTip(tooltip)
+        self._fill_info_button(row, vt_symbol)
 
-    def _row_tooltip(self, snapshot: SignalSnapshot | None, values: dict[str, str]) -> str:
+    def _fill_info_button(self, row: int, vt_symbol: str) -> None:
+        btn = self._table.cellWidget(row, _INFO_COLUMN_INDEX)
+        if btn is None:
+            btn = QtWidgets.QToolButton(self._table)
+            btn.setText("理由")
+            btn.setToolTip("查看信号理由")
+            btn.setAutoRaise(True)
+            btn.setObjectName("SignalInfoButton")
+            btn.clicked.connect(self._on_info_clicked)
+            self._table.setCellWidget(row, _INFO_COLUMN_INDEX, btn)
+        btn.setText("理由")
+        btn.setProperty("vt_symbol", vt_symbol)
+        btn.setEnabled(bool(vt_symbol))
+
+    def _on_info_clicked(self) -> None:
+        sender = self.sender()
+        if not isinstance(sender, QtWidgets.QToolButton):
+            return
+        vt_symbol = str(sender.property("vt_symbol") or "").strip()
+        if not vt_symbol:
+            return
+        self._show_signal_reason_dialog(vt_symbol)
+
+    def _show_signal_reason_dialog(self, vt_symbol: str) -> None:
+        page = self._page
+        item = page.find_stock_item(vt_symbol)
+        quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
+        snapshot = page.signal_cache.get(vt_symbol)
+        values = self._row_values(item, snapshot, quote)
+        title_name = values.get("name") or vt_symbol
+        detail = self._row_tooltip(snapshot, values, quote=quote)
+        if not detail.strip():
+            detail = "暂无信号理由。"
+
+        dialog = QtWidgets.QDialog(self)
+        dialog.setWindowTitle(f"策略信号 · {title_name}")
+        dialog.setMinimumWidth(420)
+        layout = QtWidgets.QVBoxLayout(dialog)
+        editor = QtWidgets.QPlainTextEdit(dialog)
+        editor.setReadOnly(True)
+        editor.setPlainText(detail)
+        editor.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.WidgetWidth)
+        layout.addWidget(editor)
+        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Close)
+        buttons.rejected.connect(dialog.reject)
+        buttons.accepted.connect(dialog.accept)
+        close_btn = buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Close)
+        if close_btn is not None:
+            close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(buttons)
+        dialog.exec()
+
+    def _row_tooltip(self, snapshot: SignalSnapshot | None, values: dict[str, str], *, quote) -> str:
         lines: list[str] = []
         if snapshot is None:
             reason = values.get("signal_reason")
@@ -428,9 +498,42 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         signal_date = values.get("signal_date") or snapshot.signal_date or "—"
         if signal_date != "—":
             lines.append(f"信号日：{signal_date}")
+        if snapshot.as_of:
+            lines.append(f"K 线截止：{snapshot.as_of}")
+        config = self._page.signal_config.normalized()
+        lines.append("【字段说明】")
+        lines.extend(
+            build_price_field_explanations(
+                snapshot.signal,
+                fast_window=config.fast_window,
+                slow_window=config.slow_window,
+            )
+        )
+        lines.append("")
+        lines.append("【当前数值】")
+        anchor_buy = values.get("anchor_buy", "—")
+        anchor_sell = values.get("anchor_sell", "—")
+        if anchor_buy != "—":
+            lines.append(f"支撑锚点：{anchor_buy}")
+        if anchor_sell != "—":
+            lines.append(f"阻力锚点：{anchor_sell}")
+        ref_buy = values.get("ref_buy_price", "—")
+        ref_sell = values.get("ref_sell_price", "—")
+        if ref_buy != "—":
+            lines.append(f"参考买价：{ref_buy}")
+        if ref_sell != "—":
+            lines.append(f"参考卖价：{ref_sell}")
         dist = values.get("dist_buy_pct", "—")
         if dist != "—":
             lines.append(f"距买价%：{dist}")
+        runtime_hints = build_runtime_signal_hints(
+            snapshot,
+            quote=quote,
+            slow_window=config.slow_window,
+            fast_window=config.fast_window,
+        )
+        if runtime_hints:
+            lines.extend(runtime_hints)
         reason = values.get("signal_reason") or snapshot.reason_summary
         if reason and reason != "—":
             lines.append(f"理由：{reason}")
@@ -455,13 +558,19 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
                 values["signal_reason"] = "待计算"
             return values
 
+        config = self._page.signal_config.normalized()
+        cell_kwargs = {
+            "quote": quote,
+            "slow_window": config.slow_window,
+            "fast_window": config.fast_window,
+        }
         for key, _ in _PANEL_COLUMNS:
             if key in {"symbol", "name"}:
                 continue
-            text, _ = signal_cell_text(key, snapshot, quote=quote)
+            text, _ = signal_cell_text(key, snapshot, **cell_kwargs)
             values[key] = text
         for key in _DETAIL_COLUMN_KEYS:
-            text, _ = signal_cell_text(key, snapshot, quote=quote)
+            text, _ = signal_cell_text(key, snapshot, **cell_kwargs)
             values[key] = text
         if snapshot.warnings:
             values["signal_reason"] = snapshot.warnings[0]

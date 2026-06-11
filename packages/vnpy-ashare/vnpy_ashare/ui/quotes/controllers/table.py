@@ -945,7 +945,8 @@ class TableController:
             if page.chart_panel is not None and page.current_item is not None:
                 snap = page.signal_cache.get(page.current_item.vt_symbol)
                 if snap is not None:
-                    page.chart_panel.apply_signal_reference(snap)
+                    quote = page.quote_map.get(page.current_item.tickflow_symbol)
+                    page.chart_panel.apply_signal_reference(snap, quote=quote)
 
     def show_column_menu(self) -> None:
         page = self._p

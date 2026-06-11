@@ -119,6 +119,7 @@ class ChartPanel(QtWidgets.QWidget):
         theme_manager().bind_stylesheet(self, extra=build_chart_panel_stylesheet)
         self._item: StockItem | None = None
         self._prev_close = 0.0
+        self._last_quote: QuoteSnapshot | None = None
         self._generation = 0
         self._active = True
 
@@ -213,20 +214,28 @@ class ChartPanel(QtWidgets.QWidget):
         return self.tab_bar.currentIndex()
 
     def update_quote(self, quote: QuoteSnapshot | None) -> None:
+        self._last_quote = quote
         if quote and quote.prev_close > 0:
             self._prev_close = quote.prev_close
         elif quote and quote.last_price > 0:
             self._prev_close = quote.last_price - quote.change_amount
 
-    def apply_signal_reference(self, snapshot: SignalSnapshot | None) -> None:
-        """日 K 叠加策略参考买/卖价水平线。"""
+    def apply_signal_reference(
+        self,
+        snapshot: SignalSnapshot | None,
+        *,
+        quote: QuoteSnapshot | None = None,
+    ) -> None:
+        """日 K 叠加策略支撑/阻力锚点与现价水平线。"""
         self._signal_snapshot = snapshot
         if snapshot is None:
             self.daily_chart.clear_reference_lines()
             return
+        last_price = quote.last_price if quote and quote.last_price > 0 else None
         self.daily_chart.set_reference_lines(
             ref_buy=snapshot.ref_buy_price,
             ref_sell=snapshot.ref_sell_price,
+            last_price=last_price,
         )
 
     def load_item(self, item: StockItem | None, *, quote: QuoteSnapshot | None = None) -> None:
@@ -468,7 +477,7 @@ class ChartPanel(QtWidgets.QWidget):
                 self.daily_chart.replace_history(loaded.bars)
                 self._apply_daily_viewport()
                 if self._signal_snapshot is not None:
-                    self.apply_signal_reference(self._signal_snapshot)
+                    self.apply_signal_reference(self._signal_snapshot, quote=self._last_quote)
                 self._update_hint(daily_missing=False)
             else:
                 self.daily_chart.clear_all()

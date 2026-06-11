@@ -227,6 +227,7 @@ def build_double_ma_signal_payload(
     slow_window: int = 20,
     recent_days: int = 5,
     highs: list[float] | None = None,
+    lows: list[float] | None = None,
     volumes: list[float] | None = None,
 ) -> dict[str, Any]:
     """汇总双均线 + 综合技术面信号快照（供 UI / AnalysisService 使用）。"""
@@ -239,6 +240,7 @@ def build_double_ma_signal_payload(
         slow_window=slow_window,
         recent_days=recent_days,
         highs=highs,
+        lows=lows,
         volumes=volumes,
     )
 
@@ -340,30 +342,160 @@ def _compute_ref_prices(
     state: dict[str, Any],
     highs: list[float],
     *,
+    signal: Literal["buy", "sell", "hold", "na"],
     fast_window: int,
     slow_window: int,
     lookback_high: int = 20,
 ) -> tuple[float | None, float | None]:
+    """按信号态返回支撑/阻力锚点（均线参考，非实时买卖价）。"""
+    if signal == "na":
+        return None, None
+
     current = state.get("current") or {}
     fast_ma = current.get("fast_ma")
     slow_ma = current.get("slow_ma")
     last_cross = state.get("last_cross") or {}
-
-    ref_buy = slow_ma
-    if last_cross.get("type") == "golden_cross":
-        cross_close = last_cross.get("close")
-        if isinstance(cross_close, (int, float)) and slow_ma is not None:
-            ref_buy = round(min(float(slow_ma), float(cross_close)), 2)
-        elif isinstance(cross_close, (int, float)):
-            ref_buy = round(float(cross_close), 2)
-
     recent_high = max(highs[-lookback_high:]) if len(highs) >= 1 else None
-    ref_sell = fast_ma
-    if fast_ma is not None and recent_high is not None:
-        ref_sell = round(min(float(recent_high), float(fast_ma) * 1.05), 2)
-    elif recent_high is not None:
-        ref_sell = round(float(recent_high), 2)
+
+    if signal == "buy":
+        ref_buy = slow_ma
+        if last_cross.get("type") == "golden_cross":
+            cross_close = last_cross.get("close")
+            if isinstance(cross_close, (int, float)) and slow_ma is not None:
+                ref_buy = round(min(float(slow_ma), float(cross_close)), 2)
+            elif isinstance(cross_close, (int, float)):
+                ref_buy = round(float(cross_close), 2)
+        ref_sell = fast_ma
+        if fast_ma is not None and recent_high is not None:
+            ref_sell = round(min(float(recent_high), float(fast_ma) * 1.05), 2)
+        elif recent_high is not None:
+            ref_sell = round(float(recent_high), 2)
+        return ref_buy, ref_sell
+
+    if signal == "sell":
+        ref_buy = round(float(slow_ma), 2) if slow_ma is not None else None
+        ref_sell = fast_ma
+        if fast_ma is not None and recent_high is not None:
+            ref_sell = round(min(float(recent_high), float(fast_ma)), 2)
+        elif recent_high is not None:
+            ref_sell = round(float(recent_high), 2)
+        return ref_buy, ref_sell
+
+    ref_buy = round(float(slow_ma), 2) if slow_ma is not None else None
+    ref_sell = round(float(fast_ma), 2) if fast_ma is not None else None
     return ref_buy, ref_sell
+
+
+def _compute_action_ref_prices(
+    state: dict[str, Any],
+    highs: list[float],
+    lows: list[float],
+    *,
+    signal: Literal["buy", "sell", "hold", "na"],
+    last_close: float,
+    fast_window: int,
+    slow_window: int,
+    lookback: int = 20,
+) -> tuple[float | None, float | None]:
+    """按信号态返回入场/离场动作参考价（与结构锚点独立）。"""
+    if signal == "na":
+        return None, None
+
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    last_cross = state.get("last_cross") or {}
+    recent_high = max(highs[-lookback:]) if highs else None
+    recent_low = min(lows[-lookback:]) if lows else None
+
+    if signal == "buy":
+        candidates: list[float] = [last_close]
+        if slow_ma is not None:
+            candidates.append(float(slow_ma))
+        if last_cross.get("type") == "golden_cross":
+            cross_close = last_cross.get("close")
+            if isinstance(cross_close, (int, float)):
+                candidates.append(float(cross_close))
+        action_buy = round(min(candidates), 2)
+        action_sell = fast_ma
+        if fast_ma is not None and recent_high is not None:
+            action_sell = round(min(float(recent_high), float(fast_ma) * 1.05), 2)
+        elif recent_high is not None:
+            action_sell = round(float(recent_high), 2)
+        return action_buy, action_sell
+
+    if signal == "sell":
+        action_buy = None
+        if recent_low is not None:
+            action_buy = round(min(recent_low, last_close * 0.98), 2)
+        elif last_close > 0:
+            action_buy = round(last_close * 0.98, 2)
+        action_sell = round(last_close, 2)
+        if fast_ma is not None:
+            action_sell = round(max(last_close, float(fast_ma)), 2)
+        return action_buy, action_sell
+
+    action_buy = None
+    if slow_ma is not None:
+        action_buy = round(min(float(slow_ma), last_close), 2)
+    action_sell = None
+    if fast_ma is not None:
+        action_sell = round(max(float(fast_ma), last_close), 2)
+    return action_buy, action_sell
+
+
+def _ref_price_reason_lines(
+    *,
+    signal: Literal["buy", "sell", "hold", "na"],
+    ref_buy: float | None,
+    ref_sell: float | None,
+    fast_window: int,
+    slow_window: int,
+) -> list[str]:
+    lines: list[str] = []
+    if ref_buy is not None:
+        if signal == "buy":
+            lines.append(f"支撑锚点：MA{slow_window} 入场结构 = {ref_buy}")
+        elif signal == "sell":
+            lines.append(f"支撑锚点：MA{slow_window} 跌破结构 = {ref_buy}")
+        else:
+            lines.append(f"支撑锚点：MA{slow_window} = {ref_buy}")
+    if ref_sell is not None:
+        if signal == "buy":
+            lines.append(f"阻力锚点：MA{fast_window} 上方阻力 ≤ {ref_sell}")
+        elif signal == "sell":
+            lines.append(f"阻力锚点：MA{fast_window} 反弹阻力 = {ref_sell}")
+        else:
+            lines.append(f"阻力锚点：MA{fast_window} = {ref_sell}")
+    return lines
+
+
+def _action_ref_reason_lines(
+    *,
+    signal: Literal["buy", "sell", "hold", "na"],
+    action_buy: float | None,
+    action_sell: float | None,
+    fast_window: int,
+    slow_window: int,
+) -> list[str]:
+    lines: list[str] = []
+    if action_buy is not None:
+        if signal == "buy":
+            lines.append(
+                f"参考买价：min(金叉/慢{slow_window}/收盘) 低吸入场 = {action_buy}"
+            )
+        elif signal == "sell":
+            lines.append(f"参考买价：近低回补参考 = {action_buy}")
+        else:
+            lines.append(f"参考买价：回踩关注 min(慢{slow_window}/收盘) = {action_buy}")
+    if action_sell is not None:
+        if signal == "buy":
+            lines.append(f"参考卖价：止盈阻力参考 ≤ {action_sell}")
+        elif signal == "sell":
+            lines.append(f"参考卖价：max(收盘/快{fast_window}) 离场参考 = {action_sell}")
+        else:
+            lines.append(f"参考卖价：反弹关注 max(快{fast_window}/收盘) = {action_sell}")
+    return lines
 
 
 def _build_reason_summary(
@@ -416,6 +548,7 @@ def build_composite_signal_payload(
     slow_window: int = 20,
     recent_days: int = 5,
     highs: list[float] | None = None,
+    lows: list[float] | None = None,
     volumes: list[float] | None = None,
 ) -> dict[str, Any]:
     """综合技术面信号快照。"""
@@ -437,13 +570,17 @@ def build_composite_signal_payload(
             "signal_date": None,
             "ref_buy_price": None,
             "ref_sell_price": None,
+            "action_ref_buy_price": None,
+            "action_ref_sell_price": None,
             "strength": None,
             "reason_summary": "",
             "reasons": (),
             "warnings": tuple(warnings),
+            "last_close": None,
         }
 
     high_series = highs if highs is not None else closes
+    low_series = lows if lows is not None else closes
     vol_series = volumes if volumes is not None else []
     last_close = round(closes[-1], 2)
     ma5 = _sma_at(closes, 5)
@@ -466,6 +603,16 @@ def build_composite_signal_payload(
     ref_buy, ref_sell = _compute_ref_prices(
         state,
         high_series,
+        signal=signal,
+        fast_window=fast_window,
+        slow_window=slow_window,
+    )
+    action_buy, action_sell = _compute_action_ref_prices(
+        state,
+        high_series,
+        low_series,
+        signal=signal,
+        last_close=last_close,
         fast_window=fast_window,
         slow_window=slow_window,
     )
@@ -502,10 +649,24 @@ def build_composite_signal_payload(
             reasons.append(f"最近交叉：{cross_label}（{cross_day}）")
     if reason_summary:
         reasons.append(f"综合：{reason_summary}")
-    if ref_buy is not None:
-        reasons.append(f"参考买价：MA{slow_window} = {ref_buy}")
-    if ref_sell is not None:
-        reasons.append(f"参考卖价：MA{fast_window} = {ref_sell}")
+    reasons.extend(
+        _ref_price_reason_lines(
+            signal=signal,
+            ref_buy=ref_buy,
+            ref_sell=ref_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
+    reasons.extend(
+        _action_ref_reason_lines(
+            signal=signal,
+            action_buy=action_buy,
+            action_sell=action_sell,
+            fast_window=fast_window,
+            slow_window=slow_window,
+        )
+    )
     reasons.append(f"强度：{strength:.0f}")
 
     return {
@@ -517,8 +678,11 @@ def build_composite_signal_payload(
         "signal_date": signal_date,
         "ref_buy_price": ref_buy,
         "ref_sell_price": ref_sell,
+        "action_ref_buy_price": action_buy,
+        "action_ref_sell_price": action_sell,
         "strength": strength,
         "reason_summary": reason_summary,
         "reasons": tuple(reasons),
         "warnings": tuple(warnings),
+        "last_close": round(closes[-1], 2),
     }

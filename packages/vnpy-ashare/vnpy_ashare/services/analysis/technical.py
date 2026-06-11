@@ -502,6 +502,8 @@ class TechnicalAnalyzer:
                 "signal_date": None,
                 "ref_buy_price": None,
                 "ref_sell_price": None,
+                "action_ref_buy_price": None,
+                "action_ref_sell_price": None,
                 "strength": None,
                 "reason_summary": "",
                 "reasons": (),
@@ -511,6 +513,7 @@ class TechnicalAnalyzer:
         tail = bars[-lookback:] if len(bars) >= lookback else bars
         closes = [bar.close_price for bar in tail]
         highs = [bar.high_price for bar in tail]
+        lows = [bar.low_price for bar in tail]
         volumes = [float(bar.volume) for bar in tail]
         dates = [bar.datetime for bar in tail]
 
@@ -525,6 +528,7 @@ class TechnicalAnalyzer:
             fast_window=fast_window,
             slow_window=slow_window,
             highs=highs,
+            lows=lows,
             volumes=volumes,
         )
 
@@ -543,6 +547,9 @@ class TechnicalAnalyzer:
             reason_summary=str(payload.get("reason_summary") or ""),
             reasons=tuple(payload.get("reasons") or ()),
             warnings=tuple(payload.get("warnings") or ()),
+            last_close=payload.get("last_close"),
+            action_ref_buy_price=payload.get("action_ref_buy_price"),
+            action_ref_sell_price=payload.get("action_ref_sell_price"),
         )
 
     @staticmethod

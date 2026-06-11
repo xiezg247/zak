@@ -462,7 +462,9 @@ class QuotesPage(QtWidgets.QWidget):
         self._select_stock_key((item.symbol, item.exchange))
         snap = self.signal_cache.get(vt_symbol)
         if snap is not None and self.chart_panel is not None:
-            self.chart_panel.apply_signal_reference(snap)
+            item = self.find_stock_item(vt_symbol)
+            quote = self.quote_map.get(item.tickflow_symbol) if item is not None else None
+            self.chart_panel.apply_signal_reference(snap, quote=quote)
 
     def add_selection_to_signal_panel(self) -> None:
         panel = getattr(self, "signal_panel", None)

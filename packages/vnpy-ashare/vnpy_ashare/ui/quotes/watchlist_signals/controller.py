@@ -114,7 +114,8 @@ class WatchlistSignalController:
         if item is not None and self._page.chart_panel is not None:
             snap = self._page.signal_cache.get(item.vt_symbol)
             if snap is not None:
-                self._page.chart_panel.apply_signal_reference(snap)
+                quote = self._page.quote_map.get(item.tickflow_symbol)
+                self._page.chart_panel.apply_signal_reference(snap, quote=quote)
 
     def hydrate_from_disk(self) -> bool:
         """从磁盘恢复上次快照到内存并渲染（重启后立即展示，后台再增量刷新）。"""

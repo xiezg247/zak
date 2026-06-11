@@ -61,6 +61,9 @@ def snapshot_to_payload(snapshot: SignalSnapshot) -> str:
             "reason_summary": snapshot.reason_summary,
             "reasons": list(snapshot.reasons),
             "warnings": list(snapshot.warnings),
+            "last_close": snapshot.last_close,
+            "action_ref_buy_price": snapshot.action_ref_buy_price,
+            "action_ref_sell_price": snapshot.action_ref_sell_price,
         },
         ensure_ascii=False,
     )
@@ -81,6 +84,9 @@ def snapshot_from_payload(text: str) -> SignalSnapshot:
         reason_summary=str(data.get("reason_summary") or ""),
         reasons=tuple(data.get("reasons") or ()),
         warnings=tuple(data.get("warnings") or ()),
+        last_close=data.get("last_close"),
+        action_ref_buy_price=data.get("action_ref_buy_price"),
+        action_ref_sell_price=data.get("action_ref_sell_price"),
     )
 
 

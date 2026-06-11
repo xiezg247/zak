@@ -109,7 +109,11 @@ class QuoteStreamController:
             return
         page._update_quote_header(current)
         if page.chart_panel is not None:
-            page.chart_panel.update_quote(page.quote_map.get(current.tickflow_symbol))
+            quote = page.quote_map.get(current.tickflow_symbol)
+            page.chart_panel.update_quote(quote)
+            snap = page.signal_cache.get(current.vt_symbol)
+            if snap is not None:
+                page.chart_panel.apply_signal_reference(snap, quote=quote)
         page._actions.schedule_ai_context()
 
     def on_depth(self, depth: DepthSnapshot) -> None:
