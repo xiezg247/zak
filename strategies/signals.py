@@ -622,12 +622,23 @@ def build_composite_signal_payload(
     align_score = _alignment_score(ma5=ma5, ma10=ma10, ma20=ma20, last_close=last_close)
     vol_score = _volume_score(volume_ratio)
     pat_score = 90.0 if pattern_hit else 30.0
+    cross_score = _ma_signal_score(signal)
     strength = _compute_strength(
         signal=signal,
         alignment=align_score,
         volume=vol_score,
         pattern=pat_score,
     )
+    current = state.get("current") or {}
+    fast_ma = current.get("fast_ma")
+    slow_ma = current.get("slow_ma")
+    ma_gap_pct: float | None = None
+    if (
+        isinstance(fast_ma, (int, float))
+        and isinstance(slow_ma, (int, float))
+        and float(slow_ma) > 0
+    ):
+        ma_gap_pct = round((float(fast_ma) - float(slow_ma)) / float(slow_ma) * 100, 2)
     reason_summary = _build_reason_summary(
         signal=signal,
         state=state,
@@ -685,6 +696,12 @@ def build_composite_signal_payload(
         "reasons": tuple(reasons),
         "warnings": tuple(warnings),
         "last_close": round(closes[-1], 2),
-        "fast_ma": (state.get("current") or {}).get("fast_ma"),
-        "slow_ma": (state.get("current") or {}).get("slow_ma"),
+        "fast_ma": fast_ma,
+        "slow_ma": slow_ma,
+        "volume_ratio_5d": volume_ratio,
+        "ma_gap_pct": ma_gap_pct,
+        "strength_cross": cross_score,
+        "strength_alignment": align_score,
+        "strength_volume": vol_score,
+        "strength_pattern": pat_score,
     }

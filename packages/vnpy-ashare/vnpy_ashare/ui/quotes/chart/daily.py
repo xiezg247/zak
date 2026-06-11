@@ -89,6 +89,8 @@ class AshareVolumeItem(ChineseVolumeItem):
 REF_BUY_LINE_COLOR = "#3ddc84"
 REF_SELL_LINE_COLOR = "#ff5c5c"
 REF_LAST_PRICE_LINE_COLOR = "#ffb020"
+ACTION_BUY_LINE_COLOR = "#3ddc8466"
+ACTION_SELL_LINE_COLOR = "#ff5c5c66"
 
 
 class AshareChartWidget(ChartWidget):
@@ -106,12 +108,20 @@ class AshareChartWidget(ChartWidget):
         self._ref_buy_line: pg.InfiniteLine | None = None
         self._ref_sell_line: pg.InfiniteLine | None = None
         self._ref_last_price_line: pg.InfiniteLine | None = None
+        self._action_buy_line: pg.InfiniteLine | None = None
+        self._action_sell_line: pg.InfiniteLine | None = None
 
     def clear_reference_lines(self) -> None:
         plot = self._plots.get("candle")
         if plot is None:
             return
-        for attr in ("_ref_buy_line", "_ref_sell_line", "_ref_last_price_line"):
+        for attr in (
+            "_ref_buy_line",
+            "_ref_sell_line",
+            "_ref_last_price_line",
+            "_action_buy_line",
+            "_action_sell_line",
+        ):
             line = getattr(self, attr, None)
             if line is not None:
                 plot.removeItem(line)
@@ -123,13 +133,16 @@ class AshareChartWidget(ChartWidget):
         ref_buy: float | None = None,
         ref_sell: float | None = None,
         last_price: float | None = None,
+        action_buy: float | None = None,
+        action_sell: float | None = None,
     ) -> None:
-        """日 K 叠加支撑/阻力锚点与现价水平线。"""
+        """日 K 叠加结构锚点、动作参考价与现价水平线。"""
         plot = self._plots.get("candle")
         if plot is None:
             return
         self.clear_reference_lines()
         dash = QtCore.Qt.PenStyle.DashLine
+        dot = QtCore.Qt.PenStyle.DotLine
         if ref_buy is not None and ref_buy > 0:
             self._ref_buy_line = pg.InfiniteLine(
                 angle=0,
@@ -144,6 +157,20 @@ class AshareChartWidget(ChartWidget):
                 pen=pg.mkPen(REF_SELL_LINE_COLOR, width=1, style=dash),
             )
             plot.addItem(self._ref_sell_line)
+        if action_buy is not None and action_buy > 0:
+            self._action_buy_line = pg.InfiniteLine(
+                angle=0,
+                pos=action_buy,
+                pen=pg.mkPen(ACTION_BUY_LINE_COLOR, width=1, style=dot),
+            )
+            plot.addItem(self._action_buy_line)
+        if action_sell is not None and action_sell > 0:
+            self._action_sell_line = pg.InfiniteLine(
+                angle=0,
+                pos=action_sell,
+                pen=pg.mkPen(ACTION_SELL_LINE_COLOR, width=1, style=dot),
+            )
+            plot.addItem(self._action_sell_line)
         if last_price is not None and last_price > 0:
             self._ref_last_price_line = pg.InfiniteLine(
                 angle=0,

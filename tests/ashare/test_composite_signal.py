@@ -45,6 +45,9 @@ def test_composite_payload_includes_strength_and_reason():
         assert payload["last_close"] == round(closes[-1], 2)
         assert "action_ref_buy_price" in payload
         assert "action_ref_sell_price" in payload
+        assert "volume_ratio_5d" in payload
+        assert "ma_gap_pct" in payload
+        assert "strength_cross" in payload
 
 
 def test_composite_buy_on_bull_alignment_and_volume():

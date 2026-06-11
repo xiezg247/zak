@@ -116,6 +116,9 @@ class WatchlistPositionController:
         if panel is not None:
             panel.set_updated_at(datetime.now().strftime("%H:%M"))
             panel.render()
+        signal_panel = getattr(self._page, "signal_panel", None)
+        if signal_panel is not None and signal_panel.enabled:
+            signal_panel.render()
         item = self._page.current_item
         if item is not None and self._page.chart_panel is not None:
             snap = self._page.position_cache.get(item.vt_symbol)

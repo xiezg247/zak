@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, resolve_display_anchor_prices
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, resolve_display_anchor_prices, resolve_list_ref_prices
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet
@@ -234,7 +234,7 @@ class ChartPanel(QtWidgets.QWidget):
         fast_window: int = 10,
         slow_window: int = 20,
     ) -> None:
-        """日 K 叠加策略支撑/阻力锚点与现价水平线。"""
+        """日 K 叠加策略结构锚点、动作参考价与现价水平线。"""
         self._signal_snapshot = snapshot
         if snapshot is None:
             self.daily_chart.clear_reference_lines()
@@ -246,10 +246,18 @@ class ChartPanel(QtWidgets.QWidget):
             slow_window=slow_window,
             fast_window=fast_window,
         )
+        action_buy, action_sell = resolve_list_ref_prices(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
         self.daily_chart.set_reference_lines(
             ref_buy=ref_buy,
             ref_sell=ref_sell,
             last_price=last_price,
+            action_buy=action_buy,
+            action_sell=action_sell,
         )
 
     def load_item(self, item: StockItem | None, *, quote: QuoteSnapshot | None = None) -> None:

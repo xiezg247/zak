@@ -18,7 +18,10 @@ from strategies.signals import (
 from vnpy_ashare.ai.context import get_screening_results, parse_stock_symbol
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.signal_snapshot import (
+    SIGNAL_BENCHMARK_LOOKBACK,
+    SignalSnapshot,
+)
 from vnpy_ashare.screener.run.run_diff import compute_run_diff
 from vnpy_ashare.screener.run.run_store import find_previous_run_by_recipe, get_run
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
@@ -27,6 +30,12 @@ from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_
 class TechnicalAnalyzer:
     def __init__(self, engine: AshareEngine) -> None:
         self._engine = engine
+        self._benchmark_return_cache_key: int | None = None
+        self._benchmark_return_cache_val: float | None = None
+
+    def reset_benchmark_cache(self) -> None:
+        self._benchmark_return_cache_key = None
+        self._benchmark_return_cache_val = None
 
     def technical_snapshot(
         self,
@@ -212,6 +221,7 @@ class TechnicalAnalyzer:
         if not symbols:
             return {}
 
+        self.reset_benchmark_cache()
         payload_kwargs = {
             "class_name": class_name,
             "lookback": lookback,
@@ -466,6 +476,42 @@ class TechnicalAnalyzer:
         ]
         return payload
 
+    def _benchmark_return_pct(self, lookback: int = SIGNAL_BENCHMARK_LOOKBACK) -> float | None:
+        from vnpy.trader.constant import Exchange
+
+        from vnpy_ashare.domain.signal_snapshot import SIGNAL_BENCHMARK_SYMBOL
+
+        if self._benchmark_return_cache_key == lookback:
+            return self._benchmark_return_cache_val
+        result = self._engine.bar_service.get_return(
+            SIGNAL_BENCHMARK_SYMBOL,
+            Exchange.SSE,
+            lookback_days=lookback,
+        )
+        pct = result.get("return_pct")
+        value = float(pct) if isinstance(pct, (int, float)) else None
+        self._benchmark_return_cache_key = lookback
+        self._benchmark_return_cache_val = value
+        return value
+
+    def _relative_index_excess(
+        self,
+        symbol: str,
+        exchange: Any,
+        *,
+        lookback: int = SIGNAL_BENCHMARK_LOOKBACK,
+    ) -> float | None:
+        stock = self._engine.bar_service.get_return(
+            symbol,
+            exchange,
+            lookback_days=lookback,
+        )
+        stock_pct = stock.get("return_pct")
+        bench_pct = self._benchmark_return_pct(lookback)
+        if not isinstance(stock_pct, (int, float)) or bench_pct is None:
+            return None
+        return round(float(stock_pct) - bench_pct, 2)
+
     def _build_signal_payload(
         self,
         symbol: str,
@@ -519,7 +565,7 @@ class TechnicalAnalyzer:
         if SUPPORTED_SIGNAL_STRATEGIES[class_name] != "double_ma":
             return None
 
-        return build_double_ma_signal_payload(
+        payload = build_double_ma_signal_payload(
             closes,
             dates,
             vt_symbol=item.vt_symbol,
@@ -530,6 +576,11 @@ class TechnicalAnalyzer:
             lows=lows,
             volumes=volumes,
         )
+        payload["relative_index_pct"] = self._relative_index_excess(
+            item.symbol,
+            item.exchange,
+        )
+        return payload
 
     @staticmethod
     def _payload_to_signal_snapshot(payload: dict[str, Any]) -> SignalSnapshot:
@@ -551,6 +602,13 @@ class TechnicalAnalyzer:
             action_ref_sell_price=payload.get("action_ref_sell_price"),
             fast_ma=payload.get("fast_ma"),
             slow_ma=payload.get("slow_ma"),
+            volume_ratio_5d=payload.get("volume_ratio_5d"),
+            ma_gap_pct=payload.get("ma_gap_pct"),
+            strength_cross=payload.get("strength_cross"),
+            strength_alignment=payload.get("strength_alignment"),
+            strength_volume=payload.get("strength_volume"),
+            strength_pattern=payload.get("strength_pattern"),
+            relative_index_pct=payload.get("relative_index_pct"),
         )
 
     @staticmethod

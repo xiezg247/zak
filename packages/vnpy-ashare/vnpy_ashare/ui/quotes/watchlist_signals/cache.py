@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_snapshot_to_dict
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """
@@ -47,28 +47,10 @@ def _connect():
 
 
 def snapshot_to_payload(snapshot: SignalSnapshot) -> str:
-    return json.dumps(
-        {
-            "vt_symbol": snapshot.vt_symbol,
-            "strategy_id": snapshot.strategy_id,
-            "as_of": snapshot.as_of,
-            "signal": snapshot.signal,
-            "signal_label": snapshot.signal_label,
-            "signal_date": snapshot.signal_date,
-            "ref_buy_price": snapshot.ref_buy_price,
-            "ref_sell_price": snapshot.ref_sell_price,
-            "strength": snapshot.strength,
-            "reason_summary": snapshot.reason_summary,
-            "reasons": list(snapshot.reasons),
-            "warnings": list(snapshot.warnings),
-            "last_close": snapshot.last_close,
-            "action_ref_buy_price": snapshot.action_ref_buy_price,
-            "action_ref_sell_price": snapshot.action_ref_sell_price,
-            "fast_ma": snapshot.fast_ma,
-            "slow_ma": snapshot.slow_ma,
-        },
-        ensure_ascii=False,
-    )
+    data = signal_snapshot_to_dict(snapshot)
+    data["reasons"] = list(snapshot.reasons)
+    data["warnings"] = list(snapshot.warnings)
+    return json.dumps(data, ensure_ascii=False)
 
 
 def snapshot_from_payload(text: str) -> SignalSnapshot:
@@ -91,6 +73,13 @@ def snapshot_from_payload(text: str) -> SignalSnapshot:
         action_ref_sell_price=data.get("action_ref_sell_price"),
         fast_ma=data.get("fast_ma"),
         slow_ma=data.get("slow_ma"),
+        volume_ratio_5d=data.get("volume_ratio_5d"),
+        ma_gap_pct=data.get("ma_gap_pct"),
+        strength_cross=data.get("strength_cross"),
+        strength_alignment=data.get("strength_alignment"),
+        strength_volume=data.get("strength_volume"),
+        strength_pattern=data.get("strength_pattern"),
+        relative_index_pct=data.get("relative_index_pct"),
     )
 
 
@@ -98,10 +87,10 @@ class WatchlistSignalDiskCache:
     """自选信号 Worker 专用磁盘缓存。"""
 
     def get(self, vt_symbol: str, config_key: str, bar_as_of: str) -> SignalSnapshot | None:
-        symbol = str(vt_symbol or "").strip()
+        vt = str(vt_symbol or "").strip()
         key = str(config_key or "").strip()
         as_of = str(bar_as_of or "")
-        if not symbol or not key:
+        if not vt or not key or not as_of:
             return None
         with _connect() as conn:
             row = conn.execute(
@@ -109,7 +98,7 @@ class WatchlistSignalDiskCache:
                 SELECT payload FROM watchlist_signal_cache
                 WHERE vt_symbol = ? AND config_key = ? AND bar_as_of = ?
                 """,
-                (symbol, key, as_of),
+                (vt, key, as_of),
             ).fetchone()
         if row is None:
             return None
@@ -120,9 +109,9 @@ class WatchlistSignalDiskCache:
 
     def get_latest(self, vt_symbol: str, config_key: str) -> SignalSnapshot | None:
         """取该标的最近一条缓存（冷启动 bar_as_of 未就绪时的回退）。"""
-        symbol = str(vt_symbol or "").strip()
+        vt = str(vt_symbol or "").strip()
         key = str(config_key or "").strip()
-        if not symbol or not key:
+        if not vt or not key:
             return None
         with _connect() as conn:
             row = conn.execute(
@@ -132,7 +121,7 @@ class WatchlistSignalDiskCache:
                 ORDER BY updated_at DESC
                 LIMIT 1
                 """,
-                (symbol, key),
+                (vt, key),
             ).fetchone()
         if row is None:
             return None
@@ -175,7 +164,7 @@ class WatchlistSignalDiskCache:
         with _connect() as conn:
             conn.execute(
                 """
-                INSERT INTO watchlist_signal_cache(
+                INSERT INTO watchlist_signal_cache (
                     vt_symbol, config_key, bar_as_of, payload, updated_at
                 ) VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT(vt_symbol, config_key, bar_as_of) DO UPDATE SET

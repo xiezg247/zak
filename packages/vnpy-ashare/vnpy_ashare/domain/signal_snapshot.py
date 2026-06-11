@@ -31,6 +31,9 @@ SIGNAL_COLUMN_KEYS: frozenset[str] = frozenset(
 
 DIST_ANCHOR_WARN_PCT = 8.0
 SIGNAL_RECENT_DAYS = 5
+SIGNAL_STRENGTH_STRONG = 70.0
+SIGNAL_BENCHMARK_SYMBOL = "000300"
+SIGNAL_BENCHMARK_LOOKBACK = 20
 INTRADAY_ANCHOR_MIN_DELTA = 0.01
 INTRADAY_CROSS_NEAR_PCT = 0.5
 
@@ -74,6 +77,13 @@ class SignalSnapshot:
     action_ref_sell_price: float | None = None
     fast_ma: float | None = None
     slow_ma: float | None = None
+    volume_ratio_5d: float | None = None
+    ma_gap_pct: float | None = None
+    strength_cross: float | None = None
+    strength_alignment: float | None = None
+    strength_volume: float | None = None
+    strength_pattern: float | None = None
+    relative_index_pct: float | None = None
 
     @property
     def tooltip(self) -> str:
@@ -102,6 +112,13 @@ def signal_snapshot_to_dict(snapshot: SignalSnapshot) -> dict[str, Any]:
         "last_close": snapshot.last_close,
         "fast_ma": snapshot.fast_ma,
         "slow_ma": snapshot.slow_ma,
+        "volume_ratio_5d": snapshot.volume_ratio_5d,
+        "ma_gap_pct": snapshot.ma_gap_pct,
+        "strength_cross": snapshot.strength_cross,
+        "strength_alignment": snapshot.strength_alignment,
+        "strength_volume": snapshot.strength_volume,
+        "strength_pattern": snapshot.strength_pattern,
+        "relative_index_pct": snapshot.relative_index_pct,
     }
 
 
@@ -144,6 +161,12 @@ def dist_buy_pct(ref_buy_price: float | None, last_price: float | None) -> float
     return round((last_price - ref_buy_price) / ref_buy_price * 100, 2)
 
 
+def dist_sell_pct(ref_sell_price: float | None, last_price: float | None) -> float | None:
+    if ref_sell_price is None or last_price is None or ref_sell_price <= 0:
+        return None
+    return round((last_price - ref_sell_price) / ref_sell_price * 100, 2)
+
+
 def dist_anchor_exceeds_warn(
     ref_buy_price: float | None,
     last_price: float | None,
@@ -173,6 +196,134 @@ def signal_age_days(snapshot: SignalSnapshot) -> int | None:
     if signal_day is None or as_of_day is None:
         return None
     return (as_of_day - signal_day).days
+
+
+def signal_expired(snapshot: SignalSnapshot, *, recent_days: int = SIGNAL_RECENT_DAYS) -> bool:
+    """买入/卖出信号是否已超过有效窗口。"""
+    if snapshot.signal not in ("buy", "sell"):
+        return False
+    age = signal_age_days(snapshot)
+    if age is None:
+        return False
+    return age > max(0, int(recent_days))
+
+
+def signal_is_fresh(snapshot: SignalSnapshot, *, recent_days: int = SIGNAL_RECENT_DAYS) -> bool:
+    """买入/卖出信号仍在有效窗口内。"""
+    if snapshot.signal not in ("buy", "sell"):
+        return False
+    age = signal_age_days(snapshot)
+    if age is None:
+        return False
+    return age <= max(0, int(recent_days))
+
+
+def signal_is_strong(
+    snapshot: SignalSnapshot,
+    *,
+    min_strength: float = SIGNAL_STRENGTH_STRONG,
+) -> bool:
+    """综合强度是否达到强信号阈值。"""
+    return snapshot.strength is not None and snapshot.strength >= min_strength
+
+
+def structure_broken(
+    snapshot: SignalSnapshot,
+    *,
+    quote: QuoteSnapshot | None = None,
+    slow_window: int = 20,
+    fast_window: int = 10,
+) -> bool:
+    """买入信号下现价是否跌破结构支撑锚点。"""
+    if snapshot.signal != "buy" or signal_missing_kline(snapshot):
+        return False
+    last_price = quote.last_price if quote and quote.last_price > 0 else snapshot.last_close
+    if last_price is None:
+        return False
+    display_buy, _, _ = resolve_display_anchor_prices(
+        snapshot,
+        quote=quote,
+        slow_window=slow_window,
+        fast_window=fast_window,
+    )
+    anchor = display_buy if display_buy is not None else snapshot.ref_buy_price
+    if anchor is None:
+        return False
+    return last_price < anchor
+
+
+def ma_gap_pct(fast_ma: float | None, slow_ma: float | None) -> float | None:
+    """快慢均线间距占慢线比例（%）。"""
+    if fast_ma is None or slow_ma is None or slow_ma <= 0:
+        return None
+    return round((fast_ma - slow_ma) / slow_ma * 100, 2)
+
+
+def resolve_ma_gap_pct(
+    snapshot: SignalSnapshot,
+    *,
+    quote: QuoteSnapshot | None = None,
+    slow_window: int = 20,
+    fast_window: int = 10,
+) -> float | None:
+    """列表展示用快慢间距；有行情时优先盘中估算。"""
+    fast_est, slow_est = _resolve_intraday_ma_pair(
+        snapshot,
+        quote=quote,
+        slow_window=slow_window,
+        fast_window=fast_window,
+    )
+    if fast_est is not None and slow_est is not None:
+        return ma_gap_pct(fast_est, slow_est)
+    if snapshot.ma_gap_pct is not None:
+        return snapshot.ma_gap_pct
+    return ma_gap_pct(snapshot.fast_ma, snapshot.slow_ma)
+
+
+def format_signal_label_display(
+    snapshot: SignalSnapshot,
+    *,
+    bar_end_date: str | None = None,
+    recent_days: int = SIGNAL_RECENT_DAYS,
+    quote: QuoteSnapshot | None = None,
+    slow_window: int = 20,
+    fast_window: int = 10,
+) -> str:
+    """信号列文案（含 K 线 stale / 信号过期 / 结构破坏徽章）。"""
+    badges: list[str] = []
+    if bar_end_date and signal_as_of_stale(snapshot, bar_end_date=bar_end_date):
+        badges.append("K旧")
+    if signal_expired(snapshot, recent_days=recent_days):
+        badges.append("过期")
+    if structure_broken(
+        snapshot,
+        quote=quote,
+        slow_window=slow_window,
+        fast_window=fast_window,
+    ):
+        badges.append("破")
+    if not badges:
+        return snapshot.signal_label
+    return f"{snapshot.signal_label}·{'·'.join(badges)}"
+
+
+def format_strength_breakdown(snapshot: SignalSnapshot | None) -> str:
+    """强度列 tooltip：综合分与各分项权重。"""
+    if snapshot is None or snapshot.strength is None:
+        return ""
+    lines = [f"综合强度：{snapshot.strength:.0f}"]
+    parts: list[str] = []
+    if snapshot.strength_cross is not None:
+        parts.append(f"交叉 {snapshot.strength_cross:.0f}×40%")
+    if snapshot.strength_alignment is not None:
+        parts.append(f"排列 {snapshot.strength_alignment:.0f}×25%")
+    if snapshot.strength_volume is not None:
+        parts.append(f"量比 {snapshot.strength_volume:.0f}×20%")
+    if snapshot.strength_pattern is not None:
+        parts.append(f"形态 {snapshot.strength_pattern:.0f}×15%")
+    if parts:
+        lines.append("分项：" + " · ".join(parts))
+    return "\n".join(lines)
 
 
 def estimate_adjusted_ma_anchor(
@@ -265,6 +416,13 @@ def format_signal_context_extra(
     pct = dist_buy_pct(list_buy, last_price)
     if pct is not None:
         lines.append(f"距买价%：{pct:+.2f}")
+    sell_pct = dist_sell_pct(list_sell, last_price)
+    if sell_pct is not None:
+        lines.append(f"距卖价%：{sell_pct:+.2f}")
+    if snapshot.relative_index_pct is not None:
+        lines.append(
+            f"相对300%（{SIGNAL_BENCHMARK_LOOKBACK}日）：{snapshot.relative_index_pct:+.2f}"
+        )
 
     hints = build_runtime_signal_hints(
         snapshot,
@@ -358,7 +516,8 @@ def build_price_field_explanations(
         ref_buy = "参考买价：数据不足时无法计算。"
         ref_sell = "参考卖价：数据不足时无法计算。"
     dist = "距买价%：现价相对参考买价（动作位）的偏离百分比。"
-    return (anchor_buy, anchor_sell, ref_buy, ref_sell, dist)
+    dist_sell = "距卖价%：现价相对参考卖价（动作位）的偏离百分比。"
+    return (anchor_buy, anchor_sell, ref_buy, ref_sell, dist, dist_sell)
 
 
 def _resolve_intraday_ma_pair(
@@ -449,6 +608,13 @@ def build_runtime_signal_hints(
         hints.append(f"现价偏离支撑锚点 {pct:+.2f}%")
     if snapshot.signal == "sell" and pct is not None and pct < 0:
         hints.append("现价已跌破慢线支撑")
+    if structure_broken(
+        snapshot,
+        quote=quote,
+        slow_window=slow_window,
+        fast_window=fast_window,
+    ):
+        hints.append("结构破坏：现价已跌破支撑锚点")
 
     action_buy, action_sell = resolve_list_ref_prices(
         snapshot,
@@ -479,6 +645,7 @@ def signal_cell_text(
     snapshot: SignalSnapshot | None,
     *,
     quote: QuoteSnapshot | None = None,
+    bar_end_date: str | None = None,
     slow_window: int = 20,
     fast_window: int = 10,
 ) -> tuple[str, float | str]:
@@ -493,7 +660,36 @@ def signal_cell_text(
     )
 
     if column_key == "signal":
-        return snapshot.signal_label, _signal_sort_key(snapshot.signal)
+        text = format_signal_label_display(
+            snapshot,
+            bar_end_date=bar_end_date,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
+        return text, _signal_sort_key(snapshot.signal)
+    if column_key == "signal_age":
+        if snapshot.signal not in ("buy", "sell"):
+            return "—", float("-inf")
+        age = signal_age_days(snapshot)
+        if age is None:
+            return "—", float("-inf")
+        return f"{age}天", age
+    if column_key == "volume_ratio":
+        ratio = snapshot.volume_ratio_5d
+        if ratio is None:
+            return "—", float("-inf")
+        return f"{ratio:.2f}", ratio
+    if column_key == "ma_gap_pct":
+        gap = resolve_ma_gap_pct(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
+        if gap is None:
+            return "—", float("-inf")
+        return f"{gap:+.2f}", gap
     if column_key == "signal_date":
         text = snapshot.signal_date or "—"
         return text, text
@@ -532,6 +728,16 @@ def signal_cell_text(
         if pct is None:
             return "—", float("-inf")
         return f"{pct:+.2f}", pct
+    if column_key == "dist_sell_pct":
+        pct = dist_sell_pct(list_ref_sell, quote.last_price if quote else None)
+        if pct is None:
+            return "—", float("-inf")
+        return f"{pct:+.2f}", pct
+    if column_key == "relative_index_pct":
+        excess = snapshot.relative_index_pct
+        if excess is None:
+            return "—", float("-inf")
+        return f"{excess:+.2f}", excess
     if column_key == "signal_strength":
         if snapshot.strength is None:
             return "—", float("-inf")
@@ -548,6 +754,7 @@ def signal_cell_color(
     *,
     colors,
     quote: QuoteSnapshot | None = None,
+    bar_end_date: str | None = None,
     warning_color: str | None = None,
     slow_window: int = 20,
     fast_window: int = 10,
@@ -556,10 +763,30 @@ def signal_cell_color(
         return None
     if column_key == "signal":
         if snapshot.signal == "buy":
-            return colors.rise
-        if snapshot.signal == "sell":
-            return colors.fall
-        return None
+            base = colors.rise
+        elif snapshot.signal == "sell":
+            base = colors.fall
+        else:
+            base = None
+        if warning_color and (
+            (bar_end_date and signal_as_of_stale(snapshot, bar_end_date=bar_end_date))
+            or signal_expired(snapshot)
+            or structure_broken(
+                snapshot,
+                quote=quote,
+                slow_window=slow_window,
+                fast_window=fast_window,
+            )
+        ):
+            return warning_color
+        return base
+    if column_key == "signal_age" and warning_color:
+        if signal_expired(snapshot):
+            return warning_color
+    if column_key == "volume_ratio" and warning_color:
+        ratio = snapshot.volume_ratio_5d
+        if ratio is not None and (ratio >= 1.5 or ratio <= 0.8):
+            return warning_color
     if column_key == "dist_buy_pct" and warning_color:
         last_price = quote.last_price if quote else None
         list_ref_buy, _ = resolve_list_ref_prices(
@@ -570,6 +797,39 @@ def signal_cell_color(
         )
         if dist_anchor_exceeds_warn(list_ref_buy, last_price):
             return warning_color
+        if structure_broken(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        ):
+            return warning_color
+    if column_key == "dist_sell_pct" and warning_color:
+        last_price = quote.last_price if quote else None
+        _, list_ref_sell = resolve_list_ref_prices(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        )
+        if dist_anchor_exceeds_warn(list_ref_sell, last_price):
+            return warning_color
+    if column_key == "anchor_buy" and warning_color:
+        if structure_broken(
+            snapshot,
+            quote=quote,
+            slow_window=slow_window,
+            fast_window=fast_window,
+        ):
+            return warning_color
+    if column_key == "relative_index_pct":
+        excess = snapshot.relative_index_pct
+        if excess is None:
+            return None
+        if excess >= 2:
+            return colors.rise
+        if excess <= -2:
+            return colors.fall
     return None
 
 

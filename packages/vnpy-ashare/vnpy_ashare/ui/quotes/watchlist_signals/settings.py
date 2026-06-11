@@ -17,6 +17,7 @@ SIGNAL_SLOW_KEY = "watchlist/signal_slow_window"
 SIGNAL_PANEL_SYMBOLS_KEY = "watchlist/signal_panel/symbols"
 SIGNAL_PANEL_ENABLED_KEY = "watchlist/signal_panel/enabled"
 SIGNAL_PANEL_EXPANDED_KEY = "watchlist/signal_panel/expanded"
+SIGNAL_PANEL_COLUMNS_KEY = "watchlist/signal_panel/columns"
 SIGNAL_CENTER_SPLITTER_SIZES_KEY = "watchlist/center_splitter/sizes"
 SIGNAL_PANEL_MAX_SYMBOLS = 10
 
@@ -141,6 +142,25 @@ def load_signal_panel_expanded() -> bool:
 def save_signal_panel_expanded(expanded: bool) -> None:
     settings = _settings()
     settings.setValue(SIGNAL_PANEL_EXPANDED_KEY, expanded)
+
+
+def load_signal_panel_columns() -> list[str]:
+    from vnpy_ashare.ui.quotes.watchlist_signals.columns import normalize_visible_optional_keys
+
+    settings = _settings()
+    raw = settings.value(SIGNAL_PANEL_COLUMNS_KEY, "")
+    if not isinstance(raw, str) or not raw.strip():
+        return normalize_visible_optional_keys(None)
+    parts = [part.strip() for part in raw.split(",") if part.strip()]
+    return normalize_visible_optional_keys(parts)
+
+
+def save_signal_panel_columns(keys: list[str]) -> None:
+    from vnpy_ashare.ui.quotes.watchlist_signals.columns import normalize_visible_optional_keys
+
+    settings = _settings()
+    cleaned = normalize_visible_optional_keys(keys)
+    settings.setValue(SIGNAL_PANEL_COLUMNS_KEY, ",".join(cleaned))
 
 
 def load_center_splitter_sizes() -> list[int]:

@@ -40,6 +40,8 @@ format_signal_context_extra = _signal_mod.format_signal_context_extra
 build_intraday_cross_hints = _signal_mod.build_intraday_cross_hints
 detect_signal_transitions = _signal_mod.detect_signal_transitions
 signal_snapshot_to_dict = _signal_mod.signal_snapshot_to_dict
+signal_is_fresh = _signal_mod.signal_is_fresh
+signal_is_strong = _signal_mod.signal_is_strong
 
 
 class DistAnchorWarnTests(unittest.TestCase):
@@ -358,10 +360,147 @@ class RuntimeSignalHintTests(unittest.TestCase):
             warnings=(),
             fast_ma=11.0,
             slow_ma=10.0,
+            volume_ratio_5d=1.35,
+            ma_gap_pct=10.0,
+            strength_cross=80.0,
+            strength_alignment=90.0,
+            strength_volume=50.0,
+            strength_pattern=30.0,
         )
         payload = signal_snapshot_to_dict(snap)
         self.assertEqual(payload["signal"], "buy")
         self.assertEqual(payload["fast_ma"], 11.0)
+        self.assertEqual(payload["volume_ratio_5d"], 1.35)
+        self.assertEqual(payload["strength_cross"], 80.0)
+
+    def test_signal_age_and_label_badges(self) -> None:
+        format_signal_label_display = _signal_mod.format_signal_label_display
+        signal_cell_text = _signal_mod.signal_cell_text
+        format_strength_breakdown = _signal_mod.format_strength_breakdown
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-01",
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=72.0,
+            reason_summary="金叉",
+            reasons=(),
+            warnings=(),
+            volume_ratio_5d=1.6,
+            ma_gap_pct=2.5,
+            strength_cross=80.0,
+            strength_alignment=90.0,
+            strength_volume=80.0,
+            strength_pattern=30.0,
+            relative_index_pct=3.5,
+        )
+        label = format_signal_label_display(snap, bar_end_date="2026-06-09")
+        self.assertIn("K旧", label)
+        self.assertIn("过期", label)
+        self.assertTrue(signal_is_fresh(_signal_mod.SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-08",
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=72.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )))
+        self.assertFalse(signal_is_fresh(snap))
+        self.assertTrue(signal_is_strong(snap))
+        sell_text, sell_sort = signal_cell_text(
+            "dist_sell_pct",
+            snap,
+            quote=QuoteSnapshot(
+                symbol="600000",
+                name="浦发银行",
+                last_price=11.5,
+                prev_close=11.0,
+                open_price=11.0,
+                high_price=11.6,
+                low_price=10.9,
+                change_amount=0.5,
+                change_pct=4.55,
+                turnover_rate=1.0,
+                volume=10000.0,
+            ),
+        )
+        self.assertEqual(sell_text, "+4.55")
+        broken_snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-10",
+            signal="buy",
+            signal_label="买入",
+            signal_date="2026-06-08",
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=80.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+            last_close=10.0,
+        )
+        broken_label = format_signal_label_display(
+            broken_snap,
+            quote=QuoteSnapshot(
+                symbol="600000",
+                name="浦发银行",
+                last_price=9.5,
+                prev_close=10.0,
+                open_price=10.0,
+                high_price=10.1,
+                low_price=9.4,
+                change_amount=-0.5,
+                change_pct=-5.0,
+                turnover_rate=1.0,
+                volume=10000.0,
+            ),
+        )
+        self.assertIn("破", broken_label)
+        age_text, age_sort = signal_cell_text("signal_age", snap)
+        self.assertEqual(age_text, "9天")
+        self.assertEqual(age_sort, 9)
+        ratio_text, ratio_sort = signal_cell_text("volume_ratio", snap)
+        self.assertEqual(ratio_text, "1.60")
+        self.assertEqual(ratio_sort, 1.6)
+        gap_text, gap_sort = signal_cell_text("ma_gap_pct", snap)
+        self.assertEqual(gap_text, "+2.50")
+        self.assertEqual(gap_sort, 2.5)
+        breakdown = format_strength_breakdown(snap)
+        self.assertIn("综合强度：72", breakdown)
+        self.assertIn("交叉 80", breakdown)
+        rel_text, rel_sort = signal_cell_text("relative_index_pct", snap)
+        self.assertEqual(rel_text, "+3.50")
+        self.assertEqual(rel_sort, 3.5)
+
+
+class SignalPanelColumnTests(unittest.TestCase):
+    def test_normalize_and_resolve_columns(self) -> None:
+        columns_mod = _load_module(
+            "signal_panel_columns",
+            "vnpy_ashare/ui/quotes/watchlist_signals/columns.py",
+        )
+        keys = columns_mod.normalize_visible_optional_keys(
+            ["signal_strength", "signal", "signal", "unknown"]
+        )
+        self.assertEqual(keys[0], "signal")
+        self.assertIn("signal_strength", keys)
+        self.assertNotIn("unknown", keys)
+        cols = columns_mod.resolve_signal_panel_columns(["signal", "has_position"])
+        self.assertEqual(cols[0], ("symbol", "代码"))
+        self.assertIn(("has_position", "持仓"), cols)
+        self.assertNotIn(("volume_ratio", "量比"), cols)
 
 
 if __name__ == "__main__":

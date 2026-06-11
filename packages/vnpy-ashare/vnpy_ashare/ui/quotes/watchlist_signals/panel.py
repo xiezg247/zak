@@ -6,25 +6,37 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.signal_snapshot import (
     SignalSnapshot,
+    SIGNAL_STRENGTH_STRONG,
     build_price_field_explanations,
     build_runtime_signal_hints,
+    format_strength_breakdown,
     resolve_display_anchor_prices,
     signal_cell_color,
     signal_cell_text,
+    signal_is_fresh,
+    signal_is_strong,
     signal_missing_kline,
     signal_row_sort_key,
 )
 from strategies.registry import list_signal_strategy_metas
+from vnpy_ashare.ui.quotes.watchlist_signals.columns import (
+    SIGNAL_PANEL_OPTIONAL_COLUMNS,
+    SIGNAL_PANEL_RUNTIME_KEYS,
+    resolve_signal_panel_columns,
+)
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     DEFAULT_CLASS,
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
+    load_signal_panel_columns,
     load_signal_panel_enabled,
     load_signal_panel_expanded,
     load_signal_panel_symbols,
     normalize_signal_panel_symbols,
+    save_signal_panel_columns,
     save_signal_panel_enabled,
     save_signal_panel_expanded,
     save_signal_panel_symbols,
@@ -38,20 +50,6 @@ from vnpy_common.ui.theme.market_colors import market_colors
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
-
-_PANEL_COLUMNS = (
-    ("symbol", "代码"),
-    ("name", "名称"),
-    ("signal", "信号"),
-    ("anchor_buy", "支撑锚点"),
-    ("anchor_sell", "阻力锚点"),
-    ("ref_buy_price", "参考买价"),
-    ("ref_sell_price", "参考卖价"),
-    ("dist_buy_pct", "距买价%"),
-    ("signal_strength", "强度"),
-)
-
-_INFO_COLUMN_INDEX = len(_PANEL_COLUMNS)
 
 _DETAIL_COLUMN_KEYS = ("signal_date", "signal_reason")
 
@@ -82,6 +80,8 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._expanded = load_signal_panel_expanded()
         self._signal_filter: str | None = None
         self._rendered_symbols: list[str] = []
+        self._visible_column_keys: list[str] = load_signal_panel_columns()
+        self._column_menu: QtWidgets.QMenu | None = None
         self._suppress_selection_signal = False
 
         self.setObjectName("WatchlistSignalPanel")
@@ -131,6 +131,11 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._refresh_button.setObjectName("SecondaryButton")
         self._refresh_button.clicked.connect(self.refresh_requested.emit)
 
+        self._column_button = QtWidgets.QPushButton("列", self)
+        self._column_button.setObjectName("SecondaryButton")
+        self._column_button.setToolTip("选择信号区显示列")
+        self._column_button.clicked.connect(self.show_column_menu)
+
         self._ai_button = QtWidgets.QPushButton("AI 解读", self)
         self._ai_button.setObjectName("SecondaryButton")
         self._ai_button.setToolTip("结合信号区快照与双均线工具做研究解读")
@@ -158,6 +163,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         header.addWidget(self._remove_button)
         header.addWidget(self._clear_button)
         header.addWidget(self._refresh_button)
+        header.addWidget(self._column_button)
         header.addWidget(self._ai_button)
         header.addWidget(self._ai_scan_button)
         root.addLayout(header)
@@ -172,20 +178,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
         self._table = QtWidgets.QTableWidget(self)
         self._table.setObjectName("WatchlistSignalTable")
-        self._table.setColumnCount(_INFO_COLUMN_INDEX + 1)
-        self._table.setHorizontalHeaderLabels([label for _, label in _PANEL_COLUMNS] + [""])
-        self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self._table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self._table.verticalHeader().setVisible(False)
-        self._table.setAlternatingRowColors(True)
-        self._table.setMinimumHeight(140)
-        header_view = self._table.horizontalHeader()
-        header_view.setStretchLastSection(False)
-        header_view.setSectionResizeMode(_INFO_COLUMN_INDEX, QtWidgets.QHeaderView.ResizeMode.Fixed)
-        self._table.setColumnWidth(_INFO_COLUMN_INDEX, 52)
-        for col in range(_INFO_COLUMN_INDEX):
-            header_view.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self._sync_table_columns(reset_rows=False)
         self._table.cellDoubleClicked.connect(self._on_cell_activated)
         self._table.itemSelectionChanged.connect(self._on_table_selection_changed)
         root.addWidget(self._table, stretch=1)
@@ -210,6 +203,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._remove_button,
             self._clear_button,
             self._refresh_button,
+            self._column_button,
             self._ai_button,
             self._ai_scan_button,
         )
@@ -228,6 +222,70 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
     def is_expanded(self) -> bool:
         return self._expanded
+
+    def _panel_columns(self) -> tuple[tuple[str, str], ...]:
+        return resolve_signal_panel_columns(self._visible_column_keys)
+
+    def _info_column_index(self) -> int:
+        return len(self._panel_columns())
+
+    def _sync_table_columns(self, *, reset_rows: bool) -> None:
+        columns = self._panel_columns()
+        info_index = len(columns)
+        self._table.setColumnCount(info_index + 1)
+        self._table.setHorizontalHeaderLabels([label for _, label in columns] + [""])
+        self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self._table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self._table.verticalHeader().setVisible(False)
+        self._table.setAlternatingRowColors(True)
+        self._table.setMinimumHeight(140)
+        header_view = self._table.horizontalHeader()
+        header_view.setStretchLastSection(False)
+        header_view.setSectionResizeMode(info_index, QtWidgets.QHeaderView.ResizeMode.Fixed)
+        self._table.setColumnWidth(info_index, 52)
+        for col in range(info_index):
+            header_view.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        if reset_rows:
+            self._rendered_symbols = []
+            self._table.setRowCount(0)
+
+    def show_column_menu(self) -> None:
+        menu = self._column_menu
+        if menu is None:
+            menu = QtWidgets.QMenu(self)
+            self._column_menu = menu
+            for key, label in SIGNAL_PANEL_OPTIONAL_COLUMNS:
+                action = menu.addAction(label)
+                action.setCheckable(True)
+                action.setData(key)
+                action.triggered.connect(self._on_column_toggled)
+        visible = set(self._visible_column_keys)
+        for action in menu.actions():
+            key = str(action.data() or "")
+            action.blockSignals(True)
+            action.setChecked(key in visible)
+            action.blockSignals(False)
+        menu.exec(self._column_button.mapToGlobal(self._column_button.rect().bottomLeft()))
+
+    def _on_column_toggled(self, checked: bool) -> None:
+        action = self.sender()
+        if not isinstance(action, QtGui.QAction):
+            return
+        key = str(action.data() or "").strip()
+        if not key:
+            return
+        keys = list(self._visible_column_keys)
+        if checked and key not in keys:
+            keys.append(key)
+        elif not checked and key in keys:
+            keys.remove(key)
+        from vnpy_ashare.ui.quotes.watchlist_signals.columns import normalize_visible_optional_keys
+
+        self._visible_column_keys = normalize_visible_optional_keys(keys)
+        save_signal_panel_columns(self._visible_column_keys)
+        self._sync_table_columns(reset_rows=True)
+        self.render()
 
     def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
         changed = self._expanded != expanded
@@ -463,9 +521,11 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
         snapshot = page.signal_cache.get(vt_symbol)
         missing_kline = signal_missing_kline(snapshot)
-        values = self._row_values(item, snapshot, quote)
-        tooltip = self._row_tooltip(snapshot, values, quote=quote)
-        for col, (key, _label) in enumerate(_PANEL_COLUMNS):
+        bar_end_date = self._bar_end_date(vt_symbol)
+        values = self._row_values(item, snapshot, quote, bar_end_date=bar_end_date)
+        tooltip = self._row_tooltip(snapshot, values, quote=quote, vt_symbol=vt_symbol)
+        strength_tooltip = format_strength_breakdown(snapshot)
+        for col, (key, _label) in enumerate(self._panel_columns()):
             text = values.get(key, "—")
             cell = self._table.item(row, col)
             if cell is None:
@@ -475,26 +535,77 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
                 cell.setText(text)
             cell.setData(QtCore.Qt.ItemDataRole.UserRole, vt_symbol)
             config = page.signal_config.normalized()
+            cell_kwargs = {
+                "quote": quote,
+                "bar_end_date": bar_end_date,
+                "slow_window": config.slow_window,
+                "fast_window": config.fast_window,
+            }
             fg = signal_cell_color(
                 key,
                 snapshot,
                 colors=colors,
-                quote=quote,
+                **cell_kwargs,
                 warning_color=warning_color,
-                slow_window=config.slow_window,
-                fast_window=config.fast_window,
             )
+            if key in SIGNAL_PANEL_RUNTIME_KEYS:
+                fg = self._runtime_cell_color(key, vt_symbol, colors=colors)
             if missing_kline and key == "signal":
                 fg = warning_color
             if fg:
                 cell.setForeground(QtGui.QColor(fg))
             else:
                 cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
-            cell.setToolTip(tooltip)
+            if key == "signal_strength" and strength_tooltip:
+                cell.setToolTip(strength_tooltip)
+            else:
+                cell.setToolTip(tooltip)
         self._fill_info_button(row, vt_symbol)
 
+    def _bar_end_date(self, vt_symbol: str) -> str | None:
+        item = self._page.find_stock_item(vt_symbol)
+        if item is None:
+            return None
+        meta = self._page.bar_meta.get((item.symbol, item.exchange))
+        if meta is None or meta.end is None:
+            return None
+        return format_meta_date(meta.end)
+
+    def _runtime_cell_color(self, column_key: str, vt_symbol: str, *, colors) -> str | None:
+        pos = self._page.position_cache.get(vt_symbol)
+        if column_key == "position_pnl_pct" and pos is not None and pos.unrealized_pnl_pct is not None:
+            return colors.rise if pos.unrealized_pnl_pct >= 0 else colors.fall
+        if column_key == "has_position" and pos is not None:
+            return colors.flat
+        return None
+
+    def _position_row_values(self, vt_symbol: str) -> dict[str, str]:
+        pos = self._page.position_cache.get(vt_symbol)
+        if pos is None:
+            return {"has_position": "—", "position_pnl_pct": "—"}
+        pnl_text = "—"
+        if pos.unrealized_pnl_pct is not None:
+            pnl_text = f"{pos.unrealized_pnl_pct:+.2f}%"
+        return {"has_position": "是", "position_pnl_pct": pnl_text}
+
+    def _position_tooltip_lines(self, vt_symbol: str, snapshot: SignalSnapshot | None) -> list[str]:
+        pos = self._page.position_cache.get(vt_symbol)
+        if pos is None:
+            return []
+        lines = [
+            f"持仓：成本 {pos.cost_price:.2f} × {pos.volume} 股，买入日 {pos.buy_date[:10]}",
+        ]
+        if pos.unrealized_pnl is not None and pos.unrealized_pnl_pct is not None:
+            lines.append(f"浮盈：{pos.unrealized_pnl:+.2f} 元（{pos.unrealized_pnl_pct:+.2f}%）")
+        if snapshot is not None and pos.unrealized_pnl_pct is not None and pos.unrealized_pnl_pct < 0:
+            if snapshot.signal == "buy":
+                lines.append("提示：信号买入但持仓浮亏，注意成本与结构位")
+            elif snapshot.signal == "sell" and not pos.t1_locked:
+                lines.append("提示：策略卖出且可卖，关注退出信号")
+        return lines
+
     def _fill_info_button(self, row: int, vt_symbol: str) -> None:
-        btn = self._table.cellWidget(row, _INFO_COLUMN_INDEX)
+        btn = self._table.cellWidget(row, self._info_column_index())
         if btn is None:
             btn = QtWidgets.QToolButton(self._table)
             btn.setText("理由")
@@ -502,7 +613,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             btn.setAutoRaise(True)
             btn.setObjectName("SignalInfoButton")
             btn.clicked.connect(self._on_info_clicked)
-            self._table.setCellWidget(row, _INFO_COLUMN_INDEX, btn)
+            self._table.setCellWidget(row, self._info_column_index(), btn)
         btn.setText("理由")
         btn.setProperty("vt_symbol", vt_symbol)
         btn.setEnabled(bool(vt_symbol))
@@ -521,9 +632,9 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         item = page.find_stock_item(vt_symbol)
         quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
         snapshot = page.signal_cache.get(vt_symbol)
-        values = self._row_values(item, snapshot, quote)
+        values = self._row_values(item, snapshot, quote, bar_end_date=self._bar_end_date(vt_symbol))
         title_name = values.get("name") or vt_symbol
-        detail = self._row_tooltip(snapshot, values, quote=quote)
+        detail = self._row_tooltip(snapshot, values, quote=quote, vt_symbol=vt_symbol)
         if not detail.strip():
             detail = "暂无信号理由。"
 
@@ -547,12 +658,20 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         layout.addWidget(buttons)
         dialog.exec()
 
-    def _row_tooltip(self, snapshot: SignalSnapshot | None, values: dict[str, str], *, quote) -> str:
+    def _row_tooltip(
+        self,
+        snapshot: SignalSnapshot | None,
+        values: dict[str, str],
+        *,
+        quote,
+        vt_symbol: str = "",
+    ) -> str:
         lines: list[str] = []
         if snapshot is None:
             reason = values.get("signal_reason")
             if reason and reason != "—":
                 lines.append(reason)
+            lines.extend(self._position_tooltip_lines(vt_symbol, None))
             return "\n".join(lines)
         signal_date = values.get("signal_date") or snapshot.signal_date or "—"
         if signal_date != "—":
@@ -594,6 +713,9 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         dist = values.get("dist_buy_pct", "—")
         if dist != "—":
             lines.append(f"距买价%：{dist}")
+        dist_sell = values.get("dist_sell_pct", "—")
+        if dist_sell != "—":
+            lines.append(f"距卖价%：{dist_sell}")
         runtime_hints = build_runtime_signal_hints(
             snapshot,
             quote=quote,
@@ -602,24 +724,43 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         )
         if runtime_hints:
             lines.extend(runtime_hints)
-        reason = values.get("signal_reason") or snapshot.reason_summary
-        if reason and reason != "—":
-            lines.append(f"理由：{reason}")
-        if snapshot.tooltip:
-            if lines:
-                lines.append("")
-            lines.append(snapshot.tooltip)
+        lines.extend(self._position_tooltip_lines(snapshot.vt_symbol, snapshot))
+        breakdown = format_strength_breakdown(snapshot)
+        if breakdown:
+            lines.append("")
+            lines.append("【强度分解】")
+            lines.append(breakdown)
+        if snapshot is not None:
+            reason = values.get("signal_reason") or snapshot.reason_summary
+            if reason and reason != "—":
+                lines.append(f"理由：{reason}")
+            if snapshot.tooltip:
+                if lines:
+                    lines.append("")
+                lines.append(snapshot.tooltip)
         return "\n".join(line for line in lines if line)
 
-    def _row_values(self, item, snapshot: SignalSnapshot | None, quote) -> dict[str, str]:
+    def _row_values(
+        self,
+        item,
+        snapshot: SignalSnapshot | None,
+        quote,
+        *,
+        bar_end_date: str | None = None,
+    ) -> dict[str, str]:
         values: dict[str, str] = {
             "symbol": item.symbol if item is not None else "—",
             "name": (item.name if item is not None else "—") or "—",
         }
         if snapshot is None:
-            for col_key, _ in _PANEL_COLUMNS:
+            vt_symbol = item.vt_symbol if item is not None else ""
+            position_values = self._position_row_values(vt_symbol)
+            for col_key, _ in self._panel_columns():
                 if col_key not in values:
-                    values[col_key] = "—"
+                    if col_key in SIGNAL_PANEL_RUNTIME_KEYS:
+                        values[col_key] = position_values.get(col_key, "—")
+                    else:
+                        values[col_key] = "—"
             for key in _DETAIL_COLUMN_KEYS:
                 values[key] = "—"
             if item is not None:
@@ -629,11 +770,17 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         config = self._page.signal_config.normalized()
         cell_kwargs = {
             "quote": quote,
+            "bar_end_date": bar_end_date,
             "slow_window": config.slow_window,
             "fast_window": config.fast_window,
         }
-        for key, _ in _PANEL_COLUMNS:
+        vt_symbol = item.vt_symbol if item is not None else snapshot.vt_symbol
+        position_values = self._position_row_values(vt_symbol)
+        for key, _ in self._panel_columns():
             if key in {"symbol", "name"}:
+                continue
+            if key in SIGNAL_PANEL_RUNTIME_KEYS:
+                values[key] = position_values.get(key, "—")
                 continue
             text, _ = signal_cell_text(key, snapshot, **cell_kwargs)
             values[key] = text
@@ -653,6 +800,15 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             if self._signal_filter == "missing":
                 if signal_missing_kline(snap):
                     filtered.append(vt)
+            elif self._signal_filter == "fresh":
+                if snap is not None and signal_is_fresh(snap):
+                    filtered.append(vt)
+            elif self._signal_filter == "strong":
+                if snap is not None and signal_is_strong(snap):
+                    filtered.append(vt)
+            elif self._signal_filter == "held":
+                if vt in self._page.position_cache:
+                    filtered.append(vt)
             elif snap is not None and snap.signal == self._signal_filter:
                 filtered.append(vt)
         return filtered
@@ -665,7 +821,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     def _refresh_stats(self) -> None:
         colors = market_colors(theme_manager().tokens())
         warning_color = theme_manager().tokens().semantic_warning
-        buy_n = sell_n = hold_n = missing_n = 0
+        buy_n = sell_n = hold_n = missing_n = fresh_n = strong_n = held_n = 0
         for vt in self._symbols:
             snap = self._page.signal_cache.get(vt)
             if snap is None:
@@ -678,6 +834,12 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
                 sell_n += 1
             elif snap.signal == "hold":
                 hold_n += 1
+            if signal_is_fresh(snap):
+                fresh_n += 1
+            if signal_is_strong(snap):
+                strong_n += 1
+            if vt in self._page.position_cache:
+                held_n += 1
         parts = [f"监控 {len(self._symbols)}/{SIGNAL_PANEL_MAX_SYMBOLS} 只"]
         if self._updated_at:
             parts.append(f"更新 {self._updated_at}")
@@ -687,6 +849,9 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
                 "sell": "卖",
                 "hold": "观望",
                 "missing": "缺日 K",
+                "fresh": "新信号",
+                "strong": f"强≥{int(SIGNAL_STRENGTH_STRONG)}",
+                "held": "已持仓",
             }
             parts.append(f"筛选 {filter_labels.get(self._signal_filter, self._signal_filter)}")
         if missing_n:
@@ -697,6 +862,12 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             parts.append(self._stats_link("sell", f"卖 {sell_n}", colors.fall))
         if hold_n:
             parts.append(self._stats_link("hold", f"观望 {hold_n}", colors.flat))
+        if fresh_n:
+            parts.append(self._stats_link("fresh", f"新信号 {fresh_n}", colors.rise))
+        if strong_n:
+            parts.append(self._stats_link("strong", f"强≥{int(SIGNAL_STRENGTH_STRONG)} {strong_n}", colors.rise))
+        if held_n:
+            parts.append(self._stats_link("held", f"已持仓 {held_n}", colors.flat))
         self._stats_label.setText("  |  ".join(parts))
 
     def _on_stats_filter_link(self, link: str) -> None:
@@ -723,6 +894,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._remove_button,
             self._clear_button,
             self._refresh_button,
+            self._column_button,
             self._ai_button,
             self._ai_scan_button,
             self._table,
