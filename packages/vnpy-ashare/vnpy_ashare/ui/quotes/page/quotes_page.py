@@ -28,17 +28,18 @@ from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge
-from vnpy_ashare.ui.quotes.actions_controller import ActionsController
-from vnpy_ashare.ui.quotes.batch_backtest_controller import WatchlistBatchBacktestController
-from vnpy_ashare.ui.quotes.chart_panel import ChartPanel
-from vnpy_ashare.ui.quotes.data_loader_controller import DataLoaderController
-from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
-from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
-from vnpy_ashare.ui.quotes.local_data_controller import LocalDataController
-from vnpy_ashare.ui.quotes.page_shell import QuotesPageShell
-from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
-from vnpy_ashare.ui.quotes.quote_stream_controller import QuoteStreamController
-from vnpy_ashare.ui.quotes.quotes_config import (
+from vnpy_ashare.ui.quotes.chart import ChartPanel
+from vnpy_ashare.ui.quotes.controllers import (
+    ActionsController,
+    DataLoaderController,
+    LocalDataController,
+    MarketPaginationController,
+    QuoteStreamController,
+    TableController,
+    WatchlistBatchBacktestController,
+    WatchlistController,
+)
+from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
     MARKET_SCROLL_DEBOUNCE_MS,
     PAGE_CONFIGS,
@@ -48,8 +49,8 @@ from vnpy_ashare.ui.quotes.quotes_config import (
     quote_source_label,
     save_market_auto_refresh_pref,
 )
-from vnpy_ashare.ui.quotes.table_controller import TableController
-from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
+from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
+from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,

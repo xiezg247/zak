@@ -9,16 +9,16 @@ from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet
-from vnpy_ashare.ui.quotes.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.quotes.intraday_chart import IntradayChart
-from vnpy_ashare.ui.quotes.ma_legend import MaLegendBar
-from vnpy_ashare.ui.quotes.quotes_chart import (
+from vnpy_ashare.ui.quotes.chart.daily import (
     WATCHLIST_DAILY_BAR_PRESETS,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
     AshareChartWidget,
     create_watchlist_chart,
     prepare_chart_bars,
 )
+from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
+from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
+from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.workers import (
     BarsLoadWorker,
     IntradayBarsWorker,

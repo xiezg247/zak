@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS, quote_table_headers
+
 MAX_DISPLAY_ROWS = 300
 MARKET_PAGE_SIZE = 100
 MARKET_SCROLL_DEBOUNCE_MS = 180
@@ -95,8 +97,6 @@ def quote_refresh_hint(
         return f"行情/五档 WebSocket，图表每 {seconds} 秒刷新（交易时段）"
     return f"行情每 {seconds} 秒自动刷新（交易时段）"
 
-
-from vnpy_ashare.ui.quotes.quote_columns import LOCAL_TABLE_HEADERS, quote_table_headers
 
 TABLE_HEADERS_WITH_LOCAL = quote_table_headers(tail_header="本地")
 TABLE_HEADERS_LOCAL = LOCAL_TABLE_HEADERS

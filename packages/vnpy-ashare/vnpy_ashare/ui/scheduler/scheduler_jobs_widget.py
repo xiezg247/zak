@@ -8,7 +8,7 @@ from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.scheduler import JobStatus, TaskSchedulerManager
 from vnpy_ashare.scheduler.config import AutoScreenJobConfig, JobConfig
 from vnpy_ashare.screener.recipe import list_recipe_catalog
-from vnpy_ashare.ui.quotes.quotes_config import SCHEDULER_UI_FALLBACK_REFRESH_MS
+from vnpy_ashare.ui.quotes.page.config import SCHEDULER_UI_FALLBACK_REFRESH_MS
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_extra import build_scheduler_table_stylesheet

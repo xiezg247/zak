@@ -9,7 +9,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import load_signal_panel_e
 if TYPE_CHECKING:
     from vnpy.trader.ui import QtWidgets
 
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 SIGNAL_PANEL_DEFAULT_HEIGHT = 180
 SIGNAL_PANEL_COLLAPSED_HEIGHT = 32
@@ -33,7 +33,7 @@ def _signal_panel(page: QuotesPage):
 
 
 def _run_output_panel(page: QuotesPage):
-    from vnpy_ashare.ui.quotes.run_log import run_output_panel
+    from vnpy_ashare.ui.quotes.page.run_log import run_output_panel
 
     return run_output_panel(page)
 
@@ -91,7 +91,7 @@ def apply_center_splitter_sizes(page: QuotesPage) -> None:
 
 
 def restore_center_splitter(page: QuotesPage) -> None:
-    from vnpy_ashare.ui.quotes.run_log import load_run_output_expanded, sync_run_output_expansion
+    from vnpy_ashare.ui.quotes.page.run_log import load_run_output_expanded, sync_run_output_expansion
 
     signal_panel = _signal_panel(page)
     if signal_panel is not None:

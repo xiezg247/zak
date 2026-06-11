@@ -8,10 +8,10 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.tickflow_stream import TickflowStreamBridge, can_use_tickflow_stream
-from vnpy_ashare.ui.quotes.quotes_config import STREAM_QUOTE_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.page.config import STREAM_QUOTE_DEBOUNCE_MS
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 class QuoteStreamController:

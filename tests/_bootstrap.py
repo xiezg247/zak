@@ -1,4 +1,4 @@
-"""将项目根目录加入 sys.path，供 skills/、strategies/ 等非包模块测试使用。"""
+"""将项目根目录加入 sys.path，供 skills/、strategies/ 等非 workspace 包模块测试使用。"""
 
 from __future__ import annotations
 

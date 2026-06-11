@@ -63,13 +63,12 @@ ui/quotes/watchlist_signals/
 | 快照模型 | `domain/signal_snapshot.py` | `SignalSnapshot`、缺 K 线 / stale 判定、行排序 |
 | 批量计算 | `services/analysis_service.py` | `batch_strategy_signals()` 并行 map |
 | 自选池 | `storage/app_db.py` | 50 上限、去重 |
-| 页面壳 | `ui/quotes/page_shell.py` | Splitter 装配、多选、加入按钮 |
-| 页面 VM | `ui/quotes/quotes_page.py` | wiring、加入逻辑、行联动 |
-| 日 K 刷新 | `ui/quotes/local_data_controller.py` | 下载/补缺口后 `refresh_symbols` |
+| 页面壳 | `ui/quotes/page/` | QuotesPage、shell、config、run_log |
+| 日 K 刷新 | `ui/quotes/controllers/local_data.py` | 下载/补缺口后 `refresh_symbols` |
 | AI 问句 | `ai/context.py` | `build_signals_ai_prompt()` 对齐快/慢线 |
-| 运行输出 | `ui/quotes/run_log.py` | 折叠持久化，与 splitter 协同 |
+| 运行输出 | `ui/quotes/page/run_log.py` | 折叠持久化，与 splitter 协同 |
 
-旧路径 `watchlist_signal_*.py`、`center_splitter.py` 保留薄 re-export，新代码写入 `watchlist_signals/`。
+模块整理见 `ui/quotes/` 子包（`page/`、`controllers/`、`watchlist_signals/` 等）。
 
 ## 4. 数据流
 

@@ -106,7 +106,8 @@ uv run python scripts/sync_universe.py
 uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
 uv run python scripts/list_bars.py
 uv run python scripts/export_metadata.py
-uv run python -m unittest discover -s tests -v
+uv sync --extra dev
+uv run pytest tests/ -q
 ```
 
 ## 文档

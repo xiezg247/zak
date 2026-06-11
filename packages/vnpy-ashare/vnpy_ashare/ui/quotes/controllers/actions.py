@@ -14,9 +14,9 @@ from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
-from vnpy_ashare.ui.quotes.chart_tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.quotes.quote_columns import format_volume
-from vnpy_ashare.ui.quotes.quotes_config import AI_CONTEXT_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
+from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.table.columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
@@ -24,7 +24,7 @@ from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 class ActionsController:

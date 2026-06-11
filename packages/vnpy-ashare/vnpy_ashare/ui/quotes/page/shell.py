@@ -10,22 +10,18 @@ from vnpy_ashare.data.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-from vnpy_ashare.ui.quotes.chart_panel import ChartPanel
-from vnpy_ashare.ui.quotes.depth_panel import DepthPanel
-from vnpy_ashare.ui.quotes.diagnose_panel import DiagnosePanel
-from vnpy_ashare.ui.quotes.ma_legend import MaLegendBar
-from vnpy_ashare.ui.quotes.market_loading_overlay import MarketTableHost
-from vnpy_ashare.ui.quotes.quote_columns import LOCAL_TABLE_HEADERS
-from vnpy_ashare.ui.quotes.quote_table_model import QuoteTableModel
-from vnpy_ashare.ui.quotes.quotes_chart import create_daily_chart
-from vnpy_ashare.ui.quotes.quotes_config import (
+from vnpy_ashare.ui.quotes.chart import ChartPanel, create_daily_chart
+from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
+from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,
 )
-from vnpy_ashare.ui.quotes.run_log import (
+from vnpy_ashare.ui.quotes.page.run_log import (
     load_run_output_expanded,
     on_run_output_expansion_changed,
 )
+from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
+from vnpy_ashare.ui.quotes.table import LOCAL_TABLE_HEADERS, QuoteTableModel
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalPanel,
     restore_center_splitter,
@@ -35,7 +31,7 @@ from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.theme import theme_manager
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 def _toolbar_separator() -> QtWidgets.QFrame:

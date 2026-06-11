@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.models import StockItem
-from vnpy_ashare.ui.quotes.quote_table_model import QuoteTableModel
+from vnpy_ashare.ui.quotes.table.model import QuoteTableModel
 
 
 class QuoteTableModelTests(unittest.TestCase):
@@ -28,7 +28,7 @@ class QuoteTableModelTests(unittest.TestCase):
         model = QuoteTableModel()
         model.set_headers(["代码", "名称"])
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="茅台")
-        from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
+        from vnpy_ashare.ui.quotes.table.model import QuoteCell
 
         model.set_rows(
             [
@@ -40,7 +40,7 @@ class QuoteTableModelTests(unittest.TestCase):
         self.assertEqual(model.stock_at_row(0), item)
 
     def test_append_rows(self) -> None:
-        from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
+        from vnpy_ashare.ui.quotes.table.model import QuoteCell
 
         model = QuoteTableModel()
         model.set_headers(["代码"])

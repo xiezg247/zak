@@ -2,46 +2,43 @@
 
 from __future__ import annotations
 
-import importlib.util
+import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
-def _load_module(name: str, rel_path: str):
-    path = Path(__file__).resolve().parents[2] / rel_path
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(mod)
-    return mod
+from vnpy_ashare.services import report_sources
+from vnpy_llm.tools import audit as tool_audit
 
 
-def test_report_fallback_flag():
-    mod = _load_module("report_sources_mod", "packages/vnpy-ashare/vnpy_ashare/services/report_sources.py")
-    with patch.dict("os.environ", {"ANALYSIS_REPORT_FALLBACK": "off"}):
-        assert mod.report_fallback_enabled() is False
-    with patch.dict("os.environ", {"ANALYSIS_REPORT_FALLBACK": "tushare"}):
-        assert mod.report_fallback_enabled() is True
+class ReportSourcesTests(unittest.TestCase):
+    def test_report_fallback_flag(self) -> None:
+        with patch.dict("os.environ", {"ANALYSIS_REPORT_FALLBACK": "off"}):
+            self.assertFalse(report_sources.report_fallback_enabled())
+        with patch.dict("os.environ", {"ANALYSIS_REPORT_FALLBACK": "tushare"}):
+            self.assertTrue(report_sources.report_fallback_enabled())
+
+    def test_to_ts_code(self) -> None:
+        self.assertEqual(report_sources.to_ts_code("600000", "SSE"), "600000.SH")
+        self.assertEqual(report_sources.to_ts_code("000001", "SZSE"), "000001.SZ")
 
 
-def test_to_ts_code():
-    mod = _load_module("report_sources_mod2", "packages/vnpy-ashare/vnpy_ashare/services/report_sources.py")
-    assert mod.to_ts_code("600000", "SSE") == "600000.SH"
-    assert mod.to_ts_code("000001", "SZSE") == "000001.SZ"
+class ToolAuditTests(unittest.TestCase):
+    def test_tool_audit_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = Path(tmp_dir) / "test.db"
+            with patch("vnpy_llm.tools.audit.get_app_db_path", return_value=db_path):
+                tool_audit.log_tool_call(
+                    session_id="sess1",
+                    tool_name="technical_snapshot",
+                    arguments={"symbol": "600000.SSE"},
+                    result='{"ok": true}',
+                    success=True,
+                )
+                rows = tool_audit.list_recent_tool_calls(session_id="sess1", limit=5)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["tool_name"], "technical_snapshot")
 
 
-def test_tool_audit_roundtrip(tmp_path, monkeypatch):
-    audit_mod = _load_module("tool_audit_mod", "vnpy_llm/tool_audit.py")
-    db_path = tmp_path / "test.db"
-    monkeypatch.setattr(audit_mod, "get_app_db_path", lambda settings=None: db_path)
-
-    audit_mod.log_tool_call(
-        session_id="sess1",
-        tool_name="technical_snapshot",
-        arguments={"symbol": "600000.SSE"},
-        result='{"ok": true}',
-        success=True,
-    )
-    rows = audit_mod.list_recent_tool_calls(session_id="sess1", limit=5)
-    assert len(rows) == 1
-    assert rows[0]["tool_name"] == "technical_snapshot"
+if __name__ == "__main__":
+    unittest.main()

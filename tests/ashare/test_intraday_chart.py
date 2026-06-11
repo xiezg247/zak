@@ -17,7 +17,7 @@ from vnpy_ashare.domain.market_hours import (
     vwap_price,
 )
 from vnpy_ashare.ui.components.chart_style import FALL_RGB, RISE_RGB
-from vnpy_ashare.ui.quotes.intraday_chart import (
+from vnpy_ashare.ui.quotes.chart.intraday import (
     build_price_segments,
     calc_intraday_avg_prices,
     format_intraday_summary,

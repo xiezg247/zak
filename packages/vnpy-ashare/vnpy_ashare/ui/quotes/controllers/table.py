@@ -19,15 +19,7 @@ from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.domain.quote_time import format_batch_updated_at
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_COLUMN_KEYS
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ui.quotes.market_display import slice_market_display, sort_market_items
-from vnpy_ashare.ui.quotes.quote_columns import (
-    QUOTE_TABLE_COLUMNS,
-    build_local_data_row,
-    build_quote_row,
-    quote_column_index,
-)
-from vnpy_ashare.ui.quotes.quote_table_model import QuoteCell
-from vnpy_ashare.ui.quotes.quotes_config import (
+from vnpy_ashare.ui.quotes.page.config import (
     ALL_TAIL_COLUMNS,
     DEFAULT_WATCHLIST_COLUMNS,
     MARKET_SCROLL_REFRESH_VISIBLE_BUFFER,
@@ -35,12 +27,20 @@ from vnpy_ashare.ui.quotes.quotes_config import (
     MAX_DISPLAY_ROWS,
     STATS_DEBOUNCE_MS,
 )
+from vnpy_ashare.ui.quotes.table.columns import (
+    QUOTE_TABLE_COLUMNS,
+    build_local_data_row,
+    build_quote_row,
+    quote_column_index,
+)
+from vnpy_ashare.ui.quotes.table.display import slice_market_display, sort_market_items
+from vnpy_ashare.ui.quotes.table.model import QuoteCell
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import MarketColors, market_colors
 from vnpy_common.ui.theme.tokens import ThemeTokens
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 STATUS_OK_COLOR = "#3ddc84"
 STATUS_STALE_COLOR = "#f0b429"

@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.ui.quotes.local_data_controller import should_apply_loaded_bars
+from vnpy_ashare.ui.quotes.controllers.local_data import should_apply_loaded_bars
 
 
 class LoadedBarsApplyTests(unittest.TestCase):

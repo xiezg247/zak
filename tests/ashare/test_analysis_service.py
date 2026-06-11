@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import unittest
 from datetime import datetime
 from types import SimpleNamespace
 
-import pytest
+from vnpy_ashare.services.analysis_service import AnalysisService
 
 
 class _FakeBar:
@@ -41,85 +42,76 @@ def _wenda_payload(**extra_fields: str) -> str:
     return json.dumps({"headers": headers, "data": [row]}, ensure_ascii=False)
 
 
-@pytest.fixture
-def analysis_service():
-    import importlib.util
-    from pathlib import Path
+class AnalysisServiceTests(unittest.TestCase):
+    def setUp(self) -> None:
+        engine = SimpleNamespace(
+            bar_service=_FakeBarService(),
+            main_engine=SimpleNamespace(),
+            event_engine=SimpleNamespace(),
+        )
+        self.service = AnalysisService(engine)
 
-    path = Path(__file__).resolve().parents[2] / "packages/vnpy-ashare/vnpy_ashare/services/analysis_service.py"
-    spec = importlib.util.spec_from_file_location("analysis_service_mod", path)
-    mod = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(mod)
+    def test_technical_snapshot(self) -> None:
+        result = self.service.technical_snapshot("600000.SSE", lookback=20)
+        self.assertEqual(result["symbol"], "600000.SSE")
+        self.assertIsNotNone(result["ma"]["ma5"])
+        self.assertIn("ma_alignment", result)
+        self.assertEqual(result["period_return"]["return_pct"], 5.5)
 
-    engine = SimpleNamespace(
-        bar_service=_FakeBarService(),
-        main_engine=SimpleNamespace(),
-        event_engine=SimpleNamespace(),
-    )
-    return mod.AnalysisService(engine)
+    def test_diagnose_with_mock_wenda(self) -> None:
+        def _execute(name: str, args: dict) -> str:
+            question = args.get("question", "")
+            if "MACD" in question:
+                return _wenda_payload(**{"MACD.MACD": "-0.5", "MACD.DIF": "-0.3", "MACD.DEA": "-0.1"})
+            if "市盈率" in question:
+                return _wenda_payload(**{"市盈(动)": "8.5", "加权净资产收益率(ROE)": "12.3"})
+            if "主力" in question:
+                return _wenda_payload(**{"主力净额": "12345678"})
+            return _wenda_payload()
 
+        self.service.bind_mcp(_execute, ["mcp_tdx_tdx_wenda_quotes"])
+        result = self.service.diagnose("600000.SSE", include_reports=False)
+        self.assertEqual(result["symbol"], "600000.SSE")
+        self.assertEqual(result["quote"]["last_price"], 10.5)
+        self.assertEqual(result["technical"]["macd"], -0.5)
+        self.assertEqual(result["fundamental"]["pe_ttm"], 8.5)
+        self.assertEqual(result["capital_flow"]["main_net"], 12345678.0)
+        self.assertIn("tdx_mcp", result["sources"])
 
-def test_technical_snapshot(analysis_service):
-    result = analysis_service.technical_snapshot("600000.SSE", lookback=20)
-    assert result["symbol"] == "600000.SSE"
-    assert result["ma"]["ma5"] is not None
-    assert "ma_alignment" in result
-    assert result["period_return"]["return_pct"] == 5.5
+    def test_pick_mcp_tool(self) -> None:
+        self.service.bind_mcp(None, ["mcp_tdx_tdx_wenda_quotes", "mcp_tdx_stock_quotes"])
+        name = self.service._pick_mcp_tool(("report", "research"))
+        self.assertIsNone(name)
 
+    def test_strategy_signals(self) -> None:
+        result = self.service.strategy_signals("600000.SSE")
+        self.assertEqual(result["strategy"], "AshareDoubleMaStrategy")
+        self.assertIsNotNone(result["current"]["fast_ma"])
+        self.assertIn("disclaimer", result)
 
-def test_diagnose_with_mock_wenda(analysis_service):
-    def _execute(name: str, args: dict) -> str:
-        question = args.get("question", "")
-        if "MACD" in question:
-            return _wenda_payload(**{"MACD.MACD": "-0.5", "MACD.DIF": "-0.3", "MACD.DEA": "-0.1"})
-        if "市盈率" in question:
-            return _wenda_payload(**{"市盈(动)": "8.5", "加权净资产收益率(ROE)": "12.3"})
-        if "主力" in question:
-            return _wenda_payload(**{"主力净额": "12345678"})
-        return _wenda_payload()
-
-    analysis_service.bind_mcp(_execute, ["mcp_tdx_tdx_wenda_quotes"])
-    result = analysis_service.diagnose("600000.SSE", include_reports=False)
-    assert result["symbol"] == "600000.SSE"
-    assert result["quote"]["last_price"] == 10.5
-    assert result["technical"]["macd"] == -0.5
-    assert result["fundamental"]["pe_ttm"] == 8.5
-    assert result["capital_flow"]["main_net"] == 12345678.0
-    assert "tdx_mcp" in result["sources"]
-
-
-def test_pick_mcp_tool(analysis_service):
-    analysis_service.bind_mcp(None, ["mcp_tdx_tdx_wenda_quotes", "mcp_tdx_stock_quotes"])
-    name = analysis_service._pick_mcp_tool(("report", "research"))
-    assert name is None
-
-
-def test_strategy_signals(analysis_service):
-    result = analysis_service.strategy_signals("600000.SSE")
-    assert result["strategy"] == "AshareDoubleMaStrategy"
-    assert result["current"]["fast_ma"] is not None
-    assert "disclaimer" in result
+    def test_historical_pattern_summary(self) -> None:
+        result = self.service.historical_pattern_summary("600000.SSE", lookback=20)
+        self.assertEqual(result["symbol"], "600000.SSE")
+        self.assertIn("return_pct", result)
+        self.assertIn("pattern_label", result)
+        self.assertIn("disclaimer", result)
 
 
-def test_historical_pattern_summary(analysis_service):
-    result = analysis_service.historical_pattern_summary("600000.SSE", lookback=20)
-    assert result["symbol"] == "600000.SSE"
-    assert "return_pct" in result
-    assert "pattern_label" in result
-    assert "disclaimer" in result
+class TdxDiagnoseParseTests(unittest.TestCase):
+    def test_parse_wenda_table(self) -> None:
+        from vnpy_ashare.services.tdx_diagnose import _parse_wenda_table
+
+        raw = json.dumps(
+            {
+                "headers": ["sec_name", "now_price", "MACD.MACD<br>2026.06.08"],
+                "data": [["测试股", "12.34", "-0.88"]],
+            },
+            ensure_ascii=False,
+        )
+        parsed = _parse_wenda_table(raw)
+        self.assertEqual(parsed["fields"]["sec_name"], "测试股")
+        self.assertEqual(parsed["fields"]["MACD.MACD"], "-0.88")
 
 
-def test_parse_wenda_table():
-    from vnpy_ashare.services.tdx_diagnose import _parse_wenda_table
-
-    raw = json.dumps(
-        {
-            "headers": ["sec_name", "now_price", "MACD.MACD<br>2026.06.08"],
-            "data": [["测试股", "12.34", "-0.88"]],
-        },
-        ensure_ascii=False,
-    )
-    parsed = _parse_wenda_table(raw)
-    assert parsed["fields"]["sec_name"] == "测试股"
-    assert parsed["fields"]["MACD.MACD"] == "-0.88"
+if __name__ == "__main__":
+    unittest.main()

@@ -17,7 +17,7 @@ from vnpy_ashare.ui.quotes.workers import (
 )
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 class DataLoaderController:
@@ -80,7 +80,7 @@ class DataLoaderController:
         if page._market_total > 0 and loaded >= page._market_total:
             return
 
-        from vnpy_ashare.ui.quotes.quotes_config import MARKET_SCROLL_LOAD_COOLDOWN_MS
+        from vnpy_ashare.ui.quotes.page.config import MARKET_SCROLL_LOAD_COOLDOWN_MS
 
         now = time.monotonic()
         if now - page._market_last_load_more_at < MARKET_SCROLL_LOAD_COOLDOWN_MS / 1000:

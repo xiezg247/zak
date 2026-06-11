@@ -11,7 +11,7 @@ from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.services.watchlist_service import WATCHLIST_MAX_ITEMS, WatchlistService
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 class WatchlistController:

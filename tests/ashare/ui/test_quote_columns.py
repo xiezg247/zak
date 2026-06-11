@@ -8,7 +8,12 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.models import StockItem
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
-from vnpy_ashare.ui.quotes.quote_columns import build_quote_row, format_amount, format_volume
+from vnpy_ashare.ui.quotes.table.columns import (
+    build_quote_row,
+    format_amount,
+    format_volume,
+    quote_column_index,
+)
 
 
 class TestQuoteColumns(unittest.TestCase):
@@ -38,7 +43,7 @@ class TestQuoteColumns(unittest.TestCase):
         self.assertEqual(values[0], "1")
         self.assertEqual(values[3], "贵州茅台")
         self.assertIn("39.84亿", values)
-        self.assertEqual(values[-2], "15:00:02")
+        self.assertEqual(values[quote_column_index("trade_time")], "15:00:02")
         self.assertEqual(values[-1], "✓")
         self.assertIn(4, colored)
 
@@ -47,7 +52,7 @@ class TestMarketAutoRefreshPref(unittest.TestCase):
     def test_default_is_true_when_unset(self) -> None:
         from vnpy.trader.ui import QtCore
 
-        from vnpy_ashare.ui.quotes.quotes_config import (
+        from vnpy_ashare.ui.quotes.page.config import (
             MARKET_AUTO_REFRESH_DEFAULT,
             MARKET_AUTO_REFRESH_SETTINGS_KEY,
             load_market_auto_refresh_pref,
@@ -61,7 +66,7 @@ class TestMarketAutoRefreshPref(unittest.TestCase):
 
 class TestQuoteRefreshHint(unittest.TestCase):
     def test_refresh_hint(self) -> None:
-        from vnpy_ashare.ui.quotes.quotes_config import (
+        from vnpy_ashare.ui.quotes.page.config import (
             MARKET_QUOTE_REFRESH_MS,
             PAGE_CONFIGS,
             WATCHLIST_QUOTE_REFRESH_MS,
@@ -108,7 +113,7 @@ class TestQuoteRefreshHint(unittest.TestCase):
 
 class TestQuoteSourceLabel(unittest.TestCase):
     def test_quote_source_labels(self) -> None:
-        from vnpy_ashare.ui.quotes.quotes_config import PAGE_CONFIGS, quote_source_label
+        from vnpy_ashare.ui.quotes.page.config import PAGE_CONFIGS, quote_source_label
 
         market = PAGE_CONFIGS["市场"]
         watchlist = PAGE_CONFIGS["自选"]

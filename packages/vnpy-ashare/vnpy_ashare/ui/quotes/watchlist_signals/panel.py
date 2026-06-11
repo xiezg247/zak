@@ -29,7 +29,7 @@ from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 _PANEL_COLUMNS = (
     ("symbol", "代码"),

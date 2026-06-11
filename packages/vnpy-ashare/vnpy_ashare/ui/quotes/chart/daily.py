@@ -10,7 +10,7 @@ from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.components.chart_style import apply_ashare_chart_theme, apply_candle_colors
-from vnpy_ashare.ui.quotes.ma_line_item import register_ma_items
+from vnpy_ashare.ui.quotes.chart.ma_line_item import register_ma_items
 
 MINUTE_BAR_COUNT = 80
 DAILY_BAR_COUNT = 120

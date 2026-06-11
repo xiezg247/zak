@@ -30,9 +30,9 @@ from vnpy_ashare.jobs.local_fill import (
     count_stale_daily_items,
     select_stale_daily_items,
 )
-from vnpy_ashare.ui.quotes.chart_panel import MINUTE_TAB_INDEX
-from vnpy_ashare.ui.quotes.quotes_chart import AshareChartWidget, prepare_chart_bars
-from vnpy_ashare.ui.quotes.run_log import (
+from vnpy_ashare.ui.quotes.chart.daily import AshareChartWidget, prepare_chart_bars
+from vnpy_ashare.ui.quotes.chart.tab_indices import MINUTE_TAB_INDEX
+from vnpy_ashare.ui.quotes.page.run_log import (
     append_run_log,
     begin_run_log,
     complete_run_log,
@@ -51,7 +51,7 @@ from vnpy_ashare.ui.quotes.workers import (
 from vnpy_common.ui.feedback import confirm_action
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 def should_apply_loaded_bars(

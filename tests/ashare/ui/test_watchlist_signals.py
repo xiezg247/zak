@@ -6,7 +6,7 @@ import unittest
 
 import tests._bootstrap  # noqa: F401
 from strategies.registry import list_signal_strategy_metas
-from vnpy_ashare.ui.quotes.watchlist_signal_settings import (
+from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     DEFAULT_CLASS,
     WatchlistSignalConfig,
     load_signal_panel_enabled,
@@ -63,7 +63,7 @@ class SignalPanelSettingsTests(unittest.TestCase):
         self.assertEqual(load_signal_panel_symbols(), ["600000.SSE", "000001.SZSE"])
 
     def test_panel_symbols_respects_max(self) -> None:
-        from vnpy_ashare.ui.quotes.watchlist_signal_settings import (
+        from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
             SIGNAL_PANEL_MAX_SYMBOLS,
             normalize_signal_panel_symbols,
         )
@@ -82,7 +82,7 @@ class SignalPanelSettingsTests(unittest.TestCase):
 
 class RunOutputSettingsTests(unittest.TestCase):
     def test_run_output_expanded_roundtrip(self) -> None:
-        from vnpy_ashare.ui.quotes.run_log import load_run_output_expanded, save_run_output_expanded
+        from vnpy_ashare.ui.quotes.page.run_log import load_run_output_expanded, save_run_output_expanded
 
         save_run_output_expanded("自选", True)
         self.assertTrue(load_run_output_expanded("自选"))

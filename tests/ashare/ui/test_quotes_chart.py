@@ -11,8 +11,7 @@ from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.ui.components.chart_style import FALL_RGB, RISE_RGB
-from vnpy_ashare.ui.quotes.ma_line_item import calc_sma, ma_line_item_class
-from vnpy_ashare.ui.quotes.quotes_chart import (
+from vnpy_ashare.ui.quotes.chart.daily import (
     DAILY_BAR_COUNT,
     MINUTE_BAR_COUNT,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
@@ -24,6 +23,7 @@ from vnpy_ashare.ui.quotes.quotes_chart import (
     create_watchlist_chart,
     prepare_chart_bars,
 )
+from vnpy_ashare.ui.quotes.chart.ma_line_item import calc_sma, ma_line_item_class
 
 
 def _sample_bar() -> BarData:

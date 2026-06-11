@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtCore
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-    from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 

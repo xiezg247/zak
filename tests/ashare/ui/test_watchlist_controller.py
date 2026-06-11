@@ -14,7 +14,7 @@ from vnpy_ashare.app.engine_access import (
     get_watchlist_service,
 )
 from vnpy_ashare.domain.models import StockItem
-from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
+from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
 
 
 class EngineAccessTests(unittest.TestCase):

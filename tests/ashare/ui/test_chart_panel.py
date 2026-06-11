@@ -8,7 +8,8 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.models import StockItem
-from vnpy_ashare.ui.quotes.chart_panel import (
+from vnpy_ashare.ui.quotes.chart.daily import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
+from vnpy_ashare.ui.quotes.chart.panel import (
     DAILY_MISSING_HINT,
     DAILY_TAB_INDEX,
     INTRADAY_EMPTY_HINT,
@@ -23,7 +24,6 @@ from vnpy_ashare.ui.quotes.chart_panel import (
     is_same_minute_request,
     should_apply_minute_bars,
 )
-from vnpy_ashare.ui.quotes.quotes_chart import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
 from vnpy_ashare.ui.workers import BarsLoadWorker, IntradayBarsWorker, MinuteBarsWorker
 from vnpy_common.ui.qt_helpers import retain_thread_until_finished
 

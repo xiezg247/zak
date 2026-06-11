@@ -6,7 +6,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 from vnpy_ashare.ui.workers import IndexQuotesWorker
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager

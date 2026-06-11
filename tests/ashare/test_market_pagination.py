@@ -6,7 +6,7 @@ import unittest
 from types import SimpleNamespace
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.ui.quotes.pagination_controller import MarketPaginationController
+from vnpy_ashare.ui.quotes.controllers.pagination import MarketPaginationController
 
 
 class MarketPaginationVisibilityTests(unittest.TestCase):
