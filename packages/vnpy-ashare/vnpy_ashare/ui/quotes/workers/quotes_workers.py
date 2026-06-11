@@ -41,7 +41,7 @@ from vnpy_ashare.integrations.tickflow import (
     fetch_minute_bars,
 )
 from vnpy_ashare.domain.calendar import last_trading_day
-from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
 from vnpy_ashare.quotes.provider import get_redis_provider

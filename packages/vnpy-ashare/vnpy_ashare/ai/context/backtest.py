@@ -10,9 +10,9 @@ from typing import Any
 
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.quote import AiContextData
 from vnpy_ashare.ai.context.store import get_backtest_summary_dict, set_ai_context
-from vnpy_ashare.ai.ui.floating_actions import enrich_context_with_actions
 from vnpy_ashare.app.engine_access import get_service
 
 

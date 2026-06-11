@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet

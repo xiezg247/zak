@@ -20,7 +20,7 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.data.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS, is_daily_scope, scope_display
 from vnpy_ashare.domain.calendar import last_trading_day
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.jobs.local_fill import (
     BatchFillProgress,
     BatchFillResult,

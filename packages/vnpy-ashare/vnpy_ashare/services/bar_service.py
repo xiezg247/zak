@@ -8,8 +8,7 @@ from typing import Any
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.ai.context import AiContextData, set_ai_context
-from vnpy_ashare.ai.ui.floating_actions import enrich_context_with_actions
+from vnpy_ashare.ai.context import AiContextData, enrich_context_with_actions, set_ai_context
 from vnpy_ashare.data.bar_access import (
     PeriodBarOverview,
     build_symbol_name_map,

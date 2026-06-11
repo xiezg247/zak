@@ -15,7 +15,7 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.domain.board import matches_board
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.quote_time import format_batch_updated_at
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_COLUMN_KEYS
 from vnpy_ashare.quotes import QuoteSnapshot

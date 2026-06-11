@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.config import format_vt_symbol_cn
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.services.watchlist_service import WATCHLIST_MAX_ITEMS, WatchlistService
 
 if TYPE_CHECKING:

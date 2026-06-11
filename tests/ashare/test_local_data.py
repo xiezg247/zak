@@ -10,7 +10,7 @@ from vnpy.trader.constant import Exchange, Interval
 
 from vnpy_ashare.data.bar_store import delete_scope_bars
 from vnpy_ashare.data.bars import cleanup_invalid_daily_bars, load_downloaded_stocks
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS, build_local_data_row
 
 

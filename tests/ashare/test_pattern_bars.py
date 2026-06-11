@@ -12,7 +12,7 @@ from vnpy.trader.object import BarData
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.data.bar_store import PeriodBarOverview, invalidate_bar_overview_cache
 from vnpy_ashare.data.pattern_bars import PATTERN_LOOKBACK_BARS, load_daily_bars_batch, load_daily_bars_tail
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 
 
 class PatternBarsTests(unittest.TestCase):

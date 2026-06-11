@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from concurrent.futures import ThreadPoolExecutor
 
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.quote_time import resolve_trade_time_from_tickflow_row
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 from vnpy_tickflow.client import get_tickflow_client

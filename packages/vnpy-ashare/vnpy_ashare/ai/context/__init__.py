@@ -1,5 +1,6 @@
 """AI 上下文组装与会话 store。"""
 
+from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.backtest import (
     build_backtest_ai_prompt,
     build_backtest_page_context,
@@ -60,6 +61,7 @@ __all__ = [
     "build_signals_ai_prompt",
     "build_stock_completion_items",
     "clear_all",
+    "enrich_context_with_actions",
     "format_backtest_summary_text",
     "format_quote_summary",
     "get_ai_context",

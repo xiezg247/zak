@@ -40,7 +40,7 @@ class QuoteServiceContextTests(unittest.TestCase):
     def test_publish_quote_context_writes_context_store(self) -> None:
         from vnpy.trader.constant import Exchange
 
-        from vnpy_ashare.domain.models import StockItem
+        from vnpy_ashare.domain.symbols import StockItem
 
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         self.service.publish_quote_context(page="自选", item=item, bar_count=120)

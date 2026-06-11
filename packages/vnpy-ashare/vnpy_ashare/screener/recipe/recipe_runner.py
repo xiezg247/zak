@@ -11,7 +11,7 @@ from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
-from vnpy_ashare.screener.dimensions.filters import apply_recipe_filters
+from vnpy_ashare.screener.recipe.filters import apply_recipe_filters
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
 from vnpy_ashare.screener.recipe.recipe import DimensionSpec, ScreenRecipe, resolve_recipe
 from vnpy_ashare.screener.run.export import resolve_export_columns

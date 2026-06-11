@@ -16,12 +16,12 @@ from typing import Any
 from vnpy_ashare.ai.context import (
     AiContextData,
     ScreeningResultContext,
+    enrich_context_with_actions,
     get_market_quotes_cache,
     get_screening_results as _get_screening_results,
     set_ai_context,
     set_screening_results as _set_screening_results,
 )
-from vnpy_ashare.ai.ui.floating_actions import enrich_context_with_actions
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.run.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.pattern.pattern_screen import (

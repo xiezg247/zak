@@ -13,15 +13,15 @@ from vnpy_ashare.ai.context import (
     build_assistant_quick_actions,
     build_floating_stock_quick_actions,
     build_quote_context,
+    enrich_context_with_actions,
     resolve_assistant_stock_binding,
     set_screening_results,
 )
 from vnpy_ashare.ai.ui.floating_actions import (
     build_quick_actions_for_panel,
-    enrich_context_with_actions,
     scene_label_from_context,
 )
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 
 

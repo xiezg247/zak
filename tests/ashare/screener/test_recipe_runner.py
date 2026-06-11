@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from vnpy_ashare.screener.dimensions.base import DimensionHit
-from vnpy_ashare.screener.dimensions.filters import apply_recipe_filters
+from vnpy_ashare.screener.recipe.filters import apply_recipe_filters
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_recipe
 

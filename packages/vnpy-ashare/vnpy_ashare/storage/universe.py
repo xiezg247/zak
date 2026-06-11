@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow.universe import fetch_universe_items
 from vnpy_ashare.storage.app_db import (
     CACHE_MAX_AGE,

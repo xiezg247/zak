@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.domain.models import parse_tickflow_symbol
+from vnpy_ashare.domain.symbols import parse_tickflow_symbol
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score

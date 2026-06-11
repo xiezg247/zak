@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtGui
 
 if TYPE_CHECKING:
-    from vnpy_ashare.domain.models import StockItem
+    from vnpy_ashare.domain.symbols import StockItem
 
 _INVALID_PARENT = QtCore.QModelIndex()
 

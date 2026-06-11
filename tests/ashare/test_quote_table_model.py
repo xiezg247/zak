@@ -7,7 +7,7 @@ import unittest
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.domain.models import StockItem
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.ui.quotes.table.model import QuoteTableModel
 
 

@@ -16,7 +16,7 @@ main_engine.add_app(AshareApp)
 vnpy_ashare/
 ├── app/              # launcher、bootstrap、engine、events、engine_access
 ├── config/           # runtime 常量、schema、bridge、vt_settings
-├── domain/           # models、symbols、numbers、calendar、market_hours
+├── domain/           # symbols、numbers、calendar、market_hours
 ├── integrations/     # 外部 API（Tushare、TickFlow 应用层、MCP；TickFlow SDK 见 vnpy_tickflow）
 ├── data/             # bars、bar_store、bar_health、minute_periods
 ├── storage/          # app_db、universe、trade_calendar_store

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.models import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_tickflow.client import get_tickflow_client
 
 UNIVERSE_ID = "CN_Equity_A"

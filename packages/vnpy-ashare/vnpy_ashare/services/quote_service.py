@@ -4,18 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy.trader.constant import Exchange
-
 from vnpy_ashare.ai.context import (
     AiContextData,
     build_quote_context,
+    enrich_context_with_actions,
     get_ai_context,
     get_market_quotes_cache,
     set_ai_context,
     set_market_quotes_cache,
 )
-from vnpy_ashare.ai.ui.floating_actions import enrich_context_with_actions
-from vnpy_ashare.domain.symbols import StockItem, symbol_exchange_to_tickflow
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.base import BaseService
 
@@ -78,15 +76,3 @@ class QuoteService(BaseService):
 
     def get_market_quotes_cache(self) -> list[dict[str, Any]]:
         return get_market_quotes_cache()
-
-    def get_quote(self, symbol: str, exchange: Exchange, quote_map: dict[str, QuoteSnapshot] | None = None) -> QuoteSnapshot | None:
-        """从行情映射查询快照（需外部提供 quote_map）。"""
-        if quote_map is None:
-            return None
-        tickflow_symbol = symbol_exchange_to_tickflow(symbol, exchange)
-        return quote_map.get(tickflow_symbol)
-
-    def get_market_rank(self, quotes: list[dict[str, Any]], *, top_n: int = 20) -> list[dict[str, Any]]:
-        """从行情列表计算涨幅榜（需外部传入行情列表）。"""
-        sorted_quotes = sorted(quotes, key=lambda q: q.get("change_pct", 0), reverse=True)
-        return sorted_quotes[:top_n]
