@@ -328,10 +328,21 @@ QHeaderView::section {{
     border-right: 1px solid {t.header_border};
     font-size: 12px;
 }}
-QListWidget#BatchSessionListWidget {{
+QWidget#BatchCompareSummaryBar {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
-    border-radius: 4px;
+    border-radius: 6px;
+}}
+QWidget#BatchCompareSessionPanel,
+QWidget#BatchCompareResultPanel {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QListWidget#BatchSessionListWidget {{
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
     outline: none;
     color: {t.run_row_title};
     font-size: 12px;

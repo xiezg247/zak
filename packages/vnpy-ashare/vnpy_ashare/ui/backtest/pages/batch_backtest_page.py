@@ -4,21 +4,48 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy.event import Event, EventEngine
+from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import sync_batch_compare_context
-from vnpy_ashare.app.events import EVENT_OPEN_BACKTEST, BacktestRequest
 from vnpy_ashare.backtest.run_store import (
     BatchBacktestSession,
     delete_batch,
     list_batch_sessions,
     list_runs_by_batch,
 )
-from vnpy_ashare.screener.run.export import export_rows_to_csv
 from vnpy_ashare.ui.backtest.table.batch_backtest_table import BatchBacktestTableWidget, record_to_row
 from vnpy_common.ui.feedback import PageToastHost, confirm_action
+
+_SOURCE_LABELS = {
+    "batch_watchlist": "自选",
+    "batch_screener": "选股",
+}
+
+
+def _strategy_title(class_name: str) -> str:
+    try:
+        from strategies.registry import STRATEGY_REGISTRY
+
+        for meta in STRATEGY_REGISTRY.values():
+            if meta.class_name == class_name:
+                return meta.title
+    except Exception:
+        pass
+    return class_name
+
+
+def _source_label(source: str) -> str:
+    return _SOURCE_LABELS.get(source, source or "—")
+
+
+def _toolbar_separator() -> QtWidgets.QFrame:
+    sep = QtWidgets.QFrame()
+    sep.setObjectName("ToolbarSeparator")
+    sep.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+    sep.setFixedHeight(22)
+    return sep
 
 
 class BatchBacktestPageWidget(QtWidgets.QWidget):
@@ -42,47 +69,58 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         header = QtWidgets.QHBoxLayout()
         title = QtWidgets.QLabel("回测对比")
         title.setObjectName("PageTitle")
+        hint = QtWidgets.QLabel("批量回测结果横向对比 · 按收益与风险指标排序")
+        hint.setObjectName("PageHint")
         header.addWidget(title)
+        header.addSpacing(12)
+        header.addWidget(hint)
         header.addStretch()
         root.addLayout(header)
 
+        self.summary_bar = QtWidgets.QWidget()
+        self.summary_bar.setObjectName("BatchCompareSummaryBar")
+        summary_layout = QtWidgets.QHBoxLayout(self.summary_bar)
+        summary_layout.setContentsMargins(12, 8, 12, 8)
+        summary_layout.setSpacing(16)
+        self._summary_strategy = QtWidgets.QLabel("—")
+        self._summary_strategy.setObjectName("StatsLabel")
+        self._summary_period = QtWidgets.QLabel("—")
+        self._summary_period.setObjectName("StatsLabel")
+        self._summary_counts = QtWidgets.QLabel("—")
+        self._summary_counts.setObjectName("StatsLabel")
+        for label in (self._summary_strategy, self._summary_period, self._summary_counts):
+            summary_layout.addWidget(label)
+        summary_layout.addStretch()
+        self.summary_bar.setVisible(False)
+        root.addWidget(self.summary_bar)
+
         toolbar = QtWidgets.QHBoxLayout()
+        toolbar.setSpacing(8)
         self.refresh_btn = QtWidgets.QPushButton("刷新")
         self.refresh_btn.setObjectName("SecondaryButton")
         self.refresh_btn.clicked.connect(self.refresh_sessions)
         toolbar.addWidget(self.refresh_btn)
-
-        self.open_backtest_btn = QtWidgets.QPushButton("策略回测")
-        self.open_backtest_btn.setObjectName("SecondaryButton")
-        self.open_backtest_btn.clicked.connect(self._open_selected_backtest)
-        self.open_backtest_btn.setEnabled(False)
-        toolbar.addWidget(self.open_backtest_btn)
-
-        self.export_btn = QtWidgets.QPushButton("导出 CSV")
-        self.export_btn.setObjectName("SecondaryButton")
-        self.export_btn.clicked.connect(self._export_csv)
-        self.export_btn.setEnabled(False)
-        toolbar.addWidget(self.export_btn)
-
+        toolbar.addStretch()
+        toolbar.addWidget(_toolbar_separator())
         self.delete_btn = QtWidgets.QPushButton("删除批次")
         self.delete_btn.setObjectName("DangerButton")
         self.delete_btn.clicked.connect(self._delete_current_batch)
         self.delete_btn.setEnabled(False)
         toolbar.addWidget(self.delete_btn)
-
-        toolbar.addStretch()
-        self.summary_label = QtWidgets.QLabel("选择左侧批次查看对比结果")
-        self.summary_label.setObjectName("PageHint")
-        toolbar.addWidget(self.summary_label)
         root.addLayout(toolbar)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(1)
 
         session_panel = QtWidgets.QWidget()
+        session_panel.setObjectName("BatchCompareSessionPanel")
+        session_panel.setMinimumWidth(240)
+        session_panel.setMaximumWidth(300)
         session_layout = QtWidgets.QVBoxLayout(session_panel)
-        session_layout.setContentsMargins(0, 0, 8, 0)
-        session_title = QtWidgets.QLabel("批量回测批次")
+        session_layout.setContentsMargins(12, 10, 12, 10)
+        session_layout.setSpacing(8)
+        session_title = QtWidgets.QLabel("历史批次")
         session_title.setObjectName("ScreenerSectionLabel")
         session_layout.addWidget(session_title)
         self.session_list = QtWidgets.QListWidget()
@@ -91,10 +129,18 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         session_layout.addWidget(self.session_list, stretch=1)
         splitter.addWidget(session_panel)
 
+        result_panel = QtWidgets.QWidget()
+        result_panel.setObjectName("BatchCompareResultPanel")
+        result_layout = QtWidgets.QVBoxLayout(result_panel)
+        result_layout.setContentsMargins(12, 10, 12, 10)
+        result_layout.setSpacing(8)
+        result_title = QtWidgets.QLabel("对比结果")
+        result_title.setObjectName("ScreenerSectionLabel")
+        result_layout.addWidget(result_title)
         self.result_table = BatchBacktestTableWidget()
-        self.result_table.itemSelectionChanged.connect(self._on_table_selection_changed)
-        self.result_table.row_activated.connect(self._open_backtest_for_symbol)
-        splitter.addWidget(self.result_table)
+        result_layout.addWidget(self.result_table, stretch=1)
+        splitter.addWidget(result_panel)
+        splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([260, 900])
         root.addWidget(splitter, stretch=1)
@@ -108,10 +154,22 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         sessions = list_batch_sessions(limit=50)
         selected_row = -1
         for index, session in enumerate(sessions):
-            subtitle = f"{session.success_count}/{session.row_count} 成功 · {session.start_date}~{session.end_date} · {session.created_at[5:16]}"
-            item = QtWidgets.QListWidgetItem(f"{session.strategy}\n{subtitle}")
+            title = _strategy_title(session.strategy)
+            source = _source_label(session.source)
+            line2 = (
+                f"{source} · {session.success_count}/{session.row_count} 成功 · "
+                f"{session.start_date} ~ {session.end_date}"
+            )
+            line3 = session.created_at[5:16]
+            item = QtWidgets.QListWidgetItem(f"{title}\n{line2}\n{line3}")
             item.setData(QtCore.Qt.ItemDataRole.UserRole, session.batch_id)
-            item.setToolTip(f"策略 {session.strategy}\n来源 {session.source} · {session.created_at}\n批次 ID {session.batch_id}")
+            item.setToolTip(
+                f"策略：{title}（{session.strategy}）\n"
+                f"来源：{source}\n"
+                f"区间：{session.start_date} ~ {session.end_date}\n"
+                f"时间：{session.created_at}\n"
+                f"批次 ID：{session.batch_id}"
+            )
             self.session_list.addItem(item)
             if session.batch_id == current_id:
                 selected_row = index
@@ -151,10 +209,8 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         if not batch_id:
             self._current_rows = []
             self.result_table.setRowCount(0)
-            self.summary_label.setText("暂无批量回测记录")
-            self.export_btn.setEnabled(False)
+            self.summary_bar.setVisible(False)
             self.delete_btn.setEnabled(False)
-            self.open_backtest_btn.setEnabled(False)
             sync_batch_compare_context(None, [], self.main_engine)
             return
 
@@ -165,17 +221,21 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
 
         session = self._find_session(batch_id)
         if session is not None:
-            self.summary_label.setText(
-                f"{session.strategy} · {session.row_count} 只 · "
-                f"成功 {session.success_count} · 失败 {session.error_count} · "
-                f"{session.start_date}~{session.end_date}"
+            title = _strategy_title(session.strategy)
+            source = _source_label(session.source)
+            self._summary_strategy.setText(f"策略：{title}")
+            self._summary_period.setText(f"区间：{session.start_date} ~ {session.end_date}")
+            self._summary_counts.setText(
+                f"来源：{source} · 共 {session.row_count} 只 · "
+                f"成功 {session.success_count} · 失败 {session.error_count}"
             )
         else:
-            self.summary_label.setText(f"批次 {batch_id[:8]}… · {len(rows)} 只")
+            self._summary_strategy.setText(f"批次：{batch_id[:8]}…")
+            self._summary_period.setText("—")
+            self._summary_counts.setText(f"共 {len(rows)} 只")
 
-        self.export_btn.setEnabled(bool(rows))
+        self.summary_bar.setVisible(True)
         self.delete_btn.setEnabled(True)
-        self.open_backtest_btn.setEnabled(False)
         sync_batch_compare_context(session, rows, self.main_engine)
 
     def _find_session(self, batch_id: str) -> BatchBacktestSession | None:
@@ -183,41 +243,6 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
             if session.batch_id == batch_id:
                 return session
         return None
-
-    def _on_table_selection_changed(self) -> None:
-        self.open_backtest_btn.setEnabled(self.result_table.selected_vt_symbol() is not None)
-
-    def _open_selected_backtest(self) -> None:
-        vt_symbol = self.result_table.selected_vt_symbol()
-        if vt_symbol:
-            self._open_backtest_for_symbol(vt_symbol)
-
-    def _open_backtest_for_symbol(self, vt_symbol: str) -> None:
-        self.event_engine.put(
-            Event(
-                EVENT_OPEN_BACKTEST,
-                BacktestRequest(
-                    vt_symbol=vt_symbol,
-                    source_page="回测对比",
-                ),
-            )
-        )
-
-    def _export_csv(self) -> None:
-        if not self._current_rows:
-            return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self,
-            "导出批量回测",
-            "batch_backtest_compare.csv",
-            "CSV (*.csv)",
-        )
-        if not path:
-            return
-        if not path.lower().endswith(".csv"):
-            path += ".csv"
-        export_rows_to_csv([row.to_dict() for row in self._current_rows], path)
-        self._toast.success(f"已导出 CSV：{path}")
 
     def _delete_current_batch(self) -> None:
         if not self._current_batch_id:

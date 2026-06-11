@@ -38,9 +38,7 @@ def record_to_row(record: BacktestRunRecord) -> BatchBacktestRow:
 class BatchBacktestTableWidget(QtWidgets.QTableWidget):
     """批量回测结果大表格。"""
 
-    row_activated = QtCore.Signal(str)
-
-    HEADERS = ["代码", "名称", "总收益", "最大回撤", "夏普", "交易次数", "备注"]
+    HEADERS = ["代码", "名称", "总收益", "最大回撤", "夏普", "交易次数", "状态"]
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(0, len(self.HEADERS), parent)
@@ -49,15 +47,16 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
         self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
         self.verticalHeader().setVisible(False)
         header = self.horizontalHeader()
         if hasattr(header, "setStretchHighlightSections"):
             header.setStretchHighlightSections(False)
         header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        for col in (0, 2, 3, 4, 5, 6):
+        header.setSectionResizeMode(6, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        for col in (0, 2, 3, 4, 5):
             header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        self.cellDoubleClicked.connect(self._on_double_click)
 
     def load_rows(self, rows: list[Any]) -> None:
         self.setSortingEnabled(False)
@@ -72,20 +71,27 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
                 self._trade_count_text(row),
                 getattr(row, "error", "") or "—",
             ]
+            error_text = str(getattr(row, "error", "") or "").strip()
+            tokens = theme_manager().tokens()
             for col_index, text in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(text)
-                item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                if col_index == 1:
+                    item.setTextAlignment(
+                        QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
+                    )
+                else:
+                    item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 if col_index == 2:
                     metric = getattr(row, "total_return", None)
                     if isinstance(metric, (int, float)):
-                        color = pct_change_color(float(metric), theme_manager().tokens())
+                        color = pct_change_color(float(metric), tokens)
                         item.setForeground(QtGui.QColor(color))
+                if col_index == 6 and error_text:
+                    item.setForeground(QtGui.QColor(tokens.danger_btn_text))
                 if col_index in (2, 3, 4, 5):
                     metric = self._metric_value(row, col_index)
                     if metric is not None:
                         item.setData(QtCore.Qt.ItemDataRole.UserRole, metric)
-                if col_index == 0:
-                    item.setData(QtCore.Qt.ItemDataRole.UserRole + 1, getattr(row, "vt_symbol", ""))
                 self.setItem(row_index, col_index, item)
         self.setSortingEnabled(True)
 
@@ -114,20 +120,3 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
             return "—"
         return f"{value:.2f}"
 
-    def selected_vt_symbol(self) -> str | None:
-        row = self.currentRow()
-        if row < 0:
-            return None
-        item = self.item(row, 0)
-        if item is None:
-            return None
-        data = item.data(QtCore.Qt.ItemDataRole.UserRole + 1)
-        return str(data) if data else None
-
-    def _on_double_click(self, row: int, _col: int) -> None:
-        item = self.item(row, 0)
-        if item is None:
-            return
-        vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole + 1)
-        if vt_symbol:
-            self.row_activated.emit(str(vt_symbol))

@@ -168,57 +168,41 @@ def load_batch_backtest_defaults() -> BatchBacktestParams:
     )
 
 
+def _ensure_backtest_app(main_engine) -> None:
+    """自选/选股页批量回测时，回测 App 可能尚未延迟注册。"""
+    from vnpy_ctabacktester.engine import APP_NAME, BacktesterEngine
+
+    engine = main_engine.get_engine(APP_NAME)
+    if isinstance(engine, BacktesterEngine):
+        return
+    from vnpy_ashare.backtest.app import AshareCtaBacktesterApp
+
+    main_engine.add_app(AshareCtaBacktesterApp)
+
+
 def run_batch_backtests(
     main_engine,
     rows: list[dict[str, Any]],
     params: BatchBacktestParams,
 ) -> list[BatchBacktestRow]:
-    """批量回测：多标的时进程池并行，单标的走 MainEngine 回测引擎。"""
-    from vnpy_ctabacktester.engine import APP_NAME, BacktesterEngine
-
-    engine = main_engine.get_engine(APP_NAME)
-    if not isinstance(engine, BacktesterEngine):
-        raise RuntimeError("回测引擎未加载")
+    """批量回测：统一走独立 BacktestingEngine（多标的时进程池并行）。"""
+    _ensure_backtest_app(main_engine)
 
     items = rows_to_stock_items(rows)
     if not items:
         return []
 
     setting: dict[str, Any] = dict(params.strategy_setting or {})
+    tasks = [
+        task_from_params(item, params, class_name=params.class_name, setting=setting) for item in items
+    ]
     workers = batch_backtest_max_workers(item_count=len(items))
     if workers > 1:
-        tasks = [task_from_params(item, params, class_name=params.class_name, setting=setting) for item in items]
         with ProcessPoolExecutor(max_workers=workers) as pool:
             payloads = list(pool.map(run_single_backtest_task, tasks, chunksize=1))
-        return [_batch_row_from_payload(payload) for payload in payloads]
-
-    results: list[BatchBacktestRow] = []
-    for item in items:
-        row = BatchBacktestRow(vt_symbol=item.vt_symbol, name=item.name)
-        try:
-            engine.run_backtesting(
-                params.class_name,
-                item.vt_symbol,
-                params.interval,
-                params.start,
-                params.end,
-                params.rate,
-                params.slippage,
-                params.size,
-                params.pricetick,
-                params.capital,
-                setting,
-            )
-            stats = engine.get_result_statistics() or {}
-            row.total_return = _to_float(stats.get("total_return"))
-            row.max_drawdown = _to_float(stats.get("max_drawdown"))
-            row.sharpe_ratio = _to_float(stats.get("sharpe_ratio"))
-            trade_count = stats.get("total_trade_count")
-            row.total_trade_count = int(trade_count) if trade_count is not None else None
-        except Exception as ex:
-            row.error = str(ex)
-        results.append(row)
-    return results
+    else:
+        payloads = [run_single_backtest_task(task) for task in tasks]
+    return [_batch_row_from_payload(payload) for payload in payloads]
 
 
 def _batch_row_from_payload(payload: dict[str, Any]) -> BatchBacktestRow:

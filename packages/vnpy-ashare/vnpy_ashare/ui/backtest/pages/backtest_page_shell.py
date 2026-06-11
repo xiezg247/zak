@@ -74,10 +74,6 @@ class BacktestPageShell:
         header.addSpacing(12)
         header.addWidget(hint)
         header.addStretch()
-        if hasattr(page, "strategy_guide_button"):
-            header.addWidget(page.strategy_guide_button)
-        if hasattr(page, "ask_ai_button"):
-            header.addWidget(page.ask_ai_button)
         root.addLayout(header)
 
         toolbar = QtWidgets.QHBoxLayout()
@@ -93,6 +89,10 @@ class BacktestPageShell:
         ):
             btn.setObjectName("SecondaryButton")
             toolbar.addWidget(btn)
+        if hasattr(page, "ask_ai_button"):
+            toolbar.addWidget(_toolbar_separator())
+            page.ask_ai_button.setObjectName("SecondaryButton")
+            toolbar.addWidget(page.ask_ai_button)
         toolbar.addStretch()
         _add_more_menu(
             toolbar,

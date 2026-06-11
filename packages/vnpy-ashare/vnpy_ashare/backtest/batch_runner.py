@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import sys
 import traceback
 from dataclasses import dataclass
 from datetime import datetime
@@ -11,9 +12,10 @@ from typing import Any
 
 from vnpy.trader.constant import Interval
 
-from vnpy_common.paths import PROJECT_ROOT
+from vnpy_common.paths import PROJECT_ROOT, resolve_project_root
 
 _STRATEGY_PRIORITY = ("ashare_template.py",)
+_WORKER_BOOTSTRAPPED = False
 _STRATEGY_SKIP = frozenset({"__init__", "registry", "signals"})
 
 
@@ -45,6 +47,26 @@ def batch_backtest_max_workers(*, item_count: int) -> int:
     configured = max(1, min(configured, 8))
     cpu = os.cpu_count() or 1
     return min(configured, item_count, cpu)
+
+
+def _ensure_worker_runtime() -> None:
+    """子进程 spawn 后补齐项目根路径与 vnpy 数据库配置。"""
+    global _WORKER_BOOTSTRAPPED
+    if _WORKER_BOOTSTRAPPED:
+        return
+    root = resolve_project_root()
+    os.environ.setdefault("ZAK_PROJECT_ROOT", str(root))
+    root_text = str(root)
+    if root_text not in sys.path:
+        sys.path.insert(0, root_text)
+    os.chdir(root)
+    try:
+        from vnpy_ashare.config.vt_settings import reload_vnpy_settings
+
+        reload_vnpy_settings()
+    except Exception:
+        pass
+    _WORKER_BOOTSTRAPPED = True
 
 
 def resolve_strategy_class(class_name: str) -> type:
@@ -83,9 +105,10 @@ def _load_strategy_from_module(module_stem: str, class_name: str) -> type | None
 
 
 def run_single_backtest_task(task: BacktestTask) -> dict[str, Any]:
-    """在子进程中执行单标的回测，返回 BatchBacktestRow 字段结构的 dict。"""
+    """在子进程或主线程执行单标的回测，返回 BatchBacktestRow 字段结构的 dict。"""
     from vnpy_ctastrategy.backtesting import BacktestingEngine, BacktestingMode
 
+    _ensure_worker_runtime()
     row: dict[str, Any] = {
         "vt_symbol": task.vt_symbol,
         "name": task.name,
@@ -117,6 +140,7 @@ def run_single_backtest_task(task: BacktestTask) -> dict[str, Any]:
             row["error"] = "历史数据为空"
             return row
         engine.run_backtesting()
+        engine.calculate_result()
         stats = engine.calculate_statistics(output=False) or {}
         row["total_return"] = _to_float(stats.get("total_return"))
         row["max_drawdown"] = _to_float(stats.get("max_drawdown"))
