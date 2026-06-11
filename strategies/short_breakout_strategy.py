@@ -50,12 +50,14 @@ class AshareShortBreakoutStrategy(AShareTemplate):
         "bars_held",
     ]
 
+    def indicator_warmup_bars(self) -> int:
+        return max(self.slow_window, self.breakout_lookback) + 10
+
     def on_init(self) -> None:
         self.write_log("A股短线放量突破策略初始化")
         self.bg = BarGenerator(self.on_bar)
-        self.am = ArrayManager()
-        warmup = max(self.slow_window, self.breakout_lookback) + 10
-        self.load_bar(warmup)
+        self.am = self.init_array_manager()
+        self.load_indicator_bars()
 
     def on_start(self) -> None:
         self.write_log("策略启动")

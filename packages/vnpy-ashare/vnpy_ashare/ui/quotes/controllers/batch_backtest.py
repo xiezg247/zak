@@ -51,15 +51,25 @@ class WatchlistBatchBacktestController:
         if self._flow is not None:
             self._flow.release_worker(retired, timeout_ms=0)
 
+    def _watchlist_pool_empty(self) -> bool:
+        page = self._page
+        service = page._get_watchlist_service()
+        if service is not None and service.get_items():
+            return False
+        return not (page.page_name == "自选" and page.all_stocks)
+
     def collect_watchlist_rows(self) -> list[dict[str, str]]:
         page = self._page
+        if page.page_name == "自选":
+            selected = page._table.selected_items()
+            if selected:
+                return stock_items_to_batch_rows(selected)
+            return []
         service = page._get_watchlist_service()
         if service is not None:
             items = service.get_items()
             if items:
                 return watchlist_items_to_rows(items)
-        if page.page_name == "自选" and page.all_stocks:
-            return stock_items_to_batch_rows(page.all_stocks)
         return []
 
     def update_action_buttons(self) -> None:
@@ -68,12 +78,17 @@ class WatchlistBatchBacktestController:
             return
         button = page.batch_backtest_button
         running = self._flow is not None and self._flow.is_running()
-        button.setEnabled(not running and bool(self.collect_watchlist_rows()))
+        pool_empty = self._watchlist_pool_empty()
+        has_selection = bool(page._table.selected_items()) if page.page_name == "自选" else bool(self.collect_watchlist_rows())
+        button.setEnabled(not running and not pool_empty and has_selection)
 
     def run_batch_backtest(self) -> None:
+        if self._watchlist_pool_empty():
+            self._page._toast.warning("自选池为空，请先添加标的")
+            return
         rows = self.collect_watchlist_rows()
         if not rows:
-            self._page._toast.warning("自选池为空，请先添加标的")
+            self._page._toast.warning("请先在自选表中选择要批量回测的标的")
             return
         begin_run_log(self._page, f"批量回测 · {len(rows)} 只")
         flow = self._get_flow()

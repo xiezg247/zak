@@ -51,8 +51,8 @@ class AshareSwingMaStrategy(AShareTemplate):
     def on_init(self) -> None:
         self.write_log("A股波段回踩均线策略初始化")
         self.bg = BarGenerator(self.on_bar)
-        self.am = ArrayManager()
-        self.load_bar(max(self.fast_window, self.slow_window) + 10)
+        self.am = self.init_array_manager()
+        self.load_indicator_bars()
 
     def on_start(self) -> None:
         self.write_log("策略启动")
