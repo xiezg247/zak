@@ -22,6 +22,7 @@ from vnpy_ashare.ui.quotes.page.run_log import (
 )
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
 from vnpy_ashare.ui.quotes.table import LOCAL_TABLE_HEADERS, QuoteTableModel
+from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalPanel,
     bind_center_splitter_persistence,
@@ -200,6 +201,11 @@ class QuotesPageShell:
         page.add_signal_panel_button.clicked.connect(page.add_selection_to_signal_panel)
         page.add_signal_panel_button.setVisible(page.config.show_watchlist_signals)
 
+        page.register_position_button = QtWidgets.QPushButton("登记持仓", page)
+        page.register_position_button.setObjectName("SecondaryButton")
+        page.register_position_button.clicked.connect(page.register_position_for_selected)
+        page.register_position_button.setVisible(page.config.show_watchlist_positions)
+
         page.diagnose_button = QtWidgets.QPushButton("诊断", page)
         page.diagnose_button.clicked.connect(page._actions.run_diagnose_for_selected)
         page.diagnose_button.setEnabled(False)
@@ -284,6 +290,8 @@ class QuotesPageShell:
             more_actions.append(("批量回测", page.batch_backtest_button))
         if page.config.show_watchlist_signals:
             toolbar.addWidget(page.add_signal_panel_button)
+        if page.config.show_watchlist_positions:
+            toolbar.addWidget(page.register_position_button)
         if page.config.show_diagnose_button:
             toolbar.addWidget(page.diagnose_button)
         if page.config.column_configurable:
@@ -443,7 +451,11 @@ class QuotesPageShell:
                 page.market_table,
                 external_scrollbar=False,
             )
-            use_center_split = page.config.show_watchlist_signals or page.config.show_run_output_panel
+            use_center_split = (
+                page.config.show_watchlist_signals
+                or page.config.show_watchlist_positions
+                or page.config.show_run_output_panel
+            )
             if use_center_split:
                 center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
                 configure_center_splitter(center_split)
@@ -452,6 +464,10 @@ class QuotesPageShell:
                 if page.config.show_watchlist_signals:
                     page.signal_panel = WatchlistSignalPanel(page)
                     center_split.addWidget(page.signal_panel)
+                    split_index += 1
+                if page.config.show_watchlist_positions:
+                    page.position_panel = WatchlistPositionPanel(page)
+                    center_split.addWidget(page.position_panel)
                     split_index += 1
                 if page.config.show_run_output_panel:
                     run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
@@ -475,6 +491,8 @@ class QuotesPageShell:
                 center_layout.addWidget(page._market_table_host, stretch=1)
             if page.config.show_watchlist_signals:
                 page._wire_signal_panel()
+            if page.config.show_watchlist_positions:
+                page._wire_position_panel()
             splitter.addWidget(center_widget)
 
             right_widget = QtWidgets.QWidget()

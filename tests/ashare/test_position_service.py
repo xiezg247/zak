@@ -1,0 +1,101 @@
+"""持仓 Service 与 app_db 测试。"""
+
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+from vnpy.trader.constant import Exchange
+
+import tests._bootstrap  # noqa: F401
+from vnpy_ashare.services.position_service import PositionService
+from vnpy_ashare.storage import app_db
+
+
+class PositionServiceTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.db_path = Path(self._tmp.name)
+        self._patcher = patch("vnpy_ashare.storage.app_db.get_app_db_path", return_value=self.db_path)
+        self._patcher.start()
+        app_db.init_app_db()
+        app_db.add_watchlist_item("600000", Exchange.SSE, "浦发银行")
+        engine = Mock()
+        engine.main_engine = None
+        engine.event_engine = None
+        self.service = PositionService(engine)
+
+    def tearDown(self) -> None:
+        self._patcher.stop()
+        self.db_path.unlink(missing_ok=True)
+
+    def test_add_and_remove_position(self) -> None:
+        self.assertTrue(
+            self.service.add(
+                "600000",
+                Exchange.SSE,
+                cost_price=10.5,
+                volume=100,
+                buy_date="2026-06-01",
+            )
+        )
+        items = self.service.get_items()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].volume, 100)
+        self.assertTrue(self.service.remove("600000", Exchange.SSE))
+        self.assertEqual(self.service.get_items(), [])
+
+    def test_requires_watchlist_membership(self) -> None:
+        self.assertFalse(
+            self.service.add(
+                "600519",
+                Exchange.SSE,
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+            )
+        )
+        self.assertEqual(self.service.add_failure_reason("600519", Exchange.SSE), "not_in_watchlist")
+
+    def test_normalize_volume_on_add(self) -> None:
+        self.assertTrue(
+            self.service.add(
+                "600000",
+                Exchange.SSE,
+                cost_price=10.0,
+                volume=150,
+                buy_date="2026-06-01",
+            )
+        )
+        self.assertEqual(self.service.get_items()[0].volume, 100)
+
+    def test_position_max_items(self) -> None:
+        for index in range(app_db.POSITION_MAX_ITEMS):
+            symbol = f"{600001 + index}"
+            app_db.add_watchlist_item(symbol, Exchange.SSE, f"测试{index}")
+            self.assertTrue(
+                self.service.add(
+                    symbol,
+                    Exchange.SSE,
+                    cost_price=10.0,
+                    volume=100,
+                    buy_date="2026-06-01",
+                )
+            )
+        self.assertTrue(self.service.at_capacity())
+        app_db.add_watchlist_item("999999", Exchange.SSE, "溢出")
+        self.assertFalse(
+            self.service.add(
+                "999999",
+                Exchange.SSE,
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+            )
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

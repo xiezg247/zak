@@ -16,6 +16,7 @@ from vnpy_common.paths import get_app_db_path
 UNIVERSE_SYNCED_AT_KEY = "universe_synced_at"
 CACHE_MAX_AGE = timedelta(days=7)
 WATCHLIST_MAX_ITEMS = 50
+POSITION_MAX_ITEMS = 20
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -28,6 +29,20 @@ CREATE TABLE IF NOT EXISTS watchlist (
     exchange TEXT NOT NULL,
     name TEXT NOT NULL DEFAULT '',
     sort_order INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (symbol, exchange)
+);
+
+CREATE TABLE IF NOT EXISTS watchlist_positions (
+    symbol TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    cost_price REAL NOT NULL,
+    volume INTEGER NOT NULL,
+    buy_date TEXT NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'manual',
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
     PRIMARY KEY (symbol, exchange)
 );
 
@@ -455,3 +470,152 @@ def universe_is_fresh(max_age: timedelta = CACHE_MAX_AGE) -> bool:
         return False
     synced_at = datetime.fromisoformat(synced_at_raw)
     return datetime.now() - synced_at < max_age
+
+
+def _now_iso() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def _row_to_position(row: sqlite3.Row) -> dict[str, str | float | int]:
+    return {
+        "symbol": row["symbol"],
+        "exchange": row["exchange"],
+        "cost_price": float(row["cost_price"]),
+        "volume": int(row["volume"]),
+        "buy_date": row["buy_date"],
+        "notes": row["notes"] or "",
+        "source": row["source"] or "manual",
+        "sort_order": int(row["sort_order"]),
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def load_position_rows() -> list[dict[str, str | float | int]]:
+    init_app_db()
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at "
+            "FROM watchlist_positions ORDER BY sort_order, symbol"
+        ).fetchall()
+    return [_row_to_position(row) for row in rows]
+
+
+def position_item_count() -> int:
+    init_app_db()
+    with _connect() as conn:
+        return int(conn.execute("SELECT COUNT(*) FROM watchlist_positions").fetchone()[0])
+
+
+def position_at_capacity() -> bool:
+    return position_item_count() >= POSITION_MAX_ITEMS
+
+
+def position_contains(symbol: str, exchange: Exchange) -> bool:
+    init_app_db()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM watchlist_positions WHERE symbol = ? AND exchange = ?",
+            (symbol, exchange.name),
+        ).fetchone()
+    return row is not None
+
+
+def position_add_failure_reason(symbol: str, exchange: Exchange) -> Literal["duplicate", "full", "not_in_watchlist"] | None:
+    if position_contains(symbol, exchange):
+        return "duplicate"
+    if position_at_capacity():
+        return "full"
+    if not watchlist_contains(symbol, exchange):
+        return "not_in_watchlist"
+    return None
+
+
+def add_position_item(
+    symbol: str,
+    exchange: Exchange,
+    *,
+    cost_price: float,
+    volume: int,
+    buy_date: str,
+    notes: str = "",
+    source: str = "manual",
+) -> bool:
+    if position_add_failure_reason(symbol, exchange) is not None:
+        return False
+    if cost_price <= 0 or volume <= 0:
+        return False
+    now = _now_iso()
+    init_app_db()
+    with _connect() as conn:
+        sort_order = conn.execute("SELECT COUNT(*) FROM watchlist_positions").fetchone()[0]
+        conn.execute(
+            "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (symbol, exchange.name, cost_price, volume, buy_date, notes, source, sort_order, now, now),
+        )
+    return True
+
+
+def update_position_item(
+    symbol: str,
+    exchange: Exchange,
+    *,
+    cost_price: float,
+    volume: int,
+    buy_date: str,
+    notes: str = "",
+) -> bool:
+    if not position_contains(symbol, exchange):
+        return False
+    if cost_price <= 0 or volume <= 0:
+        return False
+    now = _now_iso()
+    init_app_db()
+    with _connect() as conn:
+        cursor = conn.execute(
+            "UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, updated_at = ? "
+            "WHERE symbol = ? AND exchange = ?",
+            (cost_price, volume, buy_date, notes, now, symbol, exchange.name),
+        )
+        return cursor.rowcount > 0
+
+
+def remove_position_item(symbol: str, exchange: Exchange) -> bool:
+    init_app_db()
+    with _connect() as conn:
+        cursor = conn.execute(
+            "DELETE FROM watchlist_positions WHERE symbol = ? AND exchange = ?",
+            (symbol, exchange.name),
+        )
+        if cursor.rowcount == 0:
+            return False
+        rows = conn.execute(
+            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at "
+            "FROM watchlist_positions ORDER BY sort_order, symbol"
+        ).fetchall()
+        conn.execute("DELETE FROM watchlist_positions")
+        for index, row in enumerate(rows):
+            conn.execute(
+                "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    row["symbol"],
+                    row["exchange"],
+                    row["cost_price"],
+                    row["volume"],
+                    row["buy_date"],
+                    row["notes"],
+                    row["source"],
+                    index,
+                    row["created_at"],
+                    row["updated_at"],
+                ),
+            )
+    return True
+
+
+def clear_positions() -> None:
+    init_app_db()
+    with _connect() as conn:
+        conn.execute("DELETE FROM watchlist_positions")

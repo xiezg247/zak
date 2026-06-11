@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from vnpy.trader.constant import Exchange
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.domain.symbols import StockItem
@@ -85,6 +86,21 @@ class WatchlistController:
             return
 
         item = self._page.current_item
+        position_service = self._page._get_position_service()
+        if position_service is not None and position_service.contains(item.symbol, item.exchange):
+            answer = QtWidgets.QMessageBox.question(
+                self._page,
+                "移出自选",
+                f"{format_vt_symbol_cn(item.symbol, item.exchange)} 仍有持仓记录，是否一并移出？",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if answer == QtWidgets.QMessageBox.StandardButton.Yes:
+                position_service.remove(item.symbol, item.exchange)
+                self._page.position_cache.pop(item.vt_symbol, None)
+                panel = getattr(self._page, "position_panel", None)
+                if panel is not None:
+                    panel.render()
         if not service.remove(item.symbol, item.exchange):
             self._page.status_label.setText("移出失败：标的不在自选池")
             return

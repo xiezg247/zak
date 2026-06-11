@@ -7,7 +7,11 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context import build_diagnose_ai_prompt, build_signals_ai_prompt
+from vnpy_ashare.ai.context import (
+    build_diagnose_ai_prompt,
+    build_positions_ai_prompt,
+    build_signals_ai_prompt,
+)
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
@@ -363,6 +367,29 @@ class ActionsController:
         assert item is not None
         self._ask_ai(f'请分析 {title} 的近期技术形态。请调用 technical_snapshot(symbol="{item.vt_symbol}")，基于工具返回的均线、量比、区间涨跌等数据做解读。')
 
+    def ask_ai_for_positions(self) -> None:
+        page = self._p
+        item = page.current_item
+        if item is None:
+            return
+        quote = page.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        cfg = page.signal_config.normalized()
+        snap = page.position_cache.get(item.vt_symbol)
+        self._ask_ai(
+            build_positions_ai_prompt(
+                item.vt_symbol,
+                name,
+                class_name=cfg.class_name,
+                fast_window=cfg.fast_window,
+                slow_window=cfg.slow_window,
+                cost_price=snap.cost_price if snap is not None else None,
+                volume=snap.volume if snap is not None else None,
+                unrealized_pnl_pct=snap.unrealized_pnl_pct if snap is not None else None,
+                t1_locked=snap.t1_locked if snap is not None else None,
+            )
+        )
+
     def ask_ai_for_signals(self) -> None:
         page = self._p
         title = self._item_title()
@@ -453,6 +480,10 @@ class ActionsController:
         ai_menu.addAction("综合诊断", self.ask_ai_for_diagnose)
         ai_menu.addAction("技术形态", self.ask_ai_for_technical)
         ai_menu.addAction("双均线信号", self.ask_ai_for_signals)
+        if page.page_name == "自选" and page.config.show_watchlist_positions:
+            position_service = page._get_position_service()
+            if position_service is not None and position_service.contains(item.symbol, item.exchange):
+                ai_menu.addAction("持仓策略", self.ask_ai_for_positions)
         ai_menu.addAction("近期走势", self.ask_ai_for_trend)
         menu.addSeparator()
 

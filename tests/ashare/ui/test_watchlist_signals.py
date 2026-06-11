@@ -322,14 +322,18 @@ class CenterSplitterSizeTests(unittest.TestCase):
         )
 
         self.assertEqual(SIGNAL_PANEL_DEFAULT_HEIGHT, 240)
-        table_h, signal_h, run_h = compute_center_splitter_sizes(
+        sizes = compute_center_splitter_sizes(
             900,
+            has_signal_panel=True,
             signal_expanded=True,
+            has_position_panel=False,
+            position_expanded=False,
+            has_run_output=True,
             run_expanded=False,
         )
-        self.assertEqual(signal_h, 240)
-        self.assertEqual(run_h, 32)
-        self.assertEqual(table_h, 628)
+        self.assertEqual(sizes["signal"], 240)
+        self.assertEqual(sizes["run"], 32)
+        self.assertEqual(sizes["table"], 628)
 
     def test_center_splitter_sizes_roundtrip(self) -> None:
         from vnpy_ashare.ui.quotes.watchlist_signals.settings import (

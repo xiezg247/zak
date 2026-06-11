@@ -143,6 +143,7 @@ class PageConfig:
     hide_quote_header: bool = False
     column_configurable: bool = False
     show_watchlist_signals: bool = False
+    show_watchlist_positions: bool = False
     search_max_width: int = 280
 
 
@@ -227,8 +228,9 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_diagnose_button=True,
         show_diagnose_panel=False,
         show_batch_backtest_button=True,
-        show_run_output_panel=True,
+        show_run_output_panel=False,
         show_watchlist_signals=True,
+        show_watchlist_positions=True,
     ),
     "本地": PageConfig(
         title="本地",

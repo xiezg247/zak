@@ -56,6 +56,25 @@ class TestAiContext(unittest.TestCase):
         self.assertIn("fast_window=8", prompt)
         self.assertIn("slow_window=21", prompt)
 
+    def test_build_positions_ai_prompt_includes_context(self) -> None:
+        from vnpy_ashare.ai.context import build_positions_ai_prompt
+
+        prompt = build_positions_ai_prompt(
+            "600000.SSE",
+            "浦发银行",
+            fast_window=10,
+            slow_window=20,
+            cost_price=10.5,
+            volume=100,
+            unrealized_pnl_pct=3.2,
+            t1_locked=False,
+        )
+        self.assertIn("list_watchlist_positions", prompt)
+        self.assertIn("list_strategy_signals", prompt)
+        self.assertIn("10.50", prompt)
+        self.assertIn("浮盈 +3.20%", prompt)
+        self.assertIn("可卖", prompt)
+
 
 if __name__ == "__main__":
     unittest.main()

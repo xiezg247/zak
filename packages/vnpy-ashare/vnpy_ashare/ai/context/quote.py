@@ -11,7 +11,7 @@ from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE, exchange_to_cn
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.storage.app_db import load_watchlist_rows
+from vnpy_ashare.storage.app_db import load_watchlist_rows, position_contains
 from vnpy_common.ai.protocol import AiContextData, QuickAction, StockCompletionItem
 
 
@@ -161,6 +161,42 @@ def build_signals_ai_prompt(
         f'请调用 list_strategy_signals(symbol="{vt_symbol}", class_name="{class_name}", '
         f"fast_window={fast}, slow_window={slow})，"
         "基于工具返回的金叉/死叉信号和当前均线状态做解读。"
+    )
+
+
+def build_positions_ai_prompt(
+    vt_symbol: str,
+    name: str = "",
+    *,
+    class_name: str = "AshareDoubleMaStrategy",
+    fast_window: int = 10,
+    slow_window: int = 20,
+    cost_price: float | None = None,
+    volume: int | None = None,
+    unrealized_pnl_pct: float | None = None,
+    t1_locked: bool | None = None,
+) -> str:
+    """生成持仓策略分析预填文案（list_strategy_signals + list_watchlist_positions）。"""
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    fast = max(2, int(fast_window or 10))
+    slow = max(fast + 1, int(slow_window or 20))
+    context_parts: list[str] = []
+    if cost_price is not None:
+        context_parts.append(f"记账成本价 {cost_price:.2f} 元")
+    if volume is not None:
+        context_parts.append(f"持仓量 {volume} 股")
+    if unrealized_pnl_pct is not None:
+        context_parts.append(f"浮盈 {unrealized_pnl_pct:+.2f}%")
+    if t1_locked is not None:
+        context_parts.append("T+1 锁定" if t1_locked else "可卖（非 T+1 锁定）")
+    context_line = f"已知持仓：{'；'.join(context_parts)}。" if context_parts else ""
+    return (
+        f"请从持仓策略角度分析 {title} 的退出时机与风险。"
+        f"{context_line}"
+        f'请先调用 list_watchlist_positions() 核对记账持仓，再调用 list_strategy_signals('
+        f'symbol="{vt_symbol}", class_name="{class_name}", fast_window={fast}, slow_window={slow}) '
+        "获取双均线退出信号。"
+        "结合持仓成本、浮盈与策略信号做研究解读，禁止给出具体买卖价或仓位建议。"
     )
 
 
@@ -386,6 +422,16 @@ def build_add_watchlist_prompt(vt_symbol: str, name: str = "") -> str:
     return f'请将 {title} 加入自选池。请调用 add_to_watchlist(symbol="{vt_symbol}")，根据工具返回告知是否成功。'
 
 
+def is_symbol_in_positions(vt_symbol: str) -> bool:
+    """判断标的是否已登记持仓记账。"""
+    from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+
+    item = parse_stock_symbol(vt_symbol)
+    if item is None:
+        return False
+    return position_contains(item.symbol, item.exchange)
+
+
 def is_symbol_in_watchlist(symbol: str, exchange_cn: str = "") -> bool:
     """判断标的是否已在自选池。"""
     if not symbol.strip():
@@ -423,6 +469,14 @@ def build_floating_page_extras(
                 id="bar_health",
                 label="数据健康",
                 prompt=build_bar_health_prompt(vt, name, extra),
+            )
+        )
+    if page == "自选" and is_symbol_in_positions(vt):
+        extras.append(
+            QuickAction(
+                id="position_strategy",
+                label="持仓策略",
+                prompt=build_positions_ai_prompt(vt, name),
             )
         )
     if page != "自选" and not is_symbol_in_watchlist(binding.symbol, binding.exchange_cn):

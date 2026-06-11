@@ -76,9 +76,11 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
     "watchlist": frozenset(
         {
             "get_watchlist",
+            "list_watchlist_positions",
             "add_to_watchlist",
             "remove_from_watchlist",
             "get_quote_context",
+            "list_strategy_signals",
         }
     ),
     "data": frozenset(

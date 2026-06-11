@@ -74,12 +74,20 @@ class QuotesShellWidget(QtWidgets.QWidget):
         if self._index_timer is not None:
             QtCore.QTimer.singleShot(500, self.refresh_indices)
             self._index_timer.start()
-        if self.page.config.show_watchlist_signals or self.page.config.show_run_output_panel:
+        if (
+            self.page.config.show_watchlist_signals
+            or self.page.config.show_watchlist_positions
+            or self.page.config.show_run_output_panel
+        ):
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
-        if self.page.config.show_watchlist_signals or self.page.config.show_run_output_panel:
+        if (
+            self.page.config.show_watchlist_signals
+            or self.page.config.show_watchlist_positions
+            or self.page.config.show_run_output_panel
+        ):
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
 
     def deactivate(self) -> None:

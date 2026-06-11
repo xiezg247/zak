@@ -104,6 +104,8 @@ class QuoteStreamController:
             return
 
         page._table.refresh_table_quotes_for_symbols(symbols)
+        if page.config.show_watchlist_positions:
+            page._positions.refresh_quotes_only()
         current = page.current_item
         if current is None or current.tickflow_symbol not in symbols:
             return

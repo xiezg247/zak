@@ -50,12 +50,23 @@ class VnpyWatchlistSkill(SkillTemplate):
                     "required": ["symbol"],
                 },
             ),
+            ToolSpec(
+                name="list_watchlist_positions",
+                description="获取自选页持仓记账列表（成本、数量、买入日；投研记账，非券商实盘）",
+                parameters={"type": "object", "properties": {}},
+            ),
         ]
 
     def _get_watchlist_service(self):
         svc = self._services.get("watchlist")
         if svc is None:
             raise RuntimeError("WatchlistService 未就绪")
+        return svc
+
+    def _get_position_service(self):
+        svc = self._services.get("position")
+        if svc is None:
+            raise RuntimeError("PositionService 未就绪")
         return svc
 
     def get_watchlist(self) -> str:
@@ -83,6 +94,30 @@ class VnpyWatchlistSkill(SkillTemplate):
                 "success": ok,
                 "symbol": item.vt_symbol,
                 "message": (f"{item.vt_symbol} 已加入自选" if ok else f"{item.vt_symbol} 已在自选池中"),
+            },
+            ensure_ascii=False,
+        )
+
+    def list_watchlist_positions(self) -> str:
+        svc = self._get_position_service()
+        items = svc.get_items()
+        rows = [
+            {
+                "vt_symbol": row.vt_symbol,
+                "name": row.name,
+                "cost_price": row.cost_price,
+                "volume": row.volume,
+                "buy_date": row.buy_date,
+                "source": row.source,
+                "notes": row.notes,
+            }
+            for row in items
+        ]
+        return json.dumps(
+            {
+                "total": len(rows),
+                "items": rows,
+                "disclaimer": "投研记账数据，非券商实盘持仓",
             },
             ensure_ascii=False,
         )

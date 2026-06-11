@@ -88,6 +88,24 @@ def _refresh_watchlist_signals(page: QuotesPage, vt_symbols: list[str]) -> None:
     page._signals.refresh_symbols(vt_symbols)
 
 
+def _refresh_watchlist_positions(page: QuotesPage, vt_symbols: list[str]) -> None:
+    if not page.config.show_watchlist_positions:
+        return
+    page._positions.refresh_symbols(vt_symbols)
+
+
+def _position_vt_symbols(page: QuotesPage) -> list[str]:
+    service = page._get_position_service()
+    if service is None:
+        return []
+    return [record.vt_symbol for record in service.get_items()]
+
+
+def _refresh_watchlist_strategy_panels(page: QuotesPage, vt_symbols: list[str]) -> None:
+    _refresh_watchlist_signals(page, vt_symbols)
+    _refresh_watchlist_positions(page, vt_symbols)
+
+
 class LocalDataController:
     """本地 K 线元数据、下载、缺口检查与图表加载。"""
 
@@ -279,7 +297,7 @@ class LocalDataController:
                     detail = f"失败 {len(result.failed)} 只：{preview}{suffix}"
                 complete_run_log(page, result.message, detail=detail)
             if isinstance(result, BatchFillResult) and (result.success or result.bars_added):
-                _refresh_watchlist_signals(page, [item.vt_symbol for item in items])
+                _refresh_watchlist_strategy_panels(page, [item.vt_symbol for item in items])
 
         def on_failed(msg: str) -> None:
             if page._batch_fill_worker is worker:
@@ -368,8 +386,12 @@ class LocalDataController:
                 complete_run_log(page, result.message, detail=detail)
             if isinstance(result, BatchGapFillResult) and result.bars_added:
                 panel = getattr(page, "signal_panel", None)
+                symbols: list[str] = []
                 if panel is not None:
-                    _refresh_watchlist_signals(page, panel.symbols)
+                    symbols.extend(panel.symbols)
+                symbols.extend(_position_vt_symbols(page))
+                if symbols:
+                    _refresh_watchlist_strategy_panels(page, list(dict.fromkeys(symbols)))
 
         def on_failed(msg: str) -> None:
             if page._batch_gap_fill_worker is worker:
@@ -466,8 +488,12 @@ class LocalDataController:
                 complete_run_log(page, result.message, detail=detail)
             if isinstance(result, BatchGapFillResult) and result.bars_added:
                 panel = getattr(page, "signal_panel", None)
+                symbols: list[str] = []
                 if panel is not None:
-                    _refresh_watchlist_signals(page, panel.symbols)
+                    symbols.extend(panel.symbols)
+                symbols.extend(_position_vt_symbols(page))
+                if symbols:
+                    _refresh_watchlist_strategy_panels(page, list(dict.fromkeys(symbols)))
 
         def on_failed(msg: str) -> None:
             if page._batch_gap_fill_worker is worker:
@@ -915,7 +941,7 @@ class LocalDataController:
             page._toast.success(summary)
             if page.config.show_run_output_panel:
                 complete_run_log(page, summary)
-            _refresh_watchlist_signals(page, [item.vt_symbol])
+            _refresh_watchlist_strategy_panels(page, [item.vt_symbol])
 
         def on_failed(msg: str) -> None:
             if page._download_worker is worker:

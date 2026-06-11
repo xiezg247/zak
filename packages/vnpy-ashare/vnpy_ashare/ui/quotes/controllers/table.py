@@ -947,6 +947,12 @@ class TableController:
                 if snap is not None:
                     quote = page.quote_map.get(page.current_item.tickflow_symbol)
                     page.chart_panel.apply_signal_reference(snap, quote=quote)
+        if page.config.show_watchlist_positions:
+            position_panel = getattr(page, "position_panel", None)
+            position_service = page._get_position_service()
+            if position_panel is not None and position_service is not None:
+                if position_service.contains(item.symbol, item.exchange):
+                    position_panel.highlight_symbol(item.vt_symbol)
 
     def show_column_menu(self) -> None:
         page = self._p

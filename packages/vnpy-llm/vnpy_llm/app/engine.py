@@ -84,6 +84,7 @@ class LlmEngine(BaseEngine):
                 "backtest": ashare_engine.backtest_service,
                 "screening": ashare_engine.screening_service,
                 "watchlist": ashare_engine.watchlist_service,
+                "position": ashare_engine.position_service,
                 "analysis": ashare_engine.analysis_service,
                 "sentiment": ashare_engine.sentiment_service,
             }

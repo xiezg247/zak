@@ -11,6 +11,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.app.engine_access import (
     get_analysis_service,
     get_bar_service,
+    get_position_service,
     get_quote_service,
     get_watchlist_service,
 )
@@ -22,6 +23,7 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.domain.position_snapshot import PositionSnapshot
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
@@ -51,6 +53,7 @@ from vnpy_ashare.ui.quotes.page.config import (
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel
+from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
@@ -114,10 +117,13 @@ class QuotesPage(QtWidgets.QWidget):
         self._actions = ActionsController(self)
         self._batch_backtest = WatchlistBatchBacktestController(self)
         self._signals = WatchlistSignalController(self)
+        self._positions = WatchlistPositionController(self)
         self._loader = DataLoaderController(self)
         self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
         self.signal_cache: dict[str, SignalSnapshot] = {}
         self._signal_cache_config: WatchlistSignalConfig | None = None
+        self.position_cache: dict[str, PositionSnapshot] = {}
+        self._position_cache_config: WatchlistSignalConfig | None = None
         self._retired_workers: list[QtCore.QThread] = []
         self._load_generation = 0
         self._bars_generation = 0
@@ -251,6 +257,10 @@ class QuotesPage(QtWidgets.QWidget):
             self._signals.start()
             if self.all_stocks:
                 self._signals.on_stock_list_loaded()
+        if self.config.show_watchlist_positions:
+            self._positions.start()
+            if self.all_stocks:
+                self._positions.on_stock_list_loaded()
 
     def deactivate(self) -> None:
         self._save_splitter()
@@ -265,6 +275,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._stream.stop()
         self._quote_timer.stop()
         self._signals.stop()
+        self._positions.stop()
         for attr in ("_download_worker", "_batch_fill_worker", "_batch_gap_fill_worker"):
             worker = getattr(self, attr, None)
             if worker is not None and hasattr(worker, "request_cancel"):
@@ -309,7 +320,11 @@ class QuotesPage(QtWidgets.QWidget):
             self._splitter.restoreState(state)
 
     def _schedule_center_splitter_layout(self) -> None:
-        if not (self.config.show_watchlist_signals or self.config.show_run_output_panel):
+        if not (
+            self.config.show_watchlist_signals
+            or self.config.show_watchlist_positions
+            or self.config.show_run_output_panel
+        ):
             return
         QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self))
         QtCore.QTimer.singleShot(150, lambda: restore_center_splitter(self))
@@ -434,6 +449,10 @@ class QuotesPage(QtWidgets.QWidget):
         self._signals.invalidate_cache()
         self._signals.refresh(force=True)
 
+    def refresh_watchlist_positions(self) -> None:
+        self._positions.invalidate_cache()
+        self._positions.refresh(force=True)
+
     def _wire_signal_panel(self) -> None:
         panel = getattr(self, "signal_panel", None)
         if panel is None:
@@ -454,6 +473,9 @@ class QuotesPage(QtWidgets.QWidget):
         if panel is None:
             return
         self._signals.apply_config(panel.read_config())
+        if self.config.show_watchlist_positions:
+            self._positions.invalidate_cache()
+            self._positions.refresh(force=True)
 
     def _on_signal_panel_row_activated(self, vt_symbol: str) -> None:
         item = self.find_stock_item(vt_symbol)
@@ -465,6 +487,50 @@ class QuotesPage(QtWidgets.QWidget):
             item = self.find_stock_item(vt_symbol)
             quote = self.quote_map.get(item.tickflow_symbol) if item is not None else None
             self.chart_panel.apply_signal_reference(snap, quote=quote)
+
+    def _wire_position_panel(self) -> None:
+        panel = getattr(self, "position_panel", None)
+        if panel is None:
+            return
+        panel.rows_changed.connect(self._positions.on_rows_changed)
+        panel.enabled_changed.connect(self._positions.on_panel_enabled_changed)
+        panel.refresh_requested.connect(self.refresh_watchlist_positions)
+        panel.row_activated.connect(self._on_position_panel_row_activated)
+        panel.row_selected.connect(self._on_position_panel_row_selected)
+        panel.expansion_changed.connect(self._on_position_panel_expansion_changed)
+
+    def _on_position_panel_expansion_changed(self, _expanded: bool) -> None:
+        apply_center_splitter_sizes(self)
+
+    def _on_position_panel_row_selected(self, vt_symbol: str) -> None:
+        item = self.find_stock_item(vt_symbol)
+        if item is None:
+            return
+        self._select_stock_key((item.symbol, item.exchange))
+
+    def _on_position_panel_row_activated(self, vt_symbol: str) -> None:
+        self._on_position_panel_row_selected(vt_symbol)
+        snap = self.position_cache.get(vt_symbol)
+        if snap is not None and snap.signal_snapshot is not None and self.chart_panel is not None:
+            item = self.find_stock_item(vt_symbol)
+            quote = self.quote_map.get(item.tickflow_symbol) if item is not None else None
+            self.chart_panel.apply_signal_reference(snap.signal_snapshot, quote=quote)
+
+    def register_position_for_selected(self) -> None:
+        panel = getattr(self, "position_panel", None)
+        if panel is None:
+            return
+        items = self._table.selected_items()
+        if not items:
+            if self.current_item is not None:
+                items = [self.current_item]
+        if not items:
+            self._toast.warning("请先在自选表中选择标的")
+            return
+        if len(items) > 1:
+            self._toast.warning("登记持仓一次仅支持单只标的")
+            return
+        panel.register_symbol(items[0].vt_symbol)
 
     def add_selection_to_signal_panel(self) -> None:
         panel = getattr(self, "signal_panel", None)
@@ -652,6 +718,9 @@ class QuotesPage(QtWidgets.QWidget):
     def _get_watchlist_service(self):
         return get_watchlist_service(self._get_main_engine())
 
+    def _get_position_service(self):
+        return get_position_service(self._get_main_engine())
+
     def _get_analysis_service(self):
         return get_analysis_service(self._get_main_engine())
 
@@ -675,6 +744,9 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _ask_ai_for_signals(self) -> None:
         self._actions.ask_ai_for_signals()
+
+    def _ask_ai_for_positions(self) -> None:
+        self._actions.ask_ai_for_positions()
 
     def _ask_ai_for_trend(self) -> None:
         self._actions.ask_ai_for_trend()
