@@ -22,6 +22,14 @@ from vnpy_ashare.ui.quotes.quotes_config import (
     load_market_auto_refresh_pref,
     quote_source_label,
 )
+from vnpy_ashare.ui.quotes.run_log import (
+    load_run_output_expanded,
+    on_run_output_expansion_changed,
+)
+from vnpy_ashare.ui.quotes.watchlist_signals import (
+    WatchlistSignalPanel,
+    restore_center_splitter,
+)
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.theme import theme_manager
@@ -433,26 +441,17 @@ class QuotesPageShell:
             )
             use_center_split = page.config.show_watchlist_signals or page.config.show_run_output_panel
             if use_center_split:
-                from vnpy_ashare.ui.quotes.watchlist_signals import restore_center_splitter
-
                 center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
                 center_split.addWidget(page._market_table_host)
                 center_split.setStretchFactor(0, 4)
                 split_index = 1
                 if page.config.show_watchlist_signals:
-                    from vnpy_ashare.ui.quotes.watchlist_signals import WatchlistSignalPanel
-
                     page.signal_panel = WatchlistSignalPanel(page)
                     page.signal_panel.setMinimumHeight(120)
                     center_split.addWidget(page.signal_panel)
                     center_split.setStretchFactor(split_index, 1)
                     split_index += 1
                 if page.config.show_run_output_panel:
-                    from vnpy_ashare.ui.quotes.run_log import (
-                        load_run_output_expanded,
-                        on_run_output_expansion_changed,
-                    )
-
                     run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
                     page.run_output_panel = TaskRunOutputPanel(
                         title="运行输出",

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context import build_diagnose_ai_prompt
+from vnpy_ashare.ai.context import build_diagnose_ai_prompt, build_signals_ai_prompt
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
@@ -380,8 +380,6 @@ class ActionsController:
             fast_window = cfg.fast_window
             slow_window = cfg.slow_window
             class_name = cfg.class_name
-        from vnpy_ashare.ai.context import build_signals_ai_prompt
-
         self._ask_ai(
             build_signals_ai_prompt(
                 item.vt_symbol,

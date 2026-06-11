@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy_ashare.ui.quotes.watchlist_signals.settings import load_signal_panel_expanded
+
 if TYPE_CHECKING:
     from vnpy.trader.ui import QtWidgets
 
@@ -90,7 +92,6 @@ def apply_center_splitter_sizes(page: QuotesPage) -> None:
 
 def restore_center_splitter(page: QuotesPage) -> None:
     from vnpy_ashare.ui.quotes.run_log import load_run_output_expanded, sync_run_output_expansion
-    from vnpy_ashare.ui.quotes.watchlist_signals.settings import load_signal_panel_expanded
 
     signal_panel = _signal_panel(page)
     if signal_panel is not None:

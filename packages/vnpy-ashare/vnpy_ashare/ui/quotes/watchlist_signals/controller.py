@@ -9,11 +9,14 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.signal_snapshot import signal_as_of_stale
+from vnpy_ashare.ui.quotes.quotes_config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     WatchlistSignalConfig,
     save_watchlist_signal_config,
 )
+from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
+from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis_service import AnalysisService
@@ -70,8 +73,6 @@ class WatchlistSignalController:
     def start(self) -> None:
         if not self._page.config.show_watchlist_signals:
             return
-        from vnpy_ashare.ui.quotes.quotes_config import WATCHLIST_SIGNAL_REFRESH_MS
-
         self._timer.setInterval(WATCHLIST_SIGNAL_REFRESH_MS)
         if self._enabled():
             self.refresh(force=True)
@@ -83,8 +84,6 @@ class WatchlistSignalController:
         worker = self._worker
         if worker is not None:
             self._worker = None
-            from vnpy_common.ui.qt_helpers import release_thread
-
             release_thread(self._page._retired_workers, worker, timeout_ms=0)
 
     def apply_config(self, config: WatchlistSignalConfig, *, save: bool = True) -> None:
@@ -165,8 +164,6 @@ class WatchlistSignalController:
             self._page._signal_cache_config = config
             self._apply_refresh_result()
             return
-
-        from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
 
         worker = WatchlistSignalWorker(
             service,

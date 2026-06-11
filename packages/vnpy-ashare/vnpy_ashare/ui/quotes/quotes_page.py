@@ -51,8 +51,10 @@ from vnpy_ashare.ui.quotes.quotes_config import (
 from vnpy_ashare.ui.quotes.table_controller import TableController
 from vnpy_ashare.ui.quotes.watchlist_controller import WatchlistController
 from vnpy_ashare.ui.quotes.watchlist_signals import (
+    SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
     WatchlistSignalController,
+    apply_center_splitter_sizes,
     load_watchlist_signal_config,
 )
 from vnpy_ashare.ui.quotes.workers import (
@@ -422,8 +424,6 @@ class QuotesPage(QtWidgets.QWidget):
         panel.expansion_changed.connect(self._on_signal_panel_expansion_changed)
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
-        from vnpy_ashare.ui.quotes.watchlist_signals import apply_center_splitter_sizes
-
         apply_center_splitter_sizes(self)
 
     def _on_signal_panel_config_changed(self) -> None:
@@ -451,15 +451,11 @@ class QuotesPage(QtWidgets.QWidget):
             return
         added, skipped = panel.add_symbols([item.vt_symbol for item in items])
         if added:
-            from vnpy_ashare.ui.quotes.watchlist_signals import SIGNAL_PANEL_MAX_SYMBOLS
-
             message = f"已加入信号区 {added} 只"
             if skipped:
                 message += f"，{skipped} 只因已达上限 {SIGNAL_PANEL_MAX_SYMBOLS} 未加入"
             self._toast.success(message)
         elif skipped:
-            from vnpy_ashare.ui.quotes.watchlist_signals import SIGNAL_PANEL_MAX_SYMBOLS
-
             self._toast.warning(f"信号区已满（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只），请先移出后再加入")
         else:
             self._toast.info("所选标的已在信号区")

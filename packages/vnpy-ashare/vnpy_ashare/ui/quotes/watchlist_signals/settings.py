@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from vnpy.trader.ui import QtCore
+
 from strategies.signals import list_supported_signal_strategies
 
 SETTINGS_ORG = "vnpy_ashare"
@@ -46,9 +48,7 @@ class WatchlistSignalConfig:
         return {"fast_window": item.fast_window, "slow_window": item.slow_window}
 
 
-def _settings():
-    from vnpy.trader.ui import QtCore
-
+def _settings() -> QtCore.QSettings:
     return QtCore.QSettings(SETTINGS_ORG, SETTINGS_APP)
 
 

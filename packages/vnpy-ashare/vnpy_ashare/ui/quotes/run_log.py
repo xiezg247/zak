@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy.trader.ui import QtCore
+
 if TYPE_CHECKING:
     from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
     from vnpy_ashare.ui.quotes.quotes_page import QuotesPage
@@ -20,15 +22,7 @@ def run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
     return panel
 
 
-def _run_output_splitter(page: QuotesPage):
-    from vnpy_ashare.ui.quotes.watchlist_signals.splitter import center_splitter
-
-    return center_splitter(page)
-
-
-def _settings():
-    from vnpy.trader.ui import QtCore
-
+def _settings() -> QtCore.QSettings:
     return QtCore.QSettings("vnpy_ashare", "ZakTerminal")
 
 
@@ -81,12 +75,6 @@ def collapse_run_output(page: QuotesPage) -> None:
 
 def expand_run_output(page: QuotesPage) -> None:
     sync_run_output_expansion(page, True, adjust_splitter=True)
-
-
-def restore_run_output_expansion(page: QuotesPage) -> None:
-    from vnpy_ashare.ui.quotes.watchlist_signals.splitter import restore_center_splitter
-
-    restore_center_splitter(page)
 
 
 def on_run_output_expansion_changed(page: QuotesPage, expanded: bool) -> None:
