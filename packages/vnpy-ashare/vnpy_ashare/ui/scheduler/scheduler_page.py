@@ -1,4 +1,4 @@
-"""定时任务页（左侧导航）。"""
+"""定时任务页（菜单栏「后台」）。"""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
 class SchedulerPageWidget(QtWidgets.QWidget):
-    """左侧导航「定时任务」页。"""
+    """菜单栏「后台 → 定时任务」页。"""
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         super().__init__()

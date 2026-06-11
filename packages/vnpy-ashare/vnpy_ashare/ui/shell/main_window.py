@@ -45,7 +45,15 @@ from vnpy_ashare.ui.screener import (
     show_screener_confirm_dialog,
 )
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
-from vnpy_ashare.ui.shell.nav import APP_NAV_ENTRIES, APP_NAV_GROUPS, NAV_SHORTCUTS, SidebarNav
+from vnpy_ashare.ui.shell.nav import (
+    APP_NAV_ENTRIES,
+    APP_NAV_GROUPS,
+    BACKSTAGE_ENTRIES,
+    BACKSTAGE_PAGE_KEYS,
+    BACKSTAGE_SHORTCUTS,
+    NAV_SHORTCUTS,
+    SidebarNav,
+)
 from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, RankingsPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
@@ -149,6 +157,15 @@ class AshareMainWindow(MainWindow):
             text = action.text().replace("&", "")
             if text in _HIDDEN_MENU_LABELS:
                 bar.removeAction(action)
+
+        backstage_menu = bar.addMenu("后台")
+        for entry in BACKSTAGE_ENTRIES:
+            action = backstage_menu.addAction(f"{entry.label}…")
+            action.triggered.connect(lambda _checked=False, key=entry.key: self._show_page_by_key(key))
+            shortcut = BACKSTAGE_SHORTCUTS.get(entry.key)
+            if shortcut:
+                action.setShortcut(QtGui.QKeySequence(shortcut))
+                self.addAction(action)
 
         tools_menu = bar.addMenu("工具")
         self._ai_toggle_action = tools_menu.addAction("显示/隐藏 AI 悬浮球")
@@ -254,7 +271,13 @@ class AshareMainWindow(MainWindow):
     def _show_shortcuts_help(self) -> None:
         lines = [
             "页面切换",
-            *(f"  {NAV_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}" for entry in APP_NAV_ENTRIES[:10]),
+            *(f"  {NAV_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}" for entry in APP_NAV_ENTRIES),
+            "",
+            "后台",
+            *(
+                f"  {BACKSTAGE_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}"
+                for entry in BACKSTAGE_ENTRIES
+            ),
             "",
             "全局",
             "  Ctrl+F    聚焦当前页搜索框",
@@ -263,13 +286,13 @@ class AshareMainWindow(MainWindow):
         show_info_dialog(self, "键盘快捷键", "\n".join(lines), monospace=True)
 
     def _bind_nav_shortcuts(self) -> None:
-        """Ctrl+1~9 / Ctrl+0 切换侧栏页面；Ctrl+F 聚焦行情搜索。"""
+        """Ctrl+1~9 切换侧栏页面；Ctrl+F 聚焦行情搜索。"""
         for index, entry in enumerate(APP_NAV_ENTRIES):
-            if index >= 10:
-                break
-            digit = (index + 1) if index < 9 else 0
+            shortcut = NAV_SHORTCUTS.get(entry.key)
+            if not shortcut:
+                continue
             action = QtGui.QAction(f"打开{entry.label}", self)
-            action.setShortcut(QtGui.QKeySequence(f"Ctrl+{digit}"))
+            action.setShortcut(QtGui.QKeySequence(shortcut))
             action.triggered.connect(lambda _checked=False, i=index: self._show_page(i))
             self.addAction(action)
 
@@ -557,11 +580,14 @@ class AshareMainWindow(MainWindow):
 
     def _show_page(self, index: int) -> None:
         entry = self.sidebar.entry_at(index)
-        widget = self._get_or_create_page(entry.key)
+        self._show_page_by_key(entry.key, nav_index=index)
+
+    def _show_page_by_key(self, key: str, *, nav_index: int | None = None) -> None:
+        widget = self._get_or_create_page(key)
         if widget is None:
             return
 
-        if entry.key == "ai_assistant":
+        if key == "ai_assistant":
             if self._current_key and self._current_key != "ai_assistant":
                 prev_index = self._nav_index_for_key(self._current_key)
                 if prev_index is not None:
@@ -569,7 +595,7 @@ class AshareMainWindow(MainWindow):
             if self._floating_controller is not None:
                 self._floating_controller.on_ai_assistant_entered()
 
-        if self._current_key and self._current_key != entry.key:
+        if self._current_key and self._current_key != key:
             old = self._page_widgets.get(self._current_key)
             if old is not None and hasattr(old, "deactivate"):
                 old.deactivate()
@@ -581,13 +607,16 @@ class AshareMainWindow(MainWindow):
         if hasattr(widget, "activate"):
             widget.activate()
 
-        self._current_key = entry.key
-        if entry.key != "ai_assistant":
-            self._page_before_ai = index
+        self._current_key = key
+        if key != "ai_assistant" and nav_index is not None:
+            self._page_before_ai = nav_index
         if self._floating_controller is not None:
-            self._floating_controller.on_page_changed(entry.key)
+            self._floating_controller.on_page_changed(key)
             self._floating_controller.raise_floating_layers()
-        self.sidebar.set_active_index(index)
+        if nav_index is not None:
+            self.sidebar.set_active_index(nav_index)
+        elif key in BACKSTAGE_PAGE_KEYS:
+            self.sidebar.clear_active()
         self.raise_()
         self.activateWindow()
 
@@ -641,9 +670,7 @@ class AshareMainWindow(MainWindow):
         return widget
 
     def _open_scheduler_page(self) -> None:
-        index = self._nav_index_for_key("scheduler")
-        if index is not None:
-            self._show_page(index)
+        self._show_page_by_key("scheduler")
 
     def _bind_scheduler_notifications(self) -> None:
         if self._scheduler_listener_connected:
@@ -685,10 +712,12 @@ class AshareMainWindow(MainWindow):
         }
         key = name_map.get(name)
         if key:
-            for index, entry in enumerate(APP_NAV_ENTRIES):
-                if entry.key == key:
-                    self._show_page(index)
-                    return
+            nav_index = self._nav_index_for_key(key)
+            if nav_index is not None:
+                self._show_page(nav_index)
+            else:
+                self._show_page_by_key(key)
+            return
         super().open_widget(widget_class, name)
 
     def load_window_setting(self, name: str) -> None:

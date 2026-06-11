@@ -48,27 +48,32 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
             NavEntry("batch_backtest", "回测对比"),
         ),
     ),
-    NavGroup(
-        (
-            NavEntry("scheduler", "定时任务"),
-            NavEntry("data_manager", "数据管理"),
-        ),
-    ),
 )
 
 APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS for entry in group.entries)
 
+# 菜单栏「后台」入口（不在侧栏展示）
+BACKSTAGE_ENTRIES: tuple[NavEntry, ...] = (
+    NavEntry("scheduler", "定时任务"),
+    NavEntry("data_manager", "数据管理"),
+)
+
+BACKSTAGE_PAGE_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)
+
 NAV_SHORTCUTS: dict[str, str] = {
     "watchlist": "Ctrl+1",
     "market": "Ctrl+2",
-    "local": "Ctrl+3",
-    "screener": "Ctrl+4",
-    "auto_screener": "Ctrl+5",
-    "ai_assistant": "Ctrl+6",
-    "cta_backtest": "Ctrl+7",
-    "batch_backtest": "Ctrl+8",
-    "scheduler": "Ctrl+9",
-    "data_manager": "Ctrl+0",
+    "rankings": "Ctrl+3",
+    "local": "Ctrl+4",
+    "screener": "Ctrl+5",
+    "auto_screener": "Ctrl+6",
+    "ai_assistant": "Ctrl+7",
+    "cta_backtest": "Ctrl+8",
+    "batch_backtest": "Ctrl+9",
+}
+
+BACKSTAGE_SHORTCUTS: dict[str, str] = {
+    "scheduler": "Ctrl+0",
 }
 
 
@@ -380,6 +385,14 @@ class SidebarNav(QtWidgets.QWidget):
     def set_active_index(self, index: int) -> None:
         for i, btn in enumerate(self._buttons):
             btn.set_active(i == index)
+
+    def clear_active(self) -> None:
+        """后台页等非侧栏页面：取消侧栏选中态。"""
+        self._group.setExclusive(False)
+        for btn in self._buttons:
+            btn.setChecked(False)
+            btn.set_active(False)
+        self._group.setExclusive(True)
 
     def entry_at(self, index: int) -> NavEntry:
         return self._entries[index]
