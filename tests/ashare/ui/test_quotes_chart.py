@@ -23,6 +23,7 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     create_watchlist_chart,
     prepare_chart_bars,
 )
+from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarDiff, compute_minute_bar_change
 from vnpy_ashare.ui.quotes.chart.ma_line_item import calc_sma, ma_line_item_class
 
 
@@ -257,6 +258,68 @@ class TestChineseChartItems(unittest.TestCase):
         candle = AshareCandleItem(manager)
         self.assertEqual(candle._up_brush.color().getRgb()[:3], RISE_RGB)
         self.assertEqual(candle._down_brush.color().getRgb()[:3], FALL_RGB)
+
+
+class MinuteBarDiffTests(unittest.TestCase):
+    def test_noop_when_unchanged(self) -> None:
+        bars = _minute_bars(3)
+        change = compute_minute_bar_change(bars, bars)
+        self.assertEqual(change.diff, MinuteBarDiff.NOOP)
+
+    def test_tail_patch_updates_last_bar(self) -> None:
+        bars = _minute_bars(3)
+        updated = list(bars)
+        updated[-1] = BarData(
+            symbol=updated[-1].symbol,
+            exchange=updated[-1].exchange,
+            datetime=updated[-1].datetime,
+            interval=updated[-1].interval,
+            open_price=updated[-1].open_price,
+            high_price=updated[-1].high_price,
+            low_price=updated[-1].low_price,
+            close_price=updated[-1].close_price + 1.0,
+            volume=updated[-1].volume,
+            gateway_name=updated[-1].gateway_name,
+        )
+        change = compute_minute_bar_change(bars, updated)
+        self.assertEqual(change.diff, MinuteBarDiff.TAIL_PATCH)
+        self.assertEqual(change.patch_from, 2)
+
+    def test_apply_bars_tail_patch_preserves_viewport(self) -> None:
+        from vnpy.trader.ui import QtWidgets
+
+        app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        chart = create_watchlist_chart(minute=True)
+        chart.show()
+        QtWidgets.QApplication.processEvents()
+
+        bars = _minute_bars(30)
+        chart.replace_history(bars)
+        chart._bar_count = 20
+        chart._right_ix = 30
+        chart._update_x_range()
+
+        updated = list(bars)
+        last = updated[-1]
+        updated[-1] = BarData(
+            symbol=last.symbol,
+            exchange=last.exchange,
+            datetime=last.datetime,
+            interval=last.interval,
+            open_price=last.open_price,
+            high_price=last.high_price + 2.0,
+            low_price=last.low_price,
+            close_price=last.close_price + 1.0,
+            volume=last.volume + 10,
+            gateway_name=last.gateway_name,
+        )
+        change = compute_minute_bar_change(bars, updated)
+        chart.apply_bars(change)
+
+        self.assertEqual(chart._manager.get_count(), 30)
+        self.assertEqual(chart._right_ix, 30)
+        self.assertEqual(chart._manager.get_bar(29).close_price, updated[-1].close_price)
+        app.processEvents()
 
 
 if __name__ == "__main__":

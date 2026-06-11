@@ -89,23 +89,37 @@ class SameItemRequestTests(unittest.TestCase):
 class SameMinuteRequestTests(unittest.TestCase):
     def test_same_symbol_and_period(self) -> None:
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
-        worker = MinuteBarsWorker(item, period="1m")
+        worker = MinuteBarsWorker(item, period="1m", mode="full")
         self.assertTrue(
             is_same_minute_request(
                 worker,
                 period="1m",
                 target_key=("600519", Exchange.SSE),
+                mode="full",
+            )
+        )
+
+    def test_different_mode_same_symbol(self) -> None:
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
+        worker = MinuteBarsWorker(item, period="1m", mode="full")
+        self.assertFalse(
+            is_same_minute_request(
+                worker,
+                period="1m",
+                target_key=("600519", Exchange.SSE),
+                mode="tail",
             )
         )
 
     def test_different_symbol_same_period(self) -> None:
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
-        worker = MinuteBarsWorker(item, period="1m")
+        worker = MinuteBarsWorker(item, period="1m", mode="full")
         self.assertFalse(
             is_same_minute_request(
                 worker,
                 period="1m",
                 target_key=("000001", Exchange.SZSE),
+                mode="full",
             )
         )
 

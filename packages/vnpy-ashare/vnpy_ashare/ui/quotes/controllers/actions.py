@@ -188,6 +188,9 @@ class ActionsController:
     def refresh_charts_only(self) -> None:
         page = self._p
         current = page.current_item
+        chart_section = getattr(page, "chart_section", None)
+        if chart_section is not None and not chart_section.is_expanded():
+            return
         if current is None or page.chart_panel is None or not page.config.show_kline:
             return
         page.chart_panel.update_quote(page.quote_map.get(current.tickflow_symbol))

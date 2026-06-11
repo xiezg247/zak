@@ -6,17 +6,19 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     AshareChartWidget,
     create_daily_chart,
     create_watchlist_chart,
-    prepare_chart_bars,
 )
+from vnpy_ashare.ui.quotes.chart.minute_bars import prepare_chart_bars
 from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.chart.ma_line_item import MA_LINE_SPECS, calc_sma, ma_line_item_class, register_ma_items
 from vnpy_ashare.ui.quotes.chart.panel import ChartPanel, should_apply_minute_bars
+from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel, sync_chart_splitter_for_expansion
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 
 __all__ = [
     "AshareChartWidget",
     "ChartPanel",
+    "ChartSectionPanel",
     "DAILY_TAB_INDEX",
     "IntradayChart",
     "MA_LINE_SPECS",
@@ -31,4 +33,5 @@ __all__ = [
     "prepare_chart_bars",
     "register_ma_items",
     "should_apply_minute_bars",
+    "sync_chart_splitter_for_expansion",
 ]

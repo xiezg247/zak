@@ -10,7 +10,7 @@ from vnpy_ashare.data.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
 from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-from vnpy_ashare.ui.quotes.chart import ChartPanel, create_daily_chart
+from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel, create_daily_chart
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
@@ -429,7 +429,14 @@ class QuotesPageShell:
                 page.depth_panel = DepthPanel()
                 chart_row.addWidget(page.depth_panel)
 
-            right_panel = QtWidgets.QVBoxLayout()
+            chart_row_host = QtWidgets.QWidget()
+            chart_row_host.setLayout(chart_row)
+
+            right_content = QtWidgets.QWidget()
+            right_content.setObjectName("ChartSideContent")
+            right_panel = QtWidgets.QVBoxLayout(right_content)
+            right_panel.setContentsMargins(0, 0, 0, 0)
+            right_panel.setSpacing(4)
             right_panel.addLayout(quote_info)
             if page.config.column_configurable:
                 right_panel.addLayout(page.quote_sub_info)
@@ -437,7 +444,11 @@ class QuotesPageShell:
                 page.diagnose_panel = DiagnosePanel()
                 page.diagnose_panel.refresh_requested.connect(page.run_diagnose_for_selected)
                 right_panel.addWidget(page.diagnose_panel)
-            right_panel.addLayout(chart_row, stretch=1)
+            right_panel.addWidget(chart_row_host, stretch=1)
+
+            page.chart_section = ChartSectionPanel(page.page_name)
+            page.chart_section.set_content(right_content)
+            page.chart_section.expansion_changed.connect(page._on_chart_section_expansion_changed)
 
             splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
             page._splitter = splitter
@@ -495,10 +506,19 @@ class QuotesPageShell:
                 page._wire_position_panel()
             splitter.addWidget(center_widget)
 
-            right_widget = QtWidgets.QWidget()
-            right_widget.setLayout(right_panel)
-            right_widget.setMinimumWidth(560 if page.config.show_depth_panel else 420)
-            splitter.addWidget(right_widget)
+            page._right_panel_widget = page.chart_section
+            splitter.addWidget(page.chart_section)
+            from vnpy_ashare.ui.quotes.chart.section import (
+                chart_side_expanded_min_width,
+                sync_chart_splitter_for_expansion,
+            )
+
+            page.chart_section.setMinimumWidth(chart_side_expanded_min_width(page))
+            if not page.chart_section.is_expanded():
+                QtCore.QTimer.singleShot(
+                    0,
+                    lambda: sync_chart_splitter_for_expansion(page, False),
+                )
             splitter.setStretchFactor(0, 3)
             splitter.setStretchFactor(1, 2)
         else:

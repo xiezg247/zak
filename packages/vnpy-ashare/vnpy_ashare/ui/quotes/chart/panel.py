@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, resolve_display_anchor_prices
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
@@ -14,7 +17,12 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
     AshareChartWidget,
     create_watchlist_chart,
-    prepare_chart_bars,
+)
+from vnpy_ashare.ui.quotes.chart.minute_bars import (
+    MinuteBarChange,
+    MinuteBarDiff,
+    MinuteBarSession,
+    compute_minute_bar_change,
 )
 from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
@@ -60,10 +68,11 @@ def is_same_minute_request(
     *,
     period: str,
     target_key: tuple[str, Exchange],
+    mode: str,
 ) -> bool:
-    """分 K worker 是否仍在为同一标的、同一周期加载。"""
+    """分 K worker 是否仍在为同一标的、周期与模式加载。"""
     worker_key = (worker.item.symbol, worker.item.exchange)
-    return worker.period == period and worker_key == target_key
+    return worker.period == period and worker_key == target_key and worker.mode == mode
 
 
 def is_same_item_request(
@@ -123,10 +132,7 @@ class ChartPanel(QtWidgets.QWidget):
         self._generation = 0
         self._active = True
 
-        self._minute_from_local = False
-        self._minute_start_text = ""
-        self._minute_end_text = ""
-        self._minute_count = 0
+        self._minute_session = MinuteBarSession()
         self._minute_loaded_period: str | None = None
         self._minute_loaded_key: tuple[str, Exchange] | None = None
         self._minute_request_id = 0
@@ -254,10 +260,7 @@ class ChartPanel(QtWidgets.QWidget):
         self._abandon_intraday_worker()
         self._abandon_minute_worker()
         self._abandon_daily_worker()
-        self._minute_from_local = False
-        self._minute_start_text = ""
-        self._minute_end_text = ""
-        self._minute_count = 0
+        self._minute_session.reset()
         self._minute_loaded_period = None
         self._minute_loaded_key = None
         self._minute_request_id += 1
@@ -282,16 +285,21 @@ class ChartPanel(QtWidgets.QWidget):
     def current_period_label(self) -> str:
         return "1分"
 
+    def _sync_minute_hint_from_session(self) -> None:
+        session = self._minute_session
+        self._update_hint()
+
     def _update_hint(self, *, daily_missing: bool = False) -> None:
+        session = self._minute_session
         text = chart_tab_hint(
             self.tab_bar.currentIndex(),
             daily_missing=daily_missing,
             intraday_error=self._intraday_error,
             intraday_empty=self._intraday_empty,
-            minute_from_local=self._minute_from_local,
-            minute_start=self._minute_start_text or None,
-            minute_end=self._minute_end_text or None,
-            minute_count=self._minute_count,
+            minute_from_local=session.from_local,
+            minute_start=session.start_text or None,
+            minute_end=session.end_text or None,
+            minute_count=session.bar_count(),
         )
         if text:
             self.hint_label.setText(text)
@@ -317,7 +325,20 @@ class ChartPanel(QtWidgets.QWidget):
         if self.tab_bar.currentIndex() == MINUTE_TAB_INDEX:
             if self._thread_active(self._minute_worker):
                 return
-            self._load_minute(quiet=False)
+            item = self._item
+            period = self.current_period()
+            session_key = (item.symbol, item.exchange, period)
+            if self._minute_session.from_local:
+                if self._minute_session.overview_unchanged(item.symbol, item.exchange, period):
+                    return
+                self._load_minute(quiet=True, mode="full")
+                return
+            if not is_ashare_trading_session():
+                return
+            if self._minute_session.matches_key(session_key):
+                self._load_minute(quiet=True, mode="tail")
+                return
+            self._load_minute(quiet=True, mode="full")
             return
         self._load_active_tab(quiet=True)
 
@@ -510,19 +531,41 @@ class ChartPanel(QtWidgets.QWidget):
         worker.failed.connect(on_failed)
         worker.start()
 
-    def _load_minute(self, *, quiet: bool = False) -> None:
+    def _load_minute(
+        self,
+        *,
+        quiet: bool = False,
+        mode: Literal["full", "tail"] = "full",
+    ) -> None:
         if not self._active or self._item is None:
             return
 
         period = self.current_period()
         item = self._item
         target_key = (item.symbol, item.exchange)
+        session_key = (item.symbol, item.exchange, period)
+
+        if (
+            mode == "full"
+            and not quiet
+            and self._minute_session.matches_key(session_key)
+        ):
+            if self._minute_session.from_local and not self._minute_session.overview_unchanged(
+                item.symbol,
+                item.exchange,
+                period,
+            ):
+                pass
+            else:
+                self._sync_minute_hint_from_session()
+                return
 
         if self._thread_active(self._minute_worker):
             if is_same_minute_request(
                 self._minute_worker,
                 period=period,
                 target_key=target_key,
+                mode=mode,
             ):
                 return
             self._minute_request_id += 1
@@ -533,9 +576,10 @@ class ChartPanel(QtWidgets.QWidget):
         request_id = self._minute_request_id
         target_period = period
 
-        self._reset_minute_chart()
+        if not quiet:
+            self._reset_minute_chart()
 
-        worker = MinuteBarsWorker(item, period=target_period)
+        worker = MinuteBarsWorker(item, period=target_period, mode=mode)
         self._minute_worker = worker
 
         def on_finished(result: object) -> None:
@@ -565,24 +609,55 @@ class ChartPanel(QtWidgets.QWidget):
                 self._retire_worker(worker)
                 return
 
-            bar_list = prepare_chart_bars(loaded.bars if loaded else list(result))
-            if loaded and loaded.from_local and loaded.start and loaded.end:
-                self._minute_from_local = True
-                self._minute_start_text = loaded.start.strftime("%Y-%m-%d")
-                self._minute_end_text = loaded.end.strftime("%Y-%m-%d %H:%M")
-                self._minute_count = len(bar_list)
+            incoming = list(loaded.bars if loaded else result)
+            if mode == "full" or not self._minute_session.matches_key(session_key):
+                change = MinuteBarChange(MinuteBarDiff.REPLACE, incoming)
             else:
-                self._minute_from_local = False
-                self._minute_start_text = ""
-                self._minute_end_text = ""
-                self._minute_count = 0
-            self._update_hint()
-            if bar_list:
-                self.minute_chart.replace_history(bar_list)
+                change = compute_minute_bar_change(self._minute_session.bars, incoming)
+
+            if change.diff == MinuteBarDiff.NOOP:
+                self._sync_minute_hint_from_session()
+                self._retire_worker(worker)
+                return
+
+            if loaded and loaded.from_local and loaded.start and loaded.end:
+                self._minute_session.apply_loaded(
+                    key=session_key,
+                    bars=change.bars,
+                    from_local=True,
+                    start=loaded.start,
+                    end=loaded.end,
+                )
+            elif mode == "full":
+                self._minute_session.apply_loaded(
+                    key=session_key,
+                    bars=change.bars,
+                    from_local=False,
+                    start=None,
+                    end=None,
+                )
+            else:
+                self._minute_session.adopt_bars(change.bars)
+
+            self._sync_minute_hint_from_session()
+            chart = self.minute_chart
+            if isinstance(chart, AshareChartWidget):
+                if change.bars:
+                    chart.apply_bars(change)
+                    self._minute_loaded_period = target_period
+                    self._minute_loaded_key = target_key
+                else:
+                    self._reset_minute_chart()
+                    self._minute_session.reset()
+                    self._minute_loaded_period = None
+                    self._minute_loaded_key = None
+            elif change.bars:
+                chart.replace_history(change.bars)
                 self._minute_loaded_period = target_period
                 self._minute_loaded_key = target_key
             else:
                 self._reset_minute_chart()
+                self._minute_session.reset()
                 self._minute_loaded_period = None
                 self._minute_loaded_key = None
             self._retire_worker(worker)

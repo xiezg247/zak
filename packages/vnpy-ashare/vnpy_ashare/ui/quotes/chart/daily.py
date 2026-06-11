@@ -11,6 +11,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.components.chart_style import apply_ashare_chart_theme, apply_candle_colors
 from vnpy_ashare.ui.quotes.chart.ma_line_item import register_ma_items
+from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarChange, MinuteBarDiff, prepare_chart_bars
 
 MINUTE_BAR_COUNT = 80
 DAILY_BAR_COUNT = 120
@@ -23,16 +24,6 @@ WATCHLIST_DAILY_BAR_PRESETS: tuple[tuple[str, int], ...] = (
     ("90日", 90),
     ("全部", DAILY_BAR_COUNT),
 )
-
-
-def prepare_chart_bars(bars: list[BarData]) -> list[BarData]:
-    """排序并去重，避免 BarManager 按 datetime 合并时索引错位。"""
-    if not bars:
-        return []
-    unique: dict[datetime, BarData] = {}
-    for bar in bars:
-        unique[bar.datetime] = bar
-    return [unique[dt] for dt in sorted(unique.keys())]
 
 
 class ChineseCandleItem(CandleItem):
@@ -253,28 +244,66 @@ class AshareChartWidget(ChartWidget):
         """禁止合并写入：1 分与 5/15/30/60 分共享时间戳时合并会导致索引错位。"""
         self.replace_history(history)
 
+    def apply_bars(self, change: MinuteBarChange) -> None:
+        """按 diff 增量或全量更新 K 线，减少定时刷新闪烁。"""
+        if change.diff == MinuteBarDiff.NOOP:
+            return
+        if change.diff == MinuteBarDiff.REPLACE or self._manager.get_count() <= 0:
+            self.replace_history(change.bars)
+            return
+
+        bars = prepare_chart_bars(change.bars)
+        if not bars:
+            self.replace_history([])
+            return
+
+        old_count = self._manager.get_count()
+        was_at_right = self._right_ix >= max(old_count - 1, 0)
+
+        self.setUpdatesEnabled(False)
+        try:
+            for bar in bars[change.patch_from :]:
+                self._manager.update_bar(bar)
+                for item in self._items.values():
+                    item.update_bar(bar)
+            self._update_plot_limits()
+            if was_at_right:
+                self._right_ix = len(bars)
+                self._update_x_range()
+            self._update_y_range()
+            if was_at_right:
+                self._sync_cursor_to_last()
+        finally:
+            self.setUpdatesEnabled(True)
+            if self.scene():
+                self.scene().update()
+
     def replace_history(self, history: list[BarData]) -> None:
         """全量替换 K 线，避免 BarManager 按 datetime 合并旧周期。"""
         self.clear_reference_lines()
         history = prepare_chart_bars(history)
-        self._manager.clear_all()
-        for item in self._items.values():
-            item.clear_all()
-        if self._cursor:
-            self._cursor.clear_all()
-        self.reset_viewport()
-        if not history:
-            self._force_x_range_update()
-            return
+        self.setUpdatesEnabled(False)
+        try:
+            self._manager.clear_all()
+            for item in self._items.values():
+                item.clear_all()
+            if self._cursor:
+                self._cursor.clear_all()
+            self.reset_viewport()
+            if not history:
+                self._force_x_range_update()
+                return
 
-        self._manager.update_history(history)
-        for item in self._items.values():
-            item.update_history(history)
-        self._update_plot_limits()
-        self._sync_viewport_to_data()
-        self._sync_cursor_to_last()
-        if self.scene():
-            self.scene().update()
+            self._manager.update_history(history)
+            for item in self._items.values():
+                item.update_history(history)
+            self._update_plot_limits()
+            self._sync_viewport_to_data()
+            self._sync_cursor_to_last()
+        finally:
+            self.setUpdatesEnabled(True)
+            if self.scene():
+                self.scene().update()
 
     def _force_x_range_update(self) -> None:
         count = self._manager.get_count()

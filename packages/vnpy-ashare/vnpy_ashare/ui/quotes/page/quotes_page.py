@@ -179,7 +179,10 @@ class QuotesPage(QtWidgets.QWidget):
         self.depth_panel: DepthPanel | None = None
         self.diagnose_panel: DiagnosePanel | None = None
         self.chart_panel: ChartPanel | None = None
+        self.chart_section = None
         self.chart_hint: QtWidgets.QLabel | None = None
+        self._right_panel_widget: QtWidgets.QWidget | None = None
+        self._chart_splitter_saved_state: QtCore.QByteArray | None = None
         self.run_output_panel = None
         self._center_splitter: QtWidgets.QSplitter | None = None
         self._run_output_splitter: QtWidgets.QSplitter | None = None
@@ -260,6 +263,9 @@ class QuotesPage(QtWidgets.QWidget):
             self.chart_panel.load_item(self.current_item, quote=quote)
         self.load_stock_list()
         self._restore_splitter()
+        chart_section = getattr(self, "chart_section", None)
+        if chart_section is not None:
+            self._on_chart_section_expansion_changed(chart_section.is_expanded())
         self._schedule_center_splitter_layout()
         self._update_quote_source_label()
         if self.config.show_watchlist_signals:
@@ -487,6 +493,11 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
         apply_center_splitter_sizes(self)
+
+    def _on_chart_section_expansion_changed(self, expanded: bool) -> None:
+        from vnpy_ashare.ui.quotes.chart.section import sync_chart_splitter_for_expansion
+
+        sync_chart_splitter_for_expansion(self, expanded)
 
     def _on_signal_panel_config_changed(self) -> None:
         panel = getattr(self, "signal_panel", None)

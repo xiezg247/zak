@@ -34,6 +34,7 @@ from vnpy_ashare.data.bars import (
     load_watchlist,
 )
 from vnpy_ashare.data.minute_periods import period_step
+from vnpy_ashare.ui.quotes.chart.minute_bars import LIVE_MINUTE_TAIL_COUNT
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow import (
@@ -456,13 +457,35 @@ class MinuteBarsWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
-    def __init__(self, item: StockItem, *, period: str = "1m") -> None:
+    def __init__(
+        self,
+        item: StockItem,
+        *,
+        period: str = "1m",
+        mode: Literal["full", "tail"] = "full",
+    ) -> None:
         super().__init__()
         self.item = item
         self.period = period
+        self.mode = mode
 
     def run(self) -> None:
         try:
+            if self.mode == "tail":
+                bars = fetch_minute_bars(
+                    self.item,
+                    period=self.period,
+                    count=LIVE_MINUTE_TAIL_COUNT,
+                )
+                self.finished.emit(
+                    LoadedPeriodBars(
+                        bars=bars,
+                        from_local=False,
+                        period=self.period,
+                    )
+                )
+                return
+
             overview = get_period_overview(
                 self.item.symbol,
                 self.item.exchange,
