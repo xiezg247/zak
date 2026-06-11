@@ -53,8 +53,7 @@ class TestAiContext(unittest.TestCase):
             slow_window=21,
         )
         self.assertIn("MA8/MA21", prompt)
-        self.assertIn("fast_window=8", prompt)
-        self.assertIn("slow_window=21", prompt)
+        self.assertNotIn("list_strategy_signals", prompt)
 
     def test_build_quote_context_includes_signal_extra(self) -> None:
         item = StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发银行")
@@ -81,7 +80,7 @@ class TestAiContext(unittest.TestCase):
         self.assertIn("已知信号区快照", prompt)
         self.assertIn("策略信号：买入", prompt)
         self.assertIn("MA8/MA21", prompt)
-        self.assertIn("list_strategy_signals", prompt)
+        self.assertNotIn("list_strategy_signals", prompt)
 
     def test_build_positions_ai_prompt_includes_context(self) -> None:
         from vnpy_ashare.ai.context import build_positions_ai_prompt
@@ -96,11 +95,30 @@ class TestAiContext(unittest.TestCase):
             unrealized_pnl_pct=3.2,
             t1_locked=False,
         )
-        self.assertIn("list_watchlist_positions", prompt)
-        self.assertIn("list_strategy_signals", prompt)
+        self.assertNotIn("list_watchlist_positions", prompt)
+        self.assertNotIn("list_strategy_signals", prompt)
         self.assertIn("10.50", prompt)
         self.assertIn("浮盈 +3.20%", prompt)
         self.assertIn("可卖", prompt)
+
+    def test_build_trend_scenario_ai_prompt(self) -> None:
+        from vnpy_ashare.ai.context.quote import build_trend_scenario_ai_prompt
+
+        prompt = build_trend_scenario_ai_prompt(
+            "600000.SSE",
+            "浦发银行",
+            focus="5d",
+            horizon_days=5,
+            class_name="AshareDoubleMaStrategy",
+            fast_window=8,
+            slow_window=21,
+        )
+        self.assertIn("600000.SSE", prompt)
+        self.assertIn("5 日", prompt)
+        self.assertIn("MA8/MA21", prompt)
+        self.assertIn("乐观/基准/悲观", prompt)
+        self.assertNotIn("trend_scenario_summary", prompt)
+        self.assertNotIn("mcp_tdx_tdx_wenda_quotes", prompt)
 
 
 if __name__ == "__main__":

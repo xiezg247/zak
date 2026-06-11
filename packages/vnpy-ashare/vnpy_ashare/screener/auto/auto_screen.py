@@ -1,7 +1,4 @@
-"""自动选股轨：Skill 直跑 preset 的资格判断与 Request 解析。
-
-与 ``nl_mapper`` 不同：已保存方案 / 无阈值的自定义筛选须走 ``propose_screening`` 确认。
-"""
+"""自动选股轨：Skill 直跑 preset 的资格判断与 Request 解析。"""
 
 from __future__ import annotations
 
@@ -9,7 +6,7 @@ from dataclasses import dataclass
 
 from vnpy_ashare.screener.draft.nl_mapper import clamp_top_n, normalize_preset_name
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM, get_preset
-from vnpy_ashare.screener.run.runner import ScreenerRequest
+from vnpy_ashare.screener.run.runner import ScreenerRequest, resolve_preset_input
 
 
 @dataclass(frozen=True)
@@ -25,25 +22,33 @@ class AutoScreenInput:
 
 @dataclass
 class AutoScreenResult:
-    """解析结果：可直接执行 / 需确认 / 错误。"""
+    """解析结果：可直接执行 / 错误。"""
 
     ok: bool
     request: ScreenerRequest | None = None
-    need_confirm: bool = False
     error: str = ""
 
 
 def resolve_auto_screen_request(data: AutoScreenInput) -> AutoScreenResult:
-    """将 preset 名解析为 ScreenerRequest；不可直跑时设 need_confirm 或 error。"""
+    """将 preset 名解析为 ScreenerRequest；不可直跑时返回 error。"""
     name = (data.name or "").strip()
     if not name:
         return AutoScreenResult(ok=False, error="name 不能为空")
 
+    top_n = clamp_top_n(data.top_n)
+
     if name.startswith("我的 · "):
+        try:
+            request = resolve_preset_input(name)
+        except ValueError as ex:
+            return AutoScreenResult(ok=False, error=str(ex))
         return AutoScreenResult(
-            ok=False,
-            need_confirm=True,
-            error="已保存方案须通过 propose_screening 确认后执行。",
+            ok=True,
+            request=ScreenerRequest(
+                preset=request.preset,
+                top_n=top_n,
+                scheme_id=request.scheme_id,
+            ),
         )
 
     preset_name = normalize_preset_name(name)
@@ -54,13 +59,11 @@ def resolve_auto_screen_request(data: AutoScreenInput) -> AutoScreenResult:
     if preset is None:
         return AutoScreenResult(ok=False, error=f"未知选股条件「{preset_name}」")
 
-    top_n = clamp_top_n(data.top_n)
     if preset.name == SCREENER_CUSTOM:
         if data.min_change_pct is None and data.max_change_pct is None and data.min_turnover is None:
             return AutoScreenResult(
                 ok=False,
-                need_confirm=True,
-                error="自定义筛选须指定涨幅或换手率阈值，或改用 propose_screening。",
+                error="自定义筛选须指定 min_change_pct、max_change_pct 或 min_turnover 之一。",
             )
         request = ScreenerRequest(
             preset=preset.name,

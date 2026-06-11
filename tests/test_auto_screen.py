@@ -13,10 +13,10 @@ def test_builtin_preset_ok():
     assert result.request.top_n == 10
 
 
-def test_saved_scheme_need_confirm():
+def test_saved_scheme_not_found():
     result = resolve_auto_screen_request(AutoScreenInput(name="我的 · 测试方案"))
     assert result.ok is False
-    assert result.need_confirm is True
+    assert "未找到" in result.error
 
 
 def test_custom_with_threshold_ok():

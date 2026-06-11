@@ -2,18 +2,22 @@
 
 AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.py tools mcp-list` 可列出通达信 MCP 工具。
 
+各功能域对**本地日 K** 的依赖程度、下载范围建议见 [AI 功能与 K 线](./ai-kline-data.md)。
+
 ## 路由总表
 
 | 用户意图 | 工具 / 数据源 | 降级 |
 |----------|---------------|------|
 | 当前选中标的 | `get_quote_context` | — |
 | 本地 K 线 / 区间涨跌 | `get_bars_summary` / `get_bars_data` | 提示下载日 K |
+| 近期走势 / 历史统计 | `historical_pattern_summary` | 本地不足时问小达 MCP 兜底 |
 | 技术面快照 | `technical_snapshot` | 提示下载日 K |
 | 综合诊断 | `diagnose_stock` | — |
 | 券商研报 / 评级 | `diagnose_stock` 或 `mcp_tdx_tdx_wenda_quotes` | — |
 | 实时行情 / 板块 / F10 | 通达信 MCP `mcp_tdx_*` | TickFlow / Redis |
 | 财务 / 估值 / 宏观 | `tushare-data` Skill | — |
 | 选股结果解读 | `explain_screening_run` / `get_screening_context` | 选股页运行方案 |
+| 走势预测 / 情景分析 | `trend_scenario_summary` + `mcp_tdx_tdx_wenda_quotes` | 本地 K 不足时提示下载日 K |
 | 回测解读 | `get_backtest_result` / `list_backtest_history` | — |
 
 ## 通达信 MCP
@@ -30,7 +34,7 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.
 |-------|------|
 | vnpy-context | get_quote_context |
 | vnpy-data | get_bars_summary, get_bars_data |
-| vnpy-analysis | explain_screening_run, get_screening_context, technical_snapshot, list_strategy_signals, historical_pattern_summary |
+| vnpy-analysis | explain_screening_run, get_screening_context, technical_snapshot, list_strategy_signals, historical_pattern_summary, trend_scenario_summary |
 | tdx-stock-diagnose | diagnose_stock |
 | vnpy-backtest | list_strategies, get_backtest_result, list_backtest_history |
 | vnpy-screening | list_screeners, list_recipes, run_recipe, propose_recipe, screen_by_condition, screen_by_pattern, propose_screening |
@@ -44,7 +48,8 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.
 | 盘中/盘后多因子 | `run_recipe` | 意图明确（如 intraday_multi） |
 | 多因子草案 | `propose_recipe` | 自定义配方、意图待确认 |
 | 自动 preset | `screen_by_condition` | 内置 preset |
-| 自动形态 | `screen_by_pattern` | 老鸭头/均线多头/W底/主题投资 |
+| 自动形态 | `screen_by_pattern` | 优先问小达 MCP；失败降级本地日 K / 行情 |
+| 标杆对标 | `screen_reference_peer` | 以标杆股找同业同类（估值+动量） |
 | 确认 | `propose_screening` | 已保存方案、单一条件复杂 |
 
 内置 preset：涨幅榜、换手率排行、成交量放大、自定义筛选、低 PE、中大盘、主力净流入。`top_n` 1–200，默认 20。

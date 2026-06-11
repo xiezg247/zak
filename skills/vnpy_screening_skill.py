@@ -5,13 +5,7 @@ from __future__ import annotations
 import json
 
 from vnpy_ashare.screener.auto.auto_screen import AutoScreenInput, resolve_auto_screen_request
-from vnpy_ashare.screener.draft.draft_store import save_draft
-from vnpy_ashare.screener.draft.nl_mapper import (
-    ProposeInput,
-    preset_catalog_for_prompt,
-    try_fast_path,
-    validate_and_build,
-)
+from vnpy_ashare.screener.draft.nl_mapper import preset_catalog_for_prompt
 from vnpy_ashare.screener.pattern.pattern_screen import (
     PatternScreenInput,
     list_pattern_screeners,
@@ -19,8 +13,6 @@ from vnpy_ashare.screener.pattern.pattern_screen import (
 )
 from vnpy_ashare.screener.preset.presets import get_preset
 from vnpy_ashare.screener.recipe.recipe import list_recipe_catalog
-from vnpy_ashare.screener.recipe.recipe_draft_store import save_recipe_draft
-from vnpy_ashare.screener.recipe.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
 from vnpy_ashare.screener.run.runner import ScreenerRequest, list_all_preset_names, run_screener
 from vnpy_skills.domain import SkillTemplate, ToolSpec
 
@@ -38,51 +30,12 @@ class VnpyScreeningSkill(SkillTemplate):
                 parameters={"type": "object", "properties": {}},
             ),
             ToolSpec(
-                name="propose_screening",
-                description=("解析用户选股意图并生成待确认草案，不会直接执行筛选。用户须在确认框中点击「确认运行」后才会执行。"),
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "intent": {
-                            "type": "string",
-                            "description": "用户原话或归纳后的选股意图",
-                        },
-                        "preset": {
-                            "type": "string",
-                            "description": ("内置方案名：涨幅榜/换手率排行/成交量放大/自定义筛选/低 PE/中大盘/主力净流入；或留空由系统推断"),
-                        },
-                        "top_n": {
-                            "type": "integer",
-                            "description": "返回前 N 条，默认 20，上限 200",
-                        },
-                        "min_change_pct": {
-                            "type": "number",
-                            "description": "最小涨幅（%），仅自定义筛选",
-                        },
-                        "max_change_pct": {
-                            "type": "number",
-                            "description": "最大涨幅（%），仅自定义筛选",
-                        },
-                        "min_turnover": {
-                            "type": "number",
-                            "description": "最小换手率（%），仅自定义筛选",
-                        },
-                        "scheme_name": {
-                            "type": "string",
-                            "description": "已保存方案名称（不含「我的 · 」前缀）",
-                        },
-                        "confidence": {
-                            "type": "string",
-                            "enum": ["high", "medium", "low"],
-                            "description": "解析置信度；low 时不创建草案，应追问用户",
-                        },
-                    },
-                    "required": ["intent"],
-                },
-            ),
-            ToolSpec(
                 name="screen_by_pattern",
-                description=("直接执行 A 股形态选股并返回结果（无需确认）。支持：老鸭头形态/均线多头/W底形态/主题投资。依赖本地日 K（主题投资需全市场行情）。"),
+                description=(
+                    "直接执行 A 股形态选股并返回结果（无需确认）。"
+                    "优先通达信问小达 MCP 全市场扫描；MCP 不可用时降级本地日 K（主题投资可降级行情 preset）。"
+                    "支持：老鸭头形态/均线多头/W底形态/主题投资。"
+                ),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -125,40 +78,18 @@ class VnpyScreeningSkill(SkillTemplate):
                 },
             ),
             ToolSpec(
-                name="propose_recipe",
-                description=("解析用户多因子选股意图并生成待确认配方草案，不会直接执行。复杂或自定义配方时使用；意图明确时优先 run_recipe。"),
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "intent": {"type": "string", "description": "用户原话或归纳后的选股意图"},
-                        "trigger_kind": {
-                            "type": "string",
-                            "enum": ["intraday", "post_close", ""],
-                            "description": "可选触发类型；留空则从 intent 推断",
-                        },
-                        "recipe_id": {
-                            "type": "string",
-                            "description": "指定配方 id；留空则从 intent 匹配内置配方",
-                        },
-                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
-                        "confidence": {
-                            "type": "string",
-                            "enum": ["high", "medium", "low"],
-                            "description": "解析置信度；low 时不创建草案",
-                        },
-                    },
-                    "required": ["intent"],
-                },
-            ),
-            ToolSpec(
                 name="screen_by_condition",
                 description=(
-                    "直接执行内置选股方案并返回结果（无需用户确认）。适用于涨幅榜/换手率/低PE等内置 preset；已保存方案或复杂条件请改用 propose_screening。"
+                    "直接执行选股方案并返回结果。支持内置 preset（涨幅榜/换手率/低PE等）、"
+                    "已保存方案（我的 · 方案名）、自定义筛选（须传涨幅/换手阈值）。"
                 ),
                 parameters={
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string", "description": "内置选股方案名"},
+                        "name": {
+                            "type": "string",
+                            "description": "方案名：内置 preset、我的 · 已保存方案名、或「自定义筛选」",
+                        },
                         "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
                         "min_change_pct": {
                             "type": "number",
@@ -174,6 +105,24 @@ class VnpyScreeningSkill(SkillTemplate):
                         },
                     },
                     "required": ["name"],
+                },
+            ),
+            ToolSpec(
+                name="screen_reference_peer",
+                description=(
+                    "以标杆股为锚，在同业池中按估值接近度与近 5 日动量找同类标的（无需用户确认）。"
+                    "相似度 = 同业 40% + 估值 35% + 动量 25%，数据来自 Tushare daily_basic。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "symbol": {
+                            "type": "string",
+                            "description": "标杆股 vt_symbol，如 600519.SSE",
+                        },
+                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 20，上限 100"},
+                    },
+                    "required": ["symbol"],
                 },
             ),
         ]
@@ -193,9 +142,9 @@ class VnpyScreeningSkill(SkillTemplate):
                 "patterns": list_pattern_screeners(),
                 "catalog": preset_catalog_for_prompt(),
                 "note": (
-                    "盘中/盘后多因子用 run_recipe 或 propose_recipe；"
-                    "内置 preset 用 screen_by_condition；形态用 screen_by_pattern；"
-                    "复杂/保存方案用 propose_screening。"
+                    "盘中/盘后多因子用 run_recipe；"
+                    "内置 preset / 已保存方案 / 自定义筛选用 screen_by_condition；"
+                    "形态用 screen_by_pattern；标杆对标用 screen_reference_peer。"
                 ),
                 "recipes": [
                     {
@@ -227,7 +176,7 @@ class VnpyScreeningSkill(SkillTemplate):
                     }
                     for entry in catalog
                 ],
-                "note": "意图明确时 run_recipe(recipe_id)；复杂条件 propose_recipe(intent)。",
+                "note": "盘中用 intraday_multi、盘后用 post_close_multi；可先 list_recipes 再 run_recipe。",
             },
             ensure_ascii=False,
         )
@@ -280,124 +229,6 @@ class VnpyScreeningSkill(SkillTemplate):
                     }
                     for r in result.rows
                 ],
-            },
-            ensure_ascii=False,
-        )
-
-    def propose_recipe(
-        self,
-        intent: str,
-        trigger_kind: str = "",
-        recipe_id: str = "",
-        top_n: int = 20,
-        confidence: str = "medium",
-    ) -> str:
-        intent_text = (intent or "").strip()
-        if not intent_text:
-            return json.dumps({"status": "error", "message": "intent 不能为空"}, ensure_ascii=False)
-
-        conf = confidence if confidence in ("high", "medium", "low") else "medium"
-        result = validate_and_build_recipe(
-            ProposeRecipeInput(
-                intent=intent_text,
-                trigger_kind=trigger_kind or "",
-                recipe_id=recipe_id or "",
-                top_n=top_n,
-                confidence=conf,  # type: ignore[arg-type]
-            )
-        )
-        if result.kind == "need_clarification":
-            return json.dumps(
-                {
-                    "status": "need_clarification",
-                    "questions": result.questions or [],
-                    "message": result.message,
-                },
-                ensure_ascii=False,
-            )
-        if result.kind == "error" or result.draft is None:
-            return json.dumps(
-                {"status": "error", "message": result.message or "无法生成配方草案"},
-                ensure_ascii=False,
-            )
-
-        save_recipe_draft(result.draft)
-        return json.dumps(
-            {
-                "status": "pending_confirm",
-                "draft_id": result.draft.id,
-                "recipe_id": result.draft.recipe_id,
-                "trigger_kind": result.draft.trigger_kind,
-                "summary": result.draft.summary,
-                "top_n": result.draft.top_n,
-                "confidence": result.draft.confidence,
-                "message": result.message,
-            },
-            ensure_ascii=False,
-        )
-
-    def propose_screening(
-        self,
-        intent: str,
-        preset: str = "",
-        top_n: int = 20,
-        min_change_pct: float | None = None,
-        max_change_pct: float | None = None,
-        min_turnover: float | None = None,
-        scheme_name: str | None = None,
-        confidence: str = "medium",
-    ) -> str:
-        intent_text = (intent or "").strip()
-        if not intent_text:
-            return json.dumps(
-                {"status": "error", "message": "intent 不能为空"},
-                ensure_ascii=False,
-            )
-
-        conf = confidence if confidence in ("high", "medium", "low") else "medium"
-        data = ProposeInput(
-            intent=intent_text,
-            preset=preset or "",
-            top_n=top_n,
-            min_change_pct=min_change_pct,
-            max_change_pct=max_change_pct,
-            min_turnover=min_turnover,
-            scheme_name=scheme_name,
-            confidence=conf,  # type: ignore[arg-type]
-        )
-
-        if not preset and not scheme_name and conf != "low":
-            fast = try_fast_path(intent_text)
-            if fast is not None:
-                data = fast
-
-        result = validate_and_build(data)
-        if result.kind == "need_clarification":
-            return json.dumps(
-                {
-                    "status": "need_clarification",
-                    "questions": result.questions or [],
-                    "message": result.message,
-                },
-                ensure_ascii=False,
-            )
-        if result.kind == "error" or result.draft is None:
-            return json.dumps(
-                {"status": "error", "message": result.message or "无法生成草案"},
-                ensure_ascii=False,
-            )
-
-        save_draft(result.draft)
-        return json.dumps(
-            {
-                "status": "pending_confirm",
-                "draft_id": result.draft.id,
-                "summary": result.draft.summary,
-                "preset": result.draft.preset_label,
-                "source": result.draft.source,
-                "warnings": result.draft.warnings,
-                "confidence": result.draft.confidence,
-                "message": result.message,
             },
             ensure_ascii=False,
         )
@@ -514,14 +345,6 @@ class VnpyScreeningSkill(SkillTemplate):
                 min_turnover=min_turnover,
             )
         )
-        if resolved.need_confirm:
-            return json.dumps(
-                {
-                    "status": "need_confirm",
-                    "message": resolved.error or "请改用 propose_screening 生成草案并等待用户确认。",
-                },
-                ensure_ascii=False,
-            )
         if not resolved.ok or resolved.request is None:
             return json.dumps(
                 {"status": "error", "message": resolved.error or "无法执行选股"},
@@ -565,6 +388,59 @@ class VnpyScreeningSkill(SkillTemplate):
                         "pe_ttm": r.get("pe_ttm"),
                         "total_mv": r.get("total_mv"),
                         "net_mf_amount": r.get("net_mf_amount"),
+                    }
+                    for r in result.rows
+                ],
+            },
+            ensure_ascii=False,
+        )
+
+    def screen_reference_peer(self, symbol: str, top_n: int = 20) -> str:
+        vt_symbol = (symbol or "").strip()
+        if not vt_symbol:
+            return json.dumps({"status": "error", "message": "symbol 不能为空"}, ensure_ascii=False)
+
+        svc = self._get_screening_service()
+        try:
+            result = svc.run_reference_peer(vt_symbol, top_n=int(top_n or 20))
+        except Exception as ex:
+            return json.dumps({"status": "error", "message": str(ex)}, ensure_ascii=False)
+
+        if not result.rows:
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "reference_vt_symbol": result.reference_vt_symbol,
+                    "reference_name": result.reference_name,
+                    "reference_industry": result.reference_industry,
+                    "trade_date": result.trade_date,
+                    "count": 0,
+                    "total_scanned": result.total_scanned,
+                    "message": f"标杆 {result.reference_name}（{result.reference_industry}）未找到同类标的",
+                },
+                ensure_ascii=False,
+            )
+
+        svc.persist_reference_peer_result(result)
+        return json.dumps(
+            {
+                "status": "ok",
+                "reference_vt_symbol": result.reference_vt_symbol,
+                "reference_name": result.reference_name,
+                "reference_industry": result.reference_industry,
+                "trade_date": result.trade_date,
+                "count": len(result.rows),
+                "total_scanned": result.total_scanned,
+                "source": "reference_peer",
+                "results": [
+                    {
+                        "symbol": r.get("symbol", ""),
+                        "name": r.get("name", ""),
+                        "vt_symbol": r.get("vt_symbol", ""),
+                        "similarity_score": r.get("similarity_score"),
+                        "hit_reason": r.get("hit_reason"),
+                        "pe_ttm": r.get("pe_ttm"),
+                        "momentum_5d": r.get("momentum_5d"),
                     }
                     for r in result.rows
                 ],

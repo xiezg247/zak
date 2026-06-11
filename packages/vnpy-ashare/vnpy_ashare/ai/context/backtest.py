@@ -102,7 +102,7 @@ def build_backtest_ai_prompt(summary: dict[str, Any]) -> str:
     """生成跳转 AI 助手页的回测解读预填文案。"""
     strategy = summary.get("strategy", "—")
     vt_symbol = summary.get("vt_symbol", "—")
-    return f"请解读最近一次回测（策略 {strategy} · 标的 {vt_symbol}）。请调用 get_backtest_result 获取摘要指标，结合上下文解读，不要编造未在结果中的数值。"
+    return f"请解读最近一次回测（策略 {strategy} · 标的 {vt_symbol}）。获取摘要指标后结合上下文解读，不要编造未在结果中的数值。"
 
 
 def sync_backtest_page_context(widget: QtWidgets.QWidget, main_engine=None, *, notify_ui: bool = True) -> None:

@@ -29,12 +29,20 @@ BacktestAction = Literal[
 
 
 class ScreeningIntent(BaseModel):
-    """选股意图结构化字段，供 propose_screening 预填。"""
+    """选股意图结构化字段，供 run_recipe / screen_by_condition 路由预填。"""
 
     intent: str = Field(description="用户原话或归纳后的选股意图")
     preset: str = Field(
         default="",
         description="内置方案：涨幅榜/换手率排行/成交量放大/低 PE/中大盘/主力净流入等",
+    )
+    recipe_id: str = Field(
+        default="",
+        description="多因子配方 id，如 intraday_multi、post_close_multi",
+    )
+    trigger_kind: Literal["", "intraday", "post_close"] = Field(
+        default="",
+        description="配方触发类型：intraday 盘中 / post_close 盘后",
     )
     top_n: int = Field(default=20, ge=1, le=200)
     scheme_name: str | None = Field(default=None, description="已保存方案名")

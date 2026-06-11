@@ -5,7 +5,11 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from vnpy_ashare.ai.context.quote import build_floating_stock_quick_actions
+from vnpy_ashare.ai.context.quote import (
+    build_assistant_quick_actions,
+    build_assistant_screening_menus,
+    build_floating_stock_quick_actions,
+)
 from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_common.ai.protocol import AiContextData, QuickAction
 
@@ -18,27 +22,53 @@ def enrich_context_with_actions(data: AiContextData) -> AiContextData:
     return replace(data, badge=badge, chip_text=chip_text, actions=actions)
 
 
+def build_interpret_screen_action() -> QuickAction | None:
+    """最近一次选股/形态扫描结果解读（无结果时返回 None）。"""
+    ctx = get_screening_results()
+    if ctx is None or ctx.count <= 0:
+        return None
+    return QuickAction(
+        id="interpret_screen",
+        label="解读选股结果",
+        auto_send=True,
+        tooltip=f"解读「{ctx.condition}」共 {ctx.count} 条",
+        prompt=(
+            f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
+            "分析板块分布、与上次变动差异及技术面特征后解读，不要编造。"
+        ),
+    )
+
+
+def build_screening_quick_actions() -> list[QuickAction]:
+    """选股页 / 悬浮球：解读最近结果 + 形态/条件选股菜单。"""
+    actions: list[QuickAction] = []
+    interpret = build_interpret_screen_action()
+    if interpret is not None:
+        actions.append(interpret)
+    actions.extend(build_assistant_screening_menus())
+    return actions
+
+
+def build_assistant_panel_quick_actions() -> list[QuickAction]:
+    """全屏 AI 助手：最近结果解读 + 单票分析 + 全市场选股菜单。"""
+    actions: list[QuickAction] = []
+    interpret = build_interpret_screen_action()
+    if interpret is not None:
+        actions.append(interpret)
+    actions.extend(build_assistant_quick_actions())
+    return actions
+
+
 def build_page_quick_actions(data: AiContextData) -> list[QuickAction]:
     """按页面类型组装非个股快捷动作。"""
     if data.page == "选股":
-        ctx = get_screening_results()
-        if ctx is not None and ctx.count > 0:
-            return [
-                QuickAction(
-                    id="interpret_screen",
-                    label="解读选股结果",
-                    prompt=(
-                        f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
-                        "请调用 explain_screening_run(batch_top_n=5) 获取板块分布、变动 diff 与技术面后解读。"
-                    ),
-                ),
-            ]
+        return build_screening_quick_actions()
     if data.page == "数据管理":
         return [
             QuickAction(
                 id="data_gap",
                 label="检查数据缺口",
-                prompt=("请根据当前本地 K 线覆盖情况，分析可能存在的数据缺口，并说明建议优先补全哪些标的或周期。可结合 get_bars_summary 等工具。"),
+                prompt=("请根据当前本地 K 线覆盖情况，分析可能存在的数据缺口，并说明建议优先补全哪些标的或周期。"),
             ),
         ]
     return []

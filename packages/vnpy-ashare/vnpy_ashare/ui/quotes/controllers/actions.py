@@ -9,10 +9,12 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import (
     build_diagnose_ai_prompt,
+    build_historical_ai_prompt,
     build_positions_ai_prompt,
     build_signal_panel_ai_prompt,
     build_signal_panel_batch_ai_prompt,
     build_signals_ai_prompt,
+    build_technical_ai_prompt,
 )
 from vnpy_ashare.domain.signal_snapshot import format_signal_context_extra
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
@@ -403,7 +405,7 @@ class ActionsController:
             return
         item = self._p.current_item
         assert item is not None
-        self._ask_ai(f'请分析 {title} 的近期技术形态。请调用 technical_snapshot(symbol="{item.vt_symbol}")，基于工具返回的均线、量比、区间涨跌等数据做解读。')
+        self._ask_ai(build_technical_ai_prompt(item.vt_symbol, name))
 
     def ask_ai_for_positions(self) -> None:
         page = self._p
@@ -524,16 +526,13 @@ class ActionsController:
         )
 
     def ask_ai_for_trend(self) -> None:
-        title = self._item_title()
-        if title is None:
+        if self._item_title() is None:
             return
         item = self._p.current_item
         assert item is not None
-        self._ask_ai(
-            f"请分析 {title} 的近期走势。"
-            f'请调用 historical_pattern_summary(symbol="{item.vt_symbol}")，'
-            "基于工具返回的涨跌幅、波动、连涨连跌等历史统计数据做描述，禁止预测未来走势。"
-        )
+        quote = self._p.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        self._ask_ai(build_historical_ai_prompt(item.vt_symbol, name, lookback=20))
 
     def on_diagnose_finished(self, payload: dict) -> None:
         page = self._p

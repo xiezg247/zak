@@ -7,6 +7,7 @@ from vnpy_llm.routing.router import (
     FEAR_GREED_TOOL,
     _keyword_fallback,
     _normalize_market_enrichment,
+    _screening_intent_from_keywords,
     apply_fear_greed_tools,
     build_routing_hint,
     filter_tools_by_route,
@@ -21,11 +22,10 @@ ALL_TOOLS = [
     _tool("get_quote_context"),
     _tool("screen_by_condition"),
     _tool("screen_by_pattern"),
-    _tool("propose_screening"),
+    _tool("screen_reference_peer"),
     _tool("list_screeners"),
     _tool("list_recipes"),
     _tool("run_recipe"),
-    _tool("propose_recipe"),
     _tool("explain_screening_run"),
     _tool("get_backtest_result"),
     _tool("diagnose_stock"),
@@ -39,11 +39,12 @@ def test_filter_screening_subset():
     names = {t["function"]["name"] for t in filtered}
     assert "screen_by_condition" in names
     assert "screen_by_pattern" in names
-    assert "propose_screening" in names
+    assert "screen_reference_peer" in names
     assert "list_screeners" in names
     assert "list_recipes" in names
     assert "run_recipe" in names
-    assert "propose_recipe" in names
+    assert "propose_screening" not in names
+    assert "propose_recipe" not in names
     assert "explain_screening_run" in names
     assert "read_skill_file" in names
     assert "get_backtest_result" not in names
@@ -88,6 +89,34 @@ def test_build_routing_hint_screening():
     assert "选股" in hint
 
 
+def test_screening_intent_style_keywords():
+    intraday = _screening_intent_from_keywords("帮我做短线游资选股")
+    assert intraday.recipe_id == "intraday_multi"
+    assert intraday.confidence == "high"
+
+    post_close = _screening_intent_from_keywords("中线波段机会")
+    assert post_close.recipe_id == "post_close_multi"
+
+    value = _screening_intent_from_keywords("长线价投标的")
+    assert value.preset == "低 PE"
+
+
+def test_build_routing_hint_screening_recipe():
+    analysis = IntentAnalysis(
+        route=IntentRoute(category="screening", confidence="high", reasoning="用户要盘中选股"),
+        screening=ScreeningIntent(
+            intent="短线游资",
+            recipe_id="intraday_multi",
+            trigger_kind="intraday",
+            top_n=20,
+            confidence="high",
+        ),
+    )
+    hint = build_routing_hint(analysis)
+    assert "可直接调用 run_recipe（recipe_id=intraday_multi" in hint
+    assert "可直接调用 screen_by_condition" not in hint
+
+
 def test_build_routing_hint_screening_medium():
     analysis = IntentAnalysis(
         route=IntentRoute(category="screening", confidence="medium", reasoning="用户要选股"),
@@ -99,7 +128,8 @@ def test_build_routing_hint_screening_medium():
         ),
     )
     hint = build_routing_hint(analysis, page="选股")
-    assert "propose_screening" in hint
+    assert "list_screeners" in hint or "screen_by_condition" in hint
+    assert "propose_screening" not in hint
     assert "可直接调用 screen_by_condition" not in hint
 
 

@@ -23,6 +23,7 @@ _TOOL_LABELS: dict[str, str] = {
     "list_strategy_signals": "查询策略信号",
     "list_watchlist_signal_panel": "扫描信号区",
     "historical_pattern_summary": "统计历史走势",
+    "trend_scenario_summary": "走势情景摘要",
     "get_screening_context": "读取选股结果",
     "explain_screening_run": "编排选股解读",
     "propose_screening": "解析选股条件",

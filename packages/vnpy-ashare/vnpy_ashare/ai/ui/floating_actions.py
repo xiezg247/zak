@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.ai.context.enrichment import build_page_quick_actions
-from vnpy_ashare.ai.context.quote import (
-    build_assistant_quick_actions,
-    build_floating_stock_quick_actions,
+from vnpy_ashare.ai.context.enrichment import (
+    build_assistant_panel_quick_actions,
+    build_page_quick_actions,
+    build_screening_quick_actions,
 )
+from vnpy_ashare.ai.context.quote import build_floating_stock_quick_actions
 from vnpy_common.ai.protocol import AiContextData, QuickAction
 
 
 def build_quick_actions_for_panel(data: AiContextData, *, mode: str) -> list[QuickAction]:
     """按面板模式组装快捷按钮（floating / compact / assistant）。"""
     if mode == "assistant":
-        return build_assistant_quick_actions()
+        return build_assistant_panel_quick_actions()
     if data.page in ("自选", "市场", "雷达", "本地") and data.symbol:
         return build_floating_stock_quick_actions(
             data.symbol,
@@ -22,6 +23,8 @@ def build_quick_actions_for_panel(data: AiContextData, *, mode: str) -> list[Qui
             page=data.page,
             extra=data.extra,
         )
+    if data.page == "选股":
+        return build_screening_quick_actions()
     return build_page_quick_actions(data)
 
 

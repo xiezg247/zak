@@ -1,6 +1,6 @@
 ---
 name: tdx-stock-picker
-description: 通达信 AI 选股技能。利用通达信 MCP 提供的行情、财务、技术指标、板块、F10、研报等工具，按用户意图组合多条件筛选 A 股标的。支持强势股挖掘、低估值发现、技术突破识别、资金异动检测等场景。与终端自建选股页协同：盘中/盘后多因子走 run_recipe / propose_recipe；单一 preset 走 screen_by_condition；复杂条件走 propose_screening 确认流程；板块探查后可 propose_recipe 固化配方。
+description: 通达信 AI 选股技能。利用通达信 MCP 提供的行情、财务、技术指标、板块、F10、研报等工具，按用户意图组合多条件筛选 A 股标的。与终端自建选股页协同：盘中/盘后多因子直接 run_recipe；内置 preset / 已保存方案直接 screen_by_condition；形态用 screen_by_pattern。选股直接执行，无需用户二次确认。
 author: zak
 version: 1.0.0
 ---
@@ -33,8 +33,8 @@ version: 1.0.0
 | `list_screeners` | 列出所有可用选股方案 |
 | `list_recipes` | 列出多因子配方（盘中/盘后） |
 | `run_recipe` | 直接执行多因子配方 |
-| `propose_recipe` | 解析多因子意图 → 生成配方草案待确认 |
-| `propose_screening` | 解析单一 preset 意图 → 生成待确认草案 |
+| `screen_by_condition` | 直接执行内置 preset / 已保存方案 / 自定义区间 |
+| `screen_by_pattern` | 直接执行形态选股 |
 | `explain_screening_run` | 编排选股解读（板块分布、diff、技术面） |
 | `get_quote_context` | 读取终端当前上下文（当前选中标的、自选池等） |
 
@@ -81,28 +81,26 @@ version: 1.0.0
 共 N 只标的，数据更新时间：YYYY-MM-DD HH:mm
 ```
 
-### 场景 B：需要确认的正式选股（走终端草案）
+### 场景 B：正式选股（终端直接执行）
 
-条件较复杂、或用户需要保存条件复用时：
+条件较复杂或需落库复用时：
 
-1. 调用 `list_screeners` 了解已有方案
-2. 如果与内置方案匹配，直接用 `propose_screening` 提交草案
-3. 如果不匹配，同样用 `propose_screening` 描述条件，让用户确认
-4. 用户点击确认后，终端自动执行并跳转选股页
+1. 调用 `list_screeners` / `list_recipes` 了解已有方案与配方
+2. 内置 preset 或已保存方案 → `screen_by_condition` 直接执行
+3. 盘中/盘后多因子 → `run_recipe` 直接执行
+4. 结果自动写入选股页运行历史，可用 `explain_screening_run` 解读
 
 ### 场景 C：混合模式（TDX 辅助 + 终端执行）
 
-先用 TDX MCP 工具快速探查数据分布，确认条件合理后，再走终端选股草案：
-
 1. TDX MCP 工具查询板块热度、PE 分布区间
 2. 根据数据调整参数（如"当前该板块 PE 中位数 25"→ 调整阈值）
-3. 多因子意图用 `propose_recipe`；单一 preset 用 `propose_screening`
+3. 多因子意图 → `run_recipe`；单一 preset → `screen_by_condition`
 
 ### 场景 D：板块轮动 + 盘中配方
 
 1. MCP 查询当日强势板块/行业
 2. `list_recipes(trigger_kind=intraday)` 确认内置配方含 `sector_strength` 维度
-3. 意图明确时 `run_recipe(recipe_id=intraday_multi)`；需用户确认时用 `propose_recipe`
+3. `run_recipe(recipe_id=intraday_multi)` 直接执行
 4. 结果解读调用 `explain_screening_run(batch_top_n=5)`
 
 ---

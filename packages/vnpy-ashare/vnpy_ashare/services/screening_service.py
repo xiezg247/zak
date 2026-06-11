@@ -44,6 +44,7 @@ from vnpy_ashare.screener.preset.rules import apply_quote_preset
 from vnpy_ashare.screener.preset.scheme_store import delete_scheme, list_schemes, save_scheme
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_recipe
+from vnpy_ashare.screener.reference.reference_peer import ReferencePeerRunResult, run_reference_peer_screen
 from vnpy_ashare.screener.run.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.run.run_diff import enrich_recipe_run
 from vnpy_ashare.screener.run.run_store import (
@@ -133,6 +134,10 @@ class ScreeningService(BaseService):
         if error:
             raise ValueError(error)
 
+        mcp_result = self._run_pattern_screen_mcp(pattern_id, top_n=top_n)
+        if mcp_result is not None:
+            return mcp_result
+
         quote_rows = None
         if pattern_id == "theme_hot":
             quote_rows, err = self.load_quote_rows()
@@ -144,6 +149,57 @@ class ScreeningService(BaseService):
             top_n=top_n,
             quote_rows=quote_rows,
         )
+
+    def _run_pattern_screen_mcp(self, pattern_id: str, *, top_n: int = 20):
+        from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
+
+        analysis = getattr(self.engine, "analysis_service", None)
+        if analysis is None:
+            return None
+        mcp = getattr(analysis, "_mcp", None)
+        if mcp is None or mcp.execute is None or not mcp.tool_names:
+            return None
+        return run_pattern_screen_mcp(
+            pattern_id,
+            mcp_execute=mcp.execute,
+            tool_names=mcp.tool_names,
+            top_n=top_n,
+        )
+
+    def run_reference_peer(
+        self,
+        vt_symbol: str,
+        *,
+        reference_name: str = "",
+        top_n: int = 20,
+    ) -> ReferencePeerRunResult:
+        """以标杆股为锚，在同业池中按估值+动量打分取 top_n。"""
+        return run_reference_peer_screen(
+            vt_symbol,
+            reference_name=reference_name,
+            top_n=top_n,
+        )
+
+    def persist_reference_peer_result(self, result: ReferencePeerRunResult) -> None:
+        """标杆对标结果写入 context_store 与 run_store。"""
+        ref = result.reference_name or result.reference_vt_symbol
+        condition = f"找同类·{ref}"
+        rows = list(result.rows)
+        updated_at = rows[0].get("updated_at") if rows else None
+        self.set_screening_results(condition=condition, rows=rows, updated_at=str(updated_at or ""))
+        save_run(
+            condition=condition,
+            source="reference_peer",
+            rows=rows,
+            total_scanned=result.total_scanned,
+            config={
+                "reference_vt_symbol": result.reference_vt_symbol,
+                "reference_industry": result.reference_industry,
+                "trade_date": result.trade_date,
+                "nl_source": "reference_peer",
+            },
+        )
+        self.publish_page_context()
 
     def set_screening_results(
         self,

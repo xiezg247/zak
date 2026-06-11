@@ -225,7 +225,7 @@ def validate_and_build(data: ProposeInput) -> ProposeResult:
         return ProposeResult(
             kind="need_clarification",
             questions=questions,
-            message="意图不够明确，请先向用户追问后再调用 propose_screening。",
+            message="意图不够明确，请先向用户追问后再调用 screen_by_condition 或 run_recipe。",
         )
 
     resolved = _resolve_request(data)
@@ -252,7 +252,7 @@ def validate_and_build(data: ProposeInput) -> ProposeResult:
     return ProposeResult(
         kind="pending_confirm",
         draft=draft,
-        message="已生成选股条件，请在确认框中核对后运行。",
+        message="已解析选股条件，可直接执行 screen_by_condition。",
     )
 
 
@@ -298,8 +298,12 @@ def try_fast_path(intent: str) -> ProposeInput | None:
         preset = SCREENER_CHANGE_TOP
     elif "换手" in text:
         preset = SCREENER_TURNOVER
-    elif any(k in text for k in ("放量", "成交量放大")):
+    elif any(k in text for k in ("放量", "成交量放大", "周期资源", "周期")):
         preset = SCREENER_VOLUME_SURGE
+    elif any(k in text for k in ("成长赛道", "成长")):
+        preset = SCREENER_MONEYFLOW_IN
+    elif any(k in text for k in ("长线价投", "价投", "价值投资")):
+        preset = SCREENER_LOW_PE
     else:
         return None
 

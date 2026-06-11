@@ -122,7 +122,11 @@ class VnpyAnalysisSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="historical_pattern_summary",
-                description=("历史区间走势统计（涨跌幅、波动、形态标签），用于回答「最近走势如何」。仅描述历史，禁止包装成未来预测。"),
+                description=(
+                    "历史区间走势统计（涨跌幅、波动、形态标签、当前连涨/连阴天数）。"
+                    "本地日 K 优先；本地不足时自动降级问小达 MCP。"
+                    "仅描述历史，禁止包装成未来预测。"
+                ),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -130,6 +134,41 @@ class VnpyAnalysisSkill(SkillTemplate):
                         "lookback": {
                             "type": "integer",
                             "description": "统计区间 K 线根数，默认 20",
+                        },
+                    },
+                    "required": ["symbol"],
+                },
+            ),
+            ToolSpec(
+                name="trend_scenario_summary",
+                description=(
+                    "本地走势情景摘要：均线/量比、结构锚点（支撑/阻力）、统计参考带与方向提示。"
+                    "用户问走势预测、5日情景、方向倾向、支撑压力时优先调用；"
+                    "输出供 LLM 组织 bull/base/bear 情景分析，非确定性预测。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "股票代码"},
+                        "horizon_days": {
+                            "type": "integer",
+                            "description": "情景展望交易日数，默认 5",
+                        },
+                        "lookback": {
+                            "type": "integer",
+                            "description": "技术面回看 K 线根数，默认 60",
+                        },
+                        "class_name": {
+                            "type": "string",
+                            "description": "策略类名（结构锚点），默认 AshareDoubleMaStrategy",
+                        },
+                        "fast_window": {
+                            "type": "integer",
+                            "description": "快线周期，默认 10",
+                        },
+                        "slow_window": {
+                            "type": "integer",
+                            "description": "慢线周期，默认 20",
                         },
                     },
                     "required": ["symbol"],
@@ -201,4 +240,24 @@ class VnpyAnalysisSkill(SkillTemplate):
     def historical_pattern_summary(self, symbol: str, lookback: int = 20) -> str:
         svc = self._get_analysis_service()
         result = svc.historical_pattern_summary(symbol, lookback=int(lookback or 20))
+        return json.dumps(result, ensure_ascii=False)
+
+    def trend_scenario_summary(
+        self,
+        symbol: str,
+        horizon_days: int = 5,
+        lookback: int = 60,
+        class_name: str = "AshareDoubleMaStrategy",
+        fast_window: int = 10,
+        slow_window: int = 20,
+    ) -> str:
+        svc = self._get_analysis_service()
+        result = svc.trend_scenario_summary(
+            symbol,
+            horizon_days=int(horizon_days or 5),
+            lookback=int(lookback or 60),
+            class_name=class_name or "AshareDoubleMaStrategy",
+            fast_window=int(fast_window or 10),
+            slow_window=int(slow_window or 20),
+        )
         return json.dumps(result, ensure_ascii=False)

@@ -45,6 +45,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "list_strategy_signals",
             "list_watchlist_signal_panel",
             "historical_pattern_summary",
+            "trend_scenario_summary",
         }
     ),
     "diagnosis": frozenset(
@@ -58,10 +59,9 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "list_screeners",
             "list_recipes",
             "run_recipe",
-            "propose_recipe",
             "screen_by_condition",
             "screen_by_pattern",
-            "propose_screening",
+            "screen_reference_peer",
             "get_screening_context",
             "explain_screening_run",
         }
@@ -123,6 +123,8 @@ market.fear_greed（恐贪指数 enrichment，三档）：
 - highlight：用户明显在问市场情绪、冷热、恐贪/贪婪/恐慌、赚钱效应、是否过热
 
 若 category 为 screening，必须填写 screening 字段（intent 必填）。
+screening 补充：短线游资/题材活跃 → recipe_id=intraday_multi；中线波段 → recipe_id=post_close_multi；
+长线价投 → preset=低 PE；成长赛道 → preset=主力净流入；周期资源 → preset=成交量放大。
 若 category 为 backtest，必须填写 backtest 字段。
 confidence=low 表示意图模糊，需要主对话追问。"""
 
@@ -287,16 +289,35 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
         lines.append(f"- intent: {s.intent}")
         if s.preset:
             lines.append(f"- preset: {s.preset}")
+        if s.recipe_id:
+            lines.append(f"- recipe_id: {s.recipe_id}")
+        if s.trigger_kind:
+            lines.append(f"- trigger_kind: {s.trigger_kind}")
         lines.append(f"- top_n: {s.top_n}")
         if s.scheme_name:
             lines.append(f"- scheme_name: {s.scheme_name}")
         lines.append(f"- confidence: {s.confidence}")
         if s.clarification_needed:
             lines.append("- 意图不够明确，请先向用户追问，勿调用选股工具")
+        elif s.confidence == "high" and s.recipe_id and not s.scheme_name:
+            lines.append(
+                f"- 配方「{s.recipe_id}」可直接调用 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"
+            )
         elif s.confidence == "high" and s.preset and not s.scheme_name:
             lines.append(f"- 内置方案「{s.preset}」可直接调用 screen_by_condition（name={s.preset}, top_n={s.top_n}）")
         elif s.confidence in ("high", "medium"):
-            lines.append("- 请调用 propose_screening，并传入上述 intent/preset/top_n 等参数")
+            if s.recipe_id:
+                lines.append(
+                    f"- 可直接调用 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"
+                )
+            elif s.preset:
+                lines.append(
+                    f"- 可直接调用 screen_by_condition（name={s.preset}, top_n={s.top_n}）"
+                )
+            else:
+                lines.append(
+                    "- 请先 list_screeners / list_recipes 选定方案，再调用 screen_by_condition 或 run_recipe 直接执行"
+                )
 
     if analysis.backtest and route.category == "backtest":
         b = analysis.backtest
@@ -336,6 +357,37 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "") -> str:
     return "\n".join(lines)
 
 
+def _screening_intent_from_keywords(text: str) -> ScreeningIntent:
+    """快捷菜单 / 口语关键词 → 结构化选股意图（关键词兜底用）。"""
+    if any(k in text for k in ("短线游资", "游资", "题材活跃", "连板", "涨停")):
+        return ScreeningIntent(
+            intent=text,
+            recipe_id="intraday_multi",
+            trigger_kind="intraday",
+            confidence="high",
+        )
+    if any(k in text for k in ("中线波段", "波段")):
+        return ScreeningIntent(
+            intent=text,
+            recipe_id="post_close_multi",
+            trigger_kind="post_close",
+            confidence="high",
+        )
+    if any(k in text for k in ("长线价投", "价投", "价值投资")):
+        return ScreeningIntent(intent=text, preset="低 PE", confidence="high")
+    if any(k in text for k in ("成长赛道", "成长")):
+        return ScreeningIntent(intent=text, preset="主力净流入", confidence="high")
+    if any(k in text for k in ("周期资源", "周期")):
+        return ScreeningIntent(intent=text, preset="成交量放大", confidence="high")
+    if any(k in text for k in ("涨幅榜", "涨最多", "今天涨")):
+        return ScreeningIntent(intent=text, preset="涨幅榜", confidence="high")
+    if any(k in text for k in ("老鸭头", "均线多头", "w底", "双底", "形态选股")):
+        return ScreeningIntent(intent=text, confidence="high")
+    if "换手" in text:
+        return ScreeningIntent(intent=text, preset="换手率排行", confidence="high")
+    return ScreeningIntent(intent=text, confidence="medium")
+
+
 def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
     """API 不可用时的轻量规则兜底。"""
     text = user_text.strip()
@@ -346,11 +398,27 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
         analysis = IntentAnalysis(route=route, **kwargs)
         return _normalize_market_enrichment(analysis, text, page)
 
-    if any(k in text for k in ("选股", "筛选", "涨幅榜", "换手率", "涨最多")):
-        return _with_market(
-            "screening",
-            screening=ScreeningIntent(intent=text, confidence="medium"),
-        )
+    _SCREENING_KEYWORDS = (
+        "选股",
+        "筛选",
+        "涨幅榜",
+        "换手率",
+        "涨最多",
+        "短线游资",
+        "游资",
+        "中线波段",
+        "波段",
+        "长线价投",
+        "价投",
+        "成长赛道",
+        "周期资源",
+        "低 pe",
+        "低pe",
+        "多因子",
+    )
+    if any(k in text for k in _SCREENING_KEYWORDS) or any(k in lower for k in ("低pe",)):
+        screening = _screening_intent_from_keywords(text)
+        return _with_market("screening", screening=screening)
     if any(k in text for k in ("回测", "夏普", "最大回撤", "策略列表")):
         action = "list_history" if "历史" in text or "对比" in text else "query_result"
         if "有哪些策略" in text or "策略列表" in text:

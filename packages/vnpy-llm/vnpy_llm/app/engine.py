@@ -510,10 +510,6 @@ class LlmEngine(BaseEngine):
                 result = self.mcp_engine.execute_tool(name, arguments)
             else:
                 result = self.skill_engine.execute_tool(name, arguments)
-            if name == "propose_screening":
-                self._maybe_emit_screener_draft(result)
-            if name == "propose_recipe":
-                self._maybe_emit_recipe_draft(result)
             return enrich_tool_result(result)
         except Exception as ex:
             success = False

@@ -65,11 +65,11 @@ def test_screen_by_condition_ok():
     svc.persist_run_result.assert_called_once()
 
 
-def test_screen_by_condition_need_confirm():
+def test_screen_by_condition_saved_scheme_not_found():
     skill = _make_skill(MagicMock())
     result = json.loads(skill.screen_by_condition("我的 · 测试"))
-    assert result["status"] == "need_confirm"
-    assert "propose_screening" in result["message"]
+    assert result["status"] == "error"
+    assert "未找到" in result["message"]
 
 
 def test_screen_by_pattern_ok():
@@ -140,20 +140,8 @@ def test_run_recipe_ok():
     svc.persist_run_result.assert_called_once()
 
 
-def test_propose_recipe_intraday():
+def test_custom_without_threshold_error():
     skill = _make_skill(MagicMock())
-    result = json.loads(skill.propose_recipe("盘中强势股多因子", confidence="high"))
-    assert result["status"] == "pending_confirm"
-    assert result["recipe_id"] == "intraday_multi"
-    assert result["draft_id"]
-
-
-def test_propose_screening_builtin():
-    from unittest.mock import patch
-
-    skill = _make_skill(MagicMock())
-    with patch("vnpy_ashare.screener.draft.nl_mapper.collect_warnings", return_value=[]):
-        result = json.loads(skill.propose_screening("今天涨最多的", preset="涨幅榜", top_n=5, confidence="high"))
-    assert result["status"] == "pending_confirm"
-    assert result["draft_id"]
-    assert result["preset"] == "涨幅榜"
+    result = json.loads(skill.screen_by_condition("自定义筛选"))
+    assert result["status"] == "error"
+    assert "min_change_pct" in result["message"] or "阈值" in result["message"]

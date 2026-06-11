@@ -16,6 +16,12 @@ from vnpy_ashare.domain.signal_snapshot import (
     signal_snapshot_to_dict,
 )
 from vnpy_ashare.services.analysis.diagnose import DiagnoseAnalyzer
+from vnpy_ashare.services.analysis.historical_mcp import (
+    enrich_local_historical_with_mcp,
+    fetch_historical_pattern_mcp,
+    local_historical_sufficient,
+    merge_historical_failure,
+)
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding, McpExecute
 from vnpy_ashare.services.analysis.reports import ReportsFetcher
 from vnpy_ashare.services.analysis.technical import TechnicalAnalyzer
@@ -213,7 +219,41 @@ class AnalysisService(BaseService):
         lookback: int = 20,
         scope: str = "daily",
     ) -> dict[str, Any]:
-        return self._technical.historical_pattern_summary(symbol, lookback=lookback, scope=scope)
+        local = self._technical.historical_pattern_summary(symbol, lookback=lookback, scope=scope)
+        if local_historical_sufficient(local):
+            return enrich_local_historical_with_mcp(
+                local,
+                symbol,
+                lookback=lookback,
+                mcp=self._mcp,
+            )
+
+        mcp_result = fetch_historical_pattern_mcp(symbol, lookback=lookback, mcp=self._mcp)
+        if local_historical_sufficient(mcp_result):
+            return mcp_result
+
+        return merge_historical_failure(local, mcp_result, lookback=lookback)
+
+    def trend_scenario_summary(
+        self,
+        symbol: str,
+        *,
+        horizon_days: int = 5,
+        lookback: int = 60,
+        class_name: str = "AshareDoubleMaStrategy",
+        fast_window: int = 10,
+        slow_window: int = 20,
+        scope: str = "daily",
+    ) -> dict[str, Any]:
+        return self._technical.trend_scenario_summary(
+            symbol,
+            horizon_days=horizon_days,
+            lookback=lookback,
+            class_name=class_name,
+            fast_window=fast_window,
+            slow_window=slow_window,
+            scope=scope,
+        )
 
     def build_screening_context(
         self,

@@ -20,6 +20,5 @@ def build_ask_ai_prompt_for_run(run_id: str, condition: str) -> str:
     condition = condition.strip() or "（未知条件）"
     return (
         f"请解读这次选股历史（条件：{condition}）。"
-        f'请调用 explain_screening_run(run_id="{run_id}", batch_top_n=5) '
-        "获取板块分布、与上次 diff 及技术面快照后解读，不要编造未在结果中的指标。"
+        "分析板块分布、与上次变动差异及技术面快照后解读，不要编造未在结果中的指标。"
     )

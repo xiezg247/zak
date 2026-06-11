@@ -54,38 +54,55 @@ class FloatingActionsTests(unittest.TestCase):
             actions = build_assistant_quick_actions()
         self.assertEqual(len(actions), 7)
         stock_ids = [a.id for a in actions[:4]]
-        screen_ids = [a.id for a in actions[4:]]
+        screen_ids = [a.id for a in actions[5:]]
         self.assertEqual(stock_ids, ["diagnose", "technical", "trend_forecast", "recent_trend"])
-        self.assertEqual(screen_ids, ["pattern_screen", "condition_screen", "reference_screen"])
+        self.assertEqual(actions[4].id, "reference_peer")
+        self.assertEqual(screen_ids, ["pattern_screen", "condition_screen"])
         for action in actions:
             self.assertTrue(action.has_menu, action.id)
         pattern = next(a for a in actions if a.id == "pattern_screen")
         self.assertEqual(
             [child.label for child in pattern.children],
-            ["老鸭头形态", "均线多头", "W底形态", "主题投资"],
+            ["老鸭头形态", "均线多头", "W底形态", "热点活跃"],
         )
         condition = next(a for a in actions if a.id == "condition_screen")
         self.assertEqual(
             [child.label for child in condition.children],
-            ["中线波段", "短线游资", "长线价投"],
+            ["短线游资", "中线波段", "长线价投", "成长赛道", "周期资源"],
         )
-        reference = next(a for a in actions if a.id == "reference_screen")
+        short_hot = next(c for c in condition.children if c.id == "cond_short_hot")
+        self.assertIn("盘中多因子选股", short_hot.prompt)
+        self.assertIn("短线游资", short_hot.prompt)
+        self.assertTrue(short_hot.auto_send)
+        mid_swing = next(c for c in condition.children if c.id == "cond_mid_swing")
+        self.assertIn("盘后多因子选股", mid_swing.prompt)
+        long_value = next(c for c in condition.children if c.id == "cond_long_value")
+        self.assertIn("低 PE", long_value.prompt)
+        self.assertIn("长线价投", long_value.prompt)
+        reference_peer = next(a for a in actions if a.id == "reference_peer")
         self.assertEqual(
-            [child.label for child in reference.children],
-            ["短线波段", "长线价值", "成长赛道", "周期资源"],
+            [child.label for child in reference_peer.children],
+            ["Top 10", "Top 20", "Top 30"],
         )
+        self.assertIn("600519.SSE", reference_peer.children[1].prompt)
+        self.assertIn("标杆", reference_peer.children[1].prompt)
         trend = next(a for a in actions if a.id == "trend_forecast")
         self.assertIn("600519.SSE", trend.children[0].prompt)
-        self.assertIn("screen_by_pattern", pattern.children[0].prompt)
+        self.assertIn("情景分析", trend.children[0].prompt)
+        self.assertIn("乐观/基准/悲观", trend.children[0].prompt)
+        self.assertTrue(all(child.auto_send for child in trend.children))
+        self.assertIn("形态选股", pattern.children[0].prompt)
+        self.assertTrue(pattern.children[0].auto_send)
 
     def test_floating_bound_to_selected_symbol(self) -> None:
-        actions = build_floating_stock_quick_actions(
-            "002230",
-            exchange_cn="深交所",
-            name="科大讯飞",
-            page="自选",
-        )
-        self.assertEqual(len(actions), 4)
+        with patch("vnpy_ashare.ai.context.quote.is_symbol_in_positions", return_value=False):
+            actions = build_floating_stock_quick_actions(
+                "002230",
+                exchange_cn="深交所",
+                name="科大讯飞",
+                page="自选",
+            )
+        self.assertEqual(len(actions), 5)
         self.assertIn("002230.SZSE", actions[0].children[0].prompt)
 
     def test_market_page_includes_sector_overview(self) -> None:
@@ -97,6 +114,7 @@ class FloatingActionsTests(unittest.TestCase):
                 page="市场",
             )
         ids = [a.id for a in actions]
+        self.assertIn("reference_peer", ids)
         self.assertIn("sector_overview", ids)
         self.assertNotIn("add_watchlist", ids)
 
@@ -110,7 +128,7 @@ class FloatingActionsTests(unittest.TestCase):
                 extra="本地日 K 条数：120",
             )
         bar_health = next(a for a in actions if a.id == "bar_health")
-        self.assertIn("get_bars_summary", bar_health.prompt)
+        self.assertIn("本地日 K", bar_health.prompt)
         self.assertIn("600519.SSE", bar_health.prompt)
 
     def test_non_watchlist_symbol_shows_add_watchlist(self) -> None:
@@ -122,7 +140,7 @@ class FloatingActionsTests(unittest.TestCase):
                 page="市场",
             )
         add = next(a for a in actions if a.id == "add_watchlist")
-        self.assertIn("add_to_watchlist", add.prompt)
+        self.assertIn("加入自选池", add.prompt)
 
     def test_scene_label_from_context(self) -> None:
         data = enrich_context_with_actions(
@@ -156,8 +174,9 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertEqual(data.badge, "自选")
         self.assertIn("贵州茅台", data.chip_text)
         self.assertIn("+2.30%", data.chip_text)
-        self.assertEqual(len(data.actions), 4)
-        self.assertTrue(all(action.has_menu for action in data.actions))
+        self.assertEqual(len(data.actions), 5)
+        self.assertTrue(all(action.has_menu for action in data.actions[:4]))
+        self.assertEqual(data.actions[4].id, "reference_peer")
 
     def test_assistant_mode_actions(self) -> None:
         binding = StockBinding(
@@ -179,9 +198,9 @@ class FloatingActionsTests(unittest.TestCase):
                 "technical",
                 "trend_forecast",
                 "recent_trend",
+                "reference_peer",
                 "pattern_screen",
                 "condition_screen",
-                "reference_screen",
             ],
         )
 
@@ -196,6 +215,36 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertEqual(data.badge, "选股·1")
         self.assertIn("命中 1 条", data.chip_text)
         self.assertEqual(data.actions[0].id, "interpret_screen")
+        self.assertTrue(data.actions[0].auto_send)
+        self.assertEqual(data.actions[1].id, "pattern_screen")
+        self.assertEqual(len(data.actions), 3)
+
+    def test_screener_page_without_results_shows_screen_menus(self) -> None:
+        set_screening_results(condition="", rows=[], updated_at=None)
+        panel_actions = build_quick_actions_for_panel(AiContextData(page="选股"), mode="floating")
+        ids = [a.id for a in panel_actions]
+        self.assertEqual(ids, ["pattern_screen", "condition_screen"])
+
+    def test_assistant_panel_prepends_interpret_after_screening(self) -> None:
+        set_screening_results(
+            condition="形态 · 老鸭头形态",
+            rows=[{"vt_symbol": "600519.SSE", "name": "贵州茅台"}],
+            updated_at="2026-06-08",
+        )
+        binding = StockBinding(
+            symbol="002230",
+            exchange_cn="深交所",
+            name="科大讯飞",
+            vt_symbol="002230.SZSE",
+        )
+        with patch(
+            "vnpy_ashare.ai.context.quote.resolve_assistant_stock_binding",
+            return_value=binding,
+        ):
+            panel_actions = build_quick_actions_for_panel(AiContextData(page="AI 助手"), mode="assistant")
+        self.assertEqual(panel_actions[0].id, "interpret_screen")
+        self.assertEqual(panel_actions[1].id, "diagnose")
+        self.assertEqual(len(panel_actions), 8)
 
     def test_data_manager_badge_and_action(self) -> None:
         extra = "你正在协助用户查看本地 K 线数据覆盖；请基于工具与上下文回答，禁止编造。\n日线：12 组标的，共 3456 根 K 线\n分钟线：3 组标的，共 890 根 K 线"

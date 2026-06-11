@@ -40,8 +40,36 @@ class ProposeRecipeResult:
     message: str = ""
 
 
-_INTRADAY_HINTS = ("盘中", "现在", "当下", "实时", "今天异动", "午盘", "早盘", "尾盘")
-_POST_CLOSE_HINTS = ("盘后", "收盘", "估值", "资金流入", "低pe", "低 pe", "基本面")
+_INTRADAY_HINTS = (
+    "盘中",
+    "现在",
+    "当下",
+    "实时",
+    "今天异动",
+    "午盘",
+    "早盘",
+    "尾盘",
+    "短线游资",
+    "游资",
+    "题材",
+    "连板",
+    "涨停",
+    "热点",
+)
+_POST_CLOSE_HINTS = (
+    "盘后",
+    "收盘",
+    "估值",
+    "资金流入",
+    "低pe",
+    "低 pe",
+    "基本面",
+    "中线波段",
+    "波段",
+    "中线",
+)
+_STYLE_INTRADAY_RECIPE = ("短线游资", "游资", "题材活跃", "连板", "涨停", "热点")
+_STYLE_POST_CLOSE_RECIPE = ("中线波段", "波段", "中线")
 
 
 def validate_and_build_recipe(data: ProposeRecipeInput) -> ProposeRecipeResult:
@@ -92,7 +120,7 @@ def validate_and_build_recipe(data: ProposeRecipeInput) -> ProposeRecipeResult:
     return ProposeRecipeResult(
         kind="pending_confirm",
         draft=draft,
-        message=f"已生成配方草案「{summary}」，请确认后执行 run_recipe(recipe_id={recipe.recipe_id})",
+        message=f"已解析配方「{summary}」，可直接执行 run_recipe(recipe_id={recipe.recipe_id})",
     )
 
 
@@ -111,6 +139,11 @@ def _resolve_trigger_kind(intent: str, explicit: str) -> TriggerKind:
 
 
 def _resolve_recipe_id(intent: str, trigger: TriggerKind) -> str:
+    if any(k in intent for k in _STYLE_INTRADAY_RECIPE):
+        return RECIPE_INTRADAY_MULTI
+    if any(k in intent for k in _STYLE_POST_CLOSE_RECIPE):
+        return RECIPE_POST_CLOSE_MULTI
+
     lower = intent.lower()
     for entry in list_recipe_catalog(trigger_kind=trigger):
         rid = entry.recipe_id

@@ -135,6 +135,7 @@ uv run pytest tests/ -q
 | [数据设计](docs/data-design.md) | SQLite ×3 + Redis |
 | [策略回测](docs/backtest-ux.md) | 联动、批量回测、AI 上下文 |
 | [AI 数据路由](docs/ai-data-routing.md) | Skill / MCP 与数据源 |
+| [AI 功能与 K 线](docs/ai-kline-data.md) | 各功能对本地日 K 的依赖与下载建议 |
 
 ## 项目结构
 

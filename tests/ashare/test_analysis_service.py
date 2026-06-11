@@ -36,6 +36,11 @@ class _FakeBarService:
         }
 
 
+class _SparseBarService(_FakeBarService):
+    def load_bars(self, symbol, exchange, scope="daily", start=None, end=None):
+        return [_FakeBar(day, 10.0 + day * 0.1) for day in range(1, 6)]
+
+
 def _wenda_payload(**extra_fields: str) -> str:
     headers = ["sec_code", "sec_name", "now_price", "chg", *extra_fields.keys()]
     row = ["600000", "浦发银行", "10.5", "1.2", *extra_fields.values()]
@@ -94,6 +99,68 @@ class AnalysisServiceTests(unittest.TestCase):
         self.assertIn("return_pct", result)
         self.assertIn("pattern_label", result)
         self.assertIn("disclaimer", result)
+        self.assertEqual(result["data_quality"], "local")
+        self.assertEqual(result["current_streak_direction"], "up")
+        self.assertEqual(result["current_streak_days"], 19)
+
+    def test_historical_pattern_summary_mcp_fallback(self) -> None:
+        engine = SimpleNamespace(
+            bar_service=_SparseBarService(),
+            main_engine=SimpleNamespace(),
+            event_engine=SimpleNamespace(),
+        )
+        service = AnalysisService(engine)
+
+        def _execute(name: str, args: dict) -> str:
+            return _wenda_payload(**{"20日涨跌幅": "4.20", "振幅": "9.8"})
+
+        service.bind_mcp(_execute, ["mcp_tdx_tdx_wenda_quotes"])
+        result = service.historical_pattern_summary("600000.SSE", lookback=20)
+        self.assertEqual(result["data_quality"], "mcp_fallback")
+        self.assertEqual(result["return_pct"], 4.2)
+        self.assertIn("tdx_mcp", result["sources"])
+
+    def test_historical_pattern_summary_local_enriched(self) -> None:
+        def _execute(name: str, args: dict) -> str:
+            return _wenda_payload(**{"MACD.MACD": "0.15", "主力净额": "888888"})
+
+        self.service.bind_mcp(_execute, ["mcp_tdx_tdx_wenda_quotes"])
+        result = self.service.historical_pattern_summary("600000.SSE", lookback=20)
+        self.assertEqual(result["data_quality"], "local_enriched")
+        self.assertIn("bar", result["sources"])
+        self.assertIn("tdx_mcp", result["sources"])
+        self.assertIn("mcp_supplement", result)
+
+    def test_trend_scenario_summary(self) -> None:
+        result = self.service.trend_scenario_summary("600000.SSE", horizon_days=5)
+        self.assertEqual(result["symbol"], "600000.SSE")
+        self.assertEqual(result["horizon_days"], 5)
+        self.assertIn("technical", result)
+        self.assertIn("structure_anchors", result)
+        self.assertIn("direction_hints", result)
+        self.assertIn("reference_bands", result)
+        self.assertIn("disclaimer", result)
+        self.assertIn("bull/base/bear", result.get("output_guide", ""))
+
+    def test_historical_pattern_summary_current_streak_down(self) -> None:
+        class _DownBarService(_FakeBarService):
+            def load_bars(self, symbol, exchange, scope="daily", start=None, end=None):
+                bars = []
+                price = 20.0
+                for day in range(1, 31):
+                    bars.append(_FakeBar(day, price))
+                    price -= 0.1
+                return bars
+
+        engine = SimpleNamespace(
+            bar_service=_DownBarService(),
+            main_engine=SimpleNamespace(),
+            event_engine=SimpleNamespace(),
+        )
+        service = AnalysisService(engine)
+        result = service.historical_pattern_summary("600000.SSE", lookback=10)
+        self.assertEqual(result["current_streak_direction"], "down")
+        self.assertEqual(result["current_streak_days"], 9)
 
 
 class TdxDiagnoseParseTests(unittest.TestCase):
