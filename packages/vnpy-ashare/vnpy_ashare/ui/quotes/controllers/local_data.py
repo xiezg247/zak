@@ -14,10 +14,13 @@ from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
     BarMeta,
+    bar_meta_from_overview,
+    clip_bars_from_unified_start,
     format_gap_ranges,
     format_meta_datetime,
     list_status,
 )
+from vnpy_ashare.data.bar_store import invalidate_bar_overview_cache
 from vnpy_ashare.data.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS, is_daily_scope, scope_display
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.symbols import StockItem
@@ -106,6 +109,7 @@ class LocalDataController:
 
     def refresh_meta(self) -> None:
         page = self._page
+        invalidate_bar_overview_cache()
         page.downloaded_keys = set()
         page.bar_meta = {}
         page.bar_list_status = {}
@@ -113,7 +117,7 @@ class LocalDataController:
         rows = bar_svc.iter_overviews(page._local_scope) if bar_svc else self._fallback_overviews(page._local_scope)
         for row in rows:
             key = (row.symbol, row.exchange)
-            meta = BarMeta(start=row.start, end=row.end, count=row.count)
+            meta = bar_meta_from_overview(row)
             page.downloaded_keys.add(key)
             page.bar_meta[key] = meta
             page.bar_list_status[key] = list_status(meta)
@@ -123,9 +127,23 @@ class LocalDataController:
         """BarService 不可用时经 bar_access 枚举本地 K 线概览。"""
         return iter_bar_overviews(scope=scope)
 
+    def on_stock_list_loaded(self) -> None:
+        """本地列表加载完成后：刷新元数据、重绘表格并恢复当前选中标的图表。"""
+        page = self._page
+        if not page.config.use_local_table:
+            return
+        self.refresh_meta()
+        page.apply_filter()
+        item = page.current_item
+        if item is not None and (item.symbol, item.exchange) in page.downloaded_keys:
+            page.show_kline(item)
+            if page.config.show_fill_button and self.is_daily_scope():
+                self.check_bar_gaps(item)
+
     def update_batch_toolbar_buttons(self) -> None:
         self.update_batch_fill_button()
         self.update_batch_gap_fill_button()
+        self.update_gap_fill_button()
 
     def update_batch_fill_button(self) -> None:
         page = self._page
@@ -159,6 +177,37 @@ class LocalDataController:
         scannable = count_scannable_daily_items(page.all_stocks, page.bar_meta)
         button.setEnabled(scannable > 0)
         button.setToolTip(f"扫描并修复列表内 {scannable} 只日 K 的内部断层" if scannable else "当前列表无本地日 K")
+
+    def update_gap_fill_button(self) -> None:
+        page = self._page
+        button = getattr(page, "gap_fill_button", None)
+        if button is None or not page.config.show_batch_gap_fill_button:
+            return
+        if not page.config.use_local_table or not self.is_daily_scope():
+            button.setEnabled(False)
+            return
+        if self._batch_worker_active():
+            button.setEnabled(False)
+            return
+        item = page.current_item
+        if item is None:
+            button.setEnabled(False)
+            return
+        key = (item.symbol, item.exchange)
+        meta = page.bar_meta.get(key)
+        if meta is None:
+            button.setEnabled(False)
+            return
+        status = page.bar_list_status.get(key, list_status(meta))
+        has_gaps = status == BarHealthStatus.GAPS
+        button.setEnabled(has_gaps)
+        if has_gaps and page._selected_gap_result is not None and page._selected_gap_result.gaps:
+            gap_text = format_gap_ranges(page._selected_gap_result.gaps)
+            button.setToolTip(f"修复 {len(page._selected_gap_result.gaps)} 处断层：{gap_text}")
+        elif has_gaps:
+            button.setToolTip("扫描并修复当前标的日 K 内部断层")
+        else:
+            button.setToolTip("当前标的无内部断层")
 
     def _batch_worker_active(self) -> bool:
         page = self._page
@@ -342,6 +391,106 @@ class LocalDataController:
         worker.failed.connect(worker.deleteLater)
         worker.start()
 
+    def fill_selected_gaps(self) -> None:
+        page = self._page
+        if not page.config.show_batch_gap_fill_button or not self.is_daily_scope():
+            return
+        if page._task_guard.active:
+            return
+        if page._thread_active(page._download_worker) or self._batch_worker_active():
+            return
+        if not page.current_item:
+            return
+
+        item = page.current_item
+        key = (item.symbol, item.exchange)
+        meta = page.bar_meta.get(key)
+        if meta is None:
+            page._toast.warning("该标的无本地日 K")
+            return
+
+        label = format_vt_symbol_cn(item.symbol, item.exchange)
+        display = f"{item.name}（{label}）" if item.name else label
+        gap_result = page._selected_gap_result
+        if gap_result is not None and gap_result.status == BarHealthStatus.GAPS and gap_result.gaps:
+            gap_text = format_gap_ranges(gap_result.gaps)
+            message = (
+                f"将为 {display} 修复 {len(gap_result.gaps)} 处断层：\n{gap_text}\n\n是否继续？"
+            )
+        else:
+            message = f"将扫描 {display} 的日 K 并修复内部断层。\n\n是否继续？"
+
+        if not confirm_action(page, "修复断层", message, confirm_text="开始修复"):
+            return
+
+        page._begin_cancellable_task(
+            f"扫描断层 · {label}…",
+            worker_attr="_batch_gap_fill_worker",
+            primary=page.gap_fill_button,
+            primary_text="修复断层",
+            primary_handler=page.fill_selected_gaps,
+        )
+        self.update_batch_toolbar_buttons()
+        begin_run_log(page, f"修复断层 · {display}")
+
+        worker = BatchGapFillWorker([item], {key: meta})
+        page._batch_gap_fill_worker = worker
+
+        def on_progress(progress: object) -> None:
+            if not isinstance(progress, BatchGapFillProgress):
+                return
+            phase_label = "扫描断层" if progress.phase == "scan" else "修复断层"
+            line = f"{phase_label} · {label} ({progress.current}/{progress.total})"
+            page.status_label.setText(f"{line}…")
+            page._task_guard.update_message(f"{line}…")
+            append_run_log(page, line)
+
+        def on_finished(result: object) -> None:
+            if page._batch_gap_fill_worker is worker:
+                page._batch_gap_fill_worker = None
+            if page._finish_cancellable_task(cancelled_message="修复断层已取消"):
+                fail_run_log(page, "已取消")
+                self.update_batch_toolbar_buttons()
+                return
+            self.refresh_meta()
+            page.apply_filter()
+            if page.current_item is not None and self.is_daily_scope():
+                page.show_kline(page.current_item)
+                self.check_bar_gaps(page.current_item)
+            self.update_batch_toolbar_buttons()
+            if isinstance(result, BatchGapFillResult):
+                page.status_label.setText(result.message)
+                page._toast.success(result.message)
+                detail = None
+                if result.failed:
+                    preview = "、".join(result.failed[:8])
+                    suffix = "…" if len(result.failed) > 8 else ""
+                    detail = f"失败 {len(result.failed)} 只：{preview}{suffix}"
+                complete_run_log(page, result.message, detail=detail)
+            if isinstance(result, BatchGapFillResult) and result.bars_added:
+                panel = getattr(page, "signal_panel", None)
+                if panel is not None:
+                    _refresh_watchlist_signals(page, panel.symbols)
+
+        def on_failed(msg: str) -> None:
+            if page._batch_gap_fill_worker is worker:
+                page._batch_gap_fill_worker = None
+            if page._finish_cancellable_task(cancelled_message="修复断层已取消"):
+                fail_run_log(page, "已取消")
+                self.update_batch_toolbar_buttons()
+                return
+            self.update_batch_toolbar_buttons()
+            page.status_label.setText(f"修复断层失败: {msg}")
+            page._toast.error(msg)
+            fail_run_log(page, msg)
+
+        worker.progress.connect(on_progress)
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        worker.start()
+
     def on_period_changed(self) -> None:
         page = self._page
         if not page.config.use_local_table:
@@ -470,6 +619,8 @@ class LocalDataController:
         page = self._page
         if not page.config.show_kline:
             return
+        if self.is_daily_scope():
+            bars = clip_bars_from_unified_start(bars)
         chart = page.chart
         minute = not self.is_daily_scope()
         if isinstance(chart, AshareChartWidget):

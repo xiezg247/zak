@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.data.bar_health import BarMeta
+from vnpy_ashare.data.bar_health import BarMeta, bar_meta_from_overview
 from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.jobs.local_fill import batch_fill_stale_daily_bars, select_stale_daily_items
@@ -16,7 +16,7 @@ def build_daily_bar_meta() -> dict[tuple[str, Exchange], BarMeta]:
     meta: dict[tuple[str, Exchange], BarMeta] = {}
     for row in iter_bar_overviews(scope="daily"):
         key = (row.symbol, row.exchange)
-        meta[key] = BarMeta(start=row.start, end=row.end, count=row.count)
+        meta[key] = bar_meta_from_overview(row)
     return meta
 
 

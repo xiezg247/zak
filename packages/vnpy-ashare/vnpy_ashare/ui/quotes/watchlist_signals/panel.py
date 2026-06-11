@@ -25,6 +25,10 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     save_signal_panel_expanded,
     save_signal_panel_symbols,
 )
+from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
+    SIGNAL_PANEL_COLLAPSED_HEIGHT,
+    SIGNAL_PANEL_DEFAULT_HEIGHT,
+)
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
@@ -144,7 +148,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.verticalHeader().setVisible(False)
         self._table.setAlternatingRowColors(True)
-        self._table.setMinimumHeight(120)
+        self._table.setMinimumHeight(140)
         header_view = self._table.horizontalHeader()
         header_view.setStretchLastSection(True)
         header_view.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
@@ -194,11 +198,13 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         return self._expanded
 
     def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
-        if self._expanded == expanded:
-            self._sync_collapse_button()
-            return
+        changed = self._expanded != expanded
         self._expanded = expanded
-        self._apply_expanded(expanded, emit=emit)
+        self._apply_expanded(expanded, emit=emit and changed)
+
+    def sync_splitter_geometry(self) -> None:
+        """供 splitter 布局前同步 min/max，避免 QSplitter 忽略目标高度。"""
+        self._apply_expanded(self._expanded, emit=False)
 
     def read_config(self) -> WatchlistSignalConfig:
         fast = int(self._fast_spin.value())
@@ -598,10 +604,10 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
                 self._empty_label.setText(_FILTER_EMPTY_TEXT)
                 self._empty_label.setVisible(True)
             self.setMaximumHeight(16777215)
-            self.setMinimumHeight(120)
+            self.setMinimumHeight(SIGNAL_PANEL_DEFAULT_HEIGHT)
         else:
-            self.setMinimumHeight(28)
-            self.setMaximumHeight(36)
+            self.setMinimumHeight(SIGNAL_PANEL_COLLAPSED_HEIGHT)
+            self.setMaximumHeight(SIGNAL_PANEL_COLLAPSED_HEIGHT + 4)
         if emit:
             self.expansion_changed.emit(expanded)
 

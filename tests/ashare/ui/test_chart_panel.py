@@ -134,6 +134,23 @@ class RetainThreadTests(unittest.TestCase):
             QtWidgets.QApplication.processEvents()
         self.assertNotIn(worker, retired)
 
+    def test_retain_releases_immediately_when_already_finished(self) -> None:
+        class InstantWorker(QtCore.QThread):
+            finished = QtCore.Signal()
+
+            def run(self) -> None:
+                self.finished.emit()
+
+        retired: list[QtCore.QThread] = []
+        worker = InstantWorker()
+        worker.start()
+        self.assertTrue(worker.wait(2000))
+        retain_thread_until_finished(retired, worker)
+        deadline = QtCore.QDeadlineTimer(2000)
+        while worker in retired and not deadline.hasExpired():
+            QtWidgets.QApplication.processEvents()
+        self.assertNotIn(worker, retired)
+
 
 class DailyRangePresetTests(unittest.TestCase):
     @classmethod

@@ -480,6 +480,16 @@ QLabel#QuoteSubInfo {{
     font-size: 12px;
     padding: 2px 6px;
 }}
+QWidget#WatchlistSignalPanel {{
+    background-color: {t.app_bg};
+    border-top: 1px solid {t.table_grid};
+}}
+QTableWidget#WatchlistSignalTable {{
+    background-color: {t.table_bg};
+    border: 1px solid {t.table_grid};
+    border-radius: 4px;
+    gridline-color: {t.table_grid};
+}}
 QWidget#QuotesToolbarHost {{
     background-color: transparent;
 }}

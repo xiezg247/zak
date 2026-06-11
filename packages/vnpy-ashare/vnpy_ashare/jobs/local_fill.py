@@ -16,6 +16,7 @@ from vnpy_ashare.data.bar_health import (
     BarHealthStatus,
     BarMeta,
     GapRange,
+    bar_meta_from_overview,
     inspect_bar_gaps,
     list_status,
 )
@@ -125,7 +126,7 @@ def _fill_stale_item(
         overview = get_scope_overview(item.symbol, item.exchange, "daily")
         if overview is None:
             return _StaleFillOutcome(label=label, success=False, added=0, failed=True)
-        meta = BarMeta(start=overview.start, end=overview.end, count=overview.count)
+        meta = bar_meta_from_overview(overview)
     try:
         added = fill_stale_daily_bar(item, meta, end=end)
         return _StaleFillOutcome(label=label, success=True, added=added, failed=False)

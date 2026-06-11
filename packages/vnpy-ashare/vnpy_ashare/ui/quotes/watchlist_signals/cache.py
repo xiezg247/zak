@@ -108,6 +108,29 @@ class WatchlistSignalDiskCache:
         except (json.JSONDecodeError, TypeError, ValueError):
             return None
 
+    def get_latest(self, vt_symbol: str, config_key: str) -> SignalSnapshot | None:
+        """取该标的最近一条缓存（冷启动 bar_as_of 未就绪时的回退）。"""
+        symbol = str(vt_symbol or "").strip()
+        key = str(config_key or "").strip()
+        if not symbol or not key:
+            return None
+        with _connect() as conn:
+            row = conn.execute(
+                """
+                SELECT payload FROM watchlist_signal_cache
+                WHERE vt_symbol = ? AND config_key = ?
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (symbol, key),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            return snapshot_from_payload(str(row["payload"]))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return None
+
     def load_many(
         self,
         vt_symbols: list[str],
@@ -119,6 +142,8 @@ class WatchlistSignalDiskCache:
         for vt in vt_symbols:
             bar_as_of = bar_as_of_for(vt) or ""
             snap = self.get(vt, config_key, bar_as_of)
+            if snap is None:
+                snap = self.get_latest(vt, config_key)
             if snap is not None:
                 loaded[vt] = snap
         return loaded

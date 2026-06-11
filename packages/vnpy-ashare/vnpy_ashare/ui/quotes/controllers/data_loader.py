@@ -459,13 +459,16 @@ class DataLoaderController:
             if generation != page._load_generation or not page._active:
                 return
             page.all_stocks = stocks
-            page.apply_filter()
             if page._finish_cancellable_task(cancelled_message="加载已取消"):
                 page._hide_market_loading()
                 return
             page._hide_market_loading()
-            if page.config.show_watchlist_signals:
-                page._signals.on_symbols_changed()
+            if page.config.use_local_table:
+                page._local.on_stock_list_loaded()
+            else:
+                page.apply_filter()
+                if page.config.show_watchlist_signals:
+                    page._signals.on_stock_list_loaded()
 
         def on_failed(msg: str) -> None:
             if page._load_worker is worker:

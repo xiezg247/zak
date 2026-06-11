@@ -249,7 +249,8 @@ class QuotesPage(QtWidgets.QWidget):
         self._update_quote_source_label()
         if self.config.show_watchlist_signals:
             self._signals.start()
-            self._signals.refresh(force=True)
+            if self.all_stocks:
+                self._signals.on_stock_list_loaded()
 
     def deactivate(self) -> None:
         self._save_splitter()
@@ -311,6 +312,11 @@ class QuotesPage(QtWidgets.QWidget):
         if not (self.config.show_watchlist_signals or self.config.show_run_output_panel):
             return
         QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self))
+        QtCore.QTimer.singleShot(150, lambda: restore_center_splitter(self))
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        self._schedule_center_splitter_layout()
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -753,6 +759,9 @@ class QuotesPage(QtWidgets.QWidget):
     def batch_fill_gaps(self) -> None:
         self._local.batch_fill_gaps()
 
+    def fill_selected_gaps(self) -> None:
+        self._local.fill_selected_gaps()
+
     def redownload_selected(self) -> None:
         self._local.redownload_selected()
 
@@ -779,6 +788,7 @@ class QuotesPage(QtWidgets.QWidget):
             "delete_local_button",
             "batch_fill_button",
             "batch_gap_fill_button",
+            "gap_fill_button",
             "add_watchlist_button",
             "remove_watchlist_button",
             "move_watchlist_up_button",
@@ -869,6 +879,7 @@ class QuotesPage(QtWidgets.QWidget):
                 self.batch_fill_button.setEnabled(False)
             if self.config.show_batch_gap_fill_button:
                 self.batch_gap_fill_button.setEnabled(False)
+                self.gap_fill_button.setEnabled(False)
             if self.config.show_add_watchlist_button:
                 self.add_watchlist_button.setEnabled(False)
             if self.config.show_remove_watchlist_button:

@@ -21,7 +21,9 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     apply_center_splitter_sizes,
+    bind_center_splitter_persistence,
     center_splitter,
+    configure_center_splitter,
     restore_center_splitter,
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
@@ -37,7 +39,9 @@ __all__ = [
     "WatchlistSignalPanel",
     "WatchlistSignalWorker",
     "apply_center_splitter_sizes",
+    "bind_center_splitter_persistence",
     "center_splitter",
+    "configure_center_splitter",
     "restore_center_splitter",
     "load_signal_panel_enabled",
     "load_signal_panel_expanded",

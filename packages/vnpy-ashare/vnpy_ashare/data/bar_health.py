@@ -12,7 +12,12 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
 
+from vnpy.trader.object import BarData
+
 from vnpy_ashare.domain.calendar import last_trading_day, trading_days_between
+
+# 本地日 K 统一起点：早于该日的不展示、不参与断层扫描
+UNIFIED_BAR_START = datetime(2020, 1, 2)
 
 
 class BarHealthStatus(str, Enum):
@@ -31,6 +36,28 @@ class BarMeta:
     start: datetime
     end: datetime
     count: int
+
+
+def effective_bar_start(value: datetime | None) -> datetime | None:
+    """展示/扫描用起始日：不早于 UNIFIED_BAR_START，晚于则取实际。"""
+    if value is None:
+        return None
+    if value.date() < UNIFIED_BAR_START.date():
+        return UNIFIED_BAR_START
+    return value
+
+
+def bar_meta_from_overview(row: object) -> BarMeta:
+    """由 PeriodBarOverview 构建 BarMeta。"""
+    start = effective_bar_start(row.start)
+    assert start is not None
+    return BarMeta(start=start, end=row.end, count=row.count)
+
+
+def clip_bars_from_unified_start(bars: list[BarData]) -> list[BarData]:
+    """丢弃统一起点之前的 K 线。"""
+    floor = UNIFIED_BAR_START.date()
+    return [bar for bar in bars if bar.datetime.date() >= floor]
 
 
 @dataclass(frozen=True)
@@ -114,13 +141,15 @@ def merge_missing_days(missing: list[date]) -> list[GapRange]:
 
 
 def gap_scan_range(meta: BarMeta, bar_dates: set[date]) -> tuple[date, date]:
-    """断层扫描的有效区间：以本地已有 K 线的实际起止为准，不按统一下载起点（如 2020-01-02）推断。"""
-    if not bar_dates:
-        return meta.start.date(), meta.end.date()
-    scan_start = min(bar_dates)
-    scan_end = max(meta.end.date(), max(bar_dates))
+    """断层扫描区间：起始于 effective_bar_start，忽略 2020-01-02 之前。"""
+    floor = effective_bar_start(meta.start)
+    assert floor is not None
+    scan_start = floor.date()
+    if bar_dates:
+        scan_start = max(scan_start, min(bar_dates))
+    scan_end = max(meta.end.date(), max(bar_dates) if bar_dates else meta.end.date())
     if scan_start > scan_end:
-        return meta.start.date(), meta.end.date()
+        return floor.date(), meta.end.date()
     return scan_start, scan_end
 
 
@@ -140,11 +169,13 @@ def find_gaps(
 
 def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None = None) -> BarGapResult:
     """选中行异步扫描：有断层则 GAPS，否则回退 ``list_status``。"""
-    scan_start, scan_end = gap_scan_range(meta, bar_dates)
+    floor = UNIFIED_BAR_START.date()
+    filtered_dates = {day for day in bar_dates if day >= floor}
+    scan_start, scan_end = gap_scan_range(meta, filtered_dates)
     expected_days = trading_days_between(scan_start, scan_end)
-    gaps = find_gaps(meta, bar_dates, expected=expected_days)
+    gaps = find_gaps(meta, filtered_dates, expected=expected_days)
     expected_count = len(expected_days)
-    actual_days = len(bar_dates)
+    actual_days = len(filtered_dates)
     if gaps:
         status = BarHealthStatus.GAPS
     else:

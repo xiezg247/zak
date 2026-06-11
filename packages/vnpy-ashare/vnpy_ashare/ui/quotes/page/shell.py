@@ -24,6 +24,8 @@ from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableH
 from vnpy_ashare.ui.quotes.table import LOCAL_TABLE_HEADERS, QuoteTableModel
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalPanel,
+    bind_center_splitter_persistence,
+    configure_center_splitter,
     restore_center_splitter,
 )
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
@@ -142,6 +144,12 @@ class QuotesPageShell:
         page.batch_gap_fill_button.clicked.connect(page.batch_fill_gaps)
         page.batch_gap_fill_button.setEnabled(False)
         page.batch_gap_fill_button.hide()
+
+        page.gap_fill_button = QtWidgets.QPushButton("修复断层", page)
+        page.gap_fill_button.setObjectName("SecondaryButton")
+        page.gap_fill_button.clicked.connect(page.fill_selected_gaps)
+        page.gap_fill_button.setEnabled(False)
+        page.gap_fill_button.hide()
 
         page.local_period_combo = QtWidgets.QComboBox()
         for label, value in LOCAL_SCOPE_OPTIONS:
@@ -268,6 +276,7 @@ class QuotesPageShell:
         if page.config.show_batch_fill_button:
             more_actions.append(("批量补全过期", page.batch_fill_button))
         if page.config.show_batch_gap_fill_button:
+            more_actions.append(("修复断层", page.gap_fill_button))
             more_actions.append(("批量修复断层", page.batch_gap_fill_button))
         if page.config.show_backtest_button:
             toolbar.addWidget(page.backtest_button)
@@ -437,13 +446,12 @@ class QuotesPageShell:
             use_center_split = page.config.show_watchlist_signals or page.config.show_run_output_panel
             if use_center_split:
                 center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+                configure_center_splitter(center_split)
                 center_split.addWidget(page._market_table_host)
-                center_split.setStretchFactor(0, 4)
                 split_index = 1
                 if page.config.show_watchlist_signals:
                     page.signal_panel = WatchlistSignalPanel(page)
                     center_split.addWidget(page.signal_panel)
-                    center_split.setStretchFactor(split_index, 1)
                     split_index += 1
                 if page.config.show_run_output_panel:
                     run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
@@ -460,10 +468,10 @@ class QuotesPageShell:
                         lambda expanded: on_run_output_expansion_changed(page, expanded)
                     )
                     center_split.addWidget(page.run_output_panel)
-                    center_split.setStretchFactor(split_index, 1)
                 page._center_splitter = center_split
                 page._run_output_splitter = center_split
                 center_layout.addWidget(center_split, stretch=1)
+                bind_center_splitter_persistence(page)
                 QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
             else:
                 center_layout.addWidget(page._market_table_host, stretch=1)

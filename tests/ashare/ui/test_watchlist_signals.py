@@ -279,6 +279,66 @@ class SignalDiskCacheTests(unittest.TestCase):
         config_key = WatchlistSignalConfig().cache_key()
         cache.put(snap, config_key=config_key, bar_as_of="2026-06-06")
         self.assertIsNone(cache.get("600000.SSE", config_key, "2026-06-09"))
+        latest = cache.get_latest("600000.SSE", config_key)
+        self.assertIsNotNone(latest)
+        assert latest is not None
+        self.assertEqual(latest.signal, "hold")
+
+    def test_load_many_falls_back_to_latest_snapshot(self) -> None:
+        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-06",
+            signal="sell",
+            signal_label="卖出",
+            signal_date="2026-06-05",
+            ref_buy_price=9.8,
+            ref_sell_price=10.1,
+            strength=55.0,
+            reason_summary="死叉",
+            reasons=("MA 死叉",),
+            warnings=(),
+        )
+        cache = WatchlistSignalDiskCache()
+        config_key = WatchlistSignalConfig().cache_key()
+        cache.put(snap, config_key=config_key, bar_as_of="2026-06-06")
+        loaded = cache.load_many(
+            ["600000.SSE"],
+            config_key=config_key,
+            bar_as_of_for=lambda _vt: None,
+        )
+        self.assertIn("600000.SSE", loaded)
+        self.assertEqual(loaded["600000.SSE"].signal, "sell")
+
+
+class CenterSplitterSizeTests(unittest.TestCase):
+    def test_default_signal_height_increased(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
+            SIGNAL_PANEL_DEFAULT_HEIGHT,
+            compute_center_splitter_sizes,
+        )
+
+        self.assertEqual(SIGNAL_PANEL_DEFAULT_HEIGHT, 240)
+        table_h, signal_h, run_h = compute_center_splitter_sizes(
+            900,
+            signal_expanded=True,
+            run_expanded=False,
+        )
+        self.assertEqual(signal_h, 240)
+        self.assertEqual(run_h, 32)
+        self.assertEqual(table_h, 628)
+
+    def test_center_splitter_sizes_roundtrip(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+            load_center_splitter_sizes,
+            save_center_splitter_sizes,
+        )
+
+        save_center_splitter_sizes([620, 240, 32])
+        self.assertEqual(load_center_splitter_sizes(), [620, 240, 32])
 
 
 if __name__ == "__main__":

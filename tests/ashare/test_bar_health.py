@@ -5,9 +5,15 @@ from __future__ import annotations
 import unittest
 from datetime import date, datetime
 
+from vnpy.trader.constant import Exchange
+
 from vnpy_ashare.data.bar_health import (
+    UNIFIED_BAR_START,
     BarHealthStatus,
     BarMeta,
+    bar_meta_from_overview,
+    clip_bars_from_unified_start,
+    effective_bar_start,
     find_gaps,
     format_gap_ranges,
     gap_scan_range,
@@ -16,6 +22,7 @@ from vnpy_ashare.data.bar_health import (
     merge_missing_days,
     status_label,
 )
+from vnpy_ashare.data.bar_store import PeriodBarOverview
 from vnpy_ashare.domain.calendar import is_trading_day, last_trading_day, trading_days_between
 
 
@@ -37,6 +44,37 @@ class CalendarTests(unittest.TestCase):
 
 
 class BarHealthTests(unittest.TestCase):
+    def test_effective_bar_start_before_unified(self) -> None:
+        self.assertEqual(effective_bar_start(datetime(2019, 5, 1)), UNIFIED_BAR_START)
+
+    def test_effective_bar_start_after_unified(self) -> None:
+        actual = datetime(2023, 6, 1)
+        self.assertEqual(effective_bar_start(actual), actual)
+
+    def test_bar_meta_from_overview(self) -> None:
+        row = PeriodBarOverview(
+            symbol="600519",
+            exchange=Exchange.SSE,
+            period="daily",
+            start=datetime(2023, 6, 1),
+            end=datetime(2026, 6, 5),
+            count=500,
+        )
+        meta = bar_meta_from_overview(row)
+        self.assertEqual(meta.start, datetime(2023, 6, 1))
+
+    def test_bar_meta_from_overview_clamps_early_start(self) -> None:
+        row = PeriodBarOverview(
+            symbol="600519",
+            exchange=Exchange.SSE,
+            period="daily",
+            start=datetime(2019, 1, 2),
+            end=datetime(2026, 6, 5),
+            count=500,
+        )
+        meta = bar_meta_from_overview(row)
+        self.assertEqual(meta.start, UNIFIED_BAR_START)
+
     def test_list_status_unknown(self) -> None:
         self.assertEqual(list_status(None), BarHealthStatus.UNKNOWN)
 
@@ -94,10 +132,9 @@ class BarHealthTests(unittest.TestCase):
         self.assertEqual(result.status, BarHealthStatus.GAPS)
         self.assertTrue(result.gaps)
 
-    def test_gap_scan_ignores_pre_listing_download_start(self) -> None:
-        """meta.start 常为批量下载起点（2020-01-02），晚上市标的不应判为断层。"""
+    def test_gap_scan_ignores_pre_unified_dates(self) -> None:
         meta = BarMeta(
-            start=datetime(2020, 1, 2),
+            start=UNIFIED_BAR_START,
             end=datetime(2026, 6, 5),
             count=500,
         )
@@ -109,6 +146,40 @@ class BarHealthTests(unittest.TestCase):
         result = inspect_bar_gaps(meta, bar_dates, as_of=date(2026, 6, 5))
         self.assertEqual(result.status, BarHealthStatus.OK)
         self.assertEqual(result.gaps, [])
+
+    def test_clip_bars_from_unified_start(self) -> None:
+        from vnpy.trader.constant import Interval
+        from vnpy.trader.object import BarData
+
+        bars = [
+            BarData(
+                symbol="600519",
+                exchange=Exchange.SSE,
+                datetime=datetime(2019, 12, 31),
+                interval=Interval.DAILY,
+                open_price=1,
+                high_price=1,
+                low_price=1,
+                close_price=1,
+                volume=1,
+                gateway_name="DB",
+            ),
+            BarData(
+                symbol="600519",
+                exchange=Exchange.SSE,
+                datetime=datetime(2020, 1, 2),
+                interval=Interval.DAILY,
+                open_price=1,
+                high_price=1,
+                low_price=1,
+                close_price=1,
+                volume=1,
+                gateway_name="DB",
+            ),
+        ]
+        clipped = clip_bars_from_unified_start(bars)
+        self.assertEqual(len(clipped), 1)
+        self.assertEqual(clipped[0].datetime, datetime(2020, 1, 2))
 
     def test_format_gap_ranges(self) -> None:
         from vnpy_ashare.data.bar_health import GapRange

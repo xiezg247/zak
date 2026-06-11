@@ -17,6 +17,7 @@ SIGNAL_SLOW_KEY = "watchlist/signal_slow_window"
 SIGNAL_PANEL_SYMBOLS_KEY = "watchlist/signal_panel/symbols"
 SIGNAL_PANEL_ENABLED_KEY = "watchlist/signal_panel/enabled"
 SIGNAL_PANEL_EXPANDED_KEY = "watchlist/signal_panel/expanded"
+SIGNAL_CENTER_SPLITTER_SIZES_KEY = "watchlist/center_splitter/sizes"
 SIGNAL_PANEL_MAX_SYMBOLS = 10
 
 DEFAULT_CLASS = "AshareDoubleMaStrategy"
@@ -140,3 +141,30 @@ def load_signal_panel_expanded() -> bool:
 def save_signal_panel_expanded(expanded: bool) -> None:
     settings = _settings()
     settings.setValue(SIGNAL_PANEL_EXPANDED_KEY, expanded)
+
+
+def load_center_splitter_sizes() -> list[int]:
+    settings = _settings()
+    raw = settings.value(SIGNAL_CENTER_SPLITTER_SIZES_KEY)
+    if raw is None:
+        return []
+    if isinstance(raw, (list, tuple)):
+        parts = raw
+    else:
+        text = str(raw).strip()
+        if not text:
+            return []
+        parts = text.split(",")
+    sizes: list[int] = []
+    for part in parts:
+        try:
+            sizes.append(max(0, int(part)))
+        except (TypeError, ValueError):
+            continue
+    return sizes
+
+
+def save_center_splitter_sizes(sizes: list[int]) -> None:
+    settings = _settings()
+    cleaned = [max(0, int(value)) for value in sizes]
+    settings.setValue(SIGNAL_CENTER_SPLITTER_SIZES_KEY, ",".join(str(value) for value in cleaned))

@@ -54,6 +54,11 @@ def retain_thread_until_finished(
         except RuntimeError:
             pass
 
+    if not thread_is_active(worker):
+        # finished 已触发时不会再次 emit，需立即释放。
+        _release()
+        return
+
     for signal_name in ("finished", "failed"):
         signal = getattr(worker, signal_name, None)
         if signal is None:
@@ -84,10 +89,7 @@ def release_thread(
     except RuntimeError:
         return
     try:
-        if worker.isRunning():
-            retain_thread_until_finished(retired, worker)
-            return
-        worker.deleteLater()
+        retain_thread_until_finished(retired, worker)
     except RuntimeError:
         pass
 
