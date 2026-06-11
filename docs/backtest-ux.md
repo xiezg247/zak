@@ -47,7 +47,7 @@ A 股策略回测的交互与数据约定。引擎：vnpy `CtaBacktesterApp` + `
 **K 线下载**：
 
 ```bash
-uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
+uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
 ```
 
 ## 相关文件

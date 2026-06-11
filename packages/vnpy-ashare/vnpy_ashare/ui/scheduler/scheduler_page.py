@@ -47,7 +47,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         title_block.setSpacing(4)
         title = QtWidgets.QLabel("定时任务")
         title.setObjectName("SchedulerPageTitle")
-        hint = QtWidgets.QLabel("生产环境建议独立运行 scripts/quote_collector.py；行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。")
+        hint = QtWidgets.QLabel("生产环境建议独立运行 cli.py quotes collect；行情采集仅在 A 股交易时段（9:30–11:30、13:00–15:00）自动执行。")
         hint.setObjectName("SchedulerHint")
         hint.setWordWrap(True)
         title_block.addWidget(title)

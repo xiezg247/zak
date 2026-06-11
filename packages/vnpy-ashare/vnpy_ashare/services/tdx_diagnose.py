@@ -59,7 +59,7 @@ def run_tdx_diagnose(
             "symbol": item.vt_symbol,
             "name": item.name,
             "error": "未找到通达信问小达工具（tdx_wenda_quotes）",
-            "warnings": ["请运行 scripts/list_mcp_tools.py 确认 MCP 工具列表"],
+            "warnings": ["请运行 cli.py tools mcp-list 确认 MCP 工具列表"],
             "sources": [],
             "disclaimer": _DISCLAIMER,
         }

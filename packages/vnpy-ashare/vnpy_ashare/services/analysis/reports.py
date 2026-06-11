@@ -52,7 +52,7 @@ class ReportsFetcher:
         if tool_name is None:
             return {
                 "reports": [],
-                "warnings": ["未在通达信 MCP 中发现研报/F10 类工具，请运行 scripts/list_mcp_tools.py 查看"],
+                "warnings": ["未在通达信 MCP 中发现研报/F10 类工具，请运行 cli.py tools mcp-list 查看"],
             }
 
         arguments = self.build_mcp_symbol_args(tool_name, vt_symbol, symbol)

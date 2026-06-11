@@ -1,17 +1,15 @@
-#!/usr/bin/env python3
-"""列出已配置 MCP Server 的远端工具（用于维护 docs/ai-data-routing.md）。"""
+"""运维与调试工具。"""
 
 from __future__ import annotations
 
+import argparse
 import sys
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+from vnpy.trader.database import get_database
+from vnpy.trader.setting import SETTINGS
 
 
-def main() -> int:
+def _cmd_mcp_list(_args: argparse.Namespace) -> int:
     from vnpy_mcp.config import load_all_mcp_servers
     from vnpy_mcp.remote import McpClientError, list_remote_tools
 
@@ -44,5 +42,25 @@ def main() -> int:
     return 0 if any_ok else 2
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def _cmd_db_check(_args: argparse.Namespace) -> int:
+    name = SETTINGS.get("database.name", "sqlite")
+    print(f"database.name = {name}")
+
+    if name == "postgresql":
+        print(f"  host={SETTINGS.get('database.host')} port={SETTINGS.get('database.port')}")
+
+    db = get_database()
+    overviews = db.get_bar_overview()
+    print(f"连接成功，本地日 K 概览 {len(overviews)} 条")
+    return 0
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    tools = subparsers.add_parser("tools", help="运维与调试")
+    tools_sub = tools.add_subparsers(dest="tools_command", required=True)
+
+    mcp = tools_sub.add_parser("mcp-list", help="列出已配置 MCP Server 的远端工具")
+    mcp.set_defaults(handler=_cmd_mcp_list)
+
+    db = tools_sub.add_parser("db-check", help="检查 K 线数据库连接")
+    db.set_defaults(handler=_cmd_db_check)

@@ -1,6 +1,6 @@
 # AI 数据路由
 
-AI 助手各类问题对应的数据来源与工具。运行 `uv run python scripts/list_mcp_tools.py` 可列出通达信 MCP 工具。
+AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.py tools mcp-list` 可列出通达信 MCP 工具。
 
 ## 路由总表
 

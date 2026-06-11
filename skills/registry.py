@@ -14,7 +14,7 @@ class SkillMeta:
     tags: tuple[str, ...]
 
 
-# 官方 Agent Skills（由 scripts/sync_skills.py 同步）
+# 官方 Agent Skills（由 cli.py skills sync 同步）
 OFFICIAL_SKILLS: dict[str, SkillMeta] = {
     "tushare-data": SkillMeta(
         skill_name="tushare-data",

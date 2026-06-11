@@ -24,16 +24,16 @@
 
 ```bash
 cd zak
-bash scripts/install.sh
+bash bin/install.sh
 
 cp .env.example .env          # 填入 TICKFLOW_API_KEY、TUSHARE_TOKEN 等
 uv run python run.py                     # 启动 GUI（首次会自动从 .env 生成 vt_setting.json）
 
-uv run python scripts/sync_universe.py   # 首次建议：同步全 A 股列表
+uv run python cli.py job run sync_universe   # 首次建议：同步全 A 股列表
 
 # 自选池有标的后，批量下载日 K：
-uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
-uv run python scripts/list_bars.py
+uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
+uv run python cli.py data list-bars
 ```
 
 ## 回测默认参数
@@ -91,7 +91,7 @@ POSTGRES_DATABASE=zak
 uv sync
 
 # 3. 启动 PostgreSQL（本地 Docker）
-bash scripts/start_postgresql.sh
+bash bin/start-postgresql.sh
 
 # 4. 同步配置并重启 GUI
 # 在设置页点「从 .env 同步」，或删除 ~/.vntrader/vt_setting.json 后重启
@@ -99,13 +99,28 @@ bash scripts/start_postgresql.sh
 
 > **注意**：仅 K 线数据切换存储，元数据（`zak.db`）和 AI 对话（`llm_chat.db`）始终为本机 SQLite，不受 `DATABASE_NAME` 影响。
 
-## 脚本
+## 命令行
+
+日常运维与选股使用根目录 `cli.py`（与 `run.py` 并列；实现位于 `vnpy_ashare.cli`）：
 
 ```bash
-uv run python scripts/sync_universe.py
-uv run python scripts/batch_download.py --start 2020-01-01 --end 2026-06-08
-uv run python scripts/list_bars.py
-uv run python scripts/export_metadata.py
+uv run python cli.py job list                              # 列出后台任务
+uv run python cli.py job run sync_universe                 # 同步全 A 股列表
+uv run python cli.py job run collect_quotes --force        # 采集行情到 Redis
+uv run python cli.py screener run --preset "涨幅榜" --top-n 10
+uv run python cli.py recipe run intraday_multi --export /tmp/screen.csv
+```
+
+安装 `vnpy-ashare` 后也可使用 `zak` 命令（等价入口）。
+
+更多子命令：
+
+```bash
+uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
+uv run python cli.py quotes collect                # 生产环境常驻行情采集
+uv run python cli.py meta export
+uv run python cli.py tools mcp-list
+uv run python cli.py skills sync
 uv sync --extra dev
 uv run pytest tests/ -q
 ```
@@ -126,6 +141,8 @@ uv run pytest tests/ -q
 ```
 zak/                                    # workspace 根（uv workspace）
 ├── run.py                              # GUI 入口
+├── cli.py                              # 命令行入口
+├── bin/                                # 安装与基础设施脚本
 ├── pyproject.toml                      # workspace 配置 + zak 元依赖
 ├── packages/
 │   ├── vnpy-common/                    # 共享：路径、AI 协议、终端主题
@@ -138,7 +155,6 @@ zak/                                    # workspace 根（uv workspace）
 ├── skills/                             # 业务 Skill（context / data / screening 等）
 ├── mcp/                                # MCP 配置
 ├── docs/                               # 产品与架构文档
-└── scripts/                            # 安装、下载、同步、选股 CLI
 ```
 
 ### 按需安装

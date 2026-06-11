@@ -16,7 +16,7 @@ class AgentSkillTests(unittest.TestCase):
     def test_parse_tushare_data_if_synced(self) -> None:
         root = PROJECT_ROOT / "skills" / "tushare-data"
         if not (root / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         skill = AgentSkill.from_directory(root)
         assert skill is not None
         self.assertEqual(skill.name, "tushare-data")
@@ -25,7 +25,7 @@ class AgentSkillTests(unittest.TestCase):
     def test_parse_tickflow_if_synced(self) -> None:
         root = PROJECT_ROOT / "skills" / "tickflow"
         if not (root / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         skill = AgentSkill.from_directory(root)
         assert skill is not None
         self.assertEqual(skill.name, "tickflow")
@@ -34,7 +34,7 @@ class AgentSkillTests(unittest.TestCase):
         root = PROJECT_ROOT / "skills" / "tushare-data"
         ref = root / "references" / "数据接口.md"
         if not ref.is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         skill = AgentSkill.from_directory(root)
         assert skill is not None
         text = skill.read_file("references/数据接口.md", max_chars=500)
@@ -43,7 +43,7 @@ class AgentSkillTests(unittest.TestCase):
     def test_path_traversal_blocked(self) -> None:
         root = PROJECT_ROOT / "skills" / "tickflow"
         if not (root / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         skill = AgentSkill.from_directory(root)
         assert skill is not None
         self.assertIsNone(skill.resolve_path("../secret.txt"))
@@ -52,7 +52,7 @@ class AgentSkillTests(unittest.TestCase):
 class SkillEngineTests(unittest.TestCase):
     def test_load_official_skills(self) -> None:
         if not (PROJECT_ROOT / "skills" / "tushare-data" / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         engine = SkillEngine()
         engine.load_all()
         enabled = engine.init_skills()
@@ -64,7 +64,7 @@ class SkillEngineTests(unittest.TestCase):
 
     def test_build_skills_prompt(self) -> None:
         if not (PROJECT_ROOT / "skills" / "tickflow" / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         engine = SkillEngine()
         engine.load_all()
         engine.init_skills()
@@ -79,7 +79,7 @@ class SkillEngineTests(unittest.TestCase):
 
     def test_prompt_section_is_summary_only(self) -> None:
         if not (PROJECT_ROOT / "skills" / "tickflow" / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         skill = AgentSkill.from_directory(PROJECT_ROOT / "skills" / "tickflow")
         assert skill is not None
         summary = skill.prompt_section()
@@ -91,7 +91,7 @@ class SkillEngineTests(unittest.TestCase):
 
     def test_execute_read_skill_file(self) -> None:
         if not (PROJECT_ROOT / "skills" / "tickflow" / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         engine = SkillEngine()
         engine.load_all()
         engine.init_skills()
@@ -104,7 +104,7 @@ class SkillEngineTests(unittest.TestCase):
     @patch("vnpy_skills.agent.runner.subprocess.run")
     def test_execute_run_python(self, mock_run) -> None:
         if not (PROJECT_ROOT / "skills" / "tickflow" / "SKILL.md").is_file():
-            self.skipTest("请先运行 scripts/sync_skills.py")
+            self.skipTest("请先运行 cli.py skills sync")
         mock_run.return_value = type(
             "R",
             (),

@@ -41,12 +41,13 @@ vnpy_ashare/
 
 | 路径 | 说明 |
 |------|------|
-| `app/launcher.py` | GUI 启动（`run.py` 调用） |
+| `cli.py` | CLI 实现（仓库根 `cli.py` 或 `zak` 命令调用） |
+| `app/launcher.py` | GUI 启动（仓库根 `run.py` 调用） |
 | `services/` | Quote、Bar、Backtest、Screening 等 |
 | `ai/context/store.py` | 终端 AI 共享内存态 |
 | `data/bar_health.py` | 本地 K 线健康检测 |
 
-元数据默认在 `~/.vntrader/zak.db`；CSV 备份见 `scripts/export_metadata.py`。
+元数据默认在 `~/.vntrader/zak.db`；CSV 备份见 `cli.py meta export`。
 
 完整文档见 [docs/README.md](../../../docs/README.md)。
 

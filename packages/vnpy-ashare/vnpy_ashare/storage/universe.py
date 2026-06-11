@@ -38,6 +38,6 @@ def load_universe(*, allow_sync: bool = False) -> list[StockItem]:
         if allow_sync:
             sync_universe()
         else:
-            raise FileNotFoundError("全 A 股列表不存在，请先点击「同步标的列表」或运行 scripts/sync_universe.py")
+            raise FileNotFoundError("全 A 股列表不存在，请先点击「同步标的列表」或运行 cli.py job run sync_universe")
 
     return [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]

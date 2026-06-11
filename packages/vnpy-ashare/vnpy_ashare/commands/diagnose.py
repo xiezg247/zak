@@ -1,27 +1,15 @@
-#!/usr/bin/env python3
-"""单股综合诊断 CLI（技术面 + 研报）"""
+"""单股综合诊断（技术面 + 研报）。"""
 
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from dotenv import load_dotenv
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 from vnpy.trader.object import BarData
-
-from vnpy_common.paths import ENV_FILE
-
-load_dotenv(ENV_FILE)
 
 
 def load_daily_bars(symbol: str, exchange: Exchange) -> list[BarData]:
@@ -249,14 +237,7 @@ def historical_summary(symbol: str, exchange: Exchange, lookback: int = 20) -> d
     }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="单股综合诊断")
-    parser.add_argument("--symbol", required=True, help="股票代码，如 002230")
-    parser.add_argument("--exchange", default="SZSE", choices=["SSE", "SZSE", "BSE"], help="交易所")
-    parser.add_argument("--no-reports", action="store_true", help="跳过研报查询")
-    parser.add_argument("--json", action="store_true", help="输出原始 JSON")
-    args = parser.parse_args()
-
+def _cmd_run(args: argparse.Namespace) -> int:
     exchange = Exchange[args.exchange]
     symbol = args.symbol
 
@@ -286,9 +267,10 @@ def main() -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
-    # 格式化输出
+    vt_symbol = f"{symbol}.{exchange.value}"
+    display_name = result.get("name") or symbol
     print("=" * 64)
-    print("  📊 科大讯飞 (002230.SZSE) 综合诊断报告")
+    print(f"  📊 {display_name} ({vt_symbol}) 综合诊断报告")
     print(f"  生成时间：{result['as_of']}")
     print("=" * 64)
 
@@ -332,5 +314,10 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def register(subparsers: argparse._SubParsersAction) -> None:
+    diag = subparsers.add_parser("diagnose", help="单股综合诊断（技术面 + 研报）")
+    diag.add_argument("symbol", help="股票代码，如 002230")
+    diag.add_argument("--exchange", default="SZSE", choices=["SSE", "SZSE", "BSE"])
+    diag.add_argument("--no-reports", action="store_true", help="跳过研报查询")
+    diag.add_argument("--json", action="store_true", help="仅输出 JSON")
+    diag.set_defaults(handler=_cmd_run)

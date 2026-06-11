@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""全市场行情采集：TickFlow -> Redis。"""
+"""行情采集常驻进程。"""
 
 from __future__ import annotations
 
@@ -9,12 +8,9 @@ import sys
 import time
 from datetime import datetime
 
-from dotenv import load_dotenv
-
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs import collect_market_quotes
 from vnpy_ashare.quotes.redis_store import RedisQuoteStore
-from vnpy_common.paths import ENV_FILE
 
 
 def _sleep_until_next_collect(interval: int) -> None:
@@ -29,18 +25,7 @@ def _sleep_until_next_collect(interval: int) -> None:
     time.sleep(delay)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="采集全 A 股行情写入 Redis")
-    parser.add_argument(
-        "--interval",
-        type=int,
-        default=int(os.getenv("QUOTE_COLLECT_INTERVAL", "15")),
-        help="交易时段内采集间隔（秒）",
-    )
-    parser.add_argument("--once", action="store_true", help="只采集一次后退出")
-    args = parser.parse_args()
-
-    load_dotenv(ENV_FILE)
+def _cmd_collect(args: argparse.Namespace) -> int:
     store = RedisQuoteStore()
     store.ping()
     interval = max(args.interval, 1)
@@ -68,5 +53,16 @@ def main() -> int:
         _sleep_until_next_collect(interval)
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+def register(subparsers: argparse._SubParsersAction) -> None:
+    quotes = subparsers.add_parser("quotes", help="行情采集（TickFlow -> Redis）")
+    quotes_sub = quotes.add_subparsers(dest="quotes_command", required=True)
+
+    collect = quotes_sub.add_parser("collect", help="采集全 A 股行情；默认循环，--once 只跑一次")
+    collect.add_argument(
+        "--interval",
+        type=int,
+        default=int(os.getenv("QUOTE_COLLECT_INTERVAL", "15")),
+        help="交易时段内采集间隔（秒）",
+    )
+    collect.add_argument("--once", action="store_true", help="只采集一次后退出")
+    collect.set_defaults(handler=_cmd_collect)
