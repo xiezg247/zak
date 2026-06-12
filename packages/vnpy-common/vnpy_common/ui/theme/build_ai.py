@@ -44,6 +44,53 @@ QLabel#AiBubbleError {{
 """
 
 
+def _build_ai_message_scrollbar_stylesheet(t: ThemeTokens) -> str:
+    """AI 对话消息区滚动条：加宽、提高对比度，避免与聊天背景融为一体。"""
+    track = t.ai_assistant_border
+    handle = t.combo_hover_border
+    return f"""
+QScrollArea#AiMessageScroll QScrollBar:vertical,
+QScrollBar#AiMessageScrollBar:vertical {{
+    background-color: {track};
+    width: 12px;
+    margin: 2px 1px 2px 0;
+    border: none;
+    border-radius: 6px;
+}}
+QScrollArea#AiMessageScroll QScrollBar::handle:vertical,
+QScrollBar#AiMessageScrollBar::handle:vertical {{
+    background-color: {handle};
+    min-height: 48px;
+    border-radius: 5px;
+    margin: 2px;
+    border: 1px solid {t.panel_border};
+}}
+QScrollArea#AiMessageScroll QScrollBar::handle:vertical:hover,
+QScrollBar#AiMessageScrollBar::handle:vertical:hover {{
+    background-color: {t.accent};
+    border-color: {t.accent};
+}}
+QScrollArea#AiMessageScroll QScrollBar::handle:vertical:pressed,
+QScrollBar#AiMessageScrollBar::handle:vertical:pressed {{
+    background-color: {t.accent_hover};
+    border-color: {t.accent_hover};
+}}
+QScrollArea#AiMessageScroll QScrollBar::add-line:vertical,
+QScrollArea#AiMessageScroll QScrollBar::sub-line:vertical,
+QScrollBar#AiMessageScrollBar::add-line:vertical,
+QScrollBar#AiMessageScrollBar::sub-line:vertical {{
+    height: 0;
+    background: none;
+}}
+QScrollArea#AiMessageScroll QScrollBar::add-page:vertical,
+QScrollArea#AiMessageScroll QScrollBar::sub-page:vertical,
+QScrollBar#AiMessageScrollBar::add-page:vertical,
+QScrollBar#AiMessageScrollBar::sub-page:vertical {{
+    background: transparent;
+}}
+"""
+
+
 def _build_quick_action_stylesheet(t: ThemeTokens) -> str:
     chip_bg = t.panel_bg
     return f"""
@@ -127,6 +174,7 @@ QLabel#AiContextLabel {{
     border-radius: 4px;
 }}
 """
+        + _build_ai_message_scrollbar_stylesheet(t)
         + _build_chat_bubble_stylesheet(t)
         + f"""
 QPlainTextEdit#AiInput {{
@@ -358,6 +406,9 @@ QWidget#AiMessageContainer {{
 QWidget#AiBubbleRow {{
     background-color: {chat_bg};
 }}
+"""
+        + _build_ai_message_scrollbar_stylesheet(t)
+        + f"""
 QLabel#AiBubbleUser {{
     background-color: {user_bg};
     color: {t.text_primary};

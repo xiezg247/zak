@@ -154,6 +154,9 @@ class AiChatPanel(QtWidgets.QWidget):
         self.scroll.setObjectName("AiMessageScroll")
         self.scroll.setWidgetResizable(True)
         self.scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_bar = self.scroll.verticalScrollBar()
+        scroll_bar.setObjectName("AiMessageScrollBar")
         if self.floating:
             self.scroll.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
             self.scroll.viewport().setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
