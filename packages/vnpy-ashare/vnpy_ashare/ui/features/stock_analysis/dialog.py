@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import build_diagnose_ai_prompt
 from vnpy_ashare.app.engine_access import get_stock_analysis_service
-from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
+from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
@@ -289,9 +289,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._ai_btn = QtWidgets.QPushButton("问 AI 解读")
         self._ai_btn.setObjectName("ActionButton")
         self._ai_btn.clicked.connect(self._ask_ai)
-        self._backtest_btn = QtWidgets.QPushButton("策略回测")
-        self._backtest_btn.setObjectName("SecondaryButton")
-        self._backtest_btn.clicked.connect(self._open_backtest)
         close_btn = QtWidgets.QPushButton("关闭")
         close_btn.setObjectName("SecondaryButton")
         close_btn.clicked.connect(self.close)
@@ -299,7 +296,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             self._status_label,
             self._refresh_btn,
             self._ai_btn,
-            self._backtest_btn,
             close_btn,
         )
 
@@ -475,7 +471,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         scope = partial.scope
         if scope == "overview":
             base.technical = partial.technical
-            base.signal = partial.signal
             base.relative_returns = partial.relative_returns
         elif scope == "sector":
             base.sector = partial.sector
@@ -501,14 +496,12 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         if scope == "overview":
             technical_text = format_technical_summary(
                 payload.technical,
-                signal=payload.signal,
                 relative_returns=payload.relative_returns,
             )
             self._overview_panel.show_payload(
                 technical=payload.technical,
                 technical_text=technical_text,
                 relative_returns=payload.relative_returns,
-                signal=payload.signal,
             )
         elif scope == "sector":
             self._sector_tab.show_profiles(
@@ -596,21 +589,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 AskAiRequest(
                     prompt=base,
                     source_page=self._host.source_page,
-                ),
-            )
-        )
-
-    def _open_backtest(self) -> None:
-        if self._host.event_engine is None:
-            return
-        name = self._quote.name if self._quote and self._quote.name else self._item.name
-        self._host.event_engine.put(
-            Event(
-                EVENT_OPEN_BACKTEST,
-                BacktestRequest(
-                    vt_symbol=self._item.vt_symbol,
-                    source_page=self._host.source_page,
-                    name=name,
                 ),
             )
         )

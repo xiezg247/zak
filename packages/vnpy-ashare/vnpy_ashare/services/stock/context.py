@@ -136,7 +136,6 @@ def extract_diagnose_metrics(diagnose: dict[str, Any]) -> DiagnoseMetrics:
 def format_technical_summary(
     technical: dict[str, Any],
     *,
-    signal: SignalSnapshot | None = None,
     relative_returns: dict[str, float | None] | None = None,
 ) -> str:
     """本地技术面 + 相对强弱文本摘要。"""
@@ -167,27 +166,11 @@ def format_technical_summary(
         rs = rel.get("rs_20d")
         if isinstance(rs, (int, float)):
             rel_parts.append(f"相对沪深300(20日) {rs:+.2f}%")
-        elif signal is not None and signal.relative_index_pct is not None:
-            rel_parts.append(f"相对沪深300(20日) {signal.relative_index_pct:+.2f}%")
         if rel_parts:
             lines.append(" · ".join(rel_parts))
-        base = "\n".join(lines)
+        return "\n".join(lines)
 
-    if signal is None or signal.signal == "na":
-        return base
-
-    signal_lines = [
-        "",
-        f"策略信号：{signal.signal_label}（{signal.strategy_id}）",
-        f"信号日：{signal.signal_date or '—'} · 强度 {signal.strength if signal.strength is not None else '—'}",
-    ]
-    if signal.ref_buy_price is not None:
-        signal_lines.append(f"参考买点 {signal.ref_buy_price:.2f}")
-    if signal.ref_sell_price is not None:
-        signal_lines.append(f"参考卖点 {signal.ref_sell_price:.2f}")
-    if signal.reason_summary:
-        signal_lines.append(signal.reason_summary)
-    return base + "\n".join(signal_lines)
+    return base
 
 
 def build_financial_quality_hints(snapshots: list[FinancialSnapshotRow]) -> list[str]:
@@ -313,12 +296,6 @@ def build_analysis_ai_context(payload: Any) -> str:
             parts.append(f"PE 3年分位 {valuation.pe_percentile_3y:.1f}%")
         if valuation.pb_percentile_3y is not None:
             parts.append(f"PB 3年分位 {valuation.pb_percentile_3y:.1f}%")
-
-    signal = getattr(payload, "signal", None)
-    if signal is not None and signal.signal != "na":
-        parts.append(f"双均线信号 {signal.signal_label}")
-        if signal.relative_index_pct is not None:
-            parts.append(f"相对沪深300 {signal.relative_index_pct:+.2f}%")
 
     bundle = getattr(payload, "financial_bundle", None)
     if bundle is not None and bundle.snapshots:

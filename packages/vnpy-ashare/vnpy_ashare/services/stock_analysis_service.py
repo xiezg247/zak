@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.financial_service import FinancialBundle, FinancialSyncResult
 from vnpy_ashare.services.stock import (
@@ -43,7 +42,6 @@ class StockAnalysisPayload:
     financial_sync: FinancialSyncResult | None = None
     sector: SectorProfile | None = None
     valuation: ValuationProfile | None = None
-    signal: SignalSnapshot | None = None
     moneyflow: MoneyflowProfile | None = None
     concept: ConceptProfile | None = None
     events: EventsProfile | None = None
@@ -98,10 +96,7 @@ class StockAnalysisService(BaseService):
     def _load_overview(self, payload: StockAnalysisPayload) -> None:
         analysis = self.engine.analysis_service
         payload.technical = analysis.technical_snapshot(payload.vt_symbol)
-        payload.signal = analysis.signal_snapshot(payload.vt_symbol)
         payload.relative_returns = compute_relative_returns(self.engine, payload.vt_symbol)
-        if payload.signal is not None:
-            payload.signal = analysis.enrich_relative_index(payload.signal)
 
     def _load_sector(self, payload: StockAnalysisPayload, *, stock_name: str) -> None:
         payload.valuation = sync_valuation_history(payload.vt_symbol)
