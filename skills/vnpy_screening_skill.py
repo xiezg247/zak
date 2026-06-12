@@ -5,7 +5,10 @@ from __future__ import annotations
 import json
 
 from vnpy_ashare.screener.auto.auto_screen import AutoScreenInput, resolve_auto_screen_request
-from vnpy_ashare.screener.draft.nl_mapper import preset_catalog_for_prompt
+from vnpy_ashare.screener.draft.draft_store import save_draft
+from vnpy_ashare.screener.draft.nl_mapper import ProposeInput, preset_catalog_for_prompt, validate_and_build
+from vnpy_ashare.screener.recipe.recipe_draft_store import save_recipe_draft
+from vnpy_ashare.screener.recipe.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
 from vnpy_ashare.screener.pattern.pattern_screen import (
     PatternScreenInput,
     list_pattern_screeners,
@@ -63,6 +66,33 @@ class VnpyScreeningSkill(SkillTemplate):
                 },
             ),
             ToolSpec(
+                name="propose_recipe",
+                description=(
+                    "解析自然语言为多因子配方草案（pending_confirm），弹出确认框；"
+                    "适用于自定义配方、复杂维度组合或置信度不高的多因子意图。"
+                    "意图明确时请直接用 run_recipe。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "intent": {"type": "string", "description": "用户选股意图原文或归纳"},
+                        "trigger_kind": {
+                            "type": "string",
+                            "enum": ["intraday", "post_close", ""],
+                            "description": "盘中 intraday / 盘后 post_close",
+                        },
+                        "recipe_id": {"type": "string", "description": "可选配方 id"},
+                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
+                        "confidence": {
+                            "type": "string",
+                            "enum": ["high", "medium", "low"],
+                            "description": "low 时返回追问而非草案",
+                        },
+                    },
+                    "required": ["intent"],
+                },
+            ),
+            ToolSpec(
                 name="run_recipe",
                 description=("直接执行多因子选股配方并返回结果（无需用户确认）。适用于盘中多因子、盘后多因子等意图明确的场景。"),
                 parameters={
@@ -75,6 +105,31 @@ class VnpyScreeningSkill(SkillTemplate):
                         "top_n": {"type": "integer", "description": "返回前 N 条，默认 20"},
                     },
                     "required": ["recipe_id"],
+                },
+            ),
+            ToolSpec(
+                name="propose_screening",
+                description=(
+                    "解析自然语言为选股草案（pending_confirm），弹出确认框；"
+                    "适用于已保存方案名、复杂自定义区间或置信度不高的条件选股。"
+                    "内置 preset 明确时请直接用 screen_by_condition。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "intent": {"type": "string", "description": "用户选股意图"},
+                        "preset": {"type": "string", "description": "内置 preset 名或别名"},
+                        "scheme_name": {"type": "string", "description": "已保存方案名"},
+                        "top_n": {"type": "integer"},
+                        "min_change_pct": {"type": "number"},
+                        "max_change_pct": {"type": "number"},
+                        "min_turnover": {"type": "number"},
+                        "confidence": {
+                            "type": "string",
+                            "enum": ["high", "medium", "low"],
+                        },
+                    },
+                    "required": ["intent"],
                 },
             ),
             ToolSpec(
@@ -177,6 +232,90 @@ class VnpyScreeningSkill(SkillTemplate):
                     for entry in catalog
                 ],
                 "note": "盘中用 intraday_multi、盘后用 post_close_multi；可先 list_recipes 再 run_recipe。",
+            },
+            ensure_ascii=False,
+        )
+
+    def propose_recipe(
+        self,
+        intent: str,
+        trigger_kind: str = "",
+        recipe_id: str = "",
+        top_n: int = 20,
+        confidence: str = "medium",
+    ) -> str:
+        conf = confidence if confidence in ("high", "medium", "low") else "medium"
+        result = validate_and_build_recipe(
+            ProposeRecipeInput(
+                intent=intent,
+                trigger_kind=trigger_kind,
+                recipe_id=recipe_id,
+                top_n=int(top_n or 20),
+                confidence=conf,  # type: ignore[arg-type]
+            )
+        )
+        if result.kind == "pending_confirm" and result.draft is not None:
+            save_recipe_draft(result.draft)
+            return json.dumps(
+                {
+                    "status": "pending_confirm",
+                    "draft_id": result.draft.id,
+                    "summary": result.draft.summary,
+                    "recipe_id": result.draft.recipe_id,
+                    "message": result.message,
+                },
+                ensure_ascii=False,
+            )
+        return json.dumps(
+            {
+                "status": result.kind,
+                "message": result.message,
+                "questions": result.questions or [],
+            },
+            ensure_ascii=False,
+        )
+
+    def propose_screening(
+        self,
+        intent: str,
+        preset: str = "",
+        scheme_name: str | None = None,
+        top_n: int = 20,
+        min_change_pct: float | None = None,
+        max_change_pct: float | None = None,
+        min_turnover: float | None = None,
+        confidence: str = "medium",
+    ) -> str:
+        conf = confidence if confidence in ("high", "medium", "low") else "medium"
+        result = validate_and_build(
+            ProposeInput(
+                intent=intent,
+                preset=preset,
+                scheme_name=scheme_name,
+                top_n=int(top_n or 20),
+                min_change_pct=min_change_pct,
+                max_change_pct=max_change_pct,
+                min_turnover=min_turnover,
+                confidence=conf,  # type: ignore[arg-type]
+            )
+        )
+        if result.kind == "pending_confirm" and result.draft is not None:
+            save_draft(result.draft)
+            return json.dumps(
+                {
+                    "status": "pending_confirm",
+                    "draft_id": result.draft.id,
+                    "summary": result.draft.summary,
+                    "preset_label": result.draft.preset_label,
+                    "message": result.message,
+                },
+                ensure_ascii=False,
+            )
+        return json.dumps(
+            {
+                "status": result.kind,
+                "message": result.message,
+                "questions": result.questions or [],
             },
             ensure_ascii=False,
         )

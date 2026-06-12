@@ -40,6 +40,37 @@ class InlineTraceWidgetTest(unittest.TestCase):
         self.assertIn("综合诊断", header)
         self.assertIn("完成", header)
 
+    def test_trace_header_with_handoff_and_hitl(self) -> None:
+        turn = TurnTrace(
+            turn_id="t1",
+            session_id="s1",
+            user_text="hello",
+            status="ok",
+            steps=[
+                TraceStep(
+                    id="s1",
+                    turn_id="t1",
+                    kind="routing",
+                    name="intent_route",
+                    status="ok",
+                    summary="screening → screening",
+                    detail={"category": "screening", "target_agent": "screening"},
+                ),
+                TraceStep(
+                    id="s2",
+                    turn_id="t1",
+                    kind="hitl",
+                    name="draft_recipe",
+                    status="ok",
+                    summary="待确认",
+                    detail={"draft_kind": "recipe"},
+                ),
+            ],
+        )
+        header = trace_header_text(turn, expanded=False)
+        self.assertIn("screening→screening", header)
+        self.assertIn("待确认", header)
+
     def test_format_step_line(self) -> None:
         step = TraceStep(
             id="s2",

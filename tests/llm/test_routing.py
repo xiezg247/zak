@@ -26,6 +26,8 @@ ALL_TOOLS = [
     _tool("list_screeners"),
     _tool("list_recipes"),
     _tool("run_recipe"),
+    _tool("propose_recipe"),
+    _tool("propose_screening"),
     _tool("explain_screening_run"),
     _tool("get_backtest_result"),
     _tool("diagnose_stock"),
@@ -43,8 +45,8 @@ def test_filter_screening_subset():
     assert "list_screeners" in names
     assert "list_recipes" in names
     assert "run_recipe" in names
-    assert "propose_screening" not in names
-    assert "propose_recipe" not in names
+    assert "propose_screening" in names
+    assert "propose_recipe" in names
     assert "explain_screening_run" in names
     assert "run_python" not in names
     assert "read_skill_file" not in names
@@ -114,8 +116,17 @@ def test_build_routing_hint_screening_recipe():
         ),
     )
     hint = build_routing_hint(analysis)
-    assert "可直接调用 run_recipe（recipe_id=intraday_multi" in hint
+    assert "直接 run_recipe（recipe_id=intraday_multi" in hint
     assert "可直接调用 screen_by_condition" not in hint
+
+
+def test_screening_tool_routing_scheme_name():
+    from vnpy_llm.routing.router import _screening_tool_routing_lines
+
+    lines = _screening_tool_routing_lines(
+        ScreeningIntent(intent="我的方案", scheme_name="我的 · 低PE", confidence="high"),
+    )
+    assert any("propose_screening" in line for line in lines)
 
 
 def test_build_routing_hint_screening_medium():
@@ -130,7 +141,7 @@ def test_build_routing_hint_screening_medium():
     )
     hint = build_routing_hint(analysis, page="选股")
     assert "list_screeners" in hint or "screen_by_condition" in hint
-    assert "propose_screening" not in hint
+    assert "propose_screening" in hint or "propose_recipe" in hint
     assert "可直接调用 screen_by_condition" not in hint
 
 

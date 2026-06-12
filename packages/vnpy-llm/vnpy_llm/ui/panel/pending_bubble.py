@@ -18,16 +18,28 @@ def pending_status_from_turn(turn: TurnTrace | None) -> tuple[str, str]:
     reply_running = any(s.kind == "reply" and s.status == "running" for s in turn.steps)
     has_routing = any(s.kind == "routing" for s in turn.steps)
     has_error = any(s.kind == "error" for s in turn.steps)
+    hitl_steps = [s for s in turn.steps if s.kind == "hitl"]
+    handoff_steps = [s for s in turn.steps if s.kind == "handoff"]
 
     if has_error:
         err = next(s for s in turn.steps if s.kind == "error")
         return "处理遇到问题", err.summary or "请稍后重试"
+
+    if hitl_steps:
+        step = hitl_steps[-1]
+        return "等待确认草案…", step.summary or "请在弹窗中审核并执行"
 
     if running_tools:
         main = _tool_running_text(running_tools)
         done_count = len(done_tools)
         sub = f"已完成 {done_count} 项" if done_count else "数据查询中，请稍候"
         return main, sub
+
+    if handoff_steps and not reply_running:
+        step = handoff_steps[-1]
+        to_agent = step.detail.get("to_agent", "")
+        label = f"{to_agent} Agent" if to_agent else "下一 Agent"
+        return f"切换至 {label}…", step.summary or "协作续接中"
 
     if reply_running:
         return "整理结论…", "正在生成回复"

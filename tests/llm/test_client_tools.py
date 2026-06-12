@@ -6,11 +6,7 @@ import json
 import time
 from unittest.mock import MagicMock, patch
 
-from vnpy_llm.chat.client import (
-    _execute_tool_calls_parallel,
-    complete_with_tools,
-    stream_with_tools,
-)
+from tests.llm.helpers.tool_loop import complete_with_tools, execute_tool_calls_parallel
 from vnpy_llm.config.settings import LlmConfig
 
 
@@ -45,7 +41,7 @@ def test_parallel_tool_execution():
         return f"ok:{name}"
 
     calls = [_make_call("slow_a", call_id="1"), _make_call("fast_b", call_id="2")]
-    pairs = _execute_tool_calls_parallel(calls, executor)
+    pairs = execute_tool_calls_parallel(calls, executor)
     assert [call.function.name for call, _ in pairs] == ["slow_a", "fast_b"]
     assert order == ["fast_b", "slow_a"] or len(order) == 2
 
@@ -79,7 +75,7 @@ def test_complete_with_tools_parallel_round():
         executed.append(name)
         return json.dumps({"tool": name})
 
-    with patch("vnpy_llm.chat.client.create_openai_client", return_value=mock_client):
+    with patch("tests.llm.helpers.tool_loop.create_openai_client", return_value=mock_client):
         content, messages = complete_with_tools(
             config,
             [{"role": "user", "content": "hi"}],
@@ -90,28 +86,3 @@ def test_complete_with_tools_parallel_round():
     assert content == "完成"
     assert set(executed) == {"tool_a", "tool_b"}
     assert mock_client.chat.completions.create.call_count == 2
-
-
-def test_stream_with_tools_yields_deltas():
-    config = _config()
-
-    chunk = MagicMock()
-    chunk.choices = [MagicMock()]
-    chunk.choices[0].finish_reason = "stop"
-    chunk.choices[0].delta = MagicMock(content="你好", tool_calls=None)
-
-    mock_stream = iter([chunk])
-    mock_client = MagicMock()
-    mock_client.chat.completions.create.return_value = mock_stream
-
-    with patch("vnpy_llm.chat.client.create_openai_client", return_value=mock_client):
-        deltas = list(
-            stream_with_tools(
-                config,
-                [{"role": "user", "content": "hi"}],
-                [],
-                lambda name, args: "",
-            )
-        )
-
-    assert deltas == ["你好"]

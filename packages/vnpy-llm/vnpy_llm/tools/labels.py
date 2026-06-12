@@ -20,6 +20,7 @@ _TOOL_LABELS: dict[str, str] = {
     "list_backtest_history": "查询回测历史",
     "list_screeners": "列出选股条件",
     "propose_screening": "解析选股条件",
+    "propose_recipe": "解析多因子配方",
     "screen_by_condition": "执行选股筛选",
     "screen_by_pattern": "执行形态选股",
     "add_to_watchlist": "加入自选",

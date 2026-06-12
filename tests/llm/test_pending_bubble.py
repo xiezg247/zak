@@ -62,6 +62,28 @@ class PendingBubbleTests(unittest.TestCase):
         main, _ = pending_status_from_turn(turn)
         self.assertIn("准备查询", main)
 
+    def test_hitl_waiting(self) -> None:
+        turn = _turn(
+            _step(
+                kind="hitl",
+                name="draft_screener",
+                status="ok",
+                summary="涨幅榜 Top 20",
+            ),
+        )
+        main, sub = pending_status_from_turn(turn)
+        self.assertIn("确认", main)
+        self.assertIn("涨幅榜", sub)
+
+    def test_handoff_switch(self) -> None:
+        turn = _turn(
+            _step(kind="handoff", name="research->market", status="ok", summary="结合大盘情绪"),
+        )
+        turn.steps[0].detail = {"to_agent": "market"}
+        main, sub = pending_status_from_turn(turn)
+        self.assertIn("market", main)
+        self.assertIn("大盘", sub)
+
     def test_format_html(self) -> None:
         html = format_pending_html("思考中…", "请稍候", spinner="●")
         self.assertIn("●", html)

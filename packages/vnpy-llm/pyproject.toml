@@ -13,9 +13,13 @@ dependencies = [
     "markdown>=3.5",
     "Pygments>=2.17",
     "python-dotenv>=1.0.0",
+    "langgraph>=0.2",
+    "langchain-openai>=0.2",
+    "langchain-core>=0.3",
     "vnpy-common",
     "vnpy-skills",
     "vnpy-mcp",
+    "langchain>=0.3",
 ]
 
 [tool.setuptools.packages.find]

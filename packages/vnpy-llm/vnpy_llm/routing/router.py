@@ -60,7 +60,9 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "list_screeners",
             "list_recipes",
             "run_recipe",
+            "propose_recipe",
             "screen_by_condition",
+            "propose_screening",
             "screen_by_pattern",
             "screen_reference_peer",
             "get_screening_context",
@@ -351,27 +353,7 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
         if s.scheme_name:
             lines.append(f"- scheme_name: {s.scheme_name}")
         lines.append(f"- confidence: {s.confidence}")
-        if s.clarification_needed:
-            lines.append("- 意图不够明确，请先向用户追问，勿调用选股工具")
-        elif s.confidence == "high" and s.recipe_id and not s.scheme_name:
-            lines.append(
-                f"- 配方「{s.recipe_id}」可直接调用 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"
-            )
-        elif s.confidence == "high" and s.preset and not s.scheme_name:
-            lines.append(f"- 内置方案「{s.preset}」可直接调用 screen_by_condition（name={s.preset}, top_n={s.top_n}）")
-        elif s.confidence in ("high", "medium"):
-            if s.recipe_id:
-                lines.append(
-                    f"- 可直接调用 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"
-                )
-            elif s.preset:
-                lines.append(
-                    f"- 可直接调用 screen_by_condition（name={s.preset}, top_n={s.top_n}）"
-                )
-            else:
-                lines.append(
-                    "- 请先 list_screeners / list_recipes 选定方案，再调用 screen_by_condition 或 run_recipe 直接执行"
-                )
+        lines.extend(_screening_tool_routing_lines(s))
 
     if analysis.backtest and route.category == "backtest":
         b = analysis.backtest
@@ -419,6 +401,48 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
         lines.append(f"本轮可用工具子集：{', '.join(names)}")
 
     return "\n".join(lines)
+
+
+def _screening_tool_routing_lines(screening: ScreeningIntent) -> list[str]:
+    """选股工具路由提示：明确意图走直接执行，复杂/已保存方案走 propose_*。"""
+    s = screening
+    if s.clarification_needed or s.confidence == "low":
+        return ["- 意图不够明确，请先向用户追问，勿调用选股工具"]
+
+    if s.scheme_name:
+        return [
+            f"- 已保存方案调用 propose_screening（scheme_name={s.scheme_name}, top_n={s.top_n}）",
+            "- 返回 pending_confirm 后停止，等待用户弹窗确认",
+        ]
+
+    has_custom_threshold = any(
+        value is not None for value in (s.min_change_pct, s.max_change_pct, s.min_turnover)
+    )
+
+    if s.recipe_id and s.confidence == "high":
+        return [f"- 配方「{s.recipe_id}」直接 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"]
+
+    if s.preset and s.confidence == "high":
+        if has_custom_threshold:
+            return [
+                f"- 自定义区间调用 propose_screening（preset={s.preset}, top_n={s.top_n}）",
+                "- 返回 pending_confirm 后停止，等待用户弹窗确认",
+            ]
+        return [f"- 内置方案「{s.preset}」直接 screen_by_condition（name={s.preset}, top_n={s.top_n}）"]
+
+    if s.confidence in ("high", "medium"):
+        if s.recipe_id:
+            return [f"- 可直接 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"]
+        if s.preset:
+            if has_custom_threshold:
+                return [f"- 调用 propose_screening（preset={s.preset}, top_n={s.top_n}）待确认"]
+            return [f"- 可直接 screen_by_condition（name={s.preset}, top_n={s.top_n}）"]
+        return [
+            "- 复杂/自定义多因子调用 propose_recipe；已保存方案或模糊条件调用 propose_screening",
+            "- 意图明确时仍可直接 run_recipe / screen_by_condition",
+        ]
+
+    return ["- 请先 list_screeners / list_recipes 了解可用方案"]
 
 
 _PATTERN_ALIASES: tuple[tuple[tuple[str, ...], str], ...] = (

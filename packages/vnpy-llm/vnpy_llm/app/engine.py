@@ -12,7 +12,11 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_common.ai.access import get_ai_context, register_context_listener
 from vnpy_common.ai.protocol import AiContextData
-from vnpy_llm.chat.client import LlmClientError, StreamCancelled, stream_chat_completion, stream_with_tools
+from vnpy_llm.chat.client import LlmClientError, StreamCancelled, stream_chat_completion
+from vnpy_llm.graph.hitl import DraftPendingInfo, DraftPendingStop, HITL_HINTS
+from vnpy_llm.graph.runner import stream_with_tools
+from vnpy_llm.graph.state import GraphStreamContext
+from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.chat.store import MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
 from vnpy_llm.config.settings import LlmConfig, load_llm_config
@@ -257,7 +261,21 @@ class LlmEngine(BaseEngine):
         self.store.update_session_title(self.session_id, title)
         self.signals.sessions_changed.emit()
 
-    def build_api_messages(self, *, extra_system: str = "") -> list[dict[str, str]]:
+    def build_conversation_messages(self) -> list[dict[str, str]]:
+        """LangGraph 路径：仅 user/assistant/tool 历史，system 由 Agent 拼装。"""
+        messages: list[dict[str, str]] = []
+        for item in self.get_messages():
+            content = item.content
+            if item.role == "tool" and len(content) > MAX_TOOL_RESULT_CHARS:
+                content = content[:MAX_TOOL_RESULT_CHARS] + "\n...(结果过长已截断)"
+            messages.append({"role": item.role, "content": content})
+        return messages
+
+    def build_api_messages(
+        self,
+        *,
+        extra_system: str = "",
+    ) -> list[dict[str, str]]:
         system_parts = [SYSTEM_PROMPT]
         tools_summary = self._build_tools_summary()
         if tools_summary:
@@ -389,13 +407,63 @@ class LlmEngine(BaseEngine):
         self._emit_trace_changed()
         return turn
 
-    def _trace_add_routing(self, route_ctx: Any) -> TraceStep:
+    def _build_graph_stream_context(self, route_ctx: Any, user_text: str) -> GraphStreamContext:
+        page = get_ai_context().page
+        return GraphStreamContext(
+            analysis=route_ctx.analysis,
+            user_text=user_text,
+            routing_hint=route_ctx.routing_hint,
+            tools_summary=self._build_tools_summary(),
+            skills_text=self.skill_engine.build_skills_prompt(),
+            mcp_text=self.mcp_engine.build_internal_status_note(),
+            context_text=self.get_context_text(),
+            page_prompt=build_page_prompt(page),
+            strategy_prompt=build_strategy_prompt(),
+        )
+
+    def _on_draft_pending(self, info: DraftPendingInfo) -> None:
+        if info.draft_kind == "recipe":
+            self.signals.recipe_draft_ready.emit(info.draft_id)
+        else:
+            self.signals.screener_draft_ready.emit(info.draft_id)
+        if self._trace_store.current_turn() is None:
+            return
+        self._trace_store.add_step(
+            kind="hitl",
+            name=f"draft_{info.draft_kind}",
+            summary=(info.summary or HITL_HINTS[info.draft_kind])[:80],
+            detail={
+                "draft_id": info.draft_id,
+                "draft_kind": info.draft_kind,
+                "summary": info.summary,
+                "message": info.message,
+            },
+            status="ok",
+        )
+        self._emit_trace_changed()
+
+    def _on_graph_handoff(self, from_agent: str, to_agent: str, reason: str) -> None:
+        if self._trace_store.current_turn() is None:
+            return
+        self._trace_store.add_step(
+            kind="handoff",
+            name=f"{from_agent}->{to_agent}",
+            summary=(reason or f"{from_agent} → {to_agent}")[:80],
+            detail={"from_agent": from_agent, "to_agent": to_agent, "reason": reason},
+            status="ok",
+        )
+        self._emit_trace_changed()
+
+    def _trace_add_routing(self, route_ctx: Any, *, user_text: str = "") -> TraceStep:
         route = route_ctx.analysis.route
-        summary = f"{route.category} · {route.confidence}"
+        decision = build_supervisor_decision(route_ctx.analysis, user_text)
+        summary = f"{route.category} → {decision.target_agent} · {route.confidence}"
         if route.reasoning:
             summary = f"{summary} · {route.reasoning[:48]}"
         detail = {
             "category": route.category,
+            "target_agent": decision.target_agent,
+            "handoff_agents": decision.handoff_agents,
             "confidence": route.confidence,
             "reasoning": route.reasoning,
             "tool_count": len(route_ctx.tools),
@@ -529,25 +597,6 @@ class LlmEngine(BaseEngine):
                 pass
             self.signals.tool_call_finished.emit(name)
 
-    def _maybe_emit_screener_draft(self, result: str) -> None:
-        self._maybe_emit_draft_signal(result, signal_name="screener_draft_ready")
-
-    def _maybe_emit_recipe_draft(self, result: str) -> None:
-        self._maybe_emit_draft_signal(result, signal_name="recipe_draft_ready")
-
-    def _maybe_emit_draft_signal(self, result: str, *, signal_name: str) -> None:
-        try:
-            payload = json.loads(result)
-        except json.JSONDecodeError:
-            return
-        if payload.get("status") != "pending_confirm":
-            return
-        draft_id = payload.get("draft_id")
-        if isinstance(draft_id, str) and draft_id:
-            signal = getattr(self.signals, signal_name, None)
-            if signal is not None:
-                signal.emit(draft_id)
-
     def append_local_message(self, *, role: str, content: str) -> None:
         if role == "user":
             self._maybe_update_session_title(content)
@@ -587,8 +636,9 @@ class LlmEngine(BaseEngine):
                     page=get_ai_context().page,
                     mcp_tool_names=mcp_names,
                 )
-                self._trace_add_routing(route_ctx)
-                messages = self.build_api_messages(extra_system=route_ctx.routing_hint)
+                self._trace_add_routing(route_ctx, user_text=user_text)
+                messages = self.build_conversation_messages()
+                graph_ctx = self._build_graph_stream_context(route_ctx, user_text)
                 chunks = []
                 self._trace_begin_reply()
                 for delta in stream_with_tools(
@@ -597,6 +647,11 @@ class LlmEngine(BaseEngine):
                     route_ctx.tools,
                     self._execute_tool,
                     should_cancel=should_cancel,
+                    graph_ctx=graph_ctx,
+                    all_tools=all_tools,
+                    mcp_tool_names=mcp_names,
+                    on_handoff=self._on_graph_handoff,
+                    on_draft_pending=self._on_draft_pending,
                 ):
                     chunks.append(delta)
                     self.signals.stream_delta.emit(delta)
@@ -619,6 +674,13 @@ class LlmEngine(BaseEngine):
                 if content:
                     self.append_local_message(role="assistant", content=content)
             self._trace_finish_reply()
+        except DraftPendingStop as pending:
+            hint = HITL_HINTS[pending.info.draft_kind]
+            if hint not in chunks:
+                chunks.append(hint)
+                self.signals.stream_delta.emit(hint)
+                yield hint
+            _persist_partial()
         except StreamCancelled:
             cancelled = True
             turn_ok = False

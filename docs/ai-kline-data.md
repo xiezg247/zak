@@ -219,7 +219,7 @@ LLM 意图分类（`IntentCategory`）决定本轮可见工具子集。与 K 线
 | `backtest` | 无直接 K 线工具（回测结果已预计算） |
 | `watchlist` | 无 K 线工具（信号查询走 `list_strategy_signals` 时间接依赖） |
 
-系统提示词约束（`packages/vnpy-llm/vnpy_llm/routing/prompts.py`）：
+系统提示词约束（`packages/vnpy-llm/vnpy_llm/routing/base_prompt.py`，无工具路径经 `routing/prompts.py` 引用）：
 
 > 若 K 线查询结果显示无本地数据，`historical_pattern_summary` 会自动尝试问小达 MCP；仍无数据时再提示下载日 K 或检查 MCP 配置。
 
@@ -235,7 +235,8 @@ LLM 意图分类（`IntentCategory`）决定本轮可见工具子集。与 K 线
 | 形态选股降级 | `vnpy_ashare/screener/pattern/pattern_screen.py` | `MAX_PATTERN_SCAN = 1200` |
 | 形态 MCP 优先 | `vnpy_ashare/integrations/mcp/pattern_screen.py` | 问小达全市场扫描 |
 | 意图路由 | `vnpy_llm/routing/router.py` | `TOOL_GROUPS` 按类别过滤工具 |
-| 系统提示词 | `vnpy_llm/routing/prompts.py` | 自然语言 → 工具映射与合规 |
+| 系统提示词 | `vnpy_llm/routing/base_prompt.py`、`graph/agents/*` | 合规基座 + 各 Specialist 工具路由 |
+| LangGraph 编排 | `vnpy_llm/graph/runner.py` | Supervisor → ReAct → handoff / HITL |
 
 ---
 

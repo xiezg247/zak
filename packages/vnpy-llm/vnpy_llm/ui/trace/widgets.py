@@ -31,7 +31,20 @@ def _step_title(step: TraceStep) -> str:
     if step.kind == "tool":
         return tool_display_name(step.name)
     if step.kind == "routing":
+        agent = step.detail.get("target_agent")
+        if agent:
+            return f"路由 → {agent}"
         return "意图路由"
+    if step.kind == "handoff":
+        to_agent = step.detail.get("to_agent", "")
+        return f"协作 → {to_agent}" if to_agent else "Agent 协作"
+    if step.kind == "hitl":
+        kind = step.detail.get("draft_kind", "")
+        if kind == "recipe":
+            return "配方草案确认"
+        if kind == "screener":
+            return "选股草案确认"
+        return "待确认草案"
     if step.kind == "reply":
         return "生成回复"
     if step.kind == "error":
@@ -43,8 +56,19 @@ def trace_summary_parts(turn: TurnTrace) -> list[str]:
     parts: list[str] = []
     for step in turn.steps:
         if step.kind == "routing":
+            agent = step.detail.get("target_agent")
             category = step.detail.get("category")
-            parts.append(str(category) if category else "意图路由")
+            if agent and category:
+                parts.append(f"{category}→{agent}")
+            elif category:
+                parts.append(str(category))
+            else:
+                parts.append("意图路由")
+        elif step.kind == "handoff":
+            to_agent = step.detail.get("to_agent", "")
+            parts.append(f"→{to_agent}" if to_agent else "协作")
+        elif step.kind == "hitl":
+            parts.append("待确认")
         elif step.kind == "tool":
             parts.append(_step_title(step))
         elif step.kind == "reply" and step.status == "running":
