@@ -11,10 +11,7 @@ from vnpy_ashare.ai.context.backtest import (
 )
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.quote import (
-    AiContextData,
-    QuickAction,
     StockBinding,
-    StockCompletionItem,
     build_assistant_quick_actions,
     build_diagnose_ai_prompt,
     build_floating_stock_quick_actions,
@@ -47,6 +44,7 @@ from vnpy_ashare.ai.context.store import (
     sync_backtest_summary_dict,
 )
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_common.ai.protocol import AiContextData, QuickAction, StockCompletionItem
 
 __all__ = [
     "AiContextData",

@@ -1,0 +1,16 @@
+"""行情摘要格式化。"""
+
+from __future__ import annotations
+
+from vnpy_ashare.quotes import QuoteSnapshot
+
+
+def format_quote_summary(quote: QuoteSnapshot | None) -> str:
+    """将 QuoteSnapshot 格式化为单行行情摘要。"""
+    if quote is None:
+        return ""
+    return (
+        f"最新价 {quote.last_price:.2f}，涨跌 {quote.change_amount:+.2f}（{quote.change_pct:+.2f}%），"
+        f"今开 {quote.open_price:.2f}，最高 {quote.high_price:.2f}，最低 {quote.low_price:.2f}，"
+        f"昨收 {quote.prev_close:.2f}，换手率 {quote.turnover_rate:.2f}%"
+    )

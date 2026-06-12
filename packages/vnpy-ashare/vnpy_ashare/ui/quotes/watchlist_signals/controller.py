@@ -115,10 +115,15 @@ class WatchlistSignalController:
         symbols = self._panel_symbols()
         if symbols:
             subset = {
-                vt: snap for vt in symbols if (snap := self._page.signal_cache.get(vt)) is not None and snap.relative_index_pct is None and snap.signal != "na"
+                vt: snap
+                for vt in symbols
+                if (snap := self._page.signal_cache.get(vt)) is not None
+                and snap.relative_index_pct is None
+                and snap.signal != "na"
             }
             if subset:
-                self._enrich_relative_index(subset)
+                enriched = self._enrich_relative_index(subset)
+                self._page.signal_cache.update(enriched)
         panel = getattr(self._page, "signal_panel", None)
         if panel is not None:
             panel.set_updated_at(datetime.now().strftime("%H:%M"))
@@ -263,6 +268,7 @@ class WatchlistSignalController:
         else:
             to_fetch = self._symbols_needing_refresh(target)
             if not to_fetch:
+                self._apply_refresh_result()
                 return
 
         config = self._page.signal_config.normalized()
@@ -296,9 +302,6 @@ class WatchlistSignalController:
                 self._worker = None
             pending = self._pending_refresh
             self._pending_refresh = None
-            if not self._page._active:
-                self._release_worker(worker)
-                return
             before = {vt: self._page.signal_cache.get(vt) for vt in cache}
             self._enrich_relative_index(cache)
             self._page.signal_cache.update(cache)
@@ -309,10 +312,12 @@ class WatchlistSignalController:
                     config_key=config_key,
                     bar_as_of_for=self._bar_end_date,
                 )
-            self._notify_signal_transitions(before, cache)
-            self._apply_refresh_result()
+            active = self._page._active
+            if active:
+                self._notify_signal_transitions(before, cache)
+                self._apply_refresh_result()
             self._release_worker(worker)
-            if pending is not None:
+            if pending is not None and active:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
 
@@ -322,7 +327,12 @@ class WatchlistSignalController:
             pending = self._pending_refresh
             self._pending_refresh = None
             self._release_worker(worker)
-            if pending is not None and self._page._active:
+            if not self._page._active:
+                return
+            panel = getattr(self._page, "signal_panel", None)
+            if panel is not None:
+                panel.render()
+            if pending is not None:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
 

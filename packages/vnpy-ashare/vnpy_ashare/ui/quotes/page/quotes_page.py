@@ -275,12 +275,11 @@ class QuotesPage(QtWidgets.QWidget):
         self._update_quote_source_label()
         if self.config.show_watchlist_signals:
             self._signals.start()
-            if self.all_stocks:
-                self._signals.on_stock_list_loaded()
+            # 信号区名单来自 QSettings，不依赖自选表加载完成；避免列表加载取消后信号永不刷新。
+            self._signals.on_stock_list_loaded()
         if self.config.show_watchlist_positions:
             self._positions.start()
-            if self.all_stocks:
-                self._positions.on_stock_list_loaded()
+            self._positions.on_stock_list_loaded()
 
     def deactivate(self) -> None:
         if self.config.use_radar_cards:

@@ -27,14 +27,14 @@ from vnpy_ashare.quotes import QuoteSnapshot
 
 class FloatingActionsTests(unittest.TestCase):
     def test_assistant_default_fallback_binding(self) -> None:
-        with patch("vnpy_ashare.ai.context.quote.load_watchlist_rows", return_value=[]):
+        with patch("vnpy_ashare.ai.context.quote.assembly.load_watchlist_rows", return_value=[]):
             binding = resolve_assistant_stock_binding()
         self.assertEqual(binding.vt_symbol, "002230.SZSE")
         self.assertEqual(binding.name, "科大讯飞")
 
     def test_assistant_watchlist_first_binding(self) -> None:
         with patch(
-            "vnpy_ashare.ai.context.quote.load_watchlist_rows",
+            "vnpy_ashare.ai.context.quote.assembly.load_watchlist_rows",
             return_value=[("600519", Exchange.SSE, "贵州茅台")],
         ):
             binding = resolve_assistant_stock_binding()
@@ -48,7 +48,7 @@ class FloatingActionsTests(unittest.TestCase):
             vt_symbol="600519.SSE",
         )
         with patch(
-            "vnpy_ashare.ai.context.quote.resolve_assistant_stock_binding",
+            "vnpy_ashare.ai.context.quote.assembly.resolve_assistant_stock_binding",
             return_value=binding,
         ):
             actions = build_assistant_quick_actions()
@@ -95,7 +95,7 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertTrue(pattern.children[0].auto_send)
 
     def test_floating_bound_to_selected_symbol(self) -> None:
-        with patch("vnpy_ashare.ai.context.quote.is_symbol_in_positions", return_value=False):
+        with patch("vnpy_ashare.ai.context.quote.assembly.is_symbol_in_positions", return_value=False):
             actions = build_floating_stock_quick_actions(
                 "002230",
                 exchange_cn="深交所",
@@ -106,7 +106,7 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertIn("002230.SZSE", actions[0].children[0].prompt)
 
     def test_market_page_includes_sector_overview(self) -> None:
-        with patch("vnpy_ashare.ai.context.quote.is_symbol_in_watchlist", return_value=True):
+        with patch("vnpy_ashare.ai.context.quote.assembly.is_symbol_in_watchlist", return_value=True):
             actions = build_floating_stock_quick_actions(
                 "600519",
                 exchange_cn="上交所",
@@ -119,7 +119,7 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertNotIn("add_watchlist", ids)
 
     def test_local_page_includes_bar_health(self) -> None:
-        with patch("vnpy_ashare.ai.context.quote.is_symbol_in_watchlist", return_value=True):
+        with patch("vnpy_ashare.ai.context.quote.assembly.is_symbol_in_watchlist", return_value=True):
             actions = build_floating_stock_quick_actions(
                 "600519",
                 exchange_cn="上交所",
@@ -132,7 +132,7 @@ class FloatingActionsTests(unittest.TestCase):
         self.assertIn("600519.SSE", bar_health.prompt)
 
     def test_non_watchlist_symbol_shows_add_watchlist(self) -> None:
-        with patch("vnpy_ashare.ai.context.quote.is_symbol_in_watchlist", return_value=False):
+        with patch("vnpy_ashare.ai.context.quote.assembly.is_symbol_in_watchlist", return_value=False):
             actions = build_floating_stock_quick_actions(
                 "000001",
                 exchange_cn="深交所",
@@ -186,7 +186,7 @@ class FloatingActionsTests(unittest.TestCase):
             vt_symbol="002230.SZSE",
         )
         with patch(
-            "vnpy_ashare.ai.context.quote.resolve_assistant_stock_binding",
+            "vnpy_ashare.ai.context.quote.assembly.resolve_assistant_stock_binding",
             return_value=binding,
         ):
             panel_actions = build_quick_actions_for_panel(AiContextData(page="AI 助手"), mode="assistant")
@@ -238,7 +238,7 @@ class FloatingActionsTests(unittest.TestCase):
             vt_symbol="002230.SZSE",
         )
         with patch(
-            "vnpy_ashare.ai.context.quote.resolve_assistant_stock_binding",
+            "vnpy_ashare.ai.context.quote.assembly.resolve_assistant_stock_binding",
             return_value=binding,
         ):
             panel_actions = build_quick_actions_for_panel(AiContextData(page="AI 助手"), mode="assistant")
