@@ -16,7 +16,7 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.
 
 无工具闲聊仍走 `chat/client.stream_chat_completion`，system prompt 见 `routing/prompts.py`（与 `routing/base_prompt.py` 共用基座）。
 
-LLM **不直接调用** `mcp_*`；研报与综合诊断经 `diagnose_stock` Skill 访问通达信 MCP。
+LLM **不直接调用** `mcp_*`；综合诊断经 `diagnose_stock` Skill 访问通达信 MCP。
 
 ## 路由总表
 
@@ -27,7 +27,6 @@ LLM **不直接调用** `mcp_*`；研报与综合诊断经 `diagnose_stock` Skil
 | 近期走势 / 历史统计 | `historical_pattern_summary` | 本地不足时问小达 MCP 兜底 |
 | 技术面快照 | `technical_snapshot` | 提示下载日 K |
 | 综合诊断 | `diagnose_stock` | — |
-| 券商研报 / 评级 | `diagnose_stock` 或 `mcp_tdx_tdx_wenda_quotes` | — |
 | 实时行情 / 板块 | 通达信 MCP `mcp_tdx_*` | TickFlow / Redis |
 | 财务 / 估值 / 宏观 | `tushare-data` Skill | — |
 | 选股结果解读 | `explain_screening_run` / `get_screening_context` | 选股页运行方案 |
@@ -40,7 +39,7 @@ LLM **不直接调用** `mcp_*`；研报与综合诊断经 `diagnose_stock` Skil
 - 认证 Header：`tdx-api-key`
 - 工具名格式：`mcp_tdx_<远端工具名>`
 
-`diagnose_stock` 调用 `mcp_tdx_tdx_wenda_quotes`，查询行情、技术指标、财务、资金流、研报评级。
+`diagnose_stock` 调用 `mcp_tdx_tdx_wenda_quotes`，查询行情、技术指标、财务、资金流。
 
 ## Python Skills
 
@@ -82,6 +81,5 @@ LLM **不直接调用** `mcp_*`；研报与综合诊断经 `diagnose_stock` Skil
 
 ## 约束
 
-- 不编造价格、指标、研报观点
+- 不编造价格、指标
 - 不给出具体买卖价位或确定性走势预测
-- 研报引用注明来源与日期

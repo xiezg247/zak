@@ -1,4 +1,4 @@
-"""股票分析 Service（技术形态、诊断聚合、MCP 研报）。"""
+"""股票分析 Service（技术形态、诊断聚合）。"""
 
 from __future__ import annotations
 
@@ -23,7 +23,6 @@ from vnpy_ashare.services.analysis.historical_mcp import (
     merge_historical_failure,
 )
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding, McpExecute
-from vnpy_ashare.services.analysis.reports import ReportsFetcher
 from vnpy_ashare.services.analysis.technical import TechnicalAnalyzer
 from vnpy_ashare.services.base import BaseService
 
@@ -36,7 +35,6 @@ class AnalysisService(BaseService):
         self._mcp = McpBinding()
         self._technical = TechnicalAnalyzer(engine)
         self._diagnose = DiagnoseAnalyzer(self._mcp)
-        self._reports = ReportsFetcher(self._mcp)
 
     def bind_mcp(
         self,
@@ -60,9 +58,8 @@ class AnalysisService(BaseService):
         symbol: str,
         *,
         lookback: int = 60,
-        include_reports: bool = True,
     ) -> dict[str, Any]:
-        return self._diagnose.diagnose(symbol, lookback=lookback, include_reports=include_reports)
+        return self._diagnose.diagnose(symbol, lookback=lookback)
 
     def strategy_signals(
         self,
@@ -277,6 +274,3 @@ class AnalysisService(BaseService):
 
     def get_diagnose_result(self) -> dict[str, Any] | None:
         return self._diagnose.get_diagnose_result()
-
-    def _pick_mcp_tool(self, keywords: tuple[str, ...]) -> str | None:
-        return self._reports.pick_mcp_tool(keywords)

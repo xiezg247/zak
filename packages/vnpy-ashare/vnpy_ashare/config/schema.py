@@ -103,14 +103,6 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         sensitive=True,
     ),
     ConfigFieldSpec("POSTGRES_DATABASE", "PostgreSQL 库名", "PostgreSQL", "zak"),
-    ConfigFieldSpec(
-        "ANALYSIS_REPORT_FALLBACK",
-        "分析报告回退源",
-        "其他",
-        "tushare",
-        kind="choice",
-        choices=("tushare",),
-    ),
 )
 
 VT_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (

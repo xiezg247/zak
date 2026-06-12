@@ -47,14 +47,14 @@ OFFICIAL_SKILLS: dict[str, SkillMeta] = {
     "tdx-stock-picker": SkillMeta(
         skill_name="tdx-stock-picker",
         title="通达信 AI 选股",
-        summary="利用通达信 MCP 行情/财务/技术指标/板块/研报工具进行多条件 A 股筛选。",
+        summary="利用通达信 MCP 行情/财务/技术指标/板块工具进行多条件 A 股筛选。",
         source="zak",
         tags=("选股", "通达信", "MCP", "A 股"),
     ),
     "tdx-stock-diagnose": SkillMeta(
         skill_name="tdx-stock-diagnose",
         title="通达信个股诊断",
-        summary="问小达 MCP 综合诊断：行情、MACD/KDJ/RSI、PE/ROE、主力资金、研报。",
+        summary="问小达 MCP 综合诊断：行情、MACD/KDJ/RSI、PE/ROE、主力资金。",
         source="zak",
         tags=("诊断", "通达信", "MCP", "A 股"),
     ),

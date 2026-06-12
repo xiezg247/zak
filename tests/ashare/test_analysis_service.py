@@ -75,49 +75,13 @@ class AnalysisServiceTests(unittest.TestCase):
             return _wenda_payload()
 
         self.service.bind_mcp(_execute, ["mcp_tdx_tdx_wenda_quotes"])
-        result = self.service.diagnose("600000.SSE", include_reports=False)
+        result = self.service.diagnose("600000.SSE")
         self.assertEqual(result["symbol"], "600000.SSE")
         self.assertEqual(result["quote"]["last_price"], 10.5)
         self.assertEqual(result["technical"]["macd"], -0.5)
         self.assertEqual(result["fundamental"]["pe_ttm"], 8.5)
         self.assertEqual(result["capital_flow"]["main_net"], 12345678.0)
         self.assertIn("tdx_mcp", result["sources"])
-
-    def test_diagnose_report_fallback_when_wenda_empty(self) -> None:
-        report_payload = json.dumps(
-            {
-                "reports": [
-                    {
-                        "title": "科大讯飞：AI 龙头持续成长",
-                        "broker": "某券商",
-                        "date": "2026-05-01",
-                        "rating": "买入",
-                    }
-                ]
-            },
-            ensure_ascii=False,
-        )
-
-        def _execute(name: str, args: dict) -> str:
-            if "wenda" in name:
-                return _wenda_payload()
-            if "report" in name:
-                return report_payload
-            return _wenda_payload()
-
-        self.service.bind_mcp(
-            _execute,
-            ["mcp_tdx_tdx_wenda_quotes", "mcp_tdx_stock_reports"],
-        )
-        result = self.service.diagnose("002230.SZSE", include_reports=True)
-        self.assertEqual(len(result["reports"]), 1)
-        self.assertEqual(result["reports"][0]["title"], "科大讯飞：AI 龙头持续成长")
-        self.assertIn("tdx_mcp", result["sources"])
-
-    def test_pick_mcp_tool(self) -> None:
-        self.service.bind_mcp(None, ["mcp_tdx_tdx_wenda_quotes", "mcp_tdx_stock_quotes"])
-        name = self.service._pick_mcp_tool(("report", "research"))
-        self.assertIsNone(name)
 
     def test_strategy_signals(self) -> None:
         result = self.service.strategy_signals("600000.SSE")
@@ -195,34 +159,6 @@ class AnalysisServiceTests(unittest.TestCase):
 
 
 class TdxDiagnoseParseTests(unittest.TestCase):
-    def test_summarize_wenda_reports(self) -> None:
-        from vnpy_ashare.services.tdx_diagnose import summarize_wenda_reports
-
-        sections = {
-            "report_forecast": {
-                "fields": {
-                    "目标价(元)0": "78.58",
-                    "综合评级": "4.78",
-                    "评级机构家数": "9",
-                    "预测每股收益(元)": "0.5220",
-                }
-            },
-            "report_rating": {
-                "fields": {
-                    "评级机构名称": "华泰证券",
-                    "评级日期0": "2026.06.02",
-                    "上次评级": "买入",
-                    "研究员": "郭雅丽，袁泽世",
-                }
-            },
-        }
-        reports = summarize_wenda_reports(sections)
-        self.assertEqual(len(reports), 2)
-        self.assertEqual(reports[0]["target_price"], "78.58")
-        self.assertEqual(reports[1]["broker"], "华泰证券")
-        self.assertEqual(reports[1]["date"], "2026.06.02")
-        self.assertEqual(reports[1]["rating"], "买入")
-
     def test_parse_wenda_table(self) -> None:
         from vnpy_ashare.services.tdx_diagnose import _parse_wenda_table
 

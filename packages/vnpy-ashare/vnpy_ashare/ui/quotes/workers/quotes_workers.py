@@ -738,20 +738,15 @@ class DiagnoseWorker(QtCore.QThread):
         analysis_service,
         *,
         vt_symbol: str,
-        include_reports: bool = True,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self.analysis_service = analysis_service
         self.vt_symbol = vt_symbol
-        self.include_reports = include_reports
 
     def run(self) -> None:
         try:
-            result = self.analysis_service.diagnose(
-                self.vt_symbol,
-                include_reports=self.include_reports,
-            )
+            result = self.analysis_service.diagnose(self.vt_symbol)
             self.finished.emit(result)
         except Exception as ex:
             self.failed.emit(str(ex))

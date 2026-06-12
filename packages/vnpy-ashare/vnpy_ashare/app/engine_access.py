@@ -51,7 +51,7 @@ def get_service(main_engine: MainEngine | None, name: str):
 
 
 def get_analysis_service(main_engine: MainEngine | None) -> AnalysisService | None:
-    """诊断 / 研报聚合 Service。"""
+    """诊断聚合 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.analysis_service if engine is not None else None
 

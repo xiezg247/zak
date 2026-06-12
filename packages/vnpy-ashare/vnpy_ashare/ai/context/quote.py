@@ -137,8 +137,8 @@ def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f"请对 {title} 做综合诊断。"
-        "请获取行情、技术指标、财务、资金流、研报等诊断数据，"
-        "基于返回结果解读，不要编造未在结果中的指标或研报观点。"
+        "请获取行情、技术指标、财务、资金流等诊断数据，"
+        "基于返回结果解读，不要编造未在结果中的指标。"
     )
 
 
@@ -382,7 +382,7 @@ def _wenda_prefix(binding: StockBinding) -> str:
 
 
 def build_diagnose_menu(binding: StockBinding) -> QuickAction:
-    """综合诊断二级菜单（全量 / 财务 / 研报 / 资金流）。"""
+    """综合诊断二级菜单（全量 / 财务 / 资金流）。"""
     prefix = _wenda_prefix(binding)
     vt = binding.vt_symbol
     name = binding.name
@@ -403,11 +403,6 @@ def build_diagnose_menu(binding: StockBinding) -> QuickAction:
                     f"{prefix}请查询市盈率、ROE 等财务估值指标，"
                     "必要时结合综合诊断，基于返回结果解读，禁止编造。"
                 ),
-            ),
-            QuickAction(
-                id="diagnose_report",
-                label="研报评级",
-                prompt=(f"{prefix}请查询最新研报与评级，引用须注明来源与日期，禁止编造。"),
             ),
             QuickAction(
                 id="diagnose_flow",

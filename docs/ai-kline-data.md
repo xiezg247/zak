@@ -25,7 +25,7 @@
 flowchart TB
     subgraph User["用户提问"]
         Q1[当前价 / 涨跌]
-        Q2[综合诊断 / 研报]
+        Q2[综合诊断]
         Q3[条件选股]
         Q4[技术面 / 策略信号]
         Q5[历史走势 / 情景分析]
@@ -66,7 +66,7 @@ flowchart TB
 | 策略信号 | `technical` / `watchlist` | `list_strategy_signals` | **强** | 单票 | 本地 K 不足时无法计算金叉/死叉等 |
 | 历史走势统计 | `technical` | `historical_pattern_summary` | **优先** | 单票 | 本地不足 → 问小达 MCP 兜底 |
 | 走势情景分析 | `technical` | `trend_scenario_summary` | **优先** | 单票 | 本地不足 → MCP 补充；仍无则提示下载 |
-| 综合诊断 | `diagnosis` | `diagnose_stock` | **无** | — | 完全走问小达 MCP（行情、技术、财务、资金流、研报） |
+| 综合诊断 | `diagnosis` | `diagnose_stock` | **无** | — | 完全走问小达 MCP（行情、技术、财务、资金流） |
 | 条件选股 | `screening` | `screen_by_condition`、`run_recipe` | **无** | 全市场 | Redis 行情 + Tushare 合并 |
 | 形态选股 | `screening` | `screen_by_pattern` | **降级** | 已下载标的 | **优先 MCP 全市场**；失败扫本地日 K（最多约 1200 只） |
 | 标杆对标 | `screening` | `screen_reference_peer` | 部分 | 标杆 + 候选池 | 估值/动量以 Tushare + 行情为主 |
@@ -140,7 +140,7 @@ flowchart TB
 ### 5. 综合诊断（不依赖本地 K 线）
 
 - **工具：** `diagnose_stock`（`tdx-stock-diagnose` Skill）
-- **数据：** 问小达 MCP 一次性返回行情、技术指标、财务、资金流、研报评级
+- **数据：** 问小达 MCP 一次性返回行情、技术指标、财务、资金流
 - **说明：** 即使本地无 K 线，综合诊断仍可正常使用
 
 ### 6. 选股（大部分不依赖全市场 K 线）

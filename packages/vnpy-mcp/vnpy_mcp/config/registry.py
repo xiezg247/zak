@@ -18,8 +18,8 @@ BUILTIN_MCP_PROVIDERS: dict[str, McpProviderMeta] = {
     "tdx": McpProviderMeta(
         provider_name="tdx",
         title="通达信 MCP",
-        summary="官方 Streamable HTTP MCP：A 股实时行情、K 线、板块、研报等。",
+        summary="官方 Streamable HTTP MCP：A 股实时行情、K 线、板块等。",
         env_vars=("mcp/",),
-        tags=("行情", "K 线", "通达信", "MCP", "研报"),
+        tags=("行情", "K 线", "通达信", "MCP"),
     ),
 }

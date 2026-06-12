@@ -96,22 +96,6 @@ def format_diagnose_html(payload: dict[str, Any], *, tokens: ThemeTokens | None 
                 f"</ul>"
             )
 
-    reports = payload.get("reports") or []
-    if reports:
-        lines.append(f'<p style="margin:0 0 4px 0;color:{colors.section};">研报摘要</p>')
-        lines.append(f'<ul style="margin:0 0 8px 16px;padding:0;color:{colors.body};">')
-        for row in reports[:3]:
-            broker = row.get("broker") or row.get("org") or ""
-            date = row.get("date") or ""
-            rating = row.get("rating") or ""
-            title_text = row.get("title") or "研报"
-            meta = " · ".join(part for part in (broker, date, rating) if part)
-            summary = (row.get("summary") or "")[:120]
-            lines.append(f"<li><b>{title_text}</b>{f'（{meta}）' if meta else ''}{f'<br/>{summary}…' if summary else ''}</li>")
-        if len(reports) > 3:
-            lines.append(f"<li>… 另有 {len(reports) - 3} 条</li>")
-        lines.append("</ul>")
-
     warnings = payload.get("warnings") or []
     if warnings:
         lines.append(f'<p style="margin:0 0 4px 0;color:{colors.warning};">提示</p>')

@@ -1,6 +1,6 @@
 ---
 name: tdx-stock-picker
-description: 通达信 AI 选股技能。利用通达信 MCP 提供的行情、财务、技术指标、板块、研报等工具，按用户意图组合多条件筛选 A 股标的。与终端自建选股页协同：盘中/盘后多因子直接 run_recipe；内置 preset / 已保存方案直接 screen_by_condition；形态用 screen_by_pattern。选股直接执行，无需用户二次确认。
+description: 通达信 AI 选股技能。利用通达信 MCP 提供的行情、财务、技术指标、板块等工具，按用户意图组合多条件筛选 A 股标的。与终端自建选股页协同：盘中/盘后多因子直接 run_recipe；内置 preset / 已保存方案直接 screen_by_condition；形态用 screen_by_pattern。选股直接执行，无需用户二次确认。
 author: zak
 version: 1.0.0
 ---

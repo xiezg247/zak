@@ -10,7 +10,7 @@ from vnpy_skills.domain import SkillTemplate, ToolSpec
 class TdxDiagnoseSkill(SkillTemplate):
     skill_name = "tdx-stock-diagnose"
     author = "zak"
-    description = "单票综合诊断（通达信问小达：行情、技术指标、财务、资金流、研报）"
+    description = "单票综合诊断（通达信问小达：行情、技术指标、财务、资金流）"
 
     def register_tools(self) -> list[ToolSpec]:
         return [
@@ -18,7 +18,7 @@ class TdxDiagnoseSkill(SkillTemplate):
                 name="diagnose_stock",
                 description=(
                     "对单只股票做综合诊断，数据来自通达信问小达 MCP（非本地 K 线）。"
-                    "覆盖行情、MACD/KDJ/RSI、PE/ROE、主力资金、研报。"
+                    "覆盖行情、MACD/KDJ/RSI、PE/ROE、主力资金。"
                     "用户问「诊断」「这个票怎么样」「基本面+技术面」时优先调用。"
                 ),
                 parameters={
@@ -27,10 +27,6 @@ class TdxDiagnoseSkill(SkillTemplate):
                         "symbol": {
                             "type": "string",
                             "description": "股票代码，如 600519.SSE 或 002230.SZSE",
-                        },
-                        "include_reports": {
-                            "type": "boolean",
-                            "description": "是否查询研报维度，默认 true",
                         },
                     },
                     "required": ["symbol"],
@@ -44,7 +40,7 @@ class TdxDiagnoseSkill(SkillTemplate):
             raise RuntimeError("AnalysisService 未就绪")
         return svc
 
-    def diagnose_stock(self, symbol: str, include_reports: bool = True) -> str:
+    def diagnose_stock(self, symbol: str) -> str:
         svc = self._get_analysis_service()
-        result = svc.diagnose(symbol, include_reports=bool(include_reports))
+        result = svc.diagnose(symbol)
         return json.dumps(result, ensure_ascii=False)

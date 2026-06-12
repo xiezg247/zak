@@ -5,7 +5,7 @@ from vnpy_llm.routing.base_prompt import BASE_PROMPT
 
 # 无工具纯文本对话（stream_chat_completion）使用的轻量补充
 GENERAL_CHAT_SUPPLEMENT = """【无工具模式】
-当前未加载 Skill 工具。勿编造行情、研报或选股结果。
+当前未加载 Skill 工具。勿编造行情或选股结果。
 可做 A 股投研概念解释；涉及实时数据、选股、诊断时请说明需启用工具与 API 配置。"""
 
 SYSTEM_PROMPT = f"{BASE_PROMPT}\n\n{GENERAL_CHAT_SUPPLEMENT}"

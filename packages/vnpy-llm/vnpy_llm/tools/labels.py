@@ -41,8 +41,6 @@ def tool_display_name(name: str) -> str:
         return _TOOL_LABELS[name]
     if name.startswith("mcp_tdx_"):
         suffix = name.removeprefix("mcp_tdx_")
-        if any(key in suffix for key in ("report", "research", "yanbao", "rating")):
-            return "查询通达信研报"
         if "f10" in suffix or "fundamental" in suffix:
             return "查询通达信基本面"
         if "quote" in suffix or "price" in suffix:

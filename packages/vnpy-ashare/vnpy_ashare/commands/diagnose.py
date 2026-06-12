@@ -1,4 +1,4 @@
-"""单股综合诊断（技术面 + 研报）。"""
+"""单股综合诊断（技术面）。"""
 
 from __future__ import annotations
 
@@ -102,60 +102,6 @@ def technical_snapshot(symbol: str, exchange: Exchange, lookback: int = 60) -> d
     }
 
 
-def fetch_mcp_reports(symbol: str, exchange: Exchange) -> dict[str, Any]:
-    """通过通达信 MCP 获取研报。"""
-    from vnpy_mcp.config import load_all_mcp_servers
-    from vnpy_mcp.remote import McpClientError, call_remote_tool, list_remote_tools
-
-    configs = load_all_mcp_servers()
-    if not configs:
-        return {"reports": [], "warnings": ["通达信 MCP 未配置"]}
-
-    tdx = configs.get("tdx")
-    if not tdx or not tdx.available:
-        return {"reports": [], "warnings": ["通达信 MCP 不可用"]}
-
-    try:
-        tools = list_remote_tools(tdx.url, tdx.headers, timeout=30)
-    except McpClientError as ex:
-        return {"reports": [], "warnings": [f"通达信 MCP 连接失败: {ex}"]}
-
-    # 找研报类 MCP 工具
-    report_tools = [t for t in tools if any(kw in t.name.lower() for kw in ("report", "research", "yanbao", "研报", "rating", "fundamental"))]
-    if not report_tools:
-        return {"reports": [], "warnings": [f"通达信 MCP 未提供研报工具（共 {len(tools)} 个工具）"]}
-
-    tool = report_tools[0]
-    vt_symbol = f"{symbol}.{exchange.value}"
-    args: dict[str, Any] = {}
-    if "code" in tool.name.lower() or "symbol" in tool.name.lower():
-        args = {"code": symbol, "symbol": symbol, "stock_code": symbol}
-    else:
-        args = {"symbol": vt_symbol, "code": symbol}
-
-    try:
-        result = call_remote_tool(tdx.url, tdx.headers, tool.name, args, timeout=60)
-    except McpClientError as ex:
-        return {"reports": [], "warnings": [f"通达信 MCP 调用失败: {ex}"]}
-
-    # 解析结果
-    raw_text = ""
-    if hasattr(result, "content"):
-        for c in result.content:
-            if hasattr(c, "text"):
-                raw_text += c.text
-    elif isinstance(result, str):
-        raw_text = result
-    else:
-        raw_text = str(result)
-
-    return {
-        "reports": [{"title": f"通达信 MCP · {tool.name}", "summary": raw_text[:3000], "source": "tdx_mcp", "tool": tool.name}],
-        "source": "tdx_mcp",
-        "warnings": [],
-    }
-
-
 def describe_trend(return_pct: float, volatility_pct: float) -> str:
     if return_pct >= 5:
         base = "区间明显上行"
@@ -247,20 +193,13 @@ def _cmd_run(args: argparse.Namespace) -> int:
     # 历史走势
     hist = historical_summary(symbol, exchange, lookback=20)
 
-    # 研报
-    reports_data: dict[str, Any] = {"reports": [], "warnings": []}
-    if not args.no_reports:
-        reports_data = fetch_mcp_reports(symbol, exchange)
-
     result = {
         "symbol": f"{symbol}.{exchange.value}",
         "name": "科大讯飞" if symbol == "002230" else symbol,
         "as_of": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "technical": tech,
         "historical_20d": hist,
-        "reports": reports_data.get("reports", []),
-        "report_warnings": reports_data.get("warnings", []),
-        "disclaimer": "以上内容来自工具数据与第三方研报摘要，不构成投资建议。",
+        "disclaimer": "以上内容来自工具数据，不构成投资建议。",
     }
 
     if args.json:
@@ -292,18 +231,6 @@ def _cmd_run(args: argparse.Namespace) -> int:
     print(f"  最长连涨：{hist.get('max_consecutive_up_days')}天  最长连跌：{hist.get('max_consecutive_down_days')}天")
     print(f"  趋势标签：{hist.get('trend_label')}")
 
-    if reports_data.get("reports"):
-        print("\n── 券商研报 ──")
-        for r in reports_data["reports"]:
-            print(f"  来源：{r.get('source', '')} · {r.get('tool', '')}")
-            print(f"  标题：{r.get('title', '')}")
-            if r.get("summary"):
-                print(f"  摘要：{r['summary'][:500]}")
-    elif reports_data.get("warnings"):
-        print("\n── 研报 ──")
-        for w in reports_data["warnings"]:
-            print(f"  ⚠️ {w}")
-
     print(f"\n{result['disclaimer']}")
     print("=" * 64)
 
@@ -315,9 +242,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
-    diag = subparsers.add_parser("diagnose", help="单股综合诊断（技术面 + 研报）")
+    diag = subparsers.add_parser("diagnose", help="单股综合诊断（技术面）")
     diag.add_argument("symbol", help="股票代码，如 002230")
     diag.add_argument("--exchange", default="SZSE", choices=["SSE", "SZSE", "BSE"])
-    diag.add_argument("--no-reports", action="store_true", help="跳过研报查询")
     diag.add_argument("--json", action="store_true", help="仅输出 JSON")
     diag.set_defaults(handler=_cmd_run)
