@@ -67,6 +67,85 @@ CREATE TABLE IF NOT EXISTS tushare_factor_cache (
     payload TEXT NOT NULL,
     PRIMARY KEY (dataset, trade_date)
 );
+
+CREATE TABLE IF NOT EXISTS financial_reports (
+    ts_code TEXT NOT NULL,
+    report_type TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    ann_date TEXT NOT NULL DEFAULT '',
+    period TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'tushare',
+    fetched_at TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    PRIMARY KEY (ts_code, report_type, end_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_financial_reports_ts_type
+    ON financial_reports(ts_code, report_type, end_date DESC);
+
+CREATE TABLE IF NOT EXISTS financial_snapshots (
+    ts_code TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    revenue REAL,
+    net_income REAL,
+    operate_profit REAL,
+    basic_eps REAL,
+    total_assets REAL,
+    total_liab REAL,
+    total_equity REAL,
+    ocf REAL,
+    icf REAL,
+    fcf_flow REAL,
+    free_cashflow REAL,
+    roe REAL,
+    gross_margin REAL,
+    net_margin REAL,
+    debt_ratio REAL,
+    current_ratio REAL,
+    revenue_yoy REAL,
+    net_income_yoy REAL,
+    roe_yoy REAL,
+    ocf_to_profit REAL,
+    computed_at TEXT NOT NULL,
+    PRIMARY KEY (ts_code, end_date)
+);
+
+CREATE TABLE IF NOT EXISTS financial_sync_meta (
+    ts_code TEXT PRIMARY KEY,
+    last_sync_at TEXT NOT NULL,
+    latest_end_date TEXT NOT NULL DEFAULT '',
+    latest_ann_date TEXT NOT NULL DEFAULT '',
+    sync_status TEXT NOT NULL DEFAULT 'ok',
+    error_message TEXT NOT NULL DEFAULT '',
+    periods_count INTEGER NOT NULL DEFAULT 0,
+    last_access_at TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS valuation_history (
+    ts_code TEXT NOT NULL,
+    trade_date TEXT NOT NULL,
+    close REAL,
+    pe_ttm REAL,
+    pb REAL,
+    total_mv REAL,
+    circ_mv REAL,
+    turnover_rate REAL,
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (ts_code, trade_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_valuation_history_ts_date
+    ON valuation_history(ts_code, trade_date DESC);
+
+CREATE TABLE IF NOT EXISTS disclosure_calendar (
+    ts_code TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    pre_date TEXT NOT NULL DEFAULT '',
+    ann_date TEXT NOT NULL DEFAULT '',
+    actual_date TEXT NOT NULL DEFAULT '',
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (ts_code, end_date)
+);
 """
 
 

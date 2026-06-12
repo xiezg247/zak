@@ -26,6 +26,7 @@ from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.table.columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
+from vnpy_ashare.ui.quotes.dialogs import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.screener import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
 from vnpy_common.ui.theme import theme_manager
@@ -582,6 +583,10 @@ class ActionsController:
 
         menu = QtWidgets.QMenu(page)
 
+        action = menu.addAction("个股分析")
+        action.triggered.connect(lambda _checked=False, it=item: self.open_stock_analysis(it))
+        menu.addSeparator()
+
         ai_menu = menu.addMenu("AI 分析 ▸")
         ai_menu.addAction("综合诊断", self.ask_ai_for_diagnose)
         ai_menu.addAction("技术形态", self.ask_ai_for_technical)
@@ -630,6 +635,11 @@ class ActionsController:
                     action.triggered.connect(lambda: page._watchlist.move_selected("down"))
 
         menu.popup(page.market_table.viewport().mapToGlobal(pos))
+
+    def open_stock_analysis(self, item: StockItem) -> None:
+        page = self._p
+        quote = page.quote_map.get(item.tickflow_symbol)
+        show_stock_analysis_from_quotes_page(item=item, page=page, quote=quote, parent=page)
 
     def open_reference_peer(self, item: StockItem) -> None:
         page = self._p

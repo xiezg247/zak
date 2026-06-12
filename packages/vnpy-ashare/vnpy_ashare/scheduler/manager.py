@@ -23,8 +23,10 @@ from vnpy_ashare.jobs import (
     batch_fill_downloaded_stale_job,
     collect_market_quotes,
     prefetch_tushare_factors,
+    sync_disclosure_calendar_job,
     sync_trade_calendar_job,
     sync_universe_job,
+    sync_watchlist_financials_job,
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
@@ -162,6 +164,32 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于盘后自动选股）",
+            ),
+            "sync_watchlist_financials": _JobMeta(
+                job_id="sync_watchlist_financials",
+                name="同步自选财报",
+                description="增量拉取自选池利润表/资产负债表/现金流量表/财务指标到本地",
+                runner=sync_watchlist_financials_job,
+                config_attr="sync_watchlist_financials",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在 Tushare 因子预拉之后）",
+            ),
+            "sync_disclosure_calendar": _JobMeta(
+                job_id="sync_disclosure_calendar",
+                name="同步披露计划",
+                description="拉取自选池财报预约披露日期，用于驱动财报增量同步",
+                runner=sync_disclosure_calendar_job,
+                config_attr="sync_disclosure_calendar",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在同步自选财报之前）",
             ),
             "batch_fill_stale": _JobMeta(
                 job_id="batch_fill_stale",

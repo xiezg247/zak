@@ -42,8 +42,10 @@ from vnpy_ashare.jobs import (
     collect_market_quotes,
     prefetch_tushare_factors,
     run_scheduled_auto_screen,
+    sync_disclosure_calendar_job,
     sync_trade_calendar_job,
     sync_universe_job,
+    sync_watchlist_financials_job,
 )
 from vnpy_ashare.scheduler.config import load_scheduler_config
 from vnpy_ashare.screener.batch.batch_actions import batch_download_daily_bars
@@ -69,6 +71,8 @@ _JOB_CATALOG: dict[str, tuple[str, str]] = {
     "sync_trade_calendar": ("同步交易日历", "从 Tushare 更新 A 股交易日历到本地 SQLite"),
     "batch_download": ("下载自选日 K", "批量下载自选池日线到本地数据库"),
     "prefetch_tushare": ("Tushare 因子预拉", "收盘后拉取 daily_basic / moneyflow 等写入本地缓存"),
+    "sync_watchlist_financials": ("同步自选财报", "增量拉取自选池三表与财务指标到本地"),
+    "sync_disclosure_calendar": ("同步披露计划", "拉取自选池财报预约披露日期"),
     "batch_fill_stale": ("补全本地日 K", "为本地已下载列表中过期的日 K 增量补全"),
     "screen_intraday": ("盘中自动选股", "交易时段多维度选股，结果写入选股历史"),
     "screen_post_close": ("盘后自动选股", "收盘后多维度选股，结果写入选股历史"),
@@ -78,6 +82,8 @@ _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
     "sync_universe": sync_universe_job,
     "sync_trade_calendar": sync_trade_calendar_job,
     "prefetch_tushare": prefetch_tushare_factors,
+    "sync_watchlist_financials": sync_watchlist_financials_job,
+    "sync_disclosure_calendar": sync_disclosure_calendar_job,
     "batch_fill_stale": batch_fill_downloaded_stale_job,
 }
 

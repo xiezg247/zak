@@ -18,6 +18,8 @@ from vnpy_ashare.data.bars import (
     load_watchlist,
 )
 from vnpy_ashare.data.minute_periods import MINUTE_PERIODS
+from vnpy_ashare.jobs.financial_sync import sync_watchlist_financials_job
+from vnpy_ashare.services.financial_service import sync_symbol_financials
 
 
 def _cmd_download_batch(args: argparse.Namespace) -> int:
@@ -133,6 +135,27 @@ def _cmd_list_bars(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_sync_financials(args: argparse.Namespace) -> int:
+    years = max(1, min(int(args.years or 5), 15))
+    force = bool(args.force)
+    if args.watchlist:
+        result = sync_watchlist_financials_job(force=force, years=years)
+        print(result.message)
+        return 0 if result.success else 1
+
+    if not args.symbol:
+        print("请指定 --symbol 或 --watchlist", file=sys.stderr)
+        return 2
+
+    result = sync_symbol_financials(args.symbol, years=years, force=force)
+    print(result.message)
+    if result.warnings:
+        print("提示:", "；".join(result.warnings[:4]))
+    if result.skipped:
+        return 0
+    return 0 if result.synced or result.skipped else 1
+
+
 def register(subparsers: argparse._SubParsersAction) -> None:
     data = subparsers.add_parser("data", help="K 线下载与本地概况")
     data_sub = data.add_subparsers(dest="data_command", required=True)
@@ -165,3 +188,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
     bars = data_sub.add_parser("list-bars", help="查看自选池本地日 K 概况")
     bars.set_defaults(handler=_cmd_list_bars)
+
+    financials = data_sub.add_parser("sync-financials", help="同步个股三表财报到本地")
+    financials.add_argument("--symbol", help="vt_symbol，如 600519.SSE")
+    financials.add_argument("--watchlist", action="store_true", help="同步整个自选池")
+    financials.add_argument("--years", type=int, default=5, help="回溯年数，默认 5")
+    financials.add_argument("--force", action="store_true", help="忽略本地 TTL 强制重拉")
+    financials.set_defaults(handler=_cmd_sync_financials)

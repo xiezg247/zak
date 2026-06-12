@@ -16,6 +16,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     variant_changed = QtCore.Signal(str)
     row_activated = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
+    stock_analysis_requested = QtCore.Signal(str)
 
     def __init__(self, spec: RadarCardSpec, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -141,9 +142,12 @@ class RadarCardWidget(QtWidgets.QFrame):
         if not vt_symbol:
             return
         menu = QtWidgets.QMenu(self)
+        analysis_action = menu.addAction("个股分析")
         action = menu.addAction("加入自选")
         chosen = menu.exec(self._list.mapToGlobal(pos))
-        if chosen is action:
+        if chosen is analysis_action:
+            self.stock_analysis_requested.emit(str(vt_symbol))
+        elif chosen is action:
             self.add_watchlist_requested.emit(str(vt_symbol))
 
 
@@ -153,6 +157,7 @@ class RadarBoard(QtWidgets.QWidget):
     variant_changed = QtCore.Signal(str, str)
     row_activated = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
+    stock_analysis_requested = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -169,6 +174,7 @@ class RadarBoard(QtWidgets.QWidget):
             card.variant_changed.connect(lambda key, card_id=spec.id: self.variant_changed.emit(card_id, key))
             card.row_activated.connect(self.row_activated.emit)
             card.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
+            card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
             self._cards[spec.id] = card
             grid.addWidget(card, index // 2, index % 2)
         grid.setColumnStretch(0, 1)

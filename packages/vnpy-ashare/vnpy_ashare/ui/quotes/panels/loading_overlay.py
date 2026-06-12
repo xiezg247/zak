@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_common.ui.loading_overlay import ContentLoadingOverlay
+from vnpy_common.ui.scroll_area import MARKET_TABLE_SCROLL_BAR
+
 _HIDE_TABLE_SCROLLBAR_QSS = """
 QTableView#MarketTable QScrollBar:vertical {
     width: 0px;
@@ -21,47 +24,6 @@ QTableView#MarketTable QScrollBar:vertical::sub-line {
     height: 0px;
     background: transparent;
     border: none;
-}
-"""
-
-_MARKET_SCROLL_RAIL_QSS = """
-QScrollBar#MarketTableScroll:vertical {
-    background-color: #3a3a48;
-    width: 18px;
-    margin: 0;
-    border: none;
-    border-left: 1px solid #5a8fd8;
-}
-QScrollBar#MarketTableScroll::handle:vertical {
-    background-color: #8a96aa;
-    min-height: 52px;
-    border-radius: 9px;
-    margin: 3px;
-    border: 1px solid #b8c4d8;
-}
-QScrollBar#MarketTableScroll::handle:vertical:hover {
-    background-color: #4a9eff;
-    border-color: #8ec0ff;
-}
-QScrollBar#MarketTableScroll::handle:vertical:pressed {
-    background-color: #2a6fbf;
-    border-color: #4a9eff;
-}
-QScrollBar#MarketTableScroll:vertical:disabled {
-    background-color: #32323c;
-}
-QScrollBar#MarketTableScroll::handle:vertical:disabled {
-    background-color: #5a5a68;
-    border-color: #6a6a78;
-}
-QScrollBar#MarketTableScroll::add-line:vertical,
-QScrollBar#MarketTableScroll::sub-line:vertical {
-    background: none;
-    height: 0;
-}
-QScrollBar#MarketTableScroll::add-page:vertical,
-QScrollBar#MarketTableScroll::sub-page:vertical {
-    background: #2d2d38;
 }
 """
 
@@ -91,9 +53,8 @@ class MarketTableHost(QtWidgets.QWidget):
             table.setStyleSheet(_HIDE_TABLE_SCROLLBAR_QSS)
 
             self._scroll = QtWidgets.QScrollBar(QtCore.Qt.Orientation.Vertical, self)
-            self._scroll.setObjectName("MarketTableScroll")
+            self._scroll.setObjectName(MARKET_TABLE_SCROLL_BAR)
             self._scroll.setFixedWidth(18)
-            self._scroll.setStyleSheet(_MARKET_SCROLL_RAIL_QSS)
             body.addWidget(self._scroll)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -113,39 +74,7 @@ class MarketTableHost(QtWidgets.QWidget):
                 model.rowsRemoved.connect(self._schedule_refresh_scrollbar)
             self._schedule_refresh_scrollbar()
 
-        self._overlay = QtWidgets.QWidget(self)
-        self._overlay.setObjectName("MarketTableLoading")
-        self._overlay.hide()
-
-        overlay_layout = QtWidgets.QVBoxLayout(self._overlay)
-        overlay_layout.setContentsMargins(24, 24, 24, 24)
-        overlay_layout.addStretch(1)
-
-        center_row = QtWidgets.QHBoxLayout()
-        center_row.addStretch(1)
-
-        panel = QtWidgets.QWidget()
-        panel.setObjectName("MarketTableLoadingPanel")
-        panel_layout = QtWidgets.QVBoxLayout(panel)
-        panel_layout.setContentsMargins(28, 22, 28, 22)
-        panel_layout.setSpacing(12)
-
-        self._progress = QtWidgets.QProgressBar()
-        self._progress.setObjectName("MarketTableLoadingBar")
-        self._progress.setRange(0, 0)
-        self._progress.setFixedWidth(220)
-
-        self._label = QtWidgets.QLabel("正在加载…")
-        self._label.setObjectName("MarketTableLoadingLabel")
-        self._label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-
-        panel_layout.addWidget(self._progress, alignment=QtCore.Qt.AlignmentFlag.AlignHCenter)
-        panel_layout.addWidget(self._label)
-
-        center_row.addWidget(panel)
-        center_row.addStretch(1)
-        overlay_layout.addLayout(center_row)
-        overlay_layout.addStretch(1)
+        self._overlay = ContentLoadingOverlay(self)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # type: ignore[name-defined]
         super().resizeEvent(event)
@@ -170,13 +99,12 @@ class MarketTableHost(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(0, self.refresh_scrollbar)
 
     def show_loading(self, text: str) -> None:
-        self._label.setText(text)
+        self._overlay.show_loading(text)
         self._overlay.setGeometry(self.rect())
         self._overlay.raise_()
-        self._overlay.show()
 
     def hide_loading(self) -> None:
-        self._overlay.hide()
+        self._overlay.hide_loading()
 
     def _sync_scroll_range(self, minimum: int, maximum: int) -> None:
         if self._scroll is None:

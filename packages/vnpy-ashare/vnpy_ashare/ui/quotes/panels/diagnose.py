@@ -6,6 +6,7 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_common.ui.scroll_area import frameless_scroll_area
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.html_palette import html_palette
 from vnpy_common.ui.theme.market_colors import pct_change_color
@@ -142,11 +143,8 @@ class DiagnosePanel(QtWidgets.QWidget):
         self.body.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
         self.body.setObjectName("DiagnoseBody")
 
-        scroll = QtWidgets.QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll = frameless_scroll_area(self.body)
         scroll.setMaximumHeight(220)
-        scroll.setWidget(self.body)
         layout.addWidget(scroll)
         theme_manager().register_callback(self._on_theme_changed)
 

@@ -69,6 +69,22 @@ class SchedulerConfig:
             cron_day_of_week="mon-fri",
         )
     )
+    sync_watchlist_financials: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=True,
+            cron_hour=16,
+            cron_minute=45,
+            cron_day_of_week="mon-fri",
+        )
+    )
+    sync_disclosure_calendar: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=True,
+            cron_hour=16,
+            cron_minute=40,
+            cron_day_of_week="mon-fri",
+        )
+    )
     batch_fill_stale: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=False,
@@ -123,6 +139,8 @@ class SchedulerConfig:
             "sync_trade_calendar": dump_job(self.sync_trade_calendar),
             "batch_download": dump_job(self.batch_download),
             "prefetch_tushare": dump_job(self.prefetch_tushare),
+            "sync_watchlist_financials": dump_job(self.sync_watchlist_financials),
+            "sync_disclosure_calendar": dump_job(self.sync_disclosure_calendar),
             "batch_fill_stale": dump_job(self.batch_fill_stale),
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
@@ -161,6 +179,8 @@ class SchedulerConfig:
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
             batch_download=load_job("batch_download", defaults.batch_download),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
+            sync_watchlist_financials=load_job("sync_watchlist_financials", defaults.sync_watchlist_financials),
+            sync_disclosure_calendar=load_job("sync_disclosure_calendar", defaults.sync_disclosure_calendar),
             batch_fill_stale=load_job("batch_fill_stale", defaults.batch_fill_stale),
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),

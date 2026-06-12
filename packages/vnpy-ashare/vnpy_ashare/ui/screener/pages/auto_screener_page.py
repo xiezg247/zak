@@ -199,6 +199,21 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.result_table.setObjectName("MarketTable")
         configure_screener_results_table(self.result_table)
         wire_screener_results_table(self.result_table, select_all_btn=self.select_all_btn)
+        from vnpy_ashare.ui.quotes.stock_analysis.host import StockAnalysisHost
+        from vnpy_ashare.ui.quotes.stock_analysis.open import wire_stock_analysis_context_menu
+        from vnpy_ashare.ui.screener.widgets.screener_results_table import ROW_DATA_ROLE
+
+        wire_stock_analysis_context_menu(
+            self.result_table,
+            host=StockAnalysisHost.from_main_engine(
+                self.main_engine,
+                event_engine=self.event_engine,
+                source_page="自动选股",
+                retired_workers=self._retired_workers,
+            ),
+            row_data_role=ROW_DATA_ROLE,
+            parent=self,
+        )
         self.result_table.hide()
         result_body_layout.addWidget(self.result_table, stretch=1)
         result_layout.addWidget(result_body, stretch=1)

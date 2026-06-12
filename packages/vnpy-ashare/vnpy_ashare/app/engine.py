@@ -11,6 +11,7 @@ from vnpy_ashare.services import (
     AnalysisService,
     BacktestService,
     BarService,
+    FinancialService,
     PositionService,
     QuoteService,
     ScreeningService,
@@ -35,6 +36,7 @@ class AshareEngine(BaseEngine):
         self.watchlist_service = WatchlistService(self)
         self.position_service = PositionService(self)
         self.analysis_service = AnalysisService(self)
+        self.financial_service = FinancialService(self)
         self.sentiment_service = SentimentService(self)
 
     def close(self) -> None:

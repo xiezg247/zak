@@ -23,7 +23,6 @@ from vnpy_ashare.ui.styles.legacy import (
     style_legacy_push_buttons,
 )
 from vnpy_ashare.ui.styles.scheduler import SCHEDULER_PAGE_STYLESHEET, SCHEDULER_TABLE_STYLESHEET
-from vnpy_ashare.ui.styles.screener import SCREENER_STYLESHEET
 from vnpy_ashare.ui.styles.settings import SETTINGS_DIALOG_STYLESHEET
 from vnpy_ashare.ui.styles.toolbar import TOOLBAR_COMBO_STYLESHEET
 
@@ -38,7 +37,6 @@ __all__ = [
     "RISE_COLOR",
     "SCHEDULER_PAGE_STYLESHEET",
     "SCHEDULER_TABLE_STYLESHEET",
-    "SCREENER_STYLESHEET",
     "SETTINGS_DIALOG_STYLESHEET",
     "TERMINAL_STYLESHEET",
     "TOOLBAR_COMBO_STYLESHEET",

@@ -32,6 +32,7 @@ class RadarController(QtCore.QObject):
 
         board.variant_changed.connect(self._on_variant_changed)
         board.add_watchlist_requested.connect(self._on_add_watchlist)
+        board.stock_analysis_requested.connect(self._on_stock_analysis)
 
     def activate(self) -> None:
         self.refresh()
@@ -100,3 +101,13 @@ class RadarController(QtCore.QObject):
                 page_notify(self._page, f"已在自选池中：{vt_symbol}")
             return
         page_notify(self._page, f"已加入自选：{item.name or vt_symbol}")
+
+    def _on_stock_analysis(self, vt_symbol: str) -> None:
+        from vnpy_ashare.ui.quotes.stock_analysis.open import show_stock_analysis_from_quotes_page
+
+        item = parse_stock_symbol(vt_symbol)
+        if item is None:
+            page_notify(self._page, f"无法解析合约：{vt_symbol}", level="warning")
+            return
+        quote = self._page.quote_map.get(item.tickflow_symbol)
+        show_stock_analysis_from_quotes_page(item=item, page=self._page, quote=quote, parent=self._page)
