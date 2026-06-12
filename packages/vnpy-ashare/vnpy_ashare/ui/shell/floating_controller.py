@@ -157,7 +157,7 @@ class FloatingAiController(QtCore.QObject):
         if self._panel is not None:
             self._panel.submit_prompt(
                 data.prompt,
-                auto_send=data.auto_send,
+                auto_send=False,
                 action_id=data.action_id,
             )
 
@@ -165,14 +165,15 @@ class FloatingAiController(QtCore.QObject):
         self,
         *,
         prompt: str,
-        auto_send: bool,
+        auto_send: bool = False,
         action_id: str = "",
     ) -> None:
+        del auto_send  # 快捷操作统一预填，由用户手动发送
         if not prompt.strip():
             return
         self.show_panel(scene=self._scene_from_context())
         if self._panel is not None:
-            self._panel.submit_prompt(prompt, auto_send=auto_send, action_id=action_id)
+            self._panel.submit_prompt(prompt, auto_send=False, action_id=action_id)
 
     def refresh_context(self, _text: str = "") -> None:
         data = get_ai_context()
@@ -307,7 +308,7 @@ class FloatingAiController(QtCore.QObject):
             return
         self.run_quick_action(
             prompt=action.prompt,
-            auto_send=action.auto_send,
+            auto_send=False,
             action_id=action.id,
         )
 

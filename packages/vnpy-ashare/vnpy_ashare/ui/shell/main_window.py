@@ -544,7 +544,7 @@ class AshareMainWindow(MainWindow):
         if widget is not None and hasattr(widget, "submit_prompt"):
             widget.submit_prompt(
                 data.prompt,
-                auto_send=data.auto_send,
+                auto_send=False,
                 action_id=data.action_id,
             )
         elif widget is not None and hasattr(widget, "set_input_text"):

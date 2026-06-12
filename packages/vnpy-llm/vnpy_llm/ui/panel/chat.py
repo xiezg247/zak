@@ -353,14 +353,9 @@ class AiChatPanel(QtWidgets.QWidget):
 
     # ── 快捷指令 ──
     def _on_quick_action(self, action: QuickAction) -> None:
-        """快捷指令：标记 auto_send 的动作直接发送；其余回填输入框。"""
-        if action.auto_send:
-            self.submit_prompt(action.prompt, auto_send=True, action_id=action.id)
-            return
-        if self.floating or self._panel_mode() == "assistant":
-            self.set_input_text(action.prompt)
-            return
-        self.submit_prompt(action.prompt, auto_send=True, action_id=action.id)
+        """快捷指令：仅回填输入框，由用户点发送。"""
+        self._last_action_id = action.id.strip()
+        self.set_input_text(action.prompt)
 
     # ── 代码补全 ──
     def _on_input_text_changed(self) -> None:

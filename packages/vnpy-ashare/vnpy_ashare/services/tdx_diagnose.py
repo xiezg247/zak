@@ -79,6 +79,11 @@ def run_tdx_diagnose(
 
     quote = sections.get("quote") or {}
     fields = quote.get("fields") or {}
+    reports = _summarize_reports(sections.get("reports") or {})
+    if include_reports and not reports:
+        report_warn = _report_section_warning(sections.get("reports") or {})
+        if report_warn:
+            warnings.append(report_warn)
 
     return {
         "symbol": item.vt_symbol,
@@ -88,7 +93,7 @@ def run_tdx_diagnose(
         "technical": _summarize_section(sections.get("technical") or {}, "technical"),
         "fundamental": _summarize_section(sections.get("fundamental") or {}, "fundamental"),
         "capital_flow": _summarize_section(sections.get("capital_flow") or {}, "capital_flow"),
-        "reports": _summarize_reports(sections.get("reports") or {}),
+        "reports": reports,
         "raw_sections": sections,
         "warnings": warnings,
         "sources": ["tdx_mcp"],
@@ -221,6 +226,20 @@ def _summarize_section(section: dict[str, Any], kind: str) -> dict[str, Any]:
                 payload["main_net"] = _to_float(value)
                 break
     return payload
+
+
+def _report_section_warning(section: dict[str, Any]) -> str | None:
+    """问小达研报维度常只返回行情 + show_url，无机构研报正文。"""
+    fields = section.get("fields") or {}
+    show_url = str(fields.get("show_url") or "").strip()
+    if show_url:
+        return (
+            "问小达对「研报/评级」查询未返回机构研报正文，仅含通达信外部资料页链接；"
+            "zak 终端无内置 F10 页面，勿引导用户在 zak 内打开 F10。"
+        )
+    if not fields:
+        return "问小达未返回研报维度数据。"
+    return None
 
 
 def _summarize_reports(section: dict[str, Any]) -> list[dict[str, Any]]:

@@ -83,6 +83,37 @@ class AnalysisServiceTests(unittest.TestCase):
         self.assertEqual(result["capital_flow"]["main_net"], 12345678.0)
         self.assertIn("tdx_mcp", result["sources"])
 
+    def test_diagnose_report_fallback_when_wenda_empty(self) -> None:
+        report_payload = json.dumps(
+            {
+                "reports": [
+                    {
+                        "title": "科大讯飞：AI 龙头持续成长",
+                        "broker": "某券商",
+                        "date": "2026-05-01",
+                        "rating": "买入",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+        def _execute(name: str, args: dict) -> str:
+            if "wenda" in name:
+                return _wenda_payload()
+            if "report" in name:
+                return report_payload
+            return _wenda_payload()
+
+        self.service.bind_mcp(
+            _execute,
+            ["mcp_tdx_tdx_wenda_quotes", "mcp_tdx_stock_reports"],
+        )
+        result = self.service.diagnose("002230.SZSE", include_reports=True)
+        self.assertEqual(len(result["reports"]), 1)
+        self.assertEqual(result["reports"][0]["title"], "科大讯飞：AI 龙头持续成长")
+        self.assertIn("tdx_mcp", result["sources"])
+
     def test_pick_mcp_tool(self) -> None:
         self.service.bind_mcp(None, ["mcp_tdx_tdx_wenda_quotes", "mcp_tdx_stock_quotes"])
         name = self.service._pick_mcp_tool(("report", "research"))
