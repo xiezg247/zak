@@ -27,7 +27,6 @@ from vnpy_ashare.services.signals import (
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,
-    SIGNAL_PANEL_RUNTIME_KEYS,
     resolve_signal_panel_columns,
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
@@ -561,8 +560,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
                 **cell_kwargs,
                 warning_color=warning_color,
             )
-            if key in SIGNAL_PANEL_RUNTIME_KEYS:
-                fg = self._runtime_cell_color(key, vt_symbol, colors=colors)
             if missing_kline and key == "signal":
                 fg = warning_color
             if fg:
@@ -583,23 +580,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         if meta is None or meta.end is None:
             return None
         return format_meta_date(meta.end)
-
-    def _runtime_cell_color(self, column_key: str, vt_symbol: str, *, colors) -> str | None:
-        pos = self._page.position_cache.get(vt_symbol)
-        if column_key == "position_pnl_pct" and pos is not None and pos.unrealized_pnl_pct is not None:
-            return colors.rise if pos.unrealized_pnl_pct >= 0 else colors.fall
-        if column_key == "has_position" and pos is not None:
-            return colors.flat
-        return None
-
-    def _position_row_values(self, vt_symbol: str) -> dict[str, str]:
-        pos = self._page.position_cache.get(vt_symbol)
-        if pos is None:
-            return {"has_position": "—", "position_pnl_pct": "—"}
-        pnl_text = "—"
-        if pos.unrealized_pnl_pct is not None:
-            pnl_text = f"{pos.unrealized_pnl_pct:+.2f}%"
-        return {"has_position": "是", "position_pnl_pct": pnl_text}
 
     def _position_tooltip_lines(self, vt_symbol: str, snapshot: SignalSnapshot | None) -> list[str]:
         pos = self._page.position_cache.get(vt_symbol)
@@ -766,14 +746,9 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             "name": (item.name if item is not None else "—") or "—",
         }
         if snapshot is None:
-            vt_symbol = item.vt_symbol if item is not None else ""
-            position_values = self._position_row_values(vt_symbol)
             for col_key, _ in self._panel_columns():
                 if col_key not in values:
-                    if col_key in SIGNAL_PANEL_RUNTIME_KEYS:
-                        values[col_key] = position_values.get(col_key, "—")
-                    else:
-                        values[col_key] = "—"
+                    values[col_key] = "—"
             for key in _DETAIL_COLUMN_KEYS:
                 values[key] = "—"
             if item is not None:
@@ -787,13 +762,8 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             "slow_window": config.slow_window,
             "fast_window": config.fast_window,
         }
-        vt_symbol = item.vt_symbol if item is not None else snapshot.vt_symbol
-        position_values = self._position_row_values(vt_symbol)
         for key, _ in self._panel_columns():
             if key in {"symbol", "name"}:
-                continue
-            if key in SIGNAL_PANEL_RUNTIME_KEYS:
-                values[key] = position_values.get(key, "—")
                 continue
             text, _ = signal_cell_text(key, snapshot, **cell_kwargs)
             values[key] = text

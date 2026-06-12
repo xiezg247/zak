@@ -134,6 +134,7 @@ class PageConfig:
     market_live_display_limit: int = MARKET_LIVE_DISPLAY_LIMIT
     table_header_sortable: bool = False
     show_watchlist_move_buttons: bool = False
+    show_refresh_quotes_button: bool = False
     show_backtest_button: bool = True
     show_batch_backtest_button: bool = False
     show_diagnose_button: bool = False
@@ -250,6 +251,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_diagnose_button=True,
         show_diagnose_panel=False,
         show_batch_backtest_button=True,
+        show_refresh_quotes_button=True,
         show_run_output_panel=False,
         show_watchlist_signals=True,
         show_watchlist_positions=True,

@@ -430,8 +430,14 @@ class QuotesPage(QtWidgets.QWidget):
     def active_rank_title(self) -> str:
         return self._market_rank.active_rank_title()
 
+    def _refresh_quotes_clicked(self) -> None:
+        if self.config.use_market_rank:
+            self._loader.refresh_market_clicked()
+            return
+        self._actions.refresh_quotes_manual()
+
     def _refresh_market_clicked(self) -> None:
-        self._loader.refresh_market_clicked()
+        self._refresh_quotes_clicked()
 
     def load_market_page(self, *, quiet: bool = False, append: bool = False) -> None:
         self._loader.load_market_page(quiet=quiet, append=append)
@@ -866,7 +872,7 @@ class QuotesPage(QtWidgets.QWidget):
             widgets.append(self.local_period_combo)
         if self.config.show_board_filter:
             widgets.append(self.board_combo)
-        if self.config.use_market_rank:
+        if self.config.use_market_rank or self.config.show_refresh_quotes_button:
             widgets.append(self.refresh_quotes_button)
         if self.config.show_sync_button:
             widgets.append(self.sync_button)
@@ -952,7 +958,7 @@ class QuotesPage(QtWidgets.QWidget):
         rank_list = getattr(self, "rank_list", None)
         if rank_list is not None:
             rank_list.setEnabled(not busy)
-        if self.config.use_market_rank:
+        if self.config.use_market_rank or self.config.show_refresh_quotes_button:
             self.refresh_quotes_button.setEnabled(not busy)
         if self.config.show_sync_button:
             self.sync_button.setEnabled(not busy)

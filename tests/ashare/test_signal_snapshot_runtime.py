@@ -493,9 +493,9 @@ class SignalPanelColumnTests(unittest.TestCase):
         self.assertEqual(keys[0], "signal")
         self.assertIn("signal_strength", keys)
         self.assertNotIn("unknown", keys)
-        cols = columns_mod.resolve_signal_panel_columns(["signal", "has_position"])
+        cols = columns_mod.resolve_signal_panel_columns(["signal", "signal_strength"])
         self.assertEqual(cols[0], ("symbol", "代码"))
-        self.assertIn(("has_position", "持仓"), cols)
+        self.assertIn(("signal_strength", "强度"), cols)
         self.assertNotIn(("volume_ratio", "量比"), cols)
 
 

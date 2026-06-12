@@ -99,6 +99,11 @@ QTableView#MarketTable::item:selected {{
     background-color: {t.table_selected};
     color: {t.text_primary};
 }}
+QTableWidget#MarketTable::item:alternate:selected,
+QTableView#MarketTable::item:alternate:selected {{
+    background-color: {t.table_selected};
+    color: {t.text_primary};
+}}
 QTableWidget#MarketTable::item:hover,
 QTableView#MarketTable::item:hover {{
     background-color: {t.table_hover};

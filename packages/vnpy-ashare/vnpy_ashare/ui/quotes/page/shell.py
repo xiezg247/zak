@@ -216,8 +216,12 @@ class QuotesPageShell:
         page.diagnose_button.setVisible(page.config.show_diagnose_button)
 
         page.refresh_quotes_button = QtWidgets.QPushButton("刷新行情", page)
-        page.refresh_quotes_button.clicked.connect(page._refresh_market_clicked)
-        page.refresh_quotes_button.setVisible(page.config.use_market_rank)
+        page.refresh_quotes_button.setObjectName("SecondaryButton")
+        page.refresh_quotes_button.clicked.connect(page._refresh_quotes_clicked)
+        show_quotes_refresh = page.config.use_market_rank or page.config.show_refresh_quotes_button
+        page.refresh_quotes_button.setVisible(show_quotes_refresh)
+        if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
+            page.refresh_quotes_button.setToolTip("强制拉取自选池最新报价（非交易时段也可用）")
 
         page.market_auto_refresh_checkbox = QtWidgets.QCheckBox("自动刷新行情", page)
         page.market_auto_refresh_checkbox.setVisible(page.config.use_market_rank)
@@ -298,6 +302,8 @@ class QuotesPageShell:
             toolbar.addWidget(page.register_position_button)
         if page.config.show_diagnose_button:
             toolbar.addWidget(page.diagnose_button)
+        if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
+            toolbar.addWidget(page.refresh_quotes_button)
         if page.config.column_configurable:
             page.column_button = QtWidgets.QPushButton("列 ▾")
             page.column_button.setObjectName("SecondaryButton")

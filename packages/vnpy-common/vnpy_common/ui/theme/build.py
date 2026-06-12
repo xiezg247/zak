@@ -349,12 +349,16 @@ QWidget#NavGroupSpacer {{
     background-color: transparent;
     margin: 2px 0;
 }}
-QTableWidget#MarketTable {{
+QTableWidget#MarketTable,
+QTableView#MarketTable {{
     background-color: {t.table_bg};
     gridline-color: {t.table_grid};
     border: none;
     font-size: 12px;
     color: {t.text_primary};
+    alternate-background-color: {t.table_alt};
+    selection-background-color: {t.table_selected};
+    selection-color: {t.text_primary};
 }}
 QHeaderView::section {{
     background-color: {t.header_bg};

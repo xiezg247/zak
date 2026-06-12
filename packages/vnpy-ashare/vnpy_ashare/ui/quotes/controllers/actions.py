@@ -276,6 +276,19 @@ class ActionsController:
             return
         self.refresh_quotes_rest()
 
+    def refresh_quotes_manual(self) -> None:
+        """用户手动刷新行情：绕过 WebSocket 流，强制 REST 拉取当前列表报价。"""
+        page = self._p
+        if not page.config.quote_source:
+            return
+        if not page.display_stocks:
+            page._toast.info("列表为空，无可刷新标的")
+            return
+        if page._thread_active(page._quotes_worker):
+            page._toast.info("行情刷新进行中，请稍候")
+            return
+        self.refresh_quotes_rest()
+
     def refresh_quotes_rest(self) -> None:
         page = self._p
         if not page.display_stocks:
