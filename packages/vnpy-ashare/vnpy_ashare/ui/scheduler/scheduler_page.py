@@ -53,11 +53,6 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         title_block.addWidget(title)
         title_block.addWidget(hint)
         header.addLayout(title_block, stretch=1)
-
-        self._refresh_btn = QtWidgets.QPushButton("刷新")
-        self._refresh_btn.setObjectName("SecondaryButton")
-        self._refresh_btn.clicked.connect(self._refresh_all)
-        header.addWidget(self._refresh_btn, alignment=QtCore.Qt.AlignmentFlag.AlignTop)
         root.addLayout(header)
 
         jobs_panel = self._build_panel()

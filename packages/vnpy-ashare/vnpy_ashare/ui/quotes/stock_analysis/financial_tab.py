@@ -75,17 +75,39 @@ def _format_pct(value: float | None) -> str:
 
 
 class _StatementTable(QtWidgets.QWidget):
-    def __init__(self, row_defs: list[tuple[str, str]], parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(
+        self,
+        row_defs: list[tuple[str, str]],
+        *,
+        empty_hint: str = "",
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self._row_defs = row_defs
+        self._empty_hint = empty_hint
         self._table = QtWidgets.QTableWidget(0, 0)
         configure_data_table(self._table)
+        self._empty_label = hint_label()
+        self._empty_label.setVisible(False)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.addWidget(self._empty_label)
         layout.addWidget(self._table)
 
-    def render(self, reports: list[dict[str, Any]]) -> None:
+    def render(self, reports: list[dict[str, Any]], *, show_empty_hint: bool = True) -> None:
+        if not reports:
+            if self._empty_hint and show_empty_hint:
+                self._empty_label.setText(self._empty_hint)
+                self._empty_label.setVisible(True)
+            else:
+                self._empty_label.setVisible(False)
+            self._table.setRowCount(0)
+            self._table.setColumnCount(0)
+            return
+
+        self._empty_label.setVisible(False)
         periods = [str(item.get("end_date") or "") for item in reports if item.get("end_date")]
         self._table.setRowCount(len(self._row_defs))
         self._table.setColumnCount(len(periods) + 1)
@@ -122,8 +144,14 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         self._income = _StatementTable(_INCOME_ROWS)
         self._balance = _StatementTable(_BALANCE_ROWS)
         self._cashflow = _StatementTable(_CASHFLOW_ROWS)
-        self._express = _StatementTable(_EXPRESS_ROWS)
-        self._forecast = _StatementTable(_FORECAST_ROWS)
+        self._express = _StatementTable(
+            _EXPRESS_ROWS,
+            empty_hint="该公司未披露业绩快报，或尚未同步到本地；可查看「利润表」获取正式财报。",
+        )
+        self._forecast = _StatementTable(
+            _FORECAST_ROWS,
+            empty_hint="暂无业绩预告；若公司已发布预告，可点击弹窗底部「刷新」重新拉取。",
+        )
         self._statement_tabs.addTab(self._income, "利润表")
         self._statement_tabs.addTab(self._balance, "资产负债表")
         self._statement_tabs.addTab(self._cashflow, "现金流量表")
@@ -170,11 +198,11 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
     def show_loading(self, message: str = "正在同步财报与估值历史…") -> None:
         self._status.setText(message)
         self._snapshot_table.setRowCount(0)
-        self._income.render([])
-        self._balance.render([])
-        self._cashflow.render([])
-        self._express.render([])
-        self._forecast.render([])
+        self._income.render([], show_empty_hint=False)
+        self._balance.render([], show_empty_hint=False)
+        self._cashflow.render([], show_empty_hint=False)
+        self._express.render([], show_empty_hint=False)
+        self._forecast.render([], show_empty_hint=False)
 
     def show_bundle(self, bundle: FinancialBundle | None, *, sync_message: str = "") -> None:
         if bundle is None:

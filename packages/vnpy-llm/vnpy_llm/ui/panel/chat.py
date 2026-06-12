@@ -513,6 +513,11 @@ class AiChatPanel(QtWidgets.QWidget):
     def _refresh_messages(self) -> None:
         if thread_is_active(self._worker):
             return
+        bar = self.scroll.verticalScrollBar()
+        prev_value = bar.value()
+        prev_max = bar.maximum()
+        pin_bottom = self._was_scroll_near_bottom()
+
         self._clear_message_widgets()
         messages = self.engine.get_messages()
         turn_map = map_turns_to_user_messages(messages, self.engine.get_trace_turns())
@@ -532,7 +537,10 @@ class AiChatPanel(QtWidgets.QWidget):
             else:
                 self._append_bubble(msg.role, msg.content, persist=False)
         self._sync_all_bubble_widths()
-        self._scroll_to_bottom()
+        if pin_bottom:
+            self._scroll_to_bottom()
+        else:
+            self._restore_scroll_position(prev_value, prev_max)
 
     def _message_viewport_width(self) -> int:
         viewport_width = self.scroll.viewport().width()
@@ -699,7 +707,35 @@ class AiChatPanel(QtWidgets.QWidget):
         return bubble
 
     def _scroll_to_bottom(self) -> None:
-        QtCore.QTimer.singleShot(0, lambda: self.scroll.verticalScrollBar().setValue(self.scroll.verticalScrollBar().maximum()))
+        """HTML 气泡高度在布局完成后才稳定，需多次补偿滚动。"""
+
+        def apply() -> None:
+            bar = self.scroll.verticalScrollBar()
+            bar.setValue(bar.maximum())
+
+        apply()
+        for delay in (16, 50, 120, 300):
+            QtCore.QTimer.singleShot(delay, apply)
+
+    def _was_scroll_near_bottom(self, *, threshold: int = 80) -> bool:
+        bar = self.scroll.verticalScrollBar()
+        maximum = bar.maximum()
+        if maximum <= 0:
+            return True
+        return maximum - bar.value() <= threshold
+
+    def _restore_scroll_position(self, value: int, old_max: int) -> None:
+        def apply() -> None:
+            bar = self.scroll.verticalScrollBar()
+            new_max = bar.maximum()
+            if old_max > 0 and new_max > 0:
+                bar.setValue(min(new_max, int(value / old_max * new_max)))
+            else:
+                bar.setValue(min(value, new_max))
+
+        apply()
+        for delay in (16, 50, 120, 300):
+            QtCore.QTimer.singleShot(delay, apply)
 
     def _on_send_or_stop(self) -> None:
         if thread_is_active(self._worker):
@@ -947,6 +983,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._set_busy(False)
         self._live_trace_block = None
         self._refresh_messages()
+        self._scroll_to_bottom()
 
     def _on_worker_cancelled(self) -> None:
         self._worker = None

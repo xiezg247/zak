@@ -35,10 +35,9 @@ from vnpy_common.ui.theme.html_format import format_loading_html
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _TAB_OVERVIEW = 0
-_TAB_QUOTE = 1
-_TAB_CHART = 2
-_TAB_SECTOR = 3
-_TAB_FINANCIAL = 4
+_TAB_CHART = 1
+_TAB_SECTOR = 2
+_TAB_FINANCIAL = 3
 
 
 def _quote_header_meta(quote: QuoteSnapshot | None, item: StockItem) -> dict[str, str]:
@@ -107,7 +106,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         )
 
         theme_manager().bind_stylesheet(self, extra=build_stock_analysis_stylesheet)
-        self._render_quote_tab()
+        self._render_quote_metrics()
         self._set_loading(True)
         self._start_load(force_financial=False)
 
@@ -163,24 +162,29 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._technical_body.setObjectName("DiagnoseBody")
         self._technical_body.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
 
-        overview_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        overview_split.setChildrenCollapsible(False)
-        overview_split.addWidget(
+        analysis_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        analysis_split.setChildrenCollapsible(False)
+        analysis_split.addWidget(
             content_card(
                 section_title("综合诊断"),
                 frameless_scroll_area(self._overview_body),
             )
         )
-        overview_split.addWidget(
+        analysis_split.addWidget(
             content_card(
                 section_title("本地技术面"),
-                self._technical_body,
+                frameless_scroll_area(self._technical_body),
             )
         )
-        overview_split.setStretchFactor(0, 3)
-        overview_split.setStretchFactor(1, 2)
+        analysis_split.setStretchFactor(0, 3)
+        analysis_split.setStretchFactor(1, 2)
 
-        self._quote_page = self._build_quote_page()
+        overview_page = tab_page(
+            self._build_quote_metrics_section(),
+            analysis_split,
+            stretch_index=1,
+        )
+
         self._chart_tab = StockAnalysisChartTab()
         self._chart_tab.set_retired_workers(self._host.retired_workers)
         self._sector_tab = SectorAnalysisTab()
@@ -189,8 +193,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         tabs = QtWidgets.QTabWidget()
         tabs.setObjectName("DocumentTabWidget")
         tabs.setDocumentMode(True)
-        tabs.addTab(tab_page(overview_split), "概览")
-        tabs.addTab(self._quote_page, "行情")
+        tabs.addTab(overview_page, "概览")
         tabs.addTab(tab_page(self._chart_tab, margins=(0, 4, 0, 0)), "图表")
         tabs.addTab(self._sector_tab, "板块")
         tabs.addTab(self._financial_tab, "财务")
@@ -198,7 +201,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._tabs = tabs
         return tabs
 
-    def _build_quote_page(self) -> QtWidgets.QWidget:
+    def _build_quote_metrics_section(self) -> QtWidgets.QWidget:
         self._quote_tiles = {
             "last": MetricTile("现价"),
             "change": MetricTile("涨跌"),
@@ -230,7 +233,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
         wrapper = QtWidgets.QWidget()
         wrapper.setLayout(grid)
-        return tab_page(content_card(wrapper, margins=(8, 8, 8, 8)))
+        return content_card(section_title("实时行情"), wrapper, margins=(8, 8, 8, 8))
 
     def _build_footer(self) -> QtWidgets.QWidget:
         self._refresh_btn = QtWidgets.QPushButton("刷新")
@@ -254,7 +257,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         )
 
     def _set_loading(self, loading: bool, *, title: str = "正在加载个股分析…") -> None:
-        hint = "综合诊断 · 财报 · 板块估值"
+        hint = "行情 · 综合诊断 · 财报 · 板块估值"
         if loading:
             self._content_host.show_loading(title, hint=hint)
             self._status_label.setText(title)
@@ -311,7 +314,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             "trade_time": quote.trade_time,
         }
 
-    def _render_quote_tab(self) -> None:
+    def _render_quote_metrics(self) -> None:
         quote = self._quote
         tiles = self._quote_tiles
         if quote is None:

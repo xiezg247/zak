@@ -37,14 +37,14 @@ from vnpy_ashare.domain.ai_actions import (
     normalize_ai_action,
 )
 from vnpy_ashare.ui.backtest import BatchBacktestPageWidget
-from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
+from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener import AutoScreenerPageWidget, ScreenerPageWidget
+from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_ashare.ui.shell.nav import (
     APP_NAV_ENTRIES,
     APP_NAV_GROUPS,
     BACKSTAGE_ENTRIES,
-    BACKSTAGE_PAGE_KEYS,
     BACKSTAGE_SHORTCUTS,
     NAV_SHORTCUTS,
     SidebarNav,
@@ -67,13 +67,12 @@ _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
     "local": LocalPageWidget,
 }
 
-_DEFERRED_PAGE_KEYS = frozenset({"cta_backtest", "data_manager", "batch_backtest"})
+_DEFERRED_PAGE_KEYS = frozenset({"cta_backtest", "batch_backtest"})
 
 _AI_NOT_LOADED_MSG = "AI 助手未加载，请确认已安装并启用 vnpy_llm"
 
 _VNPY_WIDGETS: dict[str, tuple[str, str]] = {
     "cta_backtest": ("vnpy_ashare.ui.backtest.pages.backtest_widget", "BacktesterWidget"),
-    "data_manager": ("vnpy_ashare.ui.shell.manager.widget", "ManagerWidget"),
 }
 
 
@@ -155,7 +154,7 @@ class AshareMainWindow(MainWindow):
         backstage_menu = bar.addMenu("后台")
         for entry in BACKSTAGE_ENTRIES:
             action = backstage_menu.addAction(f"{entry.label}…")
-            action.triggered.connect(lambda _checked=False, key=entry.key: self._show_page_by_key(key))
+            action.triggered.connect(lambda _checked=False, key=entry.key: self._open_backstage_dialog(key))
             shortcut = BACKSTAGE_SHORTCUTS.get(entry.key)
             if shortcut:
                 action.setShortcut(QtGui.QKeySequence(shortcut))
@@ -267,7 +266,7 @@ class AshareMainWindow(MainWindow):
             "页面切换",
             *(f"  {NAV_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}" for entry in APP_NAV_ENTRIES),
             "",
-            "后台",
+            "后台（弹窗）",
             *(
                 f"  {BACKSTAGE_SHORTCUTS.get(entry.key, '—'):8}  {entry.label}"
                 for entry in BACKSTAGE_ENTRIES
@@ -604,10 +603,25 @@ class AshareMainWindow(MainWindow):
             self._floating_controller.raise_floating_layers()
         if nav_index is not None:
             self.sidebar.set_active_index(nav_index)
-        elif key in BACKSTAGE_PAGE_KEYS:
-            self.sidebar.clear_active()
         self.raise_()
         self.activateWindow()
+
+    def _open_backstage_dialog(self, key: str) -> None:
+        if key == "scheduler":
+            self._open_scheduler_dialog()
+        elif key == "data_manager":
+            self._open_data_manager_dialog()
+
+    def _open_scheduler_dialog(self) -> None:
+        show_scheduler_dialog(self.main_engine, self.event_engine, parent=self)
+
+    def _open_data_manager_dialog(self) -> None:
+        show_data_manager_dialog(
+            self.main_engine,
+            self.event_engine,
+            ensure_apps=self._ensure_deferred_apps,
+            parent=self,
+        )
 
     def _ensure_deferred_apps(self) -> None:
         if self._deferred_apps_registered:
@@ -643,23 +657,16 @@ class AshareMainWindow(MainWindow):
             widget.open_scheduler_requested.connect(self._open_scheduler_page)
         elif key == "batch_backtest":
             widget = BatchBacktestPageWidget(self.main_engine, self.event_engine)
-        elif key == "scheduler":
-            widget = SchedulerPageWidget(self.main_engine, self.event_engine)
 
         if widget is not None:
             self._page_widgets[key] = widget
             self.widgets[key] = widget
-            extra = ""
-            if key == "scheduler":
-                from vnpy_common.ui.theme.build_extra import build_scheduler_page_stylesheet
-
-                extra = build_scheduler_page_stylesheet
-            self._theme_manager.bind_stylesheet(widget, extra=extra)
+            self._theme_manager.bind_stylesheet(widget)
 
         return widget
 
     def _open_scheduler_page(self) -> None:
-        self._show_page_by_key("scheduler")
+        self._open_scheduler_dialog()
 
     def _bind_scheduler_notifications(self) -> None:
         if self._scheduler_listener_connected:
@@ -694,10 +701,12 @@ class AshareMainWindow(MainWindow):
             )
 
     def open_widget(self, widget_class: type[QtWidgets.QWidget], name: str) -> None:
+        if name == "DataManager":
+            self._open_data_manager_dialog()
+            return
         name_map = {
             "Ashare": "watchlist",
             "CtaBacktester": "cta_backtest",
-            "DataManager": "data_manager",
         }
         key = name_map.get(name)
         if key:
