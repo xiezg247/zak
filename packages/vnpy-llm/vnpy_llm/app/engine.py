@@ -258,15 +258,17 @@ class LlmEngine(BaseEngine):
         self.store.update_session_title(self.session_id, title)
         self.signals.sessions_changed.emit()
 
+    @staticmethod
+    def _chat_message_to_dict(item: ChatMessage) -> dict[str, str]:
+        """单条会话消息转 API dict；tool 结果过长时截断以控制 token。"""
+        content = item.content
+        if item.role == "tool" and len(content) > MAX_TOOL_RESULT_CHARS:
+            content = content[:MAX_TOOL_RESULT_CHARS] + "\n...(结果过长已截断)"
+        return {"role": item.role, "content": content}
+
     def build_conversation_messages(self) -> list[dict[str, str]]:
-        """LangGraph 路径：仅 user/assistant/tool 历史，system 由 Agent 拼装。"""
-        messages: list[dict[str, str]] = []
-        for item in self.get_messages():
-            content = item.content
-            if item.role == "tool" and len(content) > MAX_TOOL_RESULT_CHARS:
-                content = content[:MAX_TOOL_RESULT_CHARS] + "\n...(结果过长已截断)"
-            messages.append({"role": item.role, "content": content})
-        return messages
+        """LangGraph 路径：仅 user/assistant/tool 历史，system 由 graph/agents 拼装。"""
+        return [self._chat_message_to_dict(item) for item in self.get_messages()]
 
     def build_api_messages(
         self,
@@ -295,11 +297,7 @@ class LlmEngine(BaseEngine):
         if extra_system.strip():
             system_parts.append(extra_system.strip())
         messages: list[dict[str, str]] = [{"role": "system", "content": "\n".join(system_parts)}]
-        for item in self.get_messages():
-            content = item.content
-            if item.role == "tool" and len(content) > MAX_TOOL_RESULT_CHARS:
-                content = content[:MAX_TOOL_RESULT_CHARS] + "\n...(结果过长已截断)"
-            messages.append({"role": item.role, "content": content})
+        messages.extend(self._chat_message_to_dict(item) for item in self.get_messages())
         return messages
 
     def _build_tools_summary(self) -> str:
@@ -580,7 +578,24 @@ class LlmEngine(BaseEngine):
         self.signals.messages_changed.emit()
         self.signals.sessions_changed.emit()
 
+    def _yield_stream(
+        self,
+        stream: Iterator[str],
+        chunks: list[str],
+    ) -> Iterator[str]:
+        """统一流式输出：累积 chunks、发 stream_delta、向上游 yield。"""
+        for delta in stream:
+            chunks.append(delta)
+            self.signals.stream_delta.emit(delta)
+            yield delta
+
+    def _persist_assistant_reply(self, chunks: list[str]) -> None:
+        content = "".join(chunks).strip()
+        if content:
+            self.append_local_message(role="assistant", content=content)
+
     def stream_reply(self, user_text: str) -> Iterator[str]:
+        """单轮回复入口：有 Skill 工具走 LangGraph，否则纯文本流。"""
         if self._streaming:
             raise LlmClientError("上一条回复仍在生成中")
         self._streaming = True
@@ -617,37 +632,33 @@ class LlmEngine(BaseEngine):
                 graph_ctx = self._build_graph_stream_context(route_ctx, user_text)
                 chunks = []
                 self._trace_begin_reply()
-                for delta in stream_with_tools(
-                    self.config,
-                    messages,
-                    route_ctx.tools,
-                    self._execute_tool,
-                    should_cancel=should_cancel,
-                    graph_ctx=graph_ctx,
-                    all_tools=all_tools,
-                    mcp_tool_names=mcp_names,
-                    on_handoff=self._on_graph_handoff,
-                ):
-                    chunks.append(delta)
-                    self.signals.stream_delta.emit(delta)
-                    yield delta
-                content = "".join(chunks).strip()
-                if content:
-                    self.append_local_message(role="assistant", content=content)
+                yield from self._yield_stream(
+                    stream_with_tools(
+                        self.config,
+                        messages,
+                        route_ctx.tools,
+                        self._execute_tool,
+                        should_cancel=should_cancel,
+                        graph_ctx=graph_ctx,
+                        all_tools=all_tools,
+                        mcp_tool_names=mcp_names,
+                        on_handoff=self._on_graph_handoff,
+                    ),
+                    chunks,
+                )
+                self._persist_assistant_reply(chunks)
             else:
                 chunks = []
                 self._trace_begin_reply()
-                for delta in stream_chat_completion(
-                    self.config,
-                    self.build_api_messages(),
-                    should_cancel=should_cancel,
-                ):
-                    chunks.append(delta)
-                    self.signals.stream_delta.emit(delta)
-                    yield delta
-                content = "".join(chunks).strip()
-                if content:
-                    self.append_local_message(role="assistant", content=content)
+                yield from self._yield_stream(
+                    stream_chat_completion(
+                        self.config,
+                        self.build_api_messages(),
+                        should_cancel=should_cancel,
+                    ),
+                    chunks,
+                )
+                self._persist_assistant_reply(chunks)
             self._trace_finish_reply()
         except StreamCancelled:
             cancelled = True

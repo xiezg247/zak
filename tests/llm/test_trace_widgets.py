@@ -40,7 +40,7 @@ class InlineTraceWidgetTest(unittest.TestCase):
         self.assertIn("综合诊断", header)
         self.assertIn("完成", header)
 
-    def test_trace_header_with_handoff_and_hitl(self) -> None:
+    def test_trace_header_with_handoff(self) -> None:
         turn = TurnTrace(
             turn_id="t1",
             session_id="s1",
@@ -53,23 +53,23 @@ class InlineTraceWidgetTest(unittest.TestCase):
                     kind="routing",
                     name="intent_route",
                     status="ok",
-                    summary="screening → screening",
-                    detail={"category": "screening", "target_agent": "screening"},
+                    summary="diagnosis → research",
+                    detail={"category": "diagnosis", "target_agent": "research"},
                 ),
                 TraceStep(
                     id="s2",
                     turn_id="t1",
-                    kind="hitl",
-                    name="draft_recipe",
+                    kind="handoff",
+                    name="research->market",
                     status="ok",
-                    summary="待确认",
-                    detail={"draft_kind": "recipe"},
+                    summary="结合大盘情绪",
+                    detail={"to_agent": "market"},
                 ),
             ],
         )
         header = trace_header_text(turn, expanded=False)
-        self.assertIn("screening→screening", header)
-        self.assertIn("待确认", header)
+        self.assertIn("diagnosis→research", header)
+        self.assertIn("→market", header)
 
     def test_format_step_line(self) -> None:
         step = TraceStep(

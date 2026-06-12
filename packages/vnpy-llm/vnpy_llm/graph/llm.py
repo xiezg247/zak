@@ -9,7 +9,7 @@ from vnpy_llm.config.settings import LlmConfig
 
 
 def create_chat_model(config: LlmConfig) -> ChatOpenAI:
-    """由 LlmConfig 创建流式 ChatOpenAI 实例。"""
+    """由 LlmConfig 创建流式 ChatOpenAI（与 chat/client 共用 .env 配置）。"""
     if not config.configured:
         raise LlmClientError("未配置 LLM_API_KEY，请在 .env 中设置")
     return ChatOpenAI(

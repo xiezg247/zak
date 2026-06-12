@@ -630,8 +630,40 @@ def analyze_user_intent(
 
 
 def _strip_screening_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """选股意图不明确时剔除全部 screening 工具，迫使 LLM 先追问。"""
     blocked = TOOL_GROUPS["screening"]
     return [tool for tool in tools if (tool.get("function") or {}).get("name", "") not in blocked]
+
+
+def _resolve_route_tools(
+    analysis: IntentAnalysis,
+    all_tools: list[dict[str, Any]],
+    user_text: str,
+    *,
+    mcp_tool_names: frozenset[str] | set[str] | None,
+) -> list[dict[str, Any]]:
+    """按意图收窄本轮可用工具（runner 再与 Agent 域取交集）。
+
+    阶段：类别子集 → 选股澄清 → 恐贪 enrichment → 走势情景剔除恐贪
+    """
+    category = analysis.route.category
+    if analysis.route.confidence == "low" and category != "general":
+        tools: list[dict[str, Any]] = []
+    else:
+        tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
+
+    screening = analysis.screening
+    if (
+        category == "screening"
+        and screening is not None
+        and (screening.clarification_needed or screening.confidence == "low")
+    ):
+        tools = _strip_screening_tools(tools)
+
+    tools = apply_fear_greed_tools(tools, analysis, all_tools)
+    if _is_trend_scenario_request(user_text):
+        tools = [tool for tool in tools if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL]
+    return tools
 
 
 def build_route_context(
@@ -642,19 +674,13 @@ def build_route_context(
     page: str = "",
     mcp_tool_names: frozenset[str] | set[str] | None = None,
 ) -> RouteContext:
-    """完整路由：分析意图 → 过滤工具 → 生成提示。"""
+    """完整路由：分析意图 → 过滤工具 → 生成 routing_hint。"""
     analysis = analyze_user_intent(config, user_text, page=page)
-    category = analysis.route.category
-    if analysis.route.confidence == "low" and category != "general":
-        tools: list[dict[str, Any]] = []
-    else:
-        tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
-    screening = analysis.screening
-    if category == "screening" and screening is not None and (screening.clarification_needed or screening.confidence == "low"):
-        tools = _strip_screening_tools(tools)
-    tools = apply_fear_greed_tools(tools, analysis, all_tools)
-    if _is_trend_scenario_request(user_text):
-        tools = [tool for tool in tools if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL]
-
+    tools = _resolve_route_tools(
+        analysis,
+        all_tools,
+        user_text,
+        mcp_tool_names=mcp_tool_names,
+    )
     hint = build_routing_hint(analysis, page=page, user_text=user_text)
     return RouteContext(analysis=analysis, tools=tools, routing_hint=hint)

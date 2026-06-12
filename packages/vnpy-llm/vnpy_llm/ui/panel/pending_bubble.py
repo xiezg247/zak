@@ -18,16 +18,11 @@ def pending_status_from_turn(turn: TurnTrace | None) -> tuple[str, str]:
     reply_running = any(s.kind == "reply" and s.status == "running" for s in turn.steps)
     has_routing = any(s.kind == "routing" for s in turn.steps)
     has_error = any(s.kind == "error" for s in turn.steps)
-    hitl_steps = [s for s in turn.steps if s.kind == "hitl"]
     handoff_steps = [s for s in turn.steps if s.kind == "handoff"]
 
     if has_error:
         err = next(s for s in turn.steps if s.kind == "error")
         return "处理遇到问题", err.summary or "请稍后重试"
-
-    if hitl_steps:
-        step = hitl_steps[-1]
-        return "等待确认草案…", step.summary or "请在弹窗中审核并执行"
 
     if running_tools:
         main = _tool_running_text(running_tools)

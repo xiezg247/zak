@@ -9,6 +9,7 @@ _AGENT_DOMAIN_GETTERS: dict[AgentName, str] = {}
 
 
 def register_agent_prompt(agent: AgentName, prompt: str) -> None:
+    """各 agents/*.py 在 import 时注册域内 prompt 切片。"""
     _AGENT_DOMAIN_GETTERS[agent] = prompt
 
 
@@ -22,7 +23,11 @@ def build_agent_system_prompt(
     *,
     handoff_context: str = "",
 ) -> str:
-    """拼装 Specialist Agent 的 system prompt。"""
+    """拼装 Specialist Agent 的 system prompt。
+
+    顺序：合规基座 → 域职责 → 策略表（回测）→ 工具/Skill/MCP → 页面上下文
+         → 终端上下文 → 本轮 routing_hint → handoff 续接说明
+    """
     parts = [BASE_PROMPT, f"【当前 Agent】{agent}"]
     domain = get_agent_domain_prompt(agent)
     if domain:

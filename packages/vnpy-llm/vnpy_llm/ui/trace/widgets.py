@@ -38,13 +38,6 @@ def _step_title(step: TraceStep) -> str:
     if step.kind == "handoff":
         to_agent = step.detail.get("to_agent", "")
         return f"协作 → {to_agent}" if to_agent else "Agent 协作"
-    if step.kind == "hitl":
-        kind = step.detail.get("draft_kind", "")
-        if kind == "recipe":
-            return "配方草案确认"
-        if kind == "screener":
-            return "选股草案确认"
-        return "待确认草案"
     if step.kind == "reply":
         return "生成回复"
     if step.kind == "error":
@@ -67,8 +60,6 @@ def trace_summary_parts(turn: TurnTrace) -> list[str]:
         elif step.kind == "handoff":
             to_agent = step.detail.get("to_agent", "")
             parts.append(f"→{to_agent}" if to_agent else "协作")
-        elif step.kind == "hitl":
-            parts.append("待确认")
         elif step.kind == "tool":
             parts.append(_step_title(step))
         elif step.kind == "reply" and step.status == "running":

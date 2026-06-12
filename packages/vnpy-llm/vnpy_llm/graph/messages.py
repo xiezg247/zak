@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 
 
 def dict_messages_to_langchain(messages: list[dict[str, Any]]) -> list[BaseMessage]:
-    """将 build_api_messages 产出的 dict 列表转为 LangChain 消息。"""
+    """将 engine/runner 的 role dict 列表转为 LangChain BaseMessage（含历史 tool_calls）。"""
     result: list[BaseMessage] = []
     for item in messages:
         role = item.get("role", "")

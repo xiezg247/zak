@@ -18,7 +18,7 @@ vnpy_llm/
 ├── config/        # LlmConfig、load_llm_config
 ├── chat/          # OpenAI 客户端、ChatStore、SessionSurface
 ├── routing/       # 意图识别、路由、Prompt（base_prompt 与 agents 共用）
-├── graph/         # LangGraph 编排（Supervisor + Specialist + handoff + HITL）
+├── graph/         # LangGraph 编排（Supervisor + Specialist + handoff）
 │   ├── agents/    # 各域 system prompt 切片
 │   ├── supervisor.py
 │   └── handoff.py

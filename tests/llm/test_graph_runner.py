@@ -209,7 +209,7 @@ def test_resolve_agent_tools_general_intersects_to_empty():
         "general",
         route_tools,
         all_tools,
-        analysis=ctx,
+        analysis=ctx.analysis,
         user_text="你好",
         mcp_tool_names=frozenset(),
     )
@@ -223,7 +223,7 @@ def test_resolve_agent_tools_empty_route_yields_empty():
         "research",
         [],
         all_tools,
-        analysis=ctx,
+        analysis=ctx.analysis,
         user_text="诊断",
         mcp_tool_names=frozenset(),
     )

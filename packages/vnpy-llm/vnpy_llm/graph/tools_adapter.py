@@ -40,7 +40,7 @@ def openai_tools_to_langchain(
     specs: list[dict[str, Any]],
     executor: Callable[[str, dict[str, Any]], str],
 ) -> list[StructuredTool]:
-    """将 Skill OpenAI tools 转为 LangChain 可绑定工具。"""
+    """将 SkillEngine 的 OpenAI schema 转为 LangChain StructuredTool，执行委托 engine._execute_tool。"""
     tools: list[StructuredTool] = []
     for spec in specs:
         fn = spec.get("function") or {}
