@@ -28,7 +28,7 @@ LLM **不直接调用** `mcp_*`；研报与综合诊断经 `diagnose_stock` Skil
 | 技术面快照 | `technical_snapshot` | 提示下载日 K |
 | 综合诊断 | `diagnose_stock` | — |
 | 券商研报 / 评级 | `diagnose_stock` 或 `mcp_tdx_tdx_wenda_quotes` | — |
-| 实时行情 / 板块 / F10 | 通达信 MCP `mcp_tdx_*` | TickFlow / Redis |
+| 实时行情 / 板块 | 通达信 MCP `mcp_tdx_*` | TickFlow / Redis |
 | 财务 / 估值 / 宏观 | `tushare-data` Skill | — |
 | 选股结果解读 | `explain_screening_run` / `get_screening_context` | 选股页运行方案 |
 | 走势预测 / 情景分析 | `trend_scenario_summary` + `mcp_tdx_tdx_wenda_quotes` | 本地 K 不足时提示下载日 K |

@@ -14,6 +14,6 @@ RESEARCH_PROMPT = """【Research Agent 职责】
 规则：
 - 查研报/评级必须调用 diagnose_stock（include_reports=true），禁止编造研报观点
 - 引用研报须注明来源与日期（result.reports[].source）
-- reports 为空或 warnings 提示无数据时：如实说明「当前数据源未返回研报」，禁止编造，禁止引导打开 zak 不存在的 F10 页面"""
+- reports 为空或 warnings 提示无数据时：如实说明「当前数据源未返回研报」，禁止编造"""
 
 register_agent_prompt("research", RESEARCH_PROMPT)

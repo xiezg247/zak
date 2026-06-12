@@ -57,10 +57,7 @@ class DiagnoseAnalyzer:
             merged["warnings"] = warnings
             return merged
 
-        warnings.append(
-            "问小达未返回研报条目；研报专用 MCP 与 Tushare 降级均无数据。"
-            "zak 终端无 F10 页面，勿引导用户打开 F10。"
-        )
+        warnings.append("问小达未返回研报条目；研报专用 MCP 与 Tushare 降级均无数据。")
         merged = dict(result)
         merged["warnings"] = warnings
         merged["reports"] = []

@@ -1,4 +1,4 @@
-"""研报获取：通达信 MCP 与 Tushare 降级。"""
+"""研报获取：通达信 research_reports / 问小达 / Tushare 降级。"""
 
 from __future__ import annotations
 
@@ -8,17 +8,18 @@ from typing import Any
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding
 from vnpy_ashare.services.report_sources import fetch_tushare_reports, report_fallback_enabled
+from vnpy_ashare.services.tdx_diagnose import fetch_wenda_research_reports
 
 _REPORT_TOOL_KEYWORDS = ("report", "research", "yanbao", "研报", "rating")
-_F10_TOOL_KEYWORDS = ("f10", "fundamental", "financial")
-
-
+_RESEARCH_REPORTS_TOOL_NAMES = frozenset(
+    {"research_reports", "research_report", "stock_research_reports", "tdx_research_reports"},
+)
 class ReportsFetcher:
     def __init__(self, mcp: McpBinding) -> None:
         self._mcp = mcp
 
     def fetch_reports(self, item: StockItem) -> dict[str, Any]:
-        bundle = self.fetch_tdx_reports(item.vt_symbol, item.symbol)
+        bundle = self.fetch_tdx_reports(item)
         if bundle.get("reports"):
             return bundle
 
@@ -39,27 +40,63 @@ class ReportsFetcher:
         bundle["warnings"] = warnings
         return bundle
 
-    def fetch_tdx_reports(self, vt_symbol: str, symbol: str) -> dict[str, Any]:
+    def fetch_tdx_reports(self, item: StockItem) -> dict[str, Any]:
         if self._mcp.execute is None or not self._mcp.tool_names:
             return {
                 "reports": [],
                 "warnings": ["通达信 MCP 未连接，请在 mcp/mcp.json 配置 tdx-api-key"],
             }
 
-        tool_name = self.pick_mcp_tool(_REPORT_TOOL_KEYWORDS)
-        if tool_name is None:
-            tool_name = self.pick_mcp_tool(_F10_TOOL_KEYWORDS)
-        if tool_name is None:
+        tool_name = self.pick_research_reports_tool()
+        if tool_name is not None:
+            bundle = self._call_research_reports_tool(tool_name, item)
+            if bundle.get("reports"):
+                return bundle
+            warnings = list(bundle.get("warnings") or [])
+        else:
+            warnings = [
+                "当前通达信 MCP 未暴露 research_reports 工具（cli tools mcp-list 仅见问小达），"
+                "已改经问小达查询近 3 个月研报/评级/目标价。"
+            ]
+
+        wenda_bundle = fetch_wenda_research_reports(
+            item.vt_symbol,
+            mcp_execute=self._mcp.execute,
+            tool_names=self._mcp.tool_names,
+        )
+        if wenda_bundle.get("reports"):
+            warnings.extend(wenda_bundle.get("warnings") or [])
             return {
-                "reports": [],
-                "warnings": ["未在通达信 MCP 中发现研报/F10 类工具，请运行 cli.py tools mcp-list 查看"],
+                "reports": wenda_bundle["reports"],
+                "raw": wenda_bundle.get("raw_sections"),
+                "source": "tdx_mcp",
+                "warnings": warnings,
             }
 
-        arguments = self.build_mcp_symbol_args(tool_name, vt_symbol, symbol)
+        warnings.extend(wenda_bundle.get("warnings") or [])
+        return {"reports": [], "warnings": warnings}
+
+    def pick_research_reports_tool(self) -> str | None:
+        for name in self._mcp.tool_names:
+            lower = name.lower()
+            if lower.startswith("mcp_tdx_"):
+                lower = lower.removeprefix("mcp_tdx_")
+            if lower in _RESEARCH_REPORTS_TOOL_NAMES:
+                return name
+        return self.pick_mcp_tool(_REPORT_TOOL_KEYWORDS)
+
+    def _call_research_reports_tool(self, tool_name: str, item: StockItem) -> dict[str, Any]:
+        arguments = self.build_research_reports_args(item.vt_symbol, item.symbol)
         try:
             raw_text = self._mcp.execute(tool_name, arguments)
         except Exception as ex:
-            return {"reports": [], "warnings": [f"通达信 MCP 调用失败：{ex}"]}
+            return {"reports": [], "warnings": [f"通达信 research_reports 调用失败：{ex}"]}
+
+        if "not found" in raw_text.lower():
+            return {
+                "reports": [],
+                "warnings": [f"通达信 MCP 未注册工具 {tool_name}"],
+            }
 
         parsed = self.parse_mcp_json(raw_text)
         reports = self.normalize_reports(parsed, tool_name)
@@ -67,7 +104,18 @@ class ReportsFetcher:
             "reports": reports,
             "raw": parsed if isinstance(parsed, dict) else {"text": raw_text[:4000]},
             "source": "tdx_mcp",
-            "warnings": [] if reports else ["通达信 MCP 已调用但未解析到研报条目"],
+            "warnings": [] if reports else [f"通达信 {tool_name} 已调用但未解析到研报条目"],
+        }
+
+    @staticmethod
+    def build_research_reports_args(vt_symbol: str, symbol: str) -> dict[str, Any]:
+        return {
+            "code": symbol,
+            "stock_code": symbol,
+            "symbol": symbol,
+            "vt_symbol": vt_symbol,
+            "months": 3,
+            "period_months": 3,
         }
 
     def pick_mcp_tool(self, keywords: tuple[str, ...]) -> str | None:
@@ -78,13 +126,6 @@ class ReportsFetcher:
             if any(keyword in lower for keyword in keywords):
                 return name
         return None
-
-    @staticmethod
-    def build_mcp_symbol_args(tool_name: str, vt_symbol: str, symbol: str) -> dict[str, Any]:
-        lower = tool_name.lower()
-        if "code" in lower or "symbol" in lower or "stock" in lower:
-            return {"code": symbol, "symbol": symbol, "stock_code": symbol, "vt_symbol": vt_symbol}
-        return {"symbol": vt_symbol, "code": symbol, "stock_code": symbol}
 
     @staticmethod
     def parse_mcp_json(text: str) -> Any:
@@ -133,9 +174,10 @@ class ReportsFetcher:
             reports.append(
                 {
                     "title": str(row.get("title") or row.get("name") or row.get("report_title") or "研报"),
-                    "broker": str(row.get("broker") or row.get("org") or row.get("institution") or ""),
-                    "date": str(row.get("date") or row.get("publish_date") or row.get("pub_date") or ""),
+                    "broker": str(row.get("broker") or row.get("org") or row.get("institution") or row.get("org_name") or ""),
+                    "date": str(row.get("date") or row.get("publish_date") or row.get("pub_date") or row.get("report_date") or ""),
                     "rating": str(row.get("rating") or row.get("rate") or row.get("invest_rating") or ""),
+                    "target_price": str(row.get("target_price") or row.get("target") or row.get("price_target") or ""),
                     "summary": str(row.get("summary") or row.get("abstract") or row.get("content") or row.get("desc") or "")[:2000],
                     "source": "tdx_mcp",
                     "tool": tool_name,

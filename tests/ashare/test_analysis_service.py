@@ -195,6 +195,34 @@ class AnalysisServiceTests(unittest.TestCase):
 
 
 class TdxDiagnoseParseTests(unittest.TestCase):
+    def test_summarize_wenda_reports(self) -> None:
+        from vnpy_ashare.services.tdx_diagnose import summarize_wenda_reports
+
+        sections = {
+            "report_forecast": {
+                "fields": {
+                    "目标价(元)0": "78.58",
+                    "综合评级": "4.78",
+                    "评级机构家数": "9",
+                    "预测每股收益(元)": "0.5220",
+                }
+            },
+            "report_rating": {
+                "fields": {
+                    "评级机构名称": "华泰证券",
+                    "评级日期0": "2026.06.02",
+                    "上次评级": "买入",
+                    "研究员": "郭雅丽，袁泽世",
+                }
+            },
+        }
+        reports = summarize_wenda_reports(sections)
+        self.assertEqual(len(reports), 2)
+        self.assertEqual(reports[0]["target_price"], "78.58")
+        self.assertEqual(reports[1]["broker"], "华泰证券")
+        self.assertEqual(reports[1]["date"], "2026.06.02")
+        self.assertEqual(reports[1]["rating"], "买入")
+
     def test_parse_wenda_table(self) -> None:
         from vnpy_ashare.services.tdx_diagnose import _parse_wenda_table
 

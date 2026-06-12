@@ -120,8 +120,8 @@ def fetch_mcp_reports(symbol: str, exchange: Exchange) -> dict[str, Any]:
     except McpClientError as ex:
         return {"reports": [], "warnings": [f"通达信 MCP 连接失败: {ex}"]}
 
-    # 找研报/F10 工具
-    report_tools = [t for t in tools if any(kw in t.name.lower() for kw in ("report", "research", "yanbao", "研报", "rating", "f10", "fundamental"))]
+    # 找研报类 MCP 工具
+    report_tools = [t for t in tools if any(kw in t.name.lower() for kw in ("report", "research", "yanbao", "研报", "rating", "fundamental"))]
     if not report_tools:
         return {"reports": [], "warnings": [f"通达信 MCP 未提供研报工具（共 {len(tools)} 个工具）"]}
 
