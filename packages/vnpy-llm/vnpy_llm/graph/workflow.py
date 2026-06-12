@@ -8,9 +8,9 @@ from typing import Any
 from langchain.agents import create_agent
 from langgraph.graph.state import CompiledStateGraph
 
+from vnpy_llm.config.settings import LlmConfig
 from vnpy_llm.graph.llm import create_chat_model
 from vnpy_llm.graph.tools_adapter import openai_tools_to_langchain
-from vnpy_llm.config.settings import LlmConfig
 
 
 def build_react_agent(

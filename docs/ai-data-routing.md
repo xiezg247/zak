@@ -12,7 +12,7 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.
 2. **Supervisor**（`graph/supervisor.py`）→ 委派 Specialist Agent（market / research / screening / backtest / data / general）
 3. **ReAct loop**（`langchain.agents.create_agent`）→ Skill / MCP 工具执行
 4. **Handoff**（`graph/handoff.py`）→ 诊断/回测/选股若涉及大盘或技术面，串行追加 market Agent；段间以 `**市场环境**` 等标题分隔
-5. **HITL**（`graph/hitl.py`）→ `propose_screening` / `propose_recipe` 返回 `pending_confirm` 时中断 loop，UI 弹确认框后直接执行
+5. **选股执行** → `propose_screening` / `propose_recipe` 解析后由 Skill 直接执行（无弹窗确认）
 
 无工具闲聊仍走 `chat/client.stream_chat_completion`，system prompt 见 `routing/prompts.py`（与 `routing/base_prompt.py` 共用基座）。
 
@@ -60,11 +60,11 @@ LLM **不直接调用** `mcp_*`；研报与综合诊断经 `diagnose_stock` Skil
 | 路径 | 工具 | 条件 |
 |------|------|------|
 | 盘中/盘后多因子 | `run_recipe` | 高置信 preset/recipe（如 intraday_multi） |
-| 多因子草案 | `propose_recipe` | 自定义配方、低置信或意图待确认 |
+| 多因子解析执行 | `propose_recipe` | 自定义配方或需先解析的多因子意图 |
 | 自动 preset | `screen_by_condition` | 高置信内置 preset |
 | 自动形态 | `screen_by_pattern` | 优先问小达 MCP；失败降级本地日 K / 行情 |
 | 标杆对标 | `screen_reference_peer` | 以标杆股找同业同类（估值+动量） |
-| 确认草案 | `propose_screening` | 已保存方案（`scheme_name`）、自定义阈值、低置信 |
+| 条件解析执行 | `propose_screening` | 已保存方案（`scheme_name`）、自定义阈值 |
 
 内置 preset：涨幅榜、换手率排行、成交量放大、自定义筛选、低 PE、中大盘、主力净流入。`top_n` 1–200，默认 20。
 
@@ -74,7 +74,7 @@ LLM **不直接调用** `mcp_*`；研报与综合诊断经 `diagnose_stock` Skil
 |------|------|
 | Redis 无数据 | 返回 error，引导行情采集或打开市场页 |
 | Tushare token 缺失 | 财务类 preset 报错 |
-| 已保存方案 | 走 `propose_screening` 确认 |
+| 已保存方案 | 走 `propose_screening` 解析后自动执行 |
 
 ## 恐贪指数
 

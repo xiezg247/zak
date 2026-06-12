@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import time
+from datetime import datetime
 
 from vnpy.event import EventEngine
 from vnpy.trader.constant import Interval

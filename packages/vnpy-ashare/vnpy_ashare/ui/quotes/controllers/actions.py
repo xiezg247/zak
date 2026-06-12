@@ -13,14 +13,13 @@ from vnpy_ashare.ai.context import (
     build_positions_ai_prompt,
     build_signal_panel_ai_prompt,
     build_signal_panel_batch_ai_prompt,
-    build_signals_ai_prompt,
     build_technical_ai_prompt,
 )
-from vnpy_ashare.domain.signal_snapshot import format_signal_context_extra
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
+from vnpy_ashare.domain.signal_snapshot import format_signal_context_extra
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
@@ -405,6 +404,8 @@ class ActionsController:
             return
         item = self._p.current_item
         assert item is not None
+        quote = self._p.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
         self._ask_ai(build_technical_ai_prompt(item.vt_symbol, name))
 
     def ask_ai_for_positions(self) -> None:

@@ -206,7 +206,7 @@ def _draw_batch_backtest(painter: QtGui.QPainter, size: int) -> None:
 
 def _draw_radar(painter: QtGui.QPainter, size: int) -> None:
     m = 5
-    for index, offset in enumerate((0, 8, 16)):
+    for index, _offset in enumerate((0, 8, 16)):
         y = m + 2 + index * 6
         painter.drawLine(m, y, size - m - 6, y)
         painter.drawLine(size - m - 4, y - 1, size - m - 4, y + 1)

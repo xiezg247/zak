@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 import pyqtgraph as pg
 from vnpy.chart import CandleItem, ChartWidget, VolumeItem
 from vnpy.trader.object import BarData

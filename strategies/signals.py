@@ -960,7 +960,6 @@ def _short_breakout_strength(
     if breakout_level is not None and breakout_level > 0 and signal == "buy":
         pct = (last_close - breakout_level) / breakout_level * 100
         breakout_score = min(90.0, 60.0 + pct * 5.0)
-    align_score = 70.0 if signal == "buy" else 50.0
     strength = 0.30 * cross_score + 0.40 * vol_score + 0.30 * breakout_score
     return round(strength, 1), cross_score, vol_score, breakout_score
 
@@ -1578,7 +1577,6 @@ def _compute_adx_at(
     di_sum = plus_di + minus_di
     if di_sum <= 0:
         return None
-    dx = 100.0 * abs(plus_di - minus_di) / di_sum
 
     dx_values = [0.0] * count
     for index in range(1, count):

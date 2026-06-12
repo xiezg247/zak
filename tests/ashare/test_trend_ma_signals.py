@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from strategies.signals import (
+    _compute_adx_at,
     build_trend_ma_signal_payload,
     classify_trend_ma_signal,
     list_supported_signal_strategies,
     summarize_trend_ma_state,
-    _compute_adx_at,
 )
 
 

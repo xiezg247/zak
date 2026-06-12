@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 
 from vnpy_ashare.screener.auto.auto_screen import AutoScreenInput, resolve_auto_screen_request
-from vnpy_ashare.screener.draft.draft_store import save_draft
 from vnpy_ashare.screener.draft.nl_mapper import ProposeInput, preset_catalog_for_prompt, validate_and_build
-from vnpy_ashare.screener.recipe.recipe_draft_store import save_recipe_draft
-from vnpy_ashare.screener.recipe.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
 from vnpy_ashare.screener.pattern.pattern_screen import (
     PatternScreenInput,
     list_pattern_screeners,
@@ -16,6 +13,7 @@ from vnpy_ashare.screener.pattern.pattern_screen import (
 )
 from vnpy_ashare.screener.preset.presets import get_preset
 from vnpy_ashare.screener.recipe.recipe import list_recipe_catalog
+from vnpy_ashare.screener.recipe.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
 from vnpy_ashare.screener.run.runner import ScreenerRequest, list_all_preset_names, run_screener
 from vnpy_skills.domain import SkillTemplate, ToolSpec
 
@@ -68,9 +66,9 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="propose_recipe",
                 description=(
-                    "解析自然语言为多因子配方草案（pending_confirm），弹出确认框；"
-                    "适用于自定义配方、复杂维度组合或置信度不高的多因子意图。"
-                    "意图明确时请直接用 run_recipe。"
+                    "解析自然语言为多因子配方并直接执行选股；"
+                    "适用于自定义配方、复杂维度组合或意图需先解析的多因子场景。"
+                    "recipe_id 已明确时也可直接用 run_recipe。"
                 ),
                 parameters={
                     "type": "object",
@@ -110,9 +108,9 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="propose_screening",
                 description=(
-                    "解析自然语言为选股草案（pending_confirm），弹出确认框；"
-                    "适用于已保存方案名、复杂自定义区间或置信度不高的条件选股。"
-                    "内置 preset 明确时请直接用 screen_by_condition。"
+                    "解析自然语言为选股条件并直接执行；"
+                    "适用于已保存方案名、复杂自定义区间或需先解析的条件选股。"
+                    "内置 preset 明确时也可直接用 screen_by_condition。"
                 ),
                 parameters={
                     "type": "object",
@@ -135,8 +133,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="screen_by_condition",
                 description=(
-                    "直接执行选股方案并返回结果。支持内置 preset（涨幅榜/换手率/低PE等）、"
-                    "已保存方案（我的 · 方案名）、自定义筛选（须传涨幅/换手阈值）。"
+                    "直接执行选股方案并返回结果。支持内置 preset（涨幅榜/换手率/低PE等）、已保存方案（我的 · 方案名）、自定义筛选（须传涨幅/换手阈值）。"
                 ),
                 parameters={
                     "type": "object",
@@ -255,17 +252,7 @@ class VnpyScreeningSkill(SkillTemplate):
             )
         )
         if result.kind == "pending_confirm" and result.draft is not None:
-            save_recipe_draft(result.draft)
-            return json.dumps(
-                {
-                    "status": "pending_confirm",
-                    "draft_id": result.draft.id,
-                    "summary": result.draft.summary,
-                    "recipe_id": result.draft.recipe_id,
-                    "message": result.message,
-                },
-                ensure_ascii=False,
-            )
+            return self.run_recipe(result.draft.recipe_id, result.draft.top_n)
         return json.dumps(
             {
                 "status": result.kind,
@@ -300,22 +287,60 @@ class VnpyScreeningSkill(SkillTemplate):
             )
         )
         if result.kind == "pending_confirm" and result.draft is not None:
-            save_draft(result.draft)
-            return json.dumps(
-                {
-                    "status": "pending_confirm",
-                    "draft_id": result.draft.id,
-                    "summary": result.draft.summary,
-                    "preset_label": result.draft.preset_label,
-                    "message": result.message,
-                },
-                ensure_ascii=False,
+            return self._run_screener_request(
+                result.draft.request,
+                nl_source=result.draft.natural_language,
             )
         return json.dumps(
             {
                 "status": result.kind,
                 "message": result.message,
                 "questions": result.questions or [],
+            },
+            ensure_ascii=False,
+        )
+
+    def _run_screener_request(self, request: ScreenerRequest, *, nl_source: str = "") -> str:
+        svc = self._get_screening_service()
+        try:
+            result = svc.run_request(request)
+        except Exception as ex:
+            return json.dumps({"status": "error", "message": str(ex)}, ensure_ascii=False)
+
+        if not result.rows:
+            return json.dumps(
+                {
+                    "status": "ok",
+                    "condition": result.condition,
+                    "count": 0,
+                    "message": f"选股条件「{result.condition}」未匹配到标的",
+                },
+                ensure_ascii=False,
+            )
+
+        svc.persist_run_result(result, nl_source=nl_source or result.condition)
+        return json.dumps(
+            {
+                "status": "ok",
+                "condition": result.condition,
+                "count": len(result.rows),
+                "source": result.source,
+                "updated_at": result.updated_at,
+                "total_scanned": result.total_scanned,
+                "results": [
+                    {
+                        "symbol": r.get("symbol", ""),
+                        "name": r.get("name", ""),
+                        "vt_symbol": r.get("vt_symbol", ""),
+                        "last_price": r.get("last_price"),
+                        "change_pct": r.get("change_pct"),
+                        "turnover_rate": r.get("turnover_rate"),
+                        "pe_ttm": r.get("pe_ttm"),
+                        "total_mv": r.get("total_mv"),
+                        "net_mf_amount": r.get("net_mf_amount"),
+                    }
+                    for r in result.rows
+                ],
             },
             ensure_ascii=False,
         )
@@ -490,49 +515,7 @@ class VnpyScreeningSkill(SkillTemplate):
                 ensure_ascii=False,
             )
 
-        svc = self._get_screening_service()
-        try:
-            result = svc.run_request(resolved.request)
-        except Exception as ex:
-            return json.dumps({"status": "error", "message": str(ex)}, ensure_ascii=False)
-
-        if not result.rows:
-            return json.dumps(
-                {
-                    "status": "ok",
-                    "condition": result.condition,
-                    "count": 0,
-                    "message": f"选股条件「{result.condition}」未匹配到标的",
-                },
-                ensure_ascii=False,
-            )
-
-        svc.persist_run_result(result, nl_source=f"auto:{name}")
-        return json.dumps(
-            {
-                "status": "ok",
-                "condition": result.condition,
-                "count": len(result.rows),
-                "source": result.source,
-                "updated_at": result.updated_at,
-                "total_scanned": result.total_scanned,
-                "results": [
-                    {
-                        "symbol": r.get("symbol", ""),
-                        "name": r.get("name", ""),
-                        "vt_symbol": r.get("vt_symbol", ""),
-                        "last_price": r.get("last_price"),
-                        "change_pct": r.get("change_pct"),
-                        "turnover_rate": r.get("turnover_rate"),
-                        "pe_ttm": r.get("pe_ttm"),
-                        "total_mv": r.get("total_mv"),
-                        "net_mf_amount": r.get("net_mf_amount"),
-                    }
-                    for r in result.rows
-                ],
-            },
-            ensure_ascii=False,
-        )
+        return self._run_screener_request(resolved.request, nl_source=f"auto:{name}")
 
     def screen_reference_peer(self, symbol: str, top_n: int = 20) -> str:
         vt_symbol = (symbol or "").strip()

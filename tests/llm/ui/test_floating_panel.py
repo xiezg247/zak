@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_llm.ui.floating.panel import FloatingAiPanel, PANEL_MIN_HEIGHT, PANEL_MIN_WIDTH
+from vnpy_llm.ui.floating.panel import PANEL_MIN_HEIGHT, PANEL_MIN_WIDTH, FloatingAiPanel
 
 
 class FloatingAiPanelGeometryTests(unittest.TestCase):

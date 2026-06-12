@@ -18,14 +18,14 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     AshareChartWidget,
     create_watchlist_chart,
 )
+from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
+from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.chart.minute_bars import (
     MinuteBarChange,
     MinuteBarDiff,
     MinuteBarSession,
     compute_minute_bar_change,
 )
-from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
-from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.chart.reference_line_legend import ReferenceLineLegendBar
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.workers import (
@@ -314,7 +314,6 @@ class ChartPanel(QtWidgets.QWidget):
         return "1分"
 
     def _sync_minute_hint_from_session(self) -> None:
-        session = self._minute_session
         self._update_hint()
 
     def _update_hint(self, *, daily_missing: bool = False) -> None:

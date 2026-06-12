@@ -1,5 +1,4 @@
 from vnpy_ctastrategy import (
-    ArrayManager,
     BarData,
     BarGenerator,
     OrderData,

@@ -6,10 +6,12 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from strategies.registry import list_signal_strategy_metas
+from strategies.signals import STRATEGY_SIGNAL_DEFAULTS
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.signal_snapshot import (
-    SignalSnapshot,
     SIGNAL_STRENGTH_STRONG,
+    SignalSnapshot,
     build_price_field_explanations,
     build_runtime_signal_hints,
     format_strength_breakdown,
@@ -21,8 +23,6 @@ from vnpy_ashare.domain.signal_snapshot import (
     signal_missing_kline,
     signal_row_sort_key,
 )
-from strategies.registry import list_signal_strategy_metas
-from strategies.signals import STRATEGY_SIGNAL_DEFAULTS
 from vnpy_ashare.ui.quotes.watchlist_signals.columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,
     SIGNAL_PANEL_RUNTIME_KEYS,

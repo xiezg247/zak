@@ -38,12 +38,7 @@ from vnpy_ashare.domain.ai_actions import (
 )
 from vnpy_ashare.ui.backtest import BatchBacktestPageWidget
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
-from vnpy_ashare.ui.screener import (
-    AutoScreenerPageWidget,
-    ScreenerPageWidget,
-    show_recipe_confirm_dialog,
-    show_screener_confirm_dialog,
-)
+from vnpy_ashare.ui.screener import AutoScreenerPageWidget, ScreenerPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_ashare.ui.shell.nav import (
     APP_NAV_ENTRIES,
@@ -100,7 +95,6 @@ class AshareMainWindow(MainWindow):
         self._floating_controller: FloatingAiController | None = None
         self._page_before_ai: int = 0
         self._ai_toggle_action: QtGui.QAction | None = None
-        self._screener_draft_connected = False
         self._scheduler_listener_connected = False
         self._deferred_apps_registered = False
         self._theme_manager = theme_manager()
@@ -351,28 +345,8 @@ class AshareMainWindow(MainWindow):
     def _get_llm_engine(self) -> LlmEngine | None:
         engine = self.main_engine.get_engine(LLM_APP_NAME)
         if isinstance(engine, LlmEngine):
-            self._ensure_screener_draft_handler(engine)
             return engine
         return None
-
-    def _ensure_screener_draft_handler(self, engine: LlmEngine) -> None:
-        if self._screener_draft_connected:
-            return
-        engine.signals.screener_draft_ready.connect(self._on_screener_draft_ready)
-        engine.signals.recipe_draft_ready.connect(self._on_recipe_draft_ready)
-        self._screener_draft_connected = True
-
-    def _on_screener_draft_ready(self, draft_id: str) -> None:
-        engine = self.main_engine.get_engine(LLM_APP_NAME)
-        if not isinstance(engine, LlmEngine):
-            return
-        show_screener_confirm_dialog(draft_id, engine, parent=self)
-
-    def _on_recipe_draft_ready(self, draft_id: str) -> None:
-        engine = self.main_engine.get_engine(LLM_APP_NAME)
-        if not isinstance(engine, LlmEngine):
-            return
-        show_recipe_confirm_dialog(draft_id, engine, parent=self)
 
     def _open_ai_tools_dialog(self) -> None:
         llm_engine = self._get_llm_engine()

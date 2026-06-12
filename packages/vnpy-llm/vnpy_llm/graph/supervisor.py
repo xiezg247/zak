@@ -17,7 +17,6 @@ from vnpy_llm.routing.router import (
     FEAR_GREED_TOOL,
     TOOL_GROUPS,
     apply_fear_greed_tools,
-    filter_tools_by_route,
 )
 
 
@@ -70,11 +69,7 @@ def filter_tools_for_agent(
     if not allowed:
         return list(all_tools)
 
-    filtered = [
-        tool
-        for tool in all_tools
-        if (tool.get("function") or {}).get("name", "") in allowed
-    ]
+    filtered = [tool for tool in all_tools if (tool.get("function") or {}).get("name", "") in allowed]
     result = filtered if filtered else list(all_tools)
 
     if analysis is not None and agent == "market":

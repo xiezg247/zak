@@ -127,7 +127,7 @@ def test_screening_tool_routing_scheme_name():
     lines = _screening_tool_routing_lines(
         ScreeningIntent(intent="我的方案", scheme_name="我的 · 低PE", confidence="high"),
     )
-    assert any("propose_screening" in line for line in lines)
+    assert any("propose_screening" in line and "自动执行" in line for line in lines)
 
 
 def test_build_routing_hint_screening_medium():
@@ -186,10 +186,7 @@ def test_keyword_fallback_trend_scenario():
 
 
 def test_build_routing_hint_trend_scenario():
-    text = (
-        "请对 科大讯飞（002230.SZSE） 做走势情景分析（非确定性预测，展望 5 日）。"
-        "基于本地均线（MA20/MA60）、结构锚点与统计参考带组织分析。"
-    )
+    text = "请对 科大讯飞（002230.SZSE） 做走势情景分析（非确定性预测，展望 5 日）。基于本地均线（MA20/MA60）、结构锚点与统计参考带组织分析。"
     analysis = IntentAnalysis(
         route=IntentRoute(category="technical", confidence="high", reasoning="走势情景"),
     )

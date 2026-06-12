@@ -57,7 +57,7 @@ def bar_values_equal(left: BarData, right: BarData) -> bool:
 def bars_list_equal(left: list[BarData], right: list[BarData]) -> bool:
     if len(left) != len(right):
         return False
-    return all(bar_values_equal(a, b) for a, b in zip(left, right))
+    return all(bar_values_equal(a, b) for a, b in zip(left, right, strict=True))
 
 
 def merge_minute_bars(existing: list[BarData], incoming: list[BarData]) -> list[BarData]:

@@ -8,12 +8,18 @@ from typing import Any
 from langchain_core.messages import AIMessageChunk
 
 from vnpy_llm.chat.client import LlmClientError, StreamCancelled
-from vnpy_llm.graph.hitl import DraftPendingInfo, DraftPendingStop, parse_draft_pending
 from vnpy_llm.config.settings import LlmConfig
-from vnpy_llm.graph.agents import build_agent_system_prompt  # noqa: F401 — 注册 agent prompts
-from vnpy_llm.graph.agents import backtest, data, general, market, research, screening  # noqa: F401
+from vnpy_llm.graph.agents import (  # noqa: F401
+    backtest,
+    build_agent_system_prompt,  # noqa: F401 — 注册 agent prompts
+    data,
+    general,
+    market,
+    research,
+    screening,
+)
 from vnpy_llm.graph.messages import dict_messages_to_langchain
-from vnpy_llm.graph.state import AGENT_STREAM_LABELS, AgentName, GraphStreamContext, MAX_HANDOFFS
+from vnpy_llm.graph.state import AGENT_STREAM_LABELS, MAX_HANDOFFS, AgentName, GraphStreamContext
 from vnpy_llm.graph.supervisor import build_supervisor_decision, filter_tools_for_agent
 from vnpy_llm.graph.workflow import build_react_agent
 
@@ -61,22 +67,6 @@ def _resolve_agent_tools(
     return [tool for tool in agent_tools if _tool_name(tool) in route_names]
 
 
-def _wrap_tool_executor(
-    tool_executor: Callable[[str, dict[str, Any]], str],
-    on_draft_pending: Callable[[DraftPendingInfo], None] | None,
-) -> Callable[[str, dict[str, Any]], str]:
-    def _run(name: str, arguments: dict[str, Any]) -> str:
-        result = tool_executor(name, arguments)
-        info = parse_draft_pending(name, result)
-        if info is not None:
-            if on_draft_pending is not None:
-                on_draft_pending(info)
-            raise DraftPendingStop(info)
-        return result
-
-    return _run
-
-
 def _stream_agent(
     config: LlmConfig,
     messages: list[dict[str, Any]],
@@ -122,7 +112,6 @@ def stream_with_tools(
     all_tools: list[dict[str, Any]] | None = None,
     mcp_tool_names: frozenset[str] | set[str] | None = None,
     on_handoff: Callable[[AgentName, AgentName, str], None] | None = None,
-    on_draft_pending: Callable[[DraftPendingInfo], None] | None = None,
 ) -> Iterator[str]:
     """LangGraph 多 Agent 流式 tool loop。"""
     if not config.configured:
@@ -132,11 +121,8 @@ def stream_with_tools(
         decision = build_supervisor_decision(graph_ctx.analysis, graph_ctx.user_text)
         conversation = _conversation_dicts(messages)
         full_tools = all_tools or tools
-        agents_to_run: list[AgentName] = [decision.target_agent, *decision.handoff_agents][
-            : 1 + MAX_HANDOFFS
-        ]
+        agents_to_run: list[AgentName] = [decision.target_agent, *decision.handoff_agents][: 1 + MAX_HANDOFFS]
 
-        wrapped_executor = _wrap_tool_executor(tool_executor, on_draft_pending)
         prior_reply = ""
         for index, agent in enumerate(agents_to_run):
             if should_cancel and should_cancel():
@@ -179,7 +165,7 @@ def stream_with_tools(
                 config,
                 agent_messages,
                 agent_tools,
-                wrapped_executor,
+                tool_executor,
                 max_rounds=max_rounds,
                 should_cancel=should_cancel,
             ):
@@ -190,7 +176,7 @@ def stream_with_tools(
                 break
             if not prior_reply and index < len(agents_to_run) - 1:
                 break
-    except (StreamCancelled, DraftPendingStop):
+    except StreamCancelled:
         raise
     except LlmClientError:
         raise

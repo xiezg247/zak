@@ -508,10 +508,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
 
     @staticmethod
     def _cursor_for_edges(edges: QtCore.Qt.Edges) -> QtCore.Qt.CursorShape:
-        if (
-            edges & QtCore.Qt.Edge.RightEdge
-            and edges & QtCore.Qt.Edge.BottomEdge
-        ):
+        if edges & QtCore.Qt.Edge.RightEdge and edges & QtCore.Qt.Edge.BottomEdge:
             return QtCore.Qt.CursorShape.SizeFDiagCursor
         if edges & QtCore.Qt.Edge.RightEdge:
             return QtCore.Qt.CursorShape.SizeHorCursor
@@ -552,11 +549,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
         self.grabMouse()
 
     def _update_resize(self, global_pos: QtCore.QPoint) -> None:
-        if (
-            not self._resizing
-            or self._resize_start_geom is None
-            or self._resize_start_global is None
-        ):
+        if not self._resizing or self._resize_start_geom is None or self._resize_start_global is None:
             return
         delta = global_pos - self._resize_start_global
         geo = QtCore.QRect(self._resize_start_geom)

@@ -8,7 +8,6 @@ from typing import Any
 from vnpy.trader.ui import QtCore
 
 from strategies.signals import (
-    STRATEGY_SIGNAL_DEFAULTS,
     list_supported_signal_strategies,
 )
 

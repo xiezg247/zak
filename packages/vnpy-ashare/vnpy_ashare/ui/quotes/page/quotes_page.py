@@ -86,7 +86,6 @@ from vnpy_common.ui.feedback import TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
 
-
 RANK_SETTINGS_KEY = "quotes/market/active_rank_id_v1"
 
 
@@ -451,7 +450,6 @@ class QuotesPage(QtWidgets.QWidget):
     def _on_rank_type_changed(self, row: int) -> None:
         if not self.config.show_rank_sidebar or row < 0:
             return
-        from vnpy_ashare.quotes.rank_catalog import list_rank_definitions
 
         specs = list_rank_definitions()
         if row >= len(specs):

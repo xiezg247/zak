@@ -119,7 +119,6 @@ def _migrate_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, saved:
     if not saved:
         return []
     count = splitter.count()
-    signal_panel = _signal_panel(page)
     position_panel = _position_panel(page)
     run_panel = _run_output_panel(page)
 

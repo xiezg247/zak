@@ -318,11 +318,11 @@ def _trend_scenario_routing_lines(user_text: str) -> list[str]:
     if params.get("symbol"):
         args: list[str] = [f'symbol="{params["symbol"]}"']
         if params.get("horizon_days") is not None:
-            args.append(f'horizon_days={params["horizon_days"]}')
+            args.append(f"horizon_days={params['horizon_days']}")
         if params.get("fast_window") is not None:
-            args.append(f'fast_window={params["fast_window"]}')
+            args.append(f"fast_window={params['fast_window']}")
         if params.get("slow_window") is not None:
-            args.append(f'slow_window={params["slow_window"]}')
+            args.append(f"slow_window={params['slow_window']}")
         lines.append(f"- 建议调用：trend_scenario_summary({', '.join(args)})")
     return lines
 
@@ -404,20 +404,17 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
 
 
 def _screening_tool_routing_lines(screening: ScreeningIntent) -> list[str]:
-    """选股工具路由提示：明确意图走直接执行，复杂/已保存方案走 propose_*。"""
+    """选股工具路由提示：LLM 自主解析并直接执行，无弹窗确认。"""
     s = screening
     if s.clarification_needed or s.confidence == "low":
         return ["- 意图不够明确，请先向用户追问，勿调用选股工具"]
 
     if s.scheme_name:
         return [
-            f"- 已保存方案调用 propose_screening（scheme_name={s.scheme_name}, top_n={s.top_n}）",
-            "- 返回 pending_confirm 后停止，等待用户弹窗确认",
+            f"- 已保存方案调用 propose_screening（scheme_name={s.scheme_name}, top_n={s.top_n}），解析后自动执行",
         ]
 
-    has_custom_threshold = any(
-        value is not None for value in (s.min_change_pct, s.max_change_pct, s.min_turnover)
-    )
+    has_custom_threshold = any(value is not None for value in (s.min_change_pct, s.max_change_pct, s.min_turnover))
 
     if s.recipe_id and s.confidence == "high":
         return [f"- 配方「{s.recipe_id}」直接 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"]
@@ -425,8 +422,7 @@ def _screening_tool_routing_lines(screening: ScreeningIntent) -> list[str]:
     if s.preset and s.confidence == "high":
         if has_custom_threshold:
             return [
-                f"- 自定义区间调用 propose_screening（preset={s.preset}, top_n={s.top_n}）",
-                "- 返回 pending_confirm 后停止，等待用户弹窗确认",
+                f"- 自定义区间调用 propose_screening（preset={s.preset}, top_n={s.top_n}），解析后自动执行",
             ]
         return [f"- 内置方案「{s.preset}」直接 screen_by_condition（name={s.preset}, top_n={s.top_n}）"]
 
@@ -435,11 +431,13 @@ def _screening_tool_routing_lines(screening: ScreeningIntent) -> list[str]:
             return [f"- 可直接 run_recipe（recipe_id={s.recipe_id}, top_n={s.top_n}）"]
         if s.preset:
             if has_custom_threshold:
-                return [f"- 调用 propose_screening（preset={s.preset}, top_n={s.top_n}）待确认"]
+                return [
+                    f"- 调用 propose_screening（preset={s.preset}, top_n={s.top_n}），解析后自动执行",
+                ]
             return [f"- 可直接 screen_by_condition（name={s.preset}, top_n={s.top_n}）"]
         return [
-            "- 复杂/自定义多因子调用 propose_recipe；已保存方案或模糊条件调用 propose_screening",
-            "- 意图明确时仍可直接 run_recipe / screen_by_condition",
+            "- 复杂/自定义多因子调用 propose_recipe；已保存方案或需解析的条件调用 propose_screening（均自动执行）",
+            "- recipe_id / preset 明确时仍可直接 run_recipe / screen_by_condition",
         ]
 
     return ["- 请先 list_screeners / list_recipes 了解可用方案"]
@@ -470,7 +468,7 @@ def _pattern_screen_routing_lines(user_text: str, *, top_n: int = 20) -> list[st
     return [
         "【形态选股路由】",
         f'- 直接调用 screen_by_pattern(pattern="{pattern}", top_n={top_n})',
-        "- 禁止 run_python(skill=\"tdx-stock-picker\")：该 Skill 仅 Markdown，无 tdx_stock_picker 模块",
+        '- 禁止 run_python(skill="tdx-stock-picker")：该 Skill 仅 Markdown，无 tdx_stock_picker 模块',
     ]
 
 
@@ -546,9 +544,7 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
         )
     if any(k in text for k in ("诊断", "研报", "评级", "券商")):
         return _with_market("diagnosis")
-    if _is_trend_scenario_request(text) or any(
-        k in text for k in ("均线", "金叉", "死叉", "技术面", "形态")
-    ):
+    if _is_trend_scenario_request(text) or any(k in text for k in ("均线", "金叉", "死叉", "技术面", "形态")):
         return _with_market("technical")
     if page and page in PAGE_CATEGORY_HINT:
         cat = PAGE_CATEGORY_HINT[page]
@@ -654,19 +650,11 @@ def build_route_context(
     else:
         tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
     screening = analysis.screening
-    if (
-        category == "screening"
-        and screening is not None
-        and (screening.clarification_needed or screening.confidence == "low")
-    ):
+    if category == "screening" and screening is not None and (screening.clarification_needed or screening.confidence == "low"):
         tools = _strip_screening_tools(tools)
     tools = apply_fear_greed_tools(tools, analysis, all_tools)
     if _is_trend_scenario_request(user_text):
-        tools = [
-            tool
-            for tool in tools
-            if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL
-        ]
+        tools = [tool for tool in tools if (tool.get("function") or {}).get("name", "") != FEAR_GREED_TOOL]
 
     hint = build_routing_hint(analysis, page=page, user_text=user_text)
     return RouteContext(analysis=analysis, tools=tools, routing_hint=hint)

@@ -16,7 +16,7 @@ from vnpy_llm.graph.messages import dict_messages_to_langchain
 from vnpy_llm.graph.runner import _resolve_agent_tools, stream_with_tools
 from vnpy_llm.graph.state import GraphStreamContext
 from vnpy_llm.graph.tools_adapter import openai_tools_to_langchain
-from vnpy_llm.routing.intent import IntentAnalysis, IntentRoute, IntentCategory
+from vnpy_llm.routing.intent import IntentAnalysis, IntentCategory, IntentRoute
 
 
 def _config() -> LlmConfig:
@@ -112,7 +112,7 @@ class _FakeChatModel(BaseChatModel):
             message=AIMessageChunk(content="", tool_calls=message.tool_calls),
         )
 
-    def bind_tools(self, tools: list, **kwargs: Any) -> "_FakeChatModel":
+    def bind_tools(self, tools: list, **kwargs: Any) -> _FakeChatModel:
         return self
 
 

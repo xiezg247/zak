@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any, Literal, Mapping
+from typing import Any, Literal
 
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 

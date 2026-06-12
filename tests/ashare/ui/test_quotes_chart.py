@@ -23,8 +23,8 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     create_watchlist_chart,
     prepare_chart_bars,
 )
-from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarDiff, compute_minute_bar_change
 from vnpy_ashare.ui.quotes.chart.ma_line_item import calc_sma, ma_line_item_class
+from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarDiff, compute_minute_bar_change
 
 
 def _sample_bar() -> BarData:

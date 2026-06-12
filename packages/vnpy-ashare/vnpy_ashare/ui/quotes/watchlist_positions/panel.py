@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from strategies.registry import get_strategy_meta
 from vnpy_ashare.domain.position_snapshot import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.signal_snapshot import signal_cell_color, signal_missing_kline
 from vnpy_ashare.storage.app_db import POSITION_MAX_ITEMS
@@ -20,7 +21,6 @@ from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
     save_position_panel_expanded,
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import WatchlistSignalConfig
-from strategies.registry import get_strategy_meta
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 

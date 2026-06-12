@@ -21,8 +21,7 @@ vnpy_llm/
 ├── graph/         # LangGraph 编排（Supervisor + Specialist + handoff + HITL）
 │   ├── agents/    # 各域 system prompt 切片
 │   ├── supervisor.py
-│   ├── handoff.py
-│   └── hitl.py
+│   └── handoff.py
 ├── tools/         # 工具审计、labels、result enrich、状态
 ├── trace/         # TurnTrace 内存态与 SQLite 持久化
 └── ui/

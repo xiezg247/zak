@@ -13,13 +13,12 @@ from vnpy.trader.ui import QtCore
 from vnpy_common.ai.access import get_ai_context, register_context_listener
 from vnpy_common.ai.protocol import AiContextData
 from vnpy_llm.chat.client import LlmClientError, StreamCancelled, stream_chat_completion
-from vnpy_llm.graph.hitl import DraftPendingInfo, DraftPendingStop, HITL_HINTS
-from vnpy_llm.graph.runner import stream_with_tools
-from vnpy_llm.graph.state import GraphStreamContext
-from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.chat.store import MAX_TOOL_RESULT_CHARS, ChatMessage, ChatSession, ChatStore
 from vnpy_llm.config.settings import LlmConfig, load_llm_config
+from vnpy_llm.graph.runner import stream_with_tools
+from vnpy_llm.graph.state import GraphStreamContext
+from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.routing.prompts import SYSTEM_PROMPT, build_page_prompt, build_strategy_prompt
 from vnpy_llm.routing.router import build_route_context
 from vnpy_llm.tools.audit import log_tool_call
@@ -48,8 +47,6 @@ class LlmSignals(QtCore.QObject):
     tools_status_changed = QtCore.Signal(object)
     tool_call_started = QtCore.Signal(str)
     tool_call_finished = QtCore.Signal(str)
-    screener_draft_ready = QtCore.Signal(str)
-    recipe_draft_ready = QtCore.Signal(str)
     trace_changed = QtCore.Signal()
 
 
@@ -421,27 +418,6 @@ class LlmEngine(BaseEngine):
             strategy_prompt=build_strategy_prompt(),
         )
 
-    def _on_draft_pending(self, info: DraftPendingInfo) -> None:
-        if info.draft_kind == "recipe":
-            self.signals.recipe_draft_ready.emit(info.draft_id)
-        else:
-            self.signals.screener_draft_ready.emit(info.draft_id)
-        if self._trace_store.current_turn() is None:
-            return
-        self._trace_store.add_step(
-            kind="hitl",
-            name=f"draft_{info.draft_kind}",
-            summary=(info.summary or HITL_HINTS[info.draft_kind])[:80],
-            detail={
-                "draft_id": info.draft_id,
-                "draft_kind": info.draft_kind,
-                "summary": info.summary,
-                "message": info.message,
-            },
-            status="ok",
-        )
-        self._emit_trace_changed()
-
     def _on_graph_handoff(self, from_agent: str, to_agent: str, reason: str) -> None:
         if self._trace_store.current_turn() is None:
             return
@@ -651,7 +627,6 @@ class LlmEngine(BaseEngine):
                     all_tools=all_tools,
                     mcp_tool_names=mcp_names,
                     on_handoff=self._on_graph_handoff,
-                    on_draft_pending=self._on_draft_pending,
                 ):
                     chunks.append(delta)
                     self.signals.stream_delta.emit(delta)
@@ -674,13 +649,6 @@ class LlmEngine(BaseEngine):
                 if content:
                     self.append_local_message(role="assistant", content=content)
             self._trace_finish_reply()
-        except DraftPendingStop as pending:
-            hint = HITL_HINTS[pending.info.draft_kind]
-            if hint not in chunks:
-                chunks.append(hint)
-                self.signals.stream_delta.emit(hint)
-                yield hint
-            _persist_partial()
         except StreamCancelled:
             cancelled = True
             turn_ok = False
