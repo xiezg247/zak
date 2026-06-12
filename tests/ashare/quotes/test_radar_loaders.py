@@ -207,9 +207,7 @@ def test_load_watchlist_intraday_empty_pool(monkeypatch) -> None:
 def test_watchlist_moneyflow_metric() -> None:
     from vnpy_ashare.quotes.radar_moneyflow import watchlist_moneyflow_metric
 
-    label, value, sub_label, sub_value = watchlist_moneyflow_metric(
-        {"vt_symbol": "600000.SSE", "net_mf_amount": 12345, "change_pct": 1.2}
-    )
+    label, value, sub_label, sub_value = watchlist_moneyflow_metric({"vt_symbol": "600000.SSE", "net_mf_amount": 12345, "change_pct": 1.2})
     assert label == "主力净流入"
     assert "12,345" in value
     assert sub_label == "涨幅"
@@ -387,4 +385,3 @@ def test_radar_ai_hint_cache_roundtrip(tmp_path, monkeypatch) -> None:
         digest="摘要：新数据",
     )
     assert resolved == "摘要：新数据"
-

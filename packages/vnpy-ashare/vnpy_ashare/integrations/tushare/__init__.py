@@ -1,4 +1,7 @@
-"""Tushare Pro 客户端、因子缓存与拉取。"""
+"""Tushare Pro 客户端、因子缓存与拉取。
+
+历史日 K / 分 K 下载见 ``integrations.tushare.bars``；实时行情不在此包。
+"""
 
 from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol, vt_symbol_to_ts_code
 from vnpy_ashare.integrations.tushare.cache import (

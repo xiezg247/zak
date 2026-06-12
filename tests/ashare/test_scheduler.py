@@ -66,6 +66,7 @@ class TestSchedulerConfig(unittest.TestCase):
         self.assertIn("sync_trade_calendar", job_ids)
         self.assertIn("sync_stock_industry", job_ids)
         self.assertIn("prefetch_moneyflow", job_ids)
+        self.assertIn("batch_download_universe", job_ids)
         self.assertIn("batch_fill_stale", job_ids)
 
     def test_new_job_config_roundtrip(self) -> None:

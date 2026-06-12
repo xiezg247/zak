@@ -247,11 +247,7 @@ def _discovery_hits_card(
 def _volume_surge_needs_ratio_fallback(hits) -> bool:
     if not hits:
         return False
-    return all(
-        float(_merge_row_quotes(hit.row).get("volume") or 0) <= 0
-        and float(_merge_row_quotes(hit.row).get("amount") or 0) <= 0
-        for hit in hits
-    )
+    return all(float(_merge_row_quotes(hit.row).get("volume") or 0) <= 0 and float(_merge_row_quotes(hit.row).get("amount") or 0) <= 0 for hit in hits)
 
 
 def _volume_liquidity_proxy(pool_size: int, total: int):

@@ -69,3 +69,15 @@ vnpy_ashare/
 | `vnpy_common`（独立包） | 跨 App 基础设施 | paths、UI 主题 |
 
 符号互转统一从 `domain.symbols` 导入；数值解析用 `domain.numbers.safe_float`。
+
+## 数据源分工
+
+| 场景 | 来源 | 典型入口 |
+|------|------|----------|
+| 实时 / 全市场快照 / Redis 行情 | **TickFlow** | `jobs/quotes.collect_market_quotes`、`screener/data/quotes_loader` |
+| 历史日 K / 历史分 K 下载与补全 | **Tushare Pro** | `download_bars`、`download_period_bars` |
+| 因子 / moneyflow / 财报等 | **Tushare Pro** | `integrations/tushare/*` |
+
+配置：`TICKFLOW_API_KEY`（实时）、`TUSHARE_TOKEN`（历史与因子）。
+
+Tushare 频率：日 K 接口默认限制 **450 次/分钟**（低于官方 500 上限，可设 `TUSHARE_DAILY_MAX_PER_MIN`）；分 K 见 `TUSHARE_STK_MINS_MAX_PER_MIN`。

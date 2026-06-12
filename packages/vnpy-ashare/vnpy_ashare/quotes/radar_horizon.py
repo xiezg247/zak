@@ -260,7 +260,5 @@ def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, variant: str) 
         "",
     ]
     for row in data.rows:
-        lines.append(
-            f"- {row.name}({row.symbol}) {row.metric_label} 强度{row.metric_value} · {row.sub_label} {row.sub_value}"
-        )
+        lines.append(f"- {row.name}({row.symbol}) {row.metric_label} 强度{row.metric_value} · {row.sub_label} {row.sub_value}")
     return "\n".join(lines)

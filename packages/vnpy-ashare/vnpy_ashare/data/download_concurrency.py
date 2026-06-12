@@ -6,6 +6,7 @@ import os
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextvars import copy_context
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -29,7 +30,7 @@ def download_max_workers(*, item_count: int) -> int:
 
 def _is_retryable(exc: BaseException) -> bool:
     message = str(exc).lower()
-    return "locked" in message or "timeout" in message or "429" in message or "rate" in message
+    return "locked" in message or "timeout" in message or "429" in message or "rate" in message or "频率超限" in message
 
 
 def run_with_retry(func: Callable[[], R]) -> R:
@@ -42,7 +43,11 @@ def run_with_retry(func: Callable[[], R]) -> R:
             last_exc = ex
             if attempt + 1 >= _MAX_ATTEMPTS or not _is_retryable(ex):
                 raise
-            time.sleep(_RETRY_DELAY_SEC * (attempt + 1))
+            message = str(ex)
+            if "频率超限" in message:
+                time.sleep(62.0)
+            else:
+                time.sleep(_RETRY_DELAY_SEC * (attempt + 1))
     assert last_exc is not None
     raise last_exc
 
@@ -70,7 +75,7 @@ def run_parallel_map(
 
     ordered: list[R | None] = [None] * len(items)
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        future_map = {pool.submit(run_with_retry, lambda item=item: worker(item)): (index, item) for index, item in enumerate(items)}
+        future_map = {pool.submit(copy_context().run, run_with_retry, lambda item=item: worker(item)): (index, item) for index, item in enumerate(items)}
         for future in as_completed(future_map):
             index, item = future_map[future]
             result = future.result()

@@ -1,4 +1,12 @@
-"""K 线下载与自选池读取。"""
+"""K 线下载与自选池读取。
+
+数据源分工（A 股）::
+
+    实时行情 / 盘中快照 / Redis 全市场   → TickFlow
+    历史日 K / 历史分 K（落本地库）       → Tushare Pro
+
+读本地已下载 K 线一律走 ``bar_store`` / ``load_scope_bars``，与上述来源无关。
+"""
 
 from __future__ import annotations
 
@@ -7,18 +15,14 @@ from pathlib import Path
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
-from vnpy.trader.datafeed import get_datafeed
-from vnpy.trader.object import HistoryRequest
 
 from vnpy_ashare.config import is_ashare_exchange
 from vnpy_ashare.data.bar_store import invalidate_bar_overview_cache, iter_bar_overviews
 from vnpy_ashare.data.minute_periods import (
     DEFAULT_MINUTE_DOWNLOAD_MONTHS,
-    bar_interval,
     normalize_period,
 )
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.integrations.tickflow import fetch_history_bars
 from vnpy_ashare.storage.repositories.universe import load_universe_rows
 from vnpy_ashare.storage.repositories.watchlist import import_watchlist_csv, load_watchlist_rows
 
@@ -45,30 +49,21 @@ def download_bars(
     output=print,
     ashare_only: bool = True,
 ) -> int:
-    """下载 K 线并写入本地数据库，返回保存条数。"""
+    """下载 K 线并写入本地数据库，返回保存条数（历史 K 线走 Tushare Pro）。"""
     if ashare_only and not is_ashare_exchange(exchange):
         raise ValueError(f"非 A 股交易所: {exchange.value}")
 
-    req = HistoryRequest(
-        symbol=symbol,
-        exchange=exchange,
-        interval=interval,
-        start=start,
-        end=end,
-    )
+    if interval == Interval.DAILY:
+        from vnpy_ashare.integrations.tushare.bars import download_daily_bars_tushare
 
-    datafeed = get_datafeed()
-    if not datafeed.init(output):
-        raise RuntimeError("数据服务初始化失败，请检查 .env 中的 API Key / Token，并在设置页「从 .env 同步」")
+        return download_daily_bars_tushare(symbol, exchange, start=start, end=end)
 
-    bars = datafeed.query_bar_history(req, output=output)
-    if not bars:
-        raise RuntimeError(f"未获取到数据: {symbol}.{exchange.value}")
+    if interval == Interval.MINUTE:
+        from vnpy_ashare.integrations.tushare.bars import download_minute_bars_tushare
 
-    database = get_database()
-    database.save_bar_data(bars)
-    invalidate_bar_overview_cache()
-    return len(bars)
+        return download_minute_bars_tushare(symbol, exchange, start=start, end=end, period="1m")
+
+    raise RuntimeError(f"历史 K 线下载仅支持日 K 与 1 分 K（Tushare），当前 interval={interval.value}")
 
 
 def default_minute_download_start(end: datetime | None = None) -> datetime:
@@ -85,22 +80,20 @@ def download_period_bars(
     output=print,
     ashare_only: bool = True,
 ) -> int:
-    """下载指定周期分 K 并写入本地，返回保存条数。"""
+    """下载指定周期分 K 并写入本地，返回保存条数（历史分 K 走 Tushare stk_mins）。"""
     if ashare_only and not is_ashare_exchange(exchange):
         raise ValueError(f"非 A 股交易所: {exchange.value}")
 
     period = normalize_period(period)
-    item = StockItem(symbol=symbol, exchange=exchange)
-    bars = fetch_history_bars(item, period=period, start=start, end=end)
-    if not bars:
-        raise RuntimeError(f"未获取到 {period} 数据: {symbol}.{exchange.value}")
+    from vnpy_ashare.integrations.tushare.bars import download_minute_bars_tushare
 
-    database = get_database()
-    for bar in bars:
-        bar.interval = bar_interval(period)
-    database.save_bar_data(bars)
-    invalidate_bar_overview_cache()
-    return len(bars)
+    return download_minute_bars_tushare(
+        symbol,
+        exchange,
+        start=start,
+        end=end,
+        period=period,
+    )
 
 
 def cleanup_invalid_daily_bars() -> list[tuple[str, Exchange]]:

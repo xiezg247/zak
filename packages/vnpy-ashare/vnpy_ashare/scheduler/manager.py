@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -19,6 +19,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs import (
     JobResult,
+    batch_download_universe_daily_bars,
     batch_download_watchlist,
     batch_fill_downloaded_stale_job,
     collect_market_quotes,
@@ -31,6 +32,7 @@ from vnpy_ashare.jobs import (
     sync_watchlist_financials_job,
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
+from vnpy_ashare.jobs.progress import bind_job_log
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 
@@ -38,6 +40,7 @@ _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 _MAX_RUN_LOG = 200
+_MAX_RUN_DETAIL_LINES = 400
 
 
 def _recipe_label(recipe_id: str, fallback: str) -> str:
@@ -64,6 +67,9 @@ class JobRunRecord:
     success: bool
     message: str
     skipped: bool = False
+    started_at: str | None = None
+    running: bool = False
+    detail_lines: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -156,8 +162,8 @@ class TaskSchedulerManager:
             ),
             "batch_download": _JobMeta(
                 job_id="batch_download",
-                name="下载自选日 K",
-                description="批量下载自选池日线到本地数据库",
+                name="自选深度日 K",
+                description="从 Tushare 为自选池下载更长历史日 K（默认自 2020，供回测）；日常扫描由「全市场日 K」覆盖",
                 runner=self._run_batch_download,
                 config_attr="batch_download",
                 schedule_builder=lambda cfg: CronTrigger(
@@ -165,7 +171,20 @@ class TaskSchedulerManager:
                     hour=cfg.cron_hour,
                     minute=cfg.cron_minute,
                 ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}",
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}（可选）",
+            ),
+            "batch_download_universe": _JobMeta(
+                job_id="batch_download_universe",
+                name="全市场日 K",
+                description="从 Tushare 为尚无本地日 K 的全 A 股下载最近 250 个交易日；已有数据由「补全本地日 K」增量维护",
+                runner=batch_download_universe_daily_bars,
+                config_attr="batch_download_universe",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（滚动 250 交易日，仅补缺失）",
             ),
             "prefetch_moneyflow": _JobMeta(
                 job_id="prefetch_moneyflow",
@@ -230,7 +249,7 @@ class TaskSchedulerManager:
                     hour=cfg.cron_hour,
                     minute=cfg.cron_minute,
                 ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在下载自选日 K 之后）",
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在全市场日 K 与补全之后）",
             ),
             "screen_intraday": _JobMeta(
                 job_id="screen_intraday",
@@ -476,6 +495,51 @@ class TaskSchedulerManager:
         self.save_config()
         self.reload_jobs()
 
+    def _append_run_detail(self, record: JobRunRecord, message: str) -> None:
+        text = str(message).strip()
+        if not text:
+            return
+        with self._lock:
+            record.detail_lines.append(text)
+            if len(record.detail_lines) > _MAX_RUN_DETAIL_LINES:
+                record.detail_lines = record.detail_lines[-_MAX_RUN_DETAIL_LINES:]
+            status = self._status.get(record.job_id)
+            if status is not None:
+                status.last_message = text[:240]
+        self._notify(record.job_id)
+
+    def _begin_run_log(self, job_id: str, meta: _JobMeta) -> JobRunRecord:
+        started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        record = JobRunRecord(
+            started_at=started_at,
+            finished_at=started_at,
+            job_id=job_id,
+            job_name=meta.name,
+            success=True,
+            message="执行中…",
+            running=True,
+        )
+        self._run_log.append(record)
+        status = self._status.get(job_id)
+        if status is not None:
+            status.last_message = "执行中…"
+        return record
+
+    def _finalize_run_log(
+        self,
+        record: JobRunRecord,
+        *,
+        message: str,
+        success: bool,
+        skipped: bool,
+    ) -> None:
+        finished_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        record.running = False
+        record.finished_at = finished_at
+        record.message = message
+        record.success = success if not skipped else True
+        record.skipped = skipped
+
     def run_now(self, job_id: str) -> bool:
         if job_id not in self._jobs:
             return False
@@ -505,7 +569,13 @@ class TaskSchedulerManager:
         self._refresh_status_cache()
         self._notify(job_id)
 
+        record = self._begin_run_log(job_id, meta)
+        reset_log = bind_job_log(lambda msg: self._append_run_detail(record, msg))
+        self._append_run_detail(record, f"[开始] {meta.name}")
+
         skipped = False
+        success = False
+        message = ""
         try:
             if job_id == _COLLECT_QUOTES_JOB_ID:
                 result = self._run_collect_quotes(force=force)
@@ -519,25 +589,20 @@ class TaskSchedulerManager:
         except Exception as ex:
             message = str(ex)
             success = False
+        finally:
+            reset_log()
 
-        finished_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        mark = "跳过" if skipped else ("成功" if success else "失败")
+        self._append_run_detail(record, f"[结束] {mark} · {message}")
+        self._finalize_run_log(record, message=message, success=success, skipped=skipped)
+
+        finished_at = record.finished_at
         status = self._status.get(job_id)
         if status:
             status.last_run_at = finished_at
             status.last_message = message
             status.last_success = None if skipped else success
             status.running = False
-
-        self._run_log.append(
-            JobRunRecord(
-                finished_at=finished_at,
-                job_id=job_id,
-                job_name=meta.name,
-                success=success,
-                message=message,
-                skipped=skipped,
-            )
-        )
 
         with self._lock:
             self._running_jobs.discard(job_id)

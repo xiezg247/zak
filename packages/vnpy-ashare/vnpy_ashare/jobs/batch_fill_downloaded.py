@@ -7,7 +7,8 @@ from vnpy.trader.constant import Exchange
 from vnpy_ashare.data.bar_health import BarMeta, bar_meta_from_overview
 from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.data.bars import load_downloaded_stocks
-from vnpy_ashare.jobs.local_fill import batch_fill_stale_daily_bars, select_stale_daily_items
+from vnpy_ashare.jobs.local_fill import BatchFillProgress, batch_fill_stale_daily_bars, select_stale_daily_items
+from vnpy_ashare.jobs.progress import job_log, job_progress
 from vnpy_ashare.jobs.result import JobResult
 
 
@@ -29,8 +30,14 @@ def batch_fill_downloaded_stale_job() -> JobResult:
     bar_meta = build_daily_bar_meta()
     items = select_stale_daily_items(stocks, bar_meta)
     if not items:
+        job_log(f"本地 {len(stocks)} 只日 K 均已是最新")
         return JobResult(success=True, message=f"本地 {len(stocks)} 只日 K 均已是最新")
 
-    result = batch_fill_stale_daily_bars(items, bar_meta, delay=0.3)
+    job_log(f"待补全 {len(items)} 只过期日 K")
+
+    def on_progress(progress: BatchFillProgress) -> None:
+        job_progress(progress.current, progress.total, progress.label)
+
+    result = batch_fill_stale_daily_bars(items, bar_meta, delay=0.3, progress=on_progress)
     success = len(result.failed) == 0
     return JobResult(success=success, message=result.message)

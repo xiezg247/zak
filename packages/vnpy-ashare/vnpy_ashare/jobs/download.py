@@ -10,6 +10,7 @@ from datetime import datetime
 from vnpy.trader.constant import Interval
 
 from vnpy_ashare.data.bars import download_bars, load_watchlist
+from vnpy_ashare.jobs.progress import job_log, job_progress
 from vnpy_ashare.jobs.result import JobResult
 
 _logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ def batch_download_watchlist(
 
     start = start or datetime(2020, 1, 1)
     end = end or datetime.now()
+    job_log(f"自选深度日 K · {len(items)} 只 · {start.date()} ~ {end.date()}")
 
     success = 0
     failed: list[tuple[str, str]] = []
@@ -42,10 +44,14 @@ def batch_download_watchlist(
                 output=lambda _msg: None,
             )
             success += 1
+            job_log(f"✓ {item.vt_symbol}")
         except Exception:
             msg = traceback.format_exc().strip().split("\n")[-1]
             _logger.warning("下载 %s 失败:\n%s", item.vt_symbol, traceback.format_exc())
             failed.append((item.vt_symbol, msg))
+            job_log(f"✗ {item.vt_symbol} {msg}")
+
+        job_progress(index, len(items))
 
         if index < len(items) and delay > 0:
             time.sleep(delay)

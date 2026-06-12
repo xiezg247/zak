@@ -393,21 +393,38 @@ def format_scheduler_run_log_html(t: ThemeTokens, records: list[object]) -> str:
 
     lines: list[str] = []
     for record in records:
-        if record.skipped:
+        if record.running:
+            mark = "运行中"
+            mark_color = t.accent
+        elif record.skipped:
             mark = "跳过"
             mark_color = t.text_muted
         else:
             mark = "成功" if record.success else "失败"
             mark_color = t.semantic_success if record.success else t.semantic_error
         message = html.escape(record.message)
+        time_text = html.escape(record.finished_at or record.started_at or "")
         lines.append(
-            "<p style='margin:0 0 6px 0;line-height:1.5;'>"
-            f"<span style='color:{t.text_muted};'>{html.escape(record.finished_at)}</span> "
+            "<p style='margin:0 0 4px 0;line-height:1.5;'>"
+            f"<span style='color:{t.text_muted};'>{time_text}</span> "
             f"<span style='color:{t.text_primary};'>{html.escape(record.job_name)}</span> "
             f"<span style='color:{mark_color};'>{mark}</span> "
             f"<span style='color:{t.text_secondary};'>{message}</span>"
             "</p>"
         )
+        detail_lines = getattr(record, "detail_lines", None) or []
+        if detail_lines:
+            visible = detail_lines[-120:]
+            omitted = len(detail_lines) - len(visible)
+            detail_body = "<br/>".join(html.escape(line) for line in visible)
+            if omitted > 0:
+                detail_body = f"<span style='color:{t.text_muted};'>… 省略较早 {omitted} 行</span><br/>" + detail_body
+            lines.append(
+                "<div style='margin:0 0 10px 12px;padding:6px 8px;"
+                f"background:{t.depth_bg};border:1px solid {t.table_grid};border-radius:4px;"
+                "font-family:Menlo,Consolas,monospace;font-size:11px;line-height:1.45;"
+                f"color:{t.text_secondary};white-space:normal;'>{detail_body}</div>"
+            )
     return "".join(lines)
 
 

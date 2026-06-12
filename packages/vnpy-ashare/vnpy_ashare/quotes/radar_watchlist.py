@@ -197,9 +197,7 @@ def _row_from_quote(
 def _has_quote_data(row: dict[str, Any]) -> bool:
     merged = merge_row_quotes(row)
     return bool(
-        merged.get("change_pct") not in (None, "")
-        or float(merged.get("last_price") or merged.get("close") or 0) > 0
-        or float(merged.get("amount") or 0) > 0
+        merged.get("change_pct") not in (None, "") or float(merged.get("last_price") or merged.get("close") or 0) > 0 or float(merged.get("amount") or 0) > 0
     )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.jobs.progress import job_log
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 
@@ -14,6 +15,7 @@ def prefetch_moneyflow() -> JobResult:
     except TushareNotConfiguredError as ex:
         return JobResult(success=True, skipped=True, message=str(ex))
 
+    job_log("拉取全市场 moneyflow …")
     mf_rows, mf_date = fetch_moneyflow_with_fallback()
     if not mf_rows:
         return JobResult(

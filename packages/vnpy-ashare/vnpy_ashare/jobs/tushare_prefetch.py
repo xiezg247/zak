@@ -10,6 +10,7 @@ from vnpy_ashare.integrations.tushare.factors import (
     fetch_moneyflow_hsgt_window,
     fetch_stock_basic_snapshot,
 )
+from vnpy_ashare.jobs.progress import job_log
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback
 
@@ -27,25 +28,37 @@ def prefetch_tushare_factors() -> JobResult:
         return JobResult(success=True, skipped=True, message=str(ex))
 
     parts: list[str] = []
+    job_log("拉取 daily_basic …")
     basic_rows, basic_date = fetch_daily_basic_with_fallback()
     parts.append(f"daily_basic {len(basic_rows)} 条 @ {basic_date or '-'}")
+    job_log(parts[-1])
 
     anchor_date = basic_date
     if anchor_date:
+        job_log("拉取 daily_pct …")
         pct_map = fetch_daily_pct_map(anchor_date)
         parts.append(f"daily_pct {len(pct_map)} 条 @ {anchor_date}")
+        job_log(parts[-1])
 
+        job_log("拉取 limit_list_d …")
         limit_rows, limit_date = fetch_limit_list_d(trade_date=anchor_date)
         parts.append(f"limit_list_d {len(limit_rows)} 条 @ {limit_date or '-'}")
+        job_log(parts[-1])
 
+        job_log("拉取 index_daily …")
         index_rows, index_date = fetch_index_daily_snapshot(trade_date=anchor_date)
         parts.append(f"index_daily {len(index_rows)} 条 @ {index_date or '-'}")
+        job_log(parts[-1])
 
+        job_log("拉取 moneyflow_hsgt …")
         hsgt_rows, hsgt_date = fetch_moneyflow_hsgt_window(trade_date=anchor_date)
         parts.append(f"moneyflow_hsgt {len(hsgt_rows)} 条 @ {hsgt_date or '-'}")
+        job_log(parts[-1])
 
+    job_log("拉取 stock_basic …")
     basic_snapshot, basic_count = fetch_stock_basic_snapshot()
     parts.append(f"stock_basic {basic_count} 条")
+    job_log(parts[-1])
 
     if not basic_rows:
         return JobResult(

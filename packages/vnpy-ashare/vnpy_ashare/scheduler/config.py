@@ -69,6 +69,14 @@ class SchedulerConfig:
             download_start="2020-01-01",
         )
     )
+    batch_download_universe: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=25,
+            cron_day_of_week="mon-fri",
+        )
+    )
     prefetch_moneyflow: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=False,
@@ -155,6 +163,7 @@ class SchedulerConfig:
             "sync_stock_industry": dump_job(self.sync_stock_industry),
             "sync_trade_calendar": dump_job(self.sync_trade_calendar),
             "batch_download": dump_job(self.batch_download),
+            "batch_download_universe": dump_job(self.batch_download_universe),
             "prefetch_moneyflow": dump_job(self.prefetch_moneyflow),
             "prefetch_tushare": dump_job(self.prefetch_tushare),
             "sync_watchlist_financials": dump_job(self.sync_watchlist_financials),
@@ -197,6 +206,7 @@ class SchedulerConfig:
             sync_stock_industry=load_job("sync_stock_industry", defaults.sync_stock_industry),
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
             batch_download=load_job("batch_download", defaults.batch_download),
+            batch_download_universe=load_job("batch_download_universe", defaults.batch_download_universe),
             prefetch_moneyflow=load_job("prefetch_moneyflow", defaults.prefetch_moneyflow),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
             sync_watchlist_financials=load_job("sync_watchlist_financials", defaults.sync_watchlist_financials),
