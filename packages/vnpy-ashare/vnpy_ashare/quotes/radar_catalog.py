@@ -27,6 +27,7 @@ RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
     RadarCardSpec("screen_latest", "选股结果·最新", "screen"),
     RadarCardSpec("screen_task", "选股结果·任务", "screen", has_task_variants=True),
     RadarCardSpec("discovery_volume_surge", "发现·放量异动", "discovery"),
+    RadarCardSpec("discovery_moneyflow_intraday", "发现·资金异动", "discovery"),
 )
 
 SCREEN_TASK_VARIANTS: tuple[ScreenTaskVariant, ...] = (

@@ -115,11 +115,7 @@ class WatchlistSignalController:
         symbols = self._panel_symbols()
         if symbols:
             subset = {
-                vt: snap
-                for vt in symbols
-                if (snap := self._page.signal_cache.get(vt)) is not None
-                and snap.relative_index_pct is None
-                and snap.signal != "na"
+                vt: snap for vt in symbols if (snap := self._page.signal_cache.get(vt)) is not None and snap.relative_index_pct is None and snap.signal != "na"
             }
             if subset:
                 enriched = self._enrich_relative_index(subset)

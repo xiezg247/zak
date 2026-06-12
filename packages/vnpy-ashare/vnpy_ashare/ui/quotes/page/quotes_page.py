@@ -156,6 +156,8 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_board_base: list[StockItem] | None = None
         self._market_board_base_key: str | None = None
         self._market_filter_keyword: str = ""
+        self._market_industry_filter: str | None = None
+        self._industry_map_cache: dict[str, str] | None = None
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT

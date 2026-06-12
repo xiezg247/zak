@@ -13,6 +13,7 @@ from vnpy_ashare.ai.context import (
     set_ai_context,
     set_market_quotes_cache,
 )
+from vnpy_ashare.ai.context.market_overview import merge_market_overview_extra
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.base import BaseService
@@ -58,15 +59,16 @@ class QuoteService(BaseService):
         signal_extra: str = "",
     ) -> None:
         """写入看盘页 AI 上下文（含悬浮球快捷动作 enrichment）。"""
+        merged_extra = merge_market_overview_extra(signal_extra) if page == "市场" else signal_extra.strip()
         if item is None:
-            data = AiContextData(page=page)
+            data = AiContextData(page=page, extra=merged_extra)
         else:
             data = build_quote_context(
                 page=page,
                 item=item,
                 quote=quote,
                 bar_count=bar_count,
-                signal_extra=signal_extra,
+                signal_extra=merged_extra,
             )
         set_ai_context(enrich_context_with_actions(data))
 

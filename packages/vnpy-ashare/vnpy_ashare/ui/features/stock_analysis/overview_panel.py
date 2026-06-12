@@ -1,15 +1,28 @@
-"""个股分析：概览（本地技术面）。"""
+"""个股分析：概览（仪表盘 + 本地技术面）。"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.services.stock.overview_dashboard import (
+    DataReadinessItem,
+    OverviewAlert,
+    OverviewDashboard,
+    ReadinessStatus,
+)
 from vnpy_common.ui.panel_widgets import MetricTile, content_card, hint_label, section_title, tile_grid
 from vnpy_common.ui.scroll_area import frameless_scroll_area
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
+
+_STATUS_LABELS: dict[ReadinessStatus, str] = {
+    "ready": "就绪",
+    "partial": "偏少",
+    "missing": "缺失",
+    "unconfigured": "未配置",
+}
 
 
 def _fmt(value: float | None, *, digits: int = 2, suffix: str = "") -> str:
@@ -19,7 +32,9 @@ def _fmt(value: float | None, *, digits: int = 2, suffix: str = "") -> str:
 
 
 class OverviewAnalysisPanel(QtWidgets.QWidget):
-    """概览：本地指标与技术面详情；问小达/通达信走 AI 助手按需拉取。"""
+    """概览：数据就绪、关键提醒、本地指标与技术面详情。"""
+
+    jump_requested = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -32,6 +47,30 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
         }
 
         self._ai_hint = hint_label("问小达 / 通达信多维诊断请使用底部「问 AI 解读」，AI 将按需调用 MCP 工具。")
+        self._screening_label = hint_label("")
+        self._screening_label.setObjectName("OverviewScreeningBadge")
+        self._screening_label.hide()
+
+        self._readiness_host = QtWidgets.QWidget()
+        self._readiness_layout = QtWidgets.QHBoxLayout(self._readiness_host)
+        self._readiness_layout.setContentsMargins(0, 0, 0, 0)
+        self._readiness_layout.setSpacing(6)
+
+        self._alerts_host = QtWidgets.QWidget()
+        self._alerts_layout = QtWidgets.QVBoxLayout(self._alerts_host)
+        self._alerts_layout.setContentsMargins(0, 0, 0, 0)
+        self._alerts_layout.setSpacing(4)
+        self._alerts_empty = hint_label("暂无关键提醒")
+        self._alerts_layout.addWidget(self._alerts_empty)
+
+        self._dashboard_card = content_card(
+            section_title("数据就绪"),
+            self._readiness_host,
+            section_title("关键提醒"),
+            self._alerts_host,
+            margins=(8, 8, 8, 8),
+            spacing=8,
+        )
 
         self._technical_body = QtWidgets.QLabel("")
         self._technical_body.setWordWrap(True)
@@ -45,6 +84,8 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
         layout.addWidget(self._ai_hint)
+        layout.addWidget(self._screening_label)
+        layout.addWidget(self._dashboard_card)
         layout.addWidget(
             content_card(
                 section_title("本地指标"),
@@ -63,6 +104,13 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
     def show_loading(self) -> None:
         for tile in self._local_tiles.values():
             tile.set_value("…")
+        self._screening_label.hide()
+        self._clear_readiness()
+        loading = hint_label("正在检查数据就绪与关键提醒…")
+        self._readiness_layout.addWidget(loading)
+        self._clear_alerts()
+        self._alerts_empty.setText("…")
+        self._alerts_empty.show()
         self._technical_body.setText("正在分析本地技术面…")
 
     def show_payload(
@@ -71,10 +119,13 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
         technical: dict[str, Any] | None = None,
         technical_text: str = "",
         relative_returns: dict[str, float | None] | None = None,
+        dashboard: OverviewDashboard | None = None,
     ) -> None:
         technical = technical or {}
         relative_returns = relative_returns or {}
         tokens = theme_manager().tokens()
+
+        self._render_dashboard(dashboard)
 
         if technical.get("error"):
             for tile in self._local_tiles.values():
@@ -109,3 +160,80 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
             )
 
         self._technical_body.setText(technical_text or "暂无本地技术面")
+
+    def _render_dashboard(self, dashboard: OverviewDashboard | None) -> None:
+        if dashboard is None:
+            self._screening_label.hide()
+            self._clear_readiness()
+            self._clear_alerts()
+            self._alerts_empty.setText("暂无仪表盘数据")
+            self._alerts_empty.show()
+            return
+
+        hit = dashboard.screening
+        if hit is not None:
+            updated = f" · {hit.updated_at}" if hit.updated_at else ""
+            self._screening_label.setText(f"选股命中：{hit.condition}（第 {hit.rank}/{hit.total} 名{updated}）")
+            self._screening_label.show()
+        else:
+            self._screening_label.hide()
+
+        self._clear_readiness()
+        for item in dashboard.readiness:
+            self._readiness_layout.addWidget(self._build_readiness_chip(item))
+        self._readiness_layout.addStretch(1)
+
+        self._clear_alerts()
+        if dashboard.alerts:
+            self._alerts_empty.hide()
+            for alert in dashboard.alerts:
+                self._alerts_layout.addWidget(self._build_alert_link(alert))
+        else:
+            self._alerts_empty.setText("暂无关键提醒")
+            self._alerts_empty.show()
+
+    def _clear_readiness(self) -> None:
+        while self._readiness_layout.count():
+            item = self._readiness_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+    def _clear_alerts(self) -> None:
+        while self._alerts_layout.count():
+            item = self._alerts_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._alerts_empty = hint_label("暂无关键提醒")
+        self._alerts_layout.addWidget(self._alerts_empty)
+
+    def _build_readiness_chip(self, item: DataReadinessItem) -> QtWidgets.QPushButton:
+        status_label = _STATUS_LABELS.get(item.status, item.status)
+        button = QtWidgets.QPushButton(f"{item.label} · {status_label}")
+        button.setObjectName("OverviewReadinessChip")
+        button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        button.setProperty("readiness_status", item.status)
+        button.setToolTip(item.detail or status_label)
+        button.style().unpolish(button)
+        button.style().polish(button)
+        if item.jump_target:
+            target = item.jump_target
+            button.clicked.connect(lambda _checked=False, t=target: self.jump_requested.emit(t))
+        else:
+            button.setEnabled(False)
+        return button
+
+    def _build_alert_link(self, alert: OverviewAlert) -> QtWidgets.QPushButton:
+        button = QtWidgets.QPushButton(alert.text)
+        button.setObjectName("OverviewAlertLink")
+        button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        button.setProperty("alert_severity", alert.severity)
+        button.style().unpolish(button)
+        button.style().polish(button)
+        if alert.jump_target:
+            target = alert.jump_target
+            button.clicked.connect(lambda _checked=False, t=target: self.jump_requested.emit(t))
+        else:
+            button.setEnabled(False)
+        return button

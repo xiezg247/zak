@@ -132,4 +132,49 @@ QDialog#StockAnalysisDialog QTabBar::tab:selected {{
 QDialog#StockAnalysisDialog QTabBar::tab:hover {{
     color: {t.tab_hover_text};
 }}
+QLabel#OverviewScreeningBadge {{
+    color: {t.accent};
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: {t.accent_soft};
+}}
+QPushButton#OverviewReadinessChip {{
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid {t.panel_border};
+    background-color: {t.panel_bg};
+    color: {t.text_secondary};
+    font-size: 12px;
+}}
+QPushButton#OverviewReadinessChip[readiness_status="ready"] {{
+    border-color: {t.semantic_success};
+    color: {t.semantic_success};
+}}
+QPushButton#OverviewReadinessChip[readiness_status="partial"] {{
+    border-color: {t.semantic_warning};
+    color: {t.semantic_warning};
+}}
+QPushButton#OverviewReadinessChip[readiness_status="missing"] {{
+    border-color: {t.semantic_error};
+    color: {t.semantic_error};
+}}
+QPushButton#OverviewReadinessChip[readiness_status="unconfigured"] {{
+    border-color: {t.text_muted};
+    color: {t.text_muted};
+}}
+QPushButton#OverviewAlertLink {{
+    text-align: left;
+    padding: 2px 0;
+    border: none;
+    background: transparent;
+    color: {t.text_secondary};
+    font-size: 12px;
+}}
+QPushButton#OverviewAlertLink[alert_severity="warn"] {{
+    color: {t.semantic_warning};
+}}
+QPushButton#OverviewAlertLink:hover {{
+    color: {t.accent};
+}}
 """

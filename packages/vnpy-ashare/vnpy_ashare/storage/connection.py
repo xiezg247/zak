@@ -188,4 +188,3 @@ def set_meta(key: str, value: str) -> None:
     init_app_db()
     with connect() as conn:
         _set_meta(conn, key, value)
-

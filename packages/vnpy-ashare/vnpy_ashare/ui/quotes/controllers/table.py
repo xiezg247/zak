@@ -271,6 +271,16 @@ class TableController:
         return base
 
     @staticmethod
+    def _market_industry_map(page: QuotesPage) -> dict[str, str]:
+        cached = page._industry_map_cache
+        if cached is not None:
+            return cached
+        from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
+
+        page._industry_map_cache = fetch_stock_industry_map()
+        return page._industry_map_cache
+
+    @staticmethod
     def _same_stock_list(left: list[StockItem], right: list[StockItem]) -> bool:
         if len(left) != len(right):
             return False
@@ -292,6 +302,11 @@ class TableController:
             matched = [item for item in page._market_matched if keyword in item.search_key]
         else:
             matched = [item for item in base if keyword in item.search_key]
+
+        industry_filter = page._market_industry_filter
+        if industry_filter:
+            industry_map = self._market_industry_map(page)
+            matched = [item for item in matched if industry_map.get(item.ts_code, "") == industry_filter]
 
         page._market_filter_keyword = keyword
         if self._same_stock_list(matched, page._market_matched):
@@ -379,6 +394,7 @@ class TableController:
         page = self._p
         keyword = page.search_edit.text().strip()
         board = page._market_board
+        industry = page._market_industry_filter
         catalog_count = len(page._market_catalog)
         batch_time = format_batch_updated_at(page._market_updated_at)
         rank_title = page.active_rank_title() if page.config.show_rank_sidebar else None
@@ -387,13 +403,13 @@ class TableController:
             page_size = max(page.config.market_page_size, 1)
             page_count = max((matched_count + page_size - 1) // page_size, 1)
             current = min(page._market_page + 1, page_count)
-            if keyword or board:
+            if keyword or board or industry:
                 status = f"筛选 {matched_count} 只，排序后第 {current}/{page_count} 页（全市场 {catalog_count} 只）"
             elif rank_title:
                 status = f"{rank_title} {matched_count} 只，第 {current}/{page_count} 页"
             else:
                 status = f"全市场 {matched_count} 只，排序后第 {current}/{page_count} 页"
-        elif keyword or board:
+        elif keyword or board or industry:
             status = f"筛选 {matched_count} 只（全市场 {catalog_count} 只）"
         elif rank_title:
             status = f"{rank_title} 共 {catalog_count} 只"

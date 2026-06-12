@@ -18,6 +18,14 @@ from vnpy_ashare.screener.preset.presets import (
 MIN_TOTAL_MV_50YI = 500_000.0
 
 
+def _quote_liquidity_key(row: dict[str, Any]) -> float:
+    """成交量优先；缺失时用成交额排序（部分行情源 volume 恒为 0）。"""
+    volume = float(row.get("volume") or 0)
+    if volume > 0:
+        return volume
+    return float(row.get("amount") or 0)
+
+
 def apply_quote_preset(
     preset: str,
     quotes: list[dict[str, Any]],
@@ -47,7 +55,7 @@ def apply_quote_preset(
     elif preset == SCREENER_TURNOVER:
         sorted_quotes = sorted(quotes, key=lambda q: q.get("turnover_rate", 0), reverse=True)
     elif preset == SCREENER_VOLUME_SURGE:
-        sorted_quotes = sorted(quotes, key=lambda q: q.get("volume", 0), reverse=True)
+        sorted_quotes = sorted(quotes, key=_quote_liquidity_key, reverse=True)
     else:
         return []
     return [_quote_row(q) for q in sorted_quotes[:top_n]]

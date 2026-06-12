@@ -415,12 +415,159 @@ def format_scheduler_empty_html(t: ThemeTokens, message: str) -> str:
     return f'<p style="color:{t.text_muted};margin:0;">{html.escape(message)}</p>'
 
 
+def build_market_overview_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QWidget#MarketOverviewPanel {{
+    background-color: {t.index_ticker_bg};
+}}
+QLabel#MarketBreadthBar {{
+    background-color: {t.index_ticker_bg};
+    color: {t.index_ticker_text};
+    padding: 6px 12px;
+    font-size: 12px;
+}}
+QScrollArea#IndexCardScroll {{
+    background-color: {t.index_ticker_bg};
+    border: none;
+}}
+QWidget#IndexCardHost {{
+    background-color: transparent;
+}}
+QFrame#IndexCard {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+    min-width: 108px;
+}}
+QFrame#IndexCard:hover {{
+    border-color: {t.accent};
+}}
+QLabel#IndexCardName {{
+    color: {t.text_secondary};
+    font-size: 11px;
+}}
+QLabel#IndexCardPrice {{
+    color: {t.text_primary};
+    font-size: 15px;
+    font-weight: 600;
+}}
+QLabel#IndexCardPct {{
+    font-size: 12px;
+    font-weight: 600;
+}}
+QLabel#MarketEnvBadge {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+    padding: 2px 8px;
+    color: {t.text_secondary};
+    font-size: 11px;
+}}
+QPushButton#OverviewTabButton {{
+    background-color: transparent;
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+    padding: 2px 10px;
+    color: {t.text_secondary};
+    font-size: 11px;
+}}
+QPushButton#OverviewTabButton:checked {{
+    background-color: {t.panel_bg};
+    color: {t.text_primary};
+    border-color: {t.accent};
+}}
+QScrollArea#SectorCardScroll {{
+    background-color: {t.index_ticker_bg};
+    border: none;
+}}
+QWidget#SectorCardHost {{
+    background-color: transparent;
+}}
+QFrame#SectorCard {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+    min-width: 96px;
+}}
+QFrame#SectorCard:hover {{
+    border-color: {t.accent};
+}}
+QLabel#SectorCardName {{
+    color: {t.text_secondary};
+    font-size: 11px;
+}}
+QLabel#SectorCardPct {{
+    font-size: 14px;
+    font-weight: 600;
+}}
+QLabel#SectorCardCount {{
+    color: {t.text_muted};
+    font-size: 10px;
+}}
+QLabel#SectorCardEmpty {{
+    color: {t.text_muted};
+    font-size: 12px;
+    padding: 8px 12px;
+}}
+"""
+
+
 def build_radar_stylesheet(t: ThemeTokens) -> str:
     return f"""
 QFrame#RadarCard {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
     border-radius: 8px;
+}}
+QScrollArea#RadarCardScroll {{
+    background: transparent;
+    border: none;
+}}
+QWidget#RadarCardRowsHost {{
+    background: transparent;
+}}
+QFrame#RadarStockRow {{
+    background-color: {t.index_ticker_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QFrame#RadarStockRow:hover {{
+    border-color: {t.accent};
+}}
+QLabel#RadarResonanceBadge {{
+    color: {t.accent};
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 12px;
+}}
+QLabel#RadarRowName {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#RadarRowSymbol {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QLabel#RadarRowPrice {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#RadarMetricChip {{
+    color: {t.text_secondary};
+    font-size: 11px;
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+    padding: 2px 6px;
+}}
+QLabel#RadarSubChip {{
+    color: {t.text_muted};
+    font-size: 10px;
+}}
+QLabel#RadarChangeChip {{
+    font-size: 11px;
 }}
 QLabel#RadarCardTitle {{
     color: {t.text_primary};
@@ -435,6 +582,20 @@ QLabel#RadarCardEmpty {{
     color: {t.text_muted};
     font-size: 12px;
     padding: 12px 8px;
+}}
+QLabel#RadarCardMeta {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QPushButton#RadarCardViewRun {{
+    color: {t.accent};
+    font-size: 11px;
+    padding: 0 4px;
+}}
+QPushButton#RadarCardAddAll {{
+    color: {t.accent};
+    font-size: 11px;
+    padding: 0 4px;
 }}
 QListWidget#RadarCardList {{
     background: transparent;
@@ -451,6 +612,54 @@ QListWidget#RadarCardList::item:selected {{
 }}
 QComboBox#RadarCardVariant {{
     min-width: 88px;
+}}
+QToolButton#RadarCardRefresh {{
+    color: {t.text_muted};
+    border: none;
+    padding: 0 4px;
+    font-size: 14px;
+}}
+QToolButton#RadarCardRefresh:hover {{
+    color: {t.accent};
+}}
+QToolButton#RadarCardRefresh:disabled {{
+    color: {t.text_muted};
+}}
+QFrame#RadarResonancePanel {{
+    background-color: {t.panel_bg};
+    border-left: 1px solid {t.panel_border};
+}}
+QLabel#RadarResonanceTitle {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#RadarResonanceCount {{
+    color: {t.accent};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#RadarResonanceEmpty {{
+    color: {t.text_muted};
+    font-size: 12px;
+    padding: 16px 8px;
+}}
+QListWidget#RadarResonanceList {{
+    background: transparent;
+    border: none;
+    color: {t.text_primary};
+    font-size: 12px;
+}}
+QListWidget#RadarResonanceList::item {{
+    padding: 8px 4px;
+    border-bottom: 1px solid {t.panel_border};
+}}
+QListWidget#RadarResonanceList::item:selected {{
+    background-color: {t.menu_selected_bg};
+}}
+QPushButton#RadarResonanceAddAll,
+QPushButton#RadarResonanceAi {{
+    font-size: 11px;
 }}
 """
 

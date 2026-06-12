@@ -9,11 +9,16 @@ from vnpy_ashare.ai.context.store import get_market_quotes_cache
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
     DEFAULT_SCREEN_TASK_VARIANT,
+    RADAR_CARD_BY_ID,
     RADAR_CARD_SPECS,
     RadarCardSpec,
 )
+from vnpy_ashare.screener.dimensions.moneyflow import run_moneyflow
+from vnpy_ashare.screener.dimensions.moneyflow_intraday import run_moneyflow_intraday
+from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
+from vnpy_ashare.ui.quotes.table.columns import format_amount, format_volume
 
 
 @dataclass(frozen=True)
@@ -37,6 +42,9 @@ class RadarCardData:
     rows: tuple[RadarRow, ...]
     empty_message: str
     updated_at: str
+    run_id: str = ""
+    detail_page_key: str = ""
+    total_count: int = 0
 
 
 def _quote_map() -> dict[str, dict[str, Any]]:
@@ -67,6 +75,59 @@ def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
 
 
+def _merge_row_quotes(row: dict[str, Any]) -> dict[str, Any]:
+    """合并行情缓存，补全 volume / amount / 现价等字段。"""
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
+    merged = dict(row)
+    quote = _quote_map().get(vt_symbol, {})
+    for key in (
+        "volume",
+        "amount",
+        "change_pct",
+        "last_price",
+        "close",
+        "turnover_rate",
+        "volume_ratio",
+        "net_mf_amount",
+        "name",
+    ):
+        cached = quote.get(key)
+        if cached in (None, "", 0, 0.0):
+            continue
+        if not merged.get(key):
+            merged[key] = cached
+    return merged
+
+
+def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    merged = _merge_row_quotes(row)
+    volume = float(merged.get("volume") or 0)
+    amount = float(merged.get("amount") or 0)
+    volume_ratio = float(merged.get("volume_ratio") or 0)
+    change = _float_or_none(merged.get("change_pct"))
+    turnover = _float_or_none(merged.get("turnover_rate"))
+    if volume > 0:
+        return "成交量", format_volume(volume), "涨幅", _format_pct(change)
+    if amount > 0:
+        return "成交额", format_amount(amount), "涨幅", _format_pct(change)
+    if volume_ratio > 0:
+        return "量比", f"{volume_ratio:.2f}", "涨幅", _format_pct(change)
+    return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
+
+
+def _moneyflow_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    merged = _merge_row_quotes(row)
+    net_mf = _float_or_none(merged.get("net_mf_amount"))
+    change = _float_or_none(merged.get("change_pct"))
+    if net_mf is not None and net_mf != 0:
+        return "主力净流入", f"{net_mf:,.0f} 万", "涨幅", _format_pct(change)
+    amount = float(merged.get("amount") or 0)
+    if amount > 0:
+        return "成交额", format_amount(amount), "涨幅", _format_pct(change)
+    turnover = _float_or_none(merged.get("turnover_rate"))
+    return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
+
+
 def _row_from_dict(row: dict[str, Any]) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
@@ -74,11 +135,10 @@ def _row_from_dict(row: dict[str, Any]) -> RadarRow | None:
     item = parse_stock_symbol(vt_symbol)
     name = str(row.get("name") or (item.name if item else "") or vt_symbol)
     symbol = str(row.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
-    quotes = _quote_map()
-    quote = quotes.get(vt_symbol, row)
-    price = _float_or_none(quote.get("last_price") or quote.get("close"))
-    change_pct = _float_or_none(quote.get("change_pct") or row.get("change_pct") or row.get("pct_chg"))
-    metric_label, metric_value, sub_label, sub_value = _screener_metric(row)
+    merged = _merge_row_quotes(row)
+    price = _float_or_none(merged.get("last_price") or merged.get("close"))
+    change_pct = _float_or_none(merged.get("change_pct") or row.get("change_pct") or row.get("pct_chg"))
+    metric_label, metric_value, sub_label, sub_value = _screener_metric(merged)
     return RadarRow(
         vt_symbol=vt_symbol,
         name=name,
@@ -101,6 +161,22 @@ def _rows_from_screener(rows: list[dict[str, Any]], *, top_n: int) -> tuple[Rada
     return tuple(result)
 
 
+def _detail_page_key_for_run(record) -> str:
+    if is_strategy_run(record.config):
+        return "screener"
+    return "auto_screener"
+
+
+def _run_subtitle(record) -> str:
+    summary = str(record.config.get("reason_summary") or record.condition or "").strip()
+    parts: list[str] = []
+    if record.row_count:
+        parts.append(f"共 {record.row_count} 只")
+    if summary:
+        parts.append(summary)
+    return " · ".join(parts)
+
+
 def _card_from_run(
     spec: RadarCardSpec,
     record,
@@ -116,14 +192,16 @@ def _card_from_run(
             empty_message=empty_message,
             updated_at="",
         )
-    subtitle = str(record.config.get("reason_summary") or record.condition or record.created_at)
     return RadarCardData(
         card_id=spec.id,
         title=spec.title,
-        subtitle=subtitle,
+        subtitle=_run_subtitle(record),
         rows=_rows_from_screener(record.rows, top_n=spec.top_n),
         empty_message="",
         updated_at=record.created_at,
+        run_id=record.id,
+        detail_page_key=_detail_page_key_for_run(record),
+        total_count=record.row_count,
     )
 
 
@@ -161,46 +239,207 @@ def load_screen_task(spec: RadarCardSpec, *, variant: str = DEFAULT_SCREEN_TASK_
     return _card_from_run(spec, record, empty_message=empty)
 
 
-def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
-    hits, total = run_volume_surge(spec.top_n, weight=1.0)
+def _discovery_hits_card(
+    spec: RadarCardSpec,
+    hits,
+    total: int,
+    *,
+    metric_builder,
+    empty_no_data: str,
+) -> RadarCardData:
     if not hits:
         return RadarCardData(
             card_id=spec.id,
             title=spec.title,
             subtitle=f"扫描 {total} 只" if total else "",
             rows=(),
-            empty_message="暂无行情数据，请先采集行情或打开「市场」页。",
+            empty_message=empty_no_data,
             updated_at="",
         )
     rows: list[RadarRow] = []
     for hit in hits:
         row = hit.row
-        volume = _float_or_none(row.get("volume"))
-        change = _float_or_none(row.get("change_pct"))
         parsed = _row_from_dict(row)
         if parsed is None:
             continue
+        metric_label, metric_value, sub_label, sub_value = metric_builder(row, hit)
         rows.append(
             RadarRow(
                 vt_symbol=parsed.vt_symbol,
                 name=parsed.name,
                 symbol=parsed.symbol,
                 price=parsed.price,
-                change_pct=change if change is not None else parsed.change_pct,
-                metric_label="成交量",
-                metric_value=f"{volume:,.0f}" if volume is not None else "—",
-                sub_label="涨幅",
-                sub_value=_format_pct(change),
+                change_pct=parsed.change_pct,
+                metric_label=metric_label,
+                metric_value=metric_value,
+                sub_label=sub_label,
+                sub_value=sub_value,
             )
+        )
+    if not rows:
+        return RadarCardData(
+            card_id=spec.id,
+            title=spec.title,
+            subtitle=f"扫描 {total} 只" if total else "",
+            rows=(),
+            empty_message=empty_no_data,
+            updated_at="",
         )
     return RadarCardData(
         card_id=spec.id,
         title=spec.title,
-        subtitle=f"全市场 Top {len(rows)}",
+        subtitle=f"全市场 Top {len(rows)}" + (f" / {total}" if total else ""),
         rows=tuple(rows),
         empty_message="",
         updated_at="",
+        total_count=len(rows),
     )
+
+
+def _volume_surge_needs_ratio_fallback(hits) -> bool:
+    if not hits:
+        return False
+    return all(
+        float(_merge_row_quotes(hit.row).get("volume") or 0) <= 0
+        and float(_merge_row_quotes(hit.row).get("amount") or 0) <= 0
+        for hit in hits
+    )
+
+
+def _volume_liquidity_proxy(pool_size: int, total: int):
+    """成交量/量比均不可用时的成交额/换手代理排行。"""
+    from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+    from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
+
+    try:
+        snapshot = load_screening_quote_snapshot()
+    except MarketQuotesLoadError:
+        return [], total
+    ranked = sorted(snapshot.rows, key=_quote_liquidity_key, reverse=True)
+    hits: list[DimensionHit] = []
+    for index, row in enumerate(ranked[:pool_size], start=1):
+        vt_symbol = str(row.get("vt_symbol") or "")
+        if not vt_symbol:
+            continue
+        hits.append(
+            DimensionHit(
+                vt_symbol=vt_symbol,
+                dimension_id="volume_surge",
+                label="放量",
+                weight=1.0,
+                score=rank_score(index, min(len(ranked), pool_size)),
+                reason=f"放量：流动性代理，排名第 {index}",
+                row=dict(row),
+            )
+        )
+    return hits, snapshot.total
+
+
+def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
+    hits, total = run_volume_surge(spec.top_n, weight=1.0)
+
+    if _volume_surge_needs_ratio_fallback(hits):
+        ratio_hits, ratio_total = run_volume_ratio(spec.top_n, weight=1.0)
+        if ratio_hits:
+            hits, total = ratio_hits, ratio_total
+        # 量比无数据时保留放量原结果，避免把有效行情行清空
+
+    if not hits and total > 0:
+        hits, total = _volume_liquidity_proxy(spec.top_n, total)
+
+    def _volume_metric(row: dict[str, Any], hit) -> tuple[str, str, str, str]:
+        if hit.dimension_id == "volume_ratio":
+            merged = _merge_row_quotes(row)
+            ratio = float(merged.get("volume_ratio") or row.get("volume_ratio") or 0)
+            change = _float_or_none(merged.get("change_pct"))
+            return "量比", f"{ratio:.2f}", "涨幅", _format_pct(change)
+        return _liquidity_metric(row)
+
+    return _discovery_hits_card(
+        spec,
+        hits,
+        total,
+        metric_builder=_volume_metric,
+        empty_no_data="暂无行情数据，请先采集行情或打开「市场」页。",
+    )
+
+
+def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
+    hits, total = run_moneyflow_intraday(spec.top_n, weight=1.0)
+    if not hits and total > 0:
+        hits, total = run_moneyflow(spec.top_n, weight=1.0)
+    if not hits and total > 0:
+        hits, total = _moneyflow_turnover_proxy(spec.top_n, total)
+
+    return _discovery_hits_card(
+        spec,
+        hits,
+        total,
+        metric_builder=lambda row, _hit: _moneyflow_metric(row),
+        empty_no_data="暂无行情数据，请先采集行情或打开「市场」页。",
+    )
+
+
+def _moneyflow_turnover_proxy(pool_size: int, total: int):
+    """盘中 MCP / Tushare 均不可用时的成交额+涨幅代理。"""
+    from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+
+    try:
+        snapshot = load_screening_quote_snapshot()
+    except MarketQuotesLoadError:
+        return [], total
+    scored: list[tuple[dict[str, Any], float]] = []
+    for row in snapshot.rows:
+        amount = float(row.get("amount") or 0)
+        change = float(row.get("change_pct") or 0)
+        if amount <= 0 or change <= 0:
+            continue
+        scored.append((row, change * amount))
+    scored.sort(key=lambda item: item[1], reverse=True)
+    hits: list[DimensionHit] = []
+    for index, (row, _score) in enumerate(scored[:pool_size], start=1):
+        vt_symbol = str(row.get("vt_symbol") or "")
+        if not vt_symbol:
+            continue
+        change = float(row.get("change_pct") or 0)
+        hits.append(
+            DimensionHit(
+                vt_symbol=vt_symbol,
+                dimension_id="moneyflow_intraday",
+                label="盘中资金",
+                weight=1.0,
+                score=rank_score(index, min(len(scored), pool_size)),
+                reason=f"盘中资金：涨幅 {change:+.2f}% + 成交额代理，排名第 {index}",
+                row=dict(row),
+            )
+        )
+    return hits, snapshot.total
+
+
+def load_radar_card(
+    card_id: str,
+    *,
+    screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
+) -> RadarCardData:
+    """加载单张雷达卡片。"""
+    spec = RADAR_CARD_BY_ID.get(card_id)
+    if spec is None:
+        msg = f"未知雷达卡片：{card_id}"
+        raise ValueError(msg)
+    if spec.id == "screen_latest":
+        return load_screen_latest(spec)
+    if spec.id == "screen_task":
+        return load_screen_task(spec, variant=screen_task_variant)
+    if spec.id == "discovery_volume_surge":
+        return load_discovery_volume_surge(spec)
+    if spec.id == "discovery_moneyflow_intraday":
+        return load_discovery_moneyflow_intraday(spec)
+    msg = f"未实现的雷达卡片加载器：{card_id}"
+    raise ValueError(msg)
 
 
 def load_radar_board(
@@ -208,12 +447,133 @@ def load_radar_board(
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
 ) -> dict[str, RadarCardData]:
     """加载全部雷达卡片。"""
-    result: dict[str, RadarCardData] = {}
-    for spec in RADAR_CARD_SPECS:
-        if spec.id == "screen_latest":
-            result[spec.id] = load_screen_latest(spec)
-        elif spec.id == "screen_task":
-            result[spec.id] = load_screen_task(spec, variant=screen_task_variant)
-        elif spec.id == "discovery_volume_surge":
-            result[spec.id] = load_discovery_volume_surge(spec)
-    return result
+    return {spec.id: load_radar_card(spec.id, screen_task_variant=screen_task_variant) for spec in RADAR_CARD_SPECS}
+
+
+@dataclass(frozen=True)
+class RadarResonanceEntry:
+    vt_symbol: str
+    name: str
+    symbol: str
+    card_count: int
+    card_titles: tuple[str, ...]
+    price: float | None
+    change_pct: float | None
+
+
+def build_radar_resonance_list(
+    payload: dict[str, RadarCardData],
+    *,
+    min_cards: int = 2,
+) -> tuple[RadarResonanceEntry, ...]:
+    """汇总跨卡共振标的，按出现卡数降序。"""
+    grouped: dict[str, dict[str, object]] = {}
+    for data in payload.values():
+        seen_in_card: set[str] = set()
+        for row in data.rows:
+            if row.vt_symbol in seen_in_card:
+                continue
+            seen_in_card.add(row.vt_symbol)
+            bucket = grouped.setdefault(
+                row.vt_symbol,
+                {"row": row, "titles": []},
+            )
+            titles = bucket["titles"]
+            assert isinstance(titles, list)
+            titles.append(data.title)
+            bucket["row"] = row
+    entries: list[RadarResonanceEntry] = []
+    for vt_symbol, bucket in grouped.items():
+        titles = bucket["titles"]
+        assert isinstance(titles, list)
+        if len(titles) < min_cards:
+            continue
+        row = bucket["row"]
+        assert isinstance(row, RadarRow)
+        entries.append(
+            RadarResonanceEntry(
+                vt_symbol=vt_symbol,
+                name=row.name,
+                symbol=row.symbol,
+                card_count=len(titles),
+                card_titles=tuple(titles),
+                price=row.price,
+                change_pct=row.change_pct,
+            )
+        )
+    entries.sort(key=lambda item: (-item.card_count, item.vt_symbol))
+    return tuple(entries)
+
+
+def build_radar_resonance_ai_prompt(payload: dict[str, RadarCardData]) -> str:
+    """生成仅针对共振标的的 AI 解读预填文案。"""
+    entries = build_radar_resonance_list(payload)
+    if not entries:
+        return ""
+    lines = [
+        "请重点解读以下雷达共振标的（同时出现在多张卡片）：",
+        "1. 共振原因与共性特征",
+        "2. 优先关注顺序与风险提示",
+        "3. 不要编造未出现在数据中的价格或指标",
+        "",
+    ]
+    for entry in entries:
+        price = f"{entry.price:.2f}" if entry.price is not None else "—"
+        change = f"{entry.change_pct:+.2f}%" if entry.change_pct is not None else "—"
+        cards = "、".join(entry.card_titles)
+        lines.append(f"- {entry.name}({entry.symbol}) {change} 现价{price} · {entry.card_count}卡：{cards}")
+    return "\n".join(lines)
+
+
+def compute_radar_resonance(payload: dict[str, RadarCardData], *, min_cards: int = 2) -> dict[str, int]:
+    """统计在多张卡片中出现的标的（共振）。"""
+    counts: dict[str, int] = {}
+    for data in payload.values():
+        seen_in_card: set[str] = set()
+        for row in data.rows:
+            if row.vt_symbol in seen_in_card:
+                continue
+            seen_in_card.add(row.vt_symbol)
+            counts[row.vt_symbol] = counts.get(row.vt_symbol, 0) + 1
+    return {vt_symbol: count for vt_symbol, count in counts.items() if count >= min_cards}
+
+
+def _row_ai_summary(row: RadarRow) -> str:
+    price = f"{row.price:.2f}" if row.price is not None else "—"
+    change = f"{row.change_pct:+.2f}%" if row.change_pct is not None else "—"
+    return f"{row.name}({row.symbol}) 现价{price} {change} · {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}"
+
+
+def build_radar_ai_prompt(payload: dict[str, RadarCardData]) -> str:
+    """生成雷达页 AI 洞察预填文案。"""
+    lines = [
+        "请基于以下雷达页快照，给出今日 A 股洞察摘要：",
+        "1. 市场主线与热点方向",
+        "2. 选股结果与发现异动的交集（共振标的优先）",
+        "3. 建议重点关注的 3～5 只标的及理由",
+        "4. 不要编造未出现在数据中的价格或指标",
+        "",
+    ]
+    resonance = compute_radar_resonance(payload)
+    if resonance:
+        parts: list[str] = []
+        for vt_symbol, count in sorted(resonance.items(), key=lambda item: (-item[1], item[0])):
+            item = parse_stock_symbol(vt_symbol)
+            label = item.name if item and item.name else vt_symbol
+            parts.append(f"{label}({count}卡)")
+        lines.append(f"共振标的：{', '.join(parts)}")
+        lines.append("")
+    for data in payload.values():
+        lines.append(f"## {data.title}")
+        if data.subtitle:
+            lines.append(data.subtitle)
+        if data.updated_at:
+            lines.append(f"更新：{data.updated_at}")
+        if not data.rows:
+            lines.append(data.empty_message or "（暂无数据）")
+        else:
+            for row in data.rows:
+                marker = "★ " if row.vt_symbol in resonance else ""
+                lines.append(f"- {marker}{_row_ai_summary(row)}")
+        lines.append("")
+    return "\n".join(lines).strip()

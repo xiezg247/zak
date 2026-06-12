@@ -9,13 +9,13 @@ from vnpy_ashare.quotes.radar_catalog import (
 
 def test_radar_cards_count_and_categories() -> None:
     cards = list_radar_cards()
-    assert len(cards) == 3
+    assert len(cards) == 4
     categories = {card.category for card in cards}
     assert categories == {"screen", "discovery"}
     screen_cards = [card for card in cards if card.category == "screen"]
     discovery_cards = [card for card in cards if card.category == "discovery"]
     assert len(screen_cards) == 2
-    assert len(discovery_cards) == 1
+    assert len(discovery_cards) == 2
 
 
 def test_radar_card_ids_unique() -> None:

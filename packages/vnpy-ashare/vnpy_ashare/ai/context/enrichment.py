@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
+from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions
 from vnpy_ashare.ai.context.quote import (
     build_assistant_quick_actions,
     build_assistant_screening_menus,
@@ -72,7 +73,20 @@ def build_page_quick_actions(data: AiContextData) -> list[QuickAction]:
 
 
 def _build_actions(data: AiContextData) -> list[QuickAction]:
-    if data.page in ("自选", "市场", "雷达", "本地") and data.symbol:
+    if data.page == "市场":
+        actions = build_market_page_quick_actions()
+        if data.symbol:
+            actions.extend(
+                build_floating_stock_quick_actions(
+                    data.symbol,
+                    exchange_cn=data.exchange,
+                    name=data.name,
+                    page=data.page,
+                    extra=data.extra,
+                )
+            )
+        return actions
+    if data.page in ("自选", "雷达", "本地") and data.symbol:
         return build_floating_stock_quick_actions(
             data.symbol,
             exchange_cn=data.exchange,
@@ -98,6 +112,13 @@ def _build_badge(data: AiContextData) -> str:
 
 def _build_chip_text(data: AiContextData) -> str:
     parts: list[str] = []
+    if data.page == "市场":
+        from vnpy_ashare.ai.context.market_overview import format_market_overview_extra
+
+        overview = format_market_overview_extra()
+        if overview:
+            first_line = overview.splitlines()[0]
+            parts.append(first_line.replace("【大盘概览】", "大盘").strip())
     if data.page:
         parts.append(data.page)
     if data.symbol and data.exchange:

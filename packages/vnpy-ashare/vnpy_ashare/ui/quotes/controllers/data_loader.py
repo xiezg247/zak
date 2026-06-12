@@ -149,10 +149,13 @@ class DataLoaderController:
                 page._market_board_base = None
                 page._market_board_base_key = None
                 page._market_filter_keyword = ""
+                page._market_industry_filter = None
+                page._industry_map_cache = None
                 page._market_catalog_loaded = True
                 page._market_updated_at = result.updated_at
                 page.quote_map = dict(result.quotes)
                 self.sync_market_quotes_to_cache_from_catalog()
+                self._sync_market_overview_breadth(page)
                 if not quiet:
                     if page._finish_cancellable_task(cancelled_message="加载已取消"):
                         page._hide_market_loading()
@@ -572,6 +575,27 @@ class DataLoaderController:
         quote_svc = page._get_quote_service()
         if quote_svc is not None and page._market_catalog:
             quote_svc.set_market_quotes_cache(page._market_catalog, page._market_catalog_quotes)
+
+    def _sync_market_overview_breadth(self, page) -> None:
+        shell = page.parent()
+        if shell is None or not hasattr(shell, "overview_controller"):
+            return
+        controller = shell.overview_controller
+        if controller is None or not page._market_catalog:
+            return
+        rows: list[dict[str, object]] = []
+        for item in page._market_catalog:
+            quote = page._market_catalog_quotes.get(item.tickflow_symbol)
+            if quote is None:
+                continue
+            rows.append(
+                {
+                    "change_pct": quote.change_pct,
+                    "amount": quote.amount,
+                    "vt_symbol": item.vt_symbol,
+                }
+            )
+        controller.apply_market_snapshot(rows, updated_at=page._market_updated_at)
 
     def sync_market_quotes_to_cache_from_display(self) -> None:
         page = self._p

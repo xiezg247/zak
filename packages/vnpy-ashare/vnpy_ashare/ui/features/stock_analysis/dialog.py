@@ -60,6 +60,16 @@ _TAB_SCOPES: dict[int, StockAnalysisScope] = {
     _TAB_FINANCIAL: "financial",
 }
 
+_JUMP_TAB_INDEX: dict[str, int] = {
+    "chart": _TAB_CHART,
+    "sector": _TAB_SECTOR,
+    "concept": _TAB_CONCEPT,
+    "capital": _TAB_CAPITAL,
+    "events": _TAB_EVENTS,
+    "holders": _TAB_HOLDERS,
+    "financial": _TAB_FINANCIAL,
+}
+
 _SCOPE_STATUS: dict[StockAnalysisScope, str] = {
     "overview": "正在加载本地概览…",
     "sector": "正在加载板块与估值…",
@@ -201,6 +211,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
     def _build_tabs(self) -> QtWidgets.QTabWidget:
         self._overview_panel = OverviewAnalysisPanel()
+        self._overview_panel.jump_requested.connect(self._jump_from_overview)
 
         overview_page = tab_page(
             self._build_quote_metrics_section(),
@@ -472,6 +483,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         if scope == "overview":
             base.technical = partial.technical
             base.relative_returns = partial.relative_returns
+            base.overview_dashboard = partial.overview_dashboard
         elif scope == "sector":
             base.sector = partial.sector
             base.valuation = partial.valuation
@@ -502,6 +514,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 technical=payload.technical,
                 technical_text=technical_text,
                 relative_returns=payload.relative_returns,
+                dashboard=payload.overview_dashboard,
             )
         elif scope == "sector":
             self._sector_tab.show_profiles(
@@ -573,6 +586,16 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         if failed_scope == "overview":
             self._overview_panel.show_payload(technical_text=message)
         self._run_pending_load()
+
+    def _jump_from_overview(self, target: str) -> None:
+        tab_index = _JUMP_TAB_INDEX.get(target)
+        if tab_index is None:
+            return
+        self._tabs.setCurrentIndex(tab_index)
+        if tab_index == _TAB_CHART:
+            self._ensure_chart_loaded()
+            return
+        self._ensure_tab_data(tab_index)
 
     def _ask_ai(self) -> None:
         if self._host.event_engine is None:

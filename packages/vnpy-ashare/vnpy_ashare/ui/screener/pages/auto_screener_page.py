@@ -388,6 +388,10 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
                 Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="auto_screener")),
             )
 
+    def show_historical_run(self, run_id: str) -> None:
+        """供雷达页等外部入口打开自动选股历史运行。"""
+        self._load_historical_run(run_id)
+
     def _load_historical_run(self, run_id: str, *, from_scheduler: bool = False) -> None:
         service = self._screening_service()
         record = service.get_run_record(run_id) if service else None

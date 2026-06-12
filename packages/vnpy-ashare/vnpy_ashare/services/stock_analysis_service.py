@@ -23,6 +23,7 @@ from vnpy_ashare.services.stock.concept import ConceptProfile
 from vnpy_ashare.services.stock.context import MoneyflowProfile
 from vnpy_ashare.services.stock.events import EventsProfile
 from vnpy_ashare.services.stock.holders import HolderProfile
+from vnpy_ashare.services.stock.overview_dashboard import OverviewDashboard, build_overview_dashboard
 from vnpy_ashare.services.stock.profile import SectorProfile, ValuationProfile
 from vnpy_ashare.storage.repositories.valuation import ValuationRow, list_valuation_history
 
@@ -48,6 +49,7 @@ class StockAnalysisPayload:
     holders: HolderProfile | None = None
     valuation_history: list[ValuationRow] = field(default_factory=list)
     relative_returns: dict[str, float | None] = field(default_factory=dict)
+    overview_dashboard: OverviewDashboard | None = None
     quote_summary: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
@@ -97,6 +99,11 @@ class StockAnalysisService(BaseService):
         analysis = self.engine.analysis_service
         payload.technical = analysis.technical_snapshot(payload.vt_symbol)
         payload.relative_returns = compute_relative_returns(self.engine, payload.vt_symbol)
+        payload.overview_dashboard = build_overview_dashboard(
+            self.engine,
+            payload.vt_symbol,
+            technical=payload.technical,
+        )
 
     def _load_sector(self, payload: StockAnalysisPayload, *, stock_name: str) -> None:
         payload.valuation = sync_valuation_history(payload.vt_symbol)

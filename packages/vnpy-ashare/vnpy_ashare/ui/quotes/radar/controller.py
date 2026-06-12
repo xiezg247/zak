@@ -4,35 +4,68 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy.event import Event
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.ai.context.store import get_market_quotes_cache
 from vnpy_ashare.app.engine_access import get_watchlist_service
+from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.quotes.radar_catalog import DEFAULT_SCREEN_TASK_VARIANT
-from vnpy_ashare.ui.quotes.radar.worker import RadarBoardLoadWorker
+from vnpy_ashare.quotes.radar_catalog import DEFAULT_SCREEN_TASK_VARIANT, list_radar_cards
+from vnpy_ashare.quotes.radar_loaders import (
+    RadarCardData,
+    build_radar_ai_prompt,
+    build_radar_resonance_ai_prompt,
+    build_radar_resonance_list,
+    compute_radar_resonance,
+)
+from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
     from vnpy_ashare.ui.quotes.radar.card import RadarBoard
+    from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
 
 
 class RadarController(QtCore.QObject):
-    def __init__(self, page: QuotesPage, board: RadarBoard) -> None:
+    def __init__(
+        self,
+        page: QuotesPage,
+        board: RadarBoard,
+        *,
+        resonance_panel: RadarResonancePanel | None = None,
+    ) -> None:
         super().__init__(page)
         self._page = page
         self._board = board
-        self._worker: RadarBoardLoadWorker | None = None
+        self._resonance_panel = resonance_panel
+        self._card_workers: dict[str, RadarCardLoadWorker] = {}
         self._retired_workers: list[QtCore.QThread] = []
         self._screen_task_variant = DEFAULT_SCREEN_TASK_VARIANT
+        self._last_payload: dict[str, RadarCardData] = {}
         self._refresh_timer = QtCore.QTimer(self)
         self._refresh_timer.setInterval(page.config.quote_refresh_ms)
         self._refresh_timer.timeout.connect(self.refresh)
 
         board.variant_changed.connect(self._on_variant_changed)
+        board.row_activated.connect(self._on_row_activated)
+        board.row_selected.connect(self._on_row_selected)
         board.add_watchlist_requested.connect(self._on_add_watchlist)
+        board.batch_add_watchlist_requested.connect(self._on_batch_add_watchlist)
         board.stock_analysis_requested.connect(self._on_stock_analysis)
+        board.view_run_requested.connect(self._on_view_run)
+        board.refresh_requested.connect(self.refresh_card)
+
+        panel = self._resonance_panel
+        if panel is not None:
+            panel.row_activated.connect(self._on_row_activated)
+            panel.row_selected.connect(self._on_row_selected)
+            panel.add_watchlist_requested.connect(self._on_add_watchlist)
+            panel.batch_add_watchlist_requested.connect(self._on_resonance_batch_add_watchlist)
+            panel.stock_analysis_requested.connect(self._on_stock_analysis)
+            panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
 
     def activate(self) -> None:
         self.refresh()
@@ -41,48 +74,175 @@ class RadarController(QtCore.QObject):
 
     def deactivate(self) -> None:
         self._refresh_timer.stop()
-        worker = self._worker
-        self._worker = None
-        if worker is not None:
-            worker.request_cancel()
-        release_thread(self._retired_workers, worker, timeout_ms=0)
+        self._cancel_all_workers()
 
     def refresh(self) -> None:
-        if thread_is_active(self._worker):
+        """并行刷新全部卡片。"""
+        for spec in list_radar_cards():
+            self.refresh_card(spec.id)
+
+    def refresh_card(self, card_id: str) -> None:
+        if thread_is_active(self._card_workers.get(card_id)):
             return
-        worker = RadarBoardLoadWorker(
+        self._cancel_card_worker(card_id)
+        worker = RadarCardLoadWorker(
+            card_id=card_id,
             screen_task_variant=self._screen_task_variant,
             parent=self._page,
         )
-        self._worker = worker
-        worker.finished.connect(self._on_loaded)
-        worker.failed.connect(self._on_failed)
-        worker.finished.connect(lambda _payload: self._release_worker(worker))
-        worker.failed.connect(lambda _msg: self._release_worker(worker))
-        if hasattr(self._page, "status_label"):
-            self._page.status_label.setText("雷达加载中…")
+        self._card_workers[card_id] = worker
+        worker.finished.connect(self._on_card_loaded)
+        worker.failed.connect(self._on_card_failed)
+        worker.finished.connect(lambda _card_id, _data, w=worker: self._release_worker(w))
+        worker.failed.connect(lambda _card_id, _msg, w=worker: self._release_worker(w))
+        widget = self._board.card(card_id)
+        if widget is not None:
+            widget.set_loading(True)
+        self._update_status()
         worker.start()
 
-    def _release_worker(self, worker: RadarBoardLoadWorker) -> None:
-        if self._worker is worker:
-            self._worker = None
+    def request_ai_summary(self) -> None:
+        if not self._last_payload:
+            page_notify(self._page, "请先刷新雷达数据", level="warning")
+            return
+        if self._page.event_engine is None:
+            page_notify(self._page, "AI 服务未就绪", level="warning")
+            return
+        prompt = build_radar_ai_prompt(self._last_payload)
+        self._page.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(prompt=prompt, source_page="雷达"),
+            )
+        )
+        if hasattr(self._page, "status_label"):
+            self._page.status_label.setText("已发送 AI 洞察请求")
+
+    def request_resonance_ai_summary(self) -> None:
+        if not self._last_payload:
+            page_notify(self._page, "请先刷新雷达数据", level="warning")
+            return
+        prompt = build_radar_resonance_ai_prompt(self._last_payload)
+        if not prompt:
+            page_notify(self._page, "当前无共振标的", level="warning")
+            return
+        if self._page.event_engine is None:
+            page_notify(self._page, "AI 服务未就绪", level="warning")
+            return
+        self._page.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(prompt=prompt, source_page="雷达"),
+            )
+        )
+        if hasattr(self._page, "status_label"):
+            self._page.status_label.setText("已发送共振 AI 解读请求")
+
+    def _cancel_card_worker(self, card_id: str) -> None:
+        worker = self._card_workers.pop(card_id, None)
+        if worker is None:
+            return
+        worker.request_cancel()
+        release_thread(self._retired_workers, worker, timeout_ms=0)
+
+    def _cancel_all_workers(self) -> None:
+        card_ids = list(self._card_workers)
+        for card_id in card_ids:
+            self._cancel_card_worker(card_id)
+
+    def _release_worker(self, worker: RadarCardLoadWorker) -> None:
+        card_id = worker.card_id
+        if self._card_workers.get(card_id) is worker:
+            self._card_workers.pop(card_id, None)
         release_thread(self._retired_workers, worker)
 
-    def _on_loaded(self, payload: dict) -> None:
-        self._board.apply_board(payload)
-        if hasattr(self._page, "status_label"):
-            self._page.status_label.setText("就绪")
+    def _on_card_loaded(self, card_id: str, data: RadarCardData) -> None:
+        self._last_payload[card_id] = data
+        resonance = compute_radar_resonance(self._last_payload)
+        self._board.apply_card(card_id, data, resonance_counts=resonance)
+        self._board.sync_resonance(resonance)
+        self._sync_resonance_panel()
+        self._update_status(resonance=resonance)
 
-    def _on_failed(self, message: str) -> None:
-        if hasattr(self._page, "status_label"):
-            self._page.status_label.setText(f"雷达加载失败：{message}")
-        page_notify(self._page, f"雷达加载失败：{message}", level="warning")
+    def _sync_resonance_panel(self) -> None:
+        panel = self._resonance_panel
+        if panel is None:
+            return
+        panel.apply_entries(build_radar_resonance_list(self._last_payload))
+
+    def _on_card_failed(self, card_id: str, message: str) -> None:
+        widget = self._board.card(card_id)
+        data = self._last_payload.get(card_id)
+        if widget is not None:
+            if data is not None:
+                resonance = compute_radar_resonance(self._last_payload)
+                widget.apply_data(data, resonance_counts=resonance)
+            else:
+                widget.set_loading(False)
+        self._sync_resonance_panel()
+        page_notify(self._page, f"卡片加载失败：{message}", level="warning")
+        self._update_status()
+
+    def _update_status(self, *, resonance: dict[str, int] | None = None) -> None:
+        if not hasattr(self._page, "status_label"):
+            return
+        active = sum(1 for worker in self._card_workers.values() if thread_is_active(worker))
+        if active:
+            self._page.status_label.setText(f"雷达加载中…（{active} 张卡）")
+            return
+        counts = resonance if resonance is not None else compute_radar_resonance(self._last_payload)
+        status = "就绪"
+        if counts:
+            status += f" · 共振 {len(counts)} 只"
+        self._page.status_label.setText(status)
 
     def _on_variant_changed(self, card_id: str, variant_key: str) -> None:
         if card_id != "screen_task" or not variant_key:
             return
         self._screen_task_variant = variant_key
-        self.refresh()
+        self.refresh_card("screen_task")
+
+    def _on_row_activated(self, vt_symbol: str) -> None:
+        self._on_stock_analysis(vt_symbol)
+
+    def _on_row_selected(self, vt_symbol: str) -> None:
+        if not hasattr(self._page, "status_label"):
+            return
+        item = parse_stock_symbol(vt_symbol)
+        if item is None:
+            return
+        quote = self._page.quote_map.get(item.tickflow_symbol)
+        price: float | None = None
+        change: float | None = None
+        if quote is not None:
+            price = quote.last_price
+            change = quote.change_pct
+        else:
+            for row in get_market_quotes_cache() or []:
+                if str(row.get("vt_symbol") or "") == vt_symbol:
+                    raw_price = row.get("last_price") or row.get("close")
+                    raw_change = row.get("change_pct")
+                    price = float(raw_price) if isinstance(raw_price, (int, float)) else None
+                    change = float(raw_change) if isinstance(raw_change, (int, float)) else None
+                    break
+        price_text = f"{price:.2f}" if isinstance(price, (int, float)) else "—"
+        change_text = f"{change:+.2f}%" if isinstance(change, (int, float)) else "—"
+        self._page.status_label.setText(f"{item.name or vt_symbol}  {price_text}  {change_text}")
+
+    def _on_view_run(self, run_id: str, page_key: str) -> None:
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_screener_run"):
+            page_notify(self._page, "无法打开选股结果页", level="warning")
+            return
+        host.open_screener_run(run_id, page_key=page_key)
+
+    def _find_main_window(self):
+        widget = self._page
+        while widget is not None:
+            if hasattr(widget, "open_screener_run"):
+                return widget
+            widget = widget.parentWidget()
+        return None
 
     def _on_add_watchlist(self, vt_symbol: str) -> None:
         service = get_watchlist_service(self._page._get_main_engine())
@@ -101,6 +261,79 @@ class RadarController(QtCore.QObject):
                 page_notify(self._page, f"已在自选池中：{vt_symbol}")
             return
         page_notify(self._page, f"已加入自选：{item.name or vt_symbol}")
+
+    def _on_batch_add_watchlist(self, card_id: str) -> None:
+        service = get_watchlist_service(self._page._get_main_engine())
+        if service is None:
+            page_notify(self._page, "自选服务未就绪", level="warning")
+            return
+        data = self._last_payload.get(card_id)
+        if data is None or not data.rows:
+            page_notify(self._page, "该卡片暂无可加入标的", level="warning")
+            return
+        added = skipped = 0
+        full_hit = False
+        for row in data.rows:
+            item = parse_stock_symbol(row.vt_symbol)
+            if item is None:
+                skipped += 1
+                continue
+            if service.add(item.symbol, item.exchange, row.name or item.name):
+                added += 1
+            else:
+                reason = service.add_failure_reason(item.symbol, item.exchange)
+                if reason == "full":
+                    full_hit = True
+                    break
+                skipped += 1
+        if full_hit:
+            page_notify(self._page, f"自选池已满，已加入 {added} 只", level="warning")
+            return
+        if added == 0 and skipped:
+            page_notify(self._page, f"全部已在自选池中（{skipped} 只）")
+            return
+        message = f"已加入 {added} 只"
+        if skipped:
+            message += f"，跳过 {skipped} 只"
+        page_notify(self._page, message)
+
+    def _on_resonance_batch_add_watchlist(self) -> None:
+        panel = self._resonance_panel
+        if panel is None:
+            return
+        entries = panel.entries()
+        if not entries:
+            page_notify(self._page, "暂无共振标的", level="warning")
+            return
+        service = get_watchlist_service(self._page._get_main_engine())
+        if service is None:
+            page_notify(self._page, "自选服务未就绪", level="warning")
+            return
+        added = skipped = 0
+        full_hit = False
+        for entry in entries:
+            item = parse_stock_symbol(entry.vt_symbol)
+            if item is None:
+                skipped += 1
+                continue
+            if service.add(item.symbol, item.exchange, entry.name or item.name):
+                added += 1
+            else:
+                reason = service.add_failure_reason(item.symbol, item.exchange)
+                if reason == "full":
+                    full_hit = True
+                    break
+                skipped += 1
+        if full_hit:
+            page_notify(self._page, f"自选池已满，已加入 {added} 只", level="warning")
+            return
+        if added == 0 and skipped:
+            page_notify(self._page, f"共振标的全部已在自选池中（{skipped} 只）")
+            return
+        message = f"共振标的已加入 {added} 只"
+        if skipped:
+            message += f"，跳过 {skipped} 只"
+        page_notify(self._page, message)
 
     def _on_stock_analysis(self, vt_symbol: str) -> None:
         from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page

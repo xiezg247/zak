@@ -15,6 +15,7 @@ from vnpy_ashare.jobs import (
     prefetch_tushare_factors,
     run_scheduled_auto_screen,
     sync_disclosure_calendar_job,
+    sync_stock_industry_job,
     sync_trade_calendar_job,
     sync_universe_job,
     sync_watchlist_financials_job,
@@ -26,6 +27,7 @@ _COLLECT_QUOTES_INTERVAL_MIN = 5
 JOB_CATALOG: dict[str, tuple[str, str]] = {
     "collect_quotes": ("行情采集", "TickFlow 全市场快照写入 Redis"),
     "sync_universe": ("同步 A 股列表", "从 TickFlow 更新全市场标的到本地 SQLite"),
+    "sync_stock_industry": ("同步行业映射", "从 Tushare stock_basic 更新行业分类本地缓存"),
     "sync_trade_calendar": ("同步交易日历", "从 Tushare 更新 A 股交易日历到本地 SQLite"),
     "batch_download": ("下载自选日 K", "批量下载自选池日线到本地数据库"),
     "prefetch_tushare": ("Tushare 因子预拉", "收盘后拉取 daily_basic / moneyflow 等写入本地缓存"),
@@ -38,6 +40,7 @@ JOB_CATALOG: dict[str, tuple[str, str]] = {
 
 _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
     "sync_universe": sync_universe_job,
+    "sync_stock_industry": sync_stock_industry_job,
     "sync_trade_calendar": sync_trade_calendar_job,
     "prefetch_tushare": prefetch_tushare_factors,
     "sync_watchlist_financials": sync_watchlist_financials_job,

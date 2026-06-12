@@ -55,11 +55,7 @@ class TestEnrichment(unittest.TestCase):
         self.assertEqual(len(data.actions), 3)
 
     def test_data_manager_badge_and_action(self) -> None:
-        extra = (
-            "你正在协助用户查看本地 K 线数据覆盖；请基于工具与上下文回答，禁止编造。\n"
-            "日线：12 组标的，共 3456 根 K 线\n"
-            "分钟线：3 组标的，共 890 根 K 线"
-        )
+        extra = "你正在协助用户查看本地 K 线数据覆盖；请基于工具与上下文回答，禁止编造。\n日线：12 组标的，共 3456 根 K 线\n分钟线：3 组标的，共 890 根 K 线"
         data = enrich_context_with_actions(AiContextData(page="数据管理", extra=extra))
 
         self.assertEqual(data.badge, "数据")
@@ -78,6 +74,7 @@ class TestEnrichment(unittest.TestCase):
                 )
             )
         ids = [a.id for a in data.actions]
+        self.assertEqual(ids[:2], ["market_environment", "industry_momentum"])
         self.assertIn("sector_overview", ids)
         self.assertNotIn("add_watchlist", ids)
 

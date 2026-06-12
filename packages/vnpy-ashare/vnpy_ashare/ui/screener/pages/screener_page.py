@@ -521,6 +521,10 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         self._append_action_log(f"已打开 AI，预填解读请求：{condition}")
 
+    def show_historical_run(self, run_id: str) -> None:
+        """供雷达页等外部入口打开历史运行。"""
+        self._load_historical_run(run_id)
+
     def _load_historical_run(self, run_id: str) -> None:
         service = self._screening_service()
         record = service.get_run_record(run_id) if service else None

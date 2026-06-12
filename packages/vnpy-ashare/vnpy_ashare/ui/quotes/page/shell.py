@@ -592,9 +592,10 @@ class QuotesPageShell:
         root.addWidget(page._toast)
 
     def _build_radar_layout(self, page: QuotesPage) -> None:
-        from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController
+        from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
 
         page.refresh_radar_button = QtWidgets.QPushButton("刷新雷达", page)
+        page.radar_ai_button = QtWidgets.QPushButton("AI 洞察", page)
 
         page.market_auto_refresh_checkbox = QtWidgets.QCheckBox("自动刷新", page)
         page._market_auto_refresh = load_market_auto_refresh_pref()
@@ -607,6 +608,7 @@ class QuotesPageShell:
         toolbar.setSpacing(8)
         toolbar.addWidget(page.market_auto_refresh_checkbox)
         toolbar.addWidget(page.refresh_radar_button)
+        toolbar.addWidget(page.radar_ai_button)
         toolbar.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget()
@@ -617,11 +619,18 @@ class QuotesPageShell:
         toolbar_host_layout.addLayout(toolbar)
 
         page.radar_board = RadarBoard(page)
+        page.radar_resonance_panel = RadarResonancePanel(page)
         from vnpy_common.ui.theme.build_extra import build_radar_stylesheet
 
         theme_manager().bind_stylesheet(page.radar_board, extra=build_radar_stylesheet)
-        page._radar_controller = RadarController(page, page.radar_board)
+        theme_manager().bind_stylesheet(page.radar_resonance_panel, extra=build_radar_stylesheet)
+        page._radar_controller = RadarController(
+            page,
+            page.radar_board,
+            resonance_panel=page.radar_resonance_panel,
+        )
         page.refresh_radar_button.clicked.connect(page._radar_controller.refresh)
+        page.radar_ai_button.clicked.connect(page._radar_controller.request_ai_summary)
 
         center = QtWidgets.QWidget()
         center_layout = QtWidgets.QVBoxLayout(center)
@@ -629,6 +638,15 @@ class QuotesPageShell:
         center_layout.setSpacing(0)
         center_layout.addWidget(toolbar_host)
         center_layout.addWidget(page.radar_board, stretch=1)
+
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        splitter.setObjectName("RadarMainSplitter")
+        splitter.addWidget(center)
+        splitter.addWidget(page.radar_resonance_panel)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        splitter.setSizes([900, 260])
+        page._radar_splitter = splitter
 
         page.status_label = QtWidgets.QLabel("就绪")
         page.quote_source_label = QtWidgets.QLabel(
@@ -648,7 +666,7 @@ class QuotesPageShell:
 
         root = QtWidgets.QVBoxLayout(page)
         root.setContentsMargins(0, 0, 0, 0)
-        root.addWidget(center, stretch=1)
+        root.addWidget(splitter, stretch=1)
         root.addLayout(bottom_bar)
         page._toast = PageToastHost(page)
         root.addWidget(page._toast)

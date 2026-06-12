@@ -64,6 +64,7 @@ class TestSchedulerConfig(unittest.TestCase):
         manager = TaskSchedulerManager()
         job_ids = {item.job_id for item in manager.list_status()}
         self.assertIn("sync_trade_calendar", job_ids)
+        self.assertIn("sync_stock_industry", job_ids)
         self.assertIn("batch_fill_stale", job_ids)
 
     def test_new_job_config_roundtrip(self) -> None:
@@ -73,6 +74,9 @@ class TestSchedulerConfig(unittest.TestCase):
             config.sync_trade_calendar.enabled = True
             config.sync_trade_calendar.cron_hour = 7
             config.sync_trade_calendar.cron_minute = 45
+            config.sync_stock_industry.enabled = True
+            config.sync_stock_industry.cron_hour = 8
+            config.sync_stock_industry.cron_minute = 15
             config.batch_fill_stale.enabled = True
             config.batch_fill_stale.cron_hour = 17
             config.batch_fill_stale.cron_minute = 5
@@ -81,6 +85,8 @@ class TestSchedulerConfig(unittest.TestCase):
             loaded = load_scheduler_config(path)
             self.assertTrue(loaded.sync_trade_calendar.enabled)
             self.assertEqual(loaded.sync_trade_calendar.cron_minute, 45)
+            self.assertTrue(loaded.sync_stock_industry.enabled)
+            self.assertEqual(loaded.sync_stock_industry.cron_minute, 15)
             self.assertTrue(loaded.batch_fill_stale.enabled)
             self.assertEqual(loaded.batch_fill_stale.cron_hour, 17)
 

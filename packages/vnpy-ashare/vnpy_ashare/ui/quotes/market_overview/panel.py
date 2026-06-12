@@ -1,0 +1,224 @@
+"""大盘概览面板：指数卡片 + 行业榜 + 市场广度。"""
+
+from __future__ import annotations
+
+from vnpy.trader.ui import QtCore, QtWidgets
+
+from vnpy_ashare.quotes.market_breadth import MarketBreadthSnapshot
+from vnpy_ashare.quotes.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
+from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, SectorRankItem
+from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.ui.quotes.market_overview.index_card import IndexCardWidget
+from vnpy_ashare.ui.quotes.market_overview.sector_card import SectorCardWidget
+from vnpy_ashare.ui.quotes.table.columns import format_amount
+from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.market_colors import pct_change_color
+
+_TAB_INDEX = 0
+_TAB_SECTOR = 1
+
+
+class MarketOverviewPanel(QtWidgets.QWidget):
+    """市场页顶部大盘概览带。"""
+
+    index_activated = QtCore.Signal(str)
+    sector_selected = QtCore.Signal(str)
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("MarketOverviewPanel")
+
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        self._breadth_label = QtWidgets.QLabel("市场广度加载中…")
+        self._breadth_label.setObjectName("MarketBreadthBar")
+        root.addWidget(self._breadth_label)
+
+        tab_row = QtWidgets.QHBoxLayout()
+        tab_row.setContentsMargins(8, 4, 8, 0)
+        tab_row.setSpacing(6)
+
+        self._env_fear_badge = QtWidgets.QLabel("恐贪 —")
+        self._env_fear_badge.setObjectName("MarketEnvBadge")
+        self._env_north_badge = QtWidgets.QLabel("北向 —")
+        self._env_north_badge.setObjectName("MarketEnvBadge")
+        tab_row.addWidget(self._env_fear_badge)
+        tab_row.addWidget(self._env_north_badge)
+
+        self._tab_index_btn = QtWidgets.QPushButton("指数")
+        self._tab_index_btn.setObjectName("OverviewTabButton")
+        self._tab_index_btn.setCheckable(True)
+        self._tab_index_btn.setChecked(True)
+        self._tab_sector_btn = QtWidgets.QPushButton("行业")
+        self._tab_sector_btn.setObjectName("OverviewTabButton")
+        self._tab_sector_btn.setCheckable(True)
+        tab_row.addWidget(self._tab_index_btn)
+        tab_row.addWidget(self._tab_sector_btn)
+        tab_row.addStretch(1)
+        root.addLayout(tab_row)
+
+        self._stack = QtWidgets.QStackedWidget(self)
+        self._stack.setObjectName("OverviewStack")
+
+        self._index_scroll = self._build_index_scroll()
+        self._sector_scroll = self._build_sector_scroll()
+        self._stack.addWidget(self._index_scroll)
+        self._stack.addWidget(self._sector_scroll)
+        root.addWidget(self._stack)
+
+        self._tab_index_btn.clicked.connect(lambda: self._switch_tab(_TAB_INDEX))
+        self._tab_sector_btn.clicked.connect(lambda: self._switch_tab(_TAB_SECTOR))
+
+        self._index_cards: dict[str, IndexCardWidget] = {}
+        self._sector_cards: dict[str, SectorCardWidget] = {}
+        theme_manager().register_callback(self._on_theme_changed)
+
+    def _build_index_scroll(self) -> QtWidgets.QScrollArea:
+        scroll = QtWidgets.QScrollArea(self)
+        scroll.setObjectName("IndexCardScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        scroll.setFixedHeight(88)
+
+        self._cards_host = QtWidgets.QWidget()
+        self._cards_host.setObjectName("IndexCardHost")
+        self._cards_layout = QtWidgets.QHBoxLayout(self._cards_host)
+        self._cards_layout.setContentsMargins(8, 6, 8, 6)
+        self._cards_layout.setSpacing(8)
+        self._cards_layout.addStretch(1)
+        scroll.setWidget(self._cards_host)
+        return scroll
+
+    def _build_sector_scroll(self) -> QtWidgets.QScrollArea:
+        scroll = QtWidgets.QScrollArea(self)
+        scroll.setObjectName("SectorCardScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        scroll.setFixedHeight(88)
+
+        self._sector_host = QtWidgets.QWidget()
+        self._sector_host.setObjectName("SectorCardHost")
+        self._sector_layout = QtWidgets.QHBoxLayout(self._sector_host)
+        self._sector_layout.setContentsMargins(8, 6, 8, 6)
+        self._sector_layout.setSpacing(8)
+        self._sector_layout.addStretch(1)
+
+        self._sector_empty = QtWidgets.QLabel("暂无行业榜（请配置 TUSHARE_TOKEN 并运行「工具 → 定时任务 → 同步行业映射」）")
+        self._sector_empty.setObjectName("SectorCardEmpty")
+        self._sector_layout.insertWidget(0, self._sector_empty)
+
+        scroll.setWidget(self._sector_host)
+        return scroll
+
+    def _switch_tab(self, index: int) -> None:
+        self._stack.setCurrentIndex(index)
+        self._tab_index_btn.setChecked(index == _TAB_INDEX)
+        self._tab_sector_btn.setChecked(index == _TAB_SECTOR)
+
+    def _on_theme_changed(self, _tokens) -> None:
+        breadth = getattr(self, "_last_breadth", None)
+        if breadth is not None:
+            self._render_breadth(breadth)
+
+    def apply_data(self, data: MarketOverviewData) -> None:
+        self._sync_index_cards(data.indices)
+        self.apply_sectors(data.sectors)
+        self.apply_environment(data.environment)
+        if data.breadth is not None:
+            self._last_breadth = data.breadth
+            self._render_breadth(data.breadth)
+        elif not hasattr(self, "_last_breadth"):
+            self._breadth_label.setText("市场广度：暂无全市场行情")
+
+    def apply_breadth(self, breadth: MarketBreadthSnapshot) -> None:
+        self._last_breadth = breadth
+        self._render_breadth(breadth)
+
+    def apply_sectors(self, sectors: list[SectorRankItem]) -> None:
+        self._sync_sector_cards(sectors)
+
+    def apply_environment(self, env: MarketEnvironmentSnapshot | None) -> None:
+        self._last_environment = env
+        if env is None or env.fear_greed_index is None:
+            self._env_fear_badge.setText("恐贪 —")
+            self._env_fear_badge.setToolTip("需 Tushare；可运行「Tushare 因子预拉」")
+        else:
+            self._env_fear_badge.setText(f"恐贪 {env.fear_greed_index:.0f} {env.fear_greed_label}".strip())
+            self._env_fear_badge.setToolTip("A 股恐贪指数（Tushare 行情加权）")
+        if env is None or env.north_money is None:
+            self._env_north_badge.setText("北向 —")
+            self._env_north_badge.setToolTip("需 Tushare moneyflow_hsgt 缓存")
+        else:
+            suffix = f" @{env.north_trade_date}" if env.north_trade_date else ""
+            self._env_north_badge.setText(f"北向 {format_north_money_hsgt(env.north_money)}{suffix}")
+            self._env_north_badge.setToolTip("沪深港通北向净流入（百万元口径）")
+
+    def _sync_index_cards(self, indices: list[tuple[str, QuoteSnapshot]]) -> None:
+        seen: set[str] = set()
+        for label, quote in indices:
+            tf_symbol = quote.symbol
+            seen.add(tf_symbol)
+            card = self._index_cards.get(tf_symbol)
+            if card is None:
+                card = IndexCardWidget(label, quote, parent=self._cards_host)
+                card.activated.connect(self.index_activated.emit)
+                self._index_cards[tf_symbol] = card
+                insert_at = max(self._cards_layout.count() - 1, 0)
+                self._cards_layout.insertWidget(insert_at, card)
+            else:
+                card.update_quote(label, quote)
+
+        for tf_symbol in list(self._index_cards):
+            if tf_symbol not in seen:
+                card = self._index_cards.pop(tf_symbol)
+                self._cards_layout.removeWidget(card)
+                card.deleteLater()
+
+    def _sync_sector_cards(self, sectors: list[SectorRankItem]) -> None:
+        has_sectors = bool(sectors)
+        self._sector_empty.setVisible(not has_sectors)
+
+        seen: set[str] = set()
+        for item in sectors:
+            key = item.industry
+            seen.add(key)
+            card = self._sector_cards.get(key)
+            if card is None:
+                card = SectorCardWidget(item, parent=self._sector_host)
+                card.activated.connect(self.sector_selected.emit)
+                self._sector_cards[key] = card
+                insert_at = max(self._sector_layout.count() - 1, 0)
+                self._sector_layout.insertWidget(insert_at, card)
+            else:
+                card.update_item(item)
+
+        for key in list(self._sector_cards):
+            if key not in seen:
+                card = self._sector_cards.pop(key)
+                self._sector_layout.removeWidget(card)
+                card.deleteLater()
+
+    def _render_breadth(self, breadth: MarketBreadthSnapshot) -> None:
+        tokens = theme_manager().tokens()
+        up_color = pct_change_color(1.0, tokens)
+        down_color = pct_change_color(-1.0, tokens)
+        flat_color = pct_change_color(0.0, tokens)
+        amount_text = format_amount(breadth.total_amount)
+        limit_tag = "（官方）" if breadth.limit_source == "tushare" else ""
+        parts = [
+            f'<span style="color:{up_color}">涨 {breadth.up}</span>',
+            f'<span style="color:{down_color}">跌 {breadth.down}</span>',
+            f'<span style="color:{flat_color}">平 {breadth.flat}</span>',
+            f"涨停 {breadth.limit_up}{limit_tag}",
+            f"跌停 {breadth.limit_down}{limit_tag}",
+            f"成交额 {amount_text}",
+        ]
+        if breadth.updated_at:
+            parts.append(f"更新 {breadth.updated_at}")
+        self._breadth_label.setText("  ·  ".join(parts))

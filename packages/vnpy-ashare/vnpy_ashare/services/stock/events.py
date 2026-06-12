@@ -75,6 +75,26 @@ def _build_upcoming_hints(profile: EventsProfile) -> list[str]:
     return hints[:5]
 
 
+def build_disclosure_upcoming_hints(ts_code: str, *, limit: int = 6) -> list[str]:
+    """基于本地披露日历生成近 30 日事件提示（概览仪表盘用）。"""
+    rows = list_disclosure_calendar(ts_code, limit=limit)
+    if not rows:
+        return []
+    profile = EventsProfile(
+        ts_code=ts_code,
+        vt_symbol="",
+        disclosure=[
+            {
+                "end_date": row.end_date,
+                "pre_date": row.pre_date,
+                "ann_date": row.ann_date,
+            }
+            for row in rows
+        ],
+    )
+    return _build_upcoming_hints(profile)
+
+
 def build_events_profile(vt_symbol: str, *, sync_disclosure: bool = True) -> EventsProfile:
     item = parse_stock_symbol(vt_symbol)
     if item is None:

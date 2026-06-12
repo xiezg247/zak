@@ -30,6 +30,7 @@ _listeners: list[Callable[[AiContextData], None]] = []
 _ai_context = AiContextData()
 _backtest_summary: dict[str, Any] | None = None
 _market_quotes: list[dict[str, Any]] = []
+_market_overview_context: dict[str, Any] | None = None
 
 
 @dataclass
@@ -114,11 +115,12 @@ def set_backtest_summary(summary: BacktestSummary | None) -> None:
 
 def clear_all() -> None:
     """清空全部 session 缓存（登出 / 重置时）。"""
-    global _ai_context, _backtest_summary, _market_quotes, _screening_result, _diagnose_result
+    global _ai_context, _backtest_summary, _market_quotes, _market_overview_context, _screening_result, _diagnose_result
     with _lock:
         _ai_context = AiContextData()
         _backtest_summary = None
         _market_quotes = []
+        _market_overview_context = None
         _screening_result = None
         _diagnose_result = None
 
@@ -139,6 +141,7 @@ def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
                 "change_pct": getattr(quote, "change_pct", 0) if quote else 0,
                 "turnover_rate": getattr(quote, "turnover_rate", 0) if quote else 0,
                 "volume": getattr(quote, "volume", 0) if quote else 0,
+                "amount": getattr(quote, "amount", 0) if quote else 0,
             }
         )
     with _lock:
@@ -149,6 +152,20 @@ def get_market_quotes_cache() -> list[dict[str, Any]]:
     """读取市场页行情缓存（无 Redis 时选股 fallback）。"""
     with _lock:
         return list(_market_quotes)
+
+
+def set_market_overview_context(payload: dict[str, Any] | None) -> None:
+    """写入市场页大盘概览摘要（MarketOverviewController 经 sync 调用）。"""
+    global _market_overview_context
+    with _lock:
+        _market_overview_context = dict(payload) if payload else None
+
+
+def get_market_overview_context() -> dict[str, Any] | None:
+    with _lock:
+        if _market_overview_context is None:
+            return None
+        return dict(_market_overview_context)
 
 
 def set_screening_results(

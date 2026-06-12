@@ -69,11 +69,12 @@ _INDEX_LOOKBACK_CALENDAR_DAYS = 120
 _HSGT_LOOKBACK_CALENDAR_DAYS = 40
 
 
-def fetch_stock_basic_snapshot() -> tuple[list[dict[str, Any]], int]:
+def fetch_stock_basic_snapshot(*, force: bool = False) -> tuple[list[dict[str, Any]], int]:
     """拉取上市标的基础信息（行业、板块、上市日期等）并写入缓存。"""
-    cached = get_cached_rows(DATASET_STOCK_BASIC, "", max_age=INDUSTRY_MAX_AGE)
-    if cached is not None:
-        return cached, len(cached)
+    if not force:
+        cached = get_cached_rows(DATASET_STOCK_BASIC, "", max_age=INDUSTRY_MAX_AGE)
+        if cached is not None:
+            return cached, len(cached)
 
     pro = get_tushare_pro()
     try:

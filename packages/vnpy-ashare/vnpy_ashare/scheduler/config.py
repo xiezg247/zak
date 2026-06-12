@@ -44,6 +44,14 @@ class SchedulerConfig:
             cron_day_of_week="mon",
         )
     )
+    sync_stock_industry: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=True,
+            cron_hour=8,
+            cron_minute=10,
+            cron_day_of_week="mon",
+        )
+    )
     sync_trade_calendar: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=False,
@@ -136,6 +144,7 @@ class SchedulerConfig:
         return {
             "collect_quotes": dump_job(self.collect_quotes),
             "sync_universe": dump_job(self.sync_universe),
+            "sync_stock_industry": dump_job(self.sync_stock_industry),
             "sync_trade_calendar": dump_job(self.sync_trade_calendar),
             "batch_download": dump_job(self.batch_download),
             "prefetch_tushare": dump_job(self.prefetch_tushare),
@@ -176,6 +185,7 @@ class SchedulerConfig:
         return cls(
             collect_quotes=load_job("collect_quotes", defaults.collect_quotes),
             sync_universe=load_job("sync_universe", defaults.sync_universe),
+            sync_stock_industry=load_job("sync_stock_industry", defaults.sync_stock_industry),
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
             batch_download=load_job("batch_download", defaults.batch_download),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),

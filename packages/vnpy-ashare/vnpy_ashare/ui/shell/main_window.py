@@ -312,6 +312,17 @@ class AshareMainWindow(MainWindow):
         engine = self.main_engine.get_engine(APP_NAME)
         if isinstance(engine, AshareEngine):
             engine.scheduler.ensure_started()
+            self._bootstrap_stock_industry_if_needed(engine.scheduler)
+
+    def _bootstrap_stock_industry_if_needed(self, scheduler) -> None:
+        """行业映射缓存为空时，调度器启动后补跑一次同步任务。"""
+        from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
+
+        if get_cached_industry_map() is not None:
+            return
+        if not scheduler.get_job_config("sync_stock_industry").enabled:
+            return
+        scheduler.run_now("sync_stock_industry")
 
     def _nav_width_settings(self) -> QtCore.QSettings:
         return QtCore.QSettings(QSETTINGS_ORG, "ashare_ui")
@@ -566,6 +577,16 @@ class AshareMainWindow(MainWindow):
     def _show_page(self, index: int) -> None:
         entry = self.sidebar.entry_at(index)
         self._show_page_by_key(entry.key, nav_index=index)
+
+    def open_screener_run(self, run_id: str, *, page_key: str) -> None:
+        """从雷达页等入口跳转到选股历史运行详情。"""
+        if not run_id or page_key not in {"screener", "auto_screener"}:
+            return
+        nav_index = self._nav_index_for_key(page_key)
+        self._show_page_by_key(page_key, nav_index=nav_index)
+        widget = self._page_widgets.get(page_key)
+        if widget is not None and hasattr(widget, "show_historical_run"):
+            widget.show_historical_run(run_id)
 
     def _show_page_by_key(self, key: str, *, nav_index: int | None = None) -> None:
         widget = self._get_or_create_page(key)

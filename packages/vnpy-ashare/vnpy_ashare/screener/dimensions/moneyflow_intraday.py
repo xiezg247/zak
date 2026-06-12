@@ -54,6 +54,20 @@ def _hits_from_mcp_map(
     return hits
 
 
+def _proxy_liquidity_score(row: dict[str, Any]) -> float:
+    change = float(row.get("change_pct") or 0)
+    if change <= 0:
+        return 0.0
+    amount = float(row.get("amount") or 0)
+    if amount > 0:
+        return change * amount
+    turnover = float(row.get("turnover_rate") or 0)
+    price = float(row.get("last_price") or row.get("close") or 0)
+    if turnover > 0 and price > 0:
+        return change * turnover * price
+    return 0.0
+
+
 def _hits_from_proxy(
     rows: list[dict[str, Any]],
     pool_size: int,
@@ -62,11 +76,10 @@ def _hits_from_proxy(
 ) -> list[DimensionHit]:
     scored: list[tuple[dict[str, Any], float]] = []
     for row in rows:
-        change = max(float(row.get("change_pct") or 0), 0.0)
-        amount = float(row.get("amount") or 0)
-        if amount <= 0 or change <= 0:
+        score = _proxy_liquidity_score(row)
+        if score <= 0:
             continue
-        scored.append((row, change * amount))
+        scored.append((row, score))
     scored.sort(key=lambda item: item[1], reverse=True)
     hits: list[DimensionHit] = []
     for index, (row, _proxy) in enumerate(scored[:pool_size], start=1):

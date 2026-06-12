@@ -24,6 +24,7 @@ from vnpy_ashare.jobs import (
     collect_market_quotes,
     prefetch_tushare_factors,
     sync_disclosure_calendar_job,
+    sync_stock_industry_job,
     sync_trade_calendar_job,
     sync_universe_job,
     sync_watchlist_financials_job,
@@ -119,6 +120,19 @@ class TaskSchedulerManager:
                 description="从 TickFlow 更新全市场标的到本地 SQLite",
                 runner=sync_universe_job,
                 config_attr="sync_universe",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
+            ),
+            "sync_stock_industry": _JobMeta(
+                job_id="sync_stock_industry",
+                name="同步行业映射",
+                description="从 Tushare stock_basic 拉取申万行业分类，供市场页行业榜与行业筛选",
+                runner=sync_stock_industry_job,
+                config_attr="sync_stock_industry",
                 schedule_builder=lambda cfg: CronTrigger(
                     day_of_week=cfg.cron_day_of_week,
                     hour=cfg.cron_hour,

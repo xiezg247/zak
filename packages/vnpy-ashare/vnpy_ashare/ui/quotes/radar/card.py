@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.quotes.radar_catalog import SCREEN_TASK_VARIANTS, RadarCardSpec
-from vnpy_ashare.quotes.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar_loaders import RadarCardData
+from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_common.ui.theme import theme_manager
-from vnpy_common.ui.theme.market_colors import pct_change_color
 
 
 class RadarCardWidget(QtWidgets.QFrame):
@@ -15,8 +15,12 @@ class RadarCardWidget(QtWidgets.QFrame):
 
     variant_changed = QtCore.Signal(str)
     row_activated = QtCore.Signal(str)
+    row_selected = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
+    batch_add_watchlist_requested = QtCore.Signal(str)
     stock_analysis_requested = QtCore.Signal(str)
+    view_run_requested = QtCore.Signal(str, str)
+    refresh_requested = QtCore.Signal(str)
 
     def __init__(self, spec: RadarCardSpec, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -39,34 +43,71 @@ class RadarCardWidget(QtWidgets.QFrame):
         else:
             self._variant_combo.hide()
 
+        self._refresh_button = QtWidgets.QToolButton()
+        self._refresh_button.setObjectName("RadarCardRefresh")
+        self._refresh_button.setText("↻")
+        self._refresh_button.setToolTip("刷新此卡片")
+        self._refresh_button.clicked.connect(lambda: self.refresh_requested.emit(self.card_id))
+        header.addWidget(self._refresh_button)
+
         self._subtitle = QtWidgets.QLabel("")
         self._subtitle.setObjectName("RadarCardSubtitle")
         self._subtitle.setWordWrap(True)
 
-        self._list = QtWidgets.QListWidget()
-        self._list.setObjectName("RadarCardList")
-        self._list.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self._list.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
-        self._list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self._list.customContextMenuRequested.connect(self._show_context_menu)
+        self._rows_host = QtWidgets.QWidget()
+        self._rows_host.setObjectName("RadarCardRowsHost")
+        self._rows_layout = QtWidgets.QVBoxLayout(self._rows_host)
+        self._rows_layout.setContentsMargins(0, 0, 0, 0)
+        self._rows_layout.setSpacing(4)
+        self._rows_layout.addStretch(1)
+
+        self._scroll = QtWidgets.QScrollArea()
+        self._scroll.setObjectName("RadarCardScroll")
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll.setWidget(self._rows_host)
 
         self._empty_label = QtWidgets.QLabel("")
         self._empty_label.setObjectName("RadarCardEmpty")
         self._empty_label.setWordWrap(True)
         self._empty_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
+        footer = QtWidgets.QHBoxLayout()
+        footer.setSpacing(8)
+        self._meta_label = QtWidgets.QLabel("")
+        self._meta_label.setObjectName("RadarCardMeta")
+        footer.addWidget(self._meta_label, stretch=1)
+        self._view_run_button = QtWidgets.QPushButton("查看完整")
+        self._view_run_button.setObjectName("RadarCardViewRun")
+        self._view_run_button.setFlat(True)
+        self._view_run_button.hide()
+        self._view_run_button.clicked.connect(self._on_view_run_clicked)
+        footer.addWidget(self._view_run_button)
+        self._add_all_button = QtWidgets.QPushButton("全部加自选")
+        self._add_all_button.setObjectName("RadarCardAddAll")
+        self._add_all_button.setFlat(True)
+        self._add_all_button.hide()
+        self._add_all_button.clicked.connect(self._on_add_all_clicked)
+        footer.addWidget(self._add_all_button)
+
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
         layout.setSpacing(6)
         layout.addLayout(header)
         layout.addWidget(self._subtitle)
-        layout.addWidget(self._list, stretch=1)
+        layout.addWidget(self._scroll, stretch=1)
         layout.addWidget(self._empty_label)
+        layout.addLayout(footer)
 
-        theme_manager().register_callback(lambda _tokens: self._refresh_list_colors())
+        self._run_id = ""
+        self._detail_page_key = ""
+        self._resonance_counts: dict[str, int] = {}
+        self._loading = False
+        self._updated_at_text = ""
+        self._row_widgets: list[RadarStockRowWidget] = []
+
+        theme_manager().register_callback(lambda _tokens: self._refresh_row_widgets())
 
     @property
     def card_id(self) -> str:
@@ -87,65 +128,103 @@ class RadarCardWidget(QtWidgets.QFrame):
         value = self._variant_combo.currentData()
         return str(value or "")
 
-    def apply_data(self, data: RadarCardData) -> None:
-        self._subtitle.setText(data.subtitle)
-        self._list.clear()
-        if data.rows:
-            self._list.show()
-            self._empty_label.hide()
-            tokens = theme_manager().tokens()
-            for row in data.rows:
-                item = QtWidgets.QListWidgetItem(self._format_row_text(row))
-                item.setData(QtCore.Qt.ItemDataRole.UserRole, row.vt_symbol)
-                item.setData(QtCore.Qt.ItemDataRole.UserRole + 1, row.change_pct)
-                color = pct_change_color(row.change_pct, tokens)
-                item.setForeground(QtGui.QColor(color))
-                self._list.addItem(item)
+    def set_loading(self, loading: bool) -> None:
+        self._loading = loading
+        self._refresh_button.setEnabled(not loading)
+        if loading:
+            self._meta_label.setText("加载中…")
             return
-        self._list.hide()
+        if self._row_widgets or self._updated_at_text:
+            card_resonance = sum(1 for widget in self._row_widgets if widget.vt_symbol() and self._resonance_counts.get(widget.vt_symbol(), 0) >= 2)
+            self._apply_meta_label_from_resonance(card_resonance)
+        else:
+            self._meta_label.setText("")
+
+    def _clear_row_widgets(self) -> None:
+        while self._rows_layout.count() > 1:
+            item = self._rows_layout.takeAt(0)
+            if item is None:
+                break
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._row_widgets.clear()
+
+    def apply_data(self, data: RadarCardData, *, resonance_counts: dict[str, int] | None = None) -> None:
+        self._loading = False
+        self._refresh_button.setEnabled(True)
+        self._subtitle.setText(data.subtitle)
+        self._run_id = data.run_id
+        self._detail_page_key = data.detail_page_key
+        self._resonance_counts = dict(resonance_counts or {})
+        if data.run_id and data.detail_page_key:
+            self._view_run_button.show()
+        else:
+            self._view_run_button.hide()
+        if data.rows:
+            self._add_all_button.show()
+        else:
+            self._add_all_button.hide()
+        self._apply_meta_label(data)
+        self._clear_row_widgets()
+        if data.rows:
+            self._scroll.show()
+            self._empty_label.hide()
+            for row in data.rows:
+                resonance = self._resonance_counts.get(row.vt_symbol, 0)
+                widget = RadarStockRowWidget(row, resonance=resonance, parent=self._rows_host)
+                widget.clicked.connect(self.row_selected.emit)
+                widget.double_clicked.connect(self.row_activated.emit)
+                widget.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
+                widget.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
+                self._rows_layout.insertWidget(self._rows_layout.count() - 1, widget)
+                self._row_widgets.append(widget)
+            return
+        self._scroll.hide()
         self._empty_label.show()
         self._empty_label.setText(data.empty_message or "暂无数据")
 
-    def _format_row_text(self, row: RadarRow) -> str:
-        price = f"{row.price:.2f}" if row.price is not None else "—"
-        change = f"{row.change_pct:+.2f}%" if row.change_pct is not None else "—"
-        return f"{row.name:<6} {row.symbol}\n{price:>8}  {row.metric_label} {row.metric_value}  {change}"
+    def update_resonance(self, resonance_counts: dict[str, int]) -> None:
+        """仅更新共振标记，不重新加载卡片数据。"""
+        if self._loading:
+            return
+        self._resonance_counts = dict(resonance_counts)
+        card_resonance = 0
+        for widget in self._row_widgets:
+            resonance = self._resonance_counts.get(widget.vt_symbol(), 0)
+            widget.update_resonance(resonance)
+            if resonance >= 2:
+                card_resonance += 1
+        self._apply_meta_label_from_resonance(card_resonance)
 
-    def _refresh_list_colors(self) -> None:
-        tokens = theme_manager().tokens()
-        for index in range(self._list.count()):
-            item = self._list.item(index)
-            if item is None:
-                continue
-            change_pct = item.data(QtCore.Qt.ItemDataRole.UserRole + 1)
-            value = float(change_pct) if isinstance(change_pct, (int, float)) else None
-            item.setForeground(QtGui.QColor(pct_change_color(value, tokens)))
+    def _apply_meta_label(self, data: RadarCardData) -> None:
+        self._updated_at_text = f"更新 {data.updated_at}" if data.updated_at else ""
+        card_resonance = sum(1 for row in data.rows if self._resonance_counts.get(row.vt_symbol, 0) >= 2)
+        self._apply_meta_label_from_resonance(card_resonance)
+
+    def _apply_meta_label_from_resonance(self, card_resonance: int) -> None:
+        meta_parts: list[str] = []
+        if self._updated_at_text:
+            meta_parts.append(self._updated_at_text)
+        if card_resonance:
+            meta_parts.append(f"共振 {card_resonance}")
+        self._meta_label.setText(" · ".join(meta_parts))
+
+    def _refresh_row_widgets(self) -> None:
+        for widget in self._row_widgets:
+            widget.refresh_theme()
+
+    def _on_add_all_clicked(self) -> None:
+        self.batch_add_watchlist_requested.emit(self.card_id)
 
     def _emit_variant_changed(self, _index: int) -> None:
         key = self.variant_key()
         if key:
             self.variant_changed.emit(key)
 
-    def _on_item_double_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
-        vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole)
-        if vt_symbol:
-            self.row_activated.emit(str(vt_symbol))
-
-    def _show_context_menu(self, pos: QtCore.QPoint) -> None:
-        item = self._list.itemAt(pos)
-        if item is None:
-            return
-        vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole)
-        if not vt_symbol:
-            return
-        menu = QtWidgets.QMenu(self)
-        analysis_action = menu.addAction("个股分析")
-        action = menu.addAction("加入自选")
-        chosen = menu.exec(self._list.mapToGlobal(pos))
-        if chosen is analysis_action:
-            self.stock_analysis_requested.emit(str(vt_symbol))
-        elif chosen is action:
-            self.add_watchlist_requested.emit(str(vt_symbol))
+    def _on_view_run_clicked(self) -> None:
+        if self._run_id and self._detail_page_key:
+            self.view_run_requested.emit(self._run_id, self._detail_page_key)
 
 
 class RadarBoard(QtWidgets.QWidget):
@@ -153,8 +232,12 @@ class RadarBoard(QtWidgets.QWidget):
 
     variant_changed = QtCore.Signal(str, str)
     row_activated = QtCore.Signal(str)
+    row_selected = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
+    batch_add_watchlist_requested = QtCore.Signal(str)
     stock_analysis_requested = QtCore.Signal(str)
+    view_run_requested = QtCore.Signal(str, str)
+    refresh_requested = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -170,8 +253,12 @@ class RadarBoard(QtWidgets.QWidget):
             card = RadarCardWidget(spec, self)
             card.variant_changed.connect(lambda key, card_id=spec.id: self.variant_changed.emit(card_id, key))
             card.row_activated.connect(self.row_activated.emit)
+            card.row_selected.connect(self.row_selected.emit)
             card.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
+            card.batch_add_watchlist_requested.connect(self.batch_add_watchlist_requested.emit)
             card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
+            card.view_run_requested.connect(self.view_run_requested.emit)
+            card.refresh_requested.connect(self.refresh_requested.emit)
             self._cards[spec.id] = card
             grid.addWidget(card, index // 2, index % 2)
         grid.setColumnStretch(0, 1)
@@ -183,7 +270,23 @@ class RadarBoard(QtWidgets.QWidget):
         return self._cards.get(card_id)
 
     def apply_board(self, payload: dict[str, RadarCardData]) -> None:
+        from vnpy_ashare.quotes.radar_loaders import compute_radar_resonance
+
+        resonance = compute_radar_resonance(payload)
         for card_id, data in payload.items():
-            widget = self._cards.get(card_id)
-            if widget is not None:
-                widget.apply_data(data)
+            self.apply_card(card_id, data, resonance_counts=resonance)
+
+    def apply_card(
+        self,
+        card_id: str,
+        data: RadarCardData,
+        *,
+        resonance_counts: dict[str, int] | None = None,
+    ) -> None:
+        widget = self._cards.get(card_id)
+        if widget is not None:
+            widget.apply_data(data, resonance_counts=resonance_counts)
+
+    def sync_resonance(self, resonance_counts: dict[str, int]) -> None:
+        for widget in self._cards.values():
+            widget.update_resonance(resonance_counts)
