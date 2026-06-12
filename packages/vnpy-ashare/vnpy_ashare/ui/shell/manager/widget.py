@@ -39,7 +39,7 @@ _TREE_LABELS: list[str] = [
     "",
 ]
 
-_DOWNLOAD_HINT = "K 线下载与补全请使用「自选 / 本地」页，或「工具 → 立即执行 → 下载自选日 K / 同步 A 股列表」"
+_DOWNLOAD_HINT = "K 线下载与补全请使用「自选 / 本地」页，或「工具 → 立即执行 → 全市场日 K / 同步 A 股列表」"
 
 _INTERVAL_GROUP_LABELS: dict[str, str] = {
     "daily": "日线",

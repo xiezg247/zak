@@ -20,7 +20,6 @@ from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quot
 from vnpy_ashare.jobs import (
     JobResult,
     batch_download_universe_daily_bars,
-    batch_download_watchlist,
     batch_fill_downloaded_stale_job,
     collect_market_quotes,
     prefetch_moneyflow,
@@ -160,31 +159,18 @@ class TaskSchedulerManager:
                 ),
                 schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
             ),
-            "batch_download": _JobMeta(
-                job_id="batch_download",
-                name="自选深度日 K",
-                description="从 Tushare 为自选池下载更长历史日 K（默认自 2020，供回测）；日常扫描由「全市场日 K」覆盖",
-                runner=self._run_batch_download,
-                config_attr="batch_download",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}（可选）",
-            ),
             "batch_download_universe": _JobMeta(
                 job_id="batch_download_universe",
                 name="全市场日 K",
-                description="从 Tushare 为尚无本地日 K 的全 A 股下载最近 250 个交易日；已有数据由「补全本地日 K」增量维护",
-                runner=batch_download_universe_daily_bars,
+                description="从 Tushare 为全 A 股下载/补全自 2020 年以来的日 K；增量由「补全本地日 K」维护",
+                runner=self._run_universe_daily_download,
                 config_attr="batch_download_universe",
                 schedule_builder=lambda cfg: CronTrigger(
                     day_of_week=cfg.cron_day_of_week,
                     hour=cfg.cron_hour,
                     minute=cfg.cron_minute,
                 ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（滚动 250 交易日，仅补缺失）",
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}",
             ),
             "prefetch_moneyflow": _JobMeta(
                 job_id="prefetch_moneyflow",
@@ -356,10 +342,9 @@ class TaskSchedulerManager:
             except Exception:
                 pass
 
-    def _run_batch_download(self) -> JobResult:
-        cfg = self._config.batch_download
-        start = datetime.strptime(cfg.download_start, "%Y-%m-%d")
-        return batch_download_watchlist(start=start, end=datetime.now())
+    def _run_universe_daily_download(self) -> JobResult:
+        cfg = self._config.batch_download_universe
+        return batch_download_universe_daily_bars(daily_start=cfg.download_start)
 
     def _get_job_config(self, job_id: str) -> JobConfig:
         meta = self._jobs[job_id]

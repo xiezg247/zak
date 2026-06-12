@@ -10,7 +10,6 @@ from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session,
 from vnpy_ashare.jobs import (
     JobResult,
     batch_download_universe_daily_bars,
-    batch_download_watchlist,
     batch_fill_downloaded_stale_job,
     collect_market_quotes,
     prefetch_moneyflow,
@@ -31,8 +30,7 @@ JOB_CATALOG: dict[str, tuple[str, str]] = {
     "sync_universe": ("同步 A 股列表", "从 TickFlow 更新全市场标的到本地 SQLite"),
     "sync_stock_industry": ("同步行业映射", "从 Tushare stock_basic 更新行业分类本地缓存"),
     "sync_trade_calendar": ("同步交易日历", "从 Tushare 更新 A 股交易日历到本地 SQLite"),
-    "batch_download": ("自选深度日 K", "自选池更长历史日 K（回测）；日常扫描请用全市场日 K"),
-    "batch_download_universe": ("全市场日 K", "从 Tushare 为缺失标的下载最近 250 个交易日日线"),
+    "batch_download_universe": ("全市场日 K", "从 Tushare 为全 A 股下载/补全自 2020 年以来的日 K"),
     "prefetch_moneyflow": ("主力资金预拉", "收盘后拉取全市场 moneyflow 主力资金流向到本地缓存"),
     "prefetch_tushare": ("Tushare 因子预拉", "收盘后拉取 daily_basic、涨跌停、指数、北向等写入本地缓存"),
     "sync_watchlist_financials": ("同步自选财报", "增量拉取自选池三表与财务指标到本地"),
@@ -85,13 +83,6 @@ def _run_collect_quotes(*, force: bool) -> JobResult:
     return result
 
 
-def _run_batch_download(*, start: str | None) -> JobResult:
-    cfg = load_scheduler_config().batch_download
-    start_text = start or cfg.download_start
-    start_dt = datetime.strptime(start_text, "%Y-%m-%d")
-    return batch_download_watchlist(start=start_dt, end=datetime.now())
-
-
 def run_job(job_id: str, *, force: bool = False, download_start: str | None = None) -> JobResult:
     """执行定时任务（与 GUI 调度器共用 jobs 实现）。"""
     if job_id not in JOB_CATALOG:
@@ -101,8 +92,9 @@ def run_job(job_id: str, *, force: bool = False, download_start: str | None = No
         return _run_collect_quotes(force=force)
     if job_id in ("screen_intraday", "screen_post_close"):
         return run_scheduled_auto_screen(job_id, force=force)
-    if job_id == "batch_download":
-        return _run_batch_download(start=download_start)
+    if job_id == "batch_download_universe":
+        start = download_start or load_scheduler_config().batch_download_universe.download_start
+        return batch_download_universe_daily_bars(daily_start=start)
 
     runner = _SIMPLE_JOB_RUNNERS.get(job_id)
     if runner is None:
@@ -132,5 +124,9 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     job_run = job_sub.add_parser("run", help="立即执行指定任务")
     job_run.add_argument("job_id", choices=sorted(JOB_CATALOG))
     job_run.add_argument("--force", action="store_true", help="跳过交易时段/收盘检查（行情采集、自动选股）")
-    job_run.add_argument("--download-start", metavar="YYYY-MM-DD", help="batch_download 起始日期，默认读调度配置")
+    job_run.add_argument(
+        "--download-start",
+        metavar="YYYY-MM-DD",
+        help="batch_download_universe 起始日期，默认读调度配置",
+    )
     job_run.set_defaults(handler=_cmd_job_run)

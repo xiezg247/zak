@@ -60,21 +60,13 @@ class SchedulerConfig:
             cron_day_of_week="mon",
         )
     )
-    batch_download: JobConfig = field(
-        default_factory=lambda: JobConfig(
-            enabled=False,
-            cron_hour=16,
-            cron_minute=30,
-            cron_day_of_week="mon-fri",
-            download_start="2020-01-01",
-        )
-    )
     batch_download_universe: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=25,
             cron_day_of_week="mon-fri",
+            download_start="2020-01-01",
         )
     )
     prefetch_moneyflow: JobConfig = field(
@@ -162,7 +154,6 @@ class SchedulerConfig:
             "sync_universe": dump_job(self.sync_universe),
             "sync_stock_industry": dump_job(self.sync_stock_industry),
             "sync_trade_calendar": dump_job(self.sync_trade_calendar),
-            "batch_download": dump_job(self.batch_download),
             "batch_download_universe": dump_job(self.batch_download_universe),
             "prefetch_moneyflow": dump_job(self.prefetch_moneyflow),
             "prefetch_tushare": dump_job(self.prefetch_tushare),
@@ -200,13 +191,17 @@ class SchedulerConfig:
             )
 
         defaults = cls()
+        legacy_batch = data.get("batch_download", {})
         return cls(
             collect_quotes=load_job("collect_quotes", defaults.collect_quotes),
             sync_universe=load_job("sync_universe", defaults.sync_universe),
             sync_stock_industry=load_job("sync_stock_industry", defaults.sync_stock_industry),
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
-            batch_download=load_job("batch_download", defaults.batch_download),
-            batch_download_universe=load_job("batch_download_universe", defaults.batch_download_universe),
+            batch_download_universe=_load_universe_daily_job(
+                data.get("batch_download_universe", {}),
+                defaults.batch_download_universe,
+                legacy_batch,
+            ),
             prefetch_moneyflow=load_job("prefetch_moneyflow", defaults.prefetch_moneyflow),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
             sync_watchlist_financials=load_job("sync_watchlist_financials", defaults.sync_watchlist_financials),
@@ -215,6 +210,23 @@ class SchedulerConfig:
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
         )
+
+
+def _load_universe_daily_job(raw: dict, defaults: JobConfig, legacy_batch: dict) -> JobConfig:
+    download_start = str(
+        raw.get(
+            "download_start",
+            legacy_batch.get("download_start", defaults.download_start),
+        )
+    )
+    return JobConfig(
+        enabled=bool(raw.get("enabled", defaults.enabled)),
+        interval_seconds=int(raw.get("interval_seconds", defaults.interval_seconds)),
+        cron_hour=int(raw.get("cron_hour", defaults.cron_hour)),
+        cron_minute=int(raw.get("cron_minute", defaults.cron_minute)),
+        cron_day_of_week=str(raw.get("cron_day_of_week", defaults.cron_day_of_week)),
+        download_start=download_start,
+    )
 
 
 def load_scheduler_config(path: Path | None = None) -> SchedulerConfig:

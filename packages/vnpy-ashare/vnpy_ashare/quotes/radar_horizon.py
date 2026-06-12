@@ -210,7 +210,7 @@ def load_outlook_horizon(spec: RadarCardSpec, *, variant: str = "watch_next") ->
             title=spec.title,
             subtitle=subtitle,
             rows=(),
-            empty_message="本地日 K 不足，请先在数据管理页下载自选日 K。",
+            empty_message="本地日 K 不足，请先运行「全市场日 K」或「补全本地日 K」。",
             updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
             total_count=len(candidates),
         )

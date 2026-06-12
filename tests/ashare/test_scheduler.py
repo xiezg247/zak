@@ -22,13 +22,23 @@ class TestSchedulerConfig(unittest.TestCase):
             config = SchedulerConfig()
             config.collect_quotes.enabled = True
             config.collect_quotes.interval_seconds = 30
-            config.batch_download.download_start = "2018-01-01"
+            config.batch_download_universe.download_start = "2018-01-01"
             save_scheduler_config(config, path)
 
             loaded = load_scheduler_config(path)
             self.assertTrue(loaded.collect_quotes.enabled)
             self.assertEqual(loaded.collect_quotes.interval_seconds, 30)
-            self.assertEqual(loaded.batch_download.download_start, "2018-01-01")
+            self.assertEqual(loaded.batch_download_universe.download_start, "2018-01-01")
+
+    def test_legacy_batch_download_start_migrates_to_universe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scheduler.json"
+            path.write_text(
+                '{"batch_download": {"enabled": false, "download_start": "2019-03-01"}}',
+                encoding="utf-8",
+            )
+            loaded = load_scheduler_config(path)
+            self.assertEqual(loaded.batch_download_universe.download_start, "2019-03-01")
 
     def test_auto_screen_config_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,6 +78,7 @@ class TestSchedulerConfig(unittest.TestCase):
         self.assertIn("prefetch_moneyflow", job_ids)
         self.assertIn("batch_download_universe", job_ids)
         self.assertIn("batch_fill_stale", job_ids)
+        self.assertNotIn("batch_download", job_ids)
 
     def test_new_job_config_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

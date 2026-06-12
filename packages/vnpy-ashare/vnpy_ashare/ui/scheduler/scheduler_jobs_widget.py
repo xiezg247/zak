@@ -49,7 +49,7 @@ class _JobSettingsDialog(QtWidgets.QDialog):
             self.minute_spin.setValue(config.cron_minute)
             form.addRow("分钟", self.minute_spin)
 
-            if job_id == "batch_download":
+            if job_id == "batch_download_universe":
                 self.start_edit = QtWidgets.QLineEdit(config.download_start)
                 form.addRow("K 线起始日", self.start_edit)
 
@@ -66,7 +66,7 @@ class _JobSettingsDialog(QtWidgets.QDialog):
             "cron_hour": self.hour_spin.value(),
             "cron_minute": self.minute_spin.value(),
         }
-        if self.job_id == "batch_download":
+        if self.job_id == "batch_download_universe":
             values["download_start"] = self.start_edit.text().strip()
         return values
 

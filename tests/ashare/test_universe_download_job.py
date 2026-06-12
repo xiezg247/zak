@@ -3,37 +3,33 @@
 from __future__ import annotations
 
 import unittest
-from datetime import date, datetime
+from datetime import datetime
 from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.data.bar_store import PeriodBarOverview
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.jobs.universe_download import (
-    UNIVERSE_DAILY_LOOKBACK,
+    DEFAULT_UNIVERSE_DAILY_START,
     _download_one,
     _is_no_data_error,
     _load_no_data_skips,
     _record_no_data_skip,
     batch_download_universe_daily_bars,
-    select_universe_missing_daily,
-    universe_daily_window_start,
+    parse_universe_daily_start,
+    select_universe_daily_targets,
 )
 
 
-class RollingTradingDayTests(unittest.TestCase):
-    def test_universe_window_uses_250_trading_days(self) -> None:
-        open_days = [date(2025, 5, day) for day in range(1, 21)]
-        with patch(
-            "vnpy_ashare.domain.calendar.trading_days_between",
-            return_value=open_days,
-        ):
-            with patch(
-                "vnpy_ashare.domain.calendar.last_trading_day",
-                return_value=date(2025, 5, 20),
-            ):
-                start = universe_daily_window_start(trading_days=5)
-        self.assertEqual(start.date(), date(2025, 5, 16))
+class UniverseDailyStartTests(unittest.TestCase):
+    def test_parse_default_start(self) -> None:
+        start = parse_universe_daily_start()
+        self.assertEqual(start, datetime(2020, 1, 1))
+
+    def test_parse_custom_start(self) -> None:
+        start = parse_universe_daily_start("2021-06-01")
+        self.assertEqual(start, datetime(2021, 6, 1))
 
 
 class UniverseDownloadJobTests(unittest.TestCase):
@@ -63,37 +59,67 @@ class UniverseDownloadJobTests(unittest.TestCase):
                     return_value=[item],
                 ):
                     with patch(
-                        "vnpy_ashare.jobs.universe_download.select_universe_missing_daily",
+                        "vnpy_ashare.jobs.universe_download.select_universe_daily_targets",
                         return_value=[],
                     ):
                         result = batch_download_universe_daily_bars()
         self.assertTrue(result.success)
-        self.assertIn(str(UNIVERSE_DAILY_LOOKBACK), result.message)
+        self.assertIn(DEFAULT_UNIVERSE_DAILY_START, result.message)
 
-    def test_select_missing_excludes_downloaded(self) -> None:
+    def test_select_targets_includes_missing(self) -> None:
         item_a = StockItem(symbol="600519", exchange=Exchange.SSE, name="茅台")
         item_b = StockItem(symbol="000001", exchange=Exchange.SZSE, name="平安")
-        overview = type(
-            "Overview",
-            (),
-            {"symbol": "600519", "exchange": Exchange.SSE, "period": "daily", "start": None, "end": None, "count": 1},
-        )()
+        overview = PeriodBarOverview(
+            symbol="600519",
+            exchange=Exchange.SSE,
+            period="daily",
+            start=datetime(2020, 1, 1),
+            end=datetime(2025, 6, 1),
+            count=100,
+        )
         with patch(
             "vnpy_ashare.jobs.universe_download.iter_bar_overviews",
             return_value=[overview],
         ):
-            missing = select_universe_missing_daily([item_a, item_b])
-        self.assertEqual([item_b.vt_symbol], [item.vt_symbol for item in missing])
+            targets = select_universe_daily_targets(
+                [item_a, item_b],
+                unified_start=datetime(2020, 1, 1),
+            )
+        self.assertEqual([item_b.vt_symbol], [item.vt_symbol for item in targets])
 
-    def test_select_missing_honors_no_data_skip_list(self) -> None:
+    def test_select_targets_includes_shallow_history(self) -> None:
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="茅台")
+        overview = PeriodBarOverview(
+            symbol="600519",
+            exchange=Exchange.SSE,
+            period="daily",
+            start=datetime(2024, 1, 2),
+            end=datetime(2025, 6, 1),
+            count=100,
+        )
+        with patch(
+            "vnpy_ashare.jobs.universe_download.iter_bar_overviews",
+            return_value=[overview],
+        ):
+            targets = select_universe_daily_targets(
+                [item],
+                unified_start=datetime(2020, 1, 1),
+            )
+        self.assertEqual([item.vt_symbol], [item.vt_symbol for item in targets])
+
+    def test_select_targets_honors_no_data_skip_list(self) -> None:
         item_a = StockItem(symbol="000550", exchange=Exchange.SZSE, name="江铃")
         item_b = StockItem(symbol="000001", exchange=Exchange.SZSE, name="平安")
         with patch(
             "vnpy_ashare.jobs.universe_download.iter_bar_overviews",
             return_value=[],
         ):
-            missing = select_universe_missing_daily([item_a, item_b], skip_no_data={"000550.SZSE"})
-        self.assertEqual([item_b.vt_symbol], [item.vt_symbol for item in missing])
+            targets = select_universe_daily_targets(
+                [item_a, item_b],
+                unified_start=datetime(2020, 1, 1),
+                skip_no_data={"000550.SZSE"},
+            )
+        self.assertEqual([item_b.vt_symbol], [item.vt_symbol for item in targets])
 
     def test_no_data_error_is_detected(self) -> None:
         self.assertTrue(_is_no_data_error(RuntimeError("未获取到数据: 000550.SZSE")))
@@ -119,7 +145,7 @@ class UniverseDownloadJobTests(unittest.TestCase):
                     return_value=[item],
                 ):
                     with patch(
-                        "vnpy_ashare.jobs.universe_download.select_universe_missing_daily",
+                        "vnpy_ashare.jobs.universe_download.select_universe_daily_targets",
                         return_value=[item],
                     ):
                         with patch(
