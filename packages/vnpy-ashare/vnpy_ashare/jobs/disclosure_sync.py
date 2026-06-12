@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.jobs.result import JobResult
-from vnpy_ashare.services.stock_profile_service import sync_watchlist_disclosure
+from vnpy_ashare.services.stock.profile import sync_watchlist_disclosure
 
 
 def sync_disclosure_calendar_job() -> JobResult:

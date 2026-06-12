@@ -160,7 +160,7 @@ class AnalysisServiceTests(unittest.TestCase):
 
 class TdxDiagnoseParseTests(unittest.TestCase):
     def test_parse_wenda_table(self) -> None:
-        from vnpy_ashare.services.tdx_diagnose import _parse_wenda_table
+        from vnpy_ashare.services.analysis.tdx_diagnose import _parse_wenda_table
 
         raw = json.dumps(
             {

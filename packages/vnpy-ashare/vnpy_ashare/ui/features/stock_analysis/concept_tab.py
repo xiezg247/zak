@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.services.stock_concept_service import ConceptProfile
+from vnpy_ashare.services.stock.concept import ConceptProfile
 from vnpy_common.ui.data_table import configure_data_table
 from vnpy_common.ui.panel_widgets import MetricTile, content_card, hint_label, section_title, tab_page
 

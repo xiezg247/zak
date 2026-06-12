@@ -28,7 +28,7 @@ from vnpy_ashare.services.stock.profile import SectorProfile, ValuationProfile
 from vnpy_ashare.storage.repositories.valuation import ValuationRow, list_valuation_history
 
 if TYPE_CHECKING:
-    from vnpy_ashare.app.engine import AshareEngine
+    pass
 
 StockAnalysisScope = Literal["overview", "sector", "concept", "capital", "events", "holders", "financial"]
 

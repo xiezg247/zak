@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from strategies.signals import list_supported_signal_strategies
-
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
 

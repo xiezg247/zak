@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from strategies.signals import list_supported_signal_strategies
-
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
 from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,

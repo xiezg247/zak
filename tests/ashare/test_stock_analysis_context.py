@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.services.stock_analysis_context import (
+from vnpy_ashare.services.stock.context import (
     build_financial_quality_hints,
     extract_diagnose_metrics,
     format_technical_summary,

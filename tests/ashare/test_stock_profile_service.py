@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from vnpy_ashare.services.financial_service import sync_symbol_financials
-from vnpy_ashare.services.stock_profile_service import build_valuation_profile
+from vnpy_ashare.services.stock.profile import build_valuation_profile
 from vnpy_ashare.storage.repositories.disclosure import upsert_disclosure_rows
 from vnpy_ashare.storage.repositories.valuation import upsert_valuation_rows
 

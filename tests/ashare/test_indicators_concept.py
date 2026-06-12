@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from vnpy_ashare.domain.indicators import calc_macd
-from vnpy_ashare.services.stock_concept_service import build_concept_profile
+from vnpy_ashare.services.stock.concept import build_concept_profile
 
 
 class IndicatorsTests(unittest.TestCase):

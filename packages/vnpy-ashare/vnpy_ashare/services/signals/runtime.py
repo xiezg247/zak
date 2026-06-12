@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from vnpy_ashare.domain.signal_snapshot import (
-    DIST_ANCHOR_WARN_PCT,
     INTRADAY_ANCHOR_MIN_DELTA,
     INTRADAY_CROSS_NEAR_PCT,
     SIGNAL_BENCHMARK_LOOKBACK,

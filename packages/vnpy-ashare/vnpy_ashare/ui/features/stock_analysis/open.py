@@ -9,8 +9,8 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.ai.context import parse_stock_symbol
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ui.quotes.dialogs.stock_analysis_dialog import StockAnalysisDialog
-from vnpy_ashare.ui.quotes.stock_analysis.host import StockAnalysisHost
+from vnpy_ashare.ui.features.stock_analysis.dialog import StockAnalysisDialog
+from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

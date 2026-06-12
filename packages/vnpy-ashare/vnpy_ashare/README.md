@@ -29,6 +29,7 @@ vnpy_ashare/
 ├── ai/               # context/（组装与 store）、ui/（全屏页、悬浮球）
 └── ui/
     ├── shell/        # main_window、nav；settings/、manager/
+    ├── features/     # 跨页 feature（stock_analysis 等）
     ├── quotes/       # 看盘页（page / controllers / features / chart / table / panels / workers）
     ├── screener/     # 选股页（pages / widgets / dialogs / workers）
     ├── backtest/     # 回测页（pages / flow / chart / table）
@@ -63,6 +64,7 @@ vnpy_ashare/
 | `services/` | 业务 Service | `QuoteService`、`ScreeningService`、`StockAnalysisService` |
 | `services/stock/` | 个股分析子模块 | `profile`、`events`、`context` |
 | `config/preferences/` | 用户偏好（QSettings） | `watchlist_signal`、`watchlist_position` |
+| `ui/features/` | 跨页 UI 能力 | `stock_analysis`（看盘 / 选股 / 雷达入口） |
 | `storage/repositories/` | zak.db 表读写 | `watchlist`、`universe`、`financial`、`valuation`、`disclosure`、`trade_calendar`、`symbols` |
 | `vnpy_common`（独立包） | 跨 App 基础设施 | paths、UI 主题 |
 

@@ -103,7 +103,7 @@ class RadarController(QtCore.QObject):
         page_notify(self._page, f"已加入自选：{item.name or vt_symbol}")
 
     def _on_stock_analysis(self, vt_symbol: str) -> None:
-        from vnpy_ashare.ui.quotes.stock_analysis.open import show_stock_analysis_from_quotes_page
+        from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
 
         item = parse_stock_symbol(vt_symbol)
         if item is None:

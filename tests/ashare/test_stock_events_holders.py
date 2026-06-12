@@ -6,8 +6,8 @@ import unittest
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from vnpy_ashare.services.stock_events_service import EventsProfile, _build_upcoming_hints
-from vnpy_ashare.services.stock_holder_service import build_holder_profile
+from vnpy_ashare.services.stock.events import EventsProfile, _build_upcoming_hints
+from vnpy_ashare.services.stock.holders import build_holder_profile
 
 
 class StockEventsServiceTests(unittest.TestCase):

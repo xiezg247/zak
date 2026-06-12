@@ -12,17 +12,17 @@ from vnpy_ashare.app.engine_access import get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.services.stock_analysis_context import build_analysis_ai_context, format_technical_summary
-from vnpy_ashare.ui.quotes.stock_analysis.capital_tab import CapitalAnalysisTab
-from vnpy_ashare.ui.quotes.stock_analysis.chart_tab import StockAnalysisChartTab
-from vnpy_ashare.ui.quotes.stock_analysis.concept_tab import ConceptAnalysisTab
-from vnpy_ashare.ui.quotes.stock_analysis.events_tab import EventsAnalysisTab
-from vnpy_ashare.ui.quotes.stock_analysis.financial_tab import FinancialAnalysisTab
-from vnpy_ashare.ui.quotes.stock_analysis.holders_tab import HoldersAnalysisTab
-from vnpy_ashare.ui.quotes.stock_analysis.host import StockAnalysisHost
-from vnpy_ashare.ui.quotes.stock_analysis.overview_panel import OverviewAnalysisPanel
-from vnpy_ashare.ui.quotes.stock_analysis.sector_tab import SectorAnalysisTab
-from vnpy_ashare.ui.quotes.workers.stock_analysis_worker import (
+from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
+from vnpy_ashare.ui.features.stock_analysis.capital_tab import CapitalAnalysisTab
+from vnpy_ashare.ui.features.stock_analysis.chart_tab import StockAnalysisChartTab
+from vnpy_ashare.ui.features.stock_analysis.concept_tab import ConceptAnalysisTab
+from vnpy_ashare.ui.features.stock_analysis.events_tab import EventsAnalysisTab
+from vnpy_ashare.ui.features.stock_analysis.financial_tab import FinancialAnalysisTab
+from vnpy_ashare.ui.features.stock_analysis.holders_tab import HoldersAnalysisTab
+from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
+from vnpy_ashare.ui.features.stock_analysis.overview_panel import OverviewAnalysisPanel
+from vnpy_ashare.ui.features.stock_analysis.sector_tab import SectorAnalysisTab
+from vnpy_ashare.ui.features.stock_analysis.worker import (
     StockAnalysisPayload,
     StockAnalysisScope,
     StockAnalysisWorker,
@@ -234,7 +234,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
     def _open_peer_analysis(self, vt_symbol: str, name: str) -> None:
         if not vt_symbol or vt_symbol == self._item.vt_symbol:
             return
-        from vnpy_ashare.ui.quotes.stock_analysis.open import show_stock_analysis_vt_symbol
+        from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
 
         show_stock_analysis_vt_symbol(
             vt_symbol,

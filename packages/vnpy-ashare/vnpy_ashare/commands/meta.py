@@ -9,7 +9,6 @@ from pathlib import Path
 from vnpy_ashare.storage.repositories.universe import (
     export_universe_csv,
     import_universe_csv,
-    load_universe_rows,
     universe_count,
 )
 from vnpy_ashare.storage.repositories.watchlist import (

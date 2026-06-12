@@ -14,7 +14,6 @@ from vnpy_ashare.domain.signal_snapshot import (
     signal_missing_kline,
     signal_snapshot_to_dict,
 )
-from vnpy_ashare.services.signals import format_signal_context_extra
 from vnpy_ashare.services.analysis.diagnose import DiagnoseAnalyzer
 from vnpy_ashare.services.analysis.historical_mcp import (
     enrich_local_historical_with_mcp,
@@ -25,6 +24,7 @@ from vnpy_ashare.services.analysis.historical_mcp import (
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding, McpExecute
 from vnpy_ashare.services.analysis.technical import TechnicalAnalyzer
 from vnpy_ashare.services.base import BaseService
+from vnpy_ashare.services.signals import format_signal_context_extra
 
 
 class AnalysisService(BaseService):
