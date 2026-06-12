@@ -23,6 +23,7 @@ from vnpy_ashare.ai.context.quote import (
     build_signals_ai_prompt,
     build_stock_completion_items,
     build_technical_ai_prompt,
+    build_trend_scenario_ai_prompt,
     format_quote_summary,
     resolve_assistant_stock_binding,
 )
@@ -67,6 +68,7 @@ __all__ = [
     "build_signal_panel_batch_ai_prompt",
     "build_signals_ai_prompt",
     "build_technical_ai_prompt",
+    "build_trend_scenario_ai_prompt",
     "build_stock_completion_items",
     "clear_all",
     "enrich_context_with_actions",

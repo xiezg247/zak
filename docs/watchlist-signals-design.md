@@ -236,7 +236,9 @@ list_strategy_signals(
 |------|------|
 | `tests/ashare/ui/test_watchlist_signals.py` | settings、stale/missing kline、排序、磁盘 cache |
 | `tests/ashare/test_app_db.py` | 自选池 50 上限 |
-| `tests/ashare/test_ai_context.py` | AI prompt 自定义 MA |
+| `tests/ashare/ai/context/quote/test_prompts.py` | AI prompt 自定义 MA |
+| `tests/ashare/ai/context/quote/test_assembly.py` | 看盘上下文 `build_quote_context` |
+| `tests/llm/ui/test_floating_actions.py` | 悬浮球面板快捷动作路由 |
 
 ## 10. 分阶段落地记录
 

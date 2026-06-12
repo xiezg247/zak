@@ -229,7 +229,7 @@ LLM 意图分类（`IntentCategory`）决定本轮可见工具子集。与 K 线
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 看盘上下文 | `vnpy_ashare/ai/context/quote.py` | `build_quote_context` 注入 `bar_count` |
+| 看盘上下文 | `vnpy_ashare/ai/context/quote/assembly.py` | `build_quote_context` 注入 `bar_count` |
 | 技术面编排 | `vnpy_ashare/services/analysis/technical.py` | `technical_snapshot`、`strategy_signals` |
 | 历史走势 MCP 兜底 | `vnpy_ashare/services/analysis/historical_mcp.py` | 本地不足时问小达 |
 | 形态选股降级 | `vnpy_ashare/screener/pattern/pattern_screen.py` | `MAX_PATTERN_SCAN = 1200` |
