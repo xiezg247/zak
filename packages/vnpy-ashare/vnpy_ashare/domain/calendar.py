@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from vnpy_ashare.storage.trade_calendar_store import (
+from vnpy_ashare.storage.repositories.trade_calendar import (
     ensure_calendar_covers,
     load_open_trading_days,
     lookup_trading_day,

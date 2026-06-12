@@ -1,4 +1,4 @@
-"""估值历史落盘。"""
+"""估值历史 repository。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from vnpy_ashare.storage.app_db import _connect
+from vnpy_ashare.storage.connection import connect
 
 
 @dataclass(frozen=True)
@@ -56,7 +56,7 @@ def upsert_valuation_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
     ]
     if not payload:
         return 0
-    with _connect() as conn:
+    with connect() as conn:
         conn.executemany(
             """
             INSERT INTO valuation_history (
@@ -78,7 +78,7 @@ def upsert_valuation_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
 
 
 def list_valuation_history(ts_code: str, limit: int = 750) -> list[ValuationRow]:
-    with _connect() as conn:
+    with connect() as conn:
         cur = conn.execute(
             """
             SELECT ts_code, trade_date, close, pe_ttm, pb, total_mv, circ_mv,
@@ -107,7 +107,7 @@ def list_valuation_history(ts_code: str, limit: int = 750) -> list[ValuationRow]
 
 
 def latest_valuation_trade_date(ts_code: str) -> str | None:
-    with _connect() as conn:
+    with connect() as conn:
         row = conn.execute(
             """
             SELECT trade_date FROM valuation_history

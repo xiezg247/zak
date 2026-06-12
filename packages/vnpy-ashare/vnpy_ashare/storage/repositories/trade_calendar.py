@@ -1,4 +1,4 @@
-"""Tushare Pro 交易日历：拉取并缓存到本地 SQLite。"""
+"""Tushare Pro 交易日历 repository。"""
 
 from __future__ import annotations
 
@@ -6,8 +6,7 @@ import os
 import threading
 from datetime import date, datetime, timedelta
 
-from vnpy_ashare.storage.app_db import get_meta, init_app_db, set_meta
-from vnpy_common.paths import get_app_db_path
+from vnpy_ashare.storage.connection import connect, get_meta, set_meta
 
 TRADE_CAL_SYNCED_AT_KEY = "trade_calendar_synced_at"
 TRADE_CAL_RANGE_START_KEY = "trade_calendar_range_start"
@@ -79,15 +78,11 @@ def _fetch_trade_calendar(start: date, end: date) -> list[tuple[str, int]]:
 def _upsert_rows(rows: list[tuple[str, int]]) -> None:
     if not rows:
         return
-    import sqlite3
-
-    init_app_db()
-    with sqlite3.connect(get_app_db_path()) as conn:
+    with connect() as conn:
         conn.executemany(
             "INSERT INTO trade_calendar(cal_date, is_open) VALUES (?, ?) ON CONFLICT(cal_date) DO UPDATE SET is_open = excluded.is_open",
             rows,
         )
-        conn.commit()
 
 
 def _cached_range() -> tuple[date | None, date | None]:
@@ -145,10 +140,7 @@ def ensure_calendar_covers(day: date) -> bool:
 
 def lookup_trading_day(day: date) -> bool | None:
     """查询缓存；未命中返回 None。"""
-    import sqlite3
-
-    init_app_db()
-    with sqlite3.connect(get_app_db_path()) as conn:
+    with connect() as conn:
         row = conn.execute(
             "SELECT is_open FROM trade_calendar WHERE cal_date = ?",
             (_format_date(day),),
@@ -166,10 +158,7 @@ def load_open_trading_days(start: date, end: date) -> list[date]:
     ensure_calendar_covers(start)
     ensure_calendar_covers(end)
 
-    import sqlite3
-
-    init_app_db()
-    with sqlite3.connect(get_app_db_path()) as conn:
+    with connect() as conn:
         rows = conn.execute(
             """
             SELECT cal_date FROM trade_calendar
@@ -193,10 +182,7 @@ def load_open_trading_days(start: date, end: date) -> list[date]:
 
 def clear_trade_calendar_cache() -> None:
     """测试用：清空交易日历缓存。"""
-    import sqlite3
-
-    init_app_db()
-    with sqlite3.connect(get_app_db_path()) as conn:
+    with connect() as conn:
         conn.execute("DELETE FROM trade_calendar")
         conn.execute(
             "DELETE FROM meta WHERE key IN (?, ?, ?)",
@@ -206,4 +192,3 @@ def clear_trade_calendar_cache() -> None:
                 TRADE_CAL_RANGE_END_KEY,
             ),
         )
-        conn.commit()

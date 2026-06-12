@@ -12,16 +12,18 @@ from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.signal_snapshot import (
     SIGNAL_STRENGTH_STRONG,
     SignalSnapshot,
+    signal_is_fresh,
+    signal_is_strong,
+    signal_missing_kline,
+    signal_row_sort_key,
+)
+from vnpy_ashare.services.signals import (
     build_price_field_explanations,
     build_runtime_signal_hints,
     format_strength_breakdown,
     resolve_display_anchor_prices,
     signal_cell_color,
     signal_cell_text,
-    signal_is_fresh,
-    signal_is_strong,
-    signal_missing_kline,
-    signal_row_sort_key,
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,

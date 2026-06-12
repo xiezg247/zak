@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Any
 
-from vnpy_ashare.storage.app_db import init_app_db
+from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.paths import get_app_db_path
 
 DATASET_DAILY_BASIC = "daily_basic"

@@ -11,7 +11,8 @@ from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE, exchange_to_cn
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.storage.app_db import load_watchlist_rows, position_contains
+from vnpy_ashare.storage.repositories.positions import position_contains
+from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 from vnpy_common.ai.protocol import AiContextData, QuickAction, StockCompletionItem
 
 
@@ -303,7 +304,7 @@ def build_trend_scenario_ai_prompt(
 def resolve_signal_prompt_params() -> tuple[str, int, int]:
     """读取自选页信号区策略参数（与信号面板设置一致）。"""
     try:
-        from vnpy_ashare.ui.quotes.watchlist_signals.settings import load_watchlist_signal_config
+        from vnpy_ashare.config.preferences import load_watchlist_signal_config
 
         cfg = load_watchlist_signal_config()
         return cfg.class_name, cfg.fast_window, cfg.slow_window

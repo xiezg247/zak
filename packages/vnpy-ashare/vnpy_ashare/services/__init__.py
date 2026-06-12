@@ -8,6 +8,7 @@ from vnpy_ashare.services.position_service import PositionService
 from vnpy_ashare.services.quote_service import QuoteService
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.services.sentiment_service import SentimentService
+from vnpy_ashare.services.stock_analysis_service import StockAnalysisService
 from vnpy_ashare.services.watchlist_service import WatchlistService
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "QuoteService",
     "ScreeningService",
     "SentimentService",
+    "StockAnalysisService",
     "WatchlistService",
 ]

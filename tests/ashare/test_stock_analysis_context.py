@@ -9,7 +9,7 @@ from vnpy_ashare.services.stock_analysis_context import (
     extract_diagnose_metrics,
     format_technical_summary,
 )
-from vnpy_ashare.storage.financial_store import FinancialSnapshotRow
+from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow
 
 
 class StockAnalysisContextTests(unittest.TestCase):

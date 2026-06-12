@@ -9,7 +9,10 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.storage.app_db import add_watchlist_item, build_symbol_name_map, init_app_db, save_universe_rows
+from vnpy_ashare.storage.connection import init_app_db
+from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
+from vnpy_ashare.storage.repositories.universe import save_universe_rows
+from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item
 from vnpy_ashare.ui.shell.manager.widget import _DOWNLOAD_HINT, _TREE_LABELS, ManagerWidget
 
 
@@ -34,7 +37,7 @@ class SymbolNameMapTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.app_db.get_app_db_path", return_value=self.db_path)
+        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
         self._patcher.start()
         init_app_db()
 

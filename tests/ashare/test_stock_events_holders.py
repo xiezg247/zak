@@ -21,7 +21,7 @@ class StockEventsServiceTests(unittest.TestCase):
         hints = _build_upcoming_hints(profile)
         self.assertTrue(any("披露" in item for item in hints))
 
-    @patch("vnpy_ashare.services.stock_holder_service.fetch_top10_holders")
+    @patch("vnpy_ashare.services.stock.holders.fetch_top10_holders")
     def test_build_holder_profile(self, mock_fetch) -> None:
         mock_fetch.return_value = [
             {

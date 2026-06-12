@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from vnpy_ashare.services.financial_service import compute_snapshots, sync_symbol_financials
-from vnpy_ashare.storage.financial_store import list_snapshots, upsert_report
+from vnpy_ashare.storage.repositories.financial import list_snapshots, upsert_report
 
 
 class FinancialDerivedTests(unittest.TestCase):
@@ -16,18 +16,15 @@ class FinancialDerivedTests(unittest.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         db_path = Path(self._tmpdir.name) / "test.db"
 
-        self._patch_path = patch("vnpy_ashare.storage.financial_store.get_app_db_path", return_value=db_path)
-        self._patch_app_path = patch("vnpy_ashare.storage.app_db.get_app_db_path", return_value=db_path)
+        self._patch_path = patch("vnpy_ashare.storage.connection._db_path", return_value=db_path)
         self._patch_path.start()
-        self._patch_app_path.start()
 
-        from vnpy_ashare.storage.app_db import init_app_db
+        from vnpy_ashare.storage.connection import init_app_db
 
         init_app_db()
 
     def tearDown(self) -> None:
         self._patch_path.stop()
-        self._patch_app_path.stop()
         self._tmpdir.cleanup()
 
     def test_compute_snapshots_yoy(self) -> None:

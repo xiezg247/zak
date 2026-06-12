@@ -1,4 +1,4 @@
-"""个股财报本地存储（zak.db）。"""
+"""个股财报 repository。"""
 
 from __future__ import annotations
 
@@ -8,8 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from vnpy_ashare.storage.app_db import init_app_db
-from vnpy_common.paths import get_app_db_path
+from vnpy_ashare.storage.connection import connect
 
 REPORT_TYPES: tuple[str, ...] = (
     "income",
@@ -60,13 +59,6 @@ class FinancialSnapshotRow:
     computed_at: str = ""
 
 
-def _connect() -> sqlite3.Connection:
-    init_app_db()
-    conn = sqlite3.connect(get_app_db_path())
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
 def upsert_report(
     *,
     ts_code: str,
@@ -79,7 +71,7 @@ def upsert_report(
 ) -> None:
     fetched_at = datetime.now().isoformat(timespec="seconds")
     body = json.dumps(payload, ensure_ascii=False)
-    with _connect() as conn:
+    with connect() as conn:
         conn.execute(
             """
             INSERT INTO financial_reports(
@@ -94,7 +86,6 @@ def upsert_report(
             """,
             (ts_code, report_type, end_date, ann_date, period, source, fetched_at, body),
         )
-        conn.commit()
 
 
 def list_reports(
@@ -103,7 +94,7 @@ def list_reports(
     *,
     limit: int = 20,
 ) -> list[dict[str, Any]]:
-    with _connect() as conn:
+    with connect() as conn:
         rows = conn.execute(
             """
             SELECT end_date, ann_date, period, source, fetched_at, payload
@@ -134,7 +125,7 @@ def list_reports(
 
 def upsert_snapshot(row: FinancialSnapshotRow) -> None:
     computed_at = row.computed_at or datetime.now().isoformat(timespec="seconds")
-    with _connect() as conn:
+    with connect() as conn:
         conn.execute(
             """
             INSERT INTO financial_snapshots(
@@ -192,11 +183,10 @@ def upsert_snapshot(row: FinancialSnapshotRow) -> None:
                 computed_at,
             ),
         )
-        conn.commit()
 
 
 def list_snapshots(ts_code: str, *, limit: int = 12) -> list[FinancialSnapshotRow]:
-    with _connect() as conn:
+    with connect() as conn:
         rows = conn.execute(
             """
             SELECT *
@@ -248,7 +238,7 @@ def _row_to_snapshot(row: sqlite3.Row) -> FinancialSnapshotRow:
 
 
 def get_sync_meta(ts_code: str) -> FinancialSyncMeta | None:
-    with _connect() as conn:
+    with connect() as conn:
         row = conn.execute(
             "SELECT * FROM financial_sync_meta WHERE ts_code = ?",
             (ts_code,),
@@ -268,7 +258,7 @@ def get_sync_meta(ts_code: str) -> FinancialSyncMeta | None:
 
 
 def upsert_sync_meta(meta: FinancialSyncMeta) -> None:
-    with _connect() as conn:
+    with connect() as conn:
         conn.execute(
             """
             INSERT INTO financial_sync_meta(
@@ -295,7 +285,6 @@ def upsert_sync_meta(meta: FinancialSyncMeta) -> None:
                 meta.last_access_at,
             ),
         )
-        conn.commit()
 
 
 def touch_access(ts_code: str) -> None:

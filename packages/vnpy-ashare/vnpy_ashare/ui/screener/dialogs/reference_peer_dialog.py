@@ -251,7 +251,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
             if self._watchlist_add(item.symbol, item.exchange, name):
                 added += 1
             else:
-                from vnpy_ashare.storage.app_db import watchlist_add_failure_reason
+                from vnpy_ashare.storage.repositories.watchlist import watchlist_add_failure_reason
 
                 reason = watchlist_add_failure_reason(item.symbol, item.exchange)
                 if reason == "full":
@@ -262,7 +262,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         if skipped:
             message += f" · 跳过 {skipped} 只"
         if full_hit:
-            from vnpy_ashare.storage.app_db import WATCHLIST_MAX_ITEMS
+            from vnpy_ashare.storage.repositories.watchlist import WATCHLIST_MAX_ITEMS
 
             message += f" · 自选已满（最多 {WATCHLIST_MAX_ITEMS} 只）"
         self._summary_label.setText(message)

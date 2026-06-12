@@ -7,7 +7,7 @@ from typing import Literal
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.storage.app_db import (
+from vnpy_ashare.storage.repositories.watchlist import (
     WATCHLIST_MAX_ITEMS,
     add_watchlist_item,
     load_watchlist_rows,

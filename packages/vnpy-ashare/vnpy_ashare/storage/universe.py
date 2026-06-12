@@ -7,9 +7,9 @@ from pathlib import Path
 
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow.universe import fetch_universe_items
-from vnpy_ashare.storage.app_db import (
+from vnpy_ashare.storage.connection import init_app_db
+from vnpy_ashare.storage.repositories.universe import (
     CACHE_MAX_AGE,
-    init_app_db,
     load_universe_rows,
     save_universe_rows,
     universe_exists,

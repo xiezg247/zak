@@ -19,7 +19,8 @@ from vnpy_ashare.data.minute_periods import (
 )
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow import fetch_history_bars
-from vnpy_ashare.storage.app_db import import_watchlist_csv, load_universe_rows, load_watchlist_rows
+from vnpy_ashare.storage.repositories.universe import import_universe_csv, load_universe_rows
+from vnpy_ashare.storage.repositories.watchlist import import_watchlist_csv, load_watchlist_rows
 
 
 def load_watchlist(path: Path | None = None, ashare_only: bool = True) -> list[StockItem]:

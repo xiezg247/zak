@@ -61,7 +61,8 @@ from vnpy_ashare.screener.run.runner import (
     resolve_preset_input,
     run_screener,
 )
-from vnpy_ashare.storage.app_db import add_watchlist_item, init_app_db
+from vnpy_ashare.storage.connection import init_app_db
+from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item
 
 _COLLECT_QUOTES_INTERVAL_MIN = 5
 

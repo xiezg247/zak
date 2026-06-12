@@ -6,7 +6,7 @@ from datetime import date
 
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.jobs.result import JobResult
-from vnpy_ashare.storage.trade_calendar_store import DEFAULT_CAL_START, sync_trade_calendar
+from vnpy_ashare.storage.repositories.trade_calendar import DEFAULT_CAL_START, sync_trade_calendar
 
 
 def _calendar_end(today: date | None = None) -> date:

@@ -1,4 +1,4 @@
-"""财报披露计划落盘。"""
+"""财报披露计划 repository。"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from vnpy_ashare.storage.app_db import _connect
+from vnpy_ashare.storage.connection import connect
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ def upsert_disclosure_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
     ]
     if not payload:
         return 0
-    with _connect() as conn:
+    with connect() as conn:
         conn.executemany(
             """
             INSERT INTO disclosure_calendar (
@@ -59,7 +59,7 @@ def upsert_disclosure_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
 
 
 def list_disclosure_calendar(ts_code: str, limit: int = 8) -> list[DisclosureRow]:
-    with _connect() as conn:
+    with connect() as conn:
         cur = conn.execute(
             """
             SELECT ts_code, end_date, pre_date, ann_date, actual_date, fetched_at
@@ -84,7 +84,7 @@ def list_disclosure_calendar(ts_code: str, limit: int = 8) -> list[DisclosureRow
 
 
 def latest_ann_date_after(ts_code: str, since_yyyymmdd: str) -> str | None:
-    with _connect() as conn:
+    with connect() as conn:
         row = conn.execute(
             """
             SELECT ann_date FROM disclosure_calendar

@@ -8,7 +8,8 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, resolve_display_anchor_prices, resolve_list_ref_prices
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.services.signals import resolve_display_anchor_prices, resolve_list_ref_prices
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet

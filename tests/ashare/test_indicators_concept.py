@@ -22,7 +22,7 @@ class IndicatorsTests(unittest.TestCase):
 
 
 class ConceptServiceTests(unittest.TestCase):
-    @patch("vnpy_ashare.services.stock_concept_service.fetch_stock_concepts")
+    @patch("vnpy_ashare.services.stock.concept.fetch_stock_concepts")
     def test_build_concept_profile(self, mock_fetch) -> None:
         mock_fetch.return_value = [
             {"concept_id": "TS1", "concept_name": "人工智能"},

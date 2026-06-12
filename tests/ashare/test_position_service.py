@@ -1,4 +1,4 @@
-"""持仓 Service 与 app_db 测试。"""
+"""持仓 Service 测试。"""
 
 from __future__ import annotations
 
@@ -11,17 +11,19 @@ from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.services.position_service import PositionService
-from vnpy_ashare.storage import app_db
+from vnpy_ashare.storage.connection import init_app_db
+from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
+from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item
 
 
 class PositionServiceTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = Path(self._tmp.name)
-        self._patcher = patch("vnpy_ashare.storage.app_db.get_app_db_path", return_value=self.db_path)
+        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
         self._patcher.start()
-        app_db.init_app_db()
-        app_db.add_watchlist_item("600000", Exchange.SSE, "浦发银行")
+        init_app_db()
+        add_watchlist_item("600000", Exchange.SSE, "浦发银行")
         engine = Mock()
         engine.main_engine = None
         engine.event_engine = None
@@ -85,9 +87,9 @@ class PositionServiceTests(unittest.TestCase):
         self.assertEqual(self.service.get_items()[0].volume, 100)
 
     def test_position_max_items(self) -> None:
-        for index in range(app_db.POSITION_MAX_ITEMS):
+        for index in range(POSITION_MAX_ITEMS):
             symbol = f"{600001 + index}"
-            app_db.add_watchlist_item(symbol, Exchange.SSE, f"测试{index}")
+            add_watchlist_item(symbol, Exchange.SSE, f"测试{index}")
             self.assertTrue(
                 self.service.add(
                     symbol,
@@ -98,7 +100,7 @@ class PositionServiceTests(unittest.TestCase):
                 )
             )
         self.assertTrue(self.service.at_capacity())
-        app_db.add_watchlist_item("999999", Exchange.SSE, "溢出")
+        add_watchlist_item("999999", Exchange.SSE, "溢出")
         self.assertFalse(
             self.service.add(
                 "999999",

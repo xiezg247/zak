@@ -11,10 +11,10 @@ from vnpy_ashare.ai.context.quote import format_quote_summary
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.signal_snapshot import (
     SignalSnapshot,
-    format_signal_context_extra,
     signal_missing_kline,
     signal_snapshot_to_dict,
 )
+from vnpy_ashare.services.signals import format_signal_context_extra
 from vnpy_ashare.services.analysis.diagnose import DiagnoseAnalyzer
 from vnpy_ashare.services.analysis.historical_mcp import (
     enrich_local_historical_with_mcp,
@@ -138,8 +138,8 @@ class AnalysisService(BaseService):
         include_live_quote: bool = False,
     ) -> dict[str, Any]:
         """批量返回信号区名单的策略快照（可选附带实时行情修饰）。"""
+        from vnpy_ashare.config.preferences import load_signal_panel_symbols
         from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
-        from vnpy_ashare.ui.quotes.watchlist_signals.settings import load_signal_panel_symbols
 
         symbols = load_signal_panel_symbols()
         if not symbols:

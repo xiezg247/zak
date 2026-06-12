@@ -9,6 +9,28 @@ from pathlib import Path
 
 import tests._bootstrap  # noqa: F401
 
+from vnpy_ashare.domain.signal_snapshot import (
+    SignalSnapshot,
+    detect_signal_transitions,
+    dist_anchor_exceeds_warn,
+    dist_buy_pct,
+    signal_is_fresh,
+    signal_is_strong,
+    signal_snapshot_to_dict,
+)
+from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.services.signals import (
+    build_intraday_cross_hints,
+    build_price_field_explanations,
+    build_runtime_signal_hints,
+    format_signal_context_extra,
+    format_signal_label_display,
+    format_strength_breakdown,
+    resolve_display_anchor_prices,
+    resolve_list_ref_prices,
+    signal_cell_text,
+)
+
 _ROOT = Path(__file__).resolve().parents[2]
 _PKG = _ROOT / "packages" / "vnpy-ashare"
 
@@ -21,27 +43,6 @@ def _load_module(name: str, rel_path: str):
     sys.modules[full_name] = module
     spec.loader.exec_module(module)
     return module
-
-
-_quote_mod = _load_module("quote_snapshot", "vnpy_ashare/quotes/snapshot.py")
-sys.modules["vnpy_ashare.quotes.snapshot"] = _quote_mod
-_signal_mod = _load_module("signal_snapshot", "vnpy_ashare/domain/signal_snapshot.py")
-
-QuoteSnapshot = _quote_mod.QuoteSnapshot
-SignalSnapshot = _signal_mod.SignalSnapshot
-build_price_field_explanations = _signal_mod.build_price_field_explanations
-build_runtime_signal_hints = _signal_mod.build_runtime_signal_hints
-dist_anchor_exceeds_warn = _signal_mod.dist_anchor_exceeds_warn
-dist_buy_pct = _signal_mod.dist_buy_pct
-resolve_display_anchor_prices = _signal_mod.resolve_display_anchor_prices
-resolve_list_ref_prices = _signal_mod.resolve_list_ref_prices
-signal_cell_text = _signal_mod.signal_cell_text
-format_signal_context_extra = _signal_mod.format_signal_context_extra
-build_intraday_cross_hints = _signal_mod.build_intraday_cross_hints
-detect_signal_transitions = _signal_mod.detect_signal_transitions
-signal_snapshot_to_dict = _signal_mod.signal_snapshot_to_dict
-signal_is_fresh = _signal_mod.signal_is_fresh
-signal_is_strong = _signal_mod.signal_is_strong
 
 
 class DistAnchorWarnTests(unittest.TestCase):
@@ -374,10 +375,6 @@ class RuntimeSignalHintTests(unittest.TestCase):
         self.assertEqual(payload["strength_cross"], 80.0)
 
     def test_signal_age_and_label_badges(self) -> None:
-        format_signal_label_display = _signal_mod.format_signal_label_display
-        signal_cell_text = _signal_mod.signal_cell_text
-        format_strength_breakdown = _signal_mod.format_strength_breakdown
-
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
             strategy_id="AshareDoubleMaStrategy",
@@ -404,7 +401,7 @@ class RuntimeSignalHintTests(unittest.TestCase):
         self.assertIn("过期", label)
         self.assertTrue(
             signal_is_fresh(
-                _signal_mod.SignalSnapshot(
+                SignalSnapshot(
                     vt_symbol="600000.SSE",
                     strategy_id="AshareDoubleMaStrategy",
                     as_of="2026-06-10",
@@ -491,10 +488,8 @@ class RuntimeSignalHintTests(unittest.TestCase):
 
 class SignalPanelColumnTests(unittest.TestCase):
     def test_normalize_and_resolve_columns(self) -> None:
-        columns_mod = _load_module(
-            "signal_panel_columns",
-            "vnpy_ashare/ui/quotes/watchlist_signals/columns.py",
-        )
+        from vnpy_ashare.config.preferences import signal_panel_columns as columns_mod  # noqa: PLC0415
+
         keys = columns_mod.normalize_visible_optional_keys(["signal_strength", "signal", "signal", "unknown"])
         self.assertEqual(keys[0], "signal")
         self.assertIn("signal_strength", keys)

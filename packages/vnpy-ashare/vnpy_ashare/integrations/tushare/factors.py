@@ -27,7 +27,7 @@ from vnpy_ashare.integrations.tushare.cache import (
     set_cached_rows,
 )
 from vnpy_ashare.integrations.tushare.client import get_tushare_pro
-from vnpy_ashare.storage.app_db import load_universe_rows
+from vnpy_ashare.storage.repositories.universe import load_universe_rows
 
 
 def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:

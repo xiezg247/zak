@@ -30,11 +30,6 @@ from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
-from vnpy_ashare.quotes.rank_catalog import (
-    get_rank_definition,
-    list_rank_definitions,
-    rank_definition_index,
-)
 from vnpy_ashare.ui.quotes.chart import ChartPanel
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,
@@ -46,6 +41,7 @@ from vnpy_ashare.ui.quotes.controllers import (
     WatchlistBatchBacktestController,
     WatchlistController,
 )
+from vnpy_ashare.ui.quotes.features import MarketRankFeature, WatchlistPanelsFeature
 from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
     MARKET_SCROLL_DEBOUNCE_MS,
@@ -62,10 +58,8 @@ from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionControlle
 from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
     WatchlistPositionConfig,
     load_watchlist_position_config,
-    save_watchlist_position_config,
 )
 from vnpy_ashare.ui.quotes.watchlist_signals import (
-    SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
     WatchlistSignalController,
     apply_center_splitter_sizes,
@@ -85,8 +79,6 @@ from vnpy_ashare.ui.quotes.workers import (
 from vnpy_common.ui.feedback import TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
-
-RANK_SETTINGS_KEY = "quotes/market/active_rank_id_v1"
 
 
 class QuotesPage(QtWidgets.QWidget):
@@ -164,10 +156,8 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_board_base: list[StockItem] | None = None
         self._market_board_base_key: str | None = None
         self._market_filter_keyword: str = ""
-        rank_spec = get_rank_definition(self.config.default_rank_id)
-        self._market_rank_id = self._load_rank_id_pref()
-        self._market_sort_column: str | None = rank_spec.sort_column or rank_spec.redis_field
-        self._market_sort_ascending = rank_spec.ascending
+        self._market_rank = MarketRankFeature(self)
+        self._watchlist_panels = WatchlistPanelsFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
 
         self._load_worker: QtCore.QThread | None = None
@@ -424,61 +414,22 @@ class QuotesPage(QtWidgets.QWidget):
         self._pagination.on_board_changed()
 
     def _load_rank_id_pref(self) -> str:
-        if not self.config.show_rank_sidebar:
-            return self.config.default_rank_id
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-        saved = str(settings.value(RANK_SETTINGS_KEY, "") or "").strip()
-        if saved:
-            return get_rank_definition(saved).id
-        return self.config.default_rank_id
+        return self._market_rank.load_rank_id_pref()
 
     def _save_rank_id_pref(self, rank_id: str) -> None:
-        if not self.config.show_rank_sidebar:
-            return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-        settings.setValue(RANK_SETTINGS_KEY, rank_id)
+        self._market_rank.save_rank_id_pref(rank_id)
 
     def _sync_rank_sort_from_catalog(self) -> None:
-        spec = get_rank_definition(self._market_rank_id)
-        self._market_sort_column = spec.sort_column or spec.redis_field
-        self._market_sort_ascending = spec.ascending
+        self._market_rank.sync_sort_from_catalog()
 
     def _on_rank_type_changed(self, row: int) -> None:
-        if not self.config.show_rank_sidebar or row < 0:
-            return
-
-        specs = list_rank_definitions()
-        if row >= len(specs):
-            return
-        spec = specs[row]
-        if spec.id == self._market_rank_id:
-            return
-        self._market_rank_id = spec.id
-        self._sync_rank_sort_from_catalog()
-        self._save_rank_id_pref(spec.id)
-        self._market_page = 0
-        self._market_page_cache.clear()
-        self._market_catalog_loaded = False
-        self._market_board_base = None
-        self._market_board_base_key = None
-        self._market_filter_keyword = ""
-        self._market_loading_more = False
-        self._market_last_load_more_at = 0.0
-        self.load_stock_list()
+        self._market_rank.on_rank_type_changed(row)
 
     def _init_rank_sidebar_selection(self) -> None:
-        rank_list = getattr(self, "rank_list", None)
-        if rank_list is None:
-            return
-        index = rank_definition_index(self._market_rank_id)
-        rank_list.blockSignals(True)
-        rank_list.setCurrentRow(index)
-        rank_list.blockSignals(False)
+        self._market_rank.init_sidebar_selection()
 
     def active_rank_title(self) -> str:
-        if self.config.show_rank_sidebar:
-            return get_rank_definition(self._market_rank_id).title
-        return "涨幅榜"
+        return self._market_rank.active_rank_title()
 
     def _refresh_market_clicked(self) -> None:
         self._loader.refresh_market_clicked()
@@ -551,22 +502,10 @@ class QuotesPage(QtWidgets.QWidget):
         self._positions.refresh(force=True)
 
     def _wire_signal_panel(self) -> None:
-        panel = getattr(self, "signal_panel", None)
-        if panel is None:
-            return
-        panel.symbols_changed.connect(self._signals.on_symbols_changed)
-        panel.enabled_changed.connect(self._signals.on_panel_enabled_changed)
-        panel.config_changed.connect(self._on_signal_panel_config_changed)
-        panel.refresh_requested.connect(self.refresh_watchlist_signals)
-        panel.row_activated.connect(self._on_signal_panel_row_activated)
-        panel.row_selected.connect(self._on_signal_panel_row_activated)
-        panel.expansion_changed.connect(self._on_signal_panel_expansion_changed)
-        panel.register_position_requested.connect(self._on_signal_register_position)
-        panel.ai_interpret_requested.connect(self._actions.ask_ai_for_signal_panel)
-        panel.ai_scan_requested.connect(self._actions.ask_ai_for_signal_panel_batch)
+        self._watchlist_panels.wire_signal_panel()
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
-        apply_center_splitter_sizes(self)
+        self._watchlist_panels.on_signal_panel_expansion_changed(expanded)
 
     def _on_chart_section_expansion_changed(self, expanded: bool) -> None:
         from vnpy_ashare.ui.quotes.chart.section import sync_chart_splitter_for_expansion
@@ -574,56 +513,27 @@ class QuotesPage(QtWidgets.QWidget):
         sync_chart_splitter_for_expansion(self, expanded)
 
     def _on_signal_panel_config_changed(self) -> None:
-        panel = getattr(self, "signal_panel", None)
-        if panel is None:
-            return
-        self._signals.apply_config(panel.read_config())
+        self._watchlist_panels.on_signal_panel_config_changed()
 
     def apply_signal_panel_config(self) -> None:
         """应用信号区当前配置（构建 UI 期间也可安全调用）。"""
-        self._on_signal_panel_config_changed()
+        self._watchlist_panels.apply_signal_panel_config()
 
     def _on_signal_panel_row_activated(self, vt_symbol: str) -> None:
-        item = self.find_stock_item(vt_symbol)
-        if item is None:
-            return
-        self._select_stock_key((item.symbol, item.exchange))
-        snap = self.signal_cache.get(vt_symbol)
-        if snap is not None and self.chart_panel is not None:
-            item = self.find_stock_item(vt_symbol)
-            quote = self.quote_map.get(item.tickflow_symbol) if item is not None else None
-            cfg = self.signal_config.normalized()
-            self.chart_panel.apply_signal_reference(
-                snap,
-                quote=quote,
-                fast_window=cfg.fast_window,
-                slow_window=cfg.slow_window,
-            )
+        self._watchlist_panels.on_signal_panel_row_activated(vt_symbol)
 
     def _signal_chart_ref_kwargs(self) -> dict[str, int]:
         cfg = self.signal_config.normalized()
         return {"fast_window": cfg.fast_window, "slow_window": cfg.slow_window}
 
     def _wire_position_panel(self) -> None:
-        panel = getattr(self, "position_panel", None)
-        if panel is None:
-            return
-        panel.rows_changed.connect(self._positions.on_rows_changed)
-        panel.enabled_changed.connect(self._positions.on_panel_enabled_changed)
-        panel.config_changed.connect(self._on_position_panel_config_changed)
-        panel.refresh_requested.connect(self.refresh_watchlist_positions)
-        panel.row_activated.connect(self._on_position_panel_row_activated)
-        panel.row_selected.connect(self._on_position_panel_row_selected)
-        panel.expansion_changed.connect(self._on_position_panel_expansion_changed)
+        self._watchlist_panels.wire_position_panel()
 
     def _on_position_panel_expansion_changed(self, _expanded: bool) -> None:
-        apply_center_splitter_sizes(self)
+        self._watchlist_panels.on_position_panel_expansion_changed(_expanded)
 
     def _on_position_panel_config_changed(self) -> None:
-        panel = getattr(self, "position_panel", None)
-        if panel is None:
-            return
-        self._apply_position_config(panel.read_config())
+        self._watchlist_panels.on_position_panel_config_changed()
 
     def _apply_position_config(
         self,
@@ -631,77 +541,22 @@ class QuotesPage(QtWidgets.QWidget):
         *,
         save: bool = True,
     ) -> None:
-        normalized = config.normalized()
-        self.position_config = normalized
-        if save:
-            save_watchlist_position_config(normalized)
-        panel = getattr(self, "position_panel", None)
-        if panel is not None:
-            panel.apply_config(normalized)
-        if self.config.show_watchlist_positions:
-            self._positions.invalidate_cache()
-            self._positions.refresh(force=True)
+        self._watchlist_panels.apply_position_config(config, save=save)
 
     def _on_signal_register_position(self, vt_symbol: str) -> None:
-        panel = getattr(self, "position_panel", None)
-        if panel is None:
-            return
-        panel.register_symbol(vt_symbol)
+        self._watchlist_panels.on_signal_register_position(vt_symbol)
 
     def _on_position_panel_row_selected(self, vt_symbol: str) -> None:
-        item = self.find_stock_item(vt_symbol)
-        if item is None:
-            return
-        self._select_stock_key((item.symbol, item.exchange))
+        self._watchlist_panels.on_position_panel_row_selected(vt_symbol)
 
     def _on_position_panel_row_activated(self, vt_symbol: str) -> None:
-        self._on_position_panel_row_selected(vt_symbol)
-        snap = self.position_cache.get(vt_symbol)
-        if snap is not None and snap.signal_snapshot is not None and self.chart_panel is not None:
-            item = self.find_stock_item(vt_symbol)
-            quote = self.quote_map.get(item.tickflow_symbol) if item is not None else None
-            pos_cfg = self.position_config.normalized().effective_signal_config(self.signal_config)
-            self.chart_panel.apply_signal_reference(
-                snap.signal_snapshot,
-                quote=quote,
-                fast_window=pos_cfg.fast_window,
-                slow_window=pos_cfg.slow_window,
-            )
+        self._watchlist_panels.on_position_panel_row_activated(vt_symbol)
 
     def register_position_for_selected(self) -> None:
-        panel = getattr(self, "position_panel", None)
-        if panel is None:
-            return
-        items = self._table.selected_items()
-        if not items:
-            if self.current_item is not None:
-                items = [self.current_item]
-        if not items:
-            self._toast.warning("请先在自选表中选择标的")
-            return
-        if len(items) > 1:
-            self._toast.warning("登记持仓一次仅支持单只标的")
-            return
-        panel.register_symbol(items[0].vt_symbol)
+        self._watchlist_panels.register_position_for_selected()
 
     def add_selection_to_signal_panel(self) -> None:
-        panel = getattr(self, "signal_panel", None)
-        if panel is None:
-            return
-        items = self._table.selected_items()
-        if not items:
-            self._toast.warning("请先在自选表中选择标的")
-            return
-        added, skipped = panel.add_symbols([item.vt_symbol for item in items])
-        if added:
-            message = f"已加入信号区 {added} 只"
-            if skipped:
-                message += f"，{skipped} 只因已达上限 {SIGNAL_PANEL_MAX_SYMBOLS} 未加入"
-            self._toast.success(message)
-        elif skipped:
-            self._toast.warning(f"信号区已满（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只），请先移出后再加入")
-        else:
-            self._toast.info("所选标的已在信号区")
+        self._watchlist_panels.add_selection_to_signal_panel()
 
     def find_stock_item(self, vt_symbol: str) -> StockItem | None:
         target = (vt_symbol or "").strip()

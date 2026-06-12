@@ -8,8 +8,9 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from strategies.registry import get_strategy_meta
 from vnpy_ashare.domain.position_snapshot import PositionRecord, position_row_sort_key, position_t1_locked
-from vnpy_ashare.domain.signal_snapshot import signal_cell_color, signal_missing_kline
-from vnpy_ashare.storage.app_db import POSITION_MAX_ITEMS
+from vnpy_ashare.domain.signal_snapshot import signal_missing_kline
+from vnpy_ashare.services.signals import signal_cell_color
+from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
     POSITION_PANEL_COLLAPSED_HEIGHT,

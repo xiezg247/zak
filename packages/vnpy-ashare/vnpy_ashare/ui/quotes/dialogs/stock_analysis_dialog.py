@@ -8,7 +8,7 @@ from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import build_diagnose_ai_prompt
-from vnpy_ashare.app.engine_access import get_analysis_service, get_financial_service
+from vnpy_ashare.app.engine_access import get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
@@ -344,11 +344,16 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         sync = scope == "financial"
         self._start_load(scope=scope, sync_financials=sync, force=True)
 
+    def _stock_analysis_service(self):
+        return get_stock_analysis_service(self._host.main_engine)
+
     def _analysis_service(self):
-        return get_analysis_service(self._host.main_engine)
+        service = self._stock_analysis_service()
+        return service.engine.analysis_service if service is not None else None
 
     def _financial_service(self):
-        return get_financial_service(self._host.main_engine)
+        service = self._stock_analysis_service()
+        return service.engine.financial_service if service is not None else None
 
     def _quote_summary(self) -> dict[str, Any]:
         quote = self._quote
@@ -426,12 +431,14 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 self._pending_scopes.append(scope)
             return
 
-        analysis = self._analysis_service()
-        financial = self._financial_service()
-        if scope in {"overview", "sector"} and analysis is None:
+        stock_analysis = self._stock_analysis_service()
+        if stock_analysis is None:
+            self._status_label.setText("个股分析服务未就绪")
+            return
+        if scope in {"overview", "sector"} and self._analysis_service() is None:
             self._status_label.setText("分析服务未就绪")
             return
-        if scope == "financial" and financial is None:
+        if scope == "financial" and self._financial_service() is None:
             self._status_label.setText("财报服务未就绪")
             return
 
@@ -445,8 +452,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         worker = StockAnalysisWorker(
             vt_symbol=self._item.vt_symbol,
             scope=scope,
-            analysis_service=analysis,
-            financial_service=financial,
+            stock_analysis_service=stock_analysis,
             quote_summary=self._quote_summary(),
             sync_financials=sync_financials,
             stock_name=self._quote.name if self._quote and self._quote.name else self._item.name,

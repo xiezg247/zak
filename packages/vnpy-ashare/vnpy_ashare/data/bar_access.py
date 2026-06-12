@@ -6,7 +6,7 @@
     无 Engine      → 本模块 re-export（Worker、单元测试、manager fallback）
     下载 / 同步    → bars.py、universe.py（写操作，不经本门面）
 
-禁止 UI 直接 ``from vnpy_ashare.data.bar_store import …`` 或 ``from vnpy_ashare.storage.app_db import …``。
+禁止 UI 直接 ``from vnpy_ashare.data.bar_store import …`` 或 ``from vnpy_ashare.storage.repositories import …``（经本门面）。
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ from vnpy_ashare.data.bar_store import (
     load_period_bars,
     load_scope_bars,
 )
-from vnpy_ashare.storage.app_db import (
-    build_symbol_name_map,
+from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
+from vnpy_ashare.storage.repositories.universe import (
     count_universe,
     load_universe_page,
     load_universe_rows,

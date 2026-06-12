@@ -10,8 +10,8 @@ from unittest.mock import patch
 
 from vnpy_ashare.services.financial_service import sync_symbol_financials
 from vnpy_ashare.services.stock_profile_service import build_valuation_profile
-from vnpy_ashare.storage.disclosure_store import upsert_disclosure_rows
-from vnpy_ashare.storage.valuation_store import upsert_valuation_rows
+from vnpy_ashare.storage.repositories.disclosure import upsert_disclosure_rows
+from vnpy_ashare.storage.repositories.valuation import upsert_valuation_rows
 
 
 class StockProfileServiceTests(unittest.TestCase):
@@ -19,12 +19,11 @@ class StockProfileServiceTests(unittest.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         db_path = Path(self._tmpdir.name) / "test.db"
         self._patches = [
-            patch("vnpy_ashare.storage.app_db.get_app_db_path", return_value=db_path),
-            patch("vnpy_ashare.storage.financial_store.get_app_db_path", return_value=db_path),
+            patch("vnpy_ashare.storage.connection._db_path", return_value=db_path),
         ]
         for item in self._patches:
             item.start()
-        from vnpy_ashare.storage.app_db import init_app_db
+        from vnpy_ashare.storage.connection import init_app_db
 
         init_app_db()
 
@@ -39,7 +38,7 @@ class StockProfileServiceTests(unittest.TestCase):
         upsert_valuation_rows(ts_code, rows)
 
         with patch(
-            "vnpy_ashare.services.stock_profile_service.fetch_daily_basic_with_fallback",
+            "vnpy_ashare.services.stock.profile.fetch_daily_basic_with_fallback",
             return_value=([], ""),
         ):
             profile = build_valuation_profile("600519.SSE")

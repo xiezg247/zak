@@ -6,7 +6,7 @@ from typing import Any
 
 from vnpy_ashare.ai.context import get_diagnose_result, set_diagnose_result
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding
-from vnpy_ashare.services.tdx_diagnose import run_tdx_diagnose
+from vnpy_ashare.services.analysis.tdx_diagnose import run_tdx_diagnose
 
 
 class DiagnoseAnalyzer:

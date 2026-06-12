@@ -6,13 +6,16 @@ import argparse
 import sys
 from pathlib import Path
 
-from vnpy_ashare.storage.app_db import (
+from vnpy_ashare.storage.repositories.universe import (
     export_universe_csv,
-    export_watchlist_csv,
     import_universe_csv,
+    load_universe_rows,
+    universe_count,
+)
+from vnpy_ashare.storage.repositories.watchlist import (
+    export_watchlist_csv,
     import_watchlist_csv,
     load_watchlist_rows,
-    universe_count,
 )
 from vnpy_common.paths import BACKUP_DIR, get_app_db_path
 

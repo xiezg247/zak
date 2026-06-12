@@ -15,9 +15,8 @@ from vnpy_ashare.integrations.tushare.financial import (
     infer_period,
 )
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.storage.app_db import load_watchlist_rows
-from vnpy_ashare.storage.disclosure_store import latest_ann_date_after
-from vnpy_ashare.storage.financial_store import (
+from vnpy_ashare.storage.repositories.disclosure import latest_ann_date_after
+from vnpy_ashare.storage.repositories.financial import (
     REPORT_TYPES,
     FinancialSnapshotRow,
     FinancialSyncMeta,
@@ -29,6 +28,7 @@ from vnpy_ashare.storage.financial_store import (
     upsert_snapshot,
     upsert_sync_meta,
 )
+from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine

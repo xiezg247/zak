@@ -11,8 +11,7 @@ from vnpy_ashare.config import PRICE_TICK, normalize_volume
 from vnpy_ashare.domain.market_hours import CHINA_TZ
 from vnpy_ashare.domain.position_snapshot import PositionRecord
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.storage import app_db
-from vnpy_ashare.storage.app_db import (
+from vnpy_ashare.storage.repositories.positions import (
     POSITION_MAX_ITEMS,
     add_position_item,
     clear_positions,
@@ -23,8 +22,9 @@ from vnpy_ashare.storage.app_db import (
     position_item_count,
     remove_position_item,
     update_position_item,
-    watchlist_contains,
 )
+from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
+from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
 
 PositionAddFailure = Literal["duplicate", "full", "not_in_watchlist"]
 
@@ -44,7 +44,7 @@ class PositionService(BaseService):
     max_items = POSITION_MAX_ITEMS
 
     def get_items(self) -> list[PositionRecord]:
-        name_map = app_db.build_symbol_name_map()
+        name_map = build_symbol_name_map()
         records: list[PositionRecord] = []
         for row in load_position_rows():
             exchange = Exchange(str(row["exchange"]))

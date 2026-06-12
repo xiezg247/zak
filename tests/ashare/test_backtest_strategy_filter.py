@@ -9,6 +9,7 @@ from pathlib import Path
 import vnpy_ctastrategy
 from vnpy_ctastrategy import CtaTemplate, TargetPosTemplate
 
+from tests._bootstrap import PROJECT_ROOT
 from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 
 
@@ -26,7 +27,7 @@ def _load_engine_classes(*, strategy_file_order: list[str] | None = None) -> dic
             if isinstance(value, type) and issubclass(value, CtaTemplate) and value not in {CtaTemplate, TargetPosTemplate}:
                 classes[value.__name__] = value
 
-    project_path = Path.cwd() / "strategies"
+    project_path = PROJECT_ROOT / "strategies"
     files = strategy_file_order or [Path(p).stem for p in glob(str(project_path / "*.py"))]
     for stem in files:
         name = f"strategies.{stem}"
