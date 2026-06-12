@@ -22,6 +22,7 @@ from vnpy_ashare.jobs import (
     batch_download_watchlist,
     batch_fill_downloaded_stale_job,
     collect_market_quotes,
+    prefetch_moneyflow,
     prefetch_tushare_factors,
     sync_disclosure_calendar_job,
     sync_stock_industry_job,
@@ -166,10 +167,23 @@ class TaskSchedulerManager:
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}",
             ),
+            "prefetch_moneyflow": _JobMeta(
+                job_id="prefetch_moneyflow",
+                name="主力资金预拉",
+                description="收盘后从 Tushare 拉取全市场 moneyflow 主力资金流向，供雷达与个股分析",
+                runner=prefetch_moneyflow,
+                config_attr="prefetch_moneyflow",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于 Tushare 因子预拉）",
+            ),
             "prefetch_tushare": _JobMeta(
                 job_id="prefetch_tushare",
                 name="Tushare 因子预拉",
-                description="收盘后拉取 daily_basic / moneyflow / 涨跌停 / 指数 / 北向 / stock_basic 等写入本地缓存",
+                description="收盘后拉取 daily_basic、涨跌停、指数、北向、stock_basic 等写入本地缓存",
                 runner=prefetch_tushare_factors,
                 config_attr="prefetch_tushare",
                 schedule_builder=lambda cfg: CronTrigger(

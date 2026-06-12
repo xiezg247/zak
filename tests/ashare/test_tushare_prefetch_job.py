@@ -11,7 +11,37 @@ from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.jobs.batch_fill_downloaded import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.local_fill import BatchFillResult
+from vnpy_ashare.jobs.moneyflow_prefetch import prefetch_moneyflow
 from vnpy_ashare.jobs.tushare_prefetch import prefetch_tushare_factors
+
+
+class MoneyflowPrefetchJobTests(unittest.TestCase):
+    def test_skips_when_token_missing(self) -> None:
+        with patch(
+            "vnpy_ashare.jobs.moneyflow_prefetch.get_tushare_pro",
+            side_effect=TushareNotConfiguredError("no token"),
+        ):
+            result = prefetch_moneyflow()
+        self.assertTrue(result.skipped)
+
+    def test_prefetch_reports_moneyflow(self) -> None:
+        with patch("vnpy_ashare.jobs.moneyflow_prefetch.get_tushare_pro", return_value=object()):
+            with patch(
+                "vnpy_ashare.jobs.moneyflow_prefetch.fetch_moneyflow_with_fallback",
+                return_value=([{"vt_symbol": "600519.SSE"}], "20250609"),
+            ):
+                result = prefetch_moneyflow()
+        self.assertTrue(result.success)
+        self.assertIn("moneyflow", result.message)
+
+    def test_fails_when_no_rows(self) -> None:
+        with patch("vnpy_ashare.jobs.moneyflow_prefetch.get_tushare_pro", return_value=object()):
+            with patch(
+                "vnpy_ashare.jobs.moneyflow_prefetch.fetch_moneyflow_with_fallback",
+                return_value=([], None),
+            ):
+                result = prefetch_moneyflow()
+        self.assertFalse(result.success)
 
 
 class TusharePrefetchJobTests(unittest.TestCase):
@@ -30,30 +60,26 @@ class TusharePrefetchJobTests(unittest.TestCase):
                 return_value=([{"vt_symbol": "600519.SSE"}], "20250609"),
             ):
                 with patch(
-                    "vnpy_ashare.jobs.tushare_prefetch.fetch_moneyflow_with_fallback",
-                    return_value=([{"vt_symbol": "600519.SSE"}], "20250609"),
+                    "vnpy_ashare.jobs.tushare_prefetch.fetch_daily_pct_map",
+                    return_value={"600519.SH": 1.2},
                 ):
                     with patch(
-                        "vnpy_ashare.jobs.tushare_prefetch.fetch_daily_pct_map",
-                        return_value={"600519.SH": 1.2},
+                        "vnpy_ashare.jobs.tushare_prefetch.fetch_limit_list_d",
+                        return_value=([{"ts_code": "600519.SH", "limit": "U"}], "20250609"),
                     ):
                         with patch(
-                            "vnpy_ashare.jobs.tushare_prefetch.fetch_limit_list_d",
-                            return_value=([{"ts_code": "600519.SH", "limit": "U"}], "20250609"),
+                            "vnpy_ashare.jobs.tushare_prefetch.fetch_index_daily_snapshot",
+                            return_value=([{"ts_code": "000300.SH"}], "20250609"),
                         ):
                             with patch(
-                                "vnpy_ashare.jobs.tushare_prefetch.fetch_index_daily_snapshot",
-                                return_value=([{"ts_code": "000300.SH"}], "20250609"),
+                                "vnpy_ashare.jobs.tushare_prefetch.fetch_moneyflow_hsgt_window",
+                                return_value=([{"north_money": 1.0}], "20250609"),
                             ):
                                 with patch(
-                                    "vnpy_ashare.jobs.tushare_prefetch.fetch_moneyflow_hsgt_window",
-                                    return_value=([{"north_money": 1.0}], "20250609"),
+                                    "vnpy_ashare.jobs.tushare_prefetch.fetch_stock_basic_snapshot",
+                                    return_value=([{"ts_code": "600519.SH"}], 1),
                                 ):
-                                    with patch(
-                                        "vnpy_ashare.jobs.tushare_prefetch.fetch_stock_basic_snapshot",
-                                        return_value=([{"ts_code": "600519.SH"}], 1),
-                                    ):
-                                        result = prefetch_tushare_factors()
+                                    result = prefetch_tushare_factors()
         self.assertTrue(result.success)
         self.assertIn("limit_list_d", result.message)
         self.assertIn("index_daily", result.message)

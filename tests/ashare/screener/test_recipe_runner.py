@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from vnpy_ashare.screener.dimensions.base import DimensionHit
-from vnpy_ashare.screener.recipe.filters import apply_recipe_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_recipe
 
@@ -121,3 +121,13 @@ def test_apply_recipe_filters_excludes_st_and_low_amount():
     assert "ST测试" not in names
     assert "正常股份" not in names
     assert "活跃股份" in names
+
+
+def test_apply_recipe_filters_excludes_small_total_mv():
+    rows = [
+        {"name": "大盘", "total_mv": 600_000},
+        {"name": "小盘", "total_mv": 100_000},
+    ]
+    filtered = apply_recipe_filters(rows)
+    names = [row["name"] for row in filtered]
+    assert names == ["大盘"]

@@ -11,10 +11,16 @@ from vnpy_ashare.ai.context.store import get_market_quotes_cache
 from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.quotes.radar_catalog import DEFAULT_SCREEN_TASK_VARIANT, list_radar_cards
+from vnpy_ashare.quotes.radar_catalog import (
+    DEFAULT_OUTLOOK_VARIANT,
+    DEFAULT_SCREEN_TASK_VARIANT,
+    DEFAULT_SECTOR_VARIANT,
+    list_radar_cards,
+)
 from vnpy_ashare.quotes.radar_loaders import (
     RadarCardData,
     build_radar_ai_prompt,
+    build_radar_card_ai_prompt,
     build_radar_resonance_ai_prompt,
     build_radar_resonance_list,
     compute_radar_resonance,
@@ -44,6 +50,13 @@ class RadarController(QtCore.QObject):
         self._card_workers: dict[str, RadarCardLoadWorker] = {}
         self._retired_workers: list[QtCore.QThread] = []
         self._screen_task_variant = DEFAULT_SCREEN_TASK_VARIANT
+        self._sector_variant = DEFAULT_SECTOR_VARIANT
+        self._outlook_variant = DEFAULT_OUTLOOK_VARIANT
+        self._card_variants: dict[str, str] = {
+            "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
+            "sector_theme": DEFAULT_SECTOR_VARIANT,
+            "outlook_horizon": DEFAULT_OUTLOOK_VARIANT,
+        }
         self._last_payload: dict[str, RadarCardData] = {}
         self._refresh_timer = QtCore.QTimer(self)
         self._refresh_timer.setInterval(page.config.quote_refresh_ms)
@@ -57,6 +70,7 @@ class RadarController(QtCore.QObject):
         board.stock_analysis_requested.connect(self._on_stock_analysis)
         board.view_run_requested.connect(self._on_view_run)
         board.refresh_requested.connect(self.refresh_card)
+        board.ai_requested.connect(self.request_card_ai)
 
         panel = self._resonance_panel
         if panel is not None:
@@ -87,7 +101,9 @@ class RadarController(QtCore.QObject):
         self._cancel_card_worker(card_id)
         worker = RadarCardLoadWorker(
             card_id=card_id,
-            screen_task_variant=self._screen_task_variant,
+            screen_task_variant=self._card_variants.get("screen_task", DEFAULT_SCREEN_TASK_VARIANT),
+            sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
+            outlook_variant=self._card_variants.get("outlook_horizon", DEFAULT_OUTLOOK_VARIANT),
             parent=self._page,
         )
         self._card_workers[card_id] = worker
@@ -108,7 +124,7 @@ class RadarController(QtCore.QObject):
         if self._page.event_engine is None:
             page_notify(self._page, "AI 服务未就绪", level="warning")
             return
-        prompt = build_radar_ai_prompt(self._last_payload)
+        prompt = build_radar_ai_prompt(self._last_payload, outlook_variant=self._outlook_variant)
         self._page.event_engine.put(
             Event(
                 EVENT_ASK_AI,
@@ -117,6 +133,33 @@ class RadarController(QtCore.QObject):
         )
         if hasattr(self._page, "status_label"):
             self._page.status_label.setText("已发送 AI 洞察请求")
+
+    def request_card_ai(self, card_id: str) -> None:
+        data = self._last_payload.get(card_id)
+        if data is None:
+            page_notify(self._page, "请先刷新该卡片", level="warning")
+            return
+        if self._page.event_engine is None:
+            page_notify(self._page, "AI 服务未就绪", level="warning")
+            return
+        resonance = compute_radar_resonance(self._last_payload)
+        prompt = build_radar_card_ai_prompt(
+            card_id,
+            data,
+            resonance_counts=resonance,
+            outlook_variant=self._outlook_variant,
+        )
+        if not prompt:
+            page_notify(self._page, "该卡片暂无可解读内容", level="warning")
+            return
+        self._page.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(prompt=prompt, source_page=f"雷达·{data.title}"),
+            )
+        )
+        if hasattr(self._page, "status_label"):
+            self._page.status_label.setText(f"已发送「{data.title}」AI 解读")
 
     def request_resonance_ai_summary(self) -> None:
         if not self._last_payload:
@@ -171,6 +214,8 @@ class RadarController(QtCore.QObject):
         panel.apply_entries(build_radar_resonance_list(self._last_payload))
 
     def _on_card_failed(self, card_id: str, message: str) -> None:
+        from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
+
         widget = self._board.card(card_id)
         data = self._last_payload.get(card_id)
         if widget is not None:
@@ -178,7 +223,17 @@ class RadarController(QtCore.QObject):
                 resonance = compute_radar_resonance(self._last_payload)
                 widget.apply_data(data, resonance_counts=resonance)
             else:
-                widget.set_loading(False)
+                spec = RADAR_CARD_BY_ID.get(card_id)
+                widget.apply_data(
+                    RadarCardData(
+                        card_id=card_id,
+                        title=spec.title if spec is not None else card_id,
+                        subtitle="",
+                        rows=(),
+                        empty_message=f"加载失败：{message}",
+                        updated_at="",
+                    )
+                )
         self._sync_resonance_panel()
         page_notify(self._page, f"卡片加载失败：{message}", level="warning")
         self._update_status()
@@ -197,10 +252,16 @@ class RadarController(QtCore.QObject):
         self._page.status_label.setText(status)
 
     def _on_variant_changed(self, card_id: str, variant_key: str) -> None:
-        if card_id != "screen_task" or not variant_key:
+        if not variant_key or card_id not in self._card_variants:
             return
-        self._screen_task_variant = variant_key
-        self.refresh_card("screen_task")
+        self._card_variants[card_id] = variant_key
+        if card_id == "screen_task":
+            self._screen_task_variant = variant_key
+        elif card_id == "sector_theme":
+            self._sector_variant = variant_key
+        elif card_id == "outlook_horizon":
+            self._outlook_variant = variant_key
+        self.refresh_card(card_id)
 
     def _on_row_activated(self, vt_symbol: str) -> None:
         self._on_stock_analysis(vt_symbol)

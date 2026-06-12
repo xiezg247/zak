@@ -16,6 +16,7 @@ from vnpy.trader.object import BarData
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.pattern.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.preset.rules import apply_quote_preset
@@ -177,7 +178,7 @@ def run_pattern_screen(
         hits.append((match.score, row))
 
     hits.sort(key=lambda pair: pair[0], reverse=True)
-    rows = [row for _, row in hits[:top_n]]
+    rows = apply_screening_filters([row for _, row in hits])[:top_n]
     return ScreenerRunResult(
         rows=rows,
         condition=f"形态 · {label}",

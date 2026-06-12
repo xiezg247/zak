@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.quotes.radar_catalog import SCREEN_TASK_VARIANTS, RadarCardSpec
+from vnpy_ashare.quotes.radar_catalog import (
+    RadarCardSpec,
+    default_variant_for_card,
+    variants_for_card,
+)
 from vnpy_ashare.quotes.radar_loaders import RadarCardData
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_common.ui.theme import theme_manager
@@ -21,6 +25,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
     refresh_requested = QtCore.Signal(str)
+    ai_requested = QtCore.Signal(str)
 
     def __init__(self, spec: RadarCardSpec, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -36,8 +41,11 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._variant_combo = QtWidgets.QComboBox()
         self._variant_combo.setObjectName("RadarCardVariant")
         if spec.has_task_variants:
-            for variant in SCREEN_TASK_VARIANTS:
+            for variant in variants_for_card(spec.id):
                 self._variant_combo.addItem(variant.label, variant.key)
+            default_key = default_variant_for_card(spec.id)
+            if default_key:
+                self.set_variant_key(default_key)
             self._variant_combo.currentIndexChanged.connect(self._emit_variant_changed)
             header.addWidget(self._variant_combo)
         else:
@@ -53,6 +61,11 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._subtitle = QtWidgets.QLabel("")
         self._subtitle.setObjectName("RadarCardSubtitle")
         self._subtitle.setWordWrap(True)
+
+        self._ai_hint = QtWidgets.QLabel("")
+        self._ai_hint.setObjectName("RadarCardAiHint")
+        self._ai_hint.setWordWrap(True)
+        self._ai_hint.hide()
 
         self._rows_host = QtWidgets.QWidget()
         self._rows_host.setObjectName("RadarCardRowsHost")
@@ -78,6 +91,12 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._meta_label = QtWidgets.QLabel("")
         self._meta_label.setObjectName("RadarCardMeta")
         footer.addWidget(self._meta_label, stretch=1)
+        self._ai_button = QtWidgets.QPushButton("AI")
+        self._ai_button.setObjectName("RadarCardAi")
+        self._ai_button.setFlat(True)
+        self._ai_button.setToolTip("解读本卡片")
+        self._ai_button.clicked.connect(lambda: self.ai_requested.emit(self.card_id))
+        footer.addWidget(self._ai_button)
         self._view_run_button = QtWidgets.QPushButton("查看完整")
         self._view_run_button.setObjectName("RadarCardViewRun")
         self._view_run_button.setFlat(True)
@@ -96,6 +115,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         layout.setSpacing(6)
         layout.addLayout(header)
         layout.addWidget(self._subtitle)
+        layout.addWidget(self._ai_hint)
         layout.addWidget(self._scroll, stretch=1)
         layout.addWidget(self._empty_label)
         layout.addLayout(footer)
@@ -154,6 +174,13 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._loading = False
         self._refresh_button.setEnabled(True)
         self._subtitle.setText(data.subtitle)
+        hint = str(data.ai_hint or "").strip()
+        if hint:
+            self._ai_hint.setText(hint)
+            self._ai_hint.show()
+        else:
+            self._ai_hint.hide()
+            self._ai_hint.setText("")
         self._run_id = data.run_id
         self._detail_page_key = data.detail_page_key
         self._resonance_counts = dict(resonance_counts or {})
@@ -228,7 +255,7 @@ class RadarCardWidget(QtWidgets.QFrame):
 
 
 class RadarBoard(QtWidgets.QWidget):
-    """2×2 雷达卡片网格。"""
+    """雷达卡片网格（默认 3 列）。"""
 
     variant_changed = QtCore.Signal(str, str)
     row_activated = QtCore.Signal(str)
@@ -238,17 +265,19 @@ class RadarBoard(QtWidgets.QWidget):
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
     refresh_requested = QtCore.Signal(str)
+    ai_requested = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("RadarBoard")
-        from vnpy_ashare.quotes.radar_catalog import list_radar_cards
+        from vnpy_ashare.quotes.radar_catalog import RADAR_GRID_COLUMNS, list_radar_cards
 
         grid = QtWidgets.QGridLayout(self)
         grid.setContentsMargins(8, 8, 8, 8)
         grid.setSpacing(10)
         self._cards: dict[str, RadarCardWidget] = {}
         specs = list_radar_cards()
+        columns = RADAR_GRID_COLUMNS
         for index, spec in enumerate(specs):
             card = RadarCardWidget(spec, self)
             card.variant_changed.connect(lambda key, card_id=spec.id: self.variant_changed.emit(card_id, key))
@@ -259,12 +288,14 @@ class RadarBoard(QtWidgets.QWidget):
             card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
             card.view_run_requested.connect(self.view_run_requested.emit)
             card.refresh_requested.connect(self.refresh_requested.emit)
+            card.ai_requested.connect(self.ai_requested.emit)
             self._cards[spec.id] = card
-            grid.addWidget(card, index // 2, index % 2)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
-        grid.setRowStretch(0, 1)
-        grid.setRowStretch(1, 1)
+            grid.addWidget(card, index // columns, index % columns)
+        row_count = max(1, (len(specs) + columns - 1) // columns)
+        for col in range(columns):
+            grid.setColumnStretch(col, 1)
+        for row in range(row_count):
+            grid.setRowStretch(row, 1)
 
     def card(self, card_id: str) -> RadarCardWidget | None:
         return self._cards.get(card_id)

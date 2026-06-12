@@ -266,7 +266,7 @@ def build_moneyflow_profile(vt_symbol: str, *, history_days: int = 15) -> Moneyf
 
     message = ""
     if not history and latest is None:
-        message = "暂无资金流数据（需 TUSHARE_TOKEN 且定时预拉 moneyflow）"
+        message = "暂无资金流数据（需 TUSHARE_TOKEN，并在定时任务启用「主力资金预拉」）"
 
     return MoneyflowProfile(
         ts_code=item.ts_code,

@@ -19,6 +19,7 @@ def _quote(symbol: str, **kwargs) -> dict:
         "change_pct": 0.0,
         "turnover_rate": 1.0,
         "volume": 1000,
+        "amount": 50_000_000,
     }
     base.update(kwargs)
     return base
@@ -32,6 +33,19 @@ def test_apply_quote_change_top():
     )
     assert len(rows) == 1
     assert rows[0]["symbol"] == "B"
+
+
+def test_apply_quote_excludes_st_and_low_amount():
+    rows = apply_quote_preset(
+        "涨幅榜",
+        [
+            _quote("ST", name="ST测试", change_pct=9, amount=100_000_000),
+            _quote("LOW", name="小盘", change_pct=8, amount=1_000_000),
+            _quote("OK", name="活跃", change_pct=5, amount=40_000_000),
+        ],
+        top_n=5,
+    )
+    assert [row["symbol"] for row in rows] == ["OK"]
 
 
 def test_apply_quote_custom_range():
@@ -48,8 +62,9 @@ def test_apply_quote_custom_range():
 def test_apply_low_pe():
     rows = apply_low_pe(
         [
-            {"symbol": "A", "name": "A", "vt_symbol": "A.SSE", "pe_ttm": 10, "pb": 1.2, "total_mv": 1},
-            {"symbol": "B", "name": "B", "vt_symbol": "B.SSE", "pe_ttm": 25, "pb": 2.0, "total_mv": 1},
+            {"symbol": "A", "name": "A", "vt_symbol": "A.SSE", "pe_ttm": 10, "pb": 1.2, "total_mv": 600_000},
+            {"symbol": "B", "name": "B", "vt_symbol": "B.SSE", "pe_ttm": 25, "pb": 2.0, "total_mv": 600_000},
+            {"symbol": "C", "name": "C", "vt_symbol": "C.SSE", "pe_ttm": 8, "pb": 1.0, "total_mv": 100_000},
         ],
         top_n=5,
     )

@@ -5,14 +5,25 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from vnpy_ashare.ai.context.store import get_market_quotes_cache
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
+    DEFAULT_OUTLOOK_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
+    DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
     RADAR_CARD_SPECS,
     RadarCardSpec,
 )
+from vnpy_ashare.quotes.radar_models import (
+    RadarCardData,
+    RadarRow,
+    float_or_none,
+    format_pct,
+    merge_row_quotes,
+    quote_map,
+)
+from vnpy_ashare.quotes.radar_sector import load_sector_theme
+from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.screener.dimensions.moneyflow import run_moneyflow
 from vnpy_ashare.screener.dimensions.moneyflow_intraday import run_moneyflow_intraday
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
@@ -20,50 +31,11 @@ from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
 from vnpy_ashare.ui.quotes.table.columns import format_amount, format_volume
 
-
-@dataclass(frozen=True)
-class RadarRow:
-    vt_symbol: str
-    name: str
-    symbol: str
-    price: float | None
-    change_pct: float | None
-    metric_label: str
-    metric_value: str
-    sub_label: str
-    sub_value: str
-
-
-@dataclass(frozen=True)
-class RadarCardData:
-    card_id: str
-    title: str
-    subtitle: str
-    rows: tuple[RadarRow, ...]
-    empty_message: str
-    updated_at: str
-    run_id: str = ""
-    detail_page_key: str = ""
-    total_count: int = 0
-
-
-def _quote_map() -> dict[str, dict[str, Any]]:
-    cached = get_market_quotes_cache()
-    if not cached:
-        return {}
-    return {str(row.get("vt_symbol") or ""): row for row in cached if row.get("vt_symbol")}
-
-
-def _float_or_none(value: Any) -> float | None:
-    if isinstance(value, (int, float)):
-        return float(value)
-    return None
-
-
-def _format_pct(value: float | None) -> str:
-    if value is None:
-        return "—"
-    return f"{value:+.2f}%"
+# 兼容旧 import 路径
+_quote_map = quote_map
+_float_or_none = float_or_none
+_format_pct = format_pct
+_merge_row_quotes = merge_row_quotes
 
 
 def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -73,30 +45,6 @@ def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     change = _float_or_none(row.get("change_pct") or row.get("pct_chg"))
     turnover = _float_or_none(row.get("turnover_rate"))
     return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
-
-
-def _merge_row_quotes(row: dict[str, Any]) -> dict[str, Any]:
-    """合并行情缓存，补全 volume / amount / 现价等字段。"""
-    vt_symbol = str(row.get("vt_symbol") or "").strip()
-    merged = dict(row)
-    quote = _quote_map().get(vt_symbol, {})
-    for key in (
-        "volume",
-        "amount",
-        "change_pct",
-        "last_price",
-        "close",
-        "turnover_rate",
-        "volume_ratio",
-        "net_mf_amount",
-        "name",
-    ):
-        cached = quote.get(key)
-        if cached in (None, "", 0, 0.0):
-            continue
-        if not merged.get(key):
-            merged[key] = cached
-    return merged
 
 
 def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -424,6 +372,8 @@ def load_radar_card(
     card_id: str,
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
+    sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
 ) -> RadarCardData:
     """加载单张雷达卡片。"""
     spec = RADAR_CARD_BY_ID.get(card_id)
@@ -438,6 +388,14 @@ def load_radar_card(
         return load_discovery_volume_surge(spec)
     if spec.id == "discovery_moneyflow_intraday":
         return load_discovery_moneyflow_intraday(spec)
+    if spec.id == "watchlist_intraday":
+        return load_watchlist_intraday(spec)
+    if spec.id == "sector_theme":
+        return load_sector_theme(spec, variant=sector_variant)
+    if spec.id == "outlook_horizon":
+        from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
+
+        return load_outlook_horizon(spec, variant=outlook_variant)
     msg = f"未实现的雷达卡片加载器：{card_id}"
     raise ValueError(msg)
 
@@ -445,9 +403,19 @@ def load_radar_card(
 def load_radar_board(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
+    sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
 ) -> dict[str, RadarCardData]:
     """加载全部雷达卡片。"""
-    return {spec.id: load_radar_card(spec.id, screen_task_variant=screen_task_variant) for spec in RADAR_CARD_SPECS}
+    return {
+        spec.id: load_radar_card(
+            spec.id,
+            screen_task_variant=screen_task_variant,
+            sector_variant=sector_variant,
+            outlook_variant=outlook_variant,
+        )
+        for spec in RADAR_CARD_SPECS
+    }
 
 
 @dataclass(frozen=True)
@@ -544,14 +512,62 @@ def _row_ai_summary(row: RadarRow) -> str:
     return f"{row.name}({row.symbol}) 现价{price} {change} · {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}"
 
 
-def build_radar_ai_prompt(payload: dict[str, RadarCardData]) -> str:
+def build_radar_card_ai_prompt(
+    card_id: str,
+    data: RadarCardData,
+    *,
+    resonance_counts: dict[str, int] | None = None,
+    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
+) -> str:
+    """生成单张雷达卡的 AI 解读预填文案。"""
+    if not data.rows and not data.empty_message:
+        return ""
+    counts = resonance_counts or {}
+    lines = [
+        f"请解读雷达卡片「{data.title}」：",
+        "1. 概括本卡核心结论与优先顺序",
+        "2. 标注共振标的（若有多卡重复出现）",
+        "3. 不要编造未出现在数据中的价格或指标",
+        "",
+    ]
+    if data.subtitle:
+        lines.append(data.subtitle)
+    if data.ai_hint:
+        lines.append(data.ai_hint)
+    lines.append("")
+    if not data.rows:
+        lines.append(data.empty_message or "（暂无数据）")
+        return "\n".join(lines).strip()
+
+    if card_id == "watchlist_intraday":
+        lines[0] = "请解读雷达「自选·异动」：关注自选池内波动与信号跃迁。"
+    elif card_id == "sector_theme":
+        lines[0] = "请解读雷达「板块·主线」：归纳今日行业轮动与龙头特征。"
+    elif card_id == "outlook_horizon":
+        from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
+
+        single = build_outlook_ai_prompt({"outlook_horizon": data}, variant=outlook_variant)
+        return single or "\n".join(lines).strip()
+
+    for row in data.rows:
+        marker = "★ " if counts.get(row.vt_symbol, 0) >= 2 else ""
+        lines.append(f"- {marker}{_row_ai_summary(row)}")
+    return "\n".join(lines).strip()
+
+
+def build_radar_ai_prompt(
+    payload: dict[str, RadarCardData],
+    *,
+    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
+) -> str:
     """生成雷达页 AI 洞察预填文案。"""
     lines = [
         "请基于以下雷达页快照，给出今日 A 股洞察摘要：",
-        "1. 市场主线与热点方向",
-        "2. 选股结果与发现异动的交集（共振标的优先）",
-        "3. 建议重点关注的 3～5 只标的及理由",
-        "4. 不要编造未出现在数据中的价格或指标",
+        "1. 市场主线与热点方向（参考板块·主线卡）",
+        "2. 选股结果与发现/自选异动的交集（共振标的优先）",
+        "3. 未来展望卡仅基于策略信号窗口（约 5 日），非价格预测",
+        "4. 建议重点关注的 3～5 只标的及理由",
+        "5. 不要编造未出现在数据中的价格或指标",
         "",
     ]
     resonance = compute_radar_resonance(payload)
@@ -576,4 +592,10 @@ def build_radar_ai_prompt(payload: dict[str, RadarCardData]) -> str:
                 marker = "★ " if row.vt_symbol in resonance else ""
                 lines.append(f"- {marker}{_row_ai_summary(row)}")
         lines.append("")
+    from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
+
+    outlook_prompt = build_outlook_ai_prompt(payload, variant=outlook_variant)
+    if outlook_prompt:
+        lines.append("---")
+        lines.append(outlook_prompt)
     return "\n".join(lines).strip()

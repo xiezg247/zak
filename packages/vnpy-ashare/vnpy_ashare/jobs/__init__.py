@@ -9,6 +9,7 @@ from vnpy_ashare.jobs.quotes import collect_market_quotes
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.jobs.stock_industry import sync_stock_industry_job
 from vnpy_ashare.jobs.trade_calendar import sync_trade_calendar_job
+from vnpy_ashare.jobs.moneyflow_prefetch import prefetch_moneyflow
 from vnpy_ashare.jobs.tushare_prefetch import prefetch_tushare_factors
 from vnpy_ashare.jobs.universe import sync_universe_job
 
@@ -17,6 +18,7 @@ __all__ = [
     "batch_download_watchlist",
     "batch_fill_downloaded_stale_job",
     "collect_market_quotes",
+    "prefetch_moneyflow",
     "prefetch_tushare_factors",
     "run_scheduled_auto_screen",
     "sync_disclosure_calendar_job",
