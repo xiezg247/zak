@@ -633,6 +633,11 @@ def analyze_user_intent(
     return _normalize_market_enrichment(analysis, user_text, page)
 
 
+def _strip_screening_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    blocked = TOOL_GROUPS["screening"]
+    return [tool for tool in tools if (tool.get("function") or {}).get("name", "") not in blocked]
+
+
 def build_route_context(
     config: LlmConfig,
     user_text: str,
@@ -645,9 +650,16 @@ def build_route_context(
     analysis = analyze_user_intent(config, user_text, page=page)
     category = analysis.route.category
     if analysis.route.confidence == "low" and category != "general":
-        tools = list(all_tools)
+        tools: list[dict[str, Any]] = []
     else:
         tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
+    screening = analysis.screening
+    if (
+        category == "screening"
+        and screening is not None
+        and (screening.clarification_needed or screening.confidence == "low")
+    ):
+        tools = _strip_screening_tools(tools)
     tools = apply_fear_greed_tools(tools, analysis, all_tools)
     if _is_trend_scenario_request(user_text):
         tools = [

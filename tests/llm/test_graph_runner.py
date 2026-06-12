@@ -13,7 +13,7 @@ from langchain_core.tools import StructuredTool
 from vnpy_llm.chat.client import StreamCancelled
 from vnpy_llm.config.settings import LlmConfig
 from vnpy_llm.graph.messages import dict_messages_to_langchain
-from vnpy_llm.graph.runner import stream_with_tools
+from vnpy_llm.graph.runner import _resolve_agent_tools, stream_with_tools
 from vnpy_llm.graph.state import GraphStreamContext
 from vnpy_llm.graph.tools_adapter import openai_tools_to_langchain
 from vnpy_llm.routing.intent import IntentAnalysis, IntentRoute, IntentCategory
@@ -196,3 +196,35 @@ def test_stream_with_tools_multi_agent_handoff():
     assert "补充大盘情绪" in text
     assert "**市场环境**" in text
     assert calls == ["research->market"]
+
+
+def test_resolve_agent_tools_general_intersects_to_empty():
+    all_tools = [
+        {"type": "function", "function": {"name": "diagnose_stock"}},
+        {"type": "function", "function": {"name": "screen_by_condition"}},
+    ]
+    route_tools = list(all_tools)
+    ctx = _graph_ctx(category="general")
+    resolved = _resolve_agent_tools(
+        "general",
+        route_tools,
+        all_tools,
+        analysis=ctx,
+        user_text="你好",
+        mcp_tool_names=frozenset(),
+    )
+    assert resolved == []
+
+
+def test_resolve_agent_tools_empty_route_yields_empty():
+    all_tools = [{"type": "function", "function": {"name": "diagnose_stock"}}]
+    ctx = _graph_ctx(category="diagnosis")
+    resolved = _resolve_agent_tools(
+        "research",
+        [],
+        all_tools,
+        analysis=ctx,
+        user_text="诊断",
+        mcp_tool_names=frozenset(),
+    )
+    assert resolved == []

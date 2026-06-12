@@ -62,6 +62,11 @@ def test_filter_tools_for_research_agent():
     assert names == {"get_quote_context", "diagnose_stock"}
 
 
+def test_filter_tools_for_general_returns_empty():
+    filtered = filter_tools_for_agent("general", ALL_TOOLS)
+    assert filtered == []
+
+
 def test_filter_tools_for_market_includes_watchlist():
     filtered = filter_tools_for_agent("market", ALL_TOOLS)
     names = {(t["function"]["name"]) for t in filtered}

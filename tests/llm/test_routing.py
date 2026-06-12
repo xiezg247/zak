@@ -8,6 +8,7 @@ from vnpy_llm.routing.router import (
     _keyword_fallback,
     _normalize_market_enrichment,
     _screening_intent_from_keywords,
+    _strip_screening_tools,
     apply_fear_greed_tools,
     build_routing_hint,
     filter_tools_by_route,
@@ -213,3 +214,31 @@ def test_build_routing_hint_pattern_screen():
     assert 'pattern="均线多头排列"' in hint
     assert "tdx_stock_picker" in hint
     assert "run_python" in hint
+
+
+def test_strip_screening_tools_removes_screening_subset():
+    tools = [_tool("run_recipe"), _tool("get_quote_context")]
+    stripped = _strip_screening_tools(tools)
+    names = {t["function"]["name"] for t in stripped}
+    assert names == {"get_quote_context"}
+
+
+def test_build_route_context_low_confidence_no_tools():
+    from unittest.mock import patch
+
+    from vnpy_llm.config.settings import LlmConfig
+    from vnpy_llm.routing.router import build_route_context
+
+    config = LlmConfig(
+        api_base="https://example.com/v1",
+        api_key="test-key",
+        model="test-model",
+        max_tokens=1024,
+        temperature=0.7,
+    )
+    analysis = IntentAnalysis(
+        route=IntentRoute(category="technical", confidence="low", reasoning="模糊"),
+    )
+    with patch("vnpy_llm.routing.router.analyze_user_intent", return_value=analysis):
+        ctx = build_route_context(config, "这个怎么样", ALL_TOOLS)
+    assert ctx.tools == []

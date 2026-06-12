@@ -34,6 +34,33 @@ def _build_agent_messages(
     return [{"role": "system", "content": system}, *conversation]
 
 
+def _tool_name(tool: dict[str, Any]) -> str:
+    return str((tool.get("function") or {}).get("name", "")).strip()
+
+
+def _resolve_agent_tools(
+    agent: AgentName,
+    route_tools: list[dict[str, Any]],
+    full_tools: list[dict[str, Any]],
+    *,
+    analysis: GraphStreamContext,
+    user_text: str,
+    mcp_tool_names: frozenset[str] | set[str] | None,
+) -> list[dict[str, Any]]:
+    """Supervisor 按 Agent 过滤，并与本轮 route 工具子集取交集。"""
+    agent_tools = filter_tools_for_agent(
+        agent,
+        full_tools,
+        analysis=analysis.analysis,
+        user_text=user_text,
+        mcp_tool_names=mcp_tool_names,
+    )
+    if not route_tools:
+        return []
+    route_names = {_tool_name(tool) for tool in route_tools if _tool_name(tool)}
+    return [tool for tool in agent_tools if _tool_name(tool) in route_names]
+
+
 def _wrap_tool_executor(
     tool_executor: Callable[[str, dict[str, Any]], str],
     on_draft_pending: Callable[[DraftPendingInfo], None] | None,
@@ -90,7 +117,6 @@ def stream_with_tools(
     tool_executor: Callable[[str, dict[str, Any]], str],
     *,
     max_rounds: int = 5,
-    parallel_tool_calls: bool = True,  # noqa: ARG001
     should_cancel: Callable[[], bool] | None = None,
     graph_ctx: GraphStreamContext,
     all_tools: list[dict[str, Any]] | None = None,
@@ -124,16 +150,13 @@ def stream_with_tools(
                 if section:
                     yield f"\n\n**{section}**\n\n"
 
-            agent_tools = (
-                tools
-                if index == 0 and agent == decision.target_agent
-                else filter_tools_for_agent(
-                    agent,
-                    full_tools,
-                    analysis=graph_ctx.analysis,
-                    user_text=graph_ctx.user_text,
-                    mcp_tool_names=mcp_tool_names,
-                )
+            agent_tools = _resolve_agent_tools(
+                agent,
+                tools,
+                full_tools,
+                analysis=graph_ctx,
+                user_text=graph_ctx.user_text,
+                mcp_tool_names=mcp_tool_names,
             )
 
             handoff_context = ""
