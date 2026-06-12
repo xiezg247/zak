@@ -91,11 +91,7 @@ def fetch_historical_pattern_mcp(
     last_price = _to_float(merged_fields.get("now_price"))
     change_pct = _to_float(merged_fields.get("chg"))
     volatility_pct = _extract_volatility_pct(merged_fields)
-    trend_label = (
-        TechnicalAnalyzer._describe_trend(return_pct, volatility_pct or 0.0)
-        if return_pct is not None
-        else "—"
-    )
+    trend_label = TechnicalAnalyzer._describe_trend(return_pct, volatility_pct or 0.0) if return_pct is not None else "—"
 
     return {
         **base,
@@ -112,10 +108,7 @@ def fetch_historical_pattern_mcp(
         "data_quality": "mcp_fallback",
         "sources": ["tdx_mcp"],
         "warnings": warnings,
-        "output_guide": (
-            "基于问小达返回字段描述近段历史走势；"
-            "若缺少精确连涨天数等统计，据已有涨跌幅字段概括，禁止预测未来。"
-        ),
+        "output_guide": ("基于问小达返回字段描述近段历史走势；若缺少精确连涨天数等统计，据已有涨跌幅字段概括，禁止预测未来。"),
         "disclaimer": _DISCLAIMER,
     }
 

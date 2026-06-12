@@ -76,9 +76,7 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
             for col_index, text in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(text)
                 if col_index == 1:
-                    item.setTextAlignment(
-                        QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
-                    )
+                    item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft)
                 else:
                     item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 if col_index == 2:
@@ -119,4 +117,3 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
         if value is None:
             return "—"
         return f"{value:.2f}"
-

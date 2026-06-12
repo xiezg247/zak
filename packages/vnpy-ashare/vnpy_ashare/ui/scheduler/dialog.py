@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtGui, QtWidgets
 
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
 from vnpy_common.ui.dialog_shell import setup_responsive_dialog

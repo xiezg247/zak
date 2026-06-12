@@ -156,10 +156,7 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
         for index, session in enumerate(sessions):
             title = _strategy_title(session.strategy)
             source = _source_label(session.source)
-            line2 = (
-                f"{source} · {session.success_count}/{session.row_count} 成功 · "
-                f"{session.start_date} ~ {session.end_date}"
-            )
+            line2 = f"{source} · {session.success_count}/{session.row_count} 成功 · {session.start_date} ~ {session.end_date}"
             line3 = session.created_at[5:16]
             item = QtWidgets.QListWidgetItem(f"{title}\n{line2}\n{line3}")
             item.setData(QtCore.Qt.ItemDataRole.UserRole, session.batch_id)
@@ -225,10 +222,7 @@ class BatchBacktestPageWidget(QtWidgets.QWidget):
             source = _source_label(session.source)
             self._summary_strategy.setText(f"策略：{title}")
             self._summary_period.setText(f"区间：{session.start_date} ~ {session.end_date}")
-            self._summary_counts.setText(
-                f"来源：{source} · 共 {session.row_count} 只 · "
-                f"成功 {session.success_count} · 失败 {session.error_count}"
-            )
+            self._summary_counts.setText(f"来源：{source} · 共 {session.row_count} 只 · 成功 {session.success_count} · 失败 {session.error_count}")
         else:
             self._summary_strategy.setText(f"批次：{batch_id[:8]}…")
             self._summary_period.setText("—")

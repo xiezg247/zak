@@ -109,10 +109,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     def _format_row_text(self, row: RadarRow) -> str:
         price = f"{row.price:.2f}" if row.price is not None else "—"
         change = f"{row.change_pct:+.2f}%" if row.change_pct is not None else "—"
-        return (
-            f"{row.name:<6} {row.symbol}\n"
-            f"{price:>8}  {row.metric_label} {row.metric_value}  {change}"
-        )
+        return f"{row.name:<6} {row.symbol}\n{price:>8}  {row.metric_label} {row.metric_value}  {change}"
 
     def _refresh_list_colors(self) -> None:
         tokens = theme_manager().tokens()

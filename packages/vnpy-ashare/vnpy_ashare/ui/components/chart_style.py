@@ -53,6 +53,7 @@ __all__ = [
     "FALL_RGB",
     "apply_ashare_chart_theme",
     "apply_candle_colors",
+    "apply_sparkline_plot_theme",
     "build_chart_frame_stylesheet",
     "build_chart_panel_stylesheet",
     "build_intraday_info_stylesheet",
@@ -79,6 +80,29 @@ def apply_candle_colors(item: object, *, tokens: ThemeTokens | None = None) -> N
     item._down_pen = pg.mkPen(color=fall_rgb, width=1)
     item._down_brush = pg.mkBrush(color=fall_rgb)
     item._black_brush = item._up_brush
+
+
+def apply_sparkline_plot_theme(plot: pg.PlotWidget, tokens: ThemeTokens | None = None) -> None:
+    """轻量折线/迷你图主题（普通 PlotWidget，非 vnpy ChartWidget）。"""
+    from vnpy_common.ui.theme import theme_manager
+
+    if tokens is None:
+        tokens = theme_manager().tokens()
+    palette = chart_palette(tokens)
+    plot.setBackground(palette.bg)
+    item = plot.getPlotItem()
+    item.showGrid(x=True, y=True, alpha=GRID_ALPHA)
+    view = item.getViewBox()
+    view.setBackgroundColor(pg.mkColor(palette.bg))
+    view.setMouseEnabled(x=False, y=False)
+    for axis_name in ("left", "bottom"):
+        axis = item.getAxis(axis_name)
+        if axis is None:
+            continue
+        axis.setPen(pg.mkPen(palette.axis_color))
+        axis.setTextPen(pg.mkPen(palette.axis_text))
+    item.hideAxis("right")
+    item.setMenuEnabled(False)
 
 
 def apply_ashare_chart_theme(chart: ChartWidget, tokens: ThemeTokens | None = None) -> None:

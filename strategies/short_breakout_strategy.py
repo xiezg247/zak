@@ -109,25 +109,14 @@ class AshareShortBreakoutStrategy(AShareTemplate):
 
         if self.pos > 0:
             self.bars_held += 1
-            stop_hit = (
-                self.entry_price > 0
-                and bar.close_price <= self.entry_price * (1 - self.stop_loss_pct)
-            )
-            profit_hit = (
-                self.entry_price > 0
-                and bar.close_price >= self.entry_price * (1 + self.take_profit_pct)
-            )
+            stop_hit = self.entry_price > 0 and bar.close_price <= self.entry_price * (1 - self.stop_loss_pct)
+            profit_hit = self.entry_price > 0 and bar.close_price >= self.entry_price * (1 + self.take_profit_pct)
             time_exit = self.bars_held >= self.max_hold_days
             if cross_below or stop_hit or profit_hit or time_exit:
                 self.sell_stock(bar.close_price, abs(self.pos) or volume, trading_day)
                 self.entry_price = 0.0
                 self.bars_held = 0
-        elif (
-            breakout_level > 0
-            and bar.close_price > breakout_level
-            and volume_ratio >= self.volume_ratio_min
-            and self.fast_ma0 > self.slow_ma0
-        ):
+        elif breakout_level > 0 and bar.close_price > breakout_level and volume_ratio >= self.volume_ratio_min and self.fast_ma0 > self.slow_ma0:
             orders = self.buy_stock(bar.close_price, volume)
             if orders:
                 self.entry_price = bar.close_price

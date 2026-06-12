@@ -200,6 +200,16 @@ def _summarize_section(section: dict[str, Any], kind: str) -> dict[str, Any]:
         payload["macd"] = _to_float(summary_fields.get("MACD.MACD"))
         payload["dif"] = _to_float(summary_fields.get("MACD.DIF"))
         payload["dea"] = _to_float(summary_fields.get("MACD.DEA"))
+        for key, value in summary_fields.items():
+            upper = key.upper()
+            if "KDJ.K" in key or key.endswith(".K"):
+                payload["kdj_k"] = _to_float(value)
+            elif "KDJ.D" in key or (".D" in key and "KDJ" in upper):
+                payload["kdj_d"] = _to_float(value)
+            elif "KDJ.J" in key or (".J" in key and "KDJ" in upper):
+                payload["kdj_j"] = _to_float(value)
+            elif "RSI" in upper and payload.get("rsi") is None:
+                payload["rsi"] = _to_float(value)
     elif kind == "fundamental":
         for key, value in summary_fields.items():
             lower = key.lower()

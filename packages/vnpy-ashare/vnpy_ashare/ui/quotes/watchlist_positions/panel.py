@@ -553,11 +553,11 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             records = self._filtered_records()
             records = sorted(
                 records,
-                key=lambda record: position_row_sort_key(
-                    self._page.position_cache[record.vt_symbol]
-                )
-                if record.vt_symbol in self._page.position_cache
-                else (9, 0.0, record.vt_symbol),
+                key=lambda record: (
+                    position_row_sort_key(self._page.position_cache[record.vt_symbol])
+                    if record.vt_symbol in self._page.position_cache
+                    else (9, 0.0, record.vt_symbol)
+                ),
             )
             colors = market_colors(theme_manager().tokens())
             warning_color = theme_manager().tokens().semantic_warning
@@ -591,14 +591,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 rendered.append(record.vt_symbol)
                 values, snap, quote = self._row_values(record)
                 buy_date = values.get("buy_date", "—")
-                t1_locked = (
-                    snap.t1_locked
-                    if snap is not None
-                    else (position_t1_locked(buy_date) if buy_date != "—" else False)
-                )
-                config = self._page.position_config.normalized().effective_signal_config(
-                    self._page.signal_config
-                )
+                t1_locked = snap.t1_locked if snap is not None else (position_t1_locked(buy_date) if buy_date != "—" else False)
+                config = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
                 for col, (key, _label) in enumerate(_PANEL_COLUMNS):
                     text = values.get(key, "—")
                     cell = self._table.item(row, col)
@@ -632,11 +626,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                         if snap is not None:
                             cell.setToolTip(snap.t1_status_tooltip)
                         elif buy_date != "—":
-                            tip = (
-                                f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）"
-                                if t1_locked
-                                else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
-                            )
+                            tip = f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）" if t1_locked else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
                             cell.setToolTip(tip)
                     elif key == "exit_signal" and snap is not None:
                         cell.setToolTip(snap.exit_signal_tooltip)

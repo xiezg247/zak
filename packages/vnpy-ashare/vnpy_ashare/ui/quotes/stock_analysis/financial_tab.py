@@ -7,9 +7,10 @@ from typing import Any
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.services.financial_service import FinancialBundle
+from vnpy_ashare.services.stock_analysis_context import build_financial_quality_hints
 from vnpy_ashare.storage.financial_store import FinancialSnapshotRow
 from vnpy_common.ui.data_table import configure_data_table
-from vnpy_common.ui.panel_widgets import content_card, hint_label, section_title, tab_page
+from vnpy_common.ui.panel_widgets import configure_document_tab_widget, content_card, hint_label, section_title, tab_page
 
 _INCOME_ROWS: list[tuple[str, str]] = [
     ("total_revenue", "营业总收入"),
@@ -130,13 +131,14 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._status = hint_label("暂无财报数据")
+        self._quality_label = hint_label("")
+        self._quality_label.setObjectName("PageHint")
 
         self._snapshot_table = QtWidgets.QTableWidget(0, 0)
         configure_data_table(self._snapshot_table)
         self._snapshot_table.setMaximumHeight(168)
 
-        self._statement_tabs = QtWidgets.QTabWidget()
-        self._statement_tabs.setDocumentMode(True)
+        self._statement_tabs = configure_document_tab_widget(QtWidgets.QTabWidget())
         self._statement_tabs.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
@@ -161,6 +163,7 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         statement_card = content_card(self._statement_tabs, margins=(4, 4, 4, 4))
         page = tab_page(
             self._status,
+            self._quality_label,
             content_card(
                 section_title("关键指标趋势"),
                 self._snapshot_table,
@@ -195,8 +198,19 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
                 self._snapshot_table.setItem(row_index, col_index, item)
         self._snapshot_table.resizeColumnsToContents()
 
-    def show_loading(self, message: str = "正在同步财报与估值历史…") -> None:
+    def show_idle(self, message: str = "切换到本 Tab 时加载财报") -> None:
         self._status.setText(message)
+        self._quality_label.setText("")
+        self._snapshot_table.setRowCount(0)
+        self._income.render([], show_empty_hint=False)
+        self._balance.render([], show_empty_hint=False)
+        self._cashflow.render([], show_empty_hint=False)
+        self._express.render([], show_empty_hint=False)
+        self._forecast.render([], show_empty_hint=False)
+
+    def show_loading(self, message: str = "正在同步财报…") -> None:
+        self._status.setText(message)
+        self._quality_label.setText("")
         self._snapshot_table.setRowCount(0)
         self._income.render([], show_empty_hint=False)
         self._balance.render([], show_empty_hint=False)
@@ -207,6 +221,7 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
     def show_bundle(self, bundle: FinancialBundle | None, *, sync_message: str = "") -> None:
         if bundle is None:
             self._status.setText(sync_message or "暂无财报数据（请配置 TUSHARE_TOKEN 后刷新）")
+            self._quality_label.setText("")
             self._snapshot_table.setRowCount(0)
             self._income.render([])
             self._balance.render([])
@@ -227,6 +242,8 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
 
         snapshots = bundle.snapshots
         self._render_snapshots(snapshots)
+        hints = build_financial_quality_hints(snapshots)
+        self._quality_label.setText(" · ".join(hints) if hints else "")
         reports = bundle.reports
         self._income.render(reports.get("income") or [])
         self._balance.render(reports.get("balancesheet") or [])

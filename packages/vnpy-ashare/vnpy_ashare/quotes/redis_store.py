@@ -61,9 +61,7 @@ class RedisQuoteStore:
             return 0
 
         pipe = self._client.pipeline(transaction=False)
-        rank_members: dict[str, list[tuple[float, str]]] = {
-            field: [] for field in RANK_REDIS_FIELDS
-        }
+        rank_members: dict[str, list[tuple[float, str]]] = {field: [] for field in RANK_REDIS_FIELDS}
 
         for tf_symbol, quote in quotes.items():
             pipe.hset(quote_key(tf_symbol), mapping=quote.to_redis_hash())

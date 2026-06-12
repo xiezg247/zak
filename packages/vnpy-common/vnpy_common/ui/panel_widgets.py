@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_common.ui.scroll_area import TERMINAL_SCROLL_AREA, frameless_scroll_area
 
@@ -90,6 +90,32 @@ class MetricTile(QtWidgets.QFrame):
             self._value.setStyleSheet("")
 
 
+def tile_grid(
+    tiles: dict[str, MetricTile] | list[MetricTile],
+    *,
+    columns: int = 3,
+    min_tile_width: int = 132,
+) -> QtWidgets.QWidget:
+    """指标卡片网格，避免单行过多导致挤压。"""
+    items = list(tiles.values()) if isinstance(tiles, dict) else list(tiles)
+    wrapper = QtWidgets.QWidget()
+    grid = QtWidgets.QGridLayout(wrapper)
+    grid.setContentsMargins(0, 0, 0, 0)
+    grid.setHorizontalSpacing(10)
+    grid.setVerticalSpacing(10)
+    for index, tile in enumerate(items):
+        tile.setMinimumWidth(min_tile_width)
+        tile.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
+        row, col = divmod(index, columns)
+        grid.addWidget(tile, row, col)
+    for col in range(columns):
+        grid.setColumnStretch(col, 1)
+    return wrapper
+
+
 def tab_page(
     *widgets: QtWidgets.QWidget | int,
     margins: tuple[int, int, int, int] = (4, 8, 4, 4),
@@ -109,10 +135,22 @@ def tab_page(
     return page
 
 
-def document_tab_widget(*tabs: tuple[str, QtWidgets.QWidget]) -> QtWidgets.QTabWidget:
-    widget = QtWidgets.QTabWidget()
-    widget.setObjectName("DocumentTabWidget")
+def configure_document_tab_widget(
+    widget: QtWidgets.QTabWidget,
+    *,
+    object_name: str = "DocumentTabWidget",
+) -> QtWidgets.QTabWidget:
+    """Document 模式 Tab：去外框基线，避免 macOS 上出现白线。"""
+    widget.setObjectName(object_name)
     widget.setDocumentMode(True)
+    bar = widget.tabBar()
+    bar.setDrawBase(False)
+    bar.setExpanding(False)
+    return widget
+
+
+def document_tab_widget(*tabs: tuple[str, QtWidgets.QWidget]) -> QtWidgets.QTabWidget:
+    widget = configure_document_tab_widget(QtWidgets.QTabWidget())
     for title, page in tabs:
         widget.addTab(page, title)
     return widget
@@ -134,11 +172,19 @@ def center_dialog_on_parent(dialog: QtWidgets.QDialog, parent: QtWidgets.QWidget
     dialog.move(frame.topLeft())
 
 
-def initial_dialog_size(*, min_width: int = 1080, min_height: int = 760) -> tuple[int, int]:
+def initial_dialog_size(
+    *,
+    min_width: int = 1080,
+    min_height: int = 760,
+    width_ratio: float = 0.82,
+    height_ratio: float = 0.86,
+    max_width: int = 1440,
+    max_height: int = 1000,
+) -> tuple[int, int]:
     screen = QtWidgets.QApplication.primaryScreen()
     if screen is None:
-        return 1180, 820
+        return max(min_width, 1180), max(min_height, 820)
     rect = screen.availableGeometry()
-    width = min(max(int(rect.width() * 0.82), min_width), 1440)
-    height = min(max(int(rect.height() * 0.86), min_height), 1000)
+    width = min(max(int(rect.width() * width_ratio), min_width), max_width)
+    height = min(max(int(rect.height() * height_ratio), min_height), max_height)
     return width, height

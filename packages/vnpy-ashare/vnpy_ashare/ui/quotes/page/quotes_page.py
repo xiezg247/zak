@@ -364,11 +364,7 @@ class QuotesPage(QtWidgets.QWidget):
             self._splitter.restoreState(state)
 
     def _schedule_center_splitter_layout(self) -> None:
-        if not (
-            self.config.show_watchlist_signals
-            or self.config.show_watchlist_positions
-            or self.config.show_run_output_panel
-        ):
+        if not (self.config.show_watchlist_signals or self.config.show_watchlist_positions or self.config.show_run_output_panel):
             return
         QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self))
         QtCore.QTimer.singleShot(150, lambda: restore_center_splitter(self))

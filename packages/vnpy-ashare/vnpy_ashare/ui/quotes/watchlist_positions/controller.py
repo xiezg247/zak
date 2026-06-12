@@ -158,9 +158,7 @@ class WatchlistPositionController:
             snap = self._page.position_cache.get(item.vt_symbol)
             if snap is not None and snap.signal_snapshot is not None:
                 quote = self._page.quote_map.get(item.tickflow_symbol)
-                pos_cfg = self._page.position_config.normalized().effective_signal_config(
-                    self._page.signal_config
-                )
+                pos_cfg = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
                 self._page.chart_panel.apply_signal_reference(
                     snap.signal_snapshot,
                     quote=quote,

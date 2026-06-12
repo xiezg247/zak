@@ -66,8 +66,7 @@ class VnpyAnalysisSkill(SkillTemplate):
             ToolSpec(
                 name="list_watchlist_signal_panel",
                 description=(
-                    "批量查询自选页策略信号区名单的规则信号快照（最多 10 只）。"
-                    "用户问「扫一遍信号区」「信号区哪些值得关注」时调用；可含实时行情修饰。"
+                    "批量查询自选页策略信号区名单的规则信号快照（最多 10 只）。用户问「扫一遍信号区」「信号区哪些值得关注」时调用；可含实时行情修饰。"
                 ),
                 parameters={
                     "type": "object",

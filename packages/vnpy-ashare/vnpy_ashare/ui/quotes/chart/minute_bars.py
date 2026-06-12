@@ -97,9 +97,7 @@ def compute_minute_bar_change(
     if first_diff == min_len and len(merged) == len(existing):
         return MinuteBarChange(MinuteBarDiff.NOOP, existing)
 
-    if first_diff >= len(existing) - 1 and all(
-        bar_values_equal(existing[index], merged[index]) for index in range(first_diff)
-    ):
+    if first_diff >= len(existing) - 1 and all(bar_values_equal(existing[index], merged[index]) for index in range(first_diff)):
         return MinuteBarChange(MinuteBarDiff.TAIL_PATCH, merged, patch_from=first_diff)
 
     return MinuteBarChange(MinuteBarDiff.REPLACE, merged)

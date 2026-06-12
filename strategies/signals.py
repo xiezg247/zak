@@ -498,9 +498,7 @@ def _action_ref_reason_lines(
     lines: list[str] = []
     if action_buy is not None:
         if signal == "buy":
-            lines.append(
-                f"参考买价：min(金叉/慢{slow_window}/收盘) 低吸入场 = {action_buy}"
-            )
+            lines.append(f"参考买价：min(金叉/慢{slow_window}/收盘) 低吸入场 = {action_buy}")
         elif signal == "sell":
             lines.append(f"参考买价：近低回补参考 = {action_buy}")
         else:
@@ -650,11 +648,7 @@ def build_composite_signal_payload(
     fast_ma = current.get("fast_ma")
     slow_ma = current.get("slow_ma")
     ma_gap_pct: float | None = None
-    if (
-        isinstance(fast_ma, (int, float))
-        and isinstance(slow_ma, (int, float))
-        and float(slow_ma) > 0
-    ):
+    if isinstance(fast_ma, (int, float)) and isinstance(slow_ma, (int, float)) and float(slow_ma) > 0:
         ma_gap_pct = round((float(fast_ma) - float(slow_ma)) / float(slow_ma) * 100, 2)
     reason_summary = _build_reason_summary(
         signal=signal,
@@ -926,12 +920,7 @@ def classify_short_breakout_signal(
     if last_cross and as_of:
         cross_date = str(last_cross.get("date") or "")
         elapsed = _days_between(as_of, cross_date)
-        if (
-            elapsed is not None
-            and elapsed <= max(0, int(recent_days))
-            and last_cross.get("type") == "death_cross"
-            and fast_ma < slow_ma
-        ):
+        if elapsed is not None and elapsed <= max(0, int(recent_days)) and last_cross.get("type") == "death_cross" and fast_ma < slow_ma:
             return "sell"
 
     last_breakout = state.get("last_breakout")
@@ -1074,10 +1063,7 @@ def build_short_breakout_signal_payload(
     if alignment:
         reasons.append(str(alignment))
     if last_breakout.get("type_label") and last_breakout.get("date"):
-        reasons.append(
-            f"最近突破：{last_breakout['type_label']}（{last_breakout['date']}）"
-            f" 量比 {last_breakout.get('volume_ratio', '—')}"
-        )
+        reasons.append(f"最近突破：{last_breakout['type_label']}（{last_breakout['date']}） 量比 {last_breakout.get('volume_ratio', '—')}")
     if last_cross.get("type_label") and last_cross.get("date"):
         reasons.append(f"最近交叉：{last_cross['type_label']}（{last_cross['date']}）")
     reasons.append(f"综合：{reason_summary}")
@@ -1309,12 +1295,7 @@ def classify_swing_ma_signal(
     if last_cross and as_of:
         cross_date = str(last_cross.get("date") or "")
         elapsed = _days_between(as_of, cross_date)
-        if (
-            elapsed is not None
-            and elapsed <= max(0, int(recent_days))
-            and last_cross.get("type") == "death_cross"
-            and fast_ma < slow_ma
-        ):
+        if elapsed is not None and elapsed <= max(0, int(recent_days)) and last_cross.get("type") == "death_cross" and fast_ma < slow_ma:
             return "sell"
 
     last_entry = state.get("last_entry")
@@ -1467,10 +1448,7 @@ def build_swing_ma_signal_payload(
     if alignment:
         reasons.append(str(alignment))
     if last_entry.get("type_label") and last_entry.get("date"):
-        reasons.append(
-            f"最近回踩：{last_entry['type_label']}（{last_entry['date']}）"
-            f" 量比 {last_entry.get('volume_ratio', '—')}"
-        )
+        reasons.append(f"最近回踩：{last_entry['type_label']}（{last_entry['date']}） 量比 {last_entry.get('volume_ratio', '—')}")
     if last_cross.get("type_label") and last_cross.get("date"):
         reasons.append(f"最近交叉：{last_cross['type_label']}（{last_cross['date']}）")
     reasons.append(f"综合：{reason_summary}")
@@ -1691,9 +1669,7 @@ def summarize_trend_ma_state(
     current = dict(ma_state.get("current") or {})
     current["adx"] = adx_value
     current["slow_slope"] = slow_slope
-    current["above_slow_ma"] = (
-        slow_ma0 is not None and closes[last_index] >= slow_ma0
-    )
+    current["above_slow_ma"] = slow_ma0 is not None and closes[last_index] >= slow_ma0
     current["adx_pass"] = adx_value is not None and adx_value >= adx_threshold
 
     return {

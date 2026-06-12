@@ -23,10 +23,10 @@ from vnpy_ashare.domain.signal_snapshot import format_signal_context_extra
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
+from vnpy_ashare.ui.quotes.dialogs import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
 from vnpy_ashare.ui.quotes.table.columns import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
-from vnpy_ashare.ui.quotes.dialogs import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.screener import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
 from vnpy_common.ui.theme import theme_manager

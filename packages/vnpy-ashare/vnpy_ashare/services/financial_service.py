@@ -18,9 +18,9 @@ from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.storage.app_db import load_watchlist_rows
 from vnpy_ashare.storage.disclosure_store import latest_ann_date_after
 from vnpy_ashare.storage.financial_store import (
+    REPORT_TYPES,
     FinancialSnapshotRow,
     FinancialSyncMeta,
-    REPORT_TYPES,
     get_sync_meta,
     list_reports,
     list_snapshots,

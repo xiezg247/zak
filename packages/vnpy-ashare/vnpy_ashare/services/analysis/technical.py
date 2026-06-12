@@ -542,8 +542,7 @@ class TechnicalAnalyzer:
             "reference_bands": reference_bands,
             "direction_hints": direction_hints,
             "output_guide": (
-                "请基于上述本地数据直接输出 bull/base/bear 三情景（概率表述 + 触发/失效条件）；"
-                "通常无需再调用其他工具；禁止确定性预测与具体买卖价位。"
+                "请基于上述本地数据直接输出 bull/base/bear 三情景（概率表述 + 触发/失效条件）；通常无需再调用其他工具；禁止确定性预测与具体买卖价位。"
             ),
             "supplement_tools": [],
             "warnings": list(dict.fromkeys(warnings)),

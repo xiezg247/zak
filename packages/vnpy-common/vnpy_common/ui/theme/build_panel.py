@@ -38,10 +38,16 @@ QTabWidget#DocumentTabWidget > QTabBar::tab {{
     border-top-right-radius: 6px;
 }}
 QTabWidget#DocumentTabWidget::pane {{
-    border: 1px solid {t.panel_border};
-    border-radius: 0 6px 6px 6px;
-    top: -1px;
+    border: none;
+    border-radius: 0;
+    top: 0px;
+    margin: 0;
+    padding: 0;
     background-color: {t.app_bg};
+}}
+QTabWidget#DocumentTabWidget > QTabBar {{
+    border: none;
+    background: transparent;
 }}
 QWidget#PanelFooter {{
     border-top: 1px solid {t.panel_border};
@@ -90,5 +96,40 @@ QLabel#StockAnalysisChange {{
     font-weight: 600;
     padding: 2px 8px;
     border-radius: 4px;
+}}
+QDialog#StockAnalysisDialog QTabWidget,
+QDialog#StockAnalysisDialog QTabWidget::tab-bar {{
+    border: none;
+    background: transparent;
+}}
+QDialog#StockAnalysisDialog QTabWidget::pane {{
+    border: none;
+    top: 0px;
+    margin: 0;
+    padding: 0;
+    background-color: {t.app_bg};
+}}
+QDialog#StockAnalysisDialog QTabBar {{
+    border: none;
+    background: transparent;
+    qproperty-drawBase: 0;
+}}
+QDialog#StockAnalysisDialog QTabBar::tab {{
+    background-color: {t.tab_bg};
+    color: {t.tab_text};
+    border: 1px solid {t.tab_border};
+    border-bottom: none;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 8px 16px;
+    margin-right: 4px;
+}}
+QDialog#StockAnalysisDialog QTabBar::tab:selected {{
+    background-color: {t.tab_selected_bg};
+    color: {t.tab_selected_text};
+    border-color: {t.tab_selected_border};
+}}
+QDialog#StockAnalysisDialog QTabBar::tab:hover {{
+    color: {t.tab_hover_text};
 }}
 """

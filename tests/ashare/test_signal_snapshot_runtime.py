@@ -402,20 +402,24 @@ class RuntimeSignalHintTests(unittest.TestCase):
         label = format_signal_label_display(snap, bar_end_date="2026-06-09")
         self.assertIn("K旧", label)
         self.assertIn("过期", label)
-        self.assertTrue(signal_is_fresh(_signal_mod.SignalSnapshot(
-            vt_symbol="600000.SSE",
-            strategy_id="AshareDoubleMaStrategy",
-            as_of="2026-06-10",
-            signal="buy",
-            signal_label="买入",
-            signal_date="2026-06-08",
-            ref_buy_price=10.0,
-            ref_sell_price=11.0,
-            strength=72.0,
-            reason_summary="",
-            reasons=(),
-            warnings=(),
-        )))
+        self.assertTrue(
+            signal_is_fresh(
+                _signal_mod.SignalSnapshot(
+                    vt_symbol="600000.SSE",
+                    strategy_id="AshareDoubleMaStrategy",
+                    as_of="2026-06-10",
+                    signal="buy",
+                    signal_label="买入",
+                    signal_date="2026-06-08",
+                    ref_buy_price=10.0,
+                    ref_sell_price=11.0,
+                    strength=72.0,
+                    reason_summary="",
+                    reasons=(),
+                    warnings=(),
+                )
+            )
+        )
         self.assertFalse(signal_is_fresh(snap))
         self.assertTrue(signal_is_strong(snap))
         sell_text, sell_sort = signal_cell_text(
@@ -491,9 +495,7 @@ class SignalPanelColumnTests(unittest.TestCase):
             "signal_panel_columns",
             "vnpy_ashare/ui/quotes/watchlist_signals/columns.py",
         )
-        keys = columns_mod.normalize_visible_optional_keys(
-            ["signal_strength", "signal", "signal", "unknown"]
-        )
+        keys = columns_mod.normalize_visible_optional_keys(["signal_strength", "signal", "signal", "unknown"])
         self.assertEqual(keys[0], "signal")
         self.assertIn("signal_strength", keys)
         self.assertNotIn("unknown", keys)

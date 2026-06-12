@@ -87,10 +87,7 @@ class McpEngine:
             )
         if errors:
             detail = next(iter(errors.values()), "连接失败")[:120]
-            return (
-                "【MCP 后端】通达信未连接，综合诊断与形态选股将降级本地能力。"
-                f"（{detail}）请检查 mcp/mcp.json 中的 tdx-api-key。"
-            )
+            return f"【MCP 后端】通达信未连接，综合诊断与形态选股将降级本地能力。（{detail}）请检查 mcp/mcp.json 中的 tdx-api-key。"
         return ""
 
     def get_openai_tools(self) -> list[dict[str, Any]]:

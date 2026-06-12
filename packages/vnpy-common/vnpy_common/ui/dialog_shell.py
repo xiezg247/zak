@@ -13,10 +13,21 @@ def setup_responsive_dialog(
     *,
     min_width: int = 1080,
     min_height: int = 760,
+    width_ratio: float = 0.82,
+    height_ratio: float = 0.86,
+    max_width: int = 1440,
+    max_height: int = 1000,
 ) -> None:
     """按屏幕比例设置弹窗最小/初始尺寸并居中。"""
     dialog.setMinimumSize(min_width, min_height)
-    width, height = initial_dialog_size(min_width=min_width, min_height=min_height)
+    width, height = initial_dialog_size(
+        min_width=min_width,
+        min_height=min_height,
+        width_ratio=width_ratio,
+        height_ratio=height_ratio,
+        max_width=max_width,
+        max_height=max_height,
+    )
     dialog.resize(width, height)
     center_dialog_on_parent(dialog, parent)
 
@@ -44,7 +55,7 @@ def apply_standard_dialog_layout(
 
 def build_panel_footer(
     status: QtWidgets.QLabel,
-    *buttons: QtWidgets.QPushButton,
+    *buttons: QtWidgets.QPushButton | tuple[QtWidgets.QPushButton, int],
     object_name: str = "PanelFooter",
     min_button_width: int = 88,
 ) -> QtWidgets.QWidget:
@@ -53,8 +64,13 @@ def build_panel_footer(
     row = QtWidgets.QHBoxLayout(footer)
     row.setContentsMargins(0, 8, 0, 0)
     row.addWidget(status, stretch=1)
-    for button in buttons:
-        button.setMinimumWidth(min_button_width)
+    for entry in buttons:
+        if isinstance(entry, tuple):
+            button, width = entry
+            button.setMinimumWidth(width)
+        else:
+            button = entry
+            button.setMinimumWidth(min_button_width)
         row.addWidget(button)
     return footer
 

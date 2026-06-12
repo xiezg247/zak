@@ -137,18 +137,15 @@ def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     return (
         f"请对 {title} 做综合诊断。"
-        "请获取行情、技术指标、财务、资金流等诊断数据，"
-        "基于返回结果解读，不要编造未在结果中的指标。"
+        "请按需调用问小达/通达信 MCP 与本地工具，获取行情、技术指标、财务、资金流等数据；"
+        "结合下方已知本地摘要解读，不要编造未在工具结果中的指标。"
     )
 
 
 def build_technical_ai_prompt(vt_symbol: str, name: str = "") -> str:
     """生成技术形态分析预填文案。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
-    return (
-        f"请分析 {title} 的近期技术形态。"
-        "涵盖均线排列、量比、区间涨跌等，基于实际数据做解读，不要编造。"
-    )
+    return f"请分析 {title} 的近期技术形态。涵盖均线排列、量比、区间涨跌等，基于实际数据做解读，不要编造。"
 
 
 def build_signals_ai_prompt(
@@ -163,10 +160,7 @@ def build_signals_ai_prompt(
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
     fast = max(2, int(fast_window or 10))
     slow = max(fast + 1, int(slow_window or 20))
-    return (
-        f"请分析 {title} 的双均线（MA{fast}/MA{slow}）策略信号。"
-        "解读金叉/死叉信号与当前均线状态，基于实际数据，不要编造。"
-    )
+    return f"请分析 {title} 的双均线（MA{fast}/MA{slow}）策略信号。解读金叉/死叉信号与当前均线状态，基于实际数据，不要编造。"
 
 
 def build_signal_panel_batch_ai_prompt(
@@ -206,14 +200,9 @@ def build_signal_panel_ai_prompt(
     )
     snapshot_text = (context_extra or "").strip()
     if not snapshot_text:
-        return (
-            f"{base}"
-            "结合当前行情与信号区展示字段（参考价、距买价%）做研究解读，禁止给出具体买卖价或仓位建议。"
-        )
+        return f"{base}结合当前行情与信号区展示字段（参考价、距买价%）做研究解读，禁止给出具体买卖价或仓位建议。"
     return (
-        f"已知信号区快照（规则计算，非买卖建议）：\n{snapshot_text}\n\n"
-        f"{base}"
-        "结合上述快照与工具返回核对解读；盘中提示仅供参考，禁止给出具体买卖价或仓位建议。"
+        f"已知信号区快照（规则计算，非买卖建议）：\n{snapshot_text}\n\n{base}结合上述快照与工具返回核对解读；盘中提示仅供参考，禁止给出具体买卖价或仓位建议。"
     )
 
 
@@ -299,10 +288,7 @@ def build_trend_scenario_ai_prompt(
     horizon = max(1, min(int(horizon_days or 5), 20))
     fast = max(2, int(fast_window or 10))
     slow = max(fast + 1, int(slow_window or 20))
-    base = (
-        f"请对 {title} 做走势情景分析（非确定性预测，展望 {horizon} 日）。"
-        f"基于本地均线（MA{fast}/MA{slow}）、结构锚点与统计参考带组织分析。"
-    )
+    base = f"请对 {title} 做走势情景分析（非确定性预测，展望 {horizon} 日）。基于本地均线（MA{fast}/MA{slow}）、结构锚点与统计参考带组织分析。"
     focus_lines = {
         "price": "重点解读参考波动区间与结构锚点，给出可能的价位情景。",
         "support": "重点列出支撑/阻力锚点及距买/卖参考价的偏离。",
@@ -399,10 +385,7 @@ def build_diagnose_menu(binding: StockBinding) -> QuickAction:
             QuickAction(
                 id="diagnose_finance",
                 label="财务估值",
-                prompt=(
-                    f"{prefix}请查询市盈率、ROE 等财务估值指标，"
-                    "必要时结合综合诊断，基于返回结果解读，禁止编造。"
-                ),
+                prompt=(f"{prefix}请查询市盈率、ROE 等财务估值指标，必要时结合综合诊断，基于返回结果解读，禁止编造。"),
             ),
             QuickAction(
                 id="diagnose_flow",
@@ -543,11 +526,7 @@ def build_bound_stock_menus(binding: StockBinding) -> list[QuickAction]:
 def build_sector_overview_prompt(vt_symbol: str, name: str = "") -> str:
     """市场页：所属板块/概念行业联动分析预填文案。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
-    return (
-        f"请分析 {title} 所属板块/概念行业的近期表现与联动逻辑。"
-        "可查询板块关联、成分股联动与主力资金流向，"
-        "基于返回数据解读，禁止编造未在结果中的板块数据。"
-    )
+    return f"请分析 {title} 所属板块/概念行业的近期表现与联动逻辑。可查询板块关联、成分股联动与主力资金流向，基于返回数据解读，禁止编造未在结果中的板块数据。"
 
 
 def build_bar_health_prompt(vt_symbol: str, name: str = "", extra: str = "") -> str:

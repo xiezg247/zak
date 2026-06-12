@@ -111,10 +111,7 @@ class AshareSwingMaStrategy(AShareTemplate):
             self.pullback_wait_bars = 0
 
         if self.pos > 0:
-            stop_hit = (
-                self.entry_price > 0
-                and bar.close_price <= self.entry_price * (1 - self.stop_loss_pct)
-            )
+            stop_hit = self.entry_price > 0 and bar.close_price <= self.entry_price * (1 - self.stop_loss_pct)
             structure_break = bar.close_price < self.slow_ma0
             if cross_below or stop_hit or structure_break:
                 self.sell_stock(bar.close_price, abs(self.pos) or volume, trading_day)

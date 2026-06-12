@@ -11,7 +11,6 @@ from unittest.mock import patch
 from vnpy_ashare.services.financial_service import sync_symbol_financials
 from vnpy_ashare.services.stock_profile_service import build_valuation_profile
 from vnpy_ashare.storage.disclosure_store import upsert_disclosure_rows
-from vnpy_ashare.storage.financial_store import upsert_sync_meta, FinancialSyncMeta
 from vnpy_ashare.storage.valuation_store import upsert_valuation_rows
 
 
@@ -36,10 +35,7 @@ class StockProfileServiceTests(unittest.TestCase):
 
     def test_valuation_percentile(self) -> None:
         ts_code = "600519.SH"
-        rows = [
-            {"trade_date": f"2024010{i}", "pe_ttm": float(i), "pb": float(i) / 10}
-            for i in range(1, 6)
-        ]
+        rows = [{"trade_date": f"2024010{i}", "pe_ttm": float(i), "pb": float(i) / 10} for i in range(1, 6)]
         upsert_valuation_rows(ts_code, rows)
 
         with patch(

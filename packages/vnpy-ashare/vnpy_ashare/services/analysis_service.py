@@ -118,6 +118,10 @@ class AnalysisService(BaseService):
             scope=scope,
         )
 
+    def enrich_relative_index(self, snapshot: SignalSnapshot) -> SignalSnapshot:
+        """补算缺失的 relative_index_pct（单票）。"""
+        return self._technical.enrich_relative_index(snapshot)
+
     def enrich_relative_index_batch(
         self,
         snapshots: dict[str, SignalSnapshot],

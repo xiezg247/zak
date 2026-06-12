@@ -225,11 +225,7 @@ def build_sector_profile(vt_symbol: str, *, name: str = "") -> SectorProfile:
 
     peers: list[dict[str, Any]] = []
     if industry:
-        same_industry = [
-            row
-            for row in enriched
-            if str(row.get("industry") or "") == industry and str(row.get("ts_code") or "") != ts_code
-        ]
+        same_industry = [row for row in enriched if str(row.get("industry") or "") == industry and str(row.get("ts_code") or "") != ts_code]
         same_industry.sort(
             key=lambda row: float(row.get("total_mv") or 0),
             reverse=True,

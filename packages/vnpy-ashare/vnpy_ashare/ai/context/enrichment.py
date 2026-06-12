@@ -32,10 +32,7 @@ def build_interpret_screen_action() -> QuickAction | None:
         label="解读选股结果",
         auto_send=True,
         tooltip=f"解读「{ctx.condition}」共 {ctx.count} 条",
-        prompt=(
-            f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。"
-            "分析板块分布、与上次变动差异及技术面特征后解读，不要编造。"
-        ),
+        prompt=(f"请解读选股结果「{ctx.condition}」（共 {ctx.count} 条）。分析板块分布、与上次变动差异及技术面特征后解读，不要编造。"),
     )
 
 

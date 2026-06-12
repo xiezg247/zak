@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from vnpy_common.ui.theme.build_loading import build_content_loading_stylesheet
+from vnpy_common.ui.theme.build_panel import build_panel_stylesheet
+from vnpy_common.ui.theme.build_screener import build_screener_stylesheet
 from vnpy_common.ui.theme.build_scrollbar import (
     build_market_table_scrollbar_stylesheet,
     build_terminal_scrollbar_stylesheet,
 )
-from vnpy_common.ui.theme.build_loading import build_content_loading_stylesheet
-from vnpy_common.ui.theme.build_panel import build_panel_stylesheet
-from vnpy_common.ui.theme.build_screener import build_screener_stylesheet
 from vnpy_common.ui.theme.build_table import build_data_table_stylesheet
 from vnpy_common.ui.theme.tokens import ThemeId, ThemeTokens, get_tokens
 

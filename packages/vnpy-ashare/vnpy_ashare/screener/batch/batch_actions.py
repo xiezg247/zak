@@ -193,9 +193,7 @@ def run_batch_backtests(
         return []
 
     setting: dict[str, Any] = dict(params.strategy_setting or {})
-    tasks = [
-        task_from_params(item, params, class_name=params.class_name, setting=setting) for item in items
-    ]
+    tasks = [task_from_params(item, params, class_name=params.class_name, setting=setting) for item in items]
     workers = batch_backtest_max_workers(item_count=len(items))
     if workers > 1:
         with ProcessPoolExecutor(max_workers=workers) as pool:

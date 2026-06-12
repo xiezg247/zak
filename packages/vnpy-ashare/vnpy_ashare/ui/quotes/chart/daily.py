@@ -9,6 +9,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.components.chart_style import apply_ashare_chart_theme, apply_candle_colors
 from vnpy_ashare.ui.quotes.chart.ma_line_item import register_ma_items
+from vnpy_ashare.ui.quotes.chart.macd_item import register_macd_items
 from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarChange, MinuteBarDiff, prepare_chart_bars
 
 MINUTE_BAR_COUNT = 80
@@ -389,3 +390,18 @@ def create_watchlist_chart(*, minute: bool = False) -> AshareChartWidget:
     """自选页日 K / 分 K。"""
     bar_count = MINUTE_BAR_COUNT if minute else WATCHLIST_DAILY_DEFAULT_BAR_COUNT
     return _create_ashare_kline_chart(bar_count=bar_count)
+
+
+def create_stock_analysis_daily_chart() -> AshareChartWidget:
+    """个股分析日 K：K 线 + 成交量 + MACD 副图。"""
+    chart = AshareChartWidget(bar_count=WATCHLIST_DAILY_DEFAULT_BAR_COUNT)
+    chart.add_plot("candle", hide_x_axis=True, minimum_height=180)
+    chart.add_plot("volume", maximum_height=100, minimum_height=50)
+    chart.add_plot("macd", maximum_height=100, minimum_height=60)
+    chart.add_item(AshareCandleItem, "candle", "candle")
+    register_ma_items(chart)
+    chart.add_item(AshareVolumeItem, "volume", "volume")
+    register_macd_items(chart)
+    chart.add_cursor()
+    apply_ashare_chart_theme(chart)
+    return chart

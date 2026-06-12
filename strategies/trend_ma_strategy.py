@@ -100,12 +100,7 @@ class AshareTrendMaStrategy(AShareTemplate):
                 self.sell_stock(bar.close_price, abs(self.pos) or volume, trading_day)
                 self.entry_price = 0.0
                 self.highest_since_entry = 0.0
-        elif (
-            cross_over
-            and self.adx_value >= self.adx_threshold
-            and bar.close_price > self.slow_ma0
-            and self.slow_ma0 >= self.slow_ma1
-        ):
+        elif cross_over and self.adx_value >= self.adx_threshold and bar.close_price > self.slow_ma0 and self.slow_ma0 >= self.slow_ma1:
             orders = self.buy_stock(bar.close_price, volume)
             if orders:
                 self.entry_price = bar.close_price

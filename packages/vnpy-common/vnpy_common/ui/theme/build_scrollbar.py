@@ -185,12 +185,14 @@ def build_terminal_scrollbar_stylesheet(tokens: ThemeTokens) -> str:
 def build_market_table_scrollbar_stylesheet(tokens: ThemeTokens) -> str:
     """行情表格专用加宽滚动条（保留 MarketTableScroll 命名）。"""
     t = tokens
-    return build_prominent_scrollbar_stylesheet(
-        t,
-        bar_vertical_names=("MarketTableScroll",),
-        width=18,
-        min_handle_vertical=52,
-    ) + f"""
+    return (
+        build_prominent_scrollbar_stylesheet(
+            t,
+            bar_vertical_names=("MarketTableScroll",),
+            width=18,
+            min_handle_vertical=52,
+        )
+        + f"""
 QScrollBar#MarketTableScroll:vertical:disabled {{
     background-color: {t.combo_popup_border};
 }}
@@ -203,3 +205,4 @@ QScrollBar#MarketTableScroll::sub-page:vertical {{
     background: {t.panel_border};
 }}
 """
+    )

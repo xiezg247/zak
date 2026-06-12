@@ -21,9 +21,7 @@ def fetch_valuation_history(
         ts_code=ts_code,
         start_date=start.strftime("%Y%m%d"),
         end_date=end.strftime("%Y%m%d"),
-        fields=(
-            "ts_code,trade_date,close,pe_ttm,pb,total_mv,circ_mv,turnover_rate"
-        ),
+        fields=("ts_code,trade_date,close,pe_ttm,pb,total_mv,circ_mv,turnover_rate"),
     )
     if df is None or df.empty:
         return []

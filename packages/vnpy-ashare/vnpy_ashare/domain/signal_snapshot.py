@@ -367,17 +367,9 @@ def resolve_display_anchor_prices(
     display_buy = buy if buy is not None else snapshot.ref_buy_price
     display_sell = sell if sell is not None else snapshot.ref_sell_price
     adjusted = False
-    if (
-        display_buy is not None
-        and snapshot.ref_buy_price is not None
-        and abs(display_buy - snapshot.ref_buy_price) >= INTRADAY_ANCHOR_MIN_DELTA
-    ):
+    if display_buy is not None and snapshot.ref_buy_price is not None and abs(display_buy - snapshot.ref_buy_price) >= INTRADAY_ANCHOR_MIN_DELTA:
         adjusted = True
-    if (
-        display_sell is not None
-        and snapshot.ref_sell_price is not None
-        and abs(display_sell - snapshot.ref_sell_price) >= INTRADAY_ANCHOR_MIN_DELTA
-    ):
+    if display_sell is not None and snapshot.ref_sell_price is not None and abs(display_sell - snapshot.ref_sell_price) >= INTRADAY_ANCHOR_MIN_DELTA:
         adjusted = True
     return display_buy, display_sell, adjusted
 
@@ -421,9 +413,7 @@ def format_signal_context_extra(
     if sell_pct is not None:
         lines.append(f"距卖价%：{sell_pct:+.2f}")
     if snapshot.relative_index_pct is not None:
-        lines.append(
-            f"相对300%（{SIGNAL_BENCHMARK_LOOKBACK}日）：{snapshot.relative_index_pct:+.2f}"
-        )
+        lines.append(f"相对300%（{SIGNAL_BENCHMARK_LOOKBACK}日）：{snapshot.relative_index_pct:+.2f}")
 
     hints = build_runtime_signal_hints(
         snapshot,
@@ -483,36 +473,17 @@ def build_price_field_explanations(
     slow_window: int,
 ) -> tuple[str, ...]:
     """理由弹窗中的字段释义（按当前信号态）。"""
-    anchor_buy = (
-        f"支撑锚点：日 K 慢线 MA{slow_window} 结构位，反映均线支撑/跌破水平，"
-        "用于判断结构是否破坏，非直接买卖价。"
-    )
-    anchor_sell = (
-        f"阻力锚点：日 K 快线 MA{fast_window} 与近高形成的结构阻力，"
-        "用于观察反弹压力，非直接买卖价。"
-    )
+    anchor_buy = f"支撑锚点：日 K 慢线 MA{slow_window} 结构位，反映均线支撑/跌破水平，用于判断结构是否破坏，非直接买卖价。"
+    anchor_sell = f"阻力锚点：日 K 快线 MA{fast_window} 与近高形成的结构阻力，用于观察反弹压力，非直接买卖价。"
     if signal == "buy":
-        ref_buy = (
-            f"参考买价：买入信号下的动作参考，取 min(金叉价/慢{slow_window}/收盘/现价) 偏低吸；"
-            "有实时行情时纳入现价。"
-        )
+        ref_buy = f"参考买价：买入信号下的动作参考，取 min(金叉价/慢{slow_window}/收盘/现价) 偏低吸；有实时行情时纳入现价。"
         ref_sell = "参考卖价：买入信号下的止盈阻力参考，取近高与快线阻力区间的较低值。"
     elif signal == "sell":
-        ref_buy = (
-            "参考买价：卖出信号下的回补参考，取近 20 日低或现价下方，"
-            "表示若反弹回落可关注的位置，非当前结构慢线。"
-        )
-        ref_sell = (
-            f"参考卖价：卖出信号下的离场参考，有行情时取现价，"
-            f"否则取 max(收盘/快{fast_window}) 反弹减仓位。"
-        )
+        ref_buy = "参考买价：卖出信号下的回补参考，取近 20 日低或现价下方，表示若反弹回落可关注的位置，非当前结构慢线。"
+        ref_sell = f"参考卖价：卖出信号下的离场参考，有行情时取现价，否则取 max(收盘/快{fast_window}) 反弹减仓位。"
     elif signal == "hold":
-        ref_buy = (
-            f"参考买价：观望下的回踩关注位，取 min(慢{slow_window}/收盘/现价)。"
-        )
-        ref_sell = (
-            f"参考卖价：观望下的反弹关注位，取 max(快{fast_window}/收盘/现价)。"
-        )
+        ref_buy = f"参考买价：观望下的回踩关注位，取 min(慢{slow_window}/收盘/现价)。"
+        ref_sell = f"参考卖价：观望下的反弹关注位，取 max(快{fast_window}/收盘/现价)。"
     else:
         ref_buy = "参考买价：数据不足时无法计算。"
         ref_sell = "参考卖价：数据不足时无法计算。"

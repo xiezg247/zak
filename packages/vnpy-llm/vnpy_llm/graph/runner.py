@@ -163,9 +163,7 @@ def _iter_agent_turn(
     handoff_context = ""
     if index > 0:
         handoff_context = (
-            f"{decision.handoff_reason}\n"
-            f"上一 Agent（{agents_to_run[index - 1]}）已回复：\n{prior_reply}\n"
-            "请在此基础上补充你负责域内的分析，避免重复上文。"
+            f"{decision.handoff_reason}\n上一 Agent（{agents_to_run[index - 1]}）已回复：\n{prior_reply}\n请在此基础上补充你负责域内的分析，避免重复上文。"
         )
 
     agent_tools = _resolve_agent_tools(

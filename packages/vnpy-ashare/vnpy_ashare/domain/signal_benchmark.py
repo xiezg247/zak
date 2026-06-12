@@ -29,11 +29,7 @@ def benchmark_return_from_index_rows(
 ) -> float | None:
     """从 index_daily 行列表计算区间涨幅（%）。"""
     target = ts_code.strip().upper()
-    points = [
-        row
-        for row in rows
-        if str(row.get("ts_code", "")).strip().upper() == target and row.get("close") is not None
-    ]
+    points = [row for row in rows if str(row.get("ts_code", "")).strip().upper() == target and row.get("close") is not None]
     if len(points) < 2:
         return None
     points.sort(key=lambda row: str(row.get("trade_date", "")))

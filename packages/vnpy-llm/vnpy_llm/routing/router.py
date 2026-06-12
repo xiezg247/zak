@@ -653,11 +653,7 @@ def _resolve_route_tools(
         tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
 
     screening = analysis.screening
-    if (
-        category == "screening"
-        and screening is not None
-        and (screening.clarification_needed or screening.confidence == "low")
-    ):
+    if category == "screening" and screening is not None and (screening.clarification_needed or screening.confidence == "low"):
         tools = _strip_screening_tools(tools)
 
     tools = apply_fear_greed_tools(tools, analysis, all_tools)

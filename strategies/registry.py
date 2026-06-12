@@ -43,10 +43,7 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareShortBreakoutStrategy": StrategyMeta(
         class_name="AshareShortBreakoutStrategy",
         title="A 股短线放量突破",
-        summary=(
-            "收盘价突破近 N 日高点且量比放大、快线在慢线上方时买入；"
-            "死叉/止损/止盈/持仓天数到期卖出。适合 1～5 日短线。"
-        ),
+        summary=("收盘价突破近 N 日高点且量比放大、快线在慢线上方时买入；死叉/止损/止盈/持仓天数到期卖出。适合 1～5 日短线。"),
         tags=("短线", "突破", "日 K", "仅做多"),
         scenarios=(
             "活跃股、题材龙头，日 K 量能配合",
@@ -72,10 +69,7 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareSwingMaStrategy": StrategyMeta(
         class_name="AshareSwingMaStrategy",
         title="A 股波段回踩均线",
-        summary=(
-            "金叉后不追高，等待缩量回踩慢均线再买入；"
-            "死叉、跌破慢线或止损卖出。适合 1～4 周波段。"
-        ),
+        summary=("金叉后不追高，等待缩量回踩慢均线再买入；死叉、跌破慢线或止损卖出。适合 1～4 周波段。"),
         tags=("波段", "回踩", "日 K", "仅做多"),
         scenarios=(
             "趋势明确的行业龙头或蓝筹",
@@ -99,10 +93,7 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareTrendMaStrategy": StrategyMeta(
         class_name="AshareTrendMaStrategy",
         title="A 股趋势均线",
-        summary=(
-            "MA 金叉且 ADX 高于阈值、价在慢线上方、慢线向上时买入；"
-            "死叉、跌破慢线或追踪止损卖出。适合 1～6 月趋势。"
-        ),
+        summary=("MA 金叉且 ADX 高于阈值、价在慢线上方、慢线向上时买入；死叉、跌破慢线或追踪止损卖出。适合 1～6 月趋势。"),
         tags=("趋势", "ADX", "日 K", "仅做多"),
         scenarios=(
             "中期趋势明确的龙头或指数成分",

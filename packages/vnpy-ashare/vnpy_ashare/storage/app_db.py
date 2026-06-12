@@ -653,8 +653,7 @@ def update_position_item(
     init_app_db()
     with _connect() as conn:
         cursor = conn.execute(
-            "UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, updated_at = ? "
-            "WHERE symbol = ? AND exchange = ?",
+            "UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, updated_at = ? WHERE symbol = ? AND exchange = ?",
             (cost_price, volume, buy_date, notes, now, symbol, exchange.name),
         )
         return cursor.rowcount > 0

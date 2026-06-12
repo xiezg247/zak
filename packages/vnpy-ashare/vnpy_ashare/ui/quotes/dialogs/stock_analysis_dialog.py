@@ -12,12 +12,21 @@ from vnpy_ashare.app.engine_access import get_analysis_service, get_financial_se
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ui.quotes.panels.diagnose import format_diagnose_html
+from vnpy_ashare.services.stock_analysis_context import build_analysis_ai_context, format_technical_summary
+from vnpy_ashare.ui.quotes.stock_analysis.capital_tab import CapitalAnalysisTab
 from vnpy_ashare.ui.quotes.stock_analysis.chart_tab import StockAnalysisChartTab
+from vnpy_ashare.ui.quotes.stock_analysis.concept_tab import ConceptAnalysisTab
+from vnpy_ashare.ui.quotes.stock_analysis.events_tab import EventsAnalysisTab
 from vnpy_ashare.ui.quotes.stock_analysis.financial_tab import FinancialAnalysisTab
+from vnpy_ashare.ui.quotes.stock_analysis.holders_tab import HoldersAnalysisTab
 from vnpy_ashare.ui.quotes.stock_analysis.host import StockAnalysisHost
+from vnpy_ashare.ui.quotes.stock_analysis.overview_panel import OverviewAnalysisPanel
 from vnpy_ashare.ui.quotes.stock_analysis.sector_tab import SectorAnalysisTab
-from vnpy_ashare.ui.quotes.workers.stock_analysis_worker import StockAnalysisPayload, StockAnalysisWorker
+from vnpy_ashare.ui.quotes.workers.stock_analysis_worker import (
+    StockAnalysisPayload,
+    StockAnalysisScope,
+    StockAnalysisWorker,
+)
 from vnpy_common.ui.dialog_shell import (
     apply_standard_dialog_layout,
     build_panel_footer,
@@ -26,18 +35,40 @@ from vnpy_common.ui.dialog_shell import (
 )
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.loading_overlay import LoadingContentHost
-from vnpy_common.ui.panel_widgets import MetricTile, content_card, panel_status_label, section_title, tab_page
+from vnpy_common.ui.panel_widgets import MetricTile, configure_document_tab_widget, content_card, panel_status_label, section_title, tab_page
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_common.ui.scroll_area import frameless_scroll_area
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_panel import build_stock_analysis_stylesheet
-from vnpy_common.ui.theme.html_format import format_loading_html
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _TAB_OVERVIEW = 0
 _TAB_CHART = 1
 _TAB_SECTOR = 2
-_TAB_FINANCIAL = 3
+_TAB_CONCEPT = 3
+_TAB_CAPITAL = 4
+_TAB_EVENTS = 5
+_TAB_HOLDERS = 6
+_TAB_FINANCIAL = 7
+
+_TAB_SCOPES: dict[int, StockAnalysisScope] = {
+    _TAB_OVERVIEW: "overview",
+    _TAB_SECTOR: "sector",
+    _TAB_CONCEPT: "concept",
+    _TAB_CAPITAL: "capital",
+    _TAB_EVENTS: "events",
+    _TAB_HOLDERS: "holders",
+    _TAB_FINANCIAL: "financial",
+}
+
+_SCOPE_STATUS: dict[StockAnalysisScope, str] = {
+    "overview": "正在加载本地概览…",
+    "sector": "正在加载板块与估值…",
+    "concept": "正在加载概念题材…",
+    "capital": "正在加载资金流…",
+    "events": "正在加载事件日历…",
+    "holders": "正在加载股东结构…",
+    "financial": "正在同步财报…",
+}
 
 
 def _quote_header_meta(quote: QuoteSnapshot | None, item: StockItem) -> dict[str, str]:
@@ -87,13 +118,25 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._payload: StockAnalysisPayload | None = None
         self._closing = False
         self._chart_loaded = False
+        self._loaded_scopes: set[StockAnalysisScope] = set()
+        self._loading_scope: StockAnalysisScope | None = None
+        self._pending_scopes: list[StockAnalysisScope] = []
 
         meta = _quote_header_meta(quote, item)
         self.setWindowTitle(f"个股分析 · {meta['name']}")
-        setup_responsive_dialog(self, parent)
+        setup_responsive_dialog(
+            self,
+            parent,
+            min_width=1320,
+            min_height=920,
+            width_ratio=0.92,
+            height_ratio=0.94,
+            max_width=1720,
+            max_height=1200,
+        )
 
         header = self._build_header(meta)
-        self._status_label = panel_status_label("正在加载…")
+        self._status_label = panel_status_label("就绪")
         tabs = self._build_tabs()
         self._content_host = LoadingContentHost(tabs)
         footer = self._build_footer()
@@ -107,8 +150,16 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
         theme_manager().bind_stylesheet(self, extra=build_stock_analysis_stylesheet)
         self._render_quote_metrics()
-        self._set_loading(True)
-        self._start_load(force_financial=False)
+        self._init_idle_tabs()
+        self._ensure_tab_data(_TAB_OVERVIEW)
+
+    def _init_idle_tabs(self) -> None:
+        self._sector_tab.show_idle()
+        self._concept_tab.show_idle()
+        self._capital_tab.show_idle()
+        self._events_tab.show_idle()
+        self._holders_tab.show_idle()
+        self._financial_tab.show_idle()
 
     def _build_header(self, meta: dict[str, str]) -> QtWidgets.QWidget:
         header = QtWidgets.QWidget()
@@ -139,9 +190,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         change_label = QtWidgets.QLabel(meta["change"])
         change_label.setObjectName("StockAnalysisChange")
         if meta["change_color"]:
-            change_label.setStyleSheet(
-                f"color: {meta['change_color']}; background-color: {meta['change_bg']};"
-            )
+            change_label.setStyleSheet(f"color: {meta['change_color']}; background-color: {meta['change_bg']};")
         right.addWidget(price_label)
         if meta["change"]:
             right.addWidget(change_label)
@@ -151,55 +200,48 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         return header
 
     def _build_tabs(self) -> QtWidgets.QTabWidget:
-        self._overview_body = QtWidgets.QLabel("加载中…")
-        self._overview_body.setWordWrap(True)
-        self._overview_body.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self._overview_body.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
-        self._overview_body.setObjectName("DiagnoseBody")
-
-        self._technical_body = QtWidgets.QLabel("")
-        self._technical_body.setWordWrap(True)
-        self._technical_body.setObjectName("DiagnoseBody")
-        self._technical_body.setAlignment(QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft)
-
-        analysis_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        analysis_split.setChildrenCollapsible(False)
-        analysis_split.addWidget(
-            content_card(
-                section_title("综合诊断"),
-                frameless_scroll_area(self._overview_body),
-            )
-        )
-        analysis_split.addWidget(
-            content_card(
-                section_title("本地技术面"),
-                frameless_scroll_area(self._technical_body),
-            )
-        )
-        analysis_split.setStretchFactor(0, 3)
-        analysis_split.setStretchFactor(1, 2)
+        self._overview_panel = OverviewAnalysisPanel()
 
         overview_page = tab_page(
             self._build_quote_metrics_section(),
-            analysis_split,
+            self._overview_panel,
             stretch_index=1,
         )
 
         self._chart_tab = StockAnalysisChartTab()
         self._chart_tab.set_retired_workers(self._host.retired_workers)
         self._sector_tab = SectorAnalysisTab()
+        self._sector_tab.peer_activated.connect(self._open_peer_analysis)
+        self._concept_tab = ConceptAnalysisTab()
+        self._capital_tab = CapitalAnalysisTab()
+        self._events_tab = EventsAnalysisTab()
+        self._holders_tab = HoldersAnalysisTab()
         self._financial_tab = FinancialAnalysisTab()
 
-        tabs = QtWidgets.QTabWidget()
-        tabs.setObjectName("DocumentTabWidget")
-        tabs.setDocumentMode(True)
+        tabs = configure_document_tab_widget(QtWidgets.QTabWidget())
         tabs.addTab(overview_page, "概览")
         tabs.addTab(tab_page(self._chart_tab, margins=(0, 4, 0, 0)), "图表")
         tabs.addTab(self._sector_tab, "板块")
+        tabs.addTab(self._concept_tab, "概念")
+        tabs.addTab(self._capital_tab, "资金")
+        tabs.addTab(self._events_tab, "事件")
+        tabs.addTab(self._holders_tab, "股东")
         tabs.addTab(self._financial_tab, "财务")
         tabs.currentChanged.connect(self._on_tab_changed)
         self._tabs = tabs
         return tabs
+
+    def _open_peer_analysis(self, vt_symbol: str, name: str) -> None:
+        if not vt_symbol or vt_symbol == self._item.vt_symbol:
+            return
+        from vnpy_ashare.ui.quotes.stock_analysis.open import show_stock_analysis_vt_symbol
+
+        show_stock_analysis_vt_symbol(
+            vt_symbol,
+            self._host,
+            name=name,
+            parent=self,
+        )
 
     def _build_quote_metrics_section(self) -> QtWidgets.QWidget:
         self._quote_tiles = {
@@ -219,17 +261,22 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             ("last", 0, 0),
             ("change", 0, 1),
             ("ohlc", 0, 2),
-            ("volume", 1, 0),
-            ("amount", 1, 1),
-            ("turnover", 1, 2),
-            ("amplitude", 2, 0),
-            ("time", 2, 1),
+            ("volume", 0, 3),
+            ("amount", 1, 0),
+            ("turnover", 1, 1),
+            ("amplitude", 1, 2),
+            ("time", 1, 3),
         ]
         for key, row, col in positions:
-            grid.addWidget(self._quote_tiles[key], row, col)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
-        grid.setColumnStretch(2, 1)
+            tile = self._quote_tiles[key]
+            tile.setMinimumWidth(132)
+            tile.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Preferred,
+            )
+            grid.addWidget(tile, row, col)
+        for col in range(4):
+            grid.setColumnStretch(col, 1)
 
         wrapper = QtWidgets.QWidget()
         wrapper.setLayout(grid)
@@ -238,7 +285,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
     def _build_footer(self) -> QtWidgets.QWidget:
         self._refresh_btn = QtWidgets.QPushButton("刷新")
         self._refresh_btn.setObjectName("SecondaryButton")
-        self._refresh_btn.clicked.connect(lambda: self._start_load(force_financial=True))
+        self._refresh_btn.clicked.connect(self._refresh_current_tab)
         self._ai_btn = QtWidgets.QPushButton("问 AI 解读")
         self._ai_btn.setObjectName("ActionButton")
         self._ai_btn.clicked.connect(self._ask_ai)
@@ -256,22 +303,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             close_btn,
         )
 
-    def _set_loading(self, loading: bool, *, title: str = "正在加载个股分析…") -> None:
-        hint = "行情 · 综合诊断 · 财报 · 板块估值"
-        if loading:
-            self._content_host.show_loading(title, hint=hint)
-            self._status_label.setText(title)
-            set_panel_status_loading(self._status_label, True)
-            self._overview_body.setText(
-                format_loading_html(title, hint="正在拉取问小达诊断与本地技术面")
-            )
-            self._technical_body.setText("正在分析本地技术面…")
-            self._sector_tab.show_loading()
-            self._financial_tab.show_loading()
-        else:
-            self._content_host.hide_loading()
-            set_panel_status_loading(self._status_label, False)
-
     def closeEvent(self, event) -> None:
         self._closing = True
         self._chart_tab.shutdown()
@@ -283,12 +314,35 @@ class StockAnalysisDialog(QtWidgets.QDialog):
     def _on_tab_changed(self, index: int) -> None:
         if index == _TAB_CHART:
             self._ensure_chart_loaded()
+            return
+        self._ensure_tab_data(index)
 
     def _ensure_chart_loaded(self) -> None:
         if self._chart_loaded or self._closing:
             return
         self._chart_loaded = True
         self._chart_tab.load(self._item, quote=self._quote)
+
+    def _ensure_tab_data(self, index: int) -> None:
+        scope = _TAB_SCOPES.get(index)
+        if scope is None or scope in self._loaded_scopes:
+            return
+        self._start_load(scope=scope, sync_financials=False)
+
+    def _refresh_current_tab(self) -> None:
+        index = self._tabs.currentIndex()
+        if index == _TAB_CHART:
+            self._chart_loaded = False
+            self._ensure_chart_loaded()
+            self._status_label.setText("图表已刷新")
+            return
+
+        scope = _TAB_SCOPES.get(index)
+        if scope is None:
+            return
+        self._loaded_scopes.discard(scope)
+        sync = scope == "financial"
+        self._start_load(scope=scope, sync_financials=sync, force=True)
 
     def _analysis_service(self):
         return get_analysis_service(self._host.main_engine)
@@ -340,27 +394,61 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         tiles["amplitude"].set_value(f"{quote.amplitude:.2f}%")
         tiles["time"].set_value(quote.trade_time or "—")
 
-    def _start_load(self, *, force_financial: bool) -> None:
+    def _show_scope_loading(self, scope: StockAnalysisScope) -> None:
+        if scope == "overview":
+            self._overview_panel.show_loading()
+        elif scope == "sector":
+            self._sector_tab.show_loading()
+        elif scope == "concept":
+            self._concept_tab.show_loading()
+        elif scope == "capital":
+            self._capital_tab.show_loading()
+        elif scope == "events":
+            self._events_tab.show_loading()
+        elif scope == "holders":
+            self._holders_tab.show_loading()
+        elif scope == "financial":
+            self._financial_tab.show_loading()
+
+    def _start_load(
+        self,
+        *,
+        scope: StockAnalysisScope,
+        sync_financials: bool = False,
+        force: bool = False,
+    ) -> None:
         if self._closing:
             return
-        if self._worker is not None and self._worker.isRunning():
+        if not force and scope in self._loaded_scopes:
             return
-        analysis = self._analysis_service()
-        financial = self._financial_service()
-        if analysis is None and financial is None:
-            self._set_loading(False)
-            self._status_label.setText("分析服务未就绪")
+        if self._worker is not None and self._worker.isRunning():
+            if scope not in self._pending_scopes and scope not in self._loaded_scopes:
+                self._pending_scopes.append(scope)
             return
 
-        self._status_label.setText("正在加载…")
+        analysis = self._analysis_service()
+        financial = self._financial_service()
+        if scope in {"overview", "sector"} and analysis is None:
+            self._status_label.setText("分析服务未就绪")
+            return
+        if scope == "financial" and financial is None:
+            self._status_label.setText("财报服务未就绪")
+            return
+
+        self._loading_scope = scope
+        status = _SCOPE_STATUS.get(scope, "正在加载…")
+        self._status_label.setText(status)
+        set_panel_status_loading(self._status_label, True)
         self._refresh_btn.setEnabled(False)
-        self._set_loading(True, title="正在加载个股分析…")
+        self._show_scope_loading(scope)
+
         worker = StockAnalysisWorker(
             vt_symbol=self._item.vt_symbol,
+            scope=scope,
             analysis_service=analysis,
             financial_service=financial,
             quote_summary=self._quote_summary(),
-            sync_financials=force_financial or self._payload is None,
+            sync_financials=sync_financials,
             stock_name=self._quote.name if self._quote and self._quote.name else self._item.name,
             parent=self,
         )
@@ -371,72 +459,136 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         worker.failed.connect(worker.deleteLater)
         worker.start()
 
+    def _ensure_payload(self) -> StockAnalysisPayload:
+        if self._payload is None:
+            self._payload = StockAnalysisPayload(vt_symbol=self._item.vt_symbol)
+        return self._payload
+
+    def _merge_partial(self, partial: StockAnalysisPayload) -> StockAnalysisPayload:
+        base = self._ensure_payload()
+        scope = partial.scope
+        if scope == "overview":
+            base.technical = partial.technical
+            base.signal = partial.signal
+            base.relative_returns = partial.relative_returns
+        elif scope == "sector":
+            base.sector = partial.sector
+            base.valuation = partial.valuation
+            base.valuation_history = partial.valuation_history
+        elif scope == "concept":
+            base.concept = partial.concept
+        elif scope == "capital":
+            base.moneyflow = partial.moneyflow
+        elif scope == "events":
+            base.events = partial.events
+        elif scope == "holders":
+            base.holders = partial.holders
+        elif scope == "financial":
+            base.financial_bundle = partial.financial_bundle
+            base.financial_sync = partial.financial_sync
+        if partial.warnings:
+            base.warnings.extend(partial.warnings)
+        return base
+
+    def _apply_scope(self, scope: StockAnalysisScope) -> None:
+        payload = self._ensure_payload()
+        if scope == "overview":
+            technical_text = format_technical_summary(
+                payload.technical,
+                signal=payload.signal,
+                relative_returns=payload.relative_returns,
+            )
+            self._overview_panel.show_payload(
+                technical=payload.technical,
+                technical_text=technical_text,
+                relative_returns=payload.relative_returns,
+                signal=payload.signal,
+            )
+        elif scope == "sector":
+            self._sector_tab.show_profiles(
+                payload.sector,
+                payload.valuation,
+                valuation_history=payload.valuation_history,
+            )
+        elif scope == "concept":
+            self._concept_tab.show_profile(payload.concept)
+        elif scope == "capital":
+            self._capital_tab.show_profile(payload.moneyflow)
+        elif scope == "events":
+            self._events_tab.show_profile(payload.events)
+        elif scope == "holders":
+            self._holders_tab.show_profile(payload.holders)
+        elif scope == "financial":
+            sync_message = ""
+            if payload.financial_sync is not None:
+                sync_message = payload.financial_sync.message
+            self._financial_tab.show_bundle(payload.financial_bundle, sync_message=sync_message)
+
     def _on_finished(self, payload_obj: object) -> None:
         if self._closing:
             return
+        partial = payload_obj if isinstance(payload_obj, StockAnalysisPayload) else None
         self._worker = None
+        self._loading_scope = None
         self._refresh_btn.setEnabled(True)
-        payload = payload_obj if isinstance(payload_obj, StockAnalysisPayload) else None
-        if payload is None:
-            self._set_loading(False)
+        set_panel_status_loading(self._status_label, False)
+
+        if partial is None:
             self._status_label.setText("加载失败：无效 payload")
+            self._run_pending_load()
             return
-        self._payload = payload
-        self._set_loading(False)
-        self._overview_body.setText(format_diagnose_html(payload.diagnose))
-        self._technical_body.setText(self._format_technical(payload.technical))
-        sync_message = ""
-        if payload.financial_sync is not None:
-            sync_message = payload.financial_sync.message
-        self._financial_tab.show_bundle(payload.financial_bundle, sync_message=sync_message)
-        self._sector_tab.show_profiles(payload.sector, payload.valuation)
-        warnings = payload.warnings
-        status = sync_message or "加载完成"
+
+        self._merge_partial(partial)
+        self._loaded_scopes.add(partial.scope)
+        self._apply_scope(partial.scope)
+
+        warnings = [item for item in partial.warnings if item]
+        status = "加载完成"
+        if partial.scope == "financial" and partial.financial_sync is not None:
+            status = partial.financial_sync.message or status
         if warnings:
             status += f" · {'；'.join(warnings[:2])}"
         self._status_label.setText(status)
+
         if self._tabs.currentIndex() == _TAB_CHART:
             self._ensure_chart_loaded()
+        self._run_pending_load()
+
+    def _run_pending_load(self) -> None:
+        while self._pending_scopes:
+            scope = self._pending_scopes.pop(0)
+            if scope not in self._loaded_scopes:
+                self._start_load(scope=scope, sync_financials=False)
+                return
 
     def _on_failed(self, message: str) -> None:
         if self._closing:
             return
+        failed_scope = self._loading_scope
         self._worker = None
+        self._loading_scope = None
         self._refresh_btn.setEnabled(True)
-        self._set_loading(False)
+        set_panel_status_loading(self._status_label, False)
         self._status_label.setText(message)
         page_notify(self, message, level="error")
-
-    @staticmethod
-    def _format_technical(data: dict[str, Any]) -> str:
-        if not data:
-            return "暂无本地技术面"
-        if data.get("error"):
-            return str(data["error"])
-        warnings = data.get("warnings") or []
-        if warnings:
-            return "；".join(str(item) for item in warnings)
-        ma = data.get("ma") or {}
-        ret = (data.get("period_return") or {}).get("return_pct")
-        ret_text = f"{ret:+.2f}%" if isinstance(ret, (int, float)) else "—"
-        lines = [
-            f"截至 {data.get('as_of', '—')} · 收盘 {data.get('last_close', '—')}",
-            f"MA5 / MA10 / MA20 / MA60",
-            f"{ma.get('ma5', '—')} / {ma.get('ma10', '—')} / {ma.get('ma20', '—')} / {ma.get('ma60', '—')}",
-            f"均线排列：{data.get('ma_alignment', '—')}",
-            f"5日量比 {data.get('volume_ratio_5d', '—')} · 区间涨跌 {ret_text}",
-        ]
-        return "\n".join(lines)
+        if failed_scope == "overview":
+            self._overview_panel.show_payload(technical_text=message)
+        self._run_pending_load()
 
     def _ask_ai(self) -> None:
         if self._host.event_engine is None:
             return
         name = self._quote.name if self._quote and self._quote.name else self._item.name
+        base = build_diagnose_ai_prompt(self._item.vt_symbol, name)
+        if self._payload is not None:
+            context = build_analysis_ai_context(self._payload)
+            if context:
+                base = f"{base}\n\n已知本地摘要：{context}"
         self._host.event_engine.put(
             Event(
                 EVENT_ASK_AI,
                 AskAiRequest(
-                    prompt=build_diagnose_ai_prompt(self._item.vt_symbol, name),
+                    prompt=base,
                     source_page=self._host.source_page,
                 ),
             )

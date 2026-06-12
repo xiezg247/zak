@@ -25,11 +25,7 @@ def format_status_html(
     }
     color = color_map.get(tone, colors.body)
     prefix = '<span style="font-size:15px;opacity:0.85;">◌</span> ' if tone == "loading" else ""
-    hint_html = (
-        f'<p style="margin:8px 0 0;color:{colors.muted};font-size:12px;">{hint}</p>'
-        if hint
-        else ""
-    )
+    hint_html = f'<p style="margin:8px 0 0;color:{colors.muted};font-size:12px;">{hint}</p>' if hint else ""
     return f'<p style="margin:0;color:{color};font-size:13px;">{prefix}{message}</p>{hint_html}'
 
 

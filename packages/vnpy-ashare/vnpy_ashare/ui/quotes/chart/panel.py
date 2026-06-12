@@ -573,11 +573,7 @@ class ChartPanel(QtWidgets.QWidget):
         target_key = (item.symbol, item.exchange)
         session_key = (item.symbol, item.exchange, period)
 
-        if (
-            mode == "full"
-            and not quiet
-            and self._minute_session.matches_key(session_key)
-        ):
+        if mode == "full" and not quiet and self._minute_session.matches_key(session_key):
             if self._minute_session.from_local and not self._minute_session.overview_unchanged(
                 item.symbol,
                 item.exchange,

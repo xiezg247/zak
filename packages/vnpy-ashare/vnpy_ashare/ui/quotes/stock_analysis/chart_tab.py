@@ -11,6 +11,7 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     WATCHLIST_DAILY_BAR_PRESETS,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
     AshareChartWidget,
+    create_stock_analysis_daily_chart,
     create_watchlist_chart,
 )
 from vnpy_ashare.ui.quotes.chart.intraday import IntradayChart
@@ -57,6 +58,7 @@ class StockAnalysisChartTab(QtWidgets.QWidget):
         self._daily_viewport_bars = WATCHLIST_DAILY_DEFAULT_BAR_COUNT
 
         self._tab_bar = QtWidgets.QTabBar()
+        self._tab_bar.setDrawBase(False)
         self._tab_bar.addTab("分时")
         self._tab_bar.addTab("日K")
         self._tab_bar.addTab("分K")
@@ -74,7 +76,7 @@ class StockAnalysisChartTab(QtWidgets.QWidget):
         toolbar.addWidget(self._daily_range_combo)
 
         self._intraday_chart = IntradayChart()
-        self._daily_chart = create_watchlist_chart()
+        self._daily_chart = create_stock_analysis_daily_chart()
         self._minute_chart = create_watchlist_chart(minute=True)
         self._stack = QtWidgets.QStackedWidget()
         self._stack.addWidget(self._intraday_chart)
