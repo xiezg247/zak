@@ -22,6 +22,7 @@ from vnpy_ashare.jobs import (
     sync_universe_job,
     sync_watchlist_financials_job,
 )
+from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.scheduler.config import load_scheduler_config
 
 _COLLECT_QUOTES_INTERVAL_MIN = 5
@@ -40,6 +41,7 @@ JOB_CATALOG: dict[str, tuple[str, str]] = {
     "batch_fill_stale": ("补全本地日 K", "为本地已下载列表中过期的日 K 增量补全"),
     "screen_intraday": ("盘中自动选股", "交易时段多维度选股，结果写入选股历史"),
     "screen_post_close": ("盘后自动选股", "收盘后多维度选股，结果写入选股历史"),
+    "scan_horizon_outlook": ("雷达展望扫描", "全市场扫描未来·关注/可持并写入本地缓存"),
 }
 
 _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
@@ -95,6 +97,8 @@ def run_job(job_id: str, *, force: bool = False, download_start: str | None = No
         return _run_collect_quotes(force=force)
     if job_id in ("screen_intraday", "screen_post_close"):
         return run_scheduled_auto_screen(job_id, force=force)
+    if job_id == "scan_horizon_outlook":
+        return run_horizon_outlook_scan_job(force=force)
     if job_id == "batch_download_universe":
         start = download_start or load_scheduler_config().batch_download_universe.download_start
         return batch_download_universe_daily_bars(daily_start=start)

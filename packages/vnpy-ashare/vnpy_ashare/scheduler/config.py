@@ -133,6 +133,14 @@ class SchedulerConfig:
             cron_minute=35,
         )
     )
+    scan_horizon_outlook: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=40,
+            cron_day_of_week="mon-fri",
+        )
+    )
 
     def to_dict(self) -> dict:
         def dump_job(job: JobConfig) -> dict:
@@ -171,6 +179,7 @@ class SchedulerConfig:
             "batch_fill_stale": dump_job(self.batch_fill_stale),
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
+            "scan_horizon_outlook": dump_job(self.scan_horizon_outlook),
         }
 
     @classmethod
@@ -219,6 +228,7 @@ class SchedulerConfig:
             batch_fill_stale=load_job("batch_fill_stale", defaults.batch_fill_stale),
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
+            scan_horizon_outlook=load_job("scan_horizon_outlook", defaults.scan_horizon_outlook),
         )
 
 

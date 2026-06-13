@@ -94,21 +94,29 @@ def daily_basic_to_quote_rows(
     trade_date: str,
     pct_map: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
-    """将 daily_basic 行转为行情选股可用格式。"""
+    """将 daily_basic 行转为行情选股可用格式（保留市值字段供硬过滤）。"""
     pct_map = pct_map or {}
     quote_rows: list[dict[str, Any]] = []
     for row in rows:
         ts_code = str(row.get("ts_code", ""))
+        total_mv = float(row.get("total_mv") or 0)
+        circ_mv = float(row.get("circ_mv") or 0)
+        close = float(row.get("close") or 0)
         quote_rows.append(
             {
                 "symbol": row.get("symbol", ""),
                 "name": row.get("name", ""),
                 "vt_symbol": row.get("vt_symbol", ""),
-                "last_price": row.get("close", 0),
+                "last_price": close,
+                "close": close,
                 "change_pct": pct_map.get(ts_code, 0.0),
                 "turnover_rate": row.get("turnover_rate", 0),
-                "volume": row.get("volume_ratio", 0),
+                # volume_ratio 不是成交量，勿写入 volume（否则硬过滤成交额估算失真）
+                "volume_ratio": row.get("volume_ratio", 0),
+                "total_mv": total_mv,
+                "circ_mv": circ_mv,
                 "trade_date": trade_date,
+                "source": "tushare",
             }
         )
     return quote_rows

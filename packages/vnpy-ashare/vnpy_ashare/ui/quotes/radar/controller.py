@@ -13,6 +13,8 @@ from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
+    DEFAULT_SCENARIO_VARIANT,
+    auto_refresh_card_ids,
     list_radar_cards,
 )
 from vnpy_ashare.quotes.radar_loaders import (
@@ -23,6 +25,8 @@ from vnpy_ashare.quotes.radar_loaders import (
     build_radar_resonance_list,
     compute_radar_resonance,
 )
+from vnpy_ashare.quotes.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
+from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -52,10 +56,11 @@ class RadarController(QtCore.QObject):
         self._card_variants: dict[str, str] = {
             "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
             "sector_theme": DEFAULT_SECTOR_VARIANT,
+            "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
         }
         self._last_payload: dict[str, RadarCardData] = {}
-        self._refresh_timer = QtCore.QTimer(self)
-        self._refresh_timer.timeout.connect(self.refresh)
+        self._auto_refresh_timers: dict[str, QtCore.QTimer] = {}
+        self._setup_auto_refresh_timers()
 
         board.variant_changed.connect(self._on_variant_changed)
         board.row_activated.connect(self._on_row_activated)
@@ -63,8 +68,9 @@ class RadarController(QtCore.QObject):
         board.batch_add_watchlist_requested.connect(self._on_batch_add_watchlist)
         board.stock_analysis_requested.connect(self._on_stock_analysis)
         board.view_run_requested.connect(self._on_view_run)
-        board.refresh_requested.connect(self.refresh_card)
+        board.refresh_requested.connect(self._on_card_refresh_requested)
         board.ai_requested.connect(self.request_card_ai)
+        board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
 
         panel = self._resonance_panel
         if panel is not None:
@@ -76,30 +82,59 @@ class RadarController(QtCore.QObject):
 
     def activate(self) -> None:
         self.refresh()
-        self.start_auto_refresh()
+        self._start_auto_refresh()
 
     def deactivate(self) -> None:
-        self.stop_auto_refresh()
+        self._stop_auto_refresh()
         self._cancel_all_workers()
 
-    def start_auto_refresh(self) -> None:
-        if not self._page.radar_auto_refresh_enabled():
-            self.stop_auto_refresh()
-            return
-        self._refresh_timer.setInterval(self._page.radar_refresh_interval_ms())
-        self._refresh_timer.start()
+    def _setup_auto_refresh_timers(self) -> None:
+        for card_id in auto_refresh_card_ids():
+            timer = QtCore.QTimer(self)
+            timer.timeout.connect(lambda card_id=card_id: self._on_auto_refresh_card(card_id))
+            self._auto_refresh_timers[card_id] = timer
+
+    def _start_auto_refresh(self) -> None:
+        for card_id in auto_refresh_card_ids():
+            self._apply_card_auto_refresh(card_id)
         self._page._update_refresh_hint_label()
 
-    def stop_auto_refresh(self) -> None:
-        self._refresh_timer.stop()
+    def _stop_auto_refresh(self) -> None:
+        for timer in self._auto_refresh_timers.values():
+            timer.stop()
         self._page._update_refresh_hint_label()
+
+    def _apply_card_auto_refresh(self, card_id: str) -> None:
+        timer = self._auto_refresh_timers.get(card_id)
+        widget = self._board.card(card_id)
+        if timer is None or widget is None:
+            return
+        ms = widget.auto_refresh_ms()
+        if ms <= 0:
+            timer.stop()
+            return
+        timer.setInterval(max(int(ms), 1000))
+        timer.start()
+
+    def _on_auto_refresh_changed(self, card_id: str, ms: int) -> None:
+        save_radar_card_refresh_ms(card_id, ms)
+        self._apply_card_auto_refresh(card_id)
+        self._page._update_refresh_hint_label()
+
+    def _on_auto_refresh_card(self, card_id: str) -> None:
+        """轻量卡定时刷新（不触发展望全市场重算）。"""
+        self.refresh_card(card_id, force_recompute=False)
 
     def refresh(self) -> None:
         """并行刷新全部卡片。"""
         for spec in list_radar_cards():
             self.refresh_card(spec.id)
 
-    def refresh_card(self, card_id: str) -> None:
+    def _on_card_refresh_requested(self, card_id: str) -> None:
+        force = card_id in OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
+        self.refresh_card(card_id, force_recompute=force)
+
+    def refresh_card(self, card_id: str, *, force_recompute: bool = False) -> None:
         if thread_is_active(self._card_workers.get(card_id)):
             return
         self._cancel_card_worker(card_id)
@@ -107,6 +142,8 @@ class RadarController(QtCore.QObject):
             card_id=card_id,
             screen_task_variant=self._card_variants.get("screen_task", DEFAULT_SCREEN_TASK_VARIANT),
             sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
+            scenario_variant=self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
+            force_recompute=force_recompute,
             parent=self._page,
         )
         self._card_workers[card_id] = worker
@@ -261,6 +298,8 @@ class RadarController(QtCore.QObject):
             self._screen_task_variant = variant_key
         elif card_id == "sector_theme":
             self._sector_variant = variant_key
+        elif card_id == "outlook_scenario":
+            pass
         self.refresh_card(card_id)
 
     def _on_row_activated(self, vt_symbol: str) -> None:

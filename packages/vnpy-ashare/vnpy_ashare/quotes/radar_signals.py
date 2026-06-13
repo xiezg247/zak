@@ -10,7 +10,6 @@ from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfi
 from vnpy_ashare.data.bar_access import load_scope_bars
 from vnpy_ashare.domain.signal_snapshot import SignalKind, SignalSnapshot, signal_missing_kline
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 
 
 def payload_to_snapshot(payload: dict[str, Any]) -> SignalSnapshot:
@@ -90,6 +89,8 @@ def build_signal_snapshot(
 
 
 def load_cached_signals(vt_symbols: list[str], *, config: WatchlistSignalConfig | None = None) -> dict[str, SignalSnapshot]:
+    from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+
     cfg = (config or load_watchlist_signal_config()).normalized()
     cache = WatchlistSignalDiskCache()
     loaded: dict[str, SignalSnapshot] = {}

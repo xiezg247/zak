@@ -20,11 +20,17 @@ MIN_TOTAL_MV_50YI = 500_000.0
 
 
 def _quote_liquidity_key(row: dict[str, Any]) -> float:
-    """成交量优先；缺失时用成交额排序（部分行情源 volume 恒为 0）。"""
+    """成交量优先；缺失时用成交额或总市值排序（盘后 daily_basic 常无 amount）。"""
     volume = float(row.get("volume") or 0)
     if volume > 0:
         return volume
-    return float(row.get("amount") or 0)
+    amount = float(row.get("amount") or 0)
+    if amount > 0:
+        return amount
+    total_mv = float(row.get("total_mv") or row.get("circ_mv") or 0)
+    if total_mv > 0:
+        return total_mv
+    return float(row.get("turnover_rate") or 0)
 
 
 def apply_quote_preset(

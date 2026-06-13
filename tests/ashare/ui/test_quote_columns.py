@@ -115,38 +115,16 @@ class TestQuoteRefreshHint(unittest.TestCase):
         self.assertFalse(radar.auto_refresh_quotes)
 
 
-class TestRadarRefreshPref(unittest.TestCase):
-    def test_radar_defaults(self) -> None:
-        from vnpy.trader.ui import QtCore
+class TestRadarPageConfig(unittest.TestCase):
+    def test_radar_manual_refresh(self) -> None:
+        from vnpy_ashare.ui.quotes.page.config import PAGE_CONFIGS, radar_refresh_hint
 
-        from vnpy_ashare.ui.quotes.page.config import (
-            RADAR_AUTO_REFRESH_DEFAULT,
-            RADAR_AUTO_REFRESH_SETTINGS_KEY,
-            RADAR_REFRESH_INTERVAL_MS_DEFAULT,
-            RADAR_REFRESH_INTERVAL_SETTINGS_KEY,
-            load_radar_auto_refresh_pref,
-            load_radar_refresh_interval_ms,
-            radar_refresh_hint,
-        )
-
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-        settings.remove(RADAR_AUTO_REFRESH_SETTINGS_KEY)
-        settings.remove(RADAR_REFRESH_INTERVAL_SETTINGS_KEY)
-        self.assertFalse(RADAR_AUTO_REFRESH_DEFAULT)
-        self.assertFalse(load_radar_auto_refresh_pref())
-        self.assertEqual(load_radar_refresh_interval_ms(), RADAR_REFRESH_INTERVAL_MS_DEFAULT)
-        self.assertEqual(
-            radar_refresh_hint(auto_refresh=False, refresh_ms=RADAR_REFRESH_INTERVAL_MS_DEFAULT),
-            "不自动刷新，请手动点击「刷新雷达」",
-        )
-        self.assertEqual(
-            radar_refresh_hint(auto_refresh=True, refresh_ms=60_000),
-            "雷达每 1 分钟自动刷新",
-        )
-        self.assertEqual(
-            radar_refresh_hint(auto_refresh=True, refresh_ms=30_000),
-            "雷达每 30 秒自动刷新",
-        )
+        radar = PAGE_CONFIGS["雷达"]
+        self.assertTrue(radar.use_radar_cards)
+        self.assertFalse(radar.auto_refresh_quotes)
+        hint = radar_refresh_hint()
+        self.assertIn("发现", hint)
+        self.assertIn("未来", hint)
 
 
 class TestMarketRankSidebarPref(unittest.TestCase):

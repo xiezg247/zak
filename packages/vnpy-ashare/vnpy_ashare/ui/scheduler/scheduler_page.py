@@ -23,6 +23,10 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         self.main_engine = main_engine
         self.event_engine = event_engine
         self.setObjectName("MarketRoot")
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self._scheduler: TaskSchedulerManager | None = None
         self._scheduler_unavailable = False
         self._log_listener = self._on_scheduler_event
@@ -63,11 +67,7 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         jobs_title.setObjectName("SchedulerSectionLabel")
         jobs_layout.addWidget(jobs_title)
         self._jobs_widget = SchedulerJobsWidget(parent=self, embedded=True)
-        jobs_layout.addWidget(
-            self._jobs_widget,
-            alignment=QtCore.Qt.AlignmentFlag.AlignTop,
-        )
-        jobs_layout.addStretch()
+        jobs_layout.addWidget(self._jobs_widget, stretch=1)
 
         log_panel = self._build_panel()
         log_layout = QtWidgets.QVBoxLayout(log_panel)
@@ -89,9 +89,9 @@ class SchedulerPageWidget(QtWidgets.QWidget):
         splitter.setChildrenCollapsible(False)
         splitter.addWidget(jobs_panel)
         splitter.addWidget(log_panel)
-        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([220, 480])
+        splitter.setSizes([320, 360])
         root.addWidget(splitter, stretch=1)
 
         self._toast = PageToastHost(self)

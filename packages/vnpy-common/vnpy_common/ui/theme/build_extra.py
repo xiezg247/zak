@@ -683,9 +683,14 @@ QSplitter#MarketRankSplitter::handle {{
 
 def build_radar_stylesheet(t: ThemeTokens) -> str:
     return f"""
-QFrame#RadarCard {{
+QFrame#RadarCardLive {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
+    border-radius: 8px;
+}}
+QFrame#RadarCardManual {{
+    background-color: {t.panel_bg};
+    border: 1px dashed {t.panel_border};
     border-radius: 8px;
 }}
 QScrollArea#RadarCardScroll {{
@@ -743,6 +748,17 @@ QLabel#RadarCardTitle {{
     font-size: 13px;
     font-weight: 600;
 }}
+QLabel#RadarCardModeBadge {{
+    color: {t.text_muted};
+    font-size: 10px;
+    padding: 1px 6px;
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+}}
+QFrame#RadarCardLive QLabel#RadarCardModeBadge {{
+    color: {t.accent};
+    border-color: {t.accent};
+}}
 QLabel#RadarCardSubtitle {{
     color: {t.text_muted};
     font-size: 11px;
@@ -781,6 +797,9 @@ QListWidget#RadarCardList::item:selected {{
 }}
 QComboBox#RadarCardVariant {{
     min-width: 88px;
+}}
+QComboBox#RadarCardRefreshInterval {{
+    min-width: 72px;
 }}
 QToolButton#RadarCardRefresh {{
     color: {t.text_muted};

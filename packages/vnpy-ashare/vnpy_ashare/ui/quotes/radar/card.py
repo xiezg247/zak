@@ -6,10 +6,14 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.quotes.radar_catalog import (
     RadarCardSpec,
+    default_refresh_ms_for_card,
     default_variant_for_card,
+    refresh_options_for_card,
+    supports_auto_refresh,
     variants_for_card,
 )
 from vnpy_ashare.quotes.radar_loaders import RadarCardData
+from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_common.ui.theme import theme_manager
 
@@ -26,17 +30,24 @@ class RadarCardWidget(QtWidgets.QFrame):
     view_run_requested = QtCore.Signal(str, str)
     refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
+    auto_refresh_changed = QtCore.Signal(str, int)
 
     def __init__(self, spec: RadarCardSpec, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._spec = spec
-        self.setObjectName("RadarCard")
+        self._supports_auto_refresh = supports_auto_refresh(spec.id)
+        object_name = "RadarCardLive" if self._supports_auto_refresh else "RadarCardManual"
+        self.setObjectName(object_name)
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
 
         header = QtWidgets.QHBoxLayout()
         self._title = QtWidgets.QLabel(spec.title)
         self._title.setObjectName("RadarCardTitle")
         header.addWidget(self._title, stretch=1)
+
+        self._mode_badge = QtWidgets.QLabel("盘中" if self._supports_auto_refresh else "手动")
+        self._mode_badge.setObjectName("RadarCardModeBadge")
+        header.addWidget(self._mode_badge)
 
         self._variant_combo = QtWidgets.QComboBox()
         self._variant_combo.setObjectName("RadarCardVariant")
@@ -50,6 +61,20 @@ class RadarCardWidget(QtWidgets.QFrame):
             header.addWidget(self._variant_combo)
         else:
             self._variant_combo.hide()
+
+        self._refresh_interval_combo = QtWidgets.QComboBox()
+        self._refresh_interval_combo.setObjectName("RadarCardRefreshInterval")
+        self._refresh_interval_combo.setToolTip("自动刷新周期")
+        refresh_options = refresh_options_for_card(spec.id)
+        if refresh_options:
+            for option in refresh_options:
+                self._refresh_interval_combo.addItem(option.label, option.ms)
+            default_ms = load_radar_card_refresh_ms(spec.id, default_refresh_ms_for_card(spec.id))
+            self.set_auto_refresh_ms(default_ms)
+            self._refresh_interval_combo.currentIndexChanged.connect(self._emit_auto_refresh_changed)
+            header.addWidget(self._refresh_interval_combo)
+        else:
+            self._refresh_interval_combo.hide()
 
         self._refresh_button = QtWidgets.QToolButton()
         self._refresh_button.setObjectName("RadarCardRefresh")
@@ -147,6 +172,26 @@ class RadarCardWidget(QtWidgets.QFrame):
             return ""
         value = self._variant_combo.currentData()
         return str(value or "")
+
+    def auto_refresh_ms(self) -> int:
+        if not self._supports_auto_refresh:
+            return 0
+        value = self._refresh_interval_combo.currentData()
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    def set_auto_refresh_ms(self, ms: int) -> None:
+        if not self._supports_auto_refresh:
+            return
+        index = self._refresh_interval_combo.findData(int(ms))
+        if index < 0:
+            index = self._refresh_interval_combo.findData(default_refresh_ms_for_card(self.card_id))
+        if index >= 0:
+            self._refresh_interval_combo.blockSignals(True)
+            self._refresh_interval_combo.setCurrentIndex(index)
+            self._refresh_interval_combo.blockSignals(False)
 
     def set_loading(self, loading: bool) -> None:
         self._loading = loading
@@ -249,6 +294,9 @@ class RadarCardWidget(QtWidgets.QFrame):
         if key:
             self.variant_changed.emit(key)
 
+    def _emit_auto_refresh_changed(self, _index: int) -> None:
+        self.auto_refresh_changed.emit(self.card_id, self.auto_refresh_ms())
+
     def _on_view_run_clicked(self) -> None:
         if self._run_id and self._detail_page_key:
             self.view_run_requested.emit(self._run_id, self._detail_page_key)
@@ -266,6 +314,7 @@ class RadarBoard(QtWidgets.QWidget):
     view_run_requested = QtCore.Signal(str, str)
     refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
+    auto_refresh_changed = QtCore.Signal(str, int)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -289,6 +338,7 @@ class RadarBoard(QtWidgets.QWidget):
             card.view_run_requested.connect(self.view_run_requested.emit)
             card.refresh_requested.connect(self.refresh_requested.emit)
             card.ai_requested.connect(self.ai_requested.emit)
+            card.auto_refresh_changed.connect(self.auto_refresh_changed.emit)
             self._cards[spec.id] = card
             grid.addWidget(card, index // columns, index % columns)
         row_count = max(1, (len(specs) + columns - 1) // columns)

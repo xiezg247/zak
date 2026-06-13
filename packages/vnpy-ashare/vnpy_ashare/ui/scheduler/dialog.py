@@ -23,12 +23,17 @@ class SchedulerDialog(QtWidgets.QDialog):
         self.setObjectName("SchedulerDialog")
         self.setWindowTitle("定时任务")
         setup_responsive_dialog(self, parent, min_width=920, min_height=640)
+        self.setSizeGripEnabled(True)
 
         self._page = SchedulerPageWidget(main_engine, event_engine)
+        self._page.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self._page)
+        layout.addWidget(self._page, stretch=1)
 
         theme_manager().bind_stylesheet(self, extra=build_scheduler_page_stylesheet)
 

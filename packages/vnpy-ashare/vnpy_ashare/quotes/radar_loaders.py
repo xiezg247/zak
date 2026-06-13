@@ -9,6 +9,7 @@ from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
+    DEFAULT_SCENARIO_VARIANT,
     RADAR_CARD_BY_ID,
     RADAR_CARD_SPECS,
     RadarCardSpec,
@@ -21,6 +22,7 @@ from vnpy_ashare.quotes.radar_models import (
     merge_row_quotes,
     quote_map,
 )
+from vnpy_ashare.quotes.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar_sector import load_sector_theme
 from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.screener.dimensions.moneyflow import run_moneyflow
@@ -75,14 +77,43 @@ def _moneyflow_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
 
 
-def _row_from_dict(row: dict[str, Any]) -> RadarRow | None:
+def _looks_like_vt_symbol(text: str) -> bool:
+    if "." not in text:
+        return False
+    _code, suffix = text.rsplit(".", 1)
+    return suffix.upper() in {"SSE", "SZSE", "BSE", "SH", "SZ", "BJ"}
+
+
+def _resolve_row_display_name(
+    vt_symbol: str,
+    row: dict[str, Any],
+    merged: dict[str, Any],
+    *,
+    item,
+    name_map: dict[str, str],
+) -> str:
+    for candidate in (
+        str(merged.get("name") or "").strip(),
+        str(row.get("name") or "").strip(),
+        str(name_map.get(vt_symbol) or "").strip(),
+        (item.name if item else "").strip(),
+    ):
+        if candidate and candidate != vt_symbol and not _looks_like_vt_symbol(candidate):
+            return candidate
+    if item is not None:
+        return item.symbol
+    return vt_symbol.split(".")[0]
+
+
+def _row_from_dict(row: dict[str, Any], *, name_map: dict[str, str] | None = None) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None
     item = parse_stock_symbol(vt_symbol)
-    name = str(row.get("name") or (item.name if item else "") or vt_symbol)
-    symbol = str(row.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
     merged = _merge_row_quotes(row)
+    lookup = name_map or {}
+    name = _resolve_row_display_name(vt_symbol, row, merged, item=item, name_map=lookup)
+    symbol = str(row.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
     price = _float_or_none(merged.get("last_price") or merged.get("close"))
     change_pct = _float_or_none(merged.get("change_pct") or row.get("change_pct") or row.get("pct_chg"))
     metric_label, metric_value, sub_label, sub_value = _screener_metric(merged)
@@ -100,9 +131,12 @@ def _row_from_dict(row: dict[str, Any]) -> RadarRow | None:
 
 
 def _rows_from_screener(rows: list[dict[str, Any]], *, top_n: int) -> tuple[RadarRow, ...]:
+    batch = rows[:top_n]
+    vt_symbols = [str(row.get("vt_symbol") or "").strip() for row in batch]
+    name_map = name_map_for_symbols([vt for vt in vt_symbols if vt])
     result: list[RadarRow] = []
-    for row in rows[:top_n]:
-        parsed = _row_from_dict(row)
+    for row in batch:
+        parsed = _row_from_dict(row, name_map=name_map)
         if parsed is not None:
             result.append(parsed)
     return tuple(result)
@@ -204,9 +238,11 @@ def _discovery_hits_card(
             updated_at="",
         )
     rows: list[RadarRow] = []
+    vt_symbols = [str(hit.row.get("vt_symbol") or "").strip() for hit in hits]
+    name_map = name_map_for_symbols([vt for vt in vt_symbols if vt])
     for hit in hits:
         row = hit.row
-        parsed = _row_from_dict(row)
+        parsed = _row_from_dict(row, name_map=name_map)
         if parsed is None:
             continue
         metric_label, metric_value, sub_label, sub_value = metric_builder(row, hit)
@@ -368,6 +404,8 @@ def load_radar_card(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
+    force_recompute: bool = False,
 ) -> RadarCardData:
     """加载单张雷达卡片。"""
     spec = RADAR_CARD_BY_ID.get(card_id)
@@ -389,7 +427,15 @@ def load_radar_card(
     if spec.id in ("outlook_watch", "outlook_hold"):
         from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
 
-        return load_outlook_horizon(spec)
+        return load_outlook_horizon(spec, force_recompute=force_recompute)
+    if spec.id == "outlook_scenario":
+        from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
+
+        return load_outlook_horizon(
+            spec,
+            variant=scenario_variant,
+            force_recompute=force_recompute,
+        )
     msg = f"未实现的雷达卡片加载器：{card_id}"
     raise ValueError(msg)
 
@@ -531,10 +577,10 @@ def build_radar_card_ai_prompt(
         return "\n".join(lines).strip()
 
     if card_id == "watchlist_intraday":
-        lines[0] = "请解读雷达「自选·异动」：关注自选池内波动与信号跃迁。"
+        lines[0] = "请解读雷达「自选·异动」：关注自选池内波动、信号跃迁与 5 日统计情景（非价格预测）。"
     elif card_id == "sector_theme":
         lines[0] = "请解读雷达「板块·主线」：归纳今日行业轮动与龙头特征。"
-    elif card_id in ("outlook_watch", "outlook_hold"):
+    elif card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
         from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
 
         single = build_outlook_ai_prompt({card_id: data}, card_id=card_id)
@@ -554,7 +600,7 @@ def build_radar_ai_prompt(
         "请基于以下雷达页快照，给出今日 A 股洞察摘要：",
         "1. 市场主线与热点方向（参考板块·主线卡）",
         "2. 选股结果与发现/自选异动的交集（共振标的优先）",
-        "3. 未来关注/可持卡仅基于策略信号窗口（约 5 日），非价格预测",
+        "3. 未来关注/可持/情景卡基于策略与统计情景（约 5 日），非价格预测",
         "4. 建议重点关注的 3～5 只标的及理由",
         "5. 不要编造未出现在数据中的价格或指标",
         "",
@@ -583,7 +629,7 @@ def build_radar_ai_prompt(
         lines.append("")
     from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
 
-    for outlook_card_id in ("outlook_watch", "outlook_hold"):
+    for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
         outlook_prompt = build_outlook_ai_prompt(payload, card_id=outlook_card_id)
         if outlook_prompt:
             lines.append("---")

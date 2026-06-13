@@ -19,12 +19,16 @@ class RadarCardLoadWorker(QtCore.QThread):
         card_id: str,
         screen_task_variant: str,
         sector_variant: str,
+        scenario_variant: str,
+        force_recompute: bool = False,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._card_id = card_id
         self._screen_task_variant = screen_task_variant
         self._sector_variant = sector_variant
+        self._scenario_variant = scenario_variant
+        self._force_recompute = force_recompute
         self._cancelled = False
 
     @property
@@ -42,6 +46,8 @@ class RadarCardLoadWorker(QtCore.QThread):
                 self._card_id,
                 screen_task_variant=self._screen_task_variant,
                 sector_variant=self._sector_variant,
+                scenario_variant=self._scenario_variant,
+                force_recompute=self._force_recompute,
             )
         except Exception as ex:
             self.failed.emit(self._card_id, str(ex))

@@ -32,6 +32,7 @@ from vnpy_ashare.jobs import (
     sync_watchlist_financials_job,
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
+from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.progress import bind_job_log
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
@@ -272,6 +273,19 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · {_recipe_label(cfg.recipe_id, 'post_close_multi')}",
+            ),
+            "scan_horizon_outlook": _JobMeta(
+                job_id="scan_horizon_outlook",
+                name="雷达展望扫描",
+                description="收盘后全市场扫描未来·关注/可持（排除自选/信号区/持仓），写入本地缓存",
+                runner=run_horizon_outlook_scan_job,
+                config_attr="scan_horizon_outlook",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在盘后自动选股之后）",
             ),
         }
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)
@@ -549,6 +563,7 @@ class TaskSchedulerManager:
             _COLLECT_QUOTES_JOB_ID,
             "screen_intraday",
             "screen_post_close",
+            "scan_horizon_outlook",
         )
         self._scheduler.add_job(
             self._wrap_job,
@@ -580,6 +595,8 @@ class TaskSchedulerManager:
                 result = self._run_collect_quotes(force=force)
             elif job_id in ("screen_intraday", "screen_post_close"):
                 result = run_scheduled_auto_screen(job_id, force=force)
+            elif job_id == "scan_horizon_outlook":
+                result = run_horizon_outlook_scan_job(force=force)
             else:
                 result = meta.runner()
             message = result.message

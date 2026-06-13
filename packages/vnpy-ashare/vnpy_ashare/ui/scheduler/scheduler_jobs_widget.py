@@ -175,10 +175,14 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         self.table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.table.verticalHeader().setMinimumSectionSize(36)
         if embedded:
-            self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
             self.table.setSizePolicy(
                 QtWidgets.QSizePolicy.Policy.Expanding,
-                QtWidgets.QSizePolicy.Policy.Fixed,
+                QtWidgets.QSizePolicy.Policy.Expanding,
+            )
+            self.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Expanding,
             )
         self._configure_table_columns()
 
@@ -324,20 +328,6 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
         self.table.setColumnWidth(5, 148)
         self.table.setColumnWidth(6, 196)
 
-    def _sync_table_height(self) -> None:
-        if not self._embedded:
-            return
-        row_count = self.table.rowCount()
-        row_height = 0
-        for row in range(row_count):
-            row_height += self.table.rowHeight(row)
-        if row_count == 0:
-            row_height = self.table.verticalHeader().defaultSectionSize()
-        frame = self.table.frameWidth() * 2
-        total = self.table.horizontalHeader().height() + row_height + frame + 2
-        self.table.setFixedHeight(total)
-        self.setFixedHeight(total)
-
     def _request_refresh(self, _job_id: str) -> None:
         QtCore.QTimer.singleShot(0, self, self._request_refresh_slot)
 
@@ -365,7 +355,6 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
             self.table.resizeRowsToContents()
             if self._embedded:
                 self._apply_embedded_column_widths()
-            self._sync_table_height()
             self._check_manual_run_finished()
         finally:
             self._refreshing = False

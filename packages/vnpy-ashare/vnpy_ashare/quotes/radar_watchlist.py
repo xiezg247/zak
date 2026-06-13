@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signal_config
+from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
+from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar_models import (
@@ -20,10 +21,10 @@ from vnpy_ashare.quotes.radar_moneyflow import (
     watchlist_moneyflow_metric,
 )
 from vnpy_ashare.quotes.radar_pool import collect_personal_vt_symbols, name_map_for_symbols
-from vnpy_ashare.quotes.radar_signals import compute_signal_transitions
+from vnpy_ashare.quotes.radar_horizon_scenario import batch_build_scenario_metrics, classify_scenario_hint
+from vnpy_ashare.quotes.radar_signals import build_signal_snapshot, compute_signal_transitions
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.ui.quotes.table.columns import format_amount
 
 SIGNAL_TRANSITION_BOOST = 35.0
 
@@ -160,8 +161,35 @@ def _watchlist_metric(
     if volume_ratio >= 1.3:
         return "量比", f"{volume_ratio:.2f}", "涨幅", format_pct(change)
     if amount > 0:
+        from vnpy_ashare.ui.quotes.table.columns import format_amount
+
         return "成交额", format_amount(amount), "涨幅", format_pct(change)
     return "换手", f"{turnover:.2f}%" if turnover > 0 else "—", "涨幅", format_pct(change)
+
+
+def _compute_scenario_hints(
+    vt_symbols: list[str],
+    *,
+    config: WatchlistSignalConfig | None = None,
+) -> dict[str, str]:
+    """为 Top N 异动标的计算轻量 5 日统计情景（非价格预测）。"""
+    if not vt_symbols:
+        return {}
+    cfg = (config or load_watchlist_signal_config()).normalized()
+    snapshots: dict[str, SignalSnapshot] = {}
+    for vt_symbol in vt_symbols:
+        snapshot = build_signal_snapshot(vt_symbol, config=cfg)
+        if snapshot is not None:
+            snapshots[vt_symbol] = snapshot
+    if not snapshots:
+        return {}
+    metrics_list = batch_build_scenario_metrics(list(snapshots.keys()), snapshots)
+    hints: dict[str, str] = {}
+    for metrics in metrics_list:
+        hint = classify_scenario_hint(metrics)
+        if hint:
+            hints[metrics.snapshot.vt_symbol] = hint
+    return hints
 
 
 def _row_from_quote(
@@ -170,6 +198,7 @@ def _row_from_quote(
     *,
     name_map: dict[str, str],
     transition: str | None = None,
+    scenario_hint: str | None = None,
 ) -> RadarRow | None:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
@@ -181,6 +210,9 @@ def _row_from_quote(
     change_raw = merged.get("change_pct")
     change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
     metric_label, metric_value, sub_label, sub_value = _watchlist_metric(merged, transition=transition)
+    if scenario_hint:
+        sub_label = "5日情景"
+        sub_value = scenario_hint
     return RadarRow(
         vt_symbol=vt_symbol,
         name=name,
@@ -243,9 +275,9 @@ def load_watchlist_intraday(spec: RadarCardSpec) -> RadarCardData:
             updated_at="",
         )
 
+    config = load_watchlist_signal_config()
     transitions: dict[str, str] = {}
     try:
-        config = load_watchlist_signal_config()
         transitions = compute_signal_transitions(candidates, config=config, max_compute=12)
     except Exception:
         transitions = {}
@@ -261,22 +293,43 @@ def load_watchlist_intraday(spec: RadarCardSpec) -> RadarCardData:
         scored = _score_candidates(candidates, quotes_by_vt, transitions, anomaly_only=False)
         fallback = bool(scored)
 
+    top_scored = scored[: spec.top_n]
+    scenario_hints: dict[str, str] = {}
+    try:
+        scenario_hints = _compute_scenario_hints(
+            [vt_symbol for vt_symbol, _row, _score, _transition in top_scored],
+            config=config,
+        )
+    except Exception:
+        scenario_hints = {}
+
     rows: list[RadarRow] = []
     transition_count = 0
-    for vt_symbol, row, _score, transition in scored[: spec.top_n]:
-        parsed = _row_from_quote(vt_symbol, row, name_map=name_map, transition=transition)
+    scenario_count = 0
+    for vt_symbol, row, _score, transition in top_scored:
+        parsed = _row_from_quote(
+            vt_symbol,
+            row,
+            name_map=name_map,
+            transition=transition,
+            scenario_hint=scenario_hints.get(vt_symbol),
+        )
         if parsed is not None:
             rows.append(parsed)
             if transition:
                 transition_count += 1
+            if scenario_hints.get(vt_symbol):
+                scenario_count += 1
 
     if fallback:
-        subtitle = f"涨跌幅前列 · {len(rows)} / {len(candidates)} 只（今日整体波动较小）"
+        subtitle_parts = [f"涨跌幅前列 · {len(rows)} / {len(candidates)} 只（今日整体波动较小）"]
     else:
         subtitle_parts = [f"自选异动 Top {len(rows)} / {len(candidates)} 只"]
-        if transition_count:
-            subtitle_parts.append(f"信号跃迁 {transition_count}")
-        subtitle = " · ".join(subtitle_parts)
+    if transition_count:
+        subtitle_parts.append(f"信号跃迁 {transition_count}")
+    if scenario_count:
+        subtitle_parts.append(f"5日情景 {scenario_count}")
+    subtitle = " · ".join(subtitle_parts)
 
     if not rows and not has_any_quote:
         return RadarCardData(
@@ -299,10 +352,17 @@ def load_watchlist_intraday(spec: RadarCardSpec) -> RadarCardData:
             total_count=len(candidates),
         )
 
-    ai_hint = ""
+    ai_hint_parts: list[str] = []
     if transitions:
         sample = "、".join(list(transitions.values())[:3])
-        ai_hint = f"信号跃迁 {len(transitions)} 只：{sample}"
+        ai_hint_parts.append(f"信号跃迁 {len(transitions)} 只：{sample}")
+    if scenario_count:
+        scenario_sample = "、".join(
+            f"{name_map.get(vt, vt)} {hint}"
+            for vt, hint in list(scenario_hints.items())[:3]
+        )
+        ai_hint_parts.append(f"5日统计情景 {scenario_count} 只（非价格预测）：{scenario_sample}")
+    ai_hint = " · ".join(ai_hint_parts)
 
     return RadarCardData(
         card_id=spec.id,

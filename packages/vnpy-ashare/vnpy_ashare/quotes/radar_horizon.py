@@ -1,164 +1,54 @@
-"""雷达页：未来·展望 loader（策略窗口 + 事件日历）。"""
+"""雷达页：未来·展望 loader（全市场策略窗口 + 事件日历）。"""
 
 from __future__ import annotations
 
 from datetime import datetime
 
 from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signal_config
-from vnpy_ashare.domain.signal_snapshot import (
-    SIGNAL_RECENT_DAYS,
-    SIGNAL_STRENGTH_STRONG,
-    SignalSnapshot,
-    dist_buy_pct,
-    signal_age_days,
-    signal_is_fresh,
-    signal_missing_kline,
-    signal_sort_key,
-)
-from vnpy_ashare.domain.symbols import parse_stock_symbol, vt_symbol_to_ts_code
+from vnpy_ashare.domain.signal_snapshot import SIGNAL_RECENT_DAYS
 from vnpy_ashare.quotes.radar_ai_cache import resolve_ai_hint, rows_fingerprint
 from vnpy_ashare.quotes.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow, merge_row_quotes
-from vnpy_ashare.quotes.radar_pool import collect_horizon_candidates, name_map_for_symbols
-from vnpy_ashare.quotes.radar_signals import build_signal_snapshot
-from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
-from vnpy_ashare.storage.repositories.positions import load_position_rows
+from vnpy_ashare.quotes.radar_horizon_cache import (
+    build_horizon_subtitle,
+    get_horizon_cache,
+)
+from vnpy_ashare.quotes.radar_horizon_scan import (
+    HorizonScanStats,
+    collect_daily_k_ready_vt_symbols,
+    horizon_empty_message,
+)
+from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow
+
+from vnpy_ashare.quotes.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
 
 OUTLOOK_CARD_VARIANTS: dict[str, str] = {
     "outlook_watch": "watch_next",
     "outlook_hold": "hold_next",
 }
 
-
-def _position_vt_set() -> set[str]:
-    result: set[str] = set()
-    for row in load_position_rows():
-        result.add(f"{row['symbol']}.{row['exchange']}")
-    return result
-
-
-def _event_hint(vt_symbol: str) -> str:
-    ts_code = vt_symbol_to_ts_code(vt_symbol)
-    if not ts_code:
-        return ""
-    hints = build_disclosure_upcoming_hints(ts_code, limit=3)
-    if not hints:
-        return "—"
-    return hints[0][:24]
-
-
-def _has_near_unlock(vt_symbol: str, *, within_days: int = 3) -> bool:
-    hint = _event_hint(vt_symbol)
-    if "解禁" not in hint:
-        return False
-    prefix = hint.split(" ", 1)[0]
-    try:
-        days = int(prefix)
-    except ValueError:
-        return False
-    return days <= within_days
-
-
-def _last_price(vt_symbol: str, snapshot: SignalSnapshot) -> float | None:
-    quote = merge_row_quotes({"vt_symbol": vt_symbol})
-    raw = quote.get("last_price") or quote.get("close") or snapshot.last_close
-    return float(raw) if isinstance(raw, (int, float)) else snapshot.last_close
-
-
-def _matches_watch(snapshot: SignalSnapshot, *, last_price: float | None) -> bool:
-    if signal_missing_kline(snapshot):
-        return False
-    if snapshot.signal == "sell" and signal_is_fresh(snapshot):
-        return False
-    if _has_near_unlock(snapshot.vt_symbol):
-        return False
-    if snapshot.signal == "buy" and signal_is_fresh(snapshot):
-        return True
-    dist = dist_buy_pct(snapshot.ref_buy_price, last_price)
-    if snapshot.signal == "hold" and snapshot.fast_ma and snapshot.slow_ma:
-        if snapshot.fast_ma > snapshot.slow_ma and dist is not None and abs(dist) <= 8.0:
-            return True
-    last_cross = None
-    for reason in snapshot.reasons:
-        if "金叉" in reason:
-            last_cross = "golden"
-            break
-    if last_cross == "golden" and signal_is_fresh(snapshot):
-        return True
-    if snapshot.strength is not None and snapshot.strength >= SIGNAL_STRENGTH_STRONG and snapshot.signal in ("buy", "hold"):
-        if snapshot.fast_ma and snapshot.slow_ma and snapshot.fast_ma >= snapshot.slow_ma:
-            return True
-    return False
-
-
-def _matches_hold(snapshot: SignalSnapshot, *, last_price: float | None, in_position: bool) -> bool:
-    if signal_missing_kline(snapshot):
-        return False
-    if snapshot.signal == "sell" and signal_is_fresh(snapshot):
-        return False
-    if _has_near_unlock(snapshot.vt_symbol):
-        return False
-    if snapshot.signal not in ("buy", "hold"):
-        return False
-    if snapshot.fast_ma is None or snapshot.slow_ma is None:
-        return False
-    if snapshot.fast_ma <= snapshot.slow_ma and not in_position:
-        return False
-    if last_price is not None and snapshot.ref_buy_price is not None and snapshot.signal == "buy":
-        if last_price < snapshot.ref_buy_price:
-            return False
-    return True
-
-
-def _watch_sort_key(snapshot: SignalSnapshot) -> tuple[int, float, float, str]:
-    dist = dist_buy_pct(snapshot.ref_buy_price, snapshot.last_close)
-    dist_abs = abs(dist) if dist is not None else 999.0
-    strength = snapshot.strength if snapshot.strength is not None else float("-inf")
-    return (signal_sort_key(snapshot.signal), strength, -dist_abs, snapshot.vt_symbol)
-
-
-def _hold_sort_key(snapshot: SignalSnapshot, *, in_position: bool) -> tuple[int, float, int, str]:
-    strength = snapshot.strength if snapshot.strength is not None else float("-inf")
-    age = signal_age_days(snapshot)
-    age_key = age if age is not None else 999
-    return (0 if in_position else 1, -strength, age_key, snapshot.vt_symbol)
-
-
-def _snapshot_row(snapshot: SignalSnapshot, *, name_map: dict[str, str], in_position: bool) -> RadarRow:
-    item = parse_stock_symbol(snapshot.vt_symbol)
-    name = name_map.get(snapshot.vt_symbol) or (item.name if item else "") or snapshot.vt_symbol
-    symbol = item.symbol if item else snapshot.vt_symbol.split(".")[0]
-    last_price = _last_price(snapshot.vt_symbol, snapshot)
-    quote = merge_row_quotes({"vt_symbol": snapshot.vt_symbol})
-    change_raw = quote.get("change_pct")
-    change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
-    strength_text = f"{snapshot.strength:.0f}" if snapshot.strength is not None else "—"
-    event = _event_hint(snapshot.vt_symbol)
-    pos_tag = "持仓" if in_position else snapshot.signal_label
-    return RadarRow(
-        vt_symbol=snapshot.vt_symbol,
-        name=name,
-        symbol=symbol,
-        price=last_price,
-        change_pct=change_pct,
-        metric_label=pos_tag,
-        metric_value=strength_text,
-        sub_label="事件",
-        sub_value=event,
-    )
+OUTLOOK_FORCE_RECOMPUTE_CARD_IDS: frozenset[str] = frozenset(
+    list(OUTLOOK_CARD_VARIANTS.keys()) + ["outlook_scenario"],
+)
 
 
 def build_outlook_digest(rows: tuple[RadarRow, ...], *, variant: str) -> str:
     """结构化摘要（供副标题与本地缓存）。"""
     if not rows:
         return ""
-    buy = sum(1 for row in rows if row.metric_label in ("买入", "持仓"))
+    if variant in SCENARIO_VARIANTS:
+        label = SCENARIO_VARIANT_LABELS.get(variant, "情景")
+        parts = [f"{label} {len(rows)} 只"]
+        band = sum(1 for row in rows if row.sub_label == "参考带")
+        if band:
+            parts.append(f"有参考带 {band}")
+        return "摘要：" + " · ".join(parts)
+    buy = sum(1 for row in rows if row.metric_label == "买入")
     hold = sum(1 for row in rows if row.metric_label == "观望")
     events = sum(1 for row in rows if row.sub_value not in ("—", ""))
     mode = "关注" if variant == "watch_next" else "可持"
     parts = [f"{mode} {len(rows)} 只"]
     if buy:
-        parts.append(f"买入/持仓 {buy}")
+        parts.append(f"买入 {buy}")
     if hold:
         parts.append(f"观望 {hold}")
     if events:
@@ -166,68 +56,111 @@ def build_outlook_digest(rows: tuple[RadarRow, ...], *, variant: str) -> str:
     return "摘要：" + " · ".join(parts)
 
 
-def load_outlook_horizon(spec: RadarCardSpec, *, variant: str | None = None) -> RadarCardData:
+def _empty_horizon_card(
+    spec: RadarCardSpec,
+    *,
+    subtitle: str,
+    empty_message: str,
+    scanned_total: int = 0,
+) -> RadarCardData:
+    return RadarCardData(
+        card_id=spec.id,
+        title=spec.title,
+        subtitle=subtitle,
+        rows=(),
+        empty_message=empty_message,
+        updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        total_count=scanned_total,
+    )
+
+
+def load_outlook_horizon(
+    spec: RadarCardSpec,
+    *,
+    variant: str | None = None,
+    force_recompute: bool = False,
+) -> RadarCardData:
     resolved_variant = variant or OUTLOOK_CARD_VARIANTS.get(spec.id, "watch_next")
-    candidates = collect_horizon_candidates()
-    if not candidates:
-        return RadarCardData(
-            card_id=spec.id,
-            title=spec.title,
-            subtitle=f"策略窗口约 {SIGNAL_RECENT_DAYS} 日 · 非价格预测",
-            rows=(),
-            empty_message="暂无候选标的，请先添加自选或运行选股。",
-            updated_at="",
-        )
-
     config = load_watchlist_signal_config()
-    name_map = name_map_for_symbols(candidates)
-    positions = _position_vt_set()
-    snapshots: list[tuple[SignalSnapshot, bool]] = []
-    kline_missing = 0
+    strategy_label = config.class_name
+    scenario_mode = resolved_variant in SCENARIO_VARIANTS
+    idle_subtitle = (
+        f"约 {SIGNAL_RECENT_DAYS} 日统计情景 · 策略 {strategy_label} · 非目标价"
+        if scenario_mode
+        else f"约 {SIGNAL_RECENT_DAYS} 日窗口 · 策略 {strategy_label} · 非价格预测"
+    )
 
-    for vt_symbol in candidates:
-        snapshot = build_signal_snapshot(vt_symbol, config=config)
-        if snapshot is None:
-            continue
-        if signal_missing_kline(snapshot):
-            kline_missing += 1
-            continue
-        in_position = vt_symbol in positions
-        last_price = _last_price(vt_symbol, snapshot)
-        if resolved_variant == "hold_next":
-            if _matches_hold(snapshot, last_price=last_price, in_position=in_position):
-                snapshots.append((snapshot, in_position))
-        elif _matches_watch(snapshot, last_price=last_price):
-            snapshots.append((snapshot, in_position))
-
-    if resolved_variant == "hold_next":
-        snapshots.sort(key=lambda item: _hold_sort_key(item[0], in_position=item[1]))
-    else:
-        snapshots.sort(key=lambda item: _watch_sort_key(item[0]), reverse=True)
-
-    rows = tuple(_snapshot_row(item[0], name_map=name_map, in_position=item[1]) for item in snapshots[: spec.top_n])
-    subtitle = f"约 {SIGNAL_RECENT_DAYS} 日窗口 · 策略 {config.class_name} · 非价格预测"
-
-    if not rows and kline_missing >= len(candidates) // 2:
-        return RadarCardData(
-            card_id=spec.id,
-            title=spec.title,
-            subtitle=subtitle,
-            rows=(),
-            empty_message="本地日 K 不足，请先运行「全市场日 K」或「补全本地日 K」。",
-            updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
-            total_count=len(candidates),
+    if not force_recompute:
+        cached = get_horizon_cache(resolved_variant)
+        if cached is not None:
+            subtitle = build_horizon_subtitle(
+                cached,
+                signal_recent_days=SIGNAL_RECENT_DAYS,
+                strategy_label=strategy_label,
+            )
+            if scenario_mode:
+                subtitle = f"{subtitle} · 统计情景非目标价"
+            rows = cached.rows
+            if not rows:
+                stats = HorizonScanStats(
+                    scanned_total=cached.scanned_total,
+                    excluded_count=cached.excluded_count,
+                    prefilter_total=cached.prefilter_total,
+                    refined_total=cached.refined_total,
+                    kline_missing=cached.kline_missing,
+                )
+                return _empty_horizon_card(
+                    spec,
+                    subtitle=subtitle,
+                    empty_message=horizon_empty_message(stats, card_title=spec.title),
+                    scanned_total=cached.scanned_total,
+                )
+            return RadarCardData(
+                card_id=spec.id,
+                title=spec.title,
+                subtitle=subtitle,
+                rows=rows,
+                empty_message="",
+                updated_at=cached.computed_at,
+                total_count=len(rows),
+                ai_hint=resolve_ai_hint(
+                    spec.id,
+                    variant=resolved_variant if scenario_mode else "",
+                    fingerprint=rows_fingerprint(rows),
+                    digest=build_outlook_digest(rows, variant=resolved_variant),
+                ),
+            )
+        return _empty_horizon_card(
+            spec,
+            subtitle=idle_subtitle,
+            empty_message=(
+                "暂无展望快照，请点击卡片刷新或于定时任务中运行「雷达展望扫描」。"
+                if collect_daily_k_ready_vt_symbols()
+                else "本地暂无日 K 数据，请先运行「全市场日 K」后再刷新展望卡。"
+            ),
         )
+
+    from vnpy_ashare.quotes.radar_horizon_scan import cache_entry_from_scan, scan_horizon_variant
+
+    scan_result = scan_horizon_variant(resolved_variant, top_n=spec.top_n, config=config)
+
+    cached_after = get_horizon_cache(resolved_variant)
+    subtitle = build_horizon_subtitle(
+        cached_after or cache_entry_from_scan(scan_result),
+        signal_recent_days=SIGNAL_RECENT_DAYS,
+        strategy_label=strategy_label,
+    )
+    if scenario_mode:
+        subtitle = f"{subtitle} · 统计情景非目标价"
+    rows = scan_result.rows
+    stats = scan_result.stats
 
     if not rows:
-        return RadarCardData(
-            card_id=spec.id,
-            title=spec.title,
+        return _empty_horizon_card(
+            spec,
             subtitle=subtitle,
-            rows=(),
-            empty_message=f"当前无符合「{spec.title}」条件的标的（已扫描 {len(candidates)} 只）。",
-            updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
-            total_count=len(candidates),
+            empty_message=horizon_empty_message(stats, card_title=spec.title),
+            scanned_total=stats.scanned_total,
         )
 
     return RadarCardData(
@@ -236,11 +169,11 @@ def load_outlook_horizon(spec: RadarCardSpec, *, variant: str | None = None) -> 
         subtitle=subtitle,
         rows=rows,
         empty_message="",
-        updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        updated_at=scan_result.computed_at,
         total_count=len(rows),
         ai_hint=resolve_ai_hint(
             spec.id,
-            variant="",
+            variant=resolved_variant if scenario_mode else "",
             fingerprint=rows_fingerprint(rows),
             digest=build_outlook_digest(rows, variant=resolved_variant),
         ),
@@ -252,6 +185,23 @@ def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, card_id: str) 
     data = payload.get(card_id)
     if data is None or not data.rows:
         return ""
+    if card_id == "outlook_scenario":
+        label = data.rows[0].metric_label if data.rows else "情景"
+        lines = [
+            f"请基于以下雷达「未来·情景（{label}）」快照，做走势情景解读：",
+            "1. 说明统计参考带与动能含义（约 5 个交易日，非确定性预测）",
+            "2. 逐只解读偏多/偏空/波动特征与结构锚点",
+            "3. 给出不宜追涨/不宜杀跌的情形",
+            "4. 不得给出目标价或未在数据中的预测",
+            "",
+            data.subtitle,
+            "",
+        ]
+        for row in data.rows:
+            lines.append(
+                f"- {row.name}({row.symbol}) {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}"
+            )
+        return "\n".join(lines)
     variant = OUTLOOK_CARD_VARIANTS.get(card_id, "watch_next")
     mode = "未来几日关注" if variant == "watch_next" else "未来几日可持仓"
     lines = [

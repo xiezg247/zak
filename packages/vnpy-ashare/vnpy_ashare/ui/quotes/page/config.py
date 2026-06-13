@@ -24,17 +24,41 @@ WATCHLIST_QUOTE_REFRESH_MS = 3000
 WATCHLIST_SIGNAL_REFRESH_MS = 300_000
 MARKET_AUTO_REFRESH_DEFAULT = True
 MARKET_AUTO_REFRESH_SETTINGS_KEY = "quotes/market/auto_refresh_v2"
-RADAR_AUTO_REFRESH_DEFAULT = False
-RADAR_AUTO_REFRESH_SETTINGS_KEY = "quotes/radar/auto_refresh"
-RADAR_REFRESH_INTERVAL_SETTINGS_KEY = "quotes/radar/refresh_interval_ms"
-RADAR_REFRESH_INTERVAL_MS_DEFAULT = 60_000
-RADAR_REFRESH_INTERVAL_OPTIONS: tuple[tuple[int, str], ...] = (
-    (30_000, "30 秒"),
-    (60_000, "1 分钟"),
-    (120_000, "2 分钟"),
-    (300_000, "5 分钟"),
-    (600_000, "10 分钟"),
+RADAR_CARD_REFRESH_SETTINGS_PREFIX = "quotes/radar/card_refresh"
+RADAR_MANUAL_REFRESH_HINT = (
+    "发现/自选/板块卡可在卡片头选择刷新周期或关闭；"
+    "选股与未来卡仅手动刷新 ↻ 或读缓存"
 )
+
+
+def radar_refresh_hint() -> str:
+    return RADAR_MANUAL_REFRESH_HINT
+
+
+def _coerce_settings_int(value: object, *, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def load_radar_card_refresh_ms(card_id: str, default_ms: int | None) -> int:
+    from vnpy.trader.ui import QtCore
+
+    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    key = f"{RADAR_CARD_REFRESH_SETTINGS_PREFIX}/{card_id}"
+    fallback = int(default_ms or 0)
+    return _coerce_settings_int(settings.value(key), default=fallback)
+
+
+def save_radar_card_refresh_ms(card_id: str, ms: int) -> None:
+    from vnpy.trader.ui import QtCore
+
+    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    key = f"{RADAR_CARD_REFRESH_SETTINGS_PREFIX}/{card_id}"
+    settings.setValue(key, int(ms))
 
 
 def _coerce_settings_bool(value: object, *, default: bool) -> bool:
@@ -60,53 +84,6 @@ def save_market_auto_refresh_pref(enabled: bool) -> None:
 
     settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
     settings.setValue(MARKET_AUTO_REFRESH_SETTINGS_KEY, enabled)
-
-
-def load_radar_auto_refresh_pref() -> bool:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-    return _coerce_settings_bool(
-        settings.value(RADAR_AUTO_REFRESH_SETTINGS_KEY),
-        default=RADAR_AUTO_REFRESH_DEFAULT,
-    )
-
-
-def save_radar_auto_refresh_pref(enabled: bool) -> None:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-    settings.setValue(RADAR_AUTO_REFRESH_SETTINGS_KEY, enabled)
-
-
-def normalize_radar_refresh_interval_ms(value: object) -> int:
-    if value is None:
-        return RADAR_REFRESH_INTERVAL_MS_DEFAULT
-    try:
-        ms = int(value)
-    except (TypeError, ValueError):
-        return RADAR_REFRESH_INTERVAL_MS_DEFAULT
-    allowed = {item[0] for item in RADAR_REFRESH_INTERVAL_OPTIONS}
-    if ms in allowed:
-        return ms
-    return RADAR_REFRESH_INTERVAL_MS_DEFAULT
-
-
-def load_radar_refresh_interval_ms() -> int:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-    return normalize_radar_refresh_interval_ms(settings.value(RADAR_REFRESH_INTERVAL_SETTINGS_KEY))
-
-
-def save_radar_refresh_interval_ms(interval_ms: int) -> None:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
-    settings.setValue(
-        RADAR_REFRESH_INTERVAL_SETTINGS_KEY,
-        normalize_radar_refresh_interval_ms(interval_ms),
-    )
 
 
 def quote_refresh_seconds(refresh_ms: int) -> int:
@@ -155,16 +132,6 @@ def quote_refresh_hint(
     if quote_source == "watchlist":
         return f"行情/五档 WebSocket，图表每 {seconds} 秒刷新（交易时段）"
     return f"行情每 {seconds} 秒自动刷新（交易时段）"
-
-
-def radar_refresh_hint(*, auto_refresh: bool, refresh_ms: int) -> str:
-    if not auto_refresh:
-        return "不自动刷新，请手动点击「刷新雷达」"
-    seconds = max(refresh_ms // 1000, 1)
-    if seconds % 60 == 0 and seconds >= 60:
-        minutes = seconds // 60
-        return f"雷达每 {minutes} 分钟自动刷新"
-    return f"雷达每 {seconds} 秒自动刷新"
 
 
 TABLE_HEADERS_WITH_LOCAL = quote_table_headers(tail_header="本地")
@@ -294,8 +261,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_local_column=False,
         require_keyword=False,
         show_add_watchlist_button=False,
-        auto_refresh_quotes=RADAR_AUTO_REFRESH_DEFAULT,
-        quote_refresh_ms=RADAR_REFRESH_INTERVAL_MS_DEFAULT,
+        auto_refresh_quotes=False,
         quote_source="market",
         quote_refresh_source="market",
         show_kline=False,

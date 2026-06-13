@@ -253,6 +253,104 @@ def test_load_watchlist_intraday_fallback_rank(monkeypatch) -> None:
     assert "涨跌幅前列" in data.subtitle
 
 
+def test_classify_scenario_hint_picks_highest_match(monkeypatch) -> None:
+    from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+    from vnpy_ashare.quotes.radar_horizon_scenario import ScenarioMetrics, classify_scenario_hint
+
+    snapshot = SignalSnapshot(
+        vt_symbol="600000.SSE",
+        strategy_id="AshareDoubleMaStrategy",
+        as_of="2025-01-01",
+        signal="buy",
+        signal_label="买入",
+        signal_date=None,
+        ref_buy_price=9.5,
+        ref_sell_price=None,
+        strength=72.0,
+        reason_summary="",
+        reasons=(),
+        warnings=(),
+        last_close=10.0,
+        action_ref_buy_price=None,
+        action_ref_sell_price=None,
+        fast_ma=10.2,
+        slow_ma=9.8,
+        volume_ratio_5d=1.3,
+        ma_gap_pct=None,
+        strength_cross=None,
+        strength_alignment=None,
+        strength_volume=None,
+        strength_pattern=None,
+        relative_index_pct=None,
+    )
+    metrics = ScenarioMetrics(
+        snapshot=snapshot,
+        momentum_pct=3.0,
+        daily_vol_pct=2.5,
+        band_move_pct=5.0,
+        band_lower=9.0,
+        band_upper=11.0,
+    )
+
+    def _matches(_metrics: ScenarioMetrics, *, variant: str) -> bool:
+        return variant in ("scenario_bull", "scenario_volatile")
+
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_horizon_scenario.matches_scenario",
+        _matches,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_horizon_scenario.bullish_score",
+        lambda _metrics: 50.0,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_horizon_scenario.volatility_score",
+        lambda _metrics: 30.0,
+    )
+    assert classify_scenario_hint(metrics) == "偏多"
+
+
+def test_load_watchlist_intraday_with_scenario_hint(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
+
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_watchlist.collect_personal_vt_symbols",
+        lambda max_items=50: ["600000.SSE"],
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_watchlist.compute_signal_transitions",
+        lambda *args, **kwargs: {},
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_watchlist._quotes_for_candidates",
+        lambda _candidates: {
+            "600000.SSE": {
+                "vt_symbol": "600000.SSE",
+                "symbol": "600000",
+                "name": "浦发",
+                "last_price": 10.0,
+                "change_pct": 3.2,
+                "volume_ratio": 1.5,
+            },
+        },
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_watchlist.enrich_quotes_with_moneyflow",
+        lambda quotes_by_vt, **kwargs: quotes_by_vt,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_watchlist._compute_scenario_hints",
+        lambda _symbols, config=None: {"600000.SSE": "偏多"},
+    )
+    spec = RADAR_CARD_BY_ID["watchlist_intraday"]
+    data = load_watchlist_intraday(spec)
+    assert len(data.rows) == 1
+    assert data.rows[0].sub_label == "5日情景"
+    assert data.rows[0].sub_value == "偏多"
+    assert "5日情景 1" in data.subtitle
+    assert "5日统计情景" in data.ai_hint
+
+
 def test_load_sector_theme_empty(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar_sector import load_sector_theme
 
@@ -266,17 +364,17 @@ def test_load_sector_theme_empty(monkeypatch) -> None:
     assert "板块主线" in data.empty_message
 
 
-def test_load_outlook_watch_no_candidates(monkeypatch) -> None:
+def test_load_outlook_watch_no_cache(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_horizon.collect_horizon_candidates",
-        lambda max_items=40: [],
+        "vnpy_ashare.quotes.radar_horizon.get_horizon_cache",
+        lambda _variant: None,
     )
     spec = RADAR_CARD_BY_ID["outlook_watch"]
-    data = load_outlook_horizon(spec)
+    data = load_outlook_horizon(spec, force_recompute=False)
     assert data.rows == ()
-    assert "暂无候选" in data.empty_message
+    assert "展望快照" in data.empty_message
 
 
 def test_build_outlook_ai_prompt() -> None:
@@ -311,6 +409,7 @@ def test_build_radar_card_ai_prompt_watchlist() -> None:
     )
     prompt = build_radar_card_ai_prompt("watchlist_intraday", data)
     assert "自选·异动" in prompt
+    assert "5 日统计情景" in prompt
     assert "信号跃迁" in prompt
     assert "浦发" in prompt
 
@@ -385,3 +484,32 @@ def test_radar_ai_hint_cache_roundtrip(tmp_path, monkeypatch) -> None:
         digest="摘要：新数据",
     )
     assert resolved == "摘要：新数据"
+
+
+def test_row_from_dict_uses_universe_name_when_row_missing_name(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar_loaders import _row_from_dict
+
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_loaders.merge_row_quotes",
+        lambda row: dict(row),
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_loaders.name_map_for_symbols",
+        lambda _symbols: {"920083.BSE": "某北交所标的"},
+    )
+    row = _row_from_dict({"vt_symbol": "920083.BSE", "symbol": "920083"}, name_map={"920083.BSE": "某北交所标的"})
+    assert row is not None
+    assert row.name == "某北交所标的"
+    assert row.symbol == "920083"
+
+
+def test_row_from_dict_falls_back_to_symbol_not_vt_symbol(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar_loaders import _row_from_dict
+
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_loaders.merge_row_quotes",
+        lambda row: dict(row),
+    )
+    row = _row_from_dict({"vt_symbol": "920083.BSE", "symbol": "920083"}, name_map={})
+    assert row is not None
+    assert row.name == "920083"
