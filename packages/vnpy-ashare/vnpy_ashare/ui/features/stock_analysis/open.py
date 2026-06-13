@@ -40,7 +40,7 @@ def show_stock_analysis_vt_symbol(
         return
     if name and not item.name:
         item = StockItem(symbol=item.symbol, exchange=item.exchange, name=name)
-    quote = host.quote_for_item(item.tickflow_symbol)
+    quote = host.quote_for_item(item)
     show_stock_analysis_dialog(item=item, host=host, quote=quote, parent=parent)
 
 
@@ -49,11 +49,12 @@ def show_stock_analysis_from_quotes_page(
     page: QuotesPage,
     *,
     quote: QuoteSnapshot | None = None,
+    row_hint: dict[str, object] | None = None,
     parent: QtWidgets.QWidget | None = None,
 ) -> None:
     host = StockAnalysisHost.from_quotes_page(page)
-    if quote is None:
-        quote = host.quote_for_item(item.tickflow_symbol)
+    if quote is None or (quote.last_price or 0) <= 0:
+        quote = host.quote_for_item(item, row_hint=row_hint)
     show_stock_analysis_dialog(item=item, host=host, quote=quote, parent=parent or page)
 
 

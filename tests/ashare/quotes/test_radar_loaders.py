@@ -377,6 +377,98 @@ def test_load_outlook_watch_no_cache(monkeypatch) -> None:
     assert "展望快照" in data.empty_message
 
 
+def test_enrich_radar_rows_from_screening_snapshot(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    from vnpy_ashare.quotes.radar_models import RadarRow, enrich_radar_rows
+
+    monkeypatch.setattr("vnpy_ashare.quotes.radar_models.quote_map", lambda: {})
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_models.load_screening_quote_snapshot",
+        lambda: SimpleNamespace(
+            rows=[
+                {
+                    "vt_symbol": "601916.SSE",
+                    "symbol": "601916",
+                    "name": "浙商银行",
+                    "last_price": 3.21,
+                    "change_pct": -0.62,
+                }
+            ]
+        ),
+    )
+    rows = (
+        RadarRow(
+            vt_symbol="601916.SSE",
+            name="浙商银行",
+            symbol="601916",
+            price=None,
+            change_pct=None,
+            metric_label="买入",
+            metric_value="78",
+            sub_label="事件",
+            sub_value="—",
+        ),
+    )
+    enriched = enrich_radar_rows(rows)
+    assert enriched[0].price == 3.21
+    assert enriched[0].change_pct == -0.62
+
+
+def test_load_outlook_watch_enriches_cached_rows(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
+    from vnpy_ashare.quotes.radar_horizon_cache import HorizonCacheEntry
+    from vnpy_ashare.quotes.radar_models import RadarRow
+
+    cached_row = RadarRow(
+        vt_symbol="601916.SSE",
+        name="浙商银行",
+        symbol="601916",
+        price=None,
+        change_pct=None,
+        metric_label="买入",
+        metric_value="78",
+        sub_label="事件",
+        sub_value="—",
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_horizon.get_horizon_cache",
+        lambda _variant: HorizonCacheEntry(
+            variant="watch_next",
+            rows=(cached_row,),
+            scanned_total=5512,
+            excluded_count=4,
+            prefilter_total=600,
+            refined_total=600,
+            kline_missing=0,
+            strategy_key="test",
+            computed_at="2026-06-13 16:00",
+        ),
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_horizon.enrich_radar_rows",
+        lambda rows: tuple(
+            RadarRow(
+                vt_symbol=row.vt_symbol,
+                name=row.name,
+                symbol=row.symbol,
+                price=3.21,
+                change_pct=-0.62,
+                metric_label=row.metric_label,
+                metric_value=row.metric_value,
+                sub_label=row.sub_label,
+                sub_value=row.sub_value,
+            )
+            for row in rows
+        ),
+    )
+    spec = RADAR_CARD_BY_ID["outlook_watch"]
+    data = load_outlook_horizon(spec, force_recompute=False)
+    assert len(data.rows) == 1
+    assert data.rows[0].price == 3.21
+    assert data.rows[0].change_pct == -0.62
+
+
 def test_build_outlook_ai_prompt() -> None:
     from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
 
@@ -462,8 +554,8 @@ def test_build_outlook_digest() -> None:
             1.0,
             "买入",
             "72",
-            "事件",
-            "—",
+            "5日情景",
+            "偏多",
         ),
     )
     digest = build_outlook_digest(rows, variant="watch_next")

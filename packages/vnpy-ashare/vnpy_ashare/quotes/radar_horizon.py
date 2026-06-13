@@ -17,7 +17,7 @@ from vnpy_ashare.quotes.radar_horizon_scan import (
     collect_daily_k_ready_vt_symbols,
     horizon_empty_message,
 )
-from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow, enrich_radar_rows
 
 from vnpy_ashare.quotes.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
 
@@ -44,15 +44,15 @@ def build_outlook_digest(rows: tuple[RadarRow, ...], *, variant: str) -> str:
         return "摘要：" + " · ".join(parts)
     buy = sum(1 for row in rows if row.metric_label == "买入")
     hold = sum(1 for row in rows if row.metric_label == "观望")
-    events = sum(1 for row in rows if row.sub_value not in ("—", ""))
+    scenarios = sum(1 for row in rows if row.sub_label == "5日情景")
     mode = "关注" if variant == "watch_next" else "可持"
     parts = [f"{mode} {len(rows)} 只"]
     if buy:
         parts.append(f"买入 {buy}")
     if hold:
         parts.append(f"观望 {hold}")
-    if events:
-        parts.append(f"有事件 {events}")
+    if scenarios:
+        parts.append(f"有情景 {scenarios}")
     return "摘要：" + " · ".join(parts)
 
 
@@ -100,7 +100,7 @@ def load_outlook_horizon(
             )
             if scenario_mode:
                 subtitle = f"{subtitle} · 统计情景非目标价"
-            rows = cached.rows
+            rows = enrich_radar_rows(cached.rows)
             if not rows:
                 stats = HorizonScanStats(
                     scanned_total=cached.scanned_total,
@@ -152,7 +152,7 @@ def load_outlook_horizon(
     )
     if scenario_mode:
         subtitle = f"{subtitle} · 统计情景非目标价"
-    rows = scan_result.rows
+    rows = enrich_radar_rows(scan_result.rows)
     stats = scan_result.stats
 
     if not rows:
@@ -207,7 +207,7 @@ def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, card_id: str) 
     lines = [
         f"请基于以下雷达「{mode}」快照，给出关注理由与风险提示：",
         "1. 说明策略信号窗口含义（约 5 个交易日，非涨跌预测）",
-        "2. 逐只解读信号、强度与事件日历",
+        "2. 逐只解读信号、强度、距买点与 5 日统计情景",
         "3. 给出不宜关注/不宜持有的情形",
         "4. 不得给出目标价或未在数据中的预测",
         "",

@@ -109,6 +109,28 @@ def outlook_sort_key(snapshot: SignalSnapshot, *, variant: str) -> tuple:
     return watch_sort_key(snapshot)
 
 
+def outlook_judgment_subline(
+    snapshot: SignalSnapshot,
+    *,
+    scenario_hint: str | None = None,
+    last_price: float | None = None,
+) -> tuple[str, str]:
+    """未来卡副指标：优先 5 日统计情景，否则给出策略判断（非事件日历）。"""
+    if scenario_hint:
+        return "5日情景", scenario_hint
+    dist = dist_buy_pct(snapshot.ref_buy_price, last_price or snapshot.last_close)
+    if dist is not None and snapshot.signal in ("buy", "hold"):
+        return "距买点", f"{dist:+.1f}%"
+    summary = str(snapshot.reason_summary or "").strip()
+    if summary:
+        return "判断", summary[:24]
+    for reason in snapshot.reasons:
+        text = str(reason).strip()
+        if text:
+            return "判断", text[:24]
+    return "判断", "—"
+
+
 def filter_outlook_snapshots(
     snapshots: list[SignalSnapshot],
     *,
@@ -125,7 +147,12 @@ def filter_outlook_snapshots(
     return matched
 
 
-def snapshot_to_row(snapshot: SignalSnapshot, *, name_map: dict[str, str]) -> RadarRow:
+def snapshot_to_row(
+    snapshot: SignalSnapshot,
+    *,
+    name_map: dict[str, str],
+    scenario_hint: str | None = None,
+) -> RadarRow:
     item = parse_stock_symbol(snapshot.vt_symbol)
     name = name_map.get(snapshot.vt_symbol) or (item.name if item else "") or snapshot.vt_symbol
     symbol = item.symbol if item else snapshot.vt_symbol.split(".")[0]
@@ -134,7 +161,11 @@ def snapshot_to_row(snapshot: SignalSnapshot, *, name_map: dict[str, str]) -> Ra
     change_raw = quote.get("change_pct")
     change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
     strength_text = f"{snapshot.strength:.0f}" if snapshot.strength is not None else "—"
-    event = event_hint(snapshot.vt_symbol)
+    sub_label, sub_value = outlook_judgment_subline(
+        snapshot,
+        scenario_hint=scenario_hint,
+        last_price=last_price,
+    )
     return RadarRow(
         vt_symbol=snapshot.vt_symbol,
         name=name,
@@ -143,8 +174,8 @@ def snapshot_to_row(snapshot: SignalSnapshot, *, name_map: dict[str, str]) -> Ra
         change_pct=change_pct,
         metric_label=snapshot.signal_label,
         metric_value=strength_text,
-        sub_label="事件",
-        sub_value=event,
+        sub_label=sub_label,
+        sub_value=sub_value,
     )
 
 
@@ -152,5 +183,10 @@ def build_outlook_rows(
     snapshots: tuple[SignalSnapshot, ...],
     *,
     name_map: dict[str, str],
+    scenario_hints: dict[str, str] | None = None,
 ) -> tuple[RadarRow, ...]:
-    return tuple(snapshot_to_row(snapshot, name_map=name_map) for snapshot in snapshots)
+    hints = scenario_hints or {}
+    return tuple(
+        snapshot_to_row(snapshot, name_map=name_map, scenario_hint=hints.get(snapshot.vt_symbol))
+        for snapshot in snapshots
+    )

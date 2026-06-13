@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from vnpy_ashare.quotes.radar_models import RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar_models import RadarRow, enrich_radar_row, float_or_none, quotes_for_vt_symbols
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """
@@ -63,7 +63,7 @@ class HorizonCacheEntry:
 
 
 def _row_to_dict(row: RadarRow) -> dict[str, Any]:
-    return {
+    payload: dict[str, Any] = {
         "vt_symbol": row.vt_symbol,
         "name": row.name,
         "symbol": row.symbol,
@@ -72,26 +72,28 @@ def _row_to_dict(row: RadarRow) -> dict[str, Any]:
         "sub_label": row.sub_label,
         "sub_value": row.sub_value,
     }
+    if row.price is not None:
+        payload["last_close"] = row.price
+    if row.change_pct is not None:
+        payload["change_pct"] = row.change_pct
+    return payload
 
 
-def _row_from_dict(raw: dict[str, Any]) -> RadarRow:
+def _row_from_dict(raw: dict[str, Any], *, quote: dict[str, Any] | None = None) -> RadarRow:
     vt_symbol = str(raw.get("vt_symbol") or "").strip()
-    quote = merge_row_quotes({"vt_symbol": vt_symbol})
-    change_raw = quote.get("change_pct")
-    change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
-    price_raw = quote.get("last_price") or quote.get("close")
-    price = float(price_raw) if isinstance(price_raw, (int, float)) else None
-    return RadarRow(
+    base = quote if quote is not None else {"vt_symbol": vt_symbol}
+    row = RadarRow(
         vt_symbol=vt_symbol,
         name=str(raw.get("name") or ""),
         symbol=str(raw.get("symbol") or ""),
-        price=price,
-        change_pct=change_pct,
+        price=float_or_none(raw.get("last_close")),
+        change_pct=float_or_none(raw.get("change_pct")),
         metric_label=str(raw.get("metric_label") or ""),
         metric_value=str(raw.get("metric_value") or ""),
         sub_label=str(raw.get("sub_label") or ""),
         sub_value=str(raw.get("sub_value") or ""),
     )
+    return enrich_radar_row(row, base)
 
 
 def get_horizon_cache(variant: str) -> HorizonCacheEntry | None:
@@ -109,7 +111,14 @@ def get_horizon_cache(variant: str) -> HorizonCacheEntry | None:
         payload = json.loads(str(row["rows_json"] or "[]"))
     except (json.JSONDecodeError, TypeError):
         payload = []
-    rows = tuple(_row_from_dict(item) for item in payload if isinstance(item, dict))
+    vt_symbols = [str(item.get("vt_symbol") or "").strip() for item in payload if isinstance(item, dict)]
+    vt_symbols = [vt for vt in vt_symbols if vt]
+    quotes = quotes_for_vt_symbols(vt_symbols)
+    rows = tuple(
+        _row_from_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {}))
+        for item in payload
+        if isinstance(item, dict)
+    )
     return HorizonCacheEntry(
         variant=text,
         rows=rows,

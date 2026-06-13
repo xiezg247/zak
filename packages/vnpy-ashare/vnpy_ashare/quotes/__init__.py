@@ -8,6 +8,8 @@ from vnpy_ashare.quotes.provider import (
     get_quote_provider,
     get_redis_provider,
     get_tickflow_provider,
+    quote_snapshot_from_row,
+    resolve_quote_snapshot,
 )
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 
@@ -21,4 +23,6 @@ __all__ = [
     "get_quote_provider",
     "get_redis_provider",
     "get_tickflow_provider",
+    "quote_snapshot_from_row",
+    "resolve_quote_snapshot",
 ]

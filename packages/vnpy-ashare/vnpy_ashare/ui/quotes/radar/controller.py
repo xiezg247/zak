@@ -418,5 +418,26 @@ class RadarController(QtCore.QObject):
         if item is None:
             page_notify(self._page, f"无法解析合约：{vt_symbol}", level="warning")
             return
-        quote = self._page.quote_map.get(item.tickflow_symbol)
-        show_stock_analysis_from_quotes_page(item=item, page=self._page, quote=quote, parent=self._page)
+        row_hint = self._radar_row_hint(vt_symbol)
+        show_stock_analysis_from_quotes_page(
+            item=item,
+            page=self._page,
+            row_hint=row_hint,
+            parent=self._page,
+        )
+
+    def _radar_row_hint(self, vt_symbol: str) -> dict[str, object] | None:
+        for data in self._last_payload.values():
+            for row in data.rows:
+                if row.vt_symbol == vt_symbol:
+                    hint: dict[str, object] = {
+                        "vt_symbol": row.vt_symbol,
+                        "symbol": row.symbol,
+                        "name": row.name,
+                    }
+                    if row.price is not None:
+                        hint["last_price"] = row.price
+                    if row.change_pct is not None:
+                        hint["change_pct"] = row.change_pct
+                    return hint
+        return None

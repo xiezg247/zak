@@ -11,7 +11,7 @@ from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_is_fresh, signal_missing_kline
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.quotes.radar_horizon_rules import event_hint, last_price_for_snapshot, _has_near_unlock
+from vnpy_ashare.quotes.radar_horizon_rules import last_price_for_snapshot, _has_near_unlock
 from vnpy_ashare.quotes.radar_models import RadarRow, merge_row_quotes
 
 SCENARIO_VARIANTS: frozenset[str] = frozenset(
@@ -275,10 +275,6 @@ def scenario_metrics_to_row(
     else:
         sub_label = "信号"
         sub_value = snapshot.signal_label
-    event = event_hint(snapshot.vt_symbol)
-    if event not in ("—", ""):
-        sub_label = "事件"
-        sub_value = event
     return RadarRow(
         vt_symbol=snapshot.vt_symbol,
         name=name,

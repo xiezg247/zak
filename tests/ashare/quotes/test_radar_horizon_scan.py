@@ -79,3 +79,31 @@ def test_prefilter_skips_symbols_without_local_daily_k() -> None:
 
     assert prefilter == ["600000.SSE"]
     assert stats.prefilter_total == 1
+
+
+def test_outlook_judgment_subline_prefers_scenario() -> None:
+    from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+    from vnpy_ashare.quotes.radar_horizon_rules import outlook_judgment_subline
+
+    snapshot = SignalSnapshot(
+        vt_symbol="600000.SSE",
+        strategy_id="Test",
+        as_of="2025-01-02",
+        signal="buy",
+        signal_label="买入",
+        signal_date="2025-01-02",
+        ref_buy_price=10.0,
+        ref_sell_price=None,
+        strength=72.0,
+        reason_summary="均线多头",
+        reasons=("快线在慢线上方",),
+        warnings=(),
+        last_close=10.5,
+    )
+    label, value = outlook_judgment_subline(snapshot, scenario_hint="偏多")
+    assert label == "5日情景"
+    assert value == "偏多"
+
+    label, value = outlook_judgment_subline(snapshot)
+    assert label == "距买点"
+    assert value == "+5.0%"

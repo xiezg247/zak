@@ -18,6 +18,7 @@ from vnpy_ashare.quotes.radar_horizon_scenario import (
     SCENARIO_VARIANTS,
     batch_build_scenario_metrics,
     build_scenario_rows,
+    classify_scenario_hint,
     filter_scenario_metrics,
     scenario_sort_key,
 )
@@ -215,8 +216,23 @@ def scan_horizon_variant(
             matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant), reverse=True)
         else:
             matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant))
-        name_map = name_map_for_symbols([snap.vt_symbol for snap in matched[:top_n]])
-        rows = build_outlook_rows(tuple(matched[:top_n]), name_map=name_map)
+        top_matched = matched[:top_n]
+        name_map = name_map_for_symbols([snap.vt_symbol for snap in top_matched])
+        metrics_list = (
+            scenario_metrics
+            if scenario_metrics is not None
+            else batch_build_scenario_metrics(prefilter, snapshots)
+        )
+        scenario_hints: dict[str, str] = {}
+        for metrics in metrics_list:
+            hint = classify_scenario_hint(metrics)
+            if hint:
+                scenario_hints[metrics.snapshot.vt_symbol] = hint
+        rows = build_outlook_rows(
+            tuple(top_matched),
+            name_map=name_map,
+            scenario_hints=scenario_hints,
+        )
     computed_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     stats = HorizonScanStats(
         scanned_total=base_stats.scanned_total,

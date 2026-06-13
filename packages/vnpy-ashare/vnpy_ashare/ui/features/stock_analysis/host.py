@@ -9,7 +9,9 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.quotes.provider import resolve_quote_snapshot
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -50,7 +52,10 @@ class StockAnalysisHost:
             quote_map=None,
         )
 
-    def quote_for_item(self, tickflow_symbol: str) -> QuoteSnapshot | None:
-        if not self.quote_map:
-            return None
-        return self.quote_map.get(tickflow_symbol)
+    def quote_for_item(
+        self,
+        item: StockItem,
+        *,
+        row_hint: dict[str, object] | None = None,
+    ) -> QuoteSnapshot | None:
+        return resolve_quote_snapshot(item, quote_map=self.quote_map, row_hint=row_hint)
