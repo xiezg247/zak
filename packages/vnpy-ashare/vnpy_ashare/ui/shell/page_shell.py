@@ -6,12 +6,14 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ui.quotes.market_discovery import MarketDiscoveryController, MarketDiscoveryStrip
 from vnpy_ashare.ui.quotes.market_overview import MarketOverviewController, MarketOverviewPanel
+from vnpy_ashare.ui.quotes.market_overview.header import MarketHeaderPanel
 from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 from vnpy_ashare.ui.quotes.watchlist_signals import restore_center_splitter
 from vnpy_common.ui.qt_helpers import thread_is_active
 from vnpy_common.ui.theme import theme_manager
-from vnpy_common.ui.theme.build_extra import build_market_overview_stylesheet
+from vnpy_common.ui.theme.build_extra import build_market_page_stylesheet
 
 
 class QuotesShellWidget(QtWidgets.QWidget):
@@ -29,17 +31,22 @@ class QuotesShellWidget(QtWidgets.QWidget):
 
         self.page = QuotesPage(self.PAGE_NAME, self, event_engine=event_engine)
         self._overview_controller: MarketOverviewController | None = None
-        self._overview_panel: MarketOverviewPanel | None = None
+        self._header_panel: MarketHeaderPanel | None = None
+        self._discovery_controller: MarketDiscoveryController | None = None
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
         if self.PAGE_NAME == "市场":
-            self._overview_panel = MarketOverviewPanel(self)
-            theme_manager().bind_stylesheet(self._overview_panel, extra=build_market_overview_stylesheet)
-            self._overview_controller = MarketOverviewController(self.page, self._overview_panel)
-            root.addWidget(self._overview_panel)
+            overview = MarketOverviewPanel(self)
+            discovery = MarketDiscoveryStrip(self)
+            self._header_panel = MarketHeaderPanel(overview, discovery, self)
+            self._overview_controller = MarketOverviewController(self.page, overview)
+            self._discovery_controller = MarketDiscoveryController(self.page, discovery)
+            self.page.set_market_industry_filter_listener(self._overview_controller.sync_industry_filter)
+            theme_manager().bind_stylesheet(self, extra=build_market_page_stylesheet)
+            root.addWidget(self._header_panel)
 
         root.addWidget(self.page, stretch=1)
 
@@ -51,6 +58,8 @@ class QuotesShellWidget(QtWidgets.QWidget):
         self.page.activate()
         if self._overview_controller is not None:
             self._overview_controller.activate()
+        if self._discovery_controller is not None:
+            self._discovery_controller.activate()
         if self.page.config.show_watchlist_signals or self.page.config.show_watchlist_positions or self.page.config.show_run_output_panel:
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
 
@@ -63,6 +72,8 @@ class QuotesShellWidget(QtWidgets.QWidget):
         self.page.deactivate()
         if self._overview_controller is not None:
             self._overview_controller.deactivate()
+        if self._discovery_controller is not None:
+            self._discovery_controller.deactivate()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()

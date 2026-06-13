@@ -33,6 +33,10 @@ class MarketOverviewController(QtCore.QObject):
 
         panel.index_activated.connect(self._on_index_activated)
         panel.sector_selected.connect(self._on_sector_selected)
+        panel.industry_filter_cleared.connect(self._clear_industry_filter)
+
+    def sync_industry_filter(self, industry: str | None) -> None:
+        self._panel.set_industry_filter(industry)
 
     def activate(self) -> None:
         QtCore.QTimer.singleShot(500, self.refresh)
@@ -97,9 +101,16 @@ class MarketOverviewController(QtCore.QObject):
     def _on_sector_selected(self, industry: str) -> None:
         page = self._page
         if page._market_industry_filter == industry:
-            page._market_industry_filter = None
+            page.set_market_industry_filter(None)
             page.status_label.setText(f"已清除行业筛选：{industry}")
         else:
-            page._market_industry_filter = industry
+            page.set_market_industry_filter(industry)
             page.status_label.setText(f"行业筛选：{industry}（再次双击该行业可清除）")
-        page._table.filter_market_display()
+
+    def _clear_industry_filter(self) -> None:
+        page = self._page
+        if not page._market_industry_filter:
+            return
+        previous = page._market_industry_filter
+        page.set_market_industry_filter(None)
+        page.status_label.setText(f"已清除行业筛选：{previous}")

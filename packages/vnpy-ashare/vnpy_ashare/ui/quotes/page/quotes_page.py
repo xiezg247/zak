@@ -164,6 +164,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_filter_keyword: str = ""
         self._market_industry_filter: str | None = None
         self._industry_map_cache: dict[str, str] | None = None
+        self._market_industry_filter_listener = None
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
@@ -503,6 +504,16 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _select_stock_key(self, key: tuple[str, Exchange]) -> None:
         self._table.select_stock_key(key)
+
+    def set_market_industry_filter_listener(self, listener) -> None:
+        self._market_industry_filter_listener = listener
+
+    def set_market_industry_filter(self, industry: str | None) -> None:
+        self._market_industry_filter = industry
+        listener = self._market_industry_filter_listener
+        if listener is not None:
+            listener(industry)
+        self._table.filter_market_display()
 
     def _render_table(self, *, preserve_selection: bool = True) -> None:
         self._table.render_table(preserve_selection=preserve_selection)

@@ -433,28 +433,50 @@ def format_scheduler_empty_html(t: ThemeTokens, message: str) -> str:
 
 
 def build_market_overview_stylesheet(t: ThemeTokens) -> str:
+    return build_market_page_stylesheet(t)
+
+
+def build_market_discovery_stylesheet(t: ThemeTokens) -> str:
+    return ""
+
+
+def build_market_page_stylesheet(t: ThemeTokens) -> str:
     return f"""
-QWidget#MarketOverviewPanel {{
+QWidget#MarketHeaderPanel {{
     background-color: {t.index_ticker_bg};
+    border-bottom: 1px solid {t.panel_border};
+}}
+QFrame#MarketHeaderDivider {{
+    background-color: {t.panel_border};
+    border: none;
+    max-height: 1px;
+}}
+QWidget#MarketOverviewPanel {{
+    background-color: transparent;
 }}
 QLabel#MarketBreadthBar {{
-    background-color: {t.index_ticker_bg};
+    background-color: transparent;
     color: {t.index_ticker_text};
-    padding: 6px 12px;
+    padding: 8px 12px 4px 12px;
     font-size: 12px;
 }}
-QScrollArea#IndexCardScroll {{
-    background-color: {t.index_ticker_bg};
+QWidget#MarketOverviewToolbar {{
+    background-color: transparent;
+}}
+QScrollArea#IndexCardScroll,
+QScrollArea#SectorCardScroll {{
+    background-color: transparent;
     border: none;
 }}
-QWidget#IndexCardHost {{
+QWidget#IndexCardHost,
+QWidget#SectorCardHost {{
     background-color: transparent;
 }}
 QFrame#IndexCard {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
-    border-radius: 6px;
-    min-width: 108px;
+    border-radius: 8px;
+    min-width: 100px;
 }}
 QFrame#IndexCard:hover {{
     border-color: {t.accent};
@@ -465,7 +487,7 @@ QLabel#IndexCardName {{
 }}
 QLabel#IndexCardPrice {{
     color: {t.text_primary};
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
 }}
 QLabel#IndexCardPct {{
@@ -475,36 +497,35 @@ QLabel#IndexCardPct {{
 QLabel#MarketEnvBadge {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
-    border-radius: 4px;
-    padding: 2px 8px;
+    border-radius: 6px;
+    padding: 3px 10px;
     color: {t.text_secondary};
     font-size: 11px;
 }}
 QPushButton#OverviewTabButton {{
     background-color: transparent;
     border: 1px solid {t.panel_border};
-    border-radius: 4px;
-    padding: 2px 10px;
+    border-radius: 6px;
+    padding: 3px 14px;
     color: {t.text_secondary};
     font-size: 11px;
+    min-width: 48px;
+}}
+QPushButton#OverviewTabButton:hover {{
+    border-color: {t.accent};
+    color: {t.text_primary};
 }}
 QPushButton#OverviewTabButton:checked {{
     background-color: {t.panel_bg};
     color: {t.text_primary};
     border-color: {t.accent};
-}}
-QScrollArea#SectorCardScroll {{
-    background-color: {t.index_ticker_bg};
-    border: none;
-}}
-QWidget#SectorCardHost {{
-    background-color: transparent;
+    font-weight: 600;
 }}
 QFrame#SectorCard {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
-    border-radius: 6px;
-    min-width: 96px;
+    border-radius: 8px;
+    min-width: 88px;
 }}
 QFrame#SectorCard:hover {{
     border-color: {t.accent};
@@ -514,7 +535,7 @@ QLabel#SectorCardName {{
     font-size: 11px;
 }}
 QLabel#SectorCardPct {{
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
 }}
 QLabel#SectorCardCount {{
@@ -525,6 +546,137 @@ QLabel#SectorCardEmpty {{
     color: {t.text_muted};
     font-size: 12px;
     padding: 8px 12px;
+}}
+QLabel#MarketIndustryChip {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.accent};
+    border-radius: 6px;
+    padding: 3px 10px;
+    color: {t.text_primary};
+    font-size: 11px;
+    font-weight: 600;
+}}
+QToolButton#MarketIndustryClear {{
+    background-color: transparent;
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+    padding: 2px 6px;
+    color: {t.text_muted};
+    font-size: 12px;
+    font-weight: 700;
+}}
+QToolButton#MarketIndustryClear:hover {{
+    border-color: {t.accent};
+    color: {t.text_primary};
+}}
+QWidget#MarketDiscoveryStrip {{
+    background-color: transparent;
+}}
+QLabel#MarketDiscoverySectionTitle {{
+    color: {t.text_primary};
+    font-size: 12px;
+    font-weight: 600;
+}}
+QLabel#MarketDiscoveryTitle {{
+    color: {t.text_muted};
+    font-size: 11px;
+    font-weight: 600;
+    min-width: 28px;
+}}
+QLabel#MarketDiscoveryEmpty {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QFrame#MarketDiscoveryDivider {{
+    background-color: {t.panel_border};
+    border: none;
+    margin: 2px 4px;
+}}
+QScrollArea#MarketDiscoveryScroll {{
+    background-color: transparent;
+    border: none;
+}}
+QPushButton#MarketDiscoveryChip {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: {t.text_primary};
+}}
+QPushButton#MarketDiscoveryChip:hover {{
+    border-color: {t.accent};
+}}
+QPushButton#MarketDiscoveryChip[chipTone="rise"] {{
+    color: {t.market_rise};
+    border-color: {t.market_rise};
+}}
+QPushButton#MarketDiscoveryChip[chipTone="fall"] {{
+    color: {t.market_fall};
+    border-color: {t.market_fall};
+}}
+QPushButton#MarketDiscoveryChip[chipTone="flat"] {{
+    color: {t.text_secondary};
+}}
+QWidget#MarketRankSidebar {{
+    background-color: {t.panel_bg};
+    border-right: none;
+}}
+QWidget#MarketRankSidebarBody {{
+    background-color: transparent;
+}}
+QWidget#MarketRankSidebarHandle {{
+    background-color: {t.panel_bg};
+    border-left: 1px solid {t.panel_border};
+}}
+QToolButton#MarketRankSidebarCollapseButton {{
+    background-color: transparent;
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+    padding: 0;
+}}
+QToolButton#MarketRankSidebarCollapseButton:hover {{
+    border-color: {t.accent};
+    background-color: {t.nav_hover_bg};
+}}
+QLabel#MarketRankSidebarTitle {{
+    color: {t.text_muted};
+    font-size: 11px;
+    font-weight: 600;
+    padding: 10px 12px 6px 12px;
+}}
+QListWidget#RankSidebar {{
+    background-color: transparent;
+    border: none;
+    outline: none;
+    padding: 0 6px 8px 6px;
+    font-size: 12px;
+}}
+QListWidget#RankSidebar::item {{
+    color: {t.text_secondary};
+    padding: 8px 10px;
+    border-radius: 6px;
+    margin: 2px 0;
+}}
+QListWidget#RankSidebar::item:hover {{
+    background-color: {t.nav_hover_bg};
+    color: {t.text_primary};
+}}
+QListWidget#RankSidebar::item:selected {{
+    background-color: {t.nav_selected_bg};
+    color: {t.accent};
+    font-weight: 600;
+}}
+QWidget#MarketToolbar {{
+    background-color: {t.panel_bg};
+    border-bottom: 1px solid {t.panel_border};
+}}
+QWidget#MarketContent {{
+    background-color: {t.app_bg};
+}}
+QSplitter#MarketRankSplitter::handle {{
+    background-color: {t.panel_border};
+    width: 1px;
 }}
 """
 

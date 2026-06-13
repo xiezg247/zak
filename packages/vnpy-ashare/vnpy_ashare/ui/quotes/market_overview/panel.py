@@ -16,6 +16,7 @@ from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _TAB_INDEX = 0
 _TAB_SECTOR = 1
+_CARD_STRIP_HEIGHT = 76
 
 
 class MarketOverviewPanel(QtWidgets.QWidget):
@@ -23,10 +24,12 @@ class MarketOverviewPanel(QtWidgets.QWidget):
 
     index_activated = QtCore.Signal(str)
     sector_selected = QtCore.Signal(str)
+    industry_filter_cleared = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("MarketOverviewPanel")
+        self._active_industry: str | None = None
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -36,17 +39,39 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._breadth_label.setObjectName("MarketBreadthBar")
         root.addWidget(self._breadth_label)
 
-        tab_row = QtWidgets.QHBoxLayout()
-        tab_row.setContentsMargins(8, 4, 8, 0)
-        tab_row.setSpacing(6)
+        toolbar_host = QtWidgets.QWidget(self)
+        toolbar_host.setObjectName("MarketOverviewToolbar")
+        toolbar = QtWidgets.QHBoxLayout(toolbar_host)
+        toolbar.setContentsMargins(12, 6, 12, 4)
+        toolbar.setSpacing(8)
 
+        env_group = QtWidgets.QHBoxLayout()
+        env_group.setSpacing(6)
         self._env_fear_badge = QtWidgets.QLabel("恐贪 —")
         self._env_fear_badge.setObjectName("MarketEnvBadge")
         self._env_north_badge = QtWidgets.QLabel("北向 —")
         self._env_north_badge.setObjectName("MarketEnvBadge")
-        tab_row.addWidget(self._env_fear_badge)
-        tab_row.addWidget(self._env_north_badge)
+        env_group.addWidget(self._env_fear_badge)
+        env_group.addWidget(self._env_north_badge)
 
+        self._industry_chip = QtWidgets.QLabel("")
+        self._industry_chip.setObjectName("MarketIndustryChip")
+        self._industry_chip.hide()
+        env_group.addWidget(self._industry_chip)
+
+        self._clear_industry_btn = QtWidgets.QToolButton(self)
+        self._clear_industry_btn.setObjectName("MarketIndustryClear")
+        self._clear_industry_btn.setText("×")
+        self._clear_industry_btn.setToolTip("清除行业筛选")
+        self._clear_industry_btn.hide()
+        self._clear_industry_btn.clicked.connect(self.industry_filter_cleared.emit)
+        env_group.addWidget(self._clear_industry_btn)
+        toolbar.addLayout(env_group)
+
+        toolbar.addStretch(1)
+
+        tab_group = QtWidgets.QHBoxLayout()
+        tab_group.setSpacing(4)
         self._tab_index_btn = QtWidgets.QPushButton("指数")
         self._tab_index_btn.setObjectName("OverviewTabButton")
         self._tab_index_btn.setCheckable(True)
@@ -54,10 +79,15 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._tab_sector_btn = QtWidgets.QPushButton("行业")
         self._tab_sector_btn.setObjectName("OverviewTabButton")
         self._tab_sector_btn.setCheckable(True)
-        tab_row.addWidget(self._tab_index_btn)
-        tab_row.addWidget(self._tab_sector_btn)
-        tab_row.addStretch(1)
-        root.addLayout(tab_row)
+        tab_group.addWidget(self._tab_index_btn)
+        tab_group.addWidget(self._tab_sector_btn)
+        toolbar.addLayout(tab_group)
+
+        self._tab_button_group = QtWidgets.QButtonGroup(self)
+        self._tab_button_group.setExclusive(True)
+        self._tab_button_group.addButton(self._tab_index_btn, _TAB_INDEX)
+        self._tab_button_group.addButton(self._tab_sector_btn, _TAB_SECTOR)
+        root.addWidget(toolbar_host)
 
         self._stack = QtWidgets.QStackedWidget(self)
         self._stack.setObjectName("OverviewStack")
@@ -68,8 +98,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._stack.addWidget(self._sector_scroll)
         root.addWidget(self._stack)
 
-        self._tab_index_btn.clicked.connect(lambda: self._switch_tab(_TAB_INDEX))
-        self._tab_sector_btn.clicked.connect(lambda: self._switch_tab(_TAB_SECTOR))
+        self._tab_button_group.idClicked.connect(self._switch_tab)
 
         self._index_cards: dict[str, IndexCardWidget] = {}
         self._sector_cards: dict[str, SectorCardWidget] = {}
@@ -82,12 +111,12 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        scroll.setFixedHeight(88)
+        scroll.setFixedHeight(_CARD_STRIP_HEIGHT)
 
         self._cards_host = QtWidgets.QWidget()
         self._cards_host.setObjectName("IndexCardHost")
         self._cards_layout = QtWidgets.QHBoxLayout(self._cards_host)
-        self._cards_layout.setContentsMargins(8, 6, 8, 6)
+        self._cards_layout.setContentsMargins(12, 4, 12, 8)
         self._cards_layout.setSpacing(8)
         self._cards_layout.addStretch(1)
         scroll.setWidget(self._cards_host)
@@ -100,12 +129,12 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        scroll.setFixedHeight(88)
+        scroll.setFixedHeight(_CARD_STRIP_HEIGHT)
 
         self._sector_host = QtWidgets.QWidget()
         self._sector_host.setObjectName("SectorCardHost")
         self._sector_layout = QtWidgets.QHBoxLayout(self._sector_host)
-        self._sector_layout.setContentsMargins(8, 6, 8, 6)
+        self._sector_layout.setContentsMargins(12, 4, 12, 8)
         self._sector_layout.setSpacing(8)
         self._sector_layout.addStretch(1)
 
@@ -142,6 +171,24 @@ class MarketOverviewPanel(QtWidgets.QWidget):
 
     def apply_sectors(self, sectors: list[SectorRankItem]) -> None:
         self._sync_sector_cards(sectors)
+        self._sync_sector_selection()
+
+    def set_industry_filter(self, industry: str | None) -> None:
+        self._active_industry = industry
+        if industry:
+            self._industry_chip.setText(industry)
+            self._industry_chip.show()
+            self._clear_industry_btn.show()
+            self._switch_tab(_TAB_SECTOR)
+        else:
+            self._industry_chip.hide()
+            self._clear_industry_btn.hide()
+        self._sync_sector_selection()
+
+    def _sync_sector_selection(self) -> None:
+        active = self._active_industry
+        for key, card in self._sector_cards.items():
+            card.set_selected(active is not None and key == active)
 
     def apply_environment(self, env: MarketEnvironmentSnapshot | None) -> None:
         self._last_environment = env
@@ -203,6 +250,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
                 card = self._sector_cards.pop(key)
                 self._sector_layout.removeWidget(card)
                 card.deleteLater()
+        self._sync_sector_selection()
 
     def _render_breadth(self, breadth: MarketBreadthSnapshot) -> None:
         tokens = theme_manager().tokens()
@@ -221,4 +269,5 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         ]
         if breadth.updated_at:
             parts.append(f"更新 {breadth.updated_at}")
+        self._breadth_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         self._breadth_label.setText("  ·  ".join(parts))

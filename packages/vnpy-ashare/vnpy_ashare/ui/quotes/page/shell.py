@@ -8,7 +8,6 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.data.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.provider import is_gateway_quote_active
-from vnpy_ashare.quotes.rank_catalog import list_rank_definitions
 from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel, create_daily_chart
@@ -315,9 +314,14 @@ class QuotesPageShell:
         toolbar.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget()
-        toolbar_host.setObjectName("QuotesToolbarHost")
+        if page.page_name == "市场":
+            toolbar_host.setObjectName("MarketToolbar")
+            toolbar_margins = (12, 8, 12, 8)
+        else:
+            toolbar_host.setObjectName("QuotesToolbarHost")
+            toolbar_margins = (8, 8, 8, 4)
         toolbar_host_layout = QtWidgets.QVBoxLayout(toolbar_host)
-        toolbar_host_layout.setContentsMargins(8, 8, 8, 4)
+        toolbar_host_layout.setContentsMargins(*toolbar_margins)
         toolbar_host_layout.setSpacing(0)
         toolbar_host_layout.addLayout(toolbar)
 
@@ -530,29 +534,43 @@ class QuotesPageShell:
         else:
             # 市场页：单栏全宽布局
             center_widget = QtWidgets.QWidget()
+            center_widget.setObjectName("MarketContent")
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
+            center_layout.setSpacing(0)
             center_layout.addWidget(toolbar_host)
-            if page.stats_label is not None:
+            if page.stats_label is not None and page.stats_label.isVisible():
                 center_layout.addWidget(page.stats_label)
             page._market_table_host = MarketTableHost(page.market_table)
             center_layout.addWidget(page._market_table_host, stretch=1)
 
             main_content = center_widget
             if page.config.show_rank_sidebar:
-                page.rank_list = QtWidgets.QListWidget(page)
-                page.rank_list.setObjectName("RankSidebar")
-                page.rank_list.setFixedWidth(108)
-                for spec in list_rank_definitions():
-                    page.rank_list.addItem(spec.title)
+                from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
+                    MarketRankSidebar,
+                    sync_rank_splitter_for_expansion,
+                )
+
+                page.rank_sidebar = MarketRankSidebar(page)
+                page.rank_list = page.rank_sidebar.rank_list
                 page.rank_list.currentRowChanged.connect(page._on_rank_type_changed)
                 rank_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-                rank_splitter.addWidget(page.rank_list)
+                rank_splitter.setObjectName("MarketRankSplitter")
+                rank_splitter.addWidget(page.rank_sidebar)
                 rank_splitter.addWidget(center_widget)
                 rank_splitter.setStretchFactor(0, 0)
                 rank_splitter.setStretchFactor(1, 1)
+                rank_splitter.setHandleWidth(1)
+                page._rank_splitter = rank_splitter
+                page.rank_sidebar.expansion_changed.connect(
+                    lambda expanded: sync_rank_splitter_for_expansion(page, expanded)
+                )
                 main_content = rank_splitter
                 page._init_rank_sidebar_selection()
+                QtCore.QTimer.singleShot(
+                    0,
+                    lambda: sync_rank_splitter_for_expansion(page, page.rank_sidebar.is_expanded()),
+                )
 
             splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
             splitter.addWidget(main_content)

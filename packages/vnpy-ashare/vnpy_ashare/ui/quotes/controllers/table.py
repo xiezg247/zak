@@ -71,33 +71,28 @@ class TableController:
         return self._p.market_table
 
     def _signal_column_keys(self) -> frozenset[str]:
-        if self._p.config.show_watchlist_signals:
-            return SIGNAL_COLUMN_KEYS
-        return frozenset()
+        return SIGNAL_COLUMN_KEYS
 
     def _strip_signal_columns(self, keys: list[str]) -> list[str]:
         blocked = self._signal_column_keys()
-        if not blocked:
-            return keys
         return [key for key in keys if key not in blocked]
 
-    def init_columns(self) -> None:
+    def _default_main_columns(self) -> list[str]:
         page = self._p
-        if page.config.column_configurable:
-            all_keys = [c.key for c in QUOTE_TABLE_COLUMNS]
-            if page.page_name == "自选":
-                default_main = [k for k in DEFAULT_WATCHLIST_COLUMNS if k in all_keys]
-            else:
-                default_main = [k for k in MARKET_VISIBLE_COLUMNS if k in all_keys]
-            default_main = self._strip_signal_columns(default_main)
-            for required in ("index", "symbol", "name"):
-                if required in all_keys and required not in default_main:
-                    default_main.insert(0, required)
-            self.visible_columns = default_main
-            self.visible_tail_columns = self._default_tail_columns()
+        all_keys = [c.key for c in QUOTE_TABLE_COLUMNS]
+        if page.page_name == "自选":
+            default_main = [k for k in DEFAULT_WATCHLIST_COLUMNS if k in all_keys]
         else:
-            self.visible_columns = [c.key for c in QUOTE_TABLE_COLUMNS]
-            self.visible_tail_columns = self._default_tail_columns()
+            default_main = [k for k in MARKET_VISIBLE_COLUMNS if k in all_keys]
+        default_main = self._strip_signal_columns(default_main)
+        for required in ("index", "symbol", "name"):
+            if required in all_keys and required not in default_main:
+                default_main.insert(0, required)
+        return default_main
+
+    def init_columns(self) -> None:
+        self.visible_columns = self._default_main_columns()
+        self.visible_tail_columns = self._default_tail_columns()
         self.restore_column_config()
 
     def _default_tail_columns(self) -> list[str]:
@@ -108,7 +103,7 @@ class TableController:
             return ["start", "end", "count", "status"]
         if page.config.show_local_column:
             return ["local"]
-        return ["local"]
+        return []
 
     def build_visible_headers(self) -> list[str]:
         col_map = {c.key: c.header for c in QUOTE_TABLE_COLUMNS}
@@ -509,7 +504,55 @@ class TableController:
             item = self.stock_at_row(row)
             if item and (item.symbol, item.exchange) == key:
                 view.selectRow(row)
+                view.scrollTo(view.model().index(row, 0), QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible)
                 return
+
+    def focus_market_symbol(self, vt_symbol: str) -> bool:
+        """清除筛选并翻页定位到主表中的标的。"""
+        from vnpy_ashare.domain.symbols import parse_stock_symbol
+
+        page = self._p
+        if not page.config.use_market_rank or not page.config.market_full_list:
+            return False
+        item = parse_stock_symbol(vt_symbol)
+        if item is None:
+            return False
+        target_key = (item.symbol, item.exchange)
+
+        page.search_edit.blockSignals(True)
+        page.search_edit.clear()
+        page.search_edit.blockSignals(False)
+        if page.config.show_board_filter and page._market_board is not None:
+            page.board_combo.blockSignals(True)
+            page.board_combo.setCurrentIndex(0)
+            page.board_combo.blockSignals(False)
+            page._market_board = None
+            page._market_board_base = None
+            page._market_board_base_key = None
+
+        page._market_industry_filter = None
+        listener = page._market_industry_filter_listener
+        if listener is not None:
+            listener(None)
+
+        if not page._market_catalog:
+            return False
+
+        page._market_filter_keyword = ""
+        sorted_items = self._sort_market_items(list(page._market_catalog))
+        index = next(
+            (idx for idx, stock in enumerate(sorted_items) if (stock.symbol, stock.exchange) == target_key),
+            None,
+        )
+        if index is None:
+            return False
+
+        page._market_matched = sorted_items
+        page_size = max(page.config.market_page_size, 1)
+        page._market_page = index // page_size
+        self.apply_market_display()
+        self.select_stock_key(target_key)
+        return self._view().currentIndex().row() >= 0
 
     def render_table(self, *, preserve_selection: bool = True) -> None:
         page = self._p

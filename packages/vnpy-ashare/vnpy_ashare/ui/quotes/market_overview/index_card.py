@@ -32,7 +32,7 @@ class IndexCardWidget(QtWidgets.QFrame):
         self.setToolTip("双击查看指数详情")
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(2)
 
         self._name_label = QtWidgets.QLabel(label)

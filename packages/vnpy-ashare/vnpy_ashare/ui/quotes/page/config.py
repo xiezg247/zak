@@ -266,7 +266,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         search_max_width=320,
         show_sync_button=True,
         show_download_button=True,
-        show_local_column=True,
+        show_local_column=False,
         require_keyword=False,
         show_add_watchlist_button=True,
         use_market_rank=True,
@@ -282,6 +282,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_kline=False,
         show_board_filter=True,
         hide_quote_header=True,
+        show_rank_sidebar=True,
     ),
     "雷达": PageConfig(
         title="雷达",

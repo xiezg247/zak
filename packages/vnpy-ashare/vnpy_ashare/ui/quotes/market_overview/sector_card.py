@@ -22,13 +22,14 @@ class SectorCardWidget(QtWidgets.QFrame):
     ) -> None:
         super().__init__(parent)
         self._item = item
+        self._selected = False
         self.setObjectName("SectorCard")
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self.setToolTip(f"{item.industry}：{item.count} 只，平均涨幅 {item.avg_change_pct:+.2f}%（双击筛选）")
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(2)
 
         self._name_label = QtWidgets.QLabel(item.industry)
@@ -44,6 +45,7 @@ class SectorCardWidget(QtWidgets.QFrame):
         layout.addWidget(self._count_label)
 
         self._apply_colors()
+        self._apply_frame_style()
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:  # noqa: N802
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
@@ -62,3 +64,16 @@ class SectorCardWidget(QtWidgets.QFrame):
         self._count_label.setText(f"{item.count} 只")
         self.setToolTip(f"{item.industry}：{item.count} 只，平均涨幅 {item.avg_change_pct:+.2f}%（双击筛选）")
         self._apply_colors()
+
+    def set_selected(self, selected: bool) -> None:
+        self._selected = selected
+        self._apply_frame_style()
+
+    def _apply_frame_style(self) -> None:
+        tokens = theme_manager().tokens()
+        border = tokens.accent if self._selected else tokens.panel_border
+        width = 2 if self._selected else 1
+        self.setStyleSheet(
+            f"QFrame#SectorCard {{ background-color: {tokens.panel_bg}; "
+            f"border: {width}px solid {border}; border-radius: 6px; min-width: 96px; }}"
+        )

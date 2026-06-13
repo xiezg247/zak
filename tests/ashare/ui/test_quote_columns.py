@@ -107,6 +107,7 @@ class TestQuoteRefreshHint(unittest.TestCase):
         self.assertEqual(PAGE_CONFIGS["市场"].quote_source, "market")
         self.assertTrue(PAGE_CONFIGS["市场"].market_full_list)
         self.assertTrue(PAGE_CONFIGS["市场"].auto_refresh_quotes)
+        self.assertTrue(PAGE_CONFIGS["市场"].show_rank_sidebar)
         self.assertEqual(PAGE_CONFIGS["市场"].market_live_display_limit, 100)
         self.assertEqual(PAGE_CONFIGS["自选"].quote_source, "watchlist")
         radar = PAGE_CONFIGS["雷达"]
@@ -146,6 +147,26 @@ class TestRadarRefreshPref(unittest.TestCase):
             radar_refresh_hint(auto_refresh=True, refresh_ms=30_000),
             "雷达每 30 秒自动刷新",
         )
+
+
+class TestMarketRankSidebarPref(unittest.TestCase):
+    def test_rank_sidebar_expanded_pref(self) -> None:
+        from vnpy.trader.ui import QtCore
+
+        from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
+            RANK_SIDEBAR_EXPANDED_KEY,
+            load_rank_sidebar_expanded,
+            rank_sidebar_collapse_arrow,
+            save_rank_sidebar_expanded,
+        )
+
+        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings.remove(RANK_SIDEBAR_EXPANDED_KEY)
+        self.assertTrue(load_rank_sidebar_expanded())
+        save_rank_sidebar_expanded(False)
+        self.assertFalse(load_rank_sidebar_expanded())
+        self.assertEqual(rank_sidebar_collapse_arrow(True), QtCore.Qt.ArrowType.LeftArrow)
+        self.assertEqual(rank_sidebar_collapse_arrow(False), QtCore.Qt.ArrowType.RightArrow)
 
 
 class TestQuoteSourceLabel(unittest.TestCase):
