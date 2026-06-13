@@ -35,7 +35,8 @@ RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
     RadarCardSpec("discovery_moneyflow_intraday", "发现·资金异动", "discovery"),
     RadarCardSpec("watchlist_intraday", "自选·异动", "watchlist"),
     RadarCardSpec("sector_theme", "板块·主线", "sector", has_task_variants=True),
-    RadarCardSpec("outlook_horizon", "未来·展望", "outlook", has_task_variants=True),
+    RadarCardSpec("outlook_watch", "未来·关注", "outlook"),
+    RadarCardSpec("outlook_hold", "未来·可持", "outlook"),
 )
 
 SCREEN_TASK_VARIANTS: tuple[RadarVariant, ...] = (
@@ -49,19 +50,12 @@ SECTOR_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant("breadth", "广度扩散"),
 )
 
-OUTLOOK_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("watch_next", "未来关注"),
-    RadarVariant("hold_next", "可持仓"),
-)
-
 DEFAULT_SCREEN_TASK_VARIANT = "scheduled_post_close"
 DEFAULT_SECTOR_VARIANT = "leaders"
-DEFAULT_OUTLOOK_VARIANT = "watch_next"
 
 CARD_VARIANTS: dict[str, tuple[RadarVariant, ...]] = {
     "screen_task": SCREEN_TASK_VARIANTS,
     "sector_theme": SECTOR_VARIANTS,
-    "outlook_horizon": OUTLOOK_VARIANTS,
 }
 
 RADAR_CARD_BY_ID: dict[str, RadarCardSpec] = {spec.id: spec for spec in RADAR_CARD_SPECS}
@@ -79,6 +73,5 @@ def default_variant_for_card(card_id: str) -> str:
     defaults = {
         "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
         "sector_theme": DEFAULT_SECTOR_VARIANT,
-        "outlook_horizon": DEFAULT_OUTLOOK_VARIANT,
     }
     return defaults.get(card_id, "")

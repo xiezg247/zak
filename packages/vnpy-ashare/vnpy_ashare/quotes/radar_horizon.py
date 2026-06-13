@@ -24,6 +24,11 @@ from vnpy_ashare.quotes.radar_signals import build_signal_snapshot
 from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 from vnpy_ashare.storage.repositories.positions import load_position_rows
 
+OUTLOOK_CARD_VARIANTS: dict[str, str] = {
+    "outlook_watch": "watch_next",
+    "outlook_hold": "hold_next",
+}
+
 
 def _position_vt_set() -> set[str]:
     result: set[str] = set()
@@ -161,7 +166,8 @@ def build_outlook_digest(rows: tuple[RadarRow, ...], *, variant: str) -> str:
     return "摘要：" + " · ".join(parts)
 
 
-def load_outlook_horizon(spec: RadarCardSpec, *, variant: str = "watch_next") -> RadarCardData:
+def load_outlook_horizon(spec: RadarCardSpec, *, variant: str | None = None) -> RadarCardData:
+    resolved_variant = variant or OUTLOOK_CARD_VARIANTS.get(spec.id, "watch_next")
     candidates = collect_horizon_candidates()
     if not candidates:
         return RadarCardData(
@@ -188,21 +194,19 @@ def load_outlook_horizon(spec: RadarCardSpec, *, variant: str = "watch_next") ->
             continue
         in_position = vt_symbol in positions
         last_price = _last_price(vt_symbol, snapshot)
-        if variant == "hold_next":
+        if resolved_variant == "hold_next":
             if _matches_hold(snapshot, last_price=last_price, in_position=in_position):
                 snapshots.append((snapshot, in_position))
         elif _matches_watch(snapshot, last_price=last_price):
             snapshots.append((snapshot, in_position))
 
-    if variant == "hold_next":
+    if resolved_variant == "hold_next":
         snapshots.sort(key=lambda item: _hold_sort_key(item[0], in_position=item[1]))
-        label = "可持仓"
     else:
         snapshots.sort(key=lambda item: _watch_sort_key(item[0]), reverse=True)
-        label = "未来关注"
 
     rows = tuple(_snapshot_row(item[0], name_map=name_map, in_position=item[1]) for item in snapshots[: spec.top_n])
-    subtitle = f"{label} · 约 {SIGNAL_RECENT_DAYS} 日窗口 · 策略 {config.class_name} · 非价格预测"
+    subtitle = f"约 {SIGNAL_RECENT_DAYS} 日窗口 · 策略 {config.class_name} · 非价格预测"
 
     if not rows and kline_missing >= len(candidates) // 2:
         return RadarCardData(
@@ -221,7 +225,7 @@ def load_outlook_horizon(spec: RadarCardSpec, *, variant: str = "watch_next") ->
             title=spec.title,
             subtitle=subtitle,
             rows=(),
-            empty_message=f"当前无符合「{label}」条件的标的（已扫描 {len(candidates)} 只）。",
+            empty_message=f"当前无符合「{spec.title}」条件的标的（已扫描 {len(candidates)} 只）。",
             updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
             total_count=len(candidates),
         )
@@ -236,18 +240,19 @@ def load_outlook_horizon(spec: RadarCardSpec, *, variant: str = "watch_next") ->
         total_count=len(rows),
         ai_hint=resolve_ai_hint(
             spec.id,
-            variant=variant,
+            variant="",
             fingerprint=rows_fingerprint(rows),
-            digest=build_outlook_digest(rows, variant=variant),
+            digest=build_outlook_digest(rows, variant=resolved_variant),
         ),
     )
 
 
-def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, variant: str) -> str:
+def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, card_id: str) -> str:
     """生成未来展望卡 AI 解读预填文案。"""
-    data = payload.get("outlook_horizon")
+    data = payload.get(card_id)
     if data is None or not data.rows:
         return ""
+    variant = OUTLOOK_CARD_VARIANTS.get(card_id, "watch_next")
     mode = "未来几日关注" if variant == "watch_next" else "未来几日可持仓"
     lines = [
         f"请基于以下雷达「{mode}」快照，给出关注理由与风险提示：",

@@ -7,7 +7,6 @@ from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
-    DEFAULT_OUTLOOK_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
@@ -369,7 +368,6 @@ def load_radar_card(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
-    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
 ) -> RadarCardData:
     """加载单张雷达卡片。"""
     spec = RADAR_CARD_BY_ID.get(card_id)
@@ -388,10 +386,10 @@ def load_radar_card(
         return load_watchlist_intraday(spec)
     if spec.id == "sector_theme":
         return load_sector_theme(spec, variant=sector_variant)
-    if spec.id == "outlook_horizon":
+    if spec.id in ("outlook_watch", "outlook_hold"):
         from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
 
-        return load_outlook_horizon(spec, variant=outlook_variant)
+        return load_outlook_horizon(spec)
     msg = f"未实现的雷达卡片加载器：{card_id}"
     raise ValueError(msg)
 
@@ -400,7 +398,6 @@ def load_radar_board(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
-    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
 ) -> dict[str, RadarCardData]:
     """加载全部雷达卡片。"""
     return {
@@ -408,7 +405,6 @@ def load_radar_board(
             spec.id,
             screen_task_variant=screen_task_variant,
             sector_variant=sector_variant,
-            outlook_variant=outlook_variant,
         )
         for spec in RADAR_CARD_SPECS
     }
@@ -513,7 +509,6 @@ def build_radar_card_ai_prompt(
     data: RadarCardData,
     *,
     resonance_counts: dict[str, int] | None = None,
-    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
 ) -> str:
     """生成单张雷达卡的 AI 解读预填文案。"""
     if not data.rows and not data.empty_message:
@@ -539,10 +534,10 @@ def build_radar_card_ai_prompt(
         lines[0] = "请解读雷达「自选·异动」：关注自选池内波动与信号跃迁。"
     elif card_id == "sector_theme":
         lines[0] = "请解读雷达「板块·主线」：归纳今日行业轮动与龙头特征。"
-    elif card_id == "outlook_horizon":
+    elif card_id in ("outlook_watch", "outlook_hold"):
         from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
 
-        single = build_outlook_ai_prompt({"outlook_horizon": data}, variant=outlook_variant)
+        single = build_outlook_ai_prompt({card_id: data}, card_id=card_id)
         return single or "\n".join(lines).strip()
 
     for row in data.rows:
@@ -553,15 +548,13 @@ def build_radar_card_ai_prompt(
 
 def build_radar_ai_prompt(
     payload: dict[str, RadarCardData],
-    *,
-    outlook_variant: str = DEFAULT_OUTLOOK_VARIANT,
 ) -> str:
     """生成雷达页 AI 洞察预填文案。"""
     lines = [
         "请基于以下雷达页快照，给出今日 A 股洞察摘要：",
         "1. 市场主线与热点方向（参考板块·主线卡）",
         "2. 选股结果与发现/自选异动的交集（共振标的优先）",
-        "3. 未来展望卡仅基于策略信号窗口（约 5 日），非价格预测",
+        "3. 未来关注/可持卡仅基于策略信号窗口（约 5 日），非价格预测",
         "4. 建议重点关注的 3～5 只标的及理由",
         "5. 不要编造未出现在数据中的价格或指标",
         "",
@@ -590,8 +583,9 @@ def build_radar_ai_prompt(
         lines.append("")
     from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
 
-    outlook_prompt = build_outlook_ai_prompt(payload, variant=outlook_variant)
-    if outlook_prompt:
-        lines.append("---")
-        lines.append(outlook_prompt)
+    for outlook_card_id in ("outlook_watch", "outlook_hold"):
+        outlook_prompt = build_outlook_ai_prompt(payload, card_id=outlook_card_id)
+        if outlook_prompt:
+            lines.append("---")
+            lines.append(outlook_prompt)
     return "\n".join(lines).strip()

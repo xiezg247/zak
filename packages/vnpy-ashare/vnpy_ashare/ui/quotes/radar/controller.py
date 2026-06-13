@@ -12,7 +12,6 @@ from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
-    DEFAULT_OUTLOOK_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     list_radar_cards,
@@ -51,15 +50,12 @@ class RadarController(QtCore.QObject):
         self._retired_workers: list[QtCore.QThread] = []
         self._screen_task_variant = DEFAULT_SCREEN_TASK_VARIANT
         self._sector_variant = DEFAULT_SECTOR_VARIANT
-        self._outlook_variant = DEFAULT_OUTLOOK_VARIANT
         self._card_variants: dict[str, str] = {
             "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
             "sector_theme": DEFAULT_SECTOR_VARIANT,
-            "outlook_horizon": DEFAULT_OUTLOOK_VARIANT,
         }
         self._last_payload: dict[str, RadarCardData] = {}
         self._refresh_timer = QtCore.QTimer(self)
-        self._refresh_timer.setInterval(page.config.quote_refresh_ms)
         self._refresh_timer.timeout.connect(self.refresh)
 
         board.variant_changed.connect(self._on_variant_changed)
@@ -83,12 +79,23 @@ class RadarController(QtCore.QObject):
 
     def activate(self) -> None:
         self.refresh()
-        if self._page.config.auto_refresh_quotes:
-            self._refresh_timer.start()
+        self.start_auto_refresh()
 
     def deactivate(self) -> None:
-        self._refresh_timer.stop()
+        self.stop_auto_refresh()
         self._cancel_all_workers()
+
+    def start_auto_refresh(self) -> None:
+        if not self._page.radar_auto_refresh_enabled():
+            self.stop_auto_refresh()
+            return
+        self._refresh_timer.setInterval(self._page.radar_refresh_interval_ms())
+        self._refresh_timer.start()
+        self._page._update_refresh_hint_label()
+
+    def stop_auto_refresh(self) -> None:
+        self._refresh_timer.stop()
+        self._page._update_refresh_hint_label()
 
     def refresh(self) -> None:
         """并行刷新全部卡片。"""
@@ -103,7 +110,6 @@ class RadarController(QtCore.QObject):
             card_id=card_id,
             screen_task_variant=self._card_variants.get("screen_task", DEFAULT_SCREEN_TASK_VARIANT),
             sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
-            outlook_variant=self._card_variants.get("outlook_horizon", DEFAULT_OUTLOOK_VARIANT),
             parent=self._page,
         )
         self._card_workers[card_id] = worker
@@ -124,7 +130,7 @@ class RadarController(QtCore.QObject):
         if self._page.event_engine is None:
             page_notify(self._page, "AI 服务未就绪", level="warning")
             return
-        prompt = build_radar_ai_prompt(self._last_payload, outlook_variant=self._outlook_variant)
+        prompt = build_radar_ai_prompt(self._last_payload)
         self._page.event_engine.put(
             Event(
                 EVENT_ASK_AI,
@@ -147,7 +153,6 @@ class RadarController(QtCore.QObject):
             card_id,
             data,
             resonance_counts=resonance,
-            outlook_variant=self._outlook_variant,
         )
         if not prompt:
             page_notify(self._page, "该卡片暂无可解读内容", level="warning")
@@ -259,8 +264,6 @@ class RadarController(QtCore.QObject):
             self._screen_task_variant = variant_key
         elif card_id == "sector_theme":
             self._sector_variant = variant_key
-        elif card_id == "outlook_horizon":
-            self._outlook_variant = variant_key
         self.refresh_card(card_id)
 
     def _on_row_activated(self, vt_symbol: str) -> None:

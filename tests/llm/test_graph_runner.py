@@ -228,3 +228,10 @@ def test_resolve_agent_tools_empty_route_yields_empty():
         mcp_tool_names=frozenset(),
     )
     assert resolved == []
+
+
+def test_recursion_limit_above_langgraph_default_floor():
+    from vnpy_llm.graph.runner import DEFAULT_MAX_TOOL_ROUNDS, _recursion_limit_for_rounds
+
+    assert _recursion_limit_for_rounds(DEFAULT_MAX_TOOL_ROUNDS) >= 25
+    assert _recursion_limit_for_rounds(5) > 12

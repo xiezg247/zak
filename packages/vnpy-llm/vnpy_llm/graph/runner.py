@@ -39,6 +39,15 @@ from vnpy_llm.graph.tool_utils import openai_tool_name
 from vnpy_llm.graph.workflow import build_agent_graph
 from vnpy_llm.routing.intent import IntentAnalysis
 
+# LangGraph 默认 recursion_limit=25；旧公式 max_rounds*2+2 在 5 轮时仅 12，复杂 ReAct 易触顶
+DEFAULT_MAX_TOOL_ROUNDS = 5
+MIN_GRAPH_RECURSION_LIMIT = 25
+
+
+def _recursion_limit_for_rounds(max_rounds: int) -> int:
+    """按 tool 轮次估算 super-step 上限（每轮 model+tools 约 2–3 步）。"""
+    return max(max_rounds * 4 + 8, MIN_GRAPH_RECURSION_LIMIT)
+
 
 def _conversation_dicts(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """去掉 system；LangGraph 每段 Agent 单独注入 system prompt。"""
@@ -117,8 +126,7 @@ def _stream_agent(
 
     lc_messages = dict_messages_to_langchain(messages)
     graph = build_agent_graph(config, tools, tool_executor)
-    # 每轮 tool call 占 2 步（model + tools），留足 recursion 余量
-    run_config = {"recursion_limit": max(max_rounds * 2 + 2, 10)}
+    run_config = {"recursion_limit": _recursion_limit_for_rounds(max_rounds)}
 
     for item in graph.stream(
         {"messages": lc_messages},
@@ -197,7 +205,7 @@ def stream_with_tools(
     tools: list[dict[str, Any]],
     tool_executor: Callable[[str, dict[str, Any]], str],
     *,
-    max_rounds: int = 5,
+    max_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     should_cancel: Callable[[], bool] | None = None,
     graph_ctx: GraphStreamContext,
     all_tools: list[dict[str, Any]] | None = None,

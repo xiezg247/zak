@@ -19,14 +19,12 @@ class RadarCardLoadWorker(QtCore.QThread):
         card_id: str,
         screen_task_variant: str,
         sector_variant: str,
-        outlook_variant: str,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._card_id = card_id
         self._screen_task_variant = screen_task_variant
         self._sector_variant = sector_variant
-        self._outlook_variant = outlook_variant
         self._cancelled = False
 
     @property
@@ -44,7 +42,6 @@ class RadarCardLoadWorker(QtCore.QThread):
                 self._card_id,
                 screen_task_variant=self._screen_task_variant,
                 sector_variant=self._sector_variant,
-                outlook_variant=self._outlook_variant,
             )
         except Exception as ex:
             self.failed.emit(self._card_id, str(ex))
@@ -65,13 +62,11 @@ class RadarBoardLoadWorker(QtCore.QThread):
         *,
         screen_task_variant: str,
         sector_variant: str,
-        outlook_variant: str,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._screen_task_variant = screen_task_variant
         self._sector_variant = sector_variant
-        self._outlook_variant = outlook_variant
         self._cancelled = False
 
     def request_cancel(self) -> None:
@@ -84,7 +79,6 @@ class RadarBoardLoadWorker(QtCore.QThread):
             payload = load_radar_board(
                 screen_task_variant=self._screen_task_variant,
                 sector_variant=self._sector_variant,
-                outlook_variant=self._outlook_variant,
             )
         except Exception as ex:
             self.failed.emit(str(ex))

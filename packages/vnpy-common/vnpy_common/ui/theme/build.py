@@ -350,7 +350,9 @@ QWidget#NavGroupSpacer {{
     margin: 2px 0;
 }}
 QTableWidget#MarketTable,
-QTableView#MarketTable {{
+QTableView#MarketTable,
+QTableWidget#ScreenerResultsTable,
+QTableView#ScreenerResultsTable {{
     background-color: {t.table_bg};
     gridline-color: {t.table_grid};
     border: none;

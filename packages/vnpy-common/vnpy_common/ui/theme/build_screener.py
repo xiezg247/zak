@@ -91,25 +91,41 @@ QProgressBar#PageTaskProgress::chunk {{
     border-radius: 2px;
 }}
 QTableWidget#MarketTable::item,
-QTableView#MarketTable::item {{
-    padding: 5px 4px;
+QTableView#MarketTable::item,
+QTableWidget#ScreenerResultsTable::item,
+QTableView#ScreenerResultsTable::item {{
+    padding: 6px 8px;
+}}
+QTableWidget#ScreenerResultsTable QHeaderView::section,
+QTableView#ScreenerResultsTable QHeaderView::section {{
+    padding: 7px 8px;
+    border-bottom: 1px solid {t.header_border};
+    font-weight: 600;
 }}
 QTableWidget#MarketTable::item:selected,
-QTableView#MarketTable::item:selected {{
+QTableView#MarketTable::item:selected,
+QTableWidget#ScreenerResultsTable::item:selected,
+QTableView#ScreenerResultsTable::item:selected {{
     background-color: {t.table_selected};
     color: {t.text_primary};
 }}
 QTableWidget#MarketTable::item:alternate:selected,
-QTableView#MarketTable::item:alternate:selected {{
+QTableView#MarketTable::item:alternate:selected,
+QTableWidget#ScreenerResultsTable::item:alternate:selected,
+QTableView#ScreenerResultsTable::item:alternate:selected {{
     background-color: {t.table_selected};
     color: {t.text_primary};
 }}
 QTableWidget#MarketTable::item:hover,
-QTableView#MarketTable::item:hover {{
+QTableView#MarketTable::item:hover,
+QTableWidget#ScreenerResultsTable::item:hover,
+QTableView#ScreenerResultsTable::item:hover {{
     background-color: {t.table_hover};
 }}
 QTableWidget#MarketTable::item:alternate,
-QTableView#MarketTable::item:alternate {{
+QTableView#MarketTable::item:alternate,
+QTableWidget#ScreenerResultsTable::item:alternate,
+QTableView#ScreenerResultsTable::item:alternate {{
     background-color: {t.table_alt};
 }}
 QPushButton#PrimaryRunButton {{

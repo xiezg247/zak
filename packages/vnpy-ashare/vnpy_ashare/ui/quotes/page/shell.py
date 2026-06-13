@@ -592,21 +592,39 @@ class QuotesPageShell:
         root.addWidget(page._toast)
 
     def _build_radar_layout(self, page: QuotesPage) -> None:
+        from vnpy_ashare.ui.quotes.page.config import (
+            RADAR_REFRESH_INTERVAL_OPTIONS,
+            load_radar_auto_refresh_pref,
+            load_radar_refresh_interval_ms,
+        )
         from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
 
         page.refresh_radar_button = QtWidgets.QPushButton("刷新雷达", page)
         page.radar_ai_button = QtWidgets.QPushButton("AI 洞察", page)
 
         page.market_auto_refresh_checkbox = QtWidgets.QCheckBox("自动刷新", page)
-        page._market_auto_refresh = load_market_auto_refresh_pref()
+        page._radar_auto_refresh = load_radar_auto_refresh_pref()
+        page._radar_refresh_interval_ms = load_radar_refresh_interval_ms()
         page.market_auto_refresh_checkbox.blockSignals(True)
-        page.market_auto_refresh_checkbox.setChecked(page._market_auto_refresh)
+        page.market_auto_refresh_checkbox.setChecked(page._radar_auto_refresh)
         page.market_auto_refresh_checkbox.blockSignals(False)
         page.market_auto_refresh_checkbox.toggled.connect(page._on_market_auto_refresh_toggled)
+
+        page.radar_refresh_interval_combo = QtWidgets.QComboBox(page)
+        page.radar_refresh_interval_combo.setObjectName("ToolbarCombo")
+        saved_interval = page._radar_refresh_interval_ms
+        for interval_ms, label in RADAR_REFRESH_INTERVAL_OPTIONS:
+            page.radar_refresh_interval_combo.addItem(label, interval_ms)
+        saved_index = page.radar_refresh_interval_combo.findData(saved_interval)
+        if saved_index >= 0:
+            page.radar_refresh_interval_combo.setCurrentIndex(saved_index)
+        page.radar_refresh_interval_combo.currentIndexChanged.connect(page._on_radar_refresh_interval_changed)
+        page.radar_refresh_interval_combo.setEnabled(page._radar_auto_refresh)
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(page.market_auto_refresh_checkbox)
+        toolbar.addWidget(page.radar_refresh_interval_combo)
         toolbar.addWidget(page.refresh_radar_button)
         toolbar.addWidget(page.radar_ai_button)
         toolbar.addStretch(1)

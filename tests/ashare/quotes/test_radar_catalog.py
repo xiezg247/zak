@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.radar_catalog import (
 
 def test_radar_cards_count_and_categories() -> None:
     cards = list_radar_cards()
-    assert len(cards) == 7
+    assert len(cards) == 8
     categories = {card.category for card in cards}
     assert categories == {"screen", "discovery", "watchlist", "sector", "outlook"}
     assert RADAR_GRID_COLUMNS == 3
@@ -30,5 +30,6 @@ def test_screen_task_variants_defined() -> None:
 
 def test_card_variants_registry() -> None:
     assert variants_for_card("sector_theme") == CARD_VARIANTS["sector_theme"]
-    assert variants_for_card("outlook_horizon") == CARD_VARIANTS["outlook_horizon"]
+    assert variants_for_card("outlook_watch") == ()
+    assert variants_for_card("outlook_hold") == ()
     assert variants_for_card("watchlist_intraday") == ()

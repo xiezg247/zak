@@ -240,7 +240,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         result_body_layout.addWidget(self._empty_result_label, stretch=1)
 
         self.result_table = QtWidgets.QTableWidget(0, 0)
-        self.result_table.setObjectName("MarketTable")
         configure_screener_results_table(self.result_table)
         wire_screener_results_table(self.result_table, select_all_btn=self.select_all_btn)
         from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, wire_stock_analysis_context_menu

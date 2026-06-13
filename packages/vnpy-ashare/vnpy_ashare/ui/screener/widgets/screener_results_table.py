@@ -10,23 +10,113 @@ from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
+_SORT_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
+
+_DISPLAY_HIDDEN_KEYS = frozenset({"vt_symbol", "source"})
+_LEFT_ALIGN_KEYS = frozenset({"name", "hit_reason", "industry"})
+_CENTER_ALIGN_KEYS = frozenset({"symbol", "diff_status"})
+_PERCENT_KEYS = frozenset({"change_pct", "turnover_rate", "momentum_5d"})
+_SIGNED_PERCENT_KEYS = frozenset({"change_pct", "momentum_5d"})
+_NUMERIC_SORT_KEYS = frozenset(
+    {
+        "change_pct",
+        "momentum_5d",
+        "turnover_rate",
+        "last_price",
+        "close",
+        "pe_ttm",
+        "pb",
+        "total_mv",
+        "circ_mv",
+        "net_mf_amount",
+        "volume",
+        "volume_ratio",
+        "composite_score",
+        "similarity_score",
+        "buy_elg_amount",
+        "sell_elg_amount",
+    }
+)
 
 
 def configure_screener_results_table(table: QtWidgets.QTableWidget) -> None:
-    """选股结果表通用配置：勾选列 + 行选中高亮（与自选页 MarketTable 一致）。"""
+    """选股结果表通用配置：勾选列 + 排序 + 行高。"""
+    table.setObjectName("ScreenerResultsTable")
     table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
     table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
     table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
     table.verticalHeader().setVisible(False)
-    table.verticalHeader().setFixedWidth(0)
+    table.verticalHeader().setDefaultSectionSize(34)
     table.setAlternatingRowColors(True)
+    table.setSortingEnabled(True)
+    header = table.horizontalHeader()
+    if hasattr(header, "setStretchHighlightSections"):
+        header.setStretchHighlightSections(False)
+
+
+def _display_columns(columns: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    return [(key, label) for key, label in columns if key not in _DISPLAY_HIDDEN_KEYS]
+
+
+def _format_cell_text(key: str, value: Any) -> str:
+    if value is None or value == "":
+        return "—"
+    if isinstance(value, float):
+        if key in _SIGNED_PERCENT_KEYS:
+            return f"{value:+.2f}%"
+        if key in _PERCENT_KEYS:
+            return f"{value:.2f}%"
+        if key == "similarity_score":
+            return f"{value:.1f}"
+        if key == "composite_score":
+            return f"{value:.1f}"
+        if key in ("last_price", "close", "pb", "pe_ttm"):
+            return f"{value:.2f}"
+        if key in ("total_mv", "circ_mv", "net_mf_amount", "volume", "buy_elg_amount", "sell_elg_amount"):
+            return f"{value:,.0f}"
+        return f"{value:.2f}"
+    text = str(value).strip()
+    return text or "—"
+
+
+def _cell_alignment(key: str) -> QtCore.Qt.AlignmentFlag:
+    if key in _LEFT_ALIGN_KEYS:
+        return QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+    if key in _CENTER_ALIGN_KEYS:
+        return QtCore.Qt.AlignmentFlag.AlignCenter
+    return QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
+
+
+def _apply_cell_style(item: QtWidgets.QTableWidgetItem, key: str, value: Any, *, tokens) -> None:
+    text = item.text()
+    if key in _SIGNED_PERCENT_KEYS and isinstance(value, (int, float)):
+        item.setForeground(QtGui.QColor(pct_change_color(float(value), tokens)))
+        return
+    if key == "momentum_5d" and isinstance(value, (int, float)):
+        item.setForeground(QtGui.QColor(pct_change_color(float(value), tokens)))
+        return
+    if key == "net_mf_amount" and isinstance(value, (int, float)):
+        item.setForeground(QtGui.QColor(pct_change_color(float(value), tokens)))
+        return
+    if key == "diff_status":
+        if text == "新增":
+            item.setForeground(QtGui.QColor(pct_change_color(3.0, tokens)))
+        elif text in ("移除", "剔除"):
+            item.setForeground(QtGui.QColor(pct_change_color(-3.0, tokens)))
+        elif text in ("持续", "不变"):
+            item.setForeground(QtGui.QColor(tokens.text_muted))
+        return
+    if key == "composite_score" and isinstance(value, (int, float)) and float(value) >= 80:
+        item.setForeground(QtGui.QColor(tokens.accent))
 
 
 def clear_screener_results_table(table: QtWidgets.QTableWidget) -> None:
+    table.setSortingEnabled(False)
     table.setRowCount(0)
     table.setColumnCount(0)
     table.clearSelection()
     table.setCurrentItem(None)
+    table.setSortingEnabled(True)
 
 
 def apply_screener_results_view(
@@ -60,27 +150,34 @@ def populate_screener_results_table(
     rows: list[dict[str, Any]],
     columns: list[tuple[str, str]],
 ) -> None:
-    headers = ["选择"] + [label for _, label in columns]
+    display_columns = _display_columns(columns)
+    headers = ["选择", "#"] + [label for _, label in display_columns]
+    table.setSortingEnabled(False)
     table.setColumnCount(len(headers))
     table.setHorizontalHeaderLabels(headers)
     table.setRowCount(len(rows))
 
     header = table.horizontalHeader()
-    header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+    header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Fixed)
+    table.setColumnWidth(0, 36)
+    header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Fixed)
+    table.setColumnWidth(1, 40)
     reason_col = next(
-        (idx + 1 for idx, (key, _) in enumerate(columns) if key == "hit_reason"),
+        (idx + 2 for idx, (key, _) in enumerate(display_columns) if key == "hit_reason"),
         None,
     )
     name_col = next(
-        (idx + 1 for idx, (key, _) in enumerate(columns) if key == "name"),
-        2,
+        (idx + 2 for idx, (key, _) in enumerate(display_columns) if key == "name"),
+        3,
     )
     stretch_col = reason_col if reason_col is not None else name_col
     header.setSectionResizeMode(stretch_col, QtWidgets.QHeaderView.ResizeMode.Stretch)
     for col in range(len(headers)):
-        if col not in (0, stretch_col):
+        if col not in (0, 1, stretch_col):
             header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
+    tokens = theme_manager().tokens()
+    muted = QtGui.QColor(tokens.text_muted)
     for row_index, row in enumerate(rows):
         check_item = QtWidgets.QTableWidgetItem()
         check_item.setFlags(QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled)
@@ -88,35 +185,28 @@ def populate_screener_results_table(
         check_item.setData(ROW_DATA_ROLE, row)
         table.setItem(row_index, 0, check_item)
 
-        for col_index, (key, _label) in enumerate(columns, start=1):
+        rank_item = QtWidgets.QTableWidgetItem(str(row_index + 1))
+        rank_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        rank_item.setForeground(muted)
+        rank_item.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled)
+        rank_item.setData(_SORT_ROLE, row_index + 1)
+        table.setItem(row_index, 1, rank_item)
+
+        for col_index, (key, _label) in enumerate(display_columns, start=2):
             value = row.get(key, "")
-            if isinstance(value, float):
-                if key in ("change_pct", "momentum_5d"):
-                    text = f"{value:+.2f}"
-                elif key in ("similarity_score",):
-                    text = f"{value:.1f}"
-                elif key in ("last_price", "close", "pb", "pe_ttm"):
-                    text = f"{value:.2f}"
-                elif key in ("total_mv", "circ_mv", "net_mf_amount", "volume"):
-                    text = f"{value:,.0f}"
-                else:
-                    text = f"{value:.2f}"
-            else:
-                text = str(value)
+            text = _format_cell_text(key, value)
             item = QtWidgets.QTableWidgetItem(text)
-            item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-            if key == "change_pct":
-                change_pct = float(value or 0)
-                color = pct_change_color(change_pct, theme_manager().tokens())
-                item.setForeground(QtGui.QColor(color))
-            elif key == "hit_reason":
-                item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
-            elif key == "diff_status" and text == "新增":
-                item.setForeground(QtGui.QColor(pct_change_color(3.0, theme_manager().tokens())))
+            item.setTextAlignment(_cell_alignment(key))
+            if key in _NUMERIC_SORT_KEYS and isinstance(value, (int, float)):
+                item.setData(_SORT_ROLE, float(value))
+            if key in ("hit_reason", "name", "industry") and text not in ("", "—"):
+                item.setToolTip(text)
+            _apply_cell_style(item, key, value, tokens=tokens)
             table.setItem(row_index, col_index, item)
 
     table.clearSelection()
     table.setCurrentItem(None)
+    table.setSortingEnabled(True)
 
 
 def iter_checked_table_rows(table: QtWidgets.QTableWidget) -> list[dict[str, Any]]:

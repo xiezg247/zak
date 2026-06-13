@@ -47,10 +47,15 @@ from vnpy_ashare.ui.quotes.page.config import (
     MARKET_SCROLL_DEBOUNCE_MS,
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
+    load_radar_auto_refresh_pref,
+    load_radar_refresh_interval_ms,
     quote_refresh_hint,
     quote_refresh_seconds,
     quote_source_label,
+    radar_refresh_hint,
     save_market_auto_refresh_pref,
+    save_radar_auto_refresh_pref,
+    save_radar_refresh_interval_ms,
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel
@@ -161,6 +166,9 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
+        if self.config.use_radar_cards:
+            self._radar_auto_refresh = load_radar_auto_refresh_pref()
+            self._radar_refresh_interval_ms = load_radar_refresh_interval_ms()
 
         self._load_worker: QtCore.QThread | None = None
         self._market_worker: QtCore.QThread | None = None
@@ -596,9 +604,17 @@ class QuotesPage(QtWidgets.QWidget):
         self._actions.emit_ai_context()
 
     def market_auto_refresh_enabled(self) -> bool:
+        if self.config.use_radar_cards:
+            return self.radar_auto_refresh_enabled()
         if self.config.use_market_rank:
             return self._market_auto_refresh
         return self.config.auto_refresh_quotes
+
+    def radar_auto_refresh_enabled(self) -> bool:
+        return bool(getattr(self, "_radar_auto_refresh", self.config.auto_refresh_quotes))
+
+    def radar_refresh_interval_ms(self) -> int:
+        return int(getattr(self, "_radar_refresh_interval_ms", self.config.quote_refresh_ms))
 
     def market_uses_client_pagination(self) -> bool:
         return self.config.use_market_rank and self.market_auto_refresh_enabled() and self._market_catalog_loaded
@@ -633,18 +649,23 @@ class QuotesPage(QtWidgets.QWidget):
         self._update_refresh_hint_label()
 
     def _on_market_auto_refresh_toggled(self, checked: bool) -> None:
-        self._market_auto_refresh = checked
-        save_market_auto_refresh_pref(checked)
-        self._update_refresh_hint_label()
         if self.config.use_radar_cards:
+            self._radar_auto_refresh = checked
+            save_radar_auto_refresh_pref(checked)
+            self._update_refresh_hint_label()
             controller = getattr(self, "_radar_controller", None)
             if controller is None:
                 return
             if checked:
-                controller.activate()
+                controller.refresh()
+                controller.start_auto_refresh()
             else:
-                controller.deactivate()
+                controller.stop_auto_refresh()
+            self._sync_radar_refresh_interval_enabled()
             return
+        self._market_auto_refresh = checked
+        save_market_auto_refresh_pref(checked)
+        self._update_refresh_hint_label()
         self._market_page = 0
         self._market_page_cache.clear()
         self._pagination.set_visible()
@@ -663,6 +684,14 @@ class QuotesPage(QtWidgets.QWidget):
         label = getattr(self, "refresh_hint_label", None)
         if label is None:
             return
+        if self.config.use_radar_cards:
+            label.setText(
+                radar_refresh_hint(
+                    auto_refresh=self.radar_auto_refresh_enabled(),
+                    refresh_ms=self.radar_refresh_interval_ms(),
+                )
+            )
+            return
         auto_refresh = self.quote_auto_refresh_enabled()
         label.setText(
             quote_refresh_hint(
@@ -672,6 +701,29 @@ class QuotesPage(QtWidgets.QWidget):
                 paused_for_hours=self.quote_auto_refresh_paused_for_hours(),
             )
         )
+
+    def _on_radar_refresh_interval_changed(self, index: int) -> None:
+        combo = getattr(self, "radar_refresh_interval_combo", None)
+        if combo is None or index < 0:
+            return
+        value = combo.itemData(index)
+        if value is None:
+            return
+        interval_ms = int(value)
+        self._radar_refresh_interval_ms = interval_ms
+        save_radar_refresh_interval_ms(interval_ms)
+        self._update_refresh_hint_label()
+        if not self.radar_auto_refresh_enabled():
+            return
+        controller = getattr(self, "_radar_controller", None)
+        if controller is not None:
+            controller.start_auto_refresh()
+
+    def _sync_radar_refresh_interval_enabled(self) -> None:
+        combo = getattr(self, "radar_refresh_interval_combo", None)
+        if combo is None:
+            return
+        combo.setEnabled(self.radar_auto_refresh_enabled())
 
     def _update_quote_source_label(self) -> None:
         label = getattr(self, "quote_source_label", None)

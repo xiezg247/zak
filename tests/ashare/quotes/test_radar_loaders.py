@@ -266,14 +266,14 @@ def test_load_sector_theme_empty(monkeypatch) -> None:
     assert "板块主线" in data.empty_message
 
 
-def test_load_outlook_horizon_no_candidates(monkeypatch) -> None:
+def test_load_outlook_watch_no_candidates(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
 
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar_horizon.collect_horizon_candidates",
         lambda max_items=40: [],
     )
-    spec = RADAR_CARD_BY_ID["outlook_horizon"]
+    spec = RADAR_CARD_BY_ID["outlook_watch"]
     data = load_outlook_horizon(spec)
     assert data.rows == ()
     assert "暂无候选" in data.empty_message
@@ -283,16 +283,16 @@ def test_build_outlook_ai_prompt() -> None:
     from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
 
     payload = {
-        "outlook_horizon": RadarCardData(
-            "outlook_horizon",
-            "未来·展望",
-            "未来关注 · 约 5 日窗口",
+        "outlook_watch": RadarCardData(
+            "outlook_watch",
+            "未来·关注",
+            "约 5 日窗口",
             (_sample_row("600000.SSE", name="浦发"),),
             "",
             "",
         ),
     }
-    prompt = build_outlook_ai_prompt(payload, variant="watch_next")
+    prompt = build_outlook_ai_prompt(payload, card_id="outlook_watch")
     assert "非涨跌预测" in prompt
     assert "浦发" in prompt
 
@@ -376,11 +376,11 @@ def test_radar_ai_hint_cache_roundtrip(tmp_path, monkeypatch) -> None:
     from vnpy_ashare.quotes.radar_ai_cache import get_cached_hint, put_cached_hint, resolve_ai_hint
 
     monkeypatch.setattr("vnpy_ashare.quotes.radar_ai_cache._db_path", lambda: tmp_path / "cache.db")
-    put_cached_hint("outlook_horizon", variant="watch_next", fingerprint="abc", hint="摘要：关注 3 只")
-    assert get_cached_hint("outlook_horizon", variant="watch_next", fingerprint="abc") == "摘要：关注 3 只"
+    put_cached_hint("outlook_watch", variant="", fingerprint="abc", hint="摘要：关注 3 只")
+    assert get_cached_hint("outlook_watch", variant="", fingerprint="abc") == "摘要：关注 3 只"
     resolved = resolve_ai_hint(
-        "outlook_horizon",
-        variant="watch_next",
+        "outlook_watch",
+        variant="",
         fingerprint="xyz",
         digest="摘要：新数据",
     )

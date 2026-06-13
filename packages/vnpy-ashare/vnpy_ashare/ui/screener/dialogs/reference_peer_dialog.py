@@ -114,7 +114,6 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         layout.addWidget(self._summary_label)
 
         self._table = QtWidgets.QTableWidget(0, 1)
-        self._table.setObjectName("MarketTable")
         configure_screener_results_table(self._table)
         layout.addWidget(self._table, stretch=1)
 
