@@ -223,7 +223,13 @@ def inspect_item_gaps(
     as_of: date | None = None,
 ) -> BarGapResult:
     bar_dates = load_daily_bar_dates(item.symbol, item.exchange, meta)
-    return inspect_bar_gaps(meta, bar_dates, as_of=as_of)
+    return inspect_bar_gaps(
+        meta,
+        bar_dates,
+        as_of=as_of,
+        symbol=item.symbol,
+        exchange=item.exchange,
+    )
 
 
 def fill_gap_ranges(

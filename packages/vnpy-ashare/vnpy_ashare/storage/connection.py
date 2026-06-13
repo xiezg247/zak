@@ -134,6 +134,17 @@ CREATE TABLE IF NOT EXISTS disclosure_calendar (
     fetched_at TEXT NOT NULL,
     PRIMARY KEY (ts_code, end_date)
 );
+
+CREATE TABLE IF NOT EXISTS symbol_suspend_days (
+    symbol TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    cal_date TEXT NOT NULL,
+    suspend_type TEXT NOT NULL DEFAULT 'S',
+    PRIMARY KEY (symbol, exchange, cal_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_symbol_suspend_lookup
+    ON symbol_suspend_days(symbol, exchange, cal_date);
 """
 
 

@@ -435,6 +435,8 @@ class BarGapCheckWorker(QtCore.QThread):
                 self.meta,
                 bar_dates,
                 as_of=last_trading_day(),
+                symbol=self.item.symbol,
+                exchange=self.item.exchange,
             )
             self.finished.emit((self.item, result))
         except Exception as ex:

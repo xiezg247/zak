@@ -8,6 +8,7 @@ from vnpy_ashare.jobs.moneyflow_prefetch import prefetch_moneyflow
 from vnpy_ashare.jobs.quotes import collect_market_quotes
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.jobs.stock_industry import sync_stock_industry_job
+from vnpy_ashare.jobs.suspend_sync import sync_suspend_daily_job
 from vnpy_ashare.jobs.trade_calendar import sync_trade_calendar_job
 from vnpy_ashare.jobs.tushare_prefetch import prefetch_tushare_factors
 from vnpy_ashare.jobs.universe import sync_universe_job
@@ -23,6 +24,7 @@ __all__ = [
     "run_scheduled_auto_screen",
     "sync_disclosure_calendar_job",
     "sync_stock_industry_job",
+    "sync_suspend_daily_job",
     "sync_trade_calendar_job",
     "sync_universe_job",
     "sync_watchlist_financials_job",

@@ -26,6 +26,7 @@ from vnpy_ashare.jobs import (
     prefetch_tushare_factors,
     sync_disclosure_calendar_job,
     sync_stock_industry_job,
+    sync_suspend_daily_job,
     sync_trade_calendar_job,
     sync_universe_job,
     sync_watchlist_financials_job,
@@ -184,6 +185,19 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于 Tushare 因子预拉）",
+            ),
+            "sync_suspend_daily": _JobMeta(
+                job_id="sync_suspend_daily",
+                name="停牌日同步",
+                description="收盘后从 Tushare 增量拉取最近交易日全市场停牌记录，供日 K 断层扫描排除",
+                runner=sync_suspend_daily_job,
+                config_attr="sync_suspend_daily",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在主力资金预拉之后）",
             ),
             "prefetch_tushare": _JobMeta(
                 job_id="prefetch_tushare",

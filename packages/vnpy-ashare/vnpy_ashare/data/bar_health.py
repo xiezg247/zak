@@ -12,9 +12,11 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
 
+from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.domain.calendar import last_trading_day, trading_days_between
+from vnpy_ashare.storage.repositories.symbol_suspend import load_suspend_days
 
 # 本地日 K 统一起点：早于该日的不展示、不参与断层扫描
 UNIFIED_BAR_START = datetime(2020, 1, 2)
@@ -153,27 +155,69 @@ def gap_scan_range(meta: BarMeta, bar_dates: set[date]) -> tuple[date, date]:
     return scan_start, scan_end
 
 
+def expected_trading_days_for_bars(
+    scan_start: date,
+    scan_end: date,
+    *,
+    symbol: str | None = None,
+    exchange: Exchange | str | None = None,
+) -> list[date]:
+    """扫描区间内应存在的交易日（排除已知停牌日）。"""
+    expected = trading_days_between(scan_start, scan_end)
+    if symbol is None or exchange is None:
+        return expected
+    suspend_days = load_suspend_days(symbol, exchange, scan_start, scan_end)
+    if not suspend_days:
+        return expected
+    return [day for day in expected if day not in suspend_days]
+
+
 def find_gaps(
     meta: BarMeta,
     bar_dates: set[date],
     *,
     expected: list[date] | None = None,
+    symbol: str | None = None,
+    exchange: Exchange | str | None = None,
 ) -> list[GapRange]:
     """在扫描区间内找出缺失的交易日。"""
     if expected is None:
         scan_start, scan_end = gap_scan_range(meta, bar_dates)
-        expected = trading_days_between(scan_start, scan_end)
+        expected = expected_trading_days_for_bars(
+            scan_start,
+            scan_end,
+            symbol=symbol,
+            exchange=exchange,
+        )
     missing = [day for day in expected if day not in bar_dates]
     return merge_missing_days(missing)
 
 
-def inspect_bar_gaps(meta: BarMeta, bar_dates: set[date], *, as_of: date | None = None) -> BarGapResult:
+def inspect_bar_gaps(
+    meta: BarMeta,
+    bar_dates: set[date],
+    *,
+    as_of: date | None = None,
+    symbol: str | None = None,
+    exchange: Exchange | str | None = None,
+) -> BarGapResult:
     """选中行异步扫描：有断层则 GAPS，否则回退 ``list_status``。"""
     floor = UNIFIED_BAR_START.date()
     filtered_dates = {day for day in bar_dates if day >= floor}
     scan_start, scan_end = gap_scan_range(meta, filtered_dates)
-    expected_days = trading_days_between(scan_start, scan_end)
-    gaps = find_gaps(meta, filtered_dates, expected=expected_days)
+    expected_days = expected_trading_days_for_bars(
+        scan_start,
+        scan_end,
+        symbol=symbol,
+        exchange=exchange,
+    )
+    gaps = find_gaps(
+        meta,
+        filtered_dates,
+        expected=expected_days,
+        symbol=symbol,
+        exchange=exchange,
+    )
     expected_count = len(expected_days)
     actual_days = len(filtered_dates)
     if gaps:
