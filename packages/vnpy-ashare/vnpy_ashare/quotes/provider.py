@@ -51,26 +51,34 @@ class RedisQuoteProvider(QuoteProvider):
         rank_id: str = "change_pct",
     ) -> tuple[list[StockItem], dict[str, QuoteSnapshot], int]:
         from vnpy_ashare.quotes.rank_catalog import get_rank_definition
+        from vnpy_ashare.quotes.rank_engine import apply_rank_catalog
+        from vnpy_ashare.quotes.rank_scope import (
+            build_stock_items_from_rank_symbols,
+            load_watchlist_rank_catalog,
+            paginate_symbols,
+        )
 
         spec = get_rank_definition(rank_id)
-        tf_symbols, total = self._store.get_rank_symbols(
-            offset,
-            limit,
+        if spec.scope == "watchlist":
+            tf_symbols, quotes = load_watchlist_rank_catalog(self._store, spec)
+            total = len(tf_symbols)
+            page_symbols = paginate_symbols(tf_symbols, offset, limit)
+            page_quotes = {symbol: quotes[symbol] for symbol in page_symbols if symbol in quotes}
+            items = build_stock_items_from_rank_symbols(page_symbols, page_quotes)
+            return items, page_quotes, total
+
+        tf_symbols = self._store.list_all_rank_symbols(
             field=spec.redis_field,
             ascending=spec.ascending,
         )
         quotes = self._store.get_quotes(tf_symbols)
+        tf_symbols = apply_rank_catalog(tf_symbols, quotes, spec)
+        total = len(tf_symbols)
+        page_symbols = tf_symbols[offset : offset + limit]
+        page_quotes = {symbol: quotes[symbol] for symbol in page_symbols if symbol in quotes}
 
-        items: list[StockItem] = []
-        for tf_symbol in tf_symbols:
-            quote = quotes.get(tf_symbol)
-            item = parse_tickflow_symbol(
-                tf_symbol,
-                quote.name if quote and quote.name else "",
-            )
-            if item:
-                items.append(item)
-        return items, quotes, total
+        items = build_stock_items_from_rank_symbols(page_symbols, page_quotes)
+        return items, page_quotes, total
 
     def updated_at(self) -> str | None:
         return self._store.get_updated_at()
@@ -154,6 +162,10 @@ def quote_snapshot_from_row(row: dict[str, Any], *, tickflow_symbol: str = "") -
         volume=_optional_float(row, "volume") or 0.0,
         amount=_optional_float(row, "amount") or 0.0,
         amplitude=_optional_float(row, "amplitude") or 0.0,
+        volume_ratio=_optional_float(row, "volume_ratio") or 0.0,
+        net_mf_amount=_optional_float(row, "net_mf_amount") or 0.0,
+        change_speed_5m=_optional_float(row, "change_speed_5m") or 0.0,
+        limit_times=_optional_float(row, "limit_times") or 0.0,
         trade_time=str(row.get("trade_time") or row.get("trade_date") or row.get("updated_at") or ""),
     )
 

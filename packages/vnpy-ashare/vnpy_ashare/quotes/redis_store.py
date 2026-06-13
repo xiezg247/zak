@@ -8,7 +8,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from vnpy_ashare.domain.quote_time import normalize_datetime_text
+from vnpy_ashare.quotes.rank_engine import compute_intraday_change_pct
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.speed_baseline import apply_change_speed_5m
 from vnpy_common.paths import ENV_FILE
 
 KEY_PREFIX = "zak"
@@ -24,6 +26,11 @@ RANK_REDIS_FIELDS: tuple[str, ...] = (
     "amount",
     "volume",
     "amplitude",
+    "intraday_change_pct",
+    "volume_ratio",
+    "net_mf_amount",
+    "change_speed_5m",
+    "limit_times",
 )
 
 
@@ -60,6 +67,8 @@ class RedisQuoteStore:
         if not quotes:
             return 0
 
+        apply_change_speed_5m(self._client, quotes)
+
         pipe = self._client.pipeline(transaction=False)
         rank_members: dict[str, list[tuple[float, str]]] = {field: [] for field in RANK_REDIS_FIELDS}
 
@@ -70,6 +79,15 @@ class RedisQuoteStore:
             rank_members["amount"].append((quote.amount, tf_symbol))
             rank_members["volume"].append((quote.volume, tf_symbol))
             rank_members["amplitude"].append((quote.amplitude, tf_symbol))
+            rank_members["intraday_change_pct"].append((compute_intraday_change_pct(quote), tf_symbol))
+            if quote.volume_ratio > 0:
+                rank_members["volume_ratio"].append((quote.volume_ratio, tf_symbol))
+            if quote.net_mf_amount != 0:
+                rank_members["net_mf_amount"].append((quote.net_mf_amount, tf_symbol))
+            if quote.change_speed_5m != 0:
+                rank_members["change_speed_5m"].append((quote.change_speed_5m, tf_symbol))
+            if quote.limit_times >= 1:
+                rank_members["limit_times"].append((quote.limit_times, tf_symbol))
 
         for field in RANK_REDIS_FIELDS:
             key = rank_key(field)

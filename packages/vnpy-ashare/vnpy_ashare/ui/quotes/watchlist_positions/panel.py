@@ -9,6 +9,12 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from strategies.registry import get_strategy_meta
 from vnpy_ashare.domain.position_snapshot import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.signal_snapshot import signal_missing_kline
+from vnpy_ashare.quotes.position_anomaly import (
+    format_anomaly_tags,
+    is_position_anomaly,
+    position_anomaly_reasons,
+    position_anomaly_score,
+)
 from vnpy_ashare.services.signals import signal_cell_color
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
@@ -229,10 +235,33 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             return []
         return service.get_items()
 
+    def _quote_for_record(self, record: PositionRecord):
+        item = self._page.find_stock_item(record.vt_symbol)
+        if item is None:
+            return None
+        return self._page.quote_map.get(item.tickflow_symbol)
+
+    def _anomaly_context(self, record: PositionRecord):
+        snap = self._page.position_cache.get(record.vt_symbol)
+        quote = self._quote_for_record(record)
+        reasons = position_anomaly_reasons(snap=snap, quote=quote)
+        return snap, quote, reasons
+
     def _filtered_records(self) -> list[PositionRecord]:
         records = self._records()
         if not self._filter:
             return records
+        if self._filter == "anomaly":
+            matched = [record for record in records if is_position_anomaly(**self._anomaly_kwargs(record))]
+            return sorted(
+                matched,
+                key=lambda record: (
+                    -position_anomaly_score(self._anomaly_context(record)[2]),
+                    position_row_sort_key(self._page.position_cache[record.vt_symbol])
+                    if record.vt_symbol in self._page.position_cache
+                    else (9, 0.0, record.vt_symbol),
+                ),
+            )
         filtered: list[PositionRecord] = []
         for record in records:
             snap = self._page.position_cache.get(record.vt_symbol)
@@ -245,6 +274,10 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             elif snap is not None and snap.exit_signal == self._filter:
                 filtered.append(record)
         return filtered
+
+    def _anomaly_kwargs(self, record: PositionRecord) -> dict:
+        snap, quote, _ = self._anomaly_context(record)
+        return {"snap": snap, "quote": quote}
 
     def _sync_expansion_ui(self) -> None:
         expanded = self._expanded
@@ -482,11 +515,14 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         colors = market_colors(theme_manager().tokens())
         warning_color = theme_manager().tokens().semantic_warning
         records = self._records()
-        sell_count = t1_count = missing_count = 0
+        sell_count = t1_count = missing_count = anomaly_count = 0
         total_pnl = 0.0
         has_pnl = False
         for record in records:
             snap = self._page.position_cache.get(record.vt_symbol)
+            quote = self._quote_for_record(record)
+            if is_position_anomaly(snap=snap, quote=quote):
+                anomaly_count += 1
             if snap is None:
                 missing_count += 1
                 continue
@@ -504,6 +540,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         parts = [
             f"持仓 {len(records)}",
             f"总浮盈 {pnl_text}",
+            self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),
             self._stats_link("sell", f"卖出信号 {sell_count}", colors.fall),
             self._stats_link("t1", f"T+1 {t1_count}", colors.flat),
             self._stats_link("missing", f"缺日K {missing_count}", warning_color),
@@ -552,14 +589,15 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._building = True
         try:
             records = self._filtered_records()
-            records = sorted(
-                records,
-                key=lambda record: (
-                    position_row_sort_key(self._page.position_cache[record.vt_symbol])
-                    if record.vt_symbol in self._page.position_cache
-                    else (9, 0.0, record.vt_symbol)
-                ),
-            )
+            if self._filter != "anomaly":
+                records = sorted(
+                    records,
+                    key=lambda record: (
+                        position_row_sort_key(self._page.position_cache[record.vt_symbol])
+                        if record.vt_symbol in self._page.position_cache
+                        else (9, 0.0, record.vt_symbol)
+                    ),
+                )
             colors = market_colors(theme_manager().tokens())
             warning_color = theme_manager().tokens().semantic_warning
 
@@ -588,9 +626,13 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 self._table.setRowCount(len(records))
 
             rendered: list[str] = []
+            highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
             for row, record in enumerate(records):
                 rendered.append(record.vt_symbol)
                 values, snap, quote = self._row_values(record)
+                _, _, anomaly_reasons = self._anomaly_context(record)
+                row_anomaly = bool(anomaly_reasons)
+                anomaly_tip = format_anomaly_tags(anomaly_reasons)
                 buy_date = values.get("buy_date", "—")
                 t1_locked = snap.t1_locked if snap is not None else (position_t1_locked(buy_date) if buy_date != "—" else False)
                 config = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
@@ -635,10 +677,21 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                         cell.setForeground(QtGui.QColor(fg))
                     else:
                         cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
+                    if row_anomaly and self._filter != "anomaly":
+                        cell.setBackground(highlight_bg)
+                    elif self._filter != "anomaly":
+                        cell.setData(QtCore.Qt.ItemDataRole.BackgroundRole, None)
                 if snap is not None and snap.signal_snapshot is not None:
                     symbol_cell = self._table.item(row, 0)
                     if symbol_cell is not None:
-                        symbol_cell.setToolTip(snap.signal_snapshot.tooltip)
+                        tip = snap.signal_snapshot.tooltip
+                        if anomaly_tip:
+                            tip = f"{tip}\n异动：{anomaly_tip}" if tip else f"异动：{anomaly_tip}"
+                        symbol_cell.setToolTip(tip)
+                elif anomaly_tip:
+                    symbol_cell = self._table.item(row, 0)
+                    if symbol_cell is not None:
+                        symbol_cell.setToolTip(f"异动：{anomaly_tip}")
 
             self._rendered_symbols = rendered
             self._refresh_stats()

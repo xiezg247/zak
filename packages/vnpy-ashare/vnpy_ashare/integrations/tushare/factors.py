@@ -144,16 +144,23 @@ def fetch_stock_industry_map() -> dict[str, str]:
     return mapping
 
 
-def fetch_limit_list_d(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
+def fetch_limit_list_d(*, trade_date: str | None = None, limit_type: str | None = None) -> tuple[list[dict[str, Any]], str]:
     """拉取涨跌停列表（limit_list_d）。"""
     trade_date = trade_date or _latest_trade_date_str()
-    cached = get_cached_rows(DATASET_LIMIT_LIST, trade_date)
+    cache_key = trade_date if not limit_type else f"{trade_date}:{limit_type}"
+    cached = get_cached_rows(DATASET_LIMIT_LIST, cache_key)
     if cached is not None:
         return cached, trade_date
 
     pro = get_tushare_pro()
+    params: dict[str, Any] = {
+        "trade_date": trade_date,
+        "fields": "ts_code,trade_date,name,limit,limit_times",
+    }
+    if limit_type:
+        params["limit_type"] = limit_type
     try:
-        frame = pro.limit_list_d(trade_date=trade_date, fields="ts_code,trade_date,name,limit")
+        frame = pro.limit_list_d(**params)
     except Exception:
         return [], trade_date
     if frame is None or frame.empty:
@@ -164,16 +171,21 @@ def fetch_limit_list_d(*, trade_date: str | None = None) -> tuple[list[dict[str,
         ts_code = str(record.get("ts_code", "")).strip()
         if not ts_code:
             continue
+        vt_symbol = ts_code_to_vt_symbol(ts_code)
+        limit_times_raw = record.get("limit_times")
+        limit_times = safe_float(limit_times_raw) if limit_times_raw not in (None, "") else 0.0
         rows.append(
             {
                 "ts_code": ts_code,
                 "trade_date": str(record.get("trade_date", trade_date)),
                 "name": str(record.get("name", "") or "").strip(),
                 "limit": str(record.get("limit", "") or "").strip(),
+                "limit_times": limit_times,
+                "vt_symbol": vt_symbol or "",
             }
         )
     if rows:
-        set_cached_rows(DATASET_LIMIT_LIST, trade_date, rows)
+        set_cached_rows(DATASET_LIMIT_LIST, cache_key, rows)
     return rows, trade_date
 
 

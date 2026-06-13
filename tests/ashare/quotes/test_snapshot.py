@@ -23,6 +23,10 @@ class TestQuoteSnapshot(unittest.TestCase):
             volume=12345.0,
             amount=3_984_001_900.0,
             amplitude=1.20,
+            volume_ratio=1.35,
+            net_mf_amount=4567.0,
+            change_speed_5m=0.8,
+            limit_times=3.0,
             trade_time="2026-06-05 15:00:02",
         )
         restored = QuoteSnapshot.from_redis_hash(quote.to_redis_hash())
@@ -32,6 +36,10 @@ class TestQuoteSnapshot(unittest.TestCase):
         self.assertAlmostEqual(restored.change_pct, quote.change_pct)
         self.assertAlmostEqual(restored.amount, quote.amount)
         self.assertAlmostEqual(restored.amplitude, quote.amplitude)
+        self.assertAlmostEqual(restored.volume_ratio, quote.volume_ratio)
+        self.assertAlmostEqual(restored.net_mf_amount, quote.net_mf_amount)
+        self.assertAlmostEqual(restored.change_speed_5m, quote.change_speed_5m)
+        self.assertAlmostEqual(restored.limit_times, quote.limit_times)
         self.assertEqual(restored.trade_time, quote.trade_time)
 
 

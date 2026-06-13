@@ -43,7 +43,7 @@ class TestQuoteColumns(unittest.TestCase):
         self.assertEqual(values[0], "1")
         self.assertEqual(values[3], "贵州茅台")
         self.assertIn("39.84亿", values)
-        self.assertEqual(values[quote_column_index("trade_time")], "15:00:02")
+        self.assertEqual(values[quote_column_index("trade_time")], "2026-06-05 15:00:02")
         self.assertEqual(values[-1], "✓")
         self.assertIn(4, colored)
 

@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.quotes.rank_catalog import get_rank_definition, list_rank_definitions, rank_definition_index
+from vnpy_ashare.quotes.rank_catalog import get_rank_definition, rank_definition_row
+from vnpy_ashare.ui.quotes.features.market_rank_sidebar import rank_id_from_sidebar_row
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -49,15 +50,17 @@ class MarketRankFeature:
         if not page.config.show_rank_sidebar or row < 0:
             return
 
-        specs = list_rank_definitions()
-        if row >= len(specs):
+        rank_list = getattr(page, "rank_list", None)
+        if rank_list is None:
             return
-        spec = specs[row]
-        if spec.id == page._market_rank_id:
+        rank_id = rank_id_from_sidebar_row(rank_list, row)
+        if not rank_id:
             return
-        page._market_rank_id = spec.id
+        if rank_id == page._market_rank_id:
+            return
+        page._market_rank_id = rank_id
         self.sync_sort_from_catalog()
-        self.save_rank_id_pref(spec.id)
+        self.save_rank_id_pref(rank_id)
         page._market_page = 0
         page._market_page_cache.clear()
         page._market_catalog_loaded = False
@@ -73,7 +76,7 @@ class MarketRankFeature:
         rank_list = getattr(page, "rank_list", None)
         if rank_list is None:
             return
-        index = rank_definition_index(page._market_rank_id)
+        index = rank_definition_row(page._market_rank_id)
         rank_list.blockSignals(True)
         rank_list.setCurrentRow(index)
         rank_list.blockSignals(False)

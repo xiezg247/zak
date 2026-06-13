@@ -24,9 +24,13 @@ QUOTE_TABLE_COLUMNS: tuple[QuoteTableColumn, ...] = (
     QuoteTableColumn("name", "证券名称"),
     QuoteTableColumn("last_price", "现价", True),
     QuoteTableColumn("change_pct", "涨幅%", True),
+    QuoteTableColumn("limit_times", "连板"),
+    QuoteTableColumn("change_speed_5m", "5分涨速%", True),
     QuoteTableColumn("change_amount", "涨跌", True),
     QuoteTableColumn("amplitude", "振幅%", True),
     QuoteTableColumn("turnover_rate", "换手%"),
+    QuoteTableColumn("volume_ratio", "量比"),
+    QuoteTableColumn("net_mf_amount", "主力净流入"),
     QuoteTableColumn("volume", "成交量"),
     QuoteTableColumn("amount", "成交额"),
     QuoteTableColumn("high_price", "最高", True),
@@ -117,6 +121,21 @@ def format_amount(amount: float) -> str:
     return f"{amount:.2f}"
 
 
+def format_net_mf_amount(amount: float) -> str:
+    if amount == 0:
+        return "—"
+    return f"{amount:,.0f}万"
+
+
+def format_limit_times(boards: float) -> str:
+    if boards < 1:
+        return "—"
+    value = int(boards)
+    if float(value) == boards:
+        return f"{value}板"
+    return f"{boards:.1f}板"
+
+
 def build_quote_row(
     item: StockItem,
     quote: QuoteSnapshot | None,
@@ -136,9 +155,13 @@ def build_quote_row(
             "name": quote.name or item.name,
             "last_price": f"{quote.last_price:.2f}",
             "change_pct": f"{quote.change_pct:+.2f}",
+            "limit_times": format_limit_times(quote.limit_times),
+            "change_speed_5m": f"{quote.change_speed_5m:+.2f}" if quote.change_speed_5m != 0 else "—",
             "change_amount": f"{quote.change_amount:+.2f}",
             "amplitude": f"{quote.amplitude:.2f}",
             "turnover_rate": f"{quote.turnover_rate:.2f}",
+            "volume_ratio": f"{quote.volume_ratio:.2f}" if quote.volume_ratio > 0 else "—",
+            "net_mf_amount": format_net_mf_amount(quote.net_mf_amount),
             "volume": format_volume(quote.volume),
             "amount": format_amount(quote.amount),
             "high_price": f"{quote.high_price:.2f}",

@@ -208,10 +208,13 @@ MARKET_VISIBLE_COLUMNS: list[str] = [
     "name",
     "last_price",
     "change_pct",
+    "limit_times",
     "change_amount",
     "volume",
     "amount",
     "turnover_rate",
+    "volume_ratio",
+    "net_mf_amount",
     "amplitude",
     "trade_time",
 ]

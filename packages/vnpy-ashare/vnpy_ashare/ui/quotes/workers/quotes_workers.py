@@ -680,13 +680,11 @@ class MarketFullLoadWorker(QtCore.QThread):
 
     @staticmethod
     def _quote_sort_value(quote: QuoteSnapshot | None, spec) -> float:
+        from vnpy_ashare.quotes.rank_engine import quote_rank_value
+
         if quote is None:
             return float("-inf") if not spec.ascending else float("inf")
-        value = getattr(quote, spec.sort_column or spec.redis_field, 0.0)
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return float("-inf") if not spec.ascending else float("inf")
+        return quote_rank_value(quote, spec.sort_column or spec.redis_field)
 
     def run(self) -> None:
         try:
@@ -699,35 +697,39 @@ class MarketFullLoadWorker(QtCore.QThread):
             from vnpy_ashare.quotes.rank_catalog import get_rank_definition
 
             spec = get_rank_definition(self.rank_id)
-            tf_symbols = store.list_all_rank_symbols(
-                field=spec.redis_field,
-                ascending=spec.ascending,
-            )
-
             name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
 
-            if tf_symbols:
-                quotes = store.get_quotes(tf_symbols)
-                items: list[StockItem] = []
-                for tf_symbol in tf_symbols:
-                    quote = quotes.get(tf_symbol)
-                    item = parse_tickflow_symbol(
-                        tf_symbol,
-                        quote.name if quote and quote.name else "",
-                    )
-                    if item is None:
-                        continue
-                    fallback_name = name_map.get((item.symbol, item.exchange), "")
-                    if fallback_name and not item.name:
-                        item = StockItem(symbol=item.symbol, exchange=item.exchange, name=fallback_name)
-                    items.append(item)
+            from vnpy_ashare.quotes.rank_engine import apply_rank_catalog
+            from vnpy_ashare.quotes.rank_scope import build_stock_items_from_rank_symbols, load_watchlist_rank_catalog
+
+            if spec.scope == "watchlist":
+                tf_symbols, quotes = load_watchlist_rank_catalog(store, spec)
+                items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
             else:
-                items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
-                quotes = provider.get_quotes(items)
-                items.sort(
-                    key=lambda stock: self._quote_sort_value(quotes.get(stock.tickflow_symbol), spec),
-                    reverse=not spec.ascending,
+                tf_symbols = store.list_all_rank_symbols(
+                    field=spec.redis_field,
+                    ascending=spec.ascending,
                 )
+
+                if tf_symbols:
+                    quotes = store.get_quotes(tf_symbols)
+                    tf_symbols = apply_rank_catalog(tf_symbols, quotes, spec)
+                    items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
+                else:
+                    from vnpy_ashare.quotes.rank_engine import quote_matches_rank, rank_needs_post_process
+
+                    items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
+                    quotes = provider.get_quotes(items)
+                    if rank_needs_post_process(spec):
+                        items = [
+                            item
+                            for item in items
+                            if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)
+                        ]
+                    items.sort(
+                        key=lambda stock: self._quote_sort_value(quotes.get(stock.tickflow_symbol), spec),
+                        reverse=not spec.ascending,
+                    )
 
             if self._cancel_requested:
                 self.failed.emit("已取消")

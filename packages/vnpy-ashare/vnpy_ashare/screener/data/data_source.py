@@ -88,6 +88,24 @@ def fetch_moneyflow_with_fallback(
     return [], last_tried
 
 
+def fetch_limit_list_with_fallback(
+    *,
+    max_lookback: int = DEFAULT_LOOKBACK_DAYS,
+    start: date | None = None,
+    limit_type: str | None = "U",
+) -> tuple[list[dict[str, Any]], str]:
+    """按交易日回退拉取涨跌停列表（默认涨停）。"""
+    from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
+
+    last_tried = ""
+    for trade_date in iter_trade_date_strs(max_lookback=max_lookback, start=start):
+        last_tried = trade_date
+        rows, _ = fetch_limit_list_d(trade_date=trade_date, limit_type=limit_type)
+        if rows:
+            return rows, trade_date
+    return [], last_tried
+
+
 def daily_basic_to_quote_rows(
     rows: list[dict[str, Any]],
     *,

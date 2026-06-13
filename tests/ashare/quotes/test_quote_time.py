@@ -13,8 +13,14 @@ from vnpy_ashare.domain.quote_time import (
 
 class QuoteTimeTest(unittest.TestCase):
     def test_format_trade_time_display(self) -> None:
-        self.assertEqual(format_trade_time_display("2026-06-05 15:00:02"), "15:00:02")
-        self.assertEqual(format_trade_time_display("2026-06-06T23:46:38"), "23:46:38")
+        self.assertEqual(
+            format_trade_time_display("2026-06-05 15:00:02"),
+            "2026-06-05 15:00:02",
+        )
+        self.assertEqual(
+            format_trade_time_display("2026-06-06T23:46:38"),
+            "2026-06-06 23:46:38",
+        )
         self.assertEqual(format_trade_time_display(""), "—")
 
     def test_format_batch_updated_at(self) -> None:

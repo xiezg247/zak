@@ -15,12 +15,10 @@ def is_missing_time_value(value: object) -> bool:
 
 
 def format_trade_time_display(trade_time: str) -> str:
-    """单条行情更新时间 → 仅时间部分（HH:MM:SS）。"""
+    """单条行情更新时间 → YYYY-MM-DD HH:MM:SS。"""
     text = normalize_datetime_text(trade_time)
     if not text:
         return "—"
-    if " " in text:
-        return text.split(" ", 1)[1]
     return text
 
 

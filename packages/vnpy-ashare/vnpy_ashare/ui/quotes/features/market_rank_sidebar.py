@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.quotes.rank_catalog import list_rank_definitions
+from vnpy_ashare.quotes.rank_catalog import iter_rank_sidebar_rows
 from vnpy_common.ui.theme import theme_manager
 
 if TYPE_CHECKING:
@@ -17,6 +17,7 @@ RANK_SIDEBAR_EXPANDED_WIDTH = 116
 RANK_SIDEBAR_HANDLE_WIDTH = 24
 RANK_SIDEBAR_COLLAPSED_WIDTH = RANK_SIDEBAR_HANDLE_WIDTH
 COLLAPSE_BUTTON_SIZE = 20
+RANK_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 
 
 def load_rank_sidebar_expanded(*, default: bool = True) -> bool:
@@ -37,6 +38,33 @@ def save_rank_sidebar_expanded(expanded: bool) -> None:
 def rank_sidebar_collapse_arrow(expanded: bool) -> QtCore.Qt.ArrowType:
     """左栏右缘按钮：展开时向左收起，折叠时向右展开。"""
     return QtCore.Qt.ArrowType.LeftArrow if expanded else QtCore.Qt.ArrowType.RightArrow
+
+
+def populate_rank_sidebar_list(rank_list: QtWidgets.QListWidget) -> None:
+    rank_list.clear()
+    for group_title, spec in iter_rank_sidebar_rows():
+        if spec is None:
+            header = QtWidgets.QListWidgetItem(group_title)
+            header.setFlags(QtCore.Qt.ItemFlag.NoItemFlags)
+            header.setData(RANK_ID_ROLE, "")
+            font = rank_list.font()
+            header_font = QtGui.QFont(font)
+            if header_font.pointSize() > 0:
+                header_font.setPointSize(max(header_font.pointSize() - 1, 8))
+            header_font.setBold(True)
+            header.setFont(header_font)
+            rank_list.addItem(header)
+            continue
+        item = QtWidgets.QListWidgetItem(spec.title)
+        item.setData(RANK_ID_ROLE, spec.id)
+        rank_list.addItem(item)
+
+
+def rank_id_from_sidebar_row(rank_list: QtWidgets.QListWidget, row: int) -> str:
+    item = rank_list.item(row)
+    if item is None:
+        return ""
+    return str(item.data(RANK_ID_ROLE) or "").strip()
 
 
 class MarketRankSidebar(QtWidgets.QWidget):
@@ -68,8 +96,7 @@ class MarketRankSidebar(QtWidgets.QWidget):
 
         self.rank_list = QtWidgets.QListWidget(self._body)
         self.rank_list.setObjectName("RankSidebar")
-        for spec in list_rank_definitions():
-            self.rank_list.addItem(spec.title)
+        populate_rank_sidebar_list(self.rank_list)
         body_layout.addWidget(self.rank_list, stretch=1)
 
         handle = QtWidgets.QWidget(self)

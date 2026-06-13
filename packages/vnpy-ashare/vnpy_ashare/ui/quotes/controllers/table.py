@@ -820,12 +820,20 @@ class TableController:
             return (quote.name if quote and quote.name else item.name).lower()
         if quote is None:
             return float("-inf")
+        from vnpy_ashare.quotes.rank_engine import quote_rank_value
+
+        if column_key == "intraday_change_pct":
+            return quote_rank_value(quote, column_key)
         numeric_map = {
             "last_price": quote.last_price,
             "change_pct": quote.change_pct,
+            "limit_times": quote.limit_times,
+            "change_speed_5m": quote.change_speed_5m,
             "change_amount": quote.change_amount,
             "amplitude": quote.amplitude,
             "turnover_rate": quote.turnover_rate,
+            "volume_ratio": quote.volume_ratio,
+            "net_mf_amount": quote.net_mf_amount,
             "volume": quote.volume,
             "amount": quote.amount,
             "high_price": quote.high_price,
