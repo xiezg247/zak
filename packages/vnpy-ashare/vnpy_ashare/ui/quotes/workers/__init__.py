@@ -21,6 +21,7 @@ from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     QuotesRefreshWorker,
     ScopeBarsLoadWorker,
     UniverseLoadWorker,
+    UniverseLoadResult,
     UniverseSyncWorker,
 )
 
@@ -45,5 +46,6 @@ __all__ = [
     "QuotesRefreshWorker",
     "ScopeBarsLoadWorker",
     "UniverseLoadWorker",
+    "UniverseLoadResult",
     "UniverseSyncWorker",
 ]

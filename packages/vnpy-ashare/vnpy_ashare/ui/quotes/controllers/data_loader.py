@@ -12,6 +12,7 @@ from vnpy_ashare.ui.quotes.workers import (
     MarketFullResult,
     MarketPageLoadWorker,
     MarketPageResult,
+    UniverseLoadResult,
     UniverseLoadWorker,
     UniverseSyncWorker,
 )
@@ -468,20 +469,42 @@ class DataLoaderController:
         page.status_label.setText(loading_text)
         page.quote_table_model.set_row_count(0)
 
-        worker = UniverseLoadWorker(scope_key, local_scope=page._local_scope)
+        if page.config.use_local_pagination and scope_key == "已下载":
+            offset = page._market_page * page.config.local_page_size
+            limit = page.config.local_page_size
+        else:
+            offset = 0
+            limit = None
+
+        worker = UniverseLoadWorker(
+            scope_key,
+            local_scope=page._local_scope,
+            offset=offset,
+            limit=limit,
+        )
         page._load_worker = worker
 
-        def on_finished(stocks: list) -> None:
+        def on_finished(result: object) -> None:
             if page._load_worker is worker:
                 page._load_worker = None
             try:
                 if generation != page._load_generation or not page._active:
                     return
-                page.all_stocks = stocks
+                if isinstance(result, UniverseLoadResult):
+                    page.all_stocks = list(result.items)
+                    page._local_total = result.total
+                elif isinstance(result, list):
+                    page.all_stocks = result
+                    page._local_total = len(result)
+                else:
+                    return
                 if page._finish_cancellable_task(cancelled_message="加载已取消"):
                     page._hide_market_loading()
                     return
                 page._hide_market_loading()
+                if page.config.use_local_pagination:
+                    page._pagination.set_visible()
+                    page._pagination.update_controls()
                 if page.config.use_local_table:
                     page._local.on_stock_list_loaded()
                 else:

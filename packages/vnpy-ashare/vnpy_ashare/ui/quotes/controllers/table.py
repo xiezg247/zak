@@ -214,6 +214,36 @@ class TableController:
 
         keyword = page.search_edit.text().strip().lower()
 
+        if page.config.use_local_pagination:
+            matched = [s for s in page.all_stocks if keyword in s.search_key] if keyword else list(page.all_stocks)
+            display_unchanged = self._same_stock_list(page.display_stocks, matched)
+            page.display_stocks = matched
+            table_rows = self._model().row_count()
+            if not display_unchanged or table_rows != len(matched):
+                self.render_table()
+            page._pagination.update_controls()
+            if page._local_total == 0:
+                label = page._local_scope_label()
+                page.status_label.setText(f"暂无本地{label}，请在自选页下载")
+            else:
+                stale = sum(
+                    1
+                    for item in matched
+                    if page.bar_list_status.get(
+                        (item.symbol, item.exchange),
+                        BarHealthStatus.UNKNOWN,
+                    )
+                    in (BarHealthStatus.STALE, BarHealthStatus.GAPS)
+                )
+                status = page._pagination.format_local_status()
+                if keyword:
+                    status += "（当前页筛选）"
+                if stale:
+                    status += f"，本页 {stale} 只需补全"
+                page.status_label.setText(status)
+            page._local.update_batch_toolbar_buttons()
+            return
+
         if page.config.require_keyword and not keyword:
             page.display_stocks = []
             self._model().set_row_count(0)

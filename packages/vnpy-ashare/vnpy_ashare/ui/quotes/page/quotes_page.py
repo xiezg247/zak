@@ -144,6 +144,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._active = False
         self._market_page = 0
         self._market_total = 0
+        self._local_total = 0
         self._market_board: str | None = None
         self._market_catalog: list = []
         self._market_catalog_quotes: dict = {}
@@ -272,7 +273,8 @@ class QuotesPage(QtWidgets.QWidget):
                 symbols = "、".join(format_vt_symbol_cn(symbol, exchange) for symbol, exchange in removed[:5])
                 suffix = "..." if len(removed) > 5 else ""
                 self.status_label.setText(f"已清理 {len(removed)} 条无效日K：{symbols}{suffix}")
-        self._local.refresh_meta()
+        if self.config.use_local_table and not self.config.use_local_pagination:
+            self._local.refresh_meta()
         if self.current_item is not None and self.chart_panel is not None:
             quote = self.quote_map.get(self.current_item.tickflow_symbol)
             self.chart_panel.load_item(self.current_item, quote=quote)

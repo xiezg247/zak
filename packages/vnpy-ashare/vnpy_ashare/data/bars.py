@@ -117,9 +117,29 @@ def cleanup_invalid_daily_bars() -> list[tuple[str, Exchange]]:
 
 def load_downloaded_stocks(*, scope: str = "daily") -> list[StockItem]:
     """读取本地已下载 K 线列表，并尽量补全证券名称。"""
+    return load_downloaded_stocks_page(scope=scope, offset=0, limit=None)
+
+
+def count_downloaded_stocks(*, scope: str = "daily") -> int:
+    """本地已下载标的总数。"""
+    return len(iter_bar_overviews(scope=scope))
+
+
+def load_downloaded_stocks_page(
+    *,
+    scope: str = "daily",
+    offset: int = 0,
+    limit: int | None = 50,
+) -> list[StockItem]:
+    """分页读取本地已下载 K 线列表；limit 为 None 时返回全部。"""
     name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
+    rows = iter_bar_overviews(scope=scope)
+    if limit is None:
+        page_rows = rows[offset:]
+    else:
+        page_rows = rows[offset : offset + max(limit, 0)]
     items: list[StockItem] = []
-    for row in iter_bar_overviews(scope=scope):
+    for row in page_rows:
         name = name_map.get((row.symbol, row.exchange), "")
         items.append(StockItem(symbol=row.symbol, exchange=row.exchange, name=name))
     return items

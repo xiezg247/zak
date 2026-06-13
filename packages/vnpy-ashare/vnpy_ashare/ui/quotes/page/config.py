@@ -8,6 +8,7 @@ from typing import Literal
 from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS, quote_table_headers
 
 MAX_DISPLAY_ROWS = 300
+LOCAL_PAGE_SIZE = 50
 MARKET_PAGE_SIZE = 100
 MARKET_SCROLL_DEBOUNCE_MS = 180
 MARKET_SCROLL_LOAD_COOLDOWN_MS = 500
@@ -186,6 +187,8 @@ class PageConfig:
     show_batch_fill_button: bool = False
     show_batch_gap_fill_button: bool = False
     use_local_table: bool = False
+    use_local_pagination: bool = False
+    local_page_size: int = LOCAL_PAGE_SIZE
     show_add_watchlist_button: bool = False
     show_remove_watchlist_button: bool = False
     auto_refresh_quotes: bool = True
@@ -338,6 +341,8 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_batch_fill_button=True,
         show_batch_gap_fill_button=True,
         use_local_table=True,
+        use_local_pagination=True,
+        local_page_size=LOCAL_PAGE_SIZE,
         show_local_column=False,
         require_keyword=False,
         auto_refresh_quotes=False,

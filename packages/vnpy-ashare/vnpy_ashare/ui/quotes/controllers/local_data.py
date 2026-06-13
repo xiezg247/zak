@@ -9,7 +9,7 @@ from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config import format_vt_symbol_cn
-from vnpy_ashare.data.bar_access import delete_scope_bars, iter_bar_overviews
+from vnpy_ashare.data.bar_access import delete_scope_bars, get_scope_overview, iter_bar_overviews
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -124,12 +124,35 @@ class LocalDataController:
         if log_signal is not None:
             log_signal.connect(lambda message: append_run_log(self._page, message))
 
-    def refresh_meta(self) -> None:
+    def reset_meta_cache(self) -> None:
         page = self._page
         invalidate_bar_overview_cache()
         page.downloaded_keys = set()
         page.bar_meta = {}
         page.bar_list_status = {}
+
+    def ensure_meta_for_items(self, items: list[StockItem]) -> None:
+        """按当前页标的懒加载 K 线概览，避免全量扫描卡死 UI。"""
+        page = self._page
+        for item in items:
+            key = (item.symbol, item.exchange)
+            overview = get_scope_overview(item.symbol, item.exchange, page._local_scope)
+            if overview is None:
+                page.downloaded_keys.discard(key)
+                page.bar_meta.pop(key, None)
+                page.bar_list_status.pop(key, None)
+                continue
+            page.downloaded_keys.add(key)
+            meta = bar_meta_from_overview(overview)
+            page.bar_meta[key] = meta
+            page.bar_list_status[key] = list_status(meta)
+
+    def refresh_meta(self) -> None:
+        page = self._page
+        self.reset_meta_cache()
+        if page.config.use_local_pagination:
+            self.ensure_meta_for_items(page.all_stocks)
+            return
         bar_svc = page._get_bar_service()
         rows = bar_svc.iter_overviews(page._local_scope) if bar_svc else self._fallback_overviews(page._local_scope)
         for row in rows:
@@ -175,7 +198,10 @@ class LocalDataController:
             return
         stale_count = count_stale_daily_items(page.all_stocks, page.bar_meta)
         button.setEnabled(stale_count > 0)
-        button.setToolTip(f"对 {stale_count} 只过期标的增量补全日 K 到最新交易日" if stale_count else "当前列表无过期日 K")
+        scope = "当前页" if page.config.use_local_pagination else "列表"
+        button.setToolTip(
+            f"对{scope} {stale_count} 只过期标的增量补全日 K 到最新交易日" if stale_count else f"当前{scope}无过期日 K"
+        )
 
     def update_batch_gap_fill_button(self) -> None:
         page = self._page
@@ -523,7 +549,7 @@ class LocalDataController:
             return
         page._local_scope = value
         page._selected_gap_result = None
-        self.refresh_meta()
+        page._market_page = 0
         self.update_batch_toolbar_buttons()
         page.load_stock_list()
         if page.current_item is not None:
@@ -795,17 +821,14 @@ class LocalDataController:
             return
 
         page._selected_gap_result = None
-        self.refresh_meta()
-        page.all_stocks = [stock for stock in page.all_stocks if (stock.symbol, stock.exchange) in page.downloaded_keys]
-        if page.current_item is not None and (page.current_item.symbol, page.current_item.exchange) not in page.downloaded_keys:
+        deleted_key = (item.symbol, item.exchange)
+        self.reset_meta_cache()
+        if page.current_item is not None and (page.current_item.symbol, page.current_item.exchange) == deleted_key:
             page.current_item = None
             self.clear_chart()
             self.set_chart_hint(None)
-        page.apply_filter()
-        if page.current_item is not None:
-            page.show_kline(page.current_item)
-            if page.config.show_fill_button and self.is_daily_scope():
-                self.check_bar_gaps(page.current_item)
+        page._local_total = max(page._local_total - 1, 0)
+        page.load_stock_list()
         page._update_action_buttons()
         summary = f"已删除 {display} 的本地{scope_label}"
         page.status_label.setText(summary)

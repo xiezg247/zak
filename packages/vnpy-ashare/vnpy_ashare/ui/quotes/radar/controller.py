@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.ai.context.store import get_market_quotes_cache
 from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -60,7 +59,6 @@ class RadarController(QtCore.QObject):
 
         board.variant_changed.connect(self._on_variant_changed)
         board.row_activated.connect(self._on_row_activated)
-        board.row_selected.connect(self._on_row_selected)
         board.add_watchlist_requested.connect(self._on_add_watchlist)
         board.batch_add_watchlist_requested.connect(self._on_batch_add_watchlist)
         board.stock_analysis_requested.connect(self._on_stock_analysis)
@@ -71,7 +69,6 @@ class RadarController(QtCore.QObject):
         panel = self._resonance_panel
         if panel is not None:
             panel.row_activated.connect(self._on_row_activated)
-            panel.row_selected.connect(self._on_row_selected)
             panel.add_watchlist_requested.connect(self._on_add_watchlist)
             panel.batch_add_watchlist_requested.connect(self._on_resonance_batch_add_watchlist)
             panel.stock_analysis_requested.connect(self._on_stock_analysis)
@@ -268,30 +265,6 @@ class RadarController(QtCore.QObject):
 
     def _on_row_activated(self, vt_symbol: str) -> None:
         self._on_stock_analysis(vt_symbol)
-
-    def _on_row_selected(self, vt_symbol: str) -> None:
-        if not hasattr(self._page, "status_label"):
-            return
-        item = parse_stock_symbol(vt_symbol)
-        if item is None:
-            return
-        quote = self._page.quote_map.get(item.tickflow_symbol)
-        price: float | None = None
-        change: float | None = None
-        if quote is not None:
-            price = quote.last_price
-            change = quote.change_pct
-        else:
-            for row in get_market_quotes_cache() or []:
-                if str(row.get("vt_symbol") or "") == vt_symbol:
-                    raw_price = row.get("last_price") or row.get("close")
-                    raw_change = row.get("change_pct")
-                    price = float(raw_price) if isinstance(raw_price, (int, float)) else None
-                    change = float(raw_change) if isinstance(raw_change, (int, float)) else None
-                    break
-        price_text = f"{price:.2f}" if isinstance(price, (int, float)) else "—"
-        change_text = f"{change:+.2f}%" if isinstance(change, (int, float)) else "—"
-        self._page.status_label.setText(f"{item.name or vt_symbol}  {price_text}  {change_text}")
 
     def _on_view_run(self, run_id: str, page_key: str) -> None:
         host = self._find_main_window()

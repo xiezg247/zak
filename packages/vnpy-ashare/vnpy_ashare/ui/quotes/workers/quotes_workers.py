@@ -27,10 +27,12 @@ from vnpy_ashare.data.bar_access import (
 )
 from vnpy_ashare.data.bar_health import BarMeta, inspect_bar_gaps
 from vnpy_ashare.data.bars import (
+    count_downloaded_stocks,
     default_minute_download_start,
     download_bars,
     download_period_bars,
     load_downloaded_stocks,
+    load_downloaded_stocks_page,
     load_watchlist,
 )
 from vnpy_ashare.data.minute_periods import period_step
@@ -107,13 +109,22 @@ def _emit_worker_log(signal: QtCore.Signal, message: object) -> None:
 class UniverseLoadWorker(QtCore.QThread):
     """加载 universe 列表（全部 A 股 / 自选池 / 已下载）。"""
 
-    finished = QtCore.Signal(list)
+    finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
-    def __init__(self, scope: str, *, local_scope: str = "daily") -> None:
+    def __init__(
+        self,
+        scope: str,
+        *,
+        local_scope: str = "daily",
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> None:
         super().__init__()
         self.scope = scope
         self.local_scope = local_scope
+        self.offset = max(offset, 0)
+        self.limit = limit
         self._cancel_requested = False
 
     def request_cancel(self) -> None:
@@ -126,16 +137,32 @@ class UniverseLoadWorker(QtCore.QThread):
                 return
             if self.scope == "全部A股":
                 stocks = load_universe(allow_sync=False)
+                total = len(stocks)
             elif self.scope == "自选池":
                 stocks = load_watchlist()
+                total = len(stocks)
+            elif self.limit is not None:
+                total = count_downloaded_stocks(scope=self.local_scope)
+                stocks = load_downloaded_stocks_page(
+                    scope=self.local_scope,
+                    offset=self.offset,
+                    limit=self.limit,
+                )
             else:
                 stocks = load_downloaded_stocks(scope=self.local_scope)
+                total = len(stocks)
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            self.finished.emit(stocks)
+            self.finished.emit(UniverseLoadResult(items=stocks, total=total))
         except Exception as ex:
             self.failed.emit(str(ex))
+
+
+@dataclass(frozen=True)
+class UniverseLoadResult:
+    items: list
+    total: int
 
 
 class UniverseSyncWorker(QtCore.QThread):

@@ -18,16 +18,25 @@ class MarketPaginationController:
         self._page = page
 
     def page_count(self) -> int:
-        page_size = self._page.config.market_page_size
-        if self._page._market_total <= 0 or page_size <= 0:
+        page = self._page
+        if page.config.use_local_pagination:
+            page_size = page.config.local_page_size
+            total = page._local_total
+            if total <= 0 or page_size <= 0:
+                return 1
+            return max((total + page_size - 1) // page_size, 1)
+        page_size = page.config.market_page_size
+        if page._market_total <= 0 or page_size <= 0:
             return 1
-        return max((self._page._market_total + page_size - 1) // page_size, 1)
+        return max((page._market_total + page_size - 1) // page_size, 1)
 
     def uses_pagination(self) -> bool:
         return self.should_show_pagination()
 
     def should_show_pagination(self) -> bool:
         page = self._page
+        if page.config.use_local_pagination:
+            return page._local_total > page.config.local_page_size
         if not page.config.use_market_rank or page.config.market_scroll_paging:
             return False
         if page.market_auto_refresh_enabled():
@@ -70,7 +79,21 @@ class MarketPaginationController:
         self._page.page_jump_input.setEnabled(not busy)
 
     def _apply_page_view(self) -> None:
+        if self._page.config.use_local_pagination:
+            self._page.load_stock_list()
+            return
         self._page.apply_market_page_view()
+
+    def format_local_status(self) -> str:
+        page = self._page
+        page_count = self.page_count()
+        current = min(page._market_page + 1, page_count)
+        label = page._local_scope_label()
+        status = f"本地{label} 共 {page._local_total} 只，第 {current}/{page_count} 页（每页 {page.config.local_page_size}）"
+        shown = len(page.display_stocks)
+        if shown != len(page.all_stocks):
+            status += f"，本页显示 {shown} 只"
+        return status
 
     def go_prev(self) -> None:
         if self._page._market_page <= 0:
