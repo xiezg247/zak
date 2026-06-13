@@ -43,7 +43,7 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/ui/backtest/` | 回测页（`pages/`、`flow/`、`chart/`、`table/`） |
 | `packages/vnpy-ashare/vnpy_ashare/ui/components/` | 跨页复用（chart_style、表格、任务输出） |
 | `packages/vnpy-tickflow` | TickFlow 适配（`client/`、`klines/`、`mapping/`、`datafeed/`） |
-| `packages/vnpy-llm` | LLM 对话（`app/`、`chat/`、`routing/`、`graph/`、`tools/`、`trace/`、`ui/`）；有工具路径走 LangGraph `stream_with_tools` |
+| `packages/vnpy-llm` | LLM 对话（`gateway/` 控制面、`app/`、`chat/`、`routing/`、`graph/`、`tools/`、`trace/`、`ui/`） |
 | `packages/vnpy-skills` | Agent Skill 引擎（`app/`、`domain/`、`agent/`） |
 | `packages/vnpy-mcp` | MCP 远端工具（`app/`、`config/`、`domain/`、`remote/`） |
 | `packages/vnpy-common` | 路径、AI 协议、终端主题 |
@@ -108,6 +108,34 @@ Service 写入 `context_store`（线程安全内存）：
 | `SentimentService` | 恐贪指数 |
 
 UI / Worker 经 Service 写上下文；Skills / LLM 只读。Agent Skill（`SKILL.md`）在 System Prompt 中仅注入名称与简介，详细说明通过 `read_skill_file` 按需加载。
+
+### AgentGateway 控制面
+
+编排入口为 `vnpy_llm.gateway.AgentGateway`；`LlmEngine` 仅作 VeighNa 插件壳与 Qt 信号桥接。
+
+```
+UI（悬浮球 / Dock / 全屏）
+        ↓ send / subscribe
+LlmEngine（Qt 信号桥接）
+        ↓
+AgentGateway
+├── SessionManager      # 会话 CRUD、floating/assistant 双轨
+├── TraceCoordinator    # Turn Trace（路由 / 工具 / handoff / 回复）
+├── ToolRegistry        # Skill + MCP 注册与执行
+├── ContextAssembler    # 终端上下文与 System Prompt 拼装
+├── RoutingPlane        # router + supervisor 一层对外
+└── AgentRuntime        # 有工具 / 无工具统一流式入口
+        ↓
+graph/runner.stream_with_tools  或  chat/client.stream_chat_completion
+```
+
+| API | 说明 |
+|-----|------|
+| `send(SendRequest)` | 单轮流式回复；yield 文本 delta |
+| `subscribe(listener)` | 订阅 `AgentEvent`（chat / session / tool / trace） |
+| `cancel()` | 中断当前流式生成 |
+
+有工具路径的数据路由与工具表见 [ai-data-routing.md](./ai-data-routing.md)。
 
 ### 悬浮球
 

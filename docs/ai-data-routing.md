@@ -4,17 +4,19 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.
 
 各功能域对**本地日 K** 的依赖程度、下载范围建议见 [AI 功能与 K 线](./ai-kline-data.md)。
 
-## LangGraph 编排（有工具路径）
+## 编排入口（AgentGateway）
 
-有工具对话统一走 `vnpy_llm.graph.runner.stream_with_tools`：
+对话编排经 `vnpy_llm.gateway.AgentGateway.send` 统一入口：
 
-1. **意图路由**（`routing/router.py`）→ 工具子集 + `routing_hint`
-2. **Supervisor**（`graph/supervisor.py`）→ 委派 Specialist Agent（market / research / screening / backtest / data / general）
-3. **ReAct loop**（`langchain.agents.create_agent`）→ Skill / MCP 工具执行
+1. **RoutingPlane**（`gateway/routing_plane.py`）→ 合并 `routing/router` 意图分类与 `graph/supervisor` 委派，产出 `RoutingDecision`
+2. **AgentRuntime**（`gateway/agent_runtime.py`）→ 有工具走 `graph/runner.stream_with_tools`，无工具走 `chat/client.stream_chat_completion`
+3. **ReAct loop**（`langchain.agents.create_agent`）→ `ToolRegistry` 执行 Skill / MCP
 4. **Handoff**（`graph/handoff.py`）→ 诊断/回测/选股若涉及大盘或技术面，串行追加 market Agent；段间以 `**市场环境**` 等标题分隔
 5. **选股执行** → `propose_screening` / `propose_recipe` 解析后由 Skill 直接执行（无弹窗确认）
 
-无工具闲聊仍走 `chat/client.stream_chat_completion`，system prompt 见 `routing/prompts.py`（与 `routing/base_prompt.py` 共用基座）。
+`LlmEngine` 仅作 VeighNa 插件与 Qt 信号桥接；详见 [architecture.md](./architecture.md#agentgateway-控制面)。
+
+无工具闲聊的 system prompt 由 `ContextAssembler` 拼装（`routing/prompts.py` 与 `routing/base_prompt.py`）。
 
 LLM **不直接调用** `mcp_*`；综合诊断经 `diagnose_stock` Skill 访问通达信 MCP。
 

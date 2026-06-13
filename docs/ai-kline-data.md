@@ -236,7 +236,8 @@ LLM 意图分类（`IntentCategory`）决定本轮可见工具子集。与 K 线
 | 形态 MCP 优先 | `vnpy_ashare/integrations/mcp/pattern_screen.py` | 问小达全市场扫描 |
 | 意图路由 | `vnpy_llm/routing/router.py` | `TOOL_GROUPS` 按类别过滤工具 |
 | 系统提示词 | `vnpy_llm/routing/base_prompt.py`、`graph/agents/*` | 合规基座 + 各 Specialist 工具路由 |
-| LangGraph 编排 | `vnpy_llm/graph/runner.py` | Supervisor → ReAct → handoff |
+| 编排入口 | `vnpy_llm/gateway/agent_gateway.py` | `send` / `subscribe`；委托 RoutingPlane、AgentRuntime |
+| LangGraph 执行 | `vnpy_llm/graph/runner.py` | Supervisor → ReAct → handoff（由 AgentRuntime 调用） |
 
 ---
 

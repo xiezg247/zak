@@ -68,10 +68,10 @@ class StreamCancelTests(unittest.TestCase):
             yield "不应出现"
 
         with (
-            patch("vnpy_llm.app.engine.stream_chat_completion", side_effect=fake_stream),
+            patch("vnpy_llm.gateway.agent_runtime.stream_chat_completion", side_effect=fake_stream),
             patch.object(
-                self.engine,
-                "_get_openai_tools",
+                self.engine._tool_registry,
+                "get_openai_tools",
                 return_value=[],
             ),
         ):
@@ -111,7 +111,7 @@ class ReloadConfigTests(unittest.TestCase):
             max_tokens=2048,
             temperature=0.5,
         )
-        with patch("vnpy_llm.app.engine.load_llm_config", return_value=new_cfg):
+        with patch("vnpy_llm.gateway.agent_gateway.load_llm_config", return_value=new_cfg):
             loaded = engine.reload_config()
         self.assertEqual(loaded.model, "new-model")
         self.assertEqual(engine.config.model, "new-model")
