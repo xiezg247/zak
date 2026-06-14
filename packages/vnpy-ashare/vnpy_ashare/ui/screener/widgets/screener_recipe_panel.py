@@ -94,8 +94,12 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
         self._run_btn = QtWidgets.QPushButton("试跑配方")
         self._run_btn.setObjectName("SecondaryButton")
         self._run_btn.clicked.connect(self._run_recipe)
+        self._tuning_btn = QtWidgets.QPushButton("评分参数")
+        self._tuning_btn.setObjectName("SecondaryButton")
+        self._tuning_btn.clicked.connect(self._open_tuning_dialog)
         action_row.addWidget(self._save_btn)
         action_row.addWidget(self._delete_btn)
+        action_row.addWidget(self._tuning_btn)
         action_row.addWidget(self._run_btn)
         action_row.addStretch()
         layout.addLayout(action_row)
@@ -109,6 +113,7 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
             self._min_dim_spin,
             self._save_btn,
             self._delete_btn,
+            self._tuning_btn,
             self._run_btn,
         ]
         for checkbox, spin in self._dimension_rows.values():
@@ -331,6 +336,14 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
             return
         delete_recipe(recipe_id)
         self._reload_recipe_combo(None)
+
+    def _open_tuning_dialog(self) -> None:
+        from vnpy_ashare.ui.screener.dialogs.recipe_tuning_dialog import RecipeTuningDialog
+
+        dialog = RecipeTuningDialog(self)
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            dialog.save()
+            page_notify(self, "评分参数已保存")
 
     def _run_recipe(self) -> None:
         try:

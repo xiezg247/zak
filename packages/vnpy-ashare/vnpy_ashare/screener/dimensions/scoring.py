@@ -8,12 +8,16 @@ DEFAULT_METRIC_SCORE_BLEND = 0.5
 
 
 def metric_score_blend() -> float:
-    raw = os.getenv("RECIPE_METRIC_SCORE_BLEND", str(DEFAULT_METRIC_SCORE_BLEND)).strip()
-    try:
-        value = float(raw)
-    except ValueError:
-        return DEFAULT_METRIC_SCORE_BLEND
-    return max(0.0, min(1.0, value))
+    raw = os.getenv("RECIPE_METRIC_SCORE_BLEND", "").strip()
+    if raw:
+        try:
+            value = float(raw)
+        except ValueError:
+            return DEFAULT_METRIC_SCORE_BLEND
+        return max(0.0, min(1.0, value))
+    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
+
+    return load_recipe_tuning_prefs().metric_score_blend
 
 
 def rank_score(rank: int, total: int) -> float:
