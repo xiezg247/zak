@@ -218,6 +218,8 @@ DEFAULT_WATCHLIST_COLUMNS: list[str] = [
 MARKET_VISIBLE_COLUMNS: list[str] = [
     "symbol",
     "name",
+    "industry",
+    "market_board",
     "last_price",
     "change_pct",
     "limit_times",

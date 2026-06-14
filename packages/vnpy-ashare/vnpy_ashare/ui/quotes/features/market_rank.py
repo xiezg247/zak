@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 RANK_SETTINGS_KEY = "quotes/market/active_rank_id_v1"
+SECTOR_DRILLDOWN_RANK_ID = "net_mf_in"
 
 
 class MarketRankFeature:
@@ -86,3 +87,20 @@ class MarketRankFeature:
         if page.config.show_rank_sidebar:
             return get_rank_definition(page._market_rank_id).title
         return "涨幅榜"
+
+    def apply_rank_for_drilldown(self, rank_id: str = SECTOR_DRILLDOWN_RANK_ID) -> None:
+        """板块资金等下钻：切换榜单并重新加载全市场列表。"""
+        page = self._page
+        target = get_rank_definition(rank_id).id
+        if target == page._market_rank_id:
+            page._market_page = 0
+            page._market_page_cache.clear()
+            page._market_catalog_loaded = False
+            page._market_board_base = None
+            page._market_board_base_key = None
+            page._market_loading_more = False
+            page._market_last_load_more_at = 0.0
+            page.load_stock_list()
+            return
+        row = rank_definition_row(target)
+        self.on_rank_type_changed(row)

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.services.screening_service import ScreeningService
     from vnpy_ashare.services.sentiment_service import SentimentService
     from vnpy_ashare.services.stock_analysis_service import StockAnalysisService
+    from vnpy_ashare.services.sector_flow_service import SectorFlowService
     from vnpy_ashare.services.watchlist_service import WatchlistService
 
 
@@ -117,6 +118,12 @@ def get_stock_analysis_service(main_engine: MainEngine | None) -> StockAnalysisS
     """个股分析弹窗 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.stock_analysis_service if engine is not None else None
+
+
+def get_sector_flow_service(main_engine: MainEngine | None) -> SectorFlowService | None:
+    """板块资金监控 Service。"""
+    engine = get_ashare_engine(main_engine)
+    return engine.sector_flow_service if engine is not None else None
 
 
 def require_service(main_engine: MainEngine | None, name: str):

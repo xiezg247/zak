@@ -36,6 +36,7 @@ class RadarCardData:
     detail_page_key: str = ""
     total_count: int = 0
     ai_hint: str = ""
+    sector_names: tuple[str, ...] = ()
 
 
 def quote_map() -> dict[str, dict[str, Any]]:

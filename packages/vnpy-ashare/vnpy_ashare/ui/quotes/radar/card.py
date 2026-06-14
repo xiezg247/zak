@@ -29,6 +29,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     batch_add_watchlist_requested = QtCore.Signal(str)
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
+    sector_flow_requested = QtCore.Signal(str)
     refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
@@ -130,6 +131,17 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._view_run_button.hide()
         self._view_run_button.clicked.connect(self._on_view_run_clicked)
         footer.addWidget(self._view_run_button)
+        if spec.id == "sector_theme":
+            self._sector_flow_button = QtWidgets.QPushButton("板块资金")
+            self._sector_flow_button.setObjectName("RadarCardSectorFlow")
+            self._sector_flow_button.setFlat(True)
+            self._sector_flow_button.setToolTip("打开板块资金监控页并预选主线行业")
+            self._sector_flow_button.clicked.connect(
+                lambda: self.sector_flow_requested.emit(self.card_id)
+            )
+            footer.addWidget(self._sector_flow_button)
+        else:
+            self._sector_flow_button = None
         self._add_all_button = QtWidgets.QPushButton("全部加自选")
         self._add_all_button.setObjectName("RadarCardAddAll")
         self._add_all_button.setFlat(True)
@@ -149,6 +161,7 @@ class RadarCardWidget(QtWidgets.QFrame):
 
         self._run_id = ""
         self._detail_page_key = ""
+        self._sector_names: tuple[str, ...] = ()
         self._resonance_counts: dict[str, int] = {}
         self._loading = False
         self._updated_at_text = ""
@@ -212,6 +225,9 @@ class RadarCardWidget(QtWidgets.QFrame):
         style.unpolish(self._mode_badge)
         style.polish(self._mode_badge)
 
+    def sector_names(self) -> list[str]:
+        return list(self._sector_names)
+
     def set_loading(self, loading: bool) -> None:
         self._loading = loading
         self._refresh_button.setEnabled(not loading)
@@ -247,6 +263,7 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._ai_hint.setText("")
         self._run_id = data.run_id
         self._detail_page_key = data.detail_page_key
+        self._sector_names = tuple(data.sector_names)
         self._resonance_counts = dict(resonance_counts or {})
         if data.run_id and data.detail_page_key:
             self._view_run_button.show()
@@ -331,6 +348,7 @@ class RadarBoard(QtWidgets.QWidget):
     batch_add_watchlist_requested = QtCore.Signal(str)
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
+    sector_flow_requested = QtCore.Signal(str)
     refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
@@ -355,6 +373,7 @@ class RadarBoard(QtWidgets.QWidget):
             card.batch_add_watchlist_requested.connect(self.batch_add_watchlist_requested.emit)
             card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
             card.view_run_requested.connect(self.view_run_requested.emit)
+            card.sector_flow_requested.connect(self.sector_flow_requested.emit)
             card.refresh_requested.connect(self.refresh_requested.emit)
             card.ai_requested.connect(self.ai_requested.emit)
             card.auto_refresh_changed.connect(self.auto_refresh_changed.emit)

@@ -34,6 +34,7 @@ class MarketOverviewController(QtCore.QObject):
         panel.index_activated.connect(self._on_index_activated)
         panel.sector_selected.connect(self._on_sector_selected)
         panel.industry_filter_cleared.connect(self._clear_industry_filter)
+        panel.sector_flow_requested.connect(self._open_sector_flow)
 
     def sync_industry_filter(self, industry: str | None) -> None:
         self._panel.set_industry_filter(industry)
@@ -114,3 +115,19 @@ class MarketOverviewController(QtCore.QObject):
         previous = page._market_industry_filter
         page.set_market_industry_filter(None)
         page.status_label.setText(f"已清除行业筛选：{previous}")
+
+    def _open_sector_flow(self) -> None:
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_sector_flow"):
+            page_notify(self._page, "无法打开板块资金页", level="warning")
+            return
+        sector_ids = self._panel.top_sector_industries(limit=6)
+        host.open_sector_flow(sector_ids if sector_ids else None)
+
+    def _find_main_window(self):
+        widget = self._page
+        while widget is not None:
+            if hasattr(widget, "open_sector_flow"):
+                return widget
+            widget = widget.parentWidget()
+        return None

@@ -150,11 +150,20 @@ class DataLoaderController:
                 page._market_board_base = None
                 page._market_board_base_key = None
                 page._market_filter_keyword = ""
-                page._market_industry_filter = None
-                listener = page._market_industry_filter_listener
-                if listener is not None:
-                    listener(None)
+                pending_industry = page._pending_industry_drilldown
+                page._pending_industry_drilldown = None
+                if pending_industry:
+                    page._market_industry_filter = pending_industry
+                    listener = page._market_industry_filter_listener
+                    if listener is not None:
+                        listener(pending_industry)
+                else:
+                    page._market_industry_filter = None
+                    listener = page._market_industry_filter_listener
+                    if listener is not None:
+                        listener(None)
                 page._industry_map_cache = None
+                page._market_board_map_cache = None
                 page._market_catalog_loaded = True
                 page._market_updated_at = result.updated_at
                 page.quote_map = dict(result.quotes)

@@ -50,7 +50,7 @@ def _row_from_sector_hit(row: dict[str, Any]) -> RadarRow | None:
     )
 
 
-def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int]:
+def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
     hits, total = run_sector_strength(pool_size, weight=1.0)
     rows: list[RadarRow] = []
     industries: list[str] = []
@@ -67,18 +67,18 @@ def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int]:
         subtitle = "主线：" + "、".join(industries[:3])
     if total:
         subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {total} 只"
-    return rows, subtitle, total
+    return rows, subtitle, total, tuple(industries[:6])
 
 
-def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int]:
+def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
-        return [], "", 0
+        return [], "", 0, ()
 
     enriched = attach_industry(snapshot.rows)
     if not enriched:
-        return [], "", snapshot.total
+        return [], "", snapshot.total, ()
 
     buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in enriched:
@@ -98,7 +98,7 @@ def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int]:
     industry_stats.sort(key=lambda item: (item[1], item[2], len(item[3])), reverse=True)
     strong = industry_stats[:5]
     if not strong:
-        return [], "", snapshot.total
+        return [], "", snapshot.total, ()
 
     candidates: list[dict[str, Any]] = []
     for _industry, ratio, avg_change, items in strong:
@@ -137,20 +137,20 @@ def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int]:
             )
         )
 
-    leaders = top_industries_by_momentum(enriched, top_industry_count=3)
+    leaders = top_industries_by_momentum(enriched, top_industry_count=6)
     subtitle = ""
     if leaders:
-        subtitle = "扩散：" + "、".join(leaders)
+        subtitle = "扩散：" + "、".join(leaders[:3])
     subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {snapshot.total} 只"
-    return rows, subtitle, snapshot.total
+    return rows, subtitle, snapshot.total, tuple(leaders[:6])
 
 
 def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders") -> RadarCardData:
     if variant == "breadth":
-        rows, subtitle, total = _build_breadth_rows(spec.top_n)
+        rows, subtitle, total, sector_names = _build_breadth_rows(spec.top_n)
         empty = "暂无板块广度数据，请先同步行业信息或采集行情。"
     else:
-        rows, subtitle, total = _build_leaders_rows(spec.top_n)
+        rows, subtitle, total, sector_names = _build_leaders_rows(spec.top_n)
         empty = "暂无板块主线数据，请先同步行业信息或采集行情。"
 
     if not rows:
@@ -162,6 +162,7 @@ def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders") -> Radar
             empty_message=empty,
             updated_at="",
             total_count=total,
+            sector_names=sector_names,
         )
 
     return RadarCardData(
@@ -172,4 +173,5 @@ def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders") -> Radar
         empty_message="",
         updated_at="",
         total_count=len(rows),
+        sector_names=sector_names,
     )

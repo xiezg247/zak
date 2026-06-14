@@ -49,6 +49,7 @@ from vnpy_ashare.ui.shell.nav import (
     NAV_SHORTCUTS,
     SidebarNav,
 )
+from vnpy_ashare.ui.sector_flow import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, RadarPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
@@ -62,6 +63,7 @@ from vnpy_llm.ui.dialogs.tools import show_ai_tools_dialog
 
 _QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
     "market": MarketPageWidget,
+    "sector_flow": SectorFlowPageWidget,
     "radar": RadarPageWidget,
     "watchlist": WatchlistPageWidget,
     "local": LocalPageWidget,
@@ -611,6 +613,32 @@ class AshareMainWindow(MainWindow):
         widget = self._page_widgets.get(page_key)
         if widget is not None and hasattr(widget, "show_historical_run"):
             widget.show_historical_run(run_id)
+
+    def open_sector_flow(self, sector_ids: list[str] | None = None) -> None:
+        """跳转到板块资金页，并可选预选行业。"""
+        nav_index = self._nav_index_for_key("sector_flow")
+        if nav_index is None:
+            return
+        self._show_page_by_key("sector_flow", nav_index=nav_index)
+        if not sector_ids:
+            return
+        widget = self._page_widgets.get("sector_flow")
+        if widget is not None and hasattr(widget, "focus_sectors"):
+            widget.focus_sectors(sector_ids)
+
+    def open_market_industry_filter(self, industry: str) -> None:
+        """跳转到市场页：主力净流入榜 + 行业成分筛选。"""
+        industry = str(industry or "").strip()
+        if not industry:
+            return
+        nav_index = self._nav_index_for_key("market")
+        if nav_index is None:
+            return
+        self._show_page_by_key("market", nav_index=nav_index)
+        widget = self._page_widgets.get("market")
+        if widget is None or not hasattr(widget, "page"):
+            return
+        widget.page.open_industry_drilldown(industry)
 
     def _show_page_by_key(self, key: str, *, nav_index: int | None = None) -> None:
         widget = self._get_or_create_page(key)

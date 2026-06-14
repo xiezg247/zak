@@ -855,6 +855,23 @@ QPushButton#RadarResonanceAi {{
 """
 
 
+def build_sector_flow_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QWidget#SectorFlowPanel {{
+    background-color: {t.app_bg};
+}}
+QLabel#SectorFlowSummary {{
+    color: {t.text_secondary};
+    font-size: 12px;
+}}
+QTableWidget#SectorFlowTable {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    gridline-color: {t.panel_border};
+}}
+"""
+
+
 def build_insight_rank_stylesheet(t: ThemeTokens) -> str:
     """Deprecated: use build_radar_stylesheet."""
     return build_radar_stylesheet(t)

@@ -25,11 +25,13 @@ class MarketOverviewPanel(QtWidgets.QWidget):
     index_activated = QtCore.Signal(str)
     sector_selected = QtCore.Signal(str)
     industry_filter_cleared = QtCore.Signal()
+    sector_flow_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("MarketOverviewPanel")
         self._active_industry: str | None = None
+        self._last_sectors: list[SectorRankItem] = []
 
         root = QtWidgets.QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -82,6 +84,12 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         tab_group.addWidget(self._tab_index_btn)
         tab_group.addWidget(self._tab_sector_btn)
         toolbar.addLayout(tab_group)
+
+        self._sector_flow_btn = QtWidgets.QPushButton("板块资金")
+        self._sector_flow_btn.setObjectName("SecondaryButton")
+        self._sector_flow_btn.setToolTip("打开板块资金行业榜")
+        self._sector_flow_btn.clicked.connect(self.sector_flow_requested.emit)
+        toolbar.addWidget(self._sector_flow_btn)
 
         self._tab_button_group = QtWidgets.QButtonGroup(self)
         self._tab_button_group.setExclusive(True)
@@ -170,8 +178,18 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._render_breadth(breadth)
 
     def apply_sectors(self, sectors: list[SectorRankItem]) -> None:
+        self._last_sectors = list(sectors)
         self._sync_sector_cards(sectors)
         self._sync_sector_selection()
+
+    def top_sector_industries(self, *, limit: int = 6) -> list[str]:
+        names: list[str] = []
+        for item in self._last_sectors:
+            if item.industry and item.industry not in names:
+                names.append(item.industry)
+            if len(names) >= limit:
+                break
+        return names
 
     def set_industry_filter(self, industry: str | None) -> None:
         self._active_industry = industry

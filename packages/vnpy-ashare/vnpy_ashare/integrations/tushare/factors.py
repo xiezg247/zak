@@ -144,6 +144,14 @@ def fetch_stock_industry_map() -> dict[str, str]:
     return mapping
 
 
+def fetch_stock_market_board_map() -> dict[str, str]:
+    """ts_code → 上市板块（stock_basic.market：主板/创业板/科创板等）。"""
+    rows, _ = fetch_stock_basic_snapshot()
+    if not rows:
+        return {}
+    return {str(item["ts_code"]): str(item["market"]) for item in rows if item.get("market")}
+
+
 def fetch_limit_list_d(*, trade_date: str | None = None, limit_type: str | None = None) -> tuple[list[dict[str, Any]], str]:
     """拉取涨跌停列表（limit_list_d）。"""
     trade_date = trade_date or _latest_trade_date_str()

@@ -168,7 +168,9 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_board_base_key: str | None = None
         self._market_filter_keyword: str = ""
         self._market_industry_filter: str | None = None
+        self._pending_industry_drilldown: str | None = None
         self._industry_map_cache: dict[str, str] | None = None
+        self._market_board_map_cache: dict[str, str] | None = None
         self._market_industry_filter_listener = None
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
@@ -524,6 +526,28 @@ class QuotesPage(QtWidgets.QWidget):
         if listener is not None:
             listener(industry)
         self._table.filter_market_display()
+
+    def open_industry_drilldown(self, industry: str, *, rank_id: str = "net_mf_in") -> None:
+        """从板块资金等入口下钻：主力净流入榜 + 行业成分筛选。"""
+        from vnpy_ashare.quotes.rank_catalog import get_rank_definition
+        from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID
+
+        cleaned = str(industry or "").strip()
+        if not cleaned:
+            return
+        target_rank = get_rank_definition(rank_id or SECTOR_DRILLDOWN_RANK_ID).id
+        self._pending_industry_drilldown = cleaned
+        self.search_edit.clear()
+        self._market_filter_keyword = ""
+        if self.config.use_market_rank:
+            self._market_rank.apply_rank_for_drilldown(target_rank)
+        else:
+            self.set_market_industry_filter(cleaned)
+            self._pending_industry_drilldown = None
+        rank_title = get_rank_definition(target_rank).title
+        self.status_label.setText(
+            f"{rank_title} · 行业筛选：{cleaned}（来自板块资金，点击概览 × 可清除）"
+        )
 
     def _render_table(self, *, preserve_selection: bool = True) -> None:
         self._table.render_table(preserve_selection=preserve_selection)

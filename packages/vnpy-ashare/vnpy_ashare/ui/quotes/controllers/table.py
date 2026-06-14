@@ -168,6 +168,12 @@ class TableController:
                 if required in all_keys and required not in valid_cols:
                     valid_cols.insert(0, required)
             valid_cols.insert(0, "index")
+            if page.page_name == "市场":
+                insert_at = valid_cols.index("name") + 1 if "name" in valid_cols else 1
+                for key in ("industry", "market_board"):
+                    if key in all_keys and key not in valid_cols:
+                        valid_cols.insert(insert_at, key)
+                        insert_at += 1
             self.visible_columns = valid_cols
         if len(parts) > 1 and parts[1]:
             self.visible_tail_columns = [k for k in parts[1].split(",") if k in ALL_TAIL_COLUMNS]
@@ -326,6 +332,16 @@ class TableController:
 
         page._industry_map_cache = fetch_stock_industry_map()
         return page._industry_map_cache
+
+    @staticmethod
+    def _market_board_map(page: QuotesPage) -> dict[str, str]:
+        cached = page._market_board_map_cache
+        if cached is not None:
+            return cached
+        from vnpy_ashare.integrations.tushare.factors import fetch_stock_market_board_map
+
+        page._market_board_map_cache = fetch_stock_market_board_map()
+        return page._market_board_map_cache
 
     @staticmethod
     def _same_stock_list(left: list[StockItem], right: list[StockItem]) -> bool:
@@ -847,6 +863,10 @@ class TableController:
             return item.exchange.value
         if column_key == "name":
             return (quote.name if quote and quote.name else item.name).lower()
+        if column_key == "industry":
+            return self._market_industry_map(self._p).get(item.ts_code, "").lower()
+        if column_key == "market_board":
+            return self._market_board_map(self._p).get(item.ts_code, "").lower()
         if quote is None:
             return float("-inf")
         from vnpy_ashare.quotes.rank_engine import quote_rank_value
@@ -923,12 +943,21 @@ class TableController:
             tail_value = str(count) if count else "—"
             tail_values = None
 
+        need_industry = "industry" in self.visible_columns or page._market_industry_filter
+        need_board = "market_board" in self.visible_columns
+        industry_map = self._market_industry_map(page) if need_industry else {}
+        board_map = self._market_board_map(page) if need_board else {}
+        industry = industry_map.get(item.ts_code, "")
+        market_board = board_map.get(item.ts_code, "")
+
         values, price_cols = build_quote_row(
             item,
             quote,
             index_text,
             tail_value,
             tail_values=tail_values,
+            industry=industry,
+            market_board=market_board,
         )
         all_keys = self._all_quote_column_keys()
         visible_indices: list[int] = []

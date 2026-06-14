@@ -34,6 +34,7 @@ from vnpy_ashare.integrations.tushare.factors import (
     fetch_moneyflow_hsgt_window,
     fetch_stock_basic_snapshot,
     fetch_stock_industry_map,
+    fetch_stock_market_board_map,
     load_ts_code_name_map,
 )
 
@@ -58,6 +59,7 @@ __all__ = [
     "fetch_moneyflow_hsgt_window",
     "fetch_stock_basic_snapshot",
     "fetch_stock_industry_map",
+    "fetch_stock_market_board_map",
     "get_cached_industry_map",
     "get_cached_pct_map",
     "get_cached_rows",

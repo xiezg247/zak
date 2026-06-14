@@ -31,6 +31,7 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
         (
             NavEntry("watchlist", "自选"),
             NavEntry("market", "市场"),
+            NavEntry("sector_flow", "板块资金"),
             NavEntry("radar", "雷达"),
             NavEntry("local", "本地"),
         ),
@@ -63,6 +64,7 @@ BACKSTAGE_PAGE_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE
 NAV_SHORTCUTS: dict[str, str] = {
     "watchlist": "Ctrl+1",
     "market": "Ctrl+2",
+    "sector_flow": "Ctrl+Shift+B",
     "radar": "Ctrl+3",
     "local": "Ctrl+4",
     "screener": "Ctrl+5",
@@ -204,6 +206,13 @@ def _draw_batch_backtest(painter: QtGui.QPainter, size: int) -> None:
         painter.drawLine(m + 3 + offset, size - m - 4, m + 8 + offset, size - m - 10)
 
 
+def _draw_sector_flow(painter: QtGui.QPainter, size: int) -> None:
+    m = 4
+    painter.drawRect(m, m + 8, size - 2 * m, size - m - 8)
+    for x_offset in (6, 12, 18):
+        painter.drawLine(m + x_offset, size - m - 4, m + x_offset, m + 12 + (x_offset % 6))
+
+
 def _draw_radar(painter: QtGui.QPainter, size: int) -> None:
     m = 5
     for index, _offset in enumerate((0, 8, 16)):
@@ -214,6 +223,7 @@ def _draw_radar(painter: QtGui.QPainter, size: int) -> None:
 
 _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "market": _draw_market,
+    "sector_flow": _draw_sector_flow,
     "radar": _draw_radar,
     "watchlist": _draw_watchlist,
     "screener": _draw_screener,

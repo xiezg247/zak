@@ -71,6 +71,7 @@ class RadarController(QtCore.QObject):
         board.batch_add_watchlist_requested.connect(self._on_batch_add_watchlist)
         board.stock_analysis_requested.connect(self._on_stock_analysis)
         board.view_run_requested.connect(self._on_view_run)
+        board.sector_flow_requested.connect(self._on_sector_flow)
         board.refresh_requested.connect(self._on_card_refresh_requested)
         board.ai_requested.connect(self.request_card_ai)
         board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
@@ -324,10 +325,19 @@ class RadarController(QtCore.QObject):
             return
         host.open_screener_run(run_id, page_key=page_key)
 
+    def _on_sector_flow(self, card_id: str) -> None:
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_sector_flow"):
+            page_notify(self._page, "无法打开板块资金页", level="warning")
+            return
+        card = self._board.card(card_id)
+        sector_ids = card.sector_names() if card is not None else []
+        host.open_sector_flow(sector_ids if sector_ids else None)
+
     def _find_main_window(self):
         widget = self._page
         while widget is not None:
-            if hasattr(widget, "open_screener_run"):
+            if hasattr(widget, "open_screener_run") or hasattr(widget, "open_sector_flow"):
                 return widget
             widget = widget.parentWidget()
         return None

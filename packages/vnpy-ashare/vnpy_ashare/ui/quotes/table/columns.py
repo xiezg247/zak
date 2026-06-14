@@ -22,6 +22,8 @@ QUOTE_TABLE_COLUMNS: tuple[QuoteTableColumn, ...] = (
     QuoteTableColumn("symbol", "证券代码"),
     QuoteTableColumn("exchange", "交易所"),
     QuoteTableColumn("name", "证券名称"),
+    QuoteTableColumn("industry", "行业"),
+    QuoteTableColumn("market_board", "板块"),
     QuoteTableColumn("last_price", "现价", True),
     QuoteTableColumn("change_pct", "涨幅%", True),
     QuoteTableColumn("limit_times", "连板"),
@@ -143,6 +145,8 @@ def build_quote_row(
     tail_value: str = "",
     *,
     tail_values: list[str] | None = None,
+    industry: str = "",
+    market_board: str = "",
 ) -> tuple[list[str], set[int]]:
     colored_cols: set[int] = set()
     values: list[str] = []
@@ -177,6 +181,9 @@ def build_quote_row(
             "exchange": exchange_to_cn(item.exchange),
             "name": item.name,
         }
+
+    field_map["industry"] = industry or "—"
+    field_map["market_board"] = market_board or "—"
 
     for col_index, column in enumerate(QUOTE_TABLE_COLUMNS):
         if column.key in field_map:
