@@ -446,6 +446,9 @@ class QuotesPage(QtWidgets.QWidget):
     def _sync_rank_sort_from_catalog(self) -> None:
         self._market_rank.sync_sort_from_catalog()
 
+    def _on_rank_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
+        self._market_rank.on_rank_item_clicked(item)
+
     def _on_rank_type_changed(self, row: int) -> None:
         self._market_rank.on_rank_type_changed(row)
 

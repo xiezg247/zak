@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.ai.context.market_overview import sync_market_overview_context, sync_market_overview_partial
-from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
 from vnpy_ashare.ui.quotes.market_overview.worker import MarketOverviewLoadWorker
 from vnpy_common.ui.feedback import page_notify
@@ -31,7 +30,6 @@ class MarketOverviewController(QtCore.QObject):
         self._refresh_timer.setInterval(OVERVIEW_REFRESH_MS)
         self._refresh_timer.timeout.connect(self.refresh)
 
-        panel.index_activated.connect(self._on_index_activated)
         panel.sector_selected.connect(self._on_sector_selected)
         panel.industry_filter_cleared.connect(self._clear_industry_filter)
         panel.sector_flow_requested.connect(self._open_sector_flow)
@@ -88,16 +86,6 @@ class MarketOverviewController(QtCore.QObject):
         actions = getattr(self._page, "_actions", None)
         if actions is not None:
             actions._publish_ai_context()
-
-    def _on_index_activated(self, vt_symbol: str) -> None:
-        from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
-
-        item = parse_stock_symbol(vt_symbol)
-        if item is None:
-            page_notify(self._page, f"无法解析指数：{vt_symbol}", level="warning")
-            return
-        quote = self._page.quote_map.get(item.tickflow_symbol)
-        show_stock_analysis_from_quotes_page(item=item, page=self._page, quote=quote, parent=self._page)
 
     def _on_sector_selected(self, industry: str) -> None:
         page = self._page

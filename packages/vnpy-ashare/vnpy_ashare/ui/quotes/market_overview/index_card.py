@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.domain.symbols import parse_tickflow_symbol
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import quote_change_color
 
+_SINGLE_CLICK_MS = 280
+
 
 class IndexCardWidget(QtWidgets.QFrame):
-    """单张指数卡片（双击打开分析）。"""
+    """单张指数卡片（单击查看近30日成交额）。"""
 
-    activated = QtCore.Signal(str)
+    amount_popup_requested = QtCore.Signal(str, str)
 
     def __init__(
         self,
@@ -29,7 +30,12 @@ class IndexCardWidget(QtWidgets.QFrame):
         self.setObjectName("IndexCard")
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self.setToolTip("双击查看指数详情")
+        self.setToolTip("单击查看近30日成交额")
+
+        self._click_timer = QtCore.QTimer(self)
+        self._click_timer.setSingleShot(True)
+        self._click_timer.setInterval(_SINGLE_CLICK_MS)
+        self._click_timer.timeout.connect(self._emit_amount_popup)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
@@ -50,12 +56,17 @@ class IndexCardWidget(QtWidgets.QFrame):
         self._apply_colors()
         self._render_quote(quote)
 
-    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:  # noqa: N802
+    @property
+    def tf_symbol(self) -> str:
+        return self._tf_symbol
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:  # noqa: N802
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            item = parse_tickflow_symbol(self._tf_symbol, self._label)
-            if item is not None:
-                self.activated.emit(item.vt_symbol)
-        super().mouseDoubleClickEvent(event)
+            self._click_timer.start()
+        super().mousePressEvent(event)
+
+    def _emit_amount_popup(self) -> None:
+        self.amount_popup_requested.emit(self._tf_symbol, self._label)
 
     def _apply_colors(self) -> None:
         tokens = theme_manager().tokens()

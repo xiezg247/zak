@@ -10,16 +10,7 @@ from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 from vnpy_tickflow.client import get_tickflow_client
 
-MARKET_INDICES: list[tuple[str, str]] = [
-    ("000001.SH", "上证指数"),
-    ("399001.SZ", "深证成指"),
-    ("399006.SZ", "创业板指"),
-    ("000688.SH", "科创50"),
-    ("000300.SH", "沪深300"),
-    ("000905.SH", "中证500"),
-    ("000016.SH", "上证50"),
-    ("899050.BJ", "北证50"),
-]
+from vnpy_ashare.domain.market_indices import MARKET_INDICES
 
 QUOTE_BATCH_SIZE = 80
 DEFAULT_QUOTE_FETCH_MAX_WORKERS = 4

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore
+from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.quotes.rank_catalog import get_rank_definition, rank_definition_row
+from vnpy_ashare.quotes.rank_catalog import DEFAULT_RANK_ID, get_rank_definition, rank_definition_row
 from vnpy_ashare.ui.quotes.features.market_rank_sidebar import rank_id_from_sidebar_row
 
 if TYPE_CHECKING:
@@ -46,19 +46,40 @@ class MarketRankFeature:
         page._market_sort_column = spec.sort_column or spec.redis_field
         page._market_sort_ascending = spec.ascending
 
-    def on_rank_type_changed(self, row: int) -> None:
+    def on_rank_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
+        """单击切换榜单；再次点击当前榜单则恢复默认涨幅榜。"""
         page = self._page
-        if not page.config.show_rank_sidebar or row < 0:
+        if not page.config.show_rank_sidebar:
             return
-
         rank_list = getattr(page, "rank_list", None)
         if rank_list is None:
             return
+        row = rank_list.row(item)
         rank_id = rank_id_from_sidebar_row(rank_list, row)
         if not rank_id:
             return
         if rank_id == page._market_rank_id:
+            if rank_id == DEFAULT_RANK_ID:
+                return
+            self._switch_rank(DEFAULT_RANK_ID)
             return
+        self._switch_rank(rank_id)
+
+    def on_rank_type_changed(self, row: int) -> None:
+        """兼容旧信号：按行号切换榜单。"""
+        page = self._page
+        if not page.config.show_rank_sidebar or row < 0:
+            return
+        rank_list = getattr(page, "rank_list", None)
+        if rank_list is None:
+            return
+        rank_id = rank_id_from_sidebar_row(rank_list, row)
+        if not rank_id or rank_id == page._market_rank_id:
+            return
+        self._switch_rank(rank_id)
+
+    def _switch_rank(self, rank_id: str) -> None:
+        page = self._page
         page._market_rank_id = rank_id
         self.sync_sort_from_catalog()
         self.save_rank_id_pref(rank_id)
@@ -70,6 +91,7 @@ class MarketRankFeature:
         page._market_filter_keyword = ""
         page._market_loading_more = False
         page._market_last_load_more_at = 0.0
+        self.init_sidebar_selection()
         page.load_stock_list()
 
     def init_sidebar_selection(self) -> None:
@@ -103,4 +125,10 @@ class MarketRankFeature:
             page.load_stock_list()
             return
         row = rank_definition_row(target)
-        self.on_rank_type_changed(row)
+        rank_list = getattr(page, "rank_list", None)
+        if rank_list is not None:
+            item = rank_list.item(row)
+            if item is not None:
+                self.on_rank_item_clicked(item)
+                return
+        self._switch_rank(target)

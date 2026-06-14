@@ -575,7 +575,7 @@ class QuotesPageShell:
 
                 page.rank_sidebar = MarketRankSidebar(page)
                 page.rank_list = page.rank_sidebar.rank_list
-                page.rank_list.currentRowChanged.connect(page._on_rank_type_changed)
+                page.rank_list.itemClicked.connect(page._on_rank_item_clicked)
                 rank_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
                 rank_splitter.setObjectName("MarketRankSplitter")
                 rank_splitter.setChildrenCollapsible(False)

@@ -167,6 +167,7 @@ class MarketRankSidebar(QtWidgets.QWidget):
         self.rank_list.setObjectName("RankSidebar")
         self.rank_list.setItemDelegate(RankSidebarDelegate(self.rank_list))
         self.rank_list.setSpacing(1)
+        self.rank_list.setToolTip("单击切换榜单；再次点击当前榜单可恢复涨幅榜")
         populate_rank_sidebar_list(self.rank_list)
         body_layout.addWidget(self.rank_list, stretch=1)
 

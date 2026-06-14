@@ -4,13 +4,18 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.domain.index_amount import IndexAmountSeries
+from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS
 from vnpy_ashare.quotes.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
 from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, SectorRankItem
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.ui.quotes.market_overview.index_amount_popup import IndexAmountPopup
+from vnpy_ashare.ui.quotes.market_overview.index_amount_worker import IndexAmountLoadWorker
 from vnpy_ashare.ui.quotes.market_overview.index_card import IndexCardWidget
 from vnpy_ashare.ui.quotes.market_overview.sector_card import SectorCardWidget
 from vnpy_ashare.ui.quotes.table.columns import format_amount
+from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
@@ -22,7 +27,6 @@ _CARD_STRIP_HEIGHT = 76
 class MarketOverviewPanel(QtWidgets.QWidget):
     """市场页顶部大盘概览带。"""
 
-    index_activated = QtCore.Signal(str)
     sector_selected = QtCore.Signal(str)
     industry_filter_cleared = QtCore.Signal()
     sector_flow_requested = QtCore.Signal()
@@ -110,6 +114,11 @@ class MarketOverviewPanel(QtWidgets.QWidget):
 
         self._index_cards: dict[str, IndexCardWidget] = {}
         self._sector_cards: dict[str, SectorCardWidget] = {}
+        self._amount_popup = IndexAmountPopup(self.window())
+        self._amount_worker: IndexAmountLoadWorker | None = None
+        self._amount_retired_workers: list[QtCore.QThread] = []
+        self._amount_anchor: IndexCardWidget | None = None
+        self._amount_series_cache: dict[str, IndexAmountSeries] = {}
         theme_manager().register_callback(self._on_theme_changed)
 
     def _build_index_scroll(self) -> QtWidgets.QScrollArea:
@@ -232,7 +241,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
             card = self._index_cards.get(tf_symbol)
             if card is None:
                 card = IndexCardWidget(label, quote, parent=self._cards_host)
-                card.activated.connect(self.index_activated.emit)
+                card.amount_popup_requested.connect(self._on_index_amount_popup)
                 self._index_cards[tf_symbol] = card
                 insert_at = max(self._cards_layout.count() - 1, 0)
                 self._cards_layout.insertWidget(insert_at, card)
@@ -289,3 +298,45 @@ class MarketOverviewPanel(QtWidgets.QWidget):
             parts.append(f"更新 {breadth.updated_at}")
         self._breadth_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         self._breadth_label.setText("  ·  ".join(parts))
+
+    def _on_index_amount_popup(self, ts_code: str, label: str) -> None:
+        anchor = self._index_cards.get(ts_code)
+        if anchor is None:
+            return
+        self._amount_anchor = anchor
+        cached = self._amount_series_cache.get(ts_code)
+        self._amount_popup.show_loading(label=label, trading_days=DEFAULT_TRADING_DAYS)
+        self._amount_popup.show_near(anchor)
+        if cached is not None:
+            self._amount_popup.render(cached, trading_days=DEFAULT_TRADING_DAYS)
+            return
+        if thread_is_active(self._amount_worker):
+            return
+        worker = IndexAmountLoadWorker(ts_code, label=label, parent=self)
+        self._amount_worker = worker
+
+        def on_finished(series) -> None:
+            if self._amount_worker is worker:
+                self._amount_worker = None
+            release_thread(self._amount_retired_workers, worker)
+            if series.ts_code:
+                self._amount_series_cache[series.ts_code] = series
+            if self._amount_anchor is not None and self._amount_anchor.tf_symbol == series.ts_code:
+                self._amount_popup.render(series, trading_days=DEFAULT_TRADING_DAYS)
+                self._amount_popup.show_near(self._amount_anchor)
+
+        def on_failed(message: str) -> None:
+            if self._amount_worker is worker:
+                self._amount_worker = None
+            release_thread(self._amount_retired_workers, worker)
+            if self._amount_anchor is not None:
+                self._amount_popup.show_error(
+                    label=label,
+                    trading_days=DEFAULT_TRADING_DAYS,
+                    message=message,
+                )
+                self._amount_popup.show_near(self._amount_anchor)
+
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.start()

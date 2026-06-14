@@ -11,6 +11,7 @@ from typing import Any
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.numbers import safe_float
 from vnpy_ashare.domain.symbols import EXCHANGE_TO_SUFFIX, ts_code_to_vt_symbol
+from vnpy_ashare.domain.market_indices import MARKET_INDEX_TS_CODES
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_DAILY_BASIC,
     DATASET_INDEX_DAILY,
@@ -64,7 +65,7 @@ def _latest_trade_date_str() -> str:
     return last_trading_day().strftime("%Y%m%d")
 
 
-_INDEX_PREFETCH_CODES = ("000001.SH", "000300.SH")
+_INDEX_PREFETCH_CODES = MARKET_INDEX_TS_CODES
 _INDEX_LOOKBACK_CALENDAR_DAYS = 120
 _HSGT_LOOKBACK_CALENDAR_DAYS = 40
 
