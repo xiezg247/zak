@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.ui.quotes.controllers.pagination import MarketPaginationController
 from vnpy_ashare.ui.quotes.page.config import LOCAL_PAGE_SIZE, PAGE_CONFIGS
 
@@ -34,10 +33,7 @@ class TestLocalPagination(unittest.TestCase):
 
         from vnpy_ashare.data import bars as bars_module
 
-        rows = [
-            MagicMock(symbol=f"{idx:06d}", exchange=Exchange.SSE, period="daily", start=None, end=None, count=10)
-            for idx in range(1, 6)
-        ]
+        rows = [MagicMock(symbol=f"{idx:06d}", exchange=Exchange.SSE, period="daily", start=None, end=None, count=10) for idx in range(1, 6)]
         with patch("vnpy_ashare.data.bars.iter_bar_overviews", return_value=rows):
             with patch("vnpy_ashare.data.bars.load_universe_rows", return_value=[]):
                 page_items = bars_module.load_downloaded_stocks_page(scope="daily", offset=1, limit=2)

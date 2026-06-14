@@ -761,11 +761,7 @@ class AiChatPanel(QtWidgets.QWidget):
             page_notify(self, "消息内容为空", level="info")
             return
         try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import (
-                resolve_context_stock,
-                save_message_as_journal,
-                save_message_as_report,
-            )
+            from vnpy_ashare.ui.features.notes_center.save_from_ai import resolve_context_stock
         except ImportError:
             page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
             return

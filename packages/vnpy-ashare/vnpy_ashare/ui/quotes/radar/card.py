@@ -136,9 +136,7 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._sector_flow_button.setObjectName("RadarCardSectorFlow")
             self._sector_flow_button.setFlat(True)
             self._sector_flow_button.setToolTip("打开板块资金监控页并预选主线行业")
-            self._sector_flow_button.clicked.connect(
-                lambda: self.sector_flow_requested.emit(self.card_id)
-            )
+            self._sector_flow_button.clicked.connect(lambda: self.sector_flow_requested.emit(self.card_id))
             footer.addWidget(self._sector_flow_button)
         else:
             self._sector_flow_button = None
@@ -218,9 +216,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         else:
             phase = ashare_market_phase()
             self._mode_badge.setText(ashare_market_phase_label())
-            self._mode_badge.setObjectName(
-                "RadarCardModeBadgeLive" if phase == "intraday" else "RadarCardModeBadgeOff"
-            )
+            self._mode_badge.setObjectName("RadarCardModeBadgeLive" if phase == "intraday" else "RadarCardModeBadgeOff")
         style = self._mode_badge.style()
         style.unpolish(self._mode_badge)
         style.polish(self._mode_badge)

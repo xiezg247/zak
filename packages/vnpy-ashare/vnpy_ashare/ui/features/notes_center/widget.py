@@ -13,18 +13,18 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.app.engine_access import get_note_service
 from vnpy_ashare.domain.stock_note import StockNoteIndexRow
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.ui.quotes.stock_notes.journal_tab import StockNoteJournalTab
 from vnpy_ashare.ui.features.notes_center.memo_view import NotesCenterMemoView
 from vnpy_ashare.ui.features.notes_center.reports_view import NotesCenterReportsView
+from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, show_stock_analysis_vt_symbol
 from vnpy_ashare.ui.quotes.stock_notes.ai_assist import (
+    NoteAiWorker,
     apply_expanded_memo,
     build_journal_polish_messages,
     build_memo_expand_messages,
     build_quote_snapshot_for_item,
     get_llm_config,
-    NoteAiWorker,
 )
-from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, show_stock_analysis_vt_symbol
+from vnpy_ashare.ui.quotes.stock_notes.journal_tab import StockNoteJournalTab
 from vnpy_common.paths import BACKUP_DIR
 from vnpy_common.ui.dialog_shell import build_panel_footer
 from vnpy_common.ui.feedback import page_notify

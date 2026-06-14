@@ -20,7 +20,4 @@ def _fallback_html(text: str) -> str:
     escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
     paragraphs = escaped.replace("\r\n", "\n").split("\n\n")
     body = "</p><p>".join(p.replace("\n", "<br>") for p in paragraphs if p.strip())
-    return (
-        "<html><head><meta charset='utf-8'></head>"
-        f"<body style='font-family:sans-serif;line-height:1.5'><p>{body}</p></body></html>"
-    )
+    return f"<html><head><meta charset='utf-8'></head><body style='font-family:sans-serif;line-height:1.5'><p>{body}</p></body></html>"

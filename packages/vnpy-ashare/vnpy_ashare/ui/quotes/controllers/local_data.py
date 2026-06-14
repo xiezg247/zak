@@ -199,9 +199,7 @@ class LocalDataController:
         stale_count = count_stale_daily_items(page.all_stocks, page.bar_meta)
         button.setEnabled(stale_count > 0)
         scope = "当前页" if page.config.use_local_pagination else "列表"
-        button.setToolTip(
-            f"对{scope} {stale_count} 只过期标的增量补全日 K 到最新交易日" if stale_count else f"当前{scope}无过期日 K"
-        )
+        button.setToolTip(f"对{scope} {stale_count} 只过期标的增量补全日 K 到最新交易日" if stale_count else f"当前{scope}无过期日 K")
 
     def update_batch_gap_fill_button(self) -> None:
         page = self._page

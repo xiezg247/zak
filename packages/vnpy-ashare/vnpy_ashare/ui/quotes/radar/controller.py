@@ -7,16 +7,18 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session
+from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
+    DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
-    DEFAULT_SCENARIO_VARIANT,
     auto_refresh_card_ids,
     list_radar_cards,
 )
+from vnpy_ashare.quotes.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar_loaders import (
     RadarCardData,
     build_radar_ai_prompt,
@@ -25,7 +27,6 @@ from vnpy_ashare.quotes.radar_loaders import (
     build_radar_resonance_list,
     compute_radar_resonance,
 )
-from vnpy_ashare.quotes.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
 from vnpy_common.ui.feedback import page_notify

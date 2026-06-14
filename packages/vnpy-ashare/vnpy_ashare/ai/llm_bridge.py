@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
+
     from vnpy_llm.app.engine import LlmEngine
 
 

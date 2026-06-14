@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.ui.quotes.market_discovery.worker import MarketDiscoveryLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -27,20 +28,34 @@ class MarketDiscoveryController(QtCore.QObject):
         self._refresh_timer = QtCore.QTimer(self)
         self._refresh_timer.setInterval(REFRESH_MS)
         self._refresh_timer.timeout.connect(self.refresh)
+        self._session_timer = QtCore.QTimer(self)
+        self._session_timer.setInterval(30_000)
+        self._session_timer.timeout.connect(self._on_session_tick)
 
         strip.row_activated.connect(self._on_row_activated)
 
     def activate(self) -> None:
         QtCore.QTimer.singleShot(800, self.refresh)
-        self._refresh_timer.start()
+        self._schedule_timer()
+        self._session_timer.start()
 
     def deactivate(self) -> None:
         self._refresh_timer.stop()
+        self._session_timer.stop()
         worker = self._worker
         self._worker = None
         if worker is not None:
             worker.request_cancel()
         release_thread(self._retired_workers, worker, timeout_ms=0)
+
+    def _on_session_tick(self) -> None:
+        self._schedule_timer()
+
+    def _schedule_timer(self) -> None:
+        if is_ashare_trading_session():
+            self._refresh_timer.start()
+        else:
+            self._refresh_timer.stop()
 
     def refresh(self) -> None:
         if thread_is_active(self._worker):

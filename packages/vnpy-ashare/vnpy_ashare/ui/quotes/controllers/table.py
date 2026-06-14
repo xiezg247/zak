@@ -42,6 +42,7 @@ from vnpy_common.ui.theme.tokens import ThemeTokens
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
+
 class TableController:
     """QuotesPage 表格与列配置。"""
 

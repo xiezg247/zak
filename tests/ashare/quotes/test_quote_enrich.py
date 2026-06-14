@@ -124,12 +124,15 @@ def test_fill_missing_limit_times_fallback_to_one_board() -> None:
     quote = _quote()
     quote.change_pct = LIMIT_UP_PCT
     quotes = {"600000.SH": quote}
-    with patch(
-        "vnpy_ashare.quotes.enrich.get_cached_tushare_factor_maps",
-        return_value=({}, {}),
-    ), patch(
-        "vnpy_ashare.quotes.enrich.get_cached_limit_times_map",
-        return_value={},
+    with (
+        patch(
+            "vnpy_ashare.quotes.enrich.get_cached_tushare_factor_maps",
+            return_value=({}, {}),
+        ),
+        patch(
+            "vnpy_ashare.quotes.enrich.get_cached_limit_times_map",
+            return_value={},
+        ),
     ):
         fill_missing_tushare_factors(quotes)
     assert quotes["600000.SH"].limit_times == 1.0

@@ -48,7 +48,6 @@ class NoteService(BaseService):
 
     @staticmethod
     def _symbol_name_map() -> dict[tuple[str, str], str]:
-        from vnpy.trader.constant import Exchange
 
         from vnpy_ashare.storage.repositories.universe import load_universe_rows
         from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
@@ -170,7 +169,7 @@ class NoteService(BaseService):
             lines.append("")
             lines.append(bundle.memo.body.strip())
             lines.append("")
-        entries = bundle.entries[:max(1, entry_limit)]
+        entries = bundle.entries[: max(1, entry_limit)]
         if entries:
             lines.append("## 流水")
             for entry in reversed(entries):
@@ -243,7 +242,7 @@ class NoteService(BaseService):
             parts.append(f"【备忘】\n{memo_body}")
 
         lines: list[str] = []
-        for entry in bundle.entries[:max(0, entry_count)]:
+        for entry in bundle.entries[: max(0, entry_count)]:
             body = entry.body.strip()
             if not body:
                 continue

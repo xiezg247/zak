@@ -42,10 +42,7 @@ def _upsert_rows(rows: list[tuple[str, str, str, str]]) -> int:
 def sync_suspend_for_date(trade_date: date) -> int:
     """同步单个交易日的停牌记录，返回写入条数。"""
     rows = fetch_suspend_d(trade_date)
-    payload = [
-        (row["symbol"], row["exchange"], row["cal_date"], row["suspend_type"])
-        for row in rows
-    ]
+    payload = [(row["symbol"], row["exchange"], row["cal_date"], row["suspend_type"]) for row in rows]
     count = _upsert_rows(payload)
     set_meta(SUSPEND_LAST_TRADE_DATE_KEY, _format_date(trade_date))
     set_meta(SUSPEND_SYNCED_AT_KEY, datetime.now().isoformat())

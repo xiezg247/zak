@@ -186,7 +186,4 @@ def build_outlook_rows(
     scenario_hints: dict[str, str] | None = None,
 ) -> tuple[RadarRow, ...]:
     hints = scenario_hints or {}
-    return tuple(
-        snapshot_to_row(snapshot, name_map=name_map, scenario_hint=hints.get(snapshot.vt_symbol))
-        for snapshot in snapshots
-    )
+    return tuple(snapshot_to_row(snapshot, name_map=name_map, scenario_hint=hints.get(snapshot.vt_symbol)) for snapshot in snapshots)

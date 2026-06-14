@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy_ashare.quotes.market_breadth import LIMIT_UP_PCT
 
 if TYPE_CHECKING:
-    from vnpy_ashare.domain.position_snapshot import PositionRecord, PositionSnapshot
+    from vnpy_ashare.domain.position_snapshot import PositionSnapshot
     from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 
 INTRADAY_DROP_PCT = -3.0

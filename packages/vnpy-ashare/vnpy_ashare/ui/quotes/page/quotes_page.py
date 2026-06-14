@@ -48,10 +48,10 @@ from vnpy_ashare.ui.quotes.page.config import (
     MARKET_SCROLL_DEBOUNCE_MS,
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
-    radar_refresh_hint,
     quote_refresh_hint,
     quote_refresh_seconds,
     quote_source_label,
+    radar_refresh_hint,
     save_market_auto_refresh_pref,
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
@@ -548,9 +548,7 @@ class QuotesPage(QtWidgets.QWidget):
             self.set_market_industry_filter(cleaned)
             self._pending_industry_drilldown = None
         rank_title = get_rank_definition(target_rank).title
-        self.status_label.setText(
-            f"{rank_title} · 行业筛选：{cleaned}（来自板块资金，点击概览 × 可清除）"
-        )
+        self.status_label.setText(f"{rank_title} · 行业筛选：{cleaned}（来自板块资金，点击概览 × 可清除）")
 
     def _render_table(self, *, preserve_selection: bool = True) -> None:
         self._table.render_table(preserve_selection=preserve_selection)

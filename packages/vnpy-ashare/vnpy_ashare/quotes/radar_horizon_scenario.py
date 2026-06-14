@@ -11,7 +11,7 @@ from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_is_fresh, signal_missing_kline
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.quotes.radar_horizon_rules import last_price_for_snapshot, _has_near_unlock
+from vnpy_ashare.quotes.radar_horizon_rules import _has_near_unlock, last_price_for_snapshot
 from vnpy_ashare.quotes.radar_models import RadarRow, merge_row_quotes
 
 SCENARIO_VARIANTS: frozenset[str] = frozenset(
@@ -102,11 +102,7 @@ def batch_build_scenario_metrics(
     if not vt_symbols:
         return []
 
-    eligible = [
-        vt_symbol
-        for vt_symbol in vt_symbols
-        if snapshots.get(vt_symbol) is not None and not signal_missing_kline(snapshots[vt_symbol])
-    ]
+    eligible = [vt_symbol for vt_symbol in vt_symbols if snapshots.get(vt_symbol) is not None and not signal_missing_kline(snapshots[vt_symbol])]
     if not eligible:
         return []
 

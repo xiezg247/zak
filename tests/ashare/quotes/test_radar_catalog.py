@@ -40,8 +40,8 @@ def test_scenario_scores() -> None:
     from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
     from vnpy_ashare.quotes.radar_horizon_scenario import (
         ScenarioMetrics,
-        bullish_score,
         bearish_score,
+        bullish_score,
         matches_scenario,
         volatility_score,
     )

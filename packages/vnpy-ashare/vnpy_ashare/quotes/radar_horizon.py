@@ -17,9 +17,8 @@ from vnpy_ashare.quotes.radar_horizon_scan import (
     collect_daily_k_ready_vt_symbols,
     horizon_empty_message,
 )
-from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow, enrich_radar_rows
-
 from vnpy_ashare.quotes.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
+from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow, enrich_radar_rows
 
 OUTLOOK_CARD_VARIANTS: dict[str, str] = {
     "outlook_watch": "watch_next",
@@ -198,9 +197,7 @@ def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, card_id: str) 
             "",
         ]
         for row in data.rows:
-            lines.append(
-                f"- {row.name}({row.symbol}) {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}"
-            )
+            lines.append(f"- {row.name}({row.symbol}) {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}")
         return "\n".join(lines)
     variant = OUTLOOK_CARD_VARIANTS.get(card_id, "watch_next")
     mode = "未来几日关注" if variant == "watch_next" else "未来几日可持仓"

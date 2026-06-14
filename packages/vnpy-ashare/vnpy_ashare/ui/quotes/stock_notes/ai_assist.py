@@ -129,11 +129,7 @@ def build_memo_expand_messages(
         },
         {
             "role": "user",
-            "content": (
-                f"标的：{title}\n"
-                f"备忘全文：\n{full_memo.strip()}\n\n"
-                f"待扩写{scope}：\n{target}"
-            ),
+            "content": (f"标的：{title}\n备忘全文：\n{full_memo.strip()}\n\n待扩写{scope}：\n{target}"),
         },
     ]
 
@@ -142,6 +138,6 @@ def apply_expanded_memo(full_text: str, selection: str, expanded: str) -> str:
     if selection.strip():
         cursor_start = full_text.find(selection)
         if cursor_start >= 0:
-            return full_text[:cursor_start] + expanded + full_text[cursor_start + len(selection):]
+            return full_text[:cursor_start] + expanded + full_text[cursor_start + len(selection) :]
         return expanded
     return expanded

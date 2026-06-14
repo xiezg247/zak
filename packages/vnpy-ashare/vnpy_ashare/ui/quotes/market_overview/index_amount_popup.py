@@ -79,9 +79,7 @@ class IndexAmountPopup(QtWidgets.QFrame):
 
         ratio = series.ratio_to_avg
         ratio_text = f"{ratio:.2f}" if ratio is not None else "—"
-        self._summary.setText(
-            f"今日 {series.latest_yi:.2f} 亿 · 均值 {avg:.2f} 亿 · 比值 {ratio_text}"
-        )
+        self._summary.setText(f"今日 {series.latest_yi:.2f} 亿 · 均值 {avg:.2f} 亿 · 比值 {ratio_text}")
 
         axis = self._plot.getPlotItem().getAxis("bottom")
         if axis is not None:

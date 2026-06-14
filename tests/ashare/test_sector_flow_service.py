@@ -61,7 +61,6 @@ class SectorFlowAggregatorTests(unittest.TestCase):
             },
         ]
         # attach_industry will skip if no tushare map - rows already have industry
-        from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
         with mock.patch(
             "vnpy_ashare.services.sector_flow_service.attach_industry",

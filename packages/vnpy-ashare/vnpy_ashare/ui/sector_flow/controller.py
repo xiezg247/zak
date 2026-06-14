@@ -19,6 +19,7 @@ from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 if TYPE_CHECKING:
     from vnpy.event import EventEngine
     from vnpy.trader.engine import MainEngine
+
     from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
 
 _DEFAULT_REFRESH_MS = 30_000
@@ -160,15 +161,9 @@ class SectorFlowController(QtCore.QObject):
         extra_lines = ["板块资金监控页"]
         snap = snapshot or self._last_snapshot
         if snap and snap.rows:
-            extra_lines.append(
-                f"净流入 {snap.top_inflow_name} {snap.top_inflow_yi:+.1f}亿；"
-                f"净流出 {snap.top_outflow_name} {snap.top_outflow_yi:+.1f}亿"
-            )
+            extra_lines.append(f"净流入 {snap.top_inflow_name} {snap.top_inflow_yi:+.1f}亿；净流出 {snap.top_outflow_name} {snap.top_outflow_yi:+.1f}亿")
             for row in snap.rows[:8]:
-                extra_lines.append(
-                    f"{row.name} 强度{row.strength:.1f} 涨幅{row.change_pct:+.2f}% "
-                    f"主力{row.net_flow_yi:+.2f}亿({row.flow_source})"
-                )
+                extra_lines.append(f"{row.name} 强度{row.strength:.1f} 涨幅{row.change_pct:+.2f}% 主力{row.net_flow_yi:+.2f}亿({row.flow_source})")
         quote_service.publish_quote_context(
             page="板块资金",
             signal_extra="\n".join(extra_lines),
@@ -186,10 +181,7 @@ class SectorFlowController(QtCore.QObject):
             "数据为行业聚合，主力列可能为日频或估算口径，请说明不确定性。",
         ]
         for row in snap.rows[:12]:
-            lines.append(
-                f"- {row.name}：强度{row.strength:.1f}，涨幅{row.change_pct:+.2f}%，"
-                f"主力净额{row.net_flow_yi:+.2f}亿（{row.flow_source}）"
-            )
+            lines.append(f"- {row.name}：强度{row.strength:.1f}，涨幅{row.change_pct:+.2f}%，主力净额{row.net_flow_yi:+.2f}亿（{row.flow_source}）")
         self._event_engine.put(
             Event(
                 EVENT_ASK_AI,

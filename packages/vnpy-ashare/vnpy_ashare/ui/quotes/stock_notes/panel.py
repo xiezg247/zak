@@ -8,22 +8,21 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.stock_notes import (
+    TAB_ENTRY,
+    TAB_MEMO,
     load_stock_note_active_tab,
     load_stock_note_panel_expanded,
     save_stock_note_active_tab,
     save_stock_note_panel_expanded,
-    TAB_ENTRY,
-    TAB_MEMO,
 )
-from vnpy_ashare.domain.stock_note import StockNoteEntry
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.ui.quotes.stock_notes.ai_assist import (
+    NoteAiWorker,
     apply_expanded_memo,
     build_journal_polish_messages,
     build_memo_expand_messages,
     build_quote_snapshot_line,
     get_llm_config,
-    NoteAiWorker,
 )
 from vnpy_ashare.ui.quotes.stock_notes.journal_tab import StockNoteJournalTab
 from vnpy_ashare.ui.quotes.stock_notes.memo_tab import StockNoteMemoTab

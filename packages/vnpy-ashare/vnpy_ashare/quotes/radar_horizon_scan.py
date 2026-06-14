@@ -9,6 +9,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfi
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_missing_kline
+from vnpy_ashare.quotes.radar_horizon_cache import HorizonCacheEntry, put_horizon_cache
 from vnpy_ashare.quotes.radar_horizon_rules import (
     build_outlook_rows,
     filter_outlook_snapshots,
@@ -22,7 +23,6 @@ from vnpy_ashare.quotes.radar_horizon_scenario import (
     filter_scenario_metrics,
     scenario_sort_key,
 )
-from vnpy_ashare.quotes.radar_horizon_cache import HorizonCacheEntry, put_horizon_cache
 from vnpy_ashare.quotes.radar_models import RadarRow
 from vnpy_ashare.quotes.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
 from vnpy_ashare.quotes.radar_signals import build_signal_snapshot
@@ -73,10 +73,7 @@ def horizon_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
             return "本地暂无日 K 数据，请先运行「全市场日 K」或「补全本地日 K」。"
         return "粗筛池为空（可能标的均在排除清单中），请稍后重试。"
     if local_daily_k_insufficient(stats):
-        return (
-            "本地日 K 覆盖不足，请先运行「全市场日 K」或「补全本地日 K」"
-            f"（粗筛 {stats.prefilter_total} 只，可算信号 0 只）。"
-        )
+        return f"本地日 K 覆盖不足，请先运行「全市场日 K」或「补全本地日 K」（粗筛 {stats.prefilter_total} 只，可算信号 0 只）。"
     return f"当前无符合「{card_title}」条件的标的（已扫描 {stats.scanned_total} 只）。"
 
 
@@ -218,11 +215,7 @@ def scan_horizon_variant(
             matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant))
         top_matched = matched[:top_n]
         name_map = name_map_for_symbols([snap.vt_symbol for snap in top_matched])
-        metrics_list = (
-            scenario_metrics
-            if scenario_metrics is not None
-            else batch_build_scenario_metrics(prefilter, snapshots)
-        )
+        metrics_list = scenario_metrics if scenario_metrics is not None else batch_build_scenario_metrics(prefilter, snapshots)
         scenario_hints: dict[str, str] = {}
         for metrics in metrics_list:
             hint = classify_scenario_hint(metrics)

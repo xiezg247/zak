@@ -39,6 +39,7 @@ from vnpy_ashare.domain.ai_actions import (
 from vnpy_ashare.ui.backtest import BatchBacktestPageWidget
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener import AutoScreenerPageWidget, ScreenerPageWidget
+from vnpy_ashare.ui.sector_flow import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.nav import (
@@ -49,7 +50,6 @@ from vnpy_ashare.ui.shell.nav import (
     NAV_SHORTCUTS,
     SidebarNav,
 )
-from vnpy_ashare.ui.sector_flow import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, RadarPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG

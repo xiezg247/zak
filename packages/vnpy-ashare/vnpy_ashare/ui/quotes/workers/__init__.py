@@ -20,8 +20,8 @@ from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     MinuteDownloadWorker,
     QuotesRefreshWorker,
     ScopeBarsLoadWorker,
-    UniverseLoadWorker,
     UniverseLoadResult,
+    UniverseLoadWorker,
     UniverseSyncWorker,
 )
 

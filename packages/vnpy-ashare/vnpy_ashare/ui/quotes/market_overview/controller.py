@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.ai.context.market_overview import sync_market_overview_context, sync_market_overview_partial
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
 from vnpy_ashare.ui.quotes.market_overview.worker import MarketOverviewLoadWorker
 from vnpy_common.ui.feedback import page_notify
@@ -29,6 +30,9 @@ class MarketOverviewController(QtCore.QObject):
         self._refresh_timer = QtCore.QTimer(self)
         self._refresh_timer.setInterval(OVERVIEW_REFRESH_MS)
         self._refresh_timer.timeout.connect(self.refresh)
+        self._session_timer = QtCore.QTimer(self)
+        self._session_timer.setInterval(30_000)
+        self._session_timer.timeout.connect(self._on_session_tick)
 
         panel.sector_selected.connect(self._on_sector_selected)
         panel.industry_filter_cleared.connect(self._clear_industry_filter)
@@ -39,13 +43,24 @@ class MarketOverviewController(QtCore.QObject):
 
     def activate(self) -> None:
         QtCore.QTimer.singleShot(500, self.refresh)
-        self._refresh_timer.start()
+        self._schedule_timer()
+        self._session_timer.start()
 
     def deactivate(self) -> None:
         self._refresh_timer.stop()
+        self._session_timer.stop()
         worker = self._worker
         self._worker = None
         release_thread(self._retired_workers, worker, timeout_ms=0)
+
+    def _on_session_tick(self) -> None:
+        self._schedule_timer()
+
+    def _schedule_timer(self) -> None:
+        if is_ashare_trading_session():
+            self._refresh_timer.start()
+        else:
+            self._refresh_timer.stop()
 
     def refresh(self) -> None:
         if thread_is_active(self._worker):

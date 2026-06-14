@@ -74,6 +74,5 @@ class SectorCardWidget(QtWidgets.QFrame):
         border = tokens.accent if self._selected else tokens.panel_border
         width = 2 if self._selected else 1
         self.setStyleSheet(
-            f"QFrame#SectorCard {{ background-color: {tokens.panel_bg}; "
-            f"border: {width}px solid {border}; border-radius: 6px; min-width: 96px; }}"
+            f"QFrame#SectorCard {{ background-color: {tokens.panel_bg}; border: {width}px solid {border}; border-radius: 6px; min-width: 96px; }}"
         )

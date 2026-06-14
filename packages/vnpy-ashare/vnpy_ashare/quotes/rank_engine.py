@@ -61,13 +61,7 @@ def quote_matches_rank(quote: QuoteSnapshot, spec: RankDefinition) -> bool:
 
 
 def rank_needs_post_process(spec: RankDefinition) -> bool:
-    return (
-        spec.filter is not None
-        or spec.require_open_below_prev
-        or spec.require_open_above_prev
-        or spec.require_intraday_rise
-        or spec.require_intraday_fall
-    )
+    return spec.filter is not None or spec.require_open_below_prev or spec.require_open_above_prev or spec.require_intraday_rise or spec.require_intraday_fall
 
 
 def should_finalize_rank_catalog(spec: RankDefinition) -> bool:

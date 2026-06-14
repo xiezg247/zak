@@ -6,15 +6,14 @@ from collections.abc import Callable
 from typing import Any
 
 from vnpy_common.ai.access import get_ai_context
-
 from vnpy_llm.chat.store import MAX_TOOL_RESULT_CHARS, ChatMessage
+from vnpy_llm.gateway.tool_registry import ToolRegistry
 from vnpy_llm.graph.state import GraphStreamContext
 from vnpy_llm.routing.prompts import (
     SYSTEM_PROMPT,
     build_page_prompt,
     build_strategy_prompt,
 )
-from vnpy_llm.gateway.tool_registry import ToolRegistry
 
 
 class ContextAssembler:

@@ -27,8 +27,7 @@ def load_memo(symbol: str, exchange: Exchange) -> dict[str, str] | None:
     init_app_db()
     with connect() as conn:
         row = conn.execute(
-            "SELECT symbol, exchange, body, updated_at FROM stock_note_memos "
-            "WHERE symbol = ? AND exchange = ?",
+            "SELECT symbol, exchange, body, updated_at FROM stock_note_memos WHERE symbol = ? AND exchange = ?",
             (symbol, exchange.name),
         ).fetchone()
     if row is None:
@@ -63,8 +62,7 @@ def append_entry(symbol: str, exchange: Exchange, body: str) -> dict[str, str | 
     init_app_db()
     with connect() as conn:
         cursor = conn.execute(
-            "INSERT INTO stock_note_entries(symbol, exchange, body, created_at) "
-            "VALUES (?, ?, ?, ?)",
+            "INSERT INTO stock_note_entries(symbol, exchange, body, created_at) VALUES (?, ?, ?, ?)",
             (symbol, exchange.name, text, now),
         )
         return {
@@ -81,9 +79,7 @@ def list_entries(symbol: str, exchange: Exchange, limit: int = 50) -> list[dict[
     init_app_db()
     with connect() as conn:
         rows = conn.execute(
-            "SELECT id, symbol, exchange, body, created_at FROM stock_note_entries "
-            "WHERE symbol = ? AND exchange = ? "
-            "ORDER BY created_at DESC, id DESC LIMIT ?",
+            "SELECT id, symbol, exchange, body, created_at FROM stock_note_entries WHERE symbol = ? AND exchange = ? ORDER BY created_at DESC, id DESC LIMIT ?",
             (symbol, exchange.name, limit),
         ).fetchall()
     return [

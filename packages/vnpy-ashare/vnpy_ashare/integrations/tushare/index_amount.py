@@ -9,7 +9,7 @@ from vnpy_ashare.domain.index_amount import IndexAmountPoint, IndexAmountSeries
 from vnpy_ashare.domain.numbers import safe_float
 from vnpy_ashare.integrations.tushare.cache import DATASET_INDEX_DAILY, get_cached_rows, set_cached_rows
 from vnpy_ashare.integrations.tushare.client import get_tushare_pro
-from vnpy_ashare.integrations.tushare.factors import _INDEX_LOOKBACK_CALENDAR_DAYS, _latest_trade_date_str
+from vnpy_ashare.integrations.tushare.factors import _latest_trade_date_str
 
 DEFAULT_TRADING_DAYS = 30
 _INDEX_AMOUNT_CALENDAR_BUFFER = 50
@@ -76,10 +76,7 @@ def _merge_index_daily_cache(trade_date: str, fresh_rows: list[dict[str, Any]]) 
     if not fresh_rows:
         return
     cached = list(get_cached_rows(DATASET_INDEX_DAILY, trade_date) or [])
-    by_key = {
-        (str(row.get("ts_code") or ""), str(row.get("trade_date") or "")): row
-        for row in cached
-    }
+    by_key = {(str(row.get("ts_code") or ""), str(row.get("trade_date") or "")): row for row in cached}
     for row in fresh_rows:
         key = (str(row.get("ts_code") or ""), str(row.get("trade_date") or ""))
         if key[0] and key[1]:

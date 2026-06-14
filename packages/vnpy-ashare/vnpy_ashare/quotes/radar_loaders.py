@@ -7,9 +7,9 @@ from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
+    DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
-    DEFAULT_SCENARIO_VARIANT,
     RADAR_CARD_BY_ID,
     RADAR_CARD_SPECS,
     RadarCardSpec,

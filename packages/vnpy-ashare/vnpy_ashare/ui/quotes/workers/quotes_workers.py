@@ -37,7 +37,7 @@ from vnpy_ashare.data.bars import (
 )
 from vnpy_ashare.data.minute_periods import period_step
 from vnpy_ashare.domain.calendar import last_trading_day
-from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow import (
     DepthPermissionError,
     fetch_depth_from_tickflow,
@@ -721,11 +721,7 @@ class MarketFullLoadWorker(QtCore.QThread):
                     items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
                     quotes = provider.get_quotes(items)
                     if rank_needs_post_process(spec):
-                        items = [
-                            item
-                            for item in items
-                            if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)
-                        ]
+                        items = [item for item in items if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)]
                     items.sort(
                         key=lambda stock: self._quote_sort_value(quotes.get(stock.tickflow_symbol), spec),
                         reverse=not spec.ascending,

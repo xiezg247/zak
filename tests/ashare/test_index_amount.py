@@ -24,10 +24,7 @@ class IndexAmountHistoryTests(unittest.TestCase):
         clear_index_amount_memory_cache()
 
     def test_fetch_from_cached_rows(self) -> None:
-        cached_rows = [
-            {"ts_code": "000001.SH", "trade_date": f"2025060{i}", "amount": 100000 * i}
-            for i in range(1, 8)
-        ]
+        cached_rows = [{"ts_code": "000001.SH", "trade_date": f"2025060{i}", "amount": 100000 * i} for i in range(1, 8)]
         with patch(
             "vnpy_ashare.integrations.tushare.index_amount._latest_trade_date_str",
             return_value="20250607",

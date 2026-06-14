@@ -13,7 +13,7 @@ from vnpy_ashare.quotes.speed_baseline import (
 
 
 class _FakePipeline:
-    def __init__(self, client: "_FakeRedis") -> None:
+    def __init__(self, client: _FakeRedis) -> None:
         self._client = client
         self._ops: list[tuple] = []
 

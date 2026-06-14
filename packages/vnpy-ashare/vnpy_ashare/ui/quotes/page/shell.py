@@ -21,6 +21,7 @@ from vnpy_ashare.ui.quotes.page.run_log import (
     on_run_output_expansion_changed,
 )
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
+from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
 from vnpy_ashare.ui.quotes.table import LOCAL_TABLE_HEADERS, QuoteTableModel
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
 from vnpy_ashare.ui.quotes.watchlist_signals import (
@@ -29,7 +30,6 @@ from vnpy_ashare.ui.quotes.watchlist_signals import (
     configure_center_splitter,
     restore_center_splitter,
 )
-from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.theme import theme_manager
@@ -587,12 +587,8 @@ class QuotesPageShell:
                 page._rank_splitter = rank_splitter
                 page._rank_splitter_filter = MarketRankSplitterResizeFilter(page)
                 rank_splitter.installEventFilter(page._rank_splitter_filter)
-                rank_splitter.splitterMoved.connect(
-                    lambda _pos, _index: clamp_rank_splitter_sizes(page)
-                )
-                page.rank_sidebar.expansion_changed.connect(
-                    lambda expanded: sync_rank_splitter_for_expansion(page, expanded)
-                )
+                rank_splitter.splitterMoved.connect(lambda _pos, _index: clamp_rank_splitter_sizes(page))
+                page.rank_sidebar.expansion_changed.connect(lambda expanded: sync_rank_splitter_for_expansion(page, expanded))
                 main_content = rank_splitter
                 page._init_rank_sidebar_selection()
                 QtCore.QTimer.singleShot(

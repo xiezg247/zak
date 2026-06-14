@@ -8,6 +8,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfi
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.radar_catalog import RadarCardSpec
+from vnpy_ashare.quotes.radar_horizon_scenario import batch_build_scenario_metrics, classify_scenario_hint
 from vnpy_ashare.quotes.radar_models import (
     RadarCardData,
     RadarRow,
@@ -21,7 +22,6 @@ from vnpy_ashare.quotes.radar_moneyflow import (
     watchlist_moneyflow_metric,
 )
 from vnpy_ashare.quotes.radar_pool import collect_personal_vt_symbols, name_map_for_symbols
-from vnpy_ashare.quotes.radar_horizon_scenario import batch_build_scenario_metrics, classify_scenario_hint
 from vnpy_ashare.quotes.radar_signals import build_signal_snapshot, compute_signal_transitions
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
@@ -357,10 +357,7 @@ def load_watchlist_intraday(spec: RadarCardSpec) -> RadarCardData:
         sample = "、".join(list(transitions.values())[:3])
         ai_hint_parts.append(f"信号跃迁 {len(transitions)} 只：{sample}")
     if scenario_count:
-        scenario_sample = "、".join(
-            f"{name_map.get(vt, vt)} {hint}"
-            for vt, hint in list(scenario_hints.items())[:3]
-        )
+        scenario_sample = "、".join(f"{name_map.get(vt, vt)} {hint}" for vt, hint in list(scenario_hints.items())[:3])
         ai_hint_parts.append(f"5日统计情景 {scenario_count} 只（非价格预测）：{scenario_sample}")
     ai_hint = " · ".join(ai_hint_parts)
 

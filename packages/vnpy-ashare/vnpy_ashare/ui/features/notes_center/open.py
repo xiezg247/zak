@@ -31,4 +31,3 @@ def show_notes_center_dialog(
     if initial_tab.strip():
         dialog.focus_tab(initial_tab.strip())
     dialog.exec()
-

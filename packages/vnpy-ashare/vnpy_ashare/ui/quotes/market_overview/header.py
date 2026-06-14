@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ui.quotes.market_discovery.panel import MarketDiscoveryStrip
 from vnpy_ashare.ui.quotes.market_overview.panel import MarketOverviewPanel

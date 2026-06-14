@@ -65,10 +65,7 @@ def diagnose_sector_flow_empty(
         return "Redis 无有效行情快照。请到「工具 → 立即执行 → 行情采集」运行后再刷新。"
     enriched = attach_industry(rows)
     if not enriched:
-        return (
-            "全市场行情已加载，但无法匹配行业字段。请配置 TUSHARE_TOKEN，"
-            "并运行「工具 → 定时任务 → 同步行业映射」后再刷新。"
-        )
+        return "全市场行情已加载，但无法匹配行业字段。请配置 TUSHARE_TOKEN，并运行「工具 → 定时任务 → 同步行业映射」后再刷新。"
     buckets: dict[str, int] = defaultdict(int)
     for row in enriched:
         industry = str(row.get("industry") or "").strip()
@@ -77,9 +74,7 @@ def diagnose_sector_flow_empty(
     qualifying = sum(1 for count in buckets.values() if count >= _MIN_STOCKS)
     if qualifying == 0:
         return (
-            f"当前仅展示成分不少于 {_MIN_STOCKS} 只的行业；"
-            f"已映射 {len(enriched)} 只股票、{len(buckets)} 个行业标签，但均无足够成分。"
-            "请检查行业映射是否过稀疏。"
+            f"当前仅展示成分不少于 {_MIN_STOCKS} 只的行业；已映射 {len(enriched)} 只股票、{len(buckets)} 个行业标签，但均无足够成分。请检查行业映射是否过稀疏。"
         )
     return "暂无板块数据，请稍后刷新。"
 
