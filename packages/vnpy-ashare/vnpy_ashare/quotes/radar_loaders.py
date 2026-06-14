@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -16,6 +15,7 @@ from vnpy_ashare.quotes.radar_catalog import (
 )
 from vnpy_ashare.quotes.radar_models import (
     RadarCardData,
+    RadarResonanceEntry,
     RadarRow,
     float_or_none,
     format_pct,
@@ -454,17 +454,6 @@ def load_radar_board(
         )
         for spec in RADAR_CARD_SPECS
     }
-
-
-@dataclass(frozen=True)
-class RadarResonanceEntry:
-    vt_symbol: str
-    name: str
-    symbol: str
-    card_count: int
-    card_titles: tuple[str, ...]
-    price: float | None
-    change_pct: float | None
 
 
 def build_radar_resonance_list(

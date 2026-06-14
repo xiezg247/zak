@@ -2,6 +2,10 @@
 
 from vnpy_ashare.ui.screener.workers.reference_peer_worker import ReferencePeerWorker
 from vnpy_ashare.ui.screener.workers.screener_workers import (
+    IndustryScreenRunWorker,
+    PatternScreenRunWorker,
+    QuoteRefreshWorker,
+    RadarResonanceRunWorker,
     ScreenerBatchBacktestWorker,
     ScreenerBatchDownloadWorker,
     ScreenerRecipeRunWorker,
@@ -9,6 +13,10 @@ from vnpy_ashare.ui.screener.workers.screener_workers import (
 )
 
 __all__ = [
+    "IndustryScreenRunWorker",
+    "PatternScreenRunWorker",
+    "QuoteRefreshWorker",
+    "RadarResonanceRunWorker",
     "ReferencePeerWorker",
     "ScreenerBatchBacktestWorker",
     "ScreenerBatchDownloadWorker",

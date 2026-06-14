@@ -134,6 +134,8 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
 
     def _on_kind_changed(self, index: int) -> None:
         self._trigger_kind = "intraday" if index == 0 else "post_close"
+        defaults = default_config_for_trigger(self._trigger_kind)
+        self._min_dim_spin.setValue(int(defaults.get("min_dimensions") or 1))
         self._reload_recipe_combo(None)
 
     def _reload_recipe_combo(self, selected_id: str | None) -> None:

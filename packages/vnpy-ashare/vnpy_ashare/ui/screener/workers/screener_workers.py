@@ -5,6 +5,11 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.screener.batch.batch_actions import batch_download_daily_bars, run_batch_backtests
+from vnpy_ashare.screener.data.screening_status import (
+    prepare_quotes_for_screening,
+    recipe_uses_live_quotes,
+    request_uses_live_quotes,
+)
 from vnpy_ashare.screener.recipe.recipe_runner import run_recipe_object
 from vnpy_ashare.screener.run.runner import ScreenerRequest, resolve_preset_input, run_screener
 
@@ -41,6 +46,14 @@ class ScreenerRunWorker(QtCore.QThread):
         try:
             if self._cancel_requested:
                 self.failed.emit("已取消")
+                return
+            uses_live = request_uses_live_quotes(
+                preset=self.preset,
+                scheme_id=self.scheme_id,
+            )
+            ok, prep_msg = prepare_quotes_for_screening(uses_live_quotes=uses_live)
+            if not ok:
+                self.failed.emit(prep_msg or "行情不可用")
                 return
             if self.scheme_id:
                 request = ScreenerRequest(
@@ -100,6 +113,11 @@ class ScreenerRecipeRunWorker(QtCore.QThread):
         try:
             if self._cancel_requested:
                 self.failed.emit("已取消")
+                return
+            uses_live = recipe_uses_live_quotes(self.recipe)
+            ok, prep_msg = prepare_quotes_for_screening(uses_live_quotes=uses_live)
+            if not ok:
+                self.failed.emit(prep_msg or "行情不可用")
                 return
             result = run_recipe_object(
                 self.recipe,
@@ -175,3 +193,152 @@ class ScreenerBatchBacktestWorker(QtCore.QThread):
             self.finished.emit(results)
         except Exception as ex:
             self.failed.emit(str(ex))
+
+
+class PatternScreenRunWorker(QtCore.QThread):
+    """后台执行形态选股；finished 发射 ScreenerRunResult。"""
+
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        main_engine,
+        *,
+        pattern: str,
+        top_n: int,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.main_engine = main_engine
+        self.pattern = pattern
+        self.top_n = top_n
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
+
+    def run(self) -> None:
+        try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            from vnpy_ashare.app.engine_access import get_screening_service
+
+            service = get_screening_service(self.main_engine)
+            if service is None:
+                self.failed.emit("选股服务未就绪")
+                return
+            result = service.run_pattern_screen(self.pattern, top_n=self.top_n)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.finished.emit(result)
+        except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.failed.emit(str(ex))
+
+
+class IndustryScreenRunWorker(QtCore.QThread):
+    """后台执行行业成分选股；finished 发射 ScreenerRunResult。"""
+
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        main_engine,
+        *,
+        industry: str,
+        top_n: int,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.main_engine = main_engine
+        self.industry = industry
+        self.top_n = top_n
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
+
+    def run(self) -> None:
+        try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            from vnpy_ashare.app.engine_access import get_screening_service
+
+            service = get_screening_service(self.main_engine)
+            if service is None:
+                self.failed.emit("选股服务未就绪")
+                return
+            result = service.run_industry_screen(self.industry, top_n=self.top_n)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.finished.emit(result)
+        except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.failed.emit(str(ex))
+
+
+class RadarResonanceRunWorker(QtCore.QThread):
+    """后台执行雷达共振选股；finished 发射 ScreenerRunResult。"""
+
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        main_engine,
+        *,
+        top_n: int,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.main_engine = main_engine
+        self.top_n = top_n
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
+
+    def run(self) -> None:
+        try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            from vnpy_ashare.app.engine_access import get_screening_service
+
+            service = get_screening_service(self.main_engine)
+            if service is None:
+                self.failed.emit("选股服务未就绪")
+                return
+            result = service.run_radar_resonance_screen(top_n=self.top_n)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.finished.emit(result)
+        except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.failed.emit(str(ex))
+
+
+class QuoteRefreshWorker(QtCore.QThread):
+    """后台刷新 Redis 全市场行情快照。"""
+
+    finished = QtCore.Signal(bool, str)
+
+    def run(self) -> None:
+        try:
+            ok, message = prepare_quotes_for_screening(uses_live_quotes=True)
+            self.finished.emit(ok, message)
+        except Exception as ex:
+            self.finished.emit(False, str(ex))

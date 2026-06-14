@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.screener.preset.rules import (
     apply_large_cap,
+    apply_limit_up,
     apply_low_pe,
     apply_moneyflow_in,
     apply_quote_preset,
@@ -94,3 +95,41 @@ def test_apply_moneyflow_in():
         top_n=2,
     )
     assert [row["symbol"] for row in rows] == ["C", "A"]
+
+
+def test_apply_quote_strong_up_filters_min_change():
+    rows = apply_quote_preset(
+        "强势上涨",
+        [_quote("A", change_pct=3), _quote("B", change_pct=6), _quote("C", change_pct=8)],
+        top_n=5,
+    )
+    assert [row["symbol"] for row in rows] == ["C", "B"]
+
+
+def test_apply_quote_volume_ratio(monkeypatch):
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.preset.rules._sort_by_volume_ratio",
+        lambda quotes: sorted(quotes, key=lambda q: q.get("volume_ratio", 0), reverse=True),
+    )
+    rows = apply_quote_preset(
+        "量比排行",
+        [
+            _quote("A", volume_ratio=1.2),
+            _quote("B", volume_ratio=3.5),
+            _quote("C", volume_ratio=2.0),
+        ],
+        top_n=2,
+    )
+    assert [row["symbol"] for row in rows] == ["B", "C"]
+
+
+def test_apply_limit_up_sorts_by_limit_times():
+    rows = apply_limit_up(
+        [
+            {"vt_symbol": "000001.SZSE", "name": "A", "limit_times": 1},
+            {"vt_symbol": "600000.SSE", "name": "B", "limit_times": 3},
+        ],
+        top_n=5,
+    )
+    assert rows[0]["symbol"] == "600000"
+    assert rows[0]["limit_times"] == 3

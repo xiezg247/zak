@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.run.run_diff import annotate_rows_with_diff, compute_run_diff, enrich_recipe_run
+from vnpy_ashare.screener.run.run_diff import annotate_rows_with_diff, compute_run_diff, enrich_condition_run, enrich_recipe_run
 
 
 def test_compute_run_diff():
@@ -38,3 +38,24 @@ def test_enrich_recipe_run_without_previous():
         result = enrich_recipe_run(rows, "intraday_multi", config)
     assert result == rows
     assert "run_diff" not in config
+
+
+def test_enrich_condition_run_with_previous():
+    from unittest.mock import Mock, patch
+
+    previous = Mock()
+    previous.id = "prev-1"
+    previous.rows = [{"vt_symbol": "600000.SSE"}]
+    config: dict = {}
+    rows = [
+        {"vt_symbol": "600000.SSE", "amount": 50_000_000},
+        {"vt_symbol": "600001.SSE", "amount": 50_000_000},
+    ]
+    with patch(
+        "vnpy_ashare.screener.run.run_store.find_previous_run_by_condition",
+        return_value=previous,
+    ):
+        result = enrich_condition_run(rows, "雷达共振", config, source="radar")
+    assert result[0]["diff_status"] == "保留"
+    assert result[1]["diff_status"] == "新增"
+    assert config["run_diff"]["new_count"] == 1

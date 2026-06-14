@@ -27,6 +27,7 @@ from vnpy_ashare.quotes.radar_loaders import (
     build_radar_resonance_list,
     compute_radar_resonance,
 )
+from vnpy_ashare.quotes.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
 from vnpy_common.ui.feedback import page_notify
@@ -84,6 +85,14 @@ class RadarController(QtCore.QObject):
             panel.batch_add_watchlist_requested.connect(self._on_resonance_batch_add_watchlist)
             panel.stock_analysis_requested.connect(self._on_stock_analysis)
             panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
+            panel.open_screener_requested.connect(self._on_open_screener_resonance)
+
+    def _on_open_screener_resonance(self) -> None:
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_screener_radar_resonance"):
+            page_notify(self._page, "无法打开策略选股页", level="warning")
+            return
+        host.open_screener_radar_resonance()
 
     def activate(self) -> None:
         self.refresh()
@@ -264,7 +273,9 @@ class RadarController(QtCore.QObject):
         panel = self._resonance_panel
         if panel is None:
             return
-        panel.apply_entries(build_radar_resonance_list(self._last_payload))
+        entries = build_radar_resonance_list(self._last_payload)
+        set_radar_resonance_entries(entries)
+        panel.apply_entries(entries)
 
     def _on_card_failed(self, card_id: str, message: str) -> None:
         from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
@@ -338,7 +349,9 @@ class RadarController(QtCore.QObject):
     def _find_main_window(self):
         widget = self._page
         while widget is not None:
-            if hasattr(widget, "open_screener_run") or hasattr(widget, "open_sector_flow"):
+            if hasattr(widget, "open_screener_run") or hasattr(widget, "open_sector_flow") or hasattr(
+                widget, "open_screener_radar_resonance"
+            ):
                 return widget
             widget = widget.parentWidget()
         return None

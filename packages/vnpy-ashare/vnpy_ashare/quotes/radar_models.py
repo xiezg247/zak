@@ -39,6 +39,17 @@ class RadarCardData:
     sector_names: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class RadarResonanceEntry:
+    vt_symbol: str
+    name: str
+    symbol: str
+    card_count: int
+    card_titles: tuple[str, ...]
+    price: float | None
+    change_pct: float | None
+
+
 def quote_map() -> dict[str, dict[str, Any]]:
     cached = get_market_quotes_cache()
     if not cached:

@@ -161,6 +161,28 @@ def find_previous_run_by_recipe(
     return None
 
 
+def find_previous_run_by_condition(
+    condition: str,
+    *,
+    source: str = "",
+    exclude_run_id: str = "",
+) -> ScreenerRunRecord | None:
+    """查找同 condition（可选 source）的上一次运行。"""
+    label = (condition or "").strip()
+    if not label:
+        return None
+    src = (source or "").strip()
+    for record in list_runs(limit=50):
+        if exclude_run_id and record.id == exclude_run_id:
+            continue
+        if record.condition != label:
+            continue
+        if src and record.source != src:
+            continue
+        return record
+    return None
+
+
 def delete_run(run_id: str) -> bool:
     """删除运行记录；成功返回 True。"""
     with _connect() as conn:

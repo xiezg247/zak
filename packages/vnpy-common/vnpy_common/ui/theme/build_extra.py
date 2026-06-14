@@ -454,11 +454,53 @@ QFrame#MarketHeaderDivider {{
 QWidget#MarketOverviewPanel {{
     background-color: transparent;
 }}
-QLabel#MarketBreadthBar {{
+QWidget#MarketStatsBar {{
     background-color: transparent;
-    color: {t.index_ticker_text};
-    padding: 8px 12px 4px 12px;
-    font-size: 12px;
+}}
+QFrame#MarketStatChip {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+    min-width: 56px;
+}}
+QLabel#MarketStatChipLabel {{
+    color: {t.text_muted};
+    font-size: 10px;
+}}
+QLabel#MarketStatChipValue {{
+    color: {t.text_primary};
+    font-size: 14px;
+    font-weight: 600;
+}}
+QFrame#MarketStatDivider {{
+    color: {t.panel_border};
+    background-color: {t.panel_border};
+    margin: 6px 2px;
+    max-width: 1px;
+}}
+QWidget#MarketBreadthRatioBar {{
+    background-color: {t.input_bg};
+    border-radius: 2px;
+}}
+QWidget#MarketFearGauge {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+    min-width: 132px;
+}}
+QProgressBar#MarketFearGaugeBar {{
+    background-color: {t.input_bg};
+    border: none;
+    border-radius: 2px;
+}}
+QProgressBar#MarketFearGaugeBar::chunk {{
+    background-color: {t.accent};
+    border-radius: 2px;
+}}
+QLabel#MarketStatsUpdated {{
+    color: {t.text_muted};
+    font-size: 11px;
+    padding-left: 8px;
 }}
 QWidget#MarketOverviewToolbar {{
     background-color: transparent;
@@ -493,14 +535,6 @@ QLabel#IndexCardPrice {{
 QLabel#IndexCardPct {{
     font-size: 12px;
     font-weight: 600;
-}}
-QLabel#MarketEnvBadge {{
-    background-color: {t.panel_bg};
-    border: 1px solid {t.panel_border};
-    border-radius: 6px;
-    padding: 3px 10px;
-    color: {t.text_secondary};
-    font-size: 11px;
 }}
 QPushButton#OverviewTabButton {{
     background-color: transparent;
@@ -849,7 +883,8 @@ QListWidget#RadarResonanceList::item:selected {{
     background-color: {t.menu_selected_bg};
 }}
 QPushButton#RadarResonanceAddAll,
-QPushButton#RadarResonanceAi {{
+QPushButton#RadarResonanceAi,
+QPushButton#RadarResonanceScreener {{
     font-size: 11px;
 }}
 """

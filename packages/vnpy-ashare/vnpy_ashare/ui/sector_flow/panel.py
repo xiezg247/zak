@@ -15,6 +15,7 @@ _TAB_OUTFLOW = 1
 class SectorFlowPanel(QtWidgets.QWidget):
     refresh_requested = QtCore.Signal()
     ai_requested = QtCore.Signal()
+    screener_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -36,6 +37,10 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._ai_btn = QtWidgets.QPushButton("AI 解读")
         self._ai_btn.setObjectName("ActionButton")
         self._ai_btn.clicked.connect(self.ai_requested.emit)
+        self._screener_btn = QtWidgets.QPushButton("成分选股")
+        self._screener_btn.setObjectName("SecondaryButton")
+        self._screener_btn.setToolTip("对选中行业成分按涨幅筛选，跳转策略选股页")
+        self._screener_btn.clicked.connect(self.screener_requested.emit)
 
         self._tab_inflow_btn = QtWidgets.QPushButton("净流入")
         self._tab_inflow_btn.setObjectName("OverviewTabButton")
@@ -55,6 +60,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
         toolbar.addWidget(self._tab_inflow_btn)
         toolbar.addWidget(self._tab_outflow_btn)
         toolbar.addWidget(self._refresh_btn)
+        toolbar.addWidget(self._screener_btn)
         toolbar.addWidget(self._ai_btn)
 
         layout = QtWidgets.QVBoxLayout(self)

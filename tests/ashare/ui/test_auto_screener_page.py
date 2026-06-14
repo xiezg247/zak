@@ -22,6 +22,8 @@ class AutoScreenerPageWidgetTests(unittest.TestCase):
         self.assertFalse(page.result_table.isVisible())
         self.assertEqual(page.result_table.rowCount(), 0)
         self.assertIn("试跑", page._empty_result_label.text())
+        self.assertIsNotNone(page.data_status_bar)
+        self.assertIsNotNone(page.result_insights)
 
     def test_format_result_summary_includes_hit_count(self) -> None:
         page = AutoScreenerPageWidget(MagicMock(), MagicMock())

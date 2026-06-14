@@ -11,12 +11,15 @@ from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,
     SCREENER_CUSTOM,
+    SCREENER_STRONG_UP,
     SCREENER_TURNOVER,
+    SCREENER_VOLUME_RATIO,
     SCREENER_VOLUME_SURGE,
 )
 
 # Tushare daily_basic.total_mv 单位为万元；50 亿 = 500000 万元
 MIN_TOTAL_MV_50YI = 500_000.0
+STRONG_UP_MIN_CHANGE_PCT = 5.0
 
 
 def _quote_liquidity_key(row: dict[str, Any]) -> float:
@@ -60,6 +63,11 @@ def apply_quote_preset(
 
     if preset == SCREENER_CHANGE_TOP:
         sorted_quotes = sorted(quotes, key=lambda q: q.get("change_pct", 0), reverse=True)
+    elif preset == SCREENER_STRONG_UP:
+        filtered = [q for q in quotes if float(q.get("change_pct") or 0) >= STRONG_UP_MIN_CHANGE_PCT]
+        sorted_quotes = sorted(filtered, key=lambda q: q.get("change_pct", 0), reverse=True)
+    elif preset == SCREENER_VOLUME_RATIO:
+        sorted_quotes = _sort_by_volume_ratio(quotes)
     elif preset == SCREENER_TURNOVER:
         sorted_quotes = sorted(quotes, key=lambda q: q.get("turnover_rate", 0), reverse=True)
     elif preset == SCREENER_VOLUME_SURGE:
@@ -90,6 +98,30 @@ def apply_large_cap(
     return [_fundamental_row(r) for r in filtered[:top_n]]
 
 
+def apply_limit_up(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[str, Any]]:
+    """涨停列表按连板次数降序取 top_n。"""
+    rows = apply_screening_filters(rows)
+    sorted_rows = sorted(rows, key=lambda r: float(r.get("limit_times") or 0), reverse=True)
+    return [_limit_up_row(r) for r in sorted_rows[:top_n]]
+
+
+def _sort_by_volume_ratio(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    from vnpy_ashare.screener.dimensions.volume_ratio import _load_volume_ratio_map
+
+    ratio_map = _load_volume_ratio_map()
+    enriched: list[dict[str, Any]] = []
+    for row in quotes:
+        vt_symbol = str(row.get("vt_symbol") or "")
+        ratio = float(ratio_map.get(vt_symbol) or row.get("volume_ratio") or 0)
+        if ratio <= 0:
+            continue
+        merged = dict(row)
+        merged["volume_ratio"] = ratio
+        enriched.append(merged)
+    enriched.sort(key=lambda item: float(item.get("volume_ratio") or 0), reverse=True)
+    return enriched
+
+
 def apply_moneyflow_in(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[str, Any]]:
     """主力净流入 > 0 降序取 top_n。"""
     rows = apply_screening_filters(rows)
@@ -112,7 +144,22 @@ def _quote_row(row: dict[str, Any]) -> dict[str, Any]:
         "turnover_rate": row.get("turnover_rate", 0),
         "volume": row.get("volume", 0),
         "amount": row.get("amount", 0),
-        "source": "quote",
+        "volume_ratio": row.get("volume_ratio", 0),
+        "source": row.get("source", "quote"),
+    }
+
+
+def _limit_up_row(row: dict[str, Any]) -> dict[str, Any]:
+    vt_symbol = str(row.get("vt_symbol") or "")
+    symbol = vt_symbol.split(".")[0] if vt_symbol else ""
+    return {
+        "symbol": symbol,
+        "name": row.get("name", ""),
+        "vt_symbol": vt_symbol,
+        "limit_times": row.get("limit_times", 0),
+        "limit": row.get("limit", ""),
+        "trade_date": row.get("trade_date", ""),
+        "source": "tushare",
     }
 
 

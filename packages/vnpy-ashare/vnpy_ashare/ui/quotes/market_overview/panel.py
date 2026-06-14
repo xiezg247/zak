@@ -7,17 +7,16 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.domain.index_amount import IndexAmountSeries
 from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS
 from vnpy_ashare.quotes.market_breadth import MarketBreadthSnapshot
-from vnpy_ashare.quotes.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
+from vnpy_ashare.quotes.market_environment import MarketEnvironmentSnapshot
 from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, SectorRankItem
 from vnpy_ashare.quotes.snapshot import QuoteSnapshot
 from vnpy_ashare.ui.quotes.market_overview.index_amount_popup import IndexAmountPopup
 from vnpy_ashare.ui.quotes.market_overview.index_amount_worker import IndexAmountLoadWorker
 from vnpy_ashare.ui.quotes.market_overview.index_card import IndexCardWidget
 from vnpy_ashare.ui.quotes.market_overview.sector_card import SectorCardWidget
-from vnpy_ashare.ui.quotes.table.columns import format_amount
+from vnpy_ashare.ui.quotes.market_overview.stats_bar import MarketStatsBar
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
-from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _TAB_INDEX = 0
 _TAB_SECTOR = 1
@@ -41,29 +40,20 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        self._breadth_label = QtWidgets.QLabel("市场广度加载中…")
-        self._breadth_label.setObjectName("MarketBreadthBar")
-        root.addWidget(self._breadth_label)
+        self._stats_bar = MarketStatsBar(self)
+        self._stats_bar.set_loading()
+        root.addWidget(self._stats_bar)
 
         toolbar_host = QtWidgets.QWidget(self)
         toolbar_host.setObjectName("MarketOverviewToolbar")
         toolbar = QtWidgets.QHBoxLayout(toolbar_host)
-        toolbar.setContentsMargins(12, 6, 12, 4)
+        toolbar.setContentsMargins(12, 2, 12, 4)
         toolbar.setSpacing(8)
-
-        env_group = QtWidgets.QHBoxLayout()
-        env_group.setSpacing(6)
-        self._env_fear_badge = QtWidgets.QLabel("恐贪 —")
-        self._env_fear_badge.setObjectName("MarketEnvBadge")
-        self._env_north_badge = QtWidgets.QLabel("北向 —")
-        self._env_north_badge.setObjectName("MarketEnvBadge")
-        env_group.addWidget(self._env_fear_badge)
-        env_group.addWidget(self._env_north_badge)
 
         self._industry_chip = QtWidgets.QLabel("")
         self._industry_chip.setObjectName("MarketIndustryChip")
         self._industry_chip.hide()
-        env_group.addWidget(self._industry_chip)
+        toolbar.addWidget(self._industry_chip)
 
         self._clear_industry_btn = QtWidgets.QToolButton(self)
         self._clear_industry_btn.setObjectName("MarketIndustryClear")
@@ -71,9 +61,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._clear_industry_btn.setToolTip("清除行业筛选")
         self._clear_industry_btn.hide()
         self._clear_industry_btn.clicked.connect(self.industry_filter_cleared.emit)
-        env_group.addWidget(self._clear_industry_btn)
-        toolbar.addLayout(env_group)
-
+        toolbar.addWidget(self._clear_industry_btn)
         toolbar.addStretch(1)
 
         tab_group = QtWidgets.QHBoxLayout()
@@ -168,9 +156,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._tab_sector_btn.setChecked(index == _TAB_SECTOR)
 
     def _on_theme_changed(self, _tokens) -> None:
-        breadth = getattr(self, "_last_breadth", None)
-        if breadth is not None:
-            self._render_breadth(breadth)
+        self._stats_bar.refresh_theme()
 
     def apply_data(self, data: MarketOverviewData) -> None:
         self._sync_index_cards(data.indices)
@@ -178,13 +164,13 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self.apply_environment(data.environment)
         if data.breadth is not None:
             self._last_breadth = data.breadth
-            self._render_breadth(data.breadth)
+            self._stats_bar.render_breadth(data.breadth)
         elif not hasattr(self, "_last_breadth"):
-            self._breadth_label.setText("市场广度：暂无全市场行情")
+            self._stats_bar.set_empty()
 
     def apply_breadth(self, breadth: MarketBreadthSnapshot) -> None:
         self._last_breadth = breadth
-        self._render_breadth(breadth)
+        self._stats_bar.render_breadth(breadth)
 
     def apply_sectors(self, sectors: list[SectorRankItem]) -> None:
         self._last_sectors = list(sectors)
@@ -219,19 +205,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
 
     def apply_environment(self, env: MarketEnvironmentSnapshot | None) -> None:
         self._last_environment = env
-        if env is None or env.fear_greed_index is None:
-            self._env_fear_badge.setText("恐贪 —")
-            self._env_fear_badge.setToolTip("需 Tushare；可运行「Tushare 因子预拉」")
-        else:
-            self._env_fear_badge.setText(f"恐贪 {env.fear_greed_index:.0f} {env.fear_greed_label}".strip())
-            self._env_fear_badge.setToolTip("A 股恐贪指数（Tushare 行情加权）")
-        if env is None or env.north_money is None:
-            self._env_north_badge.setText("北向 —")
-            self._env_north_badge.setToolTip("需 Tushare moneyflow_hsgt 缓存")
-        else:
-            suffix = f" @{env.north_trade_date}" if env.north_trade_date else ""
-            self._env_north_badge.setText(f"北向 {format_north_money_hsgt(env.north_money)}{suffix}")
-            self._env_north_badge.setToolTip("沪深港通北向净流入（百万元口径）")
+        self._stats_bar.render_environment(env)
 
     def _sync_index_cards(self, indices: list[tuple[str, QuoteSnapshot]]) -> None:
         seen: set[str] = set()
@@ -278,26 +252,6 @@ class MarketOverviewPanel(QtWidgets.QWidget):
                 self._sector_layout.removeWidget(card)
                 card.deleteLater()
         self._sync_sector_selection()
-
-    def _render_breadth(self, breadth: MarketBreadthSnapshot) -> None:
-        tokens = theme_manager().tokens()
-        up_color = pct_change_color(1.0, tokens)
-        down_color = pct_change_color(-1.0, tokens)
-        flat_color = pct_change_color(0.0, tokens)
-        amount_text = format_amount(breadth.total_amount)
-        limit_tag = "（官方）" if breadth.limit_source == "tushare" else ""
-        parts = [
-            f'<span style="color:{up_color}">涨 {breadth.up}</span>',
-            f'<span style="color:{down_color}">跌 {breadth.down}</span>',
-            f'<span style="color:{flat_color}">平 {breadth.flat}</span>',
-            f"涨停 {breadth.limit_up}{limit_tag}",
-            f"跌停 {breadth.limit_down}{limit_tag}",
-            f"成交额 {amount_text}",
-        ]
-        if breadth.updated_at:
-            parts.append(f"更新 {breadth.updated_at}")
-        self._breadth_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self._breadth_label.setText("  ·  ".join(parts))
 
     def _on_index_amount_popup(self, ts_code: str, label: str) -> None:
         anchor = self._index_cards.get(ts_code)

@@ -95,12 +95,16 @@ QTableView#MarketTable::item {{
     padding: 6px 8px;
 }}
 QTableWidget#ScreenerResultsTable::item,
-QTableView#ScreenerResultsTable::item {{
+QTableView#ScreenerResultsTable::item,
+QTableWidget#BatchCompareTable::item,
+QTableView#BatchCompareTable::item {{
     padding: 0 8px;
     border: none;
 }}
 QTableWidget#ScreenerResultsTable QHeaderView::section,
-QTableView#ScreenerResultsTable QHeaderView::section {{
+QTableView#ScreenerResultsTable QHeaderView::section,
+QTableWidget#BatchCompareTable QHeaderView::section,
+QTableView#BatchCompareTable QHeaderView::section {{
     padding: 7px 8px;
     border-bottom: 1px solid {t.header_border};
     font-weight: 600;
@@ -108,27 +112,35 @@ QTableView#ScreenerResultsTable QHeaderView::section {{
 QTableWidget#MarketTable::item:selected,
 QTableView#MarketTable::item:selected,
 QTableWidget#ScreenerResultsTable::item:selected,
-QTableView#ScreenerResultsTable::item:selected {{
+QTableView#ScreenerResultsTable::item:selected,
+QTableWidget#BatchCompareTable::item:selected,
+QTableView#BatchCompareTable::item:selected {{
     background-color: {t.table_selected};
     color: {t.text_primary};
 }}
 QTableWidget#MarketTable::item:alternate:selected,
 QTableView#MarketTable::item:alternate:selected,
 QTableWidget#ScreenerResultsTable::item:alternate:selected,
-QTableView#ScreenerResultsTable::item:alternate:selected {{
+QTableView#ScreenerResultsTable::item:alternate:selected,
+QTableWidget#BatchCompareTable::item:alternate:selected,
+QTableView#BatchCompareTable::item:alternate:selected {{
     background-color: {t.table_selected};
     color: {t.text_primary};
 }}
 QTableWidget#MarketTable::item:hover,
 QTableView#MarketTable::item:hover,
 QTableWidget#ScreenerResultsTable::item:hover,
-QTableView#ScreenerResultsTable::item:hover {{
+QTableView#ScreenerResultsTable::item:hover,
+QTableWidget#BatchCompareTable::item:hover,
+QTableView#BatchCompareTable::item:hover {{
     background-color: {t.table_hover};
 }}
 QTableWidget#MarketTable::item:alternate,
 QTableView#MarketTable::item:alternate,
 QTableWidget#ScreenerResultsTable::item:alternate,
-QTableView#ScreenerResultsTable::item:alternate {{
+QTableView#ScreenerResultsTable::item:alternate,
+QTableWidget#BatchCompareTable::item:alternate,
+QTableView#BatchCompareTable::item:alternate {{
     background-color: {t.table_alt};
 }}
 QPushButton#PrimaryRunButton {{
@@ -259,6 +271,9 @@ QFrame#ScreenerRunRow {{
     background-color: transparent;
     border-radius: 6px;
     border-left: 3px solid transparent;
+}}
+QFrame#ScreenerRunRow[diffHighlight="true"] {{
+    border-left: 3px solid {t.run_row_unread};
 }}
 QFrame#ScreenerRunRow[active="true"] {{
     background-color: {t.run_row_active_bg};

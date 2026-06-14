@@ -7,7 +7,11 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunListWidget, ScreenerRunSidebar
+from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import (
+    ScreenerRunListWidget,
+    ScreenerRunSidebar,
+    _radar_diff_badge,
+)
 
 
 def _auto_record(run_id: str, *, trigger: str = "scheduled_intraday", read: bool = True):
@@ -38,6 +42,20 @@ class ScreenerRunListWidgetTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    def test_radar_diff_badge_only_for_resonance_with_new_symbols(self) -> None:
+        radar = MagicMock(
+            condition="雷达共振",
+            source="radar",
+            config={"trigger": "radar", "run_diff": {"new_count": 2}},
+        )
+        manual = MagicMock(
+            condition="涨幅榜",
+            source="quote",
+            config={"trigger": "manual", "run_diff": {"new_count": 2}},
+        )
+        self.assertEqual(_radar_diff_badge(radar), "新增 2")
+        self.assertEqual(_radar_diff_badge(manual), "")
 
     def test_unread_count_respects_mode_and_filter(self) -> None:
         widget = ScreenerRunListWidget(mode="auto")

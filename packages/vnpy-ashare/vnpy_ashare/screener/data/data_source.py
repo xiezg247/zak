@@ -195,6 +195,10 @@ def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:
 
 def resolve_result_source_tag(source: str) -> str:
     """将内部 source 标签转为 UI 展示文案。"""
+    if source == "radar":
+        return "雷达共振"
+    if source == "industry":
+        return "行业成分"
     if source == "quote+tushare":
         return "Redis+Tushare"
     if source == "tushare":

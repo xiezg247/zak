@@ -48,6 +48,8 @@ class SectorFlowController(QtCore.QObject):
         panel.refresh_requested.connect(self.refresh)
         panel.ai_requested.connect(self._request_ai)
         panel.table.sector_activated.connect(self._on_sector_activated)
+        panel.table.screener_activated.connect(self._on_screener_activated)
+        panel.screener_requested.connect(self._on_screener_requested)
 
     def _get_service(self) -> SectorFlowService | None:
         if self._service is not None:
@@ -146,10 +148,31 @@ class SectorFlowController(QtCore.QObject):
             return
         host.open_market_industry_filter(industry)
 
+    def _on_screener_activated(self, industry: str) -> None:
+        label = str(industry or "").strip()
+        if not label:
+            return
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_screener_industry"):
+            page_notify(self._page, "无法打开策略选股页", level="warning")
+            return
+        host.open_screener_industry(label)
+
+    def _on_screener_requested(self) -> None:
+        industry = self._panel.table.selected_industry()
+        if not industry:
+            page_notify(self._page, "请先在表格中选中一个行业", level="warning")
+            return
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_screener_industry"):
+            page_notify(self._page, "无法打开策略选股页", level="warning")
+            return
+        host.open_screener_industry(industry)
+
     def _find_main_window(self):
         widget = self._page
         while widget is not None:
-            if hasattr(widget, "open_market_industry_filter"):
+            if hasattr(widget, "open_market_industry_filter") or hasattr(widget, "open_screener_industry"):
                 return widget
             widget = widget.parentWidget()
         return None

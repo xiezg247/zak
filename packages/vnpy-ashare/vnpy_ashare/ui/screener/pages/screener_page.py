@@ -24,10 +24,19 @@ from vnpy_ashare.app.events import (
     FillScreenerRequest,
     OrbAttentionRequest,
 )
+from vnpy_ashare.screener.data.screening_status import build_run_insight_detail, request_uses_live_quotes
+from vnpy_ashare.screener.pattern.pattern_screen import list_pattern_screeners
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
+from vnpy_ashare.ui.screener import show_reference_peer_dialog
+from vnpy_ashare.ui.screener.widgets.screener_hard_filter_panel import ScreenerHardFilterPanel
+from vnpy_ashare.ui.screener.widgets.screener_insights import (
+    ScreenerResultInsights,
+    ScreeningDataStatusBar,
+    ScreeningPageStatusController,
+)
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     apply_screener_results_view,
     configure_screener_results_table,
@@ -38,7 +47,13 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 )
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
-from vnpy_ashare.ui.screener.workers import ScreenerBatchDownloadWorker, ScreenerRunWorker
+from vnpy_ashare.ui.screener.workers import (
+    IndustryScreenRunWorker,
+    PatternScreenRunWorker,
+    RadarResonanceRunWorker,
+    ScreenerBatchDownloadWorker,
+    ScreenerRunWorker,
+)
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action
 from vnpy_common.ui.qt_helpers import release_thread
 
@@ -55,6 +70,10 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.setObjectName("MarketRoot")
         self._active = False
         self._worker: ScreenerRunWorker | None = None
+        self._pattern_worker: PatternScreenRunWorker | None = None
+        self._radar_worker: RadarResonanceRunWorker | None = None
+        self._industry_worker: IndustryScreenRunWorker | None = None
+        self._pending_industry: str = ""
         self._download_worker: ScreenerBatchDownloadWorker | None = None
         self._batch_backtest_flow: BatchBacktestFlow | None = None
         self._retired_workers: list[QtCore.QThread] = []
@@ -64,6 +83,14 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._watchlist_service = get_watchlist_service(main_engine)
 
         self._build_ui()
+        self._status_controller = ScreeningPageStatusController(
+            self,
+            self.data_status_bar,
+            uses_live_quotes=self._current_uses_live_quotes,
+            on_log=self._append_action_log,
+            on_toast_error=self._toast.error,
+            on_toast_success=self._toast.success,
+        )
         self._task_guard = TaskGuard(self._toast)
         self._batch_backtest_flow = BatchBacktestFlow(
             main_engine=main_engine,
@@ -94,6 +121,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         root.setContentsMargins(16, 12, 16, 12)
         root.setSpacing(0)
         page_layout.addWidget(main_panel, stretch=1)
+
+        header = QtWidgets.QHBoxLayout()
+        title = QtWidgets.QLabel("策略选股")
+        title.setObjectName("PageTitle")
+        header.addWidget(title)
+        header.addStretch()
+        root.addLayout(header)
 
         # ── 工具栏 ──────────────────────────────────────────
         toolbar = QtWidgets.QHBoxLayout()
@@ -146,6 +180,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.batch_backtest_btn.setObjectName("SecondaryButton")
         self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
         toolbar.addWidget(self.batch_backtest_btn)
+        toolbar.addWidget(self._toolbar_separator())
+
+        self.reference_peer_btn = QtWidgets.QPushButton("找同类")
+        self.reference_peer_btn.setObjectName("SecondaryButton")
+        self.reference_peer_btn.setToolTip("以勾选的单只标的为标杆，筛选相似股票")
+        self.reference_peer_btn.clicked.connect(self._open_reference_peer)
+        toolbar.addWidget(self.reference_peer_btn)
         toolbar.addSpacing(16)
 
         # 导出
@@ -156,6 +197,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
 
         toolbar.addStretch()
         root.addLayout(toolbar)
+
+        self.data_status_bar = ScreeningDataStatusBar(main_panel)
+        root.addWidget(self.data_status_bar)
 
         # ── 内容区域（Splitter） ──────────────────────────
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -207,6 +251,43 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         custom_layout.addRow("最低换手", self.min_turnover_spin)
         form_layout.addWidget(self.custom_box)
 
+        form_layout.addSpacing(8)
+        form_layout.addWidget(self._section_label("形态选股"))
+        self.pattern_combo = QtWidgets.QComboBox()
+        self.pattern_combo.setObjectName("ToolbarCombo")
+        for pattern_name in list_pattern_screeners():
+            self.pattern_combo.addItem(pattern_name)
+        form_layout.addWidget(self.pattern_combo)
+        self.pattern_run_btn = QtWidgets.QPushButton("运行形态选股")
+        self.pattern_run_btn.setObjectName("SecondaryButton")
+        self.pattern_run_btn.clicked.connect(self._run_pattern_screen)
+        form_layout.addWidget(self.pattern_run_btn)
+
+        form_layout.addSpacing(8)
+        form_layout.addWidget(self._section_label("雷达联动"))
+        self.radar_resonance_btn = QtWidgets.QPushButton("运行雷达共振")
+        self.radar_resonance_btn.setObjectName("SecondaryButton")
+        self.radar_resonance_btn.setToolTip("使用雷达页最新共振列表选股（需先在雷达页刷新卡片）")
+        self.radar_resonance_btn.clicked.connect(self._run_radar_resonance)
+        form_layout.addWidget(self.radar_resonance_btn)
+
+        form_layout.addSpacing(8)
+        form_layout.addWidget(self._section_label("行业成分"))
+        industry_row = QtWidgets.QHBoxLayout()
+        self.industry_edit = QtWidgets.QLineEdit()
+        self.industry_edit.setObjectName("ToolbarInput")
+        self.industry_edit.setPlaceholderText("输入行业名称，如 银行")
+        industry_row.addWidget(self.industry_edit, stretch=1)
+        self.industry_run_btn = QtWidgets.QPushButton("运行")
+        self.industry_run_btn.setObjectName("SecondaryButton")
+        self.industry_run_btn.clicked.connect(self._run_industry_from_form)
+        industry_row.addWidget(self.industry_run_btn)
+        form_layout.addLayout(industry_row)
+
+        form_layout.addSpacing(8)
+        self.hard_filter_panel = ScreenerHardFilterPanel(form_panel)
+        form_layout.addWidget(self.hard_filter_panel)
+
         self.hint_label = QtWidgets.QLabel()
         self.hint_label.setObjectName("ScreenerHint")
         self.hint_label.setWordWrap(True)
@@ -233,6 +314,9 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         result_body_layout = QtWidgets.QVBoxLayout(result_body)
         result_body_layout.setContentsMargins(0, 0, 0, 0)
         result_body_layout.setSpacing(0)
+
+        self.result_insights = ScreenerResultInsights(result_body)
+        result_body_layout.addWidget(self.result_insights)
 
         self._empty_result_label = QtWidgets.QLabel("点击「运行策略选股」后在此展示结果")
         self._empty_result_label.setObjectName("ScreenerEmptyResult")
@@ -285,7 +369,17 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self.min_change_spin,
             self.max_change_spin,
             self.min_turnover_spin,
+            self.pattern_combo,
+            self.pattern_run_btn,
+            self.radar_resonance_btn,
+            self.industry_edit,
+            self.industry_run_btn,
         ]
+
+    def _current_uses_live_quotes(self) -> bool:
+        label = self.preset_combo.currentText()
+        scheme_id = self._current_scheme_id()
+        return request_uses_live_quotes(preset=label, scheme_id=scheme_id)
 
     def _append_action_log(self, message: str) -> None:
         if message:
@@ -351,6 +445,15 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             if scheme_id and service:
                 for scheme in service.list_schemes():
                     if scheme.id == scheme_id:
+                        if str(scheme.config.get("kind") or "") == "industry":
+                            self.industry_edit.setText(str(scheme.config.get("industry") or ""))
+                            self.top_n_spin.setValue(int(scheme.config.get("top_n", 20)))
+                            self.custom_box.setVisible(False)
+                            industry = str(scheme.config.get("industry") or "")
+                            self.hint_label.setText(
+                                f"行业成分方案：{industry or '—'} · 运行后将筛选该行业成分并按涨幅排序。"
+                            )
+                            return
                         self.top_n_spin.setValue(int(scheme.config.get("top_n", 20)))
                         self.min_change_spin.setValue(scheme.config.get("min_change_pct") if scheme.config.get("min_change_pct") is not None else -1)
                         self.max_change_spin.setValue(scheme.config.get("max_change_pct") if scheme.config.get("max_change_pct") is not None else -1)
@@ -372,6 +475,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self.hint_label.setText(f"{preset.description}\n需要 .env 中配置 TUSHARE_TOKEN。")
         else:
             self.hint_label.setText(f"{preset.description}\n若 Redis 无快照，请运行「工具 → 立即执行 → 行情采集」。")
+        if hasattr(self, "_status_controller"):
+            self._status_controller.refresh_status()
 
     def _optional_float(self, spin: QtWidgets.QDoubleSpinBox) -> float | None:
         if not spin.isEnabled() or spin.value() < 0:
@@ -456,6 +561,303 @@ class ScreenerPageWidget(QtWidgets.QWidget):
     def _cancel_screening(self) -> None:
         if self._worker is not None:
             self._worker.request_cancel()
+        if self._pattern_worker is not None:
+            self._pattern_worker.request_cancel()
+        if self._radar_worker is not None:
+            self._radar_worker.request_cancel()
+        if self._industry_worker is not None:
+            self._industry_worker.request_cancel()
+
+    def run_radar_resonance_screen(self) -> None:
+        """供雷达共振面板等外部入口跳转并执行选股。"""
+        self._run_radar_resonance()
+
+    def _run_radar_resonance(self) -> None:
+        if self._task_guard.active:
+            return
+        if self._radar_worker is not None and self._radar_worker.isRunning():
+            return
+        top_n = self.top_n_spin.value()
+        self._task_guard.begin(
+            "正在运行雷达共振选股…",
+            widgets=self._task_lock_widgets(),
+            primary=self.radar_resonance_btn,
+            primary_text="运行雷达共振",
+            primary_handler=self._run_radar_resonance,
+            on_cancel=self._cancel_screening,
+        )
+        self.run_output_panel.begin_run(label="雷达共振", top_n=top_n, kind="雷达")
+        worker = RadarResonanceRunWorker(
+            self.main_engine,
+            top_n=top_n,
+            parent=self,
+        )
+        self._radar_worker = worker
+        worker.finished.connect(self._on_radar_finished)
+        worker.failed.connect(self._on_radar_failed)
+        worker.start()
+
+    def _on_radar_finished(self, result: ScreenerRunResult) -> None:
+        worker = self._radar_worker
+        self._radar_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled:
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("雷达共振选股已取消")
+            return
+        self._apply_screen_result(result, trigger="radar")
+
+    def _on_radar_failed(self, message: str) -> None:
+        worker = self._radar_worker
+        self._radar_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled or message == "已取消":
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("雷达共振选股已取消")
+            return
+        self.run_output_panel.fail_run(message)
+        self._toast.error(message)
+
+    def run_industry_screen(self, industry: str) -> None:
+        """供板块资金页等外部入口跳转并执行行业成分选股。"""
+        label = str(industry or "").strip()
+        if not label:
+            self._toast.warning("行业名称为空")
+            return
+        self.industry_edit.setText(label)
+        self._pending_industry = label
+        self._run_industry_screen()
+
+    def _run_industry_from_form(self) -> None:
+        industry = self.industry_edit.text().strip()
+        if not industry:
+            self._toast.warning("请输入行业名称")
+            return
+        self._pending_industry = industry
+        self._run_industry_screen()
+
+    def _run_industry_screen(self) -> None:
+        industry = self._pending_industry.strip()
+        if not industry:
+            self._toast.warning("请先选择行业")
+            return
+        if self._task_guard.active:
+            return
+        if self._industry_worker is not None and self._industry_worker.isRunning():
+            return
+        top_n = self.top_n_spin.value()
+        self._task_guard.begin(
+            f"正在筛选「{industry}」成分股…",
+            widgets=self._task_lock_widgets(),
+            primary=None,
+            on_cancel=self._cancel_screening,
+        )
+        self.run_output_panel.begin_run(label=f"{industry} 成分", top_n=top_n, kind="行业")
+        worker = IndustryScreenRunWorker(
+            self.main_engine,
+            industry=industry,
+            top_n=top_n,
+            parent=self,
+        )
+        self._industry_worker = worker
+        worker.finished.connect(self._on_industry_finished)
+        worker.failed.connect(self._on_industry_failed)
+        worker.start()
+
+    def _on_industry_finished(self, result: ScreenerRunResult) -> None:
+        worker = self._industry_worker
+        self._industry_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled:
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("行业成分选股已取消")
+            return
+        industry = self._pending_industry.strip()
+        self._apply_screen_result(
+            result,
+            trigger="industry",
+            extra_config={"industry": industry} if industry else None,
+        )
+
+    def _on_industry_failed(self, message: str) -> None:
+        worker = self._industry_worker
+        self._industry_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled or message == "已取消":
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("行业成分选股已取消")
+            return
+        self.run_output_panel.fail_run(message)
+        self._toast.error(message)
+
+    def _run_pattern_screen(self) -> None:
+        if self._task_guard.active:
+            return
+        if self._pattern_worker is not None and self._pattern_worker.isRunning():
+            return
+        pattern = self.pattern_combo.currentText().strip()
+        if not pattern:
+            return
+        top_n = self.top_n_spin.value()
+        self._task_guard.begin(
+            f"正在运行形态选股「{pattern}」…",
+            widgets=self._task_lock_widgets(),
+            primary=self.pattern_run_btn,
+            primary_text="运行形态选股",
+            primary_handler=self._run_pattern_screen,
+            on_cancel=self._cancel_screening,
+        )
+        self.run_output_panel.begin_run(label=pattern, top_n=top_n, kind="形态")
+        worker = PatternScreenRunWorker(
+            self.main_engine,
+            pattern=pattern,
+            top_n=top_n,
+            parent=self,
+        )
+        self._pattern_worker = worker
+        worker.finished.connect(self._on_pattern_finished)
+        worker.failed.connect(self._on_pattern_failed)
+        worker.start()
+
+    def _open_reference_peer(self) -> None:
+        selected = self._iter_checked_rows()
+        if len(selected) != 1:
+            self._toast.warning("请勾选恰好一只标的作为标杆")
+            return
+        row = selected[0]
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        if not vt_symbol:
+            self._toast.warning("所选行缺少 vt_symbol")
+            return
+        name = str(row.get("name") or "")
+
+        def watchlist_add(symbol: str, exchange, stock_name: str = "") -> bool:
+            if self._watchlist_service is None:
+                return False
+            return self._watchlist_service.add(symbol, exchange, stock_name)
+
+        show_reference_peer_dialog(
+            vt_symbol=vt_symbol,
+            reference_name=name,
+            watchlist_add=watchlist_add if self._watchlist_service is not None else None,
+            retired_workers=self._retired_workers,
+            parent=self,
+        )
+
+    def _on_pattern_finished(self, result: ScreenerRunResult) -> None:
+        worker = self._pattern_worker
+        self._pattern_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled:
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("形态选股已取消")
+            return
+        self._apply_screen_result(
+            result,
+            trigger="pattern",
+            extra_config={"pattern": self.pattern_combo.currentText().strip()},
+        )
+
+    def _on_pattern_failed(self, message: str) -> None:
+        worker = self._pattern_worker
+        self._pattern_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled or message == "已取消":
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("形态选股已取消")
+            return
+        self.run_output_panel.fail_run(message)
+        self._toast.error(message)
+
+    def _apply_screen_result(
+        self,
+        result: ScreenerRunResult,
+        *,
+        trigger: str = "manual",
+        extra_config: dict[str, Any] | None = None,
+    ) -> None:
+        config: dict[str, Any] = dict(extra_config or {})
+        config["trigger"] = trigger
+        self._results = list(result.rows)
+        if trigger in ("radar", "industry", "pattern"):
+            from vnpy_ashare.screener.run.run_diff import enrich_condition_run
+
+            self._results = enrich_condition_run(
+                self._results,
+                result.condition,
+                config,
+                source=result.source,
+            )
+        service = self._screening_service()
+        self._result_columns = result.columns or (service.resolve_export_columns(self._results) if service else [])
+        apply_screener_results_view(
+            self.result_table,
+            self._results,
+            self._result_columns,
+            empty_label=self._empty_result_label,
+            select_all_btn=self.select_all_btn,
+        )
+        if service is not None:
+            if trigger == "manual":
+                request, _ = self._build_request()
+                service.save_manual_run(result, request)
+            else:
+                service.persist_run_result(result, extra_config=config)
+        else:
+            self._store_screening_results(
+                condition=result.condition,
+                rows=self._results,
+                updated_at=result.updated_at,
+            )
+        updated = result.updated_at or "-"
+        source_label = service.format_source_tag(result.source) if service else result.source
+        summary = f"「{result.condition}」命中 {len(self._results)} 条 · 扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
+        insight_detail = build_run_insight_detail(self._results, config if trigger != "manual" else None)
+        detail_lines = [f"数据源 {result.source} · 已写入历史运行"]
+        if insight_detail:
+            detail_lines.append(insight_detail)
+        self.result_insights.apply(self._results, config if trigger != "manual" else None)
+        self.run_output_panel.complete_run(
+            summary=summary,
+            detail="\n".join(detail_lines),
+        )
+        self.run_sidebar.refresh()
+        sync_screener_page_context(self.main_engine)
+        self._toast.success(f"选股完成，命中 {len(self._results)} 条")
+        if self.event_engine is not None:
+            self.event_engine.put(
+                Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="screener")),
+            )
 
     def _on_screen_finished(self, result: ScreenerRunResult) -> None:
         worker = self._worker
@@ -470,39 +872,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self.run_output_panel.fail_run("已取消")
             self._toast.info("策略选股已取消")
             return
-        self._results = list(result.rows)
-        service = self._screening_service()
-        self._result_columns = result.columns or (service.resolve_export_columns(self._results) if service else [])
-        apply_screener_results_view(
-            self.result_table,
-            self._results,
-            self._result_columns,
-            empty_label=self._empty_result_label,
-            select_all_btn=self.select_all_btn,
-        )
-        request, _ = self._build_request()
-        if service is not None:
-            service.save_manual_run(result, request)
-        else:
-            self._store_screening_results(
-                condition=result.condition,
-                rows=self._results,
-                updated_at=result.updated_at,
-            )
-        updated = result.updated_at or "-"
-        source_label = service.format_source_tag(result.source) if service else result.source
-        summary = f"「{result.condition}」命中 {len(self._results)} 条 · 扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
-        self.run_output_panel.complete_run(
-            summary=summary,
-            detail=f"数据源 {result.source} · 已写入历史运行",
-        )
-        self.run_sidebar.refresh()
-        sync_screener_page_context(self.main_engine)
-        self._toast.success(f"选股完成，命中 {len(self._results)} 条")
-        if self.event_engine is not None:
-            self.event_engine.put(
-                Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="screener")),
-            )
+        self._apply_screen_result(result, trigger="manual")
 
     def _on_copy_run_id(self, run_id: str, condition: str) -> None:
         short = run_id[:8] + "…" if len(run_id) > 8 else run_id
@@ -548,6 +918,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
         source_label = service.format_source_tag(record.source) if service else record.source
         summary = f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · 扫描 {record.total_scanned} · {source_label} · {record.created_at}"
+        self.result_insights.apply(self._results, record.config)
         self.run_output_panel.load_history(summary=summary)
         sync_screener_page_context(self.main_engine)
 
@@ -563,6 +934,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             select_all_btn=self.select_all_btn,
         )
         self._store_screening_results(condition="", rows=[])
+        self.result_insights.clear()
 
     def _on_runs_deleted(self, run_ids: list) -> None:
         if self._loaded_run_id is not None and self._loaded_run_id in run_ids:
@@ -751,9 +1123,67 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
 
     def _save_scheme(self) -> None:
+        service = self._screening_service()
+        if service is None:
+            self._toast.warning("选股服务未就绪")
+            return
+
         label = self.preset_combo.currentText()
+        scheme_id = self._current_scheme_id()
+        industry = self.industry_edit.text().strip()
+
+        if label.startswith("我的 · ") and scheme_id:
+            for scheme in service.list_schemes():
+                if scheme.id != scheme_id:
+                    continue
+                if str(scheme.config.get("kind") or "") != "industry":
+                    self._toast.info("该方案不是行业成分类型，请新建保存")
+                    return
+                if not industry:
+                    self._toast.warning("请输入行业名称")
+                    return
+                try:
+                    from vnpy_ashare.screener.run.runner import build_industry_scheme_config
+
+                    service.save_scheme(
+                        scheme.name,
+                        build_industry_scheme_config(industry, top_n=self.top_n_spin.value()),
+                        scheme_id=scheme_id,
+                    )
+                    self._reload_preset_combo()
+                    self._append_action_log(f"已更新行业方案：{scheme.name}")
+                    self._toast.success(f"已更新方案：{scheme.name}")
+                except Exception as ex:
+                    self._toast.error(str(ex))
+                return
+            self._toast.info("方案不存在或已删除")
+            return
+
+        if industry:
+            default_name = f"{industry}成分"
+            text, ok = QtWidgets.QInputDialog.getText(self, "保存行业方案", "方案名称", text=default_name)
+            if not ok or not text.strip():
+                return
+            try:
+                from vnpy_ashare.screener.run.runner import build_industry_scheme_config
+
+                service.save_scheme(
+                    text.strip(),
+                    build_industry_scheme_config(industry, top_n=self.top_n_spin.value()),
+                )
+                self._reload_preset_combo()
+                saved_name = f"我的 · {text.strip()}"
+                index = self.preset_combo.findText(saved_name)
+                if index >= 0:
+                    self.preset_combo.setCurrentIndex(index)
+                self._append_action_log(f"已保存行业方案：{text.strip()}")
+                self._toast.success(f"已保存行业方案：{text.strip()}")
+            except Exception as ex:
+                self._toast.error(str(ex))
+            return
+
         if label.startswith("我的 · "):
-            self._toast.info("请选择内置方案或自定义条件后再保存")
+            self._toast.info("请选择内置方案或填写行业名称后再保存")
             return
         text, ok = QtWidgets.QInputDialog.getText(self, "保存方案", "方案名称")
         if not ok or not text.strip():
@@ -762,10 +1192,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         if request is None or not request.preset:
             return
         try:
-            service = self._screening_service()
-            if service is None:
-                self._toast.warning("选股服务未就绪")
-                return
             service.save_scheme(text.strip(), service.build_scheme_config(request))
             self._reload_preset_combo()
             saved_name = f"我的 · {text.strip()}"
@@ -823,16 +1249,20 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._active = True
         self._reload_preset_combo()
         self.run_sidebar.refresh()
+        self._status_controller.activate()
         sync_screener_page_context(self.main_engine)
 
     def deactivate(self) -> None:
         self._active = False
+        self._status_controller.deactivate()
         if self._worker is not None:
             self._worker.request_cancel()
+        if self._pattern_worker is not None:
+            self._pattern_worker.request_cancel()
         if self._download_worker is not None:
             self._download_worker.request_cancel()
         self._task_guard.end()
-        for attr in ("_worker", "_download_worker"):
+        for attr in ("_worker", "_pattern_worker", "_download_worker"):
             worker = getattr(self, attr, None)
             setattr(self, attr, None)
             self._release_worker(worker, timeout_ms=0)

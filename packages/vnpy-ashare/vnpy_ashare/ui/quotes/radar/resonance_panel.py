@@ -18,6 +18,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
     batch_add_watchlist_requested = QtCore.Signal()
     stock_analysis_requested = QtCore.Signal(str)
     ai_resonance_requested = QtCore.Signal()
+    open_screener_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -42,8 +43,12 @@ class RadarResonancePanel(QtWidgets.QFrame):
         self._ai_button = QtWidgets.QPushButton("AI 解读")
         self._ai_button.setObjectName("RadarResonanceAi")
         self._ai_button.clicked.connect(self.ai_resonance_requested.emit)
+        self._screener_button = QtWidgets.QPushButton("策略选股")
+        self._screener_button.setObjectName("RadarResonanceScreener")
+        self._screener_button.clicked.connect(self.open_screener_requested.emit)
         toolbar.addWidget(self._add_all_button)
         toolbar.addWidget(self._ai_button)
+        toolbar.addWidget(self._screener_button)
 
         self._list = QtWidgets.QListWidget()
         self._list.setObjectName("RadarResonanceList")
@@ -100,6 +105,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
     def _set_actions_enabled(self, enabled: bool) -> None:
         self._add_all_button.setEnabled(enabled)
         self._ai_button.setEnabled(enabled)
+        self._screener_button.setEnabled(enabled)
 
     def _format_entry_text(self, entry: RadarResonanceEntry) -> str:
         price = f"{entry.price:.2f}" if entry.price is not None else "—"

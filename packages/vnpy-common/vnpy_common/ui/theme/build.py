@@ -352,7 +352,9 @@ QWidget#NavGroupSpacer {{
 QTableWidget#MarketTable,
 QTableView#MarketTable,
 QTableWidget#ScreenerResultsTable,
-QTableView#ScreenerResultsTable {{
+QTableView#ScreenerResultsTable,
+QTableWidget#BatchCompareTable,
+QTableView#BatchCompareTable {{
     background-color: {t.table_bg};
     gridline-color: {t.table_grid};
     border: none;

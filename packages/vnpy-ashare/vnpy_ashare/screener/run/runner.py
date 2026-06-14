@@ -14,13 +14,21 @@ from typing import Any
 
 from vnpy_ashare.screener.data.data_source import (
     fetch_fundamental_screening_rows,
+    fetch_limit_list_with_fallback,
     fetch_moneyflow_with_fallback,
     load_screening_quote_snapshot,
 )
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM, PresetDefinition, get_preset, list_builtin_preset_names
+from vnpy_ashare.screener.preset.presets import (
+    SCHEME_KIND_INDUSTRY,
+    SCREENER_CUSTOM,
+    PresetDefinition,
+    get_preset,
+    list_builtin_preset_names,
+)
 from vnpy_ashare.screener.preset.rules import (
     apply_large_cap,
+    apply_limit_up,
     apply_low_pe,
     apply_moneyflow_in,
     apply_quote_preset,
@@ -92,6 +100,17 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
 
 def _run_from_scheme(scheme: SavedScheme, *, top_n: int) -> ScreenerRunResult:
     config = dict(scheme.config)
+    if str(config.get("kind") or "") == SCHEME_KIND_INDUSTRY:
+        from vnpy_ashare.screener.run.industry_screen import run_industry_screen
+
+        industry = str(config.get("industry") or "").strip()
+        if not industry:
+            raise ValueError(f"方案「{scheme.name}」缺少行业字段")
+        effective_top_n = max(1, min(int(config.get("top_n", top_n) or top_n), 200))
+        result = run_industry_screen(industry, top_n=effective_top_n)
+        result.condition = f"我的方案 · {scheme.name}"
+        return result
+
     preset_name = str(config.get("preset", ""))
     merged = ScreenerRequest(
         preset=preset_name,
@@ -113,6 +132,20 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
         if not raw_rows:
             raise RuntimeError("Tushare moneyflow 在最近多个交易日均无数据，请稍后重试或检查积分权限。")
         rows = apply_moneyflow_in(raw_rows, top_n=top_n)
+        return ScreenerRunResult(
+            rows=rows,
+            condition=preset.name,
+            updated_at=trade_date,
+            total_scanned=len(raw_rows),
+            source="tushare",
+            columns=resolve_export_columns(rows),
+        )
+
+    if preset.rule_kind == "limit_up":
+        raw_rows, trade_date = fetch_limit_list_with_fallback(limit_type="U")
+        if not raw_rows:
+            raise RuntimeError("Tushare 涨停列表在最近多个交易日均无数据，请稍后重试或检查积分权限。")
+        rows = apply_limit_up(raw_rows, top_n=top_n)
         return ScreenerRunResult(
             rows=rows,
             condition=preset.name,
@@ -149,6 +182,18 @@ def build_scheme_config(request: ScreenerRequest) -> dict[str, Any]:
         "min_change_pct": request.min_change_pct,
         "max_change_pct": request.max_change_pct,
         "min_turnover": request.min_turnover,
+    }
+
+
+def build_industry_scheme_config(industry: str, *, top_n: int) -> dict[str, Any]:
+    """行业成分方案 config。"""
+    label = (industry or "").strip()
+    if not label:
+        raise ValueError("行业名称不能为空")
+    return {
+        "kind": SCHEME_KIND_INDUSTRY,
+        "industry": label,
+        "top_n": max(1, min(int(top_n or 20), 200)),
     }
 
 

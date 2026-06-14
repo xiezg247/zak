@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_screening_service
+from vnpy_ashare.screener.data.screening_status import resolve_run_trigger_kind
 from vnpy_ashare.screener.run.run_store import (
     delete_run,
     is_auto_run,
@@ -100,6 +101,20 @@ def _run_filter_label(record) -> str:
     return title
 
 
+def _radar_diff_badge(record) -> str:
+    """雷达共振 run 有新增标的时返回侧栏角标文案。"""
+    trigger = str(record.config.get("trigger", ""))
+    if trigger != "radar" and str(record.source or "") != "radar" and record.condition != "雷达共振":
+        return ""
+    diff = record.config.get("run_diff")
+    if not isinstance(diff, dict):
+        return ""
+    new_count = int(diff.get("new_count") or 0)
+    if new_count <= 0:
+        return ""
+    return f"新增 {new_count}"
+
+
 class ScreenerRunRowWidget(QtWidgets.QFrame):
     """自动结果列表行：多选时左侧复选框。"""
 
@@ -115,12 +130,15 @@ class ScreenerRunRowWidget(QtWidgets.QFrame):
         title: str,
         subtitle: str,
         unread: bool = False,
+        diff_badge: str = "",
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("ScreenerRunRow")
         self.setProperty("active", False)
         self._multi_mode = False
+        if diff_badge:
+            self.setProperty("diffHighlight", True)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(6, 6, 8, 6)
@@ -145,10 +163,15 @@ class ScreenerRunRowWidget(QtWidgets.QFrame):
             self._title.setFont(font)
             self._title.setStyleSheet(f"color: {theme_manager().tokens().run_row_unread};")
         text_col.addWidget(self._title)
-        self._subtitle = QtWidgets.QLabel(subtitle)
+        subtitle_text = subtitle
+        if diff_badge:
+            subtitle_text = f"{subtitle} · {diff_badge}"
+        self._subtitle = QtWidgets.QLabel(subtitle_text)
         self._subtitle.setObjectName("ScreenerRunRowSubtitle")
         self._subtitle.setWordWrap(False)
         self._subtitle.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.NoTextInteraction)
+        if diff_badge:
+            self._subtitle.setStyleSheet(f"color: {theme_manager().tokens().run_row_unread};")
         text_col.addWidget(self._subtitle)
         layout.addLayout(text_col, stretch=1)
 
@@ -245,6 +268,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._rows_by_id: dict[str, ScreenerRunRowWidget] = {}
         self._items_by_id: dict[str, QtWidgets.QListWidgetItem] = {}
         self._current_run_id: str | None = None
+        self._run_limit = 40
         self._multi_btn: QtWidgets.QPushButton | None = None
         self._del_btn: QtWidgets.QPushButton | None = None
         self._build_ui()
@@ -305,6 +329,11 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._list.customContextMenuRequested.connect(self._on_context_menu)
         root.addWidget(self._list, stretch=1)
 
+        self._load_more_btn = QtWidgets.QPushButton("加载更多")
+        self._load_more_btn.setObjectName("SecondaryButton")
+        self._load_more_btn.clicked.connect(self._load_more_runs)
+        root.addWidget(self._load_more_btn)
+
         action_row = QtWidgets.QHBoxLayout()
         action_row.setSpacing(6)
         self._copy_btn = QtWidgets.QPushButton("复制 ID")
@@ -323,7 +352,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
     def unread_count(self) -> int:
         main_engine = self._resolve_main_engine()
         count = 0
-        for record in _list_runs(main_engine, limit=40):
+        for record in _list_runs(main_engine, limit=self._run_limit):
             if not self._matches_mode(record, main_engine):
                 continue
             if not self._matches_subfilter(record):
@@ -331,6 +360,10 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
             if _is_run_unread(main_engine, record.config):
                 count += 1
         return count
+
+    def _load_more_runs(self) -> None:
+        self._run_limit += 40
+        self.refresh()
 
     def _run_kind_label(self) -> str:
         return "自动结果" if self._mode == "auto" else "历史运行"
@@ -351,11 +384,11 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
     def _matches_subfilter(self, record) -> bool:
         if self._mode != "auto" or self._filter == _FILTER_ALL:
             return True
-        trigger = str(record.config.get("trigger", ""))
+        kind = resolve_run_trigger_kind(record.config)
         if self._filter == _FILTER_INTRADAY:
-            return trigger == "scheduled_intraday"
+            return kind == "intraday"
         if self._filter == _FILTER_POST_CLOSE:
-            return trigger == "scheduled_post_close"
+            return kind == "post_close"
         return True
 
     def _selected_item(self) -> QtWidgets.QListWidgetItem | None:
@@ -459,7 +492,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         self._items_by_id.clear()
         restore_id: str | None = None
         first_id: str | None = None
-        for record in _list_runs(main_engine, limit=40):
+        for record in _list_runs(main_engine, limit=self._run_limit):
             if not self._matches_mode(record, main_engine):
                 continue
             if not self._matches_subfilter(record):
@@ -468,9 +501,10 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
                 first_id = record.id
             title = _run_filter_label(record)
             subtitle = f"{record.row_count} 条 · {record.created_at[5:16]}"
+            diff_badge = _radar_diff_badge(record)
             unread = _is_run_unread(main_engine, record.config)
             active = record.id == selected_id
-            row = ScreenerRunRowWidget(title=title, subtitle=subtitle, unread=unread)
+            row = ScreenerRunRowWidget(title=title, subtitle=subtitle, unread=unread, diff_badge=diff_badge)
             row.set_multi_mode(self._multi_select_mode)
             if self._multi_select_mode:
                 row.set_checked(record.id in checked_ids)
@@ -509,6 +543,8 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
                 self._current_run_id = first_id
             self._sync_active_run_highlight()
         self._update_action_buttons()
+        shown = len(self._rows_by_id)
+        self._load_more_btn.setVisible(shown >= self._run_limit and shown > 0)
 
     def _on_row_clicked(self, run_id: str) -> None:
         if self._multi_select_mode:

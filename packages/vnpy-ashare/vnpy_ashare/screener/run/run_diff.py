@@ -57,6 +57,32 @@ def enrich_recipe_run(
     return annotate_rows_with_diff(rows, diff)
 
 
+def enrich_condition_run(
+    rows: list[dict[str, Any]],
+    condition: str,
+    config: dict[str, Any],
+    *,
+    source: str = "",
+) -> list[dict[str, Any]]:
+    """同 condition 对比上次 run（雷达共振 / 行业成分等）。"""
+    label = (condition or "").strip()
+    if not label:
+        return rows
+    from vnpy_ashare.screener.run.run_store import find_previous_run_by_condition
+
+    previous = find_previous_run_by_condition(label, source=source)
+    if previous is None:
+        return rows
+    diff = compute_run_diff(rows, previous.rows)
+    config["run_diff"] = {
+        "previous_run_id": previous.id,
+        "new_count": diff["new_count"],
+        "stay_count": diff["stay_count"],
+        "drop_count": diff["drop_count"],
+    }
+    return annotate_rows_with_diff(rows, diff)
+
+
 def annotate_rows_with_diff(
     rows: list[dict[str, Any]],
     diff: dict[str, Any] | None,

@@ -8,10 +8,15 @@ from typing import Literal
 SCREENER_CHANGE_TOP = "涨幅榜"
 SCREENER_TURNOVER = "换手率排行"
 SCREENER_VOLUME_SURGE = "成交量放大"
+SCREENER_STRONG_UP = "强势上涨"
+SCREENER_VOLUME_RATIO = "量比排行"
 SCREENER_CUSTOM = "自定义筛选"
 SCREENER_LOW_PE = "低 PE"
 SCREENER_LARGE_CAP = "中大盘"
 SCREENER_MONEYFLOW_IN = "主力净流入"
+SCREENER_LIMIT_UP = "涨停股"
+
+SCHEME_KIND_INDUSTRY = "industry"
 
 SourceKind = Literal["quote", "tushare"]
 
@@ -32,7 +37,9 @@ class PresetDefinition:
 
 BUILTIN_PRESETS: tuple[PresetDefinition, ...] = (
     PresetDefinition(SCREENER_CHANGE_TOP, "quote", "change_top", "Redis 行情 · 涨幅排序"),
+    PresetDefinition(SCREENER_STRONG_UP, "quote", "strong_up", "Redis 行情 · 涨幅 ≥ 5%"),
     PresetDefinition(SCREENER_TURNOVER, "quote", "turnover", "Redis 行情 · 换手率排序"),
+    PresetDefinition(SCREENER_VOLUME_RATIO, "quote", "volume_ratio", "Redis+Tushare · 量比排序"),
     PresetDefinition(SCREENER_VOLUME_SURGE, "quote", "volume", "Redis 行情 · 成交量排序"),
     PresetDefinition(SCREENER_CUSTOM, "quote", "custom", "Redis 行情 · 自定义区间"),
     PresetDefinition(SCREENER_LOW_PE, "tushare", "low_pe", "Tushare daily_basic · PE TTM < 15"),
@@ -47,6 +54,12 @@ BUILTIN_PRESETS: tuple[PresetDefinition, ...] = (
         "tushare",
         "moneyflow_in",
         "Tushare moneyflow · 单日主力净流入 Top",
+    ),
+    PresetDefinition(
+        SCREENER_LIMIT_UP,
+        "tushare",
+        "limit_up",
+        "Tushare limit_list_d · 当日涨停",
     ),
 )
 

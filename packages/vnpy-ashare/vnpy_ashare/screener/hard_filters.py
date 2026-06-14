@@ -1,6 +1,6 @@
 """选股硬过滤（ST、流动性 / 小市值）。
 
-配方、策略 preset、形态选股共用；环境变量 ``RECIPE_*`` 全路径生效。
+配方、策略 preset、形态选股共用；QSettings 用户偏好与环境变量 ``RECIPE_*`` 均可生效（环境变量优先）。
 """
 
 from __future__ import annotations
@@ -15,26 +15,35 @@ DEFAULT_MIN_TOTAL_MV_WAN = 500_000.0
 
 def recipe_min_amount_yuan() -> float:
     raw = os.getenv("RECIPE_MIN_AMOUNT_YUAN", "").strip()
-    if not raw:
-        return DEFAULT_MIN_AMOUNT_YUAN
-    try:
-        return max(0.0, float(raw))
-    except ValueError:
-        return DEFAULT_MIN_AMOUNT_YUAN
+    if raw:
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            return DEFAULT_MIN_AMOUNT_YUAN
+    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+    return load_hard_filter_prefs().min_amount_yuan
 
 
 def recipe_exclude_st_enabled() -> bool:
-    return os.getenv("RECIPE_EXCLUDE_ST", "1").strip().lower() not in ("0", "false", "no")
+    raw = os.getenv("RECIPE_EXCLUDE_ST", "").strip()
+    if raw:
+        return raw.lower() not in ("0", "false", "no")
+    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+    return load_hard_filter_prefs().exclude_st
 
 
 def recipe_min_total_mv_wan() -> float:
     raw = os.getenv("RECIPE_MIN_TOTAL_MV_WAN", "").strip()
-    if not raw:
-        return DEFAULT_MIN_TOTAL_MV_WAN
-    try:
-        return max(0.0, float(raw))
-    except ValueError:
-        return DEFAULT_MIN_TOTAL_MV_WAN
+    if raw:
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            return DEFAULT_MIN_TOTAL_MV_WAN
+    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+    return load_hard_filter_prefs().min_total_mv_wan
 
 
 def is_st_stock(name: str) -> bool:

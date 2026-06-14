@@ -46,7 +46,9 @@ from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_recipe
 from vnpy_ashare.screener.reference.reference_peer import ReferencePeerRunResult, run_reference_peer_screen
 from vnpy_ashare.screener.run.export import export_rows_to_csv, resolve_export_columns
-from vnpy_ashare.screener.run.run_diff import enrich_recipe_run
+from vnpy_ashare.screener.run.industry_screen import run_industry_screen
+from vnpy_ashare.screener.run.radar_resonance import run_radar_resonance_screen
+from vnpy_ashare.screener.run.run_diff import enrich_condition_run, enrich_recipe_run
 from vnpy_ashare.screener.run.run_store import (
     delete_run,
     get_run,
@@ -150,6 +152,15 @@ class ScreeningService(BaseService):
             quote_rows=quote_rows,
         )
 
+    def run_radar_resonance_screen(self, *, top_n: int = 50) -> ScreenerRunResult:
+        return run_radar_resonance_screen(top_n=top_n)
+
+    def run_industry_screen(self, industry: str, *, top_n: int = 50) -> ScreenerRunResult:
+        quote_rows, err = self.load_quote_rows()
+        if not quote_rows:
+            raise RuntimeError(self.quote_rows_unavailable_message(err))
+        return run_industry_screen(industry, top_n=top_n, quote_rows=quote_rows)
+
     def _run_pattern_screen_mcp(self, pattern_id: str, *, top_n: int = 20):
         from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
 
@@ -228,6 +239,16 @@ class ScreeningService(BaseService):
         recipe_id = str(config.get("recipe_id") or "")
         if recipe_id and result.source == "recipe":
             rows = enrich_recipe_run(rows, recipe_id, config)
+        elif trigger in {"radar", "industry", "pattern"} or str(config.get("trigger") or "") in {
+            "radar",
+            "industry",
+            "pattern",
+        }:
+            rows = enrich_condition_run(rows, result.condition, config, source=result.source)
+        if recipe_id and "trigger_kind" not in config:
+            recipe = resolve_recipe(recipe_id)
+            if recipe is not None:
+                config["trigger_kind"] = recipe.trigger_kind
         self.set_screening_results(
             condition=result.condition,
             rows=rows,
@@ -282,8 +303,8 @@ class ScreeningService(BaseService):
     def list_schemes(self):
         return list_schemes()
 
-    def save_scheme(self, name: str, config: dict[str, Any]):
-        return save_scheme(name, config)
+    def save_scheme(self, name: str, config: dict[str, Any], *, scheme_id: str | None = None):
+        return save_scheme(name, config, scheme_id=scheme_id)
 
     def delete_scheme(self, scheme_id: str) -> None:
         delete_scheme(scheme_id)
@@ -374,6 +395,8 @@ def persist_scheduled_recipe_run(
         if recipe is not None
         else trigger,
     }
+    if recipe is not None:
+        config["trigger_kind"] = recipe.trigger_kind
     if result.source == "recipe":
         rows = enrich_recipe_run(rows, recipe_id, config)
     _set_screening_results(

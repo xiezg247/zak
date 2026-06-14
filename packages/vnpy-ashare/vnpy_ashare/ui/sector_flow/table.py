@@ -17,7 +17,7 @@ _COL_SOURCE = 5
 
 _HEADERS = ("名称", "强度", "涨幅%", "主力净额(亿)", "家数", "口径")
 _HEADER_TOOLTIPS: dict[str, str] = {
-    "名称": "Tushare 行业；双击跳转市场页并按该行业筛选",
+    "名称": "Tushare 行业；双击跳转策略选股（行业成分）",
     "强度": "上涨家数占比×100 + 行业平均涨幅，衡量板块热度",
     "涨幅%": "行业成分股平均涨跌幅",
     "主力净额(亿)": "行业成分汇总：优先 Tushare net_mf_amount（多为日频，万元→亿）；缺失时为成交额×涨幅估算",
@@ -28,6 +28,7 @@ _HEADER_TOOLTIPS: dict[str, str] = {
 
 class SectorFlowTable(QtWidgets.QTableWidget):
     sector_activated = QtCore.Signal(str)
+    screener_activated = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -85,6 +86,16 @@ class SectorFlowTable(QtWidgets.QTableWidget):
             source_label = {"proxy": "估算", "tushare": "日频"}.get(row.flow_source, row.flow_source)
             self.setItem(row_index, _COL_SOURCE, QtWidgets.QTableWidgetItem(source_label))
 
+    def selected_industry(self) -> str:
+        selected = self.selectionModel().selectedRows()
+        if not selected:
+            return ""
+        row = selected[0].row()
+        name_item = self.item(row, _COL_NAME)
+        if name_item is None:
+            return ""
+        return str(name_item.text() or "").strip()
+
     def focus_sectors(self, sector_ids: set[str]) -> None:
         if not sector_ids:
             return
@@ -109,4 +120,4 @@ class SectorFlowTable(QtWidgets.QTableWidget):
             return
         industry = str(name_item.text() or "").strip()
         if industry:
-            self.sector_activated.emit(industry)
+            self.screener_activated.emit(industry)
