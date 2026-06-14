@@ -329,7 +329,7 @@ def fetch_moneyflow(*, trade_date: str | None = None) -> tuple[list[dict[str, An
     pro = get_tushare_pro()
     frame = pro.moneyflow(
         trade_date=trade_date,
-        fields="ts_code,trade_date,net_mf_amount,buy_elg_amount,sell_elg_amount",
+        fields=("ts_code,trade_date,net_mf_amount,buy_elg_amount,sell_elg_amount,buy_lg_amount,sell_lg_amount,buy_md_amount,sell_md_amount"),
     )
     if frame is None or frame.empty:
         return [], trade_date
@@ -352,6 +352,11 @@ def fetch_moneyflow(*, trade_date: str | None = None) -> tuple[list[dict[str, An
                 "net_mf_amount": safe_float(record.get("net_mf_amount")),
                 "buy_elg_amount": safe_float(record.get("buy_elg_amount")),
                 "sell_elg_amount": safe_float(record.get("sell_elg_amount")),
+                "buy_lg_amount": safe_float(record.get("buy_lg_amount")),
+                "sell_lg_amount": safe_float(record.get("sell_lg_amount")),
+                "buy_md_amount": safe_float(record.get("buy_md_amount")),
+                "sell_md_amount": safe_float(record.get("sell_md_amount")),
+                "moneyflow_source": "tushare",
             }
         )
     if rows:

@@ -40,8 +40,16 @@ def test_load_screen_latest_empty(monkeypatch) -> None:
 
 def test_load_discovery_moneyflow_intraday_empty(monkeypatch) -> None:
     monkeypatch.setattr(
+        "vnpy_ashare.screener.data.data_source.fetch_moneyflow_with_fallback",
+        lambda **kwargs: ([], ""),
+    )
+    monkeypatch.setattr(
         "vnpy_ashare.quotes.radar_loaders.run_moneyflow_intraday",
         lambda _n, weight=1.0: ([], 0),
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_loaders._moneyflow_turnover_proxy",
+        lambda _n, total: ([], total),
     )
     spec = RADAR_CARD_BY_ID["discovery_moneyflow_intraday"]
     data = load_discovery_moneyflow_intraday(spec)
@@ -118,34 +126,59 @@ def test_merge_row_quotes_fills_from_cache(monkeypatch) -> None:
 
 def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
-    from vnpy_ashare.screener.dimensions.base import DimensionHit
 
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar_loaders.run_moneyflow_intraday",
         lambda _n, weight=1.0: ([], 100),
     )
-    fake_hit = DimensionHit(
-        vt_symbol="600000.SSE",
-        dimension_id="moneyflow",
-        label="资金",
-        weight=1.0,
-        score=1.0,
-        reason="test",
-        row={
-            "vt_symbol": "600000.SSE",
-            "name": "浦发",
-            "symbol": "600000",
-            "net_mf_amount": 1000,
-            "change_pct": 1.0,
-        },
+
+    def _fake_fetch(**kwargs):
+        return (
+            [
+                {
+                    "vt_symbol": "600000.SSE",
+                    "symbol": "600000",
+                    "name": "浦发银行",
+                    "net_mf_amount": 1000,
+                    "buy_elg_amount": 900,
+                    "sell_elg_amount": 100,
+                    "buy_lg_amount": 800,
+                    "sell_lg_amount": 200,
+                    "buy_md_amount": 300,
+                    "sell_md_amount": 250,
+                    "moneyflow_source": "tushare",
+                }
+            ],
+            "20260612",
+        )
+
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.data.data_source.fetch_moneyflow_with_fallback",
+        _fake_fetch,
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.run_moneyflow",
-        lambda _n, weight=1.0: ([fake_hit], 100),
+        "vnpy_ashare.screener.data.data_source.load_screening_quote_snapshot",
+        lambda: type(
+            "Snap",
+            (),
+            {
+                "rows": [
+                    {
+                        "vt_symbol": "600000.SSE",
+                        "change_pct": 1.0,
+                        "turnover_rate": 2.0,
+                        "last_price": 10.0,
+                    }
+                ],
+                "total": 100,
+            },
+        )(),
     )
     data = load_discovery_moneyflow_intraday(RADAR_CARD_BY_ID["discovery_moneyflow_intraday"])
     assert len(data.rows) == 1
     assert data.rows[0].metric_label == "主力净流入"
+    assert data.rows[0].sub_label == "主力"
+    assert "Tushare 20260612" in data.subtitle
 
 
 def test_load_discovery_volume_surge_keeps_surge_when_ratio_empty(monkeypatch) -> None:
@@ -161,7 +194,7 @@ def test_load_discovery_volume_surge_keeps_surge_when_ratio_empty(monkeypatch) -
         reason="test",
         row={
             "vt_symbol": "600000.SSE",
-            "name": "浦发",
+            "name": "浦发银行",
             "symbol": "600000",
             "last_price": 10.0,
             "change_pct": 2.0,
@@ -179,7 +212,59 @@ def test_load_discovery_volume_surge_keeps_surge_when_ratio_empty(monkeypatch) -
     )
     data = load_discovery_volume_surge(RADAR_CARD_BY_ID["discovery_volume_surge"])
     assert len(data.rows) == 1
-    assert data.rows[0].name == "浦发"
+    assert data.rows[0].name == "浦发银行"
+
+
+def test_load_discovery_volume_surge_excludes_st_from_ratio_fallback(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
+    from vnpy_ashare.screener.dimensions.base import DimensionHit
+
+    st_hit = DimensionHit(
+        vt_symbol="300093.SZSE",
+        dimension_id="volume_ratio",
+        label="量比",
+        weight=1.0,
+        score=100.0,
+        reason="test",
+        row={
+            "vt_symbol": "300093.SZSE",
+            "name": "金刚",
+            "symbol": "300093",
+            "volume_ratio": 5.86,
+            "change_pct": -9.26,
+            "last_price": 20.87,
+        },
+    )
+    normal_hit = DimensionHit(
+        vt_symbol="603014.SSE",
+        dimension_id="volume_ratio",
+        label="量比",
+        weight=1.0,
+        score=98.0,
+        reason="test",
+        row={
+            "vt_symbol": "603014.SSE",
+            "name": "威高血净",
+            "symbol": "603014",
+            "volume_ratio": 5.92,
+            "change_pct": 10.0,
+            "last_price": 42.0,
+        },
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_loaders.run_volume_surge",
+        lambda _n, weight=1.0: ([st_hit], 5512),
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_loaders.run_volume_ratio",
+        lambda _n, weight=1.0: ([st_hit, normal_hit], 5512),
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_loaders.name_map_for_symbols",
+        lambda _symbols: {"300093.SZSE": "*ST金刚", "603014.SSE": "威高血净"},
+    )
+    data = load_discovery_volume_surge(RADAR_CARD_BY_ID["discovery_volume_surge"])
+    assert [row.vt_symbol for row in data.rows] == ["603014.SSE"]
 
 
 def test_load_radar_card_unknown() -> None:

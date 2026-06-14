@@ -187,6 +187,11 @@ def _moneyflow_row(row: dict[str, Any]) -> dict[str, Any]:
         "net_mf_amount": row.get("net_mf_amount", 0),
         "buy_elg_amount": row.get("buy_elg_amount", 0),
         "sell_elg_amount": row.get("sell_elg_amount", 0),
+        "buy_lg_amount": row.get("buy_lg_amount", 0),
+        "sell_lg_amount": row.get("sell_lg_amount", 0),
+        "buy_md_amount": row.get("buy_md_amount", 0),
+        "sell_md_amount": row.get("sell_md_amount", 0),
         "trade_date": row.get("trade_date", ""),
+        "moneyflow_source": row.get("moneyflow_source", "tushare"),
         "source": "tushare",
     }

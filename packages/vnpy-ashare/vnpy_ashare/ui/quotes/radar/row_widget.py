@@ -22,11 +22,13 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         row: RadarRow,
         *,
         resonance: int = 0,
+        show_add_watchlist_action: bool = True,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._row = row
         self._resonance = resonance
+        self._show_add_watchlist_action = show_add_watchlist_action
         self._vt_symbol = row.vt_symbol
         self.setObjectName("RadarStockRow")
         self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
@@ -127,9 +129,11 @@ class RadarStockRowWidget(QtWidgets.QFrame):
     def _show_context_menu(self, pos: QtCore.QPoint) -> None:
         menu = QtWidgets.QMenu(self)
         analysis_action = menu.addAction("个股分析")
-        action = menu.addAction("加入自选")
+        add_action = None
+        if self._show_add_watchlist_action:
+            add_action = menu.addAction("加入自选")
         chosen = menu.exec(self.mapToGlobal(pos))
         if chosen is analysis_action:
             self.stock_analysis_requested.emit(self._vt_symbol)
-        elif chosen is action:
+        elif add_action is not None and chosen is add_action:
             self.add_watchlist_requested.emit(self._vt_symbol)

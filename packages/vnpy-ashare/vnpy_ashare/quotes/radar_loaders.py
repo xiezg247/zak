@@ -25,18 +25,38 @@ from vnpy_ashare.quotes.radar_models import (
 from vnpy_ashare.quotes.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar_sector import load_sector_theme
 from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
-from vnpy_ashare.screener.dimensions.moneyflow import run_moneyflow
 from vnpy_ashare.screener.dimensions.moneyflow_intraday import run_moneyflow_intraday
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
-from vnpy_ashare.ui.quotes.table.columns import format_amount, format_volume
 
 # 兼容旧 import 路径
 _quote_map = quote_map
 _float_or_none = float_or_none
 _format_pct = format_pct
 _merge_row_quotes = merge_row_quotes
+
+
+def _discovery_pool_size(top_n: int) -> int:
+    """发现卡多取候选，硬过滤 ST 后仍能凑满 top_n。"""
+    return min(max(top_n * 5, top_n + 12), 80)
+
+
+def _is_discovery_st_excluded(row: dict[str, Any], name_map: dict[str, str]) -> bool:
+    from vnpy_ashare.screener.hard_filters import is_st_stock, recipe_exclude_st_enabled
+
+    if not recipe_exclude_st_enabled():
+        return False
+    vt_symbol = str(row.get("vt_symbol") or "")
+    merged = _merge_row_quotes(row)
+    for candidate in (
+        str(name_map.get(vt_symbol) or "").strip(),
+        str(merged.get("name") or "").strip(),
+        str(row.get("name") or "").strip(),
+    ):
+        if candidate and is_st_stock(candidate):
+            return True
+    return False
 
 
 def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -49,6 +69,8 @@ def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
 
 
 def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
+    from vnpy_ashare.ui.quotes.table.columns import format_amount, format_volume
+
     merged = _merge_row_quotes(row)
     volume = float(merged.get("volume") or 0)
     amount = float(merged.get("amount") or 0)
@@ -64,17 +86,30 @@ def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
 
 
-def _moneyflow_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
+def _moneyflow_metric(row: dict[str, Any], _hit=None) -> tuple[str, str, str, str]:
+    from vnpy_ashare.quotes.moneyflow_kind import classify_moneyflow_row, flow_kind_label
+    from vnpy_ashare.ui.quotes.table.columns import format_amount
+
     merged = _merge_row_quotes(row)
+    kind = classify_moneyflow_row(merged)
+    kind_label = flow_kind_label(kind)
     net_mf = _float_or_none(merged.get("net_mf_amount"))
     change = _float_or_none(merged.get("change_pct"))
+
+    if kind == "proxy":
+        amount = float(merged.get("amount") or 0)
+        if amount > 0:
+            return "成交额", format_amount(amount), kind_label, _format_pct(change)
+        turnover = _float_or_none(merged.get("turnover_rate"))
+        return "涨幅", _format_pct(change), kind_label, f"{turnover:.2f}%" if turnover is not None else "—"
+
     if net_mf is not None and net_mf != 0:
-        return "主力净流入", f"{net_mf:,.0f} 万", "涨幅", _format_pct(change)
+        return "主力净流入", f"{net_mf:,.0f} 万", kind_label, _format_pct(change)
     amount = float(merged.get("amount") or 0)
     if amount > 0:
-        return "成交额", format_amount(amount), "涨幅", _format_pct(change)
+        return "成交额", format_amount(amount), kind_label, _format_pct(change)
     turnover = _float_or_none(merged.get("turnover_rate"))
-    return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
+    return "涨幅", _format_pct(change), kind_label, f"{turnover:.2f}%" if turnover is not None else "—"
 
 
 def _looks_like_vt_symbol(text: str) -> bool:
@@ -241,6 +276,8 @@ def _discovery_hits_card(
     vt_symbols = [str(hit.row.get("vt_symbol") or "").strip() for hit in hits]
     name_map = name_map_for_symbols([vt for vt in vt_symbols if vt])
     for hit in hits:
+        if _is_discovery_st_excluded(hit.row, name_map):
+            continue
         row = hit.row
         parsed = _row_from_dict(row, name_map=name_map)
         if parsed is None:
@@ -259,6 +296,8 @@ def _discovery_hits_card(
                 sub_value=sub_value,
             )
         )
+        if len(rows) >= spec.top_n:
+            break
     if not rows:
         return RadarCardData(
             card_id=spec.id,
@@ -290,13 +329,15 @@ def _volume_liquidity_proxy(pool_size: int, total: int):
     from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
     from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
     from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+    from vnpy_ashare.screener.hard_filters import apply_screening_filters
     from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
         return [], total
-    ranked = sorted(snapshot.rows, key=_quote_liquidity_key, reverse=True)
+
+    ranked = sorted(apply_screening_filters(snapshot.rows), key=_quote_liquidity_key, reverse=True)
     hits: list[DimensionHit] = []
     for index, row in enumerate(ranked[:pool_size], start=1):
         vt_symbol = str(row.get("vt_symbol") or "")
@@ -317,16 +358,17 @@ def _volume_liquidity_proxy(pool_size: int, total: int):
 
 
 def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
-    hits, total = run_volume_surge(spec.top_n, weight=1.0)
+    pool_size = _discovery_pool_size(spec.top_n)
+    hits, total = run_volume_surge(pool_size, weight=1.0)
 
     if _volume_surge_needs_ratio_fallback(hits):
-        ratio_hits, ratio_total = run_volume_ratio(spec.top_n, weight=1.0)
+        ratio_hits, ratio_total = run_volume_ratio(pool_size, weight=1.0)
         if ratio_hits:
             hits, total = ratio_hits, ratio_total
         # 量比无数据时保留放量原结果，避免把有效行情行清空
 
     if not hits and total > 0:
-        hits, total = _volume_liquidity_proxy(spec.top_n, total)
+        hits, total = _volume_liquidity_proxy(pool_size, total)
 
     def _volume_metric(row: dict[str, Any], hit) -> tuple[str, str, str, str]:
         if hit.dimension_id == "volume_ratio":
@@ -346,19 +388,120 @@ def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
 
 
 def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
-    hits, total = run_moneyflow_intraday(spec.top_n, weight=1.0)
-    if not hits and total > 0:
-        hits, total = run_moneyflow(spec.top_n, weight=1.0)
-    if not hits and total > 0:
-        hits, total = _moneyflow_turnover_proxy(spec.top_n, total)
+    pool_size = _discovery_pool_size(spec.top_n)
+    hits, total, trade_date = _load_discovery_moneyflow_hits(pool_size)
 
-    return _discovery_hits_card(
+    subtitle_suffix = f" · Tushare {trade_date}" if trade_date else ""
+
+    data = _discovery_hits_card(
         spec,
         hits,
         total,
-        metric_builder=lambda row, _hit: _moneyflow_metric(row),
-        empty_no_data="暂无行情数据，请先采集行情或打开「市场」页。",
+        metric_builder=_moneyflow_metric,
+        empty_no_data="暂无行情数据，请先运行「主力资金预拉」或打开「市场」页。",
     )
+    if data.rows and trade_date:
+        return RadarCardData(
+            card_id=data.card_id,
+            title=data.title,
+            subtitle=data.subtitle + subtitle_suffix,
+            rows=data.rows,
+            empty_message=data.empty_message,
+            updated_at=data.updated_at,
+            run_id=data.run_id,
+            detail_page_key=data.detail_page_key,
+            total_count=data.total_count,
+            ai_hint=data.ai_hint,
+            sector_names=data.sector_names,
+        )
+    return data
+
+
+def _merge_quote_into_moneyflow_row(row: dict[str, Any], quote_row: dict[str, Any] | None) -> dict[str, Any]:
+    from vnpy_ashare.quotes.moneyflow_kind import enrich_moneyflow_row_with_kind
+
+    item = dict(row)
+    if quote_row:
+        for key in (
+            "change_pct",
+            "pct_chg",
+            "turnover_rate",
+            "last_price",
+            "close",
+            "amount",
+            "volume",
+            "name",
+        ):
+            value = quote_row.get(key)
+            if value not in (None, ""):
+                item[key] = value
+    return enrich_moneyflow_row_with_kind(item)
+
+
+def _load_discovery_moneyflow_hits(pool_size: int) -> tuple[list, int, str]:
+    """优先 Tushare moneyflow；无数据时降级 MCP / 成交额代理。"""
+    from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
+    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+    from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
+
+    quote_map: dict[str, dict[str, Any]] = {}
+    total = 0
+    try:
+        snapshot = load_screening_quote_snapshot()
+        quote_map = {str(row.get("vt_symbol") or ""): row for row in snapshot.rows if row.get("vt_symbol")}
+        total = snapshot.total
+    except MarketQuotesLoadError:
+        pass
+
+    raw_rows, trade_date = fetch_moneyflow_with_fallback()
+    if raw_rows:
+        ranked = apply_moneyflow_in(raw_rows, top_n=pool_size)
+        hits: list[DimensionHit] = []
+        for index, row in enumerate(ranked, start=1):
+            vt_symbol = str(row.get("vt_symbol") or "")
+            if not vt_symbol:
+                continue
+            amount = float(row.get("net_mf_amount") or 0)
+            merged_row = _merge_quote_into_moneyflow_row(row, quote_map.get(vt_symbol))
+            hits.append(
+                DimensionHit(
+                    vt_symbol=vt_symbol,
+                    dimension_id="moneyflow",
+                    label="资金",
+                    weight=1.0,
+                    score=rank_score(index, len(ranked)),
+                    reason=f"资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
+                    row=merged_row,
+                )
+            )
+        return hits, len(raw_rows), trade_date
+
+    hits, total = run_moneyflow_intraday(pool_size, weight=1.0)
+    if hits:
+        enriched_hits: list[DimensionHit] = []
+        for hit in hits:
+            merged_row = _merge_quote_into_moneyflow_row(
+                {**hit.row, "moneyflow_source": "mcp"},
+                quote_map.get(hit.vt_symbol),
+            )
+            if "代理" in hit.reason:
+                merged_row["moneyflow_proxy"] = True
+            enriched_hits.append(
+                DimensionHit(
+                    vt_symbol=hit.vt_symbol,
+                    dimension_id=hit.dimension_id,
+                    label=hit.label,
+                    weight=hit.weight,
+                    score=hit.score,
+                    reason=hit.reason,
+                    row=merged_row,
+                )
+            )
+        return enriched_hits, total, ""
+
+    hits, total = _moneyflow_turnover_proxy(pool_size, total)
+    return hits, total, ""
 
 
 def _moneyflow_turnover_proxy(pool_size: int, total: int):
@@ -393,7 +536,7 @@ def _moneyflow_turnover_proxy(pool_size: int, total: int):
                 weight=1.0,
                 score=rank_score(index, min(len(scored), pool_size)),
                 reason=f"盘中资金：涨幅 {change:+.2f}% + 成交额代理，排名第 {index}",
-                row=dict(row),
+                row={**dict(row), "moneyflow_proxy": True},
             )
         )
     return hits, snapshot.total

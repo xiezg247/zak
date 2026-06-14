@@ -95,7 +95,7 @@ def _hits_from_proxy(
                 weight=weight,
                 score=rank_score(index, min(len(scored), pool_size)),
                 reason=(f"盘中资金：涨幅 {float(row.get('change_pct') or 0):+.2f}% + 成交额 {amount:,.0f} 万（代理），排名第 {index}"),
-                row=dict(row),
+                row={**dict(row), "moneyflow_proxy": True},
             )
         )
     return hits

@@ -164,6 +164,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._loading = False
         self._updated_at_text = ""
         self._row_widgets: list[RadarStockRowWidget] = []
+        self._show_add_watchlist_actions = spec.id != "watchlist_intraday"
 
         theme_manager().register_callback(lambda _tokens: self._refresh_row_widgets())
 
@@ -265,7 +266,7 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._view_run_button.show()
         else:
             self._view_run_button.hide()
-        if data.rows:
+        if data.rows and self._show_add_watchlist_actions:
             self._add_all_button.show()
         else:
             self._add_all_button.hide()
@@ -276,7 +277,12 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._empty_label.hide()
             for row in data.rows:
                 resonance = self._resonance_counts.get(row.vt_symbol, 0)
-                widget = RadarStockRowWidget(row, resonance=resonance, parent=self._rows_host)
+                widget = RadarStockRowWidget(
+                    row,
+                    resonance=resonance,
+                    show_add_watchlist_action=self._show_add_watchlist_actions,
+                    parent=self._rows_host,
+                )
                 widget.clicked.connect(self.row_selected.emit)
                 widget.double_clicked.connect(self.row_activated.emit)
                 widget.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
