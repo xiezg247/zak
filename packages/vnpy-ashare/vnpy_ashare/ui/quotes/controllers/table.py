@@ -89,6 +89,33 @@ class TableController:
         self.visible_columns = self._default_main_columns()
         self.visible_tail_columns = self._default_tail_columns()
         self.restore_column_config()
+        self.sync_tail_columns_with_config()
+
+    def _allowed_tail_column_keys(self) -> set[str]:
+        page = self._p
+        if page.config.use_local_table:
+            return set()
+        allowed: set[str] = set()
+        if page.config.show_local_column:
+            allowed.add("local")
+        if page.config.show_fill_button and not page.config.use_local_table:
+            allowed.update(("start", "end", "count", "status"))
+        return allowed
+
+    def _sanitize_tail_columns(self) -> bool:
+        allowed = self._allowed_tail_column_keys()
+        sanitized = [key for key in self.visible_tail_columns if key in allowed]
+        if sanitized == self.visible_tail_columns:
+            return False
+        self.visible_tail_columns = sanitized
+        return True
+
+    def sync_tail_columns_with_config(self) -> bool:
+        """按页面配置剔除无效尾列；有变更时写回 QSettings 并提示需重建表头。"""
+        if not self._sanitize_tail_columns():
+            return False
+        self.save_column_config()
+        return True
 
     def _default_tail_columns(self) -> list[str]:
         page = self._p
@@ -1073,14 +1100,17 @@ class TableController:
             action.setData(key)
             action.triggered.connect(lambda checked, k=key: self.on_column_toggle(k, checked))
 
-        menu.addSeparator()
-
-        for key, header in ALL_TAIL_COLUMNS.items():
-            action = menu.addAction(header)
-            action.setCheckable(True)
-            action.setChecked(key in self.visible_tail_columns)
-            action.setData(key)
-            action.triggered.connect(lambda checked, k=key: self.on_tail_column_toggle(k, checked))
+        allowed_tail = self._allowed_tail_column_keys()
+        if allowed_tail:
+            menu.addSeparator()
+            for key, header in ALL_TAIL_COLUMNS.items():
+                if key not in allowed_tail:
+                    continue
+                action = menu.addAction(header)
+                action.setCheckable(True)
+                action.setChecked(key in self.visible_tail_columns)
+                action.setData(key)
+                action.triggered.connect(lambda checked, k=key: self.on_tail_column_toggle(k, checked))
 
         button = page.column_button
         menu.popup(button.mapToGlobal(button.rect().bottomLeft()))
@@ -1093,6 +1123,8 @@ class TableController:
         self.rebuild_table()
 
     def on_tail_column_toggle(self, key: str, checked: bool) -> None:
+        if key not in self._allowed_tail_column_keys():
+            return
         if checked and key not in self.visible_tail_columns:
             self.visible_tail_columns.append(key)
         elif not checked and key in self.visible_tail_columns:

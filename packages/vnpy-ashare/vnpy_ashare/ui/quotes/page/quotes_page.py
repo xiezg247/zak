@@ -249,6 +249,8 @@ class QuotesPage(QtWidgets.QWidget):
 
     def activate(self) -> None:
         self._active = True
+        if self.config.column_configurable and self._table.sync_tail_columns_with_config():
+            self._table.rebuild_table()
         if self.config.use_radar_cards:
             self._update_quote_source_label()
             controller = getattr(self, "_radar_controller", None)
