@@ -8,11 +8,13 @@ from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.context import build_diagnose_ai_prompt
-from vnpy_ashare.app.engine_access import get_stock_analysis_service
+from vnpy_ashare.ai.llm_bridge import get_llm_engine
+from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
+from vnpy_ashare.ui.features.stock_analysis.ai_sidebar import StockAnalysisAiSidebar
 from vnpy_ashare.ui.features.stock_analysis.capital_tab import CapitalAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.chart_tab import StockAnalysisChartTab
 from vnpy_ashare.ui.features.stock_analysis.concept_tab import ConceptAnalysisTab
@@ -149,12 +151,24 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._status_label = panel_status_label("就绪")
         tabs = self._build_tabs()
         self._content_host = LoadingContentHost(tabs)
+        self._ai_sidebar = StockAnalysisAiSidebar(self._host, self)
+        self._body_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        self._body_splitter.setObjectName("StockAnalysisBodySplitter")
+        self._body_splitter.setChildrenCollapsible(False)
+        self._body_splitter.addWidget(self._content_host)
+        self._body_splitter.addWidget(self._ai_sidebar)
+        self._body_splitter.setStretchFactor(0, 1)
+        self._body_splitter.setStretchFactor(1, 0)
+        self._body_splitter.setCollapsible(0, False)
+        self._body_splitter.setCollapsible(1, True)
+        self._ai_sidebar.attach_splitter(self._body_splitter)
+        self._ai_sidebar.collapse()
         footer = self._build_footer()
 
         apply_standard_dialog_layout(
             self,
             header=header,
-            content=self._content_host,
+            content=self._body_splitter,
             footer=footer,
         )
 
@@ -168,9 +182,15 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         main = self._find_ashare_main_window()
         if main is not None:
             main.register_floating_overlay(self)
+        self._publish_ai_context()
+        llm_engine = get_llm_engine(self._host.main_engine)
+        if llm_engine is not None:
+            self._ai_sidebar.bind_engine(llm_engine)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
+        if self._ai_sidebar.is_expanded():
+            self._ai_sidebar.expand()
         main = self._find_ashare_main_window()
         if main is not None:
             main.on_floating_overlay_resized(self)
@@ -321,7 +341,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._refresh_btn.clicked.connect(self._refresh_current_tab)
         self._ai_btn = QtWidgets.QPushButton("问 AI 解读")
         self._ai_btn.setObjectName("ActionButton")
-        self._ai_btn.setToolTip("在 AI 对话中解读；完成后右键助手消息可存为分析报告")
+        self._ai_btn.setToolTip("在右侧 AI 侧栏解读；完成后可存为分析报告或追加流水")
         self._ai_btn.clicked.connect(self._ask_ai)
         self._reports_btn = QtWidgets.QPushButton("历史报告")
         self._reports_btn.setObjectName("SecondaryButton")
@@ -339,6 +359,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
     def closeEvent(self, event) -> None:
         self._closing = True
+        self._ai_sidebar.deactivate()
         main = self._find_ashare_main_window()
         if main is not None:
             main.unregister_floating_overlay(self)
@@ -627,25 +648,46 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             return
         self._ensure_tab_data(tab_index)
 
-    def _ask_ai(self) -> None:
-        if self._host.event_engine is None:
+    def _publish_ai_context(self) -> None:
+        quote_service = get_quote_service(self._host.main_engine)
+        if quote_service is None:
             return
+        page = self._host.source_page.strip() or "分析"
+        quote_service.publish_quote_context(
+            page=f"个股分析·{page}",
+            item=self._item,
+            quote=self._quote,
+        )
+
+    def _build_ai_prompt(self) -> str:
         name = self._quote.name if self._quote and self._quote.name else self._item.name
         base = build_diagnose_ai_prompt(self._item.vt_symbol, name)
         if self._payload is not None:
             context = build_analysis_ai_context(self._payload)
             if context:
                 base = f"{base}\n\n已知本地摘要：{context}"
+        return base
+
+    def _ask_ai(self) -> None:
+        prompt = self._build_ai_prompt()
+        scene = f"个股分析·{self._host.source_page or self._item.vt_symbol}"
+        if self._ai_sidebar.show_and_ask(prompt, scene=scene):
+            self._status_label.setText("已在右侧 AI 侧栏预填解读请求")
+            return
+        if self._host.event_engine is None:
+            page_notify(self, "AI 服务未就绪", level="warning")
+            return
         self._host.event_engine.put(
             Event(
                 EVENT_ASK_AI,
                 AskAiRequest(
-                    prompt=base,
+                    prompt=prompt,
                     source_page=self._host.source_page,
-                    panel_parent=self,
+                    use_full_page=True,
                 ),
             )
         )
+        self._status_label.setText("已在 AI 助手页打开解读")
 
     def _open_reports_center(self) -> None:
         from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog

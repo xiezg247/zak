@@ -46,7 +46,7 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
             "rs": MetricTile("相对沪深300", subtitle="20日超额"),
         }
 
-        self._ai_hint = hint_label("问小达 / 通达信多维诊断请使用底部「问 AI 解读」，AI 将按需调用 MCP 工具。")
+        self._ai_hint = hint_label("问小达 / 通达信多维诊断请使用底部「问 AI 解读」，在右侧侧栏与 AI 对话。")
         self._screening_label = hint_label("")
         self._screening_label.setObjectName("OverviewScreeningBadge")
         self._screening_label.hide()

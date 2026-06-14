@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
+    from vnpy_llm.app.engine import LlmEngine
 
 
 def get_last_assistant_message(main_engine: MainEngine | None) -> str:
@@ -23,3 +24,17 @@ def get_last_assistant_message(main_engine: MainEngine | None) -> str:
         if message.role == "assistant" and message.content.strip():
             return message.content.strip()
     return ""
+
+
+def get_llm_engine(main_engine: MainEngine | None) -> LlmEngine | None:
+    """从 MainEngine 获取 LlmEngine（可选依赖 vnpy-llm）。"""
+    if main_engine is None:
+        return None
+    try:
+        from vnpy_llm.app.engine import APP_NAME, LlmEngine
+    except ImportError:
+        return None
+    engine = main_engine.get_engine(APP_NAME)
+    if isinstance(engine, LlmEngine):
+        return engine
+    return None

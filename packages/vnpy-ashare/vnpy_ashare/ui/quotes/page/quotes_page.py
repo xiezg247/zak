@@ -84,6 +84,14 @@ from vnpy_common.ui.theme import theme_manager
 
 
 class QuotesPage(QtWidgets.QWidget):
+    @property
+    def stats_label(self) -> QtWidgets.QLabel | None:
+        return self._stats_label
+
+    @stats_label.setter
+    def stats_label(self, label: QtWidgets.QLabel | None) -> None:
+        self._stats_label = label
+
     """单页行情：列表 + 报价头 + 日 K。"""
 
     _thread_active = staticmethod(thread_is_active)

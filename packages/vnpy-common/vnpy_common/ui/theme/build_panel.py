@@ -139,6 +139,24 @@ QLabel#OverviewScreeningBadge {{
     border-radius: 4px;
     background-color: {t.accent_soft};
 }}
+QSplitter#StockAnalysisBodySplitter {{
+    border: none;
+    background: transparent;
+}}
+QWidget#StockAnalysisAiSidebar {{
+    background-color: {t.panel_bg};
+    border-left: 1px solid {t.panel_border};
+}}
+QLabel#StockAnalysisAiTitle {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#StockAnalysisAiPlaceholder {{
+    color: {t.text_muted};
+    font-size: 12px;
+    padding: 16px;
+}}
 QPushButton#OverviewReadinessChip {{
     padding: 4px 10px;
     border-radius: 4px;

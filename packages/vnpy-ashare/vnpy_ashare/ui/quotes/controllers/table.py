@@ -490,7 +490,7 @@ class TableController:
 
     def schedule_stats_update(self) -> None:
         """WebSocket 高频推送时合并涨跌统计刷新。"""
-        if self._p.stats_label is None:
+        if self._p._stats_label is None:
             return
         self._stats_timer.start()
 
@@ -671,7 +671,8 @@ class TableController:
 
     def update_stats(self) -> None:
         page = self._p
-        if page.stats_label is None:
+        label = page._stats_label
+        if label is None:
             return
         total = len(page.display_stocks)
         up_count = 0
@@ -701,7 +702,7 @@ class TableController:
             parts.append(f"平 {flat_count}")
         if up_count:
             parts.append(f" | 均涨幅 {avg_pct:+.2f}%")
-        page.stats_label.setText("  |  ".join(parts))
+        label.setText("  |  ".join(parts))
 
     def visible_market_items(self) -> list[StockItem]:
         """市场页下拉模式：仅取视口内（含缓冲）标的，供增量行情刷新。"""
