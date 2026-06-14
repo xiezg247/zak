@@ -12,6 +12,7 @@ from vnpy_ashare.screener.data.screening_status import (
     build_run_insight_detail,
     build_screening_data_status,
 )
+from vnpy_ashare.ui.screener.widgets.sector_distribution_panel import SectorDistributionPanel
 from vnpy_ashare.ui.screener.workers.screener_workers import QuoteRefreshWorker
 from vnpy_common.ui.qt_helpers import release_thread
 
@@ -63,15 +64,20 @@ class ScreenerResultInsights(QtWidgets.QWidget):
         self._label.setObjectName("ResultSummary")
         self._label.setWordWrap(True)
         layout.addWidget(self._label)
+
+        self._sector_panel = SectorDistributionPanel(self)
+        layout.addWidget(self._sector_panel)
         self.hide()
 
     def apply(self, rows: list[dict[str, Any]], config: dict[str, Any] | None = None) -> None:
         text = build_run_insight_detail(rows, config)
         self._label.setText(text)
-        self.setVisible(bool(text))
+        self._sector_panel.apply_rows(rows)
+        self.setVisible(bool(text) or self._sector_panel.isVisible())
 
     def clear(self) -> None:
         self._label.clear()
+        self._sector_panel.clear()
         self.hide()
 
 

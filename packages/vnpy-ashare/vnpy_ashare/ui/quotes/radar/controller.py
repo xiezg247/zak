@@ -111,10 +111,24 @@ class RadarController(QtCore.QObject):
             page_notify(self._page, "请先刷新雷达卡片", level="warning")
             return
         resonance = compute_radar_resonance(self._last_payload)
+        self._board.apply_board(self._last_payload)
         self._board.sync_resonance(resonance)
         self._sync_resonance_panel()
         self._update_status(resonance=resonance)
-        page_notify(self._page, "共振权重已更新")
+        self._reload_cards_after_resonance_weight_change()
+        page_notify(self._page, "共振权重已更新，相关卡片正在重载")
+
+    def _reload_cards_after_resonance_weight_change(self) -> None:
+        """权重变更后全量重算发现 / 板块 / 自选等指标卡（保留展望等缓存卡）。"""
+        from vnpy_ashare.quotes.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
+
+        reload_ids = [
+            card_id
+            for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
+            if card_id in self._last_payload and not card_id.startswith("outlook_")
+        ]
+        for card_id in reload_ids:
+            self.refresh_card(card_id, force_recompute=True)
 
     def activate(self) -> None:
         self.refresh()
