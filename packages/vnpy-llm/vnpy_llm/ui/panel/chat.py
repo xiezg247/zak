@@ -697,8 +697,46 @@ class AiChatPanel(QtWidgets.QWidget):
         )
         browser.setHtml(html)
         self._sync_browser_bubble(browser)
-        self._bind_assistant_note_menu(browser, content)
-        self._insert_bubble_row("assistant", browser)
+        bubble = self._pack_assistant_bubble_with_note_actions(browser, content)
+        self._insert_bubble_row("assistant", bubble)
+
+    def _resolve_note_stock(self):
+        try:
+            from vnpy_ashare.ui.features.notes_center.save_from_ai import resolve_context_stock
+
+            return resolve_context_stock()
+        except ImportError:
+            return None
+
+    def _pack_assistant_bubble_with_note_actions(
+        self,
+        content: QtWidgets.QWidget,
+        markdown: str,
+    ) -> QtWidgets.QWidget:
+        """有看盘标的时，在助手气泡下展示存笔记入口。"""
+        self._bind_assistant_note_menu(content, markdown)
+        stock = self._resolve_note_stock()
+        if stock is None:
+            return content
+        wrap = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(wrap)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        layout.addWidget(content)
+        actions = QtWidgets.QHBoxLayout()
+        actions.setContentsMargins(4, 0, 0, 0)
+        actions.setSpacing(8)
+        save_btn = QtWidgets.QPushButton("存为分析报告")
+        save_btn.setObjectName("AiToolBtn")
+        save_btn.clicked.connect(lambda: self._save_assistant_as_report(markdown, stock))
+        journal_btn = QtWidgets.QPushButton("追加到流水")
+        journal_btn.setObjectName("AiToolBtn")
+        journal_btn.clicked.connect(lambda: self._save_assistant_as_journal(markdown, stock))
+        actions.addWidget(save_btn)
+        actions.addWidget(journal_btn)
+        actions.addStretch()
+        layout.addLayout(actions)
+        return wrap
 
     def _bind_assistant_note_menu(self, bubble: QtWidgets.QWidget, markdown: str) -> None:
         bubble.setProperty(_NOTE_MARKDOWN_PROP, markdown.strip())

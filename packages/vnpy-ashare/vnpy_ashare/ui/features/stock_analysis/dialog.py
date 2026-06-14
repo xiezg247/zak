@@ -8,8 +8,7 @@ from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import build_diagnose_ai_prompt
-from vnpy_ashare.ai.llm_bridge import get_last_assistant_message
-from vnpy_ashare.app.engine_access import get_note_service, get_stock_analysis_service
+from vnpy_ashare.app.engine_access import get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
@@ -22,8 +21,6 @@ from vnpy_ashare.ui.features.stock_analysis.financial_tab import FinancialAnalys
 from vnpy_ashare.ui.features.stock_analysis.holders_tab import HoldersAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.features.stock_analysis.overview_panel import OverviewAnalysisPanel
-from vnpy_ashare.services.note_service import build_report_context_json
-from vnpy_ashare.ui.features.stock_analysis.save_report_dialog import SaveAnalysisReportDialog
 from vnpy_ashare.ui.features.stock_analysis.sector_tab import SectorAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.worker import (
     StockAnalysisPayload,
@@ -81,17 +78,6 @@ _SCOPE_STATUS: dict[StockAnalysisScope, str] = {
     "events": "正在加载事件日历…",
     "holders": "正在加载股东结构…",
     "financial": "正在同步财报…",
-}
-
-_SCOPE_LABELS: dict[str, str] = {
-    "overview": "概览",
-    "chart": "图表",
-    "sector": "板块",
-    "concept": "概念",
-    "capital": "资金",
-    "events": "事件",
-    "holders": "股东",
-    "financial": "财报",
 }
 
 
@@ -313,10 +299,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._refresh_btn.clicked.connect(self._refresh_current_tab)
         self._ai_btn = QtWidgets.QPushButton("问 AI 解读")
         self._ai_btn.setObjectName("ActionButton")
+        self._ai_btn.setToolTip("在 AI 对话中解读；完成后右键助手消息可存为分析报告")
         self._ai_btn.clicked.connect(self._ask_ai)
-        self._save_report_btn = QtWidgets.QPushButton("保存分析报告")
-        self._save_report_btn.setObjectName("SecondaryButton")
-        self._save_report_btn.clicked.connect(self._save_analysis_report)
         self._reports_btn = QtWidgets.QPushButton("历史报告")
         self._reports_btn.setObjectName("SecondaryButton")
         self._reports_btn.clicked.connect(self._open_reports_center)
@@ -327,7 +311,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             self._status_label,
             self._refresh_btn,
             self._reports_btn,
-            self._save_report_btn,
             self._ai_btn,
             close_btn,
         )
@@ -637,63 +620,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 ),
             )
         )
-
-    def _current_report_scope(self) -> str:
-        index = self._tabs.currentIndex()
-        if index == _TAB_CHART:
-            return "chart"
-        scope = _TAB_SCOPES.get(index)
-        return scope or "overview"
-
-    def _default_report_title(self) -> str:
-        from datetime import datetime
-
-        scope_key = self._current_report_scope()
-        scope_label = _SCOPE_LABELS.get(scope_key, scope_key)
-        stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        name = self._quote.name if self._quote and self._quote.name else self._item.name
-        head = name or self._item.symbol
-        return f"{head} · {scope_label} · {stamp}"
-
-    def _save_analysis_report(self) -> None:
-        note_service = get_note_service(self._host.main_engine)
-        if note_service is None:
-            page_notify(self, "笔记服务未就绪", level="error")
-            return
-        default_body = get_last_assistant_message(self._host.main_engine)
-        dialog = SaveAnalysisReportDialog(
-            default_title=self._default_report_title(),
-            default_body=default_body,
-            parent=self,
-        )
-        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-            return
-        body = dialog.body_text()
-        if not body:
-            page_notify(self, "报告正文不能为空", level="warning")
-            return
-        scope = self._current_report_scope()
-        summary = ""
-        if self._payload is not None:
-            summary = build_analysis_ai_context(self._payload)
-        context_json = build_report_context_json(scope=scope, summary=summary)
-        try:
-            report = note_service.create_report(
-                self._item.symbol,
-                self._item.exchange,
-                title=dialog.title_text() or self._default_report_title(),
-                body=body,
-                source_scope=scope,
-                context_json=context_json,
-            )
-        except ValueError as exc:
-            page_notify(self, str(exc), level="warning")
-            return
-        except Exception:
-            page_notify(self, "保存分析报告失败", level="error")
-            return
-        self._status_label.setText(f"已保存报告 #{report.id}")
-        page_notify(self, f"已保存分析报告：{report.title}", level="success")
 
     def _open_reports_center(self) -> None:
         from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
