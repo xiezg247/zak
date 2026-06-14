@@ -106,9 +106,7 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
 
             name_text = getattr(row, "name", "") or "—"
             name_item = QtWidgets.QTableWidgetItem(name_text)
-            name_item.setTextAlignment(
-                QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft
-            )
+            name_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignLeft)
             if name_text not in ("", "—"):
                 name_item.setToolTip(name_text)
             self.setItem(row_index, 2, name_item)
@@ -120,9 +118,7 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
                 (6, self._trade_count_text(row), "total_trade_count"),
             ):
                 item = QtWidgets.QTableWidgetItem(text)
-                item.setTextAlignment(
-                    QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignRight
-                )
+                item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignRight)
                 metric = getattr(row, metric_key, None)
                 if metric is not None:
                     sort_value = self._metric_value(row, col_index)

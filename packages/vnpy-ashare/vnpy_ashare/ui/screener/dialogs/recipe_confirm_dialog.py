@@ -59,7 +59,7 @@ class RecipeConfirmDialog(QtWidgets.QDialog):
 
         btn_row = QtWidgets.QHBoxLayout()
         self.confirm_btn = QtWidgets.QPushButton("确认运行")
-        self.edit_btn = QtWidgets.QPushButton("在自动选股页修改")
+        self.edit_btn = QtWidgets.QPushButton("在多因子配方页修改")
         self.cancel_btn = QtWidgets.QPushButton("取消")
         btn_row.addWidget(self.confirm_btn)
         btn_row.addWidget(self.edit_btn)
@@ -105,7 +105,7 @@ class RecipeConfirmDialog(QtWidgets.QDialog):
         )
         self.llm_engine.append_local_message(
             role="assistant",
-            content=(f"【配方草案】已跳转自动选股页并选中「{draft.summary}」，请核对维度权重后点击「试跑配方」或配置定时任务。"),
+            content=(f"【配方草案】已跳转选股页「多因子配方」并选中「{draft.summary}」，请核对维度权重后点击「试跑配方」或配置定时任务。"),
         )
         self.accept()
 

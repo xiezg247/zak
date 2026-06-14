@@ -90,7 +90,7 @@ class RadarController(QtCore.QObject):
     def _on_open_screener_resonance(self) -> None:
         host = self._find_main_window()
         if host is None or not hasattr(host, "open_screener_radar_resonance"):
-            page_notify(self._page, "无法打开策略选股页", level="warning")
+            page_notify(self._page, "无法打开选股页", level="warning")
             return
         host.open_screener_radar_resonance()
 
@@ -349,9 +349,7 @@ class RadarController(QtCore.QObject):
     def _find_main_window(self):
         widget = self._page
         while widget is not None:
-            if hasattr(widget, "open_screener_run") or hasattr(widget, "open_sector_flow") or hasattr(
-                widget, "open_screener_radar_resonance"
-            ):
+            if hasattr(widget, "open_screener_run") or hasattr(widget, "open_sector_flow") or hasattr(widget, "open_screener_radar_resonance"):
                 return widget
             widget = widget.parentWidget()
         return None

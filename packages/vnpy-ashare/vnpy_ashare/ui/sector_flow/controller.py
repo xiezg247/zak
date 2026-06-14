@@ -154,7 +154,7 @@ class SectorFlowController(QtCore.QObject):
             return
         host = self._find_main_window()
         if host is None or not hasattr(host, "open_screener_industry"):
-            page_notify(self._page, "无法打开策略选股页", level="warning")
+            page_notify(self._page, "无法打开选股页", level="warning")
             return
         host.open_screener_industry(label)
 
@@ -165,7 +165,7 @@ class SectorFlowController(QtCore.QObject):
             return
         host = self._find_main_window()
         if host is None or not hasattr(host, "open_screener_industry"):
-            page_notify(self._page, "无法打开策略选股页", level="warning")
+            page_notify(self._page, "无法打开选股页", level="warning")
             return
         host.open_screener_industry(industry)
 

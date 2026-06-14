@@ -39,7 +39,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._ai_btn.clicked.connect(self.ai_requested.emit)
         self._screener_btn = QtWidgets.QPushButton("成分选股")
         self._screener_btn.setObjectName("SecondaryButton")
-        self._screener_btn.setToolTip("对选中行业成分按涨幅筛选，跳转策略选股页")
+        self._screener_btn.setToolTip("对选中行业成分按涨幅筛选，跳转选股页")
         self._screener_btn.clicked.connect(self.screener_requested.emit)
 
         self._tab_inflow_btn = QtWidgets.QPushButton("净流入")

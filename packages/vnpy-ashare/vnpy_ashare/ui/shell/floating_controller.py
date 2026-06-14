@@ -20,7 +20,8 @@ from vnpy_llm.ui.session.widgets import show_ai_session_dialog
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
-FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "sector_flow", "radar", "local", "screener", "auto_screener"})
+FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "sector_flow", "radar", "local", "screener"})
+SCREENER_ATTENTION_SOURCES = frozenset({"screener", "auto_screener"})
 ORB_POSITION_KEY = "orb_position_content"
 
 
@@ -132,7 +133,7 @@ class FloatingAiController(QtCore.QObject):
         if page_key and not self.is_page_allowed(page_key):
             page_notify(
                 self._host,
-                "AI 悬浮球仅在自选、市场、雷达、本地、策略选股、自动选股页可用。",
+                "AI 悬浮球仅在自选、市场、板块资金、雷达、本地、选股页可用。",
             )
             return
         if self.orb_visible():
@@ -261,7 +262,10 @@ class FloatingAiController(QtCore.QObject):
         if self._orb is None or self._orb_user_hidden:
             return
         page_key = self._current_page_key()
-        if source in ("screener", "auto_screener") and page_key != source:
+        if source in SCREENER_ATTENTION_SOURCES:
+            if page_key != "screener":
+                return
+        elif source and page_key != source:
             return
         if not page_key or not self.is_page_allowed(page_key):
             return

@@ -1,4 +1,4 @@
-"""自动选股页：多因子配方 + 定时/AI 结果收件箱。"""
+"""多因子配方页：配方试跑 + 定时/AI 结果收件箱。"""
 
 from __future__ import annotations
 
@@ -58,11 +58,17 @@ from vnpy_common.ui.qt_helpers import release_thread
 
 
 class AutoScreenerPageWidget(QtWidgets.QWidget):
-    """左侧导航「自动选股」页。"""
+    """选股页「多因子配方」Tab。"""
 
     open_scheduler_requested = QtCore.Signal()
 
-    def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
+    def __init__(
+        self,
+        main_engine: MainEngine,
+        event_engine: EventEngine,
+        *,
+        embedded: bool = False,
+    ) -> None:
         super().__init__()
         self.main_engine = main_engine
         self.event_engine = event_engine
@@ -77,6 +83,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._loaded_run_id: str | None = None
         self._watchlist_service = get_watchlist_service(main_engine)
         self._active = False
+        self._embedded = embedded
 
         self._build_ui()
         self._status_controller = ScreeningPageStatusController(
@@ -117,9 +124,10 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         page_layout.addWidget(main_panel, stretch=1)
 
         header = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("自动选股")
-        title.setObjectName("PageTitle")
-        header.addWidget(title)
+        if not self._embedded:
+            title = QtWidgets.QLabel("多因子配方")
+            title.setObjectName("PageTitle")
+            header.addWidget(title)
         header.addStretch()
         self.scheduler_btn = QtWidgets.QPushButton("定时任务设置")
         self.scheduler_btn.setObjectName("SecondaryButton")
@@ -249,7 +257,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             host=StockAnalysisHost.from_main_engine(
                 self.main_engine,
                 event_engine=self.event_engine,
-                source_page="自动选股",
+                source_page="多因子配方",
                 retired_workers=self._retired_workers,
             ),
             row_data_role=ROW_DATA_ROLE,
@@ -551,7 +559,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         service = self._screening_service()
         record = service.get_run_record(run_id) if service else None
         if record is None:
-            self._append_action_log("自动选股结果不存在或已删除")
+            self._append_action_log("配方结果不存在或已删除")
             self._clear_loaded_run_view()
             return
         self._loaded_run_id = run_id
@@ -622,7 +630,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.event_engine.put(
             Event(
                 EVENT_ASK_AI,
-                AskAiRequest(prompt=prompt, source_page="自动选股"),
+                AskAiRequest(prompt=prompt, source_page="多因子配方"),
             )
         )
         self._append_action_log(f"已打开 AI，预填解读请求：{condition}")
@@ -747,7 +755,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.event_engine.put(
             Event(
                 EVENT_OPEN_BACKTEST,
-                BacktestRequest(vt_symbol=vt_symbol, source_page="自动选股", name=str(row.get("name", ""))),
+                BacktestRequest(vt_symbol=vt_symbol, source_page="多因子配方", name=str(row.get("name", ""))),
             )
         )
 
@@ -763,7 +771,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
         self._batch_backtest_flow.start(
             selected,
-            source_page="自动选股",
+            source_page="多因子配方",
             batch_source="batch_auto_screener",
             list_strategies=lambda: class_names,
             on_running=lambda running: self.batch_backtest_btn.setDisabled(running),
@@ -771,7 +779,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
 
     def _export_csv(self) -> None:
         if not self._results:
-            self._toast.warning("暂无自动选股结果")
+            self._toast.warning("暂无多因子配方结果")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,

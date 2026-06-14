@@ -37,10 +37,7 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
         ),
     ),
     NavGroup(
-        (
-            NavEntry("screener", "策略选股"),
-            NavEntry("auto_screener", "自动选股"),
-        ),
+        (NavEntry("screener", "选股"),),
     ),
     NavGroup((NavEntry("ai_assistant", "AI 助手"),)),
     NavGroup(
@@ -64,11 +61,10 @@ BACKSTAGE_PAGE_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE
 NAV_SHORTCUTS: dict[str, str] = {
     "watchlist": "Ctrl+1",
     "market": "Ctrl+2",
-    "sector_flow": "Ctrl+Shift+B",
-    "radar": "Ctrl+3",
-    "local": "Ctrl+4",
-    "screener": "Ctrl+5",
-    "auto_screener": "Ctrl+6",
+    "sector_flow": "Ctrl+3",
+    "radar": "Ctrl+4",
+    "local": "Ctrl+5",
+    "screener": "Ctrl+6",
     "ai_assistant": "Ctrl+7",
     "cta_backtest": "Ctrl+8",
     "batch_backtest": "Ctrl+9",

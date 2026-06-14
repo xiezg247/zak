@@ -12,10 +12,11 @@ from vnpy_ashare.ui.screener.dialogs import (
     show_reference_peer_dialog,
     show_screener_confirm_dialog,
 )
-from vnpy_ashare.ui.screener.pages import AutoScreenerPageWidget, ScreenerPageWidget
+from vnpy_ashare.ui.screener.pages import AutoScreenerPageWidget, ScreenerHubPageWidget, ScreenerPageWidget
 
 __all__ = [
     "AutoScreenerPageWidget",
+    "ScreenerHubPageWidget",
     "ScreenerPageWidget",
     "show_recipe_confirm_dialog",
     "show_reference_peer_dialog",

@@ -1,4 +1,4 @@
-"""策略选股页（Preset / 自定义条件）。"""
+"""条件选股页（Preset / 自定义条件）。"""
 
 from __future__ import annotations
 
@@ -61,14 +61,21 @@ _SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
 
 class ScreenerPageWidget(QtWidgets.QWidget):
-    """左侧导航「策略选股」页。"""
+    """选股页「条件选股」Tab。"""
 
-    def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
+    def __init__(
+        self,
+        main_engine: MainEngine,
+        event_engine: EventEngine,
+        *,
+        embedded: bool = False,
+    ) -> None:
         super().__init__()
         self.main_engine = main_engine
         self.event_engine = event_engine
         self.setObjectName("MarketRoot")
         self._active = False
+        self._embedded = embedded
         self._worker: ScreenerRunWorker | None = None
         self._pattern_worker: PatternScreenRunWorker | None = None
         self._radar_worker: RadarResonanceRunWorker | None = None
@@ -122,12 +129,13 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         root.setSpacing(0)
         page_layout.addWidget(main_panel, stretch=1)
 
-        header = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("策略选股")
-        title.setObjectName("PageTitle")
-        header.addWidget(title)
-        header.addStretch()
-        root.addLayout(header)
+        if not self._embedded:
+            header = QtWidgets.QHBoxLayout()
+            title = QtWidgets.QLabel("条件选股")
+            title.setObjectName("PageTitle")
+            header.addWidget(title)
+            header.addStretch()
+            root.addLayout(header)
 
         # ── 工具栏 ──────────────────────────────────────────
         toolbar = QtWidgets.QHBoxLayout()
@@ -135,7 +143,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         toolbar.setSpacing(8)
 
         # 主操作
-        self.run_btn = QtWidgets.QPushButton("▶  运行策略选股")
+        self.run_btn = QtWidgets.QPushButton("▶  运行条件选股")
         self.run_btn.setObjectName("PrimaryRunButton")
         self.run_btn.clicked.connect(self._run_screening)
         toolbar.addWidget(self.run_btn)
@@ -318,7 +326,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.result_insights = ScreenerResultInsights(result_body)
         result_body_layout.addWidget(self.result_insights)
 
-        self._empty_result_label = QtWidgets.QLabel("点击「运行策略选股」后在此展示结果")
+        self._empty_result_label = QtWidgets.QLabel("点击「运行条件选股」后在此展示结果")
         self._empty_result_label.setObjectName("ScreenerEmptyResult")
         self._empty_result_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         result_body_layout.addWidget(self._empty_result_label, stretch=1)
@@ -334,7 +342,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             host=StockAnalysisHost.from_main_engine(
                 self.main_engine,
                 event_engine=self.event_engine,
-                source_page="策略选股",
+                source_page="条件选股",
                 retired_workers=self._retired_workers,
             ),
             row_data_role=ROW_DATA_ROLE,
@@ -450,9 +458,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
                             self.top_n_spin.setValue(int(scheme.config.get("top_n", 20)))
                             self.custom_box.setVisible(False)
                             industry = str(scheme.config.get("industry") or "")
-                            self.hint_label.setText(
-                                f"行业成分方案：{industry or '—'} · 运行后将筛选该行业成分并按涨幅排序。"
-                            )
+                            self.hint_label.setText(f"行业成分方案：{industry or '—'} · 运行后将筛选该行业成分并按涨幅排序。")
                             return
                         self.top_n_spin.setValue(int(scheme.config.get("top_n", 20)))
                         self.min_change_spin.setValue(scheme.config.get("min_change_pct") if scheme.config.get("min_change_pct") is not None else -1)
@@ -510,7 +516,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.min_turnover_spin.setValue(req.min_turnover if req.min_turnover is not None else -1)
         self._on_preset_changed(self.preset_combo.currentIndex())
         source = data.source_page or "AI"
-        self._append_action_log(f"已从 {source} 预填策略选股条件，请核对后点击「运行策略选股」")
+        self._append_action_log(f"已从 {source} 预填条件选股，请核对后点击「运行条件选股」")
 
     def _release_worker(
         self,
@@ -531,10 +537,10 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
 
         self._task_guard.begin(
-            "正在运行策略选股…",
+            "正在运行条件选股…",
             widgets=self._task_lock_widgets(),
             primary=self.run_btn,
-            primary_text="▶  运行策略选股",
+            primary_text="▶  运行条件选股",
             primary_handler=self._run_screening,
             on_cancel=self._cancel_screening,
         )
@@ -870,7 +876,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._task_guard.end()
         if cancelled:
             self.run_output_panel.fail_run("已取消")
-            self._toast.info("策略选股已取消")
+            self._toast.info("条件选股已取消")
             return
         self._apply_screen_result(result, trigger="manual")
 
@@ -885,7 +891,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.event_engine.put(
             Event(
                 EVENT_ASK_AI,
-                AskAiRequest(prompt=prompt, source_page="策略选股"),
+                AskAiRequest(prompt=prompt, source_page="条件选股"),
             )
         )
         self._append_action_log(f"已打开 AI，预填解读请求：{condition}")
@@ -952,7 +958,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._task_guard.end()
         if cancelled or message == "已取消":
             self.run_output_panel.fail_run("已取消")
-            self._toast.info("策略选股已取消")
+            self._toast.info("条件选股已取消")
             return
         self.run_output_panel.fail_run(message)
         if message != "已取消":
@@ -1097,7 +1103,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
                 EVENT_OPEN_BACKTEST,
                 BacktestRequest(
                     vt_symbol=vt_symbol,
-                    source_page="策略选股",
+                    source_page="条件选股",
                     name=name,
                 ),
             )

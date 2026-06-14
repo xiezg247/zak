@@ -38,7 +38,7 @@ from vnpy_ashare.domain.ai_actions import (
 )
 from vnpy_ashare.ui.backtest import BatchBacktestPageWidget
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
-from vnpy_ashare.ui.screener import AutoScreenerPageWidget, ScreenerPageWidget
+from vnpy_ashare.ui.screener import ScreenerHubPageWidget
 from vnpy_ashare.ui.sector_flow import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
@@ -472,11 +472,11 @@ class AshareMainWindow(MainWindow):
             widget.apply_request(data)
 
     def _handle_fill_recipe(self, data) -> None:
-        index = self._nav_index_for_key("auto_screener")
+        index = self._nav_index_for_key("screener")
         if index is None:
             return
         self._show_page(index)
-        widget = self._page_widgets.get("auto_screener")
+        widget = self._page_widgets.get("screener")
         if widget is not None and hasattr(widget, "apply_recipe_request"):
             widget.apply_recipe_request(data)
 
@@ -608,11 +608,11 @@ class AshareMainWindow(MainWindow):
         """从雷达页等入口跳转到选股历史运行详情。"""
         if not run_id or page_key not in {"screener", "auto_screener"}:
             return
-        nav_index = self._nav_index_for_key(page_key)
-        self._show_page_by_key(page_key, nav_index=nav_index)
-        widget = self._page_widgets.get(page_key)
+        nav_index = self._nav_index_for_key("screener")
+        self._show_page_by_key("screener", nav_index=nav_index)
+        widget = self._page_widgets.get("screener")
         if widget is not None and hasattr(widget, "show_historical_run"):
-            widget.show_historical_run(run_id)
+            widget.show_historical_run(run_id, page_key=page_key)
 
     def open_screener_industry(self, industry: str) -> None:
         """从板块资金页跳转到策略选股并执行行业成分筛选。"""
@@ -775,9 +775,7 @@ class AshareMainWindow(MainWindow):
             page.collapse_to_dock.connect(self._return_to_floating_mode)
             widget = page
         elif key == "screener":
-            widget = ScreenerPageWidget(self.main_engine, self.event_engine)
-        elif key == "auto_screener":
-            widget = AutoScreenerPageWidget(self.main_engine, self.event_engine)
+            widget = ScreenerHubPageWidget(self.main_engine, self.event_engine)
             widget.open_scheduler_requested.connect(self._open_scheduler_page)
         elif key == "batch_backtest":
             widget = BatchBacktestPageWidget(self.main_engine, self.event_engine)
@@ -813,13 +811,13 @@ class AshareMainWindow(MainWindow):
         status = engine.scheduler.get_status(job_id)
         if status is None or status.last_success is not True:
             return
-        message = status.last_message or "自动选股已完成"
+        message = status.last_message or "多因子配方已完成"
         if message and "跳过" in message:
             return
-        widget = self._page_widgets.get("auto_screener")
+        widget = self._page_widgets.get("screener")
         if widget is not None and hasattr(widget, "on_scheduled_run_complete"):
             widget.on_scheduled_run_complete(job_id, message)
-        if self._current_key != "auto_screener":
+        if self._current_key != "screener":
             self.event_engine.put(
                 Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="auto_screener")),
             )

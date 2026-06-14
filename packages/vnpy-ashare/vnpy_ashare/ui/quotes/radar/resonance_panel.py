@@ -43,7 +43,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
         self._ai_button = QtWidgets.QPushButton("AI 解读")
         self._ai_button.setObjectName("RadarResonanceAi")
         self._ai_button.clicked.connect(self.ai_resonance_requested.emit)
-        self._screener_button = QtWidgets.QPushButton("策略选股")
+        self._screener_button = QtWidgets.QPushButton("条件选股")
         self._screener_button.setObjectName("RadarResonanceScreener")
         self._screener_button.clicked.connect(self.open_screener_requested.emit)
         toolbar.addWidget(self._add_all_button)

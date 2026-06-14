@@ -109,7 +109,7 @@ DEFAULT_SCENARIO_VARIANT = "scenario_bull"
 SCREEN_TASK_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant("scheduled_intraday", "盘中任务"),
     RadarVariant("scheduled_post_close", "盘后任务"),
-    RadarVariant("strategy", "策略选股"),
+    RadarVariant("strategy", "条件选股"),
 )
 
 SECTOR_VARIANTS: tuple[RadarVariant, ...] = (
