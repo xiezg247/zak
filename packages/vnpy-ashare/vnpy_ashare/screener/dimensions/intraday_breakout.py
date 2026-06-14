@@ -9,12 +9,15 @@ from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.symbols import parse_tickflow_symbol
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
+from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.dimensions.scoring import blended_score
 
 _META_DIMENSION_ID = "intraday_breakout"
 _MIN_CHANGE_PCT = 0.5
 _MIN_BREAK_PCT = 0.5
 _NEAR_HIGH_RATIO = 0.99
+_MIN_BREAKOUT_VOLUME_RATIO = 1.2
 
 
 def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
@@ -23,9 +26,10 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
     except MarketQuotesLoadError:
         return [], 0
 
+    ratio_map = get_volume_ratio_map()
     candidates: list[tuple[dict[str, Any], float]] = []
     for row in snapshot.rows:
-        strength = _quote_breakout_strength(row)
+        strength = _quote_breakout_strength(row, ratio_map)
         if strength is None:
             continue
         candidates.append((row, strength))
@@ -35,28 +39,48 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
         candidates = _apply_minute_confirm(candidates, pool_size)
 
     hits: list[DimensionHit] = []
-    for index, (row, strength) in enumerate(candidates[:pool_size], start=1):
+    top_candidates = candidates[:pool_size]
+    strength_values = [strength for _, strength in top_candidates]
+    for index, (row, strength) in enumerate(top_candidates, start=1):
         vt_symbol = str(row.get("vt_symbol") or "")
         if not vt_symbol:
             continue
         prev = float(row.get("prev_close") or 0)
         high = float(row.get("high_price") or 0)
         last = float(row.get("last_price") or 0)
+        volume_ratio = _row_volume_ratio(row, ratio_map)
+        ratio_note = f"，量比 {volume_ratio:.2f}" if volume_ratio is not None else ""
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
                 dimension_id=_META_DIMENSION_ID,
                 label="突破",
                 weight=weight,
-                score=rank_score(index, min(len(candidates), pool_size)),
-                reason=(f"突破：较昨收 +{strength:.2f}%，日内高 {high:.2f}（昨收 {prev:.2f}，现价 {last:.2f}）"),
+                score=blended_score(
+                    index,
+                    min(len(candidates), pool_size),
+                    strength,
+                    strength_values,
+                ),
+                reason=(f"突破：较昨收 +{strength:.2f}%，日内高 {high:.2f}（昨收 {prev:.2f}，现价 {last:.2f}{ratio_note}）"),
                 row=dict(row),
             )
         )
     return hits, snapshot.total
 
 
-def _quote_breakout_strength(row: dict[str, Any]) -> float | None:
+def _row_volume_ratio(row: dict[str, Any], ratio_map: dict[str, float]) -> float | None:
+    ratio = float(row.get("volume_ratio") or 0)
+    if ratio > 0:
+        return ratio
+    vt_symbol = str(row.get("vt_symbol") or "")
+    mapped = ratio_map.get(vt_symbol)
+    if mapped and float(mapped) > 0:
+        return float(mapped)
+    return None
+
+
+def _quote_breakout_strength(row: dict[str, Any], ratio_map: dict[str, float]) -> float | None:
     prev = float(row.get("prev_close") or 0)
     high = float(row.get("high_price") or 0)
     last = float(row.get("last_price") or 0)
@@ -68,6 +92,9 @@ def _quote_breakout_strength(row: dict[str, Any]) -> float | None:
     if high < prev * (1 + _MIN_BREAK_PCT / 100):
         return None
     if last < high * _NEAR_HIGH_RATIO:
+        return None
+    volume_ratio = _row_volume_ratio(row, ratio_map)
+    if volume_ratio is not None and volume_ratio < _MIN_BREAKOUT_VOLUME_RATIO:
         return None
     return (last - prev) / prev * 100
 

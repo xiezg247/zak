@@ -420,6 +420,21 @@ def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
     return data
 
 
+def incremental_refresh_radar_card_quotes(data: RadarCardData) -> RadarCardData:
+    """仅刷新卡片行的现价与涨幅，不重算发现 / 板块等指标。"""
+    from dataclasses import replace
+
+    from vnpy_ashare.quotes.radar_models import enrich_radar_rows
+    from vnpy_ashare.screener.data.screening_context import preload_screening_context_quotes, screening_context_scope
+
+    if not data.rows:
+        return data
+    with screening_context_scope() as ctx:
+        preload_screening_context_quotes(ctx)
+        enriched = enrich_radar_rows(data.rows)
+    return replace(data, rows=enriched)
+
+
 def load_radar_card(
     card_id: str,
     *,
@@ -428,7 +443,65 @@ def load_radar_card(
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
     force_recompute: bool = False,
 ) -> RadarCardData:
-    """加载单张雷达卡片。"""
+    """加载单张雷达卡片；行情类卡片自动复用 ScreeningContext。"""
+    if card_id in _RADAR_FULL_CONTEXT_CARD_IDS:
+        from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
+
+        with screening_context_scope() as ctx:
+            preload_screening_context(ctx)
+            return _load_radar_card_uncached(
+                card_id,
+                screen_task_variant=screen_task_variant,
+                sector_variant=sector_variant,
+                scenario_variant=scenario_variant,
+                force_recompute=force_recompute,
+            )
+    if card_id in _RADAR_QUOTE_CONTEXT_CARD_IDS:
+        from vnpy_ashare.screener.data.screening_context import preload_screening_context_quotes, screening_context_scope
+
+        with screening_context_scope() as ctx:
+            preload_screening_context_quotes(ctx)
+            return _load_radar_card_uncached(
+                card_id,
+                screen_task_variant=screen_task_variant,
+                sector_variant=sector_variant,
+                scenario_variant=scenario_variant,
+                force_recompute=force_recompute,
+            )
+    return _load_radar_card_uncached(
+        card_id,
+        screen_task_variant=screen_task_variant,
+        sector_variant=sector_variant,
+        scenario_variant=scenario_variant,
+        force_recompute=force_recompute,
+    )
+
+
+_RADAR_FULL_CONTEXT_CARD_IDS = frozenset({
+    "discovery_volume_surge",
+    "discovery_moneyflow_intraday",
+    "watchlist_intraday",
+    "sector_theme",
+})
+
+_RADAR_QUOTE_CONTEXT_CARD_IDS = frozenset({
+    "screen_latest",
+    "screen_task",
+    "outlook_watch",
+    "outlook_hold",
+    "outlook_scenario",
+})
+
+
+def _load_radar_card_uncached(
+    card_id: str,
+    *,
+    screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
+    sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
+    force_recompute: bool = False,
+) -> RadarCardData:
+    """加载单张雷达卡片（无额外上下文包装）。"""
     spec = RADAR_CARD_BY_ID.get(card_id)
     if spec is None:
         msg = f"未知雷达卡片：{card_id}"
@@ -466,29 +539,44 @@ def load_radar_board(
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
 ) -> dict[str, RadarCardData]:
-    """加载全部雷达卡片。"""
+    """加载全部雷达卡片（共享 ScreeningContext + 并行加载）。"""
+    import os
+
+    from vnpy_ashare.data.download_concurrency import run_parallel_map
     from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
+
+    raw_workers = os.getenv("RADAR_BOARD_MAX_WORKERS", "4").strip()
+    try:
+        max_workers = max(1, min(int(raw_workers), 8))
+    except ValueError:
+        max_workers = 4
 
     with screening_context_scope() as ctx:
         preload_screening_context(ctx)
-        return {
-            spec.id: load_radar_card(
+
+        def load_one(spec: RadarCardSpec) -> tuple[str, RadarCardData]:
+            return spec.id, load_radar_card(
                 spec.id,
                 screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
             )
-            for spec in RADAR_CARD_SPECS
-        }
+
+        pairs = run_parallel_map(
+            list(RADAR_CARD_SPECS),
+            load_one,
+            max_workers=min(max_workers, len(RADAR_CARD_SPECS)),
+        )
+        return dict(pairs)
 
 
-def build_radar_resonance_list(
+def _accumulate_radar_resonance(
     payload: dict[str, RadarCardData],
-    *,
-    min_cards: int = 2,
-) -> tuple[RadarResonanceEntry, ...]:
-    """汇总跨卡共振标的，按出现卡数降序。"""
+) -> dict[str, dict[str, object]]:
+    from vnpy_ashare.quotes.radar_catalog import radar_card_resonance_weight
+
     grouped: dict[str, dict[str, object]] = {}
     for data in payload.values():
+        card_weight = radar_card_resonance_weight(data.card_id)
         seen_in_card: set[str] = set()
         for row in data.rows:
             if row.vt_symbol in seen_in_card:
@@ -496,32 +584,53 @@ def build_radar_resonance_list(
             seen_in_card.add(row.vt_symbol)
             bucket = grouped.setdefault(
                 row.vt_symbol,
-                {"row": row, "titles": []},
+                {"row": row, "titles": [], "card_count": 0, "weight_score": 0.0},
             )
             titles = bucket["titles"]
             assert isinstance(titles, list)
             titles.append(data.title)
+            bucket["card_count"] = int(bucket.get("card_count") or 0) + 1
+            bucket["weight_score"] = float(bucket.get("weight_score") or 0.0) + card_weight
             bucket["row"] = row
+    return grouped
+
+
+def build_radar_resonance_list(
+    payload: dict[str, RadarCardData],
+    *,
+    min_cards: int = 2,
+) -> tuple[RadarResonanceEntry, ...]:
+    """汇总跨卡共振标的，按加权分降序。"""
+    grouped = _accumulate_radar_resonance(payload)
     entries: list[RadarResonanceEntry] = []
     for vt_symbol, bucket in grouped.items():
         titles = bucket["titles"]
         assert isinstance(titles, list)
-        if len(titles) < min_cards:
+        card_count = int(bucket.get("card_count") or 0)
+        if card_count < min_cards:
             continue
         row = bucket["row"]
         assert isinstance(row, RadarRow)
+        weight_score = round(float(bucket.get("weight_score") or 0.0), 2)
         entries.append(
             RadarResonanceEntry(
                 vt_symbol=vt_symbol,
                 name=row.name,
                 symbol=row.symbol,
-                card_count=len(titles),
+                card_count=card_count,
                 card_titles=tuple(titles),
                 price=row.price,
                 change_pct=row.change_pct,
+                resonance_score=weight_score,
             )
         )
-    entries.sort(key=lambda item: (-item.card_count, item.vt_symbol))
+    entries.sort(
+        key=lambda item: (
+            -item.resonance_score,
+            -item.card_count,
+            item.vt_symbol,
+        ),
+    )
     return tuple(entries)
 
 
@@ -541,21 +650,33 @@ def build_radar_resonance_ai_prompt(payload: dict[str, RadarCardData]) -> str:
         price = f"{entry.price:.2f}" if entry.price is not None else "—"
         change = f"{entry.change_pct:+.2f}%" if entry.change_pct is not None else "—"
         cards = "、".join(entry.card_titles)
-        lines.append(f"- {entry.name}({entry.symbol}) {change} 现价{price} · {entry.card_count}卡：{cards}")
+        score_note = f" · 加权 {entry.resonance_score:.1f}" if entry.resonance_score > 0 else ""
+        lines.append(f"- {entry.name}({entry.symbol}) {change} 现价{price} · {entry.card_count}卡{score_note}：{cards}")
     return "\n".join(lines)
 
 
 def compute_radar_resonance(payload: dict[str, RadarCardData], *, min_cards: int = 2) -> dict[str, int]:
-    """统计在多张卡片中出现的标的（共振）。"""
-    counts: dict[str, int] = {}
-    for data in payload.values():
-        seen_in_card: set[str] = set()
-        for row in data.rows:
-            if row.vt_symbol in seen_in_card:
-                continue
-            seen_in_card.add(row.vt_symbol)
-            counts[row.vt_symbol] = counts.get(row.vt_symbol, 0) + 1
-    return {vt_symbol: count for vt_symbol, count in counts.items() if count >= min_cards}
+    """统计在多张卡片中出现的标的（共振卡数）。"""
+    grouped = _accumulate_radar_resonance(payload)
+    return {
+        vt_symbol: int(bucket.get("card_count") or 0)
+        for vt_symbol, bucket in grouped.items()
+        if int(bucket.get("card_count") or 0) >= min_cards
+    }
+
+
+def compute_radar_resonance_scores(
+    payload: dict[str, RadarCardData],
+    *,
+    min_cards: int = 2,
+) -> dict[str, float]:
+    """共振加权分（发现卡权重高于选股缓存）。"""
+    grouped = _accumulate_radar_resonance(payload)
+    return {
+        vt_symbol: round(float(bucket.get("weight_score") or 0.0), 2)
+        for vt_symbol, bucket in grouped.items()
+        if int(bucket.get("card_count") or 0) >= min_cards
+    }
 
 
 def _row_ai_summary(row: RadarRow) -> str:
@@ -620,12 +741,17 @@ def build_radar_ai_prompt(
         "",
     ]
     resonance = compute_radar_resonance(payload)
+    resonance_scores = compute_radar_resonance_scores(payload)
     if resonance:
         parts: list[str] = []
-        for vt_symbol, count in sorted(resonance.items(), key=lambda item: (-item[1], item[0])):
+        for vt_symbol, count in sorted(
+            resonance_scores.items(),
+            key=lambda item: (-item[1], -resonance.get(item[0], 0), item[0]),
+        ):
             item = parse_stock_symbol(vt_symbol)
             label = item.name if item and item.name else vt_symbol
-            parts.append(f"{label}({count}卡)")
+            score = resonance_scores.get(vt_symbol, 0.0)
+            parts.append(f"{label}({count}卡·{score:.1f}分)")
         lines.append(f"共振标的：{', '.join(parts)}")
         lines.append("")
     for data in payload.values():

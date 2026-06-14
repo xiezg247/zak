@@ -19,6 +19,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
     stock_analysis_requested = QtCore.Signal(str)
     ai_resonance_requested = QtCore.Signal()
     open_screener_requested = QtCore.Signal()
+    resonance_weights_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -46,9 +47,14 @@ class RadarResonancePanel(QtWidgets.QFrame):
         self._screener_button = QtWidgets.QPushButton("条件选股")
         self._screener_button.setObjectName("RadarResonanceScreener")
         self._screener_button.clicked.connect(self.open_screener_requested.emit)
+        self._weights_button = QtWidgets.QPushButton("权重")
+        self._weights_button.setObjectName("RadarResonanceWeights")
+        self._weights_button.setToolTip("配置各卡片共振加权分")
+        self._weights_button.clicked.connect(self.resonance_weights_requested.emit)
         toolbar.addWidget(self._add_all_button)
         toolbar.addWidget(self._ai_button)
         toolbar.addWidget(self._screener_button)
+        toolbar.addWidget(self._weights_button)
 
         self._list = QtWidgets.QListWidget()
         self._list.setObjectName("RadarResonanceList")
@@ -111,7 +117,8 @@ class RadarResonancePanel(QtWidgets.QFrame):
         price = f"{entry.price:.2f}" if entry.price is not None else "—"
         change = f"{entry.change_pct:+.2f}%" if entry.change_pct is not None else "—"
         cards = " · ".join(entry.card_titles)
-        return f"{entry.name}  {entry.symbol}\n{entry.card_count}卡  {price}  {change}\n{cards}"
+        score_note = f"  加权{entry.resonance_score:.1f}" if entry.resonance_score > 0 else ""
+        return f"{entry.name}  {entry.symbol}\n{entry.card_count}卡{score_note}  {price}  {change}\n{cards}"
 
     def _refresh_list_colors(self) -> None:
         tokens = theme_manager().tokens()

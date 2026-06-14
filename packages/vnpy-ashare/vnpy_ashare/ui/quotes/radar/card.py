@@ -9,11 +9,13 @@ from vnpy_ashare.quotes.radar_catalog import (
     RadarCardSpec,
     default_refresh_ms_for_card,
     default_variant_for_card,
+    full_refresh_options_for_card,
     refresh_options_for_card,
     supports_auto_refresh,
     variants_for_card,
 )
-from vnpy_ashare.quotes.radar_loaders import RadarCardData
+from vnpy_ashare.quotes.radar_full_refresh_prefs import load_radar_full_refresh_every
+from vnpy_ashare.quotes.radar_loaders import RadarCardData, RadarRow
 from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_common.ui.theme import theme_manager
@@ -31,8 +33,10 @@ class RadarCardWidget(QtWidgets.QFrame):
     view_run_requested = QtCore.Signal(str, str)
     sector_flow_requested = QtCore.Signal(str)
     refresh_requested = QtCore.Signal(str)
+    quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
+    full_refresh_interval_changed = QtCore.Signal(str, int)
 
     def __init__(self, spec: RadarCardSpec, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -79,10 +83,29 @@ class RadarCardWidget(QtWidgets.QFrame):
         else:
             self._refresh_interval_combo.hide()
 
+        self._full_refresh_combo = QtWidgets.QComboBox()
+        self._full_refresh_combo.setObjectName("RadarCardFullRefreshInterval")
+        self._full_refresh_combo.setToolTip("自动刷新时，每隔多少次全量重算指标（其余仅更新现价 / 涨幅）")
+        full_refresh_options = full_refresh_options_for_card(spec.id)
+        if full_refresh_options:
+            for option in full_refresh_options:
+                self._full_refresh_combo.addItem(option.label, option.ms)
+            default_every = load_radar_full_refresh_every(spec.id)
+            self.set_full_refresh_every(default_every)
+            self._full_refresh_combo.currentIndexChanged.connect(self._emit_full_refresh_interval_changed)
+            header.addWidget(self._full_refresh_combo)
+        else:
+            self._full_refresh_combo.hide()
+
         self._refresh_button = QtWidgets.QToolButton()
         self._refresh_button.setObjectName("RadarCardRefresh")
         self._refresh_button.setText("↻")
-        self._refresh_button.setToolTip("刷新此卡片")
+        self._refresh_button.setToolTip("全量刷新（下拉菜单可选「仅更新行情」）")
+        self._refresh_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        refresh_menu = QtWidgets.QMenu(self._refresh_button)
+        refresh_menu.addAction("全量刷新", lambda: self.refresh_requested.emit(self.card_id))
+        refresh_menu.addAction("仅更新行情", lambda: self.quote_refresh_requested.emit(self.card_id))
+        self._refresh_button.setMenu(refresh_menu)
         self._refresh_button.clicked.connect(lambda: self.refresh_requested.emit(self.card_id))
         header.addWidget(self._refresh_button)
 
@@ -207,6 +230,26 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._refresh_interval_combo.setCurrentIndex(index)
             self._refresh_interval_combo.blockSignals(False)
 
+    def full_refresh_every(self) -> int:
+        if not self._supports_auto_refresh:
+            return 1
+        value = self._full_refresh_combo.currentData()
+        try:
+            return max(1, int(value))
+        except (TypeError, ValueError):
+            return 1
+
+    def set_full_refresh_every(self, every_n: int) -> None:
+        if not self._supports_auto_refresh:
+            return
+        index = self._full_refresh_combo.findData(int(every_n))
+        if index < 0:
+            index = self._full_refresh_combo.findData(load_radar_full_refresh_every(self.card_id))
+        if index >= 0:
+            self._full_refresh_combo.blockSignals(True)
+            self._full_refresh_combo.setCurrentIndex(index)
+            self._full_refresh_combo.blockSignals(False)
+
     def update_mode_badge(self) -> None:
         self._update_mode_badge()
 
@@ -307,6 +350,17 @@ class RadarCardWidget(QtWidgets.QFrame):
                 card_resonance += 1
         self._apply_meta_label_from_resonance(card_resonance)
 
+    def apply_quote_update(self, rows: tuple[RadarRow, ...]) -> None:
+        """增量更新现价 / 涨幅，不重建行组件。"""
+        if self._loading or not self._row_widgets:
+            return
+        quote_by_vt = {row.vt_symbol: row for row in rows}
+        for widget in self._row_widgets:
+            row = quote_by_vt.get(widget.vt_symbol())
+            if row is None:
+                continue
+            widget.update_quotes(row.price, row.change_pct)
+
     def _apply_meta_label(self, data: RadarCardData) -> None:
         self._updated_at_text = f"更新 {data.updated_at}" if data.updated_at else ""
         card_resonance = sum(1 for row in data.rows if self._resonance_counts.get(row.vt_symbol, 0) >= 2)
@@ -335,6 +389,9 @@ class RadarCardWidget(QtWidgets.QFrame):
     def _emit_auto_refresh_changed(self, _index: int) -> None:
         self.auto_refresh_changed.emit(self.card_id, self.auto_refresh_ms())
 
+    def _emit_full_refresh_interval_changed(self, _index: int) -> None:
+        self.full_refresh_interval_changed.emit(self.card_id, self.full_refresh_every())
+
     def _on_view_run_clicked(self) -> None:
         if self._run_id and self._detail_page_key:
             self.view_run_requested.emit(self._run_id, self._detail_page_key)
@@ -352,8 +409,10 @@ class RadarBoard(QtWidgets.QWidget):
     view_run_requested = QtCore.Signal(str, str)
     sector_flow_requested = QtCore.Signal(str)
     refresh_requested = QtCore.Signal(str)
+    quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
+    full_refresh_interval_changed = QtCore.Signal(str, int)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -377,8 +436,10 @@ class RadarBoard(QtWidgets.QWidget):
             card.view_run_requested.connect(self.view_run_requested.emit)
             card.sector_flow_requested.connect(self.sector_flow_requested.emit)
             card.refresh_requested.connect(self.refresh_requested.emit)
+            card.quote_refresh_requested.connect(self.quote_refresh_requested.emit)
             card.ai_requested.connect(self.ai_requested.emit)
             card.auto_refresh_changed.connect(self.auto_refresh_changed.emit)
+            card.full_refresh_interval_changed.connect(self.full_refresh_interval_changed.emit)
             self._cards[spec.id] = card
             grid.addWidget(card, index // columns, index % columns)
         row_count = max(1, (len(specs) + columns - 1) // columns)
@@ -415,3 +476,8 @@ class RadarBoard(QtWidgets.QWidget):
     def sync_resonance(self, resonance_counts: dict[str, int]) -> None:
         for widget in self._cards.values():
             widget.update_resonance(resonance_counts)
+
+    def apply_quote_update(self, card_id: str, rows: tuple) -> None:
+        widget = self._cards.get(card_id)
+        if widget is not None:
+            widget.apply_quote_update(rows)

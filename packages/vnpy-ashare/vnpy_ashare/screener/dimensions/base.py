@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from vnpy_ashare.screener.dimensions.scoring import blended_score, rank_score
+
 
 @dataclass
 class DimensionHit:
@@ -19,12 +21,6 @@ class DimensionHit:
     row: dict[str, Any]
 
 
-def rank_score(rank: int, total: int) -> float:
-    if total <= 0:
-        return 0.0
-    return round(max(0.0, (total - rank + 1) / total * 100), 1)
-
-
 def quote_hits(
     rows: list[dict[str, Any]],
     *,
@@ -32,19 +28,32 @@ def quote_hits(
     label: str,
     weight: float,
     reason_builder,
+    metric_key: str | None = None,
 ) -> list[DimensionHit]:
     hits: list[DimensionHit] = []
+    metric_values: list[float] = []
+    if metric_key:
+        metric_values = [float(row.get(metric_key) or 0) for row in rows]
     for index, row in enumerate(rows, start=1):
         vt_symbol = str(row.get("vt_symbol") or "")
         if not vt_symbol:
             continue
+        if metric_key:
+            score = blended_score(
+                index,
+                len(rows),
+                float(row.get(metric_key) or 0),
+                metric_values,
+            )
+        else:
+            score = rank_score(index, len(rows))
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
                 dimension_id=dimension_id,
                 label=label,
                 weight=weight,
-                score=rank_score(index, len(rows)),
+                score=score,
                 reason=reason_builder(row, index),
                 row=dict(row),
             )

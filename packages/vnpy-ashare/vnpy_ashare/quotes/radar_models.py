@@ -48,6 +48,7 @@ class RadarResonanceEntry:
     card_titles: tuple[str, ...]
     price: float | None
     change_pct: float | None
+    resonance_score: float = 0.0
 
 
 def quote_map() -> dict[str, dict[str, Any]]:

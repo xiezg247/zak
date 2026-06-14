@@ -1,0 +1,66 @@
+"""雷达共振卡片权重（QSettings，可覆盖内置默认）。"""
+
+from __future__ import annotations
+
+from vnpy.trader.ui import QtCore
+
+_SETTINGS = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+_KEY_PREFIX = "quotes/radar/resonance_weight/"
+
+DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
+    "discovery_volume_surge": 2.0,
+    "discovery_moneyflow_intraday": 2.0,
+    "watchlist_intraday": 1.5,
+    "sector_theme": 1.25,
+    "screen_latest": 1.0,
+    "screen_task": 1.0,
+    "outlook_watch": 0.75,
+    "outlook_hold": 0.75,
+    "outlook_scenario": 0.75,
+}
+
+_WEIGHT_LABELS: dict[str, str] = {
+    "discovery_volume_surge": "发现·放量异动",
+    "discovery_moneyflow_intraday": "发现·资金异动",
+    "watchlist_intraday": "自选·异动",
+    "sector_theme": "板块·主线",
+    "screen_latest": "选股结果·最新",
+    "screen_task": "选股结果·任务",
+    "outlook_watch": "未来·关注",
+    "outlook_hold": "未来·可持",
+    "outlook_scenario": "未来·情景",
+}
+
+
+def list_radar_resonance_weight_items() -> tuple[tuple[str, str, float], ...]:
+    """(card_id, 展示名, 默认权重)。"""
+    return tuple(
+        (card_id, _WEIGHT_LABELS.get(card_id, card_id), DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS[card_id])
+        for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
+    )
+
+
+def load_radar_resonance_weights() -> dict[str, float]:
+    weights = dict(DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS)
+    for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS:
+        raw = _SETTINGS.value(f"{_KEY_PREFIX}{card_id}")
+        if raw is None:
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            weights[card_id] = round(value, 2)
+    return weights
+
+
+def save_radar_resonance_weights(weights: dict[str, float]) -> None:
+    for card_id, default in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS.items():
+        value = float(weights.get(card_id, default))
+        value = max(0.1, min(value, 5.0))
+        _SETTINGS.setValue(f"{_KEY_PREFIX}{card_id}", value)
+
+
+def radar_card_resonance_weight(card_id: str) -> float:
+    return float(load_radar_resonance_weights().get(card_id, 1.0))

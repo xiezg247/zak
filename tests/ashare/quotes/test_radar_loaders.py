@@ -674,3 +674,39 @@ def test_row_from_dict_falls_back_to_symbol_not_vt_symbol(monkeypatch) -> None:
     row = _row_from_dict({"vt_symbol": "920083.BSE", "symbol": "920083"}, name_map={})
     assert row is not None
     assert row.name == "920083"
+
+
+def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar_loaders import incremental_refresh_radar_card_quotes
+
+    original_row = _sample_row("600000.SSE", name="浦发")
+    data = RadarCardData(
+        "discovery_volume_surge",
+        "发现·放量",
+        "Top 8",
+        (original_row,),
+        "",
+        "",
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar_models.enrich_radar_rows",
+        lambda rows: tuple(
+            RadarRow(
+                vt_symbol=row.vt_symbol,
+                name=row.name,
+                symbol=row.symbol,
+                price=11.5,
+                change_pct=3.2,
+                metric_label=row.metric_label,
+                metric_value=row.metric_value,
+                sub_label=row.sub_label,
+                sub_value=row.sub_value,
+            )
+            for row in rows
+        ),
+    )
+    refreshed = incremental_refresh_radar_card_quotes(data)
+    assert refreshed.subtitle == "Top 8"
+    assert refreshed.rows[0].price == 11.5
+    assert refreshed.rows[0].change_pct == 3.2
+    assert refreshed.rows[0].metric_value == original_row.metric_value

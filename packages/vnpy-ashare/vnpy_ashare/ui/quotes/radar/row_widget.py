@@ -94,6 +94,15 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         font.setBold(resonance >= 2)
         self._name_label.setFont(font)
 
+    def update_quotes(self, price: float | None, change_pct: float | None) -> None:
+        """增量刷新现价与涨幅，保留指标 chip。"""
+        if price == self._row.price and change_pct == self._row.change_pct:
+            return
+        from dataclasses import replace
+
+        self._row = replace(self._row, price=price, change_pct=change_pct)
+        self._apply_row()
+
     def refresh_theme(self) -> None:
         self._apply_row()
 

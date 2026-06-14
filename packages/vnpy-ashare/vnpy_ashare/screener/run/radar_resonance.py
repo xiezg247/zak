@@ -17,6 +17,8 @@ def resonance_entries_to_rows(entries: tuple[RadarResonanceEntry, ...]) -> list[
     rows: list[dict[str, Any]] = []
     for entry in entries:
         cards = "、".join(entry.card_titles)
+        score = entry.resonance_score
+        score_text = f"加权{score:.1f}" if score > 0 else f"{entry.card_count}卡"
         rows.append(
             {
                 "symbol": entry.symbol,
@@ -25,7 +27,8 @@ def resonance_entries_to_rows(entries: tuple[RadarResonanceEntry, ...]) -> list[
                 "last_price": entry.price or 0,
                 "change_pct": entry.change_pct if entry.change_pct is not None else 0,
                 "card_count": entry.card_count,
-                "hit_reason": f"共振 {entry.card_count} 卡：{cards}",
+                "resonance_score": score,
+                "hit_reason": f"共振 {score_text}：{cards}",
                 "source": "radar",
             }
         )

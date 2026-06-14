@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy.event import Event
-from vnpy.trader.ui import QtCore
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
@@ -16,8 +16,10 @@ from vnpy_ashare.quotes.radar_catalog import (
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     auto_refresh_card_ids,
+    full_refresh_every_n_ticks,
     list_radar_cards,
 )
+from vnpy_ashare.quotes.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar_loaders import (
     RadarCardData,
@@ -61,6 +63,7 @@ class RadarController(QtCore.QObject):
             "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
         }
         self._last_payload: dict[str, RadarCardData] = {}
+        self._auto_refresh_ticks: dict[str, int] = {}
         self._auto_refresh_timers: dict[str, QtCore.QTimer] = {}
         self._session_timer = QtCore.QTimer(self)
         self._session_timer.setInterval(30_000)
@@ -75,8 +78,10 @@ class RadarController(QtCore.QObject):
         board.view_run_requested.connect(self._on_view_run)
         board.sector_flow_requested.connect(self._on_sector_flow)
         board.refresh_requested.connect(self._on_card_refresh_requested)
+        board.quote_refresh_requested.connect(self._on_card_quote_refresh_requested)
         board.ai_requested.connect(self.request_card_ai)
         board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
+        board.full_refresh_interval_changed.connect(self._on_full_refresh_interval_changed)
 
         panel = self._resonance_panel
         if panel is not None:
@@ -86,6 +91,7 @@ class RadarController(QtCore.QObject):
             panel.stock_analysis_requested.connect(self._on_stock_analysis)
             panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
             panel.open_screener_requested.connect(self._on_open_screener_resonance)
+            panel.resonance_weights_requested.connect(self._on_resonance_weights_requested)
 
     def _on_open_screener_resonance(self) -> None:
         host = self._find_main_window()
@@ -93,6 +99,22 @@ class RadarController(QtCore.QObject):
             page_notify(self._page, "无法打开选股页", level="warning")
             return
         host.open_screener_radar_resonance()
+
+    def _on_resonance_weights_requested(self) -> None:
+        from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
+
+        dialog = RadarResonanceWeightDialog(self._page)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        dialog.save()
+        if not self._last_payload:
+            page_notify(self._page, "请先刷新雷达卡片", level="warning")
+            return
+        resonance = compute_radar_resonance(self._last_payload)
+        self._board.sync_resonance(resonance)
+        self._sync_resonance_panel()
+        self._update_status(resonance=resonance)
+        page_notify(self._page, "共振权重已更新")
 
     def activate(self) -> None:
         self.refresh()
@@ -144,8 +166,19 @@ class RadarController(QtCore.QObject):
         self._apply_card_auto_refresh(card_id)
         self._page._update_refresh_hint_label()
 
+    def _on_full_refresh_interval_changed(self, card_id: str, every_n: int) -> None:
+        save_radar_full_refresh_every(card_id, every_n)
+        self._auto_refresh_ticks[card_id] = 0
+
     def _on_auto_refresh_card(self, card_id: str) -> None:
-        """轻量卡定时刷新（不触发展望全市场重算）。"""
+        """自动刷新：多数周期仅更新现价 / 涨幅，周期性全量重算指标。"""
+        existing = self._last_payload.get(card_id)
+        if existing and existing.rows:
+            tick = self._auto_refresh_ticks.get(card_id, 0) + 1
+            self._auto_refresh_ticks[card_id] = tick
+            if tick % full_refresh_every_n_ticks(card_id) != 0:
+                self.refresh_card(card_id, force_recompute=False, quote_only=True)
+                return
         self.refresh_card(card_id, force_recompute=False)
 
     def refresh(self) -> None:
@@ -157,9 +190,21 @@ class RadarController(QtCore.QObject):
         force = card_id in OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
         self.refresh_card(card_id, force_recompute=force)
 
-    def refresh_card(self, card_id: str, *, force_recompute: bool = False) -> None:
+    def _on_card_quote_refresh_requested(self, card_id: str) -> None:
+        self.refresh_card(card_id, force_recompute=False, quote_only=True)
+
+    def refresh_card(
+        self,
+        card_id: str,
+        *,
+        force_recompute: bool = False,
+        quote_only: bool = False,
+    ) -> None:
         if thread_is_active(self._card_workers.get(card_id)):
             return
+        existing = self._last_payload.get(card_id)
+        if quote_only and (existing is None or not existing.rows):
+            quote_only = False
         self._cancel_card_worker(card_id)
         worker = RadarCardLoadWorker(
             card_id=card_id,
@@ -167,15 +212,17 @@ class RadarController(QtCore.QObject):
             sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
             scenario_variant=self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
             force_recompute=force_recompute,
+            quote_only=quote_only,
+            existing_data=existing if quote_only else None,
             parent=self._page,
         )
         self._card_workers[card_id] = worker
         worker.finished.connect(self._on_card_loaded)
         worker.failed.connect(self._on_card_failed)
-        worker.finished.connect(lambda _card_id, _data, w=worker: self._release_worker(w))
+        worker.finished.connect(lambda _card_id, _data, _quote_only, w=worker: self._release_worker(w))
         worker.failed.connect(lambda _card_id, _msg, w=worker: self._release_worker(w))
         widget = self._board.card(card_id)
-        if widget is not None:
+        if widget is not None and not quote_only:
             widget.set_loading(True)
         self._update_status()
         worker.start()
@@ -261,7 +308,13 @@ class RadarController(QtCore.QObject):
             self._card_workers.pop(card_id, None)
         release_thread(self._retired_workers, worker)
 
-    def _on_card_loaded(self, card_id: str, data: RadarCardData) -> None:
+    def _on_card_loaded(self, card_id: str, data: RadarCardData, quote_only: bool = False) -> None:
+        if quote_only:
+            self._last_payload[card_id] = data
+            self._board.apply_quote_update(card_id, data.rows)
+            self._sync_resonance_panel()
+            return
+        self._auto_refresh_ticks[card_id] = 0
         self._last_payload[card_id] = data
         resonance = compute_radar_resonance(self._last_payload)
         self._board.apply_card(card_id, data, resonance_counts=resonance)

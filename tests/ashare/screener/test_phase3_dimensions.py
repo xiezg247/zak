@@ -25,6 +25,7 @@ def _breakout_row(**overrides):
         "change_pct": 7.5,
         "turnover_rate": 2.0,
         "amount": 80_000_000,
+        "volume_ratio": 1.5,
     }
     base.update(overrides)
     return base
@@ -44,6 +45,24 @@ class TestPhase3Dimensions(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertEqual(hits[0].dimension_id, "intraday_breakout")
         self.assertIn("突破", hits[0].reason)
+
+    def test_intraday_breakout_skips_low_volume_ratio(self) -> None:
+        weak = _breakout_row(volume_ratio=1.0)
+        snapshot = type("Snap", (), {"rows": [weak], "total": 1})()
+
+        with (
+            patch(
+                "vnpy_ashare.screener.dimensions.intraday_breakout.load_screening_quote_snapshot",
+                return_value=snapshot,
+            ),
+            patch(
+                "vnpy_ashare.screener.dimensions.intraday_breakout.get_volume_ratio_map",
+                return_value={},
+            ),
+        ):
+            hits, _ = run_intraday_breakout(5, weight=0.2)
+
+        self.assertEqual(hits, [])
 
     def test_intraday_breakout_skips_weak_moves(self) -> None:
         weak = _breakout_row(high_price=10.02, last_price=10.01, change_pct=0.1)

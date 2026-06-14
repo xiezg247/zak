@@ -8,7 +8,8 @@ from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits, rank_score
+from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
+from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
 
@@ -48,6 +49,7 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
         dimension_id="volume_ratio",
         label="量比",
         weight=weight,
+        metric_key="volume_ratio",
         reason_builder=lambda row, rank: f"量比：{float(row.get('volume_ratio') or 0):.2f}，排名第 {rank}",
     ), snapshot.total
 
@@ -87,7 +89,7 @@ def _volume_ratio_from_tushare_only(
                 dimension_id="volume_ratio",
                 label="量比",
                 weight=weight,
-                score=rank_score(index, len(sorted_rows)),
+                score=blended_score(index, len(sorted_rows), ratio, [float(r.get("volume_ratio") or 0) for r in sorted_rows]),
                 reason=f"量比：{ratio:.2f}（Tushare），排名第 {index}",
                 row={
                     "symbol": row.get("symbol", ""),

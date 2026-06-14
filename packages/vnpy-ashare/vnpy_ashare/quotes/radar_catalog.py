@@ -45,6 +45,14 @@ CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
     "sector_theme": RADAR_SECTOR_REFRESH_OPTIONS,
 }
 
+# 自动刷新时每隔 N 次做一次全量重算（其余仅更新现价 / 涨幅）
+RADAR_FULL_REFRESH_EVERY: dict[str, int] = {
+    "discovery_volume_surge": 5,
+    "discovery_moneyflow_intraday": 5,
+    "watchlist_intraday": 5,
+    "sector_theme": 3,
+}
+
 
 @dataclass(frozen=True)
 class RadarCardSpec:
@@ -167,3 +175,28 @@ def default_refresh_ms_for_card(card_id: str) -> int:
     if spec is None or spec.auto_refresh_ms is None:
         return RADAR_REFRESH_OFF_MS
     return int(spec.auto_refresh_ms)
+
+
+def full_refresh_every_n_ticks(card_id: str) -> int:
+    """自动刷新时每隔多少次触发一次全量指标重算。"""
+    from vnpy_ashare.quotes.radar_full_refresh_prefs import full_refresh_every_n_ticks as _load
+
+    return _load(card_id)
+
+
+def full_refresh_options_for_card(card_id: str) -> tuple[RadarRefreshOption, ...]:
+    if card_id not in CARD_REFRESH_OPTIONS:
+        return ()
+    return (
+        RadarRefreshOption(1, "每次全量"),
+        RadarRefreshOption(2, "每2次"),
+        RadarRefreshOption(3, "每3次"),
+        RadarRefreshOption(5, "每5次"),
+        RadarRefreshOption(10, "每10次"),
+    )
+
+
+def radar_card_resonance_weight(card_id: str) -> float:
+    from vnpy_ashare.quotes.radar_resonance_prefs import radar_card_resonance_weight as _load_weight
+
+    return _load_weight(card_id)
