@@ -9,6 +9,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.screener.recipe.recipe import (
     DIMENSION_CATALOG,
     TriggerKind,
+    compute_equal_weights,
     default_config_for_trigger,
     list_dimension_ids,
     list_recipe_catalog,
@@ -206,7 +207,7 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
             weight_spin.setDecimals(2)
             weight_spin.setSingleStep(0.05)
             weight_spin.setValue(default_weights.get(dim_id, 0.25))
-            enabled_box.toggled.connect(lambda checked, spin=weight_spin: spin.setEnabled(checked))
+            enabled_box.toggled.connect(lambda checked, did=dim_id: self._on_dimension_toggled(did, checked))
             weight_spin.setEnabled(enabled_box.isChecked())
 
             row_widget = QtWidgets.QWidget()
@@ -220,6 +221,34 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
             self._dimension_rows[dim_id] = (enabled_box, weight_spin)
 
         self._load_current_recipe()
+
+    def _on_dimension_toggled(self, dim_id: str, checked: bool) -> None:
+        if self._loading:
+            return
+        enabled_box, weight_spin = self._dimension_rows[dim_id]
+        if not checked:
+            enabled_count = sum(1 for box, _ in self._dimension_rows.values() if box.isChecked())
+            if enabled_count == 0:
+                self._loading = True
+                enabled_box.setChecked(True)
+                self._loading = False
+                page_notify(self, "至少保留一个因子", level="warning")
+                return
+            weight_spin.setValue(0.0)
+        weight_spin.setEnabled(checked)
+        self._redistribute_weights_equally()
+
+    def _redistribute_weights_equally(self) -> None:
+        enabled_ids = [dim_id for dim_id, (box, _) in self._dimension_rows.items() if box.isChecked()]
+        if not enabled_ids:
+            return
+        weights = compute_equal_weights(enabled_ids)
+        self._loading = True
+        try:
+            for dim_id, (_, weight_spin) in self._dimension_rows.items():
+                weight_spin.setValue(weights.get(dim_id, 0.0))
+        finally:
+            self._loading = False
 
     def _collect_config(self) -> dict[str, Any]:
         dimensions: list[dict[str, Any]] = []

@@ -12,7 +12,7 @@ from vnpy_ashare.screener.hard_filter_prefs import (
 
 
 class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
-    """可折叠硬过滤：排除 ST、最低成交额、最低总市值。"""
+    """可折叠硬过滤：排除 ST、停牌、最低成交额、最低总市值。"""
 
     prefs_changed = QtCore.Signal()
 
@@ -28,6 +28,10 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self.exclude_st_check = QtWidgets.QCheckBox("排除 ST / *ST")
         self.exclude_st_check.toggled.connect(self._on_changed)
         layout.addRow(self.exclude_st_check)
+
+        self.exclude_suspended_check = QtWidgets.QCheckBox("排除停牌")
+        self.exclude_suspended_check.toggled.connect(self._on_changed)
+        layout.addRow(self.exclude_suspended_check)
 
         self.min_amount_spin = QtWidgets.QDoubleSpinBox()
         self.min_amount_spin.setRange(0, 100_000)
@@ -53,18 +57,22 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
     def reload(self) -> None:
         prefs = load_hard_filter_prefs()
         self.exclude_st_check.blockSignals(True)
+        self.exclude_suspended_check.blockSignals(True)
         self.min_amount_spin.blockSignals(True)
         self.min_mv_spin.blockSignals(True)
         self.exclude_st_check.setChecked(prefs.exclude_st)
+        self.exclude_suspended_check.setChecked(prefs.exclude_suspended)
         self.min_amount_spin.setValue(prefs.min_amount_wan)
         self.min_mv_spin.setValue(prefs.min_total_mv_yi)
         self.exclude_st_check.blockSignals(False)
+        self.exclude_suspended_check.blockSignals(False)
         self.min_amount_spin.blockSignals(False)
         self.min_mv_spin.blockSignals(False)
 
     def current_prefs(self) -> HardFilterPrefs:
         return HardFilterPrefs(
             exclude_st=self.exclude_st_check.isChecked(),
+            exclude_suspended=self.exclude_suspended_check.isChecked(),
             min_amount_wan=float(self.min_amount_spin.value()),
             min_total_mv_yi=float(self.min_mv_spin.value()),
         )

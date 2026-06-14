@@ -1,4 +1,4 @@
-"""选股硬过滤（ST、流动性 / 小市值）。
+"""选股硬过滤（ST、停牌、流动性 / 小市值）。
 
 配方、策略 preset、形态选股共用；QSettings 用户偏好与环境变量 ``RECIPE_*`` 均可生效（环境变量优先）。
 """
@@ -6,11 +6,14 @@
 from __future__ import annotations
 
 import os
+from datetime import date
 from typing import Any
 
 DEFAULT_MIN_AMOUNT_YUAN = 30_000_000.0  # 3000 万元
 # Tushare daily_basic.total_mv 单位为万元；50 亿 = 500000 万元
 DEFAULT_MIN_TOTAL_MV_WAN = 500_000.0
+
+_suspend_keys_cache: tuple[date, frozenset[tuple[str, str]]] | None = None
 
 
 def recipe_min_amount_yuan() -> float:
@@ -32,6 +35,15 @@ def recipe_exclude_st_enabled() -> bool:
     from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
 
     return load_hard_filter_prefs().exclude_st
+
+
+def recipe_exclude_suspended_enabled() -> bool:
+    raw = os.getenv("RECIPE_EXCLUDE_SUSPENDED", "").strip()
+    if raw:
+        return raw.lower() not in ("0", "false", "no")
+    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+    return load_hard_filter_prefs().exclude_suspended
 
 
 def recipe_min_total_mv_wan() -> float:
@@ -63,6 +75,42 @@ def row_amount_yuan(row: dict[str, Any]) -> float:
     return 0.0
 
 
+def row_symbol_exchange(row: dict[str, Any]) -> tuple[str, str] | None:
+    symbol = str(row.get("symbol") or "").strip()
+    exchange = str(row.get("exchange") or "").strip()
+    if symbol and exchange:
+        return symbol, exchange
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
+    if "." in vt_symbol:
+        sym, ex = vt_symbol.rsplit(".", 1)
+        if sym and ex:
+            return sym, ex
+    return None
+
+
+def clear_suspend_screening_cache() -> None:
+    global _suspend_keys_cache
+    _suspend_keys_cache = None
+
+
+def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
+    global _suspend_keys_cache
+    from vnpy_ashare.domain.calendar import last_trading_day
+    from vnpy_ashare.storage.repositories.symbol_suspend import ensure_suspend_keys_for_screening
+
+    day = last_trading_day()
+    if _suspend_keys_cache is not None and _suspend_keys_cache[0] == day:
+        return _suspend_keys_cache[1]
+    keys = ensure_suspend_keys_for_screening(trade_date=day)
+    _suspend_keys_cache = (day, keys)
+    return keys
+
+
+def is_row_suspended(row: dict[str, Any], suspended_keys: frozenset[tuple[str, str]]) -> bool:
+    key = row_symbol_exchange(row)
+    return key is not None and key in suspended_keys
+
+
 def passes_liquidity_filter(row: dict[str, Any]) -> bool:
     """成交额或总市值（小资金）达标；无相关字段时不排除。"""
     min_amount = recipe_min_amount_yuan()
@@ -87,7 +135,15 @@ def passes_liquidity_filter(row: dict[str, Any]) -> bool:
     return True
 
 
-def passes_screening_hard_filter(row: dict[str, Any]) -> bool:
+def passes_screening_hard_filter(
+    row: dict[str, Any],
+    *,
+    suspended_keys: frozenset[tuple[str, str]] | None = None,
+) -> bool:
+    if recipe_exclude_suspended_enabled():
+        keys = suspended_keys if suspended_keys is not None else _suspended_keys_for_screening()
+        if is_row_suspended(row, keys):
+            return False
     name = str(row.get("name") or "")
     if recipe_exclude_st_enabled() and is_st_stock(name):
         return False
@@ -95,8 +151,9 @@ def passes_screening_hard_filter(row: dict[str, Any]) -> bool:
 
 
 def apply_recipe_filters(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """排除 ST 与流动性 / 小市值不达标的标的。"""
-    return [row for row in rows if passes_screening_hard_filter(row)]
+    """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
+    suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
+    return [row for row in rows if passes_screening_hard_filter(row, suspended_keys=suspended_keys)]
 
 
 # 策略选股等路径别名

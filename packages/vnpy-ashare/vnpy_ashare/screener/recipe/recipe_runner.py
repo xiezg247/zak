@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
+from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
@@ -85,6 +86,7 @@ def run_recipe_object(
         base["source"] = "recipe"
         merged_rows.append(base)
 
+    merged_rows = enrich_recipe_rows(merged_rows)
     merged_rows.sort(
         key=lambda row: (
             float(row.get("composite_score") or 0),

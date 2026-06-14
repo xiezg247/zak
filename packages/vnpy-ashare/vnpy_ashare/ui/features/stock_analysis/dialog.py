@@ -184,8 +184,10 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             main.register_floating_overlay(self)
         self._publish_ai_context()
         llm_engine = get_llm_engine(self._host.main_engine)
-        if llm_engine is not None:
+        if llm_engine is not None and self._host.source_page != "AI 助手":
             self._ai_sidebar.bind_engine(llm_engine)
+        elif self._host.source_page == "AI 助手":
+            self._ai_btn.setToolTip("在 AI 助手全屏页解读（避免与当前页重复挂载对话面板）")
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)

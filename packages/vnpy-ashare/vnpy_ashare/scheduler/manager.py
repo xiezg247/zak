@@ -35,6 +35,7 @@ from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.progress import bind_job_log
 from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
+from vnpy_ashare.scheduler.job_meta import load_job_run_meta, save_job_run_meta
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
@@ -382,6 +383,22 @@ class TaskSchedulerManager:
         meta = self._jobs[job_id]
         setattr(self._config, meta.config_attr, job_config)
 
+    def _resolve_last_run_fields(
+        self,
+        job_id: str,
+    ) -> tuple[str | None, str | None, bool | None]:
+        previous = self._status.get(job_id)
+        if previous and (previous.running or job_id in self._running_jobs):
+            return previous.last_run_at, previous.last_message, previous.last_success
+        if previous and previous.last_run_at:
+            return previous.last_run_at, previous.last_message, previous.last_success
+        persisted = load_job_run_meta(job_id)
+        if persisted:
+            return persisted.last_run_at, persisted.last_message, persisted.last_success
+        if previous:
+            return previous.last_run_at, previous.last_message, previous.last_success
+        return None, None, None
+
     def _refresh_status_cache(self) -> None:
         for job_id, meta in self._jobs.items():
             cfg = self._get_job_config(job_id)
@@ -391,7 +408,7 @@ class TaskSchedulerManager:
                 if job and job.next_run_time:
                     next_run = job.next_run_time.strftime("%Y-%m-%d %H:%M:%S")
 
-            previous = self._status.get(job_id)
+            last_run_at, last_message, last_success = self._resolve_last_run_fields(job_id)
             self._status[job_id] = JobStatus(
                 job_id=job_id,
                 name=meta.name,
@@ -399,9 +416,9 @@ class TaskSchedulerManager:
                 schedule_text=meta.schedule_text_builder(cfg),
                 enabled=cfg.enabled,
                 running=job_id in self._running_jobs,
-                last_run_at=previous.last_run_at if previous else None,
-                last_message=previous.last_message if previous else None,
-                last_success=previous.last_success if previous else None,
+                last_run_at=last_run_at,
+                last_message=last_message,
+                last_success=last_success,
                 next_run_at=next_run,
             )
 
@@ -619,6 +636,13 @@ class TaskSchedulerManager:
             status.last_message = message
             status.last_success = None if skipped else success
             status.running = False
+
+        save_job_run_meta(
+            job_id,
+            last_run_at=finished_at,
+            last_message=message,
+            last_success=None if skipped else success,
+        )
 
         with self._lock:
             self._running_jobs.discard(job_id)

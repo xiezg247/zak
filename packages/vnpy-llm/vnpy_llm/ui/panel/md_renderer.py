@@ -143,6 +143,9 @@ a {{
 a:hover {{
     text-decoration: underline;
 }}
+a[href^="zak://symbol/"] {{
+    font-weight: 500;
+}}
 strong {{
     color: {t.text_primary};
     font-weight: 600;

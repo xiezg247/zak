@@ -118,6 +118,21 @@ def recipe_to_config(recipe: ScreenRecipe) -> dict[str, Any]:
     }
 
 
+def compute_equal_weights(enabled_ids: list[str], *, decimals: int = 2) -> dict[str, float]:
+    """为启用的维度计算均等权重，总和精确为 1.0。"""
+    if not enabled_ids:
+        return {}
+    n = len(enabled_ids)
+    total_units = 10**decimals
+    base_units = total_units // n
+    remainder_units = total_units - base_units * n
+    weights: dict[str, float] = {}
+    for index, dim_id in enumerate(enabled_ids):
+        units = base_units + (1 if index < remainder_units else 0)
+        weights[dim_id] = units / total_units
+    return weights
+
+
 def normalize_recipe_config(config: dict[str, Any]) -> dict[str, Any]:
     """校验并归一化配方 config：启用维度权重之和归一化为 1，裁剪 top_n / pool_size。"""
     raw_dims = list(config.get("dimensions") or [])

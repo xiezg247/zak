@@ -25,6 +25,8 @@ from vnpy_llm.ui.panel.pending_bubble import (
     format_pending_html,
     pending_status_from_turn,
 )
+from vnpy_llm.ui.panel.symbol_actions import AssistantSymbolActions
+from vnpy_llm.ui.panel.symbol_links import linkify_markdown
 from vnpy_llm.ui.panel.worker import ChatWorker
 from vnpy_llm.ui.session.widgets import show_ai_session_dialog
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
@@ -87,6 +89,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._skip_completion_once = False
         self._last_action_id = ""
         self._active_tool_name = ""
+        self._symbol_actions = AssistantSymbolActions(self)
         self._slow_tool_timer = QtCore.QTimer(self)
         self._slow_tool_timer.setSingleShot(True)
         self._slow_tool_timer.setInterval(3000)
@@ -682,12 +685,11 @@ class AiChatPanel(QtWidgets.QWidget):
         insert_at = max(0, self.message_layout.count() - 1)
         self.message_layout.insertWidget(insert_at, row)
 
-    def _insert_assistant_html_bubble(self, content: str) -> None:
-        """插入一条助手消息气泡，以 HTML 方式渲染 Markdown。"""
-        html = render_markdown(content)
+    def _create_assistant_browser(self, content: str) -> QtWidgets.QTextBrowser:
+        html = render_markdown(linkify_markdown(content))
         browser = QtWidgets.QTextBrowser()
         browser.setObjectName("AiBubbleAssistant")
-        browser.setOpenExternalLinks(True)
+        browser.setOpenExternalLinks(False)
         browser.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         browser.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         browser.setMinimumWidth(40)
@@ -695,10 +697,38 @@ class AiChatPanel(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Preferred,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
+        browser.anchorClicked.connect(self._on_symbol_anchor_clicked)
         browser.setHtml(html)
+        return browser
+
+    def _on_symbol_anchor_clicked(self, url: QtCore.QUrl) -> None:
+        if url.scheme() == "zak" and url.host() == "symbol":
+            self._symbol_actions.handle_link_click(url)
+            return
+        if url.scheme() in {"http", "https"}:
+            QtGui.QDesktopServices.openUrl(url)
+
+    def _insert_assistant_html_bubble(self, content: str) -> None:
+        """插入一条助手消息气泡，以 HTML 方式渲染 Markdown。"""
+        browser = self._create_assistant_browser(content)
         self._sync_browser_bubble(browser)
         bubble = self._pack_assistant_bubble_with_note_actions(browser, content)
         self._insert_bubble_row("assistant", bubble)
+
+    def _insert_assistant_html_bubble_at(self, index: int, content: str) -> None:
+        browser = self._create_assistant_browser(content)
+        self._sync_browser_bubble(browser)
+        bubble = self._pack_assistant_bubble_with_note_actions(browser, content)
+        row = QtWidgets.QWidget()
+        row.setObjectName("AiBubbleRow")
+        if self.floating:
+            row.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+        row_layout = QtWidgets.QHBoxLayout(row)
+        row_layout.setContentsMargins(2, 2, 2, 2)
+        row_layout.setSpacing(0)
+        row_layout.addWidget(bubble, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+        row_layout.addStretch(1)
+        self.message_layout.insertWidget(index, row)
 
     def _resolve_note_stock(self):
         try:
@@ -757,6 +787,11 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _on_assistant_note_menu(self, bubble: QtWidgets.QWidget, pos: QtCore.QPoint) -> None:
         body = self._assistant_bubble_text(bubble)
+        if isinstance(bubble, QtWidgets.QTextBrowser):
+            vt_symbol = self._symbol_actions.symbol_at(bubble, pos)
+            if vt_symbol:
+                self._symbol_actions.show_menu(bubble, pos, vt_symbol, body=body)
+                return
         if not body:
             page_notify(self, "消息内容为空", level="info")
             return
@@ -1022,7 +1057,21 @@ class AiChatPanel(QtWidgets.QWidget):
     def _on_stream_finished(self) -> None:
         self._remove_pending_bubble()
         if self._streaming_bubble is not None:
-            if isinstance(self._streaming_bubble, QtWidgets.QWidget):
+            if isinstance(self._streaming_bubble, QtWidgets.QLabel):
+                text = self._streaming_bubble.text().strip()
+                row = self._streaming_bubble.parentWidget()
+                if text and row is not None:
+                    insert_at = self.message_layout.indexOf(row)
+                    row.deleteLater()
+                    self._streaming_bubble = None
+                    if insert_at >= 0:
+                        self._insert_assistant_html_bubble_at(insert_at, text)
+                    else:
+                        self._insert_assistant_html_bubble(text)
+                elif row is not None:
+                    row.deleteLater()
+                    self._streaming_bubble = None
+            elif isinstance(self._streaming_bubble, QtWidgets.QWidget):
                 text = self._assistant_bubble_text(self._streaming_bubble)
                 if text:
                     self._bind_assistant_note_menu(self._streaming_bubble, text)

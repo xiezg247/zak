@@ -22,9 +22,10 @@ def show_stock_analysis_dialog(
     host: StockAnalysisHost,
     quote: QuoteSnapshot | None = None,
     parent: QtWidgets.QWidget | None = None,
+    modality: QtCore.Qt.WindowModality = QtCore.Qt.WindowModality.WindowModal,
 ) -> None:
     dialog = StockAnalysisDialog(item=item, host=host, quote=quote, parent=parent)
-    dialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+    dialog.setWindowModality(modality)
     dialog.show()
 
 
@@ -34,6 +35,7 @@ def show_stock_analysis_vt_symbol(
     *,
     name: str = "",
     parent: QtWidgets.QWidget | None = None,
+    modality: QtCore.Qt.WindowModality = QtCore.Qt.WindowModality.WindowModal,
 ) -> None:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
@@ -41,7 +43,13 @@ def show_stock_analysis_vt_symbol(
     if name and not item.name:
         item = StockItem(symbol=item.symbol, exchange=item.exchange, name=name)
     quote = host.quote_for_item(item)
-    show_stock_analysis_dialog(item=item, host=host, quote=quote, parent=parent)
+    show_stock_analysis_dialog(
+        item=item,
+        host=host,
+        quote=quote,
+        parent=parent,
+        modality=modality,
+    )
 
 
 def show_stock_analysis_from_quotes_page(

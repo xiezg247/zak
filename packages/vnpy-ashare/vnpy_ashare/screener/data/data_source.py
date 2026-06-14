@@ -204,3 +204,68 @@ def resolve_result_source_tag(source: str) -> str:
     if source == "tushare":
         return "Tushare"
     return "Redis 行情"
+
+
+def _missing_display_value(value: Any) -> bool:
+    return value is None or value == ""
+
+
+def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """补全配方结果展示字段（各维度 row 通常只含单维度指标）。"""
+    if not rows:
+        return rows
+
+    vt_symbols = {str(row.get("vt_symbol") or "") for row in rows} - {""}
+    if not vt_symbols:
+        return rows
+
+    fund_map: dict[str, dict[str, Any]] = {}
+    mf_map: dict[str, dict[str, Any]] = {}
+    pct_map: dict[str, float] = {}
+
+    try:
+        fund_rows, trade_date, _ = fetch_fundamental_screening_rows()
+        fund_map = {str(row.get("vt_symbol") or ""): row for row in fund_rows if row.get("vt_symbol")}
+        pct_map = fetch_daily_pct_map(trade_date)
+    except Exception:
+        pass
+
+    try:
+        mf_rows, _trade_date = fetch_moneyflow_with_fallback()
+        mf_map = {str(row.get("vt_symbol") or ""): row for row in mf_rows if row.get("vt_symbol")}
+    except Exception:
+        pass
+
+    enriched: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        vt_symbol = str(item.get("vt_symbol") or "")
+        fund = fund_map.get(vt_symbol, {})
+        mf = mf_map.get(vt_symbol, {})
+        ts_code = str(fund.get("ts_code") or mf.get("ts_code") or "")
+
+        if _missing_display_value(item.get("symbol")) and fund.get("symbol"):
+            item["symbol"] = fund["symbol"]
+        if _missing_display_value(item.get("name")):
+            item["name"] = fund.get("name") or mf.get("name") or item.get("name", "")
+
+        if _missing_display_value(item.get("change_pct")):
+            change = item.get("pct_chg")
+            if _missing_display_value(change) and ts_code:
+                change = pct_map.get(ts_code)
+            if not _missing_display_value(change):
+                item["change_pct"] = change
+
+        for key in ("turnover_rate", "pe_ttm", "close", "volume_ratio", "total_mv", "circ_mv", "pb", "trade_date"):
+            if _missing_display_value(item.get(key)) and not _missing_display_value(fund.get(key)):
+                item[key] = fund[key]
+
+        for key in ("net_mf_amount", "buy_elg_amount", "sell_elg_amount"):
+            if _missing_display_value(item.get(key)) and not _missing_display_value(mf.get(key)):
+                item[key] = mf[key]
+
+        if _missing_display_value(item.get("last_price")) and not _missing_display_value(item.get("close")):
+            item["last_price"] = item["close"]
+
+        enriched.append(item)
+    return enriched

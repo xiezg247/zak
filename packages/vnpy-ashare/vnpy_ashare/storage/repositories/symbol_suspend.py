@@ -84,6 +84,32 @@ def load_suspend_days(
     return {_parse_date(str(row[0])) for row in rows}
 
 
+def load_suspended_keys(trade_date: date) -> frozenset[tuple[str, str]]:
+    """指定交易日全市场停牌标的 (symbol, exchange)。"""
+    with connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT symbol, exchange FROM symbol_suspend_days
+            WHERE cal_date = ?
+            """,
+            (_format_date(trade_date),),
+        ).fetchall()
+    return frozenset((str(row[0]), str(row[1])) for row in rows)
+
+
+def ensure_suspend_keys_for_screening(*, trade_date: date | None = None) -> frozenset[tuple[str, str]]:
+    """选股硬过滤用：读取当日停牌列表，本地无缓存时尝试增量同步一次。"""
+    day = trade_date or last_trading_day()
+    keys = load_suspended_keys(day)
+    if keys:
+        return keys
+    try:
+        sync_suspend_for_date(day)
+    except Exception:
+        return frozenset()
+    return load_suspended_keys(day)
+
+
 def clear_symbol_suspend_cache() -> None:
     """测试用：清空停牌日缓存。"""
     with connect() as conn:

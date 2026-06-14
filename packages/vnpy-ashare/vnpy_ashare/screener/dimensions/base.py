@@ -64,13 +64,15 @@ def merge_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def fundamental_base_row(row: dict[str, Any]) -> dict[str, Any]:
+    pct = row.get("pct_chg", row.get("change_pct", 0))
     return {
         "symbol": row.get("symbol", ""),
         "name": row.get("name", ""),
         "vt_symbol": row.get("vt_symbol", ""),
         "close": row.get("close", 0),
         "pe_ttm": row.get("pe_ttm", 0),
-        "pct_chg": row.get("pct_chg", row.get("change_pct", 0)),
+        "pct_chg": pct,
+        "change_pct": pct,
         "turnover_rate": row.get("turnover_rate", 0),
         "volume_ratio": row.get("volume_ratio", 0),
         "source": row.get("source", "tushare"),
