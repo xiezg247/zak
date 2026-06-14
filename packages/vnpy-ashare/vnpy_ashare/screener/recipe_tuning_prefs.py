@@ -26,6 +26,8 @@ class RecipeTuningPrefs:
     extreme_greed_turnover: float
     extreme_greed_volume_surge: float
     greed_turnover: float
+    breakout_lookback_days: int
+    volume_liquidity_dedup_factor: float
 
 
 def default_recipe_tuning_prefs() -> RecipeTuningPrefs:
@@ -42,6 +44,8 @@ def default_recipe_tuning_prefs() -> RecipeTuningPrefs:
         extreme_greed_turnover=0.05,
         extreme_greed_volume_surge=0.03,
         greed_turnover=0.02,
+        breakout_lookback_days=5,
+        volume_liquidity_dedup_factor=0.5,
     )
 
 
@@ -118,6 +122,18 @@ def load_recipe_tuning_prefs() -> RecipeTuningPrefs:
             0.0,
             0.5,
         ),
+        breakout_lookback_days=_read_int(
+            _SETTINGS.value(f"{_KEY_PREFIX}breakout_lookback"),
+            defaults.breakout_lookback_days,
+            0,
+            60,
+        ),
+        volume_liquidity_dedup_factor=_read_float(
+            _SETTINGS.value(f"{_KEY_PREFIX}volume_dedup"),
+            defaults.volume_liquidity_dedup_factor,
+            0.0,
+            1.0,
+        ),
     )
 
 
@@ -134,6 +150,8 @@ def save_recipe_tuning_prefs(prefs: RecipeTuningPrefs) -> None:
     _SETTINGS.setValue(f"{_KEY_PREFIX}sg_turnover", prefs.extreme_greed_turnover)
     _SETTINGS.setValue(f"{_KEY_PREFIX}sg_volume", prefs.extreme_greed_volume_surge)
     _SETTINGS.setValue(f"{_KEY_PREFIX}g_turnover", prefs.greed_turnover)
+    _SETTINGS.setValue(f"{_KEY_PREFIX}breakout_lookback", prefs.breakout_lookback_days)
+    _SETTINGS.setValue(f"{_KEY_PREFIX}volume_dedup", prefs.volume_liquidity_dedup_factor)
 
 
 def _read_bool(raw: object, default: bool) -> bool:
@@ -150,6 +168,17 @@ def _read_float(raw: object, default: float, min_value: float, max_value: float)
     else:
         try:
             value = float(raw)
+        except (TypeError, ValueError):
+            value = default
+    return max(min_value, min(max_value, value))
+
+
+def _read_int(raw: object, default: int, min_value: int, max_value: int) -> int:
+    if raw is None:
+        value = default
+    else:
+        try:
+            value = int(float(raw))
         except (TypeError, ValueError):
             value = default
     return max(min_value, min(max_value, value))

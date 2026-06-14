@@ -2,6 +2,7 @@
 
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.batch_fill_downloaded import batch_fill_downloaded_stale_job
+from vnpy_ashare.jobs.concept_prefetch import prefetch_concept_board
 from vnpy_ashare.jobs.disclosure_sync import sync_disclosure_calendar_job
 from vnpy_ashare.jobs.financial_sync import sync_watchlist_financials_job
 from vnpy_ashare.jobs.moneyflow_prefetch import prefetch_moneyflow
@@ -20,6 +21,7 @@ __all__ = [
     "batch_fill_downloaded_stale_job",
     "collect_market_quotes",
     "prefetch_moneyflow",
+    "prefetch_concept_board",
     "prefetch_tushare_factors",
     "run_scheduled_auto_screen",
     "sync_disclosure_calendar_job",

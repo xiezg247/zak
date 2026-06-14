@@ -26,10 +26,14 @@ def test_save_and_load_recipe_tuning_prefs() -> None:
             extreme_greed_turnover=0.05,
             extreme_greed_volume_surge=0.03,
             greed_turnover=0.02,
+            breakout_lookback_days=10,
+            volume_liquidity_dedup_factor=0.4,
         )
     )
     prefs = load_recipe_tuning_prefs()
     assert prefs.metric_score_blend == 0.7
+    assert prefs.breakout_lookback_days == 10
+    assert prefs.volume_liquidity_dedup_factor == 0.4
     assert prefs.momentum_min_change_pct == 1.0
     assert prefs.sentiment_gate_enabled is False
     assert metric_score_blend() == 0.7

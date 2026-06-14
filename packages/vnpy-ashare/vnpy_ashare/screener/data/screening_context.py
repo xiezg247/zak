@@ -7,6 +7,9 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 
+from vnpy.trader.constant import Exchange
+from vnpy.trader.object import BarData
+
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic, fetch_stock_industry_map
 from vnpy_ashare.screener.data.data_source import iter_trade_date_strs
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
@@ -28,6 +31,30 @@ class ScreeningContext:
     _avg_turnover_loaded: bool = False
     _industry_map: dict[str, str] | None = None
     _industry_map_loaded: bool = False
+    _history_bars_map: dict[tuple[str, Exchange], list[BarData]] = field(default_factory=dict)
+
+    def load_history_bars_for_symbols(
+        self,
+        vt_symbols: list[str],
+    ) -> dict[tuple[str, Exchange], list[BarData]]:
+        from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
+        from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+        from vnpy_ashare.screener.dimensions.history_signals import history_lookback_bars
+
+        items: list[StockItem] = []
+        for vt_symbol in vt_symbols:
+            item = parse_stock_symbol(vt_symbol)
+            if item is None:
+                continue
+            key = (item.symbol, item.exchange)
+            if key in self._history_bars_map:
+                continue
+            items.append(item)
+        if items:
+            loaded = load_daily_bars_batch(items, lookback_bars=history_lookback_bars())
+            with self._lock:
+                self._history_bars_map.update(loaded)
+        return dict(self._history_bars_map)
 
     def preload_quote_snapshot(self) -> MarketQuotesSnapshot | None:
         """预加载行情；失败时记录错误供后续维度降级。"""

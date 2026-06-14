@@ -46,11 +46,23 @@ class RecipeTuningDialog(QtWidgets.QDialog):
         self._momentum_fear_max_spin.setSuffix("%")
         self._momentum_fear_max_spin.setToolTip("极度恐惧时动量涨幅上限")
 
+        self._breakout_lookback_spin = QtWidgets.QSpinBox()
+        self._breakout_lookback_spin.setRange(0, 60)
+        self._breakout_lookback_spin.setToolTip("0=仅昨收突破，>0 要求突破近 N 日高点")
+
+        self._volume_dedup_spin = QtWidgets.QDoubleSpinBox()
+        self._volume_dedup_spin.setRange(0.0, 1.0)
+        self._volume_dedup_spin.setSingleStep(0.05)
+        self._volume_dedup_spin.setDecimals(2)
+        self._volume_dedup_spin.setToolTip("同票命中量比+放量时，放量得分乘以此系数")
+
         score_form = QtWidgets.QFormLayout()
         score_form.addRow("指标混合 blend", self._blend_spin)
         score_form.addRow("动量最低涨幅", self._momentum_min_spin)
         score_form.addRow("动量最高涨幅", self._momentum_max_spin)
         score_form.addRow("恐惧时动量上限", self._momentum_fear_max_spin)
+        score_form.addRow("突破回看天数", self._breakout_lookback_spin)
+        score_form.addRow("放量去重系数", self._volume_dedup_spin)
 
         self._sentiment_enabled = QtWidgets.QCheckBox("启用恐贪环境调制（盘中配方 composite）")
 
@@ -110,6 +122,8 @@ class RecipeTuningDialog(QtWidgets.QDialog):
         self._momentum_min_spin.setValue(prefs.momentum_min_change_pct)
         self._momentum_max_spin.setValue(prefs.momentum_max_change_pct)
         self._momentum_fear_max_spin.setValue(prefs.momentum_fear_max_change_pct)
+        self._breakout_lookback_spin.setValue(prefs.breakout_lookback_days)
+        self._volume_dedup_spin.setValue(prefs.volume_liquidity_dedup_factor)
         self._sentiment_enabled.setChecked(prefs.sentiment_gate_enabled)
         self._sf_momentum.setValue(prefs.extreme_fear_momentum)
         self._sf_sector.setValue(prefs.extreme_fear_sector)
@@ -139,6 +153,8 @@ class RecipeTuningDialog(QtWidgets.QDialog):
             momentum_min_change_pct=float(self._momentum_min_spin.value()),
             momentum_max_change_pct=float(self._momentum_max_spin.value()),
             momentum_fear_max_change_pct=float(self._momentum_fear_max_spin.value()),
+            breakout_lookback_days=int(self._breakout_lookback_spin.value()),
+            volume_liquidity_dedup_factor=float(self._volume_dedup_spin.value()),
             sentiment_gate_enabled=self._sentiment_enabled.isChecked(),
             extreme_fear_momentum=float(self._sf_momentum.value()),
             extreme_fear_sector=float(self._sf_sector.value()),

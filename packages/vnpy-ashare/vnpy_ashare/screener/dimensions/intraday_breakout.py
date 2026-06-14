@@ -29,11 +29,15 @@ _DEFAULT_LOOKBACK_DAYS = 5
 
 
 def _breakout_lookback_days() -> int:
-    raw = os.getenv("BREAKOUT_LOOKBACK_DAYS", str(_DEFAULT_LOOKBACK_DAYS)).strip()
-    try:
-        return max(0, min(int(raw), 60))
-    except ValueError:
-        return _DEFAULT_LOOKBACK_DAYS
+    raw = os.getenv("BREAKOUT_LOOKBACK_DAYS", "").strip()
+    if raw:
+        try:
+            return max(0, min(int(raw), 60))
+        except ValueError:
+            return _DEFAULT_LOOKBACK_DAYS
+    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
+
+    return load_recipe_tuning_prefs().breakout_lookback_days
 
 
 def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:

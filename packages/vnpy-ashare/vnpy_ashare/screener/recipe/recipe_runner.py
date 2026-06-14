@@ -19,6 +19,7 @@ from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
 from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
+from vnpy_ashare.screener.dimensions.volume_dedup import apply_volume_liquidity_dedup
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.recipe.recipe import DimensionSpec, ScreenRecipe, resolve_recipe
 from vnpy_ashare.screener.run.export import resolve_export_columns
@@ -83,6 +84,7 @@ def run_recipe_object(
     for _vt_symbol, hits in hits_by_symbol.items():
         if len(hits) < recipe.min_dimensions:
             continue
+        hits = apply_volume_liquidity_dedup(hits)
         weight_sum = sum(item.weight for item in hits)
         composite = sum(
             item.score * item.weight * moneyflow_dimension_score_factor(item.dimension_id, item.row)

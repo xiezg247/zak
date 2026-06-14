@@ -389,13 +389,31 @@ def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
             return "量比", f"{ratio:.2f}", "涨幅", _format_pct(change)
         return _liquidity_metric(row)
 
-    return _discovery_hits_card(
+    from vnpy_ashare.screener.dimensions.volume_dedup import build_volume_discovery_subtitle
+
+    subtitle_suffix = build_volume_discovery_subtitle(hits)
+    data = _discovery_hits_card(
         spec,
         hits,
         total,
         metric_builder=_volume_metric,
         empty_no_data="暂无行情数据，请先采集行情或打开「市场」页。",
     )
+    if data.rows and subtitle_suffix:
+        return RadarCardData(
+            card_id=data.card_id,
+            title=data.title,
+            subtitle=data.subtitle + subtitle_suffix,
+            rows=data.rows,
+            empty_message=data.empty_message,
+            updated_at=data.updated_at,
+            run_id=data.run_id,
+            detail_page_key=data.detail_page_key,
+            total_count=data.total_count,
+            ai_hint=data.ai_hint,
+            sector_names=data.sector_names,
+        )
+    return data
 
 
 def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:

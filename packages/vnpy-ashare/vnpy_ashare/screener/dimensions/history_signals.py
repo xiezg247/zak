@@ -21,6 +21,15 @@ def history_lookback_bars() -> int:
 
 
 def load_history_bars_map(vt_symbols: list[str]) -> dict[tuple[str, Exchange], list[BarData]]:
+    from vnpy_ashare.screener.data.screening_context import get_screening_context
+
+    ctx = get_screening_context()
+    if ctx is not None:
+        return ctx.load_history_bars_for_symbols(vt_symbols)
+    return _load_history_bars_map_uncached(vt_symbols)
+
+
+def _load_history_bars_map_uncached(vt_symbols: list[str]) -> dict[tuple[str, Exchange], list[BarData]]:
     items: list[StockItem] = []
     seen: set[tuple[str, Exchange]] = set()
     for vt_symbol in vt_symbols:

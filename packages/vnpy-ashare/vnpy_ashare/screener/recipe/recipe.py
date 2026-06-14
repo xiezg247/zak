@@ -14,6 +14,7 @@ from vnpy_ashare.screener.recipe.recipe_store import get_saved_recipe, list_save
 TriggerKind = Literal["intraday", "post_close"]
 
 RECIPE_INTRADAY_MULTI = "intraday_multi"
+RECIPE_INTRADAY_AGGRESSIVE = "intraday_aggressive"
 RECIPE_POST_CLOSE_MULTI = "post_close_multi"
 
 
@@ -56,6 +57,7 @@ DIMENSION_CATALOG: dict[str, dict[str, Any]] = {
     "volume_ratio": {"label": "量比", "trigger_kinds": ("intraday",)},
     "volume_surge": {"label": "放量", "trigger_kinds": ("intraday",)},
     "sector_strength": {"label": "板块", "trigger_kinds": ("intraday",)},
+    "concept_strength": {"label": "概念", "trigger_kinds": ("intraday",)},
     "intraday_breakout": {"label": "突破", "trigger_kinds": ("intraday",)},
     "moneyflow_intraday": {"label": "盘中资金", "trigger_kinds": ("intraday",)},
     "sentiment_gate": {"label": "环境", "trigger_kinds": ("intraday",)},
@@ -69,15 +71,33 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="盘中多因子",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("momentum", "动量", 0.30),
-            DimensionSpec("volume_ratio", "量比", 0.25),
-            DimensionSpec("sector_strength", "板块", 0.20),
-            DimensionSpec("turnover", "换手", 0.15),
-            DimensionSpec("volume_surge", "放量", 0.10),
+            DimensionSpec("momentum", "动量", 0.28),
+            DimensionSpec("volume_ratio", "量比", 0.23),
+            DimensionSpec("sector_strength", "板块", 0.18),
+            DimensionSpec("concept_strength", "概念", 0.08),
+            DimensionSpec("turnover", "换手", 0.14),
+            DimensionSpec("volume_surge", "放量", 0.09),
         ),
         top_n=20,
         pool_size=80,
         min_dimensions=2,
+    ),
+    RECIPE_INTRADAY_AGGRESSIVE: ScreenRecipe(
+        recipe_id=RECIPE_INTRADAY_AGGRESSIVE,
+        name="盘中激进",
+        trigger_kind="intraday",
+        dimensions=(
+            DimensionSpec("momentum", "动量", 0.25),
+            DimensionSpec("volume_ratio", "量比", 0.20),
+            DimensionSpec("intraday_breakout", "突破", 0.15),
+            DimensionSpec("moneyflow_intraday", "盘中资金", 0.15),
+            DimensionSpec("concept_strength", "概念", 0.10),
+            DimensionSpec("sector_strength", "板块", 0.10),
+            DimensionSpec("turnover", "换手", 0.05),
+        ),
+        top_n=20,
+        pool_size=80,
+        min_dimensions=3,
     ),
     RECIPE_POST_CLOSE_MULTI: ScreenRecipe(
         recipe_id=RECIPE_POST_CLOSE_MULTI,

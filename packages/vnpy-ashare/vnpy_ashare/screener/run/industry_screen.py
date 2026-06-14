@@ -42,7 +42,8 @@ def run_industry_screen(
     if quote_rows is None:
         from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 
-        quote_rows = load_screening_quote_snapshot()
+        snapshot = load_screening_quote_snapshot()
+        quote_rows = snapshot.rows
     if not quote_rows:
         raise RuntimeError("暂无行情数据，请先刷新全市场行情。")
 
