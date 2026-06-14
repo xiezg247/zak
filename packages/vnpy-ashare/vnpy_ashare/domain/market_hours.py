@@ -49,6 +49,32 @@ def is_ashare_trading_session(dt: datetime | None = None) -> bool:
     return False
 
 
+def ashare_market_phase(dt: datetime | None = None) -> str:
+    """A 股市场阶段：intraday | post_close | pre_open | closed。"""
+    now = _to_china_time(dt or datetime.now(CHINA_TZ))
+    if not is_trading_day(now.date()):
+        return "closed"
+    current = now.time()
+    if is_ashare_trading_session(now):
+        return "intraday"
+    if current >= AFTERNOON_CLOSE:
+        return "post_close"
+    return "pre_open"
+
+
+_MARKET_PHASE_LABELS = {
+    "intraday": "盘中",
+    "post_close": "盘后",
+    "pre_open": "盘前",
+    "closed": "休市",
+}
+
+
+def ashare_market_phase_label(dt: datetime | None = None) -> str:
+    """盘中 / 盘后 / 盘前 / 休市 展示文案。"""
+    return _MARKET_PHASE_LABELS.get(ashare_market_phase(dt), "休市")
+
+
 def _next_session_start_after(dt: datetime) -> datetime:
     """返回严格晚于 dt 的下一段连续竞价开始时刻。"""
     probe = dt

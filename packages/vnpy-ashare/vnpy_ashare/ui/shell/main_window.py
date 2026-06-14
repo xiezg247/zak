@@ -524,11 +524,29 @@ class AshareMainWindow(MainWindow):
             self._floating_controller.notify_attention(data.source)
 
     def _handle_ask_ai(self, data: AskAiRequest) -> None:
+        if isinstance(data.panel_parent, QtWidgets.QWidget):
+            if self._ensure_floating_ai() and self._floating_controller is not None:
+                self._floating_controller.handle_ask_ai(data)
+            else:
+                self._open_ai_assistant_with_request(data)
+            return
         if self._should_use_floating_ai(data):
             assert self._floating_controller is not None
             self._floating_controller.handle_ask_ai(data)
             return
         self._open_ai_assistant_with_request(data)
+
+    def register_floating_overlay(self, parent: QtWidgets.QWidget) -> None:
+        if self._ensure_floating_ai() and self._floating_controller is not None:
+            self._floating_controller.push_overlay_parent(parent)
+
+    def unregister_floating_overlay(self, parent: QtWidgets.QWidget) -> None:
+        if self._floating_controller is not None:
+            self._floating_controller.pop_overlay_parent(parent)
+
+    def on_floating_overlay_resized(self, parent: QtWidgets.QWidget) -> None:
+        if self._floating_controller is not None:
+            self._floating_controller.on_overlay_parent_resized(parent)
 
     def _should_use_floating_ai(self, data: AskAiRequest) -> bool:
         if data.use_full_page:

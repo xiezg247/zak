@@ -464,6 +464,28 @@ class FloatingAiPanel(QtWidgets.QWidget):
         settings = QtCore.QSettings(QSETTINGS_ORG, "floating_ai")
         settings.setValue("panel_geometry", self.saveGeometry())
 
+    def show_aligned_in_parent(self, parent: QtWidgets.QWidget | None = None) -> None:
+        """在指定父控件右下角弹出面板（用于模态窗等 overlay 场景）。"""
+        anchor = parent or self.parentWidget()
+        if anchor is None:
+            self.show()
+            self.raise_()
+            self.chat_panel.on_floating_shown()
+            self.chat_panel.focus_input()
+            return
+        margin = ORB_MARGIN
+        width = min(self.width(), max(self.minimumWidth(), anchor.width() - 2 * margin))
+        height = min(self.height(), max(self.minimumHeight(), anchor.height() - 2 * margin))
+        x = max(0, anchor.width() - width - margin)
+        y = max(0, anchor.height() - height - margin)
+        self.setGeometry(self._clamp_geometry(QtCore.QRect(x, y, width, height)))
+        self.show()
+        self.raise_()
+        self._layout_resize_handles()
+        self._update_context_bar_geometry()
+        self.chat_panel.on_floating_shown()
+        self.chat_panel.focus_input()
+
     def show_near_orb(self, orb: FloatingAiOrb) -> None:
         """在悬浮球附近弹出面板。"""
         shell = self.parentWidget() or orb.parentWidget()

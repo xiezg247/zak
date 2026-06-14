@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy.event import Event
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.context import build_diagnose_ai_prompt
 from vnpy_ashare.app.engine_access import get_stock_analysis_service
@@ -163,6 +163,28 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._init_idle_tabs()
         self._ensure_tab_data(_TAB_OVERVIEW)
 
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        main = self._find_ashare_main_window()
+        if main is not None:
+            main.register_floating_overlay(self)
+
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        main = self._find_ashare_main_window()
+        if main is not None:
+            main.on_floating_overlay_resized(self)
+
+    def _find_ashare_main_window(self) -> Any | None:
+        from vnpy_ashare.ui.shell.main_window import AshareMainWindow
+
+        parent: QtWidgets.QWidget | None = self
+        while parent is not None:
+            if isinstance(parent, AshareMainWindow):
+                return parent
+            parent = parent.parentWidget()
+        return None
+
     def _init_idle_tabs(self) -> None:
         self._sector_tab.show_idle()
         self._concept_tab.show_idle()
@@ -317,6 +339,9 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
     def closeEvent(self, event) -> None:
         self._closing = True
+        main = self._find_ashare_main_window()
+        if main is not None:
+            main.unregister_floating_overlay(self)
         self._chart_tab.shutdown()
         if self._worker is not None:
             release_thread(self._host.retired_workers, self._worker, timeout_ms=1500)
@@ -617,6 +642,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 AskAiRequest(
                     prompt=base,
                     source_page=self._host.source_page,
+                    panel_parent=self,
                 ),
             )
         )

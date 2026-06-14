@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from vnpy_ashare.screener.run.runner import ScreenerRequest
 
@@ -69,6 +70,7 @@ class AskAiRequest:
     session_policy: str = "resume"  # resume | new
     scene: str = ""
     action_id: str = ""
+    panel_parent: Any = None  # QtWidgets.QWidget，悬浮面板挂到该父控件内（如个股分析对话框）
 
 
 @dataclass

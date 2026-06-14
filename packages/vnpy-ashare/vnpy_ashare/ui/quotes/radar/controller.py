@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.app.engine_access import get_watchlist_service
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar_catalog import (
@@ -60,6 +60,9 @@ class RadarController(QtCore.QObject):
         }
         self._last_payload: dict[str, RadarCardData] = {}
         self._auto_refresh_timers: dict[str, QtCore.QTimer] = {}
+        self._session_timer = QtCore.QTimer(self)
+        self._session_timer.setInterval(30_000)
+        self._session_timer.timeout.connect(self._on_session_tick)
         self._setup_auto_refresh_timers()
 
         board.variant_changed.connect(self._on_variant_changed)
@@ -83,8 +86,10 @@ class RadarController(QtCore.QObject):
     def activate(self) -> None:
         self.refresh()
         self._start_auto_refresh()
+        self._session_timer.start()
 
     def deactivate(self) -> None:
+        self._session_timer.stop()
         self._stop_auto_refresh()
         self._cancel_all_workers()
 
@@ -95,6 +100,13 @@ class RadarController(QtCore.QObject):
             self._auto_refresh_timers[card_id] = timer
 
     def _start_auto_refresh(self) -> None:
+        self._board.sync_mode_badges()
+        for card_id in auto_refresh_card_ids():
+            self._apply_card_auto_refresh(card_id)
+        self._page._update_refresh_hint_label()
+
+    def _on_session_tick(self) -> None:
+        self._board.sync_mode_badges()
         for card_id in auto_refresh_card_ids():
             self._apply_card_auto_refresh(card_id)
         self._page._update_refresh_hint_label()
@@ -110,7 +122,7 @@ class RadarController(QtCore.QObject):
         if timer is None or widget is None:
             return
         ms = widget.auto_refresh_ms()
-        if ms <= 0:
+        if ms <= 0 or not is_ashare_trading_session():
             timer.stop()
             return
         timer.setInterval(max(int(ms), 1000))

@@ -32,7 +32,18 @@ RADAR_MANUAL_REFRESH_HINT = (
 
 
 def radar_refresh_hint() -> str:
-    return RADAR_MANUAL_REFRESH_HINT
+    from vnpy_ashare.domain.market_hours import ashare_market_phase_label, is_ashare_trading_session
+
+    phase = ashare_market_phase_label()
+    auto_part = (
+        "异动卡按设定周期刷新"
+        if is_ashare_trading_session()
+        else "异动卡暂停自动刷新"
+    )
+    return (
+        f"当前{phase} · {auto_part}；"
+        f"{RADAR_MANUAL_REFRESH_HINT}"
+    )
 
 
 def _coerce_settings_int(value: object, *, default: int) -> int:

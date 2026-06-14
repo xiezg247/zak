@@ -37,6 +37,28 @@ class FloatingAiPanelGeometryTests(unittest.TestCase):
         self.assertGreaterEqual(clamped.width(), PANEL_MIN_WIDTH)
         self.assertGreaterEqual(clamped.height(), PANEL_MIN_HEIGHT)
 
+    def test_show_aligned_in_parent_bottom_right(self) -> None:
+        parent = QtWidgets.QWidget()
+        parent.resize(1000, 800)
+        parent.show()
+
+        panel = self._make_panel(parent)
+        panel.chat_panel = MagicMock()
+        panel.resize(360, 480)
+        with (
+            patch.object(panel.chat_panel, "on_floating_shown"),
+            patch.object(panel.chat_panel, "focus_input"),
+            patch.object(panel, "_layout_resize_handles"),
+            patch.object(panel, "_update_context_bar_geometry"),
+        ):
+            panel.show_aligned_in_parent(parent)
+
+        geo = panel.geometry()
+        self.assertLessEqual(geo.right(), parent.width())
+        self.assertLessEqual(geo.bottom(), parent.height())
+        self.assertGreaterEqual(geo.x(), 0)
+        self.assertGreaterEqual(geo.y(), 0)
+
     def test_resize_updates_height(self) -> None:
         shell = QtWidgets.QWidget()
         shell.resize(900, 700)

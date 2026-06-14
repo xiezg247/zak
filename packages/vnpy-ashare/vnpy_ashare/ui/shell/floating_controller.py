@@ -35,6 +35,7 @@ class FloatingAiController(QtCore.QObject):
         self._panel: FloatingAiPanel | None = None
         self._content_anchor: QtWidgets.QWidget | None = None
         self._orb_user_hidden = self._load_orb_user_hidden()
+        self._overlay_parents: list[QtWidgets.QWidget] = []
         self._current_page_key: Callable[[], str | None] = lambda: None
 
     @property
@@ -145,7 +146,40 @@ class FloatingAiController(QtCore.QObject):
         self._host._show_page(self._host._page_before_ai)
         self.show_panel()
 
+    def push_overlay_parent(self, parent: QtWidgets.QWidget) -> None:
+        """模态 overlay 打开时隐藏主窗口悬浮球，后续 AskAi 可挂到 overlay 父控件。"""
+        if parent in self._overlay_parents:
+            return
+        self._overlay_parents.append(parent)
+        self.hide_orb(user_initiated=False)
+
+    def pop_overlay_parent(self, parent: QtWidgets.QWidget) -> None:
+        """overlay 关闭时收回面板并恢复悬浮球显隐逻辑。"""
+        try:
+            self._overlay_parents.remove(parent)
+        except ValueError:
+            return
+        panel = self._panel
+        if panel is not None and panel.parentWidget() is parent:
+            panel.hide()
+            shell = self._shell_widget()
+            if shell is not None:
+                panel.setParent(shell)
+        if not self._overlay_parents:
+            page_key = self._current_page_key()
+            if page_key and self.is_page_allowed(page_key) and not self._orb_user_hidden:
+                self.show_orb()
+
+    def on_overlay_parent_resized(self, parent: QtWidgets.QWidget) -> None:
+        panel = self._panel
+        if panel is not None and panel.isVisible() and panel.parentWidget() is parent:
+            panel.clamp_geometry_to_parent()
+
     def handle_ask_ai(self, data: AskAiRequest) -> None:
+        parent = data.panel_parent
+        if isinstance(parent, QtWidgets.QWidget):
+            self._show_panel_on_parent(parent, data)
+            return
         if not self._orb or not self.prefers_floating_for_ask():
             return
         self.show_orb()
@@ -160,6 +194,27 @@ class FloatingAiController(QtCore.QObject):
                 auto_send=False,
                 action_id=data.action_id,
             )
+
+    def _show_panel_on_parent(self, parent: QtWidgets.QWidget, data: AskAiRequest) -> None:
+        panel = self._panel
+        if panel is None:
+            return
+        self.hide_orb(user_initiated=False)
+        resolved_scene = (data.scene or data.source_page or "").strip() or self._scene_from_context()
+        self._prepare_floating_session(
+            new_session=data.new_session,
+            session_policy=data.session_policy,
+            scene=resolved_scene,
+        )
+        panel.setParent(parent)
+        panel.show_aligned_in_parent(parent)
+        panel.raise_()
+        panel.focus_input()
+        panel.submit_prompt(
+            data.prompt,
+            auto_send=False,
+            action_id=data.action_id,
+        )
 
     def run_quick_action(
         self,
@@ -244,6 +299,9 @@ class FloatingAiController(QtCore.QObject):
             session_policy=session_policy,
             scene=resolved_scene,
         )
+        shell = self._shell_widget()
+        if shell is not None and panel.parentWidget() is not shell:
+            panel.setParent(shell)
         if not orb.isVisible():
             self.show_orb()
         panel.show_near_orb(orb)

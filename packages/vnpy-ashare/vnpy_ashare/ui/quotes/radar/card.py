@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.domain.market_hours import ashare_market_phase, ashare_market_phase_label
 from vnpy_ashare.quotes.radar_catalog import (
     RadarCardSpec,
     default_refresh_ms_for_card,
@@ -45,8 +46,9 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._title.setObjectName("RadarCardTitle")
         header.addWidget(self._title, stretch=1)
 
-        self._mode_badge = QtWidgets.QLabel("盘中" if self._supports_auto_refresh else "手动")
+        self._mode_badge = QtWidgets.QLabel("")
         self._mode_badge.setObjectName("RadarCardModeBadge")
+        self._update_mode_badge()
         header.addWidget(self._mode_badge)
 
         self._variant_combo = QtWidgets.QComboBox()
@@ -192,6 +194,23 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._refresh_interval_combo.blockSignals(True)
             self._refresh_interval_combo.setCurrentIndex(index)
             self._refresh_interval_combo.blockSignals(False)
+
+    def update_mode_badge(self) -> None:
+        self._update_mode_badge()
+
+    def _update_mode_badge(self) -> None:
+        if not self._supports_auto_refresh:
+            self._mode_badge.setText("手动")
+            self._mode_badge.setObjectName("RadarCardModeBadgeOff")
+        else:
+            phase = ashare_market_phase()
+            self._mode_badge.setText(ashare_market_phase_label())
+            self._mode_badge.setObjectName(
+                "RadarCardModeBadgeLive" if phase == "intraday" else "RadarCardModeBadgeOff"
+            )
+        style = self._mode_badge.style()
+        style.unpolish(self._mode_badge)
+        style.polish(self._mode_badge)
 
     def set_loading(self, loading: bool) -> None:
         self._loading = loading
@@ -349,6 +368,10 @@ class RadarBoard(QtWidgets.QWidget):
 
     def card(self, card_id: str) -> RadarCardWidget | None:
         return self._cards.get(card_id)
+
+    def sync_mode_badges(self) -> None:
+        for widget in self._cards.values():
+            widget.update_mode_badge()
 
     def apply_board(self, payload: dict[str, RadarCardData]) -> None:
         from vnpy_ashare.quotes.radar_loaders import compute_radar_resonance

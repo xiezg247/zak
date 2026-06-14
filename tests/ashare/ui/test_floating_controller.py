@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.app.events import AskAiRequest
 from vnpy_ashare.ui.shell.floating_controller import FLOATING_ORB_PAGE_KEYS, FloatingAiController
 
 
@@ -69,6 +70,34 @@ class FloatingControllerTests(unittest.TestCase):
         with patch.object(controller, "refresh_context"):
             controller.notify_attention("auto_screener")
         controller._orb.play_attention_pulse.assert_called_once()
+
+    def test_push_overlay_hides_orb_without_user_hidden(self) -> None:
+        host = QtWidgets.QWidget()
+        overlay = QtWidgets.QWidget(host)
+        controller = FloatingAiController(host, MagicMock())
+        controller._orb = MagicMock()
+        controller._orb_user_hidden = False
+        controller.bind_page_key(lambda: "watchlist")
+        with patch.object(controller, "hide_orb") as hide_orb:
+            controller.push_overlay_parent(overlay)
+        hide_orb.assert_called_once_with(user_initiated=False)
+
+    def test_handle_ask_ai_with_panel_parent(self) -> None:
+        host = QtWidgets.QWidget()
+        overlay = QtWidgets.QWidget(host)
+        overlay.resize(1200, 900)
+        controller = FloatingAiController(host, MagicMock())
+        panel = MagicMock()
+        controller._panel = panel
+        controller._orb = MagicMock()
+        data = AskAiRequest(
+            prompt="解读",
+            source_page="stock_analysis",
+            panel_parent=overlay,
+        )
+        with patch.object(controller, "_show_panel_on_parent") as show_on_parent:
+            controller.handle_ask_ai(data)
+        show_on_parent.assert_called_once_with(overlay, data)
 
 
 if __name__ == "__main__":

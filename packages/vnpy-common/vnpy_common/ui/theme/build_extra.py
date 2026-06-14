@@ -754,7 +754,11 @@ QLabel#RadarCardModeBadge {{
     border: 1px solid {t.panel_border};
     border-radius: 4px;
 }}
-QFrame#RadarCardLive QLabel#RadarCardModeBadge {{
+QLabel#RadarCardModeBadgeLive {{
+    color: {t.accent};
+    border-color: {t.accent};
+}}
+QFrame#RadarCardLive QLabel#RadarCardModeBadgeLive {{
     color: {t.accent};
     border-color: {t.accent};
 }}

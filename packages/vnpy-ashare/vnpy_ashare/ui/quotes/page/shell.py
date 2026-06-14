@@ -710,11 +710,22 @@ class QuotesPageShell:
         root.addWidget(page._toast)
 
 
+def _input_method_is_composing() -> bool:
+    """IME 组字中（如拼音选字）时不应拦截按键。"""
+    im = QtGui.QGuiApplication.inputMethod()
+    if im is None:
+        return False
+    composing = getattr(im, "isComposing", None)
+    if callable(composing):
+        return bool(composing())
+    return False
+
+
 class _SearchKeyFilter(QtCore.QObject):
-    """搜索框 Enter 立即过滤、Esc 清空。"""
+    """搜索框 Esc 清空；Enter 交给 QLineEdit.returnPressed（避免打断 IME 选字）。"""
 
     def __init__(self, page: QuotesPage) -> None:
-        super().__init__(page)
+        super().__init__(None)
         self._page = page
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
@@ -722,13 +733,11 @@ class _SearchKeyFilter(QtCore.QObject):
             return super().eventFilter(watched, event)
         if event.type() != QtCore.QEvent.Type.KeyPress:
             return super().eventFilter(watched, event)
+        if _input_method_is_composing():
+            return super().eventFilter(watched, event)
         key = event.key()
         if key == QtCore.Qt.Key.Key_Escape:
             self._page.search_edit.clear()
-            self._page._search_timer.stop()
-            self._page.apply_filter()
-            return True
-        if key in (QtCore.Qt.Key.Key_Return, QtCore.Qt.Key.Key_Enter):
             self._page._search_timer.stop()
             self._page.apply_filter()
             return True
