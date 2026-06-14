@@ -99,3 +99,37 @@ def test_enrich_quotes_tushare_failure_is_noop() -> None:
     assert quotes["600000.SH"].volume_ratio == 0.0
     assert quotes["600000.SH"].net_mf_amount == 0.0
     assert quotes["600000.SH"].limit_times == 0.0
+
+
+def test_fill_missing_tushare_factors() -> None:
+    from vnpy_ashare.quotes.enrich import fill_missing_tushare_factors
+
+    quotes = {"600000.SH": _quote(), "000001.SZ": _quote("000001.SZ")}
+    quotes["600000.SH"].volume_ratio = 1.1
+    with patch(
+        "vnpy_ashare.quotes.enrich.get_cached_tushare_factor_maps",
+        return_value=({"600000.SH": 2.0, "000001.SZ": 1.5}, {"000001.SZ": -200.0}),
+    ):
+        fill_missing_tushare_factors(quotes)
+
+    assert quotes["600000.SH"].volume_ratio == 1.1
+    assert quotes["000001.SZ"].volume_ratio == 1.5
+    assert quotes["000001.SZ"].net_mf_amount == -200.0
+
+
+def test_fill_missing_limit_times_fallback_to_one_board() -> None:
+    from vnpy_ashare.quotes.enrich import fill_missing_tushare_factors
+    from vnpy_ashare.quotes.market_breadth import LIMIT_UP_PCT
+
+    quote = _quote()
+    quote.change_pct = LIMIT_UP_PCT
+    quotes = {"600000.SH": quote}
+    with patch(
+        "vnpy_ashare.quotes.enrich.get_cached_tushare_factor_maps",
+        return_value=({}, {}),
+    ), patch(
+        "vnpy_ashare.quotes.enrich.get_cached_limit_times_map",
+        return_value={},
+    ):
+        fill_missing_tushare_factors(quotes)
+    assert quotes["600000.SH"].limit_times == 1.0

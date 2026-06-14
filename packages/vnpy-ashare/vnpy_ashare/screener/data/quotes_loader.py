@@ -66,4 +66,8 @@ def _row_from_item_quote(item: StockItem, quote: QuoteSnapshot) -> dict[str, Any
         "turnover_rate": quote.turnover_rate,
         "volume": quote.volume,
         "amount": quote.amount,
+        "volume_ratio": quote.volume_ratio,
+        "net_mf_amount": quote.net_mf_amount,
+        "limit_times": quote.limit_times,
+        "change_speed_5m": quote.change_speed_5m,
     }

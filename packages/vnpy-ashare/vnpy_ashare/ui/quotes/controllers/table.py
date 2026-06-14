@@ -42,11 +42,6 @@ from vnpy_common.ui.theme.tokens import ThemeTokens
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
-STATUS_OK_COLOR = "#3ddc84"
-STATUS_STALE_COLOR = "#f0b429"
-STATUS_GAP_COLOR = "#ff5c5c"
-
-
 class TableController:
     """QuotesPage 表格与列配置。"""
 
@@ -781,14 +776,20 @@ class TableController:
             return page._market_page * page.config.market_page_size + row + 1
         return row + 1
 
-    def _status_color(self, status: BarHealthStatus) -> str:
+    def _status_color(
+        self,
+        status: BarHealthStatus,
+        *,
+        tokens: ThemeTokens | None = None,
+    ) -> str:
+        t = tokens or theme_manager().tokens()
         if status == BarHealthStatus.OK:
-            return STATUS_OK_COLOR
+            return t.semantic_success
         if status == BarHealthStatus.STALE:
-            return STATUS_STALE_COLOR
+            return t.semantic_warning
         if status == BarHealthStatus.GAPS:
-            return STATUS_GAP_COLOR
-        return market_colors(theme_manager().tokens()).flat
+            return t.semantic_error
+        return market_colors(t).flat
 
     def _local_tail_values(self, item: StockItem) -> list[str]:
         page = self._p
@@ -954,7 +955,7 @@ class TableController:
             if quote and col in filtered_price_cols:
                 cell_color = color
             if status_col is not None and col == status_col and status is not None:
-                cell_color = self._status_color(status)
+                cell_color = self._status_color(status, tokens=tokens)
             sort_key = filtered_sort_keys[col] if col < len(filtered_sort_keys) else text
             cells.append(
                 QuoteCell(

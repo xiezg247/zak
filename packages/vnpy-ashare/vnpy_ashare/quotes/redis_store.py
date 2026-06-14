@@ -121,6 +121,10 @@ class RedisQuoteStore:
             if not quote.trade_time.strip() and fallback_time:
                 quote.trade_time = fallback_time
             result[tf_symbol] = quote
+        if result:
+            from vnpy_ashare.quotes.enrich import fill_missing_tushare_factors
+
+            fill_missing_tushare_factors(result)
         return result
 
     def get_rank_symbols(
