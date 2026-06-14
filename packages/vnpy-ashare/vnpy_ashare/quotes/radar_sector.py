@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -11,7 +10,11 @@ from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow, format_pct,
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
-from vnpy_ashare.screener.sector.sector_summary import attach_industry, top_industries_by_momentum
+from vnpy_ashare.screener.sector.sector_summary import (
+    attach_industry,
+    breadth_leader_candidates,
+    top_industries_by_breadth,
+)
 
 
 def _sector_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -80,45 +83,12 @@ def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple
     if not enriched:
         return [], "", snapshot.total, ()
 
-    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in enriched:
-        industry = str(row.get("industry") or "").strip()
-        if industry:
-            buckets[industry].append(row)
-
-    industry_stats: list[tuple[str, float, float, list[dict[str, Any]]]] = []
-    for industry, items in buckets.items():
-        if len(items) < 3:
-            continue
-        positive = sum(1 for item in items if float(item.get("change_pct") or 0) > 0)
-        ratio = positive / len(items)
-        avg_change = sum(float(item.get("change_pct") or 0) for item in items) / len(items)
-        industry_stats.append((industry, ratio, avg_change, items))
-
-    industry_stats.sort(key=lambda item: (item[1], item[2], len(item[3])), reverse=True)
-    strong = industry_stats[:5]
-    if not strong:
+    candidates = breadth_leader_candidates(enriched, pool_size=pool_size)
+    if not candidates:
         return [], "", snapshot.total, ()
 
-    candidates: list[dict[str, Any]] = []
-    for _industry, ratio, avg_change, items in strong:
-        ranked = sorted(items, key=lambda item: float(item.get("change_pct") or 0), reverse=True)
-        for item in ranked[: max(2, pool_size // 5)]:
-            merged = dict(item)
-            merged["breadth_ratio"] = round(ratio * 100, 1)
-            merged["industry_avg_change"] = round(avg_change, 2)
-            candidates.append(merged)
-
-    candidates.sort(
-        key=lambda item: (
-            float(item.get("breadth_ratio") or 0),
-            float(item.get("change_pct") or 0),
-        ),
-        reverse=True,
-    )
-
     rows: list[RadarRow] = []
-    for row in candidates[:pool_size]:
+    for row in candidates:
         parsed = _row_from_sector_hit(row)
         if parsed is None:
             continue
@@ -137,12 +107,12 @@ def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple
             )
         )
 
-    leaders = top_industries_by_momentum(enriched, top_industry_count=6)
+    leaders = top_industries_by_breadth(enriched, top_industry_count=6)
     subtitle = ""
     if leaders:
-        subtitle = "扩散：" + "、".join(leaders[:3])
+        subtitle = "扩散：" + "、".join(str(item.get("industry") or "") for item in leaders[:3])
     subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {snapshot.total} 只"
-    return rows, subtitle, snapshot.total, tuple(leaders[:6])
+    return rows, subtitle, snapshot.total, tuple(str(item.get("industry") or "") for item in leaders[:6])
 
 
 def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders") -> RadarCardData:

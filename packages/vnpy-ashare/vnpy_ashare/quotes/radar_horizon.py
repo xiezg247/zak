@@ -8,6 +8,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signa
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_RECENT_DAYS
 from vnpy_ashare.quotes.radar_ai_cache import resolve_ai_hint, rows_fingerprint
 from vnpy_ashare.quotes.radar_catalog import RadarCardSpec
+from vnpy_ashare.quotes.radar_cross_refs import build_outlook_cross_ref_hint, build_outlook_cross_ref_suffix
 from vnpy_ashare.quotes.radar_horizon_cache import (
     build_horizon_subtitle,
     get_horizon_cache,
@@ -100,6 +101,10 @@ def load_outlook_horizon(
             if scenario_mode:
                 subtitle = f"{subtitle} · 统计情景非目标价"
             rows = enrich_radar_rows(cached.rows)
+            cross_suffix = build_outlook_cross_ref_suffix(rows)
+            if cross_suffix:
+                subtitle = f"{subtitle} · {cross_suffix}"
+            cross_hint = build_outlook_cross_ref_hint(rows)
             if not rows:
                 stats = HorizonScanStats(
                     scanned_total=cached.scanned_total,
@@ -127,7 +132,7 @@ def load_outlook_horizon(
                     variant=resolved_variant if scenario_mode else "",
                     fingerprint=rows_fingerprint(rows),
                     digest=build_outlook_digest(rows, variant=resolved_variant),
-                ),
+                ) + (f" · {cross_hint}" if cross_hint else ""),
             )
         return _empty_horizon_card(
             spec,
@@ -152,6 +157,10 @@ def load_outlook_horizon(
     if scenario_mode:
         subtitle = f"{subtitle} · 统计情景非目标价"
     rows = enrich_radar_rows(scan_result.rows)
+    cross_suffix = build_outlook_cross_ref_suffix(rows)
+    if cross_suffix:
+        subtitle = f"{subtitle} · {cross_suffix}"
+    cross_hint = build_outlook_cross_ref_hint(rows)
     stats = scan_result.stats
 
     if not rows:
@@ -175,7 +184,7 @@ def load_outlook_horizon(
             variant=resolved_variant if scenario_mode else "",
             fingerprint=rows_fingerprint(rows),
             digest=build_outlook_digest(rows, variant=resolved_variant),
-        ),
+        ) + (f" · {cross_hint}" if cross_hint else ""),
     )
 
 

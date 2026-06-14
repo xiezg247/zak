@@ -118,13 +118,21 @@ def _quotes_for_candidates(candidates: list[str]) -> dict[str, dict[str, Any]]:
     return result
 
 
-def _intraday_score(row: dict[str, Any], *, transition: str | None = None) -> float:
+def _intraday_score(
+    row: dict[str, Any],
+    *,
+    transition: str | None = None,
+    pool_median_change: float | None = None,
+) -> float:
     merged = merge_row_quotes(row)
-    change = abs(float(merged.get("change_pct") or 0))
+    change = float(merged.get("change_pct") or 0)
+    change_abs = abs(change)
     volume_ratio = float(merged.get("volume_ratio") or 0)
     amount = float(merged.get("amount") or 0)
     turnover = float(merged.get("turnover_rate") or 0)
-    score = change * 10.0
+    score = change_abs * 10.0
+    if pool_median_change is not None and change > pool_median_change + 1.0:
+        score += (change - pool_median_change) * 6.0
     if volume_ratio >= 1.2:
         score += min(volume_ratio, 5.0) * 4.0
     if amount > 0:
@@ -240,13 +248,21 @@ def _score_candidates(
     *,
     anomaly_only: bool,
 ) -> list[tuple[str, dict[str, Any], float, str | None]]:
+    changes = [
+        float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0)
+        for vt in candidates
+        if quotes_by_vt.get(vt)
+    ]
+    pool_median = sorted(changes)[len(changes) // 2] if changes else 0.0
+
     scored: list[tuple[str, dict[str, Any], float, str | None]] = []
     for vt_symbol in candidates:
         row = quotes_by_vt.get(vt_symbol, {"vt_symbol": vt_symbol})
         transition = transitions.get(vt_symbol)
-        score = _intraday_score(row, transition=transition)
+        score = _intraday_score(row, transition=transition, pool_median_change=pool_median)
         merged = merge_row_quotes(row)
         change = abs(float(merged.get("change_pct") or 0))
+        rel_change = float(merged.get("change_pct") or 0) - pool_median
         volume_ratio = float(merged.get("volume_ratio") or 0)
         if transition:
             scored.append((vt_symbol, row, score, transition))
@@ -254,7 +270,7 @@ def _score_candidates(
         if not anomaly_only:
             scored.append((vt_symbol, row, score, None))
             continue
-        if change < 1.5 and volume_ratio < 1.2 and score < 8.0:
+        if change < 1.5 and volume_ratio < 1.2 and score < 8.0 and rel_change < 1.0:
             net_mf = float(merge_row_quotes(row).get("net_mf_amount") or 0)
             if net_mf <= 0:
                 continue

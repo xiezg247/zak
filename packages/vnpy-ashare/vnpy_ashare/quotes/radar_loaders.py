@@ -42,20 +42,10 @@ def _discovery_pool_size(top_n: int) -> int:
 
 
 def _is_discovery_st_excluded(row: dict[str, Any], name_map: dict[str, str]) -> bool:
-    from vnpy_ashare.screener.hard_filters import is_st_stock, recipe_exclude_st_enabled
+    """已废弃：请使用 apply_screening_filters。保留兼容测试 import。"""
+    from vnpy_ashare.screener.hard_filters import apply_screening_filters
 
-    if not recipe_exclude_st_enabled():
-        return False
-    vt_symbol = str(row.get("vt_symbol") or "")
-    merged = _merge_row_quotes(row)
-    for candidate in (
-        str(name_map.get(vt_symbol) or "").strip(),
-        str(merged.get("name") or "").strip(),
-        str(row.get("name") or "").strip(),
-    ):
-        if candidate and is_st_stock(candidate):
-            return True
-    return False
+    return not apply_screening_filters([row])
 
 
 def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -151,6 +141,9 @@ def _row_from_dict(row: dict[str, Any], *, name_map: dict[str, str] | None = Non
     price = _float_or_none(merged.get("last_price") or merged.get("close"))
     change_pct = _float_or_none(merged.get("change_pct") or row.get("change_pct") or row.get("pct_chg"))
     metric_label, metric_value, sub_label, sub_value = _screener_metric(merged)
+    rs_sub = _relative_strength_subline(merged)
+    if rs_sub is not None:
+        sub_label, sub_value = rs_sub
     return RadarRow(
         vt_symbol=vt_symbol,
         name=name,
@@ -162,6 +155,12 @@ def _row_from_dict(row: dict[str, Any], *, name_map: dict[str, str] | None = Non
         sub_label=sub_label,
         sub_value=sub_value,
     )
+
+
+def _relative_strength_subline(row: dict[str, Any]) -> tuple[str, str] | None:
+    from vnpy_ashare.quotes.radar_relative_strength import build_relative_strength_subline
+
+    return build_relative_strength_subline(row)
 
 
 def _rows_from_screener(rows: list[dict[str, Any]], *, top_n: int) -> tuple[RadarRow, ...]:
@@ -274,8 +273,21 @@ def _discovery_hits_card(
     rows: list[RadarRow] = []
     vt_symbols = [str(hit.row.get("vt_symbol") or "").strip() for hit in hits]
     name_map = name_map_for_symbols([vt for vt in vt_symbols if vt])
+    from vnpy_ashare.screener.hard_filters import apply_screening_filters
+
+    filter_inputs: list[dict[str, Any]] = []
     for hit in hits:
-        if _is_discovery_st_excluded(hit.row, name_map):
+        row = dict(hit.row)
+        vt = str(row.get("vt_symbol") or "").strip()
+        mapped_name = str(name_map.get(vt) or row.get("name") or "").strip()
+        if mapped_name:
+            row["name"] = mapped_name
+        filter_inputs.append(row)
+    filtered_rows = apply_screening_filters(filter_inputs)
+    allowed_vt = {str(row.get("vt_symbol") or "") for row in filtered_rows}
+    for hit in hits:
+        vt = str(hit.row.get("vt_symbol") or "").strip()
+        if vt not in allowed_vt:
             continue
         row = hit.row
         parsed = _row_from_dict(row, name_map=name_map)

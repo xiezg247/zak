@@ -18,6 +18,7 @@ _MIN_CHANGE_PCT = 0.5
 _MIN_BREAK_PCT = 0.5
 _NEAR_HIGH_RATIO = 0.99
 _MIN_BREAKOUT_VOLUME_RATIO = 1.2
+_MAX_PULLBACK_FROM_HIGH_PCT = 2.0
 
 
 def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
@@ -92,6 +93,8 @@ def _quote_breakout_strength(row: dict[str, Any], ratio_map: dict[str, float]) -
     if high < prev * (1 + _MIN_BREAK_PCT / 100):
         return None
     if last < high * _NEAR_HIGH_RATIO:
+        return None
+    if high > 0 and (high - last) / high * 100 > _MAX_PULLBACK_FROM_HIGH_PCT:
         return None
     volume_ratio = _row_volume_ratio(row, ratio_map)
     if volume_ratio is not None and volume_ratio < _MIN_BREAKOUT_VOLUME_RATIO:

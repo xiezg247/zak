@@ -15,6 +15,49 @@ from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
 _INTRADAY_DIMENSION_ID = "moneyflow_intraday"
 _INTRADAY_LABEL = "盘中资金"
 _POST_LABEL = "资金"
+_DIVERGENCE_SCORE_FACTOR = 0.65
+_STREAK_BONUS_PER_DAY = 0.05
+_MAX_STREAK_BONUS = 0.15
+
+
+def _tier_net_amount(row: dict[str, Any]) -> float:
+    """特大单净流入优先，用于排序与分档。"""
+    elg = float(row.get("buy_elg_amount") or 0) - float(row.get("sell_elg_amount") or 0)
+    if elg != 0:
+        return elg
+    return float(row.get("net_mf_amount") or 0)
+
+
+def _moneyflow_score_adjustment(row: dict[str, Any], base_score: float) -> float:
+    change = float(row.get("change_pct") or row.get("pct_chg") or 0)
+    net = float(row.get("net_mf_amount") or 0)
+    score = base_score
+    if net > 0 and change < -0.5:
+        score *= _DIVERGENCE_SCORE_FACTOR
+    streak = int(row.get("moneyflow_streak_days") or 0)
+    if streak >= 2:
+        score *= 1.0 + min(_MAX_STREAK_BONUS, (streak - 1) * _STREAK_BONUS_PER_DAY)
+    return score
+
+
+def count_positive_moneyflow_streak(vt_symbol: str, *, max_days: int = 5) -> int:
+    """连续净流入天数（仅读本地 Tushare 缓存，无缓存则跳过）。"""
+    from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
+    from vnpy_ashare.screener.data.data_source import iter_trade_date_strs
+
+    streak = 0
+    for trade_date in iter_trade_date_strs(max_lookback=max_days):
+        cached = get_cached_rows(DATASET_MONEYFLOW, trade_date)
+        if cached is None:
+            continue
+        row = next((item for item in cached if str(item.get("vt_symbol") or "") == vt_symbol), None)
+        if row is None:
+            break
+        if float(row.get("net_mf_amount") or 0) > 0:
+            streak += 1
+        else:
+            break
+    return streak
 
 
 def resolve_moneyflow_hits(
@@ -92,7 +135,9 @@ def _post_close_tushare_hits(
     if not raw_rows:
         return [], total, ""
 
-    ranked = apply_moneyflow_in(raw_rows, top_n=pool_size)
+    ranked = apply_moneyflow_in(raw_rows, top_n=pool_size * 2)
+    ranked.sort(key=lambda row: _tier_net_amount(row), reverse=True)
+    ranked = ranked[:pool_size]
     hits: list[DimensionHit] = []
     for index, row in enumerate(ranked, start=1):
         vt_symbol = str(row.get("vt_symbol") or "")
@@ -101,14 +146,24 @@ def _post_close_tushare_hits(
         amount = float(row.get("net_mf_amount") or 0)
         merged = _merge_quote_fields(row, quote_map.get(vt_symbol))
         merged["moneyflow_source"] = row.get("moneyflow_source", "tushare")
+        streak = count_positive_moneyflow_streak(vt_symbol)
+        if streak:
+            merged["moneyflow_streak_days"] = streak
+        base_score = rank_score(index, len(ranked))
+        adjusted = _moneyflow_score_adjustment(merged, base_score)
+        divergence_note = ""
+        change = float(merged.get("change_pct") or merged.get("pct_chg") or 0)
+        if amount > 0 and change < -0.5:
+            divergence_note = "（价量背离降权）"
+        streak_note = f"，连涨 {streak} 日" if streak >= 2 else ""
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
                 dimension_id="moneyflow",
                 label=_POST_LABEL,
                 weight=weight,
-                score=rank_score(index, len(ranked)),
-                reason=f"资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
+                score=round(adjusted, 1),
+                reason=f"资金：主力净流入 {amount:,.0f} 万{streak_note}{divergence_note}，排名第 {index}",
                 row=merged,
             )
         )
@@ -153,7 +208,7 @@ def _hits_from_mcp_map(
                 dimension_id=_INTRADAY_DIMENSION_ID,
                 label=_INTRADAY_LABEL,
                 weight=weight,
-                score=rank_score(index, len(ranked)),
+                score=round(_moneyflow_score_adjustment(merged, rank_score(index, len(ranked))), 1),
                 reason=f"盘中资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
                 row=merged,
             )

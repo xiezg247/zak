@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows, load_screening_quote_snapshot
@@ -18,6 +19,21 @@ from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
+from vnpy_ashare.screener.sentiment.sentiment_gate import try_fetch_fear_greed_index
+
+
+def _momentum_change_bounds() -> tuple[float, float]:
+    min_change = float(os.getenv("MOMENTUM_MIN_CHANGE_PCT", "0.5"))
+    max_change = float(os.getenv("MOMENTUM_MAX_CHANGE_PCT", "9.5"))
+    snapshot = try_fetch_fear_greed_index()
+    if snapshot is not None and float(snapshot.index) < 30:
+        max_change = min(max_change, float(os.getenv("MOMENTUM_FEAR_MAX_CHANGE_PCT", "7.0")))
+    return min_change, max_change
+
+
+def _momentum_change_allowed(change: float) -> bool:
+    min_change, max_change = _momentum_change_bounds()
+    return min_change <= change <= max_change
 
 
 def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
@@ -31,6 +47,9 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         scored_rows: list[dict[str, Any]] = []
         for row in enriched:
             merged = dict(row)
+            change = float(merged.get("change_pct") or merged.get("pct_chg") or 0)
+            if not _momentum_change_allowed(change):
+                continue
             rs, basis = resolve_relative_strength(
                 merged,
                 market_benchmark=market_benchmark,
@@ -79,6 +98,9 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         scored: list[tuple[dict[str, Any], float, str]] = []
         for row in enriched:
             item = dict(row)
+            change = float(item.get("change_pct") or item.get("pct_chg") or 0)
+            if not _momentum_change_allowed(change):
+                continue
             rs, basis = resolve_relative_strength(
                 item,
                 market_benchmark=market_benchmark,

@@ -183,7 +183,8 @@ def test_load_discovery_volume_surge_keeps_surge_when_ratio_empty(monkeypatch) -
             "last_price": 10.0,
             "change_pct": 2.0,
             "volume": 0,
-            "amount": 0,
+            "amount": 80_000_000,
+            "total_mv": 600_000,
         },
     )
     monkeypatch.setattr(
@@ -233,6 +234,8 @@ def test_load_discovery_volume_surge_excludes_st_from_ratio_fallback(monkeypatch
             "volume_ratio": 5.92,
             "change_pct": 10.0,
             "last_price": 42.0,
+            "amount": 80_000_000,
+            "total_mv": 600_000,
         },
     )
     monkeypatch.setattr(

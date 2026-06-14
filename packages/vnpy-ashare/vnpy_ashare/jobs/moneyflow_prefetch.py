@@ -15,7 +15,7 @@ def prefetch_moneyflow() -> JobResult:
     except TushareNotConfiguredError as ex:
         return JobResult(success=True, skipped=True, message=str(ex))
 
-    job_log("拉取全市场 moneyflow …")
+    job_log("拉取全市场 moneyflow（含分档买卖额字段）…")
     mf_rows, mf_date = fetch_moneyflow_with_fallback()
     if not mf_rows:
         return JobResult(

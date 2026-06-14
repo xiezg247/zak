@@ -21,6 +21,9 @@ from vnpy_ashare.screener.data.quotes_loader import (
 
 DEFAULT_LOOKBACK_DAYS = 10
 
+# 最近一次成功回退到的交易日（减少长假后重复逐日探测）
+_LAST_SUCCESS_TRADE_DATE: dict[str, str] = {}
+
 
 def merge_quotes_into_fundamentals(
     fund_rows: list[dict[str, Any]],
@@ -64,11 +67,19 @@ def fetch_daily_basic_with_fallback(
     start: date | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
     """按交易日回退拉取 daily_basic，直到有数据或耗尽 lookback。"""
+    if start is None and max_lookback == DEFAULT_LOOKBACK_DAYS:
+        hinted = _LAST_SUCCESS_TRADE_DATE.get("daily_basic")
+        if hinted:
+            rows, _ = fetch_daily_basic(trade_date=hinted)
+            if rows:
+                return rows, hinted
+
     last_tried = ""
     for trade_date in iter_trade_date_strs(max_lookback=max_lookback, start=start):
         last_tried = trade_date
         rows, _ = fetch_daily_basic(trade_date=trade_date)
         if rows:
+            _LAST_SUCCESS_TRADE_DATE["daily_basic"] = trade_date
             return rows, trade_date
     return [], last_tried
 
@@ -79,13 +90,41 @@ def fetch_moneyflow_with_fallback(
     start: date | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
     """按交易日回退拉取 moneyflow，直到有数据或耗尽 lookback。"""
+    if start is None and max_lookback == DEFAULT_LOOKBACK_DAYS:
+        hinted = _LAST_SUCCESS_TRADE_DATE.get("moneyflow")
+        if hinted:
+            rows, _ = fetch_moneyflow(trade_date=hinted)
+            if rows:
+                return rows, hinted
+
     last_tried = ""
     for trade_date in iter_trade_date_strs(max_lookback=max_lookback, start=start):
         last_tried = trade_date
         rows, _ = fetch_moneyflow(trade_date=trade_date)
         if rows:
+            _LAST_SUCCESS_TRADE_DATE["moneyflow"] = trade_date
             return rows, trade_date
     return [], last_tried
+
+
+def _merge_moneyflow_into_quote_rows(quote_rows: list[dict[str, Any]], mf_rows: list[dict[str, Any]]) -> None:
+    mf_map = {str(row.get("vt_symbol") or ""): row for row in mf_rows if row.get("vt_symbol")}
+    for row in quote_rows:
+        mf = mf_map.get(str(row.get("vt_symbol") or ""))
+        if mf is None:
+            continue
+        for key in (
+            "net_mf_amount",
+            "buy_elg_amount",
+            "sell_elg_amount",
+            "buy_lg_amount",
+            "sell_lg_amount",
+            "buy_md_amount",
+            "sell_md_amount",
+            "moneyflow_source",
+        ):
+            if row.get(key) in (None, "", 0, 0.0) and mf.get(key) not in (None, "", 0, 0.0):
+                row[key] = mf[key]
 
 
 def fetch_limit_list_with_fallback(
@@ -154,6 +193,12 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
     if rows:
         pct_map = fetch_daily_pct_map(trade_date)
         quote_rows = daily_basic_to_quote_rows(rows, trade_date=trade_date, pct_map=pct_map)
+        try:
+            mf_rows, _mf_date = fetch_moneyflow_with_fallback()
+            if mf_rows:
+                _merge_moneyflow_into_quote_rows(quote_rows, mf_rows)
+        except Exception:
+            pass
         return MarketQuotesSnapshot(
             rows=quote_rows,
             updated_at=trade_date,
@@ -271,6 +316,10 @@ def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 item[key] = fund[key]
 
         for key in ("net_mf_amount", "buy_elg_amount", "sell_elg_amount"):
+            if _missing_display_value(item.get(key)) and not _missing_display_value(mf.get(key)):
+                item[key] = mf[key]
+
+        for key in ("buy_lg_amount", "sell_lg_amount", "buy_md_amount", "sell_md_amount"):
             if _missing_display_value(item.get(key)) and not _missing_display_value(mf.get(key)):
                 item[key] = mf[key]
 
