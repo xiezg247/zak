@@ -10,6 +10,7 @@ from vnpy_ashare.ai.context.quote.prompts import (
     build_bar_health_prompt,
     build_diagnose_ai_prompt,
     build_historical_ai_prompt,
+    build_note_review_prompt,
     build_positions_ai_prompt,
     build_reference_peer_prompt,
     build_sector_overview_prompt,
@@ -410,6 +411,14 @@ def build_floating_page_extras(
                 id="position_strategy",
                 label="持仓策略",
                 prompt=build_positions_ai_prompt(vt, name),
+            )
+        )
+    if page == "自选":
+        extras.append(
+            QuickAction(
+                id="note_review",
+                label="结合笔记复盘",
+                prompt=build_note_review_prompt(vt, name),
             )
         )
     if page != "自选" and not is_symbol_in_watchlist(binding.symbol, binding.exchange_cn):

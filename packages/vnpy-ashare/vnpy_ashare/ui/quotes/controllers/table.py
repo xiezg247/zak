@@ -1064,6 +1064,8 @@ class TableController:
                 page.refresh_depth()
         page._sync_stream_depth_subscription()
         page._emit_ai_context()
+        if page.config.show_stock_notes:
+            page._stock_notes.on_selection_item()
         if page.config.show_watchlist_signals:
             panel = getattr(page, "signal_panel", None)
             if panel is not None:

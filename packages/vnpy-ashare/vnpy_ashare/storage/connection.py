@@ -145,6 +145,41 @@ CREATE TABLE IF NOT EXISTS symbol_suspend_days (
 
 CREATE INDEX IF NOT EXISTS idx_symbol_suspend_lookup
     ON symbol_suspend_days(symbol, exchange, cal_date);
+
+CREATE TABLE IF NOT EXISTS stock_note_memos (
+    symbol TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (symbol, exchange)
+);
+
+CREATE TABLE IF NOT EXISTS stock_note_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_note_entries_lookup
+    ON stock_note_entries (symbol, exchange, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS stock_analysis_reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    symbol TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL,
+    source_scope TEXT NOT NULL DEFAULT '',
+    context_json TEXT NOT NULL DEFAULT '',
+    summary TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_analysis_reports_lookup
+    ON stock_analysis_reports (symbol, exchange, created_at DESC);
 """
 
 

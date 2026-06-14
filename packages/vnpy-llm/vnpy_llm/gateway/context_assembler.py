@@ -60,6 +60,8 @@ class ContextAssembler:
                 capabilities.append("个股诊断(通达信)")
             elif name.startswith("vnpy-watchlist"):
                 capabilities.append("自选管理")
+            elif name.startswith("vnpy-notes"):
+                capabilities.append("个股笔记")
             elif name.startswith("vnpy-sentiment"):
                 capabilities.append("全市场恐贪指数")
         if capabilities:

@@ -13,6 +13,8 @@ MARKET_PROMPT = """【Market Agent 职责】
 → trend_scenario_summary：走势情景分析（bull/base/bear 三情景；一次调用优先；禁止确定性预测）
 → get_bars_summary / get_bars_data：本地 K 线（无数据时提示下载日 K）
 → get_watchlist / list_watchlist_positions / add_to_watchlist / remove_from_watchlist：自选 CRUD
+→ get_stock_notes / append_stock_note_entry / update_stock_note_memo：个股投研笔记（备忘 + 流水）
+→ list_stock_analysis_reports / get_stock_analysis_report：历史 AI 分析报告（摘要与全文）
 → get_ashare_fear_greed_index：大盘环境、市场节奏、风险高低时自行判断是否调用；纯价格/自选 CRUD 时不要调用
 
 问「当前这只」「我选中的」时优先 get_quote_context。

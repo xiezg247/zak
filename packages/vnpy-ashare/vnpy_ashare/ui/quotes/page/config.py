@@ -186,6 +186,7 @@ class PageConfig:
     default_rank_id: str = "change_pct"
     show_watchlist_signals: bool = False
     show_watchlist_positions: bool = False
+    show_stock_notes: bool = False
     search_max_width: int = 280
 
 
@@ -296,6 +297,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_run_output_panel=False,
         show_watchlist_signals=True,
         show_watchlist_positions=True,
+        show_stock_notes=True,
     ),
     "本地": PageConfig(
         title="本地",

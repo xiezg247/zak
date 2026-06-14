@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.services.backtest_service import BacktestService
     from vnpy_ashare.services.bar_service import BarService
     from vnpy_ashare.services.financial_service import FinancialService
+    from vnpy_ashare.services.note_service import NoteService
     from vnpy_ashare.services.position_service import PositionService
     from vnpy_ashare.services.quote_service import QuoteService
     from vnpy_ashare.services.screening_service import ScreeningService
@@ -98,6 +99,12 @@ def get_watchlist_service(main_engine: MainEngine | None) -> WatchlistService | 
     """自选池 CRUD Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.watchlist_service if engine is not None else None
+
+
+def get_note_service(main_engine: MainEngine | None) -> NoteService | None:
+    """个股笔记 Service。"""
+    engine = get_ashare_engine(main_engine)
+    return engine.note_service if engine is not None else None
 
 
 def get_position_service(main_engine: MainEngine | None) -> PositionService | None:

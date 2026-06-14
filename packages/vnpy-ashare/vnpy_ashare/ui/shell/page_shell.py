@@ -62,11 +62,27 @@ class QuotesShellWidget(QtWidgets.QWidget):
             self._discovery_controller.activate()
         if self.page.config.show_watchlist_signals or self.page.config.show_watchlist_positions or self.page.config.show_run_output_panel:
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
+        if self.PAGE_NAME == "市场" and getattr(self.page, "rank_sidebar", None) is not None:
+            from vnpy_ashare.ui.quotes.features.market_rank_sidebar import sync_rank_splitter_for_expansion
+
+            sidebar = self.page.rank_sidebar
+            QtCore.QTimer.singleShot(
+                0,
+                lambda: sync_rank_splitter_for_expansion(self.page, sidebar.is_expanded()),
+            )
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
         if self.page.config.show_watchlist_signals or self.page.config.show_watchlist_positions or self.page.config.show_run_output_panel:
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
+        if self.PAGE_NAME == "市场" and getattr(self.page, "rank_sidebar", None) is not None:
+            from vnpy_ashare.ui.quotes.features.market_rank_sidebar import sync_rank_splitter_for_expansion
+
+            sidebar = self.page.rank_sidebar
+            QtCore.QTimer.singleShot(
+                0,
+                lambda: sync_rank_splitter_for_expansion(self.page, sidebar.is_expanded()),
+            )
 
     def deactivate(self) -> None:
         self.page.deactivate()

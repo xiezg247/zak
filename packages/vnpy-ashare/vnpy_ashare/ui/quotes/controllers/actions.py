@@ -91,6 +91,8 @@ class ActionsController:
             page._local.update_batch_toolbar_buttons()
         if page.config.show_diagnose_button:
             page.diagnose_button.setEnabled(item is not None)
+        if page.config.show_stock_notes:
+            page.quick_note_button.setEnabled(item is not None)
 
     def on_chart_tab_changed(self, index: int) -> None:
         page = self._p
@@ -131,8 +133,31 @@ class ActionsController:
             item=page.current_item,
             quote=quote,
             bar_count=bar_count,
-            signal_extra=self._signal_context_extra(),
+            signal_extra=self._context_extra(),
         )
+
+    def _context_extra(self) -> str:
+        parts: list[str] = []
+        signal = self._signal_context_extra()
+        if signal:
+            parts.append(signal)
+        note = self._note_context_extra()
+        if note:
+            parts.append(note)
+        return "\n\n".join(parts)
+
+    def _note_context_extra(self) -> str:
+        page = self._p
+        if not page.config.show_stock_notes:
+            return ""
+        item = page.current_item
+        if item is None:
+            return ""
+        service = page._get_note_service()
+        if service is None:
+            return ""
+        bundle = service.get_bundle(item.symbol, item.exchange)
+        return service.build_ai_snippet(bundle)
 
     def _signal_context_extra(self) -> str:
         page = self._p
@@ -598,6 +623,9 @@ class ActionsController:
 
         action = menu.addAction("个股分析")
         action.triggered.connect(lambda _checked=False, it=item: self.open_stock_analysis(it))
+        if page.config.show_stock_notes and hasattr(page, "stock_note_panel"):
+            action = menu.addAction("添加笔记")
+            action.triggered.connect(page.quick_note_for_selected)
         menu.addSeparator()
 
         ai_menu = menu.addMenu("AI 分析 ▸")

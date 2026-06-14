@@ -11,6 +11,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.app.engine_access import (
     get_analysis_service,
     get_bar_service,
+    get_note_service,
     get_position_service,
     get_quote_service,
     get_watchlist_service,
@@ -41,7 +42,7 @@ from vnpy_ashare.ui.quotes.controllers import (
     WatchlistBatchBacktestController,
     WatchlistController,
 )
-from vnpy_ashare.ui.quotes.features import MarketRankFeature, WatchlistPanelsFeature
+from vnpy_ashare.ui.quotes.features import MarketRankFeature, StockNotesFeature, WatchlistPanelsFeature
 from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
     MARKET_SCROLL_DEBOUNCE_MS,
@@ -163,6 +164,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_industry_filter_listener = None
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
+        self._stock_notes = StockNotesFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
 
         self._load_worker: QtCore.QThread | None = None
@@ -288,6 +290,8 @@ class QuotesPage(QtWidgets.QWidget):
         if self.config.show_watchlist_positions:
             self._positions.start()
             self._positions.on_stock_list_loaded()
+        if self.config.show_stock_notes:
+            self._stock_notes.on_selection_item()
 
     def deactivate(self) -> None:
         if self.config.use_radar_cards:
@@ -309,6 +313,9 @@ class QuotesPage(QtWidgets.QWidget):
         self._quote_timer.stop()
         self._signals.stop()
         self._positions.stop()
+        panel = getattr(self, "stock_note_panel", None)
+        if panel is not None:
+            panel.flush_memo()
         for attr in (
             "_load_worker",
             "_market_worker",
@@ -552,6 +559,34 @@ class QuotesPage(QtWidgets.QWidget):
     def _wire_position_panel(self) -> None:
         self._watchlist_panels.wire_position_panel()
 
+    def _wire_stock_note_panel(self) -> None:
+        self._stock_notes.wire_panel()
+
+    def quick_note_for_selected(self) -> None:
+        self._stock_notes.focus_quick_note()
+
+    def open_notes_center(self) -> None:
+        from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
+
+        main_engine = self._get_main_engine()
+        if main_engine is None:
+            return
+        initial_vt_symbol = ""
+        key = self._selected_stock_key()
+        if key is not None:
+            initial_vt_symbol = f"{key[0]}.{key[1].name}"
+        parent = self.window()
+        focus_watchlist = None
+        if parent is not None and hasattr(parent, "focus_watchlist_symbol"):
+            focus_watchlist = parent.focus_watchlist_symbol
+        show_notes_center_dialog(
+            main_engine,
+            self.event_engine,
+            focus_watchlist=focus_watchlist,
+            initial_vt_symbol=initial_vt_symbol,
+            parent=parent,
+        )
+
     def _on_position_panel_expansion_changed(self, _expanded: bool) -> None:
         self._watchlist_panels.on_position_panel_expansion_changed(_expanded)
 
@@ -757,6 +792,9 @@ class QuotesPage(QtWidgets.QWidget):
 
     def _get_position_service(self):
         return get_position_service(self._get_main_engine())
+
+    def _get_note_service(self):
+        return get_note_service(self._get_main_engine())
 
     def _get_analysis_service(self):
         return get_analysis_service(self._get_main_engine())

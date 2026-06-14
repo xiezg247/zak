@@ -13,11 +13,15 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 RANK_SIDEBAR_EXPANDED_KEY = "quotes/market/rank_sidebar_expanded_v1"
-RANK_SIDEBAR_EXPANDED_WIDTH = 116
+RANK_SIDEBAR_EXPANDED_WIDTH = 132
 RANK_SIDEBAR_HANDLE_WIDTH = 24
 RANK_SIDEBAR_COLLAPSED_WIDTH = RANK_SIDEBAR_HANDLE_WIDTH
 COLLAPSE_BUTTON_SIZE = 20
 RANK_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
+RANK_ROW_KIND_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
+KIND_GROUP = "group"
+KIND_RANK = "rank"
+RANK_ITEM_INDENT = 14
 
 
 def load_rank_sidebar_expanded(*, default: bool = True) -> bool:
@@ -40,6 +44,75 @@ def rank_sidebar_collapse_arrow(expanded: bool) -> QtCore.Qt.ArrowType:
     return QtCore.Qt.ArrowType.LeftArrow if expanded else QtCore.Qt.ArrowType.RightArrow
 
 
+class RankSidebarDelegate(QtWidgets.QStyledItemDelegate):
+    """分组标题与可点榜单项分层绘制，避免二级项与分组混淆。"""
+
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ) -> None:
+        kind = index.data(RANK_ROW_KIND_ROLE)
+        if kind == KIND_GROUP:
+            self._paint_group(painter, option, index)
+            return
+
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        opt.rect = opt.rect.adjusted(RANK_ITEM_INDENT, 0, -4, 0)
+        if opt.state & QtWidgets.QStyle.StateFlag.State_Selected:
+            tokens = theme_manager().tokens()
+            accent = QtGui.QColor(tokens.accent)
+            bar_rect = QtCore.QRect(
+                option.rect.left() + 6,
+                option.rect.top() + 5,
+                3,
+                option.rect.height() - 10,
+            )
+            painter.fillRect(bar_rect, accent)
+        super().paint(painter, opt, index)
+
+    def sizeHint(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ) -> QtCore.QSize:
+        base = super().sizeHint(option, index)
+        kind = index.data(RANK_ROW_KIND_ROLE)
+        if kind == KIND_GROUP:
+            extra = 8 if index.row() > 0 else 2
+            return QtCore.QSize(base.width(), max(24, base.height()) + extra)
+        return QtCore.QSize(base.width(), max(30, base.height()))
+
+    def _paint_group(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ) -> None:
+        tokens = theme_manager().tokens()
+        rect = option.rect
+        painter.save()
+        if index.row() > 0:
+            line_y = rect.top() + 4
+            painter.setPen(QtGui.QColor(tokens.panel_border))
+            painter.drawLine(rect.left() + 8, line_y, rect.right() - 8, line_y)
+            rect = rect.adjusted(0, 8, 0, 0)
+        font = painter.font()
+        font.setBold(True)
+        if font.pointSize() > 0:
+            font.setPointSize(max(font.pointSize() - 1, 8))
+        painter.setFont(font)
+        painter.setPen(QtGui.QColor(tokens.text_muted))
+        text = str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
+        painter.drawText(
+            rect.adjusted(10, 0, -8, 0),
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            text,
+        )
+        painter.restore()
+
+
 def populate_rank_sidebar_list(rank_list: QtWidgets.QListWidget) -> None:
     rank_list.clear()
     for group_title, spec in iter_rank_sidebar_rows():
@@ -47,16 +120,12 @@ def populate_rank_sidebar_list(rank_list: QtWidgets.QListWidget) -> None:
             header = QtWidgets.QListWidgetItem(group_title)
             header.setFlags(QtCore.Qt.ItemFlag.NoItemFlags)
             header.setData(RANK_ID_ROLE, "")
-            font = rank_list.font()
-            header_font = QtGui.QFont(font)
-            if header_font.pointSize() > 0:
-                header_font.setPointSize(max(header_font.pointSize() - 1, 8))
-            header_font.setBold(True)
-            header.setFont(header_font)
+            header.setData(RANK_ROW_KIND_ROLE, KIND_GROUP)
             rank_list.addItem(header)
             continue
         item = QtWidgets.QListWidgetItem(spec.title)
         item.setData(RANK_ID_ROLE, spec.id)
+        item.setData(RANK_ROW_KIND_ROLE, KIND_RANK)
         rank_list.addItem(item)
 
 
@@ -96,6 +165,8 @@ class MarketRankSidebar(QtWidgets.QWidget):
 
         self.rank_list = QtWidgets.QListWidget(self._body)
         self.rank_list.setObjectName("RankSidebar")
+        self.rank_list.setItemDelegate(RankSidebarDelegate(self.rank_list))
+        self.rank_list.setSpacing(1)
         populate_rank_sidebar_list(self.rank_list)
         body_layout.addWidget(self.rank_list, stretch=1)
 
@@ -169,6 +240,47 @@ class MarketRankSidebar(QtWidgets.QWidget):
             self.expansion_changed.emit(expanded)
 
 
+def _rank_sidebar_target_width(expanded: bool) -> int:
+    return RANK_SIDEBAR_EXPANDED_WIDTH if expanded else RANK_SIDEBAR_COLLAPSED_WIDTH
+
+
+def _rank_splitter_total_width(splitter: QtWidgets.QSplitter) -> int:
+    width = splitter.width()
+    if width > 0:
+        return width
+    sizes = splitter.sizes()
+    return max(sum(sizes), RANK_SIDEBAR_EXPANDED_WIDTH + 200)
+
+
+def clamp_rank_splitter_sizes(page: QuotesPage) -> None:
+    """侧栏为固定宽度，splitter 左栏须与之一致，避免展开后出现空白条。"""
+    sidebar = getattr(page, "rank_sidebar", None)
+    splitter = getattr(page, "_rank_splitter", None)
+    if sidebar is None or splitter is None or splitter.count() < 2:
+        return
+    target = _rank_sidebar_target_width(sidebar.is_expanded())
+    sizes = splitter.sizes()
+    if len(sizes) >= 2 and sizes[0] == target:
+        return
+    total = _rank_splitter_total_width(splitter)
+    splitter.blockSignals(True)
+    splitter.setSizes([target, max(total - target, 0)])
+    splitter.blockSignals(False)
+
+
+class MarketRankSplitterResizeFilter(QtCore.QObject):
+    """窗口或 splitter 尺寸变化时重新对齐榜单栏宽度。"""
+
+    def __init__(self, page: QuotesPage) -> None:
+        super().__init__(page)
+        self._page = page
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        if event.type() == QtCore.QEvent.Type.Resize:
+            clamp_rank_splitter_sizes(self._page)
+        return super().eventFilter(watched, event)
+
+
 def sync_rank_splitter_for_expansion(page: QuotesPage, expanded: bool) -> None:
     """折叠时收窄 splitter 左侧整栏，仅保留折叠钮。"""
     sidebar = getattr(page, "rank_sidebar", None)
@@ -176,22 +288,10 @@ def sync_rank_splitter_for_expansion(page: QuotesPage, expanded: bool) -> None:
     if sidebar is None or splitter is None or splitter.count() < 2:
         return
 
-    if expanded:
-        sidebar.setMinimumWidth(RANK_SIDEBAR_EXPANDED_WIDTH)
-        sidebar.setMaximumWidth(RANK_SIDEBAR_EXPANDED_WIDTH)
-        saved = getattr(page, "_rank_splitter_saved_state", None)
-        if isinstance(saved, QtCore.QByteArray) and not saved.isEmpty():
-            splitter.restoreState(saved)
-        return
-
-    state = splitter.saveState()
-    if isinstance(state, QtCore.QByteArray) and not state.isEmpty():
-        page._rank_splitter_saved_state = state
-
-    sidebar.setMinimumWidth(RANK_SIDEBAR_COLLAPSED_WIDTH)
-    sidebar.setMaximumWidth(RANK_SIDEBAR_COLLAPSED_WIDTH)
-    sizes = splitter.sizes()
-    total = max(sum(sizes), splitter.width(), RANK_SIDEBAR_EXPANDED_WIDTH + 200)
+    width = _rank_sidebar_target_width(expanded)
+    sidebar.setMinimumWidth(width)
+    sidebar.setMaximumWidth(width)
+    total = _rank_splitter_total_width(splitter)
     splitter.blockSignals(True)
-    splitter.setSizes([RANK_SIDEBAR_COLLAPSED_WIDTH, total - RANK_SIDEBAR_COLLAPSED_WIDTH])
+    splitter.setSizes([width, max(total - width, 0)])
     splitter.blockSignals(False)

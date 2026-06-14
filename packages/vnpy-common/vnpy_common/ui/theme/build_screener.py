@@ -91,10 +91,13 @@ QProgressBar#PageTaskProgress::chunk {{
     border-radius: 2px;
 }}
 QTableWidget#MarketTable::item,
-QTableView#MarketTable::item,
+QTableView#MarketTable::item {{
+    padding: 6px 8px;
+}}
 QTableWidget#ScreenerResultsTable::item,
 QTableView#ScreenerResultsTable::item {{
-    padding: 6px 8px;
+    padding: 0 8px;
+    border: none;
 }}
 QTableWidget#ScreenerResultsTable QHeaderView::section,
 QTableView#ScreenerResultsTable QHeaderView::section {{

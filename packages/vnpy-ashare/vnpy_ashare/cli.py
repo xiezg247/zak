@@ -28,6 +28,7 @@ from vnpy_ashare.commands import data as data_commands
 from vnpy_ashare.commands import diagnose as diagnose_commands
 from vnpy_ashare.commands import jobs as jobs_commands
 from vnpy_ashare.commands import meta as meta_commands
+from vnpy_ashare.commands import notes as notes_commands
 from vnpy_ashare.commands import quotes as quotes_commands
 from vnpy_ashare.commands import recipe as recipe_commands
 from vnpy_ashare.commands import screener as screener_commands
@@ -44,6 +45,7 @@ def _build_parser() -> argparse.ArgumentParser:
     recipe_commands.register(subparsers)
     data_commands.register(subparsers)
     meta_commands.register(subparsers)
+    notes_commands.register(subparsers)
     quotes_commands.register(subparsers)
     tools_commands.register(subparsers)
     skills_commands.register(subparsers)

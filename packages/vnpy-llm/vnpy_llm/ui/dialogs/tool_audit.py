@@ -38,6 +38,13 @@ _TOOL_LABELS: dict[str, str] = {
     "list_backtest_history": "查询回测历史",
     "add_to_watchlist": "加入自选",
     "remove_from_watchlist": "移出自选",
+    "get_stock_notes": "查询个股笔记",
+    "append_stock_note_entry": "追加笔记流水",
+    "update_stock_note_memo": "更新备忘",
+    "delete_stock_note_entry": "删除笔记流水",
+    "clear_stock_notes": "清空个股笔记",
+    "list_stock_analysis_reports": "列出分析报告",
+    "get_stock_analysis_report": "读取分析报告全文",
 }
 
 

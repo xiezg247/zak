@@ -54,6 +54,34 @@ def stream_chat_completion(
             yield delta
 
 
+def complete_chat_completion(
+    config: LlmConfig,
+    messages: list[dict[str, str]],
+    *,
+    max_tokens: int | None = None,
+) -> str:
+    """非流式单次补全，供笔记整理等短任务使用。"""
+    client = create_openai_client(config)
+    token_limit = max_tokens if max_tokens is not None else min(config.max_tokens, 2048)
+    try:
+        response = client.chat.completions.create(
+            model=config.model,
+            messages=messages,
+            max_tokens=token_limit,
+            temperature=config.temperature,
+            stream=False,
+        )
+    except Exception as ex:
+        raise LlmClientError(str(ex)) from ex
+    choices = getattr(response, "choices", None) or []
+    if not choices:
+        return ""
+    message = getattr(choices[0], "message", None)
+    if message is None:
+        return ""
+    return str(getattr(message, "content", "") or "").strip()
+
+
 def _extract_delta(chunk: Any) -> str:
     choices = getattr(chunk, "choices", None)
     if not choices:

@@ -29,6 +29,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals import (
     configure_center_splitter,
     restore_center_splitter,
 )
+from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.theme import theme_manager
@@ -209,6 +210,17 @@ class QuotesPageShell:
         page.register_position_button.clicked.connect(page.register_position_for_selected)
         page.register_position_button.setVisible(page.config.show_watchlist_positions)
 
+        page.quick_note_button = QtWidgets.QPushButton("记一笔", page)
+        page.quick_note_button.setObjectName("SecondaryButton")
+        page.quick_note_button.clicked.connect(page.quick_note_for_selected)
+        page.quick_note_button.setEnabled(False)
+        page.quick_note_button.setVisible(page.config.show_stock_notes)
+
+        page.notes_center_button = QtWidgets.QPushButton("笔记中心", page)
+        page.notes_center_button.setObjectName("SecondaryButton")
+        page.notes_center_button.clicked.connect(page.open_notes_center)
+        page.notes_center_button.setVisible(page.config.show_stock_notes)
+
         page.diagnose_button = QtWidgets.QPushButton("诊断", page)
         page.diagnose_button.clicked.connect(page._actions.run_diagnose_for_selected)
         page.diagnose_button.setEnabled(False)
@@ -299,6 +311,9 @@ class QuotesPageShell:
             toolbar.addWidget(page.add_signal_panel_button)
         if page.config.show_watchlist_positions:
             toolbar.addWidget(page.register_position_button)
+        if page.config.show_stock_notes:
+            toolbar.addWidget(page.quick_note_button)
+            toolbar.addWidget(page.notes_center_button)
         if page.config.show_diagnose_button:
             toolbar.addWidget(page.diagnose_button)
         if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
@@ -459,6 +474,9 @@ class QuotesPageShell:
                 page.diagnose_panel.refresh_requested.connect(page.run_diagnose_for_selected)
                 right_panel.addWidget(page.diagnose_panel)
             right_panel.addWidget(chart_row_host, stretch=1)
+            if page.config.show_stock_notes:
+                page.stock_note_panel = StockNotePanel(page)
+                right_panel.addWidget(page.stock_note_panel)
 
             page.chart_section = ChartSectionPanel(page.page_name)
             page.chart_section.set_content(right_content)
@@ -514,6 +532,8 @@ class QuotesPageShell:
                 page._wire_signal_panel()
             if page.config.show_watchlist_positions:
                 page._wire_position_panel()
+            if page.config.show_stock_notes:
+                page._wire_stock_note_panel()
             splitter.addWidget(center_widget)
 
             page._right_panel_widget = page.chart_section
@@ -548,6 +568,8 @@ class QuotesPageShell:
             if page.config.show_rank_sidebar:
                 from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
                     MarketRankSidebar,
+                    MarketRankSplitterResizeFilter,
+                    clamp_rank_splitter_sizes,
                     sync_rank_splitter_for_expansion,
                 )
 
@@ -556,12 +578,18 @@ class QuotesPageShell:
                 page.rank_list.currentRowChanged.connect(page._on_rank_type_changed)
                 rank_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
                 rank_splitter.setObjectName("MarketRankSplitter")
+                rank_splitter.setChildrenCollapsible(False)
                 rank_splitter.addWidget(page.rank_sidebar)
                 rank_splitter.addWidget(center_widget)
                 rank_splitter.setStretchFactor(0, 0)
                 rank_splitter.setStretchFactor(1, 1)
                 rank_splitter.setHandleWidth(1)
                 page._rank_splitter = rank_splitter
+                page._rank_splitter_filter = MarketRankSplitterResizeFilter(page)
+                rank_splitter.installEventFilter(page._rank_splitter_filter)
+                rank_splitter.splitterMoved.connect(
+                    lambda _pos, _index: clamp_rank_splitter_sizes(page)
+                )
                 page.rank_sidebar.expansion_changed.connect(
                     lambda expanded: sync_rank_splitter_for_expansion(page, expanded)
                 )

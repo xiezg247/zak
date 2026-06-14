@@ -35,6 +35,9 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "get_quote_context",
             "get_bars_summary",
             "get_bars_data",
+            "get_stock_notes",
+            "list_stock_analysis_reports",
+            "get_stock_analysis_report",
         }
     ),
     "technical": frozenset(
@@ -53,6 +56,9 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
         {
             "get_quote_context",
             "diagnose_stock",
+            "get_stock_notes",
+            "list_stock_analysis_reports",
+            "get_stock_analysis_report",
         }
     ),
     "screening": frozenset(
@@ -86,6 +92,13 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "get_quote_context",
             "list_strategy_signals",
             "list_watchlist_signal_panel",
+            "get_stock_notes",
+            "append_stock_note_entry",
+            "update_stock_note_memo",
+            "delete_stock_note_entry",
+            "clear_stock_notes",
+            "list_stock_analysis_reports",
+            "get_stock_analysis_report",
         }
     ),
     "data": frozenset(

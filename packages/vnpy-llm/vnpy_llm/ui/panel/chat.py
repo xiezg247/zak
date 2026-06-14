@@ -31,6 +31,7 @@ from vnpy_llm.ui.themed_styles import bind_ai_panel_style
 from vnpy_llm.ui.trace.widgets import AiInlineTraceBlock
 
 _STOCK_CODE_RE = re.compile(r"\b(\d{6})\b")
+_NOTE_MARKDOWN_PROP = "zak_note_markdown"
 
 
 class AiInputEdit(QtWidgets.QPlainTextEdit):
@@ -696,10 +697,75 @@ class AiChatPanel(QtWidgets.QWidget):
         )
         browser.setHtml(html)
         self._sync_browser_bubble(browser)
+        self._bind_assistant_note_menu(browser, content)
         self._insert_bubble_row("assistant", browser)
+
+    def _bind_assistant_note_menu(self, bubble: QtWidgets.QWidget, markdown: str) -> None:
+        bubble.setProperty(_NOTE_MARKDOWN_PROP, markdown.strip())
+        bubble.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        bubble.customContextMenuRequested.connect(
+            lambda pos, widget=bubble: self._on_assistant_note_menu(widget, pos),
+        )
+
+    def _assistant_bubble_text(self, bubble: QtWidgets.QWidget) -> str:
+        stored = bubble.property(_NOTE_MARKDOWN_PROP)
+        if stored:
+            return str(stored).strip()
+        if isinstance(bubble, QtWidgets.QTextBrowser):
+            return bubble.toPlainText().strip()
+        if isinstance(bubble, QtWidgets.QLabel):
+            return bubble.text().strip()
+        return ""
+
+    def _on_assistant_note_menu(self, bubble: QtWidgets.QWidget, pos: QtCore.QPoint) -> None:
+        body = self._assistant_bubble_text(bubble)
+        if not body:
+            page_notify(self, "消息内容为空", level="info")
+            return
+        try:
+            from vnpy_ashare.ui.features.notes_center.save_from_ai import (
+                resolve_context_stock,
+                save_message_as_journal,
+                save_message_as_report,
+            )
+        except ImportError:
+            page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
+            return
+
+        stock = resolve_context_stock()
+        menu = QtWidgets.QMenu(self)
+        if stock is None:
+            disabled = menu.addAction("需先在看盘页选中标的")
+            disabled.setEnabled(False)
+        else:
+            save_report = menu.addAction(f"存为分析报告（{stock.vt_symbol}）…")
+            save_journal = menu.addAction(f"追加到流水（{stock.vt_symbol}）")
+            save_report.triggered.connect(lambda: self._save_assistant_as_report(body, stock))
+            save_journal.triggered.connect(lambda: self._save_assistant_as_journal(body, stock))
+        copy_action = menu.addAction("复制全文")
+        copy_action.triggered.connect(
+            lambda: QtGui.QGuiApplication.clipboard().setText(body),
+        )
+        menu.popup(bubble.mapToGlobal(pos))
+
+    def _save_assistant_as_report(self, body: str, stock) -> None:
+        from vnpy_ashare.ui.features.notes_center.save_from_ai import save_message_as_report
+
+        if save_message_as_report(self.engine.main_engine, body, parent=self, stock=stock):
+            page_notify(self, f"已保存分析报告（{stock.vt_symbol}）", level="success")
+
+    def _save_assistant_as_journal(self, body: str, stock) -> None:
+        from vnpy_ashare.ui.features.notes_center.save_from_ai import save_message_as_journal
+
+        if save_message_as_journal(self.engine.main_engine, body, stock=stock):
+            page_notify(self, f"已追加流水（{stock.vt_symbol}）", level="success")
+        else:
+            page_notify(self, "保存失败或内容被截断为空", level="warning")
 
     def _append_bubble(self, role: str, content: str, *, persist: bool) -> QtWidgets.QWidget:
         bubble = self._create_label_bubble(role, content)
+        if role == "assistant":
+            self._bind_assistant_note_menu(bubble, content)
         self._insert_bubble_row(role, bubble)
         self._sync_label_bubble(bubble)
         if persist:
@@ -922,6 +988,10 @@ class AiChatPanel(QtWidgets.QWidget):
     def _on_stream_finished(self) -> None:
         self._remove_pending_bubble()
         if self._streaming_bubble is not None:
+            if isinstance(self._streaming_bubble, QtWidgets.QWidget):
+                text = self._assistant_bubble_text(self._streaming_bubble)
+                if text:
+                    self._bind_assistant_note_menu(self._streaming_bubble, text)
             self._sync_all_bubble_widths()
         self._streaming_bubble = None
 

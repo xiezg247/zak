@@ -643,24 +643,23 @@ QLabel#MarketRankSidebarTitle {{
     color: {t.text_muted};
     font-size: 11px;
     font-weight: 600;
-    padding: 10px 12px 6px 12px;
+    padding: 10px 12px 4px 12px;
 }}
 QListWidget#RankSidebar {{
     background-color: transparent;
     border: none;
     outline: none;
-    padding: 0 6px 8px 6px;
+    padding: 0 4px 8px 4px;
     font-size: 12px;
 }}
 QListWidget#RankSidebar::item {{
-    color: {t.text_secondary};
-    padding: 8px 10px;
+    color: {t.text_primary};
+    padding: 6px 8px;
     border-radius: 6px;
-    margin: 2px 0;
+    margin: 1px 0;
 }}
 QListWidget#RankSidebar::item:hover {{
     background-color: {t.nav_hover_bg};
-    color: {t.text_primary};
 }}
 QListWidget#RankSidebar::item:selected {{
     background-color: {t.nav_selected_bg};

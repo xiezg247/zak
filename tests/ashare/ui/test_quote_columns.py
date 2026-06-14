@@ -146,6 +146,16 @@ class TestMarketRankSidebarPref(unittest.TestCase):
         self.assertEqual(rank_sidebar_collapse_arrow(True), QtCore.Qt.ArrowType.LeftArrow)
         self.assertEqual(rank_sidebar_collapse_arrow(False), QtCore.Qt.ArrowType.RightArrow)
 
+    def test_rank_sidebar_row_structure(self) -> None:
+        from vnpy_ashare.quotes.rank_catalog import iter_rank_sidebar_rows
+
+        rows = iter_rank_sidebar_rows()
+        self.assertGreater(len(rows), 2)
+        self.assertIsNone(rows[0][1])
+        self.assertEqual(rows[0][0], "价格")
+        self.assertIsNotNone(rows[1][1])
+        self.assertEqual(rows[1][1].title, "涨幅榜")
+
 
 class TestQuoteSourceLabel(unittest.TestCase):
     def test_quote_source_labels(self) -> None:

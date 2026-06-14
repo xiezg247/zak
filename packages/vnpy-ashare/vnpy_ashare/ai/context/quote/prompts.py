@@ -269,3 +269,12 @@ def screening_prompt(intent: str, *, detail: str = "") -> str:
         "自定义区间需明确涨幅/换手阈值。"
         "结果用 Markdown 表格展示，默认 Top 20，排除 ST，注明数据来源。"
     )
+
+
+def build_note_review_prompt(vt_symbol: str, name: str = "") -> str:
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    return (
+        f"请结合我对 {title} 的备忘、流水与历史分析报告（见终端上下文 extra，或调用 get_stock_notes / list_stock_analysis_reports / get_stock_analysis_report），"
+        "做结构化复盘：核心逻辑是否仍成立、与当前行情的关系、需跟踪的风险点。"
+        "仅供研究，不构成买卖建议。"
+    )

@@ -38,6 +38,21 @@ _NUMERIC_SORT_KEYS = frozenset(
     }
 )
 
+_SCREENER_ROW_HEIGHT = 30
+
+
+class ScreenerResultsTableDelegate(QtWidgets.QStyledItemDelegate):
+    """选股结果表：强制垂直居中，避免 QSS padding 导致内容贴顶。"""
+
+    def initStyleOption(
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ) -> None:
+        super().initStyleOption(option, index)
+        horizontal = option.displayAlignment & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
+        option.displayAlignment = horizontal | QtCore.Qt.AlignmentFlag.AlignVCenter
+
 
 def configure_screener_results_table(table: QtWidgets.QTableWidget) -> None:
     """选股结果表通用配置：勾选列 + 排序 + 行高。"""
@@ -46,9 +61,16 @@ def configure_screener_results_table(table: QtWidgets.QTableWidget) -> None:
     table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
     table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
     table.verticalHeader().setVisible(False)
-    table.verticalHeader().setDefaultSectionSize(34)
+    table.verticalHeader().setDefaultSectionSize(_SCREENER_ROW_HEIGHT)
+    table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Fixed)
     table.setAlternatingRowColors(True)
     table.setSortingEnabled(True)
+    table.setShowGrid(False)
+    table.setWordWrap(False)
+    table.setItemDelegate(ScreenerResultsTableDelegate(table))
+    from vnpy_common.ui.scroll_area import style_market_table_scroll_bars
+
+    style_market_table_scroll_bars(table)
     header = table.horizontalHeader()
     if hasattr(header, "setStretchHighlightSections"):
         header.setStretchHighlightSections(False)
@@ -182,6 +204,7 @@ def populate_screener_results_table(
         check_item = QtWidgets.QTableWidgetItem()
         check_item.setFlags(QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled)
         check_item.setCheckState(QtCore.Qt.CheckState.Unchecked)
+        check_item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         check_item.setData(ROW_DATA_ROLE, row)
         table.setItem(row_index, 0, check_item)
 

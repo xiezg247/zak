@@ -171,6 +171,11 @@ class AshareMainWindow(MainWindow):
         self._ai_toggle_action.triggered.connect(self._toggle_floating_orb)
         self.addAction(self._ai_toggle_action)
         tools_menu.addSeparator()
+        notes_center_action = tools_menu.addAction("笔记中心…")
+        notes_center_action.triggered.connect(self._open_notes_center_dialog)
+        notes_center_action.setShortcut(QtGui.QKeySequence("Ctrl+Shift+N"))
+        self.addAction(notes_center_action)
+        tools_menu.addSeparator()
         ai_tools_action = tools_menu.addAction("AI 工具能力…")
         ai_tools_action.triggered.connect(self._open_ai_tools_dialog)
         audit_action = tools_menu.addAction("AI 工具审计…")
@@ -272,6 +277,7 @@ class AshareMainWindow(MainWindow):
             "全局",
             "  Ctrl+F    聚焦当前页搜索框",
             "  Ctrl+L    显示/隐藏 AI 悬浮球",
+            "  Ctrl+Shift+N  笔记中心",
         ]
         show_info_dialog(self, "键盘快捷键", "\n".join(lines), monospace=True)
 
@@ -640,6 +646,37 @@ class AshareMainWindow(MainWindow):
             ensure_apps=self._ensure_deferred_apps,
             parent=self,
         )
+
+    def _open_notes_center_dialog(self) -> None:
+        from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
+
+        show_notes_center_dialog(
+            self.main_engine,
+            self.event_engine,
+            focus_watchlist=self.focus_watchlist_symbol,
+            parent=self,
+        )
+
+    def focus_watchlist_symbol(self, symbol: str, exchange_name: str) -> None:
+        """切换到自选页并选中指定标的。"""
+        from vnpy.trader.constant import Exchange
+
+        index = self._nav_index_for_key("watchlist")
+        if index is None:
+            return
+        try:
+            exchange = Exchange[exchange_name]
+        except KeyError:
+            return
+        self._show_page(index)
+        widget = self._page_widgets.get("watchlist")
+        if widget is None or not hasattr(widget, "page"):
+            return
+        page = widget.page
+        page._select_stock_key((symbol, exchange))
+        page.activate()
+        if page.config.show_stock_notes and hasattr(page, "stock_note_panel"):
+            page.stock_note_panel.expand()
 
     def _ensure_deferred_apps(self) -> None:
         if self._deferred_apps_registered:

@@ -23,6 +23,8 @@ class ScreenerResultsTableTests(unittest.TestCase):
         table = QtWidgets.QTableWidget(0, 0)
         configure_screener_results_table(table)
         self.assertEqual(table.objectName(), "ScreenerResultsTable")
+        self.assertFalse(table.showGrid())
+        self.assertEqual(table.verticalHeader().defaultSectionSize(), 30)
 
     def test_empty_state_hides_table_without_default_selection(self) -> None:
         label = QtWidgets.QLabel("empty")
