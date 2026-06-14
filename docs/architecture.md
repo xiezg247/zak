@@ -18,11 +18,11 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 │ 菜单栏：系统 / 工具 / 配置 / 帮助                        │
 ├────┬──────────────────────────────────────────┬─────────┤
 │左侧│  中央内容区（StackedWidget）                │ AI Dock │
-│导航│  自选/市场/策略选股/自动选股/本地/回测/…     │（可选）  │
+│导航│  自选/市场/板块资金/雷达/本地/选股/回测/…     │（可选）  │
 └────┴──────────────────────────────────────────┴─────────┘
 ```
 
-导航：`vnpy_ashare/ui/nav.py` → `APP_NAV_ENTRIES`。
+导航：`vnpy_ashare/ui/shell/nav.py` → `APP_NAV_GROUPS`（侧栏）+ `BACKSTAGE_ENTRIES`（菜单栏后台页）。
 
 ## 包结构
 
@@ -35,11 +35,12 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/storage/` | app_db、universe、交易日历 |
 | `packages/vnpy-ashare/vnpy_ashare/backtest/` | CTA App/Engine、run_store |
 | `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
-| `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方（`run/`、`recipe/`、`preset/`、`data/`、`dimensions/`） |
+| `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方（`run/`、`recipe/`、`preset/`、`sector/`、`data/`、`dimensions/`） |
 | `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
 | `packages/vnpy-ashare/vnpy_ashare/ui/shell/` | 主窗口、导航（`settings/`、`manager/`） |
-| `packages/vnpy-ashare/vnpy_ashare/ui/quotes/` | 看盘页（`page/`、`controllers/`、`chart/`、`table/`、`panels/`、`workers/`） |
-| `packages/vnpy-ashare/vnpy_ashare/ui/screener/` | 选股页（`pages/`、`widgets/`、`dialogs/`、`workers/`） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/quotes/` | 看盘页 + 雷达（`page/`、`radar/`、`chart/`、`table/`、`panels/`、`workers/`） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/sector_flow/` | 板块资金页 |
+| `packages/vnpy-ashare/vnpy_ashare/ui/screener/` | 选股 hub（`pages/screener_hub_page.py`：条件选股 + 多因子配方；`widgets/`、`dialogs/`、`workers/`） |
 | `packages/vnpy-ashare/vnpy_ashare/ui/backtest/` | 回测页（`pages/`、`flow/`、`chart/`、`table/`） |
 | `packages/vnpy-ashare/vnpy_ashare/ui/components/` | 跨页复用（chart_style、表格、任务输出） |
 | `packages/vnpy-tickflow` | TickFlow 适配（`client/`、`klines/`、`mapping/`、`datafeed/`） |
@@ -71,6 +72,17 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 
 批量回测：`ui/backtest/flow/`；对比页：`ui/backtest/pages/`。
 
+## 板块资金与雷达
+
+| 页 | 路径 | 职责 |
+|----|------|------|
+| 板块资金 | `ui/sector_flow/` | 行业/概念资金流向；`SectorFlowService` 聚合 Tushare 板块数据 |
+| 雷达 | `ui/quotes/radar/` + `page_shell.RadarPageWidget` | 多卡片盘面扫描、共振列表；卡片可跳转板块资金 / 条件选股 |
+
+## 选股 Hub（`ui/screener/`）
+
+`ScreenerHubPageWidget` 内嵌「条件选股」（`screener_page.py`）与「多因子配方」（`auto_screener_page.py`）两个 Tab，共用运行历史侧栏与 `ScreenerResultInsights`（diff 文本 + `SectorDistributionPanel`）。
+
 ## 行情 Provider
 
 看盘 UI 只依赖 `QuoteSnapshot`（`quotes/provider.py`）：
@@ -92,7 +104,7 @@ QuotesPage → QuoteProvider
 
 | 模式 | 入口 |
 |------|------|
-| 悬浮球 | 自选/市场/本地/策略选股/自动选股；`Ctrl+L` / `⌘L` |
+| 悬浮球 | 自选/市场/板块资金/雷达/本地/选股；`Ctrl+L` / `⌘L` |
 | Dock | 右侧可停靠 |
 | 全屏 | 导航「AI 助手」 |
 
@@ -143,7 +155,7 @@ graph/runner.stream_with_tools  或  chat/client.stream_chat_completion
 
 | 项 | 说明 |
 |----|------|
-| 白名单页 | 自选、市场、本地、策略选股、自动选股 |
+| 白名单页 | 自选、市场、板块资金、雷达、本地、选股 |
 | 快捷键 | `Ctrl+L` / `⌘L` 切换显隐 |
 | ContextChip | 当前页、选中标的、选股结果数 |
 | Quick Actions | 按页的 chips / 右键菜单 |

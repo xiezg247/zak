@@ -1,6 +1,6 @@
 # vnpy_ashare
 
-VeighNa **A 股现货** 图形终端：看盘、策略选股、自动选股、回测、AI 上下文与 Service 层。
+VeighNa **A 股现货** 图形终端：看盘（含板块资金、雷达）、条件选股、多因子配方、回测、AI 上下文与 Service 层。
 
 ## 在 VeighNa 中加载
 
@@ -22,16 +22,17 @@ vnpy_ashare/
 ├── storage/          # connection、repositories/、universe 编排
 ├── backtest/         # CTA App/Engine、run_store、strategy_filter
 ├── quotes/           # 行情 Provider 抽象、QuoteSnapshot、Redis 缓存
-├── screener/         # 选股（run / recipe / preset / pattern / data / dimensions / batch）
+├── screener/         # 选股（run / recipe / preset / pattern / sector / data / dimensions / batch）
 ├── scheduler/        # 定时任务管理
-├── jobs/             # 下载、补全、自动选股 Job
+├── jobs/             # 下载、补全、定时多因子选股 Job
 ├── services/         # 业务 Service
 ├── ai/               # context/（组装与 store）、ui/（全屏页、悬浮球）
 └── ui/
     ├── shell/        # main_window、nav；settings/、manager/
     ├── features/     # 跨页 feature（stock_analysis 等）
-    ├── quotes/       # 看盘页（page / controllers / features / chart / table / panels / workers）
-    ├── screener/     # 选股页（pages / widgets / dialogs / workers）
+    ├── quotes/       # 看盘页 + 雷达（page / radar / chart / table / panels / workers）
+    ├── sector_flow/  # 板块资金页
+    ├── screener/     # 选股 hub（条件选股 + 多因子配方；pages / widgets / dialogs / workers）
     ├── backtest/     # 回测页（pages / flow / chart / table）
     ├── scheduler/    # 定时任务页
     ├── components/   # 跨页复用
@@ -60,6 +61,7 @@ vnpy_ashare/
 | `services/signals/` | 策略信号盘中修饰与展示 | `runtime`（锚点、列表 cell、AI 摘要） |
 | `integrations/` | 外部 API 薄封装 + 缓存 | Tushare 因子、TickFlow 行情、MCP |
 | `screener/data/` | 选股数据源编排 | Redis + Tushare 合并 |
+| `screener/sector/` | 行业分布汇总 | `sector_summary.py`（结果面板、板块维度、板块资金） |
 | `quotes/` | 行情 Provider 抽象 | `QuoteProvider`、Redis 快照 |
 | `services/` | 业务 Service | `QuoteService`、`ScreeningService`、`StockAnalysisService` |
 | `services/stock/` | 个股分析子模块 | `profile`、`events`、`context` |

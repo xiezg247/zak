@@ -12,4 +12,5 @@
 | [AI 功能与 K 线](./ai-kline-data.md) | 各功能域对本地日 K 的依赖与下载建议 |
 | [LLM LangGraph 多 Agent 设计](./superpowers/specs/2026-06-12-llm-langgraph-multi-agent-design.md) | vnpy-llm 编排层：Supervisor + Specialist + handoff |
 | [LLM LangGraph 实施计划](./superpowers/plans/2026-06-12-llm-langgraph-phase1.md) | Phase 1–3 与收敛/打磨 checklist（已完成） |
+| [盘中选股设计](./intraday-screening-design.md) | Recipe 多因子维度、硬过滤、AI 工具与结果洞察 |
 | [编码规范](./coding-standards.md) | 代码风格、注释、分层约定 |
