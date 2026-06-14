@@ -63,6 +63,28 @@ def is_st_stock(name: str) -> bool:
     return "ST" in text
 
 
+def _screening_vt_name_map() -> dict[str, str]:
+    """vt_symbol → 名称；用于 row.name 缺失或与 universe 不一致时的 ST 判定。"""
+    from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
+
+    mapping: dict[str, str] = {}
+    for (symbol, exchange), name in build_symbol_name_map().items():
+        if name:
+            mapping[f"{symbol}.{exchange.value}"] = name
+    return mapping
+
+
+def _names_for_st_check(row: dict[str, Any], name_map: dict[str, str] | None) -> list[str]:
+    candidates: list[str] = []
+    for candidate in (
+        str(row.get("name") or "").strip(),
+        str((name_map or {}).get(str(row.get("vt_symbol") or "").strip()) or "").strip(),
+    ):
+        if candidate and candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
+
+
 def row_amount_yuan(row: dict[str, Any]) -> float:
     amount = row.get("amount")
     if amount not in (None, ""):
@@ -139,21 +161,28 @@ def passes_screening_hard_filter(
     row: dict[str, Any],
     *,
     suspended_keys: frozenset[tuple[str, str]] | None = None,
+    name_map: dict[str, str] | None = None,
 ) -> bool:
     if recipe_exclude_suspended_enabled():
         keys = suspended_keys if suspended_keys is not None else _suspended_keys_for_screening()
         if is_row_suspended(row, keys):
             return False
-    name = str(row.get("name") or "")
-    if recipe_exclude_st_enabled() and is_st_stock(name):
-        return False
+    if recipe_exclude_st_enabled():
+        for name in _names_for_st_check(row, name_map):
+            if is_st_stock(name):
+                return False
     return passes_liquidity_filter(row)
 
 
 def apply_recipe_filters(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
     suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
-    return [row for row in rows if passes_screening_hard_filter(row, suspended_keys=suspended_keys)]
+    name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
+    return [
+        row
+        for row in rows
+        if passes_screening_hard_filter(row, suspended_keys=suspended_keys, name_map=name_map)
+    ]
 
 
 # 策略选股等路径别名

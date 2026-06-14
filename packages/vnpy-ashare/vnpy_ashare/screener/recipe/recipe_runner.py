@@ -10,7 +10,13 @@ from datetime import datetime
 from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
+from vnpy_ashare.quotes.moneyflow_kind import (
+    enrich_moneyflow_row_with_kind,
+    moneyflow_dimension_score_factor,
+    row_has_moneyflow_fields,
+)
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
+from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
 from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
@@ -64,20 +70,27 @@ def run_recipe_object(
     hits_by_symbol: dict[str, list[DimensionHit]] = {}
     total_scanned = 0
 
-    scoring_specs = scoring_dimension_specs(list(recipe.dimensions))
-    dimension_results = _run_all_dimensions(scoring_specs, recipe.pool_size)
-    for _spec, dimension_hits, scanned in dimension_results:
-        total_scanned = max(total_scanned, scanned)
-        for hit in dimension_hits:
-            hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
+    with screening_context_scope() as ctx:
+        preload_screening_context(ctx)
+        scoring_specs = scoring_dimension_specs(list(recipe.dimensions))
+        dimension_results = _run_all_dimensions(scoring_specs, recipe.pool_size)
+        for _spec, dimension_hits, scanned in dimension_results:
+            total_scanned = max(total_scanned, scanned)
+            for hit in dimension_hits:
+                hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
 
     merged_rows: list[dict[str, Any]] = []
     for _vt_symbol, hits in hits_by_symbol.items():
         if len(hits) < recipe.min_dimensions:
             continue
         weight_sum = sum(item.weight for item in hits)
-        composite = sum(item.score * item.weight for item in hits) / max(weight_sum, 1e-6)
+        composite = sum(
+            item.score * item.weight * moneyflow_dimension_score_factor(item.dimension_id, item.row)
+            for item in hits
+        ) / max(weight_sum, 1e-6)
         base = merge_rows([item.row for item in hits])
+        if row_has_moneyflow_fields(base):
+            base = enrich_moneyflow_row_with_kind(base)
         reasons = [item.reason for item in hits]
         base["composite_score"] = round(composite, 1)
         base["hit_reasons"] = reasons

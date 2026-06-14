@@ -25,7 +25,6 @@ from vnpy_ashare.quotes.radar_models import (
 from vnpy_ashare.quotes.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar_sector import load_sector_theme
 from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
-from vnpy_ashare.screener.dimensions.moneyflow_intraday import run_moneyflow_intraday
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
@@ -389,9 +388,13 @@ def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
 
 def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
     pool_size = _discovery_pool_size(spec.top_n)
-    hits, total, trade_date = _load_discovery_moneyflow_hits(pool_size)
+    from vnpy_ashare.screener.dimensions.moneyflow_resolve import (
+        build_moneyflow_source_subtitle,
+        resolve_moneyflow_hits,
+    )
 
-    subtitle_suffix = f" · Tushare {trade_date}" if trade_date else ""
+    hits, total, trade_date = resolve_moneyflow_hits(pool_size, weight=1.0, enrich_kind=True)
+    subtitle_suffix = build_moneyflow_source_subtitle(hits, trade_date)
 
     data = _discovery_hits_card(
         spec,
@@ -400,7 +403,7 @@ def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
         metric_builder=_moneyflow_metric,
         empty_no_data="暂无行情数据，请先运行「主力资金预拉」或打开「市场」页。",
     )
-    if data.rows and trade_date:
+    if data.rows and subtitle_suffix:
         return RadarCardData(
             card_id=data.card_id,
             title=data.title,
@@ -415,131 +418,6 @@ def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
             sector_names=data.sector_names,
         )
     return data
-
-
-def _merge_quote_into_moneyflow_row(row: dict[str, Any], quote_row: dict[str, Any] | None) -> dict[str, Any]:
-    from vnpy_ashare.quotes.moneyflow_kind import enrich_moneyflow_row_with_kind
-
-    item = dict(row)
-    if quote_row:
-        for key in (
-            "change_pct",
-            "pct_chg",
-            "turnover_rate",
-            "last_price",
-            "close",
-            "amount",
-            "volume",
-            "name",
-        ):
-            value = quote_row.get(key)
-            if value not in (None, ""):
-                item[key] = value
-    return enrich_moneyflow_row_with_kind(item)
-
-
-def _load_discovery_moneyflow_hits(pool_size: int) -> tuple[list, int, str]:
-    """优先 Tushare moneyflow；无数据时降级 MCP / 成交额代理。"""
-    from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
-    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
-    from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
-
-    quote_map: dict[str, dict[str, Any]] = {}
-    total = 0
-    try:
-        snapshot = load_screening_quote_snapshot()
-        quote_map = {str(row.get("vt_symbol") or ""): row for row in snapshot.rows if row.get("vt_symbol")}
-        total = snapshot.total
-    except MarketQuotesLoadError:
-        pass
-
-    raw_rows, trade_date = fetch_moneyflow_with_fallback()
-    if raw_rows:
-        ranked = apply_moneyflow_in(raw_rows, top_n=pool_size)
-        hits: list[DimensionHit] = []
-        for index, row in enumerate(ranked, start=1):
-            vt_symbol = str(row.get("vt_symbol") or "")
-            if not vt_symbol:
-                continue
-            amount = float(row.get("net_mf_amount") or 0)
-            merged_row = _merge_quote_into_moneyflow_row(row, quote_map.get(vt_symbol))
-            hits.append(
-                DimensionHit(
-                    vt_symbol=vt_symbol,
-                    dimension_id="moneyflow",
-                    label="资金",
-                    weight=1.0,
-                    score=rank_score(index, len(ranked)),
-                    reason=f"资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
-                    row=merged_row,
-                )
-            )
-        return hits, len(raw_rows), trade_date
-
-    hits, total = run_moneyflow_intraday(pool_size, weight=1.0)
-    if hits:
-        enriched_hits: list[DimensionHit] = []
-        for hit in hits:
-            merged_row = _merge_quote_into_moneyflow_row(
-                {**hit.row, "moneyflow_source": "mcp"},
-                quote_map.get(hit.vt_symbol),
-            )
-            if "代理" in hit.reason:
-                merged_row["moneyflow_proxy"] = True
-            enriched_hits.append(
-                DimensionHit(
-                    vt_symbol=hit.vt_symbol,
-                    dimension_id=hit.dimension_id,
-                    label=hit.label,
-                    weight=hit.weight,
-                    score=hit.score,
-                    reason=hit.reason,
-                    row=merged_row,
-                )
-            )
-        return enriched_hits, total, ""
-
-    hits, total = _moneyflow_turnover_proxy(pool_size, total)
-    return hits, total, ""
-
-
-def _moneyflow_turnover_proxy(pool_size: int, total: int):
-    """盘中 MCP / Tushare 均不可用时的成交额+涨幅代理。"""
-    from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
-
-    try:
-        snapshot = load_screening_quote_snapshot()
-    except MarketQuotesLoadError:
-        return [], total
-    scored: list[tuple[dict[str, Any], float]] = []
-    for row in snapshot.rows:
-        amount = float(row.get("amount") or 0)
-        change = float(row.get("change_pct") or 0)
-        if amount <= 0 or change <= 0:
-            continue
-        scored.append((row, change * amount))
-    scored.sort(key=lambda item: item[1], reverse=True)
-    hits: list[DimensionHit] = []
-    for index, (row, _score) in enumerate(scored[:pool_size], start=1):
-        vt_symbol = str(row.get("vt_symbol") or "")
-        if not vt_symbol:
-            continue
-        change = float(row.get("change_pct") or 0)
-        hits.append(
-            DimensionHit(
-                vt_symbol=vt_symbol,
-                dimension_id="moneyflow_intraday",
-                label="盘中资金",
-                weight=1.0,
-                score=rank_score(index, min(len(scored), pool_size)),
-                reason=f"盘中资金：涨幅 {change:+.2f}% + 成交额代理，排名第 {index}",
-                row={**dict(row), "moneyflow_proxy": True},
-            )
-        )
-    return hits, snapshot.total
 
 
 def load_radar_card(
@@ -589,14 +467,18 @@ def load_radar_board(
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
 ) -> dict[str, RadarCardData]:
     """加载全部雷达卡片。"""
-    return {
-        spec.id: load_radar_card(
-            spec.id,
-            screen_task_variant=screen_task_variant,
-            sector_variant=sector_variant,
-        )
-        for spec in RADAR_CARD_SPECS
-    }
+    from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
+
+    with screening_context_scope() as ctx:
+        preload_screening_context(ctx)
+        return {
+            spec.id: load_radar_card(
+                spec.id,
+                screen_task_variant=screen_task_variant,
+                sector_variant=sector_variant,
+            )
+            for spec in RADAR_CARD_SPECS
+        }
 
 
 def build_radar_resonance_list(

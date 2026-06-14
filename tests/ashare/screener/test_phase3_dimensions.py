@@ -78,12 +78,16 @@ class TestPhase3Dimensions(unittest.TestCase):
 
         with (
             patch(
-                "vnpy_ashare.screener.dimensions.moneyflow_intraday.load_screening_quote_snapshot",
+                "vnpy_ashare.screener.dimensions.moneyflow_resolve.load_screening_quote_snapshot",
                 return_value=snapshot,
             ),
             patch(
-                "vnpy_ashare.screener.dimensions.moneyflow_intraday.fetch_intraday_moneyflow_map",
+                "vnpy_ashare.screener.dimensions.moneyflow_resolve.fetch_intraday_moneyflow_map",
                 return_value={},
+            ),
+            patch(
+                "vnpy_ashare.screener.dimensions.moneyflow_resolve.is_ashare_trading_session",
+                return_value=True,
             ),
         ):
             hits, scanned = run_moneyflow_intraday(2, weight=0.15)

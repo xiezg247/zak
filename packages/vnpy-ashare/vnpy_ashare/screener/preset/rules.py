@@ -106,9 +106,9 @@ def apply_limit_up(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[str, 
 
 
 def _sort_by_volume_ratio(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    from vnpy_ashare.screener.dimensions.volume_ratio import _load_volume_ratio_map
+    from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 
-    ratio_map = _load_volume_ratio_map()
+    ratio_map = get_volume_ratio_map()
     enriched: list[dict[str, Any]] = []
     for row in quotes:
         vt_symbol = str(row.get("vt_symbol") or "")

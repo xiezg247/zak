@@ -45,3 +45,15 @@ def test_classify_proxy_when_flagged() -> None:
     kind = classify_moneyflow_row({"moneyflow_proxy": True, "net_mf_amount": 99999})
     assert kind == "proxy"
     assert flow_kind_label(kind) == "代理"
+
+
+def test_flow_kind_score_factors() -> None:
+    from vnpy_ashare.quotes.moneyflow_kind import (
+        moneyflow_dimension_score_factor,
+        row_flow_kind,
+    )
+
+    assert moneyflow_dimension_score_factor("momentum", {"flow_kind": "proxy"}) == 1.0
+    assert moneyflow_dimension_score_factor("moneyflow", {"flow_kind": "main"}) == 1.1
+    assert moneyflow_dimension_score_factor("moneyflow_intraday", {"moneyflow_proxy": True}) == 0.7
+    assert row_flow_kind({"buy_md_amount": 100, "change_pct": 5, "turnover_rate": 8}) == "active"

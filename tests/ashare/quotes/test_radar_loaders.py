@@ -40,16 +40,8 @@ def test_load_screen_latest_empty(monkeypatch) -> None:
 
 def test_load_discovery_moneyflow_intraday_empty(monkeypatch) -> None:
     monkeypatch.setattr(
-        "vnpy_ashare.screener.data.data_source.fetch_moneyflow_with_fallback",
-        lambda **kwargs: ([], ""),
-    )
-    monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.run_moneyflow_intraday",
-        lambda _n, weight=1.0: ([], 0),
-    )
-    monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders._moneyflow_turnover_proxy",
-        lambda _n, total: ([], total),
+        "vnpy_ashare.screener.dimensions.moneyflow_resolve.resolve_moneyflow_hits",
+        lambda _n, **kwargs: ([], 0, ""),
     )
     spec = RADAR_CARD_BY_ID["discovery_moneyflow_intraday"]
     data = load_discovery_moneyflow_intraday(spec)
@@ -126,53 +118,45 @@ def test_merge_row_quotes_fills_from_cache(monkeypatch) -> None:
 
 def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
+    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.run_moneyflow_intraday",
-        lambda _n, weight=1.0: ([], 100),
+        "vnpy_ashare.domain.market_hours.is_ashare_trading_session",
+        lambda: False,
     )
 
-    def _fake_fetch(**kwargs):
-        return (
-            [
-                {
-                    "vt_symbol": "600000.SSE",
-                    "symbol": "600000",
-                    "name": "浦发银行",
-                    "net_mf_amount": 1000,
-                    "buy_elg_amount": 900,
-                    "sell_elg_amount": 100,
-                    "buy_lg_amount": 800,
-                    "sell_lg_amount": 200,
-                    "buy_md_amount": 300,
-                    "sell_md_amount": 250,
-                    "moneyflow_source": "tushare",
-                }
-            ],
-            "20260612",
+    def _fake_resolve(pool_size, **kwargs):
+        ranked_row = {
+            "vt_symbol": "600000.SSE",
+            "symbol": "600000",
+            "name": "浦发银行",
+            "net_mf_amount": 1000,
+            "buy_elg_amount": 900,
+            "sell_elg_amount": 100,
+            "buy_lg_amount": 800,
+            "sell_lg_amount": 200,
+            "buy_md_amount": 300,
+            "sell_md_amount": 250,
+            "moneyflow_source": "tushare",
+            "change_pct": 1.0,
+            "turnover_rate": 2.0,
+            "last_price": 10.0,
+            "flow_kind": "main",
+        }
+        hit = DimensionHit(
+            vt_symbol="600000.SSE",
+            dimension_id="moneyflow",
+            label="资金",
+            weight=1.0,
+            score=rank_score(1, 1),
+            reason="资金：主力净流入 1,000 万，排名第 1",
+            row=ranked_row,
         )
+        return [hit], 100, "20260612"
 
     monkeypatch.setattr(
-        "vnpy_ashare.screener.data.data_source.fetch_moneyflow_with_fallback",
-        _fake_fetch,
-    )
-    monkeypatch.setattr(
-        "vnpy_ashare.screener.data.data_source.load_screening_quote_snapshot",
-        lambda: type(
-            "Snap",
-            (),
-            {
-                "rows": [
-                    {
-                        "vt_symbol": "600000.SSE",
-                        "change_pct": 1.0,
-                        "turnover_rate": 2.0,
-                        "last_price": 10.0,
-                    }
-                ],
-                "total": 100,
-            },
-        )(),
+        "vnpy_ashare.screener.dimensions.moneyflow_resolve.resolve_moneyflow_hits",
+        _fake_resolve,
     )
     data = load_discovery_moneyflow_intraday(RADAR_CARD_BY_ID["discovery_moneyflow_intraday"])
     assert len(data.rows) == 1

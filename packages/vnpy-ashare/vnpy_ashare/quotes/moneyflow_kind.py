@@ -15,6 +15,14 @@ FLOW_KIND_LABELS: dict[FlowKind, str] = {
 _ACTIVE_MIN_CHANGE_PCT = 2.0
 _ACTIVE_MIN_TURNOVER = 3.0
 
+MONEYFLOW_DIMENSION_IDS = frozenset({"moneyflow", "moneyflow_intraday"})
+
+FLOW_KIND_SCORE_FACTORS: dict[FlowKind, float] = {
+    "main": 1.1,
+    "active": 1.0,
+    "proxy": 0.7,
+}
+
 
 def flow_kind_label(kind: str | None) -> str:
     if kind in FLOW_KIND_LABELS:
@@ -71,3 +79,42 @@ def enrich_moneyflow_row_with_kind(row: dict[str, Any]) -> dict[str, Any]:
     item = dict(row)
     item["flow_kind"] = classify_moneyflow_row(item)
     return item
+
+
+def flow_kind_score_factor(kind: str | None) -> float:
+    if kind in FLOW_KIND_SCORE_FACTORS:
+        return FLOW_KIND_SCORE_FACTORS[kind]  # type: ignore[index]
+    return 1.0
+
+
+def row_flow_kind(row: dict[str, Any]) -> FlowKind:
+    kind = str(row.get("flow_kind") or "").strip()
+    if kind in FLOW_KIND_LABELS:
+        return kind  # type: ignore[return-value]
+    return classify_moneyflow_row(row)
+
+
+def moneyflow_dimension_score_factor(
+    dimension_id: str,
+    row: dict[str, Any],
+) -> float:
+    """资金相关维度在配方 composite 中的得分系数。"""
+    if dimension_id not in MONEYFLOW_DIMENSION_IDS:
+        return 1.0
+    return flow_kind_score_factor(row_flow_kind(row))
+
+
+def row_has_moneyflow_fields(row: dict[str, Any]) -> bool:
+    if row.get("moneyflow_proxy"):
+        return True
+    if float(row.get("net_mf_amount") or 0) != 0:
+        return True
+    bucket_keys = (
+        "buy_elg_amount",
+        "sell_elg_amount",
+        "buy_lg_amount",
+        "sell_lg_amount",
+        "buy_md_amount",
+        "sell_md_amount",
+    )
+    return any(float(row.get(key) or 0) > 0 for key in bucket_keys)

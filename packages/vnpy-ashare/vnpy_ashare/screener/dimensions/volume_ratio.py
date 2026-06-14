@@ -7,6 +7,7 @@ from typing import Any
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits, rank_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
@@ -24,14 +25,11 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
         vt_symbol = str(row.get("vt_symbol") or "")
         if not vt_symbol:
             continue
-        merged = dict(row)
         ratio = ratio_map.get(vt_symbol)
-        if ratio is not None and ratio > 0:
-            merged["volume_ratio"] = ratio
-        elif float(row.get("volume") or 0) > 0:
-            merged["volume_ratio"] = float(row.get("volume") or 0)
-        else:
+        if ratio is None or ratio <= 0:
             continue
+        merged = dict(row)
+        merged["volume_ratio"] = ratio
         enriched.append(merged)
 
     if not enriched:
@@ -55,15 +53,7 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
 
 
 def _load_volume_ratio_map() -> dict[str, float]:
-    try:
-        basic_rows, _ = fetch_daily_basic()
-    except Exception:
-        return {}
-    return {
-        str(row.get("vt_symbol") or ""): float(row.get("volume_ratio") or 0)
-        for row in basic_rows
-        if row.get("vt_symbol") and float(row.get("volume_ratio") or 0) > 0
-    }
+    return get_volume_ratio_map()
 
 
 def _volume_ratio_from_tushare_only(

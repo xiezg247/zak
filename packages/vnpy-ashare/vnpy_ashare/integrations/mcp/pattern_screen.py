@@ -10,6 +10,7 @@ from typing import Any
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.pattern.pattern_screen import pattern_label
 from vnpy_ashare.screener.run.export import resolve_export_columns
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
@@ -154,7 +155,9 @@ def run_pattern_screen_mcp(
     except Exception:
         return None
 
-    rows, total_scanned = parse_wenda_screen_rows(raw, top_n=top_n)
+    # 多取候选，硬过滤 ST / 停牌 / 流动性后再截断 top_n
+    rows, total_scanned = parse_wenda_screen_rows(raw, top_n=max(top_n * 5, top_n + 12))
+    rows = apply_screening_filters(rows)[:top_n]
     if not rows:
         return None
 

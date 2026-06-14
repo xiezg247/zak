@@ -6,6 +6,11 @@ import json
 import unittest
 
 from vnpy_ashare.integrations.mcp.pattern_screen import parse_wenda_screen_rows, run_pattern_screen_mcp
+from vnpy_ashare.screener.hard_filter_prefs import (
+    HardFilterPrefs,
+    default_hard_filter_prefs,
+    save_hard_filter_prefs,
+)
 
 _SAMPLE = {
     "meta": {"code": 0, "total": 2},
@@ -28,6 +33,9 @@ _SAMPLE = {
 
 
 class PatternMcpTests(unittest.TestCase):
+    def tearDown(self) -> None:
+        save_hard_filter_prefs(default_hard_filter_prefs())
+
     def test_parse_wenda_screen_rows(self) -> None:
         rows, total = parse_wenda_screen_rows(json.dumps(_SAMPLE), top_n=10)
         self.assertEqual(total, 2)
@@ -62,6 +70,38 @@ class PatternMcpTests(unittest.TestCase):
                 tool_names=["mcp_tdx_tdx_wenda_quotes"],
             )
         )
+
+    def test_run_pattern_screen_mcp_excludes_st(self) -> None:
+        save_hard_filter_prefs(
+            HardFilterPrefs(
+                exclude_st=True,
+                exclude_suspended=False,
+                min_amount_wan=0.0,
+                min_total_mv_yi=0.0,
+            )
+        )
+        sample = {
+            "meta": {"code": 0, "total": 2},
+            "headers": ["POS", "market", "sec_code", "sec_name", "now_price", "chg0#"],
+            "data": [
+                ["1", "0", "301086", "鸿富瀚", "157.60", "10.60"],
+                ["2", "0", "002789", "*ST建艺", "12.34", "5.00"],
+            ],
+        }
+
+        def _execute(_tool: str, _args: dict) -> str:
+            return json.dumps(sample)
+
+        result = run_pattern_screen_mcp(
+            "old_duck",
+            mcp_execute=_execute,
+            tool_names=["mcp_tdx_tdx_wenda_quotes"],
+            top_n=5,
+        )
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(len(result.rows), 1)
+        self.assertEqual(result.rows[0]["symbol"], "301086")
 
 
 if __name__ == "__main__":

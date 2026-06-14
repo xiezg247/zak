@@ -45,6 +45,7 @@ _RECIPE_COLUMNS = [
     ("volume_ratio", "量比"),
     ("pe_ttm", "PE TTM"),
     ("net_mf_amount", "主力净流入(万)"),
+    ("flow_kind", "资金类型"),
 ]
 
 _MONEYFLOW_COLUMNS = [
@@ -52,6 +53,7 @@ _MONEYFLOW_COLUMNS = [
     ("name", "名称"),
     ("vt_symbol", "合约"),
     ("net_mf_amount", "主力净流入(万)"),
+    ("flow_kind", "资金类型"),
     ("buy_elg_amount", "特大单买入(万)"),
     ("sell_elg_amount", "特大单卖出(万)"),
     ("trade_date", "交易日"),
@@ -63,7 +65,7 @@ def resolve_export_columns(rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
     if not rows:
         return _QUOTE_COLUMNS
     if "hit_reason" in rows[0] or "composite_score" in rows[0]:
-        optional = {"diff_status", "industry", "volume_ratio", "pe_ttm", "net_mf_amount"}
+        optional = {"diff_status", "industry", "volume_ratio", "pe_ttm", "net_mf_amount", "flow_kind"}
         columns = [col for col in _RECIPE_COLUMNS if col[0] not in optional or any(col[0] in row for row in rows[: min(5, len(rows))])]
         return columns or _RECIPE_COLUMNS
     source = str(rows[0].get("source", "quote"))

@@ -140,9 +140,9 @@ def daily_basic_to_quote_rows(
     return quote_rows
 
 
-def load_screening_quote_snapshot() -> MarketQuotesSnapshot:
+def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
     """
-    行情类选股数据源：
+    行情类选股数据源（无 ScreeningContext 缓存）：
     - 交易时段：Redis 实时快照
     - 非交易时段：Tushare daily_basic（回退交易日）+ daily 涨跌幅
     - 仍无数据时：尝试 Redis 陈旧快照
@@ -162,6 +162,16 @@ def load_screening_quote_snapshot() -> MarketQuotesSnapshot:
         )
 
     return load_market_quote_rows()
+
+
+def load_screening_quote_snapshot() -> MarketQuotesSnapshot:
+    """行情快照；活跃 ScreeningContext 内复用同一份数据。"""
+    from vnpy_ashare.screener.data.screening_context import get_cached_quote_snapshot
+
+    cached = get_cached_quote_snapshot()
+    if cached is not None:
+        return cached
+    return load_screening_quote_snapshot_uncached()
 
 
 def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:
