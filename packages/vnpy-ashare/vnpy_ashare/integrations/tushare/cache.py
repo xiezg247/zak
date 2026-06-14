@@ -19,6 +19,9 @@ DATASET_STOCK_BASIC = "stock_basic"
 DATASET_LIMIT_LIST = "limit_list_d"
 DATASET_INDEX_DAILY = "index_daily"
 DATASET_MONEYFLOW_HSGT = "moneyflow_hsgt"
+DATASET_THS_INDEX = "ths_index"
+DATASET_THS_DAILY = "ths_daily"
+DATASET_THS_MEMBER = "ths_member"
 
 DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)

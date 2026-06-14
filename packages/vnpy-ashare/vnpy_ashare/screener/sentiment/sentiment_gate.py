@@ -90,3 +90,31 @@ def apply_sentiment_modulation(
         reverse=True,
     )
     return rows, meta
+
+
+def apply_sentiment_snapshot_prefilter(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """恐贪前置缩池：极度恐惧时剔除涨幅过高的标的（先于维度打分）。"""
+    if not sentiment_gate_enabled() or not rows:
+        return rows
+    snapshot = try_fetch_fear_greed_index()
+    if snapshot is None:
+        return rows
+    index = float(snapshot.index)
+    if index >= 45:
+        return rows
+
+    from vnpy_ashare.screener.dimensions.momentum import _momentum_change_bounds
+
+    _, max_change = _momentum_change_bounds()
+    if index >= 30:
+        cap = max_change
+    else:
+        cap = min(max_change, max_change * 0.85)
+
+    filtered: list[dict[str, Any]] = []
+    for row in rows:
+        change = float(row.get("change_pct") or row.get("pct_chg") or 0)
+        if change > cap:
+            continue
+        filtered.append(row)
+    return filtered if filtered else rows

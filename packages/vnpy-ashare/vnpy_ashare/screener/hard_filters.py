@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 DEFAULT_MIN_AMOUNT_YUAN = 30_000_000.0  # 3000 万元
@@ -14,6 +14,8 @@ DEFAULT_MIN_AMOUNT_YUAN = 30_000_000.0  # 3000 万元
 DEFAULT_MIN_TOTAL_MV_WAN = 500_000.0
 
 _suspend_keys_cache: tuple[date, frozenset[tuple[str, str]]] | None = None
+_list_date_map_cache: tuple[date, dict[str, str]] | None = None
+_market_board_map_cache: tuple[date, dict[str, str]] | None = None
 
 
 def recipe_min_amount_yuan() -> float:
@@ -56,6 +58,36 @@ def recipe_min_total_mv_wan() -> float:
     from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
 
     return load_hard_filter_prefs().min_total_mv_wan
+
+
+def recipe_exclude_new_listing_enabled() -> bool:
+    raw = os.getenv("RECIPE_EXCLUDE_NEW_LISTING", "").strip()
+    if raw:
+        return raw.lower() not in ("0", "false", "no")
+    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+    return load_hard_filter_prefs().exclude_new_listing
+
+
+def recipe_min_listing_days() -> int:
+    raw = os.getenv("RECIPE_MIN_LISTING_DAYS", "").strip()
+    if raw:
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            return 60
+    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+    return load_hard_filter_prefs().min_listing_days
+
+
+def recipe_exclude_limit_board_enabled() -> bool:
+    raw = os.getenv("RECIPE_EXCLUDE_LIMIT_BOARD", "").strip()
+    if raw:
+        return raw.lower() not in ("0", "false", "no")
+    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+    return load_hard_filter_prefs().exclude_limit_board
 
 
 def is_st_stock(name: str) -> bool:
@@ -111,8 +143,10 @@ def row_symbol_exchange(row: dict[str, Any]) -> tuple[str, str] | None:
 
 
 def clear_suspend_screening_cache() -> None:
-    global _suspend_keys_cache
+    global _suspend_keys_cache, _list_date_map_cache, _market_board_map_cache
     _suspend_keys_cache = None
+    _list_date_map_cache = None
+    _market_board_map_cache = None
 
 
 def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
@@ -131,6 +165,94 @@ def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
 def is_row_suspended(row: dict[str, Any], suspended_keys: frozenset[tuple[str, str]]) -> bool:
     key = row_symbol_exchange(row)
     return key is not None and key in suspended_keys
+
+
+def _list_date_map_for_screening() -> dict[str, str]:
+    global _list_date_map_cache
+    from vnpy_ashare.domain.calendar import last_trading_day
+    from vnpy_ashare.integrations.tushare.factors import fetch_stock_basic_snapshot
+
+    day = last_trading_day()
+    if _list_date_map_cache is not None and _list_date_map_cache[0] == day:
+        return _list_date_map_cache[1]
+
+    rows, _ = fetch_stock_basic_snapshot()
+    mapping: dict[str, str] = {}
+    for item in rows:
+        ts_code = str(item.get("ts_code") or "").strip()
+        list_date = str(item.get("list_date") or "").strip()
+        if not ts_code or not list_date:
+            continue
+        vt_symbol = _ts_code_to_vt_symbol(ts_code)
+        if vt_symbol:
+            mapping[vt_symbol] = list_date
+    _list_date_map_cache = (day, mapping)
+    return mapping
+
+
+def _market_board_map_for_screening() -> dict[str, str]:
+    global _market_board_map_cache
+    from vnpy_ashare.domain.calendar import last_trading_day
+    from vnpy_ashare.integrations.tushare.factors import fetch_stock_market_board_map
+
+    day = last_trading_day()
+    if _market_board_map_cache is not None and _market_board_map_cache[0] == day:
+        return _market_board_map_cache[1]
+
+    board_map = fetch_stock_market_board_map()
+    mapping = {
+        _ts_code_to_vt_symbol(ts_code): market
+        for ts_code, market in board_map.items()
+        if _ts_code_to_vt_symbol(ts_code)
+    }
+    _market_board_map_cache = (day, mapping)
+    return mapping
+
+
+def _ts_code_to_vt_symbol(ts_code: str) -> str:
+    from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol
+
+    return ts_code_to_vt_symbol(ts_code) or ""
+
+
+def is_new_listing(row: dict[str, Any], list_date_map: dict[str, str] | None = None) -> bool:
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
+    if not vt_symbol:
+        return False
+    list_date_raw = str(row.get("list_date") or "").strip()
+    if not list_date_raw:
+        mapping = list_date_map if list_date_map is not None else _list_date_map_for_screening()
+        list_date_raw = str(mapping.get(vt_symbol) or "").strip()
+    if not list_date_raw or len(list_date_raw) < 8:
+        return False
+    try:
+        listed = datetime.strptime(list_date_raw[:8], "%Y%m%d").date()
+    except ValueError:
+        return False
+    min_days = recipe_min_listing_days()
+    if min_days <= 0:
+        return False
+    return (date.today() - listed).days < min_days
+
+
+def limit_board_threshold_pct(row: dict[str, Any], market_board_map: dict[str, str] | None = None) -> float:
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
+    market = str(row.get("market") or "").strip()
+    if not market and vt_symbol:
+        mapping = market_board_map if market_board_map is not None else _market_board_map_for_screening()
+        market = str(mapping.get(vt_symbol) or "").strip()
+    if market in ("创业板", "科创板"):
+        return 19.5
+    symbol = str(row.get("symbol") or vt_symbol.split(".")[0])
+    if symbol.startswith(("300", "688")):
+        return 19.5
+    return 9.8
+
+
+def is_at_limit_board(row: dict[str, Any], market_board_map: dict[str, str] | None = None) -> bool:
+    change = float(row.get("change_pct") or row.get("pct_chg") or 0)
+    threshold = limit_board_threshold_pct(row, market_board_map=market_board_map)
+    return change >= threshold or change <= -threshold
 
 
 def passes_liquidity_filter(row: dict[str, Any]) -> bool:
@@ -162,6 +284,8 @@ def passes_screening_hard_filter(
     *,
     suspended_keys: frozenset[tuple[str, str]] | None = None,
     name_map: dict[str, str] | None = None,
+    list_date_map: dict[str, str] | None = None,
+    market_board_map: dict[str, str] | None = None,
 ) -> bool:
     if recipe_exclude_suspended_enabled():
         keys = suspended_keys if suspended_keys is not None else _suspended_keys_for_screening()
@@ -171,6 +295,10 @@ def passes_screening_hard_filter(
         for name in _names_for_st_check(row, name_map):
             if is_st_stock(name):
                 return False
+    if recipe_exclude_new_listing_enabled() and is_new_listing(row, list_date_map=list_date_map):
+        return False
+    if recipe_exclude_limit_board_enabled() and is_at_limit_board(row, market_board_map=market_board_map):
+        return False
     return passes_liquidity_filter(row)
 
 
@@ -178,10 +306,18 @@ def apply_recipe_filters(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
     suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
     name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
+    list_date_map = _list_date_map_for_screening() if recipe_exclude_new_listing_enabled() else None
+    market_board_map = _market_board_map_for_screening() if recipe_exclude_limit_board_enabled() else None
     return [
         row
         for row in rows
-        if passes_screening_hard_filter(row, suspended_keys=suspended_keys, name_map=name_map)
+        if passes_screening_hard_filter(
+            row,
+            suspended_keys=suspended_keys,
+            name_map=name_map,
+            list_date_map=list_date_map,
+            market_board_map=market_board_map,
+        )
     ]
 
 

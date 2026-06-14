@@ -14,6 +14,11 @@ from vnpy_ashare.screener.data.market_benchmark import (
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, fundamental_base_row, quote_hits
+from vnpy_ashare.screener.dimensions.history_signals import (
+    attach_momentum_persistence,
+    load_history_bars_map,
+    momentum_persistence_score_factor,
+)
 from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
@@ -76,6 +81,11 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
 
         scored_rows = apply_screening_filters(scored_rows)
         scored_rows.sort(key=lambda item: float(item.get("relative_strength") or 0), reverse=True)
+        top_for_history = scored_rows[:pool_size * 2]
+        bars_map = load_history_bars_map(
+            [str(item.get("vt_symbol") or "") for item in top_for_history if item.get("vt_symbol")]
+        )
+        attach_momentum_persistence(top_for_history, bars_map)
         rows: list[dict[str, Any]] = []
         for item in scored_rows[:pool_size]:
             base = _quote_row(item)
@@ -96,6 +106,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
             weight=weight,
             metric_key="relative_strength",
             reason_builder=lambda row, rank: _momentum_reason(row, rank),
+            score_adjustment=momentum_persistence_score_factor,
         ), snapshot.total
     except MarketQuotesLoadError:
         raw_rows, _trade_date, _ = fetch_fundamental_screening_rows()
@@ -160,9 +171,16 @@ def _momentum_reason(row: dict[str, Any], rank: int) -> str:
     benchmark = float(row.get("benchmark_change_pct") or 0)
     market_rs = float(row.get("market_relative_strength") or relative_strength_pct(row, benchmark))
     industry_rs = row.get("industry_relative_strength")
+    persistence_note = ""
+    positive_days = row.get("momentum_positive_days")
+    if positive_days is not None:
+        persistence_note = f"，近5日收涨 {int(positive_days)} 天"
     if basis.startswith("行业") and industry_rs is not None:
         return (
             f"动量：涨幅 {change:+.2f}%，相对{basis} {float(industry_rs):+.2f}%，"
-            f"相对大盘 {market_rs:+.2f}%，排名第 {rank}"
+            f"相对大盘 {market_rs:+.2f}%{persistence_note}，排名第 {rank}"
         )
-    return f"动量：涨幅 {change:+.2f}%，相对大盘 {rs:+.2f}%（基准 {benchmark:+.2f}%），排名第 {rank}"
+    return (
+        f"动量：涨幅 {change:+.2f}%，相对大盘 {rs:+.2f}%（基准 {benchmark:+.2f}%）"
+        f"{persistence_note}，排名第 {rank}"
+    )

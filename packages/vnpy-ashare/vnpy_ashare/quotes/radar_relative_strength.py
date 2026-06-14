@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from vnpy_ashare.quotes.radar_models import RadarRow
 
 from vnpy_ashare.quotes.radar_models import format_pct
 from vnpy_ashare.screener.data.market_benchmark import (
@@ -52,3 +55,15 @@ def build_relative_strength_subline(
         industry_rs = relative_strength_pct(merged, float(industry_avg[industry]))
         return "相对强度", f"行业{format_pct(industry_rs)} 大盘{format_pct(market_rs)}"
     return "相对大盘", format_pct(market_rs)
+
+
+def enrich_radar_row_relative_strength(row: RadarRow, quote_row: dict[str, Any]) -> RadarRow:
+    """为雷达行补全相对强度副标题（若尚无有效副标题）。"""
+    if row.sub_label in ("相对强度", "相对大盘") and row.sub_value and row.sub_value != "—":
+        return row
+    sub = build_relative_strength_subline(quote_row)
+    if sub is None:
+        return row
+    from dataclasses import replace
+
+    return replace(row, sub_label=sub[0], sub_value=sub[1])

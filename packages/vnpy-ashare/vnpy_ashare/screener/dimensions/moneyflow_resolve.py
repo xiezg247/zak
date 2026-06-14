@@ -17,7 +17,9 @@ _INTRADAY_LABEL = "盘中资金"
 _POST_LABEL = "资金"
 _DIVERGENCE_SCORE_FACTOR = 0.65
 _STREAK_BONUS_PER_DAY = 0.05
-_MAX_STREAK_BONUS = 0.15
+_MAX_STREAK_BONUS = 0.2
+_STREAK_TIER_3_BONUS = 0.08
+_STREAK_TIER_5_BONUS = 0.15
 
 
 def _tier_net_amount(row: dict[str, Any]) -> float:
@@ -35,7 +37,11 @@ def _moneyflow_score_adjustment(row: dict[str, Any], base_score: float) -> float
     if net > 0 and change < -0.5:
         score *= _DIVERGENCE_SCORE_FACTOR
     streak = int(row.get("moneyflow_streak_days") or 0)
-    if streak >= 2:
+    if streak >= 5:
+        score *= 1.0 + _STREAK_TIER_5_BONUS
+    elif streak >= 3:
+        score *= 1.0 + _STREAK_TIER_3_BONUS
+    elif streak >= 2:
         score *= 1.0 + min(_MAX_STREAK_BONUS, (streak - 1) * _STREAK_BONUS_PER_DAY)
     return score
 
@@ -155,7 +161,13 @@ def _post_close_tushare_hits(
         change = float(merged.get("change_pct") or merged.get("pct_chg") or 0)
         if amount > 0 and change < -0.5:
             divergence_note = "（价量背离降权）"
-        streak_note = f"，连涨 {streak} 日" if streak >= 2 else ""
+        streak_note = ""
+        if streak >= 5:
+            streak_note = f"，连涨 {streak} 日"
+        elif streak >= 3:
+            streak_note = f"，连涨 {streak} 日"
+        elif streak >= 2:
+            streak_note = f"，连涨 {streak} 日"
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,

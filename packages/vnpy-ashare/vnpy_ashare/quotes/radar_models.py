@@ -184,7 +184,9 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
 
 
 def enrich_radar_row(row: RadarRow, quote: dict[str, Any]) -> RadarRow:
-    """用全市场行情补全 RadarRow 的现价与涨幅。"""
+    """用全市场行情补全 RadarRow 的现价、涨幅与相对强度副标题。"""
+    from vnpy_ashare.quotes.radar_relative_strength import enrich_radar_row_relative_strength
+
     merged = merge_row_quotes(quote)
     price = float_or_none(merged.get("last_price") or merged.get("close"))
     if price is None:
@@ -194,9 +196,10 @@ def enrich_radar_row(row: RadarRow, quote: dict[str, Any]) -> RadarRow:
     )
     if change_pct is None:
         change_pct = row.change_pct
-    if price == row.price and change_pct == row.change_pct:
-        return row
-    return replace(row, price=price, change_pct=change_pct)
+    updated = row
+    if price != row.price or change_pct != row.change_pct:
+        updated = replace(row, price=price, change_pct=change_pct)
+    return enrich_radar_row_relative_strength(updated, merged)
 
 
 def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:

@@ -27,6 +27,9 @@ class HardFilterPrefsTests(unittest.TestCase):
             exclude_suspended=True,
             min_amount_wan=5000.0,
             min_total_mv_yi=80.0,
+            exclude_new_listing=False,
+            min_listing_days=60,
+            exclude_limit_board=False,
         )
         save_hard_filter_prefs(prefs)
         loaded = load_hard_filter_prefs()
@@ -42,6 +45,9 @@ class HardFilterPrefsTests(unittest.TestCase):
                 exclude_suspended=True,
                 min_amount_wan=2000.0,
                 min_total_mv_yi=30.0,
+                exclude_new_listing=False,
+                min_listing_days=60,
+                exclude_limit_board=False,
             )
         )
         self.assertEqual(recipe_min_amount_yuan(), 20_000_000.0)

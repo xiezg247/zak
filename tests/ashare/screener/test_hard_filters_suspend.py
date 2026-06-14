@@ -42,6 +42,9 @@ class HardFiltersSuspendTests(unittest.TestCase):
                 exclude_suspended=True,
                 min_amount_wan=0.0,
                 min_total_mv_yi=0.0,
+                exclude_new_listing=False,
+                min_listing_days=60,
+                exclude_limit_board=False,
             )
         )
 
@@ -85,6 +88,9 @@ class HardFiltersSuspendTests(unittest.TestCase):
                 exclude_suspended=False,
                 min_amount_wan=0.0,
                 min_total_mv_yi=0.0,
+                exclude_new_listing=False,
+                min_listing_days=60,
+                exclude_limit_board=False,
             )
         )
         rows = [

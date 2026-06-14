@@ -11,6 +11,12 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.dimensions.history_signals import (
+    bars_for_vt_symbol,
+    breaks_rolling_high,
+    load_history_bars_map,
+    rolling_high_before_last,
+)
 from vnpy_ashare.screener.dimensions.scoring import blended_score
 
 _META_DIMENSION_ID = "intraday_breakout"
@@ -19,6 +25,15 @@ _MIN_BREAK_PCT = 0.5
 _NEAR_HIGH_RATIO = 0.99
 _MIN_BREAKOUT_VOLUME_RATIO = 1.2
 _MAX_PULLBACK_FROM_HIGH_PCT = 2.0
+_DEFAULT_LOOKBACK_DAYS = 5
+
+
+def _breakout_lookback_days() -> int:
+    raw = os.getenv("BREAKOUT_LOOKBACK_DAYS", str(_DEFAULT_LOOKBACK_DAYS)).strip()
+    try:
+        return max(0, min(int(raw), 60))
+    except ValueError:
+        return _DEFAULT_LOOKBACK_DAYS
 
 
 def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
@@ -36,6 +51,9 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
         candidates.append((row, strength))
 
     candidates.sort(key=lambda item: item[1], reverse=True)
+    lookback = _breakout_lookback_days()
+    if lookback > 0 and candidates:
+        candidates = _apply_rolling_high_confirm(candidates, lookback)
     if _minute_confirm_enabled():
         candidates = _apply_minute_confirm(candidates, pool_size)
 
@@ -51,6 +69,9 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
         last = float(row.get("last_price") or 0)
         volume_ratio = _row_volume_ratio(row, ratio_map)
         ratio_note = f"，量比 {volume_ratio:.2f}" if volume_ratio is not None else ""
+        lookback_note = ""
+        if row.get("breakout_lookback_days"):
+            lookback_note = f"，突破近 {int(row['breakout_lookback_days'])} 日高"
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
@@ -63,7 +84,7 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
                     strength,
                     strength_values,
                 ),
-                reason=(f"突破：较昨收 +{strength:.2f}%，日内高 {high:.2f}（昨收 {prev:.2f}，现价 {last:.2f}{ratio_note}）"),
+                reason=(f"突破：较昨收 +{strength:.2f}%，日内高 {high:.2f}（昨收 {prev:.2f}，现价 {last:.2f}{lookback_note}{ratio_note}）"),
                 row=dict(row),
             )
         )
@@ -100,6 +121,32 @@ def _quote_breakout_strength(row: dict[str, Any], ratio_map: dict[str, float]) -
     if volume_ratio is not None and volume_ratio < _MIN_BREAKOUT_VOLUME_RATIO:
         return None
     return (last - prev) / prev * 100
+
+
+def _apply_rolling_high_confirm(
+    candidates: list[tuple[dict[str, Any], float]],
+    lookback_days: int,
+) -> list[tuple[dict[str, Any], float]]:
+    vt_symbols = [str(row.get("vt_symbol") or "") for row, _ in candidates]
+    bars_map = load_history_bars_map([vt for vt in vt_symbols if vt])
+    if not bars_map:
+        return candidates
+
+    confirmed: list[tuple[dict[str, Any], float]] = []
+    for row, strength in candidates:
+        vt_symbol = str(row.get("vt_symbol") or "")
+        last = float(row.get("last_price") or 0)
+        bars = bars_for_vt_symbol(vt_symbol, bars_map)
+        rolling_high = rolling_high_before_last(bars, lookback_days=lookback_days)
+        if rolling_high is None:
+            confirmed.append((row, strength))
+            continue
+        if breaks_rolling_high(last, rolling_high, _MIN_BREAK_PCT):
+            merged = dict(row)
+            merged["breakout_lookback_days"] = lookback_days
+            merged["breakout_rolling_high"] = rolling_high
+            confirmed.append((merged, strength))
+    return confirmed if confirmed else candidates
 
 
 def _minute_confirm_enabled() -> bool:

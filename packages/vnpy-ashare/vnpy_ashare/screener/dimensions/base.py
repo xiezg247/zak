@@ -29,6 +29,7 @@ def quote_hits(
     weight: float,
     reason_builder,
     metric_key: str | None = None,
+    score_adjustment: Any | None = None,
 ) -> list[DimensionHit]:
     hits: list[DimensionHit] = []
     metric_values: list[float] = []
@@ -47,6 +48,8 @@ def quote_hits(
             )
         else:
             score = rank_score(index, len(rows))
+        if score_adjustment is not None:
+            score = round(score * float(score_adjustment(row)), 1)
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,

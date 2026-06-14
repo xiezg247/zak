@@ -13,6 +13,11 @@ from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
 
+_VOLUME_RATIO_TIER_2 = 2.0
+_VOLUME_RATIO_TIER_5 = 5.0
+_VOLUME_RATIO_BONUS_2 = 1.06
+_VOLUME_RATIO_BONUS_5 = 1.12
+
 
 def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
     try:
@@ -50,8 +55,27 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
         label="量比",
         weight=weight,
         metric_key="volume_ratio",
-        reason_builder=lambda row, rank: f"量比：{float(row.get('volume_ratio') or 0):.2f}，排名第 {rank}",
+        reason_builder=lambda row, rank: _volume_ratio_reason(row, rank),
+        score_adjustment=lambda row: _volume_ratio_tier_factor(float(row.get("volume_ratio") or 0)),
     ), snapshot.total
+
+
+def _volume_ratio_tier_factor(ratio: float) -> float:
+    if ratio >= _VOLUME_RATIO_TIER_5:
+        return _VOLUME_RATIO_BONUS_5
+    if ratio >= _VOLUME_RATIO_TIER_2:
+        return _VOLUME_RATIO_BONUS_2
+    return 1.0
+
+
+def _volume_ratio_reason(row: dict[str, Any], rank: int) -> str:
+    ratio = float(row.get("volume_ratio") or 0)
+    tier_note = ""
+    if ratio >= _VOLUME_RATIO_TIER_5:
+        tier_note = "（强放量）"
+    elif ratio >= _VOLUME_RATIO_TIER_2:
+        tier_note = "（放量）"
+    return f"量比：{ratio:.2f}{tier_note}，排名第 {rank}"
 
 
 def _load_volume_ratio_map() -> dict[str, float]:
@@ -83,14 +107,15 @@ def _volume_ratio_from_tushare_only(
         if not vt_symbol:
             continue
         ratio = float(row.get("volume_ratio") or 0)
+        base = blended_score(index, len(sorted_rows), ratio, [float(r.get("volume_ratio") or 0) for r in sorted_rows])
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
                 dimension_id="volume_ratio",
                 label="量比",
                 weight=weight,
-                score=blended_score(index, len(sorted_rows), ratio, [float(r.get("volume_ratio") or 0) for r in sorted_rows]),
-                reason=f"量比：{ratio:.2f}（Tushare），排名第 {index}",
+                score=round(base * _volume_ratio_tier_factor(ratio), 1),
+                reason=_volume_ratio_reason({"volume_ratio": ratio}, index),
                 row={
                     "symbol": row.get("symbol", ""),
                     "name": row.get("name", ""),

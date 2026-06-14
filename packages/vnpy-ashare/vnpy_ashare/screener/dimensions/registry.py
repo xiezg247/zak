@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.dimensions.concept_strength import run_concept_strength
 from vnpy_ashare.screener.dimensions.intraday_breakout import run_intraday_breakout
 from vnpy_ashare.screener.dimensions.low_pe import run_low_pe
 from vnpy_ashare.screener.dimensions.momentum import run_momentum
@@ -25,6 +26,7 @@ DIMENSION_RUNNERS: dict[str, DimensionRunner] = {
     "volume_ratio": run_volume_ratio,
     "volume_surge": run_volume_surge,
     "sector_strength": run_sector_strength,
+    "concept_strength": run_concept_strength,
     "intraday_breakout": run_intraday_breakout,
     "moneyflow_intraday": run_moneyflow_intraday,
     "sentiment_gate": run_sentiment_gate,

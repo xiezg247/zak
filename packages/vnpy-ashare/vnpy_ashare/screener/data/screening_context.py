@@ -187,6 +187,19 @@ def screening_context_scope():
 def preload_screening_context(ctx: ScreeningContext) -> None:
     """预加载常用字段，避免并行维度重复拉 Redis / Tushare。"""
     ctx.preload_quote_snapshot()
+    snapshot = ctx._snapshot
+    if snapshot is not None and snapshot.rows:
+        from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
+        from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_snapshot_prefilter
+
+        filtered = apply_sentiment_snapshot_prefilter(list(snapshot.rows))
+        if len(filtered) != len(snapshot.rows):
+            ctx._snapshot = MarketQuotesSnapshot(
+                rows=filtered,
+                updated_at=snapshot.updated_at,
+                total=snapshot.total,
+                source=snapshot.source,
+            )
     ctx.preload_volume_ratio_map()
     ctx.preload_avg_turnover_map()
     ctx.preload_industry_map()

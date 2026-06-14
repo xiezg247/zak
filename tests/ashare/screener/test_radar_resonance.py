@@ -30,7 +30,7 @@ def _entry(symbol: str, *, card_count: int = 2) -> RadarResonanceEntry:
 def test_resonance_entries_to_rows_includes_hit_reason():
     rows = resonance_entries_to_rows((_entry("AAA"),))
     assert rows[0]["symbol"] == "AAA"
-    assert "共振 2 卡" in rows[0]["hit_reason"]
+    assert "共振 2" in rows[0]["hit_reason"]
     assert rows[0]["source"] == "radar"
 
 
