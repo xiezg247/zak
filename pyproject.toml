@@ -19,6 +19,8 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.9.0",
+    "mypy>=2.1.0",
+    "types-redis>=4.6.0.20241004",
 ]
 
 [tool.uv.sources]
@@ -71,6 +73,22 @@ known-first-party = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+# mypy 渐进启用：仅检查 files 列表内模块；扩大范围见 docs/mypy-rollout.md
+[tool.mypy]
+python_version = "3.10"
+files = [
+    "packages/vnpy-ashare/vnpy_ashare/quotes/core",
+    "packages/vnpy-ashare/vnpy_ashare/quotes/rank",
+]
+follow_imports = "silent"
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = false
+show_error_codes = true
 
 [tool.uv]
 index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"

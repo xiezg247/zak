@@ -15,3 +15,4 @@
 | [盘中选股设计](./intraday-screening-design.md) | Recipe 多因子维度、硬过滤、AI 工具与结果洞察 |
 | [配置分级热加载](./config-hot-reload-design.md) | 配置页保存后的 instant / soft / restart 策略 |
 | [编码规范](./coding-standards.md) | 代码风格、注释、分层约定 |
+| [mypy 渐进启用](./mypy-rollout.md) | 静态类型检查白名单与扩 scope 步骤 |
