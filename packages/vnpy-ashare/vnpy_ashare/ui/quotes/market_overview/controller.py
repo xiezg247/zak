@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from vnpy.trader.ui import QtCore
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context.market_overview import sync_market_overview_context, sync_market_overview_partial
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
@@ -127,8 +127,8 @@ class MarketOverviewController(QtCore.QObject):
         sector_ids = self._panel.top_sector_industries(limit=6)
         host.open_sector_flow(sector_ids if sector_ids else None)
 
-    def _find_main_window(self):
-        widget = self._page
+    def _find_main_window(self) -> QtWidgets.QWidget | None:
+        widget: QtWidgets.QWidget | None = self._page
         while widget is not None:
             if hasattr(widget, "open_sector_flow"):
                 return widget

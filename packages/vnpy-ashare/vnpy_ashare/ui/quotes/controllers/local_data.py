@@ -739,7 +739,9 @@ class LocalDataController:
                     else:
                         self.set_chart_hint(f"暂无本地{scope_label}，请点击「下载日K到本地」")
                     return
-                loaded: LoadedBars = result
+                if not isinstance(result, LoadedBars):
+                    return
+                loaded = result
                 if loaded.bars:
                     self.render_chart(loaded.bars)
                     if page.config.show_fill_button:
@@ -853,9 +855,11 @@ class LocalDataController:
         if page.config.use_local_table:
             period = page._local_scope
             period_label = self.scope_label()
-        else:
+        elif page.chart_panel is not None:
             period = page.chart_panel.current_period()
             period_label = page.chart_panel.current_period_label()
+        else:
+            return
 
         if mode == "incremental":
             status_text = f"{action_label} {label} {period_label}…"

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
-from vnpy.trader.ui import QtCore
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     load_center_splitter_sizes,
@@ -13,8 +13,6 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
 )
 
 if TYPE_CHECKING:
-    from vnpy.trader.ui import QtWidgets
-
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 SIGNAL_PANEL_DEFAULT_HEIGHT = 240
@@ -28,9 +26,10 @@ TABLE_MIN_HEIGHT = 160
 
 def center_splitter(page: QuotesPage) -> QtWidgets.QSplitter | None:
     splitter = getattr(page, "_center_splitter", None)
-    if splitter is not None:
+    if isinstance(splitter, QtWidgets.QSplitter):
         return splitter
-    return getattr(page, "_run_output_splitter", None)
+    fallback = getattr(page, "_run_output_splitter", None)
+    return cast(QtWidgets.QSplitter | None, fallback)
 
 
 def _table_host(page: QuotesPage):

@@ -413,8 +413,8 @@ class RadarController(QtCore.QObject):
         sector_ids = card.sector_names() if card is not None else []
         host.open_sector_flow(sector_ids if sector_ids else None)
 
-    def _find_main_window(self):
-        widget = self._page
+    def _find_main_window(self) -> QtWidgets.QWidget | None:
+        widget: QtWidgets.QWidget | None = self._page
         while widget is not None:
             if hasattr(widget, "open_screener_run") or hasattr(widget, "open_sector_flow") or hasattr(widget, "open_screener_radar_resonance"):
                 return widget

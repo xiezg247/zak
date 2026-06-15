@@ -170,5 +170,6 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
     def _refresh_chip_colors(self) -> None:
         for group in (self._volume_group, self._moneyflow_group):
             chip_host: QtWidgets.QWidget = group._chip_host
-            for chip in chip_host.findChildren(_DiscoveryChip):
+            chips: list[_DiscoveryChip] = chip_host.findChildren(_DiscoveryChip)
+            for chip in chips:
                 chip.refresh_theme()

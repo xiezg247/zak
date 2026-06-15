@@ -207,7 +207,7 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             return self._headers[section]
         return None
 
-    def flags(self, index: QtCore.Qt.QModelIndex) -> QtCore.Qt.ItemFlag:  # noqa: N802
+    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:  # noqa: N802
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable

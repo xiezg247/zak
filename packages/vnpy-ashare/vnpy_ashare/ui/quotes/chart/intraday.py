@@ -359,7 +359,7 @@ class IntradayChart(QtWidgets.QWidget):
         else:
             self._update_idle_summary(tokens=tokens)
 
-    def leaveEvent(self, event: QtGui.QEvent) -> None:
+    def leaveEvent(self, event: QtCore.QEvent) -> None:
         self._clear_hover()
         super().leaveEvent(event)
 

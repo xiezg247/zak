@@ -66,7 +66,7 @@ check_untyped_defs = true
 disallow_untyped_defs = false
 show_error_codes = true
 
-# Qt / vnpy UI：先放宽常见噪声规则，逐步收紧（见 docs/mypy-rollout.md Phase 7）
+# Qt / vnpy UI（ui 非 quotes）：先放宽常见噪声规则
 [[tool.mypy.overrides]]
 module = "vnpy_ashare.ui.*"
 disable_error_code = [
@@ -84,4 +84,15 @@ disable_error_code = [
     "has-type",
     "return-value",
     "no-redef",
+]
+
+# ui/quotes：仅保留 Qt 绑定层放宽（Phase 7b）
+[[tool.mypy.overrides]]
+module = "vnpy_ashare.ui.quotes.*"
+disable_error_code = [
+    "attr-defined",
+    "override",
+    "call-overload",
+    "arg-type",
+    "misc",
 ]

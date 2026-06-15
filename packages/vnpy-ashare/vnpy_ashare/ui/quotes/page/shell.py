@@ -359,9 +359,9 @@ class QuotesPageShell:
 
         page._pagination.set_visible()
 
-        page.stats_label = QtWidgets.QLabel("")
-        page.stats_label.setObjectName("StatsLabel")
-        page.stats_label.setVisible(page.config.column_configurable)
+        page._stats_label = QtWidgets.QLabel("")
+        page._stats_label.setObjectName("StatsLabel")
+        page._stats_label.setVisible(page.config.column_configurable)
 
         page.quote_table_model = QuoteTableModel(page)
         page.quote_table_model.set_headers(headers)
@@ -428,7 +428,7 @@ class QuotesPageShell:
             page.chart_panel = ChartPanel()
             page.chart_panel.tab_changed.connect(page._on_chart_tab_changed)
             page._on_chart_tab_changed(page.chart_panel.current_tab_index())
-            chart_widget = page.chart_panel
+            chart_widget: QtWidgets.QWidget | None = page.chart_panel
         elif not page.config.show_kline:
             chart_widget = None
         else:
@@ -488,8 +488,8 @@ class QuotesPageShell:
             center_layout = QtWidgets.QVBoxLayout(center_widget)
             center_layout.setContentsMargins(0, 0, 0, 0)
             center_layout.addWidget(toolbar_host)
-            if page.stats_label is not None:
-                center_layout.addWidget(page.stats_label)
+            if page._stats_label is not None:
+                center_layout.addWidget(page._stats_label)
             page._market_table_host = MarketTableHost(
                 page.market_table,
                 external_scrollbar=False,
@@ -559,8 +559,8 @@ class QuotesPageShell:
             center_layout.setContentsMargins(0, 0, 0, 0)
             center_layout.setSpacing(0)
             center_layout.addWidget(toolbar_host)
-            if page.stats_label is not None and page.stats_label.isVisible():
-                center_layout.addWidget(page.stats_label)
+            if page._stats_label is not None and page._stats_label.isVisible():
+                center_layout.addWidget(page._stats_label)
             page._market_table_host = MarketTableHost(page.market_table)
             center_layout.addWidget(page._market_table_host, stretch=1)
 

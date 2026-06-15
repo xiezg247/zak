@@ -539,7 +539,10 @@ class ChartPanel(QtWidgets.QWidget):
                 self._update_hint(daily_missing=True)
                 self._retire_worker(worker)
                 return
-            loaded: LoadedBars = result
+            if not isinstance(result, LoadedBars):
+                self._retire_worker(worker)
+                return
+            loaded = result
             if loaded.bars:
                 self.daily_chart.replace_history(loaded.bars)
                 self._apply_daily_viewport()

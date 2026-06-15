@@ -324,7 +324,7 @@ class DataLoaderController:
         worker.failed.connect(on_failed)
         worker.start()
 
-    def _market_page_cache_key(self) -> tuple[str | None, str, str, int]:
+    def _market_page_cache_key(self) -> tuple[str, str | None, str, int]:
         page = self._p
         keyword = page.search_edit.text().strip()
         return (page._market_rank_id, page._market_board, keyword, page._market_page)

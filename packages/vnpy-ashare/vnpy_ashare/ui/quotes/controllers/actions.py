@@ -201,7 +201,7 @@ class ActionsController:
         page.quote_change_label.setText(f"  {quote.change_amount:+.2f}  ({quote.change_pct:+.2f}%)")
         page.quote_change_label.setStyleSheet(f"color: {color}; font-size: 14px;")
 
-        if page._open_label is not None:
+        if page._open_label is not None and page._high_label is not None and page._low_label is not None and page._volume_label is not None:
             open_text = f"今开 {quote.open_price:.2f}" if quote.open_price else "今开 —"
             page._open_label.setText(open_text)
             page._high_label.setText(f"最高 {quote.high_price:.2f}" if quote.high_price else "最高 —")
@@ -241,6 +241,7 @@ class ActionsController:
 
         worker = DepthRefreshWorker(item)
         page._depth_worker = worker
+        depth_panel = page.depth_panel
 
         def on_finished(depth: object) -> None:
             if page._depth_worker is worker:
@@ -252,8 +253,8 @@ class ActionsController:
                     return
                 if (page.current_item.symbol, page.current_item.exchange) != target_key:
                     return
-                if isinstance(depth, DepthSnapshot):
-                    page.depth_panel.update_depth(depth)
+                if isinstance(depth, DepthSnapshot) and depth_panel is not None:
+                    depth_panel.update_depth(depth)
             finally:
                 page._release_worker(worker)
 
@@ -264,7 +265,8 @@ class ActionsController:
                 if generation != page._depth_generation:
                     return
                 page._depth_permission_denied = True
-                page.depth_panel.show_permission_denied("未开通市场深度权限")
+                if depth_panel is not None:
+                    depth_panel.show_permission_denied("未开通市场深度权限")
             finally:
                 page._release_worker(worker)
 

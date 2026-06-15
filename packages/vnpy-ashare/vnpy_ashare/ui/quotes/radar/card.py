@@ -154,6 +154,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._view_run_button.hide()
         self._view_run_button.clicked.connect(self._on_view_run_clicked)
         footer.addWidget(self._view_run_button)
+        self._sector_flow_button: QtWidgets.QPushButton | None = None
         if spec.id == "sector_theme":
             self._sector_flow_button = QtWidgets.QPushButton("板块资金")
             self._sector_flow_button.setObjectName("RadarCardSectorFlow")

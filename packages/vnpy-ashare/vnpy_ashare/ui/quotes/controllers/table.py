@@ -27,6 +27,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     MAX_DISPLAY_ROWS,
     STATS_DEBOUNCE_MS,
 )
+from vnpy_ashare.ui.quotes.table import QuoteTableModel
 from vnpy_ashare.ui.quotes.table.columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
@@ -60,7 +61,7 @@ class TableController:
     def _p(self) -> QuotesPage:
         return self._page
 
-    def _model(self):
+    def _model(self) -> QuoteTableModel:
         return self._p.quote_table_model
 
     def _view(self) -> QtWidgets.QTableView:

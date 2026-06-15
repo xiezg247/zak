@@ -57,7 +57,7 @@ class WatchlistPositionController:
     def _follows_signal(self) -> bool:
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
-            return panel.read_config().follow_signal
+            return bool(panel.read_config().follow_signal)
         return self._page.position_config.follow_signal
 
     def _cache_strategy_mismatch(self, signal_config: WatchlistSignalConfig) -> bool:

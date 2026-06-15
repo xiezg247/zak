@@ -28,17 +28,19 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 | `ai/context/` | AI 上下文 | ✅ 严格 |
 | `data/` | 行情下载、bar store | ✅ 严格 |
 | `jobs/` | 定时任务 | ✅ 严格 |
-| `ui/` | Qt 桌面 UI | ✅ **放宽**（见下） |
+| `ui/quotes/` | 行情页 Qt UI | ✅ **半严格**（仅 Qt 绑定 5 类 disable） |
+| `ui/` 其余 | screener、shell、backtest 等 | ✅ **放宽** |
 
 共 **417** 个源文件。
 
 ### Phase 7：`ui/` 放宽规则
 
-Qt / vnpy 绑定层噪声较多，对 `vnpy_ashare.ui.*` 使用 `[[tool.mypy.overrides]]`，暂时关闭：
+Qt / vnpy 绑定层噪声较多：
 
-`attr-defined`、`override`、`call-overload`、`arg-type`、`misc`、`assignment`、`union-attr`、`no-any-return`、`var-annotated`、`name-defined`、`operator`、`has-type`、`return-value`、`no-redef`
+- **`vnpy_ashare.ui.*`**（除 quotes 外）：暂时关闭 14 类 error code（见 `pyproject.toml`）。
+- **`vnpy_ashare.ui.quotes.*`（Phase 7b ✅）**：仅保留 Qt 绑定层 5 类 disable；`assignment` / `union-attr` / `no-any-return` 等已收紧并通过。
 
-**Phase 7b（后续）**：按子目录逐步去掉上述 disable，优先 `ui/quotes/` → `ui/screener/` → `ui/shell/`；配合 `types-PySide6` 与 `cast`/`Optional` 守卫。
+**Phase 7c（后续）**：继续收紧 `ui/screener/`、`ui/shell/` 等，并逐步减少 `ui.quotes.*` 的 Qt disable。
 
 ## 本地运行
 
@@ -59,9 +61,10 @@ cd packages/vnpy-ashare && ../../.venv/bin/mypy --config-file pyproject.toml
 
 ```text
 Phase 1–6  quotes/*、services/、screener/、domain/、config/、storage/、integrations/、ai/context  ← 严格（195 文件）
-Phase 7    data/、jobs/、ai/context/、ui/（417 文件；ui 放宽 override）              ← 当前
+Phase 7    data/、jobs/、ai/context/、ui/（417 文件）                         ← 当前
+Phase 7b   ui/quotes/ 收紧（40 处类型修复）                                  ← 已完成
+Phase 7c   ui/screener/、ui/shell/ 等逐步收紧
 Phase 8    vnpy-common 独立 package mypy
-Phase 7b   逐步收紧 ui.* override
 ```
 
 ## 新增 workspace package

@@ -28,10 +28,15 @@ from vnpy_ashare.domain.position_snapshot import PositionSnapshot
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
+from vnpy_ashare.services.analysis_service import AnalysisService
+from vnpy_ashare.services.note_service import NoteService
+from vnpy_ashare.services.position_service import PositionService
+from vnpy_ashare.services.watchlist_service import WatchlistService
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
-from vnpy_ashare.ui.quotes.chart import ChartPanel
+from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
+from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,
     DataLoaderController,
@@ -55,7 +60,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     save_market_auto_refresh_pref,
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
-from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel
+from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
     WatchlistPositionConfig,
@@ -76,7 +81,9 @@ from vnpy_ashare.ui.quotes.workers import (
     DepthRefreshWorker,
     DiagnoseWorker,
     DownloadWorker,
+    MinuteDownloadWorker,
     QuotesRefreshWorker,
+    ScopeBarsLoadWorker,
 )
 from vnpy_common.ui.feedback import TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -84,14 +91,6 @@ from vnpy_common.ui.theme import theme_manager
 
 
 class QuotesPage(QtWidgets.QWidget):
-    @property
-    def stats_label(self) -> QtWidgets.QLabel | None:
-        return self._stats_label
-
-    @stats_label.setter
-    def stats_label(self, label: QtWidgets.QLabel | None) -> None:
-        self._stats_label = label
-
     """单页行情：列表 + 报价头 + 日 K。"""
 
     _thread_active = staticmethod(thread_is_active)
@@ -151,6 +150,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_total = 0
         self._local_total = 0
         self._market_board: str | None = None
+        self._market_rank_id: str = self.config.default_rank_id
         self._market_catalog: list = []
         self._market_catalog_quotes: dict = {}
         self._market_catalog_loaded = False
@@ -162,7 +162,7 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_scroll_blocked = False
         self._market_last_load_more_at = 0.0
         self._apply_default_table_sort = False
-        self._market_table_host = None
+        self._market_table_host: MarketTableHost | None = None
         self._market_matched: list[StockItem] = []
         self._market_board_base: list[StockItem] | None = None
         self._market_board_base_key: str | None = None
@@ -181,8 +181,8 @@ class QuotesPage(QtWidgets.QWidget):
         self._market_worker: QtCore.QThread | None = None
         self._prefetch_worker: QtCore.QThread | None = None
         self._sync_worker: QtCore.QThread | None = None
-        self._bars_worker: BarsLoadWorker | None = None
-        self._download_worker: DownloadWorker | None = None
+        self._bars_worker: BarsLoadWorker | ScopeBarsLoadWorker | None = None
+        self._download_worker: DownloadWorker | MinuteDownloadWorker | None = None
         self._batch_fill_worker: BatchFillWorker | None = None
         self._batch_gap_fill_worker: BatchGapFillWorker | None = None
         self._gap_worker: BarGapCheckWorker | None = None
@@ -195,11 +195,11 @@ class QuotesPage(QtWidgets.QWidget):
         self.depth_panel: DepthPanel | None = None
         self.diagnose_panel: DiagnosePanel | None = None
         self.chart_panel: ChartPanel | None = None
-        self.chart_section = None
+        self.chart_section: ChartSectionPanel | None = None
         self.chart_hint: QtWidgets.QLabel | None = None
         self._right_panel_widget: QtWidgets.QWidget | None = None
         self._chart_splitter_saved_state: QtCore.QByteArray | None = None
-        self.run_output_panel = None
+        self.run_output_panel: TaskRunOutputPanel | None = None
         self._center_splitter: QtWidgets.QSplitter | None = None
         self._run_output_splitter: QtWidgets.QSplitter | None = None
         self._stream_bridge: TickflowStreamBridge | None = None
@@ -820,16 +820,16 @@ class QuotesPage(QtWidgets.QWidget):
 
     # ── Service 访问（统一经 engine_access，勿 getattr AshareEngine） ──
 
-    def _get_watchlist_service(self):
+    def _get_watchlist_service(self) -> WatchlistService | None:
         return get_watchlist_service(self._get_main_engine())
 
-    def _get_position_service(self):
+    def _get_position_service(self) -> PositionService | None:
         return get_position_service(self._get_main_engine())
 
-    def _get_note_service(self):
+    def _get_note_service(self) -> NoteService | None:
         return get_note_service(self._get_main_engine())
 
-    def _get_analysis_service(self):
+    def _get_analysis_service(self) -> AnalysisService | None:
         return get_analysis_service(self._get_main_engine())
 
     def _get_quote_service(self):

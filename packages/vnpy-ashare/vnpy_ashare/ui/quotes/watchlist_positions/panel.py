@@ -638,7 +638,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 config = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
                 for col, (key, _label) in enumerate(_PANEL_COLUMNS):
                     text = values.get(key, "—")
-                    cell = self._table.item(row, col)
+                    cell: QtWidgets.QTableWidgetItem | None = self._table.item(row, col)
                     if cell is None:
                         cell = QtWidgets.QTableWidgetItem(text)
                         self._table.setItem(row, col, cell)
