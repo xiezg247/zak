@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import importlib.util
+import logging
 import os
+import threading
 import urllib.request
+import weakref
+from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.integrations.tickflow.quotes import get_tickflow_client, parse_quote_row
 from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+
+if TYPE_CHECKING:
+    from tickflow.resources.stream import MarketStream
+
+_logger = logging.getLogger(__name__)
 
 _PROXY_ENV_KEYS = (
     "ALL_PROXY",
@@ -53,6 +62,60 @@ def can_use_tickflow_stream() -> bool:
     return True
 
 
+_STREAM_SHUTDOWN_JOIN_TIMEOUT_SEC = 3.0
+_active_bridges: weakref.WeakSet = weakref.WeakSet()
+_market_stream_shutdown_patched = False
+
+
+def _patch_market_stream_shutdown() -> None:
+    """修补 tickflow MarketStream：退出时标记 closed 并等待后台线程结束。"""
+    global _market_stream_shutdown_patched
+    if _market_stream_shutdown_patched:
+        return
+    try:
+        from tickflow.resources.stream import MarketStream
+    except ImportError:
+        return
+
+    original_close = MarketStream.close
+    original_run_in_thread = MarketStream._run_in_thread
+
+    def patched_close(self: MarketStream) -> None:
+        self._stop.set()
+        inner = getattr(self, "_inner", None)
+        if inner is not None:
+            inner._closed = True
+        original_close(self)
+        thread = getattr(self, "_thread", None)
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=_STREAM_SHUTDOWN_JOIN_TIMEOUT_SEC)
+
+    def patched_run_in_thread(self: MarketStream) -> None:
+        try:
+            original_run_in_thread(self)
+        except RuntimeError as ex:
+            if "interpreter shutdown" in str(ex).lower():
+                _logger.debug("TickFlow stream thread ended during interpreter shutdown")
+                return
+            raise
+
+    MarketStream.close = patched_close  # type: ignore[method-assign]
+    MarketStream._run_in_thread = patched_run_in_thread  # type: ignore[method-assign]
+    _market_stream_shutdown_patched = True
+
+
+def shutdown_all_tickflow_streams() -> None:
+    """应用退出前关闭所有活跃 WebSocket 桥接（避免解释器收尾时后台线程仍运行）。"""
+    for bridge in list(_active_bridges):
+        try:
+            bridge.stop()
+        except Exception:
+            _logger.debug("TickFlow bridge stop failed during app shutdown", exc_info=True)
+
+
+_patch_market_stream_shutdown()
+
+
 class TickflowStreamBridge(QtCore.QObject):
     """后台 WebSocket 线程 → 主线程 Qt 信号。"""
 
@@ -65,12 +128,13 @@ class TickflowStreamBridge(QtCore.QObject):
 
     def __init__(self, parent: QtCore.QObject | None = None) -> None:
         super().__init__(parent)
-        self._stream = None
+        self._stream: MarketStream | None = None
         self._quote_symbols: set[str] = set()
         self._depth_symbol: str | None = None
         self._connected = False
         self._depth_denied = False
         self._disabled = False
+        _active_bridges.add(self)
 
     @property
     def is_connected(self) -> bool:
@@ -149,10 +213,17 @@ class TickflowStreamBridge(QtCore.QObject):
         self._stream = None
         if stream is None:
             return
+        self._disabled = True
+        inner = getattr(stream, "_inner", None)
+        if inner is not None:
+            inner._closed = True
         try:
             stream.close()
         except Exception:
-            pass
+            _logger.debug("TickFlow stream close failed", exc_info=True)
+        thread = getattr(stream, "_thread", None)
+        if thread is not None and thread.is_alive() and thread is not threading.current_thread():
+            thread.join(timeout=_STREAM_SHUTDOWN_JOIN_TIMEOUT_SEC)
 
     def set_quote_symbols(self, symbols: list[str]) -> None:
         new_set = {symbol for symbol in symbols if symbol}

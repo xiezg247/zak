@@ -62,6 +62,9 @@ def main() -> None:
 
     qapp = create_qapp(QAPP_NAME)
     qapp.setStyle("Fusion")
+    from vnpy_ashare.integrations.tickflow.stream import shutdown_all_tickflow_streams
+
+    qapp.aboutToQuit.connect(shutdown_all_tickflow_streams)
 
     event_engine = EventEngine()
     main_engine = MainEngine(event_engine)

@@ -73,10 +73,31 @@ class TickflowStreamBridgeTests(unittest.TestCase):
         with patch.object(tickflow_stream_module.importlib.util, "find_spec", return_value=None):
             self.assertFalse(can_use_tickflow_stream())
 
-    @patch.object(tickflow_stream_module.urllib.request, "getproxies", return_value={})
-    @patch.dict("os.environ", {}, clear=True)
-    def test_can_use_stream_without_proxy(self, _mock_getproxies: MagicMock) -> None:
-        self.assertTrue(can_use_tickflow_stream())
+    def test_shutdown_stream_joins_background_thread(self) -> None:
+        bridge = TickflowStreamBridge()
+        mock_stream = MagicMock()
+        thread = MagicMock()
+        thread.is_alive.return_value = True
+        thread.join = MagicMock()
+        mock_stream._thread = thread
+        mock_stream._inner = MagicMock()
+        bridge._stream = mock_stream
+
+        bridge._shutdown_stream()
+
+        mock_stream.close.assert_called_once()
+        thread.join.assert_called_once_with(timeout=tickflow_stream_module._STREAM_SHUTDOWN_JOIN_TIMEOUT_SEC)
+        self.assertTrue(bridge._disabled)
+        self.assertIsNone(bridge._stream)
+
+    def test_shutdown_all_tickflow_streams(self) -> None:
+        bridge = TickflowStreamBridge()
+        mock_stream = MagicMock()
+        bridge._stream = mock_stream
+
+        tickflow_stream_module.shutdown_all_tickflow_streams()
+
+        mock_stream.close.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
@@ -23,9 +23,6 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
-    from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
-    from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
-    from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 
 
 SIGNAL_PANEL_DEFAULT_HEIGHT = 240
@@ -56,10 +53,13 @@ def center_splitter(page: QuotesPage) -> QtWidgets.QSplitter | None:
     if isinstance(splitter, QtWidgets.QSplitter):
         return splitter
     # 旧布局：运行输出区独立 splitter
-    return cast(QtWidgets.QSplitter | None, page._run_output_splitter)
+    fallback = page._run_output_splitter
+    if isinstance(fallback, QtWidgets.QSplitter):
+        return fallback
+    return None
 
 
-def _run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
+def _run_output_panel(page: QuotesPage) -> QtWidgets.QWidget | None:
     from vnpy_ashare.ui.quotes.page.run_log import run_output_panel
 
     return run_output_panel(page)
@@ -199,9 +199,9 @@ def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
     configure_center_splitter(splitter)
 
     widgets = _center_panel_widgets(page)
-    signal_panel = cast(WatchlistSignalPanel | None, widgets["signal"])
-    position_panel = cast(WatchlistPositionPanel | None, widgets["position"])
-    run_panel = cast(TaskRunOutputPanel | None, widgets["run"])
+    signal_panel = widgets["signal"]
+    position_panel = widgets["position"]
+    run_panel = widgets["run"]
 
     sizes_map = compute_center_splitter_sizes(
         splitter_total_height(splitter),
