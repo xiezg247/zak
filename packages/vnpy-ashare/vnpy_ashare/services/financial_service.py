@@ -132,7 +132,7 @@ def compute_snapshots(ts_code: str) -> list[FinancialSnapshotRow]:
         prior_roe = field_float(prior_indicator, "roe")
 
         ocf_to_profit = None
-        if ocf is not None and net_income not in (None, 0):
+        if ocf is not None and net_income is not None and net_income != 0:
             ocf_to_profit = round(ocf / net_income, 2)
 
         snapshot = FinancialSnapshotRow(

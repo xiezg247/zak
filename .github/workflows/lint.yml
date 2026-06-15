@@ -43,4 +43,4 @@ jobs:
         run: uv sync --extra dev
 
       - name: mypy
-        run: uv run mypy
+        run: bash scripts/mypy-check.sh

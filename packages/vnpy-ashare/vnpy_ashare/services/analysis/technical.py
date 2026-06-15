@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from datetime import date, datetime
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
@@ -157,7 +157,7 @@ class TechnicalAnalyzer:
         closes = [bar.close_price for bar in tail]
         highs = [bar.high_price for bar in tail]
         volumes = [float(bar.volume) for bar in tail]
-        dates = [bar.datetime for bar in tail]
+        dates: list[date | datetime] = [bar.datetime for bar in tail]
 
         kind = SUPPORTED_SIGNAL_STRATEGIES[class_name]
         if kind == "double_ma":
@@ -272,7 +272,7 @@ class TechnicalAnalyzer:
             return {}
 
         self.reset_benchmark_cache()
-        payload_kwargs = {
+        payload_kwargs: dict[str, Any] = {
             "class_name": class_name,
             "lookback": lookback,
             "fast_window": fast_window,
@@ -574,7 +574,7 @@ class TechnicalAnalyzer:
             return None
         mean_change = sum(daily_changes) / len(daily_changes)
         variance = sum((value - mean_change) ** 2 for value in daily_changes) / len(daily_changes)
-        return round(variance**0.5, 2)
+        return float(round(variance**0.5, 2))
 
     @staticmethod
     def _build_direction_hints(
@@ -629,6 +629,12 @@ class TechnicalAnalyzer:
         """读取选股结果；可选历史 run_id 与批量技术面快照。"""
         screening_svc = getattr(self._engine, "screening_service", None)
 
+        condition: str
+        updated_at: str | None
+        rows: list[Any]
+        source: str
+        run_meta: dict[str, Any]
+
         if run_id:
             record = get_run(run_id.strip())
             if record is None:
@@ -648,8 +654,9 @@ class TechnicalAnalyzer:
                 return {
                     "message": "暂无选股结果，请用户先在「选股」页运行方案，或提供 run_id",
                 }
-            condition = ctx.condition
-            updated_at = ctx.updated_at
+            condition = str(ctx.condition or "")
+            raw_updated = ctx.updated_at
+            updated_at = raw_updated if isinstance(raw_updated, str) else None
             rows = list(ctx.rows)
             source = "session"
             run_meta = {}
@@ -847,7 +854,7 @@ class TechnicalAnalyzer:
         highs = [bar.high_price for bar in tail]
         lows = [bar.low_price for bar in tail]
         volumes = [float(bar.volume) for bar in tail]
-        dates = [bar.datetime for bar in tail]
+        dates: list[date | datetime] = [bar.datetime for bar in tail]
 
         if SUPPORTED_SIGNAL_STRATEGIES.get(class_name) is None:
             return None
@@ -871,7 +878,7 @@ class TechnicalAnalyzer:
         if payload is None:
             return None
         payload["relative_index_pct"] = relative_index_pct
-        return payload
+        return cast(dict[str, Any], payload)
 
     @staticmethod
     def _payload_to_signal_snapshot(payload: dict[str, Any]) -> SignalSnapshot:
@@ -910,7 +917,7 @@ class TechnicalAnalyzer:
         ma20: float | None,
         ma60: float | None,
     ) -> str:
-        if ma5 is None or ma20 is None:
+        if ma5 is None or ma10 is None or ma20 is None:
             return "数据不足，无法判断均线排列"
         if ma5 > ma10 > ma20:
             trend = "短期多头排列"

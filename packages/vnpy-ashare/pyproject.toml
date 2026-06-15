@@ -35,3 +35,25 @@ zak = "vnpy_ashare.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["vnpy_ashare*"]
+
+# mypy 渐进启用：范围见仓库 docs/mypy-rollout.md
+[tool.mypy]
+python_version = "3.10"
+files = [
+    "vnpy_ashare/quotes/core",
+    "vnpy_ashare/quotes/rank",
+    "vnpy_ashare/quotes/market",
+    "vnpy_ashare/quotes/misc",
+    "vnpy_ashare/quotes/radar",
+    "vnpy_ashare/screener/data",
+    "vnpy_ashare/services",
+]
+mypy_path = "../vnpy-common:."
+follow_imports = "silent"
+ignore_missing_imports = true
+warn_return_any = true
+warn_unused_ignores = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = false
+show_error_codes = true

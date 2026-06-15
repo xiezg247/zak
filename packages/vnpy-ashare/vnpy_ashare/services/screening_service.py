@@ -161,7 +161,7 @@ class ScreeningService(BaseService):
             raise RuntimeError(self.quote_rows_unavailable_message(err))
         return run_industry_screen(industry, top_n=top_n, quote_rows=quote_rows)
 
-    def _run_pattern_screen_mcp(self, pattern_id: str, *, top_n: int = 20):
+    def _run_pattern_screen_mcp(self, pattern_id: str, *, top_n: int = 20) -> ScreenerRunResult | None:
         from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
 
         analysis = getattr(self.engine, "analysis_service", None)
@@ -329,15 +329,15 @@ class ScreeningService(BaseService):
 
     @staticmethod
     def is_auto_run_config(config: dict[str, Any] | None) -> bool:
-        return is_auto_run(config)
+        return is_auto_run(config) if config is not None else False
 
     @staticmethod
     def is_strategy_run_config(config: dict[str, Any] | None) -> bool:
-        return is_strategy_run(config)
+        return is_strategy_run(config) if config is not None else False
 
     @staticmethod
     def is_run_unread_config(config: dict[str, Any] | None) -> bool:
-        return is_run_unread(config)
+        return is_run_unread(config) if config is not None else False
 
     def find_latest_auto_run_for_job(self, job_id: str):
         """定时任务完成后定位最新自动选股记录。"""

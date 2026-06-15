@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from vnpy_ashare.domain.signal_snapshot import (
     INTRADAY_ANCHOR_MIN_DELTA,
     INTRADAY_CROSS_NEAR_PCT,
@@ -538,7 +540,7 @@ def signal_cell_color(
             )
         ):
             return warning_color
-        return base
+        return cast(str | None, base)
     if column_key == "signal_age" and warning_color:
         if signal_expired(snapshot):
             return warning_color
@@ -586,7 +588,7 @@ def signal_cell_color(
         if excess is None:
             return None
         if excess >= 2:
-            return colors.rise
+            return cast(str | None, colors.rise)
         if excess <= -2:
-            return colors.fall
+            return cast(str | None, colors.fall)
     return None

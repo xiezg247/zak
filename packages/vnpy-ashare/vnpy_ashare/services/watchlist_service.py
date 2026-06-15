@@ -52,5 +52,5 @@ class WatchlistService(BaseService):
     def remove(self, symbol: str, exchange: Exchange) -> bool:
         return remove_watchlist_item(symbol, exchange)
 
-    def move(self, symbol: str, exchange: Exchange, direction: str) -> bool:
+    def move(self, symbol: str, exchange: Exchange, direction: Literal["up", "down"]) -> bool:
         return move_watchlist_item(symbol, exchange, direction=direction)

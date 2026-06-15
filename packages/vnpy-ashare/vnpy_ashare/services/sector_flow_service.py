@@ -128,7 +128,9 @@ def build_sector_snapshot(
     sector_rows = aggregate_sector_rows(rows)
     inflow_rows = [row for row in sector_rows if row.net_flow_yi > 0]
     outflow_rows = [row for row in sector_rows if row.net_flow_yi < 0]
-    top_in_name = top_in_yi = top_out_name = top_out_yi = ""
+    top_in_name = top_out_name = ""
+    top_in_yi = 0.0
+    top_out_yi = 0.0
     if inflow_rows:
         top_in = inflow_rows[0]
         top_in_name = top_in.name
