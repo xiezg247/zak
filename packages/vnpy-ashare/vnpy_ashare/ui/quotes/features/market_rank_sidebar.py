@@ -7,6 +7,10 @@ from typing import TYPE_CHECKING, Any, cast
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.rank.rank_catalog import iter_rank_sidebar_rows
+from vnpy_ashare.ui.components.splitter_utils import (
+    set_splitter_sizes_quiet,
+    splitter_total_width,
+)
 from vnpy_common.ui.theme import theme_manager
 
 if TYPE_CHECKING:
@@ -251,11 +255,7 @@ def _rank_sidebar_target_width(expanded: bool) -> int:
 
 
 def _rank_splitter_total_width(splitter: QtWidgets.QSplitter) -> int:
-    width = splitter.width()
-    if width > 0:
-        return width
-    sizes = splitter.sizes()
-    return max(sum(sizes), RANK_SIDEBAR_EXPANDED_WIDTH + 200)
+    return splitter_total_width(splitter, min_total=RANK_SIDEBAR_EXPANDED_WIDTH + 200)
 
 
 def clamp_rank_splitter_sizes(page: QuotesPage) -> None:
@@ -269,9 +269,7 @@ def clamp_rank_splitter_sizes(page: QuotesPage) -> None:
     if len(sizes) >= 2 and sizes[0] == target:
         return
     total = _rank_splitter_total_width(splitter)
-    splitter.blockSignals(True)
-    splitter.setSizes([target, max(total - target, 0)])
-    splitter.blockSignals(False)
+    set_splitter_sizes_quiet(splitter, [target, max(total - target, 0)])
 
 
 class MarketRankSplitterResizeFilter(QtCore.QObject):
@@ -298,6 +296,4 @@ def sync_rank_splitter_for_expansion(page: QuotesPage, expanded: bool) -> None:
     sidebar.setMinimumWidth(width)
     sidebar.setMaximumWidth(width)
     total = _rank_splitter_total_width(splitter)
-    splitter.blockSignals(True)
-    splitter.setSizes([width, max(total - width, 0)])
-    splitter.blockSignals(False)
+    set_splitter_sizes_quiet(splitter, [width, max(total - width, 0)])

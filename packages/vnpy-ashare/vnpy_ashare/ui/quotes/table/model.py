@@ -103,6 +103,65 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
     ) -> None:
         if row < 0 or column < 0:
             return
+        changed_roles = self._merge_cell(
+            row,
+            column,
+            text,
+            sort_key=sort_key,
+            color=color,
+            stock_item=stock_item,
+            tooltip=tooltip,
+            replace=replace,
+        )
+        if changed_roles:
+            top_left = self.index(row, column)
+            self.dataChanged.emit(top_left, top_left, changed_roles)
+
+    def apply_row(
+        self,
+        row: int,
+        cells: list[QuoteCell],
+        *,
+        sortable: bool = True,
+    ) -> None:
+        """更新整行单元格，单行仅 emit 一次 dataChanged。"""
+        if row < 0 or not cells:
+            return
+        changed_roles: set[int] = set()
+        first_col: int | None = None
+        last_col: int | None = None
+        for col, incoming in enumerate(cells):
+            roles = self._merge_cell(
+                row,
+                col,
+                incoming.text,
+                sort_key=incoming.sort_key if sortable else None,
+                color=incoming.color,
+                stock_item=incoming.stock_item,
+                tooltip=incoming.tooltip,
+            )
+            if roles:
+                changed_roles.update(roles)
+                if first_col is None:
+                    first_col = col
+                last_col = col
+        if changed_roles and first_col is not None and last_col is not None:
+            top_left = self.index(row, first_col)
+            bottom_right = self.index(row, last_col)
+            self.dataChanged.emit(top_left, bottom_right, list(changed_roles))
+
+    def _merge_cell(
+        self,
+        row: int,
+        column: int,
+        text: str,
+        *,
+        sort_key: float | str | None = None,
+        color: str | None = None,
+        stock_item: StockItem | None = None,
+        tooltip: str | None = None,
+        replace: bool = False,
+    ) -> list[int]:
         self._ensure_rows(row + 1)
         self._ensure_columns(column + 1)
 
@@ -127,11 +186,7 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
         if tooltip is not None and cell.tooltip != tooltip:
             cell.tooltip = tooltip
             changed_roles.append(QtCore.Qt.ItemDataRole.ToolTipRole)
-
-        if changed_roles:
-            top_left = self.index(row, column)
-            for role in changed_roles:
-                self.dataChanged.emit(top_left, top_left, [role])
+        return changed_roles
 
     def _ensure_rows(self, count: int) -> None:
         if count <= len(self._rows):

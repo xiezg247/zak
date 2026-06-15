@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.ui.components.splitter_utils import (
+    bind_splitter_persistence,
+    clamp_primary_sizes,
+    panel_min_splitter_height,
+    panel_slot_height,
+    set_splitter_sizes_quiet,
+    splitter_total_height,
+)
 from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     load_center_splitter_sizes,
     load_signal_panel_expanded,
@@ -28,30 +37,51 @@ RUN_OUTPUT_COLLAPSED_HEIGHT = 32
 TABLE_MIN_HEIGHT = 160
 
 
+@dataclass(frozen=True)
+class _CenterPanelSpec:
+    key: str
+    default_height: int
+    collapsed_height: int
+
+
+_CENTER_PANEL_SPECS: tuple[_CenterPanelSpec, ...] = (
+    _CenterPanelSpec("signal", SIGNAL_PANEL_DEFAULT_HEIGHT, SIGNAL_PANEL_COLLAPSED_HEIGHT),
+    _CenterPanelSpec("position", POSITION_PANEL_DEFAULT_HEIGHT, POSITION_PANEL_COLLAPSED_HEIGHT),
+    _CenterPanelSpec("run", RUN_OUTPUT_EXPANDED_HEIGHT, RUN_OUTPUT_COLLAPSED_HEIGHT),
+)
+
+
 def center_splitter(page: QuotesPage) -> QtWidgets.QSplitter | None:
-    splitter = getattr(page, "_center_splitter", None)
+    splitter = page._center_splitter
     if isinstance(splitter, QtWidgets.QSplitter):
         return splitter
-    fallback = getattr(page, "_run_output_splitter", None)
-    return cast(QtWidgets.QSplitter | None, fallback)
-
-
-def _table_host(page: QuotesPage):
-    return getattr(page, "_market_table_host", None)
-
-
-def _signal_panel(page: QuotesPage) -> WatchlistSignalPanel | None:
-    return getattr(page, "signal_panel", None)
-
-
-def _position_panel(page: QuotesPage) -> WatchlistPositionPanel | None:
-    return getattr(page, "position_panel", None)
+    # 旧布局：运行输出区独立 splitter
+    return cast(QtWidgets.QSplitter | None, page._run_output_splitter)
 
 
 def _run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
     from vnpy_ashare.ui.quotes.page.run_log import run_output_panel
 
     return run_output_panel(page)
+
+
+def _center_panel_widgets(page: QuotesPage) -> dict[str, QtWidgets.QWidget | None]:
+    return {
+        "table": page._market_table_host,
+        "signal": page.signal_panel,
+        "position": page.position_panel,
+        "run": _run_output_panel(page),
+    }
+
+
+def _center_panel_by_widget(page: QuotesPage) -> dict[QtWidgets.QWidget, _CenterPanelSpec]:
+    widgets = _center_panel_widgets(page)
+    mapping: dict[QtWidgets.QWidget, _CenterPanelSpec] = {}
+    for spec in _CENTER_PANEL_SPECS:
+        widget = widgets.get(spec.key)
+        if widget is not None:
+            mapping[widget] = spec
+    return mapping
 
 
 def compute_center_splitter_sizes(
@@ -69,28 +99,22 @@ def compute_center_splitter_sizes(
 ) -> dict[str, int]:
     """计算主表与各面板的像素高度。"""
     total = max(int(total_height), 360)
-    signal_h = 0
-    if has_signal_panel:
-        signal_h = SIGNAL_PANEL_DEFAULT_HEIGHT if signal_expanded else SIGNAL_PANEL_COLLAPSED_HEIGHT
-        if signal_min_height > 0 and signal_expanded:
-            signal_h = max(signal_h, signal_min_height)
-    position_h = 0
-    if has_position_panel:
-        position_h = POSITION_PANEL_DEFAULT_HEIGHT if position_expanded else POSITION_PANEL_COLLAPSED_HEIGHT
-        if position_min_height > 0 and position_expanded:
-            position_h = max(position_h, position_min_height)
-    run_h = 0
-    if has_run_output:
-        run_h = RUN_OUTPUT_EXPANDED_HEIGHT if run_expanded else RUN_OUTPUT_COLLAPSED_HEIGHT
-        if run_min_height > 0 and run_expanded:
-            run_h = max(run_h, run_min_height)
-    table_h = max(total - signal_h - position_h - run_h, TABLE_MIN_HEIGHT)
-    return {
-        "table": table_h,
-        "signal": signal_h,
-        "position": position_h,
-        "run": run_h,
-    }
+    panel_flags = (
+        (has_signal_panel, signal_expanded, signal_min_height),
+        (has_position_panel, position_expanded, position_min_height),
+        (has_run_output, run_expanded, run_min_height),
+    )
+    slots: dict[str, int] = {}
+    for spec, (present, expanded, min_h) in zip(_CENTER_PANEL_SPECS, panel_flags, strict=True):
+        slots[spec.key] = panel_slot_height(
+            present,
+            expanded,
+            spec.default_height,
+            spec.collapsed_height,
+            min_h,
+        )
+    table_h = max(total - sum(slots.values()), TABLE_MIN_HEIGHT)
+    return {"table": table_h, **slots}
 
 
 def configure_center_splitter(splitter: QtWidgets.QSplitter) -> None:
@@ -101,32 +125,16 @@ def configure_center_splitter(splitter: QtWidgets.QSplitter) -> None:
         splitter.setStretchFactor(index, 1 if index == 0 else 0)
 
 
-def _panel_min_splitter_height(
-    panel,
-    *,
-    default_height: int,
-    collapsed_height: int,
-) -> int:
-    """面板在 splitter 中应占的最小高度（展开取默认/控件最小高度，折叠取折叠高度）。"""
-    if panel is None:
-        return 0
-    expanded = panel.is_expanded() if hasattr(panel, "is_expanded") else True
-    if expanded:
-        widget_min = panel.minimumHeight() if hasattr(panel, "minimumHeight") else default_height
-        return max(default_height, widget_min)
-    return collapsed_height
-
-
 def _migrate_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, saved: list[int]) -> list[int]:
     """兼容旧版 splitter 段数（如仅主表+信号区、或运行输出区替换为持仓区）。"""
     if not saved:
         return []
     count = splitter.count()
-    position_panel = _position_panel(page)
+    position_panel = page.position_panel
     run_panel = _run_output_panel(page)
 
     if len(saved) == 2 and count == 3 and position_panel is not None:
-        pos_h = _panel_min_splitter_height(
+        pos_h = panel_min_splitter_height(
             position_panel,
             default_height=POSITION_PANEL_DEFAULT_HEIGHT,
             collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT,
@@ -134,7 +142,7 @@ def _migrate_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, saved:
         return [saved[0], saved[1], pos_h]
 
     if len(saved) == 3 and count == 3 and run_panel is None and position_panel is not None:
-        pos_h = _panel_min_splitter_height(
+        pos_h = panel_min_splitter_height(
             position_panel,
             default_height=POSITION_PANEL_DEFAULT_HEIGHT,
             collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT,
@@ -151,53 +159,29 @@ def _normalize_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, save
     if len(saved) != splitter.count():
         return []
 
-    signal_panel = _signal_panel(page)
-    position_panel = _position_panel(page)
-    run_panel = _run_output_panel(page)
+    panel_specs = _center_panel_by_widget(page)
     result = list(saved)
 
     for index in range(splitter.count()):
         widget = splitter.widget(index)
-        if widget is signal_panel:
-            min_h = _panel_min_splitter_height(
-                signal_panel,
-                default_height=SIGNAL_PANEL_DEFAULT_HEIGHT,
-                collapsed_height=SIGNAL_PANEL_COLLAPSED_HEIGHT,
-            )
-            if signal_panel.is_expanded():
-                result[index] = max(result[index], min_h)
-            else:
-                result[index] = SIGNAL_PANEL_COLLAPSED_HEIGHT
-        elif widget is position_panel:
-            min_h = _panel_min_splitter_height(
-                position_panel,
-                default_height=POSITION_PANEL_DEFAULT_HEIGHT,
-                collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT,
-            )
-            if position_panel.is_expanded():
-                result[index] = max(result[index], min_h)
-            else:
-                result[index] = POSITION_PANEL_COLLAPSED_HEIGHT
-        elif widget is run_panel:
-            min_h = _panel_min_splitter_height(
-                run_panel,
-                default_height=RUN_OUTPUT_EXPANDED_HEIGHT,
-                collapsed_height=RUN_OUTPUT_COLLAPSED_HEIGHT,
-            )
-            if run_panel.is_expanded():
-                result[index] = max(result[index], min_h)
-            else:
-                result[index] = RUN_OUTPUT_COLLAPSED_HEIGHT
+        if widget is None:
+            continue
+        spec = panel_specs.get(widget)
+        if spec is None:
+            continue
+        panel = widget
+        min_h = panel_min_splitter_height(
+            panel,
+            default_height=spec.default_height,
+            collapsed_height=spec.collapsed_height,
+        )
+        if panel.is_expanded():
+            result[index] = max(result[index], min_h)
+        else:
+            result[index] = spec.collapsed_height
 
-    total = max(splitter.height(), sum(splitter.sizes()), 400)
-    if len(result) > 1:
-        result[0] = max(total - sum(result[1:]), TABLE_MIN_HEIGHT)
-    extra = sum(result) - total
-    if extra > 0 and result[0] > TABLE_MIN_HEIGHT:
-        result[0] = max(TABLE_MIN_HEIGHT, result[0] - extra)
-    elif sum(result) < total:
-        result[0] += total - sum(result)
-    return result
+    total = splitter_total_height(splitter)
+    return clamp_primary_sizes(result, total=total, primary_min=TABLE_MIN_HEIGHT)
 
 
 def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
@@ -214,13 +198,13 @@ def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
 
     configure_center_splitter(splitter)
 
-    table_host = _table_host(page)
-    signal_panel = _signal_panel(page)
-    position_panel = _position_panel(page)
-    run_panel = _run_output_panel(page)
+    widgets = _center_panel_widgets(page)
+    signal_panel = cast(WatchlistSignalPanel | None, widgets["signal"])
+    position_panel = cast(WatchlistPositionPanel | None, widgets["position"])
+    run_panel = cast(TaskRunOutputPanel | None, widgets["run"])
 
     sizes_map = compute_center_splitter_sizes(
-        max(splitter.height(), sum(splitter.sizes()), 400),
+        splitter_total_height(splitter),
         has_signal_panel=signal_panel is not None,
         signal_expanded=signal_panel.is_expanded() if signal_panel is not None else False,
         has_position_panel=position_panel is not None,
@@ -232,17 +216,17 @@ def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
         run_min_height=run_panel.minimumHeight() if run_panel is not None else 0,
     )
 
+    widget_keys = _center_panel_widgets(page)
     new_sizes: list[int] = []
     for index in range(splitter.count()):
         widget = splitter.widget(index)
-        if widget is table_host:
-            new_sizes.append(sizes_map["table"])
-        elif widget is signal_panel:
-            new_sizes.append(sizes_map["signal"])
-        elif widget is position_panel:
-            new_sizes.append(sizes_map["position"])
-        elif widget is run_panel:
-            new_sizes.append(sizes_map["run"])
+        matched_key: str | None = None
+        for key, panel_widget in widget_keys.items():
+            if widget is panel_widget:
+                matched_key = key
+                break
+        if matched_key is not None:
+            new_sizes.append(sizes_map[matched_key])
         else:
             current = splitter.sizes()
             new_sizes.append(current[index] if index < len(current) else 0)
@@ -250,20 +234,18 @@ def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
     if not new_sizes:
         return
 
-    splitter.blockSignals(True)
-    splitter.setSizes(new_sizes)
-    splitter.blockSignals(False)
+    set_splitter_sizes_quiet(splitter, new_sizes)
 
 
 def restore_center_splitter(page: QuotesPage) -> None:
     from vnpy_ashare.ui.quotes.page.run_log import load_run_output_expanded, sync_run_output_expansion
 
-    signal_panel = _signal_panel(page)
+    signal_panel = page.signal_panel
     if signal_panel is not None:
         signal_panel.set_expanded(load_signal_panel_expanded(), emit=False)
         if hasattr(signal_panel, "sync_splitter_geometry"):
             signal_panel.sync_splitter_geometry()
-    position_panel = _position_panel(page)
+    position_panel = page.position_panel
     if position_panel is not None:
         from vnpy_ashare.ui.quotes.watchlist_positions.settings import load_position_panel_expanded
 
@@ -285,9 +267,7 @@ def restore_center_splitter(page: QuotesPage) -> None:
     if saved:
         normalized = _normalize_saved_sizes(page, splitter, saved)
         if normalized and sum(normalized) >= 320:
-            splitter.blockSignals(True)
-            splitter.setSizes(normalized)
-            splitter.blockSignals(False)
+            set_splitter_sizes_quiet(splitter, normalized)
             if signal_panel is not None:
                 signal_panel.render_panel()
             if position_panel is not None:
@@ -305,11 +285,9 @@ def bind_center_splitter_persistence(page: QuotesPage) -> None:
     splitter = center_splitter(page)
     if splitter is None:
         return
-    if getattr(page, "_center_splitter_bound", False):
-        return
-    page._center_splitter_bound = True
-
-    def _on_moved(_pos: int, _index: int) -> None:
-        save_center_splitter_sizes(splitter.sizes())
-
-    splitter.splitterMoved.connect(_on_moved)
+    bind_splitter_persistence(
+        splitter,
+        save_center_splitter_sizes,
+        bound_flag="_center_splitter_bound",
+        host=page,
+    )

@@ -340,23 +340,9 @@ class CenterSplitterSizeTests(unittest.TestCase):
         page.signal_panel = signal_panel
         page.position_panel = None
 
-        with (
-            unittest.mock.patch(
-                "vnpy_ashare.ui.quotes.watchlist_signals.splitter._signal_panel",
-                return_value=signal_panel,
-            ),
-            unittest.mock.patch(
-                "vnpy_ashare.ui.quotes.watchlist_signals.splitter._table_host",
-                return_value=table_host,
-            ),
-            unittest.mock.patch(
-                "vnpy_ashare.ui.quotes.watchlist_signals.splitter._position_panel",
-                return_value=None,
-            ),
-            unittest.mock.patch(
-                "vnpy_ashare.ui.quotes.watchlist_signals.splitter._run_output_panel",
-                return_value=None,
-            ),
+        with unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._run_output_panel",
+            return_value=None,
         ):
             normalized = _normalize_saved_sizes(page, splitter, [768, 32])
 
@@ -383,19 +369,9 @@ class CenterSplitterSizeTests(unittest.TestCase):
         page.signal_panel = signal_panel
         page.position_panel = position_panel
 
-        with (
-            unittest.mock.patch(
-                "vnpy_ashare.ui.quotes.watchlist_signals.splitter._signal_panel",
-                return_value=signal_panel,
-            ),
-            unittest.mock.patch(
-                "vnpy_ashare.ui.quotes.watchlist_signals.splitter._position_panel",
-                return_value=position_panel,
-            ),
-            unittest.mock.patch(
-                "vnpy_ashare.ui.quotes.watchlist_signals.splitter._run_output_panel",
-                return_value=None,
-            ),
+        with unittest.mock.patch(
+            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._run_output_panel",
+            return_value=None,
         ):
             migrated = _migrate_saved_sizes(page, splitter, [600, 240])
 

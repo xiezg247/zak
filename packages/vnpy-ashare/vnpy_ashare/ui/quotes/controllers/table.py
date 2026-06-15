@@ -784,17 +784,11 @@ class TableController:
                     continue
                 quote = page.quote_map.get(tf_symbol)
                 row_cells = self._build_row_cells(row, item, quote, colors=colors)
-                model = self._model()
-                sortable = page.config.table_header_sortable
-                for col, cell in enumerate(row_cells):
-                    model.apply_cell(
-                        row,
-                        col,
-                        cell.text,
-                        sort_key=cell.sort_key if sortable else None,
-                        color=cell.color,
-                        stock_item=cell.stock_item,
-                    )
+                self._model().apply_row(
+                    row,
+                    row_cells,
+                    sortable=page.config.table_header_sortable,
+                )
         finally:
             view.blockSignals(False)
             view.setUpdatesEnabled(True)
@@ -1059,17 +1053,11 @@ class TableController:
             cells = self._build_local_row_cells(row, item)
         else:
             cells = self._build_row_cells(row, item, quote)
-        model = self._model()
-        sortable = page.config.table_header_sortable
-        for col, cell in enumerate(cells):
-            model.apply_cell(
-                row,
-                col,
-                cell.text,
-                sort_key=cell.sort_key if sortable else None,
-                color=cell.color,
-                stock_item=cell.stock_item,
-            )
+        self._model().apply_row(
+            row,
+            cells,
+            sortable=page.config.table_header_sortable,
+        )
 
     def on_selection_changed(self) -> None:
         page = self._p

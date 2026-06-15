@@ -61,6 +61,32 @@ class QuoteTableModelTests(unittest.TestCase):
         model.sort(0, QtCore.Qt.SortOrder.DescendingOrder)
         self.assertEqual(model.data(model.index(0, 0)), "高")
 
+    def test_apply_row_emits_single_data_changed(self) -> None:
+        from vnpy_ashare.ui.quotes.table.model import QuoteCell
+
+        model = QuoteTableModel()
+        model.set_headers(["代码", "名称", "价格"])
+        model.set_row_count(1)
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="茅台")
+        emissions = 0
+
+        def on_changed(*_args) -> None:
+            nonlocal emissions
+            emissions += 1
+
+        model.dataChanged.connect(on_changed)
+        model.apply_row(
+            0,
+            [
+                QuoteCell(text="600519", stock_item=item),
+                QuoteCell(text="茅台"),
+                QuoteCell(text="1800.00", sort_key=1800.0),
+            ],
+            sortable=True,
+        )
+        self.assertEqual(emissions, 1)
+        self.assertEqual(model.data(model.index(0, 2)), "1800.00")
+
 
 if __name__ == "__main__":
     unittest.main()

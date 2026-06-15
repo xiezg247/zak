@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.ui.components.splitter_utils import set_splitter_sizes_quiet
 from vnpy_ashare.ui.quotes.chart.section_settings import (
     load_chart_section_expanded,
     save_chart_section_expanded,
@@ -161,6 +162,7 @@ def sync_chart_splitter_for_expansion(page: QuotesPage, expanded: bool) -> None:
     section.setMaximumWidth(CHART_SIDE_COLLAPSED_WIDTH)
     sizes = splitter.sizes()
     total = max(sum(sizes), splitter.width(), expanded_min + 200)
-    splitter.blockSignals(True)
-    splitter.setSizes([total - CHART_SIDE_COLLAPSED_WIDTH, CHART_SIDE_COLLAPSED_WIDTH])
-    splitter.blockSignals(False)
+    set_splitter_sizes_quiet(
+        splitter,
+        [total - CHART_SIDE_COLLAPSED_WIDTH, CHART_SIDE_COLLAPSED_WIDTH],
+    )

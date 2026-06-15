@@ -9,6 +9,9 @@ from vnpy_ashare.config import fonts
 
 
 class FontSelectionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        fonts.clear_font_cache()
+
     @patch("vnpy_ashare.config.fonts.platform.system", return_value="Darwin")
     def test_font_family_candidates_macos(self, _system: object) -> None:
         self.assertEqual(fonts.font_family_candidates(), fonts.MACOS_FONTS)
