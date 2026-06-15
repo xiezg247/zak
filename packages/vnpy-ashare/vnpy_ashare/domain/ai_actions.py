@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Literal
+from typing import Literal, cast
 
 from vnpy.event import Event, EventEngine
 
@@ -18,13 +18,6 @@ from vnpy_ashare.app.events import (
     OrbAttentionRequest,
 )
 
-AI_ACTION_FILL_SCREENER = "fill_screener"
-AI_ACTION_FILL_RECIPE = "fill_recipe"
-AI_ACTION_ASK_AI = "ask_ai"
-AI_ACTION_OPEN_BACKTEST = "open_backtest"
-AI_ACTION_OPEN_BATCH_BACKTEST = "open_batch_backtest"
-AI_ACTION_ORB_ATTENTION = "orb_attention"
-
 AiActionKind = Literal[
     "fill_screener",
     "fill_recipe",
@@ -34,7 +27,14 @@ AiActionKind = Literal[
     "orb_attention",
 ]
 
-_PAYLOAD_TYPES: dict[str, type[object]] = {
+AI_ACTION_FILL_SCREENER: AiActionKind = "fill_screener"
+AI_ACTION_FILL_RECIPE: AiActionKind = "fill_recipe"
+AI_ACTION_ASK_AI: AiActionKind = "ask_ai"
+AI_ACTION_OPEN_BACKTEST: AiActionKind = "open_backtest"
+AI_ACTION_OPEN_BATCH_BACKTEST: AiActionKind = "open_batch_backtest"
+AI_ACTION_ORB_ATTENTION: AiActionKind = "orb_attention"
+
+_PAYLOAD_TYPES: dict[AiActionKind, type[object]] = {
     AI_ACTION_FILL_SCREENER: FillScreenerRequest,
     AI_ACTION_FILL_RECIPE: FillRecipeRequest,
     AI_ACTION_ASK_AI: AskAiRequest,
@@ -46,7 +46,7 @@ _PAYLOAD_TYPES: dict[str, type[object]] = {
 
 def validate_ai_action(data: AiActionRequest) -> None:
     """校验 action kind 与 payload 类型是否匹配。"""
-    expected = _PAYLOAD_TYPES.get(data.kind)
+    expected = _PAYLOAD_TYPES.get(cast(AiActionKind, data.kind))
     if expected is None:
         raise ValueError(f"未知 AI 动作: {data.kind}")
     if not isinstance(data.payload, expected):

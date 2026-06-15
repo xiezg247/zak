@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
@@ -843,7 +843,7 @@ class LocalDataController:
             return page.redownload_button, "重新下载", page.redownload_selected
         return page.download_button, page.download_button.text(), page.download_selected
 
-    def run_minute_download(self, *, mode: str = "full", action_label: str = "下载") -> None:
+    def run_minute_download(self, *, mode: Literal["full", "incremental"] = "full", action_label: str = "下载") -> None:
         page = self._page
         if page._task_guard.active or not page.current_item or page._thread_active(page._download_worker):
             return
@@ -925,7 +925,7 @@ class LocalDataController:
         worker.failed.connect(worker.deleteLater)
         worker.start()
 
-    def run_download(self, *, mode: str, action_label: str) -> None:
+    def run_download(self, *, mode: Literal["full", "incremental"], action_label: str) -> None:
         page = self._page
         if page._task_guard.active or not page.current_item or page._thread_active(page._download_worker):
             return

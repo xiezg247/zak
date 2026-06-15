@@ -38,7 +38,7 @@ class ValuationSparkline(QtWidgets.QWidget):
         self._pe_plot.clear()
         self._pb_plot.clear()
 
-    def render(self, history: list[ValuationRow]) -> None:
+    def render_history(self, history: list[ValuationRow]) -> None:
         self._pe_plot.clear()
         self._pb_plot.clear()
         if not history:
@@ -80,11 +80,11 @@ class ValuationHistorySection(QtWidgets.QWidget):
         self._hint.setText("加载中…")
         self._chart.show_loading()
 
-    def render(self, history: list[ValuationRow]) -> None:
+    def render_history(self, history: list[ValuationRow]) -> None:
         if not history:
             self._hint.setText("暂无本地估值历史（打开弹窗或定时任务会同步）")
             self._chart.show_loading()
             return
         latest = max(row.trade_date for row in history)
         self._hint.setText(f"样本 {len(history)} 条 · 最新 {latest}")
-        self._chart.render(history)
+        self._chart.render_history(history)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from importlib import import_module
 from types import ModuleType
+from typing import Callable
 
 from vnpy.event import Event, EventEngine
 from vnpy.trader.engine import MainEngine
@@ -61,7 +62,9 @@ from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.ui.dialogs.tool_audit import show_ai_tool_audit_dialog
 from vnpy_llm.ui.dialogs.tools import show_ai_tools_dialog
 
-_QUOTES_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
+_QuotesPageFactory = Callable[[MainEngine, EventEngine], QtWidgets.QWidget]
+
+_QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "market": MarketPageWidget,
     "sector_flow": SectorFlowPageWidget,
     "radar": RadarPageWidget,

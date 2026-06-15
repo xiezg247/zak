@@ -100,7 +100,7 @@ class WatchlistController:
                 self._page.position_cache.pop(item.vt_symbol, None)
                 panel = getattr(self._page, "position_panel", None)
                 if panel is not None:
-                    panel.render()
+                    panel.render_panel()
         if not service.remove(item.symbol, item.exchange):
             self._page.status_label.setText("移出失败：标的不在自选池")
             return

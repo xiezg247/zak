@@ -86,7 +86,7 @@ class WatchlistPositionController:
             self.invalidate_cache()
             self.refresh(force=True)
         elif panel is not None:
-            panel.render()
+            panel.render_panel()
 
     def _effective_config(self) -> WatchlistSignalConfig:
         page = self._page
@@ -149,10 +149,10 @@ class WatchlistPositionController:
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
             panel.set_updated_at(datetime.now().strftime("%H:%M"))
-            panel.render()
+            panel.render_panel()
         signal_panel = getattr(self._page, "signal_panel", None)
         if signal_panel is not None and signal_panel.enabled:
-            signal_panel.render()
+            signal_panel.render_panel()
         item = self._page.current_item
         if item is not None and self._page.chart_panel is not None:
             snap = self._page.position_cache.get(item.vt_symbol)
@@ -178,7 +178,7 @@ class WatchlistPositionController:
             self._rebuild_cache_entry(record, signal)
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
-            panel.render()
+            panel.render_panel()
 
     def hydrate_from_disk(self) -> bool:
         """从磁盘恢复策略信号到内存并渲染（冷启动快速展示）。"""
@@ -217,7 +217,7 @@ class WatchlistPositionController:
         if not self._enabled():
             panel = getattr(self._page, "position_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()
             return
         if self._worker is not None and self._worker.isRunning():
             self._pending_refresh = (force, symbols)
@@ -240,7 +240,7 @@ class WatchlistPositionController:
             self._page._position_cache_config = None
             panel = getattr(self._page, "position_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()
             return
 
         if not target:
@@ -351,7 +351,7 @@ class WatchlistPositionController:
             self._page.position_cache.pop(vt, None)
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
-            panel.render()
+            panel.render_panel()
         missing = self._symbols_needing_refresh(list(record_map), record_map)
         if missing:
             self.refresh(symbols=missing)
@@ -362,4 +362,4 @@ class WatchlistPositionController:
         else:
             panel = getattr(self._page, "position_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()

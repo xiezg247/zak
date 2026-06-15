@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.quotes.radar.radar_loaders import incremental_refresh_radar_card_quotes, load_radar_board, load_radar_card
+from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, incremental_refresh_radar_card_quotes, load_radar_board, load_radar_card
 
 
 class RadarCardLoadWorker(QtCore.QThread):
@@ -46,7 +46,7 @@ class RadarCardLoadWorker(QtCore.QThread):
         if self._cancelled:
             return
         try:
-            if self._quote_only and self._existing_data is not None:
+            if self._quote_only and isinstance(self._existing_data, RadarCardData):
                 data = incremental_refresh_radar_card_quotes(self._existing_data)
             else:
                 data = load_radar_card(

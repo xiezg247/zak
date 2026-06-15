@@ -82,8 +82,4 @@ module = [
 ]
 disable_error_code = [
     "attr-defined",
-    "override",
-    "call-overload",
-    "arg-type",
-    "misc",
 ]

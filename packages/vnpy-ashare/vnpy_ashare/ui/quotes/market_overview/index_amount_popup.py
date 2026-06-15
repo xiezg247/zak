@@ -54,7 +54,7 @@ class IndexAmountPopup(QtWidgets.QFrame):
         self._summary.setText(message)
         self._plot.clear()
 
-    def render(self, series: IndexAmountSeries, *, trading_days: int) -> None:
+    def render_series(self, series: IndexAmountSeries, *, trading_days: int) -> None:
         self._title.setText(f"{series.label} · 近{trading_days}日成交额")
         self._plot.clear()
         if series.error:

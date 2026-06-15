@@ -112,7 +112,9 @@ class SectorFlowTable(QtWidgets.QTableWidget):
             if first_row is None:
                 first_row = row
         if first_row is not None:
-            self.scrollToItem(self.item(first_row, _COL_NAME))
+            item = self.item(first_row, _COL_NAME)
+            if item is not None:
+                self.scrollToItem(item)
 
     def _on_cell_double_clicked(self, row: int, _column: int) -> None:
         name_item = self.item(row, _COL_NAME)

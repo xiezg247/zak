@@ -12,7 +12,7 @@ class SortableTableItem(QtWidgets.QTableWidgetItem):
         super().__init__(text)
         self._sort_key = sort_key
 
-    def __lt__(self, other: QtWidgets.QTableWidgetItem) -> bool:
+    def __lt__(self, other: object) -> bool:
         if isinstance(other, SortableTableItem):
             left = self._sort_key
             right = other._sort_key

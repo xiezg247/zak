@@ -41,13 +41,16 @@ _NUMERIC_SORT_KEYS = frozenset(
 _SCREENER_ROW_HEIGHT = 30
 
 
+_ParentIndex = QtCore.QModelIndex | QtCore.QPersistentModelIndex
+
+
 class ScreenerResultsTableDelegate(QtWidgets.QStyledItemDelegate):
     """选股结果表：强制垂直居中，避免 QSS padding 导致内容贴顶。"""
 
     def initStyleOption(
         self,
         option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
+        index: _ParentIndex,
     ) -> None:
         super().initStyleOption(option, index)
         horizontal = option.displayAlignment & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
@@ -137,7 +140,6 @@ def clear_screener_results_table(table: QtWidgets.QTableWidget) -> None:
     table.setRowCount(0)
     table.setColumnCount(0)
     table.clearSelection()
-    table.setCurrentItem(None)
     table.setSortingEnabled(True)
 
 
@@ -160,7 +162,6 @@ def apply_screener_results_view(
 
     populate_screener_results_table(table, rows, columns)
     table.clearSelection()
-    table.setCurrentItem(None)
     if empty_label is not None:
         empty_label.hide()
     table.show()
@@ -228,7 +229,6 @@ def populate_screener_results_table(
             table.setItem(row_index, col_index, item)
 
     table.clearSelection()
-    table.setCurrentItem(None)
     table.setSortingEnabled(True)
 
 

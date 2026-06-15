@@ -61,7 +61,7 @@ class NotesCenterReportsView(QtWidgets.QWidget):
 
         self._reports: list[StockAnalysisReport] = []
         theme_manager().bind_stylesheet(self)
-        theme_manager().register_callback(self._refresh_preview_theme)
+        theme_manager().register_callback(lambda _tokens: self._refresh_preview_theme())
 
     def load_reports(self, reports: list[StockAnalysisReport]) -> None:
         self._reports = list(reports)

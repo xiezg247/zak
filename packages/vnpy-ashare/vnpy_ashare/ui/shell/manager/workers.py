@@ -44,7 +44,7 @@ def _collect_tree_rows(main_engine: MainEngine | None) -> TreeRefreshPayload:
     seen: set[tuple[str, Exchange, str]] = set()
 
     for scope in ("daily", "1m"):
-        overviews = bar_svc.iter_overviews(scope) if bar_svc else iter_bar_overviews(scope)
+        overviews = bar_svc.iter_overviews(scope) if bar_svc else iter_bar_overviews(scope=scope)
         for overview in overviews:
             dedupe_key = (overview.symbol, overview.exchange, overview.period)
             if dedupe_key in seen:

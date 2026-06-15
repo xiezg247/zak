@@ -44,6 +44,9 @@ def rank_sidebar_collapse_arrow(expanded: bool) -> QtCore.Qt.ArrowType:
     return QtCore.Qt.ArrowType.LeftArrow if expanded else QtCore.Qt.ArrowType.RightArrow
 
 
+_ParentIndex = QtCore.QModelIndex | QtCore.QPersistentModelIndex
+
+
 class RankSidebarDelegate(QtWidgets.QStyledItemDelegate):
     """分组标题与可点榜单项分层绘制，避免二级项与分组混淆。"""
 
@@ -51,7 +54,7 @@ class RankSidebarDelegate(QtWidgets.QStyledItemDelegate):
         self,
         painter: QtGui.QPainter,
         option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
+        index: _ParentIndex,
     ) -> None:
         kind = index.data(RANK_ROW_KIND_ROLE)
         if kind == KIND_GROUP:
@@ -75,7 +78,7 @@ class RankSidebarDelegate(QtWidgets.QStyledItemDelegate):
     def sizeHint(
         self,
         option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
+        index: _ParentIndex,
     ) -> QtCore.QSize:
         base = super().sizeHint(option, index)
         kind = index.data(RANK_ROW_KIND_ROLE)
@@ -88,7 +91,7 @@ class RankSidebarDelegate(QtWidgets.QStyledItemDelegate):
         self,
         painter: QtGui.QPainter,
         option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
+        index: _ParentIndex,
     ) -> None:
         tokens = theme_manager().tokens()
         rect = option.rect

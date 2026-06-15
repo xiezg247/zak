@@ -100,7 +100,7 @@ class LoadedPeriodBars:
 FULL_BAR_START = datetime(2020, 1, 1)
 
 
-def _emit_worker_log(signal: QtCore.Signal, message: object) -> None:
+def _emit_worker_log(signal: QtCore.SignalInstance, message: object) -> None:
     text = str(message).strip()
     if text:
         signal.emit(text)

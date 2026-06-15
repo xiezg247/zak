@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.domain.symbols import StockItem
 
 _INVALID_PARENT = QtCore.QModelIndex()
+_ParentIndex = QtCore.QModelIndex | QtCore.QPersistentModelIndex
 
 
 @dataclass
@@ -163,17 +164,17 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             if len(row) > width:
                 del row[width:]
 
-    def rowCount(self, parent: QtCore.QModelIndex = _INVALID_PARENT) -> int:  # noqa: N802
+    def rowCount(self, parent: _ParentIndex = _INVALID_PARENT) -> int:  # noqa: N802
         if parent.isValid():
             return 0
         return len(self._rows)
 
-    def columnCount(self, parent: QtCore.QModelIndex = _INVALID_PARENT) -> int:  # noqa: N802
+    def columnCount(self, parent: _ParentIndex = _INVALID_PARENT) -> int:  # noqa: N802
         if parent.isValid():
             return 0
         return len(self._headers)
 
-    def data(self, index: QtCore.QModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> object | None:  # noqa: N802
+    def data(self, index: _ParentIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> object | None:  # noqa: N802
         if not index.isValid():
             return None
         row = index.row()
@@ -207,7 +208,7 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             return self._headers[section]
         return None
 
-    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:  # noqa: N802
+    def flags(self, index: _ParentIndex) -> QtCore.Qt.ItemFlag:  # noqa: N802
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable

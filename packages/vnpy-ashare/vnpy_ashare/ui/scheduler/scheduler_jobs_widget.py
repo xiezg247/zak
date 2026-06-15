@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal, cast
+
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
@@ -85,7 +87,7 @@ class _AutoScreenSettingsDialog(QtWidgets.QDialog):
         self.setMinimumWidth(400)
 
         form = QtWidgets.QFormLayout(self)
-        trigger_kind = "intraday" if job_id == "screen_intraday" else "post_close"
+        trigger_kind: Literal["intraday", "post_close"] = "intraday" if job_id == "screen_intraday" else "post_close"
 
         self.recipe_combo = QtWidgets.QComboBox()
         self._recipe_ids: list[str] = []
@@ -477,7 +479,9 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
             return
         config = self._scheduler.get_job_config(job_id)
         if job_id in ("screen_intraday", "screen_post_close"):
-            dialog: _AutoScreenSettingsDialog | _JobSettingsDialog = _AutoScreenSettingsDialog(job_id, status, config, self)
+            dialog: _AutoScreenSettingsDialog | _JobSettingsDialog = _AutoScreenSettingsDialog(
+                job_id, status, cast(AutoScreenJobConfig, config), self
+            )
         else:
             dialog = _JobSettingsDialog(job_id, status, config, self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:

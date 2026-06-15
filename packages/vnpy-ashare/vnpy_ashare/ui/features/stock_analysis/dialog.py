@@ -701,8 +701,11 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 focus_watchlist = parent.focus_watchlist_symbol
                 break
             parent = parent.parent()
+        main_engine = self._host.main_engine
+        if main_engine is None:
+            return
         show_notes_center_dialog(
-            self._host.main_engine,
+            main_engine,
             self._host.event_engine,
             focus_watchlist=focus_watchlist,
             initial_vt_symbol=self._item.vt_symbol,

@@ -124,7 +124,7 @@ class WatchlistSignalController:
         panel = getattr(self._page, "signal_panel", None)
         if panel is not None:
             panel.set_updated_at(datetime.now().strftime("%H:%M"))
-            panel.render()
+            panel.render_panel()
         self._sync_chart_signal_reference()
 
     def _sync_chart_signal_reference(self, *, tickflow_symbols: set[str] | None = None) -> None:
@@ -229,7 +229,7 @@ class WatchlistSignalController:
         if not self._enabled():
             panel = getattr(self._page, "signal_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()
             return
         if self._worker is not None and self._worker.isRunning():
             self._pending_refresh = (force, symbols)
@@ -240,7 +240,7 @@ class WatchlistSignalController:
         if service is None:
             panel = getattr(self._page, "signal_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()
             return
 
         if symbols is None:
@@ -254,7 +254,7 @@ class WatchlistSignalController:
             self._page._signal_cache_config = None
             panel = getattr(self._page, "signal_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()
             return
 
         if not target:
@@ -328,7 +328,7 @@ class WatchlistSignalController:
                 return
             panel = getattr(self._page, "signal_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()
             if pending is not None:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
@@ -370,7 +370,7 @@ class WatchlistSignalController:
         stale = [vt for vt in list(self._page.signal_cache) if vt not in kept]
         for vt in stale:
             self._page.signal_cache.pop(vt, None)
-        panel.render()
+        panel.render_panel()
         missing = self._symbols_needing_refresh(kept)
         if missing:
             self.refresh(symbols=missing)
@@ -381,4 +381,4 @@ class WatchlistSignalController:
         else:
             panel = getattr(self._page, "signal_panel", None)
             if panel is not None:
-                panel.render()
+                panel.render_panel()

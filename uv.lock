@@ -3174,6 +3174,14 @@ wheels = [
 ]
 
 [[package]]
+name = "types-pyside6"
+version = "6.10.1.1"
+source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
+wheels = [
+    { url = "https://pypi.tuna.tsinghua.edu.cn/packages/dd/89/ebea68732d692df588cc3f5308bd341c0431f4acf70f39e3680089a83222/types_pyside6-6.10.1.1-py2.py3-none-any.whl", hash = "sha256:30ff49550c8f40e0606d70f9fbcf1f0c4b688d896df38f4f6a6912c231cbfa16", size = 590032, upload-time = "2026-01-30T15:53:10.556Z" },
+]
+
+[[package]]
 name = "types-redis"
 version = "4.6.0.20241004"
 source = { registry = "https://pypi.tuna.tsinghua.edu.cn/simple" }
@@ -3878,6 +3886,7 @@ dev = [
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
+    { name = "types-pyside6" },
     { name = "types-redis" },
 ]
 
@@ -3886,6 +3895,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=2.1.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9.0" },
+    { name = "types-pyside6", marker = "extra == 'dev'", specifier = ">=6.10.1.1" },
     { name = "types-redis", marker = "extra == 'dev'", specifier = ">=4.6.0.20241004" },
     { name = "vnpy-ashare", extras = ["full"], editable = "packages/vnpy-ashare" },
 ]

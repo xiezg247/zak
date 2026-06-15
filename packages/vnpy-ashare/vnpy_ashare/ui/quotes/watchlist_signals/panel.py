@@ -212,7 +212,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._apply_expanded(self._expanded, emit=False)
         self.apply_config(page.signal_config.normalized())
         self._apply_enabled(self._toggle.isChecked())
-        self.render()
+        self.render_panel()
 
     @property
     def symbols(self) -> list[str]:
@@ -287,7 +287,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._visible_column_keys = normalize_visible_optional_keys(keys)
         save_signal_panel_columns(self._visible_column_keys)
         self._sync_table_columns(reset_rows=True)
-        self.render()
+        self.render_panel()
 
     def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
         changed = self._expanded != expanded
@@ -346,7 +346,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             save_signal_panel_symbols(self._symbols)
         if not self._symbols:
             self._signal_filter = None
-        self.render()
+        self.render_panel()
 
     def add_symbols(self, vt_symbols: list[str]) -> tuple[int, int]:
         """返回 (新增数量, 因已达上限未加入数量)。"""
@@ -363,7 +363,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             added += 1
         if added:
             save_signal_panel_symbols(self._symbols)
-            self.render()
+            self.render_panel()
             self.symbols_changed.emit()
         return added, skipped
 
@@ -378,7 +378,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             save_signal_panel_symbols(self._symbols)
             if not self._symbols:
                 self._signal_filter = None
-            self.render()
+            self.render_panel()
             self.symbols_changed.emit()
         return removed
 
@@ -398,7 +398,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._updated_at = text.strip()
         self._refresh_stats()
 
-    def render(self) -> None:
+    def render_panel(self) -> None:
         has_symbols = bool(self._symbols)
         display_symbols = self._sorted_display_symbols()
         if not has_symbols:
@@ -547,17 +547,14 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
                 cell.setText(text)
             cell.setData(QtCore.Qt.ItemDataRole.UserRole, vt_symbol)
             config = page.signal_config.normalized()
-            cell_kwargs = {
-                "quote": quote,
-                "bar_end_date": bar_end_date,
-                "slow_window": config.slow_window,
-                "fast_window": config.fast_window,
-            }
             fg = signal_cell_color(
                 key,
                 snapshot,
                 colors=colors,
-                **cell_kwargs,
+                quote=quote,
+                bar_end_date=bar_end_date,
+                slow_window=config.slow_window,
+                fast_window=config.fast_window,
                 warning_color=warning_color,
             )
             if missing_kline and key == "signal":
@@ -861,7 +858,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._signal_filter = None
         else:
             self._signal_filter = key
-        self.render()
+        self.render_panel()
 
     def _on_enabled_toggled(self, enabled: bool) -> None:
         save_signal_panel_enabled(enabled)

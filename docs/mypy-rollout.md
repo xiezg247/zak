@@ -14,7 +14,7 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 **注意**：必须在 `packages/vnpy-ashare` 目录下执行 mypy（或通过 `scripts/mypy-check.sh`），否则 `files` 白名单可能不生效。
 
-## 当前范围（vnpy-ashare，Phase 1–7c）
+## 当前范围（vnpy-ashare，Phase 1–7d）
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
@@ -28,19 +28,19 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 | `ai/context/` | AI 上下文 | ✅ 严格 |
 | `data/` | 行情下载、bar store | ✅ 严格 |
 | `jobs/` | 定时任务 | ✅ 严格 |
-| `ui/` | Qt 桌面 UI 全包 | ✅ **半严格**（仅 Qt 绑定 5 类 disable） |
+| `ui/` | Qt 桌面 UI 全包 | ✅ **半严格**（仅 `attr-defined` disable，Phase 7d） |
 
 共 **417** 个源文件。
 
-### Phase 7：`ui/` 半严格
+### Phase 7：`ui/` 半严格 → Phase 7d
 
-对 `ui` 各子包（quotes、screener、shell、backtest、scheduler、sector_flow、components、features、styles 等）统一使用 `[[tool.mypy.overrides]]`，**仅**关闭 Qt / vnpy 绑定噪声：
+对 `ui` 各子包使用 `[[tool.mypy.overrides]]`：
 
-`attr-defined`、`override`、`call-overload`、`arg-type`、`misc`
+- **Phase 7b–7c**：收紧 `assignment` / `union-attr` / `no-any-return` 等（40 + 25 处修复）。
+- **Phase 7d ✅**：引入 dev 依赖 `types-PySide6`；去掉 `override`、`call-overload`、`arg-type`、`misc` disable；修复 Qt 模型 override、`QWidget.render` 命名冲突（`render_panel` / `render_reports` 等）、Signal 类型等约 56 处。
+- **仍保留**：`attr-defined`（约 530 处，主要来自 pyqtgraph `object`、动态 Qt 子控件、vnpy `Signal` 等）。
 
-`assignment`、`union-attr`、`no-any-return` 等已在 Phase 7b–7c 修通。
-
-**Phase 7d（后续）**：配合 `types-PySide6`，逐步去掉上述 5 类 disable。
+**Phase 7e（后续）**：为 pyqtgraph / vnpy.trader.ui 补 stub 或收窄类型，逐步去掉 `attr-defined` disable。
 
 ## 本地运行
 
@@ -64,8 +64,9 @@ Phase 1–6  quotes/*、services/、screener/、domain/、config/、storage/、i
 Phase 7    data/、jobs/、ui/ 纳入白名单（417 文件）                                              ← 已完成
 Phase 7b   ui/quotes/ 收紧（40 处）                                                             ← 已完成
 Phase 7c   ui 其余子包收紧（25 处）；移除 ui.* 全量 14 类 disable                               ← 已完成
+Phase 7d   types-PySide6；去掉 override/call-overload/arg-type/misc（仅留 attr-defined）  ← 已完成
+Phase 7e   逐步去掉 attr-defined（pyqtgraph / 动态 Qt 属性）
 Phase 8    vnpy-common 独立 package mypy
-Phase 7d   逐步去掉 ui.* 的 Qt 5 类 disable
 ```
 
 ## 新增 workspace package
@@ -88,5 +89,5 @@ Phase 7d   逐步去掉 ui.* 的 Qt 5 类 disable
 ## 新代码约定
 
 - 落在 **已启用 mypy 目录** 内的改动：保持 `bash scripts/mypy-check.sh` 通过。
-- `ui/` 新代码建议手写 `Optional` 守卫与返回类型，便于 Phase 7d 完全严格化。
+- `ui/` 新代码建议手写 `Optional` 守卫与返回类型；避免在 `QWidget` 子类上命名 `render()`（与 Qt 绘制 API 冲突）。
 - 未启用目录：仍按 [编码规范](./coding-standards.md) 手写注解。

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pyqtgraph as pg
+from vnpy.chart.manager import BarManager
 from vnpy.chart import CandleItem, ChartWidget, VolumeItem
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -72,7 +73,7 @@ class ChineseVolumeItem(VolumeItem):
 class AshareCandleItem(ChineseCandleItem):
     """A 股实心 K 线。"""
 
-    def __init__(self, manager: object) -> None:
+    def __init__(self, manager: BarManager) -> None:
         super().__init__(manager)
         apply_candle_colors(self)
 
@@ -80,7 +81,7 @@ class AshareCandleItem(ChineseCandleItem):
 class AshareVolumeItem(ChineseVolumeItem):
     """A 股配色成交量柱。"""
 
-    def __init__(self, manager: object) -> None:
+    def __init__(self, manager: BarManager) -> None:
         super().__init__(manager)
         apply_candle_colors(self)
 

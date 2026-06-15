@@ -285,15 +285,15 @@ def restore_center_splitter(page: QuotesPage) -> None:
             splitter.setSizes(normalized)
             splitter.blockSignals(False)
             if signal_panel is not None:
-                signal_panel.render()
+                signal_panel.render_panel()
             if position_panel is not None:
-                position_panel.render()
+                position_panel.render_panel()
             return
     apply_center_splitter_sizes(page)
     if signal_panel is not None:
-        signal_panel.render()
+        signal_panel.render_panel()
     if position_panel is not None:
-        position_panel.render()
+        position_panel.render_panel()
 
 
 def bind_center_splitter_persistence(page: QuotesPage) -> None:

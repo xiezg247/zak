@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 
 from vnpy.trader.constant import Exchange
+from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
@@ -460,7 +461,10 @@ class ChartPanel(QtWidgets.QWidget):
             if self.tab_bar.currentIndex() != 0:
                 self._retire_worker(worker)
                 return
-            bar_list = list(bars)
+            if not isinstance(bars, list):
+                self._retire_worker(worker)
+                return
+            bar_list = cast(list[BarData], bars)
             if bar_list:
                 self._intraday_empty = False
                 self._intraday_error = None
@@ -589,8 +593,9 @@ class ChartPanel(QtWidgets.QWidget):
                 return
 
         if self._thread_active(self._minute_worker):
-            if is_same_minute_request(
-                self._minute_worker,
+            minute_worker = self._minute_worker
+            if minute_worker is not None and is_same_minute_request(
+                minute_worker,
                 period=period,
                 target_key=target_key,
                 mode=mode,
@@ -637,7 +642,12 @@ class ChartPanel(QtWidgets.QWidget):
                 self._retire_worker(worker)
                 return
 
-            incoming = list(loaded.bars if loaded else result)
+            if loaded is not None:
+                incoming = list(loaded.bars)
+            elif isinstance(result, list):
+                incoming = cast(list[BarData], result)
+            else:
+                incoming = []
             if mode == "full" or not self._minute_session.matches_key(session_key):
                 change = MinuteBarChange(MinuteBarDiff.REPLACE, incoming)
             else:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pyqtgraph as pg
 from vnpy.chart import ChartWidget
 
@@ -179,7 +181,7 @@ def refresh_charts_for_theme(tokens: ThemeTokens, charts: list[object]) -> None:
     """ThemeManager 回调：刷新已注册图表配色。"""
     palette = chart_palette(tokens)
     for chart in charts:
-        _apply_chart_theme(chart, palette)
+        _apply_chart_theme(cast(ChartWidget, chart), palette)
         for item in getattr(chart, "_items", {}).values():
             if hasattr(item, "_up_pen"):
                 apply_candle_colors(item, tokens=tokens)

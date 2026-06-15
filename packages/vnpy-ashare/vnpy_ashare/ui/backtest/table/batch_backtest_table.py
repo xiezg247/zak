@@ -17,13 +17,16 @@ _SORT_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
 _METRIC_COLS = {3: "total_return", 4: "max_drawdown", 5: "sharpe_ratio", 6: "total_trade_count"}
 
 
+_ParentIndex = QtCore.QModelIndex | QtCore.QPersistentModelIndex
+
+
 class BatchCompareTableDelegate(QtWidgets.QStyledItemDelegate):
     """回测对比表：强制垂直居中，避免 QSS padding 导致内容贴顶。"""
 
     def initStyleOption(
         self,
         option: QtWidgets.QStyleOptionViewItem,
-        index: QtCore.QModelIndex,
+        index: _ParentIndex,
     ) -> None:
         super().initStyleOption(option, index)
         horizontal = option.displayAlignment & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
@@ -141,7 +144,6 @@ class BatchBacktestTableWidget(QtWidgets.QTableWidget):
             self.setItem(row_index, 7, status_item)
 
         self.clearSelection()
-        self.setCurrentItem(None)
         self.setSortingEnabled(True)
 
     @staticmethod

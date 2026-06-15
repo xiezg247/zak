@@ -262,7 +262,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._amount_popup.show_loading(label=label, trading_days=DEFAULT_TRADING_DAYS)
         self._amount_popup.show_near(anchor)
         if cached is not None:
-            self._amount_popup.render(cached, trading_days=DEFAULT_TRADING_DAYS)
+            self._amount_popup.render_series(cached, trading_days=DEFAULT_TRADING_DAYS)
             return
         if thread_is_active(self._amount_worker):
             return
@@ -276,7 +276,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
             if series.ts_code:
                 self._amount_series_cache[series.ts_code] = series
             if self._amount_anchor is not None and self._amount_anchor.tf_symbol == series.ts_code:
-                self._amount_popup.render(series, trading_days=DEFAULT_TRADING_DAYS)
+                self._amount_popup.render_series(series, trading_days=DEFAULT_TRADING_DAYS)
                 self._amount_popup.show_near(self._amount_anchor)
 
         def on_failed(message: str) -> None:

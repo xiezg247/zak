@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import cast
+
+from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.symbols import StockItem
@@ -242,7 +245,10 @@ class StockAnalysisChartTab(QtWidgets.QWidget):
             if (self._item.symbol, self._item.exchange) != target_key or self._tab_bar.currentIndex() != 0:
                 self._retire_worker(worker)
                 return
-            bar_list = list(bars)
+            if not isinstance(bars, list):
+                self._retire_worker(worker)
+                return
+            bar_list = cast(list[BarData], bars)
             if bar_list:
                 self._intraday_empty = False
                 self._intraday_error = None
@@ -359,7 +365,12 @@ class StockAnalysisChartTab(QtWidgets.QWidget):
             ):
                 self._retire_worker(worker)
                 return
-            incoming = list(loaded.bars if loaded else result)
+            if loaded is not None:
+                incoming = list(loaded.bars)
+            elif isinstance(result, list):
+                incoming = cast(list[BarData], result)
+            else:
+                incoming = []
             change = MinuteBarChange(MinuteBarDiff.REPLACE, incoming)
             chart = self._minute_chart
             if isinstance(chart, AshareChartWidget):

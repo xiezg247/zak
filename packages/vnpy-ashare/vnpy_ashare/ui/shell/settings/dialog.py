@@ -572,7 +572,7 @@ class SettingsDialog(QtWidgets.QDialog):
             widget.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password if hide and spec.sensitive else QtWidgets.QLineEdit.EchoMode.Normal)
         elif isinstance(widget, QtWidgets.QSpinBox):
             try:
-                widget.setValue(int(value))
+                widget.setValue(int(str(value)))
             except (TypeError, ValueError):
                 widget.setValue(int(spec.default or 0))
         elif isinstance(widget, QtWidgets.QComboBox):

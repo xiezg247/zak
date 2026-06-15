@@ -97,7 +97,7 @@ class _StatementTable(QtWidgets.QWidget):
         layout.addWidget(self._empty_label)
         layout.addWidget(self._table)
 
-    def render(self, reports: list[dict[str, Any]], *, show_empty_hint: bool = True) -> None:
+    def render_reports(self, reports: list[dict[str, Any]], *, show_empty_hint: bool = True) -> None:
         if not reports:
             if self._empty_hint and show_empty_hint:
                 self._empty_label.setText(self._empty_hint)
@@ -202,32 +202,32 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         self._status.setText(message)
         self._quality_label.setText("")
         self._snapshot_table.setRowCount(0)
-        self._income.render([], show_empty_hint=False)
-        self._balance.render([], show_empty_hint=False)
-        self._cashflow.render([], show_empty_hint=False)
-        self._express.render([], show_empty_hint=False)
-        self._forecast.render([], show_empty_hint=False)
+        self._income.render_reports([], show_empty_hint=False)
+        self._balance.render_reports([], show_empty_hint=False)
+        self._cashflow.render_reports([], show_empty_hint=False)
+        self._express.render_reports([], show_empty_hint=False)
+        self._forecast.render_reports([], show_empty_hint=False)
 
     def show_loading(self, message: str = "正在同步财报…") -> None:
         self._status.setText(message)
         self._quality_label.setText("")
         self._snapshot_table.setRowCount(0)
-        self._income.render([], show_empty_hint=False)
-        self._balance.render([], show_empty_hint=False)
-        self._cashflow.render([], show_empty_hint=False)
-        self._express.render([], show_empty_hint=False)
-        self._forecast.render([], show_empty_hint=False)
+        self._income.render_reports([], show_empty_hint=False)
+        self._balance.render_reports([], show_empty_hint=False)
+        self._cashflow.render_reports([], show_empty_hint=False)
+        self._express.render_reports([], show_empty_hint=False)
+        self._forecast.render_reports([], show_empty_hint=False)
 
     def show_bundle(self, bundle: FinancialBundle | None, *, sync_message: str = "") -> None:
         if bundle is None:
             self._status.setText(sync_message or "暂无财报数据（请配置 TUSHARE_TOKEN 后刷新）")
             self._quality_label.setText("")
             self._snapshot_table.setRowCount(0)
-            self._income.render([])
-            self._balance.render([])
-            self._cashflow.render([])
-            self._express.render([])
-            self._forecast.render([])
+            self._income.render_reports([])
+            self._balance.render_reports([])
+            self._cashflow.render_reports([])
+            self._express.render_reports([])
+            self._forecast.render_reports([])
             return
 
         meta = bundle.sync_meta
@@ -245,8 +245,8 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         hints = build_financial_quality_hints(snapshots)
         self._quality_label.setText(" · ".join(hints) if hints else "")
         reports = bundle.reports
-        self._income.render(reports.get("income") or [])
-        self._balance.render(reports.get("balancesheet") or [])
-        self._cashflow.render(reports.get("cashflow") or [])
-        self._express.render(reports.get("express") or [])
-        self._forecast.render(reports.get("forecast") or [])
+        self._income.render_reports(reports.get("income") or [])
+        self._balance.render_reports(reports.get("balancesheet") or [])
+        self._cashflow.render_reports(reports.get("cashflow") or [])
+        self._express.render_reports(reports.get("express") or [])
+        self._forecast.render_reports(reports.get("forecast") or [])

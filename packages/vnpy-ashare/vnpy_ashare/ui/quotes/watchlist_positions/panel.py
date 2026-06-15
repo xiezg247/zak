@@ -164,7 +164,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._slow_spin.valueChanged.connect(self._emit_config_changed)
         self._sync_strategy_controls(signal_config=page.signal_config)
         self._sync_expansion_ui()
-        self.render()
+        self.render_panel()
 
     @property
     def enabled(self) -> bool:
@@ -504,7 +504,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             self._filter = None
         else:
             self._filter = key
-        self.render()
+        self.render_panel()
 
     def _stats_link(self, key: str, label: str, color: str) -> str:
         active = self._filter == key
@@ -583,7 +583,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         values["ref_sell_price"] = f"{ref_sell:.2f}" if ref_sell is not None else "—"
         return values, snap, quote
 
-    def render(self) -> None:
+    def render_panel(self) -> None:
         if self._building:
             return
         self._building = True

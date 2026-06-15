@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal, cast
 
 from vnpy.event import EventEngine
 from vnpy.trader.constant import Exchange
@@ -931,10 +932,10 @@ class QuotesPage(QtWidgets.QWidget):
     def _run_minute_download(
         self,
         *,
-        mode: str = "full",
+        mode: Literal["full", "incremental"] = "full",
         action_label: str = "下载",
     ) -> None:
-        self._local.run_minute_download(mode=mode, action_label=action_label)
+        self._local.run_minute_download(mode=cast(Literal["full", "incremental"], mode), action_label=action_label)
 
     def fill_selected(self) -> None:
         self._local.fill_selected()
@@ -954,8 +955,8 @@ class QuotesPage(QtWidgets.QWidget):
     def delete_selected_local(self) -> None:
         self._local.delete_selected()
 
-    def _run_download(self, *, mode: str, action_label: str) -> None:
-        self._local.run_download(mode=mode, action_label=action_label)
+    def _run_download(self, *, mode: Literal["full", "incremental"], action_label: str) -> None:
+        self._local.run_download(mode=cast(Literal["full", "incremental"], mode), action_label=action_label)
 
     def _collect_busy_widgets(self, *, lock_table: bool = True) -> list[QtWidgets.QWidget]:
         widgets: list[QtWidgets.QWidget] = [self.search_edit]

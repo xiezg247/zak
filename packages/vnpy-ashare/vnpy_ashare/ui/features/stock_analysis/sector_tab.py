@@ -119,7 +119,7 @@ class SectorAnalysisTab(QtWidgets.QWidget):
             self._meta_label.setText("暂无板块数据")
             self._disclosure_label.setText("—")
             self._peer_table.setRowCount(0)
-            self._valuation_history.render(valuation_history or [])
+            self._valuation_history.render_history(valuation_history or [])
             return
 
         sector = sector or SectorProfile(ts_code="", vt_symbol="", name="")
@@ -147,7 +147,7 @@ class SectorAnalysisTab(QtWidgets.QWidget):
         self._mv_tile.set_value(mv_yi, subtitle=f"{valuation.history_days} 日")
 
         self._meta_label.setText(f"数据日期：{sector.trade_date or '—'}")
-        self._valuation_history.render(valuation_history or [])
+        self._valuation_history.render_history(valuation_history or [])
 
         if sector.disclosure:
             lines = [f"{row.get('end_date', '—')} · 预约 {row.get('pre_date') or '—'} · 披露 {row.get('ann_date') or '—'}" for row in sector.disclosure]

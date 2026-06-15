@@ -18,8 +18,11 @@ class MarketColors:
 
 
 class _QuoteLike(Protocol):
-    is_rise: bool
-    is_fall: bool
+    @property
+    def is_rise(self) -> bool: ...
+
+    @property
+    def is_fall(self) -> bool: ...
 
 
 def market_colors(t: ThemeTokens) -> MarketColors:

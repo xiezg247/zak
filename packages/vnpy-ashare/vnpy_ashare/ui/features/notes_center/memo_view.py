@@ -64,7 +64,7 @@ class NotesCenterMemoView(QtWidgets.QWidget):
         self._save_timer.timeout.connect(self._emit_save)
 
         theme_manager().bind_stylesheet(self)
-        theme_manager().register_callback(self._refresh_preview_if_needed)
+        theme_manager().register_callback(lambda _tokens: self._refresh_preview_if_needed())
 
     def is_dirty(self) -> bool:
         return self._dirty
