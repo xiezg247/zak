@@ -5,15 +5,19 @@ from __future__ import annotations
 from vnpy_common.ai.protocol import AiContextData
 
 
+def _text(value: object) -> str:
+    return str(value or "")
+
+
 def scene_label_from_context(data: AiContextData) -> str:
     """从 AI 上下文生成会话场景标签。"""
     if data.badge and data.symbol and data.name:
         return f"{data.badge} · {data.name}"
     if data.badge and data.page == "选股":
-        return data.badge
+        return _text(data.badge)
     if data.chip_text and data.chip_text != "AI 助手":
-        return data.chip_text
-    return data.page or data.badge
+        return _text(data.chip_text)
+    return _text(data.page or data.badge)
 
 
 def orb_tooltip_text(data: AiContextData) -> str:

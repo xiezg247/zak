@@ -44,6 +44,7 @@ class SkillTemplate(ABC):
     def __init__(self) -> None:
         self._tools: list[ToolSpec] = []
         self._handlers: dict[str, Callable[..., str]] = {}
+        self._services: dict[str, Any] = {}
 
     def on_init(self) -> None:
         """初始化（检查 API Key、预热客户端等）。"""

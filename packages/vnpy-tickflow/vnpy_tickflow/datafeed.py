@@ -51,7 +51,7 @@ class TickflowDatafeed(BaseDatafeed):
         self,
         req: HistoryRequest,
         output: Callable = print,
-    ) -> list[BarData] | None:
+    ) -> list[BarData]:
         if not self.inited:
             self.init(output)
 
@@ -65,6 +65,10 @@ class TickflowDatafeed(BaseDatafeed):
             output(f"TickFlow 不支持该交易所: {req.exchange}")
             return []
 
+        if req.interval is None:
+            output("TickFlow 缺少 K 线周期")
+            return []
+
         period = interval_to_period(req.interval)
         if not period:
             output(f"TickFlow 不支持该周期: {req.interval}")
@@ -72,6 +76,10 @@ class TickflowDatafeed(BaseDatafeed):
 
         if self.free_mode and period not in FREE_PERIODS:
             output("免费 TickFlow 服务仅支持日K及以上周期，请配置 TICKFLOW_API_KEY 后使用分钟线")
+            return []
+
+        if req.start is None or req.end is None:
+            output("TickFlow 缺少起止时间")
             return []
 
         start_ms = int(req.start.replace(tzinfo=CHINA_TZ).timestamp() * 1000)
@@ -89,17 +97,20 @@ class TickflowDatafeed(BaseDatafeed):
         return self._dataframe_to_bars(df, req)
 
     def _dataframe_to_bars(self, df: pd.DataFrame, req: HistoryRequest) -> list[BarData]:
+        interval = req.interval
+        if interval is None:
+            return []
         bars: list[BarData] = []
         for _, row in df.iterrows():
             if pd.isna(row.get("open")):
                 continue
 
             if "trade_time" in row and pd.notna(row["trade_time"]):
-                dt = parse_datetime(row["trade_time"], req.interval)
+                dt = parse_datetime(row["trade_time"], interval)
             elif "timestamp" in row and pd.notna(row["timestamp"]):
-                dt = parse_datetime(row["timestamp"], req.interval)
+                dt = parse_datetime(row["timestamp"], interval)
             elif "trade_date" in row and pd.notna(row["trade_date"]):
-                dt = parse_datetime(row["trade_date"], req.interval)
+                dt = parse_datetime(row["trade_date"], interval)
             else:
                 continue
 

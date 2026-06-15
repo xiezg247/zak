@@ -54,29 +54,29 @@ class QuickActionChips(QtWidgets.QWidget):
 
     def _build_action_widget(self, action: QuickAction) -> QtWidgets.QWidget:
         if action.has_menu:
-            btn = QtWidgets.QToolButton()
-            btn.setObjectName("AiQuickActionBtn")
-            btn.setText(action.label)
-            btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-            btn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
-            btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
-            btn.setArrowType(QtCore.Qt.ArrowType.NoArrow)
-            menu = QtWidgets.QMenu(btn)
+            tool_btn = QtWidgets.QToolButton()
+            tool_btn.setObjectName("AiQuickActionBtn")
+            tool_btn.setText(action.label)
+            tool_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+            tool_btn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
+            tool_btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+            tool_btn.setArrowType(QtCore.Qt.ArrowType.NoArrow)
+            menu = QtWidgets.QMenu(tool_btn)
             menu.setObjectName("AiQuickActionMenu")
             for child in action.children:
-                menu.addAction(
-                    child.label,
-                    lambda checked=False, item=child: self.triggered.emit(item),
-                )
-            btn.setMenu(menu)
-            if action.tooltip:
-                btn.setToolTip(action.tooltip)
-            return btn
+                def _emit_child(*, _item: QuickAction = child) -> None:
+                    self.triggered.emit(_item)
 
-        btn = QtWidgets.QPushButton(action.label)
-        btn.setObjectName("AiQuickActionBtn")
-        btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+                menu.addAction(child.label, _emit_child)
+            tool_btn.setMenu(menu)
+            if action.tooltip:
+                tool_btn.setToolTip(action.tooltip)
+            return tool_btn
+
+        plain_btn = QtWidgets.QPushButton(action.label)
+        plain_btn.setObjectName("AiQuickActionBtn")
+        plain_btn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         if action.tooltip:
-            btn.setToolTip(action.tooltip)
-        btn.clicked.connect(lambda checked=False, item=action: self.triggered.emit(item))
-        return btn
+            plain_btn.setToolTip(action.tooltip)
+        plain_btn.clicked.connect(lambda checked=False, item=action: self.triggered.emit(item))
+        return plain_btn

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.tools import StructuredTool
 from pydantic import Field, create_model
@@ -21,7 +21,7 @@ _JSON_TYPE_MAP: dict[str, type] = {
 def _args_model_from_schema(tool_name: str, schema: dict[str, Any]) -> type:
     props = schema.get("properties") or {}
     required = set(schema.get("required") or [])
-    fields: dict[str, tuple[type, Any]] = {}
+    fields: dict[str, Any] = {}
     for key, prop in props.items():
         json_type = prop.get("type", "string")
         py_type = _JSON_TYPE_MAP.get(json_type, str)
@@ -32,8 +32,8 @@ def _args_model_from_schema(tool_name: str, schema: dict[str, Any]) -> type:
             fields[key] = (py_type | None, Field(default=None, description=desc))
     model_name = "".join(part.capitalize() for part in tool_name.split("_")) + "Args"
     if not fields:
-        return create_model(model_name)
-    return create_model(model_name, **fields)
+        return cast(type, create_model(model_name))
+    return cast(type, create_model(model_name, **fields))
 
 
 def openai_tools_to_langchain(

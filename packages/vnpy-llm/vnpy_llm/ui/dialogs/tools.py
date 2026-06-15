@@ -108,20 +108,20 @@ class AiToolsDialog(QtWidgets.QDialog):
         snapshot = self.engine.get_tools_status()
         self._meta_label.setText(f"共 {snapshot.total_tools} 个 OpenAI 工具 · Skills {snapshot.ready_skill_count} · MCP {snapshot.ready_mcp_count}")
         while self._list_layout.count():
-            item = self._list_layout.takeAt(0)
-            widget = item.widget()
+            layout_item = self._list_layout.takeAt(0)
+            widget = layout_item.widget()
             if widget is not None:
                 widget.deleteLater()
         self._list_layout.addWidget(self._section_title("Skills"))
         if snapshot.skills:
-            for item in snapshot.skills:
-                self._list_layout.addWidget(self._make_card(item))
+            for provider in snapshot.skills:
+                self._list_layout.addWidget(self._make_card(provider))
         else:
             self._list_layout.addWidget(self._empty_label("暂无 Skill"))
         self._list_layout.addWidget(self._section_title("MCP"))
         if snapshot.mcps:
-            for item in snapshot.mcps:
-                self._list_layout.addWidget(self._make_card(item))
+            for provider in snapshot.mcps:
+                self._list_layout.addWidget(self._make_card(provider))
         else:
             self._list_layout.addWidget(self._empty_label("暂无 MCP Provider"))
         self._list_layout.addStretch()

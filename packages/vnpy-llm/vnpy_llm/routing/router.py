@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar, cast
+
+from pydantic import BaseModel
 
 from vnpy_llm.chat.client import LlmClientError, create_openai_client
 from vnpy_llm.config.settings import LlmConfig
 from vnpy_llm.routing.intent import (
+    BacktestAction,
     BacktestIntent,
     IntentAnalysis,
     IntentCategory,
@@ -553,7 +556,7 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
             action = "list_strategies"
         return _with_market(
             "backtest",
-            backtest=BacktestIntent(action=action, confidence="medium"),
+            backtest=BacktestIntent(action=cast(BacktestAction, action), confidence="medium"),
         )
     if any(k in text for k in ("诊断", "基本面", "财务", "资金流")):
         return _with_market("diagnosis")
@@ -570,7 +573,10 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
     return None
 
 
-def _structured_parse(config: LlmConfig, messages: list[dict[str, str]], model_type: type) -> Any:
+_TModel = TypeVar("_TModel", bound=BaseModel)
+
+
+def _structured_parse(config: LlmConfig, messages: list[dict[str, str]], model_type: type[_TModel]) -> _TModel:
     client = create_openai_client(config)
     try:
         response = client.beta.chat.completions.parse(
@@ -586,7 +592,7 @@ def _structured_parse(config: LlmConfig, messages: list[dict[str, str]], model_t
     message = response.choices[0].message
     parsed = getattr(message, "parsed", None)
     if parsed is not None:
-        return parsed
+        return cast(_TModel, parsed)
 
     raw = message.content or ""
     if not raw.strip():
@@ -615,14 +621,15 @@ def analyze_user_intent(
     ]
 
     try:
-        analysis: IntentAnalysis = _structured_parse(config, messages, IntentAnalysis)
+        parsed = _structured_parse(config, messages, IntentAnalysis)
     except Exception:
         fallback = _keyword_fallback(user_text, page)
         if fallback:
             return fallback
-        analysis = IntentAnalysis(route=IntentRoute(category="general", confidence="low"))
-        return _normalize_market_enrichment(analysis, user_text, page)
+        fallback_analysis = IntentAnalysis(route=IntentRoute(category="general", confidence="low"))
+        return _normalize_market_enrichment(fallback_analysis, user_text, page)
 
+    analysis = parsed
     if page and analysis.route.confidence == "low":
         boosted = PAGE_CATEGORY_HINT.get(page)
         if boosted and analysis.route.category == "general":

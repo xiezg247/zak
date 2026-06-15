@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import threading
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 
 from vnpy_mcp.domain.provider import McpToolInfo
 
@@ -136,7 +136,7 @@ def list_remote_tools(
     *,
     timeout: float = 30.0,
 ) -> list[McpToolInfo]:
-    return _run_async(_list_tools_async(url, headers or {}, timeout=timeout))
+    return cast(list[McpToolInfo], _run_async(_list_tools_async(url, headers or {}, timeout=timeout)))
 
 
 def call_remote_tool(

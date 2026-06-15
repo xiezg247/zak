@@ -11,7 +11,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.messages import AIMessageChunk
 
@@ -131,7 +131,7 @@ def _stream_agent(
     for item in graph.stream(
         {"messages": lc_messages},
         stream_mode="messages",
-        config=run_config,
+        config=cast(Any, run_config),
     ):
         if should_cancel and should_cancel():
             raise StreamCancelled("用户已停止生成")

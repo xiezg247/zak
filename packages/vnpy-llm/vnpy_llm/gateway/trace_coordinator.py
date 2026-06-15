@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal, cast
 
 from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.tools.labels import tool_display_name
@@ -126,11 +126,11 @@ class TraceCoordinator:
         if step is None:
             return
         display = tool_display_name(step.name)
-        status = "ok" if success else "error"
+        trace_status: Literal["ok", "error"] = "ok" if success else "error"
         summary = display if success else f"{display} 失败"
         self._store.update_step(
             step_id,
-            status=status,
+            status=trace_status,
             summary=summary,
             detail={"result_preview": preview_text(result)},
         )

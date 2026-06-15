@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import cast
 from urllib.parse import quote, unquote
 
 _SYMBOL_SCHEME = "zak://symbol/"
@@ -44,7 +45,7 @@ def normalize_vt_symbol(raw: str) -> str | None:
 
         item = parse_stock_symbol(text)
         if item is not None:
-            return item.vt_symbol
+            return cast(str, item.vt_symbol)
     except ImportError:
         pass
     return _normalize_vt_symbol_fallback(text)

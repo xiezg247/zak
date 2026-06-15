@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-# 股票代码正则：6位数字
 import re
+from collections.abc import Iterator
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -90,6 +90,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._last_action_id = ""
         self._active_tool_name = ""
         self._symbol_actions = AssistantSymbolActions(self)
+        self._message_scroll: QtWidgets.QScrollArea
         self._slow_tool_timer = QtCore.QTimer(self)
         self._slow_tool_timer.setSingleShot(True)
         self._slow_tool_timer.setInterval(3000)
@@ -106,7 +107,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._pending_timer.timeout.connect(self._tick_pending_spinner)
         self._connect_signals()
         theme_manager().register_callback(self._on_theme_changed)
-        self.scroll.viewport().installEventFilter(self)
+        self._message_scroll.viewport().installEventFilter(self)
         self._refresh_messages()
         self._update_model_action()
         self._update_session_hint()
@@ -155,16 +156,17 @@ class AiChatPanel(QtWidgets.QWidget):
         if not self.floating:
             root.addWidget(self.context_label)
 
-        self.scroll = style_scroll_area(
-            QtWidgets.QScrollArea(),
+        self._message_scroll = QtWidgets.QScrollArea()
+        style_scroll_area(
+            self._message_scroll,
             area_name=AI_MESSAGE_SCROLL_AREA,
             bar_vertical_name=AI_MESSAGE_SCROLL_BAR,
             horizontal_policy=QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff,
         )
-        self.scroll.setWidgetResizable(True)
+        self._message_scroll.setWidgetResizable(True)
         if self.floating:
-            self.scroll.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
-            self.scroll.viewport().setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+            self._message_scroll.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+            self._message_scroll.viewport().setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self.message_container = QtWidgets.QWidget()
         self.message_container.setObjectName("AiMessageContainer")
@@ -174,10 +176,10 @@ class AiChatPanel(QtWidgets.QWidget):
         self.message_layout.setContentsMargins(0, 0, 0, 0)
         self.message_layout.setSpacing(6)
         self.message_layout.addStretch()
-        self.scroll.setWidget(self.message_container)
+        self._message_scroll.setWidget(self.message_container)
         if self.floating:
-            self.scroll.setMinimumHeight(100)
-        root.addWidget(self.scroll, stretch=1)
+            self._message_scroll.setMinimumHeight(100)
+        root.addWidget(self._message_scroll, stretch=1)
         QtCore.QTimer.singleShot(0, self._on_panel_shown)
 
         # ── 快捷指令面板（输入框上方） ──
@@ -517,7 +519,7 @@ class AiChatPanel(QtWidgets.QWidget):
     def _refresh_messages(self) -> None:
         if thread_is_active(self._worker):
             return
-        bar = self.scroll.verticalScrollBar()
+        bar = self._message_scroll.verticalScrollBar()
         prev_value = bar.value()
         prev_max = bar.maximum()
         pin_bottom = self._was_scroll_near_bottom()
@@ -547,10 +549,10 @@ class AiChatPanel(QtWidgets.QWidget):
             self._restore_scroll_position(prev_value, prev_max)
 
     def _message_viewport_width(self) -> int:
-        viewport_width = self.scroll.viewport().width()
+        viewport_width = self._message_scroll.viewport().width()
         if viewport_width >= 100:
             return viewport_width
-        fallback = self.scroll.width()
+        fallback = self._message_scroll.width()
         if fallback >= 100:
             return fallback
         margin = 16 if (not self.compact and not self.floating) else 8
@@ -636,17 +638,17 @@ class AiChatPanel(QtWidgets.QWidget):
             browser.setMinimumHeight(doc_height + 20)
             browser.setFixedHeight(doc_height + 20)
 
-    def _iter_message_bubbles(self):
+    def _iter_message_bubbles(self) -> Iterator[QtWidgets.QLabel | QtWidgets.QTextBrowser]:
         for index in range(self.message_layout.count() - 1):
             row = self.message_layout.itemAt(index).widget()
             if row is None:
                 continue
-            for child in row.findChildren(QtWidgets.QLabel):
-                if child.objectName().startswith("AiBubble"):
-                    yield child
-            for child in row.findChildren(QtWidgets.QTextBrowser):
-                if child.objectName().startswith("AiBubble"):
-                    yield child
+            for label in row.findChildren(QtWidgets.QLabel):
+                if label.objectName().startswith("AiBubble"):
+                    yield label
+            for browser in row.findChildren(QtWidgets.QTextBrowser):
+                if browser.objectName().startswith("AiBubble"):
+                    yield browser
 
     def _create_label_bubble(self, role: str, content: str) -> QtWidgets.QLabel:
         bubble = QtWidgets.QLabel(content)
@@ -845,7 +847,7 @@ class AiChatPanel(QtWidgets.QWidget):
         """HTML 气泡高度在布局完成后才稳定，需多次补偿滚动。"""
 
         def apply() -> None:
-            bar = self.scroll.verticalScrollBar()
+            bar = self._message_scroll.verticalScrollBar()
             bar.setValue(bar.maximum())
 
         apply()
@@ -853,7 +855,7 @@ class AiChatPanel(QtWidgets.QWidget):
             QtCore.QTimer.singleShot(delay, apply)
 
     def _was_scroll_near_bottom(self, *, threshold: int = 80) -> bool:
-        bar = self.scroll.verticalScrollBar()
+        bar = self._message_scroll.verticalScrollBar()
         maximum = bar.maximum()
         if maximum <= 0:
             return True
@@ -861,7 +863,7 @@ class AiChatPanel(QtWidgets.QWidget):
 
     def _restore_scroll_position(self, value: int, old_max: int) -> None:
         def apply() -> None:
-            bar = self.scroll.verticalScrollBar()
+            bar = self._message_scroll.verticalScrollBar()
             new_max = bar.maximum()
             if old_max > 0 and new_max > 0:
                 bar.setValue(min(new_max, int(value / old_max * new_max)))
@@ -911,10 +913,11 @@ class AiChatPanel(QtWidgets.QWidget):
             self._worker = None
 
     def _on_stop(self) -> None:
-        if not thread_is_active(self._worker):
+        worker = self._worker
+        if worker is None or not thread_is_active(worker):
             return
         self.engine.request_cancel_stream()
-        self._worker.requestInterruption()
+        worker.requestInterruption()
 
     def _set_busy(self, busy: bool) -> None:
         self.input_box.setDisabled(busy)
@@ -1236,7 +1239,7 @@ class AiChatPanel(QtWidgets.QWidget):
         return True
 
     def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        if obj is self.scroll.viewport() and event.type() == QtCore.QEvent.Type.Resize:
+        if obj is self._message_scroll.viewport() and event.type() == QtCore.QEvent.Type.Resize:
             self.message_container.setMinimumWidth(self._message_viewport_width())
             self._sync_all_bubble_widths()
         input_targets = (self.input_box, self.input_box.viewport())

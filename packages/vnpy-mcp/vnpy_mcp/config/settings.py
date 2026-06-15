@@ -13,6 +13,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 
 from vnpy_common.paths import PROJECT_ROOT
 from vnpy_mcp.config.registry import BUILTIN_MCP_PROVIDERS
@@ -110,7 +111,7 @@ def _is_valid_secret(value: str) -> bool:
 def resolve_mcp_dir() -> Path:
     override = os.getenv("MCP_DIR", "").strip()
     if override:
-        return Path(override).expanduser()
+        return cast(Path, Path(override).expanduser())
     return DEFAULT_MCP_DIR
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 from vnpy.trader.engine import MainEngine
 
@@ -44,7 +44,7 @@ class ToolRegistry:
 
     def get_openai_tools(self) -> list[dict[str, Any]]:
         """仅暴露 Skill 工具；MCP 经 Skill/Service 内部调用。"""
-        return self.skill_engine.get_openai_tools()
+        return cast(list[dict[str, Any]], self.skill_engine.get_openai_tools())
 
     def get_mcp_tool_names(self) -> frozenset[str]:
         return frozenset(spec.name for spec in self.mcp_engine.get_tool_specs())
@@ -69,11 +69,11 @@ class ToolRegistry:
 
     def reload_skills(self) -> list[str]:
         self._enabled_skills = self.skill_engine.reload_skills()
-        return self._enabled_skills
+        return cast(list[str], self._enabled_skills)
 
     def reload_mcp(self) -> list[str]:
         self._enabled_mcp = self.mcp_engine.reload_providers()
-        return self._enabled_mcp
+        return cast(list[str], self._enabled_mcp)
 
     def reload_all(self) -> tuple[list[str], list[str]]:
         skills = self.reload_skills()

@@ -62,14 +62,13 @@ class AiSessionRowWidget(QtWidgets.QFrame):
         self._title.setWordWrap(False)
         self._title.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.NoTextInteraction)
         text_col.addWidget(self._title)
+        self._subtitle: QtWidgets.QLabel | None = None
         if subtitle:
             self._subtitle = QtWidgets.QLabel(subtitle)
             self._subtitle.setObjectName("AiSessionRowSubtitle")
             self._subtitle.setWordWrap(False)
             self._subtitle.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.NoTextInteraction)
             text_col.addWidget(self._subtitle)
-        else:
-            self._subtitle = None
         layout.addLayout(text_col, stretch=1)
 
         self.setSizePolicy(

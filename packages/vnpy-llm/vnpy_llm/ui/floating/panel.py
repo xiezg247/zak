@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import math
+from typing import cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
-
 from vnpy_common.ai.protocol import AiContextData
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost
@@ -32,13 +32,15 @@ PANEL_MIN_HEIGHT = 380
 TITLE_BAR_HEIGHT = 32
 RESIZE_MARGIN = 10
 
+ResizeEdges = int
+
 BTN_MARGIN = ORB_MARGIN
 
 
 class _PanelResizeHandle(QtWidgets.QWidget):
     """面板边缘拖拽拉伸句柄（透明覆盖层）。"""
 
-    def __init__(self, panel: FloatingAiPanel, edges: QtCore.Qt.Edges) -> None:
+    def __init__(self, panel: FloatingAiPanel, edges: ResizeEdges) -> None:
         super().__init__(panel)
         self._panel = panel
         self._edges = edges
@@ -219,7 +221,7 @@ class FloatingAiOrb(QtWidgets.QWidget):
     def enterEvent(self, event: QtCore.QEvent) -> None:
         self._hovered = True
         self.update()
-        super().enterEvent(event)
+        super().enterEvent(event)  # type: ignore[arg-type]
 
     def leaveEvent(self, event: QtCore.QEvent) -> None:
         self._hovered = False
@@ -256,14 +258,16 @@ class FloatingAiOrb(QtWidgets.QWidget):
     def _show_context_menu(self, pos: QtCore.QPoint) -> None:
         menu = QtWidgets.QMenu(self)
         menu.setObjectName("FloatingAiOrbMenu")
-        menu.addAction("打开对话", self.clicked.emit)
+        menu.addAction("打开对话", lambda: self.clicked.emit())
         if self._context_actions:
             menu.addSeparator()
             for action in self._context_actions[:5]:
-                menu.addAction(
-                    action.label,
-                    lambda checked=False, prompt=action.prompt: self.quick_action_requested.emit(prompt),
-                )
+                prompt = action.prompt
+
+                def _emit_quick_action(*, _prompt: str = prompt) -> None:
+                    self.quick_action_requested.emit(_prompt)
+
+                menu.addAction(action.label, _emit_quick_action)
         menu.addSeparator()
         menu.addAction("全屏模式", self.fullscreen_requested.emit)
         menu.addSeparator()
@@ -332,20 +336,20 @@ class FloatingAiPanel(QtWidgets.QWidget):
 
         self._drag_pos: QtCore.QPoint | None = None
         self._resizing = False
-        self._resize_edges = QtCore.Qt.Edges()
+        self._resize_edges: ResizeEdges = 0
         self._resize_start_geom: QtCore.QRect | None = None
         self._resize_start_global: QtCore.QPoint | None = None
         self._resize_right = _PanelResizeHandle(
             self,
-            QtCore.Qt.Edge.RightEdge,
+            cast(ResizeEdges, QtCore.Qt.Edge.RightEdge),
         )
         self._resize_bottom = _PanelResizeHandle(
             self,
-            QtCore.Qt.Edge.BottomEdge,
+            cast(ResizeEdges, QtCore.Qt.Edge.BottomEdge),
         )
         self._resize_corner = _PanelResizeHandle(
             self,
-            QtCore.Qt.Edge.RightEdge | QtCore.Qt.Edge.BottomEdge,
+            cast(ResizeEdges, QtCore.Qt.Edge.RightEdge | QtCore.Qt.Edge.BottomEdge),
         )
 
         self._build_ui(engine)
@@ -529,12 +533,14 @@ class FloatingAiPanel(QtWidgets.QWidget):
             self._update_context_bar_geometry()
 
     @staticmethod
-    def _cursor_for_edges(edges: QtCore.Qt.Edges) -> QtCore.Qt.CursorShape:
-        if edges & QtCore.Qt.Edge.RightEdge and edges & QtCore.Qt.Edge.BottomEdge:
+    def _cursor_for_edges(edges: ResizeEdges) -> QtCore.Qt.CursorShape:
+        right = cast(ResizeEdges, QtCore.Qt.Edge.RightEdge)
+        bottom = cast(ResizeEdges, QtCore.Qt.Edge.BottomEdge)
+        if edges & right and edges & bottom:
             return QtCore.Qt.CursorShape.SizeFDiagCursor
-        if edges & QtCore.Qt.Edge.RightEdge:
+        if edges & right:
             return QtCore.Qt.CursorShape.SizeHorCursor
-        if edges & QtCore.Qt.Edge.BottomEdge:
+        if edges & bottom:
             return QtCore.Qt.CursorShape.SizeVerCursor
         return QtCore.Qt.CursorShape.ArrowCursor
 
@@ -563,7 +569,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
             y = min(max(0, y), max(0, parent.height() - height))
         return QtCore.QRect(x, y, width, height)
 
-    def _begin_resize(self, edges: QtCore.Qt.Edges, global_pos: QtCore.QPoint) -> None:
+    def _begin_resize(self, edges: ResizeEdges, global_pos: QtCore.QPoint) -> None:
         self._resizing = True
         self._resize_edges = edges
         self._resize_start_geom = self.geometry()
@@ -575,9 +581,11 @@ class FloatingAiPanel(QtWidgets.QWidget):
             return
         delta = global_pos - self._resize_start_global
         geo = QtCore.QRect(self._resize_start_geom)
-        if self._resize_edges & QtCore.Qt.Edge.RightEdge:
+        right = cast(ResizeEdges, QtCore.Qt.Edge.RightEdge)
+        bottom = cast(ResizeEdges, QtCore.Qt.Edge.BottomEdge)
+        if self._resize_edges & right:
             geo.setWidth(self._resize_start_geom.width() + delta.x())
-        if self._resize_edges & QtCore.Qt.Edge.BottomEdge:
+        if self._resize_edges & bottom:
             geo.setHeight(self._resize_start_geom.height() + delta.y())
         self.setGeometry(self._clamp_geometry(geo))
         self._update_context_bar_geometry()
@@ -586,7 +594,7 @@ class FloatingAiPanel(QtWidgets.QWidget):
         if not self._resizing:
             return
         self._resizing = False
-        self._resize_edges = QtCore.Qt.Edges()
+        self._resize_edges = 0
         self._resize_start_geom = None
         self._resize_start_global = None
         self.releaseMouse()

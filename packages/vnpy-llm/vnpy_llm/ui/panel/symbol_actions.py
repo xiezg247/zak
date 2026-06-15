@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -145,7 +145,7 @@ class AssistantSymbolActions:
         def watchlist_add(symbol: str, exchange, stock_name: str = "") -> bool:
             if service is None:
                 return False
-            return service.add(symbol, exchange, stock_name)
+            return cast(bool, service.add(symbol, exchange, stock_name))
 
         show_reference_peer_dialog(
             vt_symbol=item.vt_symbol,
@@ -190,11 +190,11 @@ class AssistantSymbolActions:
         menu.addSeparator()
 
         try:
-            from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
+            from vnpy_ashare.storage.repositories.watchlist import watchlist_contains as _watchlist_contains
         except ImportError:
-            watchlist_contains = None  # type: ignore[assignment]
+            _watchlist_contains = None
 
-        if watchlist_contains is not None and watchlist_contains(item.symbol, item.exchange):
+        if _watchlist_contains is not None and _watchlist_contains(item.symbol, item.exchange):
             watchlist_action = menu.addAction("移出自选")
         else:
             watchlist_action = menu.addAction("加入自选")

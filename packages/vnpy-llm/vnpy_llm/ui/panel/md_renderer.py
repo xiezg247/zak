@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import markdown as _md_lib
 from markdown.extensions import codehilite, fenced_code, tables
+from typing import cast
 
 from vnpy_common.ui.theme.tokens import ThemeTokens
 
@@ -23,9 +24,9 @@ def render_markdown(text: str, *, tokens: ThemeTokens | None = None) -> str:
             "sane_lists",
         ]
     )
-    body = md.convert(text)
+    body = cast(str, md.convert(text))
     css = _build_markdown_css(tokens)
-    return _HTML_TEMPLATE_HEAD.format(css=css) + body + _HTML_TEMPLATE_TAIL
+    return cast(str, _HTML_TEMPLATE_HEAD.format(css=css) + body + _HTML_TEMPLATE_TAIL)
 
 
 def _build_markdown_css(t: ThemeTokens) -> str:

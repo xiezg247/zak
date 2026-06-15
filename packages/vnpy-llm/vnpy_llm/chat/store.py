@@ -8,13 +8,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 from vnpy_common.paths import get_chat_db_path
 
 
 # 测试可 patch 此函数
 def _chat_db_path() -> Path:
-    return get_chat_db_path()
+    return cast(Path, get_chat_db_path())
 
 
 _SCHEMA = """

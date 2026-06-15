@@ -46,7 +46,7 @@ _SCREENING_MARKET_KEYWORDS = (
     "均线情况",
 )
 
-_HANDOFF_RULES: tuple[tuple[IntentCategory, tuple[str, ...], str, str], ...] = (
+_HANDOFF_RULES: tuple[tuple[IntentCategory, tuple[str, ...], AgentName, str], ...] = (
     ("diagnosis", _RESEARCH_MARKET_KEYWORDS, "market", "用户需要综合诊断并结合大盘/市场情绪"),
     ("backtest", _BACKTEST_MARKET_KEYWORDS, "market", "用户需要回测解读并结合技术形态/策略信号"),
     ("screening", _SCREENING_MARKET_KEYWORDS, "market", "用户需要选股结果并结合技术面扫描"),

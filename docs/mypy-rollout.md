@@ -7,6 +7,10 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 | 位置 | 职责 |
 |------|------|
 | `packages/vnpy-common/pyproject.toml` → `[tool.mypy]` | common 全包（`vnpy_common`） |
+| `packages/vnpy-skills/pyproject.toml` → `[tool.mypy]` | skills 全包 |
+| `packages/vnpy-mcp/pyproject.toml` → `[tool.mypy]` | mcp 全包 |
+| `packages/vnpy-tickflow/pyproject.toml` → `[tool.mypy]` | tickflow 全包 |
+| `packages/vnpy-llm/pyproject.toml` → `[tool.mypy]` | llm 全包 |
 | `packages/vnpy-ashare/pyproject.toml` → `[tool.mypy]` | ashare 白名单目录、本包 `mypy_path` |
 | `scripts/mypy-check.sh` | 依次跑各 package（CI / 本地统一入口） |
 | 根 `pyproject.toml` | **不再**放 `[tool.mypy]`；dev 依赖仍含 `mypy` |
@@ -17,6 +21,8 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 ## 当前范围
 
+**workspace 全部 6 个 package 均已启用 mypy**（共 **551** 个源文件）。
+
 ### vnpy-common（Phase 8）
 
 | 目录 | 说明 | 状态 |
@@ -24,6 +30,17 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 | `vnpy_common/` | 路径、AI 协议、终端主题与 UI 组件 | ✅ 严格 |
 
 共 **30** 个源文件。
+
+### vnpy-skills / vnpy-mcp / vnpy-tickflow / vnpy-llm（Phase 9）
+
+| package | 目录 | 文件数 | 状态 |
+|---------|------|--------|------|
+| vnpy-skills | `vnpy_skills/` | 9 | ✅ 严格 |
+| vnpy-mcp | `vnpy_mcp/` | 11 | ✅ 严格 |
+| vnpy-tickflow | `vnpy_tickflow/` | 5 | ✅ 严格 |
+| vnpy-llm | `vnpy_llm/` | 78 | ✅ 严格 |
+
+`mypy_path`：skills / mcp / tickflow 指向 `../vnpy-common`；llm 另含 `../vnpy-skills`、`../vnpy-mcp`。
 
 ### vnpy-ashare（Phase 1–7e）
 
@@ -74,6 +91,7 @@ Phase 7c   ui 其余子包收紧（25 处）；移除 ui.* 全量 14 类 disable
 Phase 7d   types-PySide6；去掉 override/call-overload/arg-type/misc（仅留 attr-defined）  ← 已完成
 Phase 7e   去掉 attr-defined；QuotesPage shell 属性 mixin + Qt/pyqtgraph Protocol  ← 已完成
 Phase 8    vnpy-common 独立 package mypy（30 文件）                                    ← 已完成
+Phase 9    vnpy-skills / vnpy-mcp / vnpy-tickflow / vnpy-llm 全包 mypy（103 文件）   ← 已完成
 ```
 
 ## 新增 workspace package

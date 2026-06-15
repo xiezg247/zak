@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import cast
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -66,14 +67,14 @@ class ToolsStatusSnapshot:
 def _skill_title(name: str, fallback: str = "") -> str:
     meta = OFFICIAL_SKILLS.get(name)
     if meta:
-        return meta.title
+        return cast(str, meta.title)
     return fallback or name
 
 
 def _skill_summary(name: str, description: str = "") -> str:
     meta = OFFICIAL_SKILLS.get(name)
     if meta:
-        return meta.summary
+        return cast(str, meta.summary)
     return description
 
 
@@ -144,20 +145,22 @@ def build_tools_status(
     connect_errors = mcp_engine.get_connect_errors()
 
     for name, provider in sorted(mcp_engine.providers.items()):
-        config = provider.config
-        title = config.display_title
-        summary = config.display_description
+        provider_config = getattr(provider, "config", None)
+        if provider_config is None:
+            continue
+        title = provider_config.display_title
+        summary = provider_config.display_description
 
         if not provider.available:
             missing = getattr(provider, "missing_env", [])
             remote = getattr(provider, "enabled", True)
-            state: ToolProviderState = "disabled" if remote is False else "missing_env"
+            mcp_state: ToolProviderState = "disabled" if remote is False else "missing_env"
             mcps.append(
                 ToolProviderStatus(
                     kind="mcp",
                     name=name,
                     title=title,
-                    state=state,
+                    state=mcp_state,
                     tool_count=0,
                     missing_env=tuple(missing),
                     summary=summary,

@@ -22,6 +22,10 @@ run_pkg_mypy() {
   )
 }
 
-# 新增 package 时在此追加（依赖顺序：common 先于 ashare）
+# 按依赖顺序（common → skills/mcp/tickflow → llm → ashare）
 run_pkg_mypy packages/vnpy-common
+run_pkg_mypy packages/vnpy-skills
+run_pkg_mypy packages/vnpy-mcp
+run_pkg_mypy packages/vnpy-tickflow
+run_pkg_mypy packages/vnpy-llm
 run_pkg_mypy packages/vnpy-ashare
