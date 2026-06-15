@@ -2,14 +2,17 @@
 
 zak 采用 **白名单目录 + CI 守门** 的方式逐步引入静态类型检查，避免一次性全仓 strict 带来的巨大改造成本。
 
-## 当前范围（Phase 1）
+## 当前范围（Phase 1–3：quotes 全子包）
 
-| 目录 | 说明 |
-|------|------|
-| `packages/vnpy-ashare/vnpy_ashare/quotes/core/` | QuoteSnapshot、Provider、Redis、enrich |
-| `packages/vnpy-ashare/vnpy_ashare/quotes/rank/` | 排行 catalog / engine / scope |
+| 目录 | 说明 | 状态 |
+|------|------|------|
+| `quotes/core/` | QuoteSnapshot、Provider、Redis、enrich | ✅ |
+| `quotes/rank/` | 排行 catalog / engine / scope | ✅ |
+| `quotes/market/` | 市场宽度、环境、概览 loader、moneyflow | ✅ |
+| `quotes/misc/` | 持仓异动、涨速基线 | ✅ |
+| `quotes/radar/` | 雷达 catalog、loaders、horizon、resonance 等 | ✅ |
 
-配置位于根目录 `pyproject.toml` → `[tool.mypy]` 的 `files` 列表。
+配置位于根目录 `pyproject.toml` → `[tool.mypy]` 的 `files` 列表；`mypy_path` 含 `vnpy_common`、`vnpy_ashare` 以便解析 workspace 包。
 
 ## 本地运行
 
@@ -29,11 +32,9 @@ uv run mypy
 ### 建议顺序
 
 ```text
-Phase 1  quotes/core、quotes/rank          ← 当前
-Phase 2  quotes/market、quotes/misc
-Phase 3  quotes/radar
-Phase 4  screener/data、services/（按域拆分）
-Phase 5  ui/quotes/（Qt 依赖多，需 types-PySide6 或局部 ignore）
+Phase 1–3  quotes/*（core / rank / market / misc / radar）  ← 当前（38 文件）
+Phase 4    screener/data、services/（按域拆分）
+Phase 5    ui/quotes/（Qt 依赖多，需 types-PySide6 或局部 ignore）
 ```
 
 ## 全局策略

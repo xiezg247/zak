@@ -26,7 +26,7 @@ FLOW_KIND_SCORE_FACTORS: dict[FlowKind, float] = {
 
 def flow_kind_label(kind: str | None) -> str:
     if kind in FLOW_KIND_LABELS:
-        return FLOW_KIND_LABELS[kind]  # type: ignore[index]
+        return FLOW_KIND_LABELS[kind]
     return FLOW_KIND_LABELS["main"]
 
 
@@ -34,7 +34,7 @@ def classify_moneyflow_row(row: dict[str, Any]) -> FlowKind:
     """基于 Tushare 档位与数据来源标注资金类型。"""
     explicit = str(row.get("flow_kind") or "").strip()
     if explicit in FLOW_KIND_LABELS:
-        return explicit  # type: ignore[return-value]
+        return explicit
 
     if row.get("moneyflow_proxy"):
         return "proxy"
@@ -83,14 +83,14 @@ def enrich_moneyflow_row_with_kind(row: dict[str, Any]) -> dict[str, Any]:
 
 def flow_kind_score_factor(kind: str | None) -> float:
     if kind in FLOW_KIND_SCORE_FACTORS:
-        return FLOW_KIND_SCORE_FACTORS[kind]  # type: ignore[index]
+        return FLOW_KIND_SCORE_FACTORS[kind]
     return 1.0
 
 
 def row_flow_kind(row: dict[str, Any]) -> FlowKind:
     kind = str(row.get("flow_kind") or "").strip()
     if kind in FLOW_KIND_LABELS:
-        return kind  # type: ignore[return-value]
+        return kind
     return classify_moneyflow_row(row)
 
 

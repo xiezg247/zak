@@ -7,6 +7,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_common.paths import get_app_db_path
@@ -25,7 +26,7 @@ CREATE TABLE IF NOT EXISTS radar_ai_hint_cache (
 
 
 def _db_path() -> Path:
-    return get_app_db_path().parent / "radar_ai_hint_cache.db"
+    return cast(Path, get_app_db_path().parent / "radar_ai_hint_cache.db")
 
 
 @contextmanager

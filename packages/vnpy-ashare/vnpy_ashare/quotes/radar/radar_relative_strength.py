@@ -24,8 +24,8 @@ def build_relative_strength_subline(
     snapshot_rows: list[dict[str, Any]] | None = None,
 ) -> tuple[str, str] | None:
     """返回 (sub_label, sub_value)，无有效涨幅时返回 None。"""
-    change = row.get("change_pct") or row.get("pct_chg")
-    if change in (None, ""):
+    change = row.get("change_pct") if row.get("change_pct") not in (None, "") else row.get("pct_chg")
+    if change is None or change == "":
         return None
     try:
         float(change)

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
@@ -113,7 +113,7 @@ def _resolve_row_display_name(
     row: dict[str, Any],
     merged: dict[str, Any],
     *,
-    item,
+    item: StockItem | None,
     name_map: dict[str, str],
 ) -> str:
     for candidate in (
@@ -601,10 +601,10 @@ def load_radar_board(
 
 def _accumulate_radar_resonance(
     payload: dict[str, RadarCardData],
-) -> dict[str, dict[str, object]]:
+) -> dict[str, dict[str, Any]]:
     from vnpy_ashare.quotes.radar.radar_catalog import radar_card_resonance_weight
 
-    grouped: dict[str, dict[str, object]] = {}
+    grouped: dict[str, dict[str, Any]] = {}
     for data in payload.values():
         card_weight = radar_card_resonance_weight(data.card_id)
         seen_in_card: set[str] = set()

@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from vnpy_ashare.quotes.radar.radar_models import RadarRow, enrich_radar_row, float_or_none, quotes_for_vt_symbols
 from vnpy_common.paths import get_app_db_path
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS radar_horizon_cache (
 
 
 def _db_path() -> Path:
-    return get_app_db_path().parent / "radar_horizon_cache.db"
+    return cast(Path, get_app_db_path().parent / "radar_horizon_cache.db")
 
 
 @contextmanager

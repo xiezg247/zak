@@ -80,7 +80,11 @@ python_version = "3.10"
 files = [
     "packages/vnpy-ashare/vnpy_ashare/quotes/core",
     "packages/vnpy-ashare/vnpy_ashare/quotes/rank",
+    "packages/vnpy-ashare/vnpy_ashare/quotes/market",
+    "packages/vnpy-ashare/vnpy_ashare/quotes/misc",
+    "packages/vnpy-ashare/vnpy_ashare/quotes/radar",
 ]
+mypy_path = "packages/vnpy-common:packages/vnpy-ashare"
 follow_imports = "silent"
 ignore_missing_imports = true
 warn_return_any = true

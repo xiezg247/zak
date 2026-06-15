@@ -45,10 +45,10 @@ def _estimate_bar_stats(
     vt_symbol: str,
     *,
     horizon_days: int = HORIZON_DAYS,
-) -> tuple[float | None, float | None, float | None, float | None]:
+) -> tuple[float | None, float | None, float | None, float | None, float | None]:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
-        return None, None, None, None
+        return None, None, None, None, None
     bars = load_scope_bars(
         item.symbol,
         item.exchange,
@@ -57,7 +57,7 @@ def _estimate_bar_stats(
         datetime.now(),
     )
     if len(bars) < 12:
-        return None, None, None, None
+        return None, None, None, None, None
     closes = [float(bar.close_price) for bar in bars[-25:]]
     last_close = closes[-1]
     momentum_pct = None
@@ -70,7 +70,7 @@ def _estimate_bar_stats(
             continue
         returns.append((closes[index] - prev) / prev)
     if len(returns) < 5:
-        return momentum_pct, None, None, None
+        return momentum_pct, None, None, None, None
     tail = returns[-20:]
     mean_ret = sum(tail) / len(tail)
     variance = sum((value - mean_ret) ** 2 for value in tail) / len(tail)
