@@ -483,7 +483,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
                 job_id, status, cast(AutoScreenJobConfig, config), self
             )
         else:
-            dialog = _JobSettingsDialog(job_id, status, config, self)
+            dialog = _JobSettingsDialog(job_id, status, cast(JobConfig, config), self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
         self._scheduler.update_job_config(job_id, **dialog.values())

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
@@ -23,7 +23,7 @@ def get_last_assistant_message(main_engine: MainEngine | None) -> str:
         return ""
     for message in reversed(engine.get_messages()):
         if message.role == "assistant" and message.content.strip():
-            return message.content.strip()
+            return cast(str, message.content.strip())
     return ""
 
 

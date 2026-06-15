@@ -21,7 +21,7 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 ## 当前范围
 
-**workspace 全部 6 个 package 均已启用 mypy**（共 **551** 个源文件）。
+**workspace 全部 6 个 package 均已启用 mypy**（共 **584** 个源文件）。
 
 ### vnpy-common（Phase 8）
 
@@ -42,7 +42,7 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 `mypy_path`：skills / mcp / tickflow 指向 `../vnpy-common`；llm 另含 `../vnpy-skills`、`../vnpy-mcp`。
 
-### vnpy-ashare（Phase 1–7e）
+### vnpy-ashare（Phase 1–7e，Phase 10 全包）
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
@@ -53,12 +53,16 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 | `config/` | schema、bridge、preferences | ✅ 严格 |
 | `storage/` | app_db、repositories | ✅ 严格 |
 | `integrations/` | 含 tickflow、tushare 等（勿单独再列 `integrations/tickflow`，会 duplicate module） | ✅ 严格 |
-| `ai/context/` | AI 上下文 | ✅ 严格 |
+| `ai/` | 上下文、llm_bridge、UI 浮动动作 | ✅ 严格 |
+| `app/` | 启动器、引擎、bootstrap | ✅ 严格 |
+| `backtest/` | 回测引擎与批量运行 | ✅ 严格 |
+| `commands/` | CLI 子命令 | ✅ 严格 |
 | `data/` | 行情下载、bar store | ✅ 严格 |
 | `jobs/` | 定时任务 | ✅ 严格 |
+| `scheduler/` | APScheduler 配置与管理 | ✅ 严格 |
 | `ui/` | Qt 桌面 UI 全包 | ✅ **严格**（Phase 7e） |
 
-共 **418** 个源文件；`ui/` 已无 `[[tool.mypy.overrides]]` 放宽项。
+共 **451** 个源文件；`vnpy_ashare/` 顶層子包已全部纳入白名单。
 
 ### Phase 7：`ui/` 半严格 → 全严格（7e）
 
@@ -92,6 +96,7 @@ Phase 7d   types-PySide6；去掉 override/call-overload/arg-type/misc（仅留 
 Phase 7e   去掉 attr-defined；QuotesPage shell 属性 mixin + Qt/pyqtgraph Protocol  ← 已完成
 Phase 8    vnpy-common 独立 package mypy（30 文件）                                    ← 已完成
 Phase 9    vnpy-skills / vnpy-mcp / vnpy-tickflow / vnpy-llm 全包 mypy（103 文件）   ← 已完成
+Phase 10   vnpy-ashare 余下 app/backtest/commands/scheduler/ai 全包（451 文件）     ← 已完成
 ```
 
 ## 新增 workspace package

@@ -33,7 +33,7 @@ def describe_ma_alignment(
     ma20: float | None,
     ma60: float | None,
 ) -> str:
-    if ma5 is None or ma20 is None:
+    if ma5 is None or ma10 is None or ma20 is None:
         return "数据不足，无法判断均线排列"
     if ma5 > ma10 > ma20:
         trend = "短期多头排列"

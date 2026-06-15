@@ -51,9 +51,13 @@ files = [
     "vnpy_ashare/config",
     "vnpy_ashare/storage",
     "vnpy_ashare/integrations",
-    "vnpy_ashare/ai/context",
+    "vnpy_ashare/ai",
+    "vnpy_ashare/app",
+    "vnpy_ashare/backtest",
+    "vnpy_ashare/commands",
     "vnpy_ashare/data",
     "vnpy_ashare/jobs",
+    "vnpy_ashare/scheduler",
     "vnpy_ashare/ui",
 ]
 mypy_path = "../vnpy-common:."

@@ -19,7 +19,13 @@ from vnpy_ashare.data.bars import (
 )
 from vnpy_ashare.data.minute_periods import MINUTE_PERIODS
 from vnpy_ashare.jobs.financial_sync import sync_watchlist_financials_job
-from vnpy_ashare.services.financial_service import sync_symbol_financials
+from vnpy_ashare.services.financial_service import FinancialSyncResult, sync_symbol_financials
+
+
+def _format_bar_date(value: datetime | None) -> str:
+    if value is None:
+        return "—"
+    return str(value.date())
 
 
 def _cmd_download_batch(args: argparse.Namespace) -> int:
@@ -128,7 +134,7 @@ def _cmd_list_bars(_args: argparse.Namespace) -> int:
             print(f"{item.vt_symbol:<16} {item.name:<10} {'—':>6}  {'无数据':<12}")
             missing += 1
             continue
-        print(f"{item.vt_symbol:<16} {item.name:<10} {row.count:>6}  {str(row.start.date()):<12} {str(row.end.date()):<12}")
+        print(f"{item.vt_symbol:<16} {item.name:<10} {row.count:>6}  {_format_bar_date(row.start):<12} {_format_bar_date(row.end):<12}")
 
     print("-" * 62)
     print(f"共 {len(items)} 只，已入库 {len(items) - missing} 只，缺失 {missing} 只")
@@ -139,21 +145,21 @@ def _cmd_sync_financials(args: argparse.Namespace) -> int:
     years = max(1, min(int(args.years or 5), 15))
     force = bool(args.force)
     if args.watchlist:
-        result = sync_watchlist_financials_job(force=force, years=years)
-        print(result.message)
-        return 0 if result.success else 1
+        job_result = sync_watchlist_financials_job(force=force, years=years)
+        print(job_result.message)
+        return 0 if job_result.success else 1
 
     if not args.symbol:
         print("请指定 --symbol 或 --watchlist", file=sys.stderr)
         return 2
 
-    result = sync_symbol_financials(args.symbol, years=years, force=force)
-    print(result.message)
-    if result.warnings:
-        print("提示:", "；".join(result.warnings[:4]))
-    if result.skipped:
+    sync_result: FinancialSyncResult = sync_symbol_financials(args.symbol, years=years, force=force)
+    print(sync_result.message)
+    if sync_result.warnings:
+        print("提示:", "；".join(sync_result.warnings[:4]))
+    if sync_result.skipped:
         return 0
-    return 0 if result.synced or result.skipped else 1
+    return 0 if sync_result.synced or sync_result.skipped else 1
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:

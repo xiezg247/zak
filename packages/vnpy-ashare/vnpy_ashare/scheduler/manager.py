@@ -7,7 +7,7 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from apscheduler.events import EVENT_JOB_MAX_INSTANCES
@@ -34,7 +34,13 @@ from vnpy_ashare.jobs import (
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.progress import bind_job_log
-from vnpy_ashare.scheduler.config import JobConfig, SchedulerConfig, load_scheduler_config, save_scheduler_config
+from vnpy_ashare.scheduler.config import (
+    AutoScreenJobConfig,
+    JobConfig,
+    SchedulerConfig,
+    load_scheduler_config,
+    save_scheduler_config,
+)
 from vnpy_ashare.scheduler.job_meta import load_job_run_meta, save_job_run_meta
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 
@@ -43,6 +49,8 @@ _COLLECT_QUOTES_INTERVAL_MIN = 5
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 _MAX_RUN_LOG = 200
 _MAX_RUN_DETAIL_LINES = 400
+
+SchedulerJobConfig = JobConfig | AutoScreenJobConfig
 
 
 def _recipe_label(recipe_id: str, fallback: str) -> str:
@@ -293,7 +301,7 @@ class TaskSchedulerManager:
         self._refresh_status_cache()
 
     def _collect_quotes_interval(self) -> int:
-        cfg = self._get_job_config(_COLLECT_QUOTES_JOB_ID)
+        cfg = cast(JobConfig, self._get_job_config(_COLLECT_QUOTES_JOB_ID))
         return max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)
 
     def _run_collect_quotes(self, *, force: bool = False) -> JobResult:
@@ -375,11 +383,11 @@ class TaskSchedulerManager:
         cfg = self._config.batch_download_universe
         return batch_download_universe_daily_bars(daily_start=cfg.download_start)
 
-    def _get_job_config(self, job_id: str) -> JobConfig:
+    def _get_job_config(self, job_id: str) -> SchedulerJobConfig:
         meta = self._jobs[job_id]
-        return getattr(self._config, meta.config_attr)
+        return cast(SchedulerJobConfig, getattr(self._config, meta.config_attr))
 
-    def _set_job_config(self, job_id: str, job_config: JobConfig) -> None:
+    def _set_job_config(self, job_id: str, job_config: SchedulerJobConfig) -> None:
         meta = self._jobs[job_id]
         setattr(self._config, meta.config_attr, job_config)
 
@@ -425,7 +433,7 @@ class TaskSchedulerManager:
     def get_config(self) -> SchedulerConfig:
         return self._config
 
-    def get_job_config(self, job_id: str) -> JobConfig:
+    def get_job_config(self, job_id: str) -> SchedulerJobConfig:
         return self._get_job_config(job_id)
 
     def save_config(self) -> None:
@@ -478,11 +486,12 @@ class TaskSchedulerManager:
                 continue
             meta = self._jobs[job_id]
             if job_id == "screen_intraday":
-                hours = _normalize_cron_hours(cfg.cron_hours)
+                auto_cfg = cast(AutoScreenJobConfig, cfg)
+                hours = _normalize_cron_hours(auto_cfg.cron_hours)
                 trigger = CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
+                    day_of_week=auto_cfg.cron_day_of_week,
                     hour=hours,
-                    minute=cfg.cron_minute_intraday,
+                    minute=auto_cfg.cron_minute_intraday,
                 )
             elif job_id == "screen_post_close":
                 trigger = CronTrigger(
