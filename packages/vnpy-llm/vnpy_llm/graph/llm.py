@@ -18,6 +18,6 @@ def create_chat_model(config: LlmConfig) -> ChatOpenAI:
         api_key=SecretStr(config.api_key),
         base_url=config.api_base,
         temperature=config.temperature,
+        max_tokens=config.max_tokens,
         streaming=True,
-        model_kwargs={"max_tokens": config.max_tokens},
     )

@@ -8,7 +8,10 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge, can_use_tickflow_stream
 from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
-from vnpy_ashare.ui.quotes.page.config import STREAM_QUOTE_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.page.config import (
+    STREAM_CHART_QUOTE_DEBOUNCE_MS,
+    STREAM_QUOTE_DEBOUNCE_MS,
+)
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -24,6 +27,10 @@ class QuoteStreamController:
         self._flush_timer.setSingleShot(True)
         self._flush_timer.setInterval(STREAM_QUOTE_DEBOUNCE_MS)
         self._flush_timer.timeout.connect(self._flush_quotes)
+        self._chart_quote_timer = QtCore.QTimer(page)
+        self._chart_quote_timer.setSingleShot(True)
+        self._chart_quote_timer.setInterval(STREAM_CHART_QUOTE_DEBOUNCE_MS)
+        self._chart_quote_timer.timeout.connect(self._flush_chart_quote)
 
     def use_stream(self) -> bool:
         page = self._page
@@ -52,6 +59,7 @@ class QuoteStreamController:
     def stop(self) -> None:
         page = self._page
         self._flush_timer.stop()
+        self._chart_quote_timer.stop()
         self._pending_symbols.clear()
         bridge = page._stream_bridge
         page._stream_bridge = None
@@ -111,10 +119,23 @@ class QuoteStreamController:
             page._actions.schedule_ai_context()
             return
         page._update_quote_header(current)
-        if page.chart_panel is not None:
-            quote = page.quote_map.get(current.tickflow_symbol)
-            page.chart_panel.update_quote(quote)
+        self._schedule_chart_quote_update()
         page._actions.schedule_ai_context()
+
+    def _schedule_chart_quote_update(self) -> None:
+        if self._page.chart_panel is None:
+            return
+        self._chart_quote_timer.start()
+
+    def _flush_chart_quote(self) -> None:
+        page = self._page
+        if not page._active or page.chart_panel is None:
+            return
+        current = page.current_item
+        if current is None:
+            return
+        quote = page.quote_map.get(current.tickflow_symbol)
+        page.chart_panel.update_quote(quote)
 
     def on_depth(self, depth: DepthSnapshot) -> None:
         page = self._page
