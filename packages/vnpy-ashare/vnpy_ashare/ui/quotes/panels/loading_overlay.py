@@ -76,7 +76,7 @@ class MarketTableHost(QtWidgets.QWidget):
 
         self._overlay = ContentLoadingOverlay(self)
 
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # type: ignore[name-defined]
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         self._overlay.setGeometry(self.rect())
         self._schedule_refresh_scrollbar()

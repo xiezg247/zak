@@ -123,19 +123,19 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
         empty.setObjectName("MarketDiscoveryEmpty")
         layout.addWidget(empty)
 
-        host._scroll = scroll  # type: ignore[attr-defined]
-        host._chip_host = chip_host  # type: ignore[attr-defined]
-        host._chip_layout = chip_layout  # type: ignore[attr-defined]
-        host._empty = empty  # type: ignore[attr-defined]
+        host._scroll = scroll
+        host._chip_host = chip_host
+        host._chip_layout = chip_layout
+        host._empty = empty
         return host
 
     def set_loading(self, loading: bool) -> None:
         self._loading = loading
         if loading:
             for group in (self._volume_group, self._moneyflow_group):
-                group._empty.setText("加载中…")  # type: ignore[attr-defined]
-                group._empty.show()  # type: ignore[attr-defined]
-                group._scroll.hide()  # type: ignore[attr-defined]
+                group._empty.setText("加载中…")
+                group._empty.show()
+                group._scroll.hide()
 
     def apply_cards(self, volume: RadarCardData | None, moneyflow: RadarCardData | None) -> None:
         self._loading = False
@@ -143,8 +143,8 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
         self._apply_group(self._moneyflow_group, moneyflow)
 
     def _apply_group(self, group: QtWidgets.QWidget, data: RadarCardData | None) -> None:
-        chip_layout: QtWidgets.QHBoxLayout = group._chip_layout  # type: ignore[attr-defined]
-        empty: QtWidgets.QLabel = group._empty  # type: ignore[attr-defined]
+        chip_layout: QtWidgets.QHBoxLayout = group._chip_layout
+        empty: QtWidgets.QLabel = group._empty
 
         while chip_layout.count() > 1:
             item = chip_layout.takeAt(0)
@@ -157,18 +157,18 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
             message = data.empty_message if data is not None and data.empty_message else "—"
             empty.setText(message if not self._loading else "加载中…")
             empty.show()
-            group._scroll.hide()  # type: ignore[attr-defined]
+            group._scroll.hide()
             return
 
         empty.hide()
-        group._scroll.show()  # type: ignore[attr-defined]
+        group._scroll.show()
         for index, row in enumerate(rows):
-            chip = _DiscoveryChip(row, parent=group._chip_host)  # type: ignore[attr-defined]
+            chip = _DiscoveryChip(row, parent=group._chip_host)
             chip.activated.connect(self.row_activated.emit)
             chip_layout.insertWidget(index, chip)
 
     def _refresh_chip_colors(self) -> None:
         for group in (self._volume_group, self._moneyflow_group):
-            chip_host: QtWidgets.QWidget = group._chip_host  # type: ignore[attr-defined]
+            chip_host: QtWidgets.QWidget = group._chip_host
             for chip in chip_host.findChildren(_DiscoveryChip):
                 chip.refresh_theme()

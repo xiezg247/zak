@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from vnpy_ashare.domain.numbers import safe_float
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
@@ -12,7 +12,7 @@ from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, g
 def _records(frame) -> list[dict[str, Any]]:
     if frame is None or frame.empty:
         return []
-    return frame.to_dict(orient="records")
+    return cast(list[dict[str, Any]], frame.to_dict(orient="records"))
 
 
 def fetch_top10_holders(ts_code: str, *, limit: int = 10) -> list[dict[str, Any]]:

@@ -67,7 +67,10 @@ def run_parallel_map(
     if workers <= 1 or len(items) <= 1:
         results: list[R] = []
         for index, item in enumerate(items):
-            result = run_with_retry(lambda item=item: worker(item))
+            def _invoke(current: T = item) -> R:
+                return worker(current)
+
+            result = run_with_retry(_invoke)
             results.append(result)
             if on_complete is not None:
                 on_complete(index, item, result)

@@ -49,7 +49,10 @@ def effective_bar_start(value: datetime | None) -> datetime | None:
     return value
 
 
-def bar_meta_from_overview(row: object) -> BarMeta:
+from vnpy_ashare.data.bar_store import PeriodBarOverview
+
+
+def bar_meta_from_overview(row: PeriodBarOverview) -> BarMeta:
     """由 PeriodBarOverview 构建 BarMeta。"""
     start = effective_bar_start(row.start)
     assert start is not None

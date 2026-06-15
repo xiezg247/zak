@@ -12,20 +12,33 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 在 package 目录内执行时，`files` 路径相对该包根（如 `vnpy_ashare/quotes/core`）；`mypy_path` 指向 sibling 包（如 `../vnpy-common:.`）。
 
-## 当前范围（vnpy-ashare，Phase 1–6）
+**注意**：必须在 `packages/vnpy-ashare` 目录下执行 mypy（或通过 `scripts/mypy-check.sh`），否则 `files` 白名单可能不生效。
+
+## 当前范围（vnpy-ashare，Phase 1–7）
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
-| `quotes/*` | core / rank / market / misc / radar | ✅ |
-| `screener/` | 选股全子包（含 data、dimensions、recipe、run…） | ✅ |
-| `services/` | 业务门面（含 analysis、signals） | ✅ |
-| `domain/` | 领域模型、交易日历、symbol 等 | ✅ |
-| `config/` | schema、bridge、preferences、fonts | ✅ |
-| `storage/` | app_db、repositories | ✅ |
-| `integrations/tickflow/` | TickFlow 行情适配 | ✅ |
-| `ai/context/` | AI 上下文组装 | ✅ |
+| `quotes/*` | core / rank / market / misc / radar | ✅ 严格 |
+| `screener/` | 选股全子包 | ✅ 严格 |
+| `services/` | 业务门面 | ✅ 严格 |
+| `domain/` | 领域模型 | ✅ 严格 |
+| `config/` | schema、bridge、preferences | ✅ 严格 |
+| `storage/` | app_db、repositories | ✅ 严格 |
+| `integrations/` | 含 tickflow、tushare 等（勿单独再列 `integrations/tickflow`，会 duplicate module） | ✅ 严格 |
+| `ai/context/` | AI 上下文 | ✅ 严格 |
+| `data/` | 行情下载、bar store | ✅ 严格 |
+| `jobs/` | 定时任务 | ✅ 严格 |
+| `ui/` | Qt 桌面 UI | ✅ **放宽**（见下） |
 
-共 **195** 个源文件。
+共 **417** 个源文件。
+
+### Phase 7：`ui/` 放宽规则
+
+Qt / vnpy 绑定层噪声较多，对 `vnpy_ashare.ui.*` 使用 `[[tool.mypy.overrides]]`，暂时关闭：
+
+`attr-defined`、`override`、`call-overload`、`arg-type`、`misc`、`assignment`、`union-attr`、`no-any-return`、`var-annotated`、`name-defined`、`operator`、`has-type`、`return-value`、`no-redef`
+
+**Phase 7b（后续）**：按子目录逐步去掉上述 disable，优先 `ui/quotes/` → `ui/screener/` → `ui/shell/`；配合 `types-PySide6` 与 `cast`/`Optional` 守卫。
 
 ## 本地运行
 
@@ -40,16 +53,15 @@ cd packages/vnpy-ashare && ../../.venv/bin/mypy --config-file pyproject.toml
 
 1. 编辑 `packages/vnpy-ashare/pyproject.toml` → `[tool.mypy].files`，追加子包路径。
 2. 在 package 根目录跑 mypy，修完报错后提交。
-3. 目录稳定后可加 `[[tool.mypy.overrides]]` 收紧单路径规则。
+3. 目录稳定后可加/减 `[[tool.mypy.overrides]]` 收紧单路径规则。
 
 ### 建议顺序
 
 ```text
-Phase 1–3  quotes/*
-Phase 4    services/
-Phase 5–6  screener/、domain/、config/、storage/、integrations/tickflow、ai/context  ← 当前（195 文件）
-Phase 7    ui/quotes/（Qt / types-PySide6）
-Phase 8    data/、integrations/ 其余、jobs/
+Phase 1–6  quotes/*、services/、screener/、domain/、config/、storage/、integrations/、ai/context  ← 严格（195 文件）
+Phase 7    data/、jobs/、ai/context/、ui/（417 文件；ui 放宽 override）              ← 当前
+Phase 8    vnpy-common 独立 package mypy
+Phase 7b   逐步收紧 ui.* override
 ```
 
 ## 新增 workspace package
@@ -72,4 +84,5 @@ Phase 8    data/、integrations/ 其余、jobs/
 ## 新代码约定
 
 - 落在 **已启用 mypy 目录** 内的改动：保持 `bash scripts/mypy-check.sh` 通过。
+- `ui/` 新代码仍建议手写 `Optional` 守卫与返回类型，便于 Phase 7b 收紧。
 - 未启用目录：仍按 [编码规范](./coding-standards.md) 手写注解。

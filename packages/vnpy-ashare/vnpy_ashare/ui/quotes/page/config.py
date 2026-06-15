@@ -39,10 +39,16 @@ def radar_refresh_hint() -> str:
 def _coerce_settings_int(value: object, *, default: int) -> int:
     if value is None:
         return default
-    try:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    if isinstance(value, float):
         return int(value)
-    except (TypeError, ValueError):
-        return default
+    return default
 
 
 def load_radar_card_refresh_ms(card_id: str, default_ms: int | None) -> int:

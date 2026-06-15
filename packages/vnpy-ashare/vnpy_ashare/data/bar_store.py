@@ -87,6 +87,8 @@ def _ensure_overview_cache() -> dict[Interval, dict[tuple[str, Exchange], Period
         for row in get_database().get_bar_overview():
             if not _overview_row_valid(row):
                 continue
+            if row.interval is None or row.exchange is None:
+                continue
             period = _period_for_interval(row.interval)
             bucket = cache.setdefault(row.interval, {})
             bucket[(row.symbol, row.exchange)] = _row_to_overview(row, period)

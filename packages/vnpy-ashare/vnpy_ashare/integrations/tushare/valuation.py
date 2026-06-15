@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, cast
 
 from vnpy_ashare.integrations.tushare.client import get_tushare_pro
 
@@ -25,4 +25,4 @@ def fetch_valuation_history(
     )
     if df is None or df.empty:
         return []
-    return df.sort_values("trade_date").to_dict(orient="records")
+    return cast(list[dict[str, Any]], df.sort_values("trade_date").to_dict(orient="records"))
