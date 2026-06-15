@@ -21,6 +21,9 @@ class ScreenerPageWidgetTests(unittest.TestCase):
         self.assertIsNotNone(page.data_status_bar)
         self.assertIsNotNone(page.result_insights)
         self.assertIsNotNone(page.hard_filter_panel)
+        panel = page.hard_filter_panel
+        self.assertTrue(panel.exclude_new_listing_check.isEnabled())
+        self.assertTrue(panel.exclude_st_check.isEnabled())
         self.assertGreater(page.pattern_combo.count(), 0)
         self.assertIsNotNone(page.reference_peer_btn)
 

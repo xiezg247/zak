@@ -79,6 +79,8 @@ class SectorFlowPanel(QtWidgets.QWidget):
 
     def set_loading(self, loading: bool) -> None:
         self._refresh_btn.setEnabled(not loading)
+        if loading:
+            self._summary.setText("加载中…")
 
     def apply_snapshot(self, snapshot: SectorFlowSnapshot) -> None:
         if not snapshot.rows:

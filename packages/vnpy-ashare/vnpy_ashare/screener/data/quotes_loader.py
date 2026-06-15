@@ -22,14 +22,14 @@ class MarketQuotesSnapshot:
     source: str = "quote"
 
 
-def load_market_quote_rows() -> MarketQuotesSnapshot:
+def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:
     """读取 Redis 全市场快照并转为 ScreeningService 可用行。"""
     store = RedisQuoteStore()
     tf_symbols = store.list_all_rank_symbols()
     if not tf_symbols:
         raise MarketQuotesLoadError("暂无全市场行情。请在「工具 → 立即执行 → 行情采集」运行后再选股。")
 
-    quotes = store.get_quotes(tf_symbols)
+    quotes = store.get_quotes(tf_symbols, enrich_factors=enrich_factors)
     rows: list[dict[str, Any]] = []
     for tf_symbol in tf_symbols:
         quote = quotes.get(tf_symbol)

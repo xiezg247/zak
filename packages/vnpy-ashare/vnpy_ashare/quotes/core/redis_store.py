@@ -47,7 +47,12 @@ def create_redis_client():
     url = os.getenv("REDIS_URL", "").strip() or "redis://127.0.0.1:6379/0"
     import redis
 
-    return redis.from_url(url, decode_responses=True)
+    return redis.from_url(
+        url,
+        decode_responses=True,
+        socket_connect_timeout=5,
+        socket_timeout=5,
+    )
 
 
 class RedisQuoteStore:
@@ -100,7 +105,7 @@ class RedisQuoteStore:
         pipe.execute()
         return len(quotes)
 
-    def get_quotes(self, tf_symbols: list[str]) -> dict[str, QuoteSnapshot]:
+    def get_quotes(self, tf_symbols: list[str], *, enrich_factors: bool = True) -> dict[str, QuoteSnapshot]:
         if not tf_symbols:
             return {}
 
@@ -121,7 +126,7 @@ class RedisQuoteStore:
             if not quote.trade_time.strip() and fallback_time:
                 quote.trade_time = fallback_time
             result[tf_symbol] = quote
-        if result:
+        if enrich_factors and result:
             from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 
             fill_missing_tushare_factors(result)

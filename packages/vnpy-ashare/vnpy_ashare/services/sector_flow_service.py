@@ -8,7 +8,9 @@ from typing import Any
 
 from vnpy.trader.utility import ZoneInfo
 
+from vnpy_ashare.ai.context.store import get_market_quotes_cache
 from vnpy_ashare.domain.sector_flow import SectorFlowRow, SectorFlowSnapshot
+from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 from vnpy_ashare.services.base import BaseService
@@ -16,6 +18,7 @@ from vnpy_ashare.services.base import BaseService
 _CHINA_TZ = ZoneInfo("Asia/Shanghai")
 _MIN_STOCKS = 3
 _TOP_EACH_SIDE = 24
+_MIN_CACHE_ROWS_FOR_SECTOR = 500
 
 
 def split_sector_display_rows(
@@ -59,11 +62,12 @@ def diagnose_sector_flow_empty(
     rows: list[dict[str, Any]],
     *,
     raw_total: int,
+    industry_map: dict[str, str] | None = None,
 ) -> str:
     """根据行情与行业映射情况生成空状态引导文案。"""
     if raw_total <= 0:
         return "Redis 无有效行情快照。请到「工具 → 立即执行 → 行情采集」运行后再刷新。"
-    enriched = attach_industry(rows)
+    enriched = attach_industry(rows, industry_map=industry_map)
     if not enriched:
         return "全市场行情已加载，但无法匹配行业字段。请配置 TUSHARE_TOKEN，并运行「工具 → 定时任务 → 同步行业映射」后再刷新。"
     buckets: dict[str, int] = defaultdict(int)
@@ -79,9 +83,13 @@ def diagnose_sector_flow_empty(
     return "暂无板块数据，请稍后刷新。"
 
 
-def aggregate_sector_rows(rows: list[dict[str, Any]]) -> list[SectorFlowRow]:
+def aggregate_sector_rows(
+    rows: list[dict[str, Any]],
+    *,
+    industry_map: dict[str, str] | None = None,
+) -> list[SectorFlowRow]:
     """按 Tushare 行业聚合板块资金与强度。"""
-    enriched = attach_industry(rows)
+    enriched = attach_industry(rows, industry_map=industry_map)
     if not enriched:
         return []
 
@@ -124,8 +132,9 @@ def build_sector_snapshot(
     rows: list[dict[str, Any]],
     *,
     updated_at: str | None,
+    industry_map: dict[str, str] | None = None,
 ) -> SectorFlowSnapshot:
-    sector_rows = aggregate_sector_rows(rows)
+    sector_rows = aggregate_sector_rows(rows, industry_map=industry_map)
     inflow_rows = [row for row in sector_rows if row.net_flow_yi > 0]
     outflow_rows = [row for row in sector_rows if row.net_flow_yi < 0]
     top_in_name = top_out_name = ""
@@ -141,7 +150,7 @@ def build_sector_snapshot(
         top_out_yi = top_out.net_flow_yi
     empty_hint = ""
     if not sector_rows and rows:
-        empty_hint = diagnose_sector_flow_empty(rows, raw_total=len(rows))
+        empty_hint = diagnose_sector_flow_empty(rows, raw_total=len(rows), industry_map=industry_map)
     return SectorFlowSnapshot(
         rows=tuple(sector_rows),
         inflow_rows=tuple(inflow_rows),
@@ -159,18 +168,37 @@ def build_sector_snapshot(
 class SectorFlowService(BaseService):
     """板块资金快照。"""
 
-    def load_snapshot(self) -> SectorFlowSnapshot:
-        try:
-            market = load_market_quote_rows()
-        except MarketQuotesLoadError as ex:
-            return SectorFlowSnapshot(rows=(), empty_hint=str(ex))
+    def _resolve_quote_rows(self) -> tuple[list[dict[str, Any]], str | None, int, str | None]:
+        """优先使用市场页全量缓存，否则从 Redis 拉全市场（不做逐股 Tushare enrich）。"""
+        quote_svc = getattr(self.engine, "quote_service", None)
+        if quote_svc is not None:
+            cached = quote_svc.get_market_quotes_cache()
+        else:
+            cached = get_market_quotes_cache()
+        if len(cached) >= _MIN_CACHE_ROWS_FOR_SECTOR:
+            return cached, None, len(cached), None
 
+        try:
+            market = load_market_quote_rows(enrich_factors=False)
+        except MarketQuotesLoadError as ex:
+            return [], None, 0, str(ex)
+        return market.rows, market.updated_at, market.total, None
+
+    def load_snapshot(self) -> SectorFlowSnapshot:
+        rows, updated_at, total, error = self._resolve_quote_rows()
+        if error:
+            return SectorFlowSnapshot(rows=(), empty_hint=error)
+        if not rows:
+            return SectorFlowSnapshot(rows=(), empty_hint="Redis 无有效行情快照。请到「工具 → 立即执行 → 行情采集」运行后再刷新。")
+
+        industry_map = fetch_stock_industry_map()
         snapshot = build_sector_snapshot(
-            market.rows,
-            updated_at=market.updated_at,
+            rows,
+            updated_at=updated_at,
+            industry_map=industry_map,
         )
         if not snapshot.rows and not snapshot.empty_hint:
-            hint = diagnose_sector_flow_empty(market.rows, raw_total=market.total)
+            hint = diagnose_sector_flow_empty(rows, raw_total=total, industry_map=industry_map)
             snapshot = SectorFlowSnapshot(
                 rows=snapshot.rows,
                 inflow_rows=snapshot.inflow_rows,

@@ -16,15 +16,13 @@ from vnpy_ashare.screener.hard_filter_prefs import (
 
 
 class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
-    """可折叠硬过滤：排除 ST、停牌、流动性、新股、涨跌停与模板。"""
+    """硬过滤：排除 ST、停牌、流动性、新股、涨跌停与模板。"""
 
     prefs_changed = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("硬过滤", parent)
         self.setObjectName("ScreenerFormBox")
-        self.setCheckable(True)
-        self.setChecked(False)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(6)
