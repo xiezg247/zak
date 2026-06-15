@@ -107,6 +107,13 @@ def get_redis_provider() -> RedisQuoteProvider:
     return _redis_provider
 
 
+def reset_quote_providers() -> None:
+    """配置热重载后丢弃 Provider 单例，下次访问重建。"""
+    global _tickflow_provider, _redis_provider
+    _tickflow_provider = None
+    _redis_provider = None
+
+
 def get_quote_provider(source: QuoteSource) -> QuoteProvider:
     if source == "market":
         return get_redis_provider()

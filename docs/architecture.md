@@ -54,7 +54,7 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 
 `.env` 为密钥真源；`vt_setting.json` 为 VeighNa 运行时配置。
 
-`config_schema` → `config_bridge` → `vt_settings`；GUI 编辑在 `ui/shell/settings/`。
+`config_schema` → `config_bridge` → `vt_settings` → `config/apply`（分级热应用）；GUI 编辑在 `ui/shell/settings/`。详见 [配置分级热加载](./config-hot-reload-design.md)。
 
 ## 看盘页（`ui/quotes/`）
 

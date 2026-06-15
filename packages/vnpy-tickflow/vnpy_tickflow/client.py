@@ -12,7 +12,21 @@ from vnpy_common.paths import ENV_FILE
 
 def resolve_tickflow_api_key(*, settings_key: str = "") -> str:
     load_dotenv(ENV_FILE, override=False)
-    return (settings_key or os.getenv("TICKFLOW_API_KEY", "")).strip()
+    if settings_key:
+        return settings_key.strip()
+    env_key = os.getenv("TICKFLOW_API_KEY", "").strip()
+    if env_key:
+        return env_key
+    try:
+        from vnpy.trader.setting import SETTINGS
+
+        if str(SETTINGS.get("datafeed.name", "")).strip().lower() == "tickflow":
+            vt_key = str(SETTINGS.get("datafeed.password", "")).strip()
+            if vt_key:
+                return vt_key
+    except Exception:
+        pass
+    return ""
 
 
 def get_tickflow_client(*, api_key: str | None = None) -> TickFlow:

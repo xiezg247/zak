@@ -4,13 +4,26 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.config.bridge import detect_config_drift, format_config_drift_summary
+from vnpy_ashare.config.bridge import detect_config_drift, format_config_drift_summary, load_effective_env_values
 from vnpy_ashare.config.fonts import (
     available_font_families,
     resolve_font_family,
     supports_font_family_selection,
 )
+from vnpy_ashare.config.apply import (
+    apply_env_side_effects,
+    apply_llm_reload,
+    apply_runtime_settings,
+    build_apply_context,
+    diff_settings,
+    format_combined_save_summary,
+    format_env_sync_summary,
+)
+from vnpy_ashare.config.env_store import save_env_values
 from vnpy_ashare.config.schema import (
+    ENV_GENERAL_SPECS,
+    ENV_POSTGRES_KEYS,
+    ENV_SPEC_BY_KEY,
     VT_DB_SPECS,
     VT_NON_DB_SPECS,
     ConfigFieldSpec,
@@ -31,8 +44,7 @@ from vnpy_ashare.ui.shell.settings.snapshot import (
     mask_secret,
     metadata_storage_entries,
     resolve_database_runtime_display,
-    resolve_env_config_general,
-    resolve_env_config_kline,
+    resolve_env_config,
 )
 from vnpy_ashare.ui.styles import apply_settings_combo_style
 from vnpy_common.paths import ENV_FILE
@@ -42,9 +54,9 @@ from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 
 
 class SettingsDialog(QtWidgets.QDialog):
-    """环境变量只读预览 + 运行时配置编辑。"""
+    """环境变量 + 运行时配置编辑。"""
 
-    _ENV_TABLE_MAX_HEIGHT = 280
+    _ENV_FORM_MAX_HEIGHT = 320
     _ENV_ROW_HEIGHT = 34
     _ENV_KEY_COLUMN_WIDTH = 220
 
@@ -61,6 +73,7 @@ class SettingsDialog(QtWidgets.QDialog):
         theme_manager().bind_stylesheet(self, extra=build_settings_stylesheet)
 
         self._widgets: dict[str, QtWidgets.QWidget] = {}
+        self._env_widgets: dict[str, QtWidgets.QWidget] = {}
         self._db_runtime_labels: dict[str, QtWidgets.QLabel] = {}
         self._effective_database_mode = "sqlite"
         self._build_ui()
@@ -72,8 +85,8 @@ class SettingsDialog(QtWidgets.QDialog):
         root.setSpacing(10)
 
         hint = QtWidgets.QLabel(
-            f"环境变量请编辑 {ENV_FILE.name}；大模型项修改后可点「重载 LLM」立即生效。"
-            f"其余运行时配置保存至 {SETTING_FILE.name}，字体、K 线存储等需重启。"
+            f"环境变量写入 {ENV_FILE.name}，运行时写入 {SETTING_FILE.name}；保存后按项即时生效或提示需重启。"
+            f"若仅改 .env 且需覆盖 vt_setting，请点「从 .env 同步」。大模型也可点「重载 LLM」。"
             f"元数据与 AI 对话始终为本机 SQLite，不受 K 线存储切换影响。"
         )
         hint.setObjectName("SettingsHint")
@@ -110,8 +123,8 @@ class SettingsDialog(QtWidgets.QDialog):
         self._env_path_label.setObjectName("SettingsMeta")
         self._env_path_label.setWordWrap(True)
         env_layout.addWidget(self._env_path_label)
-        self._env_table = self._create_env_table()
-        env_layout.addWidget(self._env_table)
+        self._env_form_scroll = self._wrap_env_form(self._build_env_general_form())
+        env_layout.addWidget(self._env_form_scroll)
         body_layout.addWidget(env_group)
 
         body_layout.addWidget(self._build_metadata_group())
@@ -125,13 +138,13 @@ class SettingsDialog(QtWidgets.QDialog):
         self._db_status_label.setWordWrap(True)
         db_layout.addWidget(self._db_status_label)
 
-        env_db_label = QtWidgets.QLabel(".env（只读，请编辑 .env 文件）")
+        env_db_label = QtWidgets.QLabel(".env（可编辑；K 线库类型变更后建议「从 .env 同步」）")
         env_db_label.setObjectName("SettingsSubheading")
         db_layout.addWidget(env_db_label)
-        self._db_env_table = self._create_env_table()
-        db_layout.addWidget(self._db_env_table)
+        self._env_db_form_scroll = self._wrap_env_form(self._build_env_kline_form())
+        db_layout.addWidget(self._env_db_form_scroll)
 
-        runtime_db_label = QtWidgets.QLabel("运行时 vt_setting.json（可编辑，保存后需重启）")
+        runtime_db_label = QtWidgets.QLabel("运行时 vt_setting.json（可编辑；K 线库变更需重启）")
         runtime_db_label.setObjectName("SettingsSubheading")
         db_layout.addWidget(runtime_db_label)
         db_layout.addWidget(self._build_kline_runtime_mode_row())
@@ -209,6 +222,76 @@ class SettingsDialog(QtWidgets.QDialog):
         self._meta_table.setHorizontalHeaderLabels(["配置项", "路径与说明"])
         layout.addWidget(self._meta_table)
         return group
+
+    def _wrap_env_form(self, host: QtWidgets.QWidget) -> QtWidgets.QScrollArea:
+        scroll = QtWidgets.QScrollArea()
+        scroll.setObjectName("SettingsEnvFormScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(host)
+        scroll.setMaximumHeight(self._ENV_FORM_MAX_HEIGHT)
+        return scroll
+
+    def _build_env_general_form(self) -> QtWidgets.QWidget:
+        host = QtWidgets.QWidget()
+        form = QtWidgets.QFormLayout(host)
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        form.setHorizontalSpacing(12)
+        form.setVerticalSpacing(10)
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        for spec in ENV_GENERAL_SPECS:
+            widget = self._create_widget(spec)
+            self._env_widgets[spec.key] = widget
+            label = QtWidgets.QLabel(spec.label)
+            label.setObjectName("SettingsFormLabel")
+            if spec.description:
+                label.setToolTip(spec.description)
+            form.addRow(label, widget)
+        return host
+
+    def _build_env_kline_form(self) -> QtWidgets.QWidget:
+        host = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(host)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
+        mode_host = QtWidgets.QWidget()
+        mode_form = QtWidgets.QFormLayout(mode_host)
+        mode_form.setContentsMargins(0, 0, 0, 0)
+        mode_form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        mode_form.setHorizontalSpacing(12)
+        mode_form.setVerticalSpacing(10)
+        db_spec = ENV_SPEC_BY_KEY["DATABASE_NAME"]
+        db_widget = self._create_widget(db_spec)
+        self._env_widgets["DATABASE_NAME"] = db_widget
+        db_label = QtWidgets.QLabel(db_spec.label)
+        db_label.setObjectName("SettingsFormLabel")
+        mode_form.addRow(db_label, db_widget)
+        if isinstance(db_widget, QtWidgets.QComboBox):
+            db_widget.currentTextChanged.connect(self._on_env_database_mode_changed)
+        layout.addWidget(mode_host)
+
+        self._env_pg_stack = QtWidgets.QStackedWidget()
+        self._env_pg_stack.addWidget(QtWidgets.QWidget())
+        pg_page = QtWidgets.QWidget()
+        pg_form = QtWidgets.QFormLayout(pg_page)
+        pg_form.setContentsMargins(0, 0, 0, 0)
+        pg_form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        pg_form.setHorizontalSpacing(12)
+        pg_form.setVerticalSpacing(10)
+        pg_form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+        for key in sorted(ENV_POSTGRES_KEYS):
+            spec = ENV_SPEC_BY_KEY[key]
+            widget = self._create_widget(spec)
+            self._env_widgets[key] = widget
+            label = QtWidgets.QLabel(spec.label)
+            label.setObjectName("SettingsFormLabel")
+            pg_form.addRow(label, widget)
+        self._env_pg_stack.addWidget(pg_page)
+        layout.addWidget(self._env_pg_stack)
+        return host
 
     def _build_kline_runtime_mode_row(self) -> QtWidgets.QWidget:
         host = QtWidgets.QWidget()
@@ -328,8 +411,8 @@ class SettingsDialog(QtWidgets.QDialog):
         settings = load_runtime_settings()
         self._effective_database_mode = detect_database_mode(runtime_settings=settings)
 
-        self._refresh_env_table(self._env_table, resolve_env_config_general())
-        self._refresh_env_table(self._db_env_table, resolve_env_config_kline())
+        self._populate_env_fields()
+        self._set_env_database_mode(self._current_env_database_mode())
         self._populate_runtime_fields(settings)
         self._set_kline_runtime_mode(self._effective_database_mode, refresh_fields=True)
         self._update_database_status()
@@ -358,6 +441,49 @@ class SettingsDialog(QtWidgets.QDialog):
             self._meta_table.setRowHeight(row, self._ENV_ROW_HEIGHT)
 
         self._fit_env_table_height(self._meta_table)
+
+    def _current_env_database_mode(self) -> str:
+        widget = self._env_widgets.get("DATABASE_NAME")
+        if isinstance(widget, QtWidgets.QComboBox):
+            return normalize_database_name(widget.currentText())
+        return env_database_name()
+
+    def _on_env_database_mode_changed(self, _text: str) -> None:
+        self._set_env_database_mode(self._current_env_database_mode())
+        self._update_database_status()
+
+    def _set_env_database_mode(self, mode: str) -> None:
+        mode = normalize_database_name(mode)
+        widget = self._env_widgets.get("DATABASE_NAME")
+        if isinstance(widget, QtWidgets.QComboBox):
+            if widget.findText(mode) < 0:
+                widget.addItem(mode)
+            widget.blockSignals(True)
+            widget.setCurrentText(mode)
+            widget.blockSignals(False)
+        if hasattr(self, "_env_pg_stack"):
+            self._env_pg_stack.setCurrentIndex(1 if mode == "postgresql" else 0)
+
+    def _populate_env_fields(self) -> None:
+        hide = self._hide_secrets.isChecked()
+        env_items = {item.spec.key: item for item in resolve_env_config()}
+        for key, widget in self._env_widgets.items():
+            spec = ENV_SPEC_BY_KEY.get(key)
+            if spec is None:
+                continue
+            item = env_items.get(key)
+            value = item.value if item is not None else spec.default
+            self._apply_widget_value(widget, spec, value, hide=hide)
+
+    def _collect_env_updates(self) -> dict[str, str]:
+        values: dict[str, str] = {}
+        for key, widget in self._env_widgets.items():
+            spec = ENV_SPEC_BY_KEY.get(key)
+            if spec is None:
+                continue
+            raw = self._read_widget_value(widget, spec)
+            values[key] = str(raw)
+        return values
 
     def _update_drift_warning(self, settings: dict) -> None:
         drifts = detect_config_drift(settings)
@@ -393,49 +519,18 @@ class SettingsDialog(QtWidgets.QDialog):
         self._db_status_label.setText(
             format_bar_database_status(
                 effective=self._effective_database_mode,
-                env_name=env_database_name(),
+                env_name=self._current_env_database_mode(),
                 pending=self._current_kline_runtime_mode(),
             )
         )
-
-    def _refresh_env_table(
-        self,
-        table: QtWidgets.QTableWidget,
-        items: list,
-    ) -> None:
-        hide = self._hide_secrets.isChecked()
-        align = QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
-        table.setRowCount(len(items))
-        for row, item in enumerate(items):
-            display_value = item.value
-            if hide and item.spec.sensitive and display_value:
-                display_value = mask_secret(display_value)
-
-            key_item = QtWidgets.QTableWidgetItem(item.spec.key)
-            key_item.setTextAlignment(align)
-            key_item.setFlags(key_item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
-
-            value_item = QtWidgets.QTableWidgetItem(display_value)
-            value_item.setTextAlignment(align)
-            tooltip = item.value or item.spec.default
-            if item.file_value and item.file_value != item.value:
-                tooltip = f".env：{item.value}\n标注：{item.file_value}"
-            value_item.setToolTip(tooltip)
-            value_item.setFlags(value_item.flags() & ~QtCore.Qt.ItemFlag.ItemIsEditable)
-
-            table.setItem(row, 0, key_item)
-            table.setItem(row, 1, value_item)
-            table.setRowHeight(row, self._ENV_ROW_HEIGHT)
-
-        self._fit_env_table_height(table)
 
     def _fit_env_table_height(self, table: QtWidgets.QTableWidget) -> None:
         row_count = table.rowCount()
         header_h = table.horizontalHeader().height()
         frame = table.frameWidth() * 2
         height = header_h + row_count * self._ENV_ROW_HEIGHT + frame + 2
-        if height > self._ENV_TABLE_MAX_HEIGHT:
-            table.setFixedHeight(self._ENV_TABLE_MAX_HEIGHT)
+        if height > self._ENV_FORM_MAX_HEIGHT:
+            table.setFixedHeight(self._ENV_FORM_MAX_HEIGHT)
         else:
             table.setFixedHeight(max(height, 120))
 
@@ -530,31 +625,49 @@ class SettingsDialog(QtWidgets.QDialog):
         return spec.default
 
     def _save(self) -> None:
-        path = save_runtime_settings(self._collect_updates())
+        previous_env = load_effective_env_values()
+        previous_runtime = load_runtime_settings()
+        env_updates = self._collect_env_updates()
+        runtime_updates = self._collect_updates()
+        env_changed = diff_settings(previous_env, env_updates)
+        runtime_changed = diff_settings(previous_runtime, runtime_updates)
+
+        if not env_changed and not runtime_changed:
+            page_notify(self, "没有变更", level="info")
+            return
+
+        ctx = build_apply_context(self)
+        results: list = []
+        env_path: str | None = None
+        runtime_path: str | None = None
+
+        if env_changed:
+            env_path = str(save_env_values(env_updates))
+            results.extend(apply_env_side_effects(set(env_changed.keys()), context=ctx))
+
+        if runtime_changed:
+            runtime_path = str(save_runtime_settings(runtime_updates))
+            results.extend(apply_runtime_settings(runtime_changed, context=ctx))
+
         page_notify(
             self,
-            f"配置已写入 {path}\n字体、K 线存储等项需重启应用后生效。",
+            format_combined_save_summary(
+                env_path=env_path,
+                runtime_path=runtime_path,
+                results=results,
+            ),
             level="success",
         )
+        self.refresh()
         self.accept()
 
     def _reload_llm_config(self) -> None:
-        parent = self.parent()
-        engine = None
-        if parent is not None and hasattr(parent, "_get_llm_engine"):
-            engine = parent._get_llm_engine()
-        if engine is None:
-            page_notify(self, "LLM 引擎未加载", level="warning")
-            return
-        cfg = engine.reload_config()
-        if cfg.configured:
-            page_notify(
-                self,
-                f"LLM 已重载：{cfg.model} · {cfg.api_base} · Key {cfg.masked_key()}",
-                level="success",
-            )
-        else:
-            page_notify(self, "未检测到 LLM_API_KEY，请编辑 .env 后再次重载。", level="warning")
+        result = apply_llm_reload(build_apply_context(self))
+        page_notify(
+            self,
+            f"{result.label} — {result.message}",
+            level="success" if result.success else "warning",
+        )
 
     def _sync_from_env(self) -> None:
         if not confirm_action(
@@ -564,11 +677,24 @@ class SettingsDialog(QtWidgets.QDialog):
             confirm_text="同步",
         ):
             return
+        previous_runtime = load_runtime_settings()
+        previous_env = load_effective_env_values(ENV_FILE)
         path = sync_vt_settings_from_env(backup=True)
+        new_runtime = load_runtime_settings()
+        runtime_changed = diff_settings(previous_runtime, new_runtime)
+        new_env = load_effective_env_values(ENV_FILE)
+        env_changed_keys = {
+            key for key in set(previous_env) | set(new_env) if previous_env.get(key) != new_env.get(key)
+        }
+
+        ctx = build_apply_context(self)
+        results = apply_runtime_settings(runtime_changed, context=ctx)
+        results.extend(apply_env_side_effects(env_changed_keys, context=ctx))
+
         self.refresh()
         page_notify(
             self,
-            f"已从 .env 写入 {path}\n字体、K 线存储等项需重启应用后生效；大模型项可点「重载 LLM」立即应用。",
+            format_env_sync_summary(str(path), results),
             level="success",
         )
 

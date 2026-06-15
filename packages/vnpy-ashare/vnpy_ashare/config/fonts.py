@@ -52,3 +52,29 @@ def available_font_families() -> tuple[str, ...]:
 def supports_font_family_selection() -> bool:
     """本机是否有多个可选 UI 字体。"""
     return len(available_font_families()) > 1
+
+
+def app_font_from_settings(settings: dict | None = None):
+    """从 SETTINGS 或传入 dict 构建 QFont。"""
+    from vnpy.trader.setting import SETTINGS
+    from vnpy.trader.ui import QtGui
+
+    src = settings if settings is not None else SETTINGS
+    family = resolve_font_family(str(src.get("font.family", "")))
+    try:
+        size = int(src.get("font.size", 12) or 12)
+    except (TypeError, ValueError):
+        size = 12
+    size = max(8, min(size, 32))
+    return QtGui.QFont(family, size)
+
+
+def apply_app_font(*, settings: dict | None = None) -> bool:
+    """将字体应用到 QApplication（GUI 运行时）。"""
+    from vnpy.trader.ui import QtWidgets
+
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        return False
+    app.setFont(app_font_from_settings(settings))
+    return True

@@ -13,4 +13,5 @@
 | [LLM LangGraph 多 Agent 设计](./superpowers/specs/2026-06-12-llm-langgraph-multi-agent-design.md) | vnpy-llm 编排层：Supervisor + Specialist + handoff |
 | [LLM LangGraph 实施计划](./superpowers/plans/2026-06-12-llm-langgraph-phase1.md) | Phase 1–3 与收敛/打磨 checklist（已完成） |
 | [盘中选股设计](./intraday-screening-design.md) | Recipe 多因子维度、硬过滤、AI 工具与结果洞察 |
+| [配置分级热加载](./config-hot-reload-design.md) | 配置页保存后的 instant / soft / restart 策略 |
 | [编码规范](./coding-standards.md) | 代码风格、注释、分层约定 |

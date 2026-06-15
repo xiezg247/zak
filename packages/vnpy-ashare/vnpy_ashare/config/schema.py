@@ -181,6 +181,11 @@ VT_SPECS_BY_GROUP = _index_specs(VT_CONFIG_SPECS)
 ENV_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "PostgreSQL")
 ENV_DB_KEYS: frozenset[str] = frozenset({"DATABASE_NAME"}) | ENV_POSTGRES_KEYS
 
+ENV_SPEC_BY_KEY: dict[str, ConfigFieldSpec] = {spec.key: spec for spec in ENV_CONFIG_SPECS}
+ENV_GENERAL_SPECS: tuple[ConfigFieldSpec, ...] = tuple(
+    spec for spec in ENV_CONFIG_SPECS if spec.key not in ENV_DB_KEYS
+)
+
 VT_META_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.meta."))
 VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(
     spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.") and not spec.key.startswith("database.meta.")
