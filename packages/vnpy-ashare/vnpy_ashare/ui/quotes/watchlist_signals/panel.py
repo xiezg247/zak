@@ -595,8 +595,10 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         return lines
 
     def _fill_info_button(self, row: int, vt_symbol: str) -> None:
-        btn = self._table.cellWidget(row, self._info_column_index())
-        if btn is None:
+        widget = self._table.cellWidget(row, self._info_column_index())
+        if isinstance(widget, QtWidgets.QToolButton):
+            btn = widget
+        elif widget is None:
             btn = QtWidgets.QToolButton(self._table)
             btn.setText("理由")
             btn.setToolTip("查看信号理由")
@@ -604,6 +606,8 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             btn.setObjectName("SignalInfoButton")
             btn.clicked.connect(self._on_info_clicked)
             self._table.setCellWidget(row, self._info_column_index(), btn)
+        else:
+            return
         btn.setText("理由")
         btn.setProperty("vt_symbol", vt_symbol)
         btn.setEnabled(bool(vt_symbol))

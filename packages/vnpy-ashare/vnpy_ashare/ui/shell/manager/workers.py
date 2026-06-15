@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Protocol
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.engine import MainEngine
@@ -94,13 +95,36 @@ class TreeRefreshWorker(QtCore.QThread):
             self.failed.emit(str(ex))
 
 
+class _BarDatabaseEngine(Protocol):
+    def load_bar_data(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        interval: Interval,
+        start: datetime,
+        end: datetime,
+    ) -> list: ...
+
+    def output_data_to_csv(
+        self,
+        path: str,
+        symbol: str,
+        exchange: Exchange,
+        interval: Interval,
+        start: datetime,
+        end: datetime,
+    ) -> bool: ...
+
+    def delete_bar_data(self, symbol: str, exchange: Exchange, interval: Interval) -> int: ...
+
+
 class LoadBarsWorker(QtCore.QThread):
     finished = QtCore.Signal(list)
     failed = QtCore.Signal(str)
 
     def __init__(
         self,
-        engine: object,
+        engine: _BarDatabaseEngine,
         *,
         symbol: str,
         exchange: Exchange,
@@ -146,7 +170,7 @@ class ExportCsvWorker(QtCore.QThread):
 
     def __init__(
         self,
-        engine: object,
+        engine: _BarDatabaseEngine,
         *,
         path: str,
         symbol: str,
@@ -195,7 +219,7 @@ class DeleteBarsWorker(QtCore.QThread):
 
     def __init__(
         self,
-        engine: object,
+        engine: _BarDatabaseEngine,
         *,
         symbol: str,
         exchange: Exchange,

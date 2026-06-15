@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Protocol
 
 import pyqtgraph as pg
 from vnpy.chart.item import ChartItem
@@ -174,7 +175,11 @@ def _line_item_class(color: str, label: str) -> type[_MacdValueLineItem]:
     return _Item
 
 
-def register_macd_items(chart: object) -> None:
+class _ChartItemHost(Protocol):
+    def add_item(self, item_class: type, name: str, plot_name: str) -> None: ...
+
+
+def register_macd_items(chart: _ChartItemHost) -> None:
     chart.add_item(_line_item_class("#f0d060", "DIF"), "macd_dif", "macd")
     chart.add_item(_line_item_class("#4a9eff", "DEA"), "macd_dea", "macd")
     chart.add_item(MacdHistItem, "macd_hist", "macd")

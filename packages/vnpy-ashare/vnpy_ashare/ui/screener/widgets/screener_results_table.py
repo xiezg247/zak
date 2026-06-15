@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -53,8 +53,9 @@ class ScreenerResultsTableDelegate(QtWidgets.QStyledItemDelegate):
         index: _ParentIndex,
     ) -> None:
         super().initStyleOption(option, index)
-        horizontal = option.displayAlignment & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
-        option.displayAlignment = horizontal | QtCore.Qt.AlignmentFlag.AlignVCenter
+        view_option = cast(Any, option)
+        horizontal = view_option.displayAlignment & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
+        view_option.displayAlignment = horizontal | QtCore.Qt.AlignmentFlag.AlignVCenter
 
 
 def configure_screener_results_table(table: QtWidgets.QTableWidget) -> None:

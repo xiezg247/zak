@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -62,8 +62,9 @@ class RankSidebarDelegate(QtWidgets.QStyledItemDelegate):
             return
 
         opt = QtWidgets.QStyleOptionViewItem(option)
-        opt.rect = opt.rect.adjusted(RANK_ITEM_INDENT, 0, -4, 0)
-        if opt.state & QtWidgets.QStyle.StateFlag.State_Selected:
+        view_opt = cast(Any, opt)
+        view_opt.rect = view_opt.rect.adjusted(RANK_ITEM_INDENT, 0, -4, 0)
+        if view_opt.state & QtWidgets.QStyle.StateFlag.State_Selected:
             tokens = theme_manager().tokens()
             accent = QtGui.QColor(tokens.accent)
             bar_rect = QtCore.QRect(
@@ -94,7 +95,8 @@ class RankSidebarDelegate(QtWidgets.QStyledItemDelegate):
         index: _ParentIndex,
     ) -> None:
         tokens = theme_manager().tokens()
-        rect = option.rect
+        view_option = cast(Any, option)
+        rect = view_option.rect
         painter.save()
         if index.row() > 0:
             line_y = rect.top() + 4

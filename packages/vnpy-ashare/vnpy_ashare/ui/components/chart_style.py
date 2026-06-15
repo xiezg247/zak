@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Protocol, cast
 
 import pyqtgraph as pg
 from vnpy.chart import ChartWidget
@@ -70,18 +70,28 @@ RISE_RGB = hex_to_rgb(DARK_TOKENS.market_rise)
 FALL_RGB = hex_to_rgb(DARK_TOKENS.market_fall)
 
 
+class _CandleColorTarget(Protocol):
+    _up_pen: object
+    _up_brush: object
+    _down_pen: object
+    _down_brush: object
+    _black_brush: object
+
+
 def apply_candle_colors(item: object, *, tokens: ThemeTokens | None = None) -> None:
     """A 股红涨绿跌实心 K 线。"""
     from vnpy_common.ui.theme import theme_manager
 
+    target = cast(_CandleColorTarget, item)
+
     if tokens is None:
         tokens = theme_manager().tokens()
     rise_rgb, fall_rgb = market_rgb(tokens)
-    item._up_pen = pg.mkPen(color=rise_rgb, width=1)
-    item._up_brush = pg.mkBrush(color=rise_rgb)
-    item._down_pen = pg.mkPen(color=fall_rgb, width=1)
-    item._down_brush = pg.mkBrush(color=fall_rgb)
-    item._black_brush = item._up_brush
+    target._up_pen = pg.mkPen(color=rise_rgb, width=1)
+    target._up_brush = pg.mkBrush(color=rise_rgb)
+    target._down_pen = pg.mkPen(color=fall_rgb, width=1)
+    target._down_brush = pg.mkBrush(color=fall_rgb)
+    target._black_brush = target._up_brush
 
 
 def apply_sparkline_plot_theme(plot: pg.PlotWidget, tokens: ThemeTokens | None = None) -> None:

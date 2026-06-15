@@ -340,9 +340,16 @@ class AshareMainWindow(MainWindow):
 
     def _load_nav_width(self) -> int:
         value = self._nav_width_settings().value("nav_width", SidebarNav.DEFAULT_WIDTH)
-        try:
+        if isinstance(value, bool):
+            width = SidebarNav.DEFAULT_WIDTH
+        elif isinstance(value, (int, float)):
             width = int(value)
-        except (TypeError, ValueError):
+        elif isinstance(value, str):
+            try:
+                width = int(value)
+            except ValueError:
+                width = SidebarNav.DEFAULT_WIDTH
+        else:
             width = SidebarNav.DEFAULT_WIDTH
         return int(max(SidebarNav.MIN_WIDTH, min(SidebarNav.MAX_WIDTH, width)))
 

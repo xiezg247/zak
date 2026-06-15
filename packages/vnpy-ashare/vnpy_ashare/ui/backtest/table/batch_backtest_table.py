@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -29,8 +29,9 @@ class BatchCompareTableDelegate(QtWidgets.QStyledItemDelegate):
         index: _ParentIndex,
     ) -> None:
         super().initStyleOption(option, index)
-        horizontal = option.displayAlignment & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
-        option.displayAlignment = horizontal | QtCore.Qt.AlignmentFlag.AlignVCenter
+        view_option = cast(Any, option)
+        horizontal = view_option.displayAlignment & QtCore.Qt.AlignmentFlag.AlignHorizontal_Mask
+        view_option.displayAlignment = horizontal | QtCore.Qt.AlignmentFlag.AlignVCenter
 
 
 class _RowLike(Protocol):

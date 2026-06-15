@@ -14,7 +14,7 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 **注意**：必须在 `packages/vnpy-ashare` 目录下执行 mypy（或通过 `scripts/mypy-check.sh`），否则 `files` 白名单可能不生效。
 
-## 当前范围（vnpy-ashare，Phase 1–7d）
+## 当前范围（vnpy-ashare，Phase 1–7e）
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
@@ -28,19 +28,15 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 | `ai/context/` | AI 上下文 | ✅ 严格 |
 | `data/` | 行情下载、bar store | ✅ 严格 |
 | `jobs/` | 定时任务 | ✅ 严格 |
-| `ui/` | Qt 桌面 UI 全包 | ✅ **半严格**（仅 `attr-defined` disable，Phase 7d） |
+| `ui/` | Qt 桌面 UI 全包 | ✅ **严格**（Phase 7e） |
 
-共 **417** 个源文件。
+共 **418** 个源文件；`ui/` 已无 `[[tool.mypy.overrides]]` 放宽项。
 
-### Phase 7：`ui/` 半严格 → Phase 7d
-
-对 `ui` 各子包使用 `[[tool.mypy.overrides]]`：
+### Phase 7：`ui/` 半严格 → 全严格（7e）
 
 - **Phase 7b–7c**：收紧 `assignment` / `union-attr` / `no-any-return` 等（40 + 25 处修复）。
 - **Phase 7d ✅**：引入 dev 依赖 `types-PySide6`；去掉 `override`、`call-overload`、`arg-type`、`misc` disable；修复 Qt 模型 override、`QWidget.render` 命名冲突（`render_panel` / `render_reports` 等）、Signal 类型等约 56 处。
-- **仍保留**：`attr-defined`（约 530 处，主要来自 pyqtgraph `object`、动态 Qt 子控件、vnpy `Signal` 等）。
-
-**Phase 7e（后续）**：为 pyqtgraph / vnpy.trader.ui 补 stub 或收窄类型，逐步去掉 `attr-defined` disable。
+- **Phase 7e ✅**：去掉 `attr-defined` disable；`QuotesPageShellAttrs` mixin 声明 shell 赋值的 ~60 个 UI 属性；Protocol / 子类 / `cast(Any, …)` 处理 pyqtgraph、QStyleOptionViewItem stub 缺口、Worker 引擎接口等约 530 处。
 
 ## 本地运行
 
@@ -65,7 +61,7 @@ Phase 7    data/、jobs/、ui/ 纳入白名单（417 文件）                  
 Phase 7b   ui/quotes/ 收紧（40 处）                                                             ← 已完成
 Phase 7c   ui 其余子包收紧（25 处）；移除 ui.* 全量 14 类 disable                               ← 已完成
 Phase 7d   types-PySide6；去掉 override/call-overload/arg-type/misc（仅留 attr-defined）  ← 已完成
-Phase 7e   逐步去掉 attr-defined（pyqtgraph / 动态 Qt 属性）
+Phase 7e   去掉 attr-defined；QuotesPage shell 属性 mixin + Qt/pyqtgraph Protocol  ← 已完成
 Phase 8    vnpy-common 独立 package mypy
 ```
 
@@ -89,5 +85,6 @@ Phase 8    vnpy-common 独立 package mypy
 ## 新代码约定
 
 - 落在 **已启用 mypy 目录** 内的改动：保持 `bash scripts/mypy-check.sh` 通过。
+- `QuotesPage` 新增 shell 控件时，同步更新 `ui/quotes/page/shell_attrs.py`。
 - `ui/` 新代码建议手写 `Optional` 守卫与返回类型；避免在 `QWidget` 子类上命名 `render()`（与 Qt 绘制 API 冲突）。
 - 未启用目录：仍按 [编码规范](./coding-standards.md) 手写注解。

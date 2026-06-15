@@ -14,6 +14,10 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
+    from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
+    from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+
 
 SIGNAL_PANEL_DEFAULT_HEIGHT = 240
 SIGNAL_PANEL_COLLAPSED_HEIGHT = 32
@@ -36,18 +40,20 @@ def _table_host(page: QuotesPage):
     return getattr(page, "_market_table_host", None)
 
 
-def _signal_panel(page: QuotesPage):
-    return getattr(page, "signal_panel", None)
+def _signal_panel(page: QuotesPage) -> WatchlistSignalPanel | None:
+    panel = getattr(page, "signal_panel", None)
+    return cast(WatchlistSignalPanel | None, panel)
 
 
-def _position_panel(page: QuotesPage):
-    return getattr(page, "position_panel", None)
+def _position_panel(page: QuotesPage) -> WatchlistPositionPanel | None:
+    panel = getattr(page, "position_panel", None)
+    return cast(WatchlistPositionPanel | None, panel)
 
 
-def _run_output_panel(page: QuotesPage):
+def _run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
     from vnpy_ashare.ui.quotes.page.run_log import run_output_panel
 
-    return run_output_panel(page)
+    return cast(TaskRunOutputPanel | None, run_output_panel(page))
 
 
 def compute_center_splitter_sizes(

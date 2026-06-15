@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Protocol
 
 import pyqtgraph as pg
 from vnpy.chart.item import ChartItem
@@ -124,7 +125,11 @@ def ma_line_item_class(period: int, color: str, label: str) -> type[MaLineItem]:
     return _MaLineItem
 
 
-def register_ma_items(chart: object, specs: tuple[tuple[int, str, str], ...] = MA_LINE_SPECS) -> None:
+class _ChartItemHost(Protocol):
+    def add_item(self, item_class: type, name: str, plot_name: str) -> None: ...
+
+
+def register_ma_items(chart: _ChartItemHost, specs: tuple[tuple[int, str, str], ...] = MA_LINE_SPECS) -> None:
     for period, color, label in specs:
         item_class = ma_line_item_class(period, color, label)
         chart.add_item(item_class, f"ma{period}", "candle")

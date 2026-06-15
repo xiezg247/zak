@@ -310,7 +310,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self.run_output_panel.append_log(message)
 
     def _open_reference_peer(self) -> None:
-        selected = self._iter_checked_rows()
+        selected = iter_checked_table_rows(self.result_table)
         if len(selected) != 1:
             self._toast.warning("请勾选恰好一只标的作为标杆")
             return

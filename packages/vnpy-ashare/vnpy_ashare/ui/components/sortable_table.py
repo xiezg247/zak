@@ -22,7 +22,9 @@ class SortableTableItem(QtWidgets.QTableWidgetItem):
                 if isinstance(left, str) and isinstance(right, str):
                     return left < right
             return str(left) < str(right)
-        return super().__lt__(other)
+        if isinstance(other, QtWidgets.QTableWidgetItem):
+            return super().__lt__(other)
+        return NotImplemented
 
     def update_sort_key(self, sort_key: float | str) -> None:
         self._sort_key = sort_key

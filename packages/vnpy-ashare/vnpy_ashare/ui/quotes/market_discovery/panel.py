@@ -53,6 +53,13 @@ class _DiscoveryChip(QtWidgets.QPushButton):
         _apply_chip_tone(self, self._change_pct)
 
 
+class _DiscoveryGroup(QtWidgets.QWidget):
+    _scroll: QtWidgets.QScrollArea
+    _chip_host: QtWidgets.QWidget
+    _chip_layout: QtWidgets.QHBoxLayout
+    _empty: QtWidgets.QLabel
+
+
 class MarketDiscoveryStrip(QtWidgets.QWidget):
     """放量 / 资金异动 Top N，点击定位主表。"""
 
@@ -94,8 +101,8 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
         self._loading = False
         theme_manager().register_callback(lambda _tokens: self._refresh_chip_colors())
 
-    def _build_group(self, title: str) -> QtWidgets.QWidget:
-        host = QtWidgets.QWidget(self)
+    def _build_group(self, title: str) -> _DiscoveryGroup:
+        host = _DiscoveryGroup(self)
         layout = QtWidgets.QHBoxLayout(host)
         layout.setContentsMargins(8, 0, 8, 0)
         layout.setSpacing(8)
@@ -144,7 +151,7 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
         self._apply_group(self._volume_group, volume)
         self._apply_group(self._moneyflow_group, moneyflow)
 
-    def _apply_group(self, group: QtWidgets.QWidget, data: RadarCardData | None) -> None:
+    def _apply_group(self, group: _DiscoveryGroup, data: RadarCardData | None) -> None:
         chip_layout: QtWidgets.QHBoxLayout = group._chip_layout
         empty: QtWidgets.QLabel = group._empty
 

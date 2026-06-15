@@ -61,6 +61,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     save_market_auto_refresh_pref,
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
+from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.table import QuoteTableModel
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
@@ -92,11 +93,8 @@ from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme import theme_manager
 
 
-class QuotesPage(QtWidgets.QWidget):
+class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
     """单页行情：列表 + 报价头 + 日 K。"""
-
-    quote_table_model: QuoteTableModel
-    market_table: QtWidgets.QTableView
 
     _thread_active = staticmethod(thread_is_active)
 
@@ -181,6 +179,24 @@ class QuotesPage(QtWidgets.QWidget):
         self._watchlist_panels = WatchlistPanelsFeature(self)
         self._stock_notes = StockNotesFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
+        self._market_sort_column: str | None = None
+        self._market_sort_ascending = True
+        self._center_splitter_bound = False
+        self.column_button = None
+        self.rank_sidebar = None
+        self.rank_list = None
+        self.chart = None
+        self.signal_panel = None
+        self.position_panel = None
+        self.stock_note_panel = None
+        self.refresh_radar_button = None
+        self.radar_ai_button = None
+        self.radar_board = None
+        self.radar_resonance_panel = None
+        self._radar_controller = None
+        self._radar_splitter = None
+        self._rank_splitter = None
+        self._rank_splitter_filter = None
 
         self._load_worker: QtCore.QThread | None = None
         self._market_worker: QtCore.QThread | None = None

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -573,13 +573,14 @@ class QuotesPageShell:
                     sync_rank_splitter_for_expansion,
                 )
 
-                page.rank_sidebar = MarketRankSidebar(page)
-                page.rank_list = page.rank_sidebar.rank_list
+                rank_sidebar = MarketRankSidebar(page)
+                page.rank_sidebar = rank_sidebar
+                page.rank_list = rank_sidebar.rank_list
                 page.rank_list.itemClicked.connect(page._on_rank_item_clicked)
                 rank_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
                 rank_splitter.setObjectName("MarketRankSplitter")
                 rank_splitter.setChildrenCollapsible(False)
-                rank_splitter.addWidget(page.rank_sidebar)
+                rank_splitter.addWidget(rank_sidebar)
                 rank_splitter.addWidget(center_widget)
                 rank_splitter.setStretchFactor(0, 0)
                 rank_splitter.setStretchFactor(1, 1)
@@ -588,12 +589,12 @@ class QuotesPageShell:
                 page._rank_splitter_filter = MarketRankSplitterResizeFilter(page)
                 rank_splitter.installEventFilter(page._rank_splitter_filter)
                 rank_splitter.splitterMoved.connect(lambda _pos, _index: clamp_rank_splitter_sizes(page))
-                page.rank_sidebar.expansion_changed.connect(lambda expanded: sync_rank_splitter_for_expansion(page, expanded))
+                rank_sidebar.expansion_changed.connect(lambda expanded: sync_rank_splitter_for_expansion(page, expanded))
                 main_content = rank_splitter
                 page._init_rank_sidebar_selection()
                 QtCore.QTimer.singleShot(
                     0,
-                    lambda: sync_rank_splitter_for_expansion(page, page.rank_sidebar.is_expanded()),
+                    lambda: sync_rank_splitter_for_expansion(page, rank_sidebar.is_expanded()),
                 )
 
             splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -731,7 +732,8 @@ class _SearchKeyFilter(QtCore.QObject):
             return super().eventFilter(watched, event)
         if _input_method_is_composing():
             return super().eventFilter(watched, event)
-        key = event.key()
+        key_event = cast(QtGui.QKeyEvent, event)
+        key = key_event.key()
         if key == QtCore.Qt.Key.Key_Escape:
             self._page.search_edit.clear()
             self._page._search_timer.stop()

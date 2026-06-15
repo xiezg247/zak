@@ -659,6 +659,8 @@ class LocalDataController:
         if not page.config.show_kline:
             return
         chart = page.chart
+        if chart is None:
+            return
         if isinstance(chart, AshareChartWidget):
             chart.configure_scope(minute=not self.is_daily_scope())
             chart.replace_history([])
@@ -673,6 +675,8 @@ class LocalDataController:
         if self.is_daily_scope():
             bars = clip_bars_from_unified_start(bars)
         chart = page.chart
+        if chart is None:
+            return
         minute = not self.is_daily_scope()
         if isinstance(chart, AshareChartWidget):
             chart.configure_scope(minute=minute)

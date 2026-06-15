@@ -1,0 +1,106 @@
+"""QuotesPage 由 shell 赋值的 UI 属性类型（mixin，仅作 mypy 声明）。"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from vnpy.trader.ui import QtCore, QtWidgets
+
+from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
+from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
+from vnpy_ashare.ui.quotes.table import QuoteTableModel
+
+if TYPE_CHECKING:
+    from vnpy_ashare.ui.quotes.chart.daily import AshareChartWidget
+    from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
+        MarketRankSidebar,
+        MarketRankSplitterResizeFilter,
+    )
+    from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
+    from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
+    from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
+    from vnpy_ashare.ui.quotes.watchlist_signals import WatchlistSignalPanel
+    from vnpy_common.ui.feedback import PageToastHost
+
+
+class QuotesPageShellAttrs:
+    """Shell 构建后挂载到 QuotesPage 的控件与布局引用。"""
+
+    quote_table_model: QuoteTableModel
+    market_table: QtWidgets.QTableView
+
+    search_edit: QtWidgets.QLineEdit
+    _search_key_filter: QtCore.QObject
+    board_combo: QtWidgets.QComboBox
+    sync_button: QtWidgets.QPushButton
+    download_button: QtWidgets.QPushButton
+    fill_button: QtWidgets.QPushButton
+    redownload_button: QtWidgets.QPushButton
+    delete_local_button: QtWidgets.QPushButton
+    batch_fill_button: QtWidgets.QPushButton
+    batch_gap_fill_button: QtWidgets.QPushButton
+    gap_fill_button: QtWidgets.QPushButton
+    local_period_combo: QtWidgets.QComboBox
+    add_watchlist_button: QtWidgets.QPushButton
+    remove_watchlist_button: QtWidgets.QPushButton
+    move_watchlist_up_button: QtWidgets.QPushButton
+    move_watchlist_down_button: QtWidgets.QPushButton
+    backtest_button: QtWidgets.QPushButton
+    batch_backtest_button: QtWidgets.QPushButton
+    refresh_signals_button: QtWidgets.QPushButton
+    add_signal_panel_button: QtWidgets.QPushButton
+    register_position_button: QtWidgets.QPushButton
+    quick_note_button: QtWidgets.QPushButton
+    notes_center_button: QtWidgets.QPushButton
+    diagnose_button: QtWidgets.QPushButton
+    refresh_quotes_button: QtWidgets.QPushButton
+    market_auto_refresh_checkbox: QtWidgets.QCheckBox
+    column_button: QtWidgets.QPushButton | None
+    prev_page_button: QtWidgets.QPushButton
+    next_page_button: QtWidgets.QPushButton
+    page_label: QtWidgets.QLabel
+    page_total_label: QtWidgets.QLabel
+    home_button: QtWidgets.QPushButton
+    end_button: QtWidgets.QPushButton
+    page_jump_input: QtWidgets.QLineEdit
+    quote_name_label: QtWidgets.QLabel
+    quote_code_label: QtWidgets.QLabel
+    quote_price_label: QtWidgets.QLabel
+    quote_change_label: QtWidgets.QLabel
+    quote_sub_info: QtWidgets.QHBoxLayout
+    status_label: QtWidgets.QLabel
+    quote_source_label: QtWidgets.QLabel
+    refresh_hint_label: QtWidgets.QLabel
+    _toast: PageToastHost
+
+    chart_panel: ChartPanel | None
+    chart_section: ChartSectionPanel | None
+    chart: AshareChartWidget | None
+    depth_panel: DepthPanel | None
+    diagnose_panel: DiagnosePanel | None
+    stock_note_panel: StockNotePanel | None
+    signal_panel: WatchlistSignalPanel | None
+    position_panel: WatchlistPositionPanel | None
+    run_output_panel: TaskRunOutputPanel | None
+    rank_sidebar: MarketRankSidebar | None
+    rank_list: QtWidgets.QListWidget | None
+
+    refresh_radar_button: QtWidgets.QPushButton | None
+    radar_ai_button: QtWidgets.QPushButton | None
+    radar_board: RadarBoard | None
+    radar_resonance_panel: RadarResonancePanel | None
+    _radar_controller: RadarController | None
+    _radar_splitter: QtWidgets.QSplitter | None
+
+    _market_table_host: MarketTableHost | None
+    _splitter: QtWidgets.QSplitter | None
+    _center_splitter: QtWidgets.QSplitter | None
+    _run_output_splitter: QtWidgets.QSplitter | None
+    _right_panel_widget: QtWidgets.QWidget | None
+    _rank_splitter: QtWidgets.QSplitter | None
+    _rank_splitter_filter: MarketRankSplitterResizeFilter | None
+
+    _market_sort_column: str | None
+    _market_sort_ascending: bool
+    _center_splitter_bound: bool

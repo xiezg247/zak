@@ -29,7 +29,7 @@ class WatchlistSignalController:
 
     def __init__(self, page: QuotesPage) -> None:
         self._page = page
-        self._worker: QtCore.QThread | None = None
+        self._worker: WatchlistSignalWorker | None = None
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
         self._disk_cache = WatchlistSignalDiskCache()
         self._timer = QtCore.QTimer(page)

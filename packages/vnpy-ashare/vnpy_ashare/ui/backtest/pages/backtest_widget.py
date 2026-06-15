@@ -499,12 +499,14 @@ class BacktesterWidget(VnpyBacktesterManager):
             return
         start = cast(QtCore.QDateTime, self.start_date_edit.dateTime()).toPython()
         end = cast(QtCore.QDateTime, self.end_date_edit.dateTime()).toPython()
+        start_dt = cast(datetime, start)
+        end_dt = cast(datetime, end)
         summary = BacktestSummary(
             strategy=self.class_combo.current_display_title(),
             vt_symbol=self.symbol_line.text().strip(),
             interval=self.interval_combo.currentText(),
-            start=start.strftime("%Y-%m-%d"),
-            end=end.strftime("%Y-%m-%d"),
+            start=start_dt.strftime("%Y-%m-%d"),
+            end=end_dt.strftime("%Y-%m-%d"),
             statistics=dict(statistics),
         )
         summary_dict = summary.to_dict()

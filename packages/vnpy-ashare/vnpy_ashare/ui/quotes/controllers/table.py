@@ -1147,6 +1147,8 @@ class TableController:
                 action.triggered.connect(lambda checked, k=key: self.on_tail_column_toggle(k, checked))
 
         button = page.column_button
+        if button is None:
+            return
         menu.popup(button.mapToGlobal(button.rect().bottomLeft()))
 
     def on_column_toggle(self, key: str, checked: bool) -> None:
