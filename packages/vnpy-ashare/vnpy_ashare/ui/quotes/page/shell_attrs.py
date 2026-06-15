@@ -96,7 +96,6 @@ class QuotesPageShellAttrs:
     _market_table_host: MarketTableHost | None
     _splitter: QtWidgets.QSplitter | None
     _center_splitter: QtWidgets.QSplitter | None
-    _run_output_splitter: QtWidgets.QSplitter | None
     _right_panel_widget: QtWidgets.QWidget | None
     _rank_splitter: QtWidgets.QSplitter | None
     _rank_splitter_filter: MarketRankSplitterResizeFilter | None

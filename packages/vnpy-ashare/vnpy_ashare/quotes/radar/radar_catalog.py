@@ -70,9 +70,6 @@ class RadarVariant:
     label: str
 
 
-# 兼容旧名
-ScreenTaskVariant = RadarVariant
-
 SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant("scenario_bull", "偏多情景"),
     RadarVariant("scenario_volatile", "高波动"),

@@ -52,10 +52,6 @@ def center_splitter(page: QuotesPage) -> QtWidgets.QSplitter | None:
     splitter = page._center_splitter
     if isinstance(splitter, QtWidgets.QSplitter):
         return splitter
-    # 旧布局：运行输出区独立 splitter
-    fallback = page._run_output_splitter
-    if isinstance(fallback, QtWidgets.QSplitter):
-        return fallback
     return None
 
 

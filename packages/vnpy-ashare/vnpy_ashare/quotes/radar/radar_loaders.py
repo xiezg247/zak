@@ -41,13 +41,6 @@ def _discovery_pool_size(top_n: int) -> int:
     return min(max(top_n * 5, top_n + 12), 80)
 
 
-def _is_discovery_st_excluded(row: dict[str, Any], name_map: dict[str, str]) -> bool:
-    """已废弃：请使用 apply_screening_filters。保留兼容测试 import。"""
-    from vnpy_ashare.screener.hard_filters import apply_screening_filters
-
-    return not apply_screening_filters([row])
-
-
 def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     if "composite_score" in row:
         score = _float_or_none(row.get("composite_score"))

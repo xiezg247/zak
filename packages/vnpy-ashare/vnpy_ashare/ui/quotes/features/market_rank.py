@@ -65,19 +65,6 @@ class MarketRankFeature:
             return
         self._switch_rank(rank_id)
 
-    def on_rank_type_changed(self, row: int) -> None:
-        """兼容旧信号：按行号切换榜单。"""
-        page = self._page
-        if not page.config.show_rank_sidebar or row < 0:
-            return
-        rank_list = getattr(page, "rank_list", None)
-        if rank_list is None:
-            return
-        rank_id = rank_id_from_sidebar_row(rank_list, row)
-        if not rank_id or rank_id == page._market_rank_id:
-            return
-        self._switch_rank(rank_id)
-
     def _switch_rank(self, rank_id: str) -> None:
         page = self._page
         page._market_rank_id = rank_id

@@ -15,7 +15,7 @@ dependencies = [
 where = ["."]
 include = ["vnpy_common*"]
 
-# mypy 渐进启用：范围见仓库 docs/mypy-rollout.md
+# mypy：见 docs/mypy.md
 [tool.mypy]
 python_version = "3.10"
 files = ["vnpy_common"]

@@ -1,21 +1,8 @@
-# 看盘页个股笔记设计
+# 看盘页个股笔记
 
-> 版本：v2（2026-06-14）  
-> 状态：P0–P2 + 笔记中心 + P3 AI 增强已实现；市场页复用待图表区支持
+## 1. 功能概述
 
-## 1. 背景与目标
-
-### 1.1 背景
-
-zak 当前具备本地投研笔记能力。用户在看盘过程中需要：
-
-- **随手记流水**：盘中碎片观察（突破、放量、情绪），带时间戳、可回溯；
-- **写长文备忘**：单票逻辑、估值区间、研报摘要等可持续编辑的文档；
-- **保存分析报告**：个股分析 / AI 对话产出的 Markdown 长文，保留全量历史。
-
-三者针对**同一只标的**；AI 助手可读取备忘、流水与报告摘要。
-
-### 1.2 目标
+同一只标的支持三种笔记形态，经 `NoteService` 统一读写；摘要注入看盘 AI 上下文，Skill 可读备忘/流水/报告。
 
 | 形态 | 代号 | 交互 | 存储 |
 |------|------|------|------|
@@ -23,9 +10,7 @@ zak 当前具备本地投研笔记能力。用户在看盘过程中需要：
 | 备忘 | `memo` | Markdown 编辑/预览，防抖自动保存 | 每票一行，upsert |
 | 分析报告 | `report` | 多篇历史，Markdown 只读 + 删除 | `stock_analysis_reports` |
 
-统一经 `NoteService` 门面读写；笔记摘要注入看盘 AI 上下文；Skill 可读备忘/流水/报告。
-
-### 1.3 入口
+### 入口
 
 | 入口 | 行为 |
 |------|------|
@@ -35,21 +20,20 @@ zak 当前具备本地投研笔记能力。用户在看盘过程中需要：
 | 个股分析 | 「保存分析报告」「历史报告」→ 笔记中心报告 Tab |
 | AI 对话气泡右键 | 存为分析报告、追加到流水 |
 
-### 1.4 边界
+### 边界
 
 | 项 | 约定 |
 |----|------|
-| 页面范围（Panel） | 仅自选页（`show_stock_notes=True` 且 `show_kline=True`） |
-| 页面范围（笔记中心） | 全局，不依赖当前看盘页 |
-| 市场页 Panel | **未启用**（市场页无图表侧栏，`show_kline=False`） |
+| Panel 范围 | 自选页（`show_stock_notes=True` 且 `show_kline=True`） |
+| 笔记中心 | 全局，不依赖当前看盘页 |
 | 存储 | `~/.vntrader/zak.db` |
 | 与持仓附注 | **不合并** `watchlist_positions.notes` |
 
 ---
 
-## 2. 布局架构
+## 2. 布局
 
-### 2.1 自选页挂载
+### 2.1 自选页
 
 ```text
 ┌─ 右侧图表区（ChartSectionPanel）────────────┐
@@ -76,8 +60,6 @@ zak 当前具备本地投研笔记能力。用户在看盘过程中需要：
 
 ## 3. 数据模型
 
-### 3.1 表结构
-
 ```sql
 CREATE TABLE IF NOT EXISTS stock_note_memos (...);
 CREATE TABLE IF NOT EXISTS stock_note_entries (...);
@@ -92,9 +74,7 @@ CREATE TABLE IF NOT EXISTS stock_analysis_reports (
 );
 ```
 
-### 3.2 领域模型
-
-`domain/stock_note.py`：`StockNoteMemo`、`StockNoteEntry`、`StockAnalysisReport`、`StockNoteBundle`、`StockNoteIndexRow`。
+领域模型：`domain/stock_note.py` — `StockNoteMemo`、`StockNoteEntry`、`StockAnalysisReport`、`StockNoteBundle`、`StockNoteIndexRow`。
 
 ---
 
@@ -110,16 +90,16 @@ ui/quotes/stock_notes/          # 自选 Panel
 ├── memo_tab.py
 ├── journal_tab.py
 ├── ai_assist.py                # AI 整理 / 扩写 Worker
-ui/features/notes_center/       # 笔记中心
+ui/features/notes_center/
 ui/features/stock_analysis/save_report_dialog.py
 skills/vnpy_notes_skill.py
 ```
 
 ---
 
-## 5. Service 与 Repository
+## 5. Service 与 Skill
 
-### 5.1 NoteService 主要方法
+### 5.1 NoteService
 
 | 方法 | 说明 |
 |------|------|
@@ -143,16 +123,14 @@ skills/vnpy_notes_skill.py
 
 ---
 
-## 6. P3 — 笔记区 AI 增强
+## 6. 笔记区 AI 增强
 
-依赖 `vnpy-llm` + `.env` 中 `LLM_API_KEY`；单次非流式调用（`complete_chat_completion`），不与聊天 Worker 共享会话。
+依赖 `vnpy-llm` + `.env` 中 `LLM_API_KEY`；单次非流式调用（`complete_chat_completion`）。
 
 | 位置 | 流水「AI 整理」 | 备忘「AI 扩写」 | 附带行情 |
 |------|----------------|----------------|----------|
 | 自选 `StockNotePanel` | ✅ | ✅ | ✅（看盘 `quote_map`） |
 | 笔记中心 | ✅ | ✅ | ✅（`resolve_quote_snapshot`） |
-
-行为：
 
 - **整理**：整理输入框内容，填入输入框，用户确认后添加；
 - **扩写**：扩写选中段落或全文，自动触发备忘保存；
@@ -162,39 +140,13 @@ skills/vnpy_notes_skill.py
 
 ## 7. AI 集成
 
-- 看盘页：`ActionsController._note_context_extra` → `publish_quote_context` 的 `signal_extra`（凡 `show_stock_notes` 的页面均注入，当前仅自选有 Panel）。
+- 看盘页：`ActionsController._note_context_extra` → `publish_quote_context` 的 `signal_extra`。
 - 悬浮球：「结合笔记复盘」→ `build_note_review_prompt`。
 - AI 面板：助手气泡右键存笔记（`save_from_ai.py`）。
 
 ---
 
-## 8. 实施阶段（当前状态）
-
-### P0 — 核心 ✅
-
-Schema、Repository、`StockNotePanel`、自选 wiring、记一笔入口。
-
-### P1 — AI 与体验 ✅
-
-`build_ai_snippet`、防抖备忘、Panel 折叠。
-
-### P2 — 增强 ✅
-
-Skill、删除流水、Markdown 导出、分析报告表与笔记中心、个股分析保存报告。
-
-### P3 — AI 增强 ✅
-
-`ai_assist`、Panel 与笔记中心 AI 按钮、测试 `test_note_ai_assist.py`。
-
-### 待办
-
-- [ ] 市场页 `StockNotePanel`（需启用图表侧栏或独立挂载点）
-- [ ] Skill `save_stock_analysis_report`（可选）
-- [ ] AI 回复完成后一键保存（非仅右键）
-
----
-
-## 9. 测试
+## 8. 测试
 
 | 路径 | 覆盖 |
 |------|------|
@@ -207,8 +159,8 @@ Skill、删除流水、Markdown 导出、分析报告表与笔记中心、个股
 
 ---
 
-## 10. 参考
+## 参考
 
-- [自选策略信号区设计](./watchlist-signals-design.md)
+- [自选策略信号区](./watchlist-signals.md)
 - [AI 数据路由](./ai-data-routing.md)
 - [数据设计](./data-design.md)

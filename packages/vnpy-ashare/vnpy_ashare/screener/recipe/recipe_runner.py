@@ -28,9 +28,6 @@ from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_modula
 
 DEFAULT_RECIPE_DIMENSION_MAX_WORKERS = 4
 
-# 向后兼容：测试与外部模块可继续 patch 私有维度函数
-_DimensionHit = DimensionHit
-
 
 def recipe_dimension_max_workers(*, dimension_count: int) -> int:
     """配方维度并行数（RECIPE_DIMENSION_MAX_WORKERS，默认 4，上限 8）。"""

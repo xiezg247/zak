@@ -13,7 +13,7 @@
 - **选股**：条件选股（规则 + 方案）与多因子配方（定时收件箱）；结果行业分布、较上次 diff；NL 解析、标杆对标、批量入自选
 - **回测**：`AShareTemplate`（T+1、整手、只做多）；看盘联动、批量回测与回测对比
 - **AI**：悬浮球 + Dock + 全屏；Agent Skills + MCP；多会话、流式停止、配置热重载
-- **运维**：定时任务、本地 K 线健康检测与补全；系统配置页编辑 `.env` / `vt_setting.json` 并分级热加载（见 [docs/config-hot-reload-design.md](docs/config-hot-reload-design.md)）
+- **运维**：定时任务、本地 K 线健康检测与补全；系统配置页编辑 `.env` / `vt_setting.json` 并分级热加载（见 [docs/config-hot-reload.md](docs/config-hot-reload.md)）
 
 ## 环境要求
 
@@ -136,7 +136,7 @@ uv run pytest tests/ -q
 | [策略回测](docs/backtest-ux.md) | 联动、批量回测、AI 上下文 |
 | [AI 数据路由](docs/ai-data-routing.md) | Skill / MCP 与数据源 |
 | [AI 功能与 K 线](docs/ai-kline-data.md) | 各功能对本地日 K 的依赖与下载建议 |
-| [盘中选股设计](docs/intraday-screening-design.md) | 多因子配方、硬过滤、结果行业分布 |
+| [盘中选股](docs/intraday-screening.md) | 多因子配方、硬过滤、结果行业分布 |
 
 ## 项目结构
 

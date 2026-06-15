@@ -90,10 +90,6 @@ class ChartSectionPanel(QtWidgets.QWidget):
         self._content_layout.addWidget(widget, stretch=1)
         self._apply_expanded(self._expanded, emit=False)
 
-    def set_chart_body(self, widget: QtWidgets.QWidget) -> None:
-        """兼容旧调用：整栏内容而非仅 K 线图。"""
-        self.set_content(widget)
-
     def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
         if self._expanded == expanded:
             return

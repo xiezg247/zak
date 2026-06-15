@@ -222,7 +222,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._chart_splitter_saved_state: QtCore.QByteArray | None = None
         self.run_output_panel: TaskRunOutputPanel | None = None
         self._center_splitter: QtWidgets.QSplitter | None = None
-        self._run_output_splitter: QtWidgets.QSplitter | None = None
         self._stream_bridge: TickflowStreamBridge | None = None
         self._stream_fallback = False
         self._local_scope = "daily"
@@ -469,9 +468,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
 
     def _on_rank_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
         self._market_rank.on_rank_item_clicked(item)
-
-    def _on_rank_type_changed(self, row: int) -> None:
-        self._market_rank.on_rank_type_changed(row)
 
     def _init_rank_sidebar_selection(self) -> None:
         self._market_rank.init_sidebar_selection()

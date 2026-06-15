@@ -17,7 +17,7 @@ dependencies = [
 where = ["."]
 include = ["vnpy_skills*"]
 
-# mypy：见 docs/mypy-rollout.md
+# mypy：见 docs/mypy.md
 [tool.mypy]
 python_version = "3.10"
 files = ["vnpy_skills"]

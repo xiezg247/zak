@@ -522,7 +522,6 @@ class QuotesPageShell:
                     page.run_output_panel.expansion_changed.connect(lambda expanded: on_run_output_expansion_changed(page, expanded))
                     center_split.addWidget(page.run_output_panel)
                 page._center_splitter = center_split
-                page._run_output_splitter = center_split
                 center_layout.addWidget(center_split, stretch=1)
                 bind_center_splitter_persistence(page)
                 QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
