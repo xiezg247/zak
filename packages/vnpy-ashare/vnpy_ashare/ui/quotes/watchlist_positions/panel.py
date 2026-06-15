@@ -18,16 +18,16 @@ from vnpy_ashare.quotes.misc.position_anomaly import (
 from vnpy_ashare.services.signals import signal_cell_color
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
-from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
+from vnpy_ashare.config.preferences import (
     POSITION_PANEL_COLLAPSED_HEIGHT,
     POSITION_PANEL_DEFAULT_HEIGHT,
     WatchlistPositionConfig,
+    WatchlistSignalConfig,
     load_position_panel_enabled,
     load_position_panel_expanded,
     save_position_panel_enabled,
     save_position_panel_expanded,
 )
-from vnpy_ashare.ui.quotes.watchlist_signals.settings import WatchlistSignalConfig
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 

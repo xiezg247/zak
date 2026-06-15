@@ -209,17 +209,12 @@ class SchedulerConfig:
             )
 
         defaults = cls()
-        legacy_batch = data.get("batch_download", {})
         return cls(
             collect_quotes=load_job("collect_quotes", defaults.collect_quotes),
             sync_universe=load_job("sync_universe", defaults.sync_universe),
             sync_stock_industry=load_job("sync_stock_industry", defaults.sync_stock_industry),
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
-            batch_download_universe=_load_universe_daily_job(
-                data.get("batch_download_universe", {}),
-                defaults.batch_download_universe,
-                legacy_batch,
-            ),
+            batch_download_universe=load_job("batch_download_universe", defaults.batch_download_universe),
             prefetch_moneyflow=load_job("prefetch_moneyflow", defaults.prefetch_moneyflow),
             sync_suspend_daily=load_job("sync_suspend_daily", defaults.sync_suspend_daily),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
@@ -232,21 +227,18 @@ class SchedulerConfig:
         )
 
 
-def _load_universe_daily_job(raw: dict, defaults: JobConfig, legacy_batch: dict) -> JobConfig:
-    download_start = str(
-        raw.get(
-            "download_start",
-            legacy_batch.get("download_start", defaults.download_start),
-        )
-    )
-    return JobConfig(
-        enabled=bool(raw.get("enabled", defaults.enabled)),
-        interval_seconds=int(raw.get("interval_seconds", defaults.interval_seconds)),
-        cron_hour=int(raw.get("cron_hour", defaults.cron_hour)),
-        cron_minute=int(raw.get("cron_minute", defaults.cron_minute)),
-        cron_day_of_week=str(raw.get("cron_day_of_week", defaults.cron_day_of_week)),
-        download_start=download_start,
-    )
+def _migrate_scheduler_data(data: dict) -> tuple[dict, bool]:
+    """将旧 ``batch_download`` 键合并进 ``batch_download_universe`` 并移除旧键。"""
+    legacy = data.get("batch_download")
+    if not isinstance(legacy, dict):
+        return data, False
+    migrated = {key: value for key, value in data.items() if key != "batch_download"}
+    universe_raw = dict(migrated.get("batch_download_universe") or {})
+    legacy_start = legacy.get("download_start")
+    if legacy_start and not universe_raw.get("download_start"):
+        universe_raw["download_start"] = str(legacy_start)
+    migrated["batch_download_universe"] = universe_raw
+    return migrated, True
 
 
 def load_scheduler_config(path: Path | None = None) -> SchedulerConfig:
@@ -255,9 +247,14 @@ def load_scheduler_config(path: Path | None = None) -> SchedulerConfig:
         return SchedulerConfig()
     try:
         with target.open(encoding="utf-8") as f:
-            return SchedulerConfig.from_dict(json.load(f))
+            data = json.load(f)
     except (json.JSONDecodeError, OSError, TypeError, ValueError):
         return SchedulerConfig()
+    migrated, changed = _migrate_scheduler_data(data)
+    config = SchedulerConfig.from_dict(migrated)
+    if changed:
+        save_scheduler_config(config, target)
+    return config
 
 
 def save_scheduler_config(config: SchedulerConfig, path: Path | None = None) -> Path:

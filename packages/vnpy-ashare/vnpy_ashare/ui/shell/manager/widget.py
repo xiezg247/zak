@@ -20,7 +20,7 @@ from vnpy_ashare.ui.shell.manager.workers import (
     TreeRefreshWorker,
     _overview_group_key,
 )
-from vnpy_ashare.ui.styles import apply_legacy_page_style, style_legacy_push_buttons
+from vnpy_ashare.ui.styles import apply_vnpy_page_style, style_vnpy_push_buttons
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action, page_notify
 
 _VALUE_TO_CN = {ex.value: name for ex, name in EXCHANGE_CN_NAMES.items()}
@@ -88,8 +88,8 @@ class ManagerWidget(VnpyManagerWidget):
         self._export_worker: ExportCsvWorker | None = None
         self._delete_worker: DeleteBarsWorker | None = None
 
-        apply_legacy_page_style(self, page_id="DataManagerPage")
-        style_legacy_push_buttons(self)
+        apply_vnpy_page_style(self, page_id="DataManagerPage")
+        style_vnpy_push_buttons(self)
 
     def init_tree(self) -> None:
         self.tree = QtWidgets.QTreeWidget()

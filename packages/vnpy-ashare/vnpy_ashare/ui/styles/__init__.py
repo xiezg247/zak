@@ -14,13 +14,13 @@ from vnpy_ashare.ui.styles.colors import (
     RISE_COLOR,
 )
 from vnpy_ashare.ui.styles.compose import TERMINAL_STYLESHEET
-from vnpy_ashare.ui.styles.legacy import (
-    LEGACY_PAGE_STYLESHEET,
-    apply_legacy_page_style,
+from vnpy_ashare.ui.styles.vnpy_page import (
+    VNPY_PAGE_STYLESHEET,
     apply_settings_combo_style,
     apply_toolbar_combo_style,
-    style_legacy_form_inputs,
-    style_legacy_push_buttons,
+    apply_vnpy_page_style,
+    style_vnpy_form_inputs,
+    style_vnpy_push_buttons,
 )
 from vnpy_ashare.ui.styles.scheduler import SCHEDULER_PAGE_STYLESHEET, SCHEDULER_TABLE_STYLESHEET
 from vnpy_ashare.ui.styles.settings import SETTINGS_DIALOG_STYLESHEET
@@ -31,7 +31,7 @@ __all__ = [
     "FALL_COLOR",
     "FLAT_COLOR",
     "HEADER_BG",
-    "LEGACY_PAGE_STYLESHEET",
+    "VNPY_PAGE_STYLESHEET",
     "NAV_MUTED_COLOR",
     "PANEL_BG",
     "RISE_COLOR",
@@ -40,9 +40,9 @@ __all__ = [
     "SETTINGS_DIALOG_STYLESHEET",
     "TERMINAL_STYLESHEET",
     "TOOLBAR_COMBO_STYLESHEET",
-    "apply_legacy_page_style",
+    "apply_vnpy_page_style",
     "apply_settings_combo_style",
     "apply_toolbar_combo_style",
-    "style_legacy_form_inputs",
-    "style_legacy_push_buttons",
+    "style_vnpy_form_inputs",
+    "style_vnpy_push_buttons",
 ]

@@ -5,7 +5,6 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
     RadarRow,
     _liquidity_metric,
-    _merge_row_quotes,
     build_radar_ai_prompt,
     build_radar_resonance_ai_prompt,
     build_radar_resonance_list,
@@ -107,11 +106,13 @@ def test_liquidity_metric_prefers_amount_when_volume_missing() -> None:
 
 
 def test_merge_row_quotes_fills_from_cache(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
+
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.radar_models.get_market_quotes_cache",
         lambda: [{"vt_symbol": "600000.SSE", "amount": 99_000_000, "volume": 12345}],
     )
-    merged = _merge_row_quotes({"vt_symbol": "600000.SSE", "volume": 0})
+    merged = merge_row_quotes({"vt_symbol": "600000.SSE", "volume": 0})
     assert merged["amount"] == 99_000_000
     assert merged["volume"] == 12345
 

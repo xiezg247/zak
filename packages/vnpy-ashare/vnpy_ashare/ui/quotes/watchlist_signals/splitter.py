@@ -15,7 +15,8 @@ from vnpy_ashare.ui.components.splitter_utils import (
     set_splitter_sizes_quiet,
     splitter_total_height,
 )
-from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+from vnpy_ashare.config.preferences import (
+    WatchlistPositionConfig,
     load_center_splitter_sizes,
     load_signal_panel_expanded,
     save_center_splitter_sizes,
@@ -121,35 +122,6 @@ def configure_center_splitter(splitter: QtWidgets.QSplitter) -> None:
         splitter.setStretchFactor(index, 1 if index == 0 else 0)
 
 
-def _migrate_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, saved: list[int]) -> list[int]:
-    """兼容旧版 splitter 段数（如仅主表+信号区、或运行输出区替换为持仓区）。"""
-    if not saved:
-        return []
-    count = splitter.count()
-    position_panel = page.position_panel
-    run_panel = _run_output_panel(page)
-
-    if len(saved) == 2 and count == 3 and position_panel is not None:
-        pos_h = panel_min_splitter_height(
-            position_panel,
-            default_height=POSITION_PANEL_DEFAULT_HEIGHT,
-            collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT,
-        )
-        return [saved[0], saved[1], pos_h]
-
-    if len(saved) == 3 and count == 3 and run_panel is None and position_panel is not None:
-        pos_h = panel_min_splitter_height(
-            position_panel,
-            default_height=POSITION_PANEL_DEFAULT_HEIGHT,
-            collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT,
-        )
-        return [saved[0], saved[1], pos_h]
-
-    if len(saved) != count:
-        return []
-    return list(saved)
-
-
 def _normalize_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, saved: list[int]) -> list[int]:
     """按各面板展开状态校正保存高度，避免展开态却只有折叠像素导致内容被裁切。"""
     if len(saved) != splitter.count():
@@ -243,7 +215,7 @@ def restore_center_splitter(page: QuotesPage) -> None:
             signal_panel.sync_splitter_geometry()
     position_panel = page.position_panel
     if position_panel is not None:
-        from vnpy_ashare.ui.quotes.watchlist_positions.settings import load_position_panel_expanded
+        from vnpy_ashare.config.preferences import load_position_panel_expanded
 
         position_panel.set_expanded(load_position_panel_expanded(), emit=False)
     run_panel = _run_output_panel(page)
@@ -259,8 +231,8 @@ def restore_center_splitter(page: QuotesPage) -> None:
         return
 
     configure_center_splitter(splitter)
-    saved = _migrate_saved_sizes(page, splitter, load_center_splitter_sizes())
-    if saved:
+    saved = load_center_splitter_sizes()
+    if len(saved) == splitter.count():
         normalized = _normalize_saved_sizes(page, splitter, saved)
         if normalized and sum(normalized) >= 320:
             set_splitter_sizes_quiet(splitter, normalized)

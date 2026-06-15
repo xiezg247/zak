@@ -124,9 +124,10 @@ class LocalDataController:
         if log_signal is not None:
             log_signal.connect(lambda message: append_run_log(self._page, message))
 
-    def reset_meta_cache(self) -> None:
+    def reset_meta_cache(self, *, invalidate_overview: bool = True) -> None:
         page = self._page
-        invalidate_bar_overview_cache()
+        if invalidate_overview:
+            invalidate_bar_overview_cache()
         page.downloaded_keys = set()
         page.bar_meta = {}
         page.bar_list_status = {}
@@ -147,9 +148,9 @@ class LocalDataController:
             page.bar_meta[key] = meta
             page.bar_list_status[key] = list_status(meta)
 
-    def refresh_meta(self) -> None:
+    def refresh_meta(self, *, invalidate_overview: bool = True) -> None:
         page = self._page
-        self.reset_meta_cache()
+        self.reset_meta_cache(invalidate_overview=invalidate_overview)
         if page.config.use_local_pagination:
             self.ensure_meta_for_items(page.all_stocks)
             return
@@ -172,13 +173,52 @@ class LocalDataController:
         page = self._page
         if not page.config.use_local_table:
             return
-        self.refresh_meta()
+        # Worker 已预热 overview 缓存，勿 invalidate 后在主线程全量重建。
+        self.refresh_meta(invalidate_overview=False)
         page.apply_filter()
         item = page.current_item
         if item is not None and (item.symbol, item.exchange) in page.downloaded_keys:
             page.show_kline(item)
             if page.config.show_fill_button and self.is_daily_scope():
                 self.check_bar_gaps(item)
+
+    def schedule_invalid_bar_cleanup(self) -> None:
+        """后台清理无效日 K 概览，避免进入本地页时在主线程扫描全库。"""
+        from vnpy_ashare.config import format_vt_symbol_cn
+        from vnpy_ashare.ui.quotes.workers import InvalidBarCleanupWorker
+
+        page = self._page
+        if page._thread_active(getattr(page, "_invalid_bar_cleanup_worker", None)):
+            return
+        page._wait_worker_release("_invalid_bar_cleanup_worker", timeout_ms=0)
+
+        worker = InvalidBarCleanupWorker()
+        page._invalid_bar_cleanup_worker = worker
+
+        def on_finished(removed: object) -> None:
+            if page._invalid_bar_cleanup_worker is worker:
+                page._invalid_bar_cleanup_worker = None
+            try:
+                if not page._active or not isinstance(removed, list) or not removed:
+                    return
+                symbols = "、".join(
+                    format_vt_symbol_cn(symbol, exchange) for symbol, exchange in removed[:5]
+                )
+                suffix = "..." if len(removed) > 5 else ""
+                page.status_label.setText(f"已清理 {len(removed)} 条无效日K：{symbols}{suffix}")
+                if page.config.use_local_table:
+                    page.load_stock_list()
+            finally:
+                page._release_worker(worker)
+
+        def on_failed(_msg: str) -> None:
+            if page._invalid_bar_cleanup_worker is worker:
+                page._invalid_bar_cleanup_worker = None
+            page._release_worker(worker)
+
+        worker.finished.connect(on_finished)
+        worker.failed.connect(on_failed)
+        worker.start()
 
     def update_batch_toolbar_buttons(self) -> None:
         self.update_batch_fill_button()

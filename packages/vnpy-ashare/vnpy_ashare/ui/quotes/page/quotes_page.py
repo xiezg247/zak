@@ -17,13 +17,11 @@ from vnpy_ashare.app.engine_access import (
     get_quote_service,
     get_watchlist_service,
 )
-from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
     BarMeta,
 )
-from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.domain.position_snapshot import PositionSnapshot
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
@@ -65,7 +63,7 @@ from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.table import QuoteTableModel
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
-from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
+from vnpy_ashare.config.preferences import (
     WatchlistPositionConfig,
     load_watchlist_position_config,
 )
@@ -296,11 +294,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         if self.config.show_add_watchlist_button:
             self._watchlist.refresh_keys()
         if self.config.use_local_table:
-            removed = cleanup_invalid_daily_bars()
-            if removed:
-                symbols = "、".join(format_vt_symbol_cn(symbol, exchange) for symbol, exchange in removed[:5])
-                suffix = "..." if len(removed) > 5 else ""
-                self.status_label.setText(f"已清理 {len(removed)} 条无效日K：{symbols}{suffix}")
+            self._local.schedule_invalid_bar_cleanup()
         if self.config.use_local_table and not self.config.use_local_pagination:
             self._local.refresh_meta()
         if self.current_item is not None and self.chart_panel is not None:

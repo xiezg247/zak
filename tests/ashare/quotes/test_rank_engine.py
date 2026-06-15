@@ -5,8 +5,8 @@ import pytest
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_DOWN_PCT, LIMIT_UP_PCT
 from vnpy_ashare.quotes.rank.rank_catalog import NEAR_LIMIT_UP_MIN, get_rank_definition
 from vnpy_ashare.quotes.rank.rank_engine import (
-    apply_rank_catalog,
     compute_intraday_change_pct,
+    finalize_rank_catalog,
     quote_matches_rank,
 )
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
@@ -112,7 +112,7 @@ def test_change_speed_5m_rank_filter() -> None:
     assert not quote_matches_rank(_quote(change_speed_5m=0.0), spec)
 
 
-def test_apply_rank_catalog_orders_near_limit_up() -> None:
+def test_finalize_rank_catalog_orders_near_limit_up() -> None:
     spec = get_rank_definition("near_limit_up")
     quotes = {
         "A": _quote(change_pct=8.0),
@@ -120,5 +120,5 @@ def test_apply_rank_catalog_orders_near_limit_up() -> None:
         "C": _quote(change_pct=10.0),
         "D": _quote(change_pct=5.0),
     }
-    result = apply_rank_catalog(list(quotes), quotes, spec)
+    result = finalize_rank_catalog(list(quotes), quotes, spec)
     assert result == ["A", "B"]

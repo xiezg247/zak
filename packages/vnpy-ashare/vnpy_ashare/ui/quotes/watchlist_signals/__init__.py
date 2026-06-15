@@ -3,7 +3,7 @@
 from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
-from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+from vnpy_ashare.config.preferences import (
     DEFAULT_CLASS,
     DEFAULT_FAST,
     DEFAULT_SLOW,

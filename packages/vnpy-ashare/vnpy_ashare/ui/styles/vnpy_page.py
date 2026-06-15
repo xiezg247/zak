@@ -1,24 +1,24 @@
-"""QSS：LEGACY_PAGE。"""
+"""QSS：vnpy 继承页（回测、数据管理等）。"""
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_common.ui.theme.build_extra import build_legacy_page_stylesheet
+from vnpy_common.ui.theme.build_extra import build_vnpy_page_stylesheet
 from vnpy_common.ui.theme.tokens import DARK_TOKENS
 
-LEGACY_PAGE_STYLESHEET = build_legacy_page_stylesheet(DARK_TOKENS)
+VNPY_PAGE_STYLESHEET = build_vnpy_page_stylesheet(DARK_TOKENS)
 
 _PRIMARY_ACTION_LABELS = frozenset({"开始回测"})
 
 
-def apply_legacy_page_style(widget, *, page_id: str) -> None:
+def apply_vnpy_page_style(widget, *, page_id: str) -> None:
     """vnpy 继承页：表单 / 表格 / 日志随主题切换。"""
     from vnpy_common.ui.theme import theme_manager
 
     widget.setObjectName(page_id)
-    theme_manager().bind_stylesheet(widget, extra=build_legacy_page_stylesheet)
+    theme_manager().bind_stylesheet(widget, extra=build_vnpy_page_stylesheet)
 
 
-def style_legacy_form_inputs(widget, *, input_name: str = "BacktestInput") -> None:
+def style_vnpy_form_inputs(widget, *, input_name: str = "BacktestInput") -> None:
     for line in widget.findChildren(QtWidgets.QLineEdit):
         if line.objectName() in ("SearchBox", "PageJumpInput", "BacktestInput"):
             continue
@@ -27,7 +27,7 @@ def style_legacy_form_inputs(widget, *, input_name: str = "BacktestInput") -> No
         date_edit.setObjectName(input_name)
 
 
-def style_legacy_push_buttons(
+def style_vnpy_push_buttons(
     widget,
     *,
     primary_labels: frozenset[str] = _PRIMARY_ACTION_LABELS,

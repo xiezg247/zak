@@ -6,7 +6,7 @@ import unittest
 
 import tests._bootstrap  # noqa: F401
 from strategies.registry import list_signal_strategy_metas
-from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+from vnpy_ashare.config.preferences import (
     DEFAULT_CLASS,
     WatchlistSignalConfig,
     load_signal_panel_enabled,
@@ -63,7 +63,7 @@ class SignalPanelSettingsTests(unittest.TestCase):
         self.assertEqual(load_signal_panel_symbols(), ["600000.SSE", "000001.SZSE"])
 
     def test_panel_symbols_respects_max(self) -> None:
-        from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+        from vnpy_ashare.config.preferences import (
             SIGNAL_PANEL_MAX_SYMBOLS,
             normalize_signal_panel_symbols,
         )
@@ -349,34 +349,6 @@ class CenterSplitterSizeTests(unittest.TestCase):
         self.assertGreaterEqual(normalized[1], SIGNAL_PANEL_DEFAULT_HEIGHT)
         self.assertNotEqual(normalized[1], SIGNAL_PANEL_COLLAPSED_HEIGHT)
 
-    def test_migrate_two_segment_saved_sizes_to_three(self) -> None:
-        from unittest.mock import MagicMock
-
-        from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
-            POSITION_PANEL_DEFAULT_HEIGHT,
-            _migrate_saved_sizes,
-        )
-
-        signal_panel = MagicMock()
-        position_panel = MagicMock()
-        position_panel.is_expanded.return_value = True
-        position_panel.minimumHeight.return_value = POSITION_PANEL_DEFAULT_HEIGHT
-
-        splitter = MagicMock()
-        splitter.count.return_value = 3
-
-        page = MagicMock()
-        page.signal_panel = signal_panel
-        page.position_panel = position_panel
-
-        with unittest.mock.patch(
-            "vnpy_ashare.ui.quotes.watchlist_signals.splitter._run_output_panel",
-            return_value=None,
-        ):
-            migrated = _migrate_saved_sizes(page, splitter, [600, 240])
-
-        self.assertEqual(migrated, [600, 240, POSITION_PANEL_DEFAULT_HEIGHT])
-
     def test_default_signal_height_increased(self) -> None:
         from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
             SIGNAL_PANEL_DEFAULT_HEIGHT,
@@ -398,7 +370,7 @@ class CenterSplitterSizeTests(unittest.TestCase):
         self.assertEqual(sizes["table"], 628)
 
     def test_center_splitter_sizes_roundtrip(self) -> None:
-        from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+        from vnpy_ashare.config.preferences import (
             load_center_splitter_sizes,
             save_center_splitter_sizes,
         )

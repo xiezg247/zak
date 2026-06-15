@@ -39,9 +39,9 @@ from vnpy_ashare.ui.backtest.chart.backtest_chart import AshareBacktesterChart, 
 from vnpy_ashare.ui.backtest.pages.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.backtest.strategy_combo import StrategyClassCombo
 from vnpy_ashare.ui.styles import (
-    apply_legacy_page_style,
     apply_toolbar_combo_style,
-    style_legacy_form_inputs,
+    apply_vnpy_page_style,
+    style_vnpy_form_inputs,
 )
 from vnpy_common.ui.feedback import TaskGuard, page_notify
 from vnpy_common.ui.theme import theme_manager
@@ -191,8 +191,8 @@ class BacktesterWidget(VnpyBacktesterManager):
         self.candle_dialog = CandleChartDialog()
 
     def _apply_page_theme(self) -> None:
-        apply_legacy_page_style(self, page_id="BacktestPage")
-        style_legacy_form_inputs(self)
+        apply_vnpy_page_style(self, page_id="BacktestPage")
+        style_vnpy_form_inputs(self)
         for name in (
             "symbol_line",
             "rate_line",

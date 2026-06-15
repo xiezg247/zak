@@ -280,7 +280,7 @@ QTextEdit#SchedulerLogView {{
 """
 
 
-def build_legacy_page_stylesheet(t: ThemeTokens) -> str:
+def build_vnpy_page_stylesheet(t: ThemeTokens) -> str:
     return f"""
 QWidget#BacktestPage,
 QWidget#DataManagerPage {{

@@ -51,7 +51,7 @@ class RedisQuoteProvider(QuoteProvider):
         rank_id: str = "change_pct",
     ) -> tuple[list[StockItem], dict[str, QuoteSnapshot], int]:
         from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
-        from vnpy_ashare.quotes.rank.rank_engine import apply_rank_catalog
+        from vnpy_ashare.quotes.rank.rank_engine import finalize_rank_catalog, should_finalize_rank_catalog
         from vnpy_ashare.quotes.rank.rank_scope import (
             build_stock_items_from_rank_symbols,
             load_watchlist_rank_catalog,
@@ -72,7 +72,8 @@ class RedisQuoteProvider(QuoteProvider):
             ascending=spec.ascending,
         )
         quotes = self._store.get_quotes(tf_symbols)
-        tf_symbols = apply_rank_catalog(tf_symbols, quotes, spec)
+        if should_finalize_rank_catalog(spec):
+            tf_symbols = finalize_rank_catalog(tf_symbols, quotes, spec)
         total = len(tf_symbols)
         page_symbols = tf_symbols[offset : offset + limit]
         page_quotes = {symbol: quotes[symbol] for symbol in page_symbols if symbol in quotes}

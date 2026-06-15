@@ -25,11 +25,7 @@ from vnpy_ashare.services.signals import (
     signal_cell_color,
     signal_cell_text,
 )
-from vnpy_ashare.ui.quotes.watchlist_signals.columns import (
-    SIGNAL_PANEL_OPTIONAL_COLUMNS,
-    resolve_signal_panel_columns,
-)
-from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
+from vnpy_ashare.config.preferences import (
     DEFAULT_CLASS,
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
@@ -42,6 +38,10 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     save_signal_panel_enabled,
     save_signal_panel_expanded,
     save_signal_panel_symbols,
+)
+from vnpy_ashare.config.preferences.signal_panel_columns import (
+    SIGNAL_PANEL_OPTIONAL_COLUMNS,
+    resolve_signal_panel_columns,
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     SIGNAL_PANEL_COLLAPSED_HEIGHT,
@@ -282,7 +282,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             keys.append(key)
         elif not checked and key in keys:
             keys.remove(key)
-        from vnpy_ashare.ui.quotes.watchlist_signals.columns import normalize_visible_optional_keys
+        from vnpy_ashare.config.preferences import normalize_visible_optional_keys
 
         self._visible_column_keys = normalize_visible_optional_keys(keys)
         save_signal_panel_columns(self._visible_column_keys)

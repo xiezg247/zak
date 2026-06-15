@@ -14,7 +14,7 @@ from vnpy_common.ui.theme.build_chart import (
     chart_palette,
 )
 from vnpy_common.ui.theme.build_extra import (
-    build_legacy_page_stylesheet,
+    build_vnpy_page_stylesheet,
     build_scheduler_page_stylesheet,
     build_scheduler_table_stylesheet,
     build_settings_stylesheet,
@@ -44,7 +44,7 @@ __all__ = [
     "build_chart_frame_stylesheet",
     "build_chart_panel_stylesheet",
     "build_intraday_info_stylesheet",
-    "build_legacy_page_stylesheet",
+    "build_vnpy_page_stylesheet",
     "build_panel_stylesheet",
     "build_scheduler_page_stylesheet",
     "build_scheduler_table_stylesheet",

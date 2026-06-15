@@ -87,14 +87,3 @@ def finalize_rank_catalog(
 
     matched.sort(key=lambda pair: pair[1], reverse=reverse)
     return [tf_symbol for tf_symbol, _ in matched]
-
-
-def apply_rank_catalog(
-    tf_symbols: list[str],
-    quotes: dict[str, QuoteSnapshot],
-    spec: RankDefinition,
-) -> list[str]:
-    """兼容旧名：需重排时 finalize，否则保持 Redis 榜序。"""
-    if not should_finalize_rank_catalog(spec):
-        return list(tf_symbols)
-    return finalize_rank_catalog(tf_symbols, quotes, spec)

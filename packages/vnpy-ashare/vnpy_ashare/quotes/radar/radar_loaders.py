@@ -20,7 +20,6 @@ from vnpy_ashare.quotes.radar.radar_models import (
     float_or_none,
     format_pct,
     merge_row_quotes,
-    quote_map,
 )
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
@@ -28,12 +27,6 @@ from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
-
-# 兼容旧 import 路径
-_quote_map = quote_map
-_float_or_none = float_or_none
-_format_pct = format_pct
-_merge_row_quotes = merge_row_quotes
 
 
 def _discovery_pool_size(top_n: int) -> int:
@@ -43,55 +36,55 @@ def _discovery_pool_size(top_n: int) -> int:
 
 def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     if "composite_score" in row:
-        score = _float_or_none(row.get("composite_score"))
-        return "综合分", f"{score:.1f}" if score is not None else "—", "涨幅", _format_pct(_float_or_none(row.get("change_pct")))
-    change = _float_or_none(row.get("change_pct") or row.get("pct_chg"))
-    turnover = _float_or_none(row.get("turnover_rate"))
-    return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
+        score = float_or_none(row.get("composite_score"))
+        return "综合分", f"{score:.1f}" if score is not None else "—", "涨幅", format_pct(float_or_none(row.get("change_pct")))
+    change = float_or_none(row.get("change_pct") or row.get("pct_chg"))
+    turnover = float_or_none(row.get("turnover_rate"))
+    return "涨幅", format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
 
 
 def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     from vnpy_ashare.ui.quotes.table.columns import format_amount, format_volume
 
-    merged = _merge_row_quotes(row)
+    merged = merge_row_quotes(row)
     volume = float(merged.get("volume") or 0)
     amount = float(merged.get("amount") or 0)
     volume_ratio = float(merged.get("volume_ratio") or 0)
-    change = _float_or_none(merged.get("change_pct"))
-    turnover = _float_or_none(merged.get("turnover_rate"))
+    change = float_or_none(merged.get("change_pct"))
+    turnover = float_or_none(merged.get("turnover_rate"))
     if volume > 0:
-        return "成交量", format_volume(volume), "涨幅", _format_pct(change)
+        return "成交量", format_volume(volume), "涨幅", format_pct(change)
     if amount > 0:
-        return "成交额", format_amount(amount), "涨幅", _format_pct(change)
+        return "成交额", format_amount(amount), "涨幅", format_pct(change)
     if volume_ratio > 0:
-        return "量比", f"{volume_ratio:.2f}", "涨幅", _format_pct(change)
-    return "涨幅", _format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
+        return "量比", f"{volume_ratio:.2f}", "涨幅", format_pct(change)
+    return "涨幅", format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
 
 
 def _moneyflow_metric(row: dict[str, Any], _hit=None) -> tuple[str, str, str, str]:
     from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
     from vnpy_ashare.ui.quotes.table.columns import format_amount
 
-    merged = _merge_row_quotes(row)
+    merged = merge_row_quotes(row)
     kind = classify_moneyflow_row(merged)
     kind_label = flow_kind_label(kind)
-    net_mf = _float_or_none(merged.get("net_mf_amount"))
-    change = _float_or_none(merged.get("change_pct"))
+    net_mf = float_or_none(merged.get("net_mf_amount"))
+    change = float_or_none(merged.get("change_pct"))
 
     if kind == "proxy":
         amount = float(merged.get("amount") or 0)
         if amount > 0:
-            return "成交额", format_amount(amount), kind_label, _format_pct(change)
-        turnover = _float_or_none(merged.get("turnover_rate"))
-        return "涨幅", _format_pct(change), kind_label, f"{turnover:.2f}%" if turnover is not None else "—"
+            return "成交额", format_amount(amount), kind_label, format_pct(change)
+        turnover = float_or_none(merged.get("turnover_rate"))
+        return "涨幅", format_pct(change), kind_label, f"{turnover:.2f}%" if turnover is not None else "—"
 
     if net_mf is not None and net_mf != 0:
-        return "主力净流入", f"{net_mf:,.0f} 万", kind_label, _format_pct(change)
+        return "主力净流入", f"{net_mf:,.0f} 万", kind_label, format_pct(change)
     amount = float(merged.get("amount") or 0)
     if amount > 0:
-        return "成交额", format_amount(amount), kind_label, _format_pct(change)
-    turnover = _float_or_none(merged.get("turnover_rate"))
-    return "涨幅", _format_pct(change), kind_label, f"{turnover:.2f}%" if turnover is not None else "—"
+        return "成交额", format_amount(amount), kind_label, format_pct(change)
+    turnover = float_or_none(merged.get("turnover_rate"))
+    return "涨幅", format_pct(change), kind_label, f"{turnover:.2f}%" if turnover is not None else "—"
 
 
 def _looks_like_vt_symbol(text: str) -> bool:
@@ -127,12 +120,12 @@ def _row_from_dict(row: dict[str, Any], *, name_map: dict[str, str] | None = Non
     if not vt_symbol:
         return None
     item = parse_stock_symbol(vt_symbol)
-    merged = _merge_row_quotes(row)
+    merged = merge_row_quotes(row)
     lookup = name_map or {}
     name = _resolve_row_display_name(vt_symbol, row, merged, item=item, name_map=lookup)
     symbol = str(row.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
-    price = _float_or_none(merged.get("last_price") or merged.get("close"))
-    change_pct = _float_or_none(merged.get("change_pct") or row.get("change_pct") or row.get("pct_chg"))
+    price = float_or_none(merged.get("last_price") or merged.get("close"))
+    change_pct = float_or_none(merged.get("change_pct") or row.get("change_pct") or row.get("pct_chg"))
     metric_label, metric_value, sub_label, sub_value = _screener_metric(merged)
     rs_sub = _relative_strength_subline(merged)
     if rs_sub is not None:
@@ -325,7 +318,7 @@ def _discovery_hits_card(
 def _volume_surge_needs_ratio_fallback(hits) -> bool:
     if not hits:
         return False
-    return all(float(_merge_row_quotes(hit.row).get("volume") or 0) <= 0 and float(_merge_row_quotes(hit.row).get("amount") or 0) <= 0 for hit in hits)
+    return all(float(merge_row_quotes(hit.row).get("volume") or 0) <= 0 and float(merge_row_quotes(hit.row).get("amount") or 0) <= 0 for hit in hits)
 
 
 def _volume_liquidity_proxy(pool_size: int, total: int):
@@ -376,10 +369,10 @@ def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
 
     def _volume_metric(row: dict[str, Any], hit) -> tuple[str, str, str, str]:
         if hit.dimension_id == "volume_ratio":
-            merged = _merge_row_quotes(row)
+            merged = merge_row_quotes(row)
             ratio = float(merged.get("volume_ratio") or row.get("volume_ratio") or 0)
-            change = _float_or_none(merged.get("change_pct"))
-            return "量比", f"{ratio:.2f}", "涨幅", _format_pct(change)
+            change = float_or_none(merged.get("change_pct"))
+            return "量比", f"{ratio:.2f}", "涨幅", format_pct(change)
         return _liquidity_metric(row)
 
     from vnpy_ashare.screener.dimensions.volume_dedup import build_volume_discovery_subtitle

@@ -23,7 +23,7 @@ from vnpy_ashare.data.minute_periods import (
     normalize_period,
 )
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.storage.repositories.universe import load_universe_rows
+from vnpy_ashare.storage.repositories.universe import load_universe_names_for_keys
 from vnpy_ashare.storage.repositories.watchlist import import_watchlist_csv, load_watchlist_rows
 
 
@@ -132,12 +132,12 @@ def load_downloaded_stocks_page(
     limit: int | None = 50,
 ) -> list[StockItem]:
     """分页读取本地已下载 K 线列表；limit 为 None 时返回全部。"""
-    name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
     rows = iter_bar_overviews(scope=scope)
     if limit is None:
         page_rows = rows[offset:]
     else:
         page_rows = rows[offset : offset + max(limit, 0)]
+    name_map = load_universe_names_for_keys([(row.symbol, row.exchange) for row in page_rows])
     items: list[StockItem] = []
     for row in page_rows:
         name = name_map.get((row.symbol, row.exchange), "")

@@ -3,7 +3,7 @@
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
-from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
+from vnpy_ashare.config.preferences import (
     WatchlistPositionConfig,
     load_position_panel_enabled,
     load_position_panel_expanded,

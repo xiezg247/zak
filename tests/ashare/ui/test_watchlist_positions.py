@@ -10,8 +10,9 @@ from unittest.mock import patch
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
-from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
+from vnpy_ashare.config.preferences import (
     WatchlistPositionConfig,
+    WatchlistSignalConfig,
     load_position_panel_enabled,
     load_position_panel_expanded,
     load_watchlist_position_config,
@@ -19,7 +20,6 @@ from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
     save_position_panel_expanded,
     save_watchlist_position_config,
 )
-from vnpy_ashare.ui.quotes.watchlist_signals.settings import WatchlistSignalConfig
 
 
 def _sample_signal(vt_symbol: str = "600000.SSE") -> SignalSnapshot:

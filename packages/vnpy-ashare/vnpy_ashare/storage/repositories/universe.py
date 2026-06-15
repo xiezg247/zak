@@ -78,6 +78,31 @@ def load_universe_rows() -> list[tuple[str, Exchange, str]]:
     return [_row_to_stock(row) for row in rows]
 
 
+def load_universe_names_for_keys(
+    keys: list[tuple[str, Exchange]],
+    *,
+    chunk_size: int = 400,
+) -> dict[tuple[str, Exchange], str]:
+    """按 (symbol, exchange) 批量查名称；分页本地列表避免全表 load_universe_rows。"""
+    if not keys:
+        return {}
+    init_app_db()
+    unique_keys = list(dict.fromkeys(keys))
+    result: dict[tuple[str, Exchange], str] = {}
+    with connect() as conn:
+        for start in range(0, len(unique_keys), chunk_size):
+            chunk = unique_keys[start : start + chunk_size]
+            placeholders = ",".join("(?, ?)" for _ in chunk)
+            params = [part for symbol, exchange in chunk for part in (symbol, exchange.name)]
+            rows = conn.execute(
+                f"SELECT symbol, exchange, name FROM universe WHERE (symbol, exchange) IN ({placeholders})",
+                params,
+            ).fetchall()
+            for row in rows:
+                result[(row["symbol"], Exchange[row["exchange"]])] = row["name"]
+    return result
+
+
 def save_universe_rows(
     items: list[tuple[str, Exchange, str]],
     *,

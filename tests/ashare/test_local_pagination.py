@@ -35,7 +35,7 @@ class TestLocalPagination(unittest.TestCase):
 
         rows = [MagicMock(symbol=f"{idx:06d}", exchange=Exchange.SSE, period="daily", start=None, end=None, count=10) for idx in range(1, 6)]
         with patch("vnpy_ashare.data.bars.iter_bar_overviews", return_value=rows):
-            with patch("vnpy_ashare.data.bars.load_universe_rows", return_value=[]):
+            with patch("vnpy_ashare.data.bars.load_universe_names_for_keys", return_value={}):
                 page_items = bars_module.load_downloaded_stocks_page(scope="daily", offset=1, limit=2)
                 total = bars_module.count_downloaded_stocks(scope="daily")
         self.assertEqual(len(page_items), 2)

@@ -31,6 +31,8 @@ class TestSchedulerConfig(unittest.TestCase):
             self.assertEqual(loaded.batch_download_universe.download_start, "2018-01-01")
 
     def test_legacy_batch_download_start_migrates_to_universe(self) -> None:
+        import json
+
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "scheduler.json"
             path.write_text(
@@ -39,6 +41,9 @@ class TestSchedulerConfig(unittest.TestCase):
             )
             loaded = load_scheduler_config(path)
             self.assertEqual(loaded.batch_download_universe.download_start, "2019-03-01")
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertNotIn("batch_download", saved)
+            self.assertEqual(saved["batch_download_universe"]["download_start"], "2019-03-01")
 
     def test_auto_screen_config_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

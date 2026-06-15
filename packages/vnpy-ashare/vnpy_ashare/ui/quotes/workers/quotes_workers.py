@@ -106,6 +106,21 @@ def _emit_worker_log(signal: QtCore.SignalInstance, message: object) -> None:
         signal.emit(text)
 
 
+class InvalidBarCleanupWorker(QtCore.QThread):
+    """后台清理无效日 K 概览（避免本地页 activate 阻塞 UI）。"""
+
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def run(self) -> None:
+        try:
+            from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
+
+            self.finished.emit(cleanup_invalid_daily_bars())
+        except Exception as ex:
+            self.failed.emit(str(ex))
+
+
 class UniverseLoadWorker(QtCore.QThread):
     """加载 universe 列表（全部 A 股 / 自选池 / 已下载）。"""
 
@@ -699,7 +714,7 @@ class MarketFullLoadWorker(QtCore.QThread):
             spec = get_rank_definition(self.rank_id)
             name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
 
-            from vnpy_ashare.quotes.rank.rank_engine import apply_rank_catalog
+            from vnpy_ashare.quotes.rank.rank_engine import finalize_rank_catalog, should_finalize_rank_catalog
             from vnpy_ashare.quotes.rank.rank_scope import build_stock_items_from_rank_symbols, load_watchlist_rank_catalog
 
             if spec.scope == "watchlist":
@@ -713,7 +728,8 @@ class MarketFullLoadWorker(QtCore.QThread):
 
                 if tf_symbols:
                     quotes = store.get_quotes(tf_symbols)
-                    tf_symbols = apply_rank_catalog(tf_symbols, quotes, spec)
+                    if should_finalize_rank_catalog(spec):
+                        tf_symbols = finalize_rank_catalog(tf_symbols, quotes, spec)
                     items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
                 else:
                     from vnpy_ashare.quotes.rank.rank_engine import quote_matches_rank, rank_needs_post_process

@@ -136,10 +136,32 @@ class StockAnalysisAiSidebar(QtWidgets.QWidget):
         if main is None:
             page_notify(self, "无法打开 AI 助手页", level="warning")
             return
+
+        engine = self._engine
+        if engine is not None:
+            scene = "个股分析"
+            if self._host.source_page:
+                scene = f"个股分析·{self._host.source_page}"
+            engine.open_session_for_ask(
+                surface="assistant",
+                session_policy="resume",
+                scene=scene,
+            )
+
+        dialog = self._stock_analysis_dialog()
+        if dialog is not None:
+            if hasattr(main, "unregister_floating_overlay"):
+                main.unregister_floating_overlay(dialog)
+            dialog.hide()
+
         if hasattr(main, "_open_ai_page"):
             main._open_ai_page()
-        if self._panel is not None:
-            self._panel.focus_input()
+
+    def _stock_analysis_dialog(self) -> QtWidgets.QDialog | None:
+        win = self.window()
+        if win is self or not isinstance(win, QtWidgets.QDialog):
+            return None
+        return win
 
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         from vnpy_ashare.ui.shell.main_window import AshareMainWindow
@@ -149,6 +171,13 @@ class StockAnalysisAiSidebar(QtWidgets.QWidget):
             if isinstance(parent, AshareMainWindow):
                 return parent
             parent = parent.parentWidget()
+
+        win = self.window()
+        if isinstance(win, AshareMainWindow):
+            return win
+        for widget in QtWidgets.QApplication.topLevelWidgets():
+            if isinstance(widget, AshareMainWindow):
+                return widget
         return None
 
     def _on_theme_changed(self) -> None:
