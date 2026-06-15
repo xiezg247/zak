@@ -15,6 +15,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.settings import (
     WatchlistSignalConfig,
     save_watchlist_signal_config,
 )
+from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
 from vnpy_common.ui.qt_helpers import release_thread
 
@@ -42,7 +43,7 @@ class WatchlistSignalController:
 
     def _panel_symbols(self) -> list[str]:
         panel = getattr(self._page, "signal_panel", None)
-        if panel is None:
+        if not isinstance(panel, WatchlistSignalPanel):
             return []
         return panel.symbols
 

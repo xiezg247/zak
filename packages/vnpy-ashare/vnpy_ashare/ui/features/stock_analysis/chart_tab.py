@@ -301,7 +301,10 @@ class StockAnalysisChartTab(QtWidgets.QWidget):
                 self._hint.show()
                 self._retire_worker(worker)
                 return
-            loaded: LoadedBars = result
+            if not isinstance(result, LoadedBars):
+                self._retire_worker(worker)
+                return
+            loaded = result
             if loaded.bars:
                 self._daily_chart.replace_history(loaded.bars)
                 self._apply_daily_viewport()

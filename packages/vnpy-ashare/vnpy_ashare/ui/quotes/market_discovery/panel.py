@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
@@ -170,6 +172,6 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
     def _refresh_chip_colors(self) -> None:
         for group in (self._volume_group, self._moneyflow_group):
             chip_host: QtWidgets.QWidget = group._chip_host
-            chips: list[_DiscoveryChip] = chip_host.findChildren(_DiscoveryChip)
+            chips: list[_DiscoveryChip] = cast(list[_DiscoveryChip], chip_host.findChildren(_DiscoveryChip))
             for chip in chips:
                 chip.refresh_theme()

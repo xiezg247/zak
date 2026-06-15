@@ -58,10 +58,10 @@ class _JobSettingsDialog(QtWidgets.QDialog):
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
 
-    def values(self) -> dict:
+    def values(self) -> dict[str, str | int]:
         if self.job_id == "collect_quotes":
             return {"interval_seconds": self.interval_spin.value()}
-        values = {
+        values: dict[str, str | int] = {
             "cron_day_of_week": self.day_edit.text().strip(),
             "cron_hour": self.hour_spin.value(),
             "cron_minute": self.minute_spin.value(),
@@ -128,10 +128,10 @@ class _AutoScreenSettingsDialog(QtWidgets.QDialog):
         buttons.rejected.connect(self.reject)
         form.addRow(buttons)
 
-    def values(self) -> dict:
+    def values(self) -> dict[str, str | int]:
         index = self.recipe_combo.currentIndex()
         recipe_id = self._recipe_ids[index] if 0 <= index < len(self._recipe_ids) else ""
-        values = {
+        values: dict[str, str | int] = {
             "recipe_id": recipe_id,
             "cron_day_of_week": self.day_edit.text().strip(),
         }
@@ -477,7 +477,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
             return
         config = self._scheduler.get_job_config(job_id)
         if job_id in ("screen_intraday", "screen_post_close"):
-            dialog = _AutoScreenSettingsDialog(job_id, status, config, self)
+            dialog: _AutoScreenSettingsDialog | _JobSettingsDialog = _AutoScreenSettingsDialog(job_id, status, config, self)
         else:
             dialog = _JobSettingsDialog(job_id, status, config, self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:

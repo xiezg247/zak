@@ -638,13 +638,13 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 config = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
                 for col, (key, _label) in enumerate(_PANEL_COLUMNS):
                     text = values.get(key, "—")
-                    cell: QtWidgets.QTableWidgetItem | None = self._table.item(row, col)
-                    if cell is None:
-                        cell = QtWidgets.QTableWidgetItem(text)
-                        self._table.setItem(row, col, cell)
-                    elif cell.text() != text:
-                        cell.setText(text)
-                    cell.setData(QtCore.Qt.ItemDataRole.UserRole, record.vt_symbol)
+                    item_cell: QtWidgets.QTableWidgetItem | None = self._table.item(row, col)
+                    if item_cell is None:
+                        item_cell = QtWidgets.QTableWidgetItem(text)
+                        self._table.setItem(row, col, item_cell)
+                    elif item_cell.text() != text:
+                        item_cell.setText(text)
+                    item_cell.setData(QtCore.Qt.ItemDataRole.UserRole, record.vt_symbol)
                     fg = None
                     if key == "pnl" and snap is not None and snap.unrealized_pnl is not None:
                         fg = colors.rise if snap.unrealized_pnl >= 0 else colors.fall
@@ -667,20 +667,20 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                         )
                     if key == "t1_status":
                         if snap is not None:
-                            cell.setToolTip(snap.t1_status_tooltip)
+                            item_cell.setToolTip(snap.t1_status_tooltip)
                         elif buy_date != "—":
                             tip = f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）" if t1_locked else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
-                            cell.setToolTip(tip)
+                            item_cell.setToolTip(tip)
                     elif key == "exit_signal" and snap is not None:
-                        cell.setToolTip(snap.exit_signal_tooltip)
+                        item_cell.setToolTip(snap.exit_signal_tooltip)
                     if fg:
-                        cell.setForeground(QtGui.QColor(fg))
+                        item_cell.setForeground(QtGui.QColor(fg))
                     else:
-                        cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
+                        item_cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
                     if row_anomaly and self._filter != "anomaly":
-                        cell.setBackground(highlight_bg)
+                        item_cell.setBackground(highlight_bg)
                     elif self._filter != "anomaly":
-                        cell.setData(QtCore.Qt.ItemDataRole.BackgroundRole, None)
+                        item_cell.setData(QtCore.Qt.ItemDataRole.BackgroundRole, None)
                 if snap is not None and snap.signal_snapshot is not None:
                     symbol_cell = self._table.item(row, 0)
                     if symbol_cell is not None:

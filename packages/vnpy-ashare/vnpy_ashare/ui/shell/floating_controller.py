@@ -327,7 +327,7 @@ class FloatingAiController(QtCore.QObject):
         orb = self._orb
         if orb is not None:
             parent = orb.parentWidget()
-            if parent is not None:
+            if parent is not None and isinstance(parent, QtWidgets.QWidget):
                 return parent
         widget = self._host.centralWidget()
         return widget if isinstance(widget, QtWidgets.QWidget) else None

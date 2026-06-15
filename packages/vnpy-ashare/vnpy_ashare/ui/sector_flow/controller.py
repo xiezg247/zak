@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy.event import Event
-from vnpy.trader.ui import QtCore
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_quote_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
@@ -169,8 +169,8 @@ class SectorFlowController(QtCore.QObject):
             return
         host.open_screener_industry(industry)
 
-    def _find_main_window(self):
-        widget = self._page
+    def _find_main_window(self) -> QtWidgets.QWidget | None:
+        widget: QtWidgets.QWidget | None = self._page
         while widget is not None:
             if hasattr(widget, "open_market_industry_filter") or hasattr(widget, "open_screener_industry"):
                 return widget

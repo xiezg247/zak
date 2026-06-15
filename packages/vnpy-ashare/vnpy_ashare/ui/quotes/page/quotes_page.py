@@ -60,6 +60,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     save_market_auto_refresh_pref,
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
+from vnpy_ashare.ui.quotes.table import QuoteTableModel
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_positions.settings import (
@@ -92,6 +93,9 @@ from vnpy_common.ui.theme import theme_manager
 
 class QuotesPage(QtWidgets.QWidget):
     """单页行情：列表 + 报价头 + 日 K。"""
+
+    quote_table_model: QuoteTableModel
+    market_table: QtWidgets.QTableView
 
     _thread_active = staticmethod(thread_is_active)
 

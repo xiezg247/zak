@@ -14,12 +14,12 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 **注意**：必须在 `packages/vnpy-ashare` 目录下执行 mypy（或通过 `scripts/mypy-check.sh`），否则 `files` 白名单可能不生效。
 
-## 当前范围（vnpy-ashare，Phase 1–7）
+## 当前范围（vnpy-ashare，Phase 1–7c）
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
 | `quotes/*` | core / rank / market / misc / radar | ✅ 严格 |
-| `screener/` | 选股全子包 | ✅ 严格 |
+| `screener/` | 选股全子包（业务层） | ✅ 严格 |
 | `services/` | 业务门面 | ✅ 严格 |
 | `domain/` | 领域模型 | ✅ 严格 |
 | `config/` | schema、bridge、preferences | ✅ 严格 |
@@ -28,19 +28,19 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 | `ai/context/` | AI 上下文 | ✅ 严格 |
 | `data/` | 行情下载、bar store | ✅ 严格 |
 | `jobs/` | 定时任务 | ✅ 严格 |
-| `ui/quotes/` | 行情页 Qt UI | ✅ **半严格**（仅 Qt 绑定 5 类 disable） |
-| `ui/` 其余 | screener、shell、backtest 等 | ✅ **放宽** |
+| `ui/` | Qt 桌面 UI 全包 | ✅ **半严格**（仅 Qt 绑定 5 类 disable） |
 
 共 **417** 个源文件。
 
-### Phase 7：`ui/` 放宽规则
+### Phase 7：`ui/` 半严格
 
-Qt / vnpy 绑定层噪声较多：
+对 `ui` 各子包（quotes、screener、shell、backtest、scheduler、sector_flow、components、features、styles 等）统一使用 `[[tool.mypy.overrides]]`，**仅**关闭 Qt / vnpy 绑定噪声：
 
-- **`vnpy_ashare.ui.*`**（除 quotes 外）：暂时关闭 14 类 error code（见 `pyproject.toml`）。
-- **`vnpy_ashare.ui.quotes.*`（Phase 7b ✅）**：仅保留 Qt 绑定层 5 类 disable；`assignment` / `union-attr` / `no-any-return` 等已收紧并通过。
+`attr-defined`、`override`、`call-overload`、`arg-type`、`misc`
 
-**Phase 7c（后续）**：继续收紧 `ui/screener/`、`ui/shell/` 等，并逐步减少 `ui.quotes.*` 的 Qt disable。
+`assignment`、`union-attr`、`no-any-return` 等已在 Phase 7b–7c 修通。
+
+**Phase 7d（后续）**：配合 `types-PySide6`，逐步去掉上述 5 类 disable。
 
 ## 本地运行
 
@@ -60,11 +60,12 @@ cd packages/vnpy-ashare && ../../.venv/bin/mypy --config-file pyproject.toml
 ### 建议顺序
 
 ```text
-Phase 1–6  quotes/*、services/、screener/、domain/、config/、storage/、integrations/、ai/context  ← 严格（195 文件）
-Phase 7    data/、jobs/、ai/context/、ui/（417 文件）                         ← 当前
-Phase 7b   ui/quotes/ 收紧（40 处类型修复）                                  ← 已完成
-Phase 7c   ui/screener/、ui/shell/ 等逐步收紧
+Phase 1–6  quotes/*、services/、screener/、domain/、config/、storage/、integrations/、ai/context  ← 严格
+Phase 7    data/、jobs/、ui/ 纳入白名单（417 文件）                                              ← 已完成
+Phase 7b   ui/quotes/ 收紧（40 处）                                                             ← 已完成
+Phase 7c   ui 其余子包收紧（25 处）；移除 ui.* 全量 14 类 disable                               ← 已完成
 Phase 8    vnpy-common 独立 package mypy
+Phase 7d   逐步去掉 ui.* 的 Qt 5 类 disable
 ```
 
 ## 新增 workspace package
@@ -87,5 +88,5 @@ Phase 8    vnpy-common 独立 package mypy
 ## 新代码约定
 
 - 落在 **已启用 mypy 目录** 内的改动：保持 `bash scripts/mypy-check.sh` 通过。
-- `ui/` 新代码仍建议手写 `Optional` 守卫与返回类型，便于 Phase 7b 收紧。
+- `ui/` 新代码建议手写 `Optional` 守卫与返回类型，便于 Phase 7d 完全严格化。
 - 未启用目录：仍按 [编码规范](./coding-standards.md) 手写注解。

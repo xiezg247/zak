@@ -66,29 +66,20 @@ check_untyped_defs = true
 disallow_untyped_defs = false
 show_error_codes = true
 
-# Qt / vnpy UI（ui 非 quotes）：先放宽常见噪声规则
+# ui 半严格子包：仅保留 Qt 绑定层放宽（Phase 7b–7c）
 [[tool.mypy.overrides]]
-module = "vnpy_ashare.ui.*"
-disable_error_code = [
-    "attr-defined",
-    "override",
-    "call-overload",
-    "arg-type",
-    "misc",
-    "assignment",
-    "union-attr",
-    "no-any-return",
-    "var-annotated",
-    "name-defined",
-    "operator",
-    "has-type",
-    "return-value",
-    "no-redef",
+module = [
+    "vnpy_ashare.ui.quotes.*",
+    "vnpy_ashare.ui.screener.*",
+    "vnpy_ashare.ui.shell.*",
+    "vnpy_ashare.ui.backtest.*",
+    "vnpy_ashare.ui.scheduler.*",
+    "vnpy_ashare.ui.sector_flow.*",
+    "vnpy_ashare.ui.components.*",
+    "vnpy_ashare.ui.features.*",
+    "vnpy_ashare.ui.styles.*",
+    "vnpy_ashare.ui.markdown_render",
 ]
-
-# ui/quotes：仅保留 Qt 绑定层放宽（Phase 7b）
-[[tool.mypy.overrides]]
-module = "vnpy_ashare.ui.quotes.*"
 disable_error_code = [
     "attr-defined",
     "override",

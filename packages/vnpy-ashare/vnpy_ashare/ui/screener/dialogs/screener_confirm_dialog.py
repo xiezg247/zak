@@ -10,7 +10,9 @@ from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_ashare.app.events import FillScreenerRequest
 from vnpy_ashare.domain.ai_actions import AI_ACTION_FILL_SCREENER, put_ai_action
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
-from vnpy_ashare.screener.draft.draft_store import cancel_draft, consume_draft, get_draft
+from typing import Any
+
+from vnpy_ashare.screener.draft.draft_store import ScreenerDraft, cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
 from vnpy_ashare.ui.screener.workers import ScreenerRunWorker
 from vnpy_common.ui.feedback import page_notify
@@ -33,7 +35,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
         self.main_engine: MainEngine = llm_engine.main_engine
         self.event_engine: EventEngine = llm_engine.event_engine
         self._worker: ScreenerRunWorker | None = None
-        self._consumed_draft = None
+        self._consumed_draft: ScreenerDraft | None = None
         self._draft = get_draft(draft_id)
 
         self.setWindowTitle("确认选股条件")
@@ -156,7 +158,7 @@ class ScreenerConfirmDialog(QtWidgets.QDialog):
             page_notify(self, "选股服务未就绪", level="warning", title="选股失败")
             self.reject()
             return
-        extra_config = service.build_scheme_config(draft.request) if draft else {}
+        extra_config: dict[str, Any] = service.build_scheme_config(draft.request) if draft else {}
         service.persist_run_result(
             result,
             nl_source=draft.natural_language if draft else "",

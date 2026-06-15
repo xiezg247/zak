@@ -176,14 +176,14 @@ class ManagerWidget(VnpyManagerWidget):
 
         for row in payload.rows:
             group = _overview_group_key(row.period)
-            interval_child = interval_childs.get(group)
-            if interval_child is None:
+            group_interval = interval_childs.get(group)
+            if group_interval is None:
                 continue
 
             exchange_key = (group, row.exchange)
             exchange_child = exchange_childs.get(exchange_key)
             if exchange_child is None:
-                exchange_child = QtWidgets.QTreeWidgetItem(interval_child)
+                exchange_child = QtWidgets.QTreeWidgetItem(group_interval)
                 exchange_child.setText(0, row.exchange.value)
                 exchange_childs[exchange_key] = exchange_child
 

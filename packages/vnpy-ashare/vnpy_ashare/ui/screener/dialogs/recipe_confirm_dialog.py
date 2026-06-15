@@ -10,7 +10,7 @@ from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_ashare.app.events import FillRecipeRequest
 from vnpy_ashare.domain.ai_actions import AI_ACTION_FILL_RECIPE, put_ai_action
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
-from vnpy_ashare.screener.recipe.recipe_draft_store import cancel_recipe_draft, consume_recipe_draft, get_recipe_draft
+from vnpy_ashare.screener.recipe.recipe_draft_store import RecipeDraft, cancel_recipe_draft, consume_recipe_draft, get_recipe_draft
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
 from vnpy_ashare.ui.screener.workers import ScreenerRecipeRunWorker
 from vnpy_common.ui.feedback import page_notify
@@ -33,7 +33,7 @@ class RecipeConfirmDialog(QtWidgets.QDialog):
         self.main_engine: MainEngine = llm_engine.main_engine
         self.event_engine: EventEngine = llm_engine.event_engine
         self._worker: ScreenerRecipeRunWorker | None = None
-        self._consumed_draft = None
+        self._consumed_draft: RecipeDraft | None = None
         self._draft = get_recipe_draft(draft_id)
 
         self.setWindowTitle("确认多因子配方")

@@ -250,8 +250,8 @@ class BacktesterWidget(VnpyBacktesterManager):
             return f'<p style="color:{colors.label};">选择策略后显示说明与适用场景。</p>'
         meta = get_strategy_meta(name)
         if meta is None:
-            return format_missing_strategy_guide(name, tokens=tokens)
-        return format_strategy_guide(meta, tokens=tokens)
+            return str(format_missing_strategy_guide(name, tokens=tokens))
+        return str(format_strategy_guide(meta, tokens=tokens))
 
     def _on_strategy_index_changed(self, index: int) -> None:
         del index
@@ -296,7 +296,9 @@ class BacktesterWidget(VnpyBacktesterManager):
             return
 
         self.class_names = ashare_names
-        self.settings = {name: self.settings[name] for name in ashare_names if name in self.settings}
+        raw_settings = getattr(self, "settings", {})
+        base_settings = dict(raw_settings) if isinstance(raw_settings, dict) else {}
+        self.settings = {name: base_settings[name] for name in ashare_names if name in base_settings}
         self.class_combo.set_strategy_items(ashare_names)
         self._ensure_class_combo_selection()
         self._on_strategy_changed(self.class_combo.current_class_name())

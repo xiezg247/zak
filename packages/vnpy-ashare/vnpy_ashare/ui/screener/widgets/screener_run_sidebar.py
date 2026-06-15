@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
@@ -98,7 +98,7 @@ def _run_filter_label(record) -> str:
     title = record.condition
     if tag and not title.startswith("["):
         title = f"{tag} {title}"
-    return title
+    return str(title)
 
 
 def _radar_diff_badge(record) -> str:
@@ -283,7 +283,7 @@ class ScreenerRunListWidget(QtWidgets.QWidget):
         while parent is not None:
             engine = getattr(parent, "main_engine", None)
             if engine is not None:
-                return engine
+                return cast("MainEngine", engine)
             parent = parent.parent()
         return None
 

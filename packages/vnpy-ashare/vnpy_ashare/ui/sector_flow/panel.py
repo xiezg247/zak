@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.sector_flow import SectorFlowSnapshot
+from vnpy_ashare.domain.sector_flow import SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.ui.sector_flow.table import SectorFlowTable
 from vnpy_common.ui.theme import theme_manager
 
@@ -23,8 +23,8 @@ class SectorFlowPanel(QtWidgets.QWidget):
 
         self._table = SectorFlowTable(self)
         self._active_tab = _TAB_INFLOW
-        self._inflow_rows = []
-        self._outflow_rows = []
+        self._inflow_rows: list[SectorFlowRow] = []
+        self._outflow_rows: list[SectorFlowRow] = []
 
         self._summary = QtWidgets.QLabel("加载中…")
         self._summary.setObjectName("SectorFlowSummary")

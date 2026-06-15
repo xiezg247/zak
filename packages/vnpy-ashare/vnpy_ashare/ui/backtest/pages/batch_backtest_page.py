@@ -30,7 +30,7 @@ def _strategy_title(class_name: str) -> str:
 
         for meta in STRATEGY_REGISTRY.values():
             if meta.class_name == class_name:
-                return meta.title
+                return str(meta.title)
     except Exception:
         pass
     return class_name

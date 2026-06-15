@@ -701,7 +701,7 @@ class LocalDataController:
         self.clear_chart()
 
         if self.is_daily_scope():
-            worker = BarsLoadWorker(item)
+            worker: BarsLoadWorker | ScopeBarsLoadWorker = BarsLoadWorker(item)
         else:
             worker = ScopeBarsLoadWorker(item, scope=target_scope)
         page._bars_worker = worker

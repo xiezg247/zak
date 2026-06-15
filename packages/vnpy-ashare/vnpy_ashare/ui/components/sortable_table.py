@@ -16,10 +16,12 @@ class SortableTableItem(QtWidgets.QTableWidgetItem):
         if isinstance(other, SortableTableItem):
             left = self._sort_key
             right = other._sort_key
-            try:
-                return left < right
-            except TypeError:
-                return str(left) < str(right)
+            if type(left) is type(right) and left != right:
+                if isinstance(left, (int, float)) and isinstance(right, (int, float)):
+                    return float(left) < float(right)
+                if isinstance(left, str) and isinstance(right, str):
+                    return left < right
+            return str(left) < str(right)
         return super().__lt__(other)
 
     def update_sort_key(self, sort_key: float | str) -> None:

@@ -760,7 +760,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         )
 
     def _run_batch_backtest(self) -> None:
-        if self._batch_backtest_flow is not None and self._batch_backtest_flow.is_running():
+        flow = self._batch_backtest_flow
+        if flow is None or flow.is_running():
             return
         selected = iter_checked_table_rows(self.result_table)
         if not selected:
@@ -769,7 +770,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         backtest_service = get_backtest_service(self.main_engine)
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
-        self._batch_backtest_flow.start(
+        flow.start(
             selected,
             source_page="多因子配方",
             batch_source="batch_auto_screener",

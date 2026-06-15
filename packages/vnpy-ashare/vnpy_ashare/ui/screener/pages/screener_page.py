@@ -1110,7 +1110,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         )
 
     def _run_batch_backtest(self) -> None:
-        if self._batch_backtest_flow is not None and self._batch_backtest_flow.is_running():
+        flow = self._batch_backtest_flow
+        if flow is None or flow.is_running():
             return
         selected = self._iter_checked_rows()
         if not selected:
@@ -1120,7 +1121,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         backtest_service = get_backtest_service(self.main_engine)
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
-        self._batch_backtest_flow.start(
+        flow.start(
             selected,
             source_page="选股",
             batch_source="batch_screener",

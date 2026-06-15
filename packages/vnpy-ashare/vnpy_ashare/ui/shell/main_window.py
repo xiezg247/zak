@@ -341,7 +341,7 @@ class AshareMainWindow(MainWindow):
             width = int(value)
         except (TypeError, ValueError):
             width = SidebarNav.DEFAULT_WIDTH
-        return max(SidebarNav.MIN_WIDTH, min(SidebarNav.MAX_WIDTH, width))
+        return int(max(SidebarNav.MIN_WIDTH, min(SidebarNav.MAX_WIDTH, width)))
 
     def _on_nav_splitter_moved(self, _pos: int, _index: int) -> None:
         sizes = self._nav_splitter.sizes()
