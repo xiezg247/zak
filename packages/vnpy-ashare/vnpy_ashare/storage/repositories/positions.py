@@ -118,7 +118,7 @@ def update_position_item(
             "UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, updated_at = ? WHERE symbol = ? AND exchange = ?",
             (cost_price, volume, buy_date, notes, now, symbol, exchange.name),
         )
-        return cursor.rowcount > 0
+        return bool(cursor.rowcount > 0)
 
 
 def _rewrite_position_order(conn, rows) -> None:

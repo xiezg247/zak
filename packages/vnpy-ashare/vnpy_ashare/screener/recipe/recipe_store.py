@@ -142,7 +142,7 @@ def delete_recipe(recipe_id: str) -> bool:
     """删除用户配方；成功返回 True。"""
     with _connect() as conn:
         cursor = conn.execute("DELETE FROM screener_recipes WHERE id=?", (recipe_id,))
-        return cursor.rowcount > 0
+        return bool(cursor.rowcount > 0)
 
 
 def _row_to_saved(row: sqlite3.Row) -> SavedRecipe:

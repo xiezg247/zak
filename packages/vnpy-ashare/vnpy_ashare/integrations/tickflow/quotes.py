@@ -85,15 +85,14 @@ def fetch_quotes_from_tickflow(
     batches = [tf_symbols[start : start + QUOTE_BATCH_SIZE] for start in range(0, len(tf_symbols), QUOTE_BATCH_SIZE)]
     workers = max_workers if max_workers is not None else quote_fetch_max_workers(batch_count=len(batches))
 
+    result: dict[str, QuoteSnapshot] = {}
     if workers <= 1 or len(batches) <= 1:
         client = get_tickflow_client()
-        result: dict[str, QuoteSnapshot] = {}
         for batch in batches:
             df = client.quotes.get(symbols=batch, as_dataframe=True)
             result.update(_quotes_from_dataframe(df))
         return result
 
-    result: dict[str, QuoteSnapshot] = {}
     with ThreadPoolExecutor(max_workers=workers) as pool:
         for part in pool.map(_fetch_quote_batch, batches):
             result.update(part)

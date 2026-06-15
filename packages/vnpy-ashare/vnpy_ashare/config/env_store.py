@@ -55,14 +55,14 @@ def save_env_values(
     replaced: set[str] = set()
 
     for raw_line in existing_lines:
-        key, _original = _parse_env_line(raw_line)
-        if key is None or key not in known:
+        env_key, _original = _parse_env_line(raw_line)
+        if env_key is None or env_key not in known:
             output.append(raw_line)
             continue
-        replaced.add(key)
-        new_val = merged.get(key, "")
-        if new_val or key in existing_file or key in values:
-            output.append(env_assignment_line(key, new_val))
+        replaced.add(env_key)
+        new_val = merged.get(env_key, "")
+        if new_val or env_key in existing_file or env_key in values:
+            output.append(env_assignment_line(env_key, new_val))
 
     for spec in ENV_CONFIG_SPECS:
         if spec.key in replaced:

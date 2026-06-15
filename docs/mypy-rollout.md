@@ -12,19 +12,20 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 在 package 目录内执行时，`files` 路径相对该包根（如 `vnpy_ashare/quotes/core`）；`mypy_path` 指向 sibling 包（如 `../vnpy-common:.`）。
 
-## 当前范围（vnpy-ashare，Phase 1–4）
+## 当前范围（vnpy-ashare，Phase 1–6）
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
-| `quotes/core/` | QuoteSnapshot、Provider、Redis、enrich | ✅ |
-| `quotes/rank/` | 排行 catalog / engine / scope | ✅ |
-| `quotes/market/` | 市场宽度、环境、概览 loader、moneyflow | ✅ |
-| `quotes/misc/` | 持仓异动、涨速基线 | ✅ |
-| `quotes/radar/` | 雷达 catalog、loaders、horizon、resonance 等 | ✅ |
-| `screener/data/` | 行情加载、基准、筛选上下文、数据源 | ✅ |
-| `services/` | Quote、Screening、Bar 等业务门面（含 `analysis/`、`signals/`） | ✅ |
+| `quotes/*` | core / rank / market / misc / radar | ✅ |
+| `screener/` | 选股全子包（含 data、dimensions、recipe、run…） | ✅ |
+| `services/` | 业务门面（含 analysis、signals） | ✅ |
+| `domain/` | 领域模型、交易日历、symbol 等 | ✅ |
+| `config/` | schema、bridge、preferences、fonts | ✅ |
+| `storage/` | app_db、repositories | ✅ |
+| `integrations/tickflow/` | TickFlow 行情适配 | ✅ |
+| `ai/context/` | AI 上下文组装 | ✅ |
 
-共 **74** 个源文件。
+共 **195** 个源文件。
 
 ## 本地运行
 
@@ -45,9 +46,10 @@ cd packages/vnpy-ashare && ../../.venv/bin/mypy --config-file pyproject.toml
 
 ```text
 Phase 1–3  quotes/*
-Phase 4    screener/data、services/           ← 当前
-Phase 5    ui/quotes/（Qt / types-PySide6）
-Phase 6    screener/ 其余、integrations/
+Phase 4    services/
+Phase 5–6  screener/、domain/、config/、storage/、integrations/tickflow、ai/context  ← 当前（195 文件）
+Phase 7    ui/quotes/（Qt / types-PySide6）
+Phase 8    data/、integrations/ 其余、jobs/
 ```
 
 ## 新增 workspace package

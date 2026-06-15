@@ -46,7 +46,7 @@ def resolve_trade_time_from_tickflow_row(row: dict) -> str:
         try:
             from tickflow.utils import instrument_timestamp_to_trade_time
 
-            return instrument_timestamp_to_trade_time(symbol, int(float(timestamp)), unit="ms")
+            return str(instrument_timestamp_to_trade_time(symbol, int(float(timestamp)), unit="ms"))
         except Exception:
             return ""
     return ""

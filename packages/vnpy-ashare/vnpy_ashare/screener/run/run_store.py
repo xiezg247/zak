@@ -187,7 +187,7 @@ def delete_run(run_id: str) -> bool:
     """删除运行记录；成功返回 True。"""
     with _connect() as conn:
         cursor = conn.execute("DELETE FROM screener_runs WHERE id=?", (run_id,))
-        return cursor.rowcount > 0
+        return bool(cursor.rowcount > 0)
 
 
 def update_run_config(run_id: str, config: dict[str, Any]) -> bool:
@@ -198,7 +198,7 @@ def update_run_config(run_id: str, config: dict[str, Any]) -> bool:
             "UPDATE screener_runs SET config_json=? WHERE id=?",
             (payload, run_id),
         )
-        return cursor.rowcount > 0
+        return bool(cursor.rowcount > 0)
 
 
 def mark_run_read(run_id: str) -> bool:

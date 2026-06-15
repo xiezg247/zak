@@ -45,8 +45,13 @@ files = [
     "vnpy_ashare/quotes/market",
     "vnpy_ashare/quotes/misc",
     "vnpy_ashare/quotes/radar",
-    "vnpy_ashare/screener/data",
+    "vnpy_ashare/screener",
     "vnpy_ashare/services",
+    "vnpy_ashare/domain",
+    "vnpy_ashare/config",
+    "vnpy_ashare/storage",
+    "vnpy_ashare/integrations/tickflow",
+    "vnpy_ashare/ai/context",
 ]
 mypy_path = "../vnpy-common:."
 follow_imports = "silent"

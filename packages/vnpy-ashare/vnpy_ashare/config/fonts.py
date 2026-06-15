@@ -73,8 +73,10 @@ def apply_app_font(*, settings: dict | None = None) -> bool:
     """将字体应用到 QApplication（GUI 运行时）。"""
     from vnpy.trader.ui import QtWidgets
 
+    from typing import cast
+
     app = QtWidgets.QApplication.instance()
     if app is None:
         return False
-    app.setFont(app_font_from_settings(settings))
+    cast(QtWidgets.QApplication, app).setFont(app_font_from_settings(settings))
     return True

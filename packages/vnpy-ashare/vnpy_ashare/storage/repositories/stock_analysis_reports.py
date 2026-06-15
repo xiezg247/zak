@@ -136,7 +136,7 @@ def delete_report(report_id: int) -> bool:
             "DELETE FROM stock_analysis_reports WHERE id = ?",
             (int(report_id),),
         )
-    return cursor.rowcount > 0
+    return bool(cursor.rowcount > 0)
 
 
 def list_symbols_with_reports() -> list[tuple[str, str]]:

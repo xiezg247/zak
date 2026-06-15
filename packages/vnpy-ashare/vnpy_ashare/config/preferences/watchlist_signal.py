@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from strategies.signals import list_supported_signal_strategies
-from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
+from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
 
 SIGNAL_STRATEGY_KEY = "watchlist/signal_strategy"
@@ -53,14 +53,8 @@ def load_watchlist_signal_config() -> WatchlistSignalConfig:
     raw_class = settings.value(SIGNAL_STRATEGY_KEY, DEFAULT_CLASS)
     raw_fast = settings.value(SIGNAL_FAST_KEY, DEFAULT_FAST)
     raw_slow = settings.value(SIGNAL_SLOW_KEY, DEFAULT_SLOW)
-    try:
-        fast = int(raw_fast)
-    except (TypeError, ValueError):
-        fast = DEFAULT_FAST
-    try:
-        slow = int(raw_slow)
-    except (TypeError, ValueError):
-        slow = DEFAULT_SLOW
+    fast = coerce_settings_int(raw_fast, default=DEFAULT_FAST)
+    slow = coerce_settings_int(raw_slow, default=DEFAULT_SLOW)
     return WatchlistSignalConfig(
         class_name=str(raw_class or DEFAULT_CLASS),
         fast_window=fast,

@@ -154,7 +154,8 @@ def run_pattern_screen(
         raise RuntimeError("本地暂无日 K 数据。请先在自选/本地页下载日 K 后再做形态选股。")
 
     scan_items = stocks[:max_scan]
-    if load_bars is None:
+    bars_loader = load_bars
+    if bars_loader is None:
         bars_by_key = load_daily_bars_batch(scan_items)
     else:
         bars_by_key = None
@@ -165,7 +166,8 @@ def run_pattern_screen(
         if bars_by_key is not None:
             bars = bars_by_key.get((item.symbol, item.exchange), [])
         else:
-            bars = load_bars(item.symbol, item.exchange)
+            assert bars_loader is not None
+            bars = bars_loader(item.symbol, item.exchange)
         if len(bars) < PATTERN_MIN_BARS:
             continue
         scanned += 1

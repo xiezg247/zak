@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from typing import Any
 
 from vnpy.trader.ui import QtWidgets
@@ -22,7 +24,7 @@ def resolve_backtest_summary(main_engine=None) -> dict[str, Any] | None:
     if service is not None:
         summary = service.get_last_summary()
         if summary:
-            return summary
+            return cast(dict[str, Any], summary)
     return get_backtest_summary_dict()
 
 

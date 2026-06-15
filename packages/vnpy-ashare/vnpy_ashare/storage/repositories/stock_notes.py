@@ -98,7 +98,7 @@ def delete_entry(entry_id: int) -> bool:
     init_app_db()
     with connect() as conn:
         cursor = conn.execute("DELETE FROM stock_note_entries WHERE id = ?", (int(entry_id),))
-    return cursor.rowcount > 0
+    return bool(cursor.rowcount > 0)
 
 
 def clear_notes_for_symbol(symbol: str, exchange: Exchange) -> dict[str, int]:

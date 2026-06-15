@@ -165,20 +165,28 @@ def _read_bool(raw: object, default: bool) -> bool:
 def _read_float(raw: object, default: float, min_value: float, max_value: float) -> float:
     if raw is None:
         value = default
-    else:
+    elif isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        value = float(raw)
+    elif isinstance(raw, str):
         try:
             value = float(raw)
-        except (TypeError, ValueError):
+        except ValueError:
             value = default
+    else:
+        value = default
     return max(min_value, min(max_value, value))
 
 
 def _read_int(raw: object, default: int, min_value: int, max_value: int) -> int:
     if raw is None:
         value = default
-    else:
+    elif isinstance(raw, int) and not isinstance(raw, bool):
+        value = raw
+    elif isinstance(raw, (float, str)):
         try:
             value = int(float(raw))
         except (TypeError, ValueError):
             value = default
+    else:
+        value = default
     return max(min_value, min(max_value, value))

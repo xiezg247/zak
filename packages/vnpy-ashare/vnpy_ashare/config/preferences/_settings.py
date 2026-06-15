@@ -18,3 +18,18 @@ def coerce_settings_bool(value: object, *, default: bool) -> bool:
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def coerce_settings_int(value: object, *, default: int) -> int:
+    if value is None:
+        return default
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            return default
+    if isinstance(value, float):
+        return int(value)
+    return default

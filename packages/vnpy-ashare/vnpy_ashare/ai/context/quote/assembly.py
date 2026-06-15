@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from vnpy_ashare.ai.context.quote.format import format_quote_summary
 from vnpy_ashare.ai.context.quote.prompts import (
@@ -290,7 +291,7 @@ def build_trend_forecast_menu(
     """走势预测二级菜单（本地情景摘要，非确定性买卖建议）。"""
     vt = binding.vt_symbol
     name = binding.name
-    prompt_kwargs = {
+    prompt_kwargs: dict[str, Any] = {
         "class_name": class_name,
         "fast_window": fast_window,
         "slow_window": slow_window,

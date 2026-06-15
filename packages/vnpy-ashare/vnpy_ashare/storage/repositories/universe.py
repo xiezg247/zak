@@ -99,13 +99,13 @@ def universe_exists() -> bool:
     init_app_db()
     with connect() as conn:
         count = conn.execute("SELECT COUNT(*) FROM universe").fetchone()[0]
-    return count > 0
+    return int(count) > 0
 
 
 def universe_count() -> int:
     init_app_db()
     with connect() as conn:
-        return conn.execute("SELECT COUNT(*) FROM universe").fetchone()[0]
+        return int(conn.execute("SELECT COUNT(*) FROM universe").fetchone()[0])
 
 
 def search_universe(
