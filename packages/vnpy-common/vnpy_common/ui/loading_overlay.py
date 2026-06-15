@@ -50,9 +50,10 @@ class ContentLoadingOverlay(QtWidgets.QWidget):
         layout.addLayout(center_row)
         layout.addStretch(1)
 
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # type: ignore[name-defined]
-        if self.parentWidget() is not None:
-            self.setGeometry(self.parentWidget().rect())
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        parent = self.parentWidget()
+        if parent is not None:
+            self.setGeometry(parent.rect())
         super().resizeEvent(event)
 
     def show_loading(self, title: str, *, hint: str = "") -> None:
@@ -62,8 +63,9 @@ class ContentLoadingOverlay(QtWidgets.QWidget):
             self._hint.show()
         else:
             self._hint.hide()
-        if self.parentWidget() is not None:
-            self.setGeometry(self.parentWidget().rect())
+        parent = self.parentWidget()
+        if parent is not None:
+            self.setGeometry(parent.rect())
         self.raise_()
         self.show()
 
@@ -82,7 +84,7 @@ class LoadingContentHost(QtWidgets.QWidget):
         layout.addWidget(content, stretch=1)
         self._overlay = ContentLoadingOverlay(self)
 
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:  # type: ignore[name-defined]
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
         self._overlay.setGeometry(self.rect())
 

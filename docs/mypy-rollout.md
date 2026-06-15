@@ -6,6 +6,7 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 | 位置 | 职责 |
 |------|------|
+| `packages/vnpy-common/pyproject.toml` → `[tool.mypy]` | common 全包（`vnpy_common`） |
 | `packages/vnpy-ashare/pyproject.toml` → `[tool.mypy]` | ashare 白名单目录、本包 `mypy_path` |
 | `scripts/mypy-check.sh` | 依次跑各 package（CI / 本地统一入口） |
 | 根 `pyproject.toml` | **不再**放 `[tool.mypy]`；dev 依赖仍含 `mypy` |
@@ -14,7 +15,17 @@ zak 采用 **按 workspace package 配置 + 根脚本聚合** 的方式逐步引
 
 **注意**：必须在 `packages/vnpy-ashare` 目录下执行 mypy（或通过 `scripts/mypy-check.sh`），否则 `files` 白名单可能不生效。
 
-## 当前范围（vnpy-ashare，Phase 1–7e）
+## 当前范围
+
+### vnpy-common（Phase 8）
+
+| 目录 | 说明 | 状态 |
+|------|------|------|
+| `vnpy_common/` | 路径、AI 协议、终端主题与 UI 组件 | ✅ 严格 |
+
+共 **30** 个源文件。
+
+### vnpy-ashare（Phase 1–7e）
 
 | 目录 | 说明 | 状态 |
 |------|------|------|
@@ -62,7 +73,7 @@ Phase 7b   ui/quotes/ 收紧（40 处）                                        
 Phase 7c   ui 其余子包收紧（25 处）；移除 ui.* 全量 14 类 disable                               ← 已完成
 Phase 7d   types-PySide6；去掉 override/call-overload/arg-type/misc（仅留 attr-defined）  ← 已完成
 Phase 7e   去掉 attr-defined；QuotesPage shell 属性 mixin + Qt/pyqtgraph Protocol  ← 已完成
-Phase 8    vnpy-common 独立 package mypy
+Phase 8    vnpy-common 独立 package mypy（30 文件）                                    ← 已完成
 ```
 
 ## 新增 workspace package

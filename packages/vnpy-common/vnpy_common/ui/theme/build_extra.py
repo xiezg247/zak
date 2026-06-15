@@ -3,8 +3,23 @@
 from __future__ import annotations
 
 import html
+from collections.abc import Sequence
+from typing import Protocol
 
 from vnpy_common.ui.theme.tokens import ThemeTokens
+
+
+class SchedulerRunLogRecord(Protocol):
+    """调度任务执行记录（与 vnpy_ashare.scheduler.manager.JobRunRecord 字段对齐）。"""
+
+    running: bool
+    skipped: bool
+    success: bool
+    message: str
+    finished_at: str
+    started_at: str | None
+    job_name: str
+    detail_lines: list[str]
 
 
 def build_settings_stylesheet(t: ThemeTokens) -> str:
@@ -387,7 +402,7 @@ QFormLayout QLabel {{
 """
 
 
-def format_scheduler_run_log_html(t: ThemeTokens, records: list[object]) -> str:
+def format_scheduler_run_log_html(t: ThemeTokens, records: Sequence[SchedulerRunLogRecord]) -> str:
     if not records:
         return f'<p style="color:{t.text_muted};margin:0;">暂无执行记录。</p>'
 

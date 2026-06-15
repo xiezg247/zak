@@ -22,5 +22,6 @@ run_pkg_mypy() {
   )
 }
 
-# 新增 package 时在此追加
+# 新增 package 时在此追加（依赖顺序：common 先于 ashare）
+run_pkg_mypy packages/vnpy-common
 run_pkg_mypy packages/vnpy-ashare
