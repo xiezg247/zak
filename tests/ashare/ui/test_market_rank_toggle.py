@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.quotes.rank_catalog import DEFAULT_RANK_ID
+from vnpy_ashare.quotes.rank.rank_catalog import DEFAULT_RANK_ID
 from vnpy_ashare.ui.quotes.features.market_rank import MarketRankFeature
 from vnpy_ashare.ui.quotes.features.market_rank_sidebar import KIND_RANK, RANK_ID_ROLE, RANK_ROW_KIND_ROLE
 

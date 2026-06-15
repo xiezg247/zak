@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from vnpy_ashare.domain.calendar import is_trading_day
 from vnpy_ashare.jobs.result import JobResult
-from vnpy_ashare.quotes.radar_horizon_scan import run_horizon_outlook_scan
+from vnpy_ashare.quotes.radar.radar_horizon_scan import run_horizon_outlook_scan
 
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 

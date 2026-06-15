@@ -6,20 +6,20 @@ from datetime import datetime
 
 from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signal_config
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_RECENT_DAYS
-from vnpy_ashare.quotes.radar_ai_cache import resolve_ai_hint, rows_fingerprint
-from vnpy_ashare.quotes.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar_cross_refs import build_outlook_cross_ref_hint, build_outlook_cross_ref_suffix
-from vnpy_ashare.quotes.radar_horizon_cache import (
+from vnpy_ashare.quotes.radar.radar_ai_cache import resolve_ai_hint, rows_fingerprint
+from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
+from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_hint, build_outlook_cross_ref_suffix
+from vnpy_ashare.quotes.radar.radar_horizon_cache import (
     build_horizon_subtitle,
     get_horizon_cache,
 )
-from vnpy_ashare.quotes.radar_horizon_scan import (
+from vnpy_ashare.quotes.radar.radar_horizon_scan import (
     HorizonScanStats,
     collect_daily_k_ready_vt_symbols,
     horizon_empty_message,
 )
-from vnpy_ashare.quotes.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
-from vnpy_ashare.quotes.radar_models import RadarCardData, RadarRow, enrich_radar_rows
+from vnpy_ashare.quotes.radar.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows
 
 OUTLOOK_CARD_VARIANTS: dict[str, str] = {
     "outlook_watch": "watch_next",
@@ -144,7 +144,7 @@ def load_outlook_horizon(
             ),
         )
 
-    from vnpy_ashare.quotes.radar_horizon_scan import cache_entry_from_scan, scan_horizon_variant
+    from vnpy_ashare.quotes.radar.radar_horizon_scan import cache_entry_from_scan, scan_horizon_variant
 
     scan_result = scan_horizon_variant(resolved_variant, top_n=spec.top_n, config=config)
 

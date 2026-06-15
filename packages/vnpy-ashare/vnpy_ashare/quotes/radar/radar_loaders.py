@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.quotes.radar_catalog import (
+from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
@@ -13,7 +13,7 @@ from vnpy_ashare.quotes.radar_catalog import (
     RADAR_CARD_SPECS,
     RadarCardSpec,
 )
-from vnpy_ashare.quotes.radar_models import (
+from vnpy_ashare.quotes.radar.radar_models import (
     RadarCardData,
     RadarResonanceEntry,
     RadarRow,
@@ -22,9 +22,9 @@ from vnpy_ashare.quotes.radar_models import (
     merge_row_quotes,
     quote_map,
 )
-from vnpy_ashare.quotes.radar_pool import name_map_for_symbols
-from vnpy_ashare.quotes.radar_sector import load_sector_theme
-from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
+from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
+from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
+from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
@@ -76,7 +76,7 @@ def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
 
 
 def _moneyflow_metric(row: dict[str, Any], _hit=None) -> tuple[str, str, str, str]:
-    from vnpy_ashare.quotes.moneyflow_kind import classify_moneyflow_row, flow_kind_label
+    from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
     from vnpy_ashare.ui.quotes.table.columns import format_amount
 
     merged = _merge_row_quotes(row)
@@ -158,7 +158,7 @@ def _row_from_dict(row: dict[str, Any], *, name_map: dict[str, str] | None = Non
 
 
 def _relative_strength_subline(row: dict[str, Any]) -> tuple[str, str] | None:
-    from vnpy_ashare.quotes.radar_relative_strength import build_relative_strength_subline
+    from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
 
     return build_relative_strength_subline(row)
 
@@ -454,7 +454,7 @@ def incremental_refresh_radar_card_quotes(data: RadarCardData) -> RadarCardData:
     """仅刷新卡片行的现价与涨幅，不重算发现 / 板块等指标。"""
     from dataclasses import replace
 
-    from vnpy_ashare.quotes.radar_models import enrich_radar_rows
+    from vnpy_ashare.quotes.radar.radar_models import enrich_radar_rows
     from vnpy_ashare.screener.data.screening_context import preload_screening_context_quotes, screening_context_scope
 
     if not data.rows:
@@ -549,11 +549,11 @@ def _load_radar_card_uncached(
     if spec.id == "sector_theme":
         return load_sector_theme(spec, variant=sector_variant)
     if spec.id in ("outlook_watch", "outlook_hold"):
-        from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
+        from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
 
         return load_outlook_horizon(spec, force_recompute=force_recompute)
     if spec.id == "outlook_scenario":
-        from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
+        from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
 
         return load_outlook_horizon(
             spec,
@@ -602,7 +602,7 @@ def load_radar_board(
 def _accumulate_radar_resonance(
     payload: dict[str, RadarCardData],
 ) -> dict[str, dict[str, object]]:
-    from vnpy_ashare.quotes.radar_catalog import radar_card_resonance_weight
+    from vnpy_ashare.quotes.radar.radar_catalog import radar_card_resonance_weight
 
     grouped: dict[str, dict[str, object]] = {}
     for data in payload.values():
@@ -746,7 +746,7 @@ def build_radar_card_ai_prompt(
     elif card_id == "sector_theme":
         lines[0] = "请解读雷达「板块·主线」：归纳今日行业轮动与龙头特征。"
     elif card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
-        from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
+        from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt
 
         single = build_outlook_ai_prompt({card_id: data}, card_id=card_id)
         return single or "\n".join(lines).strip()
@@ -797,7 +797,7 @@ def build_radar_ai_prompt(
                 marker = "★ " if row.vt_symbol in resonance else ""
                 lines.append(f"- {marker}{_row_ai_summary(row)}")
         lines.append("")
-    from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
+    from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt
 
     for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
         outlook_prompt = build_outlook_ai_prompt(payload, card_id=outlook_card_id)

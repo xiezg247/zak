@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.quotes.radar_catalog import radar_card_resonance_weight
-from vnpy_ashare.quotes.radar_resonance_prefs import (
+from vnpy_ashare.quotes.radar.radar_catalog import radar_card_resonance_weight
+from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
     load_radar_resonance_weights,
     save_radar_resonance_weights,
 )

@@ -6,7 +6,7 @@ from tickflow._exceptions import APIError
 
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow.quotes import get_tickflow_client
-from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
 
 
 class DepthPermissionError(Exception):

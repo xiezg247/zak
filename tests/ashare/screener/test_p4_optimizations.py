@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.quotes.radar_cross_refs import build_outlook_cross_ref_suffix
-from vnpy_ashare.quotes.radar_models import RadarRow
-from vnpy_ashare.quotes.radar_relative_strength import build_relative_strength_subline
+from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_suffix
+from vnpy_ashare.quotes.radar.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
 from vnpy_ashare.screener.dimensions.intraday_breakout import _quote_breakout_strength
 from vnpy_ashare.screener.dimensions.momentum import _momentum_change_allowed
 from vnpy_ashare.screener.sector.sector_summary import compute_sector_distribution
@@ -45,21 +45,21 @@ def test_breakout_rejects_large_pullback_from_high() -> None:
 def test_relative_strength_subline_with_industry() -> None:
     with (
         patch(
-            "vnpy_ashare.quotes.radar_relative_strength.get_stock_industry_map",
+            "vnpy_ashare.quotes.radar.radar_relative_strength.get_stock_industry_map",
             return_value={"600000.SH": "银行"},
         ),
         patch(
-            "vnpy_ashare.quotes.radar_relative_strength.attach_industry",
+            "vnpy_ashare.quotes.radar.radar_relative_strength.attach_industry",
             side_effect=lambda rows, industry_map=None: [
                 {**row, "industry": "银行"} for row in rows
             ],
         ),
         patch(
-            "vnpy_ashare.quotes.radar_relative_strength.market_benchmark_change_pct",
+            "vnpy_ashare.quotes.radar.radar_relative_strength.market_benchmark_change_pct",
             return_value=1.0,
         ),
         patch(
-            "vnpy_ashare.quotes.radar_relative_strength.industry_avg_change_map",
+            "vnpy_ashare.quotes.radar.radar_relative_strength.industry_avg_change_map",
             return_value={"银行": 2.0},
         ),
     ):
@@ -77,7 +77,7 @@ def test_outlook_cross_ref_suffix() -> None:
         RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),
     )
     with patch(
-        "vnpy_ashare.quotes.radar_cross_refs.latest_recipe_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_cross_refs.latest_recipe_vt_symbols",
         return_value={"600000.SSE"},
     ):
         suffix = build_outlook_cross_ref_suffix(rows)

@@ -29,7 +29,7 @@ def reload_vnpy_datafeed(*, output: Callable[[str], None] | None = None) -> tupl
 
 def reload_datafeed_stack(*, output: Callable[[str], None] | None = None) -> tuple[bool, str]:
     """重建 vnpy datafeed，并重置行情 Provider 懒加载缓存。"""
-    from vnpy_ashare.quotes.provider import reset_quote_providers
+    from vnpy_ashare.quotes.core.provider import reset_quote_providers
 
     ok, message = reload_vnpy_datafeed(output=output)
     reset_quote_providers()

@@ -12,7 +12,7 @@ from vnpy_ashare.domain.signal_snapshot import (
     signal_sort_key,
 )
 from vnpy_ashare.domain.symbols import parse_stock_symbol, vt_symbol_to_ts_code
-from vnpy_ashare.quotes.radar_models import RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarRow, merge_row_quotes
 from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 
 

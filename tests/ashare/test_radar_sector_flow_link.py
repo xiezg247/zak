@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
-from vnpy_ashare.quotes.radar_sector import load_sector_theme
+from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
+from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
 
 
 class RadarSectorFlowLinkTests(unittest.TestCase):
@@ -30,7 +30,7 @@ class RadarSectorFlowLinkTests(unittest.TestCase):
             ),
         ]
         with mock.patch(
-            "vnpy_ashare.quotes.radar_sector.run_sector_strength",
+            "vnpy_ashare.quotes.radar.radar_sector.run_sector_strength",
             return_value=(hits, 100),
         ):
             data = load_sector_theme(RADAR_CARD_BY_ID["sector_theme"], variant="leaders")

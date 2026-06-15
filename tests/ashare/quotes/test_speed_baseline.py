@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
-from vnpy_ashare.quotes.speed_baseline import (
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.misc.speed_baseline import (
     SPEED_BASELINE_AT_KEY,
     SPEED_BASELINE_HASH_KEY,
     SPEED_WINDOW_SEC,
@@ -84,7 +84,7 @@ def test_apply_change_speed_5m_initial_baseline() -> None:
 
 def test_apply_change_speed_5m_within_window(monkeypatch) -> None:
     baseline_at = 1_000_000.0
-    monkeypatch.setattr("vnpy_ashare.quotes.speed_baseline.time.time", lambda: baseline_at + 60.0)
+    monkeypatch.setattr("vnpy_ashare.quotes.misc.speed_baseline.time.time", lambda: baseline_at + 60.0)
     client = _FakeRedis()
     client.hashes[SPEED_BASELINE_HASH_KEY] = {"600000.SH": "10.0"}
     client.data[SPEED_BASELINE_AT_KEY] = str(baseline_at)
@@ -99,7 +99,7 @@ def test_apply_change_speed_5m_rotates_after_window(monkeypatch) -> None:
     client.data[SPEED_BASELINE_AT_KEY] = "0"
     quotes = {"600000.SH": _quote("600000.SH", 11.0)}
 
-    monkeypatch.setattr("vnpy_ashare.quotes.speed_baseline.time.time", lambda: float(SPEED_WINDOW_SEC + 1))
+    monkeypatch.setattr("vnpy_ashare.quotes.misc.speed_baseline.time.time", lambda: float(SPEED_WINDOW_SEC + 1))
     apply_change_speed_5m(client, quotes)
     assert quotes["600000.SH"].change_speed_5m == 0.0
     assert client.hashes[SPEED_BASELINE_HASH_KEY]["600000.SH"] == "11.0"

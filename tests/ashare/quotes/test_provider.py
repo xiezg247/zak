@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
-from vnpy_ashare.quotes import provider as provider_module
-from vnpy_ashare.quotes.provider import (
+from vnpy_ashare.quotes.core import provider as provider_module
+from vnpy_ashare.quotes.core.provider import (
     QuoteProviderError,
     RedisQuoteProvider,
     TickflowQuoteProvider,

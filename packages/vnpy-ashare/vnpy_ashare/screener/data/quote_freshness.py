@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from vnpy_ashare.quotes.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 DEFAULT_MAX_AGE_SECONDS = 90

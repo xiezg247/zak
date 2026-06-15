@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.ai.context.market_overview import sync_market_overview_context, sync_market_overview_partial
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
-from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
+from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
 from vnpy_ashare.ui.quotes.market_overview.worker import MarketOverviewLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active

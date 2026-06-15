@@ -870,7 +870,7 @@ class TableController:
             return self._market_board_map(self._p).get(item.ts_code, "").lower()
         if quote is None:
             return float("-inf")
-        from vnpy_ashare.quotes.rank_engine import quote_rank_value
+        from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
 
         if column_key == "intraday_change_pct":
             return quote_rank_value(quote, column_key)

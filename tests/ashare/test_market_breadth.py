@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.quotes.market_breadth import compute_market_breadth
+from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth
 
 
 class MarketBreadthTests(unittest.TestCase):

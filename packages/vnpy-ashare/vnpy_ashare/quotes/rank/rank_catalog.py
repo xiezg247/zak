@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from vnpy_ashare.quotes.market_breadth import LIMIT_DOWN_PCT, LIMIT_UP_PCT
+from vnpy_ashare.quotes.market.market_breadth import LIMIT_DOWN_PCT, LIMIT_UP_PCT
 
 NEAR_LIMIT_UP_MIN = 7.0
 

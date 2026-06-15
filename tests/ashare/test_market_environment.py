@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.quotes.market_environment import format_north_money_hsgt
+from vnpy_ashare.quotes.market.market_environment import format_north_money_hsgt
 
 
 class MarketEnvironmentTests(unittest.TestCase):

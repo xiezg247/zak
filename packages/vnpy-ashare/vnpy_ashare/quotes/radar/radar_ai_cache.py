@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from vnpy_ashare.quotes.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """

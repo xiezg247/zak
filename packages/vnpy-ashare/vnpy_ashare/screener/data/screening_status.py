@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from vnpy_ashare.domain.market_hours import ashare_market_phase_label, is_ashare_trading_session
-from vnpy_ashare.quotes.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.data.quote_freshness import ensure_fresh_quotes_for_screening, quote_snapshot_age_seconds
 from vnpy_ashare.screener.preset.presets import get_preset

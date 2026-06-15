@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
 
 
 class TestDepthSnapshot(unittest.TestCase):

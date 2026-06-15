@@ -11,7 +11,7 @@ from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.quotes.radar_catalog import (
+from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
@@ -19,9 +19,9 @@ from vnpy_ashare.quotes.radar_catalog import (
     full_refresh_every_n_ticks,
     list_radar_cards,
 )
-from vnpy_ashare.quotes.radar_full_refresh_prefs import save_radar_full_refresh_every
-from vnpy_ashare.quotes.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
-from vnpy_ashare.quotes.radar_loaders import (
+from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
+from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
+from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
     build_radar_ai_prompt,
     build_radar_card_ai_prompt,
@@ -29,7 +29,7 @@ from vnpy_ashare.quotes.radar_loaders import (
     build_radar_resonance_list,
     compute_radar_resonance,
 )
-from vnpy_ashare.quotes.radar_resonance_store import set_radar_resonance_entries
+from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
 from vnpy_common.ui.feedback import page_notify
@@ -120,7 +120,7 @@ class RadarController(QtCore.QObject):
 
     def _reload_cards_after_resonance_weight_change(self) -> None:
         """权重变更后全量重算发现 / 板块 / 自选等指标卡（保留展望等缓存卡）。"""
-        from vnpy_ashare.quotes.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
+        from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 
         reload_ids = [
             card_id
@@ -345,7 +345,7 @@ class RadarController(QtCore.QObject):
         panel.apply_entries(entries)
 
     def _on_card_failed(self, card_id: str, message: str) -> None:
-        from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
+        from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
 
         widget = self._board.card(card_id)
         data = self._last_payload.get(card_id)

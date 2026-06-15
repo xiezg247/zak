@@ -8,8 +8,8 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.quotes.radar_cross_refs import build_outlook_cross_ref_suffix
-from vnpy_ashare.quotes.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_suffix
+from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.screener.dimensions.history_signals import (
     breaks_rolling_high,
     positive_day_count,
@@ -101,9 +101,9 @@ def test_outlook_cross_ref_includes_resonance() -> None:
         RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),
     )
     with (
-        patch("vnpy_ashare.quotes.radar_cross_refs.latest_recipe_vt_symbols", return_value=set()),
+        patch("vnpy_ashare.quotes.radar.radar_cross_refs.latest_recipe_vt_symbols", return_value=set()),
         patch(
-            "vnpy_ashare.quotes.radar_cross_refs.latest_resonance_vt_symbols",
+            "vnpy_ashare.quotes.radar.radar_cross_refs.latest_resonance_vt_symbols",
             return_value={"600000.SSE"},
         ),
     ):

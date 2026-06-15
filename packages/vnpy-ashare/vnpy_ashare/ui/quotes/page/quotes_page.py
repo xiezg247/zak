@@ -29,8 +29,8 @@ from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
-from vnpy_ashare.quotes.provider import is_gateway_quote_active
+from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.ui.quotes.chart import ChartPanel
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,
@@ -532,7 +532,7 @@ class QuotesPage(QtWidgets.QWidget):
 
     def open_industry_drilldown(self, industry: str, *, rank_id: str = "net_mf_in") -> None:
         """从板块资金等入口下钻：主力净流入榜 + 行业成分筛选。"""
-        from vnpy_ashare.quotes.rank_catalog import get_rank_definition
+        from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
         from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID
 
         cleaned = str(industry or "").strip()

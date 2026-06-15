@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.quotes.moneyflow_kind import enrich_moneyflow_row_with_kind
+from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
 from vnpy_ashare.screener.preset.rules import apply_moneyflow_in

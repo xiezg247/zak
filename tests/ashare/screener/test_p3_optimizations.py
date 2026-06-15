@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.quotes.radar_loaders import (
+from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
     RadarRow,
     build_radar_resonance_list,
@@ -29,7 +29,7 @@ def _sample_row(vt_symbol: str, *, name: str = "测试") -> RadarRow:
 
 
 def test_weighted_resonance_prefers_discovery_cards() -> None:
-    from vnpy_ashare.quotes.radar_resonance_prefs import save_radar_resonance_weights
+    from vnpy_ashare.quotes.radar.radar_resonance_prefs import save_radar_resonance_weights
 
     save_radar_resonance_weights(
         {

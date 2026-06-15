@@ -11,7 +11,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.quotes.provider import resolve_quote_snapshot
+from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

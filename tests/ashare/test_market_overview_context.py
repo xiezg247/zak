@@ -11,10 +11,10 @@ from vnpy_ashare.ai.context.market_overview import (
     sync_market_overview_context,
 )
 from vnpy_ashare.ai.context.store import clear_all, get_market_overview_context
-from vnpy_ashare.quotes.market_breadth import MarketBreadthSnapshot
-from vnpy_ashare.quotes.market_environment import MarketEnvironmentSnapshot
-from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, SectorRankItem
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
+from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot
+from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_common.ai.protocol import AiContextData
 
 

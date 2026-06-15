@@ -179,7 +179,7 @@ def default_refresh_ms_for_card(card_id: str) -> int:
 
 def full_refresh_every_n_ticks(card_id: str) -> int:
     """自动刷新时每隔多少次触发一次全量指标重算。"""
-    from vnpy_ashare.quotes.radar_full_refresh_prefs import full_refresh_every_n_ticks as _load
+    from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import full_refresh_every_n_ticks as _load
 
     return _load(card_id)
 
@@ -197,6 +197,6 @@ def full_refresh_options_for_card(card_id: str) -> tuple[RadarRefreshOption, ...
 
 
 def radar_card_resonance_weight(card_id: str) -> float:
-    from vnpy_ashare.quotes.radar_resonance_prefs import radar_card_resonance_weight as _load_weight
+    from vnpy_ashare.quotes.radar.radar_resonance_prefs import radar_card_resonance_weight as _load_weight
 
     return _load_weight(card_id)

@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.ai.context.store import get_market_overview_context, set_market_overview_context
-from vnpy_ashare.quotes.market_breadth import MarketBreadthSnapshot
-from vnpy_ashare.quotes.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
-from vnpy_ashare.quotes.market_overview_loaders import MarketOverviewData, SectorRankItem
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
+from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
+from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_common.ai.protocol import QuickAction
 
 

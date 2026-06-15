@@ -6,7 +6,7 @@ from typing import Any
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
-from vnpy_ashare.quotes.moneyflow_kind import enrich_moneyflow_row_with_kind
+from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score

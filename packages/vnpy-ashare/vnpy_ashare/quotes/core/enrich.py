@@ -5,8 +5,8 @@ from __future__ import annotations
 import time
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
-from vnpy_ashare.quotes.market_breadth import LIMIT_UP_PCT
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.screener.data.data_source import (
     fetch_daily_basic_with_fallback,
     fetch_limit_list_with_fallback,

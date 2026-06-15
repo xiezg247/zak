@@ -17,7 +17,7 @@ from vnpy_ashare.domain.signal_snapshot import (
     signal_is_strong,
     signal_snapshot_to_dict,
 )
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.services.signals import (
     build_intraday_cross_hints,
     build_price_field_explanations,

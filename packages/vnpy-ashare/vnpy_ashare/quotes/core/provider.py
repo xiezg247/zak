@@ -7,8 +7,8 @@ from typing import Any, Literal
 
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
-from vnpy_ashare.quotes.redis_store import RedisQuoteStore
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 QuoteSource = Literal["market", "watchlist"]
 
@@ -50,9 +50,9 @@ class RedisQuoteProvider(QuoteProvider):
         *,
         rank_id: str = "change_pct",
     ) -> tuple[list[StockItem], dict[str, QuoteSnapshot], int]:
-        from vnpy_ashare.quotes.rank_catalog import get_rank_definition
-        from vnpy_ashare.quotes.rank_engine import apply_rank_catalog
-        from vnpy_ashare.quotes.rank_scope import (
+        from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
+        from vnpy_ashare.quotes.rank.rank_engine import apply_rank_catalog
+        from vnpy_ashare.quotes.rank.rank_scope import (
             build_stock_items_from_rank_symbols,
             load_watchlist_rank_catalog,
             paginate_symbols,

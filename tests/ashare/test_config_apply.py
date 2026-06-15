@@ -117,7 +117,7 @@ class ApplyRuntimeSettingsTest(unittest.TestCase):
 class DatafeedReloadTest(unittest.TestCase):
     def test_reload_datafeed_stack_resets_providers(self) -> None:
         with patch("vnpy_ashare.config.datafeed_reload.reload_vnpy_datafeed", return_value=(True, "已重建")):
-            with patch("vnpy_ashare.quotes.provider.reset_quote_providers") as reset_mock:
+            with patch("vnpy_ashare.quotes.core.provider.reset_quote_providers") as reset_mock:
                 from vnpy_ashare.config.datafeed_reload import reload_datafeed_stack
 
                 ok, msg = reload_datafeed_stack()

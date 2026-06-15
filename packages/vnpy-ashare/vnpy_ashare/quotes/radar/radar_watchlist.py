@@ -7,22 +7,22 @@ from typing import Any
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
-from vnpy_ashare.quotes.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar_horizon_scenario import batch_build_scenario_metrics, classify_scenario_hint
-from vnpy_ashare.quotes.radar_models import (
+from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
+from vnpy_ashare.quotes.radar.radar_horizon_scenario import batch_build_scenario_metrics, classify_scenario_hint
+from vnpy_ashare.quotes.radar.radar_models import (
     RadarCardData,
     RadarRow,
     format_pct,
     merge_row_quotes,
     quote_map,
 )
-from vnpy_ashare.quotes.radar_moneyflow import (
+from vnpy_ashare.quotes.radar.radar_moneyflow import (
     enrich_quotes_with_moneyflow,
     moneyflow_score_boost,
     watchlist_moneyflow_metric,
 )
-from vnpy_ashare.quotes.radar_pool import collect_personal_vt_symbols, name_map_for_symbols
-from vnpy_ashare.quotes.radar_signals import build_signal_snapshot, compute_signal_transitions
+from vnpy_ashare.quotes.radar.radar_pool import collect_personal_vt_symbols, name_map_for_symbols
+from vnpy_ashare.quotes.radar.radar_signals import build_signal_snapshot, compute_signal_transitions
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
@@ -80,7 +80,7 @@ def _quotes_for_candidates(candidates: list[str]) -> dict[str, dict[str, Any]]:
 
     if missing_tf:
         try:
-            from vnpy_ashare.quotes.redis_store import RedisQuoteStore
+            from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
             quotes = RedisQuoteStore().get_quotes(missing_tf)
             for tf_symbol, quote in quotes.items():

@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from vnpy_ashare.quotes.radar_models import RadarRow, enrich_radar_row, float_or_none, quotes_for_vt_symbols
+from vnpy_ashare.quotes.radar.radar_models import RadarRow, enrich_radar_row, float_or_none, quotes_for_vt_symbols
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """

@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
-from vnpy_ashare.quotes.redis_store import RedisQuoteStore
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 
 class MarketQuotesLoadError(RuntimeError):

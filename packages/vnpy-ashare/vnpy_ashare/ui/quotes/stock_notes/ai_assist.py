@@ -73,7 +73,7 @@ def format_quote_snapshot_line(quote: QuoteSnapshot) -> str:
 
 
 def build_quote_snapshot_for_item(item: StockItem) -> str:
-    from vnpy_ashare.quotes.provider import resolve_quote_snapshot
+    from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
 
     quote = resolve_quote_snapshot(item)
     if quote is None:

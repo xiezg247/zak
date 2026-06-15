@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from strategies.registry import get_strategy_meta
 from vnpy_ashare.domain.position_snapshot import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.signal_snapshot import signal_missing_kline
-from vnpy_ashare.quotes.position_anomaly import (
+from vnpy_ashare.quotes.misc.position_anomaly import (
     format_anomaly_tags,
     is_position_anomaly,
     position_anomaly_reasons,

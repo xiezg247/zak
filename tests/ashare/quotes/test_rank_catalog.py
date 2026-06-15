@@ -1,6 +1,6 @@
 """榜单注册表与 Redis 榜 key 辅助测试。"""
 
-from vnpy_ashare.quotes.rank_catalog import (
+from vnpy_ashare.quotes.rank.rank_catalog import (
     RANK_DEFINITIONS,
     get_rank_definition,
     list_rank_definitions,
@@ -8,7 +8,7 @@ from vnpy_ashare.quotes.rank_catalog import (
     rank_definition_index,
     rank_definition_row,
 )
-from vnpy_ashare.quotes.redis_store import RANK_REDIS_FIELDS, rank_key
+from vnpy_ashare.quotes.core.redis_store import RANK_REDIS_FIELDS, rank_key
 
 
 def test_rank_definitions_unique_ids() -> None:

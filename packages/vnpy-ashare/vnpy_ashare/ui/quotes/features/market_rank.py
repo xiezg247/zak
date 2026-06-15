@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.quotes.rank_catalog import DEFAULT_RANK_ID, get_rank_definition, rank_definition_row
+from vnpy_ashare.quotes.rank.rank_catalog import DEFAULT_RANK_ID, get_rank_definition, rank_definition_row
 from vnpy_ashare.ui.quotes.features.market_rank_sidebar import rank_id_from_sidebar_row
 
 if TYPE_CHECKING:

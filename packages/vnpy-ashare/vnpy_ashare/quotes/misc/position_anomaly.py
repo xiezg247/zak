@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.quotes.market_breadth import LIMIT_UP_PCT
+from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.position_snapshot import PositionSnapshot
-    from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+    from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 INTRADAY_DROP_PCT = -3.0
 INTRADAY_SURGE_PCT = 5.0

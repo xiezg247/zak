@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from vnpy_ashare.quotes.radar_horizon_scan import (
+from vnpy_ashare.quotes.radar.radar_horizon_scan import (
     HorizonScanStats,
     horizon_empty_message,
     local_daily_k_insufficient,
@@ -33,7 +33,7 @@ def test_local_daily_k_insufficient_requires_empty_refined() -> None:
 def test_horizon_empty_message_no_local_k() -> None:
     stats = HorizonScanStats(scanned_total=100, excluded_count=0, prefilter_total=0, refined_total=0, kline_missing=0)
     with patch(
-        "vnpy_ashare.quotes.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
         return_value=set(),
     ):
         message = horizon_empty_message(stats, card_title="未来·关注")
@@ -49,7 +49,7 @@ def test_horizon_empty_message_no_match() -> None:
         kline_missing=0,
     )
     with patch(
-        "vnpy_ashare.quotes.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
         return_value={"600000.SSE"},
     ):
         message = horizon_empty_message(stats, card_title="未来·关注")
@@ -64,15 +64,15 @@ def test_prefilter_skips_symbols_without_local_daily_k() -> None:
     snapshot = type("Snap", (), {"rows": quote_rows, "total": len(quote_rows)})()
 
     with patch(
-        "vnpy_ashare.quotes.radar_horizon_scan.load_screening_quote_snapshot",
+        "vnpy_ashare.quotes.radar.radar_horizon_scan.load_screening_quote_snapshot",
         return_value=snapshot,
     ):
         with patch(
-            "vnpy_ashare.quotes.radar_horizon_scan.apply_screening_filters",
+            "vnpy_ashare.quotes.radar.radar_horizon_scan.apply_screening_filters",
             side_effect=lambda rows: rows,
         ):
             with patch(
-                "vnpy_ashare.quotes.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
+                "vnpy_ashare.quotes.radar.radar_horizon_scan.collect_daily_k_ready_vt_symbols",
                 return_value={"600000.SSE"},
             ):
                 prefilter, stats = prefilter_horizon_universe(set(), max_items=10)
@@ -83,7 +83,7 @@ def test_prefilter_skips_symbols_without_local_daily_k() -> None:
 
 def test_outlook_judgment_subline_prefers_scenario() -> None:
     from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
-    from vnpy_ashare.quotes.radar_horizon_rules import outlook_judgment_subline
+    from vnpy_ashare.quotes.radar.radar_horizon_rules import outlook_judgment_subline
 
     snapshot = SignalSnapshot(
         vt_symbol="600000.SSE",

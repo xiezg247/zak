@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 
 class TestQuoteSnapshot(unittest.TestCase):

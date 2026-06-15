@@ -8,9 +8,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from vnpy_ashare.domain.quote_time import normalize_datetime_text
-from vnpy_ashare.quotes.rank_engine import compute_intraday_change_pct
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
-from vnpy_ashare.quotes.speed_baseline import apply_change_speed_5m
+from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
 from vnpy_common.paths import ENV_FILE
 
 KEY_PREFIX = "zak"
@@ -122,7 +122,7 @@ class RedisQuoteStore:
                 quote.trade_time = fallback_time
             result[tf_symbol] = quote
         if result:
-            from vnpy_ashare.quotes.enrich import fill_missing_tushare_factors
+            from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 
             fill_missing_tushare_factors(result)
         return result

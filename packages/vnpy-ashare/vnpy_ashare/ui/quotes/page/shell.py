@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.data.minute_periods import LOCAL_SCOPE_OPTIONS
-from vnpy_ashare.quotes.provider import is_gateway_quote_active
+from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel, create_daily_chart

@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.quotes.moneyflow_kind import (
+from vnpy_ashare.quotes.market.moneyflow_kind import (
     enrich_moneyflow_row_with_kind,
     moneyflow_dimension_score_factor,
     row_has_moneyflow_fields,

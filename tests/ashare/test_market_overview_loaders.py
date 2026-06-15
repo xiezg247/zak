@@ -6,8 +6,8 @@ import unittest
 from dataclasses import replace
 from unittest.mock import patch
 
-from vnpy_ashare.quotes.market_breadth import compute_market_breadth, merge_official_limit_counts
-from vnpy_ashare.quotes.market_overview_loaders import load_sector_ranks
+from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
+from vnpy_ashare.quotes.market.market_overview_loaders import load_sector_ranks
 
 
 class MarketOverviewLoaderTests(unittest.TestCase):

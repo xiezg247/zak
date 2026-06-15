@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import ashare_market_phase, ashare_market_phase_label
-from vnpy_ashare.quotes.radar_catalog import (
+from vnpy_ashare.quotes.radar.radar_catalog import (
     RadarCardSpec,
     default_refresh_ms_for_card,
     default_variant_for_card,
@@ -14,8 +14,8 @@ from vnpy_ashare.quotes.radar_catalog import (
     supports_auto_refresh,
     variants_for_card,
 )
-from vnpy_ashare.quotes.radar_full_refresh_prefs import load_radar_full_refresh_every
-from vnpy_ashare.quotes.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_refresh_every
+from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
 from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_common.ui.theme import theme_manager
@@ -417,7 +417,7 @@ class RadarBoard(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("RadarBoard")
-        from vnpy_ashare.quotes.radar_catalog import RADAR_GRID_COLUMNS, list_radar_cards
+        from vnpy_ashare.quotes.radar.radar_catalog import RADAR_GRID_COLUMNS, list_radar_cards
 
         grid = QtWidgets.QGridLayout(self)
         grid.setContentsMargins(8, 8, 8, 8)
@@ -456,7 +456,7 @@ class RadarBoard(QtWidgets.QWidget):
             widget.update_mode_badge()
 
     def apply_board(self, payload: dict[str, RadarCardData]) -> None:
-        from vnpy_ashare.quotes.radar_loaders import compute_radar_resonance
+        from vnpy_ashare.quotes.radar.radar_loaders import compute_radar_resonance
 
         resonance = compute_radar_resonance(payload)
         for card_id, data in payload.items():

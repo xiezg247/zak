@@ -9,8 +9,8 @@ import urllib.request
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.integrations.tickflow.quotes import get_tickflow_client, parse_quote_row
-from vnpy_ashare.quotes.depth_snapshot import DepthSnapshot
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 _PROXY_ENV_KEYS = (
     "ALL_PROXY",

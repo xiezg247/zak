@@ -2,8 +2,8 @@
 
 from unittest.mock import patch
 
-from vnpy_ashare.quotes.enrich import enrich_quotes_with_tushare_factors, load_tushare_factor_maps_by_tickflow
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.core.enrich import enrich_quotes_with_tushare_factors, load_tushare_factor_maps_by_tickflow
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 
 def _quote(tf_symbol: str = "600000.SH") -> QuoteSnapshot:
@@ -32,8 +32,8 @@ def test_load_tushare_factor_maps_by_tickflow() -> None:
         {"vt_symbol": "000001.SZSE", "net_mf_amount": -500.0},
     ]
     with (
-        patch("vnpy_ashare.quotes.enrich.fetch_daily_basic_with_fallback", return_value=(basic_rows, "20260613")),
-        patch("vnpy_ashare.quotes.enrich.fetch_moneyflow_with_fallback", return_value=(mf_rows, "20260613")),
+        patch("vnpy_ashare.quotes.core.enrich.fetch_daily_basic_with_fallback", return_value=(basic_rows, "20260613")),
+        patch("vnpy_ashare.quotes.core.enrich.fetch_moneyflow_with_fallback", return_value=(mf_rows, "20260613")),
     ):
         ratio_map, mf_map = load_tushare_factor_maps_by_tickflow()
 
@@ -42,14 +42,14 @@ def test_load_tushare_factor_maps_by_tickflow() -> None:
 
 
 def test_load_limit_times_map_by_tickflow() -> None:
-    from vnpy_ashare.quotes.enrich import load_limit_times_map_by_tickflow
+    from vnpy_ashare.quotes.core.enrich import load_limit_times_map_by_tickflow
 
     rows = [
         {"ts_code": "600000.SH", "limit": "U", "limit_times": 3},
         {"ts_code": "000001.SZ", "limit": "U", "limit_times": 1},
         {"ts_code": "300001.SZ", "limit": "D", "limit_times": 2},
     ]
-    with patch("vnpy_ashare.quotes.enrich.fetch_limit_list_with_fallback", return_value=(rows, "20260613")):
+    with patch("vnpy_ashare.quotes.core.enrich.fetch_limit_list_with_fallback", return_value=(rows, "20260613")):
         result = load_limit_times_map_by_tickflow()
     assert result == {"600000.SH": 3.0, "000001.SZ": 1.0}
 
@@ -58,11 +58,11 @@ def test_enrich_quotes_with_tushare_factors() -> None:
     quotes = {"600000.SH": _quote(), "000001.SZ": _quote("000001.SZ")}
     with (
         patch(
-            "vnpy_ashare.quotes.enrich.load_tushare_factor_maps_by_tickflow",
+            "vnpy_ashare.quotes.core.enrich.load_tushare_factor_maps_by_tickflow",
             return_value=({"600000.SH": 2.1}, {"600000.SH": 888.0, "000001.SZ": -100.0}),
         ),
         patch(
-            "vnpy_ashare.quotes.enrich.load_limit_times_map_by_tickflow",
+            "vnpy_ashare.quotes.core.enrich.load_limit_times_map_by_tickflow",
             return_value={"600000.SH": 2.0},
         ),
     ):
@@ -76,14 +76,14 @@ def test_enrich_quotes_with_tushare_factors() -> None:
 
 
 def test_enrich_limit_up_fallback_to_one_board() -> None:
-    from vnpy_ashare.quotes.market_breadth import LIMIT_UP_PCT
+    from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 
     quote = _quote()
     quote.change_pct = LIMIT_UP_PCT
     quotes = {"600000.SH": quote}
     with (
-        patch("vnpy_ashare.quotes.enrich.load_tushare_factor_maps_by_tickflow", return_value=({}, {})),
-        patch("vnpy_ashare.quotes.enrich.load_limit_times_map_by_tickflow", return_value={}),
+        patch("vnpy_ashare.quotes.core.enrich.load_tushare_factor_maps_by_tickflow", return_value=({}, {})),
+        patch("vnpy_ashare.quotes.core.enrich.load_limit_times_map_by_tickflow", return_value={}),
     ):
         enrich_quotes_with_tushare_factors(quotes)
     assert quotes["600000.SH"].limit_times == 1.0
@@ -92,8 +92,8 @@ def test_enrich_limit_up_fallback_to_one_board() -> None:
 def test_enrich_quotes_tushare_failure_is_noop() -> None:
     quotes = {"600000.SH": _quote()}
     with (
-        patch("vnpy_ashare.quotes.enrich.load_tushare_factor_maps_by_tickflow", side_effect=RuntimeError("offline")),
-        patch("vnpy_ashare.quotes.enrich.load_limit_times_map_by_tickflow", side_effect=RuntimeError("offline")),
+        patch("vnpy_ashare.quotes.core.enrich.load_tushare_factor_maps_by_tickflow", side_effect=RuntimeError("offline")),
+        patch("vnpy_ashare.quotes.core.enrich.load_limit_times_map_by_tickflow", side_effect=RuntimeError("offline")),
     ):
         enrich_quotes_with_tushare_factors(quotes)
     assert quotes["600000.SH"].volume_ratio == 0.0
@@ -102,12 +102,12 @@ def test_enrich_quotes_tushare_failure_is_noop() -> None:
 
 
 def test_fill_missing_tushare_factors() -> None:
-    from vnpy_ashare.quotes.enrich import fill_missing_tushare_factors
+    from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 
     quotes = {"600000.SH": _quote(), "000001.SZ": _quote("000001.SZ")}
     quotes["600000.SH"].volume_ratio = 1.1
     with patch(
-        "vnpy_ashare.quotes.enrich.get_cached_tushare_factor_maps",
+        "vnpy_ashare.quotes.core.enrich.get_cached_tushare_factor_maps",
         return_value=({"600000.SH": 2.0, "000001.SZ": 1.5}, {"000001.SZ": -200.0}),
     ):
         fill_missing_tushare_factors(quotes)
@@ -118,19 +118,19 @@ def test_fill_missing_tushare_factors() -> None:
 
 
 def test_fill_missing_limit_times_fallback_to_one_board() -> None:
-    from vnpy_ashare.quotes.enrich import fill_missing_tushare_factors
-    from vnpy_ashare.quotes.market_breadth import LIMIT_UP_PCT
+    from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
+    from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 
     quote = _quote()
     quote.change_pct = LIMIT_UP_PCT
     quotes = {"600000.SH": quote}
     with (
         patch(
-            "vnpy_ashare.quotes.enrich.get_cached_tushare_factor_maps",
+            "vnpy_ashare.quotes.core.enrich.get_cached_tushare_factor_maps",
             return_value=({}, {}),
         ),
         patch(
-            "vnpy_ashare.quotes.enrich.get_cached_limit_times_map",
+            "vnpy_ashare.quotes.core.enrich.get_cached_limit_times_map",
             return_value={},
         ),
     ):

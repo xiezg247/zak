@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from vnpy_ashare.quotes.radar_models import RadarResonanceEntry
+from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
 
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 

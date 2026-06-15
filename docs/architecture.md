@@ -35,6 +35,7 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/storage/` | app_db、universe、交易日历 |
 | `packages/vnpy-ashare/vnpy_ashare/backtest/` | CTA App/Engine、run_store |
 | `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
+| `packages/vnpy-ashare/vnpy_ashare/quotes/` | 行情领域：快照、Provider、排行、市场概览、雷达数据加载（见下节） |
 | `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方（`run/`、`recipe/`、`preset/`、`sector/`、`data/`、`dimensions/`） |
 | `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
 | `packages/vnpy-ashare/vnpy_ashare/ui/shell/` | 主窗口、导航（`settings/`、`manager/`） |
@@ -55,6 +56,28 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 `.env` 为密钥真源；`vt_setting.json` 为 VeighNa 运行时配置。
 
 `config_schema` → `config_bridge` → `vt_settings` → `config/apply`（分级热应用）；GUI 编辑在 `ui/shell/settings/`。详见 [配置分级热加载](./config-hot-reload-design.md)。
+
+## 行情领域（`quotes/`）
+
+领域逻辑按子域拆分子包；包内与 UI 均从子包或 `quotes/__init__.py` 公开 API 导入。
+
+```text
+quotes/
+├── __init__.py  公开 API（QuoteSnapshot、Provider 等）
+├── core/        snapshot、provider、redis_store、depth_snapshot、enrich
+├── rank/        rank_catalog、rank_engine、rank_scope
+├── market/      market_breadth、market_environment、market_overview_loaders、moneyflow_kind
+├── misc/        position_anomaly、speed_baseline
+└── radar/       radar_*（catalog、loaders、models、horizon、resonance 等）
+```
+
+| 子包 | 职责 |
+|------|------|
+| `core/` | `QuoteSnapshot`、TickFlow/Redis Provider、Redis 缓存、盘口深度、行情 enrich |
+| `rank/` | 涨幅/成交额等排行定义与取值 |
+| `market/` | 市场宽度、北向/环境快照、概览 loader |
+| `misc/` | 持仓异动、涨速基线等辅助指标 |
+| `radar/` | 雷达卡片 catalog、数据加载、共振、horizon 扫描 |
 
 ## 看盘页（`ui/quotes/`）
 
@@ -85,7 +108,7 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 
 ## 行情 Provider
 
-看盘 UI 只依赖 `QuoteSnapshot`（`quotes/provider.py`）：
+看盘 UI 只依赖 `QuoteSnapshot`（`quotes/core/provider.py`）：
 
 | Provider | 用途 |
 |----------|------|

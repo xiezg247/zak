@@ -275,7 +275,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, id);
 
 | 属性 | 值 |
 |------|-----|
-| 定义文件 | `vnpy_ashare/quotes/redis_store.py` |
+| 定义文件 | `vnpy_ashare/quotes/core/redis_store.py` |
 | 操作类 | `RedisQuoteStore` |
 | 连接方式 | 支持单机 / 集群，从 `.env` 读取配置 |
 
@@ -324,8 +324,8 @@ REDIS_DB=0
 | 类名 | 定义文件 | 用途 |
 |------|----------|------|
 | `StockItem` | `vnpy_ashare/models.py:23` | A 股标的统一模型（symbol, exchange, name） |
-| `QuoteSnapshot` | `vnpy_ashare/quotes/snapshot.py:8` | TickFlow / Redis 行情快照（14 个字段） |
-| `DepthSnapshot` | `vnpy_ashare/quotes/depth_snapshot.py:8` | 五档盘口快照（bid/ask 各 5 档） |
+| `QuoteSnapshot` | `vnpy_ashare/quotes/core/snapshot.py` | TickFlow / Redis 行情快照（14 个字段） |
+| `DepthSnapshot` | `vnpy_ashare/quotes/core/depth_snapshot.py` | 五档盘口快照（bid/ask 各 5 档） |
 | `PeriodBarOverview` | `vnpy_ashare/bar_store.py:22` | 单标的 K 线概况（symbol, period, start, end, count） |
 | `BarMeta` | `vnpy_ashare/bar_health.py:19` | K 线元信息（start, end, count） |
 | `BarGapResult` | `vnpy_ashare/bar_health.py:33` | K 线断层检测结果 |

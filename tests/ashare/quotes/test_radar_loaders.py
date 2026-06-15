@@ -1,7 +1,7 @@
 """雷达卡片数据加载测试。"""
 
-from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
-from vnpy_ashare.quotes.radar_loaders import (
+from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
+from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
     RadarRow,
     _liquidity_metric,
@@ -31,7 +31,7 @@ def _sample_row(vt_symbol: str, *, name: str = "测试") -> RadarRow:
 
 
 def test_load_screen_latest_empty(monkeypatch) -> None:
-    monkeypatch.setattr("vnpy_ashare.quotes.radar_loaders.get_latest_run", lambda: None)
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_loaders.get_latest_run", lambda: None)
     spec = RADAR_CARD_BY_ID["screen_latest"]
     data = load_screen_latest(spec)
     assert data.rows == ()
@@ -108,7 +108,7 @@ def test_liquidity_metric_prefers_amount_when_volume_missing() -> None:
 
 def test_merge_row_quotes_fills_from_cache(monkeypatch) -> None:
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_models.get_market_quotes_cache",
+        "vnpy_ashare.quotes.radar.radar_models.get_market_quotes_cache",
         lambda: [{"vt_symbol": "600000.SSE", "amount": 99_000_000, "volume": 12345}],
     )
     merged = _merge_row_quotes({"vt_symbol": "600000.SSE", "volume": 0})
@@ -117,7 +117,7 @@ def test_merge_row_quotes_fills_from_cache(monkeypatch) -> None:
 
 
 def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
+    from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
     from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
 
     monkeypatch.setattr(
@@ -166,7 +166,7 @@ def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
 
 
 def test_load_discovery_volume_surge_keeps_surge_when_ratio_empty(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
+    from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
     from vnpy_ashare.screener.dimensions.base import DimensionHit
 
     surge_hit = DimensionHit(
@@ -188,11 +188,11 @@ def test_load_discovery_volume_surge_keeps_surge_when_ratio_empty(monkeypatch) -
         },
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.run_volume_surge",
+        "vnpy_ashare.quotes.radar.radar_loaders.run_volume_surge",
         lambda _n, weight=1.0: ([surge_hit], 5512),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.run_volume_ratio",
+        "vnpy_ashare.quotes.radar.radar_loaders.run_volume_ratio",
         lambda _n, weight=1.0: ([], 5512),
     )
     data = load_discovery_volume_surge(RADAR_CARD_BY_ID["discovery_volume_surge"])
@@ -201,7 +201,7 @@ def test_load_discovery_volume_surge_keeps_surge_when_ratio_empty(monkeypatch) -
 
 
 def test_load_discovery_volume_surge_excludes_st_from_ratio_fallback(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_catalog import RADAR_CARD_BY_ID
+    from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
     from vnpy_ashare.screener.dimensions.base import DimensionHit
 
     st_hit = DimensionHit(
@@ -239,15 +239,15 @@ def test_load_discovery_volume_surge_excludes_st_from_ratio_fallback(monkeypatch
         },
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.run_volume_surge",
+        "vnpy_ashare.quotes.radar.radar_loaders.run_volume_surge",
         lambda _n, weight=1.0: ([st_hit], 5512),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.run_volume_ratio",
+        "vnpy_ashare.quotes.radar.radar_loaders.run_volume_ratio",
         lambda _n, weight=1.0: ([st_hit, normal_hit], 5512),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.name_map_for_symbols",
+        "vnpy_ashare.quotes.radar.radar_loaders.name_map_for_symbols",
         lambda _symbols: {"300093.SZSE": "*ST金刚", "603014.SSE": "威高血净"},
     )
     data = load_discovery_volume_surge(RADAR_CARD_BY_ID["discovery_volume_surge"])
@@ -258,16 +258,16 @@ def test_load_radar_card_unknown() -> None:
     import pytest
 
     with pytest.raises(ValueError, match="未知雷达卡片"):
-        from vnpy_ashare.quotes.radar_loaders import load_radar_card
+        from vnpy_ashare.quotes.radar.radar_loaders import load_radar_card
 
         load_radar_card("not_exists")
 
 
 def test_load_watchlist_intraday_empty_pool(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
+    from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist.collect_personal_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_watchlist.collect_personal_vt_symbols",
         lambda max_items=50: [],
     )
     spec = RADAR_CARD_BY_ID["watchlist_intraday"]
@@ -277,7 +277,7 @@ def test_load_watchlist_intraday_empty_pool(monkeypatch) -> None:
 
 
 def test_watchlist_moneyflow_metric() -> None:
-    from vnpy_ashare.quotes.radar_moneyflow import watchlist_moneyflow_metric
+    from vnpy_ashare.quotes.radar.radar_moneyflow import watchlist_moneyflow_metric
 
     label, value, sub_label, sub_value = watchlist_moneyflow_metric({"vt_symbol": "600000.SSE", "net_mf_amount": 12345, "change_pct": 1.2})
     assert label == "主力净流入"
@@ -286,18 +286,18 @@ def test_watchlist_moneyflow_metric() -> None:
 
 
 def test_load_watchlist_intraday_fallback_rank(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
+    from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist.collect_personal_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_watchlist.collect_personal_vt_symbols",
         lambda max_items=50: ["600000.SSE", "000001.SZSE"],
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist.compute_signal_transitions",
+        "vnpy_ashare.quotes.radar.radar_watchlist.compute_signal_transitions",
         lambda *args, **kwargs: {},
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist._quotes_for_candidates",
+        "vnpy_ashare.quotes.radar.radar_watchlist._quotes_for_candidates",
         lambda _candidates: {
             "600000.SSE": {
                 "vt_symbol": "600000.SSE",
@@ -316,7 +316,7 @@ def test_load_watchlist_intraday_fallback_rank(monkeypatch) -> None:
         },
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist.enrich_quotes_with_moneyflow",
+        "vnpy_ashare.quotes.radar.radar_watchlist.enrich_quotes_with_moneyflow",
         lambda quotes_by_vt, **kwargs: quotes_by_vt,
     )
     spec = RADAR_CARD_BY_ID["watchlist_intraday"]
@@ -327,7 +327,7 @@ def test_load_watchlist_intraday_fallback_rank(monkeypatch) -> None:
 
 def test_classify_scenario_hint_picks_highest_match(monkeypatch) -> None:
     from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
-    from vnpy_ashare.quotes.radar_horizon_scenario import ScenarioMetrics, classify_scenario_hint
+    from vnpy_ashare.quotes.radar.radar_horizon_scenario import ScenarioMetrics, classify_scenario_hint
 
     snapshot = SignalSnapshot(
         vt_symbol="600000.SSE",
@@ -368,33 +368,33 @@ def test_classify_scenario_hint_picks_highest_match(monkeypatch) -> None:
         return variant in ("scenario_bull", "scenario_volatile")
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_horizon_scenario.matches_scenario",
+        "vnpy_ashare.quotes.radar.radar_horizon_scenario.matches_scenario",
         _matches,
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_horizon_scenario.bullish_score",
+        "vnpy_ashare.quotes.radar.radar_horizon_scenario.bullish_score",
         lambda _metrics: 50.0,
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_horizon_scenario.volatility_score",
+        "vnpy_ashare.quotes.radar.radar_horizon_scenario.volatility_score",
         lambda _metrics: 30.0,
     )
     assert classify_scenario_hint(metrics) == "偏多"
 
 
 def test_load_watchlist_intraday_with_scenario_hint(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_watchlist import load_watchlist_intraday
+    from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist.collect_personal_vt_symbols",
+        "vnpy_ashare.quotes.radar.radar_watchlist.collect_personal_vt_symbols",
         lambda max_items=50: ["600000.SSE"],
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist.compute_signal_transitions",
+        "vnpy_ashare.quotes.radar.radar_watchlist.compute_signal_transitions",
         lambda *args, **kwargs: {},
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist._quotes_for_candidates",
+        "vnpy_ashare.quotes.radar.radar_watchlist._quotes_for_candidates",
         lambda _candidates: {
             "600000.SSE": {
                 "vt_symbol": "600000.SSE",
@@ -407,11 +407,11 @@ def test_load_watchlist_intraday_with_scenario_hint(monkeypatch) -> None:
         },
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist.enrich_quotes_with_moneyflow",
+        "vnpy_ashare.quotes.radar.radar_watchlist.enrich_quotes_with_moneyflow",
         lambda quotes_by_vt, **kwargs: quotes_by_vt,
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_watchlist._compute_scenario_hints",
+        "vnpy_ashare.quotes.radar.radar_watchlist._compute_scenario_hints",
         lambda _symbols, config=None: {"600000.SSE": "偏多"},
     )
     spec = RADAR_CARD_BY_ID["watchlist_intraday"]
@@ -424,10 +424,10 @@ def test_load_watchlist_intraday_with_scenario_hint(monkeypatch) -> None:
 
 
 def test_load_sector_theme_empty(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_sector import load_sector_theme
+    from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_sector.run_sector_strength",
+        "vnpy_ashare.quotes.radar.radar_sector.run_sector_strength",
         lambda _n, weight=1.0: ([], 0),
     )
     spec = RADAR_CARD_BY_ID["sector_theme"]
@@ -437,10 +437,10 @@ def test_load_sector_theme_empty(monkeypatch) -> None:
 
 
 def test_load_outlook_watch_no_cache(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
+    from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_horizon.get_horizon_cache",
+        "vnpy_ashare.quotes.radar.radar_horizon.get_horizon_cache",
         lambda _variant: None,
     )
     spec = RADAR_CARD_BY_ID["outlook_watch"]
@@ -452,11 +452,11 @@ def test_load_outlook_watch_no_cache(monkeypatch) -> None:
 def test_enrich_radar_rows_from_screening_snapshot(monkeypatch) -> None:
     from types import SimpleNamespace
 
-    from vnpy_ashare.quotes.radar_models import RadarRow, enrich_radar_rows
+    from vnpy_ashare.quotes.radar.radar_models import RadarRow, enrich_radar_rows
 
-    monkeypatch.setattr("vnpy_ashare.quotes.radar_models.quote_map", lambda: {})
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_models.quote_map", lambda: {})
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_models.load_screening_quote_snapshot",
+        "vnpy_ashare.quotes.radar.radar_models.load_screening_quote_snapshot",
         lambda: SimpleNamespace(
             rows=[
                 {
@@ -488,9 +488,9 @@ def test_enrich_radar_rows_from_screening_snapshot(monkeypatch) -> None:
 
 
 def test_load_outlook_watch_enriches_cached_rows(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_horizon import load_outlook_horizon
-    from vnpy_ashare.quotes.radar_horizon_cache import HorizonCacheEntry
-    from vnpy_ashare.quotes.radar_models import RadarRow
+    from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
+    from vnpy_ashare.quotes.radar.radar_horizon_cache import HorizonCacheEntry
+    from vnpy_ashare.quotes.radar.radar_models import RadarRow
 
     cached_row = RadarRow(
         vt_symbol="601916.SSE",
@@ -504,7 +504,7 @@ def test_load_outlook_watch_enriches_cached_rows(monkeypatch) -> None:
         sub_value="—",
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_horizon.get_horizon_cache",
+        "vnpy_ashare.quotes.radar.radar_horizon.get_horizon_cache",
         lambda _variant: HorizonCacheEntry(
             variant="watch_next",
             rows=(cached_row,),
@@ -518,7 +518,7 @@ def test_load_outlook_watch_enriches_cached_rows(monkeypatch) -> None:
         ),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_horizon.enrich_radar_rows",
+        "vnpy_ashare.quotes.radar.radar_horizon.enrich_radar_rows",
         lambda rows: tuple(
             RadarRow(
                 vt_symbol=row.vt_symbol,
@@ -542,7 +542,7 @@ def test_load_outlook_watch_enriches_cached_rows(monkeypatch) -> None:
 
 
 def test_build_outlook_ai_prompt() -> None:
-    from vnpy_ashare.quotes.radar_horizon import build_outlook_ai_prompt
+    from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt
 
     payload = {
         "outlook_watch": RadarCardData(
@@ -560,7 +560,7 @@ def test_build_outlook_ai_prompt() -> None:
 
 
 def test_build_radar_card_ai_prompt_watchlist() -> None:
-    from vnpy_ashare.quotes.radar_loaders import build_radar_card_ai_prompt
+    from vnpy_ashare.quotes.radar.radar_loaders import build_radar_card_ai_prompt
 
     data = RadarCardData(
         "watchlist_intraday",
@@ -580,7 +580,7 @@ def test_build_radar_card_ai_prompt_watchlist() -> None:
 
 def test_transition_label() -> None:
     from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
-    from vnpy_ashare.quotes.radar_signals import transition_label
+    from vnpy_ashare.quotes.radar.radar_signals import transition_label
 
     before = SignalSnapshot(
         vt_symbol="600000.SSE",
@@ -615,7 +615,7 @@ def test_transition_label() -> None:
 
 
 def test_build_outlook_digest() -> None:
-    from vnpy_ashare.quotes.radar_horizon import build_outlook_digest
+    from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_digest
 
     rows = (
         RadarRow(
@@ -636,9 +636,9 @@ def test_build_outlook_digest() -> None:
 
 
 def test_radar_ai_hint_cache_roundtrip(tmp_path, monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_ai_cache import get_cached_hint, put_cached_hint, resolve_ai_hint
+    from vnpy_ashare.quotes.radar.radar_ai_cache import get_cached_hint, put_cached_hint, resolve_ai_hint
 
-    monkeypatch.setattr("vnpy_ashare.quotes.radar_ai_cache._db_path", lambda: tmp_path / "cache.db")
+    monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_ai_cache._db_path", lambda: tmp_path / "cache.db")
     put_cached_hint("outlook_watch", variant="", fingerprint="abc", hint="摘要：关注 3 只")
     assert get_cached_hint("outlook_watch", variant="", fingerprint="abc") == "摘要：关注 3 只"
     resolved = resolve_ai_hint(
@@ -651,14 +651,14 @@ def test_radar_ai_hint_cache_roundtrip(tmp_path, monkeypatch) -> None:
 
 
 def test_row_from_dict_uses_universe_name_when_row_missing_name(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_loaders import _row_from_dict
+    from vnpy_ashare.quotes.radar.radar_loaders import _row_from_dict
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.merge_row_quotes",
+        "vnpy_ashare.quotes.radar.radar_loaders.merge_row_quotes",
         lambda row: dict(row),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.name_map_for_symbols",
+        "vnpy_ashare.quotes.radar.radar_loaders.name_map_for_symbols",
         lambda _symbols: {"920083.BSE": "某北交所标的"},
     )
     row = _row_from_dict({"vt_symbol": "920083.BSE", "symbol": "920083"}, name_map={"920083.BSE": "某北交所标的"})
@@ -668,10 +668,10 @@ def test_row_from_dict_uses_universe_name_when_row_missing_name(monkeypatch) -> 
 
 
 def test_row_from_dict_falls_back_to_symbol_not_vt_symbol(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_loaders import _row_from_dict
+    from vnpy_ashare.quotes.radar.radar_loaders import _row_from_dict
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_loaders.merge_row_quotes",
+        "vnpy_ashare.quotes.radar.radar_loaders.merge_row_quotes",
         lambda row: dict(row),
     )
     row = _row_from_dict({"vt_symbol": "920083.BSE", "symbol": "920083"}, name_map={})
@@ -680,7 +680,7 @@ def test_row_from_dict_falls_back_to_symbol_not_vt_symbol(monkeypatch) -> None:
 
 
 def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
-    from vnpy_ashare.quotes.radar_loaders import incremental_refresh_radar_card_quotes
+    from vnpy_ashare.quotes.radar.radar_loaders import incremental_refresh_radar_card_quotes
 
     original_row = _sample_row("600000.SSE", name="浦发")
     data = RadarCardData(
@@ -692,7 +692,7 @@ def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
         "",
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar_models.enrich_radar_rows",
+        "vnpy_ashare.quotes.radar.radar_models.enrich_radar_rows",
         lambda rows: tuple(
             RadarRow(
                 vt_symbol=row.vt_symbol,

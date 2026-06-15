@@ -1,6 +1,6 @@
 """雷达卡片注册表测试。"""
 
-from vnpy_ashare.quotes.radar_catalog import (
+from vnpy_ashare.quotes.radar.radar_catalog import (
     CARD_VARIANTS,
     RADAR_CARD_SPECS,
     RADAR_GRID_COLUMNS,
@@ -38,7 +38,7 @@ def test_card_variants_registry() -> None:
 
 def test_scenario_scores() -> None:
     from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
-    from vnpy_ashare.quotes.radar_horizon_scenario import (
+    from vnpy_ashare.quotes.radar.radar_horizon_scenario import (
         ScenarioMetrics,
         bearish_score,
         bullish_score,
@@ -107,7 +107,7 @@ def test_scenario_scores() -> None:
 
 
 def test_auto_refresh_intervals() -> None:
-    from vnpy_ashare.quotes.radar_catalog import (
+    from vnpy_ashare.quotes.radar.radar_catalog import (
         RADAR_CARD_BY_ID,
         RADAR_DISCOVERY_AUTO_REFRESH_MS,
         RADAR_SECTOR_AUTO_REFRESH_MS,
@@ -131,7 +131,7 @@ def test_auto_refresh_intervals() -> None:
 
 
 def test_refresh_options_and_supports() -> None:
-    from vnpy_ashare.quotes.radar_catalog import (
+    from vnpy_ashare.quotes.radar.radar_catalog import (
         RADAR_DISCOVERY_REFRESH_OPTIONS,
         RADAR_REFRESH_OFF_MS,
         RADAR_SECTOR_REFRESH_OPTIONS,

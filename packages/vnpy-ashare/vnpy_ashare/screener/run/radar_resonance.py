@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.quotes.radar_models import RadarResonanceEntry
-from vnpy_ashare.quotes.radar_resonance_store import (
+from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
+from vnpy_ashare.quotes.radar.radar_resonance_store import (
     get_radar_resonance_entries,
     radar_resonance_updated_at,
 )

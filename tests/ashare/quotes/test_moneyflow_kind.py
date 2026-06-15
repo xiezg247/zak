@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.quotes.moneyflow_kind import classify_moneyflow_row, flow_kind_label
+from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
 
 
 def test_classify_main_force_from_net_mf_and_large_orders() -> None:
@@ -48,7 +48,7 @@ def test_classify_proxy_when_flagged() -> None:
 
 
 def test_flow_kind_score_factors() -> None:
-    from vnpy_ashare.quotes.moneyflow_kind import (
+    from vnpy_ashare.quotes.market.moneyflow_kind import (
         moneyflow_dimension_score_factor,
         row_flow_kind,
     )

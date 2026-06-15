@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from vnpy_ashare.quotes.radar_models import RadarRow
+    from vnpy_ashare.quotes.radar.radar_models import RadarRow
 
-from vnpy_ashare.quotes.radar_models import format_pct
+from vnpy_ashare.quotes.radar.radar_models import format_pct
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
     market_benchmark_change_pct,

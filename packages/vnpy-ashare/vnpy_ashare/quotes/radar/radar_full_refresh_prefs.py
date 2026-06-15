@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.quotes.radar_catalog import RADAR_FULL_REFRESH_EVERY
+from vnpy_ashare.quotes.radar.radar_catalog import RADAR_FULL_REFRESH_EVERY
 
 _SETTINGS = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
 _KEY_PREFIX = "quotes/radar/full_refresh_every/"

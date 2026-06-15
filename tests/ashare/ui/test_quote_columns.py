@@ -7,7 +7,7 @@ import unittest
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.ui.quotes.table.columns import (
     build_quote_row,
     format_amount,
@@ -45,7 +45,7 @@ class TestQuoteColumns(unittest.TestCase):
         self.assertIn("39.84亿", values)
         self.assertEqual(values[quote_column_index("trade_time")], "2026-06-05 15:00:02")
         self.assertEqual(values[-1], "✓")
-        self.assertIn(4, colored)
+        self.assertIn(quote_column_index("last_price"), colored)
 
 
 class TestMarketAutoRefreshPref(unittest.TestCase):
@@ -123,7 +123,7 @@ class TestRadarPageConfig(unittest.TestCase):
         self.assertTrue(radar.use_radar_cards)
         self.assertFalse(radar.auto_refresh_quotes)
         hint = radar_refresh_hint()
-        self.assertIn("发现", hint)
+        self.assertIn("异动", hint)
         self.assertIn("未来", hint)
 
 
@@ -147,7 +147,7 @@ class TestMarketRankSidebarPref(unittest.TestCase):
         self.assertEqual(rank_sidebar_collapse_arrow(False), QtCore.Qt.ArrowType.RightArrow)
 
     def test_rank_sidebar_row_structure(self) -> None:
-        from vnpy_ashare.quotes.rank_catalog import iter_rank_sidebar_rows
+        from vnpy_ashare.quotes.rank.rank_catalog import iter_rank_sidebar_rows
 
         rows = iter_rank_sidebar_rows()
         self.assertGreater(len(rows), 2)

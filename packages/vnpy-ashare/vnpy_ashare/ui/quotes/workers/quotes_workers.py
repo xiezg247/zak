@@ -46,7 +46,7 @@ from vnpy_ashare.integrations.tickflow import (
 )
 from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
-from vnpy_ashare.quotes.provider import get_redis_provider
+from vnpy_ashare.quotes.core.provider import get_redis_provider
 from vnpy_ashare.storage.universe import load_universe, sync_universe
 from vnpy_ashare.ui.quotes.chart.minute_bars import LIVE_MINUTE_TAIL_COUNT
 
@@ -680,7 +680,7 @@ class MarketFullLoadWorker(QtCore.QThread):
 
     @staticmethod
     def _quote_sort_value(quote: QuoteSnapshot | None, spec) -> float:
-        from vnpy_ashare.quotes.rank_engine import quote_rank_value
+        from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
 
         if quote is None:
             return float("-inf") if not spec.ascending else float("inf")
@@ -694,13 +694,13 @@ class MarketFullLoadWorker(QtCore.QThread):
             provider = get_redis_provider()
             updated_at: str | None = provider.updated_at()
             store = provider._store
-            from vnpy_ashare.quotes.rank_catalog import get_rank_definition
+            from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 
             spec = get_rank_definition(self.rank_id)
             name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
 
-            from vnpy_ashare.quotes.rank_engine import apply_rank_catalog
-            from vnpy_ashare.quotes.rank_scope import build_stock_items_from_rank_symbols, load_watchlist_rank_catalog
+            from vnpy_ashare.quotes.rank.rank_engine import apply_rank_catalog
+            from vnpy_ashare.quotes.rank.rank_scope import build_stock_items_from_rank_symbols, load_watchlist_rank_catalog
 
             if spec.scope == "watchlist":
                 tf_symbols, quotes = load_watchlist_rank_catalog(store, spec)
@@ -716,7 +716,7 @@ class MarketFullLoadWorker(QtCore.QThread):
                     tf_symbols = apply_rank_catalog(tf_symbols, quotes, spec)
                     items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
                 else:
-                    from vnpy_ashare.quotes.rank_engine import quote_matches_rank, rank_needs_post_process
+                    from vnpy_ashare.quotes.rank.rank_engine import quote_matches_rank, rank_needs_post_process
 
                     items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
                     quotes = provider.get_quotes(items)

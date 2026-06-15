@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.quotes.market_overview_loaders import load_market_overview
+from vnpy_ashare.quotes.market.market_overview_loaders import load_market_overview
 
 
 class MarketOverviewLoadWorker(QtCore.QThread):
