@@ -29,6 +29,18 @@ class TestQuoteProviderRouting(unittest.TestCase):
         provider = get_quote_provider("market")
         self.assertIsInstance(provider, RedisQuoteProvider)
 
+    @patch("vnpy_ashare.quotes.core.provider.fill_missing_tushare_factors")
+    @patch("vnpy_ashare.quotes.core.provider.fetch_quotes_from_tickflow", return_value={"600000.SH": MagicMock()})
+    def test_tickflow_provider_enriches_tushare_factors(
+        self,
+        fetch_mock: MagicMock,
+        enrich_mock: MagicMock,
+    ) -> None:
+        provider = get_quote_provider("watchlist")
+        quotes = provider.get_quotes([])
+        fetch_mock.assert_called_once_with([])
+        enrich_mock.assert_called_once_with(quotes)
+
     @patch.object(provider_module.RedisQuoteStore, "ping", side_effect=OSError("down"))
     def test_market_redis_unavailable(self, _ping: MagicMock) -> None:
         with self.assertRaises(QuoteProviderError):

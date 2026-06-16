@@ -109,8 +109,6 @@ class QuotesPageShell:
 
         page.view_table_button = None
         page.view_multiview_button = None
-        page.multiview_sort_combo = None
-        page.multiview_columns_combo = None
         if page.config.show_watchlist_multiview:
             page.view_table_button = QtWidgets.QPushButton("表格", page)
             page.view_table_button.setObjectName("SecondaryButton")
@@ -119,18 +117,6 @@ class QuotesPageShell:
             page.view_multiview_button = QtWidgets.QPushButton("多维", page)
             page.view_multiview_button.setObjectName("SecondaryButton")
             page.view_multiview_button.setCheckable(True)
-            page.multiview_sort_combo = QtWidgets.QComboBox(page)
-            page.multiview_sort_combo.setObjectName("WatchlistMultiSortCombo")
-            page.multiview_sort_combo.addItem("自选顺序", "sort_order")
-            page.multiview_sort_combo.addItem("涨幅", "change_pct")
-            page.multiview_sort_combo.addItem("异动分", "anomaly_score")
-            page.multiview_sort_combo.hide()
-            page.multiview_columns_combo = QtWidgets.QComboBox(page)
-            page.multiview_columns_combo.setObjectName("WatchlistMultiColumnsCombo")
-            for columns in (2, 3, 4):
-                page.multiview_columns_combo.addItem(f"{columns} 列", columns)
-            page.multiview_columns_combo.hide()
-
         page.board_combo = QtWidgets.QComboBox()
         page.board_combo.setObjectName("BoardCombo")
         page.board_combo.addItems(["全部", "沪深主板", "创业板", "科创板", "北交所"])
@@ -275,10 +261,6 @@ class QuotesPageShell:
             toolbar.addWidget(page.view_table_button)
             if page.view_multiview_button is not None:
                 toolbar.addWidget(page.view_multiview_button)
-            if page.multiview_sort_combo is not None:
-                toolbar.addWidget(page.multiview_sort_combo)
-            if page.multiview_columns_combo is not None:
-                toolbar.addWidget(page.multiview_columns_combo)
         if page.config.show_board_filter:
             toolbar.addWidget(page.board_combo)
 

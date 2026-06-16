@@ -24,6 +24,11 @@ class WatchlistMultiCard(QtWidgets.QFrame):
         super().__init__(parent)
         self.setObjectName("WatchlistMultiCard")
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.setMinimumHeight(132)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
         self._vt_symbol = ""
         self._change_pct: float | None = None
@@ -103,9 +108,9 @@ class WatchlistMultiCard(QtWidgets.QFrame):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(6)
+        layout.setSpacing(4)
         layout.addLayout(header)
-        layout.addLayout(sparkline_row)
+        layout.addLayout(sparkline_row, stretch=1)
         layout.addLayout(badges)
         layout.addLayout(chips)
 
@@ -144,7 +149,7 @@ class WatchlistMultiCard(QtWidgets.QFrame):
             self._apply_badge(self._sector_badge, "")
         if row.sparkline_points:
             self._sparkline.render_points(row.sparkline_points)
-            kind_text = {"intraday": "分时", "daily": "日K"}.get(row.sparkline_kind, "")
+            kind_text = {"intraday": "分时", "daily": "日K", "minute": "分K"}.get(row.sparkline_kind, "")
             self._sparkline_kind_label.setText(kind_text)
             self._sparkline_kind_label.setVisible(bool(kind_text))
         else:

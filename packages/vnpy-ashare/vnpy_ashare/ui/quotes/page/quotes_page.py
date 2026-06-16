@@ -193,8 +193,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self.multiview_board = None
         self.view_table_button = None
         self.view_multiview_button = None
-        self.multiview_sort_combo = None
-        self.multiview_columns_combo = None
         self._center_view_stack = None
         self.stock_note_panel = None
         self.refresh_radar_button = None
@@ -593,8 +591,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._watchlist_panels.wire_signal_panel()
 
     def _wire_multiview(self) -> None:
-        from vnpy_ashare.ui.quotes.watchlist_multiview.settings import load_grid_columns, load_sort_key
-
         board = self.multiview_board
         if board is None:
             return
@@ -603,39 +599,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self.view_table_button.clicked.connect(lambda: self._multiview.set_view_mode("table"))
         if self.view_multiview_button is not None:
             self.view_multiview_button.clicked.connect(lambda: self._multiview.set_view_mode("multiview"))
-        combo = self.multiview_sort_combo
-        if combo is not None:
-            sort_key = load_sort_key()
-            index = max(0, combo.findData(sort_key))
-            combo.blockSignals(True)
-            combo.setCurrentIndex(index)
-            combo.blockSignals(False)
-            combo.currentIndexChanged.connect(self._on_multiview_sort_changed)
-        columns_combo = self.multiview_columns_combo
-        if columns_combo is not None:
-            columns = load_grid_columns()
-            col_index = max(0, columns_combo.findData(columns))
-            columns_combo.blockSignals(True)
-            columns_combo.setCurrentIndex(col_index)
-            columns_combo.blockSignals(False)
-            columns_combo.currentIndexChanged.connect(self._on_multiview_columns_changed)
         self._multiview.restore_view_mode()
-
-    def _on_multiview_sort_changed(self, index: int) -> None:
-        combo = self.multiview_sort_combo
-        if combo is None or index < 0:
-            return
-        sort_key = combo.itemData(index)
-        if sort_key in ("sort_order", "change_pct", "anomaly_score"):
-            self._multiview.set_sort_key(sort_key)
-
-    def _on_multiview_columns_changed(self, index: int) -> None:
-        combo = self.multiview_columns_combo
-        if combo is None or index < 0:
-            return
-        columns = combo.itemData(index)
-        if isinstance(columns, int):
-            self._multiview.set_grid_columns(columns)
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
         self._watchlist_panels.on_signal_panel_expansion_changed(expanded)
@@ -882,6 +846,8 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
 
     def _on_chart_tab_changed(self, index: int) -> None:
         self._actions.on_chart_tab_changed(index)
+        if self.config.show_watchlist_multiview:
+            self._multiview.on_chart_tab_changed(index)
 
     def _update_action_buttons(self) -> None:
         self._actions.update_action_buttons()

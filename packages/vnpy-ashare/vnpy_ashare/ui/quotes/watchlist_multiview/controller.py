@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
@@ -13,6 +13,8 @@ from vnpy_ashare.quotes.watchlist_multiview import (
     enrich_multiview_rows,
 )
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiSortKey
+from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import SparklineKind, SparklineMode
+from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.watchlist_multiview.settings import (
     ViewMode,
     load_grid_columns,
@@ -30,7 +32,15 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
     from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 
-_INTRADAY_SPARKLINE_REFRESH_MS = 60_000
+_SPARKLINE_REFRESH_MS = 60_000
+
+
+def _sparkline_mode_from_chart_tab(tab_index: int) -> SparklineMode:
+    if tab_index == MINUTE_TAB_INDEX:
+        return "minute"
+    if tab_index == DAILY_TAB_INDEX:
+        return "daily"
+    return "intraday"
 
 
 class WatchlistMultiViewController:
@@ -43,13 +53,14 @@ class WatchlistMultiViewController:
         self._grid_columns = load_grid_columns()
         self._switching_view = False
         self._sparklines: dict[str, tuple[float, ...]] = {}
-        self._sparkline_kind: Literal["daily", "intraday", "none"] = "none"
+        self._sparkline_kind: SparklineKind = "none"
+        self._sparkline_mode: SparklineMode = "intraday"
         self._sparkline_worker: WatchlistMultiSparklineWorker | None = None
         self._last_board: WatchlistMultiBoardData | None = None
         self._board_summary = ""
-        self._intraday_sparkline_timer = QtCore.QTimer(page)
-        self._intraday_sparkline_timer.setInterval(_INTRADAY_SPARKLINE_REFRESH_MS)
-        self._intraday_sparkline_timer.timeout.connect(self._on_intraday_sparkline_tick)
+        self._sparkline_refresh_timer = QtCore.QTimer(page)
+        self._sparkline_refresh_timer.setInterval(_SPARKLINE_REFRESH_MS)
+        self._sparkline_refresh_timer.timeout.connect(self._on_sparkline_refresh_tick)
 
     @property
     def view_mode(self) -> ViewMode:
@@ -73,6 +84,9 @@ class WatchlistMultiViewController:
         board.row_clicked.connect(self._on_row_clicked)
         board.row_double_clicked.connect(self._on_row_activated)
         board.row_context_menu_requested.connect(self._on_row_context_menu)
+        board.sort_key_changed.connect(self.set_sort_key)
+        board.grid_columns_changed.connect(self.set_grid_columns)
+        board.apply_sort_key(self._sort_key)
         board.set_grid_columns(self._grid_columns)
 
     def set_view_mode(self, mode: ViewMode) -> None:
@@ -87,6 +101,9 @@ class WatchlistMultiViewController:
             return
         self._sort_key = sort_key
         save_sort_key(sort_key)
+        board = getattr(self._page, "multiview_board", None)
+        if board is not None:
+            board.apply_sort_key(sort_key)
         if self.is_multiview_active():
             self.refresh(force=True)
 
@@ -105,9 +122,23 @@ class WatchlistMultiViewController:
         self._grid_columns = load_grid_columns()
         board = getattr(self._page, "multiview_board", None)
         if board is not None:
+            board.apply_sort_key(self._sort_key)
             board.set_grid_columns(self._grid_columns)
         self._sync_multiview_toolbar()
         self._apply_view_mode()
+
+    def on_chart_tab_changed(self, tab_index: int) -> None:
+        mode = _sparkline_mode_from_chart_tab(tab_index)
+        if mode == self._sparkline_mode and self.is_multiview_active():
+            self._sync_sparkline_refresh_timer()
+            return
+        self._sparkline_mode = mode
+        if not self.is_multiview_active():
+            return
+        self._sparklines.clear()
+        self._sparkline_kind = "none"
+        self._schedule_sparkline_load(force=True)
+        self._sync_sparkline_refresh_timer()
 
     def on_stock_list_loaded(self) -> None:
         self._sparklines.clear()
@@ -117,6 +148,8 @@ class WatchlistMultiViewController:
             self._schedule_sparkline_load()
 
     def on_bars_updated(self, vt_symbols: list[str] | None = None) -> None:
+        if self._sparkline_mode == "intraday":
+            return
         if vt_symbols:
             for vt_symbol in vt_symbols:
                 self._sparklines.pop(vt_symbol, None)
@@ -181,7 +214,7 @@ class WatchlistMultiViewController:
             worker = self._sparkline_worker
             if worker is not None:
                 worker.requestInterruption()
-        worker = WatchlistMultiSparklineWorker(list(page.all_stocks))
+        worker = WatchlistMultiSparklineWorker(list(page.all_stocks), mode=self._sparkline_mode)
         self._sparkline_worker = worker
 
         def on_finished(payload: object) -> None:
@@ -191,7 +224,7 @@ class WatchlistMultiViewController:
                 if isinstance(payload, dict):
                     kind = payload.get("kind")
                     points = payload.get("points")
-                    if kind in ("daily", "intraday", "none"):
+                    if kind in ("daily", "intraday", "minute", "none"):
                         self._sparkline_kind = kind
                     if isinstance(points, dict):
                         self._sparklines.update(points)
@@ -217,13 +250,14 @@ class WatchlistMultiViewController:
         self._switching_view = True
         try:
             if self._view_mode == "multiview":
+                self._sync_sparkline_mode_from_chart()
                 stack.setCurrentWidget(page.multiview_board)
                 self.refresh(force=True)
                 self._schedule_sparkline_load()
-                self._start_intraday_sparkline_timer()
+                self._sync_sparkline_refresh_timer()
             else:
                 stack.setCurrentWidget(page._market_table_host)
-                self._intraday_sparkline_timer.stop()
+                self._sparkline_refresh_timer.stop()
         finally:
             self._switching_view = False
         self._sync_multiview_toolbar()
@@ -240,21 +274,27 @@ class WatchlistMultiViewController:
         stats = page._stats_label
         if stats is not None:
             stats.setVisible(self._view_mode == "table" and page.config.column_configurable)
-        show_multiview_controls = self._view_mode == "multiview"
-        for attr in ("multiview_sort_combo", "multiview_columns_combo"):
-            combo = getattr(page, attr, None)
-            if combo is not None:
-                combo.setVisible(show_multiview_controls)
 
-    def _start_intraday_sparkline_timer(self) -> None:
-        if is_ashare_trading_session():
-            self._intraday_sparkline_timer.start()
-        else:
-            self._intraday_sparkline_timer.stop()
+    def _sync_sparkline_mode_from_chart(self) -> None:
+        panel = self._page.chart_panel
+        if panel is not None:
+            self._sparkline_mode = _sparkline_mode_from_chart_tab(panel.current_tab_index())
 
-    def _on_intraday_sparkline_tick(self) -> None:
+    def _sync_sparkline_refresh_timer(self) -> None:
         if not self.is_multiview_active() or not is_ashare_trading_session():
-            self._intraday_sparkline_timer.stop()
+            self._sparkline_refresh_timer.stop()
+            return
+        if self._sparkline_mode in ("intraday", "minute"):
+            self._sparkline_refresh_timer.start()
+        else:
+            self._sparkline_refresh_timer.stop()
+
+    def _on_sparkline_refresh_tick(self) -> None:
+        if not self.is_multiview_active() or not is_ashare_trading_session():
+            self._sparkline_refresh_timer.stop()
+            return
+        if self._sparkline_mode not in ("intraday", "minute"):
+            self._sparkline_refresh_timer.stop()
             return
         self._sparklines.clear()
         self._schedule_sparkline_load(force=True)

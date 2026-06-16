@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiRow
+from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiRow, WatchlistMultiSortKey
 from vnpy_ashare.ui.quotes.watchlist_multiview.card import WatchlistMultiCard
-from vnpy_ashare.ui.quotes.watchlist_multiview.settings import load_grid_columns
+from vnpy_ashare.ui.quotes.watchlist_multiview.settings import load_grid_columns, load_sort_key
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_extra import build_watchlist_multiview_stylesheet
 
@@ -17,13 +17,42 @@ class WatchlistMultiViewBoard(QtWidgets.QWidget):
     row_clicked = QtCore.Signal(str)
     row_double_clicked = QtCore.Signal(str)
     row_context_menu_requested = QtCore.Signal(str, object)
+    sort_key_changed = QtCore.Signal(str)
+    grid_columns_changed = QtCore.Signal(int)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("WatchlistMultiViewBoard")
 
+        self._header = QtWidgets.QWidget()
+        self._header.setObjectName("WatchlistMultiHeader")
+        header_layout = QtWidgets.QHBoxLayout(self._header)
+        header_layout.setContentsMargins(8, 4, 8, 0)
+        header_layout.setSpacing(6)
+
         self._summary = QtWidgets.QLabel("")
         self._summary.setObjectName("WatchlistMultiSummary")
+
+        self._sort_combo = QtWidgets.QComboBox(self._header)
+        self._sort_combo.setObjectName("WatchlistMultiSortCombo")
+        self._sort_combo.addItem("自选顺序", "sort_order")
+        self._sort_combo.addItem("涨幅", "change_pct")
+        self._sort_combo.addItem("异动分", "anomaly_score")
+
+        self._columns_combo = QtWidgets.QComboBox(self._header)
+        self._columns_combo.setObjectName("WatchlistMultiColumnsCombo")
+        for columns in (2, 3, 4):
+            self._columns_combo.addItem(f"{columns}列", columns)
+
+        header_layout.addWidget(self._summary, stretch=1)
+        header_layout.addWidget(self._sort_combo)
+        header_layout.addWidget(self._columns_combo)
+
+        self._sort_combo.currentIndexChanged.connect(self._on_sort_combo_changed)
+        self._columns_combo.currentIndexChanged.connect(self._on_columns_combo_changed)
+        self.apply_sort_key(load_sort_key())
+        self.apply_grid_columns_setting(load_grid_columns())
+
         self._empty_label = QtWidgets.QLabel("")
         self._empty_label.setObjectName("WatchlistMultiEmpty")
         self._empty_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
@@ -44,7 +73,7 @@ class WatchlistMultiViewBoard(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-        layout.addWidget(self._summary)
+        layout.addWidget(self._header)
         layout.addWidget(scroll, stretch=1)
         layout.addWidget(self._empty_label)
 
@@ -55,8 +84,36 @@ class WatchlistMultiViewBoard(QtWidgets.QWidget):
         self._selected_vt_symbol = ""
         self._grid_columns = load_grid_columns()
 
+    def apply_sort_key(self, sort_key: WatchlistMultiSortKey) -> None:
+        index = max(0, self._sort_combo.findData(sort_key))
+        self._sort_combo.blockSignals(True)
+        self._sort_combo.setCurrentIndex(index)
+        self._sort_combo.blockSignals(False)
+
+    def apply_grid_columns_setting(self, columns: int) -> None:
+        normalized = max(2, min(4, int(columns)))
+        index = max(0, self._columns_combo.findData(normalized))
+        self._columns_combo.blockSignals(True)
+        self._columns_combo.setCurrentIndex(index)
+        self._columns_combo.blockSignals(False)
+
+    def _on_sort_combo_changed(self, index: int) -> None:
+        if index < 0:
+            return
+        sort_key = self._sort_combo.itemData(index)
+        if sort_key in ("sort_order", "change_pct", "anomaly_score"):
+            self.sort_key_changed.emit(sort_key)
+
+    def _on_columns_combo_changed(self, index: int) -> None:
+        if index < 0:
+            return
+        columns = self._columns_combo.itemData(index)
+        if isinstance(columns, int):
+            self.grid_columns_changed.emit(columns)
+
     def set_grid_columns(self, columns: int) -> None:
         self._grid_columns = max(2, min(4, int(columns)))
+        self.apply_grid_columns_setting(self._grid_columns)
         self._rebuild_grid()
 
     def apply_board(self, data: WatchlistMultiBoardData) -> None:
@@ -118,7 +175,7 @@ class WatchlistMultiViewBoard(QtWidgets.QWidget):
         for col in range(columns):
             self._grid.setColumnStretch(col, 1)
         for grid_row in range(row_count):
-            self._grid.setRowStretch(grid_row, 0)
+            self._grid.setRowStretch(grid_row, 1)
 
     def _on_card_context_menu(self, vt_symbol: str, global_pos: object) -> None:
         self.row_context_menu_requested.emit(vt_symbol, global_pos)

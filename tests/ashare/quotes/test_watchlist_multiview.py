@@ -281,6 +281,61 @@ class WatchlistMultiViewSparklineDataTests(unittest.TestCase):
         self.assertEqual(points[0], 1.0)
         self.assertEqual(points[-1], 10.0)
 
+    def test_load_watchlist_sparklines_daily_mode(self) -> None:
+        from vnpy.trader.constant import Exchange
+
+        from vnpy_ashare.domain.symbols import StockItem
+        from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import load_watchlist_sparklines
+
+        items = [StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发")]
+        with patch(
+            "vnpy_ashare.quotes.watchlist_multiview.sparkline_data.load_daily_sparklines",
+            return_value={"600000.SSE": (10.0, 10.5)},
+        ):
+            kind, payload = load_watchlist_sparklines(items, mode="daily")
+        self.assertEqual(kind, "daily")
+        self.assertEqual(payload["600000.SSE"], (10.0, 10.5))
+
+    def test_load_watchlist_sparklines_intraday_mode(self) -> None:
+        from vnpy.trader.constant import Exchange
+
+        from vnpy_ashare.domain.symbols import StockItem
+        from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import load_watchlist_sparklines
+
+        items = [StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发")]
+        with patch(
+            "vnpy_ashare.quotes.watchlist_multiview.sparkline_data.load_intraday_sparklines",
+            return_value={"600000.SSE": (10.0, 10.2)},
+        ):
+            kind, payload = load_watchlist_sparklines(items, mode="intraday")
+        self.assertEqual(kind, "intraday")
+        self.assertEqual(payload["600000.SSE"], (10.0, 10.2))
+
+    def test_load_watchlist_sparklines_minute_mode(self) -> None:
+        from vnpy.trader.constant import Exchange
+
+        from vnpy_ashare.domain.symbols import StockItem
+        from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import load_watchlist_sparklines
+
+        items = [StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发")]
+        with patch(
+            "vnpy_ashare.quotes.watchlist_multiview.sparkline_data.load_minute_sparklines",
+            return_value={"600000.SSE": (10.0, 10.1, 10.3)},
+        ):
+            kind, payload = load_watchlist_sparklines(items, mode="minute")
+        self.assertEqual(kind, "minute")
+        self.assertEqual(payload["600000.SSE"], (10.0, 10.1, 10.3))
+
+
+class WatchlistMultiViewChartTabSyncTests(unittest.TestCase):
+    def test_sparkline_mode_from_chart_tab(self) -> None:
+        from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, INTRADAY_TAB_INDEX, MINUTE_TAB_INDEX
+        from vnpy_ashare.ui.quotes.watchlist_multiview.controller import _sparkline_mode_from_chart_tab
+
+        self.assertEqual(_sparkline_mode_from_chart_tab(INTRADAY_TAB_INDEX), "intraday")
+        self.assertEqual(_sparkline_mode_from_chart_tab(DAILY_TAB_INDEX), "daily")
+        self.assertEqual(_sparkline_mode_from_chart_tab(MINUTE_TAB_INDEX), "minute")
+
 
 class WatchlistMultiViewSettingsTests(unittest.TestCase):
     def test_view_mode_defaults_table(self) -> None:

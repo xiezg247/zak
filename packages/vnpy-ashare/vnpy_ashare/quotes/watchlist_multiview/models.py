@@ -34,7 +34,7 @@ class WatchlistMultiRow:
     sector_rank: int | None = None
     sector_avg_change: float | None = None
     sparkline_points: tuple[float, ...] = ()
-    sparkline_kind: Literal["daily", "intraday", "none"] = "none"
+    sparkline_kind: Literal["daily", "intraday", "minute", "none"] = "none"
 
 
 @dataclass(frozen=True)

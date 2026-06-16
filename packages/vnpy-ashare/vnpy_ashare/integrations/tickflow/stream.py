@@ -14,6 +14,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.integrations.tickflow.quotes import get_tickflow_client, parse_quote_row
 from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 if TYPE_CHECKING:
@@ -162,6 +163,7 @@ class TickflowStreamBridge(QtCore.QObject):
             for row in rows:
                 quote = parse_quote_row(row)
                 quotes[quote.symbol] = quote
+            fill_missing_tushare_factors(quotes)
             self.quotes_updated.emit(quotes)
 
         @stream.on_depth

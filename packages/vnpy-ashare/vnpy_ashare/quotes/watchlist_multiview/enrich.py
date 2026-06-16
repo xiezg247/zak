@@ -29,7 +29,7 @@ def enrich_multiview_rows(
     position_cache: Mapping[str, PositionSnapshot] | None = None,
     industry_map: dict[str, str] | None = None,
     sparklines: Mapping[str, tuple[float, ...]] | None = None,
-    sparkline_kind: Literal["daily", "intraday", "none"] = "none",
+    sparkline_kind: Literal["daily", "intraday", "minute", "none"] = "none",
 ) -> tuple[WatchlistMultiRow, ...]:
     signal_symbols = signal_symbols or frozenset()
     signal_cache = signal_cache or {}
@@ -69,7 +69,7 @@ def enrich_multiview_rows(
             position_pnl_pct = pos.unrealized_pnl_pct
 
         points = sparklines.get(row.vt_symbol, row.sparkline_points)
-        row_kind: Literal["daily", "intraday", "none"] = sparkline_kind if points else "none"
+        row_kind: Literal["daily", "intraday", "minute", "none"] = sparkline_kind if points else "none"
 
         enriched.append(
             replace(

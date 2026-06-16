@@ -86,8 +86,6 @@ class QuotesPageShellAttrs:
     multiview_board: WatchlistMultiViewBoard | None
     view_table_button: QtWidgets.QPushButton | None
     view_multiview_button: QtWidgets.QPushButton | None
-    multiview_sort_combo: QtWidgets.QComboBox | None
-    multiview_columns_combo: QtWidgets.QComboBox | None
     run_output_panel: TaskRunOutputPanel | None
     rank_sidebar: MarketRankSidebar | None
     rank_list: QtWidgets.QListWidget | None

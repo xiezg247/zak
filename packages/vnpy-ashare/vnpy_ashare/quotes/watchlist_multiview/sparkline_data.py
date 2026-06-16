@@ -1,4 +1,4 @@
-"""自选多维看盘迷你图数据（日 K / 分时）。"""
+"""自选多维看盘迷你图数据（分时 / 日 K / 分 K）。"""
 
 from __future__ import annotations
 
@@ -6,16 +6,21 @@ from typing import Literal
 
 from vnpy.trader.object import BarData
 
+from vnpy_ashare.data.bar_access import get_period_overview, load_period_bars
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
+from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars, fetch_minute_bars
 
-SparklineKind = Literal["daily", "intraday", "none"]
+SparklineKind = Literal["daily", "intraday", "minute", "none"]
+SparklineMode = Literal["intraday", "daily", "minute"]
+
 SPARKLINE_DAILY_BARS = 24
 SPARKLINE_INTRADAY_MAX_POINTS = 48
+SPARKLINE_MINUTE_MAX_POINTS = 48
+SPARKLINE_MINUTE_LOOKBACK_BARS = 120
 SPARKLINE_INTRADAY_MAX_WORKERS = 4
+SPARKLINE_MINUTE_MAX_WORKERS = 4
 
 
 def _downsample_closes(closes: list[float], *, max_points: int) -> tuple[float, ...]:
@@ -69,13 +74,51 @@ def load_intraday_sparklines(items: list[StockItem]) -> dict[str, tuple[float, .
     return {vt_symbol: points for vt_symbol, points in pairs if points}
 
 
-def load_watchlist_sparklines(items: list[StockItem]) -> tuple[SparklineKind, dict[str, tuple[float, ...]]]:
+def _load_minute_entry(item: StockItem) -> tuple[str, tuple[float, ...]]:
+    try:
+        overview = get_period_overview(item.symbol, item.exchange, "1m")
+        if overview is not None:
+            bars = load_period_bars(item.symbol, item.exchange, "1m", overview.start, overview.end)
+            if bars:
+                tail = bars[-SPARKLINE_MINUTE_LOOKBACK_BARS:]
+                points = closes_from_bars(tail, max_points=SPARKLINE_MINUTE_MAX_POINTS)
+                if points:
+                    return item.vt_symbol, points
+        bars = fetch_minute_bars(item, period="1m", count=240)
+        points = closes_from_bars(bars, max_points=SPARKLINE_MINUTE_MAX_POINTS)
+        return item.vt_symbol, points
+    except Exception:
+        return item.vt_symbol, ()
+
+
+def load_minute_sparklines(items: list[StockItem]) -> dict[str, tuple[float, ...]]:
+    if not items:
+        return {}
+    workers = min(SPARKLINE_MINUTE_MAX_WORKERS, len(items))
+    if workers <= 1:
+        pairs = [_load_minute_entry(item) for item in items]
+    else:
+        pairs = run_parallel_map(items, _load_minute_entry, max_workers=workers)
+    return {vt_symbol: points for vt_symbol, points in pairs if points}
+
+
+def load_watchlist_sparklines(
+    items: list[StockItem],
+    *,
+    mode: SparklineMode,
+) -> tuple[SparklineKind, dict[str, tuple[float, ...]]]:
     if not items:
         return "none", {}
-    if is_ashare_trading_session():
+    if mode == "intraday":
         intraday = load_intraday_sparklines(items)
         if intraday:
             return "intraday", intraday
+        return "none", {}
+    if mode == "minute":
+        minute = load_minute_sparklines(items)
+        if minute:
+            return "minute", minute
+        return "none", {}
     daily = load_daily_sparklines(items)
     if daily:
         return "daily", daily

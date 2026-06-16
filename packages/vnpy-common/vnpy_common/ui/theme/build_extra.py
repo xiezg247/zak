@@ -946,7 +946,7 @@ QLabel#WatchlistMultiAnomalyBadge {{
 }}
 QLabel#WatchlistMultiName {{
     color: {t.text_primary};
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
 }}
 QLabel#WatchlistMultiSymbol {{
@@ -955,7 +955,7 @@ QLabel#WatchlistMultiSymbol {{
 }}
 QLabel#WatchlistMultiPrice {{
     color: {t.text_primary};
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
 }}
 QLabel#WatchlistMultiMetricChip,
@@ -980,11 +980,16 @@ QLabel#WatchlistMultiSparklineKind {{
 QWidget#WatchlistMultiSparkline {{
     background: transparent;
 }}
+QWidget#WatchlistMultiHeader {{
+    background: transparent;
+}}
 QComboBox#WatchlistMultiSortCombo {{
-    min-width: 88px;
+    min-width: 76px;
+    max-width: 88px;
 }}
 QComboBox#WatchlistMultiColumnsCombo {{
-    min-width: 64px;
+    min-width: 52px;
+    max-width: 64px;
 }}
 """
 

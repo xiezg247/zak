@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
+from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
@@ -32,7 +33,9 @@ class QuoteProvider(ABC):
 
 class TickflowQuoteProvider(QuoteProvider):
     def get_quotes(self, items: list[StockItem]) -> dict[str, QuoteSnapshot]:
-        return fetch_quotes_from_tickflow(items)
+        quotes = fetch_quotes_from_tickflow(items)
+        fill_missing_tushare_factors(quotes)
+        return quotes
 
 
 class RedisQuoteProvider(QuoteProvider):
