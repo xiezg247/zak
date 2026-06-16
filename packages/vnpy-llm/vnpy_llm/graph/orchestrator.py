@@ -24,6 +24,7 @@ from vnpy_llm.graph.team_symbol import resolve_team_symbol
 
 AGENT_TIMEOUT_SECONDS = 60
 MIN_COMPLETED_AGENTS = 2
+MIN_FAST_PREFETCH_AGENTS = 2
 SUB_AGENT_MAX_ROUNDS = 3
 SUB_AGENT_PREFETCH_ROUNDS = 1
 CHIEF_MAX_ROUNDS = 2
@@ -254,13 +255,26 @@ def _resolve_symbol(graph_ctx: GraphStreamContext) -> str | None:
 
 
 def _prefetch_bundle_ready(prefetch: dict[str, Any] | None) -> bool:
+    return len(_ready_prefetch_agents(prefetch)) == len(TEAM_AGENTS)
+
+
+def _ready_prefetch_agents(prefetch: dict[str, Any] | None) -> tuple[AgentName, ...]:
     if not prefetch or prefetch.get("error"):
-        return False
+        return ()
+    ready: list[AgentName] = []
     for agent in TEAM_AGENTS:
         data = prefetch.get(agent)
-        if not _prefetch_ready(data if isinstance(data, dict) else None):
-            return False
-    return True
+        if _prefetch_ready(data if isinstance(data, dict) else None):
+            ready.append(agent)
+    return tuple(ready)
+
+
+def _format_missing_agent_section(agent: AgentName) -> str:
+    label = AGENT_STREAM_LABELS.get(agent, agent)
+    return (
+        f"\n## {label}\n\n"
+        f"**规则速览不可用**：{label}本地预取缺失或失败，综合研判将标注该维度缺口。\n\n"
+    )
 
 
 def _format_rule_dimension_section(agent: AgentName, rule: dict[str, Any]) -> str:
@@ -276,7 +290,7 @@ def _format_rule_dimension_section(agent: AgentName, rule: dict[str, Any]) -> st
         lines.append("亮点：" + "；".join(highlights) + "\n\n")
     if risks:
         lines.append("风险：" + "；".join(risks) + "\n\n")
-    lines.append("> 基于本地预取数据与规则评分；深度解读见下方综合研判。\n")
+    lines.append("> 规则速览（基于本地预取与规则评分，非 LLM 分析师正文）；逐维深度解读请开启「深度投研团队」。\n")
     return "".join(lines)
 
 
@@ -338,15 +352,30 @@ def _stream_chief_synthesis(
         raise LlmClientError(f"综合研判生成失败: {ex}") from ex
 
 
-def _format_prefetch_banner(graph_ctx: GraphStreamContext, symbol: str, *, fast_mode: bool = False) -> str:
+def _format_prefetch_banner(
+    graph_ctx: GraphStreamContext,
+    symbol: str,
+    *,
+    fast_mode: bool = False,
+    deep_mode: bool = False,
+    ready_agents: tuple[AgentName, ...] = (),
+) -> str:
     scores = graph_ctx.team_scores or {}
     fin = scores.get("financial", {}).get("score", "-")
     risk = scores.get("risk", {}).get("score", "-")
     strat = scores.get("strategy", {}).get("score", "-")
+    mkt = scores.get("market", {}).get("score", "-")
     weighted = scores.get("weighted", "-")
     prefetch = graph_ctx.team_prefetch or {}
     diagnose = prefetch.get("diagnose") or {}
-    mode = "快速团队（预取+综合研判）" if fast_mode else ("预取完成，解读模式" if graph_ctx.team_prefetch else "工具模式")
+    if deep_mode:
+        mode = "深度团队（三分析师 LLM 并行，约 1–3 分钟）"
+    elif fast_mode:
+        mode = "快速团队（规则速览 + 综合研判，约 30 秒）"
+    elif graph_ctx.team_prefetch:
+        mode = "预取完成，解读模式"
+    else:
+        mode = "工具模式"
     diag_note = ""
     if diagnose.get("available"):
         source = diagnose.get("source", "cache")
@@ -358,10 +387,20 @@ def _format_prefetch_banner(graph_ctx: GraphStreamContext, symbol: str, *, fast_
         market_note = f" | 环境：{summary[0]}"
     return (
         f"\n🔄 分析团队已启动（{mode}{diag_note}{market_note}）\n"
-        f"标的：**{symbol}** | 规则参考分：财务 {fin} / 风险 {risk} / 策略 {strat} "
+        f"标的：**{symbol}** | 规则参考分：财务 {fin} / 风险 {risk} / 策略 {strat} / 行情 {mkt} "
         f"| 加权 {weighted}\n"
-        f"⏳ {'规则评分已就绪，生成综合研判…' if fast_mode else '财务 / 风险 / 策略并行生成中（逐段流式输出）…'}\n\n"
+        f"{_format_prefetch_gap_note(ready_agents, fast_mode=fast_mode)}"
+        f"⏳ {'规则速览已就绪，生成综合研判…' if fast_mode else '财务 / 风险 / 策略并行生成中（逐段流式输出）…'}\n\n"
     )
+
+
+def _format_prefetch_gap_note(ready_agents: tuple[AgentName, ...], *, fast_mode: bool) -> str:
+    if not fast_mode or not ready_agents or len(ready_agents) >= len(TEAM_AGENTS):
+        return ""
+    missing = [AGENT_STREAM_LABELS.get(agent, agent) for agent in TEAM_AGENTS if agent not in ready_agents]
+    if not missing:
+        return ""
+    return f"⚠️ 部分维度预取缺失：{'、'.join(missing)}（综合研判将说明缺口）\n"
 
 
 def stream_team_analysis(
@@ -416,26 +455,54 @@ def stream_team_analysis(
 
     prefetch = active_ctx.team_prefetch or {}
     team_scores = active_ctx.team_scores or {}
-    use_fast_team = not team_deep_mode_enabled() and _prefetch_bundle_ready(prefetch)
+    deep_mode = team_deep_mode_enabled()
+    ready_agents = _ready_prefetch_agents(prefetch)
+    if not deep_mode and len(ready_agents) < MIN_FAST_PREFETCH_AGENTS:
+        yield (
+            f"\n⚠️ 本地预取仅 {len(ready_agents)}/{len(TEAM_AGENTS)} 维可用，"
+            "已切换为深度团队分析（较慢）…\n"
+        )
+        deep_mode = True
+    use_fast_team = not deep_mode and len(ready_agents) >= MIN_FAST_PREFETCH_AGENTS
 
-    yield _format_prefetch_banner(active_ctx, symbol, fast_mode=use_fast_team)
+    yield _format_prefetch_banner(
+        active_ctx,
+        symbol,
+        fast_mode=use_fast_team,
+        deep_mode=deep_mode,
+        ready_agents=ready_agents,
+    )
 
     if use_fast_team:
         if not team_scores:
             team_scores = compute_team_scores(prefetch)
             active_ctx = active_ctx.model_copy(update={"team_scores": team_scores})
         fast_results = _build_fast_agent_results(prefetch, team_scores)
+        chief_results: dict[AgentName, AgentResult] = {}
         for agent in TEAM_AGENTS:
             if on_team_trace:
                 on_team_trace("agent_start", agent, {})
-            yield fast_results[agent].markdown
+            if agent in ready_agents:
+                yield fast_results[agent].markdown
+                chief_results[agent] = fast_results[agent]
+            else:
+                missing = _format_missing_agent_section(agent)
+                yield missing
+                chief_results[agent] = AgentResult(
+                    agent=agent,
+                    markdown=missing,
+                    error="prefetch_missing",
+                )
             if on_team_trace:
-                score = (fast_results[agent].json_data or {}).get("score")
-                on_team_trace("agent_done", agent, {"score": score, "ok": True})
+                if agent in ready_agents:
+                    score = (fast_results[agent].json_data or {}).get("score")
+                    on_team_trace("agent_done", agent, {"score": score, "ok": True})
+                else:
+                    on_team_trace("agent_done", agent, {"ok": False, "error": "prefetch_missing"})
         yield from _stream_chief_synthesis(
             config,
             conversation,
-            fast_results,
+            chief_results,
             active_ctx,
             tool_executor,
             should_cancel=should_cancel,

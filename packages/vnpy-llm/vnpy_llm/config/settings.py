@@ -33,7 +33,12 @@ class LlmConfig:
 
 def team_deep_mode_enabled() -> bool:
     """为 True 时团队分析走 3 子 Agent 并行 LLM；默认 False（快速团队：预取 + chief）。"""
-    return os.getenv("LLM_TEAM_DEEP_MODE", "").strip().lower() in ("1", "true", "yes")
+    try:
+        from vnpy_llm.config.team_prefs import load_team_deep_mode_pref
+
+        return load_team_deep_mode_pref()
+    except Exception:
+        return os.getenv("LLM_TEAM_DEEP_MODE", "").strip().lower() in ("1", "true", "yes")
 
 
 def load_llm_config() -> LlmConfig:

@@ -230,7 +230,7 @@ def build_team_analysis_menu(binding: StockBinding) -> QuickAction:
     return QuickAction(
         id="team_analysis",
         label="团队全面分析",
-        tooltip=f"{binding.tooltip} · 财务/风险/策略并行",
+        tooltip=f"{binding.tooltip} · 快速=规则速览+综合研判；可在 AI 面板勾选「深度投研团队」",
         auto_send=True,
         prompt=build_team_analysis_ai_prompt(binding.vt_symbol, binding.name),
     )

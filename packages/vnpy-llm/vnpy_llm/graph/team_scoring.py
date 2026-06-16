@@ -166,13 +166,83 @@ def score_strategy(strategy: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def score_market(market_context: dict[str, Any]) -> dict[str, Any]:
+    """分数越高表示标的相对市场环境越占优。"""
+    if not market_context or market_context.get("error"):
+        return {"score": 50, "summary": "市场环境数据有限", "highlights": [], "risks": []}
+
+    score = 50
+    highlights: list[str] = []
+    risks: list[str] = []
+
+    stock_vs = market_context.get("stock_vs_benchmark") or {}
+    excess = stock_vs.get("excess_pct")
+    if excess is not None:
+        if excess >= 8:
+            score += 15
+            highlights.append(f"相对沪深300超额 {excess:+.1f}%")
+        elif excess >= 3:
+            score += 8
+            highlights.append(f"相对沪深300超额 {excess:+.1f}%")
+        elif excess <= -8:
+            score -= 15
+            risks.append(f"相对沪深300落后 {excess:+.1f}%")
+        elif excess <= -3:
+            score -= 8
+            risks.append(f"相对沪深300落后 {excess:+.1f}%")
+
+    sector = market_context.get("sector") or {}
+    rank = sector.get("rank")
+    total_sectors = sector.get("total_sectors")
+    avg_change = sector.get("avg_change_pct")
+    if rank is not None and isinstance(total_sectors, int) and total_sectors > 0:
+        if rank <= 3:
+            score += 10
+            highlights.append(f"行业当日涨幅第 {rank}/{total_sectors}")
+        elif rank >= max(1, total_sectors - 2):
+            score -= 8
+            risks.append(f"行业当日涨幅靠后 {rank}/{total_sectors}")
+    if avg_change is not None and avg_change >= 2:
+        score += 5
+        highlights.append(f"行业均涨 {avg_change:+.1f}%")
+    elif avg_change is not None and avg_change <= -2:
+        score -= 5
+        risks.append(f"行业均跌 {avg_change:+.1f}%")
+
+    sentiment = market_context.get("market_sentiment") or {}
+    fg = sentiment.get("fear_greed_index")
+    if fg is not None:
+        if fg >= 80:
+            score -= 5
+            risks.append(f"市场偏贪婪 {fg:.0f}")
+        elif fg <= 20:
+            score += 5
+            highlights.append(f"市场偏恐惧 {fg:.0f}")
+
+    summary_lines = market_context.get("summary_lines") or []
+    summary = "；".join(highlights) if highlights else (
+        str(summary_lines[0]) if summary_lines else "市场环境中性"
+    )
+
+    return {
+        "score": _clamp(score),
+        "summary": summary,
+        "highlights": highlights,
+        "risks": risks,
+    }
+
+
 def compute_team_scores(prefetch: dict[str, Any]) -> dict[str, Any]:
     financial = score_financial(prefetch.get("financial") or {})
     risk = score_risk(prefetch.get("risk") or {})
     strategy = score_strategy(prefetch.get("strategy") or {})
+    market = score_market(prefetch.get("market_context") or {})
 
     weighted = round(
-        financial["score"] * 0.35 + risk["score"] * 0.25 + strategy["score"] * 0.20 + 50 * 0.20,
+        financial["score"] * 0.35
+        + risk["score"] * 0.25
+        + strategy["score"] * 0.20
+        + market["score"] * 0.20,
         1,
     )
 
@@ -180,5 +250,12 @@ def compute_team_scores(prefetch: dict[str, Any]) -> dict[str, Any]:
         "financial": financial,
         "risk": risk,
         "strategy": strategy,
+        "market": market,
         "weighted": weighted,
+        "weights": {
+            "financial": 0.35,
+            "risk": 0.25,
+            "strategy": 0.20,
+            "market": 0.20,
+        },
     }

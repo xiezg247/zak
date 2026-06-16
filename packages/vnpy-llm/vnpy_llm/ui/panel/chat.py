@@ -199,6 +199,29 @@ class AiChatPanel(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(0, self._on_panel_shown)
 
         # ── 快捷指令面板（输入框上方） ──
+        team_opts = QtWidgets.QHBoxLayout()
+        team_opts.setContentsMargins(0, 0, 0, 0)
+        team_opts.setSpacing(8)
+        from vnpy_llm.config.team_prefs import load_team_deep_mode_pref
+
+        self._team_deep_checkbox = QtWidgets.QCheckBox("深度投研团队")
+        self._team_deep_checkbox.setObjectName("AiTeamDeepModeCheckbox")
+        self._team_deep_checkbox.setToolTip(
+            "关闭（默认）：快速团队 — 规则速览 + 总分析师综合研判，约 30 秒。\n"
+            "开启：深度团队 — 财务 / 风险 / 策略各走一轮 LLM 并行解读，约 1–3 分钟。"
+        )
+        self._team_deep_checkbox.setChecked(load_team_deep_mode_pref())
+        self._team_deep_checkbox.toggled.connect(self._on_team_deep_mode_toggled)
+        self._team_mode_hint = QtWidgets.QLabel("快速：规则速览 + 综合研判")
+        self._team_mode_hint.setObjectName("AiTeamModeHint")
+        team_opts.addWidget(self._team_deep_checkbox)
+        team_opts.addWidget(self._team_mode_hint, stretch=1)
+        team_host = QtWidgets.QWidget()
+        team_host.setObjectName("AiTeamModeRow")
+        team_host.setLayout(team_opts)
+        root.addWidget(team_host)
+        self._sync_team_mode_hint(self._team_deep_checkbox.isChecked())
+
         self.quick_actions: QuickActionChips | None = None
         self.quick_actions = QuickActionChips(self)
         self.quick_actions.triggered.connect(self._on_quick_action)
@@ -367,6 +390,18 @@ class AiChatPanel(QtWidgets.QWidget):
         if self.compact:
             return "compact"
         return "assistant"
+
+    def _on_team_deep_mode_toggled(self, checked: bool) -> None:
+        from vnpy_llm.config.team_prefs import save_team_deep_mode_pref
+
+        save_team_deep_mode_pref(checked)
+        self._sync_team_mode_hint(checked)
+
+    def _sync_team_mode_hint(self, deep: bool) -> None:
+        if deep:
+            self._team_mode_hint.setText("深度：三分析师 LLM 并行（较慢）")
+        else:
+            self._team_mode_hint.setText("快速：规则速览 + 综合研判")
 
     def _refresh_quick_actions_from_context(self) -> None:
         """根据当前 AI 上下文刷新快捷指令按钮。"""

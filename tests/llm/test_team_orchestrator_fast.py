@@ -55,6 +55,7 @@ def test_stream_team_analysis_fast_mode_skips_sub_agents(monkeypatch):
         "financial": {"score": 70, "summary": "盈利稳健", "highlights": ["ROE 20%"], "risks": []},
         "risk": {"score": 65, "summary": "波动可控", "highlights": [], "risks": []},
         "strategy": {"score": 80, "summary": "均线多头", "highlights": ["偏多"], "risks": []},
+        "market": {"score": 72, "summary": "跑赢大盘", "highlights": [], "risks": []},
         "weighted": 72.5,
     }
     graph_ctx = GraphStreamContext(
@@ -75,10 +76,12 @@ def test_stream_team_analysis_fast_mode_skips_sub_agents(monkeypatch):
     )
 
     assert "快速团队" in output
+    assert "行情" in output
     assert "## 财务面" in output
     assert "## 风险面" in output
     assert "## 策略面" in output
     assert "规则参考分" in output
+    assert "规则速览" in output
     assert "## 综合研判" in output
     assert "综合结论：观望。" in output
     assert chief_calls, "chief 应被调用一次"

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_llm.graph.team_scoring import compute_team_scores, score_financial, score_risk, score_strategy
+from vnpy_llm.graph.team_scoring import compute_team_scores, score_financial, score_market, score_risk, score_strategy
 
 
 def test_score_financial_high_quality():
@@ -44,14 +44,33 @@ def test_score_strategy_bullish():
     assert "多头" in result["summary"]
 
 
+def test_score_market_outperform():
+    result = score_market(
+        {
+            "stock_vs_benchmark": {"excess_pct": 10.0},
+            "sector": {"industry": "半导体", "rank": 1, "total_sectors": 20, "avg_change_pct": 3.0},
+            "market_sentiment": {"fear_greed_index": 18.0},
+            "summary_lines": ["沪深300 近60日 +5%"],
+        }
+    )
+    assert result["score"] >= 70
+    assert any("超额" in h for h in result["highlights"])
+
+
 def test_compute_team_scores_weighted():
     prefetch = {
         "financial": {"latest_financials": {"roe": 10.0}, "valuation": {}},
         "risk": {"volatility_annualized_pct": 30.0, "max_drawdown_pct": 25.0},
         "strategy": {"technical": {"ma_alignment": "中性"}},
+        "market_context": {
+            "stock_vs_benchmark": {"excess_pct": 5.0},
+            "sector": {"rank": 2, "total_sectors": 10, "avg_change_pct": 1.0},
+        },
     }
     scores = compute_team_scores(prefetch)
     assert "financial" in scores
     assert "risk" in scores
     assert "strategy" in scores
+    assert "market" in scores
     assert isinstance(scores["weighted"], float)
+    assert scores["weights"]["market"] == 0.20

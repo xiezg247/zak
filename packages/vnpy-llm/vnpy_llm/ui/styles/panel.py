@@ -81,6 +81,13 @@ QPushButton#AiDeleteSessionsBtn {
 QWidget#AiQuickActionChips {
     margin-bottom: 4px;
 }
+QLabel#AiTeamModeHint {
+    font-size: 11px;
+    color: #8a8a92;
+}
+QCheckBox#AiTeamDeepModeCheckbox {
+    font-size: 12px;
+}
 QLabel#AiTitle {
     font-size: 14px;
     font-weight: bold;
