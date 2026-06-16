@@ -8,23 +8,6 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from strategies.registry import list_signal_strategy_metas
 from strategies.signals import STRATEGY_SIGNAL_DEFAULTS
-from vnpy_ashare.data.bar_health import format_meta_date
-from vnpy_ashare.domain.signal_snapshot import (
-    SIGNAL_STRENGTH_STRONG,
-    SignalSnapshot,
-    signal_is_fresh,
-    signal_is_strong,
-    signal_missing_kline,
-    signal_row_sort_key,
-)
-from vnpy_ashare.services.signals import (
-    build_price_field_explanations,
-    build_runtime_signal_hints,
-    format_strength_breakdown,
-    resolve_display_anchor_prices,
-    signal_cell_color,
-    signal_cell_text,
-)
 from vnpy_ashare.config.preferences import (
     DEFAULT_CLASS,
     SIGNAL_PANEL_MAX_SYMBOLS,
@@ -42,6 +25,23 @@ from vnpy_ashare.config.preferences import (
 from vnpy_ashare.config.preferences.signal_panel_columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,
     resolve_signal_panel_columns,
+)
+from vnpy_ashare.data.bar_health import format_meta_date
+from vnpy_ashare.domain.signal_snapshot import (
+    SIGNAL_STRENGTH_STRONG,
+    SignalSnapshot,
+    signal_is_fresh,
+    signal_is_strong,
+    signal_missing_kline,
+    signal_row_sort_key,
+)
+from vnpy_ashare.services.signals import (
+    build_price_field_explanations,
+    build_runtime_signal_hints,
+    format_strength_breakdown,
+    resolve_display_anchor_prices,
+    signal_cell_color,
+    signal_cell_text,
 )
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     SIGNAL_PANEL_COLLAPSED_HEIGHT,

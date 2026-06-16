@@ -99,8 +99,8 @@ def _patch_market_stream_shutdown() -> None:
                 return
             raise
 
-    MarketStream.close = patched_close  # type: ignore[method-assign]
-    MarketStream._run_in_thread = patched_run_in_thread  # type: ignore[method-assign]
+    MarketStream.close = patched_close
+    MarketStream._run_in_thread = patched_run_in_thread
     _market_stream_shutdown_patched = True
 
 

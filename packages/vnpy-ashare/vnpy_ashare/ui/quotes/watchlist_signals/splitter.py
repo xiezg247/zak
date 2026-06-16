@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.config.preferences import (
+    load_center_splitter_sizes,
+    load_signal_panel_expanded,
+    save_center_splitter_sizes,
+)
 from vnpy_ashare.ui.components.splitter_utils import (
     bind_splitter_persistence,
     clamp_primary_sizes,
@@ -14,12 +19,6 @@ from vnpy_ashare.ui.components.splitter_utils import (
     panel_slot_height,
     set_splitter_sizes_quiet,
     splitter_total_height,
-)
-from vnpy_ashare.config.preferences import (
-    WatchlistPositionConfig,
-    load_center_splitter_sizes,
-    load_signal_panel_expanded,
-    save_center_splitter_sizes,
 )
 
 if TYPE_CHECKING:
@@ -47,6 +46,13 @@ _CENTER_PANEL_SPECS: tuple[_CenterPanelSpec, ...] = (
     _CenterPanelSpec("position", POSITION_PANEL_DEFAULT_HEIGHT, POSITION_PANEL_COLLAPSED_HEIGHT),
     _CenterPanelSpec("run", RUN_OUTPUT_EXPANDED_HEIGHT, RUN_OUTPUT_COLLAPSED_HEIGHT),
 )
+
+
+def _panel_is_expanded(panel: QtWidgets.QWidget) -> bool:
+    expanded_fn = getattr(panel, "is_expanded", None)
+    if callable(expanded_fn):
+        return bool(expanded_fn())
+    return True
 
 
 def center_splitter(page: QuotesPage) -> QtWidgets.QSplitter | None:
@@ -143,7 +149,7 @@ def _normalize_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, save
             default_height=spec.default_height,
             collapsed_height=spec.collapsed_height,
         )
-        if panel.is_expanded():
+        if _panel_is_expanded(panel):
             result[index] = max(result[index], min_h)
         else:
             result[index] = spec.collapsed_height
@@ -174,11 +180,11 @@ def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
     sizes_map = compute_center_splitter_sizes(
         splitter_total_height(splitter),
         has_signal_panel=signal_panel is not None,
-        signal_expanded=signal_panel.is_expanded() if signal_panel is not None else False,
+        signal_expanded=_panel_is_expanded(signal_panel) if signal_panel is not None else False,
         has_position_panel=position_panel is not None,
-        position_expanded=position_panel.is_expanded() if position_panel is not None else False,
+        position_expanded=_panel_is_expanded(position_panel) if position_panel is not None else False,
         has_run_output=run_panel is not None,
-        run_expanded=run_panel.is_expanded() if run_panel is not None else False,
+        run_expanded=_panel_is_expanded(run_panel) if run_panel is not None else False,
         signal_min_height=signal_panel.minimumHeight() if signal_panel is not None else 0,
         position_min_height=position_panel.minimumHeight() if position_panel is not None else 0,
         run_min_height=run_panel.minimumHeight() if run_panel is not None else 0,

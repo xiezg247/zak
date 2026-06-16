@@ -89,7 +89,7 @@ def rolling_high_before_last(bars: list[BarData], *, lookback_days: int) -> floa
     """最近 lookback_days 根日 K 最高价（不含最后一根）。"""
     if lookback_days <= 0 or len(bars) < lookback_days + 1:
         return None
-    window = bars[-(lookback_days + 1):-1]
+    window = bars[-(lookback_days + 1) : -1]
     highs = [float(bar.high_price or 0) for bar in window]
     highs = [value for value in highs if value > 0]
     if not highs:

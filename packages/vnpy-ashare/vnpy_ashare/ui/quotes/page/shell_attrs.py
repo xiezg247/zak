@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
 from vnpy_ashare.ui.quotes.table import QuoteTableModel
 

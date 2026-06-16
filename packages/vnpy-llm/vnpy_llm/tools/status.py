@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import cast
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, cast
 
 from skills.registry import OFFICIAL_SKILLS
 from vnpy_mcp.app.engine import McpEngine

@@ -35,7 +35,7 @@ def clamp_primary_sizes(
     if len(sizes) <= 1:
         return list(sizes)
     result = list(sizes)
-    result[primary_index] = max(total - sum(result[primary_index + 1:]), primary_min)
+    result[primary_index] = max(total - sum(result[primary_index + 1 :]), primary_min)
     extra = sum(result) - total
     if extra > 0 and result[primary_index] > primary_min:
         result[primary_index] = max(primary_min, result[primary_index] - extra)

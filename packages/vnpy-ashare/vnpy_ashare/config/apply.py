@@ -24,9 +24,7 @@ _RESTART_VT_PREFIXES: tuple[str, ...] = ("database.",)
 
 _DATAFEED_ENV_KEYS: frozenset[str] = frozenset({"DATAFEED_NAME", "TICKFLOW_API_KEY", "TUSHARE_TOKEN"})
 
-_INSTANT_ENV_KEYS: frozenset[str] = frozenset(
-    spec.key for spec in ENV_CONFIG_SPECS if spec.group == "大模型"
-)
+_INSTANT_ENV_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "大模型")
 _SOFT_RELOAD_ENV_KEYS: frozenset[str] = frozenset(
     {
         "DATAFEED_NAME",
@@ -36,11 +34,7 @@ _SOFT_RELOAD_ENV_KEYS: frozenset[str] = frozenset(
         "QUOTE_COLLECT_INTERVAL",
     }
 )
-_RESTART_ENV_KEYS: frozenset[str] = frozenset(
-    spec.key
-    for spec in ENV_CONFIG_SPECS
-    if spec.group in {"数据库", "PostgreSQL"} or spec.key == "DATABASE_NAME"
-)
+_RESTART_ENV_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group in {"数据库", "PostgreSQL"} or spec.key == "DATABASE_NAME")
 
 _VT_LABELS: dict[str, str] = {spec.key: spec.label for spec in VT_CONFIG_SPECS}
 _ENV_LABELS: dict[str, str] = {spec.key: spec.label for spec in ENV_CONFIG_SPECS}

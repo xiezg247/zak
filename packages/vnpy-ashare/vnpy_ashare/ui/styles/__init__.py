@@ -14,6 +14,9 @@ from vnpy_ashare.ui.styles.colors import (
     RISE_COLOR,
 )
 from vnpy_ashare.ui.styles.compose import TERMINAL_STYLESHEET
+from vnpy_ashare.ui.styles.scheduler import SCHEDULER_PAGE_STYLESHEET, SCHEDULER_TABLE_STYLESHEET
+from vnpy_ashare.ui.styles.settings import SETTINGS_DIALOG_STYLESHEET
+from vnpy_ashare.ui.styles.toolbar import TOOLBAR_COMBO_STYLESHEET
 from vnpy_ashare.ui.styles.vnpy_page import (
     VNPY_PAGE_STYLESHEET,
     apply_settings_combo_style,
@@ -22,9 +25,6 @@ from vnpy_ashare.ui.styles.vnpy_page import (
     style_vnpy_form_inputs,
     style_vnpy_push_buttons,
 )
-from vnpy_ashare.ui.styles.scheduler import SCHEDULER_PAGE_STYLESHEET, SCHEDULER_TABLE_STYLESHEET
-from vnpy_ashare.ui.styles.settings import SETTINGS_DIALOG_STYLESHEET
-from vnpy_ashare.ui.styles.toolbar import TOOLBAR_COMBO_STYLESHEET
 
 __all__ = [
     "ACCENT_COLOR",

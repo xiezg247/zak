@@ -83,10 +83,7 @@ def run_recipe_object(
             continue
         hits = apply_volume_liquidity_dedup(hits)
         weight_sum = sum(item.weight for item in hits)
-        composite = sum(
-            item.score * item.weight * moneyflow_dimension_score_factor(item.dimension_id, item.row)
-            for item in hits
-        ) / max(weight_sum, 1e-6)
+        composite = sum(item.score * item.weight * moneyflow_dimension_score_factor(item.dimension_id, item.row) for item in hits) / max(weight_sum, 1e-6)
         base = merge_rows([item.row for item in hits])
         if row_has_moneyflow_fields(base):
             base = enrich_moneyflow_row_with_kind(base)

@@ -248,11 +248,7 @@ def _score_candidates(
     *,
     anomaly_only: bool,
 ) -> list[tuple[str, dict[str, Any], float, str | None]]:
-    changes = [
-        float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0)
-        for vt in candidates
-        if quotes_by_vt.get(vt)
-    ]
+    changes = [float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0) for vt in candidates if quotes_by_vt.get(vt)]
     pool_median = sorted(changes)[len(changes) // 2] if changes else 0.0
 
     scored: list[tuple[str, dict[str, Any], float, str | None]] = []

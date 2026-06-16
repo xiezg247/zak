@@ -17,6 +17,10 @@ from vnpy_ashare.app.engine_access import (
     get_quote_service,
     get_watchlist_service,
 )
+from vnpy_ashare.config.preferences import (
+    WatchlistPositionConfig,
+    load_watchlist_position_config,
+)
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -27,15 +31,15 @@ from vnpy_ashare.domain.position_snapshot import PositionSnapshot
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
+from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.services.analysis_service import AnalysisService
 from vnpy_ashare.services.note_service import NoteService
 from vnpy_ashare.services.position_service import PositionService
 from vnpy_ashare.services.watchlist_service import WatchlistService
-from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
-from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
-from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,
     DataLoaderController,
@@ -60,13 +64,8 @@ from vnpy_ashare.ui.quotes.page.config import (
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
-from vnpy_ashare.ui.quotes.table import QuoteTableModel
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
-from vnpy_ashare.config.preferences import (
-    WatchlistPositionConfig,
-    load_watchlist_position_config,
-)
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalConfig,
     WatchlistSignalController,
@@ -82,6 +81,7 @@ from vnpy_ashare.ui.quotes.workers import (
     DepthRefreshWorker,
     DiagnoseWorker,
     DownloadWorker,
+    InvalidBarCleanupWorker,
     MinuteDownloadWorker,
     QuotesRefreshWorker,
     ScopeBarsLoadWorker,
@@ -211,6 +211,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._quotes_worker: QuotesRefreshWorker | None = None
         self._depth_worker: DepthRefreshWorker | None = None
         self._diagnose_worker: DiagnoseWorker | None = None
+        self._invalid_bar_cleanup_worker: InvalidBarCleanupWorker | None = None
         self._depth_generation = 0
         self._depth_permission_denied = False
         self.depth_panel: DepthPanel | None = None
@@ -369,6 +370,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             "_quotes_worker",
             "_depth_worker",
             "_diagnose_worker",
+            "_invalid_bar_cleanup_worker",
         ):
             self._wait_worker_release(attr, timeout_ms=0)
         self._batch_backtest.release_workers(self._retired_workers)
@@ -700,11 +702,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         return self.config.auto_refresh_quotes
 
     def market_uses_client_pagination(self) -> bool:
-        return (
-            self.config.use_market_rank
-            and self.config.market_full_list
-            and self._market_catalog_loaded
-        )
+        return self.config.use_market_rank and self.config.market_full_list and self._market_catalog_loaded
 
     def apply_market_page_view(self) -> None:
         if self.market_uses_client_pagination():

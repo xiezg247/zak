@@ -34,11 +34,7 @@ def industry_avg_change_map(rows: list[dict[str, Any]]) -> dict[str, float]:
         if not industry:
             continue
         buckets[industry].append(float(row.get("change_pct") or row.get("pct_chg") or 0))
-    return {
-        industry: sum(values) / len(values)
-        for industry, values in buckets.items()
-        if values
-    }
+    return {industry: sum(values) / len(values) for industry, values in buckets.items() if values}
 
 
 def relative_strength_pct(row: dict[str, Any], benchmark_change_pct: float) -> float:

@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.config.preferences import WatchlistSignalConfig, save_watchlist_signal_config
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
-from vnpy_ashare.config.preferences import WatchlistSignalConfig, save_watchlist_signal_config
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
 from vnpy_common.ui.qt_helpers import release_thread

@@ -118,9 +118,7 @@ def test_momentum_uses_industry_relative_strength() -> None:
         ),
         patch(
             "vnpy_ashare.screener.dimensions.momentum.attach_industry",
-            side_effect=lambda rows, industry_map=None: [
-                {**row, "industry": "银行"} for row in rows
-            ],
+            side_effect=lambda rows, industry_map=None: [{**row, "industry": "银行"} for row in rows],
         ),
         patch(
             "vnpy_ashare.screener.dimensions.momentum.industry_avg_change_map",

@@ -176,11 +176,7 @@ def fetch_avg_turnover_map_uncached(*, lookback_days: int = 5) -> dict[str, floa
                 continue
             sums[vt_symbol] = sums.get(vt_symbol, 0.0) + turnover
             counts[vt_symbol] = counts.get(vt_symbol, 0) + 1
-    return {
-        vt_symbol: sums[vt_symbol] / counts[vt_symbol]
-        for vt_symbol in sums
-        if counts.get(vt_symbol, 0) > 0
-    }
+    return {vt_symbol: sums[vt_symbol] / counts[vt_symbol] for vt_symbol in sums if counts.get(vt_symbol, 0) > 0}
 
 
 def get_avg_turnover_map() -> dict[str, float]:

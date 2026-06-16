@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from typing import Any
-
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions

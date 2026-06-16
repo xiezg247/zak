@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from importlib import import_module
 from types import ModuleType
-from typing import Callable
 
 from vnpy.event import Event, EventEngine
 from vnpy.trader.engine import MainEngine

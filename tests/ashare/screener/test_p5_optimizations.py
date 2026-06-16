@@ -97,9 +97,7 @@ def test_sentiment_snapshot_prefilter_caps_high_momentum() -> None:
 
 
 def test_outlook_cross_ref_includes_resonance() -> None:
-    rows = (
-        RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),
-    )
+    rows = (RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),)
     with (
         patch("vnpy_ashare.quotes.radar.radar_cross_refs.latest_recipe_vt_symbols", return_value=set()),
         patch(

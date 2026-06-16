@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
@@ -202,9 +202,7 @@ class LocalDataController:
             try:
                 if not page._active or not isinstance(removed, list) or not removed:
                     return
-                symbols = "、".join(
-                    format_vt_symbol_cn(symbol, exchange) for symbol, exchange in removed[:5]
-                )
+                symbols = "、".join(format_vt_symbol_cn(symbol, exchange) for symbol, exchange in removed[:5])
                 suffix = "..." if len(removed) > 5 else ""
                 page.status_label.setText(f"已清理 {len(removed)} 条无效日K：{symbols}{suffix}")
                 if page.config.use_local_table:

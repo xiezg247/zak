@@ -132,7 +132,8 @@ def load_outlook_horizon(
                     variant=resolved_variant if scenario_mode else "",
                     fingerprint=rows_fingerprint(rows),
                     digest=build_outlook_digest(rows, variant=resolved_variant),
-                ) + (f" · {cross_hint}" if cross_hint else ""),
+                )
+                + (f" · {cross_hint}" if cross_hint else ""),
             )
         return _empty_horizon_card(
             spec,
@@ -184,7 +185,8 @@ def load_outlook_horizon(
             variant=resolved_variant if scenario_mode else "",
             fingerprint=rows_fingerprint(rows),
             digest=build_outlook_digest(rows, variant=resolved_variant),
-        ) + (f" · {cross_hint}" if cross_hint else ""),
+        )
+        + (f" · {cross_hint}" if cross_hint else ""),
     )
 
 

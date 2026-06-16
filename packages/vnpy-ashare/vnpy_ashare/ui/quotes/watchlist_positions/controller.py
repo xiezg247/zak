@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.config.preferences import WatchlistSignalConfig
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.position_snapshot import PositionRecord, build_position_snapshot
 from vnpy_ashare.domain.signal_snapshot import signal_as_of_stale
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
 from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
-from vnpy_ashare.config.preferences import WatchlistSignalConfig
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:

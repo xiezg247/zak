@@ -50,9 +50,7 @@ def test_relative_strength_subline_with_industry() -> None:
         ),
         patch(
             "vnpy_ashare.quotes.radar.radar_relative_strength.attach_industry",
-            side_effect=lambda rows, industry_map=None: [
-                {**row, "industry": "银行"} for row in rows
-            ],
+            side_effect=lambda rows, industry_map=None: [{**row, "industry": "银行"} for row in rows],
         ),
         patch(
             "vnpy_ashare.quotes.radar.radar_relative_strength.market_benchmark_change_pct",
@@ -73,9 +71,7 @@ def test_relative_strength_subline_with_industry() -> None:
 
 
 def test_outlook_cross_ref_suffix() -> None:
-    rows = (
-        RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),
-    )
+    rows = (RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),)
     with patch(
         "vnpy_ashare.quotes.radar.radar_cross_refs.latest_recipe_vt_symbols",
         return_value={"600000.SSE"},

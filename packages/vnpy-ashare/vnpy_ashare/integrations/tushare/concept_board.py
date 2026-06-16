@@ -21,11 +21,7 @@ def fetch_ths_concept_index_map() -> dict[str, str]:
     """概念指数 ts_code → 名称（type=N）。"""
     cached = get_cached_rows(DATASET_THS_INDEX, "", max_age=INDUSTRY_MAX_AGE)
     if cached is not None:
-        return {
-            str(item["ts_code"]): str(item["name"])
-            for item in cached
-            if item.get("ts_code") and item.get("name")
-        }
+        return {str(item["ts_code"]): str(item["name"]) for item in cached if item.get("ts_code") and item.get("name")}
 
     pro = get_tushare_pro()
     try:
@@ -53,11 +49,7 @@ def fetch_ths_daily_pct_map(trade_date: str | None = None) -> dict[str, float]:
     trade_date = trade_date or _latest_trade_date_str()
     cached = get_cached_rows(DATASET_THS_DAILY, trade_date)
     if cached is not None:
-        return {
-            str(item["ts_code"]): float(item.get("pct_chg") or 0)
-            for item in cached
-            if item.get("ts_code")
-        }
+        return {str(item["ts_code"]): float(item.get("pct_chg") or 0) for item in cached if item.get("ts_code")}
 
     pro = get_tushare_pro()
     try:

@@ -33,11 +33,7 @@ def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:
 def build_team_analysis_ai_prompt(vt_symbol: str, name: str = "") -> str:
     """生成投研团队全面分析预填文案（触发 team_analysis 路由）。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
-    return (
-        f"请对 {title} 启动投研团队全面分析。"
-        "财务、风险、策略三维度并行评估后由总分析师综合研判；"
-        "基于本地预取数据与工具返回结果解读，禁止编造未出现的指标。"
-    )
+    return f"请对 {title} 启动投研团队全面分析。财务、风险、策略三维度并行评估后由总分析师综合研判；基于本地预取数据与工具返回结果解读，禁止编造未出现的指标。"
 
 
 def build_technical_ai_prompt(vt_symbol: str, name: str = "") -> str:

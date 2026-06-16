@@ -1,8 +1,5 @@
 """自选页策略信号 feature（面板、控制器、设置、缓存、Worker）。"""
 
-from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
-from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
-from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
 from vnpy_ashare.config.preferences import (
     DEFAULT_CLASS,
     DEFAULT_FAST,
@@ -19,6 +16,9 @@ from vnpy_ashare.config.preferences import (
     save_signal_panel_symbols,
     save_watchlist_signal_config,
 )
+from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
+from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     apply_center_splitter_sizes,
     bind_center_splitter_persistence,

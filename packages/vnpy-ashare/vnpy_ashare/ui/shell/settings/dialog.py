@@ -4,12 +4,6 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.config.bridge import detect_config_drift, format_config_drift_summary, load_effective_env_values
-from vnpy_ashare.config.fonts import (
-    available_font_families,
-    resolve_font_family,
-    supports_font_family_selection,
-)
 from vnpy_ashare.config.apply import (
     apply_env_side_effects,
     apply_llm_reload,
@@ -19,7 +13,13 @@ from vnpy_ashare.config.apply import (
     format_combined_save_summary,
     format_env_sync_summary,
 )
+from vnpy_ashare.config.bridge import detect_config_drift, format_config_drift_summary, load_effective_env_values
 from vnpy_ashare.config.env_store import save_env_values
+from vnpy_ashare.config.fonts import (
+    available_font_families,
+    resolve_font_family,
+    supports_font_family_selection,
+)
 from vnpy_ashare.config.schema import (
     ENV_GENERAL_SPECS,
     ENV_POSTGRES_KEYS,
@@ -41,7 +41,6 @@ from vnpy_ashare.ui.shell.settings.snapshot import (
     env_database_name,
     format_bar_database_status,
     format_meta_storage_root,
-    mask_secret,
     metadata_storage_entries,
     resolve_database_runtime_display,
     resolve_env_config,
@@ -683,9 +682,7 @@ class SettingsDialog(QtWidgets.QDialog):
         new_runtime = load_runtime_settings()
         runtime_changed = diff_settings(previous_runtime, new_runtime)
         new_env = load_effective_env_values(ENV_FILE)
-        env_changed_keys = {
-            key for key in set(previous_env) | set(new_env) if previous_env.get(key) != new_env.get(key)
-        }
+        env_changed_keys = {key for key in set(previous_env) | set(new_env) if previous_env.get(key) != new_env.get(key)}
 
         ctx = build_apply_context(self)
         results = apply_runtime_settings(runtime_changed, context=ctx)

@@ -479,9 +479,7 @@ class SchedulerJobsWidget(QtWidgets.QWidget):
             return
         config = self._scheduler.get_job_config(job_id)
         if job_id in ("screen_intraday", "screen_post_close"):
-            dialog: _AutoScreenSettingsDialog | _JobSettingsDialog = _AutoScreenSettingsDialog(
-                job_id, status, cast(AutoScreenJobConfig, config), self
-            )
+            dialog: _AutoScreenSettingsDialog | _JobSettingsDialog = _AutoScreenSettingsDialog(job_id, status, cast(AutoScreenJobConfig, config), self)
         else:
             dialog = _JobSettingsDialog(job_id, status, cast(JobConfig, config), self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:

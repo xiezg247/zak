@@ -122,11 +122,7 @@ class RadarController(QtCore.QObject):
         """权重变更后全量重算发现 / 板块 / 自选等指标卡（保留展望等缓存卡）。"""
         from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 
-        reload_ids = [
-            card_id
-            for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
-            if card_id in self._last_payload and not card_id.startswith("outlook_")
-        ]
+        reload_ids = [card_id for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS if card_id in self._last_payload and not card_id.startswith("outlook_")]
         for card_id in reload_ids:
             self.refresh_card(card_id, force_recompute=True)
 

@@ -7,6 +7,8 @@ from collections.abc import Callable
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
+from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_catalog import DEFAULT_RANK_ID, RankDefinition, get_rank_definition
 from vnpy_ashare.quotes.rank.rank_engine import (
     finalize_rank_catalog,
@@ -15,8 +17,6 @@ from vnpy_ashare.quotes.rank.rank_engine import (
     rank_needs_post_process,
     should_finalize_rank_catalog,
 )
-from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.storage.repositories.universe import load_universe_rows
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 
@@ -46,11 +46,7 @@ def _sort_pool_symbols(
     spec: RankDefinition,
 ) -> list[str]:
     sort_column = spec.sort_column or spec.redis_field
-    matched = [
-        tf_symbol
-        for tf_symbol in tf_symbols
-        if (quote := quotes.get(tf_symbol)) is not None and quote.last_price > 0
-    ]
+    matched = [tf_symbol for tf_symbol in tf_symbols if (quote := quotes.get(tf_symbol)) is not None and quote.last_price > 0]
     matched.sort(
         key=lambda tf_symbol: quote_rank_value(quotes[tf_symbol], sort_column),
         reverse=not spec.ascending,
@@ -76,22 +72,16 @@ def _load_market_rank_from_universe(
     items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
     quotes = universe_quotes_loader(items)
     if rank_needs_post_process(spec):
-        items = [
-            item
-            for item in items
-            if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)
-        ]
+        items = [item for item in items if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)]
     else:
-        items = [
-            item
-            for item in items
-            if (quote := quotes.get(item.tickflow_symbol)) is not None and quote.last_price > 0
-        ]
+        items = [item for item in items if (quote := quotes.get(item.tickflow_symbol)) is not None and quote.last_price > 0]
     sort_column = spec.sort_column or spec.redis_field
     items.sort(
-        key=lambda item: quote_rank_value(quotes[item.tickflow_symbol], sort_column)
-        if quotes.get(item.tickflow_symbol) is not None
-        else (float("-inf") if not spec.ascending else float("inf")),
+        key=lambda item: (
+            quote_rank_value(quotes[item.tickflow_symbol], sort_column)
+            if quotes.get(item.tickflow_symbol) is not None
+            else (float("-inf") if not spec.ascending else float("inf"))
+        ),
         reverse=not spec.ascending,
     )
     return [item.tickflow_symbol for item in items], quotes

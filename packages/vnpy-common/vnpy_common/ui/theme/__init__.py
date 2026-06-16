@@ -14,10 +14,10 @@ from vnpy_common.ui.theme.build_chart import (
     chart_palette,
 )
 from vnpy_common.ui.theme.build_extra import (
-    build_vnpy_page_stylesheet,
     build_scheduler_page_stylesheet,
     build_scheduler_table_stylesheet,
     build_settings_stylesheet,
+    build_vnpy_page_stylesheet,
     format_scheduler_empty_html,
     format_scheduler_run_log_html,
 )

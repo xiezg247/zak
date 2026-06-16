@@ -200,11 +200,7 @@ def _market_board_map_for_screening() -> dict[str, str]:
         return _market_board_map_cache[1]
 
     board_map = fetch_stock_market_board_map()
-    mapping = {
-        _ts_code_to_vt_symbol(ts_code): market
-        for ts_code, market in board_map.items()
-        if _ts_code_to_vt_symbol(ts_code)
-    }
+    mapping = {_ts_code_to_vt_symbol(ts_code): market for ts_code, market in board_map.items() if _ts_code_to_vt_symbol(ts_code)}
     _market_board_map_cache = (day, mapping)
     return mapping
 

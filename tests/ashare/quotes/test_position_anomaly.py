@@ -6,13 +6,13 @@ import unittest
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.misc.position_anomaly import (
     format_anomaly_tags,
     is_position_anomaly,
     position_anomaly_reasons,
     position_anomaly_score,
 )
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 
 def _snap(

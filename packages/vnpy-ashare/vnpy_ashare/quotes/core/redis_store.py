@@ -8,9 +8,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 
 from vnpy_ashare.domain.quote_time import normalize_datetime_text
-from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
+from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
 from vnpy_common.paths import ENV_FILE
 
 KEY_PREFIX = "zak"

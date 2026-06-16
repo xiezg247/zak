@@ -19,8 +19,7 @@ class RecipeTuningDialog(QtWidgets.QDialog):
         self.setMinimumWidth(420)
 
         intro = QtWidgets.QLabel(
-            "调整综合分混合比例、动量涨幅区间与恐贪环境调制。"
-            "环境变量 RECIPE_* / MOMENTUM_* 仍可覆盖对应项。",
+            "调整综合分混合比例、动量涨幅区间与恐贪环境调制。环境变量 RECIPE_* / MOMENTUM_* 仍可覆盖对应项。",
         )
         intro.setWordWrap(True)
 
@@ -140,10 +139,7 @@ class RecipeTuningDialog(QtWidgets.QDialog):
             return
         parts = [f"当前恐贪 {snapshot.index:.0f}（{snapshot.label}）"]
         if snapshot.components:
-            comp_bits = [
-                f"{item.name} {item.score:.0f}"
-                for item in snapshot.components[:4]
-            ]
+            comp_bits = [f"{item.name} {item.score:.0f}" for item in snapshot.components[:4]]
             parts.append("分项：" + "、".join(comp_bits))
         self._sentiment_status.setText(" · ".join(parts))
 

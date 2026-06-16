@@ -13,7 +13,7 @@ def quote_env_value(value: str) -> str:
     text = str(value)
     if not text:
         return ""
-    if any(ch.isspace() for ch in text) or any(ch in {'#', "=", '"', "'"} for ch in text):
+    if any(ch.isspace() for ch in text) or any(ch in {"#", "=", '"', "'"} for ch in text):
         escaped = text.replace("\\", "\\\\").replace('"', '\\"')
         return f'"{escaped}"'
     return text

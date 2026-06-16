@@ -28,8 +28,5 @@ def prefetch_concept_board() -> JobResult:
     vt_map, hot_names = build_hot_concept_vt_symbol_map(top_concepts=5)
     return JobResult(
         success=True,
-        message=(
-            f"概念指数 {len(concept_map)} 个，当日行情 {len(pct_map)} 条，"
-            f"强势概念 {len(hot_names)} 个，成分映射 {len(vt_map)} 只"
-        ),
+        message=(f"概念指数 {len(concept_map)} 个，当日行情 {len(pct_map)} 条，强势概念 {len(hot_names)} 个，成分映射 {len(vt_map)} 只"),
     )

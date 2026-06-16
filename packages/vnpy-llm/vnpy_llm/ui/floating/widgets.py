@@ -64,6 +64,7 @@ class QuickActionChips(QtWidgets.QWidget):
             menu = QtWidgets.QMenu(tool_btn)
             menu.setObjectName("AiQuickActionMenu")
             for child in action.children:
+
                 def _emit_child(*, _item: QuickAction = child) -> None:
                     self.triggered.emit(_item)
 

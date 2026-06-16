@@ -6,7 +6,7 @@ import bisect
 
 import pyqtgraph as pg
 from vnpy.trader.object import BarData
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import (
     INTRADAY_SESSION_MINUTES,

@@ -268,9 +268,7 @@ def _hits_from_proxy(
                 label=_INTRADAY_LABEL,
                 weight=weight,
                 score=rank_score(index, min(len(scored), pool_size)),
-                reason=(
-                    f"盘中资金：涨幅 {float(row.get('change_pct') or 0):+.2f}% + 成交额 {amount:,.0f} 万（代理），排名第 {index}"
-                ),
+                reason=(f"盘中资金：涨幅 {float(row.get('change_pct') or 0):+.2f}% + 成交额 {amount:,.0f} 万（代理），排名第 {index}"),
                 row={**dict(row), "moneyflow_proxy": True},
             )
         )
@@ -330,9 +328,7 @@ def build_moneyflow_source_subtitle(
     if not hits:
         return ""
 
-    has_proxy = any(
-        hit.row.get("moneyflow_proxy") or "代理" in hit.reason for hit in hits
-    )
+    has_proxy = any(hit.row.get("moneyflow_proxy") or "代理" in hit.reason for hit in hits)
     if has_proxy:
         return " · 成交额代理"
 

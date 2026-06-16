@@ -81,10 +81,8 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
 
         scored_rows = apply_screening_filters(scored_rows)
         scored_rows.sort(key=lambda item: float(item.get("relative_strength") or 0), reverse=True)
-        top_for_history = scored_rows[:pool_size * 2]
-        bars_map = load_history_bars_map(
-            [str(item.get("vt_symbol") or "") for item in top_for_history if item.get("vt_symbol")]
-        )
+        top_for_history = scored_rows[: pool_size * 2]
+        bars_map = load_history_bars_map([str(item.get("vt_symbol") or "") for item in top_for_history if item.get("vt_symbol")])
         attach_momentum_persistence(top_for_history, bars_map)
         rows: list[dict[str, Any]] = []
         for item in scored_rows[:pool_size]:
@@ -176,11 +174,5 @@ def _momentum_reason(row: dict[str, Any], rank: int) -> str:
     if positive_days is not None:
         persistence_note = f"，近5日收涨 {int(positive_days)} 天"
     if basis.startswith("行业") and industry_rs is not None:
-        return (
-            f"动量：涨幅 {change:+.2f}%，相对{basis} {float(industry_rs):+.2f}%，"
-            f"相对大盘 {market_rs:+.2f}%{persistence_note}，排名第 {rank}"
-        )
-    return (
-        f"动量：涨幅 {change:+.2f}%，相对大盘 {rs:+.2f}%（基准 {benchmark:+.2f}%）"
-        f"{persistence_note}，排名第 {rank}"
-    )
+        return f"动量：涨幅 {change:+.2f}%，相对{basis} {float(industry_rs):+.2f}%，相对大盘 {market_rs:+.2f}%{persistence_note}，排名第 {rank}"
+    return f"动量：涨幅 {change:+.2f}%，相对大盘 {rs:+.2f}%（基准 {benchmark:+.2f}%）{persistence_note}，排名第 {rank}"

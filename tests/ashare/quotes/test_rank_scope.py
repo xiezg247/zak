@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.quotes.rank.rank_scope import load_market_rank_catalog, load_watchlist_rank_catalog
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 
 def _quote(
@@ -62,11 +62,7 @@ def test_load_watchlist_rank_catalog_empty_pool(monkeypatch) -> None:
 
 def test_load_market_rank_catalog_uses_change_pct_pool_when_volume_ratio_zset_empty() -> None:
     store = MagicMock()
-    store.list_all_rank_symbols.side_effect = lambda *, field, ascending: (
-        []
-        if field == "volume_ratio"
-        else ["000001.SZ", "600000.SH"]
-    )
+    store.list_all_rank_symbols.side_effect = lambda *, field, ascending: [] if field == "volume_ratio" else ["000001.SZ", "600000.SH"]
     store.get_quotes.return_value = {
         "600000.SH": _quote(1.0, volume_ratio=2.5),
         "000001.SZ": _quote(3.0, volume_ratio=1.2),
@@ -92,11 +88,7 @@ def test_load_market_rank_catalog_prefers_redis_zset() -> None:
 
 def test_load_market_rank_catalog_falls_back_when_finalize_filters_all() -> None:
     store = MagicMock()
-    store.list_all_rank_symbols.side_effect = lambda *, field, ascending: (
-        ["600000.SH"]
-        if field == "volume_ratio"
-        else ["000001.SZ", "600000.SH"]
-    )
+    store.list_all_rank_symbols.side_effect = lambda *, field, ascending: ["600000.SH"] if field == "volume_ratio" else ["000001.SZ", "600000.SH"]
 
     def _get_quotes(tf_symbols: list[str]) -> dict[str, QuoteSnapshot]:
         if tf_symbols == ["600000.SH"]:

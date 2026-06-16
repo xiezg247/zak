@@ -15,6 +15,7 @@ from enum import Enum
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
+from vnpy_ashare.data.bar_store import PeriodBarOverview
 from vnpy_ashare.domain.calendar import last_trading_day, trading_days_between
 from vnpy_ashare.storage.repositories.symbol_suspend import load_suspend_days
 
@@ -47,9 +48,6 @@ def effective_bar_start(value: datetime | None) -> datetime | None:
     if value.date() < UNIFIED_BAR_START.date():
         return UNIFIED_BAR_START
     return value
-
-
-from vnpy_ashare.data.bar_store import PeriodBarOverview
 
 
 def bar_meta_from_overview(row: PeriodBarOverview) -> BarMeta:

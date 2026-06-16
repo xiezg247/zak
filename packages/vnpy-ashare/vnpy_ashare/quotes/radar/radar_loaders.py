@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_catalog import (
@@ -493,20 +493,24 @@ def load_radar_card(
     )
 
 
-_RADAR_FULL_CONTEXT_CARD_IDS = frozenset({
-    "discovery_volume_surge",
-    "discovery_moneyflow_intraday",
-    "watchlist_intraday",
-    "sector_theme",
-})
+_RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
+    {
+        "discovery_volume_surge",
+        "discovery_moneyflow_intraday",
+        "watchlist_intraday",
+        "sector_theme",
+    }
+)
 
-_RADAR_QUOTE_CONTEXT_CARD_IDS = frozenset({
-    "screen_latest",
-    "screen_task",
-    "outlook_watch",
-    "outlook_hold",
-    "outlook_scenario",
-})
+_RADAR_QUOTE_CONTEXT_CARD_IDS = frozenset(
+    {
+        "screen_latest",
+        "screen_task",
+        "outlook_watch",
+        "outlook_hold",
+        "outlook_scenario",
+    }
+)
 
 
 def _load_radar_card_uncached(
@@ -674,11 +678,7 @@ def build_radar_resonance_ai_prompt(payload: dict[str, RadarCardData]) -> str:
 def compute_radar_resonance(payload: dict[str, RadarCardData], *, min_cards: int = 2) -> dict[str, int]:
     """统计在多张卡片中出现的标的（共振卡数）。"""
     grouped = _accumulate_radar_resonance(payload)
-    return {
-        vt_symbol: int(bucket.get("card_count") or 0)
-        for vt_symbol, bucket in grouped.items()
-        if int(bucket.get("card_count") or 0) >= min_cards
-    }
+    return {vt_symbol: int(bucket.get("card_count") or 0) for vt_symbol, bucket in grouped.items() if int(bucket.get("card_count") or 0) >= min_cards}
 
 
 def compute_radar_resonance_scores(

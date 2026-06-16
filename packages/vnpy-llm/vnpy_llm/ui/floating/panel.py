@@ -6,6 +6,7 @@ import math
 from typing import cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+
 from vnpy_common.ai.protocol import AiContextData
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost

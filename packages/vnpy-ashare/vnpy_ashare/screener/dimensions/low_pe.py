@@ -18,11 +18,7 @@ def _industry_pe_median(rows: list[dict]) -> dict[str, float]:
         industry = str(row.get("industry") or "").strip()
         if industry and pe > 0:
             buckets[industry].append(pe)
-    return {
-        industry: sorted(values)[len(values) // 2]
-        for industry, values in buckets.items()
-        if values
-    }
+    return {industry: sorted(values)[len(values) // 2] for industry, values in buckets.items() if values}
 
 
 def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:

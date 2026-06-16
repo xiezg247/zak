@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import markdown as _md_lib
 from markdown.extensions import codehilite, fenced_code, tables
-from typing import cast
 
 from vnpy_common.ui.theme.tokens import ThemeTokens
 

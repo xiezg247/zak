@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pyqtgraph as pg
-from vnpy.chart.manager import BarManager
 from vnpy.chart import CandleItem, ChartWidget, VolumeItem
+from vnpy.chart.manager import BarManager
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
