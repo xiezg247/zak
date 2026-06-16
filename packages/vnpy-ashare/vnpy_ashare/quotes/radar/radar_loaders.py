@@ -509,6 +509,7 @@ _RADAR_QUOTE_CONTEXT_CARD_IDS = frozenset(
         "outlook_watch",
         "outlook_hold",
         "outlook_scenario",
+        "outlook_predict",
     }
 )
 
@@ -550,6 +551,10 @@ def _load_radar_card_uncached(
             variant=scenario_variant,
             force_recompute=force_recompute,
         )
+    if spec.id == "outlook_predict":
+        from vnpy_ashare.quotes.radar.radar_horizon_predict import load_outlook_predict
+
+        return load_outlook_predict(spec, force_recompute=force_recompute)
     msg = f"未实现的雷达卡片加载器：{card_id}"
     raise ValueError(msg)
 
@@ -619,8 +624,16 @@ def build_radar_resonance_list(
     payload: dict[str, RadarCardData],
     *,
     min_cards: int = 2,
+    mode: str | None = None,
 ) -> tuple[RadarResonanceEntry, ...]:
-    """汇总跨卡共振标的，按加权分降序。"""
+    """汇总跨卡共振标的，按加权分降序。
+
+    mode 为 statistical / predictive 时仅统计对应分区卡片。
+    """
+    if mode is not None:
+        from vnpy_ashare.quotes.radar.radar_catalog import radar_card_mode
+
+        payload = {card_id: data for card_id, data in payload.items() if radar_card_mode(card_id) == mode}
     grouped = _accumulate_radar_resonance(payload)
     entries: list[RadarResonanceEntry] = []
     for vt_symbol, bucket in grouped.items():
@@ -675,8 +688,12 @@ def build_radar_resonance_ai_prompt(payload: dict[str, RadarCardData]) -> str:
     return "\n".join(lines)
 
 
-def compute_radar_resonance(payload: dict[str, RadarCardData], *, min_cards: int = 2) -> dict[str, int]:
+def compute_radar_resonance(payload: dict[str, RadarCardData], *, min_cards: int = 2, mode: str | None = None) -> dict[str, int]:
     """统计在多张卡片中出现的标的（共振卡数）。"""
+    if mode is not None:
+        from vnpy_ashare.quotes.radar.radar_catalog import radar_card_mode
+
+        payload = {card_id: data for card_id, data in payload.items() if radar_card_mode(card_id) == mode}
     grouped = _accumulate_radar_resonance(payload)
     return {vt_symbol: int(bucket.get("card_count") or 0) for vt_symbol, bucket in grouped.items() if int(bucket.get("card_count") or 0) >= min_cards}
 
@@ -736,6 +753,10 @@ def build_radar_card_ai_prompt(
 
         single = build_outlook_ai_prompt({card_id: data}, card_id=card_id)
         return single or "\n".join(lines).strip()
+    elif card_id == "outlook_predict":
+        from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt
+
+        return build_predict_ai_prompt(data)
 
     for row in data.rows:
         marker = "★ " if counts.get(row.vt_symbol, 0) >= 2 else ""
@@ -751,7 +772,7 @@ def build_radar_ai_prompt(
         "请基于以下雷达页快照，给出今日 A 股洞察摘要：",
         "1. 市场主线与热点方向（参考板块·主线卡）",
         "2. 选股结果与发现/自选异动的交集（共振标的优先）",
-        "3. 未来关注/可持/情景卡基于策略与统计情景（约 5 日），非价格预测",
+        "3. 未来关注/可持/情景/预测卡基于策略或统计基线（约 5 日），非价格预测",
         "4. 建议重点关注的 3～5 只标的及理由",
         "5. 不要编造未出现在数据中的价格或指标",
         "",
@@ -784,10 +805,17 @@ def build_radar_ai_prompt(
                 lines.append(f"- {marker}{_row_ai_summary(row)}")
         lines.append("")
     from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt
+    from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt
 
     for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
         outlook_prompt = build_outlook_ai_prompt(payload, card_id=outlook_card_id)
         if outlook_prompt:
             lines.append("---")
             lines.append(outlook_prompt)
+    predict_data = payload.get("outlook_predict")
+    if predict_data is not None:
+        predict_prompt = build_predict_ai_prompt(predict_data)
+        if predict_prompt:
+            lines.append("---")
+            lines.append(predict_prompt)
     return "\n".join(lines).strip()

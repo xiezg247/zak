@@ -173,7 +173,10 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._market_filter_keyword: str = ""
         self._local_filter_keyword: str = ""
         self._market_industry_filter: str | None = None
+        self._market_vt_whitelist: frozenset[str] | None = None
+        self._market_drilldown_label: str | None = None
         self._pending_industry_drilldown: str | None = None
+        self._pending_concept_drilldown: frozenset[str] | None = None
         self._industry_map_cache: dict[str, str] | None = None
         self._market_board_map_cache: dict[str, str] | None = None
         self._market_industry_filter_listener = None
@@ -548,9 +551,21 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
 
     def set_market_industry_filter(self, industry: str | None) -> None:
         self._market_industry_filter = industry
+        if industry:
+            self._market_vt_whitelist = None
+            self._market_drilldown_label = None
         listener = self._market_industry_filter_listener
         if listener is not None:
             listener(industry)
+        self._table.filter_market_display()
+
+    def clear_market_drilldown_filters(self) -> None:
+        self._market_industry_filter = None
+        self._market_vt_whitelist = None
+        self._market_drilldown_label = None
+        listener = self._market_industry_filter_listener
+        if listener is not None:
+            listener(None)
         self._table.filter_market_display()
 
     def open_industry_drilldown(self, industry: str, *, rank_id: str = "net_mf_in") -> None:
@@ -561,6 +576,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         cleaned = str(industry or "").strip()
         if not cleaned:
             return
+        self._pending_concept_drilldown = None
         target_rank = get_rank_definition(rank_id or SECTOR_DRILLDOWN_RANK_ID).id
         self._pending_industry_drilldown = cleaned
         self.search_edit.clear()
@@ -572,6 +588,36 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self._pending_industry_drilldown = None
         rank_title = get_rank_definition(target_rank).title
         self.status_label.setText(f"{rank_title} · 行业筛选：{cleaned}（来自板块资金，点击行业 × 可清除）")
+
+    def open_concept_drilldown(
+        self,
+        concept_name: str,
+        vt_symbols: list[str],
+        *,
+        rank_id: str = "net_mf_in",
+    ) -> None:
+        """从板块资金概念 Tab 下钻：主力净流入榜 + 概念成分白名单。"""
+        from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
+        from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID
+
+        label = str(concept_name or "").strip()
+        cleaned = {str(item).strip() for item in vt_symbols if str(item or "").strip()}
+        if not label or not cleaned:
+            return
+        self._pending_industry_drilldown = None
+        target_rank = get_rank_definition(rank_id or SECTOR_DRILLDOWN_RANK_ID).id
+        self._pending_concept_drilldown = frozenset(cleaned)
+        self._market_drilldown_label = f"概念：{label}"
+        self.search_edit.clear()
+        self._market_filter_keyword = ""
+        if self.config.use_market_rank:
+            self._market_rank.apply_rank_for_drilldown(target_rank)
+        else:
+            self._market_vt_whitelist = self._pending_concept_drilldown
+            self._pending_concept_drilldown = None
+            self.set_market_industry_filter(None)
+        rank_title = get_rank_definition(target_rank).title
+        self.status_label.setText(f"{rank_title} · {self._market_drilldown_label}（来自板块资金）")
 
     def _render_table(self, *, preserve_selection: bool = True) -> None:
         self._table.render_table(preserve_selection=preserve_selection)

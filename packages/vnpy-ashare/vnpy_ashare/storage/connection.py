@@ -180,6 +180,20 @@ CREATE TABLE IF NOT EXISTS stock_analysis_reports (
 
 CREATE INDEX IF NOT EXISTS idx_stock_analysis_reports_lookup
     ON stock_analysis_reports (symbol, exchange, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS sector_flow_daily (
+    trade_date TEXT NOT NULL,
+    sector_kind TEXT NOT NULL,
+    sector_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    change_pct REAL NOT NULL,
+    net_flow_yi REAL NOT NULL,
+    flow_source TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (trade_date, sector_kind, sector_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sector_flow_daily_lookup
+    ON sector_flow_daily(sector_kind, sector_id, trade_date DESC);
 """
 
 

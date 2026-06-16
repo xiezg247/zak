@@ -124,7 +124,8 @@ class TestRadarPageConfig(unittest.TestCase):
         self.assertFalse(radar.auto_refresh_quotes)
         hint = radar_refresh_hint()
         self.assertIn("异动", hint)
-        self.assertIn("未来", hint)
+        self.assertIn("展望", hint)
+        self.assertIn("统计", hint)
 
 
 class TestMarketRankSidebarPref(unittest.TestCase):

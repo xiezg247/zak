@@ -762,6 +762,83 @@ QSplitter#MarketRankSplitter::handle {{
 
 def build_radar_stylesheet(t: ThemeTokens) -> str:
     return f"""
+QToolButton#RadarSectionToggle {{
+    color: {t.text_muted};
+    border: none;
+    padding: 0 4px;
+    font-size: 12px;
+}}
+QToolButton#RadarSectionToggle:hover {{
+    color: {t.accent};
+}}
+QTabWidget#RadarBoardTabs::pane {{
+    border: none;
+    background: transparent;
+    top: 0;
+}}
+QTabWidget#RadarBoardTabs > QTabBar::tab {{
+    color: {t.text_muted};
+    padding: 6px 14px;
+    margin-right: 6px;
+    border-bottom: 2px solid transparent;
+    font-size: 13px;
+    font-weight: 600;
+}}
+QTabWidget#RadarBoardTabs > QTabBar::tab:selected {{
+    color: {t.accent};
+    border-bottom: 2px solid {t.accent};
+}}
+QTabWidget#RadarResonanceTabs::pane {{
+    border: none;
+    background: transparent;
+}}
+QTabWidget#RadarResonanceTabs > QTabBar::tab {{
+    color: {t.text_muted};
+    padding: 4px 10px;
+    margin-right: 4px;
+    border-bottom: 2px solid transparent;
+}}
+QTabWidget#RadarResonanceTabs > QTabBar::tab:selected {{
+    color: {t.accent};
+    border-bottom: 2px solid {t.accent};
+}}
+QScrollArea#RadarBoardScroll {{
+    background: transparent;
+    border: none;
+}}
+QWidget#RadarBoardContent {{
+    background: transparent;
+}}
+QFrame#RadarSectionDivider {{
+    color: {t.panel_border};
+    background-color: {t.panel_border};
+    max-height: 1px;
+    margin: 4px 8px;
+}}
+QLabel#RadarSectionTitle {{
+    color: {t.text_primary};
+    font-size: 14px;
+    font-weight: 700;
+}}
+QLabel#RadarSectionHint {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QLabel#RadarSectionModeBadgeStatistical {{
+    color: {t.text_secondary};
+    font-size: 10px;
+    padding: 1px 8px;
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+}}
+QLabel#RadarSectionModeBadgePredictive {{
+    color: {t.accent};
+    font-size: 10px;
+    padding: 1px 8px;
+    border: 1px solid {t.accent};
+    border-radius: 4px;
+    background-color: rgba(128, 128, 128, 0.08);
+}}
 QFrame#RadarCardLive {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
@@ -771,6 +848,25 @@ QFrame#RadarCardManual {{
     background-color: {t.panel_bg};
     border: 1px dashed {t.panel_border};
     border-radius: 8px;
+}}
+QFrame#RadarCardPredictive {{
+    background-color: {t.panel_bg};
+    border: 1px dashed {t.accent};
+    border-radius: 8px;
+}}
+QLabel#RadarCardKindBadgeStatistical {{
+    color: {t.text_muted};
+    font-size: 10px;
+    padding: 1px 6px;
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+}}
+QLabel#RadarCardKindBadgePredictive {{
+    color: {t.accent};
+    font-size: 10px;
+    padding: 1px 6px;
+    border: 1px solid {t.accent};
+    border-radius: 4px;
 }}
 QScrollArea#RadarCardScroll {{
     background: transparent;
@@ -902,36 +998,101 @@ QFrame#RadarResonancePanel {{
 }}
 QLabel#RadarResonanceTitle {{
     color: {t.text_primary};
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: 700;
+}}
+QLabel#RadarResonanceHint {{
+    color: {t.text_muted};
+    font-size: 11px;
 }}
 QLabel#RadarResonanceCount {{
     color: {t.accent};
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
+    min-width: 20px;
+    padding: 1px 8px;
+    border: 1px solid {t.accent};
+    border-radius: 10px;
+    background-color: rgba(128, 128, 128, 0.08);
 }}
 QLabel#RadarResonanceEmpty {{
     color: {t.text_muted};
     font-size: 12px;
-    padding: 16px 8px;
+    line-height: 1.4;
+    padding: 8px 4px;
 }}
 QListWidget#RadarResonanceList {{
     background: transparent;
     border: none;
     color: {t.text_primary};
     font-size: 12px;
+    outline: none;
+    selection-background-color: transparent;
+    selection-color: {t.text_primary};
+    show-decoration-selected: 0;
 }}
 QListWidget#RadarResonanceList::item {{
-    padding: 8px 4px;
-    border-bottom: 1px solid {t.panel_border};
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-bottom: 4px;
 }}
-QListWidget#RadarResonanceList::item:selected {{
-    background-color: {t.menu_selected_bg};
+QListWidget#RadarResonanceList::item:selected,
+QListWidget#RadarResonanceList::item:selected:active,
+QListWidget#RadarResonanceList::item:selected:!active {{
+    background: transparent;
+}}
+QFrame#RadarResonanceRow {{
+    background-color: {t.index_ticker_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QFrame#RadarResonanceRow[selected="true"] {{
+    border-color: {t.accent};
+    background-color: {t.index_ticker_bg};
+}}
+QFrame#RadarResonanceRow:hover {{
+    border-color: {t.accent};
+}}
+QLabel#RadarResonanceRowName {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#RadarResonanceRowSymbol {{
+    color: {t.text_muted};
+    font-size: 11px;
+    padding-left: 16px;
+}}
+QLabel#RadarResonanceRowPrice {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#RadarResonanceCountChip {{
+    color: {t.accent};
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border: 1px solid {t.accent};
+    border-radius: 4px;
+    background-color: rgba(128, 128, 128, 0.08);
+}}
+QLabel#RadarResonanceRowCards {{
+    color: {t.text_muted};
+    font-size: 10px;
 }}
 QPushButton#RadarResonanceAddAll,
 QPushButton#RadarResonanceAi,
-QPushButton#RadarResonanceScreener {{
+QPushButton#RadarResonanceScreener,
+QPushButton#RadarResonanceWeights {{
     font-size: 11px;
+    padding: 5px 8px;
+    min-height: 24px;
+}}
+QPushButton#RadarResonanceAddAll,
+QPushButton#RadarResonanceAi {{
+    font-weight: 600;
 }}
 """
 
@@ -1034,10 +1195,23 @@ QLabel#SectorFlowSummary {{
     color: {t.text_secondary};
     font-size: 12px;
 }}
-QTableWidget#SectorFlowTable {{
+QTableWidget#SectorFlowTable,
+QTableWidget#SectorFlowLeaderTable {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
     gridline-color: {t.panel_border};
+}}
+QFrame#SectorFlowDetailPanel {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QWidget#SectorFlowMiniBar {{
+    background-color: transparent;
+}}
+QSplitter#SectorFlowSplitter::handle {{
+    background-color: {t.panel_border};
+    width: 1px;
 }}
 """
 

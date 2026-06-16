@@ -11,6 +11,7 @@ from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
@@ -18,6 +19,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     auto_refresh_card_ids,
     full_refresh_every_n_ticks,
     list_radar_cards,
+    list_radar_cards_for_mode,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
@@ -61,6 +63,7 @@ class RadarController(QtCore.QObject):
             "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
             "sector_theme": DEFAULT_SECTOR_VARIANT,
             "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
+            "outlook_predict": load_predict_model_mode(),
         }
         self._last_payload: dict[str, RadarCardData] = {}
         self._auto_refresh_ticks: dict[str, int] = {}
@@ -80,8 +83,10 @@ class RadarController(QtCore.QObject):
         board.refresh_requested.connect(self._on_card_refresh_requested)
         board.quote_refresh_requested.connect(self._on_card_quote_refresh_requested)
         board.ai_requested.connect(self.request_card_ai)
+        board.train_model_requested.connect(self._on_train_model_requested)
         board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
         board.full_refresh_interval_changed.connect(self._on_full_refresh_interval_changed)
+        board.mode_changed.connect(self._on_board_mode_changed)
 
         panel = self._resonance_panel
         if panel is not None:
@@ -127,6 +132,13 @@ class RadarController(QtCore.QObject):
             self.refresh_card(card_id, force_recompute=True)
 
     def activate(self) -> None:
+        predict_mode = load_predict_model_mode()
+        self._card_variants["outlook_predict"] = predict_mode
+        predict_card = self._board.card("outlook_predict")
+        if predict_card is not None:
+            predict_card.set_variant_key(predict_mode)
+        self._board.update_tab_badges()
+        self._sync_resonance_tab_from_board()
         self.refresh()
         self._start_auto_refresh()
         self._session_timer.start()
@@ -195,6 +207,22 @@ class RadarController(QtCore.QObject):
         """并行刷新全部卡片。"""
         for spec in list_radar_cards():
             self.refresh_card(spec.id)
+
+    def refresh_current_mode(self) -> None:
+        """刷新当前主区 Tab 内的全部卡片。"""
+        for spec in list_radar_cards_for_mode(self._board.current_mode()):
+            self.refresh_card(spec.id)
+
+    def _on_board_mode_changed(self, mode: str) -> None:
+        self._sync_resonance_tab_from_board(mode)
+
+    def _sync_resonance_tab_from_board(self, mode: str | None = None) -> None:
+        panel = self._resonance_panel
+        if panel is None:
+            return
+        active_mode = mode or self._board.current_mode()
+        if active_mode in ("statistical", "predictive"):
+            panel.select_tab(active_mode)  # type: ignore[arg-type]
 
     def _on_card_refresh_requested(self, card_id: str) -> None:
         force = card_id in OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
@@ -337,8 +365,10 @@ class RadarController(QtCore.QObject):
         if panel is None:
             return
         entries = build_radar_resonance_list(self._last_payload)
+        statistical = build_radar_resonance_list(self._last_payload, mode="statistical")
+        predictive = build_radar_resonance_list(self._last_payload, mode="predictive")
         set_radar_resonance_entries(entries)
-        panel.apply_entries(entries)
+        panel.apply_entries(entries, statistical=statistical, predictive=predictive)
 
     def _on_card_failed(self, card_id: str, message: str) -> None:
         from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
@@ -388,6 +418,8 @@ class RadarController(QtCore.QObject):
             self._sector_variant = variant_key
         elif card_id == "outlook_scenario":
             pass
+        elif card_id == "outlook_predict":
+            save_predict_model_mode(variant_key)  # type: ignore[arg-type]
         self.refresh_card(card_id)
 
     def _on_row_activated(self, vt_symbol: str) -> None:
@@ -408,6 +440,27 @@ class RadarController(QtCore.QObject):
         card = self._board.card(card_id)
         sector_ids = card.sector_names() if card is not None else []
         host.open_sector_flow(sector_ids if sector_ids else None)
+
+    def _on_train_model_requested(self, card_id: str) -> None:
+        if card_id != "outlook_predict":
+            return
+        main_engine = self._page._get_main_engine()
+        event_engine = self._page.event_engine
+        if main_engine is None or event_engine is None:
+            page_notify(self._page, "引擎未就绪，无法打开训练对话框", level="warning")
+            return
+        from vnpy_ashare.ui.quotes.radar.train_dialog import show_radar_predict_train_dialog
+
+        def _on_predict_trained() -> None:
+            self._board.update_tab_badges()
+            self.refresh_card("outlook_predict")
+
+        show_radar_predict_train_dialog(
+            main_engine,
+            event_engine,
+            parent=self._page,
+            on_trained=_on_predict_trained,
+        )
 
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page
@@ -474,7 +527,7 @@ class RadarController(QtCore.QObject):
         panel = self._resonance_panel
         if panel is None:
             return
-        entries = panel.entries()
+        entries = panel.current_tab_entries()
         if not entries:
             page_notify(self._page, "暂无共振标的", level="warning")
             return

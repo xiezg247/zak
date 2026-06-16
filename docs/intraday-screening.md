@@ -1,5 +1,7 @@
 # 盘中选股
 
+> 操作速查见 [选股 Hub 使用指南](./screener-hub-guide.md)。
+
 ## 1. 概述
 
 以 `recipe_runner` 为统一内核，支持盘中多因子维度并行打分、硬过滤与 AI 工具执行。与条件选股、定时任务共用结果落库与 `context_store` 注入。
@@ -70,22 +72,28 @@ def run_dimension(spec: DimensionSpec, pool_size: int) -> tuple[list[DimensionHi
 
 ### 2.3 硬过滤
 
-在 `composite_score` 合并后、取 `top_n` 前应用：
+在 `composite_score` 合并后、取 `top_n` 前应用。GUI 面板：`ScreenerHardFilterPanel`（条件选股与多因子配方共用）；偏好持久化于 QSettings（`hard_filter_prefs.py`），环境变量仍可覆盖。
 
 | 规则 | 默认 |
 |------|------|
 | 排除 ST / *ST | `name` 含 `ST`（不区分大小写） |
 | 最低成交额 | ≥ 3000 万元（`amount` 元，阈值 3e7） |
 | 排除停牌 | 默认开启（Tushare 停牌列表） |
-| 排除新股 | 默认上市满 60 日 |
-| 排除涨跌停板 | 默认开启（主板/创业板/科创板规则） |
+| 排除新股 | 默认关闭；开启时上市满 60 日 |
+| 排除涨跌停板 | 默认关闭 |
 | 最低总市值 | 可选，默认 50 亿（`total_mv` 万元） |
+| 行业白名单 | 可选；空表示不限（Tushare 行业映射） |
+| 板块白名单 | 可选：沪深主板 / 创业板 / 科创板 / 北交所 |
+
+**快捷模板**（面板「保守 / 均衡 / 激进」）：一键切换 ST、停牌、流动性、涨跌停等组合阈值。
 
 环境变量（可选，优先于 QSettings）：
 
 - `RECIPE_MIN_AMOUNT_YUAN`、`RECIPE_EXCLUDE_ST`、`RECIPE_EXCLUDE_SUSPENDED`
 - `RECIPE_EXCLUDE_NEW_LISTING` / `RECIPE_MIN_LISTING_DAYS`
 - `RECIPE_EXCLUDE_LIMIT_BOARD`、`RECIPE_MIN_TOTAL_MV_WAN`
+- `RECIPE_ALLOWED_INDUSTRIES`（逗号分隔行业名）
+- `RECIPE_ALLOWED_MARKET_BOARDS`（逗号分隔板块名）
 
 ### 2.4 默认盘中配方 `intraday_multi`
 
@@ -145,14 +153,69 @@ recipe 维度 → load_screening_quote_snapshot() / Tushare fallback
 
 ## 5. UI
 
-选股 Hub（`ScreenerHubPageWidget`）内嵌两个 Tab：
+选股 Hub（`ScreenerHubPageWidget`）内嵌两个 Tab，共用布局组件（`screener_layout.py`）与结果洞察（`ScreenerResultInsights`）。
 
-| Tab | 说明 |
-|-----|------|
-| 条件选股 | preset / 自定义条件；`ScreeningDataStatusBar` 展示数据源与快照年龄 |
-| 多因子配方 | Recipe 运行与历史收件箱；左侧 `[盘中]` / `[盘后]` 过滤 |
+### 5.1 布局
 
-两 Tab 共用 `ScreenerResultInsights`：文本 diff（`run_diff.py`）+ `SectorDistributionPanel` 行业分布。
+```text
+┌─ 主工具栏（运行 / 保存方案 / 导出 CSV / …）────────────────┐
+├─ 左栏配置区（可滚动 Accordion）──┬─ 右栏结果区 ──────────────┤
+│  ScreenerConfigSection 折叠分组    │  ScreenerResultActionBar   │
+│  + ScreenerHardFilterPanel        │  ScreenerResultInsights    │
+│                                   │  结果表 / 空态提示          │
+└───────────────────────────────────┴──────────────────────────┘
+```
+
+- 左栏默认宽 380px（`SCREENER_CONFIG_DEFAULT_WIDTH`），分组展开状态持久化于 QSettings（`screener_ui`）。
+- 结果区操作条（`ScreenerResultActionBar`）：有结果时显示全选、加入自选、下载日 K、策略回测、批量回测、找同类。
+
+### 5.2 条件选股 Tab
+
+| 左栏分组 | section_id | 内容 |
+|----------|------------|------|
+| 基础条件 | `condition_basic` | preset、Top N、自定义行情阈值 |
+| 快捷选股 | `condition_quick` | 形态选股、雷达共振、行业成分 |
+| 硬过滤 | `condition_hard_filter` | `ScreenerHardFilterPanel` |
+
+顶栏：`ScreeningDataStatusBar`（交易时段 / 数据源 / 快照年龄；交易时段可「刷新行情」）。
+
+### 5.3 多因子配方 Tab
+
+| 左栏分组 | section_id | 内容 |
+|----------|------------|------|
+| 配方编辑 | `recipe_editor` | `ScreenerRecipePanel`、维度权重 |
+| 硬过滤 | `recipe_hard_filter` | 与条件选股共用硬过滤面板 |
+
+左侧运行历史收件箱支持 `[盘中]` / `[盘后]` 过滤。
+
+### 5.4 结果洞察与导出
+
+**ScreenerResultInsights**（可折叠，`result_insights`）：
+
+- 文本：较上次 run diff（`run_diff.py`）
+- 图表：`SectorDistributionPanel` 行业分布
+
+**导出 CSV**（`screener/run/export.py`）：主工具栏「导出 CSV」，按结果字段自动选列集：
+
+| 列集 | 触发条件 |
+|------|----------|
+| 行情 | 含 `last_price` 等实时字段 |
+| 基本面 | 含 `pe_ttm`、`total_mv` 等 |
+| 资金流 | 主力净流入为主、`moneyflow_source` |
+| 配方 | Recipe 结果（综合分、入选原因、行业、变动状态） |
+
+批量对话框（标杆对标等）亦支持导出。
+
+### 5.5 相关 UI 模块
+
+| 模块 | 路径 |
+|------|------|
+| 布局常量 | `ui/screener/widgets/screener_layout.py` |
+| 折叠分组 | `ui/screener/widgets/screener_config_section.py` |
+| 工具栏 / 结果操作条 | `ui/screener/widgets/screener_toolbars.py` |
+| 硬过滤面板 | `ui/screener/widgets/screener_hard_filter_panel.py` |
+| 结果表 | `ui/screener/widgets/screener_results_table.py` |
+| 洞察面板 | `ui/screener/widgets/screener_insights.py` |
 
 ## 6. 风险与合规
 
@@ -162,3 +225,13 @@ recipe 维度 → load_screening_quote_snapshot() / Tushare fallback
 | Tushare 不可用 | 量比维度降级为成交量排序 |
 | AI 编造指标 | 解读强制 `get_screening_context` |
 | 合规 | 不提供买卖价/仓位；免责声明保留 |
+
+---
+
+## 参考
+
+- [选股 Hub 使用指南](./screener-hub-guide.md)
+- [产品说明 §选股 Hub](./product-plan.md#选股-hub)
+- [架构说明 §选股 Hub](./architecture.md)
+- [AI 数据路由 §选股](./ai-data-routing.md#选股)
+- [数据设计 §screener_runs](./data-design.md#17-screener_runs--选股运行历史)

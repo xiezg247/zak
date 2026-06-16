@@ -671,12 +671,17 @@ class QuotesPageShell:
     def _build_radar_layout(self, page: QuotesPage) -> None:
         from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
 
-        page.refresh_radar_button = QtWidgets.QPushButton("刷新雷达", page)
+        page.refresh_radar_button = QtWidgets.QPushButton("刷新当前区", page)
+        page.refresh_radar_button.setToolTip("刷新当前分区内的全部卡片")
+        page.refresh_radar_all_button = QtWidgets.QPushButton("刷新全部", page)
+        page.refresh_radar_all_button.setFlat(True)
+        page.refresh_radar_all_button.setToolTip("刷新盘面统计与前瞻展望全部卡片")
         page.radar_ai_button = QtWidgets.QPushButton("AI 洞察", page)
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(page.refresh_radar_button)
+        toolbar.addWidget(page.refresh_radar_all_button)
         toolbar.addWidget(page.radar_ai_button)
         toolbar.addStretch(1)
 
@@ -698,7 +703,8 @@ class QuotesPageShell:
             page.radar_board,
             resonance_panel=page.radar_resonance_panel,
         )
-        page.refresh_radar_button.clicked.connect(page._radar_controller.refresh)
+        page.refresh_radar_button.clicked.connect(page._radar_controller.refresh_current_mode)
+        page.refresh_radar_all_button.clicked.connect(page._radar_controller.refresh)
         page.radar_ai_button.clicked.connect(page._radar_controller.request_ai_summary)
 
         center = QtWidgets.QWidget()
@@ -714,7 +720,7 @@ class QuotesPageShell:
         splitter.addWidget(page.radar_resonance_panel)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 0)
-        splitter.setSizes([900, 260])
+        splitter.setSizes([880, 280])
         page._radar_splitter = splitter
 
         page.status_label = QtWidgets.QLabel("就绪")

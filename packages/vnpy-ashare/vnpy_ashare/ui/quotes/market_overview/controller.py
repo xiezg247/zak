@@ -134,11 +134,14 @@ class MarketOverviewController(QtCore.QObject):
 
     def _clear_industry_filter(self) -> None:
         page = self._page
-        if not page._market_industry_filter:
+        if not page._market_industry_filter and not page._market_vt_whitelist:
             return
-        previous = page._market_industry_filter
-        page.set_market_industry_filter(None)
-        page.status_label.setText(f"已清除行业筛选：{previous}")
+        previous = page._market_industry_filter or page._market_drilldown_label or "筛选"
+        if hasattr(page, "clear_market_drilldown_filters"):
+            page.clear_market_drilldown_filters()
+        else:
+            page.set_market_industry_filter(None)
+        page.status_label.setText(f"已清除筛选：{previous}")
 
     def _open_sector_flow(self) -> None:
         host = self._find_main_window()

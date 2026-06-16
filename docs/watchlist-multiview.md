@@ -98,3 +98,11 @@ ui/quotes/watchlist_multiview/     # UI 层
 | 文件 | 覆盖 |
 |------|------|
 | `tests/ashare/quotes/test_watchlist_multiview.py` | loader、sort、enrich、summary、settings、sparkline_data |
+
+---
+
+## 参考
+
+- [自选策略信号区](./watchlist-signals.md)
+- [看盘页个股笔记](./stock-notes.md)
+- [产品说明 §自选](./product-plan.md#左侧导航)

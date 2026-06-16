@@ -23,6 +23,7 @@ dev = [
     "types-redis>=4.6.0.20241004",
     "types-pyside6>=6.10.1.1",
 ]
+predict = ["lightgbm>=4.0.0"]  # macOS 另需系统库 libomp，见 bin/ensure_libomp.sh
 
 [tool.uv.sources]
 vnpy-common = { workspace = true }

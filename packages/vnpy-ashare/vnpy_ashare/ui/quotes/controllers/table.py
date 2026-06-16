@@ -383,6 +383,10 @@ class TableController:
             industry_map = self._market_industry_map(page)
             matched = [item for item in matched if industry_map.get(item.ts_code, "") == industry_filter]
 
+        vt_whitelist = page._market_vt_whitelist
+        if vt_whitelist:
+            matched = [item for item in matched if item.vt_symbol in vt_whitelist]
+
         page._market_filter_keyword = keyword
         if self._same_stock_list(matched, page._market_matched):
             return
@@ -464,6 +468,7 @@ class TableController:
         keyword = page.search_edit.text().strip()
         board = page._market_board
         industry = page._market_industry_filter
+        drilldown = page._market_drilldown_label
         catalog_count = len(page._market_catalog)
         batch_time = format_batch_updated_at(page._market_updated_at)
         rank_title = page.active_rank_title() if page.config.show_rank_sidebar else None
@@ -471,8 +476,10 @@ class TableController:
         page_size = max(page.config.market_page_size, 1)
         page_count = max((matched_count + page_size - 1) // page_size, 1)
         current = min(page._market_page + 1, page_count)
-        if keyword or board or industry:
+        if keyword or board or industry or drilldown:
             status = f"筛选 {matched_count} 只，排序后第 {current}/{page_count} 页（全市场 {catalog_count} 只）"
+            if drilldown:
+                status = f"{drilldown} · {status}"
         elif rank_title:
             status = f"{rank_title} {matched_count} 只，第 {current}/{page_count} 页"
         else:
@@ -568,6 +575,8 @@ class TableController:
             page._market_board_base_key = None
 
         page._market_industry_filter = None
+        page._market_vt_whitelist = None
+        page._market_drilldown_label = None
         listener = page._market_industry_filter_listener
         if listener is not None:
             listener(None)

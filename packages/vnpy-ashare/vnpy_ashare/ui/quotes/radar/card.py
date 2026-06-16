@@ -6,10 +6,14 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import ashare_market_phase, ashare_market_phase_label
 from vnpy_ashare.quotes.radar.radar_catalog import (
+    RADAR_GRID_COLUMNS,
+    RADAR_LAYOUT_SECTIONS,
+    RadarCardMode,
     RadarCardSpec,
     default_refresh_ms_for_card,
     default_variant_for_card,
     full_refresh_options_for_card,
+    list_radar_cards_for_mode,
     refresh_options_for_card,
     supports_auto_refresh,
     variants_for_card,
@@ -18,6 +22,7 @@ from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_re
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
 from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
+from vnpy_ashare.ui.quotes.radar.section_prefs import load_radar_board_mode, save_radar_board_mode
 from vnpy_common.ui.theme import theme_manager
 
 
@@ -35,6 +40,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     refresh_requested = QtCore.Signal(str)
     quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
+    train_model_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
     full_refresh_interval_changed = QtCore.Signal(str, int)
 
@@ -42,7 +48,12 @@ class RadarCardWidget(QtWidgets.QFrame):
         super().__init__(parent)
         self._spec = spec
         self._supports_auto_refresh = supports_auto_refresh(spec.id)
-        object_name = "RadarCardLive" if self._supports_auto_refresh else "RadarCardManual"
+        if spec.mode == "predictive":
+            object_name = "RadarCardPredictive"
+        elif self._supports_auto_refresh:
+            object_name = "RadarCardLive"
+        else:
+            object_name = "RadarCardManual"
         self.setObjectName(object_name)
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
 
@@ -50,6 +61,12 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._title = QtWidgets.QLabel(spec.title)
         self._title.setObjectName("RadarCardTitle")
         header.addWidget(self._title, stretch=1)
+
+        self._kind_badge = QtWidgets.QLabel("统计" if spec.mode == "statistical" else "展望")
+        self._kind_badge.setObjectName(
+            "RadarCardKindBadgeStatistical" if spec.mode == "statistical" else "RadarCardKindBadgePredictive"
+        )
+        header.addWidget(self._kind_badge)
 
         self._mode_badge = QtWidgets.QLabel("")
         self._mode_badge.setObjectName("RadarCardModeBadge")
@@ -164,6 +181,16 @@ class RadarCardWidget(QtWidgets.QFrame):
             footer.addWidget(self._sector_flow_button)
         else:
             self._sector_flow_button = None
+        self._train_model_button: QtWidgets.QPushButton | None = None
+        if spec.id == "outlook_predict":
+            self._train_model_button = QtWidgets.QPushButton("训练模型…")
+            self._train_model_button.setObjectName("RadarCardTrainModel")
+            self._train_model_button.setFlat(True)
+            self._train_model_button.setToolTip("训练或更新 LightGBM 预测模型")
+            self._train_model_button.clicked.connect(lambda: self.train_model_requested.emit(self.card_id))
+            footer.addWidget(self._train_model_button)
+        else:
+            self._train_model_button = None
         self._add_all_button = QtWidgets.QPushButton("全部加自选")
         self._add_all_button.setObjectName("RadarCardAddAll")
         self._add_all_button.setFlat(True)
@@ -399,7 +426,7 @@ class RadarCardWidget(QtWidgets.QFrame):
 
 
 class RadarBoard(QtWidgets.QWidget):
-    """雷达卡片网格（默认 3 列）。"""
+    """雷达卡片分区布局：盘面统计 / 前瞻展望 Tab。"""
 
     variant_changed = QtCore.Signal(str, str)
     row_activated = QtCore.Signal(str)
@@ -412,42 +439,130 @@ class RadarBoard(QtWidgets.QWidget):
     refresh_requested = QtCore.Signal(str)
     quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
+    train_model_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
     full_refresh_interval_changed = QtCore.Signal(str, int)
+    mode_changed = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("RadarBoard")
-        from vnpy_ashare.quotes.radar.radar_catalog import RADAR_GRID_COLUMNS, list_radar_cards
 
-        grid = QtWidgets.QGridLayout(self)
-        grid.setContentsMargins(8, 8, 8, 8)
-        grid.setSpacing(10)
         self._cards: dict[str, RadarCardWidget] = {}
-        specs = list_radar_cards()
+        self._mode_tab_index: dict[RadarCardMode, int] = {}
+
+        self._tabs = QtWidgets.QTabWidget()
+        self._tabs.setObjectName("RadarBoardTabs")
+        self._tabs.setDocumentMode(True)
+
         columns = RADAR_GRID_COLUMNS
-        for index, spec in enumerate(specs):
-            card = RadarCardWidget(spec, self)
-            card.variant_changed.connect(lambda key, card_id=spec.id: self.variant_changed.emit(card_id, key))
-            card.row_activated.connect(self.row_activated.emit)
-            card.row_selected.connect(self.row_selected.emit)
-            card.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
-            card.batch_add_watchlist_requested.connect(self.batch_add_watchlist_requested.emit)
-            card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
-            card.view_run_requested.connect(self.view_run_requested.emit)
-            card.sector_flow_requested.connect(self.sector_flow_requested.emit)
-            card.refresh_requested.connect(self.refresh_requested.emit)
-            card.quote_refresh_requested.connect(self.quote_refresh_requested.emit)
-            card.ai_requested.connect(self.ai_requested.emit)
-            card.auto_refresh_changed.connect(self.auto_refresh_changed.emit)
-            card.full_refresh_interval_changed.connect(self.full_refresh_interval_changed.emit)
-            self._cards[spec.id] = card
-            grid.addWidget(card, index // columns, index % columns)
-        row_count = max(1, (len(specs) + columns - 1) // columns)
-        for col in range(columns):
-            grid.setColumnStretch(col, 1)
-        for row in range(row_count):
-            grid.setRowStretch(row, 1)
+        for section_index, section in enumerate(RADAR_LAYOUT_SECTIONS):
+            page = QtWidgets.QWidget()
+            page.setObjectName(f"RadarBoardTab{section.mode.title()}")
+            page_layout = QtWidgets.QVBoxLayout(page)
+            page_layout.setContentsMargins(8, 8, 8, 8)
+            page_layout.setSpacing(0)
+
+            scroll = QtWidgets.QScrollArea()
+            scroll.setObjectName("RadarBoardScroll")
+            scroll.setWidgetResizable(True)
+            scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+            scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+            section_host = QtWidgets.QWidget()
+            section_host.setObjectName(f"RadarSectionGrid{section.mode.title()}")
+            grid = QtWidgets.QGridLayout(section_host)
+            grid.setContentsMargins(0, 0, 0, 0)
+            grid.setSpacing(10)
+
+            specs = list_radar_cards_for_mode(section.mode)
+            for index, spec in enumerate(specs):
+                card = self._wire_card(spec)
+                grid.addWidget(card, index // columns, index % columns)
+
+            row_count = max(1, (len(specs) + columns - 1) // columns)
+            for col in range(columns):
+                grid.setColumnStretch(col, 1)
+            for row in range(row_count):
+                grid.setRowStretch(row, 1)
+
+            scroll.setWidget(section_host)
+            page_layout.addWidget(scroll, stretch=1)
+
+            self._tabs.addTab(page, section.title)
+            self._tabs.setTabToolTip(section_index, section.hint)
+            self._mode_tab_index[section.mode] = section_index
+
+        self._tabs.currentChanged.connect(self._on_tab_changed)
+
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.addWidget(self._tabs)
+
+        self.set_mode(load_radar_board_mode(), persist=False)
+        self.update_tab_badges()
+
+    def current_mode(self) -> RadarCardMode:
+        index = self._tabs.currentIndex()
+        if 0 <= index < len(RADAR_LAYOUT_SECTIONS):
+            return RADAR_LAYOUT_SECTIONS[index].mode
+        return "statistical"
+
+    def set_mode(self, mode: RadarCardMode, *, persist: bool = True) -> None:
+        tab_index = self._mode_tab_index.get(mode)
+        if tab_index is None:
+            return
+        self._tabs.blockSignals(True)
+        self._tabs.setCurrentIndex(tab_index)
+        self._tabs.blockSignals(False)
+        if persist:
+            save_radar_board_mode(mode)
+
+    def update_tab_badges(self) -> None:
+        from vnpy_ashare.quotes.radar.predict.model_paths import (
+            lightgbm_unavailable_hint,
+            lightgbm_unavailable_reason,
+            should_retrain_predict_model,
+        )
+
+        for section_index, section in enumerate(RADAR_LAYOUT_SECTIONS):
+            title = section.title
+            tooltip = section.hint
+            if section.mode == "predictive":
+                if lightgbm_unavailable_reason() is not None:
+                    title = f"{title} ·"
+                    tooltip = f"{section.hint}\n{lightgbm_unavailable_hint()}"
+                elif should_retrain_predict_model():
+                    title = f"{title} ·"
+                    tooltip = f"{section.hint}\n建议重训预测模型"
+            self._tabs.setTabText(section_index, title)
+            self._tabs.setTabToolTip(section_index, tooltip)
+
+    def _on_tab_changed(self, index: int) -> None:
+        if index < 0 or index >= len(RADAR_LAYOUT_SECTIONS):
+            return
+        mode = RADAR_LAYOUT_SECTIONS[index].mode
+        save_radar_board_mode(mode)
+        self.mode_changed.emit(mode)
+
+    def _wire_card(self, spec: RadarCardSpec) -> RadarCardWidget:
+        card = RadarCardWidget(spec, self)
+        card.variant_changed.connect(lambda key, card_id=spec.id: self.variant_changed.emit(card_id, key))
+        card.row_activated.connect(self.row_activated.emit)
+        card.row_selected.connect(self.row_selected.emit)
+        card.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
+        card.batch_add_watchlist_requested.connect(self.batch_add_watchlist_requested.emit)
+        card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
+        card.view_run_requested.connect(self.view_run_requested.emit)
+        card.sector_flow_requested.connect(self.sector_flow_requested.emit)
+        card.refresh_requested.connect(self.refresh_requested.emit)
+        card.quote_refresh_requested.connect(self.quote_refresh_requested.emit)
+        card.ai_requested.connect(self.ai_requested.emit)
+        card.train_model_requested.connect(self.train_model_requested.emit)
+        card.auto_refresh_changed.connect(self.auto_refresh_changed.emit)
+        card.full_refresh_interval_changed.connect(self.full_refresh_interval_changed.emit)
+        self._cards[spec.id] = card
+        return card
 
     def card(self, card_id: str) -> RadarCardWidget | None:
         return self._cards.get(card_id)

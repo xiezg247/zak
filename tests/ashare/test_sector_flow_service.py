@@ -8,8 +8,11 @@ from unittest import mock
 from vnpy_ashare.domain.sector_flow import SectorFlowRow
 from vnpy_ashare.services.sector_flow_service import (
     aggregate_sector_rows,
+    build_official_snapshot,
     build_sector_snapshot,
     diagnose_sector_flow_empty,
+    rows_from_dc_moneyflow,
+    rows_from_ths_concept_moneyflow,
     split_sector_display_rows,
 )
 
@@ -154,6 +157,73 @@ class SectorFlowEmptyHintTests(unittest.TestCase):
             snap = build_sector_snapshot(rows, updated_at="12:00")
         self.assertEqual(snap.rows, ())
         self.assertTrue(snap.empty_hint)
+
+
+class SectorFlowOfficialRowsTests(unittest.TestCase):
+    def test_rows_from_dc_moneyflow(self) -> None:
+        rows = [
+            {
+                "ts_code": "BK0001",
+                "name": "互联网服务",
+                "pct_change": 6.28,
+                "net_amount": 3_056_382_208.0,
+                "net_amount_rate": 3.93,
+                "leader_stock": "三六五网",
+            },
+            {
+                "ts_code": "BK0002",
+                "name": "银行",
+                "pct_change": -0.33,
+                "net_amount": -2_340_180_224.0,
+                "net_amount_rate": -6.41,
+                "leader_stock": "招商银行",
+            },
+        ]
+        result = rows_from_dc_moneyflow(rows, sector_kind="industry", flow_source="dc_industry")
+        self.assertEqual(len(result), 2)
+        leader = next(item for item in result if item.name == "互联网服务")
+        self.assertAlmostEqual(leader.net_flow_yi, 30.56, places=1)
+        self.assertEqual(leader.leader_stock, "三六五网")
+        self.assertEqual(leader.flow_source, "dc_industry")
+
+    def test_rows_from_ths_concept_moneyflow(self) -> None:
+        rows = [
+            {
+                "ts_code": "885748.TI",
+                "name": "可燃冰",
+                "pct_change": 4.76,
+                "net_amount": 1.0,
+                "company_num": 12,
+                "leader_stock": "海默科技",
+                "leader_change_pct": 4.76,
+            }
+        ]
+        result = rows_from_ths_concept_moneyflow(rows)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].name, "可燃冰")
+        self.assertEqual(result[0].sector_kind, "concept")
+        self.assertEqual(result[0].stock_count, 12)
+
+    def test_build_official_snapshot(self) -> None:
+        row = SectorFlowRow(
+            sector_id="BK1",
+            name="测试",
+            strength=5.0,
+            change_pct=3.0,
+            net_flow_yi=10.0,
+            stock_count=0,
+            up_ratio=0.0,
+            flow_source="dc_industry",
+            sector_kind="industry",
+        )
+        snap = build_official_snapshot(
+            [row],
+            trade_date="20240927",
+            sector_kind="industry",
+            data_mode="official_dc",
+        )
+        self.assertEqual(snap.data_mode, "official_dc")
+        self.assertIn("日终", snap.updated_at or "")
 
 
 if __name__ == "__main__":

@@ -4,18 +4,40 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     CARD_VARIANTS,
     RADAR_CARD_SPECS,
     RADAR_GRID_COLUMNS,
+    RADAR_LAYOUT_SECTIONS,
     SCREEN_TASK_VARIANTS,
     list_radar_cards,
+    list_radar_cards_for_mode,
+    radar_card_mode,
     variants_for_card,
 )
 
 
 def test_radar_cards_count_and_categories() -> None:
     cards = list_radar_cards()
-    assert len(cards) == 9
+    assert len(cards) == 10
     categories = {card.category for card in cards}
     assert categories == {"screen", "discovery", "watchlist", "sector", "outlook"}
     assert RADAR_GRID_COLUMNS == 3
+
+
+def test_radar_layout_sections_and_modes() -> None:
+    assert len(RADAR_LAYOUT_SECTIONS) == 2
+    assert [section.mode for section in RADAR_LAYOUT_SECTIONS] == ["statistical", "predictive"]
+    statistical = list_radar_cards_for_mode("statistical")
+    predictive = list_radar_cards_for_mode("predictive")
+    assert len(statistical) == 6
+    assert len(predictive) == 4
+    assert all(spec.mode == "statistical" for spec in statistical)
+    assert all(spec.mode == "predictive" for spec in predictive)
+    assert {spec.id for spec in predictive} == {
+        "outlook_watch",
+        "outlook_hold",
+        "outlook_scenario",
+        "outlook_predict",
+    }
+    assert radar_card_mode("discovery_volume_surge") == "statistical"
+    assert radar_card_mode("outlook_watch") == "predictive"
 
 
 def test_radar_card_ids_unique() -> None:
@@ -31,6 +53,7 @@ def test_screen_task_variants_defined() -> None:
 def test_card_variants_registry() -> None:
     assert variants_for_card("sector_theme") == CARD_VARIANTS["sector_theme"]
     assert variants_for_card("outlook_scenario") == CARD_VARIANTS["outlook_scenario"]
+    assert variants_for_card("outlook_predict") == CARD_VARIANTS["outlook_predict"]
     assert variants_for_card("outlook_watch") == ()
     assert variants_for_card("outlook_hold") == ()
     assert variants_for_card("watchlist_intraday") == ()

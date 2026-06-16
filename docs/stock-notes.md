@@ -8,14 +8,14 @@
 |------|------|------|------|
 | 流水 | `entry` | 列表 + 底部输入，`Ctrl+Enter` 追加 | 每票多条，只追加 |
 | 备忘 | `memo` | Markdown 编辑/预览，防抖自动保存 | 每票一行，upsert |
-| 分析报告 | `report` | 多篇历史，Markdown 只读 + 删除 | `stock_analysis_reports` |
+| 分析报告 | `report` | 多篇历史，Markdown 只读 + 删除 | `stock_analysis_reports`（含 AI 对话、**投研团队** `source_scope=team_analysis`） |
 
 ### 入口
 
 | 入口 | 行为 |
 |------|------|
 | 自选右侧 `StockNotePanel` | 备忘 + 流水（可折叠） |
-| 工具 → 笔记中心（`Ctrl+Shift+N`） | 左侧标的列表 + 备忘 / 流水 / 报告 Tab |
+| 笔记 → 笔记中心（`Ctrl+Shift+N`） | 左侧标的列表 + 备忘 / 流水 / 报告 Tab |
 | 自选「笔记中心」按钮 | 打开笔记中心并定位当前标的 |
 | 个股分析 | 「保存分析报告」「历史报告」→ 笔记中心报告 Tab |
 | AI 对话气泡右键 | 存为分析报告、追加到流水 |
@@ -69,8 +69,11 @@ CREATE TABLE IF NOT EXISTS stock_analysis_reports (
     exchange TEXT NOT NULL,
     title TEXT NOT NULL DEFAULT '',
     body TEXT NOT NULL,
-    source TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL
+    source_scope TEXT NOT NULL DEFAULT '',   -- 如 team_analysis / ai_dialog
+    context_json TEXT NOT NULL DEFAULT '',   -- 团队评分等结构化上下文
+    summary TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
 );
 ```
 

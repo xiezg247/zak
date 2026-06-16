@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 RadarCategory = Literal["screen", "discovery", "watchlist", "sector", "outlook"]
+RadarCardMode = Literal["statistical", "predictive"]
 
 RADAR_GRID_COLUMNS = 3
 
@@ -55,10 +56,32 @@ RADAR_FULL_REFRESH_EVERY: dict[str, int] = {
 
 
 @dataclass(frozen=True)
+class RadarLayoutSection:
+    mode: RadarCardMode
+    title: str
+    hint: str
+
+
+RADAR_LAYOUT_SECTIONS: tuple[RadarLayoutSection, ...] = (
+    RadarLayoutSection(
+        "statistical",
+        "盘面统计",
+        "选股结果、盘中异动与板块主线，描述当前盘面",
+    ),
+    RadarLayoutSection(
+        "predictive",
+        "前瞻展望",
+        "策略信号与统计情景，非确定性预测",
+    ),
+)
+
+
+@dataclass(frozen=True)
 class RadarCardSpec:
     id: str
     title: str
     category: RadarCategory
+    mode: RadarCardMode = "statistical"
     top_n: int = 8
     has_task_variants: bool = False
     auto_refresh_ms: int | None = None
@@ -104,10 +127,25 @@ RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
         has_task_variants=True,
         auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS,
     ),
-    RadarCardSpec("outlook_watch", "未来·关注", "outlook"),
-    RadarCardSpec("outlook_hold", "未来·可持", "outlook"),
-    RadarCardSpec("outlook_scenario", "未来·情景", "outlook", has_task_variants=True),
+    RadarCardSpec("outlook_watch", "未来·关注", "outlook", mode="predictive"),
+    RadarCardSpec("outlook_hold", "未来·可持", "outlook", mode="predictive"),
+    RadarCardSpec(
+        "outlook_scenario",
+        "未来·情景",
+        "outlook",
+        mode="predictive",
+        has_task_variants=True,
+    ),
+    RadarCardSpec("outlook_predict", "未来·预测", "outlook", mode="predictive", has_task_variants=True),
 )
+
+PREDICT_MODEL_VARIANTS: tuple[RadarVariant, ...] = (
+    RadarVariant("auto", "自动"),
+    RadarVariant("baseline", "统计基线"),
+    RadarVariant("lgb", "LightGBM"),
+)
+
+DEFAULT_PREDICT_MODEL_VARIANT = "auto"
 
 DEFAULT_SCENARIO_VARIANT = "scenario_bull"
 
@@ -129,6 +167,7 @@ CARD_VARIANTS: dict[str, tuple[RadarVariant, ...]] = {
     "screen_task": SCREEN_TASK_VARIANTS,
     "sector_theme": SECTOR_VARIANTS,
     "outlook_scenario": SCENARIO_VARIANTS,
+    "outlook_predict": PREDICT_MODEL_VARIANTS,
 }
 
 RADAR_CARD_BY_ID: dict[str, RadarCardSpec] = {spec.id: spec for spec in RADAR_CARD_SPECS}
@@ -136,6 +175,18 @@ RADAR_CARD_BY_ID: dict[str, RadarCardSpec] = {spec.id: spec for spec in RADAR_CA
 
 def list_radar_cards() -> tuple[RadarCardSpec, ...]:
     return RADAR_CARD_SPECS
+
+
+def list_radar_cards_for_mode(mode: RadarCardMode) -> tuple[RadarCardSpec, ...]:
+    return tuple(spec for spec in RADAR_CARD_SPECS if spec.mode == mode)
+
+
+def radar_card_mode(card_id: str) -> RadarCardMode:
+    spec = RADAR_CARD_BY_ID.get(card_id)
+    if spec is None:
+        msg = f"未知雷达卡片：{card_id}"
+        raise ValueError(msg)
+    return spec.mode
 
 
 def variants_for_card(card_id: str) -> tuple[RadarVariant, ...]:
@@ -147,6 +198,7 @@ def default_variant_for_card(card_id: str) -> str:
         "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
         "sector_theme": DEFAULT_SECTOR_VARIANT,
         "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
+        "outlook_predict": DEFAULT_PREDICT_MODEL_VARIANT,
     }
     return defaults.get(card_id, "")
 

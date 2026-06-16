@@ -20,6 +20,8 @@
 
 菜单栏「后台」：`定时任务` · `数据管理`（`Ctrl+0` 打开定时任务）
 
+菜单栏「笔记」：`笔记中心`（`Ctrl+Shift+N`；备忘 / 流水 / 分析报告，见 [stock-notes.md](./stock-notes.md)）
+
 | 页 | 说明 |
 |----|------|
 | 自选 | 自选池跟踪；批量回测、标杆对标 |
@@ -27,7 +29,7 @@
 | 板块资金 | 行业/概念资金流向监控；可跳转条件选股做行业成分筛选 |
 | 雷达 | 多卡片盘面扫描（主线、共振等）；权重变更后相关卡片全量重算；可跳转选股 |
 | 本地 | 本地 K 线起止、健康状态、补全 |
-| 选股 | Hub 页，内嵌「条件选股」「多因子配方」两个 Tab（`Ctrl+6`） |
+| 选股 | Hub 页，内嵌「条件选股」「多因子配方」两个 Tab（`Ctrl+6`）；操作速查见 [选股 Hub 使用指南](./screener-hub-guide.md) |
 | AI 助手 | 全屏对话；看盘/选股页另有悬浮球（`Ctrl+L` / `⌘L`） |
 | 策略回测 | 单标的回测 |
 | 回测对比 | 批量回测批次对比 |
@@ -38,13 +40,16 @@
 
 | Tab | 说明 |
 |-----|------|
-| 条件选股 | 规则 / preset 筛选、方案保存、批量入自选；数据状态条可一键刷新行情 |
+| 条件选股 | 规则 / preset 筛选、方案保存、形态/雷达/行业快捷入口、批量入自选 |
 | 多因子配方 | Recipe 多因子打分、运行历史收件箱；左侧 `[盘中]` / `[盘后]` 过滤 |
 
-两 Tab 共用结果洞察区（`ScreenerResultInsights`）：
+两 Tab 共用：
 
-- 文本：较上次 run diff（新增 / 保留 / 剔除）
-- 图表：`SectorDistributionPanel` 展示 Top 行业占比与涨跌着色
+- 左栏 Accordion 配置 + 硬过滤（保守/均衡/激进模板、行业/板块白名单）
+- 结果洞察区：`ScreenerResultInsights`（diff + 行业分布）
+- 结果操作：全选、入自选、下载日 K、单票/批量回测、找同类、**导出 CSV**
+
+UI 细节见 [盘中选股 §5](./intraday-screening.md#5-ui)。
 
 ## 数据分工
 
@@ -62,7 +67,7 @@ AI 与选股不编造行情；数值来自上述数据源。工具路由见 [ai-
 
 **条件选股**（`screener/run/`）：因子 → 规则引擎 → 方案持久化 → GUI → 入自选 / 回测。
 
-**多因子配方**（`auto_screener_page.py`）：Recipe 并行维度打分（`recipe_*`）+ 运行历史；定时任务或 AI 写入收件箱。硬过滤支持 ST、停牌、新股、涨跌停、流动性等（`hard_filters.py`，QSettings + `RECIPE_*` 环境变量）。
+**多因子配方**（`auto_screener_page.py`）：Recipe 并行维度打分（`recipe_*`）+ 运行历史；定时任务或 AI 写入收件箱。硬过滤支持 ST、停牌、新股、涨跌停、流动性、行业/板块白名单等（`hard_filters.py` + `ScreenerHardFilterPanel`；QSettings + `RECIPE_*` 环境变量）。
 
 **行业分布**（`screener/sector/sector_summary.py`）：选股结果按 Tushare 行业映射聚合，供结果面板、`sector_strength` 维度与板块资金页共用。
 
@@ -97,7 +102,23 @@ AI 与选股不编造行情；数值来自上述数据源。工具路由见 [ai-
 | vnpy-screening | 选股、多因子配方（run_recipe） |
 | vnpy-backtest | 回测结果 |
 | vnpy-watchlist | 自选 CRUD |
-| vnpy-analysis | 技术面、综合诊断 |
+| vnpy-analysis | 技术面、选股解读、走势情景 |
+| tdx-stock-diagnose | 单票快速综合诊断（问小达 MCP） |
+| tdx-financial-analysis | 财务深度分析（团队模式 financial Agent） |
+| tdx-risk-analysis | 风险画像（团队模式 risk Agent） |
 | vnpy-sentiment | A 股恐贪指数 |
 
+**团队全面分析**（`team_analysis` 意图）：financial / risk / strategy 三 Agent 并行 + chief 汇总。触发：「全面分析」「团队分析」或 `/team 600519`。与 `diagnose_stock` 互补——前者深挖分维度，后者快速概览。详见 [智能体投研团队](./team-agent.md)。
+
 LLM 不编造价格；复杂选股条件须用户确认后执行。
+
+---
+
+## 参考
+
+- [架构说明](./architecture.md)
+- [选股 Hub 使用指南](./screener-hub-guide.md)
+- [盘中选股](./intraday-screening.md)
+- [AI 数据路由](./ai-data-routing.md)
+- [智能体投研团队](./team-agent.md)
+- [策略回测](./backtest-ux.md)

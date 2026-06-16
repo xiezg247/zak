@@ -106,6 +106,8 @@ quotes/
 
 `ScreenerHubPageWidget` 内嵌「条件选股」（`screener_page.py`）与「多因子配方」（`auto_screener_page.py`）两个 Tab，共用运行历史侧栏与 `ScreenerResultInsights`（diff 文本 + `SectorDistributionPanel`）。
 
+左栏采用 `ScreenerConfigSection` Accordion + `ScreenerHardFilterPanel`；右栏 `ScreenerResultActionBar` + 结果表；主工具栏含「导出 CSV」（`screener/run/export.py` 按字段推断列集）。详见 [盘中选股](./intraday-screening.md#5-ui)。
+
 ## 行情 Provider
 
 看盘 UI 只依赖 `QuoteSnapshot`（`quotes/core/provider.py`）：
@@ -172,6 +174,24 @@ graph/runner.stream_with_tools  或  chat/client.stream_chat_completion
 
 有工具路径的数据路由与工具表见 [ai-data-routing.md](./ai-data-routing.md)。
 
+### 团队全面分析（TeamOrchestrator）
+
+`team_analysis` 意图走独立并行路径（`graph/orchestrator.py`），不经过常规 Supervisor handoff：
+
+```
+用户输入（/team 600519 或「全面分析」）
+        ↓
+IntentCategory == team_analysis
+        ↓
+TeamOrchestrator.stream_team_analysis
+├── prefetch_team_facts（问小达 + 本地结构化数据）
+├── 快速模式：预取 ≥2 维 → 直接出章节 + chief
+├── 深度模式：ThreadPoolExecutor 并行 financial / risk / strategy ReAct
+└── chief 汇总 → 可选落库 stock_analysis_reports（zak://team-report 链接）
+```
+
+与 `diagnose_stock`（单 Agent 快速问小达诊断）互补。设计细节见 [team-agent.md](./team-agent.md)。
+
 ### 悬浮球
 
 协调层：`ui/floating_controller.py`（`FloatingAiController`）。
@@ -196,3 +216,12 @@ graph/runner.stream_with_tools  或  chat/client.stream_chat_completion
 | UNKNOWN | 无本地数据 |
 
 列表页判 OK/STALE/UNKNOWN；GAPS 由选中行的 `BarGapCheckWorker` 异步扫描。交易日历：Tushare → `trade_calendar` 表（`calendar.py`）。
+
+---
+
+## 参考
+
+- [产品说明](./product-plan.md)
+- [数据设计](./data-design.md)
+- [配置分级热加载](./config-hot-reload.md)
+- [编码规范](./coding-standards.md)

@@ -2,15 +2,25 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from typing import Literal
+
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_loaders import RadarResonanceEntry
+from vnpy_ashare.ui.quotes.radar.resonance_row_widget import RadarResonanceRowWidget
 from vnpy_common.ui.theme import theme_manager
-from vnpy_common.ui.theme.market_colors import pct_change_color
+
+RadarResonanceTab = Literal["all", "statistical", "predictive"]
+
+_RESONANCE_TABS: tuple[tuple[RadarResonanceTab, str], ...] = (
+    ("all", "全部"),
+    ("statistical", "统计"),
+    ("predictive", "展望"),
+)
 
 
 class RadarResonancePanel(QtWidgets.QFrame):
-    """全局共振标的汇总侧栏。"""
+    """全局共振标的汇总侧栏（按统计 / 展望分 Tab）。"""
 
     row_activated = QtCore.Signal(str)
     row_selected = QtCore.Signal(str)
@@ -25,19 +35,76 @@ class RadarResonancePanel(QtWidgets.QFrame):
         super().__init__(parent)
         self.setObjectName("RadarResonancePanel")
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        self.setMinimumWidth(200)
-        self.setMaximumWidth(360)
+        self.setMinimumWidth(220)
+        self.setMaximumWidth(380)
 
-        header = QtWidgets.QHBoxLayout()
+        header = QtWidgets.QVBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(2)
+        title_row = QtWidgets.QHBoxLayout()
+        title_row.setContentsMargins(0, 0, 0, 0)
         title = QtWidgets.QLabel("共振列表")
         title.setObjectName("RadarResonanceTitle")
-        header.addWidget(title, stretch=1)
+        title_row.addWidget(title, stretch=1)
         self._count_label = QtWidgets.QLabel("0")
         self._count_label.setObjectName("RadarResonanceCount")
-        header.addWidget(self._count_label)
+        title_row.addWidget(self._count_label)
+        header.addLayout(title_row)
+        hint = QtWidgets.QLabel("多卡同时出现的标的汇总")
+        hint.setObjectName("RadarResonanceHint")
+        header.addWidget(hint)
 
-        toolbar = QtWidgets.QHBoxLayout()
-        toolbar.setSpacing(6)
+        self._tabs = QtWidgets.QTabWidget()
+        self._tabs.setObjectName("RadarResonanceTabs")
+        self._lists: dict[RadarResonanceTab, QtWidgets.QListWidget] = {}
+        self._stacks: dict[RadarResonanceTab, QtWidgets.QStackedWidget] = {}
+        self._empty_labels: dict[RadarResonanceTab, QtWidgets.QLabel] = {}
+        self._row_widgets: dict[RadarResonanceTab, dict[str, RadarResonanceRowWidget]] = {}
+        for tab_key, tab_label in _RESONANCE_TABS:
+            page = QtWidgets.QWidget()
+            page_layout = QtWidgets.QVBoxLayout(page)
+            page_layout.setContentsMargins(0, 4, 0, 0)
+            page_layout.setSpacing(0)
+
+            stack = QtWidgets.QStackedWidget()
+            list_widget = QtWidgets.QListWidget()
+            list_widget.setObjectName("RadarResonanceList")
+            list_widget.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+            list_widget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
+            list_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+            list_widget.setSpacing(4)
+            list_widget.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel)
+            list_widget.itemDoubleClicked.connect(self._on_item_double_clicked)
+            list_widget.itemClicked.connect(self._on_item_clicked)
+            list_widget.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+            list_widget.customContextMenuRequested.connect(self._show_context_menu)
+
+            empty_page = QtWidgets.QWidget()
+            empty_layout = QtWidgets.QVBoxLayout(empty_page)
+            empty_layout.setContentsMargins(12, 24, 12, 24)
+            empty_label = QtWidgets.QLabel(self._empty_message(tab_key))
+            empty_label.setObjectName("RadarResonanceEmpty")
+            empty_label.setWordWrap(True)
+            empty_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            empty_layout.addStretch()
+            empty_layout.addWidget(empty_label)
+            empty_layout.addStretch()
+
+            stack.addWidget(list_widget)
+            stack.addWidget(empty_page)
+            page_layout.addWidget(stack, stretch=1)
+
+            self._lists[tab_key] = list_widget
+            self._stacks[tab_key] = stack
+            self._empty_labels[tab_key] = empty_label
+            self._row_widgets[tab_key] = {}
+            self._tabs.addTab(page, tab_label)
+        self._tabs.currentChanged.connect(self._on_tab_changed)
+
+        toolbar = QtWidgets.QGridLayout()
+        toolbar.setContentsMargins(0, 0, 0, 0)
+        toolbar.setHorizontalSpacing(6)
+        toolbar.setVerticalSpacing(6)
         self._add_all_button = QtWidgets.QPushButton("全部加自选")
         self._add_all_button.setObjectName("RadarResonanceAddAll")
         self._add_all_button.clicked.connect(self.batch_add_watchlist_requested.emit)
@@ -51,84 +118,133 @@ class RadarResonancePanel(QtWidgets.QFrame):
         self._weights_button.setObjectName("RadarResonanceWeights")
         self._weights_button.setToolTip("配置各卡片共振加权分")
         self._weights_button.clicked.connect(self.resonance_weights_requested.emit)
-        toolbar.addWidget(self._add_all_button)
-        toolbar.addWidget(self._ai_button)
-        toolbar.addWidget(self._screener_button)
-        toolbar.addWidget(self._weights_button)
-
-        self._list = QtWidgets.QListWidget()
-        self._list.setObjectName("RadarResonanceList")
-        self._list.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self._list.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
-        self._list.itemClicked.connect(self._on_item_clicked)
-        self._list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self._list.customContextMenuRequested.connect(self._show_context_menu)
-
-        self._empty_label = QtWidgets.QLabel("暂无共振标的\n（需同时出现在 2 张及以上卡片）")
-        self._empty_label.setObjectName("RadarResonanceEmpty")
-        self._empty_label.setWordWrap(True)
-        self._empty_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        toolbar.addWidget(self._add_all_button, 0, 0)
+        toolbar.addWidget(self._ai_button, 0, 1)
+        toolbar.addWidget(self._screener_button, 1, 0)
+        toolbar.addWidget(self._weights_button, 1, 1)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(8)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(10)
         layout.addLayout(header)
+        layout.addWidget(self._tabs, stretch=1)
         layout.addLayout(toolbar)
-        layout.addWidget(self._list, stretch=1)
-        layout.addWidget(self._empty_label)
 
-        self._entries: tuple[RadarResonanceEntry, ...] = ()
+        self._entries_by_tab: dict[RadarResonanceTab, tuple[RadarResonanceEntry, ...]] = {
+            key: () for key, _label in _RESONANCE_TABS
+        }
+        self._selected_symbol = ""
         self._set_actions_enabled(False)
         theme_manager().register_callback(lambda _tokens: self._refresh_list_colors())
 
-    def apply_entries(self, entries: tuple[RadarResonanceEntry, ...]) -> None:
-        self._entries = entries
-        self._count_label.setText(str(len(entries)))
-        self._list.clear()
-        has_entries = bool(entries)
-        self._set_actions_enabled(has_entries)
-        if not has_entries:
-            self._list.hide()
-            self._empty_label.show()
-            return
-        self._empty_label.hide()
-        self._list.show()
-        tokens = theme_manager().tokens()
-        for entry in entries:
-            item = QtWidgets.QListWidgetItem(self._format_entry_text(entry))
-            item.setData(QtCore.Qt.ItemDataRole.UserRole, entry.vt_symbol)
-            item.setData(QtCore.Qt.ItemDataRole.UserRole + 1, entry.change_pct)
-            item.setForeground(QtGui.QColor(pct_change_color(entry.change_pct, tokens)))
-            font = item.font()
-            font.setBold(True)
-            item.setFont(font)
-            self._list.addItem(item)
+    @staticmethod
+    def _empty_message(tab_key: RadarResonanceTab) -> str:
+        if tab_key == "statistical":
+            return "暂无统计区共振\n需同时出现在 2 张及以上统计卡"
+        if tab_key == "predictive":
+            return "暂无展望区共振\n需同时出现在 2 张及以上展望卡"
+        return "暂无共振标的\n需同时出现在 2 张及以上卡片"
+
+    def apply_entries(
+        self,
+        entries: tuple[RadarResonanceEntry, ...],
+        *,
+        statistical: tuple[RadarResonanceEntry, ...] | None = None,
+        predictive: tuple[RadarResonanceEntry, ...] | None = None,
+    ) -> None:
+        self._entries_by_tab = {
+            "all": entries,
+            "statistical": statistical if statistical is not None else (),
+            "predictive": predictive if predictive is not None else (),
+        }
+        self._render_current_tab()
+        for tab_key in self._entries_by_tab:
+            if tab_key != self._current_tab_key():
+                self._render_tab(tab_key)
 
     def entries(self) -> tuple[RadarResonanceEntry, ...]:
-        return self._entries
+        return self._entries_by_tab.get("all", ())
+
+    def current_tab_entries(self) -> tuple[RadarResonanceEntry, ...]:
+        tab_key = self._current_tab_key()
+        return self._entries_by_tab.get(tab_key, ())
+
+    def current_tab_key(self) -> RadarResonanceTab:
+        return self._current_tab_key()
+
+    def select_tab(self, tab_key: RadarResonanceTab) -> None:
+        for index, (key, _label) in enumerate(_RESONANCE_TABS):
+            if key == tab_key:
+                self._tabs.setCurrentIndex(index)
+                return
+
+    def _current_tab_key(self) -> RadarResonanceTab:
+        index = self._tabs.currentIndex()
+        if 0 <= index < len(_RESONANCE_TABS):
+            return _RESONANCE_TABS[index][0]
+        return "all"
+
+    def _on_tab_changed(self, _index: int) -> None:
+        self._render_current_tab()
+        if self._selected_symbol:
+            self._sync_row_selection(self._selected_symbol)
+
+    def _render_current_tab(self) -> None:
+        tab_key = self._current_tab_key()
+        entries = self._entries_by_tab.get(tab_key, ())
+        self._count_label.setText(str(len(entries)))
+        self._set_actions_enabled(bool(entries))
+        self._render_tab(tab_key)
+
+    def _render_tab(self, tab_key: RadarResonanceTab) -> None:
+        entries = self._entries_by_tab.get(tab_key, ())
+        list_widget = self._lists[tab_key]
+        stack = self._stacks[tab_key]
+        row_map = self._row_widgets[tab_key]
+        list_widget.clear()
+        row_map.clear()
+
+        if entries:
+            stack.setCurrentIndex(0)
+            for entry in entries:
+                row = RadarResonanceRowWidget(entry)
+                item = QtWidgets.QListWidgetItem()
+                item.setData(QtCore.Qt.ItemDataRole.UserRole, entry.vt_symbol)
+                row.adjustSize()
+                item.setSizeHint(row.sizeHint())
+                list_widget.addItem(item)
+                list_widget.setItemWidget(item, row)
+                row_map[entry.vt_symbol] = row
+                vt_symbol = entry.vt_symbol
+                row.clicked.connect(lambda sym=vt_symbol: self._select_symbol(sym))
+                row.double_clicked.connect(lambda sym=vt_symbol: self.row_activated.emit(sym))
+            if tab_key == self._current_tab_key() and self._selected_symbol:
+                self._sync_row_selection(self._selected_symbol)
+        else:
+            stack.setCurrentIndex(1)
+
+    def _sync_row_selection(self, vt_symbol: str) -> None:
+        tab_key = self._current_tab_key()
+        for symbol, row in self._row_widgets[tab_key].items():
+            row.set_selected(symbol == vt_symbol)
+
+    def _select_symbol(self, vt_symbol: str) -> None:
+        self._selected_symbol = vt_symbol
+        self._sync_row_selection(vt_symbol)
+        self.row_selected.emit(vt_symbol)
 
     def _set_actions_enabled(self, enabled: bool) -> None:
         self._add_all_button.setEnabled(enabled)
         self._ai_button.setEnabled(enabled)
         self._screener_button.setEnabled(enabled)
 
-    def _format_entry_text(self, entry: RadarResonanceEntry) -> str:
-        price = f"{entry.price:.2f}" if entry.price is not None else "—"
-        change = f"{entry.change_pct:+.2f}%" if entry.change_pct is not None else "—"
-        cards = " · ".join(entry.card_titles)
-        score_note = f"  加权{entry.resonance_score:.1f}" if entry.resonance_score > 0 else ""
-        return f"{entry.name}  {entry.symbol}\n{entry.card_count}卡{score_note}  {price}  {change}\n{cards}"
+    def _active_list(self) -> QtWidgets.QListWidget:
+        return self._lists[self._current_tab_key()]
 
     def _refresh_list_colors(self) -> None:
-        tokens = theme_manager().tokens()
-        for index in range(self._list.count()):
-            item = self._list.item(index)
-            if item is None:
-                continue
-            change_pct = item.data(QtCore.Qt.ItemDataRole.UserRole + 1)
-            value = float(change_pct) if isinstance(change_pct, (int, float)) else None
-            item.setForeground(QtGui.QColor(pct_change_color(value, tokens)))
+        for row_map in self._row_widgets.values():
+            for row in row_map.values():
+                row.refresh_theme()
 
     def _on_item_double_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
         vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole)
@@ -138,10 +254,11 @@ class RadarResonancePanel(QtWidgets.QFrame):
     def _on_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
         vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if vt_symbol:
-            self.row_selected.emit(str(vt_symbol))
+            self._select_symbol(str(vt_symbol))
 
     def _show_context_menu(self, pos: QtCore.QPoint) -> None:
-        item = self._list.itemAt(pos)
+        list_widget = self._active_list()
+        item = list_widget.itemAt(pos)
         if item is None:
             return
         vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole)
@@ -150,7 +267,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
         menu = QtWidgets.QMenu(self)
         analysis_action = menu.addAction("个股分析")
         action = menu.addAction("加入自选")
-        chosen = menu.exec(self._list.mapToGlobal(pos))
+        chosen = menu.exec(list_widget.mapToGlobal(pos))
         if chosen is analysis_action:
             self.stock_analysis_requested.emit(str(vt_symbol))
         elif chosen is action:

@@ -165,14 +165,26 @@ class DataLoaderController:
                 page._market_board_base_key = None
                 page._market_filter_keyword = ""
                 pending_industry = page._pending_industry_drilldown
+                pending_concept = page._pending_concept_drilldown
                 page._pending_industry_drilldown = None
-                if pending_industry:
+                page._pending_concept_drilldown = None
+                if pending_concept:
+                    page._market_vt_whitelist = pending_concept
+                    page._market_industry_filter = None
+                    listener = page._market_industry_filter_listener
+                    if listener is not None:
+                        listener(None)
+                elif pending_industry:
+                    page._market_vt_whitelist = None
+                    page._market_drilldown_label = None
                     page._market_industry_filter = pending_industry
                     listener = page._market_industry_filter_listener
                     if listener is not None:
                         listener(pending_industry)
                 else:
                     page._market_industry_filter = None
+                    page._market_vt_whitelist = None
+                    page._market_drilldown_label = None
                     listener = page._market_industry_filter_listener
                     if listener is not None:
                         listener(None)

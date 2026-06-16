@@ -25,6 +25,7 @@ from vnpy_ashare.jobs import (
     prefetch_moneyflow,
     prefetch_tushare_factors,
     sync_disclosure_calendar_job,
+    sync_sector_flow_daily_job,
     sync_stock_industry_job,
     sync_suspend_daily_job,
     sync_trade_calendar_job,
@@ -34,6 +35,7 @@ from vnpy_ashare.jobs import (
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.progress import bind_job_log
+from vnpy_ashare.jobs.radar_predict_train import run_radar_predict_train_job
 from vnpy_ashare.scheduler.config import (
     AutoScreenJobConfig,
     JobConfig,
@@ -196,6 +198,19 @@ class TaskSchedulerManager:
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于 Tushare 因子预拉）",
             ),
+            "sync_sector_flow_daily": _JobMeta(
+                job_id="sync_sector_flow_daily",
+                name="板块资金同步",
+                description="收盘后拉取东财行业/同花顺概念近 N 日板块资金流，写入 sector_flow_daily 供详情页近5日柱图",
+                runner=sync_sector_flow_daily_job,
+                config_attr="sync_sector_flow_daily",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在主力资金预拉之后）",
+            ),
             "sync_suspend_daily": _JobMeta(
                 job_id="sync_suspend_daily",
                 name="停牌日同步",
@@ -286,7 +301,7 @@ class TaskSchedulerManager:
             "scan_horizon_outlook": _JobMeta(
                 job_id="scan_horizon_outlook",
                 name="雷达展望扫描",
-                description="收盘后全市场扫描未来·关注/可持（排除自选/信号区/持仓），写入本地缓存",
+                description="收盘后全市场扫描未来·关注/可持/情景/预测，写入本地缓存",
                 runner=run_horizon_outlook_scan_job,
                 config_attr="scan_horizon_outlook",
                 schedule_builder=lambda cfg: CronTrigger(
@@ -295,6 +310,19 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在盘后自动选股之后）",
+            ),
+            "train_radar_predict": _JobMeta(
+                job_id="train_radar_predict",
+                name="雷达预测重训",
+                description="收盘后按需重训 LightGBM（模型超过 30 天或缺失时），并刷新预测缓存",
+                runner=run_radar_predict_train_job,
+                config_attr="train_radar_predict",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在雷达展望扫描之后）",
             ),
         }
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)
@@ -590,6 +618,7 @@ class TaskSchedulerManager:
             "screen_intraday",
             "screen_post_close",
             "scan_horizon_outlook",
+            "train_radar_predict",
         )
         self._scheduler.add_job(
             self._wrap_job,
@@ -623,6 +652,8 @@ class TaskSchedulerManager:
                 result = run_scheduled_auto_screen(job_id, force=force)
             elif job_id == "scan_horizon_outlook":
                 result = run_horizon_outlook_scan_job(force=force)
+            elif job_id == "train_radar_predict":
+                result = run_radar_predict_train_job(force=force)
             else:
                 result = meta.runner()
             message = result.message

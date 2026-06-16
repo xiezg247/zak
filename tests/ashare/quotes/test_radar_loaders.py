@@ -87,6 +87,36 @@ def test_build_radar_resonance_list() -> None:
     assert entries[0].card_titles == ("选股", "发现")
 
 
+def test_build_radar_resonance_list_by_mode() -> None:
+    payload = {
+        "screen_latest": RadarCardData("screen_latest", "选股", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
+        "discovery_volume_surge": RadarCardData(
+            "discovery_volume_surge",
+            "发现",
+            "",
+            (_sample_row("600000.SSE", name="浦发"),),
+            "",
+            "",
+        ),
+        "outlook_watch": RadarCardData("outlook_watch", "关注", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
+        "outlook_hold": RadarCardData("outlook_hold", "可持", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
+    }
+
+    all_entries = build_radar_resonance_list(payload)
+    assert len(all_entries) == 1
+    assert all_entries[0].card_count == 4
+
+    statistical = build_radar_resonance_list(payload, mode="statistical")
+    assert len(statistical) == 1
+    assert statistical[0].card_count == 2
+    assert set(statistical[0].card_titles) == {"选股", "发现"}
+
+    predictive = build_radar_resonance_list(payload, mode="predictive")
+    assert len(predictive) == 1
+    assert predictive[0].card_count == 2
+    assert set(predictive[0].card_titles) == {"关注", "可持"}
+
+
 def test_build_radar_resonance_ai_prompt() -> None:
     payload = {
         "a": RadarCardData("a", "选股", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),

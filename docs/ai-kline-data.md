@@ -21,7 +21,7 @@
 flowchart TB
     subgraph User["用户提问"]
         Q1[当前价 / 涨跌]
-        Q2[综合诊断]
+        Q2[综合诊断 / 团队分析]
         Q3[条件选股]
         Q4[技术面 / 策略信号]
         Q5[历史走势 / 情景分析]
@@ -38,6 +38,7 @@ flowchart TB
 
     Q1 --> Redis
     Q2 --> MCP
+    Q2 -.->|团队模式 risk/strategy| LocalK
     Q3 --> Redis
     Q3 --> Tushare
     Q4 --> LocalK
@@ -59,6 +60,7 @@ flowchart TB
 | 历史走势统计 | `historical_pattern_summary` | **优先** | 本地不足 → 问小达 MCP |
 | 走势情景分析 | `trend_scenario_summary` | **优先** | 本地不足 → MCP；仍无则提示下载 |
 | 综合诊断 | `diagnose_stock` | **无** | 问小达 MCP |
+| 团队全面分析 | `analyze_financial` / `analyze_risk` + strategy 工具 | **部分** | 财务走 Tushare；风险/策略需 K 线，不足标 N/A |
 | 条件选股 | `screen_by_condition`、`run_recipe` | **无** | Redis + Tushare |
 | 形态选股 | `screen_by_pattern` | **降级** | MCP 全市场优先；失败扫本地已下载标的（上限 1200） |
 | 标杆对标 | `screen_reference_peer` | 部分 | Tushare + 行情为主 |
@@ -91,10 +93,18 @@ flowchart TB
 
 **入口：** 看盘页「下载日K到本地」；数据管理页批量下载。
 
-**前置条件：** 条件选股交易时段需 Redis 行情采集；综合诊断 / 形态 MCP 需 `mcp/mcp.json`；财务 preset 需 `TUSHARE_TOKEN`。
+**前置条件：** 条件选股交易时段需 Redis 行情采集；综合诊断 / 形态 MCP 需 `mcp/mcp.json`；财务 preset 需 `TUSHARE_TOKEN`；团队分析 risk/strategy 维度建议目标标的已有本地日 K。
 
 ## 意图路由
 
-`IntentCategory` 过滤可见工具。与 K 线相关：`quote` / `data` 含 `get_bars_*`；`technical` 另含 `technical_snapshot`、`list_strategy_signals`、`historical_pattern_summary`、`trend_scenario_summary`；`screening` / `diagnosis` / `backtest` 无直接 K 线工具（形态选股内部按需读 bar）。
+`IntentCategory` 过滤可见工具。与 K 线相关：`quote` / `data` 含 `get_bars_*`；`technical` 另含 `technical_snapshot`、`list_strategy_signals`、`historical_pattern_summary`、`trend_scenario_summary`；`team_analysis` 走并行编排（financial / risk / strategy 子集）；`screening` / `diagnosis` / `backtest` 无直接 K 线工具（形态选股内部按需读 bar）。
 
 本地无数据时，`historical_pattern_summary` 自动尝试问小达 MCP（`routing/base_prompt.py`）。
+
+---
+
+## 参考
+
+- [AI 数据路由](./ai-data-routing.md)
+- [智能体投研团队](./team-agent.md)
+- [数据设计](./data-design.md)

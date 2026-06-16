@@ -77,6 +77,14 @@ class SchedulerConfig:
             cron_day_of_week="mon-fri",
         )
     )
+    sync_sector_flow_daily: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=36,
+            cron_day_of_week="mon-fri",
+        )
+    )
     sync_suspend_daily: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=False,
@@ -141,6 +149,14 @@ class SchedulerConfig:
             cron_day_of_week="mon-fri",
         )
     )
+    train_radar_predict: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=50,
+            cron_day_of_week="mon-fri",
+        )
+    )
 
     def to_dict(self) -> dict:
         def dump_job(job: JobConfig) -> dict:
@@ -172,6 +188,7 @@ class SchedulerConfig:
             "sync_trade_calendar": dump_job(self.sync_trade_calendar),
             "batch_download_universe": dump_job(self.batch_download_universe),
             "prefetch_moneyflow": dump_job(self.prefetch_moneyflow),
+            "sync_sector_flow_daily": dump_job(self.sync_sector_flow_daily),
             "sync_suspend_daily": dump_job(self.sync_suspend_daily),
             "prefetch_tushare": dump_job(self.prefetch_tushare),
             "sync_watchlist_financials": dump_job(self.sync_watchlist_financials),
@@ -180,6 +197,7 @@ class SchedulerConfig:
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
             "scan_horizon_outlook": dump_job(self.scan_horizon_outlook),
+            "train_radar_predict": dump_job(self.train_radar_predict),
         }
 
     @classmethod
@@ -216,6 +234,7 @@ class SchedulerConfig:
             sync_trade_calendar=load_job("sync_trade_calendar", defaults.sync_trade_calendar),
             batch_download_universe=load_job("batch_download_universe", defaults.batch_download_universe),
             prefetch_moneyflow=load_job("prefetch_moneyflow", defaults.prefetch_moneyflow),
+            sync_sector_flow_daily=load_job("sync_sector_flow_daily", defaults.sync_sector_flow_daily),
             sync_suspend_daily=load_job("sync_suspend_daily", defaults.sync_suspend_daily),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
             sync_watchlist_financials=load_job("sync_watchlist_financials", defaults.sync_watchlist_financials),
@@ -224,6 +243,7 @@ class SchedulerConfig:
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
             scan_horizon_outlook=load_job("scan_horizon_outlook", defaults.scan_horizon_outlook),
+            train_radar_predict=load_job("train_radar_predict", defaults.train_radar_predict),
         )
 
 

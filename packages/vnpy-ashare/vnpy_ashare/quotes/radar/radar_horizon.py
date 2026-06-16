@@ -27,7 +27,7 @@ OUTLOOK_CARD_VARIANTS: dict[str, str] = {
 }
 
 OUTLOOK_FORCE_RECOMPUTE_CARD_IDS: frozenset[str] = frozenset(
-    list(OUTLOOK_CARD_VARIANTS.keys()) + ["outlook_scenario"],
+    list(OUTLOOK_CARD_VARIANTS.keys()) + ["outlook_scenario", "outlook_predict"],
 )
 
 

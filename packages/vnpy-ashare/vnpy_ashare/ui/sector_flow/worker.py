@@ -15,10 +15,12 @@ class SectorFlowLoadWorker(QtCore.QThread):
         self,
         service: SectorFlowService,
         *,
+        sector_kind: str = "industry",
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._service = service
+        self._sector_kind = sector_kind
         self._cancelled = False
 
     def request_cancel(self) -> None:
@@ -28,7 +30,7 @@ class SectorFlowLoadWorker(QtCore.QThread):
         if self._cancelled:
             return
         try:
-            snapshot = self._service.load_snapshot()
+            snapshot = self._service.load_snapshot(sector_kind=self._sector_kind)
         except Exception as ex:
             self.failed.emit(str(ex))
             return

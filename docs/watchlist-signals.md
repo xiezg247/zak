@@ -189,3 +189,11 @@ list_strategy_signals(
 | `tests/ashare/ai/context/quote/test_prompts.py` | AI prompt 自定义 MA |
 | `tests/ashare/ai/context/quote/test_assembly.py` | 看盘上下文 `build_quote_context` |
 | `tests/llm/ui/test_floating_actions.py` | 悬浮球面板快捷动作路由 |
+
+---
+
+## 参考
+
+- [自选多维看盘](./watchlist-multiview.md)
+- [看盘页个股笔记](./stock-notes.md)
+- [AI 功能与 K 线](./ai-kline-data.md)

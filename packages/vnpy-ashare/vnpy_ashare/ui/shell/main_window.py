@@ -165,6 +165,12 @@ class AshareMainWindow(MainWindow):
                 action.setShortcut(QtGui.QKeySequence(shortcut))
                 self.addAction(action)
 
+        notes_menu = bar.addMenu("笔记")
+        notes_center_action = notes_menu.addAction("笔记中心…")
+        notes_center_action.triggered.connect(self._open_notes_center_dialog)
+        notes_center_action.setShortcut(QtGui.QKeySequence("Ctrl+Shift+N"))
+        self.addAction(notes_center_action)
+
         tools_menu = bar.addMenu("工具")
         self._ai_toggle_action = tools_menu.addAction("显示/隐藏 AI 悬浮球")
         self._ai_toggle_action.setShortcuts(
@@ -176,15 +182,13 @@ class AshareMainWindow(MainWindow):
         self._ai_toggle_action.triggered.connect(self._toggle_floating_orb)
         self.addAction(self._ai_toggle_action)
         tools_menu.addSeparator()
-        notes_center_action = tools_menu.addAction("笔记中心…")
-        notes_center_action.triggered.connect(self._open_notes_center_dialog)
-        notes_center_action.setShortcut(QtGui.QKeySequence("Ctrl+Shift+N"))
-        self.addAction(notes_center_action)
-        tools_menu.addSeparator()
         ai_tools_action = tools_menu.addAction("AI 工具能力…")
         ai_tools_action.triggered.connect(self._open_ai_tools_dialog)
         audit_action = tools_menu.addAction("AI 工具审计…")
         audit_action.triggered.connect(self._open_ai_tool_audit_dialog)
+        tools_menu.addSeparator()
+        radar_train_action = tools_menu.addAction("雷达模型训练…")
+        radar_train_action.triggered.connect(self._open_radar_predict_train_dialog)
 
         help_menu = bar.addMenu("帮助")
         shortcuts_action = help_menu.addAction("键盘快捷键…")
@@ -673,6 +677,20 @@ class AshareMainWindow(MainWindow):
             return
         widget.page.open_industry_drilldown(industry)
 
+    def open_market_concept_drilldown(self, concept_name: str, vt_symbols: list[str]) -> None:
+        """跳转到市场页：概念成分白名单 + 主力净流入榜。"""
+        label = str(concept_name or "").strip()
+        if not label or not vt_symbols:
+            return
+        nav_index = self._nav_index_for_key("market")
+        if nav_index is None:
+            return
+        self._show_page_by_key("market", nav_index=nav_index)
+        widget = self._page_widgets.get("market")
+        if widget is None or not hasattr(widget, "page"):
+            return
+        widget.page.open_concept_drilldown(label, vt_symbols)
+
     def _show_page_by_key(self, key: str, *, nav_index: int | None = None) -> None:
         widget = self._get_or_create_page(key)
         if widget is None:
@@ -723,6 +741,15 @@ class AshareMainWindow(MainWindow):
             self.main_engine,
             self.event_engine,
             ensure_apps=self._ensure_deferred_apps,
+            parent=self,
+        )
+
+    def _open_radar_predict_train_dialog(self) -> None:
+        from vnpy_ashare.ui.quotes.radar.train_dialog import show_radar_predict_train_dialog
+
+        show_radar_predict_train_dialog(
+            self.main_engine,
+            self.event_engine,
             parent=self,
         )
 

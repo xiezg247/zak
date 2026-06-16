@@ -26,7 +26,7 @@ WATCHLIST_SIGNAL_REFRESH_MS = 300_000
 MARKET_AUTO_REFRESH_DEFAULT = True
 MARKET_AUTO_REFRESH_SETTINGS_KEY = "quotes/market/auto_refresh_v2"
 RADAR_CARD_REFRESH_SETTINGS_PREFIX = "quotes/radar/card_refresh"
-RADAR_MANUAL_REFRESH_HINT = "↻ 全量刷新，下拉可选「仅更新行情」；异动卡可设自动刷新周期与全量间隔；选股与未来卡可读缓存"
+RADAR_MANUAL_REFRESH_HINT = "↻ 全量刷新，下拉可选「仅更新行情」；统计区异动卡可设自动刷新；展望区读缓存，非确定性预测"
 
 
 def radar_refresh_hint() -> str:

@@ -116,11 +116,57 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 ### 1.6 `screener_schemes` — 选股方案
 
-定义文件：`vnpy_ashare/screener/scheme_store.py`。用户保存的自定义筛选条件（JSON）。
+定义文件：`vnpy_ashare/screener/preset/scheme_store.py`。用户保存的条件选股方案（preset + 自定义阈值 JSON）。
 
-### 1.7 `screener_runs` — 选股运行历史
+### 1.7 `screener_recipes` — 多因子配方
 
-定义文件：`vnpy_ashare/screener/run_store.py`。每次选股执行的条件、结果行数与结果 JSON。
+定义文件：`vnpy_ashare/screener/recipe/recipe_store.py`。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | TEXT PK | UUID |
+| `name` | TEXT UNIQUE | 配方名称 |
+| `trigger_kind` | TEXT | `intraday` / `post_close` |
+| `config_json` | TEXT | 维度权重、`top_n`、`pool_size` 等 |
+| `created_at` / `updated_at` | TEXT | 时间戳 |
+
+定时任务 `screen_intraday` 引用配方 ID 执行；AI `run_recipe` 可读内置或用户配方。
+
+### 1.8 `screener_runs` — 选股运行历史
+
+定义文件：`vnpy_ashare/screener/run/run_store.py`。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | TEXT PK | UUID |
+| `condition` | TEXT | 人类可读条件摘要 |
+| `source` | TEXT | `condition` / `recipe` / `pattern` / `ai` 等 |
+| `row_count` | INTEGER | 结果行数 |
+| `total_scanned` | INTEGER | 扫描池大小 |
+| `config_json` | TEXT | trigger、recipe_id、read_at 等元数据 |
+| `result_json` | TEXT | 结果行 JSON 数组 |
+| `created_at` | TEXT | 写入时间 |
+
+**用途：** Hub 左侧收件箱、较上次 diff（`run_diff.py`）、`ScreeningService` → `context_store` → AI `get_screening_context`。
+
+### 1.9 个股笔记与研报
+
+定义文件：`vnpy_ashare/storage/connection.py`（与 watchlist 等同库）。
+
+| 表 | 说明 |
+|----|------|
+| `stock_note_memos` | 每票一行备忘（upsert） |
+| `stock_note_entries` | 每票多条流水（追加） |
+| `stock_analysis_reports` | 分析报告；含 `source_scope`（如 `team_analysis`）、`context_json`（团队评分等） |
+
+详见 [看盘页个股笔记](./stock-notes.md)。
+
+### 1.10 其它 App DB 表
+
+| 表 | 说明 |
+|----|------|
+| `symbol_suspend_days` | Tushare 停牌日历，供硬过滤 |
+| `watchlist_positions` | 自选持仓跟踪（与笔记独立） |
 
 ---
 
@@ -358,12 +404,25 @@ REDIS_DB=0
 │ runs     │                       │               │                │
 │ screener_│                       │               │                │
 │ schemes/ │                       │               │                │
+│ recipes/ │                       │               │                │
 │ runs     │                       │               │                │
+│ stock_   │                       │               │                │
+│ note_* / │                       │               │                │
+│ reports  │                       │               │                │
 ├──────────┼──────────────────────┼───────────────┼────────────────┤
 │ 自选池   │ K 线 / Tick            │ AI 聊天历史    │ 实时行情快照    │
 │ 全A列表  │ 历史市场数据           │               │ 涨幅排名        │
 │ 交易日历 │ ★ 唯一可换存储的数据    │               │                │
 │ 回测/选股│                       │               │                │
 │ 历史     │                       │               │                │
+│ 笔记/研报│                       │               │                │
 └──────────┴──────────────────────┴───────────────┴────────────────┘
 ```
+
+---
+
+## 参考
+
+- [看盘页个股笔记](./stock-notes.md)
+- [盘中选股](./intraday-screening.md)
+- [智能体投研团队](./team-agent.md)

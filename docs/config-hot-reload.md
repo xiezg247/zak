@@ -29,6 +29,7 @@
 | 配置项 | 档位 | 行为 |
 |--------|------|------|
 | `LLM_API_*` | **即时** | `load_dotenv` + `LlmEngine.reload_config()` |
+| `LLM_TEAM_DEEP_MODE` | **即时** | QSettings `llm/team_deep_mode` 或 env；控制团队分析 prefetch 深度 |
 | `DATAFEED_NAME` / `TICKFLOW_*` / `TUSHARE_*` | **软重载** | 同步写入 vt_setting 后合并 SETTINGS |
 | `DATABASE_NAME` / `POSTGRES_*` | **需重启** | 同步后标注重启 |
 | `REDIS_URL` / `QUOTE_COLLECT_INTERVAL` | **软重载** | 进程内 `load_dotenv`；采集任务下次调度读新 env |
@@ -92,3 +93,10 @@ class ApplyResult:
 - `packages/vnpy-ashare/vnpy_ashare/config/schema.py`
 - `packages/vnpy-ashare/vnpy_ashare/ui/shell/settings/dialog.py`
 - `tests/ashare/test_config_apply.py`
+
+---
+
+## 参考
+
+- [架构说明 §配置](./architecture.md#配置)
+- [智能体投研团队 §深度模式](./team-agent.md#快速模式-vs-深度模式)

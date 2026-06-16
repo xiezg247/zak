@@ -13,7 +13,7 @@ _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 
 def run_horizon_outlook_scan_job(*, force: bool = False) -> JobResult:
-    """盘后全市场展望扫描：关注 / 可持 / 情景（偏多/高波动/偏空）。"""
+    """盘后全市场展望扫描：关注 / 可持 / 情景 / 预测基线。"""
     now = datetime.now(_SHANGHAI_TZ)
     if not force:
         if not is_trading_day(now.date()):
@@ -31,6 +31,9 @@ def run_horizon_outlook_scan_job(*, force: bool = False) -> JobResult:
 
     try:
         results = run_horizon_outlook_scan()
+        from vnpy_ashare.quotes.radar.predict.predict_scan import run_predict_scan
+
+        predict = run_predict_scan()
     except Exception as ex:
         return JobResult(success=False, message=f"雷达展望扫描失败：{ex}")
 
@@ -58,6 +61,7 @@ def run_horizon_outlook_scan_job(*, force: bool = False) -> JobResult:
         message=(
             f"{note}雷达展望扫描完成：全市场 {scanned} 只，排除 {excluded}，粗筛 {prefilter} / 可算 {refined} · "
             f"关注 {len(watch.rows) if watch else 0} / 可持 {len(hold.rows) if hold else 0} · "
-            f"情景 多{len(bull.rows) if bull else 0}/波{len(volatile.rows) if volatile else 0}/空{len(bear.rows) if bear else 0}"
+            f"情景 多{len(bull.rows) if bull else 0}/波{len(volatile.rows) if volatile else 0}/空{len(bear.rows) if bear else 0} · "
+            f"预测 {len(predict.rows)}（{predict.model_label}）"
         ),
     )
