@@ -107,6 +107,30 @@ class QuotesPageShell:
         page._search_key_filter = _SearchKeyFilter(page)
         page.search_edit.installEventFilter(page._search_key_filter)
 
+        page.view_table_button = None
+        page.view_multiview_button = None
+        page.multiview_sort_combo = None
+        page.multiview_columns_combo = None
+        if page.config.show_watchlist_multiview:
+            page.view_table_button = QtWidgets.QPushButton("表格", page)
+            page.view_table_button.setObjectName("SecondaryButton")
+            page.view_table_button.setCheckable(True)
+            page.view_table_button.setChecked(True)
+            page.view_multiview_button = QtWidgets.QPushButton("多维", page)
+            page.view_multiview_button.setObjectName("SecondaryButton")
+            page.view_multiview_button.setCheckable(True)
+            page.multiview_sort_combo = QtWidgets.QComboBox(page)
+            page.multiview_sort_combo.setObjectName("WatchlistMultiSortCombo")
+            page.multiview_sort_combo.addItem("自选顺序", "sort_order")
+            page.multiview_sort_combo.addItem("涨幅", "change_pct")
+            page.multiview_sort_combo.addItem("异动分", "anomaly_score")
+            page.multiview_sort_combo.hide()
+            page.multiview_columns_combo = QtWidgets.QComboBox(page)
+            page.multiview_columns_combo.setObjectName("WatchlistMultiColumnsCombo")
+            for columns in (2, 3, 4):
+                page.multiview_columns_combo.addItem(f"{columns} 列", columns)
+            page.multiview_columns_combo.hide()
+
         page.board_combo = QtWidgets.QComboBox()
         page.board_combo.setObjectName("BoardCombo")
         page.board_combo.addItems(["全部", "沪深主板", "创业板", "科创板", "北交所"])
@@ -247,6 +271,14 @@ class QuotesPageShell:
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(page.search_edit)
+        if page.config.show_watchlist_multiview and page.view_table_button is not None:
+            toolbar.addWidget(page.view_table_button)
+            if page.view_multiview_button is not None:
+                toolbar.addWidget(page.view_multiview_button)
+            if page.multiview_sort_combo is not None:
+                toolbar.addWidget(page.multiview_sort_combo)
+            if page.multiview_columns_combo is not None:
+                toolbar.addWidget(page.multiview_columns_combo)
         if page.config.show_board_filter:
             toolbar.addWidget(page.board_combo)
 
@@ -494,11 +526,23 @@ class QuotesPageShell:
                 page.market_table,
                 external_scrollbar=False,
             )
+            center_primary: QtWidgets.QWidget = page._market_table_host
+            page._center_view_stack = None
+            page.multiview_board = None
+            if page.config.show_watchlist_multiview:
+                from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
+
+                page.multiview_board = WatchlistMultiViewBoard(page)
+                page._center_view_stack = QtWidgets.QStackedWidget()
+                page._center_view_stack.setObjectName("WatchlistCenterViewStack")
+                page._center_view_stack.addWidget(page._market_table_host)
+                page._center_view_stack.addWidget(page.multiview_board)
+                center_primary = page._center_view_stack
             use_center_split = page.config.show_watchlist_signals or page.config.show_watchlist_positions or page.config.show_run_output_panel
             if use_center_split:
                 center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
                 configure_center_splitter(center_split)
-                center_split.addWidget(page._market_table_host)
+                center_split.addWidget(center_primary)
                 split_index = 1
                 if page.config.show_watchlist_signals:
                     page.signal_panel = WatchlistSignalPanel(page)
@@ -526,7 +570,9 @@ class QuotesPageShell:
                 bind_center_splitter_persistence(page)
                 QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
             else:
-                center_layout.addWidget(page._market_table_host, stretch=1)
+                center_layout.addWidget(center_primary, stretch=1)
+            if page.config.show_watchlist_multiview:
+                page._wire_multiview()
             if page.config.show_watchlist_signals:
                 page._wire_signal_panel()
             if page.config.show_watchlist_positions:

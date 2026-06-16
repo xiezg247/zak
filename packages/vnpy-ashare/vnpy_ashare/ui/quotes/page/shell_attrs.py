@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     )
     from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
     from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
+    from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
     from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
     from vnpy_ashare.ui.quotes.watchlist_signals import WatchlistSignalPanel
     from vnpy_common.ui.feedback import PageToastHost
@@ -82,6 +83,11 @@ class QuotesPageShellAttrs:
     stock_note_panel: StockNotePanel | None
     signal_panel: WatchlistSignalPanel | None
     position_panel: WatchlistPositionPanel | None
+    multiview_board: WatchlistMultiViewBoard | None
+    view_table_button: QtWidgets.QPushButton | None
+    view_multiview_button: QtWidgets.QPushButton | None
+    multiview_sort_combo: QtWidgets.QComboBox | None
+    multiview_columns_combo: QtWidgets.QComboBox | None
     run_output_panel: TaskRunOutputPanel | None
     rank_sidebar: MarketRankSidebar | None
     rank_list: QtWidgets.QListWidget | None
@@ -94,6 +100,7 @@ class QuotesPageShellAttrs:
     _radar_splitter: QtWidgets.QSplitter | None
 
     _market_table_host: MarketTableHost | None
+    _center_view_stack: QtWidgets.QStackedWidget | None
     _splitter: QtWidgets.QSplitter | None
     _center_splitter: QtWidgets.QSplitter | None
     _right_panel_widget: QtWidgets.QWidget | None

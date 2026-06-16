@@ -794,6 +794,8 @@ class TableController:
         self.schedule_stats_update()
         if page.config.show_watchlist_signals:
             page._signals.refresh_quotes_only(symbols)
+        if page.config.show_watchlist_multiview:
+            page._multiview.on_quotes_updated()
 
     def refresh_row_for_item(self, item: StockItem) -> None:
         page = self._p
@@ -1102,6 +1104,8 @@ class TableController:
             if position_panel is not None and position_service is not None:
                 if position_service.contains(item.symbol, item.exchange):
                     position_panel.highlight_symbol(item.vt_symbol)
+        if page.config.show_watchlist_multiview:
+            page._multiview.on_table_selection_changed()
 
     def show_column_menu(self) -> None:
         page = self._p

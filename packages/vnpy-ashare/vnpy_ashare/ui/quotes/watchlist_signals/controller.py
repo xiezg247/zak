@@ -123,6 +123,8 @@ class WatchlistSignalController:
             panel.set_updated_at(datetime.now().strftime("%H:%M"))
             panel.render_panel()
         self._sync_chart_signal_reference()
+        if self._page.config.show_watchlist_multiview:
+            self._page._multiview.on_signal_or_position_updated()
 
     def _sync_chart_signal_reference(self, *, tickflow_symbols: set[str] | None = None) -> None:
         item = self._page.current_item

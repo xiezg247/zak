@@ -539,6 +539,8 @@ class DataLoaderController:
                         page._signals.on_stock_list_loaded()
                     if page.config.show_watchlist_positions:
                         page._positions.on_stock_list_loaded()
+                    if page.config.show_watchlist_multiview:
+                        page._multiview.on_stock_list_loaded()
             finally:
                 page._release_worker(worker)
 

@@ -195,12 +195,15 @@ class PageConfig:
     show_watchlist_signals: bool = False
     show_watchlist_positions: bool = False
     show_stock_notes: bool = False
+    show_watchlist_multiview: bool = False
     search_max_width: int = 280
 
 
 DEFAULT_WATCHLIST_COLUMNS: list[str] = [
     "symbol",
     "name",
+    "industry",
+    "market_board",
     "last_price",
     "change_pct",
     "change_amount",
@@ -308,6 +311,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_watchlist_signals=True,
         show_watchlist_positions=True,
         show_stock_notes=True,
+        show_watchlist_multiview=True,
     ),
     "本地": PageConfig(
         title="本地",

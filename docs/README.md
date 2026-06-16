@@ -7,6 +7,7 @@
 | [数据设计](./data-design.md) | 双存储（SQLite 元数据 + SQLite/PostgreSQL K线）+ Redis + context_store |
 | [策略回测](./backtest-ux.md) | 联动、批量回测、摘要落库 |
 | [自选策略信号区](./watchlist-signals.md) | 独立信号面板、缓存、联动与限额 |
+| [自选多维看盘](./watchlist-multiview.md) | 表格/多维切换、卡片网格、迷你图与 AI 摘要 |
 | [看盘页个股笔记](./stock-notes.md) | 备忘 + 流水双形态、NoteService、AI 上下文 |
 | [AI 数据路由](./ai-data-routing.md) | Skill / MCP 与数据源 |
 | [AI 功能与 K 线](./ai-kline-data.md) | 各功能域对本地日 K 的依赖与下载建议 |

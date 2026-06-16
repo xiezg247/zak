@@ -139,6 +139,9 @@ class ActionsController:
 
     def _context_extra(self) -> str:
         parts: list[str] = []
+        multiview = self._multiview_context_extra()
+        if multiview:
+            parts.append(multiview)
         signal = self._signal_context_extra()
         if signal:
             parts.append(signal)
@@ -146,6 +149,14 @@ class ActionsController:
         if note:
             parts.append(note)
         return "\n\n".join(parts)
+
+    def _multiview_context_extra(self) -> str:
+        page = self._p
+        if page.page_name != "自选" or not page.config.show_watchlist_multiview:
+            return ""
+        if not page._multiview.is_multiview_active():
+            return ""
+        return page._multiview.board_summary_text()
 
     def _note_context_extra(self) -> str:
         page = self._p

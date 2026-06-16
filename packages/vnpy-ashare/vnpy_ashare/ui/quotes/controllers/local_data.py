@@ -1017,6 +1017,8 @@ class LocalDataController:
             if page.config.show_run_output_panel:
                 complete_run_log(page, summary)
             _refresh_watchlist_strategy_panels(page, [item.vt_symbol])
+            if page.config.show_watchlist_multiview:
+                page._multiview.on_bars_updated([item.vt_symbol])
 
         def on_failed(msg: str) -> None:
             if page._download_worker is worker:

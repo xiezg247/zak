@@ -905,6 +905,90 @@ QPushButton#RadarResonanceScreener {{
 """
 
 
+def build_watchlist_multiview_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QWidget#WatchlistMultiViewBoard {{
+    background-color: {t.app_bg};
+}}
+QLabel#WatchlistMultiSummary {{
+    color: {t.text_secondary};
+    font-size: 12px;
+    padding: 4px 12px 0 12px;
+}}
+QLabel#WatchlistMultiEmpty {{
+    color: {t.text_muted};
+    font-size: 13px;
+    padding: 24px;
+}}
+QScrollArea#WatchlistMultiScroll {{
+    background: transparent;
+    border: none;
+}}
+QWidget#WatchlistMultiGridHost {{
+    background: transparent;
+}}
+QFrame#WatchlistMultiCard {{
+    background-color: {t.index_ticker_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+}}
+QFrame#WatchlistMultiCard:hover {{
+    border-color: {t.accent};
+}}
+QFrame#WatchlistMultiCard[selected="true"] {{
+    border-color: {t.accent};
+    background-color: {t.panel_bg};
+}}
+QLabel#WatchlistMultiAnomalyBadge {{
+    color: {t.accent};
+    font-size: 10px;
+    min-width: 10px;
+}}
+QLabel#WatchlistMultiName {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#WatchlistMultiSymbol {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QLabel#WatchlistMultiPrice {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#WatchlistMultiMetricChip,
+QLabel#WatchlistMultiSubChip {{
+    color: {t.text_secondary};
+    font-size: 11px;
+}}
+QLabel#WatchlistMultiSignalBadge,
+QLabel#WatchlistMultiPositionBadge,
+QLabel#WatchlistMultiSectorBadge {{
+    color: {t.text_secondary};
+    font-size: 10px;
+    padding: 1px 6px;
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+}}
+QLabel#WatchlistMultiSparklineKind {{
+    color: {t.text_muted};
+    font-size: 10px;
+    padding-top: 2px;
+}}
+QWidget#WatchlistMultiSparkline {{
+    background: transparent;
+}}
+QComboBox#WatchlistMultiSortCombo {{
+    min-width: 88px;
+}}
+QComboBox#WatchlistMultiColumnsCombo {{
+    min-width: 64px;
+}}
+"""
+
+
 def build_sector_flow_stylesheet(t: ThemeTokens) -> str:
     return f"""
 QWidget#SectorFlowPanel {{

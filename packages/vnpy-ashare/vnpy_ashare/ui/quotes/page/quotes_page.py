@@ -65,6 +65,7 @@ from vnpy_ashare.ui.quotes.page.config import (
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
+from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalConfig,
@@ -135,6 +136,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._batch_backtest = WatchlistBatchBacktestController(self)
         self._signals = WatchlistSignalController(self)
         self._positions = WatchlistPositionController(self)
+        self._multiview = WatchlistMultiViewController(self)
         self._loader = DataLoaderController(self)
         self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
         self.position_config: WatchlistPositionConfig = load_watchlist_position_config()
@@ -188,6 +190,12 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self.chart = None
         self.signal_panel = None
         self.position_panel = None
+        self.multiview_board = None
+        self.view_table_button = None
+        self.view_multiview_button = None
+        self.multiview_sort_combo = None
+        self.multiview_columns_combo = None
+        self._center_view_stack = None
         self.stock_note_panel = None
         self.refresh_radar_button = None
         self.radar_ai_button = None
@@ -319,6 +327,8 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self._positions.on_stock_list_loaded()
         if self.config.show_stock_notes:
             self._stock_notes.on_selection_item()
+        if self.config.show_watchlist_multiview:
+            self._multiview.restore_view_mode()
 
     def deactivate(self) -> None:
         if self.config.use_radar_cards:
@@ -581,6 +591,51 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
 
     def _wire_signal_panel(self) -> None:
         self._watchlist_panels.wire_signal_panel()
+
+    def _wire_multiview(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_multiview.settings import load_grid_columns, load_sort_key
+
+        board = self.multiview_board
+        if board is None:
+            return
+        self._multiview.wire_board(board)
+        if self.view_table_button is not None:
+            self.view_table_button.clicked.connect(lambda: self._multiview.set_view_mode("table"))
+        if self.view_multiview_button is not None:
+            self.view_multiview_button.clicked.connect(lambda: self._multiview.set_view_mode("multiview"))
+        combo = self.multiview_sort_combo
+        if combo is not None:
+            sort_key = load_sort_key()
+            index = max(0, combo.findData(sort_key))
+            combo.blockSignals(True)
+            combo.setCurrentIndex(index)
+            combo.blockSignals(False)
+            combo.currentIndexChanged.connect(self._on_multiview_sort_changed)
+        columns_combo = self.multiview_columns_combo
+        if columns_combo is not None:
+            columns = load_grid_columns()
+            col_index = max(0, columns_combo.findData(columns))
+            columns_combo.blockSignals(True)
+            columns_combo.setCurrentIndex(col_index)
+            columns_combo.blockSignals(False)
+            columns_combo.currentIndexChanged.connect(self._on_multiview_columns_changed)
+        self._multiview.restore_view_mode()
+
+    def _on_multiview_sort_changed(self, index: int) -> None:
+        combo = self.multiview_sort_combo
+        if combo is None or index < 0:
+            return
+        sort_key = combo.itemData(index)
+        if sort_key in ("sort_order", "change_pct", "anomaly_score"):
+            self._multiview.set_sort_key(sort_key)
+
+    def _on_multiview_columns_changed(self, index: int) -> None:
+        combo = self.multiview_columns_combo
+        if combo is None or index < 0:
+            return
+        columns = combo.itemData(index)
+        if isinstance(columns, int):
+            self._multiview.set_grid_columns(columns)
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
         self._watchlist_panels.on_signal_panel_expansion_changed(expanded)

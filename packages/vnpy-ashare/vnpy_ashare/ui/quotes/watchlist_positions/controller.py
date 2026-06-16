@@ -165,6 +165,8 @@ class WatchlistPositionController:
                     fast_window=pos_cfg.fast_window,
                     slow_window=pos_cfg.slow_window,
                 )
+        if self._page.config.show_watchlist_multiview:
+            self._page._multiview.on_signal_or_position_updated()
 
     def refresh_quotes_only(self) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:
