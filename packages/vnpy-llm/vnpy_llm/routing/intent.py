@@ -15,6 +15,7 @@ IntentCategory = Literal[
     "backtest",
     "watchlist",
     "data",
+    "team_analysis",
 ]
 
 Confidence = Literal["high", "medium", "low"]

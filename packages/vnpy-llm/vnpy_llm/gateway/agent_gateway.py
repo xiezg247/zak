@@ -22,7 +22,7 @@ from vnpy_llm.gateway.tool_registry import ToolRegistry
 from vnpy_llm.gateway.trace_coordinator import TraceCoordinator
 from vnpy_llm.gateway.types import AgentEvent, AgentEventType, SendRequest
 from vnpy_llm.graph.state import GraphStreamContext
-from vnpy_llm.routing.router import RouteContext
+from vnpy_llm.routing.router import RouteContext, normalize_team_command
 from vnpy_llm.tools.audit import log_tool_call
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TraceStep, TurnTrace
@@ -291,6 +291,8 @@ class AgentGateway:
 
         session_id = request.session_id
         user_text = request.user_text
+        expanded = normalize_team_command(user_text)
+        effective_text = expanded if expanded else user_text
         if request.surface is not None:
             self.switch_surface(request.surface)
 
@@ -323,7 +325,7 @@ class AgentGateway:
             if all_tools:
                 routing = self._routing.route(
                     self.config,
-                    user_text,
+                    effective_text,
                     all_tools,
                     page=get_ai_context().page,
                     mcp_tool_names=mcp_names,
@@ -331,10 +333,10 @@ class AgentGateway:
                 route_ctx = routing.route_ctx
                 self._trace.add_routing(
                     route_ctx,
-                    user_text=user_text,
+                    user_text=effective_text,
                     supervisor=routing.supervisor,
                 )
-                graph_ctx = self._context.build_graph_stream_context(route_ctx, user_text)
+                graph_ctx = self._context.build_graph_stream_context(route_ctx, effective_text)
             conversation_messages = self.build_conversation_messages(session_id)
             api_messages = self.build_api_messages(session_id)
             chunks = []
