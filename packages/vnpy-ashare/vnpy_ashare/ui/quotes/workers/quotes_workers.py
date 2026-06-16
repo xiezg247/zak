@@ -34,6 +34,7 @@ from vnpy_ashare.data.bars import (
     load_downloaded_stocks,
     load_downloaded_stocks_page,
     load_watchlist,
+    search_downloaded_stocks_page,
 )
 from vnpy_ashare.data.minute_periods import period_step
 from vnpy_ashare.domain.calendar import last_trading_day
@@ -134,12 +135,14 @@ class UniverseLoadWorker(QtCore.QThread):
         local_scope: str = "daily",
         offset: int = 0,
         limit: int | None = None,
+        keyword: str = "",
     ) -> None:
         super().__init__()
         self.scope = scope
         self.local_scope = local_scope
         self.offset = max(offset, 0)
         self.limit = limit
+        self.keyword = keyword.strip()
         self._cancel_requested = False
 
     def request_cancel(self) -> None:
@@ -157,12 +160,20 @@ class UniverseLoadWorker(QtCore.QThread):
                 stocks = load_watchlist()
                 total = len(stocks)
             elif self.limit is not None:
-                total = count_downloaded_stocks(scope=self.local_scope)
-                stocks = load_downloaded_stocks_page(
-                    scope=self.local_scope,
-                    offset=self.offset,
-                    limit=self.limit,
-                )
+                if self.keyword:
+                    stocks, total = search_downloaded_stocks_page(
+                        scope=self.local_scope,
+                        keyword=self.keyword,
+                        offset=self.offset,
+                        limit=self.limit,
+                    )
+                else:
+                    total = count_downloaded_stocks(scope=self.local_scope)
+                    stocks = load_downloaded_stocks_page(
+                        scope=self.local_scope,
+                        offset=self.offset,
+                        limit=self.limit,
+                    )
             else:
                 stocks = load_downloaded_stocks(scope=self.local_scope)
                 total = len(stocks)
@@ -693,14 +704,6 @@ class MarketFullLoadWorker(QtCore.QThread):
     def request_cancel(self) -> None:
         self._cancel_requested = True
 
-    @staticmethod
-    def _quote_sort_value(quote: QuoteSnapshot | None, spec) -> float:
-        from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
-
-        if quote is None:
-            return float("-inf") if not spec.ascending else float("inf")
-        return quote_rank_value(quote, spec.sort_column or spec.redis_field)
-
     def run(self) -> None:
         try:
             if self._cancel_requested:
@@ -714,34 +717,22 @@ class MarketFullLoadWorker(QtCore.QThread):
             spec = get_rank_definition(self.rank_id)
             name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
 
-            from vnpy_ashare.quotes.rank.rank_engine import finalize_rank_catalog, should_finalize_rank_catalog
-            from vnpy_ashare.quotes.rank.rank_scope import build_stock_items_from_rank_symbols, load_watchlist_rank_catalog
+            from vnpy_ashare.quotes.rank.rank_scope import (
+                build_stock_items_from_rank_symbols,
+                load_market_rank_catalog,
+                load_watchlist_rank_catalog,
+            )
 
             if spec.scope == "watchlist":
                 tf_symbols, quotes = load_watchlist_rank_catalog(store, spec)
                 items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
             else:
-                tf_symbols = store.list_all_rank_symbols(
-                    field=spec.redis_field,
-                    ascending=spec.ascending,
+                tf_symbols, quotes = load_market_rank_catalog(
+                    store,
+                    spec,
+                    universe_quotes_loader=provider.get_quotes,
                 )
-
-                if tf_symbols:
-                    quotes = store.get_quotes(tf_symbols)
-                    if should_finalize_rank_catalog(spec):
-                        tf_symbols = finalize_rank_catalog(tf_symbols, quotes, spec)
-                    items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
-                else:
-                    from vnpy_ashare.quotes.rank.rank_engine import quote_matches_rank, rank_needs_post_process
-
-                    items = [StockItem(symbol=symbol, exchange=exchange, name=name) for symbol, exchange, name in load_universe_rows()]
-                    quotes = provider.get_quotes(items)
-                    if rank_needs_post_process(spec):
-                        items = [item for item in items if (quote := quotes.get(item.tickflow_symbol)) is not None and quote_matches_rank(quote, spec)]
-                    items.sort(
-                        key=lambda stock: self._quote_sort_value(quotes.get(stock.tickflow_symbol), spec),
-                        reverse=not spec.ascending,
-                    )
+                items = build_stock_items_from_rank_symbols(tf_symbols, quotes, name_map=name_map)
 
             if self._cancel_requested:
                 self.failed.emit("已取消")

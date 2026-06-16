@@ -23,6 +23,7 @@ from vnpy_ashare.services.analysis.historical_mcp import (
 )
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding, McpExecute
 from vnpy_ashare.services.analysis.technical import TechnicalAnalyzer
+from vnpy_ashare.services.analysis.team_facts import build_financial_extras, prefetch_team_facts
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.signals import format_signal_context_extra
 
@@ -62,78 +63,116 @@ class AnalysisService(BaseService):
         return self._diagnose.diagnose(symbol, lookback=lookback)
 
     def analyze_financial(self, symbol: str) -> dict[str, Any]:
-        """财务深度分析：PE/ROE/毛利率/净利润同比/营收CAGR/估值对比。
+        """财务深度分析：本地财报快照 + Tushare daily_basic 估值 + K 线覆盖。"""
+        item = parse_stock_symbol(symbol)
+        if item is None:
+            return {"error": f"无法解析代码: {symbol}"}
 
-        注：首期返回基础框架结构；后续接入 Tushare 财务接口补全。
-        """
-        try:
-            item = parse_stock_symbol(symbol)
-        except Exception:
-            item = None
-
-        name = item.name if item else symbol
-        exchange = item.exchange if item else None
-        overview = self._engine.bar_service.get_overview(
-            item.symbol, exchange, "daily"
-        ) if item and exchange else None
+        overview = self._engine.bar_service.get_overview(item.symbol, item.exchange, "daily")
+        return_info = self._engine.bar_service.get_return(
+            item.symbol, item.exchange, "daily", lookback_days=60
+        )
+        extras = build_financial_extras(item.ts_code, item.vt_symbol)
 
         return {
-            "symbol": symbol,
-            "name": name,
-            "provider": "zak-financial-v1",
+            "symbol": item.vt_symbol,
+            "name": item.name,
+            "provider": "zak-financial-v2",
             "bar_count": overview.count if overview else 0,
             "start_date": overview.start.strftime("%Y-%m-%d") if overview and overview.start else None,
             "end_date": overview.end.strftime("%Y-%m-%d") if overview and overview.end else None,
-            "data_availability": {
-                "roe": False,
-                "gross_margin": False,
-                "net_profit_yoy": False,
-                "revenue_cagr_3y": False,
-                "debt_ratio": False,
-                "current_ratio": False,
-            },
-            "note": "财务详细数据依赖 Tushare 接口，当前返回基础 K 线覆盖信息。",
+            "return_pct_60d": return_info.get("return_pct"),
+            **extras,
+        }
+
+    def prefetch_team_facts(self, symbol: str) -> dict[str, Any]:
+        """并行预取团队分析三维度事实数据（无 LLM）。"""
+        return prefetch_team_facts(self, symbol)
+
+    def _compute_bar_risk_metrics(
+        self,
+        symbol: str,
+        exchange,
+        *,
+        lookback: int = 60,
+    ) -> dict[str, Any]:
+        """基于本地日 K 计算波动率、最大回撤与流动性。"""
+        lookback = max(5, min(int(lookback or 60), 250))
+        bars = self._engine.bar_service.load_bars(symbol, exchange, "daily")
+        if len(bars) < 5:
+            return {}
+
+        tail = bars[-lookback:] if len(bars) >= lookback else bars
+        closes = [bar.close_price for bar in tail]
+        volumes = [bar.volume for bar in tail]
+
+        daily_changes: list[float] = []
+        for index in range(1, len(closes)):
+            prev = closes[index - 1]
+            if prev:
+                daily_changes.append((closes[index] - prev) / prev)
+
+        volatility_annualized_pct = None
+        if len(daily_changes) >= 2:
+            mean_change = sum(daily_changes) / len(daily_changes)
+            variance = sum((value - mean_change) ** 2 for value in daily_changes) / len(daily_changes)
+            volatility_annualized_pct = round((variance**0.5) * (252**0.5) * 100, 2)
+
+        peak = closes[0]
+        max_drawdown_pct = 0.0
+        for close in closes:
+            if close > peak:
+                peak = close
+            if peak:
+                drawdown = (peak - close) / peak * 100
+                max_drawdown_pct = max(max_drawdown_pct, drawdown)
+        max_drawdown_pct = round(max_drawdown_pct, 2)
+
+        avg_volume = round(sum(volumes) / len(volumes)) if volumes else None
+
+        return {
+            "volatility_annualized_pct": volatility_annualized_pct,
+            "max_drawdown_pct": max_drawdown_pct,
+            "avg_volume": avg_volume,
+            "bars_used": len(tail),
         }
 
     def analyze_risk(self, symbol: str) -> dict[str, Any]:
-        """风险分析：波动率/回撤/Beta/流动性。
+        """风险分析：波动率、最大回撤、区间收益与流动性。"""
+        item = parse_stock_symbol(symbol)
+        if item is None:
+            return {"error": f"无法解析代码: {symbol}"}
 
-        注：首期从 K 线数据计算基础波动率和回撤；Beta 后续补全。
-        """
-        try:
-            item = parse_stock_symbol(symbol)
-        except Exception:
-            item = None
+        return_info = self._engine.bar_service.get_return(
+            item.symbol, item.exchange, "daily", lookback_days=60
+        )
+        overview = self._engine.bar_service.get_overview(item.symbol, item.exchange, "daily")
+        metrics = self._compute_bar_risk_metrics(item.symbol, item.exchange)
 
-        name = item.name if item else symbol
-        exchange = item.exchange if item else None
-
-        return_info = {}
-        if item and exchange:
-            return_info = self._engine.bar_service.get_return(
-                item.symbol, exchange, "daily", lookback_days=60
-            )
-
-        overview = self._engine.bar_service.get_overview(
-            item.symbol, exchange, "daily"
-        ) if item and exchange else None
+        has_vol = metrics.get("volatility_annualized_pct") is not None
+        has_dd = metrics.get("max_drawdown_pct") is not None
+        has_liq = metrics.get("avg_volume") is not None
 
         return {
-            "symbol": symbol,
-            "name": name,
+            "symbol": item.vt_symbol,
+            "name": item.name,
             "provider": "zak-risk-v1",
             "bar_count": overview.count if overview else 0,
-            "return_pct": return_info.get("return_pct"),
+            "return_pct_60d": return_info.get("return_pct"),
             "lookback_days": return_info.get("lookback_days"),
             "start_date": return_info.get("start"),
             "end_date": return_info.get("end"),
+            "volatility_annualized_pct": metrics.get("volatility_annualized_pct"),
+            "max_drawdown_pct": metrics.get("max_drawdown_pct"),
+            "avg_volume": metrics.get("avg_volume"),
+            "beta": None,
             "data_availability": {
-                "volatility": False,
-                "max_drawdown": False,
+                "volatility": has_vol,
+                "max_drawdown": has_dd,
                 "beta": False,
-                "liquidity": False,
+                "liquidity": has_liq,
             },
-            "note": "风险指标依赖 K 线计算，当前返回区间收益率与 K 线覆盖。",
+            "note": "Beta 与行业风险待后续补全；波动率/回撤基于本地日 K 计算。",
         }
 
     def analyze_strategy(self, symbol: str) -> dict[str, Any]:

@@ -169,6 +169,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._market_board_base: list[StockItem] | None = None
         self._market_board_base_key: str | None = None
         self._market_filter_keyword: str = ""
+        self._local_filter_keyword: str = ""
         self._market_industry_filter: str | None = None
         self._pending_industry_drilldown: str | None = None
         self._industry_map_cache: dict[str, str] | None = None

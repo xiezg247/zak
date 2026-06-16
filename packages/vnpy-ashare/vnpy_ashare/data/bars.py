@@ -137,9 +137,40 @@ def load_downloaded_stocks_page(
         page_rows = rows[offset:]
     else:
         page_rows = rows[offset : offset + max(limit, 0)]
-    name_map = load_universe_names_for_keys([(row.symbol, row.exchange) for row in page_rows])
+    return _overview_rows_to_items(page_rows)
+
+
+def _overview_rows_to_items(rows) -> list[StockItem]:
+    name_map = load_universe_names_for_keys([(row.symbol, row.exchange) for row in rows])
     items: list[StockItem] = []
-    for row in page_rows:
+    for row in rows:
         name = name_map.get((row.symbol, row.exchange), "")
         items.append(StockItem(symbol=row.symbol, exchange=row.exchange, name=name))
     return items
+
+
+def search_downloaded_stocks_page(
+    *,
+    scope: str = "daily",
+    keyword: str,
+    offset: int = 0,
+    limit: int = 50,
+) -> tuple[list[StockItem], int]:
+    """在本地已下载列表中按代码/名称搜索并分页。"""
+    keyword = keyword.strip().lower()
+    if not keyword:
+        total = count_downloaded_stocks(scope=scope)
+        items = load_downloaded_stocks_page(scope=scope, offset=offset, limit=limit)
+        return items, total
+
+    rows = iter_bar_overviews(scope=scope)
+    name_map = load_universe_names_for_keys([(row.symbol, row.exchange) for row in rows])
+    matched: list[StockItem] = []
+    for row in rows:
+        name = name_map.get((row.symbol, row.exchange), "")
+        item = StockItem(symbol=row.symbol, exchange=row.exchange, name=name)
+        if keyword in item.search_key:
+            matched.append(item)
+    total = len(matched)
+    page_size = max(limit, 0)
+    return matched[offset : offset + page_size], total

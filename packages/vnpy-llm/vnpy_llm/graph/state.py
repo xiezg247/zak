@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -84,5 +84,7 @@ class GraphStreamContext(BaseModel):
     context_text: str = ""
     page_prompt: str = ""
     strategy_prompt: str = ""
+    team_prefetch: dict[str, Any] | None = None
+    team_scores: dict[str, Any] | None = None
 
     model_config = {"arbitrary_types_allowed": True}

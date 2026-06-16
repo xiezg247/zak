@@ -30,7 +30,7 @@ FINANCIAL_PROMPT = """【Financial Agent 职责】
   }
 }
 ```
-评分标准：盈利能力 40 分 + 成长性 25 分 + 估值 20 分 + 偿债 15 分。
-禁止编造数据，工具未返回的指标标注 N/A。"""
+评分标准：分数越高表示财务质量越好。
+禁止编造数据，工具/预取数据未返回的指标标注 N/A。"""
 
 register_agent_prompt("financial", FINANCIAL_PROMPT)

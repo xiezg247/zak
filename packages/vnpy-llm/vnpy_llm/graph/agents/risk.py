@@ -32,7 +32,7 @@ RISK_PROMPT = """【Risk Agent 职责】
   }
 }
 ```
-评分标准：风险越低分越高（满 100 表示几乎无风险）。
+评分标准：分数越高表示越安全（低风险）。
 禁止编造数据。"""
 
 register_agent_prompt("risk", RISK_PROMPT)

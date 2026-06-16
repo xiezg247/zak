@@ -175,7 +175,8 @@ class LocalDataController:
             return
         # Worker 已预热 overview 缓存，勿 invalidate 后在主线程全量重建。
         self.refresh_meta(invalidate_overview=False)
-        page.apply_filter()
+        page._local_filter_keyword = page.search_edit.text().strip().lower()
+        page._table.apply_local_page_display()
         item = page.current_item
         if item is not None and (item.symbol, item.exchange) in page.downloaded_keys:
             page.show_kline(item)
@@ -588,6 +589,7 @@ class LocalDataController:
         page._local_scope = value
         page._selected_gap_result = None
         page._market_page = 0
+        page._local_filter_keyword = ""
         self.update_batch_toolbar_buttons()
         page.load_stock_list()
         if page.current_item is not None:

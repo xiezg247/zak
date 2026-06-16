@@ -33,6 +33,7 @@ def test_resolve_target_agent_mapping():
     assert resolve_target_agent(IntentAnalysis(route=IntentRoute(category="backtest"))) == "backtest"
     assert resolve_target_agent(IntentAnalysis(route=IntentRoute(category="data"))) == "data"
     assert resolve_target_agent(IntentAnalysis(route=IntentRoute(category="watchlist"))) == "market"
+    assert resolve_target_agent(IntentAnalysis(route=IntentRoute(category="team_analysis"))) == "chief"
 
 
 def test_handoff_research_to_market():

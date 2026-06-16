@@ -36,7 +36,7 @@ class MarketPaginationController:
     def should_show_pagination(self) -> bool:
         page = self._page
         if page.config.use_local_pagination:
-            return page._local_total > page.config.local_page_size
+            return True
         if not page.config.use_market_rank or page.config.market_scroll_paging:
             return False
         return True
@@ -87,7 +87,11 @@ class MarketPaginationController:
         page_count = self.page_count()
         current = min(page._market_page + 1, page_count)
         label = page._local_scope_label()
-        status = f"本地{label} 共 {page._local_total} 只，第 {current}/{page_count} 页（每页 {page.config.local_page_size}）"
+        keyword = page.search_edit.text().strip()
+        if keyword:
+            status = f"搜索匹配 {page._local_total} 只，第 {current}/{page_count} 页（本地{label}）"
+        else:
+            status = f"本地{label} 共 {page._local_total} 只，第 {current}/{page_count} 页（每页 {page.config.local_page_size}）"
         shown = len(page.display_stocks)
         if shown != len(page.all_stocks):
             status += f"，本页显示 {shown} 只"

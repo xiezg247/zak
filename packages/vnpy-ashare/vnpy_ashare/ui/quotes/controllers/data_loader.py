@@ -430,6 +430,7 @@ class DataLoaderController:
             page_size=page_size,
             board=page._market_board,
             cached_total=cached_total,
+            rank_id=page._market_rank_id,
         )
         page._prefetch_worker = worker
 
@@ -494,15 +495,18 @@ class DataLoaderController:
         if page.config.use_local_pagination and scope_key == "已下载":
             offset = page._market_page * page.config.local_page_size
             limit = page.config.local_page_size
+            keyword = page.search_edit.text().strip()
         else:
             offset = 0
             limit = None
+            keyword = ""
 
         worker = UniverseLoadWorker(
             scope_key,
             local_scope=page._local_scope,
             offset=offset,
             limit=limit,
+            keyword=keyword,
         )
         page._load_worker = worker
 

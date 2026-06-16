@@ -368,6 +368,12 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
     if page:
         lines.append(f"当前页面：{page}")
 
+    if route.category == "team_analysis":
+        lines.append("【投研团队路由】")
+        lines.append("- 并行启动 financial / risk / strategy 三个分析师，最后由 chief 汇总")
+        lines.append("- 子分析师必须调用 analyze_financial / analyze_risk / technical_snapshot 等工具")
+        lines.append("- 禁止编造数据；某维度无数据时在 JSON 中如实标注")
+
     if analysis.screening and route.category == "screening":
         s = analysis.screening
         lines.append("【选股结构化解析】")
@@ -546,8 +552,10 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
         "全面分析",
         "深入评估",
         "团队分析",
+        "团队全面分析",
         "多维度",
         "深度研究",
+        "这只票",
     )
     if any(k in text for k in _TEAM_KEYWORDS):
         return _with_market("team_analysis")
@@ -690,7 +698,7 @@ def _resolve_route_tools(
     阶段：类别子集 → 选股澄清 → 恐贪 enrichment → 走势情景剔除恐贪
     """
     category = analysis.route.category
-    if analysis.route.confidence == "low" and category != "general":
+    if analysis.route.confidence == "low" and category not in ("general", "team_analysis"):
         tools: list[dict[str, Any]] = []
     else:
         tools = filter_tools_by_route(all_tools, category, mcp_tool_names=mcp_tool_names)
@@ -725,14 +733,18 @@ def build_route_context(
     return RouteContext(analysis=analysis, tools=tools, routing_hint=hint)
 
 
-import re as _re
-
-_TEAM_COMMAND = _re.compile(r"^/team\s+(\d{6}(?:\.(?:SSE|SZSE))?)", _re.IGNORECASE)
+_TEAM_COMMAND = re.compile(
+    r"^/team(?:\s+(\d{6}(?:\.(?:SSE|SZSE|BSE|SH|SZ|BJ))?))?\s*$",
+    re.IGNORECASE,
+)
 
 
 def normalize_team_command(user_text: str) -> str | None:
     """将 /team 命令展开为自然语言，供路由分类使用。"""
     m = _TEAM_COMMAND.match(user_text.strip())
-    if m:
-        return f"对 {m.group(1)} 启动团队全面分析"
-    return None
+    if not m:
+        return None
+    code = (m.group(1) or "").strip()
+    if code:
+        return f"对 {code} 启动团队全面分析"
+    return "对当前选中标的启动团队全面分析"
