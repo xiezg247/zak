@@ -155,6 +155,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._market_catalog: list = []
         self._market_catalog_quotes: dict = {}
         self._market_catalog_loaded = False
+        self._market_full_load_quiet = True
         self._market_updated_at: str | None = None
         self._market_page_cache: dict = {}
         self._market_count_cache: dict = {}
@@ -698,7 +699,11 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         return self.config.auto_refresh_quotes
 
     def market_uses_client_pagination(self) -> bool:
-        return self.config.use_market_rank and self.market_auto_refresh_enabled() and self._market_catalog_loaded
+        return (
+            self.config.use_market_rank
+            and self.config.market_full_list
+            and self._market_catalog_loaded
+        )
 
     def apply_market_page_view(self) -> None:
         if self.market_uses_client_pagination():
@@ -740,14 +745,18 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._pagination.set_visible()
         if checked:
             self._market_catalog_loaded = False
+            self._market_full_load_quiet = True
             self.load_market_page()
-            self._loader.load_market_full(quiet=True)
             if is_ashare_trading_session():
                 self.refresh_quotes()
             self.schedule_quote_auto_refresh()
         else:
             self._quote_timer.stop()
-            self.load_market_full()
+            if self._market_catalog_loaded:
+                self._table.apply_market_display()
+            else:
+                self._market_full_load_quiet = True
+                self.load_market_page()
 
     def _update_refresh_hint_label(self) -> None:
         label = getattr(self, "refresh_hint_label", None)

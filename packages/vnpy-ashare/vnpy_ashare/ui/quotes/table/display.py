@@ -55,12 +55,8 @@ def paginate_market_page(
 def slice_market_display(
     items: list[StockItem],
     *,
-    live_mode: bool,
     page: int = 0,
     page_size: int = 100,
-    live_display_limit: int = 100,
 ) -> list[StockItem]:
-    if not live_mode:
-        return list(items)
-    size = max(page_size or live_display_limit, 1)
-    return paginate_market_page(items, page=page, page_size=size)
+    """对全量排序结果按页切片展示（与自动刷新开关无关）。"""
+    return paginate_market_page(items, page=page, page_size=max(page_size, 1))

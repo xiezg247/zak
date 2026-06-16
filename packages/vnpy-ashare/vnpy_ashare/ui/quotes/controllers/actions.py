@@ -350,7 +350,7 @@ class ActionsController:
                 page.quote_map.update(quotes)
                 if page.config.market_full_list and page._market_catalog_loaded:
                     page._market_catalog_quotes.update(quotes)
-                if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded and page.market_auto_refresh_enabled():
+                if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded:
                     page._table.apply_market_display()
                 elif page.config.market_scroll_paging:
                     page._table.refresh_visible_table_quotes()

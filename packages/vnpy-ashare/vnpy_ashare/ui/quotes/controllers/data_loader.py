@@ -63,11 +63,25 @@ class DataLoaderController:
             return
         if page.config.market_full_list:
             page._market_catalog_loaded = False
-            self.load_market_full(quiet=False)
+            page._market_page = 0
+            page._market_page_cache.clear()
+            page._market_full_load_quiet = False
+            self.load_market_page(quiet=False)
             return
         page._market_page = 0
         page._market_page_cache.clear()
         self.load_market_page(quiet=False)
+
+    def _schedule_market_catalog_load(self, *, quiet: bool | None = None) -> None:
+        """首屏分页展示后，后台拉全量 catalog 以支持客户端排序与翻页。"""
+        page = self._p
+        if not page.config.market_full_list or page._market_catalog_loaded:
+            return
+        if quiet is not None:
+            page._market_full_load_quiet = quiet
+        if page._thread_active(page._market_worker):
+            return
+        self.load_market_full(quiet=page._market_full_load_quiet)
 
     def try_load_more_market(self) -> None:
         page = self._p
@@ -175,11 +189,10 @@ class DataLoaderController:
                         return
                     page._hide_market_loading()
                 page._table.filter_market_display()
+                page._pagination.set_visible()
                 if page.market_auto_refresh_enabled():
-                    page._pagination.set_visible()
                     page.schedule_quote_auto_refresh()
                 else:
-                    page._pagination.set_visible(False)
                     page._quote_timer.stop()
                 page._pagination.update_controls()
             finally:
@@ -209,11 +222,8 @@ class DataLoaderController:
         page = self._p
         if not page._active or not page.config.use_market_rank:
             return
-        if page.config.market_full_list and not page.market_auto_refresh_enabled():
-            if page._market_catalog_loaded:
-                page._table.filter_market_display()
-            else:
-                self.load_market_full(quiet=quiet)
+        if page.market_uses_client_pagination():
+            page._table.filter_market_display()
             return
 
         if not self._universe_exists():
@@ -286,6 +296,7 @@ class DataLoaderController:
                 page._market_count_cache[result.board] = result.total
                 self._apply_market_page_result(result, quiet=quiet, append=append)
                 if not append:
+                    self._schedule_market_catalog_load()
                     self._prefetch_market_page(page._market_page + 1, generation=generation)
                 else:
                     page._market_loading_more = False
@@ -378,7 +389,10 @@ class DataLoaderController:
         else:
             page._pagination.set_visible()
             page._pagination.update_controls()
-            page.status_label.setText(page._pagination.format_status(result))
+            status = page._pagination.format_status(result)
+            if page.config.market_full_list and not page._market_catalog_loaded:
+                status += "；正在同步全市场排序…"
+            page.status_label.setText(status)
         page._update_quote_source_label()
 
         if page.market_auto_refresh_enabled():
@@ -449,13 +463,9 @@ class DataLoaderController:
         if page.config.use_market_rank:
             page._market_page = 0
             page._pagination.set_visible()
-            if page.market_auto_refresh_enabled():
-                self.load_market_page()
-                self.load_market_full(quiet=True)
-            elif page.config.market_full_list:
-                self.load_market_full()
-            else:
-                self.load_market_page()
+            if page.config.market_full_list:
+                page._market_full_load_quiet = True
+            self.load_market_page()
             return
 
         page._wait_worker_release("_load_worker", timeout_ms=0)

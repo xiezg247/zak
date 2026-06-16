@@ -14,6 +14,7 @@ class MarketPaginationVisibilityTests(unittest.TestCase):
         page = SimpleNamespace(
             config=SimpleNamespace(
                 use_market_rank=True,
+                use_local_pagination=False,
                 market_full_list=market_full_list,
                 market_scroll_paging=False,
             ),
@@ -25,9 +26,9 @@ class MarketPaginationVisibilityTests(unittest.TestCase):
         controller = self._controller(auto_refresh=True)
         self.assertTrue(controller.should_show_pagination())
 
-    def test_hide_pagination_when_snapshot_full_list(self) -> None:
+    def test_show_pagination_when_snapshot_full_list(self) -> None:
         controller = self._controller(auto_refresh=False, market_full_list=True)
-        self.assertFalse(controller.should_show_pagination())
+        self.assertTrue(controller.should_show_pagination())
 
 
 if __name__ == "__main__":

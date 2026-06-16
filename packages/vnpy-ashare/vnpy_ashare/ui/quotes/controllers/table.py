@@ -224,11 +224,13 @@ class TableController:
                     page.load_market_page()
                 return
             if page.config.market_full_list:
-                page._pagination.set_visible(False)
-                if page._market_catalog_loaded:
+                page._market_page = 0
+                page._pagination.set_visible()
+                if page.market_uses_client_pagination():
                     self.filter_market_display()
                 else:
-                    page.load_market_full()
+                    page._market_page_cache.clear()
+                    page.load_market_page()
                 return
             page._market_page = 0
             page._market_page_cache.clear()
@@ -387,10 +389,8 @@ class TableController:
         page._market_total = len(sorted_items)
         page.display_stocks = slice_market_display(
             sorted_items,
-            live_mode=page.market_auto_refresh_enabled(),
             page=page._market_page,
             page_size=page.config.market_page_size,
-            live_display_limit=page.config.market_live_display_limit,
         )
 
         page._apply_default_table_sort = False
@@ -402,16 +402,12 @@ class TableController:
 
         page.status_label.setText(self._format_market_status(len(sorted_items)))
         page._update_quote_source_label()
-        if page.market_auto_refresh_enabled():
-            page._pagination.set_visible()
-            page._pagination.update_controls()
-        else:
-            page._pagination.set_visible(False)
-            page._pagination.update_controls()
+        page._pagination.set_visible()
+        page._pagination.update_controls()
 
     def on_market_header_clicked(self, section: int) -> None:
         page = self._p
-        if page.market_auto_refresh_enabled() and not page._market_catalog_loaded:
+        if page.config.market_full_list and not page._market_catalog_loaded:
             if section < 0 or section >= len(self.visible_columns):
                 return
             col_key = self.visible_columns[section]
@@ -464,22 +460,15 @@ class TableController:
         batch_time = format_batch_updated_at(page._market_updated_at)
         rank_title = page.active_rank_title() if page.config.show_rank_sidebar else None
 
-        if page.market_auto_refresh_enabled():
-            page_size = max(page.config.market_page_size, 1)
-            page_count = max((matched_count + page_size - 1) // page_size, 1)
-            current = min(page._market_page + 1, page_count)
-            if keyword or board or industry:
-                status = f"筛选 {matched_count} 只，排序后第 {current}/{page_count} 页（全市场 {catalog_count} 只）"
-            elif rank_title:
-                status = f"{rank_title} {matched_count} 只，第 {current}/{page_count} 页"
-            else:
-                status = f"全市场 {matched_count} 只，排序后第 {current}/{page_count} 页"
-        elif keyword or board or industry:
-            status = f"筛选 {matched_count} 只（全市场 {catalog_count} 只）"
+        page_size = max(page.config.market_page_size, 1)
+        page_count = max((matched_count + page_size - 1) // page_size, 1)
+        current = min(page._market_page + 1, page_count)
+        if keyword or board or industry:
+            status = f"筛选 {matched_count} 只，排序后第 {current}/{page_count} 页（全市场 {catalog_count} 只）"
         elif rank_title:
-            status = f"{rank_title} 共 {catalog_count} 只"
+            status = f"{rank_title} {matched_count} 只，第 {current}/{page_count} 页"
         else:
-            status = f"共 {catalog_count} 只"
+            status = f"全市场 {matched_count} 只，排序后第 {current}/{page_count} 页"
 
         if batch_time:
             status += f"，行情更新于 {batch_time}"

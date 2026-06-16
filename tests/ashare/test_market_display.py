@@ -75,8 +75,8 @@ class MarketDisplayTests(unittest.TestCase):
             quote_map=quote_map,
             sort_key_fn=_sort_key,
         )
-        page0 = slice_market_display(sorted_items, live_mode=True, page=0, page_size=100)
-        page1 = slice_market_display(sorted_items, live_mode=True, page=1, page_size=100)
+        page0 = slice_market_display(sorted_items, page=0, page_size=100)
+        page1 = slice_market_display(sorted_items, page=1, page_size=100)
 
         self.assertEqual(len(page0), 100)
         self.assertEqual(page0[0].symbol, "000149")
@@ -84,10 +84,13 @@ class MarketDisplayTests(unittest.TestCase):
         self.assertEqual(len(page1), 50)
         self.assertEqual(page1[0].symbol, "000049")
 
-    def test_snapshot_mode_shows_all(self) -> None:
+    def test_always_paginates_display(self) -> None:
         items = [StockItem(symbol=f"{idx:06d}", exchange=Exchange.SZSE, name=str(idx)) for idx in range(5)]
-        display = slice_market_display(items, live_mode=False, live_display_limit=100)
+        display = slice_market_display(items, page=0, page_size=100)
         self.assertEqual(len(display), 5)
+        display_page1 = slice_market_display(items, page=1, page_size=3)
+        self.assertEqual(len(display_page1), 2)
+        self.assertEqual(display_page1[0].symbol, "000003")
 
 
 if __name__ == "__main__":

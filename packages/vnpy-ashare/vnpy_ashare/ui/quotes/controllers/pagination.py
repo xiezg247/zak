@@ -39,9 +39,7 @@ class MarketPaginationController:
             return page._local_total > page.config.local_page_size
         if not page.config.use_market_rank or page.config.market_scroll_paging:
             return False
-        if page.market_auto_refresh_enabled():
-            return True
-        return not page.config.market_full_list
+        return True
 
     def set_visible(self, visible: bool | None = None) -> None:
         page = self._page
@@ -139,12 +137,6 @@ class MarketPaginationController:
         self._page._market_page = 0
         if self._page.market_uses_client_pagination():
             self._page._table.filter_market_display()
-            return
-        if self._page.config.market_full_list and not self._page.market_auto_refresh_enabled():
-            if self._page._market_catalog_loaded:
-                self._page._table.filter_market_display()
-            else:
-                self._page.load_market_full()
             return
         self._page._market_page_cache.clear()
         self._page._market_loading_more = False
