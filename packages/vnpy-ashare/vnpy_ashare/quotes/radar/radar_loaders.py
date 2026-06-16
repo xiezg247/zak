@@ -37,10 +37,27 @@ def _discovery_pool_size(top_n: int) -> int:
 def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     if "composite_score" in row:
         score = float_or_none(row.get("composite_score"))
-        return "综合分", f"{score:.1f}" if score is not None else "—", "涨幅", format_pct(float_or_none(row.get("change_pct")))
-    change = float_or_none(row.get("change_pct") or row.get("pct_chg"))
+        turnover = float_or_none(row.get("turnover_rate"))
+        return (
+            "综合分",
+            f"{score:.1f}" if score is not None else "—",
+            "换手",
+            f"{turnover:.2f}%" if turnover is not None else "—",
+        )
     turnover = float_or_none(row.get("turnover_rate"))
-    return "涨幅", format_pct(change), "换手", f"{turnover:.2f}%" if turnover is not None else "—"
+    if turnover is not None:
+        return "换手", f"{turnover:.2f}%", "", ""
+    amount = float(row.get("amount") or 0)
+    if amount > 0:
+        from vnpy_ashare.ui.quotes.table.columns import format_amount
+
+        return "成交额", format_amount(amount), "", ""
+    volume = float(row.get("volume") or 0)
+    if volume > 0:
+        from vnpy_ashare.ui.quotes.table.columns import format_volume
+
+        return "成交量", format_volume(volume), "", ""
+    return "", "", "", ""
 
 
 def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:

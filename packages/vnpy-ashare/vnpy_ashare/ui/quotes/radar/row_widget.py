@@ -108,8 +108,16 @@ class RadarStockRowWidget(QtWidgets.QFrame):
 
     def _apply_row(self) -> None:
         row = self._row
-        self._metric_chip.setText(f"{row.metric_label} {row.metric_value}")
-        self._sub_chip.setText(f"{row.sub_label} {row.sub_value}")
+        if row.metric_label and row.metric_value:
+            self._metric_chip.setText(f"{row.metric_label} {row.metric_value}")
+            self._metric_chip.show()
+        else:
+            self._metric_chip.hide()
+        if row.sub_label and row.sub_value:
+            self._sub_chip.setText(f"{row.sub_label} {row.sub_value}")
+            self._sub_chip.show()
+        else:
+            self._sub_chip.hide()
         price = f"{row.price:.2f}" if row.price is not None else "—"
         self._price_label.setText(price)
         change = f"{row.change_pct:+.2f}%" if row.change_pct is not None else "—"

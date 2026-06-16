@@ -23,6 +23,7 @@ from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
 from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_ashare.ui.quotes.radar.section_prefs import load_radar_board_mode, save_radar_board_mode
+from vnpy_common.ui.panel_widgets import configure_document_tab_widget
 from vnpy_common.ui.theme import theme_manager
 
 
@@ -58,20 +59,37 @@ class RadarCardWidget(QtWidgets.QFrame):
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
 
         header = QtWidgets.QHBoxLayout()
+        header.setSpacing(8)
+        header.setContentsMargins(0, 0, 0, 0)
         self._title = QtWidgets.QLabel(spec.title)
         self._title.setObjectName("RadarCardTitle")
-        header.addWidget(self._title, stretch=1)
+        header.addWidget(
+            self._title,
+            stretch=1,
+            alignment=QtCore.Qt.AlignmentFlag.AlignVCenter,
+        )
+
+        actions = QtWidgets.QHBoxLayout()
+        actions.setSpacing(6)
+        actions.setContentsMargins(0, 0, 0, 0)
+
+        badge_group = QtWidgets.QWidget()
+        badge_group.setObjectName("RadarCardBadgeGroup")
+        badge_layout = QtWidgets.QHBoxLayout(badge_group)
+        badge_layout.setContentsMargins(0, 0, 0, 0)
+        badge_layout.setSpacing(4)
 
         self._kind_badge = QtWidgets.QLabel("统计" if spec.mode == "statistical" else "展望")
         self._kind_badge.setObjectName(
             "RadarCardKindBadgeStatistical" if spec.mode == "statistical" else "RadarCardKindBadgePredictive"
         )
-        header.addWidget(self._kind_badge)
+        badge_layout.addWidget(self._kind_badge)
 
         self._mode_badge = QtWidgets.QLabel("")
         self._mode_badge.setObjectName("RadarCardModeBadge")
         self._update_mode_badge()
-        header.addWidget(self._mode_badge)
+        badge_layout.addWidget(self._mode_badge)
+        actions.addWidget(badge_group)
 
         self._variant_combo = QtWidgets.QComboBox()
         self._variant_combo.setObjectName("RadarCardVariant")
@@ -81,8 +99,13 @@ class RadarCardWidget(QtWidgets.QFrame):
             default_key = default_variant_for_card(spec.id)
             if default_key:
                 self.set_variant_key(default_key)
+            self._variant_combo.setSizeAdjustPolicy(
+                QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+            )
+            self._variant_combo.setMinimumContentsLength(5)
+            self._variant_combo.setMaximumWidth(108)
             self._variant_combo.currentIndexChanged.connect(self._emit_variant_changed)
-            header.addWidget(self._variant_combo)
+            actions.addWidget(self._variant_combo)
         else:
             self._variant_combo.hide()
 
@@ -96,7 +119,7 @@ class RadarCardWidget(QtWidgets.QFrame):
             default_ms = load_radar_card_refresh_ms(spec.id, default_refresh_ms_for_card(spec.id))
             self.set_auto_refresh_ms(default_ms)
             self._refresh_interval_combo.currentIndexChanged.connect(self._emit_auto_refresh_changed)
-            header.addWidget(self._refresh_interval_combo)
+            actions.addWidget(self._refresh_interval_combo)
         else:
             self._refresh_interval_combo.hide()
 
@@ -110,25 +133,52 @@ class RadarCardWidget(QtWidgets.QFrame):
             default_every = load_radar_full_refresh_every(spec.id)
             self.set_full_refresh_every(default_every)
             self._full_refresh_combo.currentIndexChanged.connect(self._emit_full_refresh_interval_changed)
-            header.addWidget(self._full_refresh_combo)
+            actions.addWidget(self._full_refresh_combo)
         else:
             self._full_refresh_combo.hide()
 
         self._refresh_button = QtWidgets.QToolButton()
         self._refresh_button.setObjectName("RadarCardRefresh")
         self._refresh_button.setText("↻")
-        self._refresh_button.setToolTip("全量刷新（下拉菜单可选「仅更新行情」）")
-        self._refresh_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
-        refresh_menu = QtWidgets.QMenu(self._refresh_button)
+        self._refresh_button.setToolTip("全量刷新")
+        self._refresh_button.clicked.connect(lambda: self.refresh_requested.emit(self.card_id))
+
+        self._refresh_menu_button = QtWidgets.QToolButton()
+        self._refresh_menu_button.setObjectName("RadarCardRefreshMenu")
+        self._refresh_menu_button.setText("▾")
+        self._refresh_menu_button.setToolTip("更多刷新选项")
+        self._refresh_menu_button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        refresh_menu = QtWidgets.QMenu(self._refresh_menu_button)
         refresh_menu.addAction("全量刷新", lambda: self.refresh_requested.emit(self.card_id))
         refresh_menu.addAction("仅更新行情", lambda: self.quote_refresh_requested.emit(self.card_id))
-        self._refresh_button.setMenu(refresh_menu)
-        self._refresh_button.clicked.connect(lambda: self.refresh_requested.emit(self.card_id))
-        header.addWidget(self._refresh_button)
+        self._refresh_menu_button.setMenu(refresh_menu)
+
+        refresh_group = QtWidgets.QWidget()
+        refresh_group.setObjectName("RadarCardRefreshGroup")
+        refresh_layout = QtWidgets.QHBoxLayout(refresh_group)
+        refresh_layout.setContentsMargins(0, 0, 0, 0)
+        refresh_layout.setSpacing(4)
+        refresh_layout.addWidget(self._refresh_button)
+        refresh_layout.addWidget(self._refresh_menu_button)
+
+        header_divider = QtWidgets.QWidget()
+        header_divider.setObjectName("RadarCardHeaderDivider")
+        header_divider.setFixedSize(1, 14)
+        actions.addWidget(header_divider)
+        actions.addWidget(refresh_group)
+
+        actions_host = QtWidgets.QWidget()
+        actions_host.setObjectName("RadarCardHeaderActions")
+        actions_host.setLayout(actions)
+        header.addWidget(
+            actions_host,
+            alignment=QtCore.Qt.AlignmentFlag.AlignVCenter | QtCore.Qt.AlignmentFlag.AlignRight,
+        )
 
         self._subtitle = QtWidgets.QLabel("")
         self._subtitle.setObjectName("RadarCardSubtitle")
         self._subtitle.setWordWrap(True)
+        self._subtitle.setMinimumHeight(15)
 
         self._ai_hint = QtWidgets.QLabel("")
         self._ai_hint.setObjectName("RadarCardAiHint")
@@ -299,6 +349,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     def set_loading(self, loading: bool) -> None:
         self._loading = loading
         self._refresh_button.setEnabled(not loading)
+        self._refresh_menu_button.setEnabled(not loading)
         if loading:
             self._meta_label.setText("加载中…")
             return
@@ -321,6 +372,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     def apply_data(self, data: RadarCardData, *, resonance_counts: dict[str, int] | None = None) -> None:
         self._loading = False
         self._refresh_button.setEnabled(True)
+        self._refresh_menu_button.setEnabled(True)
         self._subtitle.setText(data.subtitle)
         hint = str(data.ai_hint or "").strip()
         if hint:
@@ -451,9 +503,10 @@ class RadarBoard(QtWidgets.QWidget):
         self._cards: dict[str, RadarCardWidget] = {}
         self._mode_tab_index: dict[RadarCardMode, int] = {}
 
-        self._tabs = QtWidgets.QTabWidget()
-        self._tabs.setObjectName("RadarBoardTabs")
-        self._tabs.setDocumentMode(True)
+        self._tabs = configure_document_tab_widget(
+            QtWidgets.QTabWidget(),
+            object_name="RadarBoardTabs",
+        )
 
         columns = RADAR_GRID_COLUMNS
         for section_index, section in enumerate(RADAR_LAYOUT_SECTIONS):

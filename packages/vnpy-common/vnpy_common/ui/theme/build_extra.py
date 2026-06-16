@@ -776,10 +776,17 @@ QTabWidget#RadarBoardTabs::pane {{
     background: transparent;
     top: 0;
 }}
+QTabWidget#RadarBoardTabs > QTabBar {{
+    border: none;
+    background: transparent;
+    qproperty-drawBase: 0;
+}}
 QTabWidget#RadarBoardTabs > QTabBar::tab {{
+    background: transparent;
     color: {t.text_muted};
     padding: 6px 14px;
     margin-right: 6px;
+    border: none;
     border-bottom: 2px solid transparent;
     font-size: 13px;
     font-weight: 600;
@@ -854,19 +861,37 @@ QFrame#RadarCardPredictive {{
     border: 1px dashed {t.accent};
     border-radius: 8px;
 }}
-QLabel#RadarCardKindBadgeStatistical {{
-    color: {t.text_muted};
+QLabel#RadarCardKindBadgeStatistical,
+QLabel#RadarCardKindBadgePredictive,
+QLabel#RadarCardModeBadge,
+QLabel#RadarCardModeBadgeOff,
+QLabel#RadarCardModeBadgeLive {{
     font-size: 10px;
-    padding: 1px 6px;
-    border: 1px solid {t.panel_border};
+    padding: 2px 7px;
     border-radius: 4px;
+    border: 1px solid {t.panel_border};
+}}
+QLabel#RadarCardKindBadgeStatistical,
+QLabel#RadarCardModeBadge,
+QLabel#RadarCardModeBadgeOff {{
+    color: {t.text_muted};
 }}
 QLabel#RadarCardKindBadgePredictive {{
     color: {t.accent};
-    font-size: 10px;
-    padding: 1px 6px;
-    border: 1px solid {t.accent};
-    border-radius: 4px;
+    border-color: {t.accent};
+}}
+QLabel#RadarCardModeBadgeLive {{
+    color: {t.accent};
+    border-color: {t.accent};
+}}
+QWidget#RadarCardBadgeGroup {{
+    background: transparent;
+}}
+QWidget#RadarCardHeaderDivider {{
+    background-color: {t.panel_border};
+}}
+QWidget#RadarCardHeaderActions {{
+    background: transparent;
 }}
 QScrollArea#RadarCardScroll {{
     background: transparent;
@@ -906,10 +931,9 @@ QLabel#RadarRowPrice {{
 QLabel#RadarMetricChip {{
     color: {t.text_secondary};
     font-size: 11px;
-    background-color: {t.panel_bg};
-    border: 1px solid {t.panel_border};
-    border-radius: 4px;
-    padding: 2px 6px;
+    background-color: transparent;
+    border: none;
+    padding: 0;
 }}
 QLabel#RadarSubChip {{
     color: {t.text_muted};
@@ -923,43 +947,43 @@ QLabel#RadarCardTitle {{
     font-size: 13px;
     font-weight: 600;
 }}
-QLabel#RadarCardModeBadge {{
-    color: {t.text_muted};
-    font-size: 10px;
-    padding: 1px 6px;
-    border: 1px solid {t.panel_border};
-    border-radius: 4px;
-}}
-QLabel#RadarCardModeBadgeLive {{
-    color: {t.accent};
-    border-color: {t.accent};
-}}
-QFrame#RadarCardLive QLabel#RadarCardModeBadgeLive {{
-    color: {t.accent};
-    border-color: {t.accent};
-}}
 QLabel#RadarCardSubtitle {{
     color: {t.text_muted};
     font-size: 11px;
+    min-height: 15px;
 }}
 QLabel#RadarCardEmpty {{
     color: {t.text_muted};
     font-size: 12px;
-    padding: 12px 8px;
+    padding: 24px 12px;
 }}
 QLabel#RadarCardMeta {{
     color: {t.text_muted};
     font-size: 11px;
 }}
+QPushButton#RadarCardAi,
+QPushButton#RadarCardViewRun,
+QPushButton#RadarCardAddAll,
+QPushButton#RadarCardSectorFlow,
+QPushButton#RadarCardTrainModel {{
+    color: {t.text_secondary};
+    background-color: transparent;
+    border: none;
+    font-size: 11px;
+    padding: 2px 6px;
+}}
+QPushButton#RadarCardAi:hover,
+QPushButton#RadarCardViewRun:hover,
+QPushButton#RadarCardAddAll:hover,
+QPushButton#RadarCardSectorFlow:hover,
+QPushButton#RadarCardTrainModel:hover {{
+    color: {t.accent};
+}}
 QPushButton#RadarCardViewRun {{
     color: {t.accent};
-    font-size: 11px;
-    padding: 0 4px;
 }}
 QPushButton#RadarCardAddAll {{
     color: {t.accent};
-    font-size: 11px;
-    padding: 0 4px;
 }}
 QListWidget#RadarCardList {{
     background: transparent;
@@ -975,22 +999,45 @@ QListWidget#RadarCardList::item:selected {{
     background-color: {t.menu_selected_bg};
 }}
 QComboBox#RadarCardVariant {{
-    min-width: 88px;
-}}
-QComboBox#RadarCardRefreshInterval {{
     min-width: 72px;
+    max-width: 108px;
+    max-height: 24px;
+    font-size: 11px;
 }}
-QToolButton#RadarCardRefresh {{
+QComboBox#RadarCardRefreshInterval,
+QComboBox#RadarCardFullRefreshInterval {{
+    min-width: 72px;
+    max-height: 24px;
+    font-size: 11px;
+}}
+QWidget#RadarCardRefreshGroup {{
+    background: transparent;
+}}
+QToolButton#RadarCardRefresh,
+QToolButton#RadarCardRefreshMenu {{
     color: {t.text_muted};
-    border: none;
+    background-color: transparent;
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+    font-size: 13px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0 5px;
+}}
+QToolButton#RadarCardRefreshMenu {{
+    font-size: 10px;
+    min-width: 20px;
     padding: 0 4px;
-    font-size: 14px;
 }}
-QToolButton#RadarCardRefresh:hover {{
+QToolButton#RadarCardRefresh:hover,
+QToolButton#RadarCardRefreshMenu:hover {{
     color: {t.accent};
+    border-color: {t.accent};
 }}
-QToolButton#RadarCardRefresh:disabled {{
+QToolButton#RadarCardRefresh:disabled,
+QToolButton#RadarCardRefreshMenu:disabled {{
     color: {t.text_muted};
+    border-color: {t.panel_border};
 }}
 QFrame#RadarResonancePanel {{
     background-color: {t.panel_bg};
