@@ -618,6 +618,37 @@ QToolButton#MarketIndustryClear:hover {{
     border-color: {t.accent};
     color: {t.text_primary};
 }}
+QComboBox#MarketIndustryCombo {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+    color: {t.text_primary};
+    padding: 3px 8px;
+    padding-right: 22px;
+    font-size: 11px;
+    min-width: 120px;
+}}
+QComboBox#MarketIndustryCombo:hover {{
+    border-color: {t.accent};
+}}
+QComboBox#MarketIndustryCombo:focus {{
+    border-color: {t.accent};
+}}
+QComboBox#MarketIndustryCombo::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 18px;
+    border: none;
+}}
+QComboBox#MarketIndustryCombo QAbstractItemView {{
+    background-color: {t.combo_popup_bg};
+    color: {t.combo_text};
+    border: 1px solid {t.combo_popup_border};
+    selection-background-color: {t.combo_selection_bg};
+    selection-color: {t.action_btn_text};
+    outline: none;
+    padding: 4px 0;
+}}
 QWidget#MarketDiscoveryStrip {{
     background-color: transparent;
 }}

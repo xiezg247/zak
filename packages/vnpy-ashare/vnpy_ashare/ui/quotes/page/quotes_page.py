@@ -571,7 +571,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self.set_market_industry_filter(cleaned)
             self._pending_industry_drilldown = None
         rank_title = get_rank_definition(target_rank).title
-        self.status_label.setText(f"{rank_title} · 行业筛选：{cleaned}（来自板块资金，点击概览 × 可清除）")
+        self.status_label.setText(f"{rank_title} · 行业筛选：{cleaned}（来自板块资金，点击行业 × 可清除）")
 
     def _render_table(self, *, preserve_selection: bool = True) -> None:
         self._table.render_table(preserve_selection=preserve_selection)
@@ -1002,6 +1002,8 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             widgets.append(self.local_period_combo)
         if self.config.show_board_filter:
             widgets.append(self.board_combo)
+        if self.industry_filter is not None:
+            widgets.append(self.industry_filter)
         if self.config.use_market_rank or self.config.show_refresh_quotes_button:
             widgets.append(self.refresh_quotes_button)
         if self.config.show_sync_button:
@@ -1085,6 +1087,8 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self.local_period_combo.setEnabled(not busy)
         if self.config.show_board_filter:
             self.board_combo.setEnabled(not busy)
+        if self.industry_filter is not None:
+            self.industry_filter.setEnabled(not busy)
         rank_list = getattr(self, "rank_list", None)
         if rank_list is not None:
             rank_list.setEnabled(not busy)

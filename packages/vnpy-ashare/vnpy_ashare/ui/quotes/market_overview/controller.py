@@ -35,13 +35,23 @@ class MarketOverviewController(QtCore.QObject):
         self._session_timer.timeout.connect(self._on_session_tick)
 
         panel.sector_selected.connect(self._on_sector_selected)
-        panel.industry_filter_cleared.connect(self._clear_industry_filter)
         panel.sector_flow_requested.connect(self._open_sector_flow)
+        industry_filter = page.industry_filter
+        if industry_filter is not None:
+            industry_filter.industry_selected.connect(self._on_industry_picker_selected)
+            industry_filter.industry_invalid.connect(self._on_industry_picker_invalid)
+            industry_filter.industry_cleared.connect(self._clear_industry_filter)
 
     def sync_industry_filter(self, industry: str | None) -> None:
         self._panel.set_industry_filter(industry)
+        industry_filter = self._page.industry_filter
+        if industry_filter is not None:
+            industry_filter.set_industry(industry)
 
     def activate(self) -> None:
+        industry_filter = self._page.industry_filter
+        if industry_filter is not None:
+            industry_filter.ensure_options_loaded()
         QtCore.QTimer.singleShot(500, self.refresh)
         self._schedule_timer()
         self._session_timer.start()
@@ -101,6 +111,17 @@ class MarketOverviewController(QtCore.QObject):
         actions = getattr(self._page, "_actions", None)
         if actions is not None:
             actions._publish_ai_context()
+
+    def _on_industry_picker_invalid(self, text: str) -> None:
+        page_notify(self._page, f"未找到匹配行业：{text}", level="warning")
+
+    def _on_industry_picker_selected(self, industry: str) -> None:
+        label = str(industry or "").strip()
+        if not label:
+            return
+        page = self._page
+        page.set_market_industry_filter(label)
+        page.status_label.setText(f"行业筛选：{label}（行业 × 可清除）")
 
     def _on_sector_selected(self, industry: str) -> None:
         page = self._page

@@ -140,6 +140,19 @@ def default_chart_tab_index(dt: datetime | None = None) -> int:
     return INTRADAY_CHART_TAB if is_ashare_trading_session(dt) else DAILY_CHART_TAB
 
 
+def elapsed_trading_minutes(dt: datetime | None = None) -> float:
+    """当日已开盘交易分钟数（午休不计；收盘后返回全日 240 分钟）。"""
+    now = _to_china_time(dt or datetime.now(CHINA_TZ))
+    if not is_trading_day(now.date()):
+        return 0.0
+    current = now.time()
+    if current < MORNING_OPEN:
+        return 0.0
+    if current >= AFTERNOON_CLOSE:
+        return float(INTRADAY_SESSION_MINUTES)
+    return max(bar_session_minute(now), 1.0)
+
+
 def bar_session_minute(dt: datetime) -> float:
     """将 bar 时间映射为连续交易分钟序号（午休不占位，避免折线横跨空白区）。"""
     local = _to_china_time(dt)

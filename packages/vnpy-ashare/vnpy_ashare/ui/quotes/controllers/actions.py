@@ -635,15 +635,27 @@ class ActionsController:
             )
         )
 
-    def show_context_menu(self, pos: QtCore.QPoint) -> None:
+    def show_context_menu(
+        self,
+        pos: QtCore.QPoint,
+        *,
+        item: StockItem | None = None,
+        global_pos: QtCore.QPoint | None = None,
+    ) -> None:
         page = self._p
-        row = page.market_table.indexAt(pos).row()
-        if row < 0:
-            return
-        item = page._stock_at_row(row)
         if item is None:
-            return
+            row = page.market_table.indexAt(pos).row()
+            if row < 0:
+                return
+            item = page._stock_at_row(row)
+            if item is None:
+                return
+        menu = self._build_stock_context_menu(item)
+        popup_at = global_pos if global_pos is not None else page.market_table.viewport().mapToGlobal(pos)
+        menu.popup(popup_at)
 
+    def _build_stock_context_menu(self, item: StockItem) -> QtWidgets.QMenu:
+        page = self._p
         menu = QtWidgets.QMenu(page)
 
         action = menu.addAction("个股分析")
@@ -701,7 +713,7 @@ class ActionsController:
                     action = menu.addAction("下移")
                     action.triggered.connect(lambda: page._watchlist.move_selected("down"))
 
-        menu.popup(page.market_table.viewport().mapToGlobal(pos))
+        return menu
 
     def open_stock_analysis(self, item: StockItem) -> None:
         page = self._p

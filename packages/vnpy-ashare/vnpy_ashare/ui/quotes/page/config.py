@@ -187,6 +187,7 @@ class PageConfig:
     show_diagnose_panel: bool = False
     show_kline: bool = True
     show_board_filter: bool = False
+    show_industry_filter: bool = False
     hide_quote_header: bool = False
     column_configurable: bool = False
     show_rank_sidebar: bool = False
@@ -246,7 +247,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
     "市场": PageConfig(
         title="市场",
         scope_key="全部A股",
-        search_placeholder="输入代码 / 名称搜索 A 股",
+        search_placeholder="输入代码 / 名称搜索（不含行业）",
         search_max_width=320,
         show_sync_button=True,
         show_download_button=True,
@@ -265,6 +266,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         quote_refresh_source="market",
         show_kline=False,
         show_board_filter=True,
+        show_industry_filter=True,
         hide_quote_header=True,
         show_rank_sidebar=True,
     ),

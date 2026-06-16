@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         MarketRankSidebar,
         MarketRankSplitterResizeFilter,
     )
+    from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
     from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
     from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
     from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
@@ -34,6 +35,7 @@ class QuotesPageShellAttrs:
     search_edit: QtWidgets.QLineEdit
     _search_key_filter: QtCore.QObject
     board_combo: QtWidgets.QComboBox
+    industry_filter: IndustryFilterCombo | None
     sync_button: QtWidgets.QPushButton
     download_button: QtWidgets.QPushButton
     fill_button: QtWidgets.QPushButton

@@ -12,6 +12,7 @@ from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel, create_daily_chart
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
+from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
 from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,
@@ -122,6 +123,10 @@ class QuotesPageShell:
         page.board_combo.addItems(["全部", "沪深主板", "创业板", "科创板", "北交所"])
         page.board_combo.setVisible(page.config.show_board_filter)
         page.board_combo.currentIndexChanged.connect(page._on_board_changed)
+
+        page.industry_filter = None
+        if page.config.show_industry_filter:
+            page.industry_filter = IndustryFilterCombo(page)
 
         page.sync_button = QtWidgets.QPushButton("同步 A 股列表", page)
         page.sync_button.clicked.connect(page.sync_universe_clicked)
@@ -263,6 +268,8 @@ class QuotesPageShell:
                 toolbar.addWidget(page.view_multiview_button)
         if page.config.show_board_filter:
             toolbar.addWidget(page.board_combo)
+        if page.industry_filter is not None:
+            toolbar.addWidget(page.industry_filter)
 
         # ── 分隔线 ──
         group2_visible = page.config.use_market_rank or page.config.show_sync_button

@@ -27,7 +27,6 @@ class MarketOverviewPanel(QtWidgets.QWidget):
     """市场页顶部大盘概览带。"""
 
     sector_selected = QtCore.Signal(str)
-    industry_filter_cleared = QtCore.Signal()
     sector_flow_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -50,18 +49,6 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         toolbar.setContentsMargins(12, 2, 12, 4)
         toolbar.setSpacing(8)
 
-        self._industry_chip = QtWidgets.QLabel("")
-        self._industry_chip.setObjectName("MarketIndustryChip")
-        self._industry_chip.hide()
-        toolbar.addWidget(self._industry_chip)
-
-        self._clear_industry_btn = QtWidgets.QToolButton(self)
-        self._clear_industry_btn.setObjectName("MarketIndustryClear")
-        self._clear_industry_btn.setText("×")
-        self._clear_industry_btn.setToolTip("清除行业筛选")
-        self._clear_industry_btn.hide()
-        self._clear_industry_btn.clicked.connect(self.industry_filter_cleared.emit)
-        toolbar.addWidget(self._clear_industry_btn)
         toolbar.addStretch(1)
 
         tab_group = QtWidgets.QHBoxLayout()
@@ -189,13 +176,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
     def set_industry_filter(self, industry: str | None) -> None:
         self._active_industry = industry
         if industry:
-            self._industry_chip.setText(industry)
-            self._industry_chip.show()
-            self._clear_industry_btn.show()
             self._switch_tab(_TAB_SECTOR)
-        else:
-            self._industry_chip.hide()
-            self._clear_industry_btn.hide()
         self._sync_sector_selection()
 
     def _sync_sector_selection(self) -> None:

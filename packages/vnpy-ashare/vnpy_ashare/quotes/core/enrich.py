@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
+from vnpy_ashare.quotes.misc.volume_ratio import fill_intraday_volume_ratios
 from vnpy_ashare.screener.data.data_source import (
     fetch_daily_basic_with_fallback,
     fetch_limit_list_with_fallback,
@@ -182,6 +183,7 @@ def fill_missing_tushare_factors(quotes: dict[str, QuoteSnapshot]) -> None:
                 quote.net_mf_amount = mf_amount
         if quote.limit_times < 1 and (needs_board_lookup or quote.change_pct >= LIMIT_UP_PCT):
             _apply_limit_times(quote, tf_symbol=tf_symbol, limit_times_map=limit_times_map)
+    fill_intraday_volume_ratios(quotes)
 
 
 def load_limit_times_map_by_tickflow() -> dict[str, float]:
@@ -230,3 +232,4 @@ def enrich_quotes_with_tushare_factors(quotes: dict[str, QuoteSnapshot]) -> None
         if mf_amount is not None and mf_amount != 0:
             quote.net_mf_amount = mf_amount
         _apply_limit_times(quote, tf_symbol=tf_symbol, limit_times_map=limit_times_map)
+    fill_intraday_volume_ratios(quotes)

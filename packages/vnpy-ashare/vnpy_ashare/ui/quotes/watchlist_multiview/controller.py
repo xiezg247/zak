@@ -42,6 +42,14 @@ def _sparkline_mode_from_chart_tab(tab_index: int) -> SparklineMode:
     return "intraday"
 
 
+def _to_global_point(pos: object) -> QtCore.QPoint | None:
+    if isinstance(pos, QtCore.QPoint):
+        return pos
+    if isinstance(pos, QtCore.QPointF):
+        return pos.toPoint()
+    return None
+
+
 class WatchlistMultiViewController:
     """编排自选多维看盘刷新与选中联动。"""
 
@@ -324,17 +332,14 @@ class WatchlistMultiViewController:
         show_stock_analysis_from_quotes_page(item, self._page, quote=quote)
 
     def _on_row_context_menu(self, vt_symbol: str, global_pos: object) -> None:
-        del global_pos
         item = self._page.find_stock_item(vt_symbol)
         if item is None:
             return
         self._on_row_clicked(vt_symbol)
-        table = self._page.market_table
-        rows = table.selectionModel().selectedRows()
-        if not rows:
+        popup_at = _to_global_point(global_pos)
+        if popup_at is None:
             return
-        rect = table.visualRect(rows[0])
-        self._page._actions.show_context_menu(QtCore.QPoint(rect.center()))
+        self._page._actions.show_context_menu(QtCore.QPoint(), item=item, global_pos=popup_at)
 
     def on_table_selection_changed(self) -> None:
         if not self.is_multiview_active():
