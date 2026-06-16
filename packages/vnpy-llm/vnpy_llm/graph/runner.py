@@ -20,11 +20,15 @@ from vnpy_llm.config.settings import LlmConfig
 from vnpy_llm.graph.agents import (  # noqa: F401
     backtest,
     build_agent_system_prompt,  # noqa: F401 — 注册 agent prompts
+    chief,
     data,
+    financial,
     general,
     market,
     research,
+    risk,
     screening,
+    strategy,
 )
 from vnpy_llm.graph.messages import dict_messages_to_langchain
 from vnpy_llm.graph.state import (

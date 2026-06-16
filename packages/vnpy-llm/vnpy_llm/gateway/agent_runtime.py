@@ -7,6 +7,7 @@ from typing import Any
 
 from vnpy_llm.chat.client import stream_chat_completion
 from vnpy_llm.config.settings import LlmConfig
+from vnpy_llm.graph.orchestrator import stream_team_analysis
 from vnpy_llm.graph.runner import stream_with_tools
 from vnpy_llm.graph.state import GraphStreamContext
 from vnpy_llm.routing.router import RouteContext
@@ -30,6 +31,19 @@ class AgentRuntime:
         on_handoff: Callable[[str, str, str], None] | None = None,
     ) -> Iterator[str]:
         """按工具可用性选择 agent 或 chat 路径，统一 yield 文本 delta。"""
+        # 团队模式分支
+        if graph_ctx is not None and graph_ctx.analysis.route.category == "team_analysis":
+            yield from stream_team_analysis(
+                config,
+                conversation_messages,
+                route_ctx.tools if route_ctx else [],
+                tool_executor,
+                should_cancel=should_cancel,
+                graph_ctx=graph_ctx,
+                all_tools=all_tools,
+            )
+            return
+
         if all_tools and route_ctx is not None and graph_ctx is not None:
             yield from stream_with_tools(
                 config,
