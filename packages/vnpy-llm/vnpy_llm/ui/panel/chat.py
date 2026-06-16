@@ -207,8 +207,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._team_deep_checkbox = QtWidgets.QCheckBox("深度投研团队")
         self._team_deep_checkbox.setObjectName("AiTeamDeepModeCheckbox")
         self._team_deep_checkbox.setToolTip(
-            "关闭（默认）：快速团队 — 规则速览 + 总分析师综合研判，约 30 秒。\n"
-            "开启：深度团队 — 财务 / 风险 / 策略各走一轮 LLM 并行解读，约 1–3 分钟。"
+            "关闭（默认）：快速团队 — 规则速览 + 总分析师综合研判，约 30 秒。\n开启：深度团队 — 财务 / 风险 / 策略各走一轮 LLM 并行解读，约 1–3 分钟。"
         )
         self._team_deep_checkbox.setChecked(load_team_deep_mode_pref())
         self._team_deep_checkbox.toggled.connect(self._on_team_deep_mode_toggled)

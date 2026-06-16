@@ -136,3 +136,96 @@ def test_fill_missing_limit_times_fallback_to_one_board() -> None:
     ):
         fill_missing_tushare_factors(quotes)
     assert quotes["600000.SH"].limit_times == 1.0
+
+
+def test_merge_quote_snapshot_preserves_volume_ratio() -> None:
+    from vnpy_ashare.quotes.core.enrich import merge_quote_snapshot
+
+    existing = _quote()
+    existing.volume_ratio = 2.5
+    existing.net_mf_amount = 100.0
+    incoming = _quote()
+    incoming.last_price = 11.0
+    merged = merge_quote_snapshot(existing, incoming)
+    assert merged.last_price == 11.0
+    assert merged.volume_ratio == 2.5
+    assert merged.net_mf_amount == 100.0
+
+
+def test_backfill_rank_scores_from_zset() -> None:
+    from unittest.mock import MagicMock
+
+    from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset
+
+    quotes = {"600000.SH": _quote(), "000001.SZ": _quote("000001.SZ")}
+    store = MagicMock()
+    store.get_rank_scores.return_value = {"600000.SH": 3.2, "000001.SZ": 1.8}
+    backfill_rank_scores_from_zset(store, quotes)
+    assert quotes["600000.SH"].volume_ratio == 3.2
+    assert quotes["000001.SZ"].volume_ratio == 1.8
+    store.get_rank_scores.assert_any_call("volume_ratio", ["600000.SH", "000001.SZ"])
+
+
+def test_get_quotes_backfills_volume_ratio_from_zset() -> None:
+    from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore, quote_key, rank_key
+
+    class _FakeRedis:
+        def __init__(self) -> None:
+            self._hashes: dict[str, dict[str, str]] = {}
+            self._zsets: dict[str, dict[str, float]] = {}
+
+        def pipeline(self, transaction: bool = False):
+            return _FakePipe(self)
+
+        def hgetall(self, key: str) -> dict[str, str]:
+            return dict(self._hashes.get(key, {}))
+
+        def get(self, key: str) -> str | None:
+            return None
+
+        def zscore(self, key: str, member: str) -> float | None:
+            return self._zsets.get(key, {}).get(member)
+
+    class _FakePipe:
+        def __init__(self, client: _FakeRedis) -> None:
+            self._client = client
+            self._ops: list[tuple[str, str, str | None]] = []
+
+        def hgetall(self, key: str) -> None:
+            self._ops.append(("hgetall", key, None))
+
+        def zscore(self, key: str, member: str) -> None:
+            self._ops.append(("zscore", key, member))
+
+        def execute(self) -> list:
+            result: list = []
+            for op, key, member in self._ops:
+                if op == "hgetall":
+                    result.append(self._client.hgetall(key))
+                elif op == "zscore" and member is not None:
+                    result.append(self._client.zscore(key, member))
+            return result
+
+    client = _FakeRedis()
+    tf_symbol = "600000.SH"
+    client._hashes[quote_key(tf_symbol)] = {
+        "symbol": tf_symbol,
+        "name": "浦发",
+        "last_price": "10",
+        "prev_close": "9",
+        "open_price": "9.5",
+        "high_price": "10",
+        "low_price": "9.5",
+        "change_amount": "1",
+        "change_pct": "10",
+        "turnover_rate": "1",
+        "volume": "1000",
+        "volume_ratio": "0",
+    }
+    client._zsets[rank_key("volume_ratio")] = {tf_symbol: 2.5}
+
+    store = RedisQuoteStore(client=client)
+    with patch("vnpy_ashare.quotes.core.enrich.get_cached_tushare_factor_maps", return_value=({}, {})):
+        quotes = store.get_quotes([tf_symbol])
+
+    assert quotes[tf_symbol].volume_ratio == 2.5

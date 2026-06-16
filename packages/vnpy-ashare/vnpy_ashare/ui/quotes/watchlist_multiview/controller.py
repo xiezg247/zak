@@ -28,7 +28,6 @@ from vnpy_ashare.ui.quotes.watchlist_multiview.worker import WatchlistMultiSpark
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 
 if TYPE_CHECKING:
-
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
     from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 

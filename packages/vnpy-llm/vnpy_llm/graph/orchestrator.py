@@ -271,10 +271,7 @@ def _ready_prefetch_agents(prefetch: dict[str, Any] | None) -> tuple[AgentName, 
 
 def _format_missing_agent_section(agent: AgentName) -> str:
     label = AGENT_STREAM_LABELS.get(agent, agent)
-    return (
-        f"\n## {label}\n\n"
-        f"**规则速览不可用**：{label}本地预取缺失或失败，综合研判将标注该维度缺口。\n\n"
-    )
+    return f"\n## {label}\n\n**规则速览不可用**：{label}本地预取缺失或失败，综合研判将标注该维度缺口。\n\n"
 
 
 def _format_rule_dimension_section(agent: AgentName, rule: dict[str, Any]) -> str:
@@ -458,10 +455,7 @@ def stream_team_analysis(
     deep_mode = team_deep_mode_enabled()
     ready_agents = _ready_prefetch_agents(prefetch)
     if not deep_mode and len(ready_agents) < MIN_FAST_PREFETCH_AGENTS:
-        yield (
-            f"\n⚠️ 本地预取仅 {len(ready_agents)}/{len(TEAM_AGENTS)} 维可用，"
-            "已切换为深度团队分析（较慢）…\n"
-        )
+        yield (f"\n⚠️ 本地预取仅 {len(ready_agents)}/{len(TEAM_AGENTS)} 维可用，已切换为深度团队分析（较慢）…\n")
         deep_mode = True
     use_fast_team = not deep_mode and len(ready_agents) >= MIN_FAST_PREFETCH_AGENTS
 

@@ -39,11 +39,7 @@ def build_multiview_board_summary(
         detail = " ".join(f"{count}{label}" for label, count in sorted(signal_counts.items()))
         parts.append(f"信号区 {detail}")
 
-    pnl_values = [
-        pos.unrealized_pnl_pct
-        for pos in position_cache.values()
-        if pos.unrealized_pnl_pct is not None
-    ]
+    pnl_values = [pos.unrealized_pnl_pct for pos in position_cache.values() if pos.unrealized_pnl_pct is not None]
     if pnl_values:
         avg_pnl = sum(pnl_values) / len(pnl_values)
         parts.append(f"持仓 {len(pnl_values)} 只，均浮盈 {avg_pnl:+.2f}%")

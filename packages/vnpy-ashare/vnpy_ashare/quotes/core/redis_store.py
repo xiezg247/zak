@@ -127,9 +127,24 @@ class RedisQuoteStore:
                 quote.trade_time = fallback_time
             result[tf_symbol] = quote
         if enrich_factors and result:
-            from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
+            from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset, fill_missing_tushare_factors
 
             fill_missing_tushare_factors(result)
+            backfill_rank_scores_from_zset(self, result)
+        return result
+
+    def get_rank_scores(self, field: str, tf_symbols: list[str]) -> dict[str, float]:
+        if not tf_symbols:
+            return {}
+        key = rank_key(field)
+        pipe = self._client.pipeline(transaction=False)
+        for tf_symbol in tf_symbols:
+            pipe.zscore(key, tf_symbol)
+        scores = pipe.execute()
+        result: dict[str, float] = {}
+        for tf_symbol, score in zip(tf_symbols, scores, strict=True):
+            if score is not None:
+                result[tf_symbol] = float(score)
         return result
 
     def get_rank_symbols(

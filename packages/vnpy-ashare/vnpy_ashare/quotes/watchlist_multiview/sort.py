@@ -15,7 +15,7 @@ def sort_multiview_rows(
     if sort_key == "change_pct":
         return sorted(
             rows,
-            key=lambda row: (row.change_pct if row.change_pct is not None else float("-inf")),
+            key=lambda row: row.change_pct if row.change_pct is not None else float("-inf"),
             reverse=True,
         )
     return sorted(rows, key=lambda row: row.anomaly_score, reverse=True)

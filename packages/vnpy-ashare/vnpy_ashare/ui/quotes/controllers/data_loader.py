@@ -358,7 +358,9 @@ class DataLoaderController:
                 return
             start_row = len(page.display_stocks)
             page.display_stocks.extend(result.items)
-            page.quote_map.update(result.quotes)
+            from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
+
+            merge_quote_maps_into(page.quote_map, result.quotes)
             page._table.append_rows(start_row, result.items, result.quotes)
         else:
             page.display_stocks = list(result.items)

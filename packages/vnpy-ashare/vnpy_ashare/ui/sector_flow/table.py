@@ -17,7 +17,7 @@ _COL_SOURCE = 5
 
 _HEADERS = ("名称", "强度", "涨幅%", "主力净额(亿)", "家数", "口径")
 _HEADER_TOOLTIPS: dict[str, str] = {
-    "名称": "Tushare 行业；双击跳转选股页（行业成分）",
+    "名称": "Tushare 行业；双击查看市场页行业成分（主力净流入榜）",
     "强度": "上涨家数占比×100 + 行业平均涨幅，衡量板块热度",
     "涨幅%": "行业成分股平均涨跌幅",
     "主力净额(亿)": "行业成分汇总：优先 Tushare net_mf_amount（多为日频，万元→亿）；缺失时为成交额×涨幅估算",
@@ -28,7 +28,6 @@ _HEADER_TOOLTIPS: dict[str, str] = {
 
 class SectorFlowTable(QtWidgets.QTableWidget):
     sector_activated = QtCore.Signal(str)
-    screener_activated = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -122,4 +121,4 @@ class SectorFlowTable(QtWidgets.QTableWidget):
             return
         industry = str(name_item.text() or "").strip()
         if industry:
-            self.screener_activated.emit(industry)
+            self.sector_activated.emit(industry)

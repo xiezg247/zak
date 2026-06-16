@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import time
+from dataclasses import replace
+from typing import TYPE_CHECKING
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
@@ -12,6 +14,9 @@ from vnpy_ashare.screener.data.data_source import (
     fetch_limit_list_with_fallback,
     fetch_moneyflow_with_fallback,
 )
+
+if TYPE_CHECKING:
+    from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
 _FACTOR_MAPS_CACHE: tuple[dict[str, float], dict[str, float], float] | None = None
 _LIMIT_TIMES_MAP_CACHE: tuple[dict[str, float], float] | None = None
@@ -90,6 +95,63 @@ def get_cached_tushare_factor_maps(*, force_refresh: bool = False) -> tuple[dict
         ratio_map, mf_map = {}, {}
     _FACTOR_MAPS_CACHE = (ratio_map, mf_map, now)
     return ratio_map, mf_map
+
+
+def merge_quote_snapshot(existing: QuoteSnapshot, incoming: QuoteSnapshot) -> QuoteSnapshot:
+    """合并快照：实时字段用 incoming，日频因子在 incoming 缺失时保留 existing。"""
+    return replace(
+        incoming,
+        name=incoming.name or existing.name,
+        turnover_rate=incoming.turnover_rate if incoming.turnover_rate > 0 else existing.turnover_rate,
+        volume_ratio=incoming.volume_ratio if incoming.volume_ratio > 0 else existing.volume_ratio,
+        net_mf_amount=incoming.net_mf_amount if incoming.net_mf_amount != 0 else existing.net_mf_amount,
+        limit_times=incoming.limit_times if incoming.limit_times >= 1 else existing.limit_times,
+    )
+
+
+def merge_quote_maps_into(target: dict[str, QuoteSnapshot], incoming: dict[str, QuoteSnapshot]) -> None:
+    """就地合并行情字典，避免刷新用空因子覆盖已有值。"""
+    for key, new_quote in incoming.items():
+        old = target.get(key)
+        if old is None:
+            target[key] = new_quote
+        else:
+            target[key] = merge_quote_snapshot(old, new_quote)
+
+
+def backfill_rank_scores_from_zset(store: RedisQuoteStore, quotes: dict[str, QuoteSnapshot]) -> None:
+    """HASH 缺榜字段时，用 Redis ZSET score 回填（解决榜序与快照不一致）。"""
+    if not quotes:
+        return
+
+    tf_symbols = list(quotes.keys())
+    volume_needs = [sym for sym in tf_symbols if quotes[sym].volume_ratio <= 0]
+    if volume_needs:
+        for sym, score in store.get_rank_scores("volume_ratio", volume_needs).items():
+            quote = quotes.get(sym)
+            if quote is not None and score > 0 and quote.volume_ratio <= 0:
+                quote.volume_ratio = score
+
+    mf_needs = [sym for sym in tf_symbols if quotes[sym].net_mf_amount == 0]
+    if mf_needs:
+        for sym, score in store.get_rank_scores("net_mf_amount", mf_needs).items():
+            quote = quotes.get(sym)
+            if quote is not None and score != 0 and quote.net_mf_amount == 0:
+                quote.net_mf_amount = score
+
+    speed_needs = [sym for sym in tf_symbols if quotes[sym].change_speed_5m == 0]
+    if speed_needs:
+        for sym, score in store.get_rank_scores("change_speed_5m", speed_needs).items():
+            quote = quotes.get(sym)
+            if quote is not None and score != 0 and quote.change_speed_5m == 0:
+                quote.change_speed_5m = score
+
+    limit_needs = [sym for sym in tf_symbols if quotes[sym].limit_times < 1]
+    if limit_needs:
+        for sym, score in store.get_rank_scores("limit_times", limit_needs).items():
+            quote = quotes.get(sym)
+            if quote is not None and score >= 1 and quote.limit_times < 1:
+                quote.limit_times = score
 
 
 def _quote_needs_tushare_factors(quote: QuoteSnapshot) -> bool:

@@ -220,9 +220,7 @@ def score_market(market_context: dict[str, Any]) -> dict[str, Any]:
             highlights.append(f"市场偏恐惧 {fg:.0f}")
 
     summary_lines = market_context.get("summary_lines") or []
-    summary = "；".join(highlights) if highlights else (
-        str(summary_lines[0]) if summary_lines else "市场环境中性"
-    )
+    summary = "；".join(highlights) if highlights else (str(summary_lines[0]) if summary_lines else "市场环境中性")
 
     return {
         "score": _clamp(score),
@@ -239,10 +237,7 @@ def compute_team_scores(prefetch: dict[str, Any]) -> dict[str, Any]:
     market = score_market(prefetch.get("market_context") or {})
 
     weighted = round(
-        financial["score"] * 0.35
-        + risk["score"] * 0.25
-        + strategy["score"] * 0.20
-        + market["score"] * 0.20,
+        financial["score"] * 0.35 + risk["score"] * 0.25 + strategy["score"] * 0.20 + market["score"] * 0.20,
         1,
     )
 

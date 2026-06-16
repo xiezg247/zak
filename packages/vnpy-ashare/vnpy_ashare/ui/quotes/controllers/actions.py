@@ -359,9 +359,11 @@ class ActionsController:
             try:
                 if not page._active:
                     return
-                page.quote_map.update(quotes)
+                from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
+
+                merge_quote_maps_into(page.quote_map, quotes)
                 if page.config.market_full_list and page._market_catalog_loaded:
-                    page._market_catalog_quotes.update(quotes)
+                    merge_quote_maps_into(page._market_catalog_quotes, quotes)
                 if page.config.use_market_rank and page.config.market_full_list and page._market_catalog_loaded:
                     page._table.apply_market_display()
                 elif page.config.market_scroll_paging:

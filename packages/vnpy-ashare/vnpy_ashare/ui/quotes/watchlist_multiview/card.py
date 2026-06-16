@@ -128,9 +128,7 @@ class WatchlistMultiCard(QtWidgets.QFrame):
         self._metric_chip.setText(f"{row.metric_label} {row.metric_value}")
         self._sub_chip.setText(f"{row.sub_label} {row.sub_value}")
         self._anomaly_badge.setText("●" if row.anomaly_score >= _ANOMALY_BADGE_THRESHOLD else "")
-        self._anomaly_badge.setToolTip(
-            f"异动分 {row.anomaly_score:.1f}" if row.anomaly_score >= _ANOMALY_BADGE_THRESHOLD else ""
-        )
+        self._anomaly_badge.setToolTip(f"异动分 {row.anomaly_score:.1f}" if row.anomaly_score >= _ANOMALY_BADGE_THRESHOLD else "")
         self._apply_badge(self._signal_badge, f"信号 {row.signal_label}" if row.signal_label else "")
         if row.has_position and row.position_pnl_pct is not None:
             self._apply_badge(self._position_badge, f"持仓 {row.position_pnl_pct:+.2f}%")

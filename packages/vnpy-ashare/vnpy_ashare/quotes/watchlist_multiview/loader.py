@@ -47,11 +47,7 @@ def build_watchlist_multiview_board(
         pass
 
     name_map = name_map_for_symbols(candidates)
-    changes = [
-        float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0)
-        for vt in candidates
-        if quotes_by_vt.get(vt)
-    ]
+    changes = [float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0) for vt in candidates if quotes_by_vt.get(vt)]
     pool_median = sorted(changes)[len(changes) // 2] if changes else 0.0
 
     rows: list[WatchlistMultiRow] = []

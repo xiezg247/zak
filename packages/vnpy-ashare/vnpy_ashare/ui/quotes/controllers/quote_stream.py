@@ -96,7 +96,9 @@ class QuoteStreamController:
             return
         page._stream_fallback = False
         page._update_quote_source_label()
-        page.quote_map.update(quotes)
+        from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
+
+        merge_quote_maps_into(page.quote_map, quotes)
         self._pending_symbols.update(quotes.keys())
         self._flush_timer.start()
 
