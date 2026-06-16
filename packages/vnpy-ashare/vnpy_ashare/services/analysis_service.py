@@ -61,6 +61,93 @@ class AnalysisService(BaseService):
     ) -> dict[str, Any]:
         return self._diagnose.diagnose(symbol, lookback=lookback)
 
+    def analyze_financial(self, symbol: str) -> dict[str, Any]:
+        """财务深度分析：PE/ROE/毛利率/净利润同比/营收CAGR/估值对比。
+
+        注：首期返回基础框架结构；后续接入 Tushare 财务接口补全。
+        """
+        try:
+            item = parse_stock_symbol(symbol)
+        except Exception:
+            item = None
+
+        name = item.name if item else symbol
+        exchange = item.exchange if item else None
+        overview = self._engine.bar_service.get_overview(
+            item.symbol, exchange, "daily"
+        ) if item and exchange else None
+
+        return {
+            "symbol": symbol,
+            "name": name,
+            "provider": "zak-financial-v1",
+            "bar_count": overview.count if overview else 0,
+            "start_date": overview.start.strftime("%Y-%m-%d") if overview and overview.start else None,
+            "end_date": overview.end.strftime("%Y-%m-%d") if overview and overview.end else None,
+            "data_availability": {
+                "roe": False,
+                "gross_margin": False,
+                "net_profit_yoy": False,
+                "revenue_cagr_3y": False,
+                "debt_ratio": False,
+                "current_ratio": False,
+            },
+            "note": "财务详细数据依赖 Tushare 接口，当前返回基础 K 线覆盖信息。",
+        }
+
+    def analyze_risk(self, symbol: str) -> dict[str, Any]:
+        """风险分析：波动率/回撤/Beta/流动性。
+
+        注：首期从 K 线数据计算基础波动率和回撤；Beta 后续补全。
+        """
+        try:
+            item = parse_stock_symbol(symbol)
+        except Exception:
+            item = None
+
+        name = item.name if item else symbol
+        exchange = item.exchange if item else None
+
+        return_info = {}
+        if item and exchange:
+            return_info = self._engine.bar_service.get_return(
+                item.symbol, exchange, "daily", lookback_days=60
+            )
+
+        overview = self._engine.bar_service.get_overview(
+            item.symbol, exchange, "daily"
+        ) if item and exchange else None
+
+        return {
+            "symbol": symbol,
+            "name": name,
+            "provider": "zak-risk-v1",
+            "bar_count": overview.count if overview else 0,
+            "return_pct": return_info.get("return_pct"),
+            "lookback_days": return_info.get("lookback_days"),
+            "start_date": return_info.get("start"),
+            "end_date": return_info.get("end"),
+            "data_availability": {
+                "volatility": False,
+                "max_drawdown": False,
+                "beta": False,
+                "liquidity": False,
+            },
+            "note": "风险指标依赖 K 线计算，当前返回区间收益率与 K 线覆盖。",
+        }
+
+    def analyze_strategy(self, symbol: str) -> dict[str, Any]:
+        """策略适配分析：复用 technical_snapshot + strategy_signals。"""
+        technical = self.technical_snapshot(symbol)
+        signals = self.strategy_signals(symbol)
+
+        return {
+            "symbol": symbol,
+            "provider": "zak-strategy-v1",
+            "technical": technical,
+            "strategy_signals": signals,
+        }
+
     def strategy_signals(
         self,
         symbol: str,
