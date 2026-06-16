@@ -101,5 +101,76 @@ def test_apply_change_speed_5m_rotates_after_window(monkeypatch) -> None:
 
     monkeypatch.setattr("vnpy_ashare.quotes.misc.speed_baseline.time.time", lambda: float(SPEED_WINDOW_SEC + 1))
     apply_change_speed_5m(client, quotes)
-    assert quotes["600000.SH"].change_speed_5m == 0.0
+    assert quotes["600000.SH"].change_speed_5m == 10.0
     assert client.hashes[SPEED_BASELINE_HASH_KEY]["600000.SH"] == "11.0"
+
+
+def test_write_quotes_preserves_change_speed_rank_when_empty(monkeypatch) -> None:
+    monkeypatch.setattr("vnpy_ashare.quotes.core.redis_store.is_ashare_trading_session", lambda: True)
+
+    from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore, quote_key, rank_key
+
+    class _FakeRedis:
+        def __init__(self) -> None:
+            self._hashes: dict[str, dict[str, str]] = {}
+            self._zsets: dict[str, dict[str, float]] = {
+                rank_key("change_speed_5m"): {"600000.SH": 2.5},
+            }
+            self._strings: dict[str, str] = {}
+
+        def pipeline(self, transaction: bool = False):
+            return _FakePipe(self)
+
+        def get(self, key: str) -> str | None:
+            return self._strings.get(key)
+
+        def hgetall(self, key: str) -> dict[str, str]:
+            return dict(self._hashes.get(key, {}))
+
+        def hset(self, key: str, mapping: dict[str, str]) -> None:
+            self._hashes[key] = dict(mapping)
+
+        def zcard(self, key: str) -> int:
+            return len(self._zsets.get(key, {}))
+
+        def zscore(self, key: str, member: str) -> float | None:
+            return self._zsets.get(key, {}).get(member)
+
+    class _FakePipe:
+        def __init__(self, client: _FakeRedis) -> None:
+            self._client = client
+            self._ops: list[tuple] = []
+
+        def hset(self, key: str, mapping: dict[str, str]) -> None:
+            self._ops.append(("hset", key, mapping))
+
+        def delete(self, key: str) -> None:
+            self._ops.append(("delete", key))
+
+        def zadd(self, key: str, mapping: dict[str, float]) -> None:
+            self._ops.append(("zadd", key, mapping))
+
+        def set(self, key: str, value: str) -> None:
+            self._ops.append(("set", key, value))
+
+        def execute(self) -> None:
+            for op in self._ops:
+                if op[0] == "hset":
+                    self._client._hashes[op[1]] = dict(op[2])
+                elif op[0] == "delete":
+                    self._client._zsets.pop(op[1], None)
+                elif op[0] == "zadd":
+                    self._client._zsets[op[1]] = dict(op[2])
+                elif op[0] == "set":
+                    self._client._strings[op[1]] = op[2]
+            self._ops.clear()
+
+    client = _FakeRedis()
+    client._hashes[SPEED_BASELINE_HASH_KEY] = {"600000.SH": "10.0"}
+    client._strings[SPEED_BASELINE_AT_KEY] = "1000"
+
+    store = RedisQuoteStore(client=client)
+    quote = _quote("600000.SH", 10.0)
+    store.write_quotes({"600000.SH": quote})
+    assert client.zcard(rank_key("change_speed_5m")) == 1
+    assert client.hgetall(quote_key("600000.SH")).get("change_speed_5m") == "0.0"

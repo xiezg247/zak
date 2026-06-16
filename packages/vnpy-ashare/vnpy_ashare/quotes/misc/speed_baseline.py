@@ -34,7 +34,7 @@ def apply_change_speed_5m(client, quotes: dict[str, QuoteSnapshot]) -> None:
     baselines = client.hgetall(SPEED_BASELINE_HASH_KEY) or {}
     should_rotate = not baselines or (now - baseline_at) >= SPEED_WINDOW_SEC
 
-    if baselines and not should_rotate:
+    if baselines:
         for tf_symbol, quote in quotes.items():
             try:
                 base = float(baselines.get(tf_symbol, 0) or 0)

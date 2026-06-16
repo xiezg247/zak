@@ -224,6 +224,7 @@ MARKET_VISIBLE_COLUMNS: list[str] = [
     "last_price",
     "change_pct",
     "limit_times",
+    "change_speed_5m",
     "change_amount",
     "volume",
     "amount",

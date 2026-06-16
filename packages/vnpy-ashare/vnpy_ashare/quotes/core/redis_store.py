@@ -7,6 +7,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
+from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.quote_time import normalize_datetime_text
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
@@ -32,6 +33,8 @@ RANK_REDIS_FIELDS: tuple[str, ...] = (
     "change_speed_5m",
     "limit_times",
 )
+# 盘中可能暂无新值（如窗口刚滚动、盘后静止），保留上一版榜避免 UI 整榜为空
+_RANK_PRESERVE_WHEN_EMPTY: frozenset[str] = frozenset({"change_speed_5m"})
 
 
 def quote_key(tf_symbol: str) -> str:
@@ -95,9 +98,11 @@ class RedisQuoteStore:
                 rank_members["limit_times"].append((quote.limit_times, tf_symbol))
 
         for field in RANK_REDIS_FIELDS:
+            members = rank_members[field]
+            if not members and field in _RANK_PRESERVE_WHEN_EMPTY and is_ashare_trading_session():
+                continue
             key = rank_key(field)
             pipe.delete(key)
-            members = rank_members[field]
             if members:
                 pipe.zadd(key, {member: score for score, member in members})
         pipe.set(META_UPDATED_AT_KEY, datetime.now().isoformat(timespec="seconds"))
