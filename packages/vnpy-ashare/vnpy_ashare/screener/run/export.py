@@ -60,6 +60,22 @@ _MONEYFLOW_COLUMNS = [
 ]
 
 
+_FUNDAMENTAL_FIELD_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")
+
+
+def _has_fundamental_display_data(rows: list[dict[str, Any]]) -> bool:
+    sample = rows[: min(5, len(rows))]
+    return any(row.get(key) not in (None, "") for row in sample for key in _FUNDAMENTAL_FIELD_KEYS)
+
+
+def _is_moneyflow_primary_rows(rows: list[dict[str, Any]]) -> bool:
+    """资金流 preset 结果（非行情 preset 附带补全的 net_mf_amount）。"""
+    row = rows[0]
+    if row.get("moneyflow_source"):
+        return True
+    return "net_mf_amount" in row and "last_price" not in row
+
+
 def resolve_export_columns(rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
     """根据首行字段推断导出列（field_key, 中文标题）。"""
     if not rows:
@@ -68,10 +84,9 @@ def resolve_export_columns(rows: list[dict[str, Any]]) -> list[tuple[str, str]]:
         optional = {"diff_status", "industry", "volume_ratio", "pe_ttm", "net_mf_amount", "flow_kind"}
         columns = [col for col in _RECIPE_COLUMNS if col[0] not in optional or any(col[0] in row for row in rows[: min(5, len(rows))])]
         return columns or _RECIPE_COLUMNS
-    source = str(rows[0].get("source", "quote"))
-    if "net_mf_amount" in rows[0]:
+    if _is_moneyflow_primary_rows(rows):
         return _MONEYFLOW_COLUMNS
-    if source == "tushare" or "pe_ttm" in rows[0]:
+    if _has_fundamental_display_data(rows):
         return _FUNDAMENTAL_COLUMNS
     return _QUOTE_COLUMNS
 

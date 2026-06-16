@@ -16,6 +16,7 @@ DEFAULT_MIN_TOTAL_MV_WAN = 500_000.0
 _suspend_keys_cache: tuple[date, frozenset[tuple[str, str]]] | None = None
 _list_date_map_cache: tuple[date, dict[str, str]] | None = None
 _market_board_map_cache: tuple[date, dict[str, str]] | None = None
+_industry_map_cache: tuple[date, dict[str, str]] | None = None
 
 
 def recipe_min_amount_yuan() -> float:
@@ -90,6 +91,28 @@ def recipe_exclude_limit_board_enabled() -> bool:
     return load_hard_filter_prefs().exclude_limit_board
 
 
+def recipe_allowed_industries() -> frozenset[str]:
+    raw = os.getenv("RECIPE_ALLOWED_INDUSTRIES", "").strip()
+    if not raw:
+        from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+        raw = load_hard_filter_prefs().allowed_industries
+    from vnpy_ashare.screener.hard_filter_prefs import parse_allowed_industries
+
+    return parse_allowed_industries(raw)
+
+
+def recipe_allowed_market_boards() -> frozenset[str]:
+    raw = os.getenv("RECIPE_ALLOWED_MARKET_BOARDS", "").strip()
+    if not raw:
+        from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
+
+        raw = load_hard_filter_prefs().allowed_market_boards
+    from vnpy_ashare.screener.hard_filter_prefs import parse_allowed_market_boards
+
+    return parse_allowed_market_boards(raw)
+
+
 def is_st_stock(name: str) -> bool:
     text = (name or "").strip().upper()
     return "ST" in text
@@ -143,10 +166,11 @@ def row_symbol_exchange(row: dict[str, Any]) -> tuple[str, str] | None:
 
 
 def clear_suspend_screening_cache() -> None:
-    global _suspend_keys_cache, _list_date_map_cache, _market_board_map_cache
+    global _suspend_keys_cache, _list_date_map_cache, _market_board_map_cache, _industry_map_cache
     _suspend_keys_cache = None
     _list_date_map_cache = None
     _market_board_map_cache = None
+    _industry_map_cache = None
 
 
 def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
@@ -203,6 +227,69 @@ def _market_board_map_for_screening() -> dict[str, str]:
     mapping = {_ts_code_to_vt_symbol(ts_code): market for ts_code, market in board_map.items() if _ts_code_to_vt_symbol(ts_code)}
     _market_board_map_cache = (day, mapping)
     return mapping
+
+
+def _industry_map_for_screening() -> dict[str, str]:
+    global _industry_map_cache
+    from vnpy_ashare.domain.calendar import last_trading_day
+    from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
+
+    day = last_trading_day()
+    if _industry_map_cache is not None and _industry_map_cache[0] == day:
+        return _industry_map_cache[1]
+
+    try:
+        mapping = fetch_stock_industry_map()
+    except Exception:
+        mapping = {}
+    _industry_map_cache = (day, mapping)
+    return mapping
+
+
+def row_symbol(row: dict[str, Any]) -> str:
+    symbol = str(row.get("symbol") or "").strip()
+    if symbol:
+        return symbol
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
+    if "." in vt_symbol:
+        return vt_symbol.split(".", 1)[0]
+    return vt_symbol
+
+
+def passes_market_board_filter(row: dict[str, Any], allowed: frozenset[str]) -> bool:
+    if not allowed:
+        return True
+    from vnpy_ashare.domain.board import matches_board
+
+    symbol = row_symbol(row)
+    if not symbol:
+        return False
+    return any(matches_board(symbol, board) for board in allowed)
+
+
+def row_industry(row: dict[str, Any], industry_map: dict[str, str] | None = None) -> str:
+    industry = str(row.get("industry") or "").strip()
+    if industry:
+        return industry
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
+    if not vt_symbol:
+        return ""
+    from vnpy_ashare.domain.symbols import vt_symbol_to_ts_code
+
+    ts_code = vt_symbol_to_ts_code(vt_symbol)
+    if not ts_code:
+        return ""
+    mapping = industry_map if industry_map is not None else _industry_map_for_screening()
+    return str(mapping.get(ts_code) or "").strip()
+
+
+def passes_industry_filter(row: dict[str, Any], allowed: frozenset[str], industry_map: dict[str, str] | None = None) -> bool:
+    if not allowed:
+        return True
+    industry = row_industry(row, industry_map)
+    if not industry:
+        return False
+    return industry in allowed
 
 
 def _ts_code_to_vt_symbol(ts_code: str) -> str:
@@ -282,7 +369,16 @@ def passes_screening_hard_filter(
     name_map: dict[str, str] | None = None,
     list_date_map: dict[str, str] | None = None,
     market_board_map: dict[str, str] | None = None,
+    industry_map: dict[str, str] | None = None,
+    allowed_industries: frozenset[str] | None = None,
+    allowed_market_boards: frozenset[str] | None = None,
 ) -> bool:
+    boards = allowed_market_boards if allowed_market_boards is not None else recipe_allowed_market_boards()
+    if boards and not passes_market_board_filter(row, boards):
+        return False
+    allowed = allowed_industries if allowed_industries is not None else recipe_allowed_industries()
+    if allowed and not passes_industry_filter(row, allowed, industry_map=industry_map):
+        return False
     if recipe_exclude_suspended_enabled():
         keys = suspended_keys if suspended_keys is not None else _suspended_keys_for_screening()
         if is_row_suspended(row, keys):
@@ -300,10 +396,13 @@ def passes_screening_hard_filter(
 
 def apply_recipe_filters(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
+    allowed_industries = recipe_allowed_industries()
+    allowed_market_boards = recipe_allowed_market_boards()
     suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
     name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
     list_date_map = _list_date_map_for_screening() if recipe_exclude_new_listing_enabled() else None
     market_board_map = _market_board_map_for_screening() if recipe_exclude_limit_board_enabled() else None
+    industry_map = _industry_map_for_screening() if allowed_industries else None
     return [
         row
         for row in rows
@@ -313,6 +412,9 @@ def apply_recipe_filters(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             name_map=name_map,
             list_date_map=list_date_map,
             market_board_map=market_board_map,
+            industry_map=industry_map,
+            allowed_industries=allowed_industries,
+            allowed_market_boards=allowed_market_boards,
         )
     ]
 

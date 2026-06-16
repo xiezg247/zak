@@ -19,6 +19,10 @@ _KEY_MIN_TOTAL_MV_YI = "screener/hard_filter/min_total_mv_yi"
 _KEY_EXCLUDE_NEW_LISTING = "screener/hard_filter/exclude_new_listing"
 _KEY_MIN_LISTING_DAYS = "screener/hard_filter/min_listing_days"
 _KEY_EXCLUDE_LIMIT_BOARD = "screener/hard_filter/exclude_limit_board"
+_KEY_ALLOWED_INDUSTRIES = "screener/hard_filter/allowed_industries"
+_KEY_ALLOWED_MARKET_BOARDS = "screener/hard_filter/allowed_market_boards"
+
+MARKET_BOARD_FILTER_OPTIONS = ("沪深主板", "创业板", "科创板", "北交所")
 
 PRESET_CONSERVATIVE = "conservative"
 PRESET_BALANCED = "balanced"
@@ -34,6 +38,8 @@ class HardFilterPrefs:
     exclude_new_listing: bool
     min_listing_days: int
     exclude_limit_board: bool
+    allowed_industries: str = ""
+    allowed_market_boards: str = ""
 
     @property
     def min_amount_yuan(self) -> float:
@@ -53,6 +59,8 @@ def default_hard_filter_prefs() -> HardFilterPrefs:
         exclude_new_listing=False,
         min_listing_days=60,
         exclude_limit_board=False,
+        allowed_industries="",
+        allowed_market_boards="",
     )
 
 
@@ -67,6 +75,8 @@ def hard_filter_preset(preset_id: str) -> HardFilterPrefs:
             exclude_new_listing=True,
             min_listing_days=60,
             exclude_limit_board=True,
+            allowed_industries="",
+            allowed_market_boards="",
         )
     if preset_id == PRESET_AGGRESSIVE:
         return HardFilterPrefs(
@@ -77,6 +87,8 @@ def hard_filter_preset(preset_id: str) -> HardFilterPrefs:
             exclude_new_listing=False,
             min_listing_days=60,
             exclude_limit_board=False,
+            allowed_industries="",
+            allowed_market_boards="",
         )
     return defaults
 
@@ -110,6 +122,10 @@ def load_hard_filter_prefs() -> HardFilterPrefs:
     amount_wan = _read_float(_SETTINGS.value(_KEY_MIN_AMOUNT_WAN), defaults.min_amount_wan)
     mv_yi = _read_float(_SETTINGS.value(_KEY_MIN_TOTAL_MV_YI), defaults.min_total_mv_yi)
     listing_days = _read_int(_SETTINGS.value(_KEY_MIN_LISTING_DAYS), defaults.min_listing_days)
+    allowed_raw = _SETTINGS.value(_KEY_ALLOWED_INDUSTRIES)
+    allowed_industries = normalize_allowed_industries_text(str(allowed_raw or defaults.allowed_industries))
+    boards_raw = _SETTINGS.value(_KEY_ALLOWED_MARKET_BOARDS)
+    allowed_market_boards = normalize_allowed_market_boards_text(str(boards_raw or defaults.allowed_market_boards))
     return HardFilterPrefs(
         exclude_st=exclude,
         exclude_suspended=exclude_suspend,
@@ -118,6 +134,8 @@ def load_hard_filter_prefs() -> HardFilterPrefs:
         exclude_new_listing=exclude_new_listing,
         min_listing_days=max(0, listing_days),
         exclude_limit_board=exclude_limit_board,
+        allowed_industries=allowed_industries,
+        allowed_market_boards=allowed_market_boards,
     )
 
 
@@ -129,6 +147,40 @@ def save_hard_filter_prefs(prefs: HardFilterPrefs) -> None:
     _SETTINGS.setValue(_KEY_EXCLUDE_NEW_LISTING, prefs.exclude_new_listing)
     _SETTINGS.setValue(_KEY_MIN_LISTING_DAYS, prefs.min_listing_days)
     _SETTINGS.setValue(_KEY_EXCLUDE_LIMIT_BOARD, prefs.exclude_limit_board)
+    _SETTINGS.setValue(_KEY_ALLOWED_INDUSTRIES, prefs.allowed_industries)
+    _SETTINGS.setValue(_KEY_ALLOWED_MARKET_BOARDS, prefs.allowed_market_boards)
+
+
+def normalize_allowed_industries_text(raw: str) -> str:
+    """逗号分隔的行业名；去空白、统一中文逗号。"""
+    text = (raw or "").replace("，", ",").strip()
+    if not text:
+        return ""
+    parts = [part.strip() for part in text.split(",") if part.strip()]
+    return ",".join(parts)
+
+
+def parse_allowed_industries(raw: str) -> frozenset[str]:
+    normalized = normalize_allowed_industries_text(raw)
+    if not normalized:
+        return frozenset()
+    return frozenset(normalized.split(","))
+
+
+def normalize_allowed_market_boards_text(raw: str) -> str:
+    text = (raw or "").replace("，", ",").strip()
+    if not text:
+        return ""
+    valid = set(MARKET_BOARD_FILTER_OPTIONS)
+    parts = [part.strip() for part in text.split(",") if part.strip() in valid]
+    return ",".join(parts)
+
+
+def parse_allowed_market_boards(raw: str) -> frozenset[str]:
+    normalized = normalize_allowed_market_boards_text(raw)
+    if not normalized:
+        return frozenset()
+    return frozenset(normalized.split(","))
 
 
 def apply_hard_filter_preset(preset_id: str) -> HardFilterPrefs:

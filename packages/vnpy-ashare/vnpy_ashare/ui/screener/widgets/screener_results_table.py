@@ -14,7 +14,7 @@ _SORT_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
 
 _DISPLAY_HIDDEN_KEYS = frozenset({"vt_symbol", "source"})
 _LEFT_ALIGN_KEYS = frozenset({"name", "hit_reason", "industry"})
-_CENTER_ALIGN_KEYS = frozenset({"symbol", "diff_status"})
+_CENTER_ALIGN_KEYS = frozenset({"symbol", "diff_status", "flow_kind"})
 _PERCENT_KEYS = frozenset({"change_pct", "turnover_rate", "momentum_5d"})
 _SIGNED_PERCENT_KEYS = frozenset({"change_pct", "momentum_5d"})
 _NUMERIC_SORT_KEYS = frozenset(
@@ -87,6 +87,10 @@ def _display_columns(columns: list[tuple[str, str]]) -> list[tuple[str, str]]:
 def _format_cell_text(key: str, value: Any) -> str:
     if value is None or value == "":
         return "—"
+    if key == "flow_kind":
+        from vnpy_ashare.quotes.market.moneyflow_kind import flow_kind_label
+
+        return flow_kind_label(str(value))
     if isinstance(value, float):
         if key in _SIGNED_PERCENT_KEYS:
             return f"{value:+.2f}%"
@@ -151,8 +155,15 @@ def apply_screener_results_view(
     *,
     empty_label: QtWidgets.QLabel | None = None,
     select_all_btn: QtWidgets.QPushButton | None = None,
+    result_action_bar: QtWidgets.QWidget | None = None,
+    export_btn: QtWidgets.QPushButton | None = None,
 ) -> None:
     """刷新结果表，并在无数据时展示空状态提示。"""
+    has_results = bool(rows)
+    if result_action_bar is not None and hasattr(result_action_bar, "set_has_results"):
+        result_action_bar.set_has_results(has_results)
+    if export_btn is not None:
+        export_btn.setEnabled(has_results)
     if not rows:
         clear_screener_results_table(table)
         table.hide()

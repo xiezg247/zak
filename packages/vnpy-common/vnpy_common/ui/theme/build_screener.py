@@ -39,6 +39,28 @@ QLabel#ScreenerSectionLabel {{
     letter-spacing: 1px;
     padding: 4px 0 2px 0;
 }}
+QToolButton#ScreenerConfigSectionToggle {{
+    border: none;
+    padding: 2px;
+    min-width: 16px;
+    min-height: 16px;
+}}
+QWidget#ScreenerConfigSection {{
+    background: transparent;
+}}
+QWidget#ScreenerResultActionBar {{
+    background: transparent;
+}}
+QWidget#ScreenerResultInsights {{
+    background: transparent;
+}}
+QWidget#ScreenerResultInsightsContent {{
+    background: transparent;
+}}
+QScrollArea#ScreenerFormScroll {{
+    background: transparent;
+    border: none;
+}}
 QLabel#ScreenerHint {{
     color: {t.text_muted};
     font-size: 11px;

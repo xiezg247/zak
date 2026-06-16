@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,
@@ -130,12 +131,18 @@ def apply_moneyflow_in(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[s
     return [_moneyflow_row(r) for r in filtered[:top_n]]
 
 
+_DISPLAY_FUNDAMENTAL_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")
+
+
 def _quote_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+    last_price = row.get("last_price") or row.get("close") or 0
+    close = row.get("close") or last_price or 0
+    result: dict[str, Any] = {
         "symbol": row.get("symbol", ""),
         "name": row.get("name", ""),
         "vt_symbol": row.get("vt_symbol", ""),
-        "last_price": row.get("last_price", 0),
+        "last_price": last_price or close,
+        "close": close,
         "prev_close": row.get("prev_close", 0),
         "open_price": row.get("open_price", 0),
         "high_price": row.get("high_price", 0),
@@ -147,6 +154,11 @@ def _quote_row(row: dict[str, Any]) -> dict[str, Any]:
         "volume_ratio": row.get("volume_ratio", 0),
         "source": row.get("source", "quote"),
     }
+    for key in _DISPLAY_FUNDAMENTAL_KEYS:
+        value = row.get(key)
+        if value not in (None, ""):
+            result[key] = value
+    return result
 
 
 def _limit_up_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -180,7 +192,7 @@ def _fundamental_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _moneyflow_row(row: dict[str, Any]) -> dict[str, Any]:
-    return {
+    base: dict[str, Any] = {
         "symbol": row.get("symbol", ""),
         "name": row.get("name", ""),
         "vt_symbol": row.get("vt_symbol", ""),
@@ -191,7 +203,12 @@ def _moneyflow_row(row: dict[str, Any]) -> dict[str, Any]:
         "sell_lg_amount": row.get("sell_lg_amount", 0),
         "buy_md_amount": row.get("buy_md_amount", 0),
         "sell_md_amount": row.get("sell_md_amount", 0),
+        "change_pct": row.get("change_pct", row.get("pct_chg", 0)),
+        "turnover_rate": row.get("turnover_rate", 0),
         "trade_date": row.get("trade_date", ""),
         "moneyflow_source": row.get("moneyflow_source", "tushare"),
         "source": "tushare",
     }
+    if row.get("moneyflow_proxy"):
+        base["moneyflow_proxy"] = row["moneyflow_proxy"]
+    return enrich_moneyflow_row_with_kind(base)

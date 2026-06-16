@@ -26,7 +26,7 @@ from vnpy_ashare.ai.context import (
 from vnpy_ashare.ai.context import (
     set_screening_results as _set_screening_results,
 )
-from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
+from vnpy_ashare.screener.data.data_source import enrich_recipe_rows, resolve_result_source_tag
 from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
 from vnpy_ashare.screener.pattern.pattern_screen import (
     PatternScreenInput,
@@ -110,7 +110,7 @@ class ScreeningService(BaseService):
         *,
         top_n: int = 20,
     ) -> list[dict[str, Any]]:
-        return apply_quote_preset(name, quotes, top_n=top_n)
+        return enrich_recipe_rows(apply_quote_preset(name, quotes, top_n=top_n))
 
     def screen_quote_preset(self, name: str, *, top_n: int = 20) -> list[dict[str, Any]]:
         """基于缓存或 Redis 行情执行 quote 类预设。"""

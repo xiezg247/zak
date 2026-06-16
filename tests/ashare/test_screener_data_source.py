@@ -83,6 +83,27 @@ class DataSourceRoutingTests(unittest.TestCase):
         self.assertEqual(rows[0]["total_mv"], 500_000.0)
         self.assertNotIn("volume", rows[0])
 
+    def test_daily_basic_to_quote_rows_includes_valuation(self) -> None:
+        rows = daily_basic_to_quote_rows(
+            [
+                {
+                    "ts_code": "600519.SH",
+                    "symbol": "600519",
+                    "name": "贵州茅台",
+                    "vt_symbol": "600519.SSE",
+                    "close": 1688.0,
+                    "turnover_rate": 0.5,
+                    "volume_ratio": 1.2,
+                    "pe_ttm": 25.5,
+                    "pb": 8.2,
+                    "total_mv": 500_000.0,
+                }
+            ],
+            trade_date="20260608",
+        )
+        self.assertEqual(rows[0]["pe_ttm"], 25.5)
+        self.assertEqual(rows[0]["pb"], 8.2)
+
     def test_daily_basic_to_quote_rows_preserves_market_cap(self) -> None:
         rows = daily_basic_to_quote_rows(
             [

@@ -78,6 +78,8 @@ class ScreenerResultsTableTests(unittest.TestCase):
         self.assertEqual(_format_cell_text("change_pct", 1.2), "+1.20%")
         self.assertEqual(_format_cell_text("turnover_rate", 3.5), "3.50%")
         self.assertEqual(_format_cell_text("name", ""), "—")
+        self.assertEqual(_format_cell_text("flow_kind", "main"), "主力")
+        self.assertEqual(_format_cell_text("flow_kind", "active"), "活跃")
 
 
 if __name__ == "__main__":

@@ -52,6 +52,10 @@ class ScreeningServiceTests(unittest.TestCase):
                 "vnpy_ashare.services.screening_service.apply_quote_preset",
                 return_value=[{"symbol": "600519"}],
             ) as mock_apply,
+            patch(
+                "vnpy_ashare.services.screening_service.enrich_recipe_rows",
+                side_effect=lambda enriched: enriched,
+            ),
         ):
             result = self.service.screen_quote_preset("涨幅榜", top_n=3)
         mock_apply.assert_called_once_with("涨幅榜", rows, top_n=3)

@@ -25,6 +25,8 @@ class ScreenerPageWidgetTests(unittest.TestCase):
         self.assertTrue(panel.exclude_new_listing_check.isEnabled())
         self.assertTrue(panel.exclude_st_check.isEnabled())
         self.assertGreater(page.pattern_combo.count(), 0)
+        self.assertIsNotNone(page.hard_filter_panel.allowed_industries_combo)
+        self.assertIn("沪深主板", page.hard_filter_panel._market_board_checks)
         self.assertIsNotNone(page.reference_peer_btn)
 
 

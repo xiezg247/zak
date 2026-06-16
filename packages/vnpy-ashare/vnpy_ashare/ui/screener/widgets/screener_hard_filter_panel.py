@@ -5,12 +5,17 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.screener.hard_filter_prefs import (
+    MARKET_BOARD_FILTER_OPTIONS,
     PRESET_AGGRESSIVE,
     PRESET_BALANCED,
     PRESET_CONSERVATIVE,
     HardFilterPrefs,
     apply_hard_filter_preset,
     load_hard_filter_prefs,
+    normalize_allowed_industries_text,
+    normalize_allowed_market_boards_text,
+    parse_allowed_industries,
+    parse_allowed_market_boards,
     save_hard_filter_prefs,
 )
 
@@ -23,6 +28,8 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__("硬过滤", parent)
         self.setObjectName("ScreenerFormBox")
+        self._industry_names: list[str] = []
+        self._market_board_checks: dict[str, QtWidgets.QCheckBox] = {}
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(6)
@@ -81,14 +88,66 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self.min_mv_spin.valueChanged.connect(self._on_changed)
         form.addRow("最低总市值", self.min_mv_spin)
 
+        board_row = QtWidgets.QWidget()
+        board_layout = QtWidgets.QHBoxLayout(board_row)
+        board_layout.setContentsMargins(0, 0, 0, 0)
+        board_layout.setSpacing(8)
+        for label in MARKET_BOARD_FILTER_OPTIONS:
+            check = QtWidgets.QCheckBox(label)
+            check.toggled.connect(self._on_changed)
+            self._market_board_checks[label] = check
+            board_layout.addWidget(check)
+        board_layout.addStretch()
+        form.addRow("市场板块", board_row)
+
+        self.allowed_industries_combo = QtWidgets.QComboBox()
+        self.allowed_industries_combo.setObjectName("ToolbarCombo")
+        self.allowed_industries_combo.setEditable(True)
+        self.allowed_industries_combo.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+        line_edit = self.allowed_industries_combo.lineEdit()
+        if line_edit is not None:
+            line_edit.setPlaceholderText("输入关键词搜索；选中后追加，可多选逗号分隔")
+            line_edit.setClearButtonEnabled(True)
+            line_edit.editingFinished.connect(self._on_industry_text_edited)
+        self.allowed_industries_combo.activated.connect(self._on_industry_selected)
+        form.addRow("限定行业", self.allowed_industries_combo)
+
         layout.addLayout(form)
 
-        hint = QtWidgets.QLabel("0 表示不限制；环境变量 RECIPE_* 仍可覆盖上述设置。")
+        hint = QtWidgets.QLabel("未勾选市场板块表示不限；0 表示不限制；环境变量 RECIPE_* 仍可覆盖上述设置。")
         hint.setObjectName("ScreenerHint")
         hint.setWordWrap(True)
         layout.addWidget(hint)
 
+        self._load_industry_combo_items()
         self.reload()
+
+    @property
+    def allowed_industries_edit(self) -> QtWidgets.QLineEdit | None:
+        """兼容旧测试/调用方。"""
+        return self.allowed_industries_combo.lineEdit()
+
+    def _load_industry_combo_items(self) -> None:
+        try:
+            from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
+
+            self._industry_names = sorted({name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()})
+        except Exception:
+            self._industry_names = []
+
+        self.allowed_industries_combo.blockSignals(True)
+        self.allowed_industries_combo.clear()
+        for name in self._industry_names:
+            self.allowed_industries_combo.addItem(name)
+        self.allowed_industries_combo.blockSignals(False)
+
+        if not self._industry_names:
+            return
+        completer = QtWidgets.QCompleter(self._industry_names, self.allowed_industries_combo)
+        completer.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(QtCore.Qt.MatchFlag.MatchContains)
+        completer.setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
+        self.allowed_industries_combo.setCompleter(completer)
 
     def reload(self) -> None:
         prefs = load_hard_filter_prefs()
@@ -103,6 +162,10 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         )
         for widget in widgets:
             widget.blockSignals(True)
+        for check in self._market_board_checks.values():
+            check.blockSignals(True)
+        self.allowed_industries_combo.blockSignals(True)
+
         self.exclude_st_check.setChecked(prefs.exclude_st)
         self.exclude_suspended_check.setChecked(prefs.exclude_suspended)
         self.exclude_new_listing_check.setChecked(prefs.exclude_new_listing)
@@ -110,10 +173,27 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self.min_listing_days_spin.setValue(prefs.min_listing_days)
         self.min_amount_spin.setValue(prefs.min_amount_wan)
         self.min_mv_spin.setValue(prefs.min_total_mv_yi)
+
+        selected_boards = parse_allowed_market_boards(prefs.allowed_market_boards)
+        for label, check in self._market_board_checks.items():
+            check.setChecked(label in selected_boards)
+
+        line_edit = self.allowed_industries_combo.lineEdit()
+        if line_edit is not None:
+            line_edit.setText(prefs.allowed_industries)
+
         for widget in widgets:
             widget.blockSignals(False)
+        for check in self._market_board_checks.values():
+            check.blockSignals(False)
+        self.allowed_industries_combo.blockSignals(False)
 
     def current_prefs(self) -> HardFilterPrefs:
+        selected_boards = [label for label, check in self._market_board_checks.items() if check.isChecked()]
+        industries_text = ""
+        line_edit = self.allowed_industries_combo.lineEdit()
+        if line_edit is not None:
+            industries_text = line_edit.text()
         return HardFilterPrefs(
             exclude_st=self.exclude_st_check.isChecked(),
             exclude_suspended=self.exclude_suspended_check.isChecked(),
@@ -122,12 +202,56 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
             exclude_new_listing=self.exclude_new_listing_check.isChecked(),
             min_listing_days=int(self.min_listing_days_spin.value()),
             exclude_limit_board=self.exclude_limit_board_check.isChecked(),
+            allowed_industries=normalize_allowed_industries_text(industries_text),
+            allowed_market_boards=normalize_allowed_market_boards_text(",".join(selected_boards)),
         )
 
     def _apply_preset(self, preset_id: str) -> None:
+        current_industries = self.current_prefs().allowed_industries
+        current_boards = self.current_prefs().allowed_market_boards
         apply_hard_filter_preset(preset_id)
         self.reload()
+        if current_industries or current_boards:
+            prefs = self.current_prefs()
+            save_hard_filter_prefs(
+                HardFilterPrefs(
+                    exclude_st=prefs.exclude_st,
+                    exclude_suspended=prefs.exclude_suspended,
+                    min_amount_wan=prefs.min_amount_wan,
+                    min_total_mv_yi=prefs.min_total_mv_yi,
+                    exclude_new_listing=prefs.exclude_new_listing,
+                    min_listing_days=prefs.min_listing_days,
+                    exclude_limit_board=prefs.exclude_limit_board,
+                    allowed_industries=current_industries,
+                    allowed_market_boards=current_boards,
+                )
+            )
+            self.reload()
         self.prefs_changed.emit()
+
+    def _on_industry_selected(self, index: int) -> None:
+        if index < 0:
+            return
+        picked = self.allowed_industries_combo.itemText(index).strip()
+        if not picked:
+            return
+        line_edit = self.allowed_industries_combo.lineEdit()
+        if line_edit is None:
+            return
+        current = parse_allowed_industries(line_edit.text())
+        merged = normalize_allowed_industries_text(",".join(sorted(current | {picked})))
+        line_edit.setText(merged)
+        self.allowed_industries_combo.setCurrentIndex(-1)
+        self._on_changed()
+
+    def _on_industry_text_edited(self) -> None:
+        line_edit = self.allowed_industries_combo.lineEdit()
+        if line_edit is None:
+            return
+        normalized = normalize_allowed_industries_text(line_edit.text())
+        if line_edit.text() != normalized:
+            line_edit.setText(normalized)
+        self._on_changed()
 
     def _on_changed(self, *_args) -> None:
         save_hard_filter_prefs(self.current_prefs())

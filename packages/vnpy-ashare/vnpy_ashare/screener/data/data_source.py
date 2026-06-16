@@ -170,6 +170,8 @@ def daily_basic_to_quote_rows(
                 "turnover_rate": row.get("turnover_rate", 0),
                 # volume_ratio 不是成交量，勿写入 volume（否则硬过滤成交额估算失真）
                 "volume_ratio": row.get("volume_ratio", 0),
+                "pe_ttm": row.get("pe_ttm"),
+                "pb": row.get("pb"),
                 "total_mv": total_mv,
                 "circ_mv": circ_mv,
                 "trade_date": trade_date,
@@ -325,6 +327,12 @@ def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
         if _missing_display_value(item.get("last_price")) and not _missing_display_value(item.get("close")):
             item["last_price"] = item["close"]
+
+        if _missing_display_value(item.get("flow_kind")):
+            from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind, row_has_moneyflow_fields
+
+            if row_has_moneyflow_fields(item):
+                item = enrich_moneyflow_row_with_kind(item)
 
         enriched.append(item)
     return enriched

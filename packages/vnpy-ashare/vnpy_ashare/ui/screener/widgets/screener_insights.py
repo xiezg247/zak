@@ -12,9 +12,16 @@ from vnpy_ashare.screener.data.screening_status import (
     build_run_insight_detail,
     build_screening_data_status,
 )
+from vnpy_ashare.ui.screener.widgets.screener_config_section import (
+    load_config_section_expanded,
+    save_config_section_expanded,
+)
 from vnpy_ashare.ui.screener.widgets.sector_distribution_panel import SectorDistributionPanel
 from vnpy_ashare.ui.screener.workers.screener_workers import QuoteRefreshWorker
 from vnpy_common.ui.qt_helpers import release_thread
+from vnpy_common.ui.theme import theme_manager
+
+_RESULT_INSIGHTS_SECTION_ID = "result_insights"
 
 
 class ScreeningDataStatusBar(QtWidgets.QWidget):
@@ -51,34 +58,113 @@ class ScreeningDataStatusBar(QtWidgets.QWidget):
 
 
 class ScreenerResultInsights(QtWidgets.QWidget):
-    """结果区上方：行业分布 + 较上次 diff 摘要。"""
+    """结果区上方：可折叠的行业分布 + 较上次 diff 摘要。"""
+
+    expansion_changed = QtCore.Signal(bool)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("ScreenerResultInsights")
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 6)
-        layout.setSpacing(0)
+        self._expanded = load_config_section_expanded(_RESULT_INSIGHTS_SECTION_ID, True)
+        self._summary_text = ""
+
+        root = QtWidgets.QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 6)
+        root.setSpacing(4)
+
+        header = QtWidgets.QHBoxLayout()
+        header.setSpacing(6)
+        self._collapse_button = QtWidgets.QToolButton(self)
+        self._collapse_button.setObjectName("ScreenerConfigSectionToggle")
+        self._collapse_button.setCheckable(True)
+        self._collapse_button.clicked.connect(self._on_collapse_toggled)
+        header.addWidget(self._collapse_button)
+
+        title = QtWidgets.QLabel("结果洞察")
+        title.setObjectName("ScreenerSectionLabel")
+        header.addWidget(title)
+
+        self._inline_summary = QtWidgets.QLabel("")
+        self._inline_summary.setObjectName("ScreenerHint")
+        self._inline_summary.setWordWrap(False)
+        header.addWidget(self._inline_summary, stretch=1)
+        root.addLayout(header)
+
+        self._content_host = QtWidgets.QWidget(self)
+        self._content_host.setObjectName("ScreenerResultInsightsContent")
+        content_layout = QtWidgets.QVBoxLayout(self._content_host)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
 
         self._label = QtWidgets.QLabel()
         self._label.setObjectName("ResultSummary")
         self._label.setWordWrap(True)
-        layout.addWidget(self._label)
+        content_layout.addWidget(self._label)
 
-        self._sector_panel = SectorDistributionPanel(self)
-        layout.addWidget(self._sector_panel)
+        self._sector_panel = SectorDistributionPanel(self._content_host)
+        content_layout.addWidget(self._sector_panel)
+        root.addWidget(self._content_host)
+
+        theme_manager().bind_stylesheet(self)
+        self.set_expanded(self._expanded, emit=False, persist=False)
         self.hide()
+
+    def is_expanded(self) -> bool:
+        return self._expanded
+
+    def set_expanded(self, expanded: bool, *, emit: bool = True, persist: bool = True) -> None:
+        changed = self._expanded != expanded
+        self._expanded = expanded
+        self._sync_collapse_button()
+        self._content_host.setVisible(expanded)
+        self._update_inline_summary()
+        if persist and changed:
+            save_config_section_expanded(_RESULT_INSIGHTS_SECTION_ID, expanded)
+        if emit and changed:
+            self.expansion_changed.emit(expanded)
 
     def apply(self, rows: list[dict[str, Any]], config: dict[str, Any] | None = None) -> None:
         text = build_run_insight_detail(rows, config)
+        self._summary_text = text
         self._label.setText(text)
         self._sector_panel.apply_rows(rows)
-        self.setVisible(bool(text) or self._sector_panel.isVisible())
+        has_content = bool(text) or self._sector_panel.isVisible()
+        self.setVisible(has_content)
+        if has_content:
+            self._update_inline_summary()
 
     def clear(self) -> None:
+        self._summary_text = ""
         self._label.clear()
         self._sector_panel.clear()
+        self._inline_summary.clear()
         self.hide()
+
+    def _update_inline_summary(self) -> None:
+        if self._expanded or not self.isVisible():
+            self._inline_summary.hide()
+            return
+        if self._summary_text:
+            line = self._summary_text.replace("\n", " · ")
+            if len(line) > 96:
+                line = f"{line[:93]}…"
+            self._inline_summary.setText(line)
+            self._inline_summary.show()
+            return
+        if self._sector_panel.isVisible():
+            self._inline_summary.setText("行业分布")
+            self._inline_summary.show()
+            return
+        self._inline_summary.hide()
+
+    def _sync_collapse_button(self) -> None:
+        self._collapse_button.blockSignals(True)
+        self._collapse_button.setChecked(self._expanded)
+        self._collapse_button.setArrowType(QtCore.Qt.ArrowType.DownArrow if self._expanded else QtCore.Qt.ArrowType.RightArrow)
+        self._collapse_button.blockSignals(False)
+
+    def _on_collapse_toggled(self, expanded: bool) -> None:
+        self.set_expanded(expanded)
 
 
 class ScreeningPageStatusController(QtCore.QObject):

@@ -16,6 +16,7 @@ from vnpy.trader.object import BarData
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.pattern.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
@@ -122,12 +123,14 @@ def run_pattern_screen(
     if pattern_id == "theme_hot":
         if not quote_rows:
             raise RuntimeError("主题投资需全市场行情。请运行「工具 → 立即执行 → 行情采集」或打开市场页。")
-        rows = apply_quote_preset(
-            SCREENER_CUSTOM,
-            quote_rows,
-            top_n=top_n,
-            min_change_pct=2.0,
-            min_turnover=3.0,
+        rows = enrich_recipe_rows(
+            apply_quote_preset(
+                SCREENER_CUSTOM,
+                quote_rows,
+                top_n=top_n,
+                min_change_pct=2.0,
+                min_turnover=3.0,
+            )
         )
         for row in rows:
             row["pattern_score"] = round(

@@ -11,6 +11,7 @@ from vnpy_ashare.screener.hard_filter_prefs import (
     save_hard_filter_prefs,
 )
 from vnpy_ashare.screener.hard_filters import (
+    recipe_allowed_industries,
     recipe_exclude_st_enabled,
     recipe_min_amount_yuan,
     recipe_min_total_mv_wan,
@@ -30,6 +31,8 @@ class HardFilterPrefsTests(unittest.TestCase):
             exclude_new_listing=False,
             min_listing_days=60,
             exclude_limit_board=False,
+            allowed_industries="",
+            allowed_market_boards="",
         )
         save_hard_filter_prefs(prefs)
         loaded = load_hard_filter_prefs()
@@ -48,11 +51,35 @@ class HardFilterPrefsTests(unittest.TestCase):
                 exclude_new_listing=False,
                 min_listing_days=60,
                 exclude_limit_board=False,
+                allowed_industries="",
+                allowed_market_boards="",
             )
         )
         self.assertEqual(recipe_min_amount_yuan(), 20_000_000.0)
         self.assertEqual(recipe_min_total_mv_wan(), 300_000.0)
         self.assertTrue(recipe_exclude_st_enabled())
+
+    def test_allowed_industries_roundtrip(self) -> None:
+        save_hard_filter_prefs(
+            HardFilterPrefs(
+                exclude_st=True,
+                exclude_suspended=True,
+                min_amount_wan=0.0,
+                min_total_mv_yi=0.0,
+                exclude_new_listing=False,
+                min_listing_days=60,
+                exclude_limit_board=False,
+                allowed_industries="银行,白酒",
+                allowed_market_boards="沪深主板",
+            )
+        )
+        loaded = load_hard_filter_prefs()
+        self.assertEqual(loaded.allowed_industries, "银行,白酒")
+        self.assertEqual(loaded.allowed_market_boards, "沪深主板")
+        self.assertEqual(recipe_allowed_industries(), frozenset({"银行", "白酒"}))
+        from vnpy_ashare.screener.hard_filters import recipe_allowed_market_boards
+
+        self.assertEqual(recipe_allowed_market_boards(), frozenset({"沪深主板"}))
 
 
 if __name__ == "__main__":

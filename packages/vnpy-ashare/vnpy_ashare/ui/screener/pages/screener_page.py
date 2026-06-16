@@ -31,11 +31,16 @@ from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.screener import show_reference_peer_dialog
+from vnpy_ashare.ui.screener.widgets.screener_config_section import ScreenerConfigSection
 from vnpy_ashare.ui.screener.widgets.screener_hard_filter_panel import ScreenerHardFilterPanel
 from vnpy_ashare.ui.screener.widgets.screener_insights import (
     ScreenerResultInsights,
     ScreeningDataStatusBar,
     ScreeningPageStatusController,
+)
+from vnpy_ashare.ui.screener.widgets.screener_layout import (
+    apply_screener_main_splitter,
+    configure_screener_config_column,
 )
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     apply_screener_results_view,
@@ -47,6 +52,7 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 )
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
+from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
 from vnpy_ashare.ui.screener.workers import (
     IndustryScreenRunWorker,
     PatternScreenRunWorker,
@@ -137,104 +143,83 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             header.addStretch()
             root.addLayout(header)
 
-        # ── 工具栏 ──────────────────────────────────────────
-        toolbar = QtWidgets.QHBoxLayout()
-        toolbar.setContentsMargins(0, 0, 0, 8)
-        toolbar.setSpacing(8)
+        self.data_status_bar = ScreeningDataStatusBar(main_panel)
+        root.addWidget(self.data_status_bar)
 
-        # 主操作
+        primary_toolbar = QtWidgets.QHBoxLayout()
+        primary_toolbar.setContentsMargins(0, 8, 0, 8)
+        primary_toolbar.setSpacing(8)
+
         self.run_btn = QtWidgets.QPushButton("▶  运行条件选股")
         self.run_btn.setObjectName("PrimaryRunButton")
         self.run_btn.clicked.connect(self._run_screening)
-        toolbar.addWidget(self.run_btn)
-        toolbar.addWidget(self._toolbar_separator())
+        primary_toolbar.addWidget(self.run_btn)
+        primary_toolbar.addWidget(screener_toolbar_separator())
 
-        # 方案管理
         self.save_scheme_btn = QtWidgets.QPushButton("保存方案")
         self.save_scheme_btn.setObjectName("SecondaryButton")
         self.save_scheme_btn.clicked.connect(self._save_scheme)
-        toolbar.addWidget(self.save_scheme_btn)
+        primary_toolbar.addWidget(self.save_scheme_btn)
 
         self.delete_scheme_btn = QtWidgets.QPushButton("删除方案")
         self.delete_scheme_btn.setObjectName("SecondaryButton")
         self.delete_scheme_btn.clicked.connect(self._delete_scheme)
-        toolbar.addWidget(self.delete_scheme_btn)
-        toolbar.addWidget(self._toolbar_separator())
+        primary_toolbar.addWidget(self.delete_scheme_btn)
+        primary_toolbar.addWidget(screener_toolbar_separator())
 
-        # 选取操作
-        self.select_all_btn = QtWidgets.QPushButton("全 选")
-        self.select_all_btn.setObjectName("SecondaryButton")
-        self.select_all_btn.clicked.connect(self._select_all)
-        toolbar.addWidget(self.select_all_btn)
-
-        self.add_watchlist_btn = QtWidgets.QPushButton("加入自选")
-        self.add_watchlist_btn.setObjectName("SecondaryButton")
-        self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
-        toolbar.addWidget(self.add_watchlist_btn)
-
-        self.download_btn = QtWidgets.QPushButton("下载日K")
-        self.download_btn.setObjectName("SecondaryButton")
-        self.download_btn.clicked.connect(self._download_selected_bars)
-        toolbar.addWidget(self.download_btn)
-        toolbar.addWidget(self._toolbar_separator())
-
-        # 回测分析
-        self.backtest_btn = QtWidgets.QPushButton("策略回测")
-        self.backtest_btn.setObjectName("SecondaryButton")
-        self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
-        toolbar.addWidget(self.backtest_btn)
-
-        self.batch_backtest_btn = QtWidgets.QPushButton("批量回测")
-        self.batch_backtest_btn.setObjectName("SecondaryButton")
-        self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
-        toolbar.addWidget(self.batch_backtest_btn)
-        toolbar.addWidget(self._toolbar_separator())
-
-        self.reference_peer_btn = QtWidgets.QPushButton("找同类")
-        self.reference_peer_btn.setObjectName("SecondaryButton")
-        self.reference_peer_btn.setToolTip("以勾选的单只标的为标杆，筛选相似股票")
-        self.reference_peer_btn.clicked.connect(self._open_reference_peer)
-        toolbar.addWidget(self.reference_peer_btn)
-        toolbar.addSpacing(16)
-
-        # 导出
-        self.export_btn = QtWidgets.QPushButton("CSV")
+        self.export_btn = QtWidgets.QPushButton("导出 CSV")
         self.export_btn.setObjectName("SecondaryButton")
+        self.export_btn.setEnabled(False)
         self.export_btn.clicked.connect(self._export_csv)
-        toolbar.addWidget(self.export_btn)
+        primary_toolbar.addWidget(self.export_btn)
 
-        toolbar.addStretch()
-        root.addLayout(toolbar)
+        primary_toolbar.addStretch()
+        root.addLayout(primary_toolbar)
 
-        self.data_status_bar = ScreeningDataStatusBar(main_panel)
-        root.addWidget(self.data_status_bar)
+        self.result_action_bar = ScreenerResultActionBar(main_panel)
+        self.select_all_btn = self.result_action_bar.select_all_btn
+        self.add_watchlist_btn = self.result_action_bar.add_watchlist_btn
+        self.download_btn = self.result_action_bar.download_btn
+        self.backtest_btn = self.result_action_bar.backtest_btn
+        self.batch_backtest_btn = self.result_action_bar.batch_backtest_btn
+        self.reference_peer_btn = self.result_action_bar.reference_peer_btn
+        self.select_all_btn.clicked.connect(self._select_all)
+        self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
+        self.download_btn.clicked.connect(self._download_selected_bars)
+        self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
+        self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
+        self.reference_peer_btn.clicked.connect(self._open_reference_peer)
 
         # ── 内容区域（Splitter） ──────────────────────────
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
         splitter.setHandleWidth(1)
 
-        # 左侧：方案配置 + 运行输出（上下各半）
+        # 左侧：方案配置
         left_column = QtWidgets.QWidget()
+        configure_screener_config_column(left_column)
         left_column_layout = QtWidgets.QVBoxLayout(left_column)
         left_column_layout.setContentsMargins(0, 0, 10, 0)
         left_column_layout.setSpacing(0)
-
-        left_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
-        left_splitter.setChildrenCollapsible(False)
-        left_splitter.setHandleWidth(1)
 
         form_panel = QtWidgets.QWidget()
         form_panel.setObjectName("ScreenerFormPanel")
         form_layout = QtWidgets.QVBoxLayout(form_panel)
         form_layout.setContentsMargins(0, 0, 0, 0)
-        form_layout.setSpacing(6)
+        form_layout.setSpacing(4)
 
-        form_layout.addWidget(self._section_label("方案选择"))
+        basic_section = ScreenerConfigSection(
+            "基础条件",
+            section_id="condition_basic",
+            expanded=True,
+            parent=form_panel,
+        )
+        basic_layout = basic_section.content_layout()
+
         self.preset_combo = QtWidgets.QComboBox()
         self.preset_combo.setObjectName("ToolbarCombo")
         self.preset_combo.currentIndexChanged.connect(self._on_preset_changed)
-        form_layout.addWidget(self.preset_combo)
+        basic_layout.addWidget(self.preset_combo)
 
         self.top_n_spin = QtWidgets.QSpinBox()
         self.top_n_spin.setRange(1, 200)
@@ -243,9 +228,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         top_row.addWidget(QtWidgets.QLabel("Top N"))
         top_row.addWidget(self.top_n_spin)
         top_row.addStretch()
-        form_layout.addLayout(top_row)
-
-        form_layout.addSpacing(8)
+        basic_layout.addLayout(top_row)
 
         self.custom_box = QtWidgets.QGroupBox("自定义行情条件")
         self.custom_box.setObjectName("ScreenerFormBox")
@@ -257,30 +240,38 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         custom_layout.addRow("最低涨幅", self.min_change_spin)
         custom_layout.addRow("最高涨幅", self.max_change_spin)
         custom_layout.addRow("最低换手", self.min_turnover_spin)
-        form_layout.addWidget(self.custom_box)
+        basic_layout.addWidget(self.custom_box)
 
-        form_layout.addSpacing(8)
-        form_layout.addWidget(self._section_label("形态选股"))
+        self.hint_label = QtWidgets.QLabel()
+        self.hint_label.setObjectName("ScreenerHint")
+        self.hint_label.setWordWrap(True)
+        basic_layout.addWidget(self.hint_label)
+        form_layout.addWidget(basic_section)
+
+        quick_section = ScreenerConfigSection(
+            "快捷选股",
+            section_id="condition_quick",
+            expanded=False,
+            parent=form_panel,
+        )
+        quick_layout = quick_section.content_layout()
+
         self.pattern_combo = QtWidgets.QComboBox()
         self.pattern_combo.setObjectName("ToolbarCombo")
         for pattern_name in list_pattern_screeners():
             self.pattern_combo.addItem(pattern_name)
-        form_layout.addWidget(self.pattern_combo)
+        quick_layout.addWidget(self.pattern_combo)
         self.pattern_run_btn = QtWidgets.QPushButton("运行形态选股")
         self.pattern_run_btn.setObjectName("SecondaryButton")
         self.pattern_run_btn.clicked.connect(self._run_pattern_screen)
-        form_layout.addWidget(self.pattern_run_btn)
+        quick_layout.addWidget(self.pattern_run_btn)
 
-        form_layout.addSpacing(8)
-        form_layout.addWidget(self._section_label("雷达联动"))
         self.radar_resonance_btn = QtWidgets.QPushButton("运行雷达共振")
         self.radar_resonance_btn.setObjectName("SecondaryButton")
         self.radar_resonance_btn.setToolTip("使用雷达页最新共振列表选股（需先在雷达页刷新卡片）")
         self.radar_resonance_btn.clicked.connect(self._run_radar_resonance)
-        form_layout.addWidget(self.radar_resonance_btn)
+        quick_layout.addWidget(self.radar_resonance_btn)
 
-        form_layout.addSpacing(8)
-        form_layout.addWidget(self._section_label("行业成分"))
         industry_row = QtWidgets.QHBoxLayout()
         self.industry_edit = QtWidgets.QLineEdit()
         self.industry_edit.setObjectName("ToolbarInput")
@@ -290,26 +281,28 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.industry_run_btn.setObjectName("SecondaryButton")
         self.industry_run_btn.clicked.connect(self._run_industry_from_form)
         industry_row.addWidget(self.industry_run_btn)
-        form_layout.addLayout(industry_row)
+        quick_layout.addLayout(industry_row)
+        form_layout.addWidget(quick_section)
 
-        form_layout.addSpacing(8)
+        filter_section = ScreenerConfigSection(
+            "硬过滤",
+            section_id="condition_hard_filter",
+            expanded=True,
+            parent=form_panel,
+        )
         self.hard_filter_panel = ScreenerHardFilterPanel(form_panel)
-        form_layout.addWidget(self.hard_filter_panel)
-
-        self.hint_label = QtWidgets.QLabel()
-        self.hint_label.setObjectName("ScreenerHint")
-        self.hint_label.setWordWrap(True)
-        form_layout.addWidget(self.hint_label)
+        self.hard_filter_panel.setTitle("")
+        filter_section.set_content(self.hard_filter_panel)
+        form_layout.addWidget(filter_section)
         form_layout.addStretch()
-        left_splitter.addWidget(form_panel)
 
-        self.run_output_panel = ScreenerRunOutputPanel(parent=left_column)
-        left_splitter.addWidget(self.run_output_panel)
-        left_splitter.setStretchFactor(0, 1)
-        left_splitter.setStretchFactor(1, 1)
-        left_splitter.setSizes([240, 240])
-
-        left_column_layout.addWidget(left_splitter)
+        form_scroll = QtWidgets.QScrollArea()
+        form_scroll.setObjectName("ScreenerFormScroll")
+        form_scroll.setWidgetResizable(True)
+        form_scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        form_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        form_scroll.setWidget(form_panel)
+        left_column_layout.addWidget(form_scroll)
         splitter.addWidget(left_column)
 
         # 右侧：结果表格
@@ -317,6 +310,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         result_layout = QtWidgets.QVBoxLayout(result_panel)
         result_layout.setContentsMargins(4, 0, 0, 0)
         result_layout.setSpacing(0)
+
+        result_layout.addWidget(self.result_action_bar)
 
         result_body = QtWidgets.QWidget()
         result_body_layout = QtWidgets.QVBoxLayout(result_body)
@@ -353,10 +348,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         result_layout.addWidget(result_body, stretch=1)
         splitter.addWidget(result_panel)
 
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([260, 740])
+        apply_screener_main_splitter(splitter)
         root.addWidget(splitter, stretch=1)
+
+        self.run_output_panel = ScreenerRunOutputPanel(parent=main_panel)
+        root.addWidget(self.run_output_panel)
 
         self._toast = PageToastHost(main_panel)
         root.addWidget(self._toast)
@@ -392,19 +388,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
     def _append_action_log(self, message: str) -> None:
         if message:
             self.run_output_panel.append_log(message)
-
-    def _toolbar_separator(self) -> QtWidgets.QFrame:
-        sep = QtWidgets.QFrame()
-        sep.setObjectName("ToolbarSeparator")
-        sep.setFrameShape(QtWidgets.QFrame.Shape.VLine)
-        sep.setFixedWidth(1)
-        sep.setFixedHeight(22)
-        return sep
-
-    def _section_label(self, text: str) -> QtWidgets.QLabel:
-        lbl = QtWidgets.QLabel(text)
-        lbl.setObjectName("ScreenerSectionLabel")
-        return lbl
 
     def _optional_spin(self, _label: str, *, maximum: float = 20) -> QtWidgets.QDoubleSpinBox:
         spin = QtWidgets.QDoubleSpinBox()
@@ -832,6 +815,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self._result_columns,
             empty_label=self._empty_result_label,
             select_all_btn=self.select_all_btn,
+            result_action_bar=self.result_action_bar,
+            export_btn=self.export_btn,
         )
         if service is not None:
             if trigger == "manual":
@@ -916,6 +901,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self._result_columns,
             empty_label=self._empty_result_label,
             select_all_btn=self.select_all_btn,
+            result_action_bar=self.result_action_bar,
+            export_btn=self.export_btn,
         )
         self._store_screening_results(
             condition=record.condition,
@@ -938,6 +925,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self._result_columns,
             empty_label=self._empty_result_label,
             select_all_btn=self.select_all_btn,
+            result_action_bar=self.result_action_bar,
+            export_btn=self.export_btn,
         )
         self._store_screening_results(condition="", rows=[])
         self.result_insights.clear()

@@ -31,11 +31,17 @@ from vnpy_ashare.screener.run.runner import ScreenerRunResult
 from vnpy_ashare.services.screening_service import ScreeningService
 from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.screener import show_reference_peer_dialog
+from vnpy_ashare.ui.screener.widgets.screener_config_section import ScreenerConfigSection
 from vnpy_ashare.ui.screener.widgets.screener_hard_filter_panel import ScreenerHardFilterPanel
 from vnpy_ashare.ui.screener.widgets.screener_insights import (
     ScreenerResultInsights,
     ScreeningDataStatusBar,
     ScreeningPageStatusController,
+)
+from vnpy_ashare.ui.screener.widgets.screener_layout import (
+    SCREENER_CONFIG_DEFAULT_WIDTH,
+    apply_screener_main_splitter,
+    configure_screener_config_column,
 )
 from vnpy_ashare.ui.screener.widgets.screener_recipe_panel import ScreenerRecipePanel
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
@@ -48,6 +54,7 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 )
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
+from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
 from vnpy_ashare.ui.screener.workers import (
     RadarResonanceRunWorker,
     ScreenerBatchDownloadWorker,
@@ -138,100 +145,100 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.data_status_bar = ScreeningDataStatusBar(main_panel)
         root.addWidget(self.data_status_bar)
 
-        toolbar = QtWidgets.QHBoxLayout()
-        toolbar.setContentsMargins(0, 8, 0, 8)
-        toolbar.setSpacing(8)
-
-        self.select_all_btn = QtWidgets.QPushButton("全 选")
-        self.select_all_btn.setObjectName("SecondaryButton")
-        self.select_all_btn.clicked.connect(self._select_all)
-        toolbar.addWidget(self.select_all_btn)
-
-        self.add_watchlist_btn = QtWidgets.QPushButton("加入自选")
-        self.add_watchlist_btn.setObjectName("SecondaryButton")
-        self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
-        toolbar.addWidget(self.add_watchlist_btn)
-
-        self.download_btn = QtWidgets.QPushButton("下载日K")
-        self.download_btn.setObjectName("SecondaryButton")
-        self.download_btn.clicked.connect(self._download_selected_bars)
-        toolbar.addWidget(self.download_btn)
-
-        self.backtest_btn = QtWidgets.QPushButton("策略回测")
-        self.backtest_btn.setObjectName("SecondaryButton")
-        self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
-        toolbar.addWidget(self.backtest_btn)
-
-        self.batch_backtest_btn = QtWidgets.QPushButton("批量回测")
-        self.batch_backtest_btn.setObjectName("SecondaryButton")
-        self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
-        toolbar.addWidget(self.batch_backtest_btn)
-
-        self.export_btn = QtWidgets.QPushButton("CSV")
-        self.export_btn.setObjectName("SecondaryButton")
-        self.export_btn.clicked.connect(self._export_csv)
-        toolbar.addWidget(self.export_btn)
-
-        self.reference_peer_btn = QtWidgets.QPushButton("找同类")
-        self.reference_peer_btn.setObjectName("SecondaryButton")
-        self.reference_peer_btn.setToolTip("以勾选的单只标的为标杆，筛选相似股票")
-        self.reference_peer_btn.clicked.connect(self._open_reference_peer)
-        toolbar.addWidget(self.reference_peer_btn)
+        primary_toolbar = QtWidgets.QHBoxLayout()
+        primary_toolbar.setContentsMargins(0, 8, 0, 8)
+        primary_toolbar.setSpacing(8)
 
         self.radar_resonance_btn = QtWidgets.QPushButton("雷达共振")
         self.radar_resonance_btn.setObjectName("SecondaryButton")
         self.radar_resonance_btn.setToolTip("使用雷达页最新共振列表选股")
         self.radar_resonance_btn.clicked.connect(self._run_radar_resonance)
-        toolbar.addWidget(self.radar_resonance_btn)
-        toolbar.addStretch()
-        root.addLayout(toolbar)
+        primary_toolbar.addWidget(self.radar_resonance_btn)
+        primary_toolbar.addWidget(screener_toolbar_separator())
+
+        self.export_btn = QtWidgets.QPushButton("导出 CSV")
+        self.export_btn.setObjectName("SecondaryButton")
+        self.export_btn.setEnabled(False)
+        self.export_btn.clicked.connect(self._export_csv)
+        primary_toolbar.addWidget(self.export_btn)
+        primary_toolbar.addStretch()
+        root.addLayout(primary_toolbar)
+
+        self.result_action_bar = ScreenerResultActionBar(main_panel)
+        self.select_all_btn = self.result_action_bar.select_all_btn
+        self.add_watchlist_btn = self.result_action_bar.add_watchlist_btn
+        self.download_btn = self.result_action_bar.download_btn
+        self.backtest_btn = self.result_action_bar.backtest_btn
+        self.batch_backtest_btn = self.result_action_bar.batch_backtest_btn
+        self.reference_peer_btn = self.result_action_bar.reference_peer_btn
+        self.select_all_btn.clicked.connect(self._select_all)
+        self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
+        self.download_btn.clicked.connect(self._download_selected_bars)
+        self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
+        self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
+        self.reference_peer_btn.clicked.connect(self._open_reference_peer)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
         splitter.setHandleWidth(1)
 
         left_column = QtWidgets.QWidget()
+        configure_screener_config_column(left_column)
         left_column_layout = QtWidgets.QVBoxLayout(left_column)
         left_column_layout.setContentsMargins(0, 0, 10, 0)
         left_column_layout.setSpacing(0)
-
-        left_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
-        left_splitter.setChildrenCollapsible(False)
-        left_splitter.setHandleWidth(1)
 
         form_panel = QtWidgets.QWidget()
         form_panel.setObjectName("ScreenerFormPanel")
         form_layout = QtWidgets.QVBoxLayout(form_panel)
         form_layout.setContentsMargins(0, 0, 0, 0)
-        form_layout.setSpacing(6)
+        form_layout.setSpacing(4)
+
+        recipe_section = ScreenerConfigSection(
+            "配方编辑",
+            section_id="recipe_editor",
+            expanded=True,
+            parent=form_panel,
+        )
+        recipe_layout = recipe_section.content_layout()
 
         hint = QtWidgets.QLabel("在此配置多因子配方；定时任务仅引用配方 ID 与 Cron。盘中/盘后任务完成后，结果会出现在左侧自动结果列表。")
         hint.setObjectName("ScreenerHint")
         hint.setWordWrap(True)
-        form_layout.addWidget(hint)
+        recipe_layout.addWidget(hint)
 
         self.recipe_panel = ScreenerRecipePanel(parent=form_panel)
         self.recipe_panel.run_requested.connect(self._run_recipe)
-        form_layout.addWidget(self.recipe_panel)
+        recipe_layout.addWidget(self.recipe_panel)
+        form_layout.addWidget(recipe_section)
 
+        filter_section = ScreenerConfigSection(
+            "硬过滤",
+            section_id="recipe_hard_filter",
+            expanded=True,
+            parent=form_panel,
+        )
         self.hard_filter_panel = ScreenerHardFilterPanel(form_panel)
-        form_layout.addWidget(self.hard_filter_panel)
+        self.hard_filter_panel.setTitle("")
+        filter_section.set_content(self.hard_filter_panel)
+        form_layout.addWidget(filter_section)
         form_layout.addStretch()
-        left_splitter.addWidget(form_panel)
 
-        self.run_output_panel = ScreenerRunOutputPanel(parent=left_column)
-        left_splitter.addWidget(self.run_output_panel)
-        left_splitter.setStretchFactor(0, 1)
-        left_splitter.setStretchFactor(1, 1)
-        left_splitter.setSizes([280, 280])
-
-        left_column_layout.addWidget(left_splitter)
+        form_scroll = QtWidgets.QScrollArea()
+        form_scroll.setObjectName("ScreenerFormScroll")
+        form_scroll.setWidgetResizable(True)
+        form_scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        form_scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        form_scroll.setWidget(form_panel)
+        left_column_layout.addWidget(form_scroll)
         splitter.addWidget(left_column)
 
         result_panel = QtWidgets.QWidget()
         result_layout = QtWidgets.QVBoxLayout(result_panel)
         result_layout.setContentsMargins(4, 0, 0, 0)
         result_layout.setSpacing(0)
+
+        result_layout.addWidget(self.result_action_bar)
 
         result_body = QtWidgets.QWidget()
         result_body_layout = QtWidgets.QVBoxLayout(result_body)
@@ -268,10 +275,11 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         result_layout.addWidget(result_body, stretch=1)
         splitter.addWidget(result_panel)
 
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([300, 700])
+        apply_screener_main_splitter(splitter, config_width=SCREENER_CONFIG_DEFAULT_WIDTH + 20)
         root.addWidget(splitter, stretch=1)
+
+        self.run_output_panel = ScreenerRunOutputPanel(parent=main_panel)
+        root.addWidget(self.run_output_panel)
 
         self._toast = PageToastHost(main_panel)
         root.addWidget(self._toast)
@@ -522,6 +530,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self._result_columns,
             empty_label=self._empty_result_label,
             select_all_btn=self.select_all_btn,
+            result_action_bar=self.result_action_bar,
+            export_btn=self.export_btn,
         )
         self._store_screening_results(
             condition=result.condition,
@@ -573,6 +583,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self._result_columns,
             empty_label=self._empty_result_label,
             select_all_btn=self.select_all_btn,
+            result_action_bar=self.result_action_bar,
+            export_btn=self.export_btn,
         )
         self._store_screening_results(
             condition=record.condition,
@@ -610,6 +622,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self._result_columns,
             empty_label=self._empty_result_label,
             select_all_btn=self.select_all_btn,
+            result_action_bar=self.result_action_bar,
+            export_btn=self.export_btn,
         )
         self._store_screening_results(condition="", rows=[])
         self.result_insights.clear()

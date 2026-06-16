@@ -26,6 +26,48 @@ def _quote(symbol: str, **kwargs) -> dict:
     return base
 
 
+def test_apply_quote_preserves_fundamental_fields(monkeypatch):
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.preset.rules.apply_screening_filters",
+        lambda rows: rows,
+    )
+    rows = apply_quote_preset(
+        "换手率排行",
+        [
+            _quote(
+                "600498",
+                source="tushare",
+                close=28.5,
+                pe_ttm=22.3,
+                pb=1.8,
+                total_mv=3_500_000,
+                circ_mv=3_200_000,
+                trade_date="20260613",
+                turnover_rate=12.7,
+            )
+        ],
+        top_n=5,
+    )
+    assert rows[0]["close"] == 28.5
+    assert rows[0]["pe_ttm"] == 22.3
+    assert rows[0]["pb"] == 1.8
+    assert rows[0]["total_mv"] == 3_500_000
+    assert rows[0]["trade_date"] == "20260613"
+
+
+def test_apply_quote_maps_close_from_last_price(monkeypatch):
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.preset.rules.apply_screening_filters",
+        lambda rows: rows,
+    )
+    rows = apply_quote_preset(
+        "涨幅榜",
+        [_quote("A", last_price=15.6, change_pct=3.0)],
+        top_n=1,
+    )
+    assert rows[0]["close"] == 15.6
+
+
 def test_apply_quote_change_top():
     rows = apply_quote_preset(
         "涨幅榜",
@@ -83,6 +125,28 @@ def test_apply_large_cap():
     )
     assert len(rows) == 1
     assert rows[0]["symbol"] == "A"
+
+
+def test_apply_moneyflow_in_sets_flow_kind(monkeypatch):
+    monkeypatch.setattr(
+        "vnpy_ashare.screener.preset.rules.apply_screening_filters",
+        lambda rows: rows,
+    )
+    rows = apply_moneyflow_in(
+        [
+            {
+                "symbol": "600498",
+                "name": "烽火通信",
+                "vt_symbol": "600498.SSE",
+                "net_mf_amount": 62362,
+                "buy_elg_amount": 50000,
+                "sell_elg_amount": 10000,
+                "moneyflow_source": "tushare",
+            }
+        ],
+        top_n=5,
+    )
+    assert rows[0]["flow_kind"] == "main"
 
 
 def test_apply_moneyflow_in():

@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from vnpy_ashare.screener.data.data_source import (
+    enrich_recipe_rows,
     fetch_fundamental_screening_rows,
     fetch_limit_list_with_fallback,
     fetch_moneyflow_with_fallback,
@@ -86,6 +87,7 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
             max_change_pct=request.max_change_pct,
             min_turnover=request.min_turnover,
         )
+        rows = enrich_recipe_rows(rows)
         return ScreenerRunResult(
             rows=rows,
             condition=preset.name,

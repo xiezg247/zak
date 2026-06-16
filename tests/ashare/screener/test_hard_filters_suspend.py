@@ -45,6 +45,8 @@ class HardFiltersSuspendTests(unittest.TestCase):
                 exclude_new_listing=False,
                 min_listing_days=60,
                 exclude_limit_board=False,
+                allowed_industries="",
+                allowed_market_boards="",
             )
         )
 
@@ -91,6 +93,8 @@ class HardFiltersSuspendTests(unittest.TestCase):
                 exclude_new_listing=False,
                 min_listing_days=60,
                 exclude_limit_board=False,
+                allowed_industries="",
+                allowed_market_boards="",
             )
         )
         rows = [
