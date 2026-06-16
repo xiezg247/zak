@@ -14,7 +14,7 @@ from vnpy_llm.routing.intent import (
     ScreeningIntent,
 )
 
-AgentName = Literal["market", "research", "screening", "backtest", "data", "general"]
+AgentName = Literal["market", "research", "screening", "backtest", "data", "general", "financial", "risk", "strategy", "chief"]
 
 # 意图类别 → 默认 Specialist（handoff 可再追加 market 等）
 CATEGORY_TO_AGENT: dict[IntentCategory, AgentName] = {
@@ -26,6 +26,7 @@ CATEGORY_TO_AGENT: dict[IntentCategory, AgentName] = {
     "watchlist": "market",
     "data": "data",
     "general": "general",
+    "team_analysis": "chief",
 }
 
 # 各 Agent 可合并的 TOOL_GROUPS 类别（general 无工具）
@@ -36,6 +37,10 @@ AGENT_TOOL_CATEGORIES: dict[AgentName, frozenset[IntentCategory]] = {
     "backtest": frozenset({"backtest"}),
     "data": frozenset({"data"}),
     "general": frozenset(),
+    "financial": frozenset({"team_analysis"}),
+    "risk": frozenset({"team_analysis"}),
+    "strategy": frozenset({"team_analysis"}),
+    "chief": frozenset({"team_analysis"}),
 }
 
 # handoff 串行上限（含首 Agent）
@@ -49,6 +54,10 @@ AGENT_STREAM_LABELS: dict[AgentName, str] = {
     "backtest": "回测解读",
     "data": "数据查询",
     "general": "",
+    "financial": "财务面",
+    "risk": "风险面",
+    "strategy": "策略面",
+    "chief": "综合研判",
 }
 
 
