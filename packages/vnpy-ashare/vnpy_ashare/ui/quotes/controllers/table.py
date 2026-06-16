@@ -26,6 +26,8 @@ from vnpy_ashare.ui.quotes.page.config import (
     MARKET_VISIBLE_COLUMNS,
     MAX_DISPLAY_ROWS,
     STATS_DEBOUNCE_MS,
+    ensure_columns_from_template,
+    ensure_industry_board_columns,
 )
 from vnpy_ashare.ui.quotes.table import QuoteTableModel
 from vnpy_ashare.ui.quotes.table.columns import (
@@ -85,6 +87,8 @@ class TableController:
         for required in ("index", "symbol", "name"):
             if required in all_keys and required not in default_main:
                 default_main.insert(0, required)
+        if page.page_name == "市场":
+            default_main = ensure_industry_board_columns(default_main, available_keys=set(all_keys))
         return default_main
 
     def init_columns(self) -> None:
@@ -170,13 +174,20 @@ class TableController:
                 if required in all_keys and required not in valid_cols:
                     valid_cols.insert(0, required)
             valid_cols.insert(0, "index")
-            if page.page_name == "市场":
-                insert_at = valid_cols.index("name") + 1 if "name" in valid_cols else 1
-                for key in ("industry", "market_board"):
-                    if key in all_keys and key not in valid_cols:
-                        valid_cols.insert(insert_at, key)
-                        insert_at += 1
+            before = list(valid_cols)
+            if page.page_name == "自选":
+                if "market_board" in valid_cols:
+                    valid_cols.remove("market_board")
+                valid_cols = ensure_columns_from_template(
+                    valid_cols,
+                    DEFAULT_WATCHLIST_COLUMNS,
+                    available_keys=all_keys,
+                )
+            elif page.page_name == "市场":
+                valid_cols = ensure_industry_board_columns(valid_cols, available_keys=all_keys)
             self.visible_columns = valid_cols
+            if valid_cols != before:
+                self.save_column_config()
         if len(parts) > 1 and parts[1]:
             self.visible_tail_columns = [k for k in parts[1].split(",") if k in ALL_TAIL_COLUMNS]
 
@@ -304,7 +315,11 @@ class TableController:
 
         extra = f"，显示前 {MAX_DISPLAY_ROWS} 条" if len(matched) > MAX_DISPLAY_ROWS else ""
         if not matched and page.config.scope_key == "自选池":
-            page.status_label.setText("自选池为空，请在市场页搜索标的并点击「加入自选」")
+            groups = getattr(page, "_watchlist_groups", None)
+            if groups is not None and groups.is_filtering():
+                page.status_label.setText(f"分组「{groups.active_group_label()}」暂无标的，可在右键菜单中勾选加入")
+            else:
+                page.status_label.setText("自选池为空，请在市场页搜索标的并点击「加入自选」")
         elif not matched and page.config.use_local_table:
             label = page._local_scope_label()
             page.status_label.setText(f"暂无本地{label}，请在自选页下载")
@@ -718,6 +733,9 @@ class TableController:
         avg_pct = (up_total_pct / up_count) if up_count > 0 else 0.0
         colors = market_colors(theme_manager().tokens())
         parts = [f"自选池 {total} 只"]
+        groups = getattr(page, "_watchlist_groups", None)
+        if groups is not None and groups.is_filtering():
+            parts[0] = f"分组「{groups.active_group_label()}」 {total} 只"
         if up_count:
             parts.append(f'<span style="color:{colors.rise}">涨 {up_count}</span>')
         if down_count:

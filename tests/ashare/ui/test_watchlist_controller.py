@@ -68,6 +68,11 @@ class WatchlistControllerTests(unittest.TestCase):
         self.controller.refresh_keys()
         self.assertIn(("600519", Exchange.SSE), self.controller.keys)
 
+    def test_contains_on_watchlist_page_without_keys_cache(self) -> None:
+        self.page.page_name = "自选"
+        item = StockItem(symbol="000001", exchange=Exchange.SZSE, name="平安银行")
+        self.assertTrue(self.controller.contains(item))
+
     def test_add_selected_delegates_to_service(self) -> None:
         item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         self.page.current_item = item

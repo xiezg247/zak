@@ -94,7 +94,9 @@ class SectorFlowController(QtCore.QObject):
             return
         worker = SectorFlowLoadWorker(service, sector_kind=self._sector_kind, parent=self._page)
         self._worker = worker
-        self._panel.set_loading(True)
+        loading_message = "正在加载概念板块资金…" if self._sector_kind == "concept" else "正在加载行业板块资金…"
+        self._panel.set_loading(True, message=loading_message)
+        self._page.set_status(loading_message)
         worker.finished.connect(self._on_loaded)
         worker.failed.connect(self._on_failed)
         worker.finished.connect(lambda _snap, w=worker: self._release_worker(w))
@@ -265,11 +267,7 @@ class SectorFlowController(QtCore.QObject):
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page
         while widget is not None:
-            if (
-                hasattr(widget, "open_market_industry_filter")
-                or hasattr(widget, "open_market_concept_drilldown")
-                or hasattr(widget, "open_screener_industry")
-            ):
+            if hasattr(widget, "open_market_industry_filter") or hasattr(widget, "open_market_concept_drilldown") or hasattr(widget, "open_screener_industry"):
                 return widget
             widget = widget.parentWidget()
         return None
@@ -287,9 +285,7 @@ class SectorFlowController(QtCore.QObject):
             extra_lines.append(f"净流入 {snap.top_inflow_name} {snap.top_inflow_yi:+.1f}亿；净流出 {snap.top_outflow_name} {snap.top_outflow_yi:+.1f}亿")
             for row in snap.rows[:8]:
                 leader = f" 龙头{row.leader_stock}" if row.leader_stock else ""
-                extra_lines.append(
-                    f"{row.name} 强度{row.strength:.1f} 涨幅{row.change_pct:+.2f}% 主力{row.net_flow_yi:+.2f}亿({row.flow_source}){leader}"
-                )
+                extra_lines.append(f"{row.name} 强度{row.strength:.1f} 涨幅{row.change_pct:+.2f}% 主力{row.net_flow_yi:+.2f}亿({row.flow_source}){leader}")
         quote_service.publish_quote_context(
             page="板块资金",
             signal_extra="\n".join(extra_lines),
@@ -314,10 +310,7 @@ class SectorFlowController(QtCore.QObject):
         ]
         for row in snap.rows[:12]:
             leader = f"，龙头 {row.leader_stock}" if row.leader_stock else ""
-            lines.append(
-                f"- {row.name}：强度{row.strength:.1f}，涨幅{row.change_pct:+.2f}%，"
-                f"主力净额{row.net_flow_yi:+.2f}亿（{row.flow_source}）{leader}"
-            )
+            lines.append(f"- {row.name}：强度{row.strength:.1f}，涨幅{row.change_pct:+.2f}%，主力净额{row.net_flow_yi:+.2f}亿（{row.flow_source}）{leader}")
         self._event_engine.put(
             Event(
                 EVENT_ASK_AI,

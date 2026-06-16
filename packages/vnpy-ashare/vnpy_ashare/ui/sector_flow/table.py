@@ -134,9 +134,7 @@ class SectorFlowTable(QtWidgets.QTableWidget):
             self.setItem(row_index, _COL_FLOW, flow_item)
 
             if self._official_mode:
-                rate_item = QtWidgets.QTableWidgetItem(
-                    f"{row.net_flow_rate:+.2f}" if row.net_flow_rate else "—"
-                )
+                rate_item = QtWidgets.QTableWidgetItem(f"{row.net_flow_rate:+.2f}" if row.net_flow_rate else "—")
                 self.setItem(row_index, _COL_RATE, rate_item)
                 self.setItem(row_index, _COL_LEADER, QtWidgets.QTableWidgetItem(row.leader_stock or "—"))
                 count_text = str(row.stock_count) if row.stock_count else "—"

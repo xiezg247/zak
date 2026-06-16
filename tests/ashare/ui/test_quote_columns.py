@@ -17,6 +17,38 @@ from vnpy_ashare.ui.quotes.table.columns import (
 
 
 class TestQuoteColumns(unittest.TestCase):
+    def test_ensure_industry_board_columns(self) -> None:
+        from vnpy_ashare.ui.quotes.page.config import ensure_industry_board_columns
+
+        available = {"index", "symbol", "name", "industry", "market_board", "last_price"}
+        merged = ensure_industry_board_columns(
+            ["index", "symbol", "name", "last_price"],
+            available_keys=available,
+        )
+        self.assertEqual(
+            merged,
+            ["index", "symbol", "name", "industry", "market_board", "last_price"],
+        )
+
+    def test_ensure_watchlist_default_columns(self) -> None:
+        from vnpy_ashare.ui.quotes.page.config import (
+            DEFAULT_WATCHLIST_COLUMNS,
+            ensure_columns_from_template,
+        )
+
+        available = set(DEFAULT_WATCHLIST_COLUMNS) | {"index"}
+        merged = ensure_columns_from_template(
+            ["index", "symbol", "name", "last_price", "change_pct"],
+            DEFAULT_WATCHLIST_COLUMNS,
+            available_keys=available,
+        )
+        self.assertEqual(
+            merged.index("industry"),
+            merged.index("name") + 1,
+        )
+        for key in ("turnover_rate", "volume_ratio", "net_mf_amount"):
+            self.assertIn(key, merged)
+
     def test_formatters(self) -> None:
         self.assertEqual(format_volume(3_1304), "3.13万")
         self.assertEqual(format_amount(3_984_001_900), "39.84亿")

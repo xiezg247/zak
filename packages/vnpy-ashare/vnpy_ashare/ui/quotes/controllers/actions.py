@@ -647,6 +647,10 @@ class ActionsController:
             row = page.market_table.indexAt(pos).row()
             if row < 0:
                 return
+            model_index = page.market_table.model().index(row, 0)
+            selection = page.market_table.selectionModel()
+            if selection is None or not selection.isSelected(model_index):
+                page.market_table.selectRow(row)
             item = page._stock_at_row(row)
             if item is None:
                 return
@@ -683,9 +687,7 @@ class ActionsController:
             menu.addSeparator()
 
         if page.config.show_add_watchlist_button:
-            key = (item.symbol, item.exchange)
-            in_watchlist = key in page._watchlist.keys
-            if in_watchlist:
+            if page._watchlist.contains(item):
                 action = menu.addAction("移出自选")
                 action.triggered.connect(page.remove_from_watchlist)
             else:
@@ -700,18 +702,25 @@ class ActionsController:
             action = menu.addAction("策略回测")
             action.triggered.connect(self.open_backtest_for_selected)
 
-        if page.config.show_watchlist_move_buttons and page.current_item is not None:
-            key = (page.current_item.symbol, page.current_item.exchange)
-            if key in page._watchlist.keys:
+        if page.config.show_watchlist_move_buttons:
+            if page._watchlist.contains(item):
                 menu.addSeparator()
                 index = page._watchlist.index_of(item)
                 total = len(page.all_stocks)
-                if index is not None and index > 0:
+                can_move = page._watchlist_groups is None or not page._watchlist_groups.is_filtering()
+                if can_move and index is not None and index > 0:
                     action = menu.addAction("上移")
                     action.triggered.connect(lambda: page._watchlist.move_selected("up"))
-                if index is not None and index + 1 < total:
+                if can_move and index is not None and index + 1 < total:
                     action = menu.addAction("下移")
                     action.triggered.connect(lambda: page._watchlist.move_selected("down"))
+
+        if page.page_name == "自选" and page.config.show_watchlist_groups and page._watchlist_groups is not None:
+            selected = [it for it in page._table.selected_items() if page._watchlist.contains(it)]
+            if not selected:
+                selected = [item]
+            menu.addSeparator()
+            page._watchlist_groups.append_group_menu(menu, selected)
 
         return menu
 

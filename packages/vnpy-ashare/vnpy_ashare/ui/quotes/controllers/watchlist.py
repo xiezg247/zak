@@ -32,6 +32,12 @@ class WatchlistController:
             return
         self.keys = {(row["symbol"], Exchange(row["exchange"])) for row in service.get_items()}
 
+    def contains(self, item: StockItem) -> bool:
+        """标的是否在自选池（自选页列表即自选池，不依赖 keys 缓存）。"""
+        if self._page.page_name == "自选":
+            return True
+        return (item.symbol, item.exchange) in self.keys
+
     def index_of(self, item: StockItem) -> int | None:
         key = (item.symbol, item.exchange)
         for index, stock in enumerate(self._page.all_stocks):
@@ -52,8 +58,9 @@ class WatchlistController:
         if page.config.show_watchlist_move_buttons:
             index = self.index_of(item) if item is not None else None
             total = len(page.all_stocks)
-            page.move_watchlist_up_button.setEnabled(item is not None and index is not None and index > 0)
-            page.move_watchlist_down_button.setEnabled(item is not None and index is not None and index + 1 < total)
+            can_move = item is not None and not (page._watchlist_groups is not None and page._watchlist_groups.is_filtering())
+            page.move_watchlist_up_button.setEnabled(can_move and index is not None and index > 0)
+            page.move_watchlist_down_button.setEnabled(can_move and index is not None and index + 1 < total)
 
     def add_selected(self) -> None:
         if not self._page.current_item:
@@ -75,7 +82,12 @@ class WatchlistController:
             return
         self.refresh_keys()
         self._page._update_action_buttons()
-        self._page.status_label.setText(f"已加入自选：{format_vt_symbol_cn(item.symbol, item.exchange)}")
+        if self._page._watchlist_groups is not None:
+            self._page._watchlist_groups.add_item_to_active_group(item.symbol, item.exchange)
+        status = f"已加入自选：{format_vt_symbol_cn(item.symbol, item.exchange)}"
+        if self._page._watchlist_groups is not None and self._page._watchlist_groups.is_filtering():
+            status += f"（已加入分组「{self._page._watchlist_groups.active_group_label()}」）"
+        self._page.status_label.setText(status)
 
     def remove_selected(self) -> None:
         if not self._page.current_item:
@@ -122,7 +134,7 @@ class WatchlistController:
         key = (item.symbol, item.exchange)
         if not service.move(item.symbol, item.exchange, direction=direction):
             return
-        self._page.all_stocks = [
+        pool = [
             StockItem(
                 symbol=row["symbol"],
                 exchange=Exchange(row["exchange"]),
@@ -130,7 +142,12 @@ class WatchlistController:
             )
             for row in service.get_items()
         ]
-        self._page.apply_filter()
+        self._page.watchlist_pool_stocks = pool
+        if self._page._watchlist_groups is not None:
+            self._page._watchlist_groups.on_stock_list_loaded(pool)
+        else:
+            self._page.all_stocks = pool
+            self._page.apply_filter()
         self._page._select_stock_key(key)
         label = "上移" if direction == "up" else "下移"
         self._page.status_label.setText(f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已{label}")

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
     from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
     from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
+    from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
     from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
     from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
     from vnpy_ashare.ui.quotes.watchlist_signals import WatchlistSignalPanel
@@ -86,6 +87,7 @@ class QuotesPageShellAttrs:
     signal_panel: WatchlistSignalPanel | None
     position_panel: WatchlistPositionPanel | None
     multiview_board: WatchlistMultiViewBoard | None
+    watchlist_group_tab_bar: WatchlistGroupTabBar | None
     view_table_button: QtWidgets.QPushButton | None
     view_multiview_button: QtWidgets.QPushButton | None
     run_output_panel: TaskRunOutputPanel | None
@@ -93,6 +95,7 @@ class QuotesPageShellAttrs:
     rank_list: QtWidgets.QListWidget | None
 
     refresh_radar_button: QtWidgets.QPushButton | None
+    refresh_radar_all_button: QtWidgets.QPushButton | None
     radar_ai_button: QtWidgets.QPushButton | None
     radar_board: RadarBoard | None
     radar_resonance_panel: RadarResonancePanel | None

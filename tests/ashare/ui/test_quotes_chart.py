@@ -15,6 +15,7 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     DAILY_BAR_COUNT,
     MINUTE_BAR_COUNT,
     WATCHLIST_DAILY_DEFAULT_BAR_COUNT,
+    X_RANGE_RIGHT_PAD,
     AshareCandleItem,
     AshareChartWidget,
     AshareVolumeItem,
@@ -180,8 +181,35 @@ class TestAshareChartWidget(unittest.TestCase):
         self.assertEqual(chart._bar_count, 10)
         self.assertEqual(chart._right_ix, 80)
         min_x, max_x = chart._first_plot.getViewBox().viewRange()[0]
-        self.assertAlmostEqual(max_x, 80.0, places=3)
+        self.assertAlmostEqual(max_x, 80.0 - X_RANGE_RIGHT_PAD, places=3)
         self.assertAlmostEqual(min_x, 70.0, places=3)
+
+    def test_replace_history_x_range_stops_before_count(self) -> None:
+        chart = self._create_chart()
+        chart.replace_history(_daily_bars(80))
+        _, max_x = chart._first_plot.getViewBox().viewRange()[0]
+        self.assertAlmostEqual(max_x, 80.0 - X_RANGE_RIGHT_PAD, places=3)
+
+    def test_flat_epsilon_candle_uses_red_not_green(self) -> None:
+        manager = BarManager()
+        bar = BarData(
+            symbol="601838",
+            exchange=Exchange.SSE,
+            datetime=datetime(2026, 6, 16, 15, 0, 0),
+            interval=Interval.MINUTE,
+            open_price=19.530000000000015,
+            high_price=19.530000000000264,
+            low_price=19.52999999999981,
+            close_price=19.529999999999948,
+            volume=20,
+            gateway_name="TEST",
+        )
+        manager.update_history([bar])
+        candle = AshareCandleItem(manager)
+        picture = candle._draw_bar_picture(0, bar)
+        bounds = picture.boundingRect()
+        self.assertLess(bounds.height(), 5)
+        self.assertEqual(candle._up_brush.color().getRgb()[:3], RISE_RGB)
 
     def test_short_viewport_y_range_includes_candle_highs(self) -> None:
         chart = create_watchlist_chart(minute=False)
@@ -205,7 +233,7 @@ class TestAshareChartWidget(unittest.TestCase):
         chart.set_viewport_bar_count(DAILY_BAR_COUNT)
         self.assertEqual(chart._bar_count, DAILY_BAR_COUNT)
         min_x, max_x = chart._first_plot.getViewBox().viewRange()[0]
-        self.assertAlmostEqual(max_x, float(DAILY_BAR_COUNT), places=3)
+        self.assertAlmostEqual(max_x, float(DAILY_BAR_COUNT) - X_RANGE_RIGHT_PAD, places=3)
 
 
 class TestChineseChartItems(unittest.TestCase):

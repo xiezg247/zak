@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pyqtgraph as pg
 from vnpy.chart import CandleItem, ChartWidget, VolumeItem
+from vnpy.chart.base import BAR_WIDTH
 from vnpy.chart.manager import BarManager
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -16,6 +17,11 @@ from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarChange, MinuteBarDi
 MINUTE_BAR_COUNT = 80
 DAILY_BAR_COUNT = 120
 WATCHLIST_DAILY_DEFAULT_BAR_COUNT = 60
+# K 线索引为 0..count-1；X 轴右端贴 count 时 vnpy CandleItem 会被拉伸成通栏色块。
+X_RANGE_RIGHT_PAD = 0.5
+# TickFlow 等来源的 OHLC 常有浮点噪声，低于此价差按平价十字星绘制。
+CANDLE_FLAT_EPS = 1e-4
+
 WATCHLIST_DAILY_BAR_PRESETS: tuple[tuple[str, int], ...] = (
     ("10日", 10),
     ("20日", 20),
@@ -70,12 +76,58 @@ class ChineseVolumeItem(VolumeItem):
         return f"成交量 {bar.volume:.0f}"
 
 
+def _candle_body_flat(open_price: float, close_price: float) -> bool:
+    return abs(close_price - open_price) < CANDLE_FLAT_EPS
+
+
 class AshareCandleItem(ChineseCandleItem):
     """A 股实心 K 线。"""
 
     def __init__(self, manager: BarManager) -> None:
         super().__init__(manager)
         apply_candle_colors(self)
+
+    def _draw_bar_picture(self, ix: int, bar: BarData) -> QtGui.QPicture:
+        """平价 K 按十字星绘制，避免浮点误差触发实心矩形。"""
+        candle_picture: QtGui.QPicture = QtGui.QPicture()
+        painter = QtGui.QPainter(candle_picture)
+        flat = _candle_body_flat(bar.open_price, bar.close_price)
+        is_up = flat or bar.close_price >= bar.open_price
+        if is_up:
+            painter.setPen(self._up_pen)
+            painter.setBrush(self._black_brush)
+        else:
+            painter.setPen(self._down_pen)
+            painter.setBrush(self._down_brush)
+
+        if bar.high_price > bar.low_price:
+            painter.drawLine(
+                QtCore.QPointF(ix, bar.high_price),
+                QtCore.QPointF(ix, bar.low_price),
+            )
+
+        if flat:
+            price = (bar.open_price + bar.close_price) / 2
+            painter.drawLine(
+                QtCore.QPointF(ix - BAR_WIDTH, price),
+                QtCore.QPointF(ix + BAR_WIDTH, price),
+            )
+        elif bar.open_price == bar.close_price:
+            painter.drawLine(
+                QtCore.QPointF(ix - BAR_WIDTH, bar.open_price),
+                QtCore.QPointF(ix + BAR_WIDTH, bar.open_price),
+            )
+        else:
+            painter.drawRect(
+                QtCore.QRectF(
+                    ix - BAR_WIDTH,
+                    bar.open_price,
+                    BAR_WIDTH * 2,
+                    bar.close_price - bar.open_price,
+                )
+            )
+        painter.end()
+        return candle_picture
 
 
 class AshareVolumeItem(ChineseVolumeItem):
@@ -210,6 +262,13 @@ class AshareChartWidget(ChartWidget):
             min_ix = max(0, max_ix - 1)
         return min_ix, max_ix
 
+    def _x_view_right(self, max_ix: int) -> float:
+        """可见区 X 轴右端：不超过最后一根 K 线索引 + 半格留白。"""
+        count = self._manager.get_count()
+        if count <= 0:
+            return float(max(max_ix, 1))
+        return min(float(max_ix), count - X_RANGE_RIGHT_PAD)
+
     def _update_plot_limits(self) -> None:
         """同一子图合并 K 线与均线上下界，避免 setLimits 被 MA 单独压扁。"""
         count = self._manager.get_count()
@@ -232,8 +291,9 @@ class AshareChartWidget(ChartWidget):
 
     def _update_x_range(self) -> None:
         min_ix, max_ix = self._visible_ix_range()
+        x_max = self._x_view_right(max_ix)
         for plot in self._plots.values():
-            plot.setRange(xRange=(min_ix, max_ix), padding=0)
+            plot.setRange(xRange=(float(min_ix), x_max), padding=0)
 
     def _update_y_range(self) -> None:
         """合并同一子图内 K 线与均线的 Y 范围，避免短视口下 MA 压扁蜡烛。"""
@@ -335,8 +395,9 @@ class AshareChartWidget(ChartWidget):
     def _force_x_range_update(self) -> None:
         count = self._manager.get_count()
         self._right_ix = count
+        x_max = self._x_view_right(count) if count > 0 else 1.0
         for plot in self._plots.values():
-            plot.setRange(xRange=(0, max(count, 1)), padding=0)
+            plot.setRange(xRange=(0.0, x_max), padding=0)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         if self._first_plot:
@@ -344,7 +405,7 @@ class AshareChartWidget(ChartWidget):
             if count > 0:
                 view = self._first_plot.getViewBox()
                 min_x, max_x = view.viewRange()[0]
-                if max_x > count + 1 or min_x >= count:
+                if max_x > count - X_RANGE_RIGHT_PAD + 0.01 or min_x >= count:
                     self._sync_viewport_to_data()
                 else:
                     self._right_ix = min(max(0, int(max_x)), count)

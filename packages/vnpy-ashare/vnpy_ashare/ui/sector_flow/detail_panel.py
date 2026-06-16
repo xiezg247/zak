@@ -6,6 +6,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.domain.sector_flow import SectorConstituentRow, SectorFlowHistoryPoint, SectorFlowRow
 from vnpy_ashare.ui.sector_flow.mini_bar import SectorFlowMiniBar
+from vnpy_common.ui.loading_overlay import ContentLoadingOverlay
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
@@ -72,10 +73,18 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         layout.addLayout(action_row)
         layout.addWidget(self._table, stretch=1)
 
+        self._overlay = ContentLoadingOverlay(self)
+        self._overlay.hide()
+
         theme_manager().register_callback(lambda _t: self._table.viewport().update())
         self._sync_action_buttons()
 
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._overlay.setGeometry(self.rect())
+
     def clear(self) -> None:
+        self._overlay.hide_loading()
         self._current_sector = None
         self._summary.setText("选中左侧板块查看成分龙头")
         self._mini_bar.clear()
@@ -86,6 +95,12 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         self._summary.setText(f"{sector_name} · 加载成分…")
         self._mini_bar.clear()
         self._table.setRowCount(0)
+        self._market_btn.setEnabled(False)
+        self._screener_btn.setEnabled(False)
+        self._resonance_btn.setEnabled(False)
+        self._overlay.show_loading("正在加载成分龙头", hint=sector_name)
+        self._overlay.setGeometry(self.rect())
+        self._overlay.raise_()
 
     def show_sector(
         self,
@@ -94,6 +109,7 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         *,
         history: list[SectorFlowHistoryPoint] | None = None,
     ) -> None:
+        self._overlay.hide_loading()
         self._current_sector = sector
         parts = [
             sector.name,
@@ -128,9 +144,7 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
             change_item = QtWidgets.QTableWidgetItem(f"{leader.change_pct:+.2f}")
             change_item.setForeground(QtGui.QColor(pct_change_color(leader.change_pct, tokens)))
             self._table.setItem(row_index, 1, change_item)
-            flow_item = QtWidgets.QTableWidgetItem(
-                f"{leader.net_mf_wan:+.0f}" if leader.net_mf_wan else "—"
-            )
+            flow_item = QtWidgets.QTableWidgetItem(f"{leader.net_mf_wan:+.0f}" if leader.net_mf_wan else "—")
             if leader.net_mf_wan:
                 flow_item.setForeground(QtGui.QColor(pct_change_color(leader.net_mf_wan, tokens)))
             self._table.setItem(row_index, 2, flow_item)

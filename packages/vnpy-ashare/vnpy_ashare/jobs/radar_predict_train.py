@@ -66,8 +66,5 @@ def run_radar_predict_train_job(*, force: bool = False, max_age_days: int = _DEF
     auc = f"{train.val_auc:.3f}" if train.val_auc is not None else "—"
     return JobResult(
         success=True,
-        message=(
-            f"{note}雷达预测重训完成：验证 AUC {auc} · 样本 {train.sample_count} · "
-            f"预测缓存 {len(predict.rows)} 只（{predict.model_label}）"
-        ),
+        message=(f"{note}雷达预测重训完成：验证 AUC {auc} · 样本 {train.sample_count} · 预测缓存 {len(predict.rows)} 只（{predict.model_label}）"),
     )

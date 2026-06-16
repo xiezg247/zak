@@ -9,6 +9,7 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.storage.connection import connect, init_app_db
 from vnpy_ashare.storage.repositories.csv_io import read_stock_csv_rows, write_stock_csv
+from vnpy_ashare.storage.repositories.watchlist_groups import _prune_watchlist_group_members_conn
 
 WATCHLIST_MAX_ITEMS = 50
 
@@ -97,6 +98,10 @@ def remove_watchlist_item(symbol: str, exchange: Exchange) -> bool:
         )
         if cursor.rowcount == 0:
             return False
+        conn.execute(
+            "DELETE FROM watchlist_group_members WHERE symbol = ? AND exchange = ?",
+            (symbol, exchange.name),
+        )
         rows = conn.execute("SELECT symbol, exchange, name FROM watchlist ORDER BY sort_order, symbol").fetchall()
         _rewrite_watchlist_order(conn, rows)
     return True
@@ -105,6 +110,7 @@ def remove_watchlist_item(symbol: str, exchange: Exchange) -> bool:
 def clear_watchlist() -> None:
     init_app_db()
     with connect() as conn:
+        conn.execute("DELETE FROM watchlist_group_members")
         conn.execute("DELETE FROM watchlist")
 
 
@@ -118,6 +124,7 @@ def save_watchlist_rows(items: list[tuple[str, Exchange, str]]) -> int:
                 "INSERT INTO watchlist(symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?)",
                 (symbol, exchange.name, name, index),
             )
+        _prune_watchlist_group_members_conn(conn)
     return len(items)
 
 
@@ -135,6 +142,7 @@ def import_watchlist_csv(path: Path) -> int:
                 "INSERT INTO watchlist(symbol, exchange, name, sort_order) VALUES (?, ?, ?, ?)",
                 (symbol, exchange.name, name, index),
             )
+        _prune_watchlist_group_members_conn(conn)
     return len(items)
 
 

@@ -7,6 +7,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.domain.sector_flow import SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
 from vnpy_ashare.ui.sector_flow.table import SectorFlowTable
+from vnpy_common.ui.loading_overlay import LoadingContentHost
 from vnpy_common.ui.theme import theme_manager
 
 _TAB_INFLOW = 0
@@ -34,7 +35,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._outflow_rows: list[SectorFlowRow] = []
         self._divergence_rows: list[SectorFlowRow] = []
 
-        self._summary = QtWidgets.QLabel("加载中…")
+        self._summary = QtWidgets.QLabel("")
         self._summary.setObjectName("SectorFlowSummary")
 
         toolbar = QtWidgets.QHBoxLayout()
@@ -109,7 +110,8 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._splitter.setStretchFactor(0, 1)
         self._splitter.setStretchFactor(1, 0)
         self._splitter.setSizes([720, _DETAIL_WIDTH])
-        layout.addWidget(self._splitter, stretch=1)
+        self._content_host = LoadingContentHost(self._splitter)
+        layout.addWidget(self._content_host, stretch=1)
 
         from vnpy_common.ui.theme.build_extra import build_sector_flow_stylesheet
 
@@ -138,10 +140,26 @@ class SectorFlowPanel(QtWidgets.QWidget):
         if emit:
             self.sector_kind_changed.emit(normalized)
 
-    def set_loading(self, loading: bool) -> None:
-        self._refresh_btn.setEnabled(not loading)
+    def set_loading(self, loading: bool, *, message: str | None = None) -> None:
+        if message is None:
+            message = "正在加载概念板块资金…" if self._sector_kind == "concept" else "正在加载行业板块资金…"
+        self._set_toolbar_enabled(not loading)
         if loading:
-            self._summary.setText("加载中…")
+            self._summary.setText(message)
+            hint = "盘中为行情聚合估算，盘后为官方日终榜"
+            self._content_host.show_loading(message, hint=hint)
+            return
+        self._content_host.hide_loading()
+
+    def _set_toolbar_enabled(self, enabled: bool) -> None:
+        self._refresh_btn.setEnabled(enabled)
+        self._ai_btn.setEnabled(enabled)
+        self._screener_btn.setEnabled(enabled and self._sector_kind == "industry")
+        self._tab_industry_btn.setEnabled(enabled)
+        self._tab_concept_btn.setEnabled(enabled)
+        self._tab_inflow_btn.setEnabled(enabled)
+        self._tab_outflow_btn.setEnabled(enabled)
+        self._tab_divergence_btn.setEnabled(enabled)
 
     def apply_snapshot(self, snapshot: SectorFlowSnapshot) -> None:
         if snapshot.sector_kind == "concept":

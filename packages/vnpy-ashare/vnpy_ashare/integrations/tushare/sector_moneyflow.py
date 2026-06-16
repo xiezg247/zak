@@ -142,10 +142,7 @@ def fetch_moneyflow_ind_dc(
 
     params: dict[str, Any] = {
         "trade_date": trade_date,
-        "fields": (
-            "trade_date,content_type,ts_code,name,pct_change,close,net_amount,net_amount_rate,"
-            "buy_sm_amount_stock,rank"
-        ),
+        "fields": ("trade_date,content_type,ts_code,name,pct_change,close,net_amount,net_amount_rate,buy_sm_amount_stock,rank"),
     }
     if content_type:
         params["content_type"] = content_type
@@ -196,10 +193,7 @@ def fetch_moneyflow_cnt_ths(*, trade_date: str | None = None) -> tuple[list[dict
     try:
         frame = pro.moneyflow_cnt_ths(
             trade_date=trade_date,
-            fields=(
-                "trade_date,ts_code,name,lead_stock,pct_change,company_num,"
-                "pct_change_stock,net_buy_amount,net_sell_amount,net_amount"
-            ),
+            fields=("trade_date,ts_code,name,lead_stock,pct_change,company_num,pct_change_stock,net_buy_amount,net_sell_amount,net_amount"),
         )
     except Exception:
         return [], trade_date

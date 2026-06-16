@@ -186,7 +186,11 @@ class WatchlistMultiViewController:
 
     def _build_board_data(self) -> WatchlistMultiBoardData:
         page = self._page
-        base = build_watchlist_multiview_board(sort_key=self._sort_key)
+        vt_symbols = None
+        groups = getattr(page, "_watchlist_groups", None)
+        if groups is not None:
+            vt_symbols = groups.filtered_vt_symbols()
+        base = build_watchlist_multiview_board(sort_key=self._sort_key, vt_symbols=vt_symbols)
         signal_symbols = self._signal_symbols()
         rows = enrich_multiview_rows(
             base.rows,

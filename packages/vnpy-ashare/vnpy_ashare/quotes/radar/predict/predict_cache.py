@@ -111,11 +111,7 @@ def get_predict_cache(variant: str) -> PredictCacheEntry | None:
     vt_symbols = [str(item.get("vt_symbol") or "").strip() for item in payload if isinstance(item, dict)]
     vt_symbols = [vt for vt in vt_symbols if vt]
     quotes = quotes_for_vt_symbols(vt_symbols)
-    rows = tuple(
-        _row_from_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {}))
-        for item in payload
-        if isinstance(item, dict)
-    )
+    rows = tuple(_row_from_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {})) for item in payload if isinstance(item, dict))
     stats = HorizonScanStats(
         scanned_total=int(row["scanned_total"] or 0),
         excluded_count=int(row["excluded_count"] or 0),

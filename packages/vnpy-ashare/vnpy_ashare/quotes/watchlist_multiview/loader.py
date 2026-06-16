@@ -26,8 +26,12 @@ def _float_or_none(value: Any) -> float | None:
 def build_watchlist_multiview_board(
     *,
     sort_key: str = "sort_order",
+    vt_symbols: tuple[str, ...] | None = None,
 ) -> WatchlistMultiBoardData:
     watchlist = load_watchlist_rows()
+    if vt_symbols is not None:
+        allowed = set(vt_symbols)
+        watchlist = [row for row in watchlist if f"{row[0]}.{row[1].value}" in allowed]
     if not watchlist:
         return WatchlistMultiBoardData(rows=(), empty_message="自选池为空，请先添加自选。", total_count=0)
 

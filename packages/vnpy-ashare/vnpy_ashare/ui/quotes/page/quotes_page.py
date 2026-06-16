@@ -65,6 +65,7 @@ from vnpy_ashare.ui.quotes.page.config import (
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
+from vnpy_ashare.ui.quotes.watchlist_groups import WatchlistGroupController
 from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_signals import (
@@ -120,6 +121,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self.event_engine = event_engine
 
         self.all_stocks: list[StockItem] = []
+        self.watchlist_pool_stocks: list[StockItem] = []
         self.display_stocks: list[StockItem] = []
         self.quote_map: dict[str, QuoteSnapshot] = {}
         self.downloaded_keys: set[tuple[str, Exchange]] = set()
@@ -137,6 +139,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._signals = WatchlistSignalController(self)
         self._positions = WatchlistPositionController(self)
         self._multiview = WatchlistMultiViewController(self)
+        self._watchlist_groups: WatchlistGroupController | None = None
         self._loader = DataLoaderController(self)
         self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
         self.position_config: WatchlistPositionConfig = load_watchlist_position_config()
@@ -287,7 +290,11 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         return self._table.build_visible_headers()
 
     def _init_ui(self) -> None:
+        self.watchlist_group_tab_bar = None
         QuotesPageShell(self).build()
+        if self.config.show_watchlist_groups:
+            self._watchlist_groups = WatchlistGroupController(self)
+            self._watchlist_groups.wire()
 
     def activate(self) -> None:
         self._active = True
@@ -303,8 +310,10 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self.chart_panel.set_active(True)
         if self.config.use_quote_stream:
             self._stream.start()
-        if self.config.show_add_watchlist_button:
+        if self.config.show_add_watchlist_button or self.page_name == "自选":
             self._watchlist.refresh_keys()
+        if self._watchlist_groups is not None:
+            self._watchlist_groups.refresh_groups()
         if self.config.use_local_table:
             self._local.schedule_invalid_bar_cleanup()
         if self.config.use_local_table and not self.config.use_local_pagination:

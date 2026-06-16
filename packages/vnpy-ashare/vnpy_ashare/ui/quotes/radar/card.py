@@ -80,9 +80,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         badge_layout.setSpacing(4)
 
         self._kind_badge = QtWidgets.QLabel("统计" if spec.mode == "statistical" else "展望")
-        self._kind_badge.setObjectName(
-            "RadarCardKindBadgeStatistical" if spec.mode == "statistical" else "RadarCardKindBadgePredictive"
-        )
+        self._kind_badge.setObjectName("RadarCardKindBadgeStatistical" if spec.mode == "statistical" else "RadarCardKindBadgePredictive")
         badge_layout.addWidget(self._kind_badge)
 
         self._mode_badge = QtWidgets.QLabel("")
@@ -99,9 +97,7 @@ class RadarCardWidget(QtWidgets.QFrame):
             default_key = default_variant_for_card(spec.id)
             if default_key:
                 self.set_variant_key(default_key)
-            self._variant_combo.setSizeAdjustPolicy(
-                QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
-            )
+            self._variant_combo.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
             self._variant_combo.setMinimumContentsLength(5)
             self._variant_combo.setMaximumWidth(108)
             self._variant_combo.currentIndexChanged.connect(self._emit_variant_changed)

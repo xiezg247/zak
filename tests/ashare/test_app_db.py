@@ -66,6 +66,51 @@ class TestWatchlistDb(unittest.TestCase):
         self.assertEqual(watchlist_repo.watchlist_add_failure_reason("999999", Exchange.SSE), "full")
         self.assertEqual(watchlist_repo.watchlist_add_failure_reason("600000", Exchange.SSE), "duplicate")
 
+
+class TestWatchlistGroupsDb(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.db_path = Path(self._tmp.name)
+        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
+        self._patcher.start()
+        init_app_db()
+
+    def tearDown(self) -> None:
+        self._patcher.stop()
+        self.db_path.unlink(missing_ok=True)
+
+    def test_group_membership_multi_assign(self) -> None:
+        from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
+
+        watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台")
+        group_a = groups_repo.create_watchlist_group("白酒")
+        group_b = groups_repo.create_watchlist_group("核心")
+        assert group_a and group_b
+
+        self.assertTrue(groups_repo.add_watchlist_group_member(group_a, "600519", Exchange.SSE))
+        self.assertTrue(groups_repo.add_watchlist_group_member(group_b, "600519", Exchange.SSE))
+        self.assertEqual(
+            groups_repo.load_watchlist_group_ids_for_item("600519", Exchange.SSE),
+            {group_a, group_b},
+        )
+
+        groups_repo.set_watchlist_group_membership("600519", Exchange.SSE, {group_a})
+        self.assertEqual(
+            groups_repo.load_watchlist_group_ids_for_item("600519", Exchange.SSE),
+            {group_a},
+        )
+
+    def test_remove_watchlist_clears_group_members(self) -> None:
+        from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
+
+        watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台")
+        group_id = groups_repo.create_watchlist_group("白酒")
+        assert group_id
+        groups_repo.add_watchlist_group_member(group_id, "600519", Exchange.SSE)
+
+        self.assertTrue(watchlist_repo.remove_watchlist_item("600519", Exchange.SSE))
+        self.assertEqual(groups_repo.load_watchlist_group_member_keys(group_id), set())
+
     def test_load_universe_page(self) -> None:
         universe_repo.save_universe_rows(
             [

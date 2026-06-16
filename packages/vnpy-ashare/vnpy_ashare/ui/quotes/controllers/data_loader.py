@@ -547,8 +547,17 @@ class DataLoaderController:
                     page._pagination.update_controls()
                 if page.config.use_local_table:
                     page._local.on_stock_list_loaded()
+                elif page._watchlist_groups is not None:
+                    page._watchlist_groups.on_stock_list_loaded(list(page.all_stocks))
+                    page._watchlist.refresh_keys()
+                    if page.config.show_watchlist_signals:
+                        page._signals.on_stock_list_loaded()
+                    if page.config.show_watchlist_positions:
+                        page._positions.on_stock_list_loaded()
                 else:
                     page.apply_filter()
+                    if page.page_name == "自选":
+                        page._watchlist.refresh_keys()
                     if page.config.show_watchlist_signals:
                         page._signals.on_stock_list_loaded()
                     if page.config.show_watchlist_positions:

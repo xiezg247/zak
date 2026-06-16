@@ -101,5 +101,9 @@ def lightgbm_available() -> bool:
 def lightgbm_unavailable_hint() -> str:
     reason = lightgbm_unavailable_reason()
     if reason == "libomp":
-        return "lightgbm 已安装但无法加载 OpenMP；macOS 请执行 bash bin/ensure_libomp.sh 或 brew install libomp 后重启应用。"
+        return (
+            "lightgbm 已安装但无法加载 OpenMP；macOS arm64 需 "
+            "/opt/homebrew/bin/brew install libomp（与 /usr/local 的 x86_64 libomp 不通用）。"
+            "可执行 bash bin/ensure_libomp.sh 查看诊断。"
+        )
     return "请执行 uv sync（默认含 vnpy-ashare[full]）或 uv sync --extra predict 安装 lightgbm。"

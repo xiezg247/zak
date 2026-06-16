@@ -1263,6 +1263,105 @@ QSplitter#SectorFlowSplitter::handle {{
 """
 
 
+def build_watchlist_group_tab_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QWidget#WatchlistGroupTabBar {{
+    background-color: transparent;
+}}
+QPushButton#WatchlistGroupTab {{
+    background-color: {t.tab_bg};
+    color: {t.tab_text};
+    border: 1px solid {t.tab_border};
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    min-height: 24px;
+}}
+QPushButton#WatchlistGroupTab:checked {{
+    background-color: {t.tab_selected_bg};
+    color: {t.tab_selected_text};
+    border-color: {t.tab_selected_border};
+}}
+QPushButton#WatchlistGroupTab:hover {{
+    color: {t.tab_hover_text};
+}}
+QPushButton#WatchlistGroupAddButton {{
+    background-color: {t.panel_bg};
+    color: {t.accent};
+    border: 1px solid {t.accent_soft};
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    min-height: 24px;
+}}
+QPushButton#WatchlistGroupAddButton:hover:enabled {{
+    background-color: {t.accent};
+    color: {t.action_btn_text};
+    border-color: {t.accent};
+}}
+QPushButton#WatchlistGroupAddButton:pressed:enabled {{
+    background-color: {t.accent_hover};
+    border-color: {t.accent_hover};
+}}
+QPushButton#WatchlistGroupAddButton:disabled {{
+    color: {t.text_muted};
+    background-color: {t.panel_bg};
+    border-color: {t.panel_border};
+}}
+QFrame#WatchlistGroupTabSeparator {{
+    color: {t.panel_border};
+    max-height: 20px;
+}}
+"""
+
+
+def build_watchlist_group_dialog_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QDialog#WatchlistGroupDialog {{
+    background-color: {t.app_bg};
+    color: {t.text_primary};
+}}
+QLabel#WatchlistGroupDialogTitle {{
+    color: {t.text_primary};
+    font-size: 15px;
+    font-weight: 600;
+}}
+QLabel#SettingsHint {{
+    color: {t.text_secondary};
+    font-size: 12px;
+    padding: 8px 10px;
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QLabel#SettingsMeta {{
+    color: {t.text_muted};
+    font-size: 12px;
+}}
+QListWidget#WatchlistGroupList {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+    padding: 4px;
+    color: {t.text_primary};
+    font-size: 13px;
+    outline: none;
+}}
+QListWidget#WatchlistGroupList::item {{
+    padding: 8px 10px;
+    border-radius: 6px;
+}}
+QListWidget#WatchlistGroupList::item:hover {{
+    background-color: {t.menu_selected_bg};
+}}
+QListWidget#WatchlistGroupList::item:selected {{
+    background-color: {t.menu_selected_bg};
+    color: {t.text_primary};
+}}
+"""
+
+
 def build_insight_rank_stylesheet(t: ThemeTokens) -> str:
     """Deprecated: use build_radar_stylesheet."""
     return build_radar_stylesheet(t)

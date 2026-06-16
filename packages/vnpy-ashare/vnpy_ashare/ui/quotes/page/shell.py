@@ -390,7 +390,7 @@ class QuotesPageShell:
         page.market_table.setObjectName("MarketTable")
         page.market_table.setModel(page.quote_table_model)
         page.market_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        if page.config.show_watchlist_signals:
+        if page.config.show_watchlist_signals or page.config.show_watchlist_groups:
             page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         else:
             page.market_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
@@ -511,6 +511,12 @@ class QuotesPageShell:
             center_layout.addWidget(toolbar_host)
             if page._stats_label is not None:
                 center_layout.addWidget(page._stats_label)
+            page.watchlist_group_tab_bar = None
+            if page.config.show_watchlist_groups:
+                from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
+
+                page.watchlist_group_tab_bar = WatchlistGroupTabBar(center_widget)
+                center_layout.addWidget(page.watchlist_group_tab_bar)
             page._market_table_host = MarketTableHost(
                 page.market_table,
                 external_scrollbar=False,

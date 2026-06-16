@@ -152,7 +152,5 @@ def build_predict_ai_prompt(data: RadarCardData) -> str:
     for row in data.rows:
         price = f"{row.price:.2f}" if row.price is not None else "—"
         change = f"{row.change_pct:+.2f}%" if row.change_pct is not None else "—"
-        lines.append(
-            f"- {row.name}({row.symbol}) {change} 现价{price} · {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}"
-        )
+        lines.append(f"- {row.name}({row.symbol}) {change} 现价{price} · {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}")
     return "\n".join(lines).strip()

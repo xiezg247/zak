@@ -20,6 +20,23 @@ CREATE TABLE IF NOT EXISTS watchlist (
     PRIMARY KEY (symbol, exchange)
 );
 
+CREATE TABLE IF NOT EXISTS watchlist_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS watchlist_group_members (
+    group_id TEXT NOT NULL,
+    symbol TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    PRIMARY KEY (group_id, symbol, exchange),
+    FOREIGN KEY (group_id) REFERENCES watchlist_groups(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_watchlist_group_members_symbol
+    ON watchlist_group_members(symbol, exchange);
+
 CREATE TABLE IF NOT EXISTS watchlist_positions (
     symbol TEXT NOT NULL,
     exchange TEXT NOT NULL,

@@ -197,6 +197,7 @@ class PageConfig:
     show_watchlist_positions: bool = False
     show_stock_notes: bool = False
     show_watchlist_multiview: bool = False
+    show_watchlist_groups: bool = False
     search_max_width: int = 280
 
 
@@ -204,17 +205,56 @@ DEFAULT_WATCHLIST_COLUMNS: list[str] = [
     "symbol",
     "name",
     "industry",
-    "market_board",
     "last_price",
     "change_pct",
     "change_amount",
     "amplitude",
     "volume",
     "amount",
+    "turnover_rate",
+    "volume_ratio",
+    "net_mf_amount",
     "high_price",
     "low_price",
     "trade_time",
 ]
+
+INDUSTRY_BOARD_COLUMN_KEYS: tuple[str, ...] = ("industry", "market_board")
+
+
+def ensure_columns_from_template(
+    columns: list[str],
+    template: list[str],
+    *,
+    available_keys: set[str],
+) -> list[str]:
+    """按模板顺序补全缺失列（不改变已有列的相对顺序）。"""
+    result = list(columns)
+    for key in template:
+        if key not in available_keys or key in result:
+            continue
+        insert_at = len(result)
+        key_idx = template.index(key)
+        for i in range(key_idx - 1, -1, -1):
+            prev = template[i]
+            if prev in result:
+                insert_at = result.index(prev) + 1
+                break
+        else:
+            if "name" in result:
+                insert_at = result.index("name") + 1
+        result.insert(insert_at, key)
+    return result
+
+
+def ensure_industry_board_columns(columns: list[str], *, available_keys: set[str]) -> list[str]:
+    """确保行业 / 板块列出现在证券名称之后（市场页）。"""
+    return ensure_columns_from_template(
+        columns,
+        list(INDUSTRY_BOARD_COLUMN_KEYS),
+        available_keys=available_keys,
+    )
+
 
 MARKET_VISIBLE_COLUMNS: list[str] = [
     "symbol",
@@ -315,6 +355,7 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_watchlist_positions=True,
         show_stock_notes=True,
         show_watchlist_multiview=True,
+        show_watchlist_groups=True,
     ),
     "本地": PageConfig(
         title="本地",

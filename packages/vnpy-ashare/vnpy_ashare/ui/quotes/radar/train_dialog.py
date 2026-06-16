@@ -110,9 +110,7 @@ class RadarPredictTrainDialog(QtWidgets.QDialog):
         self.setWindowTitle("雷达模型训练")
         setup_responsive_dialog(self, parent, min_width=480, min_height=320, width_ratio=0.45, height_ratio=0.42)
 
-        intro = QtWidgets.QLabel(
-            "训练雷达「未来·预测」卡的 LightGBM 截面模型。日常可由定时任务「雷达预测重训」自动维护。"
-        )
+        intro = QtWidgets.QLabel("训练雷达「未来·预测」卡的 LightGBM 截面模型。日常可由定时任务「雷达预测重训」自动维护。")
         intro.setObjectName("RadarPredictTrainIntro")
         intro.setWordWrap(True)
 

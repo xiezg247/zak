@@ -111,10 +111,7 @@ def scan_predict(*, top_n: int = 8) -> PredictScanResult:
     hits, variant, model_label = rank_predict_hits(quote_rows, top_n=top_n)
     name_map = name_map_for_symbols([hit.vt_symbol for hit in hits])
     row_by_vt = {str(row.get("vt_symbol") or "").strip(): row for row in quote_rows}
-    rows = tuple(
-        _hit_to_row(hit, name_map=name_map, quote_row=row_by_vt.get(hit.vt_symbol, {"vt_symbol": hit.vt_symbol}))
-        for hit in hits
-    )
+    rows = tuple(_hit_to_row(hit, name_map=name_map, quote_row=row_by_vt.get(hit.vt_symbol, {"vt_symbol": hit.vt_symbol})) for hit in hits)
     refined_stats = HorizonScanStats(
         scanned_total=stats.scanned_total,
         excluded_count=stats.excluded_count,
@@ -139,10 +136,7 @@ def scan_predict_baseline(*, top_n: int = 8) -> PredictScanResult:
     hits = [_baseline_to_hit(hit) for hit in rank_baseline_predict(quote_rows)[: max(1, int(top_n))]]
     name_map = name_map_for_symbols([hit.vt_symbol for hit in hits])
     row_by_vt = {str(row.get("vt_symbol") or "").strip(): row for row in quote_rows}
-    rows = tuple(
-        _hit_to_row(hit, name_map=name_map, quote_row=row_by_vt.get(hit.vt_symbol, {"vt_symbol": hit.vt_symbol}))
-        for hit in hits
-    )
+    rows = tuple(_hit_to_row(hit, name_map=name_map, quote_row=row_by_vt.get(hit.vt_symbol, {"vt_symbol": hit.vt_symbol})) for hit in hits)
     return PredictScanResult(
         variant=PREDICT_VARIANT_BASELINE,
         rows=rows,

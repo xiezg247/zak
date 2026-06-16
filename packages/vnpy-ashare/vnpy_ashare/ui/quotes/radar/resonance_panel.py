@@ -130,9 +130,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
         layout.addWidget(self._tabs, stretch=1)
         layout.addLayout(toolbar)
 
-        self._entries_by_tab: dict[RadarResonanceTab, tuple[RadarResonanceEntry, ...]] = {
-            key: () for key, _label in _RESONANCE_TABS
-        }
+        self._entries_by_tab: dict[RadarResonanceTab, tuple[RadarResonanceEntry, ...]] = {key: () for key, _label in _RESONANCE_TABS}
         self._selected_symbol = ""
         self._set_actions_enabled(False)
         theme_manager().register_callback(lambda _tokens: self._refresh_list_colors())
