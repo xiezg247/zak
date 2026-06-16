@@ -26,7 +26,7 @@ from vnpy_llm.graph.state import AGENT_STREAM_LABELS, AgentName, GraphStreamCont
 AGENT_TIMEOUT_SECONDS = 30
 MIN_COMPLETED_AGENTS = 2
 
-_SYMBOL_PATTERN = re.compile(r"(\d{6}(?:\.(?:SSE|SZSE|SH|SZ)))", re.IGNORECASE)
+_SYMBOL_PATTERN = re.compile(r"(\d{6}(?:\.(?:SSE|SZSE|SH|SZ))?)", re.IGNORECASE)
 
 TEAM_AGENT_TOOLS: dict[AgentName, frozenset[str]] = {
     "financial": frozenset({"analyze_financial", "get_quote_context"}),
@@ -51,7 +51,12 @@ def _extract_symbol(text: str) -> str | None:
     if not m:
         return None
     raw = m.group(1).upper()
-    raw = raw.replace(".SH", ".SSE").replace(".SZ", ".SZSE")
+    if raw.endswith(".SH"):
+        raw = raw.replace(".SH", ".SSE")
+    elif raw.endswith(".SZ") and not raw.endswith(".SZSE"):
+        raw = raw.replace(".SZ", ".SZSE")
+    if "." not in raw:
+        raw = raw + ".SSE"
     return raw
 
 
