@@ -25,10 +25,40 @@ class AssistantSymbolActions:
         return self._panel.engine
 
     def handle_link_click(self, url: QtCore.QUrl | str) -> bool:
-        vt_symbol = parse_symbol_href(url.toString() if isinstance(url, QtCore.QUrl) else str(url))
+        text = url.toString() if isinstance(url, QtCore.QUrl) else str(url)
+        if text.startswith("zak://team-report/"):
+            return self._open_team_report_link(text)
+        vt_symbol = parse_symbol_href(text)
         if vt_symbol is None:
             return False
         QtCore.QTimer.singleShot(0, lambda vt=vt_symbol: self.open_analysis(vt))
+        return True
+
+    def _open_team_report_link(self, href: str) -> bool:
+        try:
+            from urllib.parse import parse_qs, unquote, urlparse
+
+            parsed = urlparse(href)
+            report_id = int(parsed.path.strip("/").split("/", 1)[-1])
+            query = parse_qs(parsed.query)
+            vt_symbol = unquote((query.get("symbol") or [""])[0])
+        except (ValueError, IndexError):
+            return False
+        if not vt_symbol:
+            return False
+        try:
+            from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
+        except ImportError:
+            page_notify(self._panel, "笔记中心需要 vnpy-ashare 插件", level="warning")
+            return False
+        show_notes_center_dialog(
+            self._engine.main_engine,
+            self._engine.event_engine,
+            initial_vt_symbol=vt_symbol,
+            initial_tab="reports",
+            parent=self._panel.window(),
+        )
+        page_notify(self._panel, f"已在笔记中心打开 {vt_symbol} 分析报告（#{report_id}）", level="success")
         return True
 
     def symbol_at(self, browser: QtWidgets.QTextBrowser, pos: QtCore.QPoint) -> str | None:

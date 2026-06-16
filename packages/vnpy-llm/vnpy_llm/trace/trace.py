@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal
 if TYPE_CHECKING:
     from vnpy_llm.trace.persistence import TracePersistence
 
-TraceKind = Literal["routing", "tool", "reply", "error", "handoff"]
+TraceKind = Literal["routing", "tool", "reply", "error", "handoff", "team"]
 TraceStatus = Literal["running", "ok", "error"]
 TurnStatus = Literal["running", "ok", "error"]
 

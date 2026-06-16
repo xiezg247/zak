@@ -100,6 +100,25 @@ def score_risk(risk: dict[str, Any]) -> dict[str, Any]:
             score -= 10
             risks.append(f"近60日跌 {ret:.1f}%")
 
+    beta = risk.get("beta")
+    if beta is not None:
+        if abs(beta) <= 1.0:
+            score += 5
+            highlights.append(f"Beta {beta:.2f}")
+        elif beta >= 1.3:
+            score -= 10
+            risks.append(f"Beta 偏高 {beta:.2f}")
+
+    sentiment = risk.get("market_sentiment") or {}
+    fg = sentiment.get("fear_greed_index")
+    if fg is not None:
+        if fg >= 75:
+            score -= 5
+            risks.append(f"市场贪婪 {fg:.0f}")
+        elif fg <= 25:
+            score += 5
+            highlights.append(f"市场恐惧 {fg:.0f}")
+
     return {
         "score": _clamp(score),
         "summary": "；".join(highlights) if highlights else "风险指标有限",
@@ -153,10 +172,7 @@ def compute_team_scores(prefetch: dict[str, Any]) -> dict[str, Any]:
     strategy = score_strategy(prefetch.get("strategy") or {})
 
     weighted = round(
-        financial["score"] * 0.35
-        + risk["score"] * 0.25
-        + strategy["score"] * 0.20
-        + 50 * 0.20,
+        financial["score"] * 0.35 + risk["score"] * 0.25 + strategy["score"] * 0.20 + 50 * 0.20,
         1,
     )
 

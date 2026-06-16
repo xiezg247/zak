@@ -57,6 +57,7 @@ def test_build_financial_extras_empty(_mock_list: MagicMock, _mock_lookup: Magic
 
 def test_prefetch_team_facts_parallel():
     service = MagicMock()
+    service.get_diagnose_result.return_value = None
     service.analyze_financial.return_value = {"symbol": "600519.SSE", "roe": 20}
     service.analyze_risk.return_value = {"volatility_annualized_pct": 22.0}
     service.analyze_strategy.return_value = {"technical": {"ma_alignment": "多头"}}
@@ -77,3 +78,74 @@ def test_prefetch_team_facts_invalid_symbol():
     result = prefetch_team_facts(service, "INVALID")
     assert "error" in result
     service.analyze_financial.assert_not_called()
+
+
+def test_attach_diagnose_cache_enriches_financial():
+    service = MagicMock()
+    service.get_diagnose_result.return_value = {
+        "symbol": "600519.SSE",
+        "as_of": "2026-06-16 10:00:00",
+        "technical": {"fields": {"MACD.MACD": "1.2", "RSI": "55"}},
+        "fundamental": {"fields": {"市盈(TTM)": "28.5", "ROE": "22.1"}},
+        "capital_flow": {"fields": {"主力净流入": "1.5亿"}},
+        "quote": {"industry": "白酒"},
+    }
+    service.analyze_financial.return_value = {
+        "symbol": "600519.SSE",
+        "valuation": {},
+        "latest_financials": None,
+        "data_availability": {"pe_ttm": False, "roe": False},
+    }
+    service.analyze_risk.return_value = {"volatility_annualized_pct": 22.0}
+    service.analyze_strategy.return_value = {"technical": {"ma_alignment": "多头"}}
+
+    result = prefetch_team_facts(service, "600519")
+
+    assert result["diagnose"]["available"] is True
+    assert result["financial"]["valuation"]["pe_ttm"] == 28.5
+    assert result["financial"]["latest_financials"]["roe"] == 22.1
+    assert "macd" in result["strategy"]["diagnose_indicators"]
+
+
+def test_prefetch_fetches_diagnose_when_cache_miss():
+    service = MagicMock()
+    service.get_diagnose_result.return_value = None
+    service.analyze_financial.return_value = {"symbol": "600519.SSE", "valuation": {}}
+    service.analyze_risk.return_value = {}
+    service.analyze_strategy.return_value = {}
+    service.diagnose.return_value = {
+        "symbol": "600519.SSE",
+        "as_of": "2026-06-16",
+        "fundamental": {"fields": {"市盈(TTM)": "30"}},
+        "technical": {},
+        "capital_flow": {},
+        "quote": {},
+    }
+
+    result = prefetch_team_facts(service, "600519")
+
+    service.diagnose.assert_called_once_with("600519")
+    service.set_diagnose_result.assert_called_once()
+    assert result["diagnose"]["available"] is True
+    assert result["diagnose"]["source"] == "diagnose_stock"
+
+
+def test_prefetch_fetches_diagnose_when_cache_symbol_mismatch():
+    service = MagicMock()
+    service.get_diagnose_result.return_value = {"symbol": "002230.SZSE"}
+    service.analyze_financial.return_value = {"symbol": "600519.SSE", "valuation": {}}
+    service.analyze_risk.return_value = {}
+    service.analyze_strategy.return_value = {}
+    service.diagnose.return_value = {
+        "symbol": "600519.SSE",
+        "fundamental": {"fields": {"市盈(TTM)": "28"}},
+        "technical": {},
+        "capital_flow": {},
+        "quote": {},
+    }
+
+    result = prefetch_team_facts(service, "600519")
+
+    service.diagnose.assert_called_once_with("600519")
+    assert result["diagnose"]["available"] is True
+    assert result["diagnose"]["source"] == "diagnose_stock"

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.tools.labels import tool_display_name
@@ -167,6 +167,36 @@ class TraceCoordinator:
             summary=message[:80],
             detail={"message": message},
             status="error",
+        )
+        self._emit_changed()
+
+    def begin_team_step(self, name: str, summary: str, *, detail: dict[str, Any] | None = None) -> str:
+        step = self._store.add_step(
+            kind="team",
+            name=name,
+            summary=summary[:80],
+            detail=detail or {},
+        )
+        self._emit_changed()
+        return step.id
+
+    def finish_team_step(
+        self,
+        step_id: str,
+        *,
+        summary: str,
+        ok: bool = True,
+        detail: dict[str, Any] | None = None,
+    ) -> None:
+        trace_status: Literal["ok", "error"] = "ok" if ok else "error"
+        payload: dict[str, Any] = {}
+        if detail:
+            payload.update(detail)
+        self._store.update_step(
+            step_id,
+            status=trace_status,
+            summary=summary[:80],
+            detail=payload or None,
         )
         self._emit_changed()
 

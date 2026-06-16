@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterator
-from typing import Any
+from typing import Any, cast
 
 from vnpy.trader.engine import MainEngine
 
@@ -46,6 +46,7 @@ class AgentGateway:
         self._tool_registry = ToolRegistry(main_engine)
         self._context = ContextAssembler(self._tool_registry)
         self._routing = RoutingPlane()
+        self._team_run_cache: dict[str, Any] = {}
         register_context_listener(self._on_context_changed)
         self._emit_tools_status()
 
@@ -257,6 +258,107 @@ class AgentGateway:
     ) -> None:
         self._sessions.append_message(session_id, role=role, content=content)
 
+    def _finalize_team_report(self, graph_ctx: GraphStreamContext | None, content: str) -> str:
+        """团队分析完成后静默保存研报，并在正文末尾追加可点击链接。"""
+        if graph_ctx is None or graph_ctx.analysis.route.category != "team_analysis":
+            return content
+        if "综合研判" not in content:
+            return content
+        try:
+            from vnpy_ashare.services.analysis.team_report import (
+                persist_team_analysis_report,
+                team_report_href,
+            )
+            from vnpy_llm.graph.team_symbol import resolve_team_symbol
+
+            ctx = get_ai_context()
+            cache = getattr(self, "_team_run_cache", None) or {}
+            prefetch = cache.get("team_prefetch") or graph_ctx.team_prefetch or {}
+            team_scores = cache.get("team_scores") or graph_ctx.team_scores
+            symbol = resolve_team_symbol(
+                user_text=graph_ctx.user_text,
+                context_symbol=ctx.symbol,
+                context_exchange=ctx.exchange,
+            ) or prefetch.get("symbol")
+            if not symbol:
+                return content
+            row = persist_team_analysis_report(
+                str(symbol),
+                content,
+                name=str(ctx.name or prefetch.get("name") or ""),
+                team_scores=team_scores,
+            )
+            if row:
+                report_id = int(row.get("id", 0))
+                vt = str(prefetch.get("symbol") or symbol)
+                href = team_report_href(report_id, vt)
+                return f"{content}\n\n📁 [打开投研研报 #{report_id}]({href})"
+        except Exception:
+            pass
+        return content
+
+    def _team_prefetch_provider(self, symbol: str) -> dict[str, Any]:
+        engine = getattr(self._tool_registry._main_engine, "engines", {}).get("Ashare")
+        if engine is None or not hasattr(engine, "analysis_service"):
+            return {"symbol": symbol, "error": "分析服务未就绪"}
+        return cast(dict[str, Any], engine.analysis_service.prefetch_team_facts(symbol))
+
+    def _build_team_trace_handler(self) -> Callable[[str, str, dict[str, Any]], None]:
+        from typing import cast
+
+        from vnpy_llm.graph.state import AGENT_STREAM_LABELS, AgentName
+
+        team_steps: dict[str, str] = {}
+
+        def handler(phase: str, agent: str, detail: dict[str, Any]) -> None:
+            if phase == "prefetch_start":
+                team_steps["prefetch"] = self._trace.begin_team_step("team:prefetch", "预取团队数据…")
+            elif phase == "prefetch_done":
+                step_id = team_steps.get("prefetch")
+                weighted = detail.get("weighted", "-")
+                if step_id:
+                    self._trace.finish_team_step(
+                        step_id,
+                        summary=f"预取完成 · 加权 {weighted}",
+                        detail=detail,
+                    )
+                self._team_run_cache = {
+                    "team_scores": detail.get("team_scores"),
+                    "team_prefetch": detail.get("team_prefetch"),
+                }
+            elif phase == "prefetch_error":
+                step_id = team_steps.pop("prefetch", None)
+                if step_id:
+                    self._trace.finish_team_step(
+                        step_id,
+                        summary="预取失败",
+                        ok=False,
+                        detail=detail,
+                    )
+            elif phase == "agent_start":
+                agent_name = cast(AgentName, agent)
+                label = AGENT_STREAM_LABELS.get(agent_name, agent)
+                team_steps[agent] = self._trace.begin_team_step(f"team:{agent}", f"{label}生成中…")
+            elif phase == "agent_done":
+                step_id = team_steps.pop(agent, None)
+                if not step_id:
+                    return
+                agent_name = cast(AgentName, agent)
+                label = AGENT_STREAM_LABELS.get(agent_name, agent)
+                if detail.get("ok", True):
+                    score = detail.get("score")
+                    summary = f"{label}完成" + (f" · {score}分" if score is not None else "")
+                    self._trace.finish_team_step(step_id, summary=summary, detail=detail)
+                else:
+                    self._trace.finish_team_step(
+                        step_id,
+                        summary=f"{label}异常",
+                        ok=False,
+                        detail=detail,
+                    )
+
+        return handler
+
     def _execute_tool(self, session_id: str, name: str, arguments: dict[str, Any]) -> str:
         step_id = self._trace.begin_tool(name, arguments)
         self._emit(AgentEvent(AgentEventType.TOOL_STARTED, {"name": name}))
@@ -298,6 +400,7 @@ class AgentGateway:
 
         self._streaming = True
         self._cancel_requested = False
+        self._team_run_cache.clear()
         self._emit(AgentEvent(AgentEventType.CHAT_STARTED, {"session_id": session_id}))
         self.append_local_message(session_id, role="user", content=user_text)
         turn = self._trace.begin_turn(session_id, user_text)
@@ -341,6 +444,8 @@ class AgentGateway:
             api_messages = self.build_api_messages(session_id)
             chunks = []
             self._trace.begin_reply()
+            team_trace = self._build_team_trace_handler() if (graph_ctx is not None and graph_ctx.analysis.route.category == "team_analysis") else None
+            prefetch_provider = self._team_prefetch_provider if graph_ctx is not None and graph_ctx.analysis.route.category == "team_analysis" else None
             for delta in AgentRuntime.stream_deltas(
                 self.config,
                 all_tools=all_tools,
@@ -352,11 +457,20 @@ class AgentGateway:
                 tool_executor=_execute_tool_bound,
                 should_cancel=should_cancel,
                 on_handoff=self._trace.on_handoff,
+                prefetch_provider=prefetch_provider,
+                on_team_trace=team_trace,
             ):
                 chunks.append(delta)
                 self._emit(AgentEvent(AgentEventType.CHAT_DELTA, {"delta": delta}))
                 yield delta
             content = "".join(chunks).strip()
+            if content:
+                content = self._finalize_team_report(graph_ctx, content)
+                if content != "".join(chunks).strip():
+                    suffix = content[len("".join(chunks).strip()) :]
+                    if suffix:
+                        self._emit(AgentEvent(AgentEventType.CHAT_DELTA, {"delta": suffix}))
+                        yield suffix
             if content:
                 self.append_local_message(session_id, role="assistant", content=content)
             self._trace.finish_reply()

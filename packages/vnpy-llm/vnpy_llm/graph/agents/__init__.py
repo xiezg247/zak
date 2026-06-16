@@ -1,7 +1,6 @@
 """注册各 Specialist Agent 的 prompt 切片。"""
 
-from vnpy_llm.graph.agents import backtest, data, general, market, research, screening
-from vnpy_llm.graph.agents import chief, financial, risk, strategy
+from vnpy_llm.graph.agents import backtest, chief, data, financial, general, market, research, risk, screening, strategy
 from vnpy_llm.graph.agents.base import build_agent_system_prompt, get_agent_domain_prompt
 
 __all__ = [

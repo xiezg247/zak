@@ -11,6 +11,7 @@ from vnpy_ashare.ai.context.quote.prompts import (
     build_bar_health_prompt,
     build_diagnose_ai_prompt,
     build_historical_ai_prompt,
+    build_team_analysis_ai_prompt,
     build_note_review_prompt,
     build_positions_ai_prompt,
     build_reference_peer_prompt,
@@ -224,6 +225,17 @@ def build_diagnose_menu(binding: StockBinding) -> QuickAction:
     )
 
 
+def build_team_analysis_menu(binding: StockBinding) -> QuickAction:
+    """投研团队全面分析（财务 / 风险 / 策略并行 + 总分析师汇总）。"""
+    return QuickAction(
+        id="team_analysis",
+        label="团队全面分析",
+        tooltip=f"{binding.tooltip} · 财务/风险/策略并行",
+        auto_send=True,
+        prompt=build_team_analysis_ai_prompt(binding.vt_symbol, binding.name),
+    )
+
+
 def build_technical_menu(binding: StockBinding) -> QuickAction:
     """技术形态二级菜单（均线量比 / 指标 / 双均线）。"""
     prefix = _wenda_prefix(binding)
@@ -336,10 +348,11 @@ def build_trend_forecast_menu(
 
 
 def build_bound_stock_menus(binding: StockBinding) -> list[QuickAction]:
-    """四组快捷菜单：综合诊断 / 技术形态 / 走势预测 / 近期走势。"""
+    """五组快捷菜单：综合诊断 / 团队全面分析 / 技术形态 / 走势预测 / 近期走势。"""
     class_name, fast_window, slow_window = resolve_signal_prompt_params()
     return [
         build_diagnose_menu(binding),
+        build_team_analysis_menu(binding),
         build_technical_menu(binding),
         build_trend_forecast_menu(
             binding,

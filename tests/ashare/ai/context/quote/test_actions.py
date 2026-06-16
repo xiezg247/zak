@@ -15,6 +15,7 @@ from vnpy_ashare.ai.context.quote import (
     build_bound_stock_menus,
     build_floating_stock_quick_actions,
     build_reference_peer_menu,
+    build_team_analysis_ai_prompt,
 )
 
 
@@ -26,13 +27,19 @@ class TestQuoteActions(unittest.TestCase):
             build_reference_peer_menu(binding),
             *build_assistant_screening_menus(),
         ]
-        self.assertEqual(len(actions), 7)
-        stock_ids = [a.id for a in actions[:4]]
-        screen_ids = [a.id for a in actions[5:]]
-        self.assertEqual(stock_ids, ["diagnose", "technical", "trend_forecast", "recent_trend"])
-        self.assertEqual(actions[4].id, "reference_peer")
+        self.assertEqual(len(actions), 8)
+        stock_ids = [a.id for a in actions[:5]]
+        screen_ids = [a.id for a in actions[6:]]
+        self.assertEqual(
+            stock_ids,
+            ["diagnose", "team_analysis", "technical", "trend_forecast", "recent_trend"],
+        )
+        self.assertEqual(actions[5].id, "reference_peer")
         self.assertEqual(screen_ids, ["pattern_screen", "condition_screen"])
         for action in actions:
+            if action.id == "team_analysis":
+                self.assertTrue(action.auto_send)
+                continue
             self.assertTrue(action.has_menu, action.id)
 
         pattern = next(a for a in actions if a.id == "pattern_screen")
@@ -79,8 +86,11 @@ class TestQuoteActions(unittest.TestCase):
                 name="科大讯飞",
                 page="自选",
             )
-        self.assertEqual(len(actions), 5)
+        self.assertEqual(len(actions), 7)
         self.assertIn("002230.SZSE", actions[0].children[0].prompt)
+        team = next(a for a in actions if a.id == "team_analysis")
+        self.assertIn("投研团队全面分析", team.prompt)
+        self.assertIn("600519.SSE", build_team_analysis_ai_prompt("600519.SSE", "贵州茅台"))
 
     def test_market_page_includes_sector_overview(self) -> None:
         with patch(IS_IN_WATCHLIST, return_value=True):

@@ -117,6 +117,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
         {
             "analyze_financial",
             "analyze_risk",
+            "diagnose_stock",
             "technical_snapshot",
             "list_strategy_signals",
             "get_bars_summary",
@@ -372,6 +373,7 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
         lines.append("【投研团队路由】")
         lines.append("- 并行启动 financial / risk / strategy 三个分析师，最后由 chief 汇总")
         lines.append("- 子分析师必须调用 analyze_financial / analyze_risk / technical_snapshot 等工具")
+        lines.append("- 财务面本地数据不足时可补充 diagnose_stock（问小达 MCP）")
         lines.append("- 禁止编造数据；某维度无数据时在 JSON 中如实标注")
 
     if analysis.screening and route.category == "screening":

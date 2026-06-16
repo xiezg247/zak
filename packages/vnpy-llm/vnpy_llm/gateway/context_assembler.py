@@ -9,8 +9,6 @@ from vnpy_common.ai.access import get_ai_context
 from vnpy_llm.chat.store import MAX_TOOL_RESULT_CHARS, ChatMessage
 from vnpy_llm.gateway.tool_registry import ToolRegistry
 from vnpy_llm.graph.state import GraphStreamContext
-from vnpy_llm.graph.team_scoring import compute_team_scores
-from vnpy_llm.graph.team_symbol import resolve_team_symbol
 from vnpy_llm.routing.prompts import (
     SYSTEM_PROMPT,
     build_page_prompt,
@@ -124,20 +122,6 @@ class ContextAssembler:
 
     def build_graph_stream_context(self, route_ctx: Any, user_text: str) -> GraphStreamContext:
         page = get_ai_context().page
-        ctx = get_ai_context()
-        team_prefetch = None
-        team_scores = None
-        if route_ctx.analysis.route.category == "team_analysis":
-            symbol = resolve_team_symbol(
-                user_text=user_text,
-                context_symbol=ctx.symbol,
-                context_exchange=ctx.exchange,
-            )
-            if symbol:
-                ashare_engine = getattr(self._tool_registry._main_engine, "engines", {}).get("Ashare")
-                if ashare_engine is not None and hasattr(ashare_engine, "analysis_service"):
-                    team_prefetch = ashare_engine.analysis_service.prefetch_team_facts(symbol)
-                    team_scores = compute_team_scores(team_prefetch)
         return GraphStreamContext(
             analysis=route_ctx.analysis,
             user_text=user_text,
@@ -148,6 +132,4 @@ class ContextAssembler:
             context_text=self.get_context_text(),
             page_prompt=build_page_prompt(page),
             strategy_prompt=build_strategy_prompt(),
-            team_prefetch=team_prefetch,
-            team_scores=team_scores,
         )

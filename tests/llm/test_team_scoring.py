@@ -26,6 +26,8 @@ def test_score_risk_low_volatility():
             "volatility_annualized_pct": 20.0,
             "max_drawdown_pct": 15.0,
             "return_pct_60d": 12.0,
+            "beta": 0.8,
+            "market_sentiment": {"fear_greed_index": 20.0},
         }
     )
     assert result["score"] >= 75

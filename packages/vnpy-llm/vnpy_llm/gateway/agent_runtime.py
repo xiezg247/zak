@@ -29,6 +29,8 @@ class AgentRuntime:
         tool_executor: Callable[[str, dict[str, Any]], str],
         should_cancel: Callable[[], bool] | None = None,
         on_handoff: Callable[[str, str, str], None] | None = None,
+        prefetch_provider: Callable[[str], dict[str, Any]] | None = None,
+        on_team_trace: Callable[[str, str, dict[str, Any]], None] | None = None,
     ) -> Iterator[str]:
         """按工具可用性选择 agent 或 chat 路径，统一 yield 文本 delta。"""
         # 团队模式分支
@@ -41,6 +43,8 @@ class AgentRuntime:
                 should_cancel=should_cancel,
                 graph_ctx=graph_ctx,
                 all_tools=all_tools,
+                prefetch_provider=prefetch_provider,
+                on_team_trace=on_team_trace,
             )
             return
 

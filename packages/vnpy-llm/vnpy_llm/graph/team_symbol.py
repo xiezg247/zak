@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 
+from vnpy.trader.constant import Exchange
+
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE
-from vnpy.trader.constant import Exchange
 
 _SYMBOL_PATTERN = re.compile(r"(\d{6}(?:\.(?:SSE|SZSE|BSE|SH|SZ|BJ))?)", re.IGNORECASE)
 
@@ -18,7 +19,7 @@ def normalize_symbol_code(raw: str) -> str | None:
         return None
     item = parse_stock_symbol(text)
     if item is not None:
-        return item.vt_symbol
+        return str(item.vt_symbol)
     return None
 
 

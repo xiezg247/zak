@@ -13,7 +13,7 @@ def create_chat_model(config: LlmConfig) -> ChatOpenAI:
     """由 LlmConfig 创建流式 ChatOpenAI（与 chat/client 共用 .env 配置）。"""
     if not config.configured:
         raise LlmClientError("未配置 LLM_API_KEY，请在 .env 中设置")
-    return ChatOpenAI(
+    return ChatOpenAI(  # type: ignore[call-arg]
         model=config.model,
         api_key=SecretStr(config.api_key),
         base_url=config.api_base,

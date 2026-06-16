@@ -41,6 +41,7 @@ class FloatingPanelTests(unittest.TestCase):
             ids,
             [
                 "diagnose",
+                "team_analysis",
                 "technical",
                 "trend_forecast",
                 "recent_trend",
@@ -69,7 +70,7 @@ class FloatingPanelTests(unittest.TestCase):
             panel_actions = build_quick_actions_for_panel(AiContextData(page="AI 助手"), mode="assistant")
         self.assertEqual(panel_actions[0].id, "interpret_screen")
         self.assertEqual(panel_actions[1].id, "diagnose")
-        self.assertEqual(len(panel_actions), 8)
+        self.assertEqual(len(panel_actions), 9)
 
     def test_floating_mode_uses_context_symbol(self) -> None:
         with patch(IS_IN_WATCHLIST, return_value=True):

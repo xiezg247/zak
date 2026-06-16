@@ -22,8 +22,13 @@ from vnpy_ashare.services.analysis.historical_mcp import (
     merge_historical_failure,
 )
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding, McpExecute
-from vnpy_ashare.services.analysis.technical import TechnicalAnalyzer
+from vnpy_ashare.services.analysis.risk_metrics import (
+    benchmark_symbol_exchange,
+    compute_beta_vs_hs300,
+    fetch_market_sentiment,
+)
 from vnpy_ashare.services.analysis.team_facts import build_financial_extras, prefetch_team_facts
+from vnpy_ashare.services.analysis.technical import TechnicalAnalyzer
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.signals import format_signal_context_extra
 
@@ -68,10 +73,8 @@ class AnalysisService(BaseService):
         if item is None:
             return {"error": f"无法解析代码: {symbol}"}
 
-        overview = self._engine.bar_service.get_overview(item.symbol, item.exchange, "daily")
-        return_info = self._engine.bar_service.get_return(
-            item.symbol, item.exchange, "daily", lookback_days=60
-        )
+        overview = self.engine.bar_service.get_overview(item.symbol, item.exchange, "daily")
+        return_info = self.engine.bar_service.get_return(item.symbol, item.exchange, "daily", lookback_days=60)
         extras = build_financial_extras(item.ts_code, item.vt_symbol)
 
         return {
@@ -98,7 +101,7 @@ class AnalysisService(BaseService):
     ) -> dict[str, Any]:
         """基于本地日 K 计算波动率、最大回撤与流动性。"""
         lookback = max(5, min(int(lookback or 60), 250))
-        bars = self._engine.bar_service.load_bars(symbol, exchange, "daily")
+        bars = self.engine.bar_service.load_bars(symbol, exchange, "daily")
         if len(bars) < 5:
             return {}
 
@@ -143,20 +146,30 @@ class AnalysisService(BaseService):
         if item is None:
             return {"error": f"无法解析代码: {symbol}"}
 
-        return_info = self._engine.bar_service.get_return(
-            item.symbol, item.exchange, "daily", lookback_days=60
-        )
-        overview = self._engine.bar_service.get_overview(item.symbol, item.exchange, "daily")
+        return_info = self.engine.bar_service.get_return(item.symbol, item.exchange, "daily", lookback_days=60)
+        overview = self.engine.bar_service.get_overview(item.symbol, item.exchange, "daily")
         metrics = self._compute_bar_risk_metrics(item.symbol, item.exchange)
+
+        bench_symbol, bench_exchange = benchmark_symbol_exchange()
+        stock_bars = self.engine.bar_service.load_bars(item.symbol, item.exchange, "daily")
+        bench_bars = self.engine.bar_service.load_bars(bench_symbol, bench_exchange, "daily")
+        beta = compute_beta_vs_hs300(stock_bars, bench_bars)
+        market_sentiment = fetch_market_sentiment()
 
         has_vol = metrics.get("volatility_annualized_pct") is not None
         has_dd = metrics.get("max_drawdown_pct") is not None
         has_liq = metrics.get("avg_volume") is not None
+        has_beta = beta is not None
+        has_sentiment = market_sentiment is not None
+
+        note_parts = ["波动率/回撤/Beta 基于本地日 K 与沪深300对齐计算"]
+        if has_sentiment:
+            note_parts.append("恐贪指数来自 SentimentService")
 
         return {
             "symbol": item.vt_symbol,
             "name": item.name,
-            "provider": "zak-risk-v1",
+            "provider": "zak-risk-v2",
             "bar_count": overview.count if overview else 0,
             "return_pct_60d": return_info.get("return_pct"),
             "lookback_days": return_info.get("lookback_days"),
@@ -165,14 +178,16 @@ class AnalysisService(BaseService):
             "volatility_annualized_pct": metrics.get("volatility_annualized_pct"),
             "max_drawdown_pct": metrics.get("max_drawdown_pct"),
             "avg_volume": metrics.get("avg_volume"),
-            "beta": None,
+            "beta": beta,
+            "market_sentiment": market_sentiment,
             "data_availability": {
                 "volatility": has_vol,
                 "max_drawdown": has_dd,
-                "beta": False,
+                "beta": has_beta,
                 "liquidity": has_liq,
+                "fear_greed": has_sentiment,
             },
-            "note": "Beta 与行业风险待后续补全；波动率/回撤基于本地日 K 计算。",
+            "note": "；".join(note_parts) + "。",
         }
 
     def analyze_strategy(self, symbol: str) -> dict[str, Any]:

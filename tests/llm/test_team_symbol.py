@@ -6,10 +6,10 @@ from vnpy_llm.graph.orchestrator import (
     AgentResult,
     _build_agent_task_spec,
     _build_team_context_for_chief,
-    _extract_json_from_text,
     _strip_json_blocks,
 )
 from vnpy_llm.graph.state import GraphStreamContext
+from vnpy_llm.graph.team_schema import extract_agent_score, normalize_agent_score
 from vnpy_llm.graph.team_symbol import normalize_symbol_code, resolve_team_symbol
 from vnpy_llm.routing.intent import IntentAnalysis, IntentRoute
 
@@ -32,26 +32,34 @@ def test_resolve_team_symbol_from_user_text():
 
 
 def test_resolve_team_symbol_from_context():
-    assert resolve_team_symbol(
-        user_text="全面分析这只票",
-        context_symbol="600519",
-        context_exchange="SSE",
-    ) == "600519.SSE"
-    assert resolve_team_symbol(
-        user_text="团队分析",
-        context_symbol="002230",
-        context_exchange="深交所",
-    ) == "002230.SZSE"
+    assert (
+        resolve_team_symbol(
+            user_text="全面分析这只票",
+            context_symbol="600519",
+            context_exchange="SSE",
+        )
+        == "600519.SSE"
+    )
+    assert (
+        resolve_team_symbol(
+            user_text="团队分析",
+            context_symbol="002230",
+            context_exchange="深交所",
+        )
+        == "002230.SZSE"
+    )
 
 
-def test_extract_json_from_text():
-    text = "## 财务面\n评分 78\n```json\n{\"financial\": {\"score\": 78}}\n```"
-    data = _extract_json_from_text(text)
-    assert data == {"financial": {"score": 78}}
+def test_extract_agent_score_nested_and_flat():
+    nested = '## 财务面\n```json\n{"financial": {"score": 78, "summary": "ok"}}\n```'
+    assert extract_agent_score(nested, "financial") == {"score": 78, "summary": "ok"}
+    flat = '## 风险面\n```json\n{"score": 65, "summary": "波动适中"}\n```'
+    assert extract_agent_score(flat, "risk") == {"score": 65, "summary": "波动适中"}
+    assert normalize_agent_score({"strategy": {"score": 80}}, "strategy") == {"score": 80}
 
 
 def test_strip_json_blocks():
-    text = "分析正文\n```json\n{\"risk\": {\"score\": 65}}\n```"
+    text = '分析正文\n```json\n{"risk": {"score": 65}}\n```'
     assert _strip_json_blocks(text) == "分析正文"
 
 
@@ -59,7 +67,7 @@ def test_build_team_context_for_chief_includes_structured_score():
     results = {
         "financial": AgentResult(
             agent="financial",
-            markdown="## 财务面\n```json\n{\"financial\": {\"score\": 80}}\n```",
+            markdown='## 财务面\n```json\n{"financial": {"score": 80}}\n```',
             json_data={"financial": {"score": 80}},
         ),
         "risk": AgentResult(agent="risk", markdown="风险偏高", json_data=None),
@@ -73,6 +81,18 @@ def test_build_team_context_for_chief_includes_structured_score():
     assert "超时未完成" in context
     assert "行情摘要" in context
     assert "```json" not in context
+
+
+def test_build_team_context_for_chief_includes_diagnose_cache():
+    results = {
+        "financial": AgentResult(agent="financial", markdown="财务 OK"),
+        "risk": AgentResult(agent="risk", markdown="风险 OK"),
+        "strategy": AgentResult(agent="strategy", markdown="策略 OK"),
+    }
+    diagnose = {"available": True, "metrics": {"pe_ttm": 25.0}}
+    context = _build_team_context_for_chief(results, "", None, diagnose)
+    assert "问小达诊断（diagnose_stock" in context
+    assert "pe_ttm" in context
 
 
 def test_build_agent_task_spec_prefetch_mode():

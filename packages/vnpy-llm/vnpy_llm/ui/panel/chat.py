@@ -707,6 +707,9 @@ class AiChatPanel(QtWidgets.QWidget):
         if url.scheme() == "zak" and url.host() == "symbol":
             self._symbol_actions.handle_link_click(url)
             return
+        if url.scheme() == "zak" and url.host() == "team-report":
+            self._symbol_actions.handle_link_click(url)
+            return
         if url.scheme() in {"http", "https"}:
             QtGui.QDesktopServices.openUrl(url)
 

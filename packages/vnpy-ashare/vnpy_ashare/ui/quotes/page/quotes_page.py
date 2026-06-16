@@ -868,6 +868,9 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
     def _ask_ai_for_diagnose(self) -> None:
         self._actions.ask_ai_for_diagnose()
 
+    def _ask_ai_for_team_analysis(self) -> None:
+        self._actions.ask_ai_for_team_analysis()
+
     def _ask_ai_for_technical(self) -> None:
         self._actions.ask_ai_for_technical()
 

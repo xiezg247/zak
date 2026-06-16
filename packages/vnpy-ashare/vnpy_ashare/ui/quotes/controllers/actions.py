@@ -13,6 +13,7 @@ from vnpy_ashare.ai.context import (
     build_positions_ai_prompt,
     build_signal_panel_ai_prompt,
     build_signal_panel_batch_ai_prompt,
+    build_team_analysis_ai_prompt,
     build_technical_ai_prompt,
 )
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
@@ -439,6 +440,15 @@ class ActionsController:
         name = quote.name if quote and quote.name else item.name
         self._ask_ai(build_diagnose_ai_prompt(item.vt_symbol, name))
 
+    def ask_ai_for_team_analysis(self) -> None:
+        page = self._p
+        item = page.current_item
+        if item is None or page.event_engine is None:
+            return
+        quote = page.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        self._ask_ai(build_team_analysis_ai_prompt(item.vt_symbol, name))
+
     def ask_ai_for_technical(self) -> None:
         title = self._item_title()
         if title is None:
@@ -632,6 +642,7 @@ class ActionsController:
 
         ai_menu = menu.addMenu("AI 分析 ▸")
         ai_menu.addAction("综合诊断", self.ask_ai_for_diagnose)
+        ai_menu.addAction("团队全面分析", self.ask_ai_for_team_analysis)
         ai_menu.addAction("技术形态", self.ask_ai_for_technical)
         ai_menu.addAction("双均线信号", self.ask_ai_for_signals)
         if page.page_name == "自选" and page.config.show_watchlist_positions:
