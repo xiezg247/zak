@@ -7,6 +7,7 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.services.analysis.market_context import build_team_market_context
 from vnpy_ashare.services.stock.context import DiagnoseMetrics, extract_diagnose_metrics
 from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow, list_snapshots
 
@@ -273,4 +274,10 @@ def prefetch_team_facts(service: AnalysisService, symbol: str) -> dict[str, Any]
         attach_diagnose_snapshot(payload, None, source=diagnose_source)
     else:
         attach_diagnose_snapshot(payload, diagnose_data, source=diagnose_source)
+
+    payload["market_context"] = build_team_market_context(
+        service,
+        item,
+        diagnose=diagnose_data,
+    )
     return payload

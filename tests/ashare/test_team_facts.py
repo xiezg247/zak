@@ -55,7 +55,9 @@ def test_build_financial_extras_empty(_mock_list: MagicMock, _mock_lookup: Magic
     assert "暂无" in extras["note"]
 
 
-def test_prefetch_team_facts_parallel():
+@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context")
+def test_prefetch_team_facts_parallel(mock_market: MagicMock):
+    mock_market.return_value = {"summary_lines": ["沪深300 近60日 +5.00%"]}
     service = MagicMock()
     service.get_diagnose_result.return_value = None
     service.analyze_financial.return_value = {"symbol": "600519.SSE", "roe": 20}
@@ -68,6 +70,8 @@ def test_prefetch_team_facts_parallel():
     assert "financial" in result
     assert "risk" in result
     assert "strategy" in result
+    assert "market_context" in result
+    assert result["market_context"]["summary_lines"]
     service.analyze_financial.assert_called_once_with("600519")
     service.analyze_risk.assert_called_once_with("600519")
     service.analyze_strategy.assert_called_once_with("600519")
@@ -80,7 +84,8 @@ def test_prefetch_team_facts_invalid_symbol():
     service.analyze_financial.assert_not_called()
 
 
-def test_attach_diagnose_cache_enriches_financial():
+@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context", return_value={"summary_lines": []})
+def test_attach_diagnose_cache_enriches_financial(_mock_market: MagicMock):
     service = MagicMock()
     service.get_diagnose_result.return_value = {
         "symbol": "600519.SSE",
@@ -107,7 +112,8 @@ def test_attach_diagnose_cache_enriches_financial():
     assert "macd" in result["strategy"]["diagnose_indicators"]
 
 
-def test_prefetch_fetches_diagnose_when_cache_miss():
+@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context", return_value={"summary_lines": []})
+def test_prefetch_fetches_diagnose_when_cache_miss(_mock_market: MagicMock):
     service = MagicMock()
     service.get_diagnose_result.return_value = None
     service.analyze_financial.return_value = {"symbol": "600519.SSE", "valuation": {}}
@@ -130,7 +136,8 @@ def test_prefetch_fetches_diagnose_when_cache_miss():
     assert result["diagnose"]["source"] == "diagnose_stock"
 
 
-def test_prefetch_fetches_diagnose_when_cache_symbol_mismatch():
+@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context", return_value={"summary_lines": []})
+def test_prefetch_fetches_diagnose_when_cache_symbol_mismatch(_mock_market: MagicMock):
     service = MagicMock()
     service.get_diagnose_result.return_value = {"symbol": "002230.SZSE"}
     service.analyze_financial.return_value = {"symbol": "600519.SSE", "valuation": {}}

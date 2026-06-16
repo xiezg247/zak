@@ -34,6 +34,9 @@ from vnpy_llm.ui.trace.widgets import AiInlineTraceBlock
 
 _STOCK_CODE_RE = re.compile(r"\b(\d{6})\b")
 _NOTE_MARKDOWN_PROP = "zak_note_markdown"
+_STREAM_DELTA_FLUSH_MS = 60
+_STREAM_SCROLL_THROTTLE_MS = 150
+_TRACE_LIVE_THROTTLE_MS = 400
 
 
 class AiInputEdit(QtWidgets.QPlainTextEdit):
@@ -95,6 +98,19 @@ class AiChatPanel(QtWidgets.QWidget):
         self._slow_tool_timer.setSingleShot(True)
         self._slow_tool_timer.setInterval(3000)
         self._slow_tool_timer.timeout.connect(self._on_tool_call_slow)
+        self._stream_delta_buffer: list[str] = []
+        self._stream_delta_timer = QtCore.QTimer(self)
+        self._stream_delta_timer.setSingleShot(True)
+        self._stream_delta_timer.setInterval(_STREAM_DELTA_FLUSH_MS)
+        self._stream_delta_timer.timeout.connect(self._flush_stream_delta_buffer)
+        self._stream_scroll_timer = QtCore.QTimer(self)
+        self._stream_scroll_timer.setSingleShot(True)
+        self._stream_scroll_timer.setInterval(_STREAM_SCROLL_THROTTLE_MS)
+        self._stream_scroll_timer.timeout.connect(self._apply_throttled_scroll)
+        self._trace_live_timer = QtCore.QTimer(self)
+        self._trace_live_timer.setSingleShot(True)
+        self._trace_live_timer.setInterval(_TRACE_LIVE_THROTTLE_MS)
+        self._trace_live_timer.timeout.connect(self._apply_live_inline_trace)
 
         self.setObjectName("AiChatPanel")
         if self.floating:
@@ -286,6 +302,10 @@ class AiChatPanel(QtWidgets.QWidget):
         more_menu.addAction("历史会话…", self._on_show_sessions)
         more_menu.addAction("新会话", self._on_new_session)
         more_menu.addAction("清空会话", self._on_clear)
+        more_menu.addSeparator()
+        more_menu.addAction("保存本轮为分析报告…", lambda: self._save_recent_turns_as_report(1))
+        more_menu.addAction("保存最近 3 轮为分析报告…", lambda: self._save_recent_turns_as_report(3))
+        more_menu.addAction("保存本轮到流水", lambda: self._save_recent_turns_as_journal(1))
         more_menu.addSeparator()
         self._model_action = more_menu.addAction("")
         self._model_action.setEnabled(False)
@@ -790,14 +810,66 @@ class AiChatPanel(QtWidgets.QWidget):
             return bubble.text().strip()
         return ""
 
+    def _selection_from_bubble(self, bubble: QtWidgets.QWidget) -> str:
+        if isinstance(bubble, QtWidgets.QLabel):
+            return bubble.selectedText().strip()
+        if isinstance(bubble, QtWidgets.QTextBrowser):
+            cursor = bubble.textCursor()
+            if cursor.hasSelection():
+                return cursor.selectedText().replace("\u2029", "\n").strip()
+        return ""
+
+    def _populate_note_save_menu(
+        self,
+        menu: QtWidgets.QMenu,
+        *,
+        stock,
+        full_body: str,
+        selection: str,
+    ) -> None:
+        selected = selection.strip()
+        full = full_body.strip()
+        if not selected and not full:
+            return
+
+        def bind_report(body: str, label: str) -> None:
+            action = menu.addAction(label)
+            action.triggered.connect(lambda: self._save_assistant_as_report(body, stock))
+
+        def bind_journal(body: str, label: str) -> None:
+            action = menu.addAction(label)
+            action.triggered.connect(lambda: self._save_assistant_as_journal(body, stock))
+
+        if selected:
+            suffix = f"（选中 {len(selected)} 字）"
+            bind_report(selected, f"存为分析报告{suffix}…")
+            bind_journal(selected, f"追加到流水{suffix}")
+            if full and full != selected:
+                menu.addSeparator()
+                bind_report(full, "存为分析报告（全文）…")
+                bind_journal(full, "追加到流水（全文）")
+            copy = menu.addAction("复制选中")
+            copy.triggered.connect(lambda: QtGui.QGuiApplication.clipboard().setText(selected))
+            if full and full != selected:
+                copy_all = menu.addAction("复制全文")
+                copy_all.triggered.connect(lambda: QtGui.QGuiApplication.clipboard().setText(full))
+        else:
+            bind_report(full, f"存为分析报告（{stock.vt_symbol}）…")
+            bind_journal(full, f"追加到流水（{stock.vt_symbol}）")
+            copy_action = menu.addAction("复制全文")
+            copy_action.triggered.connect(lambda: QtGui.QGuiApplication.clipboard().setText(full))
+
     def _on_assistant_note_menu(self, bubble: QtWidgets.QWidget, pos: QtCore.QPoint) -> None:
-        body = self._assistant_bubble_text(bubble)
         if isinstance(bubble, QtWidgets.QTextBrowser):
             vt_symbol = self._symbol_actions.symbol_at(bubble, pos)
             if vt_symbol:
+                selection = self._selection_from_bubble(bubble)
+                body = selection or self._assistant_bubble_text(bubble)
                 self._symbol_actions.show_menu(bubble, pos, vt_symbol, body=body)
                 return
-        if not body:
+        selection = self._selection_from_bubble(bubble)
+        full_body = self._assistant_bubble_text(bubble)
+        if not selection and not full_body:
             page_notify(self, "消息内容为空", level="info")
             return
         try:
@@ -812,15 +884,63 @@ class AiChatPanel(QtWidgets.QWidget):
             disabled = menu.addAction("需先在看盘页选中标的")
             disabled.setEnabled(False)
         else:
-            save_report = menu.addAction(f"存为分析报告（{stock.vt_symbol}）…")
-            save_journal = menu.addAction(f"追加到流水（{stock.vt_symbol}）")
-            save_report.triggered.connect(lambda: self._save_assistant_as_report(body, stock))
-            save_journal.triggered.connect(lambda: self._save_assistant_as_journal(body, stock))
-        copy_action = menu.addAction("复制全文")
-        copy_action.triggered.connect(
-            lambda: QtGui.QGuiApplication.clipboard().setText(body),
-        )
+            self._populate_note_save_menu(
+                menu,
+                stock=stock,
+                full_body=full_body,
+                selection=selection,
+            )
         menu.popup(bubble.mapToGlobal(pos))
+
+    def _save_recent_turns_as_report(self, turn_count: int) -> None:
+        try:
+            from vnpy_ashare.ui.features.notes_center.save_from_ai import (
+                resolve_context_stock,
+                save_recent_turns_as_report,
+            )
+        except ImportError:
+            page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
+            return
+        stock = resolve_context_stock()
+        if stock is None:
+            page_notify(self, "需先在看盘页选中标的", level="warning")
+            return
+        messages = self.engine.get_messages()
+        if save_recent_turns_as_report(
+            self.engine.main_engine,
+            messages,
+            turn_count=turn_count,
+            parent=self,
+            stock=stock,
+        ):
+            label = "本轮" if turn_count <= 1 else f"最近 {turn_count} 轮"
+            page_notify(self, f"已保存{label}为分析报告（{stock.vt_symbol}）", level="success")
+        else:
+            page_notify(self, "没有可保存的对话内容", level="warning")
+
+    def _save_recent_turns_as_journal(self, turn_count: int) -> None:
+        try:
+            from vnpy_ashare.ui.features.notes_center.save_from_ai import (
+                resolve_context_stock,
+                save_recent_turns_as_journal,
+            )
+        except ImportError:
+            page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
+            return
+        stock = resolve_context_stock()
+        if stock is None:
+            page_notify(self, "需先在看盘页选中标的", level="warning")
+            return
+        messages = self.engine.get_messages()
+        if save_recent_turns_as_journal(
+            self.engine.main_engine,
+            messages,
+            turn_count=turn_count,
+            stock=stock,
+        ):
+            page_notify(self, f"已保存本轮到流水（{stock.vt_symbol}）", level="success")
+        else:
+            page_notify(self, "没有可保存的对话内容", level="warning")
 
     def _save_assistant_as_report(self, body: str, stock) -> None:
         from vnpy_ashare.ui.features.notes_center.save_from_ai import save_message_as_report
@@ -1012,13 +1132,25 @@ class AiChatPanel(QtWidgets.QWidget):
         self._update_pending_from_trace()
         if not self._should_show_inline_trace():
             return
+        if thread_is_active(self._worker):
+            if not self._trace_live_timer.isActive():
+                self._trace_live_timer.start()
+            return
+        self._apply_live_inline_trace()
+
+    def _apply_live_inline_trace(self) -> None:
+        if not self._should_show_inline_trace():
+            return
         turn = self.engine.get_current_trace_turn()
         if turn is not None:
             if self._live_trace_block is None:
                 self._live_trace_block = self._insert_inline_trace(turn, expanded=True)
             else:
                 self._live_trace_block.apply_turn(turn, expanded=True)
-            self._scroll_to_bottom()
+            if thread_is_active(self._worker):
+                self._schedule_throttled_scroll()
+            else:
+                self._scroll_to_bottom()
             return
         if self._live_trace_block is not None:
             turns = self.engine.get_trace_turns()
@@ -1039,7 +1171,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self._streaming_bubble = self._append_bubble("assistant", initial, persist=True)
 
     def _append_stream_delta(self, delta: str) -> None:
-        if self._streaming_bubble is None:
+        if self._streaming_bubble is None or not delta:
             return
         widget = self._streaming_bubble
         if isinstance(widget, QtWidgets.QLabel):
@@ -1049,6 +1181,26 @@ class AiChatPanel(QtWidgets.QWidget):
             widget.setPlainText(widget.toPlainText() + delta)
             self._fit_floating_bubble(widget)
 
+    def _flush_stream_delta_buffer(self) -> None:
+        if not self._stream_delta_buffer:
+            return
+        chunk = "".join(self._stream_delta_buffer)
+        self._stream_delta_buffer.clear()
+        self._append_stream_delta(chunk)
+        self._schedule_throttled_scroll()
+
+    def _finalize_stream_delta_buffer(self) -> None:
+        self._stream_delta_timer.stop()
+        self._flush_stream_delta_buffer()
+
+    def _schedule_throttled_scroll(self) -> None:
+        if not self._stream_scroll_timer.isActive():
+            self._stream_scroll_timer.start()
+
+    def _apply_throttled_scroll(self) -> None:
+        bar = self._message_scroll.verticalScrollBar()
+        bar.setValue(bar.maximum())
+
     def _on_stream_delta(self, delta: str) -> None:
         if not delta:
             return
@@ -1056,11 +1208,15 @@ class AiChatPanel(QtWidgets.QWidget):
             self._remove_pending_bubble()
         if self._streaming_bubble is None:
             self._ensure_streaming_bubble(delta)
-        else:
-            self._append_stream_delta(delta)
-        self._scroll_to_bottom()
+            self._schedule_throttled_scroll()
+            return
+        self._stream_delta_buffer.append(delta)
+        if not self._stream_delta_timer.isActive():
+            self._stream_delta_timer.start()
 
     def _on_stream_finished(self) -> None:
+        self._trace_live_timer.stop()
+        self._finalize_stream_delta_buffer()
         self._remove_pending_bubble()
         if self._streaming_bubble is not None:
             if isinstance(self._streaming_bubble, QtWidgets.QLabel):
@@ -1085,6 +1241,8 @@ class AiChatPanel(QtWidgets.QWidget):
         self._streaming_bubble = None
 
     def _on_stream_cancelled(self) -> None:
+        self._trace_live_timer.stop()
+        self._finalize_stream_delta_buffer()
         self._remove_pending_bubble()
         if self._streaming_bubble is not None:
             self._sync_all_bubble_widths()
@@ -1101,6 +1259,8 @@ class AiChatPanel(QtWidgets.QWidget):
         self._streaming_bubble = None
 
     def _on_stream_failed(self, message: str) -> None:
+        self._trace_live_timer.stop()
+        self._finalize_stream_delta_buffer()
         self._remove_pending_bubble()
         self._remove_streaming_bubble()
         self._append_bubble("error", f"生成失败：{message}", persist=True)

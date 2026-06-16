@@ -83,6 +83,22 @@ def test_build_team_context_for_chief_includes_structured_score():
     assert "```json" not in context
 
 
+def test_build_team_context_for_chief_includes_market_context():
+    results = {
+        "financial": AgentResult(agent="financial", markdown="财务 OK"),
+        "risk": AgentResult(agent="risk", markdown="风险 OK"),
+        "strategy": AgentResult(agent="strategy", markdown="策略 OK"),
+    }
+    market_context = {
+        "summary_lines": ["沪深300 近60日 +5.00%", "恐贪指数 62 贪婪"],
+        "benchmark": {"return_pct_60d": 5.0},
+    }
+    context = _build_team_context_for_chief(results, "", None, None, market_context)
+    assert "市场环境（预取）" in context
+    assert "恐贪指数 62" in context
+    assert "市场环境明细" in context
+
+
 def test_build_team_context_for_chief_includes_diagnose_cache():
     results = {
         "financial": AgentResult(agent="financial", markdown="财务 OK"),
