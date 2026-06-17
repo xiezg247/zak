@@ -911,6 +911,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             source_page="多因子配方",
             batch_source="batch_auto_screener",
             list_strategies=lambda: class_names,
+            recipe_id=self.recipe_panel.current_recipe_id(),
             on_running=lambda running: self.batch_backtest_btn.setDisabled(running),
         )
 

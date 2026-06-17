@@ -8,6 +8,7 @@ from typing import Any
 from vnpy_ashare.ai.context.store import get_market_quotes_cache
 from vnpy_ashare.integrations.tickflow import fetch_index_ticker
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot, compute_market_breadth, merge_official_limit_counts
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, load_market_environment
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
@@ -30,6 +31,7 @@ class MarketOverviewData:
     breadth: MarketBreadthSnapshot | None
     sectors: list[SectorRankItem]
     environment: MarketEnvironmentSnapshot | None = None
+    limit_ladder_counts: dict[str, int] | None = None
 
 
 def _quote_rows_for_overview() -> tuple[list[dict[str, Any]], str | None]:
@@ -78,6 +80,7 @@ def load_market_overview() -> MarketOverviewData:
         breadth=_load_breadth(rows, updated_at=updated_at),
         sectors=load_sector_ranks(rows),
         environment=load_market_environment(),
+        limit_ladder_counts=compute_limit_ladder_counts(rows),
     )
 
 
@@ -85,9 +88,15 @@ def build_overview_from_market_rows(
     rows: list[dict[str, Any]],
     *,
     updated_at: str | None = None,
-) -> tuple[MarketBreadthSnapshot | None, list[SectorRankItem]]:
-    """由市场页 catalog 行增量刷新广度与行业榜（不拉指数）。"""
+    include_ladder_counts: bool = False,
+) -> tuple[MarketBreadthSnapshot | None, list[SectorRankItem], dict[str, int] | None]:
+    """由市场页 catalog 行增量刷新广度与行业榜（不拉指数）。
+
+    连板梯队统计默认跳过（全市场硬过滤极慢），仅 Worker 全量刷新时开启。
+    """
     if not rows:
-        return None, []
+        empty_ladder = {label: 0 for label in compute_limit_ladder_counts([])} if include_ladder_counts else None
+        return None, [], empty_ladder
     breadth = _load_breadth(rows, updated_at=updated_at)
-    return breadth, load_sector_ranks(rows)
+    ladder = compute_limit_ladder_counts(rows) if include_ladder_counts else None
+    return breadth, load_sector_ranks(rows), ladder

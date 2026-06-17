@@ -108,12 +108,15 @@ class CombinedRiskGateTest(unittest.TestCase):
             avg_float_pnl_pct=None,
             warnings=("当日盈亏 -6.0% 触发熔断阈值",),
         )
-        with patch(
-            "vnpy_ashare.trading.risk.combined.load_emotion_cycle_snapshot",
-            return_value=recession,
-        ), patch(
-            "vnpy_ashare.trading.risk.combined.build_risk_gate_snapshot",
-            return_value=halt,
+        with (
+            patch(
+                "vnpy_ashare.trading.risk.combined.load_emotion_cycle_snapshot",
+                return_value=recession,
+            ),
+            patch(
+                "vnpy_ashare.trading.risk.combined.build_risk_gate_snapshot",
+                return_value=halt,
+            ),
         ):
             combined = load_combined_risk_gate_snapshot()
         self.assertFalse(combined.allow_new_positions)

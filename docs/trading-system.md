@@ -490,8 +490,8 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 
 | 项 | 交付 |
 |----|------|
-| 短线策略回测模板 | backtest |
-| 团队分析短线评分维度 | team-agent |
+| 短线策略回测模板 | backtest `batch_templates.py` | **已有** |
+| 团队分析短线评分维度 | team-agent `ultra_short` | **已有** |
 | 模式内胜率 / 盈亏比统计报表 | |
 
 ---

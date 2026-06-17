@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from vnpy_ashare.screener.dimensions.base import DimensionHit
-from vnpy_ashare.screener.dimensions.concept_strength import run_concept_strength
 from vnpy_ashare.screener.dimensions.cm20_elastic import run_cm20_elastic
+from vnpy_ashare.screener.dimensions.concept_strength import run_concept_strength
 from vnpy_ashare.screener.dimensions.first_board import run_first_board
 from vnpy_ashare.screener.dimensions.intraday_breakout import run_intraday_breakout
 from vnpy_ashare.screener.dimensions.limit_board import run_limit_board

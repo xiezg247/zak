@@ -9,6 +9,7 @@ from typing import Any
 
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.notifications.channels.feishu_webhook import FeishuWebhookChannel
+from vnpy_ashare.notifications.delivery import build_notify_outbound
 from vnpy_ashare.notifications.dispatcher import NotifyDispatcher
 from vnpy_ashare.notifications.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
@@ -18,7 +19,6 @@ from vnpy_ashare.notifications.events import (
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
 )
-from vnpy_ashare.notifications.formatters import format_notify_text
 from vnpy_ashare.notifications.models import NotifyDeliveryResult
 from vnpy_ashare.notifications.rules import NotifyRulesEngine
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, classify_emotion_cycle
@@ -64,7 +64,7 @@ class NotificationService(BaseService):
 
         data = dict(payload or {})
         try:
-            text = format_notify_text(event_id, data)
+            outbound = build_notify_outbound(event_id, data)
         except ValueError:
             logger.exception("unknown notify event=%s", event_id)
             return
@@ -92,7 +92,7 @@ class NotificationService(BaseService):
 
         if not self._dispatcher.enqueue(
             event_id,
-            text,
+            outbound,
             payload=data,
             on_complete=on_complete,
         ):
@@ -128,8 +128,8 @@ class NotificationService(BaseService):
         if not ok:
             return NotifyDeliveryResult(success=False, message=reason)
 
-        text = format_notify_text(NOTIFY_EVENT_MANUAL_TEST, {})
-        result = self._build_channel().send_text(text)
+        outbound = build_notify_outbound(NOTIFY_EVENT_MANUAL_TEST, {})
+        result = self._build_channel().send_outbound(outbound)
         self.last_error = None if result.success else result.message
         try:
             append_notify_delivery_log(

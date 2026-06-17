@@ -79,10 +79,7 @@ def format_book_pnl_hint(summary: BookPnlSummary) -> str | None:
         parts.append(f"浮盈 {summary.total_float_pnl:+.2f}")
     if summary.realized_pnl_today is not None:
         if summary.realized_pnl_journal is not None and summary.realized_pnl_manual not in (None, 0.0):
-            parts.append(
-                f"已实现 {summary.realized_pnl_today:+.2f}"
-                f"（登记 {summary.realized_pnl_journal:+.0f}+额外 {summary.realized_pnl_manual:+.0f}）"
-            )
+            parts.append(f"已实现 {summary.realized_pnl_today:+.2f}（登记 {summary.realized_pnl_journal:+.0f}+额外 {summary.realized_pnl_manual:+.0f}）")
         elif summary.realized_pnl_journal is not None:
             parts.append(f"已实现 {summary.realized_pnl_today:+.2f}（登记卖出）")
         else:

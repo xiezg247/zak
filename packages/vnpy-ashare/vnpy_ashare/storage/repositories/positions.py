@@ -35,7 +35,7 @@ def _row_to_position(row) -> dict[str, str | float | int | None]:
     }
 
 
-def load_position_rows() -> list[dict[str, str | float | int]]:
+def load_position_rows() -> list[dict[str, str | float | int | None]]:
     init_app_db()
     with connect() as conn:
         rows = conn.execute(

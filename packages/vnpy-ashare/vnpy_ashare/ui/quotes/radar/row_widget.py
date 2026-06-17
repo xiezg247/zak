@@ -119,7 +119,7 @@ class RadarStockRowWidget(QtWidgets.QFrame):
             tokens = theme_manager().tokens()
             tier_color = tokens.text_secondary
             if row.leader_tier == "dragon_1":
-                tier_color = tokens.up_color
+                tier_color = pct_change_color(1.0, tokens)
             elif row.leader_tier == "dragon_2":
                 tier_color = tokens.accent
             self._tier_badge.setStyleSheet(

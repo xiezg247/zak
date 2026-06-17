@@ -37,7 +37,7 @@ def check_buy_against_plan(
     active_plan: TradingPlanRecord | None = None,
 ) -> BuyPlanCheckResult:
     plan = active_plan if active_plan is not None else load_active_trading_plan(trade_date)
-    emotion = load_emotion_cycle_snapshot()
+    emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
     tags: list[str] = []
     warnings: list[str] = []
 

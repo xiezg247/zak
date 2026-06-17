@@ -45,12 +45,16 @@ class StrategyRegistryTests(unittest.TestCase):
         self.assertIn("波段", meta.title)
         self.assertTrue(meta.supports_signals)
 
-    def test_trend_ma_registered(self) -> None:
-        meta = get_strategy_meta("AshareTrendMaStrategy")
-        self.assertIsNotNone(meta)
-        assert meta is not None
-        self.assertIn("趋势", meta.title)
-        self.assertTrue(meta.supports_signals)
+    def test_ultra_short_cta_registered(self) -> None:
+        for name in (
+            "AshareLimitBoardStrategy",
+            "AshareIntradayBreakoutStrategy",
+            "AsharePullbackStrategy",
+        ):
+            meta = get_strategy_meta(name)
+            self.assertIsNotNone(meta, msg=name)
+            assert meta is not None
+            self.assertTrue(meta.supports_signals)
 
 
 if __name__ == "__main__":

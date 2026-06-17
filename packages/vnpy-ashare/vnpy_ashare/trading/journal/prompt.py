@@ -26,7 +26,7 @@ def build_journal_prompt(
     report = load_journal_report(start_date=start_text, end_date=end_text)
     entries = query_trade_journal(start_date=start_text, end_date=end_text, limit=50)
     plan = load_active_trading_plan(end_text)
-    emotion = load_emotion_cycle_snapshot()
+    emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
     effective, journal_total, manual = resolve_realized_pnl_today(end_text)
     float_holds = scan_float_loss_holds(position_cache)
 
@@ -66,10 +66,7 @@ def build_journal_prompt(
         for item in entries[:15]:
             tags = f" [{','.join(item.violation_tags)}]" if item.violation_tags else ""
             pnl = f" pnl={item.pnl:+.0f}" if item.pnl is not None else ""
-            lines.append(
-                f"- {item.trade_date} {item.side} {item.vt_symbol} "
-                f"@{item.price:.2f} x{item.volume}{pnl}{tags}"
-            )
+            lines.append(f"- {item.trade_date} {item.side} {item.vt_symbol} @{item.price:.2f} x{item.volume}{pnl}{tags}")
 
     prompt = "\n".join(lines)
     return {

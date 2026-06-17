@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
-from vnpy_ashare.quotes.radar.radar_leader import compute_leader_score, rank_sector_leaders
+from vnpy_ashare.quotes.radar.radar_leader import compute_leader_score, rank_sector_leaders, rank_unified_sector_leaders
 from vnpy_ashare.screener.sentiment.sentiment_gate import apply_emotion_modulation, apply_sentiment_modulation
 
 
@@ -49,6 +49,47 @@ class LeaderScoreTest(unittest.TestCase):
         self.assertEqual(ranked[0].leader_tier, "dragon_1")
         self.assertEqual(ranked[1].leader_tier, "dragon_2")
 
+    def test_rank_unified_prefers_concept_axis_when_stronger(self) -> None:
+        rows = [
+            {
+                "vt_symbol": "600000.SSE",
+                "industry": "银行",
+                "concept": "人工智能",
+                "change_pct": 10.0,
+                "amount": 1e8,
+                "limit_times": 1,
+                "net_mf_amount": 1e6,
+                "symbol": "600000",
+            },
+            {
+                "vt_symbol": "600001.SSE",
+                "industry": "银行",
+                "concept": "人工智能",
+                "change_pct": 9.0,
+                "amount": 5e7,
+                "limit_times": 1,
+                "net_mf_amount": 5e5,
+                "symbol": "600001",
+            },
+        ]
+        ranked = rank_unified_sector_leaders(rows, strong_concepts={"人工智能"})
+        self.assertEqual(len(ranked), 2)
+        self.assertEqual(ranked[0].leader_tier, "dragon_1")
+        self.assertIn(ranked[0].sector_axis, {"industry", "concept"})
+
+    def test_leader_score_uses_first_time(self) -> None:
+        base = {
+            "vt_symbol": "600000.SSE",
+            "change_pct": 10.0,
+            "amount": 2e8,
+            "net_mf_amount": 1e7,
+            "limit_times": 2,
+            "symbol": "600000",
+        }
+        early = compute_leader_score({**base, "first_time": "093500"}, amount_rank=0.8, max_net_mf=1e7)
+        late = compute_leader_score({**base, "first_time": "143000"}, amount_rank=0.8, max_net_mf=1e7)
+        self.assertGreater(early, late)
+
 
 class EmotionModulationTest(unittest.TestCase):
     def test_emotion_modulation_scales_score(self) -> None:
@@ -78,10 +119,7 @@ class EmotionModulationTest(unittest.TestCase):
                 limit_ladder_depth=0,
             ),
         )
-        rows = [
-            {"vt_symbol": f"60000{i}.SSE", "composite_score": 90 - i * 5, "hit_reasons": []}
-            for i in range(5)
-        ]
+        rows = [{"vt_symbol": f"60000{i}.SSE", "composite_score": 90 - i * 5, "hit_reasons": []} for i in range(5)]
         adjusted, meta = apply_emotion_modulation(rows, snapshot=snap)
         self.assertEqual(len(adjusted), 3)
         self.assertTrue(meta and meta.get("emotion_capped"))

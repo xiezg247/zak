@@ -66,12 +66,16 @@ def build_limit_board_signal_payload(
     vt_symbol: str,
     strategy_id: str = "AshareLimitBoardStrategy",
     highs: list[float] | None = None,
+    lows: list[float] | None = None,
     volumes: list[float] | None = None,
     recent_days: int = 1,
+    first_time: str = "",
+    reject_one_word: bool = True,
 ) -> dict[str, Any]:
-    """打板信号快照（日 K 涨停 + 封板代理；完整分 K 规则 Phase 5）。"""
+    """打板信号快照（日 K 涨停 + 封板代理；封板时间来自 limit_list_d）。"""
     symbol = vt_symbol.split(".", 1)[0]
     high_series = highs if highs is not None else closes
+    low_series = lows if lows is not None else closes
     warnings: list[str] = []
     if len(closes) < 3:
         return {
@@ -99,6 +103,24 @@ def build_limit_board_signal_payload(
     limit_price = calc_limit_price(prev_close, symbol=symbol)
     limit_up_today = _limit_up_bar(closes, high_series, dates, last_index, symbol=symbol)
 
+    one_word = False
+    if reject_one_word and lows is not None and limit_up_today and last_close > 0:
+        bar_high = high_series[last_index]
+        bar_low = low_series[last_index]
+        amplitude = (bar_high - bar_low) / last_close * 100
+        one_word = amplitude >= 0 and amplitude < 0.5
+
+    resolved_first_time = (first_time or "").strip()
+    if not resolved_first_time and limit_up_today:
+        from vnpy_ashare.trading.signals.intraday_seal_time import resolve_first_time
+
+        resolved_first_time = resolve_first_time(vt_symbol, prev_close=prev_close)
+
+    from vnpy_ashare.trading.signals.seal_time import format_seal_time_label, seal_time_score
+
+    seal_score = seal_time_score(resolved_first_time)
+    seal_label = format_seal_time_label(resolved_first_time)
+
     last_event_index: int | None = None
     for index in range(last_index, 0, -1):
         if _limit_up_bar(closes, high_series, dates, index, symbol=symbol):
@@ -116,7 +138,7 @@ def build_limit_board_signal_payload(
         days_since = (end_d - start_d).days
 
     signal = classify_limit_board_signal(
-        limit_up_today=limit_up_today,
+        limit_up_today=limit_up_today and not one_word,
         recent_days=recent_days,
         days_since_event=days_since,
     )
@@ -126,17 +148,24 @@ def build_limit_board_signal_payload(
     change_pct = (last_close - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
 
     reasons: list[str] = []
-    if limit_up_today:
+    if one_word:
+        reasons.append("近似一字板，打板回避")
+    elif limit_up_today:
         reasons.append(f"涨停封板代理：涨幅 {change_pct:.1f}%（阈值 {threshold:.1f}%）")
         reasons.append(f"涨停价参考 {limit_price:.2f}")
+        if seal_label:
+            reasons.append(f"封板时间 {seal_label}（得分 {seal_score:.1f}）")
     elif last_event_index is not None and days_since is not None and days_since <= recent_days:
         reasons.append(f"近 {recent_days} 日有涨停：{signal_date}")
     else:
         reasons.append("未触及涨停价/封板条件")
 
-    warnings.append("日 K 代理规则，非分 K 打板；须结合情绪周期与龙头地位")
+    if seal_score <= 0 and limit_up_today and not one_word:
+        warnings.append("封板时间缺失，封板质量降权")
+    warnings.append("日 K 代理规则；完整分 K 打板须结合 TickFlow")
 
-    strength = 85.0 if limit_up_today else 45.0 if days_since is not None and days_since <= recent_days else 30.0
+    base_strength = 85.0 if limit_up_today and not one_word else 45.0 if days_since is not None and days_since <= recent_days else 30.0
+    strength = round(min(100.0, base_strength + seal_score * 10.0), 1)
 
     ref_buy = limit_price if limit_up_today or (days_since is not None and days_since <= recent_days) else None
     ref_sell = last_close if signal == "buy" else None
@@ -161,6 +190,9 @@ def build_limit_board_signal_payload(
         "last_close": last_close,
         "limit_price": limit_price,
         "change_pct": round(change_pct, 2),
+        "first_time": resolved_first_time or None,
+        "seal_time_label": seal_label or None,
+        "seal_time_score": seal_score,
     }
 
 
@@ -180,6 +212,61 @@ def _volume_ratio_at(volumes: list[float], end_index: int, window: int = 5) -> f
     if avg_base <= 0:
         return None
     return avg_recent / avg_base
+
+
+def classify_intraday_breakout_bar(
+    closes: list[float],
+    highs: list[float],
+    volumes: list[float],
+    index: int,
+    *,
+    symbol: str,
+    min_change_pct: float = 3.0,
+    max_change_pct: float = 7.0,
+    volume_ratio_min: float = 1.2,
+) -> tuple[SignalKind, float]:
+    """半路买入判定（日 K 代理）；返回 (signal, change_pct)。"""
+    if index < 1:
+        return "hold", 0.0
+    prev_close = closes[index - 1]
+    if prev_close <= 0:
+        return "hold", 0.0
+    last_close = closes[index]
+    change_pct = (last_close - prev_close) / prev_close * 100
+    row = {"symbol": symbol, "change_pct": change_pct}
+    at_limit = is_at_limit_board(row)
+    in_band = min_change_pct <= change_pct <= max_change_pct and not at_limit
+    vol_ratio = _volume_ratio_at(volumes, index) if volumes else None
+    volume_ok = vol_ratio is None or vol_ratio >= volume_ratio_min
+    if in_band and volume_ok:
+        return "buy", change_pct
+    return "hold", change_pct
+
+
+def classify_pullback_bar(
+    closes: list[float],
+    volumes: list[float],
+    index: int,
+    *,
+    ma_window: int = 5,
+    pullback_band_pct: float = 2.0,
+) -> SignalKind:
+    """低吸买入判定（日 K 代理）。"""
+    if index + 1 < ma_window + 1:
+        return "hold"
+    ma5 = _sma(closes[: index + 1], ma_window)
+    ma10 = _sma(closes[: index + 1], 10)
+    if ma5 is None:
+        return "hold"
+    last_close = closes[index]
+    band = pullback_band_pct / 100.0
+    near_ma5 = abs(last_close - ma5) / ma5 <= band if ma5 > 0 else False
+    trend_ok = ma10 is not None and ma5 >= ma10 * 0.995
+    vol_shrink = True
+    if volumes and index >= 5:
+        base = sum(volumes[index - 5 : index]) / 5
+        vol_shrink = volumes[index] <= base if base > 0 else True
+    return "buy" if near_ma5 and trend_ok and vol_shrink else "hold"
 
 
 def build_intraday_breakout_signal_payload(
@@ -210,12 +297,18 @@ def build_intraday_breakout_signal_payload(
     change_pct = (last_close - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
     vol_ratio = _volume_ratio_at(vol_series, last_index) if vol_series else None
 
+    signal, change_pct = classify_intraday_breakout_bar(
+        closes,
+        high_series,
+        vol_series,
+        last_index,
+        symbol=symbol,
+        min_change_pct=min_change_pct,
+        max_change_pct=max_change_pct,
+        volume_ratio_min=volume_ratio_min,
+    )
     row = {"symbol": symbol, "change_pct": change_pct}
     at_limit = is_at_limit_board(row)
-
-    in_band = min_change_pct <= change_pct <= max_change_pct and not at_limit
-    volume_ok = vol_ratio is None or vol_ratio >= volume_ratio_min
-    signal: SignalKind = "buy" if in_band and volume_ok else "hold"
     if change_pct > max_change_pct and not at_limit:
         warn_list.append("涨幅已超半路上限，更宜打板或观望")
 
@@ -276,15 +369,17 @@ def build_pullback_signal_payload(
     if ma5 is None:
         return _empty_payload(vt_symbol, strategy_id, warnings=("均线不足",))
 
-    band = pullback_band_pct / 100.0
-    near_ma5 = abs(last_close - ma5) / ma5 <= band if ma5 > 0 else False
-    trend_ok = ma10 is not None and ma5 >= ma10 * 0.995
+    signal = classify_pullback_bar(
+        closes,
+        vol_series,
+        last_index,
+        ma_window=ma_window,
+        pullback_band_pct=pullback_band_pct,
+    )
     vol_shrink = True
     if vol_series and last_index >= 5:
         base = sum(vol_series[last_index - 5 : last_index]) / 5
         vol_shrink = vol_series[last_index] <= base if base > 0 else True
-
-    signal: SignalKind = "buy" if near_ma5 and trend_ok and vol_shrink else "hold"
     labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
     ref_buy = round(ma5, 2) if signal == "buy" else None
     reasons = [

@@ -7,7 +7,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from vnpy_ashare.jobs.result import JobResult
-from vnpy_ashare.notifications.events import NOTIFY_EVENT_SCHEDULER_JOB_FAILED
 from vnpy_ashare.notifications.prefs import NotifyPrefs
 from vnpy_ashare.notifications.service import NotificationService
 
@@ -29,7 +28,7 @@ class NotificationServiceTest(unittest.TestCase):
         {"NOTIFY_ENABLED": "true", "FEISHU_WEBHOOK_URL": "http://x", "NOTIFY_MIN_INTERVAL_SEC": "0"},
         clear=False,
     )
-    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_text")
+    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
     @patch(
         "vnpy_ashare.notifications.rules.load_notify_prefs",
         return_value=type(
@@ -59,14 +58,14 @@ class NotificationServiceTest(unittest.TestCase):
             JobResult(success=True, message="intraday_multi 命中 18 条", skipped=False),
         )
         mock_send.assert_called_once()
-        self.assertIn("【zak】", mock_send.call_args.args[0])
+        self.assertIn("【zak】", mock_send.call_args.args[0].text)
 
     @patch.dict(
         os.environ,
         {"NOTIFY_ENABLED": "true", "FEISHU_WEBHOOK_URL": "http://x", "NOTIFY_MIN_INTERVAL_SEC": "0"},
         clear=False,
     )
-    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_text")
+    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
     @patch(
         "vnpy_ashare.notifications.rules.load_notify_prefs",
         return_value=type(
@@ -89,10 +88,10 @@ class NotificationServiceTest(unittest.TestCase):
             JobResult(success=False, message="boom", skipped=False),
         )
         mock_send.assert_called_once()
-        self.assertIn("定时任务失败", mock_send.call_args.args[0])
+        self.assertIn("定时任务失败", mock_send.call_args.args[0].text)
 
     @patch.dict(os.environ, {"NOTIFY_ENABLED": "true", "FEISHU_WEBHOOK_URL": "http://x"}, clear=False)
-    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_text")
+    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
     def test_skipped_job_does_not_notify(self, mock_send: MagicMock) -> None:
         svc = NotificationService(_FakeEngine(), sync=True)
         svc.on_job_finished("screen_intraday", JobResult(success=True, message="跳过", skipped=True))

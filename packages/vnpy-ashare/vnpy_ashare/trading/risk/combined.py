@@ -61,11 +61,7 @@ def compute_avg_float_pnl_pct(
 ) -> float | None:
     if not position_cache:
         return None
-    pnls = [
-        snap.unrealized_pnl_pct
-        for snap in position_cache.values()
-        if snap.unrealized_pnl_pct is not None
-    ]
+    pnls = [snap.unrealized_pnl_pct for snap in position_cache.values() if snap.unrealized_pnl_pct is not None]
     if not pnls:
         return None
     return sum(pnls) / len(pnls)
@@ -78,11 +74,7 @@ def compute_actual_position_pct(
 ) -> float | None:
     if total_capital is None or total_capital <= 0 or not position_cache:
         return None
-    total_mv = sum(
-        snap.market_value
-        for snap in position_cache.values()
-        if snap.market_value is not None and snap.market_value > 0
-    )
+    total_mv = sum(snap.market_value for snap in position_cache.values() if snap.market_value is not None and snap.market_value > 0)
     if total_mv <= 0:
         return 0.0
     return round(total_mv / total_capital, 4)
@@ -106,7 +98,7 @@ def load_combined_risk_gate_snapshot(
     position_cache: Mapping[str, PositionSnapshot] | None = None,
 ) -> CombinedRiskGateSnapshot:
     account = build_risk_gate_snapshot(avg_float_pnl_pct=avg_float_pnl_pct)
-    emotion = load_emotion_cycle_snapshot()
+    emotion = load_emotion_cycle_snapshot()  # 默认不拉全市场，仅缓存
     total_capital = read_total_capital()
     actual = compute_actual_position_pct(
         total_capital=total_capital,

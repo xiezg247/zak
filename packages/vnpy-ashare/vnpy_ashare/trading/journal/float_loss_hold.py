@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
+from typing import Any
 
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
-from vnpy_ashare.domain.market_hours import CHINA_TZ
 from vnpy_ashare.domain.position_snapshot import PositionSnapshot
 from vnpy_ashare.storage.repositories.trade_journal import (
     has_sell_journal_since,
@@ -52,6 +51,7 @@ def record_float_loss_hold_if_needed(
     snap: PositionSnapshot,
     *,
     trade_date: str | None = None,
+    notify_engine: Any | None = None,
 ) -> int | None:
     if not is_float_loss_hold(snap):
         return None
@@ -60,7 +60,7 @@ def record_float_loss_hold_if_needed(
     if has_violation_tag_on_date(symbol, exchange, trade_date=day, tag="float_loss_hold"):
         return None
     price = snap.last_price if snap.last_price is not None and snap.last_price > 0 else snap.cost_price
-    return insert_trade_journal_entry(
+    entry_id = insert_trade_journal_entry(
         symbol=symbol,
         exchange=exchange,
         side="hold",
@@ -74,16 +74,31 @@ def record_float_loss_hold_if_needed(
         reason="浮亏扛单（无卖出流水）",
         emotion_stage="",
     )
+    if entry_id is not None and notify_engine is not None:
+        from vnpy_ashare.trading.journal.violation_notify import publish_journal_violation
+
+        publish_journal_violation(
+            notify_engine,
+            symbol=symbol,
+            exchange=exchange,
+            side="hold",
+            violation_tags=("float_loss_hold",),
+            reason="浮亏扛单（无卖出流水）",
+            vt_symbol=snap.vt_symbol,
+        )
+    return entry_id
 
 
 def scan_and_record_float_loss_holds(
     position_cache: Mapping[str, PositionSnapshot] | None,
+    *,
+    notify_engine: Any | None = None,
 ) -> int:
     recorded = 0
     for vt_symbol in scan_float_loss_holds(position_cache):
         snap = position_cache.get(vt_symbol) if position_cache else None
         if snap is None:
             continue
-        if record_float_loss_hold_if_needed(snap) is not None:
+        if record_float_loss_hold_if_needed(snap, notify_engine=notify_engine) is not None:
             recorded += 1
     return recorded

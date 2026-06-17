@@ -92,7 +92,7 @@ class Phase2NotificationTest(unittest.TestCase):
         clear=False,
     )
     @patch("vnpy_ashare.notifications.service.append_notify_delivery_log")
-    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_text")
+    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
     @patch("vnpy_ashare.notifications.rules.load_notify_prefs")
     def test_on_market_breadth_stage_change(
         self,
@@ -102,6 +102,7 @@ class Phase2NotificationTest(unittest.TestCase):
     ) -> None:
         mock_prefs.return_value = NotifyPrefs(
             event_subscriptions={NOTIFY_EVENT_EMOTION_STAGE_CHANGE: True},
+            use_interactive_card=True,
         )
         mock_send.return_value = type("R", (), {"success": True, "message": "ok", "status_code": 200})()
         engine = _FakeEngine()
@@ -113,7 +114,10 @@ class Phase2NotificationTest(unittest.TestCase):
         ):
             svc.publish_emotion_cycle(inputs)
         mock_send.assert_called_once()
-        self.assertIn("情绪阶段", mock_send.call_args.args[0])
+        outbound = mock_send.call_args.args[0]
+        self.assertIn("情绪阶段", outbound.text)
+        if outbound.interactive_card is not None:
+            self.assertEqual(outbound.interactive_card["header"]["title"]["content"], "情绪阶段变更")
         mock_log.assert_called_once()
         with patch(
             "vnpy_ashare.quotes.market.emotion_cycle_inputs.get_cached_limit_times_map",
@@ -128,32 +132,37 @@ class Phase2NotificationTest(unittest.TestCase):
         clear=False,
     )
     @patch("vnpy_ashare.notifications.service.append_notify_delivery_log")
-    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_text")
+    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
     @patch("vnpy_ashare.notifications.rules.load_notify_prefs")
-    @patch("vnpy_ashare.trading.risk.gate.get_settings")
+    @patch("vnpy_ashare.trading.risk.gate.load_trading_risk_prefs")
     def test_evaluate_risk_gate_change(
         self,
-        mock_settings: MagicMock,
+        mock_risk_prefs: MagicMock,
         mock_prefs: MagicMock,
         mock_send: MagicMock,
         mock_log: MagicMock,
     ) -> None:
-        settings = MagicMock()
-        settings.value.side_effect = lambda key, default=None: {
-            "trading/risk/daily_pnl_pct": "-6",
-            "trading/risk/caution_daily_pct": "-3",
-            "trading/risk/halt_daily_pct": "-5",
-            "trading/risk/caution_float_pct": "-5",
-            "trading/risk/manual_halt": 0,
-        }.get(key, default)
-        mock_settings.return_value = settings
+        from vnpy_ashare.config.preferences.trading_risk import TradingRiskPrefs
+
+        mock_risk_prefs.return_value = TradingRiskPrefs(
+            total_capital=100_000.0,
+            per_trade_risk_pct=0.02,
+            stop_loss_pct=0.05,
+            daily_pnl_pct=-6.0,
+            realized_pnl_today=None,
+            caution_daily_pct=-3.0,
+            halt_daily_pct=-5.0,
+            caution_float_pct=-5.0,
+            manual_halt=False,
+        )
         mock_prefs.return_value = NotifyPrefs(
             event_subscriptions={NOTIFY_EVENT_RISK_GATE_CHANGE: True},
+            use_interactive_card=True,
         )
         mock_send.return_value = type("R", (), {"success": True, "message": "ok", "status_code": 200})()
         engine = _FakeEngine()
         svc = NotificationService(engine, sync=True)
         svc.evaluate_risk_gate(avg_float_pnl_pct=-2.0)
         mock_send.assert_called_once()
-        self.assertIn("风控状态", mock_send.call_args.args[0])
+        self.assertIn("风控状态", mock_send.call_args.args[0].text)
         mock_log.assert_called_once()

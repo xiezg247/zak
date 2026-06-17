@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.config.preferences.strategy_profile import load_strategy_profile_id
 from vnpy_ashare.screener.batch.batch_actions import (
     stock_items_to_batch_rows,
     watchlist_items_to_rows,
@@ -99,5 +100,6 @@ class WatchlistBatchBacktestController:
             batch_source="batch_watchlist",
             default_class_name=signal_config.class_name,
             default_strategy_setting=signal_config.to_strategy_setting(),
+            profile_id=load_strategy_profile_id(),
             on_running=lambda running: self._page.batch_backtest_button.setDisabled(running),
         )

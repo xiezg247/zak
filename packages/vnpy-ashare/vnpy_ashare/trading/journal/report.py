@@ -116,10 +116,7 @@ def format_journal_entries_csv(
     limit: int = 5000,
 ) -> str:
     entries = query_trade_journal(start_date=start_date, end_date=end_date, limit=limit)
-    header = (
-        "trade_date,symbol,exchange,side,price,volume,amount,on_plan,"
-        "violation_tags,pnl,pnl_pct,emotion_stage,reason,mode,plan_id,created_at"
-    )
+    header = "trade_date,symbol,exchange,side,price,volume,amount,on_plan,violation_tags,pnl,pnl_pct,emotion_stage,reason,mode,plan_id,created_at"
     lines = [header]
     for item in entries:
         tags = "|".join(item.violation_tags)
@@ -129,8 +126,8 @@ def format_journal_entries_csv(
             f"{item.trade_date},{item.symbol},{item.exchange},{item.side},"
             f"{item.price:.4f},{item.volume},{item.amount:.2f},"
             f"{'1' if item.on_plan else '0'},"
-            f"\"{tags}\",{pnl},{pnl_pct},"
-            f"{item.emotion_stage},\"{item.reason.replace(chr(34), chr(39))}\","
+            f'"{tags}",{pnl},{pnl_pct},'
+            f'{item.emotion_stage},"{item.reason.replace(chr(34), chr(39))}",'
             f"{item.mode},{item.plan_id or ''},{item.created_at}"
         )
         lines.append(row)

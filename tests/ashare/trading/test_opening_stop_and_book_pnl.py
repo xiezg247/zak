@@ -6,12 +6,12 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
+from strategies.signals import build_signal_payload_for_strategy
 from vnpy_ashare.domain.position_snapshot import PositionSnapshot
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.misc.position_anomaly import position_anomaly_reasons
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss, is_within_opening_minutes
 from vnpy_ashare.trading.risk.book_pnl import summarize_book_pnl
-from strategies.signals import build_signal_payload_for_strategy
 
 
 def _snap(**kwargs) -> PositionSnapshot:
@@ -83,11 +83,14 @@ class OpeningStopTest(unittest.TestCase):
 class BookPnlTest(unittest.TestCase):
     def test_summarize_book_pnl(self) -> None:
         cache = {"600000.SSE": _snap(unrealized_pnl=-200.0)}
-        with patch(
-            "vnpy_ashare.trading.risk.book_pnl.load_trading_risk_prefs",
-        ) as mock_prefs, patch(
-            "vnpy_ashare.trading.risk.book_pnl.resolve_realized_pnl_today",
-            return_value=(-500.0, 0.0, -500.0),
+        with (
+            patch(
+                "vnpy_ashare.trading.risk.book_pnl.load_trading_risk_prefs",
+            ) as mock_prefs,
+            patch(
+                "vnpy_ashare.trading.risk.book_pnl.resolve_realized_pnl_today",
+                return_value=(-500.0, 0.0, -500.0),
+            ),
         ):
             from vnpy_ashare.config.preferences.trading_risk import TradingRiskPrefs
 

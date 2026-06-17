@@ -72,12 +72,15 @@ class PositionSizeTest(unittest.TestCase):
         )
         skill = VnpyTradingSkill()
         skill.setup()
-        with patch(
-            "vnpy_ashare.config.preferences.trading_risk.load_trading_risk_prefs",
-            return_value=prefs,
-        ), patch(
-            "vnpy_ashare.trading.risk.position_size.load_trading_risk_prefs",
-            return_value=prefs,
+        with (
+            patch(
+                "vnpy_ashare.config.preferences.trading_risk.load_trading_risk_prefs",
+                return_value=prefs,
+            ),
+            patch(
+                "vnpy_ashare.trading.risk.position_size.load_trading_risk_prefs",
+                return_value=prefs,
+            ),
         ):
             payload = json.loads(skill.compute_position_size(cost_price=10.0))
         self.assertEqual(payload["max_shares"], 4000)

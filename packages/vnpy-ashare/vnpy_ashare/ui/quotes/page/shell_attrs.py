@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         MarketRankSidebar,
         MarketRankSplitterResizeFilter,
     )
+    from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
     from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
     from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
     from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
@@ -76,6 +77,7 @@ class QuotesPageShellAttrs:
     status_label: QtWidgets.QLabel
     quote_source_label: QtWidgets.QLabel
     refresh_hint_label: QtWidgets.QLabel
+    emotion_cycle_chip: EmotionCycleChip | None
     _toast: PageToastHost
 
     chart_panel: ChartPanel | None

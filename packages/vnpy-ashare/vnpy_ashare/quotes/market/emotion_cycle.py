@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
@@ -47,6 +48,33 @@ _MODE_LABELS: dict[EmotionMode, str] = {
 
 _AMOUNT_FLOOR = 1e12
 _FEAR_GREED_OVERHEAT = 85.0
+_CACHE_TTL_SEC = 30.0
+
+_cached_snapshot: EmotionCycleSnapshot | None = None
+_cached_at: float = 0.0
+
+
+def peek_emotion_cycle_snapshot(*, max_age_sec: float = _CACHE_TTL_SEC) -> EmotionCycleSnapshot | None:
+    """读取内存缓存，不触发任何 I/O。"""
+    if _cached_snapshot is None:
+        return None
+    if time.monotonic() - _cached_at > max_age_sec:
+        return None
+    return _cached_snapshot
+
+
+def store_emotion_cycle_snapshot(snapshot: EmotionCycleSnapshot | None) -> None:
+    """写入内存缓存（市场页 Worker / 控制器刷新后调用）。"""
+    global _cached_snapshot, _cached_at
+    _cached_snapshot = snapshot
+    _cached_at = time.monotonic()
+
+
+def invalidate_emotion_cycle_cache() -> None:
+    """行情缓存更新时丢弃情绪快照，避免与旧广度不一致。"""
+    global _cached_snapshot, _cached_at
+    _cached_snapshot = None
+    _cached_at = 0.0
 
 
 @dataclass(frozen=True)
@@ -91,7 +119,13 @@ class EmotionCycleSnapshot:
 
 
 def format_mode_label(mode: str) -> str:
-    return _MODE_LABELS.get(mode, mode)  # type: ignore[arg-type]
+    if mode == "limit_board":
+        return _MODE_LABELS["limit_board"]
+    if mode == "halfway":
+        return _MODE_LABELS["halfway"]
+    if mode == "pullback":
+        return _MODE_LABELS["pullback"]
+    return mode
 
 
 def _now_text() -> str:
@@ -153,28 +187,46 @@ def classify_emotion_cycle(inputs: EmotionCycleInputs) -> EmotionCycleSnapshot:
     )
 
 
-def load_emotion_cycle_snapshot(*, breadth: MarketBreadthSnapshot | None = None) -> EmotionCycleSnapshot | None:
-    """从广度或行情缓存计算情绪周期（供 AI / 无 UI 场景）。"""
+def load_emotion_cycle_snapshot(
+    *,
+    breadth: MarketBreadthSnapshot | None = None,
+    fetch_if_missing: bool = False,
+) -> EmotionCycleSnapshot | None:
+    """从广度或行情缓存计算情绪周期。
+
+    默认不拉全市场行情（``fetch_if_missing=False``），无缓存时返回 None；
+    显式分析 / 流水记账等场景再传 ``fetch_if_missing=True``。
+    """
+    cache_only = False
     if breadth is None:
+        peeked = peek_emotion_cycle_snapshot()
+        if peeked is not None:
+            return peeked
+
         from vnpy_ashare.ai.context.store import get_market_quotes_cache
-        from vnpy_ashare.quotes.market.market_overview_loaders import build_overview_from_market_rows
+        from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
         from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 
         cached = get_market_quotes_cache()
         if cached:
             rows, updated_at = cached, None
-        else:
+            cache_only = True
+        elif fetch_if_missing:
             try:
                 snapshot = load_market_quote_rows()
                 rows = snapshot.rows
                 updated_at = snapshot.updated_at
             except MarketQuotesLoadError:
                 return None
-        breadth, _ = build_overview_from_market_rows(rows, updated_at=updated_at)
+        else:
+            return None
+        breadth = _load_breadth(rows, updated_at=updated_at)
     if breadth is None:
         return None
-    inputs = build_emotion_cycle_inputs(breadth)
-    return classify_emotion_cycle(inputs)
+    inputs = build_emotion_cycle_inputs(breadth, include_auxiliary=not cache_only)
+    result = classify_emotion_cycle(inputs)
+    store_emotion_cycle_snapshot(result)
+    return result
 
 
 class EmotionCycleTracker:

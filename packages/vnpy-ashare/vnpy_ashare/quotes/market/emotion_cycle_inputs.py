@@ -52,6 +52,7 @@ def build_emotion_cycle_inputs(
     limit_times_map: dict[str, float] | None = None,
     index_above_ma5: bool | None = None,
     fear_greed_index: float | None = None,
+    include_auxiliary: bool = True,
 ) -> EmotionCycleInputs:
     up_total = breadth.up + breadth.down
     up_ratio = (breadth.up / up_total) if up_total > 0 else 0.0
@@ -59,7 +60,7 @@ def build_emotion_cycle_inputs(
     max_limit_times, ladder_depth = compute_limit_ladder_stats(limit_map)
 
     fg = fear_greed_index
-    if fg is None:
+    if include_auxiliary and fg is None:
         snapshot = try_fetch_fear_greed_index()
         if snapshot is not None:
             fg = float(snapshot.index)

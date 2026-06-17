@@ -158,6 +158,37 @@ def score_strategy(strategy: dict[str, Any]) -> dict[str, Any]:
     if ret is not None and ret >= 5:
         score += 5
 
+    ultra_short = strategy.get("ultra_short") or {}
+    stage = str(ultra_short.get("emotion_stage") or "")
+    stage_label = str(ultra_short.get("emotion_stage_label") or stage)
+    if stage == "recession":
+        score -= 20
+        risks.append(f"情绪{stage_label or '退潮'}，极致短线宜空仓")
+    elif stage == "freeze":
+        score -= 12
+        risks.append(f"情绪{stage_label or '冰点'}，仅宜极小仓位试错")
+    elif stage in {"launch", "climax"}:
+        score += 5
+        highlights.append(f"情绪{stage_label or stage}，短线窗口尚可")
+
+    if ultra_short.get("allow_new_positions") is False:
+        score -= 8
+        risks.append("情绪周期建议不开新仓")
+
+    limit_signal = str(ultra_short.get("limit_board_signal") or "")
+    if limit_signal == "buy":
+        score += 8
+        label = str(ultra_short.get("limit_board_label") or "买入")
+        highlights.append(f"打板规则{label}")
+    elif limit_signal == "sell":
+        score -= 6
+        risks.append("打板规则偏空")
+
+    breakout_signal = str(ultra_short.get("short_breakout_signal") or "")
+    if breakout_signal == "buy":
+        score += 4
+        highlights.append("短线突破偏多")
+
     return {
         "score": _clamp(score),
         "summary": "；".join(highlights) if highlights else "技术面中性",

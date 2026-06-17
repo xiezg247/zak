@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label
@@ -15,6 +15,7 @@ from vnpy_ashare.quotes.radar.radar_leader_pick import (
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.run.export import resolve_export_columns
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
+from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
 
 _VARIANT_LABELS: dict[str, str] = {
     "mainline": "主线龙头",
@@ -25,7 +26,8 @@ _VARIANT_LABELS: dict[str, str] = {
 def leader_scored_to_row(scored: LeaderScoredRow) -> dict[str, Any]:
     row = dict(scored.row)
     tier_label = leader_tier_label(scored.leader_tier)
-    industry = str(row.get("industry") or "—")
+    sector_name = scored.sector_name or str(row.get("industry") or row.get("concept") or "—")
+    axis_label = "概念" if scored.sector_axis == "concept" else "行业"
     boards = int(scored.limit_times) if scored.limit_times >= 1 else 0
     board_text = f"{boards}板" if boards >= 1 else "—"
     row.update(
@@ -38,8 +40,9 @@ def leader_scored_to_row(scored: LeaderScoredRow) -> dict[str, Any]:
             "leader_tier": scored.leader_tier,
             "leader_tier_label": tier_label,
             "limit_times": boards if boards >= 1 else row.get("limit_times"),
-            "sector_name": industry,
-            "hit_reason": f"龙头 {tier_label} · {industry} · 评分 {scored.leader_score:.0f} · 连板 {board_text}",
+            "sector_name": sector_name,
+            "sector_axis": scored.sector_axis or axis_label,
+            "hit_reason": (f"龙头 {tier_label} · {axis_label}{sector_name} · 评分 {scored.leader_score:.0f} · 连板 {board_text}"),
             "source": "radar_leader",
         },
     )
@@ -53,7 +56,7 @@ def run_leader_screen(
 ) -> ScreenerRunResult:
     """执行龙头选股：硬过滤 + 情绪周期 gate + leader_score 排序。"""
     top_n = max(1, min(int(top_n or 12), 200))
-    cycle = load_emotion_cycle_snapshot()
+    cycle = load_emotion_cycle_snapshot(fetch_if_missing=True)
     variant_label = _VARIANT_LABELS.get(variant, variant)
 
     if cycle is not None and cycle.stage in {"recession", "ice"}:
@@ -78,8 +81,21 @@ def run_leader_screen(
     if not filtered:
         raise RuntimeError("硬过滤后无龙头候选，可调低过滤条件或刷新行情。")
 
+    enriched, hot_concepts = attach_sector_fields(filtered)
+    pool = enriched or filtered
+    industry_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3)
+    concept_distribution = compute_sector_distribution(pool, top_n=8, min_stocks=3, sector_field="concept")
+    strong_industries = {str(item["industry"]) for item in industry_distribution[:5]}
+    strong_concepts = {str(item["concept"]) for item in concept_distribution[:5]} | set(hot_concepts)
+
     filter_followers = cycle is not None and cycle.stage == "divergence"
-    ranked = rank_leader_pool(filtered, top_n=top_n, filter_followers=filter_followers)
+    ranked = rank_leader_pool(
+        pool,
+        top_n=top_n,
+        filter_followers=filter_followers,
+        strong_industries=strong_industries,
+        strong_concepts=strong_concepts,
+    )
     rows = [leader_scored_to_row(item) for item in ranked]
 
     condition = f"雷达龙头 · {variant_label}"

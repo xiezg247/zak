@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
+from vnpy_ashare.trading.signals.seal_time import seal_time_score
 
 LeaderTier = Literal["dragon_1", "dragon_2", "follower", ""]
 
@@ -35,6 +36,8 @@ class LeaderScoredRow:
     leader_score: float
     leader_tier: LeaderTier
     limit_times: float
+    sector_axis: str = ""
+    sector_name: str = ""
 
 
 def leader_tier_label(tier: str) -> str:
@@ -118,7 +121,7 @@ def compute_leader_score(
         "limit_times": _norm_limit_times(limit_times),
         "seal_quality": _seal_quality_proxy(row),
         "amount_rank": _clamp01(amount_rank),
-        "seal_time": 0.0,
+        "seal_time": _clamp01(float(row.get("seal_time_score") or seal_time_score(str(row.get("first_time") or "")))),
         "net_mf": _norm_net_mf(row, max_abs=max_net_mf),
         "sector_strength": _clamp01(sector_strength_bonus),
         "resonance": _clamp01(resonance_bonus),
@@ -132,6 +135,7 @@ def rank_sector_leaders(
     *,
     sector_key: str = "industry",
     max_per_sector: int = 5,
+    strong_sectors: set[str] | None = None,
 ) -> list[LeaderScoredRow]:
     """同板块内降序；Top1=龙一，Top2=龙二，其余强势=跟风。"""
     if not candidates:
@@ -140,19 +144,24 @@ def rank_sector_leaders(
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in candidates:
         key = str(row.get(sector_key) or "—")
+        if key == "—":
+            continue
         grouped.setdefault(key, []).append(dict(row))
 
     ranked: list[LeaderScoredRow] = []
-    for group_rows in grouped.values():
+    for group_name, group_rows in grouped.items():
         amount_ranks = _amount_rank_in_group(group_rows)
         max_mf = max(abs(float(row.get("net_mf_amount") or 0)) for row in group_rows)
         scored: list[tuple[dict[str, Any], float, float]] = []
         for row in group_rows:
             vt = str(row.get("vt_symbol") or "")
+            bonus = 1.0
+            if strong_sectors is not None:
+                bonus = 1.0 if group_name in strong_sectors else 0.55
             score = compute_leader_score(
                 row,
                 amount_rank=amount_ranks.get(vt, 0.5),
-                sector_strength_bonus=1.0,
+                sector_strength_bonus=bonus,
                 max_net_mf=max_mf,
             )
             boards = float(row.get("limit_times") or 0)
@@ -172,7 +181,16 @@ def rank_sector_leaders(
             else:
                 tier = ""
             if tier:
-                ranked.append(LeaderScoredRow(row=row, leader_score=score, leader_tier=tier, limit_times=boards))
+                ranked.append(
+                    LeaderScoredRow(
+                        row=row,
+                        leader_score=score,
+                        leader_tier=tier,
+                        limit_times=boards,
+                        sector_axis=sector_key,
+                        sector_name=group_name,
+                    )
+                )
 
     ranked.sort(
         key=lambda item: (
@@ -185,11 +203,77 @@ def rank_sector_leaders(
     return ranked
 
 
+_TIER_PRIORITY = {"dragon_1": 3, "dragon_2": 2, "follower": 1, "": 0}
+
+
+def _pick_better_leader(a: LeaderScoredRow, b: LeaderScoredRow) -> LeaderScoredRow:
+    pa = _TIER_PRIORITY.get(a.leader_tier, 0)
+    pb = _TIER_PRIORITY.get(b.leader_tier, 0)
+    if pa != pb:
+        return a if pa > pb else b
+    if a.leader_score != b.leader_score:
+        return a if a.leader_score > b.leader_score else b
+    if a.limit_times != b.limit_times:
+        return a if a.limit_times > b.limit_times else b
+    return a
+
+
+def rank_unified_sector_leaders(
+    candidates: list[dict[str, Any]],
+    *,
+    max_per_sector: int = 5,
+    strong_industries: set[str] | None = None,
+    strong_concepts: set[str] | None = None,
+) -> list[LeaderScoredRow]:
+    """行业 + 概念双轴统一 scoring；每票取更强分层结果（G-07）。"""
+    industry_rows = [row for row in candidates if str(row.get("industry") or "").strip()]
+    concept_rows = [row for row in candidates if str(row.get("concept") or "").strip()]
+
+    by_vt: dict[str, LeaderScoredRow] = {}
+    for axis, rows, strong in (
+        ("industry", industry_rows, strong_industries),
+        ("concept", concept_rows, strong_concepts),
+    ):
+        if not rows:
+            continue
+        for scored in rank_sector_leaders(
+            rows,
+            sector_key=axis,
+            max_per_sector=max_per_sector,
+            strong_sectors=strong,
+        ):
+            vt = str(scored.row.get("vt_symbol") or "")
+            if not vt:
+                continue
+            existing = by_vt.get(vt)
+            if existing is None:
+                by_vt[vt] = scored
+            else:
+                by_vt[vt] = _pick_better_leader(existing, scored)
+
+    merged = list(by_vt.values())
+    merged.sort(
+        key=lambda item: (
+            _TIER_PRIORITY.get(item.leader_tier, 0),
+            item.leader_score,
+            float(item.row.get("change_pct") or 0),
+        ),
+        reverse=True,
+    )
+    return merged
+
+
 def score_market_leaders(
     candidates: list[dict[str, Any]],
     *,
     top_n: int = 12,
+    strong_industries: set[str] | None = None,
+    strong_concepts: set[str] | None = None,
 ) -> list[LeaderScoredRow]:
-    """全市场候选 → 板块内分层 → 按龙头分取 Top N。"""
-    ranked = rank_sector_leaders(candidates)
+    """全市场候选 → 行业/概念双轴分层 → 按龙头分取 Top N。"""
+    ranked = rank_unified_sector_leaders(
+        candidates,
+        strong_industries=strong_industries,
+        strong_concepts=strong_concepts,
+    )
     return ranked[: max(1, top_n)]

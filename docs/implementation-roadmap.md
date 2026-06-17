@@ -65,7 +65,7 @@
 | G-04 | `leader_score` | P0 | 1 | **已有**（评分+板块/龙头卡+选股输出） |
 | G-05 | `run_leader_screen` Hub 入口 | P0 | 1 | **已有** |
 | G-06 | `RadarRow` 扩展字段 | P0 | 1 | **已有**（tier 角标+metric/sub 展示） |
-| G-07 | 概念 + 行业统一 scoring | P1 | 4 | **规划** |
+| G-07 | 概念 + 行业统一 scoring | P1 | 4 | **已有** |
 | G-08 | 情绪 gate 龙头选股 | P1 | 1 | **已有**（`run_leader_screen` 退潮/冰点空池） |
 
 ---
@@ -83,7 +83,7 @@
 | SP-02 | 信号区 Profile 下拉 | **已有** | 1 | 同上 |
 | SP-03 | 持仓区 header Profile | **已有** | 1 | 同上 |
 | SP-04 | 新用户默认 Profile 配置 | **已有** | 1 | 同上 |
-| SP-05 | LimitBoard / OvernightExit | **已有** | 2–5 | 日 K 打板 MVP + 隔日退出 overlay |
+| SP-05 | LimitBoard / OvernightExit | **已有** | 2–5 | 日 K 打板 CTA + limit_list 封板时间 + 隔日退出 overlay |
 | — | 四套现有策略（双均线等） | **已有** | 0 | `strategies/registry.py` |
 
 ---
@@ -136,7 +136,7 @@
 | N-03 | 定时任务 screener 完成推送 | **已有** | 1 | 同上 |
 | N-04 | 情绪 / 风控状态变更推送 | **已有** | 2 | MVP 联动；完整 T-03/K-04 仍待建 |
 | N-05 | `notify_delivery_log` | **已有** | 2 | [data-design.md](./data-design.md) |
-| N-06 | interactive 卡片 | **规划** | 3 | [notifications.md](./notifications.md) |
+| N-06 | interactive 卡片 | **已有** | 3 | [notifications.md](./notifications.md) |
 
 ---
 

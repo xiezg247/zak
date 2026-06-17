@@ -21,6 +21,7 @@ from vnpy_ashare.config.preferences import (
     WatchlistPositionConfig,
     load_watchlist_position_config,
 )
+from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -651,7 +652,8 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
     def apply_strategy_profile(self, profile_id: str) -> None:
         from vnpy_ashare.config.preferences.strategy_profile import apply_strategy_profile
 
-        self.signal_config = apply_strategy_profile(profile_id)
+        typed_id = cast(StrategyProfileId, profile_id)
+        self.signal_config = apply_strategy_profile(typed_id)
         signal_panel = self.signal_panel
         if signal_panel is not None:
             signal_panel.apply_config(self.signal_config)

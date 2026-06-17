@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
+from vnpy_ashare.quotes.market.emotion_cycle import (
+    classify_emotion_cycle,
+    invalidate_emotion_cycle_cache,
+    load_emotion_cycle_snapshot,
+)
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, compute_limit_ladder_stats
 
 
@@ -65,3 +69,7 @@ class EmotionCycleEngineTest(unittest.TestCase):
         payload = snap.to_dict()
         self.assertIn("inputs", payload)
         self.assertIn("limit_up_count", payload["inputs"])
+
+    def test_load_without_fetch_skips_network_when_no_cache(self) -> None:
+        invalidate_emotion_cycle_cache()
+        self.assertIsNone(load_emotion_cycle_snapshot(fetch_if_missing=False))

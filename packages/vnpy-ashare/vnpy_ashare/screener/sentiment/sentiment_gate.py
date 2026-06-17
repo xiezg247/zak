@@ -34,7 +34,7 @@ def try_load_emotion_cycle_snapshot():
     try:
         from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 
-        return load_emotion_cycle_snapshot()
+        return load_emotion_cycle_snapshot(fetch_if_missing=True)
     except Exception:
         return None
 

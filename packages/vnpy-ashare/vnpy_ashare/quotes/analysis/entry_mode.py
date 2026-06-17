@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -111,7 +110,7 @@ def evaluate_entry_mode(
         exchange = str(row.get("exchange") or "SSE")
         vt_symbol = f"{symbol}.{exchange}"
 
-    snapshot = cycle if cycle is not None else load_emotion_cycle_snapshot()
+    snapshot = cycle if cycle is not None else load_emotion_cycle_snapshot(fetch_if_missing=True)
     name = str(row.get("name") or symbol)
     change_raw = row.get("change_pct", row.get("pct_chg"))
     change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None

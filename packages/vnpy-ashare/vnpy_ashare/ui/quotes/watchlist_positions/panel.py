@@ -28,24 +28,24 @@ from vnpy_ashare.quotes.misc.position_anomaly import (
 )
 from vnpy_ashare.services.signals import signal_cell_color
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
+from vnpy_ashare.trading.journal.plan_check import check_buy_against_plan
+from vnpy_ashare.trading.journal.report import format_journal_report_hint, load_journal_report
 from vnpy_ashare.trading.risk.book_pnl import format_book_pnl_hint, summarize_book_pnl
+from vnpy_ashare.trading.risk.combined import (
+    compute_avg_float_pnl_pct,
+    format_emotion_position_hint,
+    load_combined_risk_gate_snapshot,
+)
 from vnpy_ashare.trading.risk.plan_position import (
     compute_position_actual_pct,
     format_plan_position_hint,
     format_plan_vs_actual_cell,
     sum_plan_pct,
 )
-from vnpy_ashare.trading.risk.combined import (
-    compute_avg_float_pnl_pct,
-    format_emotion_position_hint,
-    load_combined_risk_gate_snapshot,
-)
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.journal_report_dialog import JournalReportDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.sell_dialog import PositionSellDialog
-from vnpy_ashare.trading.journal.plan_check import check_buy_against_plan
-from vnpy_ashare.trading.journal.report import format_journal_report_hint, load_journal_report
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
@@ -721,9 +721,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
 
         end_day = datetime.now(CHINA_TZ).date()
         start_day = end_day - timedelta(days=6)
-        journal_hint = format_journal_report_hint(
-            load_journal_report(start_date=start_day.isoformat(), end_date=end_day.isoformat())
-        )
+        journal_hint = format_journal_report_hint(load_journal_report(start_date=start_day.isoformat(), end_date=end_day.isoformat()))
         if journal_hint:
             parts.append(journal_hint)
         parts.extend(
@@ -736,7 +734,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         )
         self._stats_label.setText(" · ".join(parts) + updated)
 
-    def _row_values(self, record: PositionRecord):
+    def _row_values(self, record: PositionRecord, *, total_capital: float | None):
         snap = self._page.position_cache.get(record.vt_symbol)
         item = self._page.find_stock_item(record.vt_symbol)
         quote = self._page.quote_map.get(item.tickflow_symbol) if item is not None else None
@@ -756,7 +754,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         }
         locked = position_t1_locked(buy_date) if buy_date != "—" else False
         values["t1_status"] = "T+1 锁定" if locked else "可卖"
-        combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
         market_value = None
         if snap is not None and snap.market_value is not None:
             market_value = snap.market_value
@@ -764,7 +761,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             market_value = last_price * record.volume
         actual_pct = compute_position_actual_pct(
             market_value=market_value,
-            total_capital=combined.total_capital,
+            total_capital=total_capital,
         )
         plan_cell, plan_tooltip = format_plan_vs_actual_cell(
             plan_pct=record.plan_pct,
@@ -829,11 +826,14 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             if len(records) != self._table.rowCount():
                 self._table.setRowCount(len(records))
 
+            combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
+            total_capital = combined.total_capital
+
             rendered: list[str] = []
             highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
             for row, record in enumerate(records):
                 rendered.append(record.vt_symbol)
-                values, snap, quote, plan_tooltip = self._row_values(record)
+                values, snap, quote, plan_tooltip = self._row_values(record, total_capital=total_capital)
                 _, _, anomaly_reasons = self._anomaly_context(record)
                 row_anomaly = bool(anomaly_reasons)
                 anomaly_tip = format_anomaly_tags(anomaly_reasons)

@@ -15,8 +15,8 @@ from vnpy_ashare.storage.repositories.positions import (
     POSITION_MAX_ITEMS,
     add_position_item,
     clear_positions,
-    load_position_rows,
     load_position_row,
+    load_position_rows,
     position_add_failure_reason,
     position_at_capacity,
     position_contains,
@@ -28,6 +28,20 @@ from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
 
 PositionAddFailure = Literal["duplicate", "full", "not_in_watchlist"]
+
+
+def _row_float(value: str | float | int | None) -> float:
+    if isinstance(value, bool):
+        raise TypeError("invalid numeric field")
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        return float(value)
+    raise TypeError("missing numeric field")
+
+
+def _row_int(value: str | float | int | None) -> int:
+    return int(_row_float(value))
 
 
 def normalize_cost_price(cost_price: float) -> float:
@@ -56,8 +70,8 @@ class PositionService(BaseService):
                     symbol=symbol,
                     exchange=exchange.value,
                     name=name,
-                    cost_price=float(row["cost_price"]),
-                    volume=int(row["volume"]),
+                    cost_price=_row_float(row["cost_price"]),
+                    volume=_row_int(row["volume"]),
                     buy_date=str(row["buy_date"]),
                     notes=str(row.get("notes") or ""),
                     source=str(row.get("source") or "manual"),  # type: ignore[arg-type]
@@ -154,6 +168,7 @@ class PositionService(BaseService):
             cost_price=normalize_cost_price(cost_price),
             volume=normalize_volume(volume),
             buy_date=buy_date[:10],
+            notify_engine=self.engine,
         )
 
     def update(
@@ -174,7 +189,7 @@ class PositionService(BaseService):
         existing_row = load_position_row(symbol, exchange)
         if existing_row is None:
             return False
-        old_volume = int(existing_row["volume"])
+        old_volume = _row_int(existing_row["volume"])
         normalized_cost = normalize_cost_price(cost_price)
         normalized_volume = normalize_volume(volume)
         normalized_date = buy_date[:10]
@@ -198,7 +213,7 @@ class PositionService(BaseService):
                 symbol=symbol,
                 exchange=exchange.value,
                 name="",
-                cost_price=float(existing_row["cost_price"]),
+                cost_price=_row_float(existing_row["cost_price"]),
                 volume=old_volume,
                 buy_date=str(existing_row["buy_date"]),
             )
@@ -210,6 +225,7 @@ class PositionService(BaseService):
                 delta_volume=normalized_volume - old_volume,
                 buy_date=normalized_date,
                 add_loss=add_loss,
+                notify_engine=self.engine,
             )
         return ok
 
@@ -225,8 +241,8 @@ class PositionService(BaseService):
         row = load_position_row(symbol, exchange)
         if row is None:
             return False
-        cost_price = float(row["cost_price"])
-        volume = int(row["volume"])
+        cost_price = _row_float(row["cost_price"])
+        volume = _row_int(row["volume"])
         price = sell_price if sell_price is not None and sell_price > 0 else cost_price
         ok = remove_position_item(symbol, exchange)
         if ok:
@@ -257,13 +273,13 @@ class PositionService(BaseService):
             except ValueError:
                 continue
             key = (symbol, exchange_name)
-            cost_price = float(row["cost_price"])
+            cost_price = _row_float(row["cost_price"])
             sell_price = (sell_prices or {}).get(key, cost_price)
             self._record_sell_journal(
                 symbol,
                 exchange,
                 cost_price=cost_price,
-                volume=int(row["volume"]),
+                volume=_row_int(row["volume"]),
                 sell_price=sell_price,
                 sell_date=sell_date,
                 reason="批量清仓",

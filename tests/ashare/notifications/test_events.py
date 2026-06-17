@@ -6,8 +6,8 @@ import unittest
 
 from vnpy_ashare.notifications.events import (
     DEFAULT_EVENT_SUBSCRIPTIONS,
-    NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
+    NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
 )
 
 

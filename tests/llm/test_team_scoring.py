@@ -44,6 +44,40 @@ def test_score_strategy_bullish():
     assert "多头" in result["summary"]
 
 
+def test_score_strategy_ultra_short_recession_penalty():
+    result = score_strategy(
+        {
+            "technical": {"ma_alignment": "多头排列"},
+            "strategy_signals": {"signal": "buy"},
+            "ultra_short": {
+                "emotion_stage": "recession",
+                "emotion_stage_label": "退潮",
+                "allow_new_positions": False,
+                "limit_board_signal": "sell",
+            },
+        }
+    )
+    assert result["score"] < 70
+    assert any("退潮" in item for item in result["risks"])
+
+
+def test_score_strategy_ultra_short_limit_board_buy():
+    result = score_strategy(
+        {
+            "technical": {"ma_alignment": "中性"},
+            "strategy_signals": {"signal": "hold"},
+            "ultra_short": {
+                "emotion_stage": "climax",
+                "emotion_stage_label": "高潮",
+                "allow_new_positions": True,
+                "limit_board_signal": "buy",
+                "limit_board_label": "买入",
+            },
+        }
+    )
+    assert any("打板" in item for item in result["highlights"])
+
+
 def test_score_market_outperform():
     result = score_market(
         {

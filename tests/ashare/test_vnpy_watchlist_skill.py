@@ -20,10 +20,7 @@ from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
 
 class _WatchlistServiceStub:
     def get_items(self):
-        return [
-            {"symbol": symbol, "exchange": exchange.value, "name": name}
-            for symbol, exchange, name in watchlist_repo.load_watchlist_rows()
-        ]
+        return [{"symbol": symbol, "exchange": exchange.value, "name": name} for symbol, exchange, name in watchlist_repo.load_watchlist_rows()]
 
     def list_groups(self):
         return groups_repo.load_watchlist_groups()

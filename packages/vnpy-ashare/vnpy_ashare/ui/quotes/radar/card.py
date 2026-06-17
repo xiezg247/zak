@@ -27,6 +27,14 @@ from vnpy_ashare.ui.quotes.radar.section_prefs import load_radar_board_mode, sav
 from vnpy_common.ui.panel_widgets import configure_document_tab_widget
 from vnpy_common.ui.theme import theme_manager
 
+_OBSERVATION_GROUP_CARD_IDS = frozenset(
+    {
+        "leader_pick",
+        "discovery_first_board",
+        "discovery_limit_ladder",
+    }
+)
+
 
 class RadarCardWidget(QtWidgets.QFrame):
     """单张雷达卡片。"""
@@ -240,7 +248,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         else:
             self._train_model_button = None
         self._observation_group_button: QtWidgets.QPushButton | None = None
-        if spec.id == "leader_pick":
+        if spec.id in _OBSERVATION_GROUP_CARD_IDS:
             self._observation_group_button = QtWidgets.QPushButton("加观察组")
             self._observation_group_button.setObjectName("RadarCardObservationGroup")
             self._observation_group_button.setFlat(True)
@@ -382,9 +390,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._refresh_button.setEnabled(True)
         self._refresh_menu_button.setEnabled(True)
         self._subtitle.setText(
-            append_emotion_cycle_to_subtitle(data.subtitle)
-            if data.card_id.startswith(("discovery_", "leader_", "sector_"))
-            else data.subtitle,
+            append_emotion_cycle_to_subtitle(data.subtitle) if data.card_id.startswith(("discovery_", "leader_", "sector_")) else data.subtitle,
         )
         hint = str(data.ai_hint or "").strip()
         if hint:

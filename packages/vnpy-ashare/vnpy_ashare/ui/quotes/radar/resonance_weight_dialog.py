@@ -5,8 +5,8 @@ from __future__ import annotations
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
-    SHORT_TERM_RADAR_RESONANCE_WEIGHTS,
     DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS,
+    SHORT_TERM_RADAR_RESONANCE_WEIGHTS,
     list_radar_resonance_weight_items,
     load_radar_resonance_weights,
     save_radar_resonance_weights,

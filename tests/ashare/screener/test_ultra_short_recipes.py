@@ -64,10 +64,7 @@ class UltraShortRecipeTest(unittest.TestCase):
     def test_emotion_gate_finalize_recession_caps_three(self) -> None:
         from unittest.mock import MagicMock
 
-        rows = [
-            {"vt_symbol": f"60000{i}.SSE", "composite_score": 90 - i, "hit_reason": f"r{i}"}
-            for i in range(5)
-        ]
+        rows = [{"vt_symbol": f"60000{i}.SSE", "composite_score": 90 - i, "hit_reason": f"r{i}"} for i in range(5)]
         cycle = MagicMock(stage="recession", stage_label="退潮", allow_new_positions=False)
         with patch("vnpy_ashare.screener.sentiment.sentiment_gate.try_load_emotion_cycle_snapshot", return_value=cycle):
             result, meta = apply_emotion_gate_only_finalize(rows, top_n=3)

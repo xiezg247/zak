@@ -341,11 +341,7 @@ class WatchlistGroupController(QtCore.QObject):
             self._after_group_membership_changed(f"已更新 {len(items)} 只标的的分组「{group_name}」")
 
         for group in self._groups:
-            in_group = sum(
-                1
-                for item in items
-                if group.id in service.group_ids_for_item(item.symbol, item.exchange)
-            )
+            in_group = sum(1 for item in items if group.id in service.group_ids_for_item(item.symbol, item.exchange))
             action = submenu.addAction(group.name)
             action.setCheckable(True)
             action.setChecked(in_group == len(items))

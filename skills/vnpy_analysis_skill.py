@@ -176,8 +176,7 @@ class VnpyAnalysisSkill(SkillTemplate):
             ToolSpec(
                 name="evaluate_entry_mode",
                 description=(
-                    "评估单票更适合打板、半路还是低吸；结合涨跌幅、10cm/20cm、连板地位与情绪周期。"
-                    "用户问「这只能打板吗」「能不能追」「半路还是低吸」时调用。"
+                    "评估单票更适合打板、半路还是低吸；结合涨跌幅、10cm/20cm、连板地位与情绪周期。用户问「这只能打板吗」「能不能追」「半路还是低吸」时调用。"
                 ),
                 parameters={
                     "type": "object",

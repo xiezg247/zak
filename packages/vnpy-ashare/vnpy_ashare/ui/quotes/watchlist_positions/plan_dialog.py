@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import CHINA_TZ
@@ -16,10 +17,10 @@ from vnpy_ashare.storage.repositories.trading_plans import (
     update_trading_plan_meta,
 )
 from vnpy_ashare.trading.journal.propose import (
+    _next_trade_date,
     build_trading_plan_draft,
     sync_plan_to_observation_group,
 )
-from vnpy_ashare.trading.journal.propose import _next_trade_date
 
 
 class TradingPlanDialog(QtWidgets.QDialog):
@@ -95,7 +96,6 @@ class TradingPlanDialog(QtWidgets.QDialog):
         return f"{qdate.year():04d}-{qdate.month():02d}-{qdate.day():02d}"
 
     def _parse_symbols(self) -> list[tuple[str, Exchange]]:
-        from vnpy.trader.constant import Exchange
         from vnpy_ashare.domain.symbols import parse_stock_symbol
 
         rows: list[tuple[str, Exchange]] = []

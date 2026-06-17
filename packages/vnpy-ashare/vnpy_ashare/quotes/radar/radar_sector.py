@@ -7,16 +7,19 @@ from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label, rank_sector_leaders
+from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label, rank_unified_sector_leaders
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, format_pct, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.sector.sector_summary import (
     attach_industry,
+    attach_sector_fields,
     breadth_leader_candidates,
+    compute_sector_distribution,
     top_industries_by_breadth,
 )
+from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
 
 def _sector_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
@@ -42,8 +45,8 @@ def _row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
     change_raw = row.get("change_pct")
     change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
     tier_label = leader_tier_label(scored.leader_tier)
-    boards = scored.limit_times
-    board_text = f"{int(boards)}板" if boards >= 1 else "—"
+    axis_label = "概念" if scored.sector_axis == "concept" else "行业"
+    sector_name = scored.sector_name or str(row.get("industry") or row.get("concept") or "—")
     return RadarRow(
         vt_symbol=vt_symbol,
         name=name,
@@ -52,8 +55,8 @@ def _row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
         change_pct=change_pct,
         metric_label=tier_label or "龙头分",
         metric_value=f"{scored.leader_score:.0f}" if tier_label else f"{scored.leader_score:.0f}",
-        sub_label="连板",
-        sub_value=board_text,
+        sub_label=axis_label,
+        sub_value=sector_name[:8],
         leader_score=scored.leader_score,
         leader_tier=scored.leader_tier,
         limit_times=scored.limit_times if scored.limit_times >= 1 else None,
@@ -94,23 +97,35 @@ def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple
 def _build_leaders_tiered_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
     hits, total = run_sector_strength(max(pool_size * 4, 40), weight=1.0)
     candidates = [dict(hit.row) for hit in hits]
-    ranked = rank_sector_leaders(candidates, max_per_sector=5)
+    enriched, hot_concepts = attach_sector_fields(candidates)
+    if enriched:
+        candidates = enriched
+    attach_first_time_fields(candidates)
+    industry_distribution = compute_sector_distribution(enriched or candidates, top_n=8, min_stocks=3)
+    strong_industries = {str(item["industry"]) for item in industry_distribution[:5]}
+    strong_concepts = set(hot_concepts)
+    ranked = rank_unified_sector_leaders(
+        candidates,
+        max_per_sector=5,
+        strong_industries=strong_industries,
+        strong_concepts=strong_concepts,
+    )
 
-    by_industry: dict[str, list[LeaderScoredRow]] = defaultdict(list)
-    industry_order: list[str] = []
+    by_sector: dict[str, list[LeaderScoredRow]] = defaultdict(list)
+    sector_order: list[str] = []
     for scored in ranked:
-        industry = str(scored.row.get("industry") or "").strip() or "—"
-        if industry not in by_industry:
-            industry_order.append(industry)
-        by_industry[industry].append(scored)
+        sector = scored.sector_name or str(scored.row.get("industry") or scored.row.get("concept") or "—")
+        if sector not in by_sector:
+            sector_order.append(sector)
+        by_sector[sector].append(scored)
 
     tier_limits = {"dragon_1": 1, "dragon_2": 1, "follower": 1}
     rows: list[RadarRow] = []
     tier_parts: list[str] = []
-    for industry in industry_order:
+    for sector in sector_order:
         tier_counts: dict[str, int] = defaultdict(int)
         sector_added = 0
-        for scored in by_industry[industry]:
+        for scored in by_sector[sector]:
             tier = scored.leader_tier or "follower"
             limit = tier_limits.get(tier, 0)
             if limit and tier_counts[tier] >= limit:
@@ -126,18 +141,20 @@ def _build_leaders_tiered_rows(pool_size: int) -> tuple[list[RadarRow], str, int
                 break
         if sector_added:
             dragons = tier_counts.get("dragon_1", 0) + tier_counts.get("dragon_2", 0)
-            tier_parts.append(f"{industry}×{dragons or sector_added}")
+            tier_parts.append(f"{sector}×{dragons or sector_added}")
         if len(rows) >= pool_size:
             break
 
     subtitle = ""
     if tier_parts:
         subtitle = "分层：" + "、".join(tier_parts[:4])
+    if hot_concepts:
+        subtitle = (subtitle + " · " if subtitle else "") + "概念：" + "、".join(hot_concepts[:2])
     if total:
         subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {total} 只"
     if rows:
         subtitle = (subtitle + " · " if subtitle else "") + "龙一/龙二/跟风"
-    return rows, subtitle, total, tuple(industry_order[:6])
+    return rows, subtitle, total, tuple(sector_order[:6])
 
 
 def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:

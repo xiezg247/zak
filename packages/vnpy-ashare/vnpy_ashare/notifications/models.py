@@ -10,3 +10,9 @@ class NotifyDeliveryResult:
     success: bool
     message: str
     status_code: int | None = None
+
+
+@dataclass(frozen=True)
+class NotifyOutboundMessage:
+    text: str
+    interactive_card: dict | None = None

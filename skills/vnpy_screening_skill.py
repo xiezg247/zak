@@ -180,8 +180,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="run_leader_screen",
                 description=(
-                    "按 leader_score 执行雷达龙头选股（硬过滤 + 情绪周期 gate）。"
-                    "退潮/冰点返回空结果；variant 可选 mainline（主线）或 all_market（全市场）。"
+                    "按 leader_score 执行雷达龙头选股（硬过滤 + 情绪周期 gate）。退潮/冰点返回空结果；variant 可选 mainline（主线）或 all_market（全市场）。"
                 ),
                 parameters={
                     "type": "object",

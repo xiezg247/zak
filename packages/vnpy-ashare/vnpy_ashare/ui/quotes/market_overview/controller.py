@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING, Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.ai.context.market_overview import (
     sync_emotion_cycle_context,
     sync_market_overview_context,
     sync_market_overview_partial,
 )
-from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
-from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
+from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
+from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
+from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
 from vnpy_ashare.ui.quotes.market_overview.worker import MarketOverviewLoadWorker
 from vnpy_common.ui.feedback import page_notify
@@ -101,12 +101,14 @@ class MarketOverviewController(QtCore.QObject):
         worker.start()
 
     def apply_market_snapshot(self, rows: list[dict[str, Any]], *, updated_at: str | None = None) -> None:
-        breadth, sectors = build_overview_from_market_rows(rows, updated_at=updated_at)
+        breadth, sectors, ladder_counts = build_overview_from_market_rows(rows, updated_at=updated_at)
         if breadth is not None:
             self._panel.apply_breadth(breadth)
             self._apply_emotion_cycle(breadth)
         if sectors:
             self._panel.apply_sectors(sectors)
+        if ladder_counts is not None:
+            self._panel.apply_limit_ladder(ladder_counts)
         sync_market_overview_partial(breadth=breadth, sectors=sectors or None)
         self._publish_ai_context()
 
@@ -120,6 +122,7 @@ class MarketOverviewController(QtCore.QObject):
     def _apply_emotion_cycle(self, breadth) -> None:
         inputs = build_emotion_cycle_inputs(breadth)
         snapshot = classify_emotion_cycle(inputs)
+        store_emotion_cycle_snapshot(snapshot)
         self._panel.apply_emotion_cycle(snapshot)
         sync_emotion_cycle_context(snapshot)
 

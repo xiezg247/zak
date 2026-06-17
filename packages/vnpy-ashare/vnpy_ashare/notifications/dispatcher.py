@@ -5,11 +5,11 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from vnpy_ashare.notifications.channels.feishu_webhook import FeishuWebhookChannel
-from vnpy_ashare.notifications.models import NotifyDeliveryResult
+from vnpy_ashare.notifications.models import NotifyDeliveryResult, NotifyOutboundMessage
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ _MAX_QUEUE_SIZE = 50
 @dataclass(frozen=True)
 class _QueuedMessage:
     event_id: str
-    text: str
+    outbound: NotifyOutboundMessage
     payload: dict
     on_complete: Callable[[str, dict, NotifyDeliveryResult], None] | None = None
 
@@ -43,15 +43,15 @@ class NotifyDispatcher:
     def enqueue(
         self,
         event_id: str,
-        text: str,
+        outbound: NotifyOutboundMessage,
         *,
         payload: dict | None = None,
         on_complete: Callable[[str, dict, NotifyDeliveryResult], None] | None = None,
     ) -> bool:
         data = dict(payload or {})
-        item = _QueuedMessage(event_id=event_id, text=text, payload=data, on_complete=on_complete)
+        item = _QueuedMessage(event_id=event_id, outbound=outbound, payload=data, on_complete=on_complete)
         if self._sync:
-            result = self._deliver(text)
+            result = self._deliver(outbound)
             if on_complete is not None:
                 on_complete(event_id, data, result)
             return result.success
@@ -81,13 +81,13 @@ class NotifyDispatcher:
                 continue
             if item is None:
                 break
-            result = self._deliver(item.text)
+            result = self._deliver(item.outbound)
             if item.on_complete is not None:
                 try:
                     item.on_complete(item.event_id, item.payload, result)
                 except Exception:
                     logger.exception("notify on_complete failed")
 
-    def _deliver(self, text: str) -> NotifyDeliveryResult:
+    def _deliver(self, outbound: NotifyOutboundMessage) -> NotifyDeliveryResult:
         channel = self._channel_factory()
-        return channel.send_text(text)
+        return channel.send_outbound(outbound)

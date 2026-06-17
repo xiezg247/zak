@@ -11,6 +11,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_service
 from vnpy_ashare.app.events import EVENT_OPEN_BATCH_BACKTEST, BatchBacktestViewRequest
+from vnpy_ashare.backtest.batch_templates import apply_batch_backtest_template
 from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     load_batch_backtest_defaults,
@@ -69,6 +70,8 @@ class BatchBacktestFlow:
         on_running: Callable[[bool], None] | None = None,
         default_class_name: str | None = None,
         default_strategy_setting: dict[str, Any] | None = None,
+        profile_id: str | None = None,
+        recipe_id: str | None = None,
     ) -> None:
         if self.is_running():
             return
@@ -84,7 +87,18 @@ class BatchBacktestFlow:
 
         strategies = list_strategies() if list_strategies is not None else self._default_strategies()
         defaults = load_batch_backtest_defaults()
+        has_class_override = default_class_name is not None
+        has_setting_override = default_strategy_setting is not None
+        defaults = apply_batch_backtest_template(
+            defaults,
+            profile_id=profile_id,
+            recipe_id=recipe_id,
+            override_class_name=not has_class_override,
+            override_dates=True,
+            override_setting=not has_setting_override,
+        )
         class_default = (default_class_name or defaults.class_name).strip() or defaults.class_name
+        merged_setting = default_strategy_setting if has_setting_override else defaults.strategy_setting
         dialog = ScreenerBatchBacktestConfigDialog(
             class_names=strategies,
             default_class=class_default,
@@ -106,7 +120,7 @@ class BatchBacktestFlow:
                 size=defaults.size,
                 pricetick=defaults.pricetick,
                 capital=defaults.capital,
-                strategy_setting=default_strategy_setting,
+                strategy_setting=merged_setting,
             )
         except ValueError:
             page_notify(self.parent, "日期格式应为 YYYY-MM-DD", level="warning")

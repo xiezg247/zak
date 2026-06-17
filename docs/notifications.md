@@ -151,6 +151,7 @@ packages/vnpy-ashare/vnpy_ashare/notifications/
 | `emotion_stage_change` | 情绪阶段变化 | `emotion_cycle` | **开** | 尤其 → 退潮/冰点 |
 | `risk_gate_change` | 风控状态变化 | `risk_gate` | **开** | caution / halt |
 | `position_alert` | 持仓异动 | `position_anomaly` | 关 | 浮亏≤−5%、卖出信号等 |
+| `journal_violation` | 流水违规 | `trade_journal` | 关 | off_plan / 退潮买入 / 亏损加仓 / 浮亏扛单 |
 | `radar_leader_ready` | 龙头池更新 | 雷达 `leader_pick` | 关 | 易刷屏，需高阈值 |
 | `scheduler_job_failed` | 定时任务失败 | `TaskSchedulerManager` | **开** | |
 | `manual_test` | 测试消息 | 设置页按钮 | — | |

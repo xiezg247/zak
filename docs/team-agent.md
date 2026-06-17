@@ -53,6 +53,8 @@
 | strategy | 均线、指标、策略信号、形态 | `technical_snapshot`, `list_strategy_signals`, `get_bars_summary` |
 | chief | 分歧 / 共识、加权综合研判 | 无工具；行情从 context 注入 |
 
+预取 `strategy` 维度含 **`ultra_short`** 块：情绪阶段、打板/突破信号；规则评分见 `graph/team_scoring.py`。
+
 chief 加权：财务 35% + 风险 25% + 策略 20% + 行情 20%。禁止买卖建议；至少 2/3 子 Agent 完成才汇总。
 
 子 Agent 深度模式下产出 Markdown + 末尾 JSON 评分（`graph/team_schema.py` 约束）。

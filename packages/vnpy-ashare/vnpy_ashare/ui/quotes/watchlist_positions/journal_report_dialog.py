@@ -74,10 +74,7 @@ class JournalReportDialog(QtWidgets.QDialog):
         pl_ratio = f"{report.profit_loss_ratio:.2f}" if report.profit_loss_ratio is not None else "—"
         on_plan = f"{report.on_plan_ratio_pct:.1f}%" if report.on_plan_ratio_pct is not None else "—"
         violation = f"{report.violation_ratio_pct:.1f}%" if report.violation_ratio_pct is not None else "—"
-        self._summary.setText(
-            f"{start.isoformat()} ~ {end.isoformat()} · "
-            f"已实现合计 {report.realized_pnl_total:+.2f} 元"
-        )
+        self._summary.setText(f"{start.isoformat()} ~ {end.isoformat()} · 已实现合计 {report.realized_pnl_total:+.2f} 元")
         rows = [
             ("流水条数", str(report.total_entries)),
             ("买入 / 卖出", f"{report.buy_count} / {report.sell_count}"),
@@ -98,6 +95,7 @@ class JournalReportDialog(QtWidgets.QDialog):
 
     def _copy_prompt(self) -> None:
         from vnpy.trader.ui import QtWidgets as QtW
+
         from vnpy_ashare.trading.journal.prompt import build_journal_prompt
 
         end = datetime.now(CHINA_TZ).date()

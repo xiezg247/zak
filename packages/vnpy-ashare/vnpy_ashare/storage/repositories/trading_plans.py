@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 
 from vnpy.trader.constant import Exchange
@@ -11,6 +12,8 @@ from vnpy_ashare.domain.trading_plan import TradingPlanRecord, TradingPlanSymbol
 from vnpy_ashare.storage.connection import connect, init_app_db
 
 PLAN_MAX_SYMBOLS = 5
+
+PlanSymbolRow = tuple[str, Exchange] | tuple[str, Exchange, tuple[str, ...] | None]
 
 
 def _now_iso() -> str:
@@ -183,7 +186,7 @@ def update_trading_plan_meta(
 def _replace_plan_symbols_conn(
     conn,
     plan_id: str,
-    symbols: list[tuple[str, Exchange, tuple[str, ...] | None]],
+    symbols: Sequence[PlanSymbolRow],
 ) -> None:
     conn.execute("DELETE FROM trading_plan_symbols WHERE plan_id = ?", (plan_id,))
     for index, item in enumerate(symbols[:PLAN_MAX_SYMBOLS]):
@@ -191,7 +194,8 @@ def _replace_plan_symbols_conn(
             symbol, exchange = item
             modes: tuple[str, ...] = ()
         else:
-            symbol, exchange, modes = item  # type: ignore[misc]
+            symbol, exchange, modes_raw = item
+            modes = tuple(modes_raw) if modes_raw else ()
         conn.execute(
             """
             INSERT INTO trading_plan_symbols(

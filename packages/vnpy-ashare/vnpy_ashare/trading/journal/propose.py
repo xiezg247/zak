@@ -28,7 +28,7 @@ def build_trading_plan_draft(
     trade_date: str | None = None,
 ) -> dict[str, Any]:
     """基于情绪周期 + 短线观察组生成计划草案（不写入 DB）。"""
-    emotion = load_emotion_cycle_snapshot()
+    emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
     target_date = trade_date or _next_trade_date()
     max_position_pct = 0.0
     emotion_expected = ""

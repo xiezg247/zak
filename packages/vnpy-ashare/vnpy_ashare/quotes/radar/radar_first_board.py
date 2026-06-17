@@ -16,45 +16,9 @@ from vnpy_ashare.screener.data.data_source import fetch_limit_list_with_fallback
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
+from vnpy_ashare.trading.signals.seal_time import format_seal_time_label, seal_time_score
 
 _STRONG_INDUSTRY_TOP = 5
-
-
-def _parse_clock_minutes(text: str) -> int | None:
-    raw = str(text or "").strip().replace(":", "")
-    if len(raw) < 4:
-        return None
-    try:
-        hours = int(raw[:2])
-        minutes = int(raw[2:4])
-    except ValueError:
-        return None
-    if hours < 0 or hours > 23 or minutes < 0 or minutes > 59:
-        return None
-    return hours * 60 + minutes
-
-
-def seal_time_score(first_time: str) -> float:
-    """封板时间得分；缺失时返回 0。"""
-    minutes = _parse_clock_minutes(first_time)
-    if minutes is None:
-        return 0.0
-    if 565 <= minutes <= 630:
-        return 1.0
-    if 630 < minutes <= 810:
-        return 0.7
-    if 810 < minutes <= 900:
-        return 0.5
-    return 0.0
-
-
-def format_seal_time_label(first_time: str) -> str:
-    minutes = _parse_clock_minutes(first_time)
-    if minutes is None:
-        return ""
-    hours = minutes // 60
-    mins = minutes % 60
-    return f"{hours:02d}:{mins:02d} 封板"
 
 
 def load_limit_list_first_time_map() -> dict[str, str]:
@@ -200,11 +164,12 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
         )
 
     from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
+    from vnpy_ashare.trading.signals.intraday_seal_time import build_first_time_map
 
     enriched = attach_industry(snapshot.rows)
     limit_map = get_cached_limit_times_map()
     candidates = build_first_board_candidates(enriched, limit_times_map=limit_map)
-    first_time_map = load_limit_list_first_time_map()
+    first_time_map = build_first_time_map(candidates)
 
     if not candidates:
         return RadarCardData(

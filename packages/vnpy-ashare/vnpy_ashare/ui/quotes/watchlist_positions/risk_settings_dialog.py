@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.config.preferences.trading_risk import (
     TradingRiskPrefs,

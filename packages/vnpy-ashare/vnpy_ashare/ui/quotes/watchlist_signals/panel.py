@@ -22,15 +22,15 @@ from vnpy_ashare.config.preferences import (
     save_signal_panel_expanded,
     save_signal_panel_symbols,
 )
+from vnpy_ashare.config.preferences.signal_panel_columns import (
+    SIGNAL_PANEL_OPTIONAL_COLUMNS,
+    resolve_signal_panel_columns,
+)
 from vnpy_ashare.config.preferences.strategy_profile import (
     list_strategy_profiles,
     load_strategy_profile_id,
     match_strategy_profile,
     save_strategy_profile_id,
-)
-from vnpy_ashare.config.preferences.signal_panel_columns import (
-    SIGNAL_PANEL_OPTIONAL_COLUMNS,
-    resolve_signal_panel_columns,
 )
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.signal_snapshot import (

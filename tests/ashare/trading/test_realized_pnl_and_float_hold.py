@@ -63,12 +63,15 @@ class RealizedPnlSyncTests(unittest.TestCase):
             volume=100,
             pnl=1000.0,
         )
-        with patch(
-            "vnpy_ashare.trading.risk.realized_pnl.today_trade_date",
-            return_value="2026-06-17",
-        ), patch(
-            "vnpy_ashare.trading.risk.realized_pnl.load_trading_risk_prefs",
-        ) as mock_prefs:
+        with (
+            patch(
+                "vnpy_ashare.trading.risk.realized_pnl.today_trade_date",
+                return_value="2026-06-17",
+            ),
+            patch(
+                "vnpy_ashare.trading.risk.realized_pnl.load_trading_risk_prefs",
+            ) as mock_prefs,
+        ):
             from vnpy_ashare.config.preferences.trading_risk import TradingRiskPrefs
 
             mock_prefs.return_value = TradingRiskPrefs(

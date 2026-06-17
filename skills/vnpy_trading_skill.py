@@ -26,10 +26,7 @@ class VnpyTradingSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="compute_position_size",
-                description=(
-                    "按总资金 2% 单笔风控规则计算建议最大股数。"
-                    "需用户在终端设置总资金；可传 cost_price、stop_loss_pct、volume 校验是否超限。"
-                ),
+                description=("按总资金 2% 单笔风控规则计算建议最大股数。需用户在终端设置总资金；可传 cost_price、stop_loss_pct、volume 校验是否超限。"),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -64,10 +61,7 @@ class VnpyTradingSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="propose_trading_plan",
-                description=(
-                    "生成次日/指定日交易计划草案（情绪仓位 + 短线观察组 + 雷达共振），"
-                    "不自动写入；用户确认后由终端「今日计划」激活。"
-                ),
+                description=("生成次日/指定日交易计划草案（情绪仓位 + 短线观察组 + 雷达共振），不自动写入；用户确认后由终端「今日计划」激活。"),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -113,10 +107,7 @@ class VnpyTradingSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="get_trading_discipline_context",
-                description=(
-                    "读取今日交易纪律快照：激活计划摘要、流水条数/违规、浮亏扛单、"
-                    "已实现盈亏与风控闸状态；可选 vt_symbol 校验计划内/违规标签。"
-                ),
+                description=("读取今日交易纪律快照：激活计划摘要、流水条数/违规、浮亏扛单、已实现盈亏与风控闸状态；可选 vt_symbol 校验计划内/违规标签。"),
                 parameters={
                     "type": "object",
                     "properties": {

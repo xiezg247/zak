@@ -26,12 +26,12 @@
 
 ## 2. 为何不能只用一套策略？
 
-| 维度 | 极致短线（待建规则层） | 现有 ShortBreakout | 现有 DoubleMA |
-|------|------------------------|---------------------|---------------|
+| 维度 | 极致短线（规则层） | 现有 ShortBreakout | 现有 DoubleMA |
+|------|----------------------|---------------------|---------------|
 | 数据频率 | 分 K、涨停价、封板时间 | 日 K | 日 K |
 | 持股 | 1–3 日，隔日卖铁则 | 1–5 日，止损止盈参数 | 趋势滞后 |
 | 适用 | 龙头、连板、情绪博弈 | 放量突破活跃股 | 震荡过滤、中线底仓观察 |
-| 回测 | 需分 K / 特殊模板（待建） | **已有** CTA | **已有** CTA |
+| 回测 | 日 K 打板 CTA + 批量模板（**已有**） | **已有** CTA | **已有** CTA |
 
 `AshareShortBreakoutStrategy` **不能替代**打板/半路/低吸：它不含涨停封板逻辑，也不含「高开低走 30 分钟止损」等隔日规则。
 
@@ -52,19 +52,12 @@
 
 | Profile ID | 名称 | 信号策略 | 退出/持仓 | 典型环境 |
 |------------|------|----------|-----------|----------|
-| `ultra_short` | 极致短线 | LimitBoard + Pullback（待建）；过渡可用 ShortBreakout | OvernightExit（待建） | 启动–高潮 |
+| `ultra_short` | 极致短线 | `AshareLimitBoardStrategy`（打板）；`Pullback` / `IntradayBreakout` 可切换 | OvernightExit overlay（**已有**） | 启动–高潮 |
 | `short_swing` | 短线波段 | `AshareShortBreakoutStrategy` | 同策略内止损止盈 | 分歧–发酵 |
 | `medium_watch` | 中线观察 | `AshareDoubleMaStrategy` | 双均线死叉 | 自选默认（**当前**） |
 | `trend` | 趋势中线 | `AshareTrendMaStrategy` | ADX + 追踪止损 | 回测、团队分析 |
 
-**过渡方案（Phase 1 未上线新策略前）**：
-
-| Profile | 临时信号策略 |
-|---------|--------------|
-| `ultra_short` | `AshareShortBreakoutStrategy`（5/10）+ 文案提示「非打板规则」 |
-| `short_swing` | `AshareShortBreakoutStrategy` |
-| `medium_watch` | `AshareDoubleMaStrategy`（10/20） |
-| `trend` | `AshareTrendMaStrategy`（20/60） |
+**过渡说明（已 supersede）**：`ultra_short` Profile 已默认绑定 `AshareLimitBoardStrategy`；若需波段代理可手动切 `AshareShortBreakoutStrategy`。
 
 ---
 
@@ -128,7 +121,8 @@
 | ShortBreakout | ✅ | **短线波段回测首选** |
 | SwingMA | ✅ | 波段 |
 | TrendMA | ✅ | 中线 |
-| LimitBoard 等 | 待建 | 极致短线 Phase 5 |
+| LimitBoard / IntradayBreakout / Pullback | ✅ | 极致短线；批量回测见 `backtest/batch_templates.py` |
+| OvernightExit | overlay（非 CTA） | 持仓区绑定 |
 
 回测与信号**共用** `AShareTemplate`（T+1、整手、仅做多）。
 
@@ -153,7 +147,7 @@
 | SP-02 | 信号区 Profile 下拉 | 已有 |
 | SP-03 | 持仓区 header 展示 Profile | 已有 |
 | SP-04 | 新用户默认 Profile 配置项（仍默认 medium_watch 直至极致短线策略就绪） | 已有 |
-| SP-05 | 新增 LimitBoard / OvernightExit 策略与 registry | 待建 |
+| SP-05 | LimitBoard / OvernightExit 策略与 registry | **已有** |
 
 ---
 

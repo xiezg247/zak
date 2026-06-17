@@ -24,23 +24,81 @@ def attach_industry(rows: list[dict[str, Any]], industry_map: dict[str, str] | N
     return enriched
 
 
+def attach_concept(
+    rows: list[dict[str, Any]],
+    vt_to_concept: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """为行情行附加 ``concept`` 字段（主概念名）。"""
+    if vt_to_concept is None:
+        from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
+
+        mapping, _hot = build_hot_concept_vt_symbol_map()
+    else:
+        mapping = vt_to_concept
+
+    enriched: list[dict[str, Any]] = []
+    for row in rows:
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        concept = mapping.get(vt_symbol, "").strip()
+        if not concept:
+            continue
+        merged = dict(row)
+        merged["concept"] = concept
+        enriched.append(merged)
+    return enriched
+
+
+def attach_sector_fields(
+    rows: list[dict[str, Any]],
+    *,
+    industry_map: dict[str, str] | None = None,
+    vt_to_concept: dict[str, str] | None = None,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """附加行业 + 概念；至少有一轴则保留。返回 (rows, hot_concept_names)。"""
+    mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
+    if vt_to_concept is None:
+        from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
+
+        concept_map, hot_names = build_hot_concept_vt_symbol_map()
+    else:
+        concept_map = vt_to_concept
+        hot_names = sorted({name for name in concept_map.values() if name})
+
+    enriched: list[dict[str, Any]] = []
+    for row in rows:
+        ts_code = vt_symbol_to_ts_code(str(row.get("vt_symbol") or ""))
+        industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        concept = concept_map.get(vt_symbol, "").strip()
+        if not industry and not concept:
+            continue
+        merged = dict(row)
+        if industry:
+            merged["industry"] = industry
+        if concept:
+            merged["concept"] = concept
+        enriched.append(merged)
+    return enriched, hot_names
+
+
 def compute_sector_distribution(
     rows: list[dict[str, Any]],
     *,
     top_n: int = 8,
     min_stocks: int = 2,
+    sector_field: str = "industry",
 ) -> list[dict[str, Any]]:
-    """按行业统计标的数、上涨占比与平均涨幅，降序返回 Top N。"""
+    """按行业/概念统计标的数、上涨占比与平均涨幅，降序返回 Top N。"""
     buckets: dict[str, list[float]] = defaultdict(list)
     for row in rows:
-        industry = str(row.get("industry") or "").strip()
-        if not industry:
+        sector = str(row.get(sector_field) or "").strip()
+        if not sector:
             continue
         pct = float(row.get("change_pct") or row.get("pct_chg") or 0)
-        buckets[industry].append(pct)
+        buckets[sector].append(pct)
 
     stats: list[dict[str, Any]] = []
-    for industry, pcts in buckets.items():
+    for sector, pcts in buckets.items():
         if len(pcts) < min_stocks:
             continue
         avg_pct = sum(pcts) / len(pcts)
@@ -48,7 +106,8 @@ def compute_sector_distribution(
         advance_ratio = positive / len(pcts)
         stats.append(
             {
-                "industry": industry,
+                "industry": sector,
+                sector_field: sector,
                 "count": len(pcts),
                 "avg_change_pct": round(avg_pct, 2),
                 "advance_ratio": round(advance_ratio, 4),

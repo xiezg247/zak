@@ -18,7 +18,6 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
-from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.jobs import (
     batch_download_universe_daily_bars,
     batch_fill_downloaded_stale_job,
@@ -37,6 +36,7 @@ from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.progress import bind_job_log
 from vnpy_ashare.jobs.radar_predict_train import run_radar_predict_train_job
+from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.scheduler.config import (
     AutoScreenJobConfig,
     JobConfig,

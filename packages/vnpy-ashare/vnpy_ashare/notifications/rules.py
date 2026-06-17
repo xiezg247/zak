@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from vnpy_ashare.notifications.events import DEFAULT_EVENT_SUBSCRIPTIONS, NOTIFY_EVENT_MANUAL_TEST
 from vnpy_ashare.notifications.prefs import load_notify_prefs

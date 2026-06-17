@@ -26,6 +26,7 @@ from vnpy_ashare.ai.context import (
 from vnpy_ashare.ai.context import (
     set_screening_results as _set_screening_results,
 )
+from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows, resolve_result_source_tag
 from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
 from vnpy_ashare.screener.pattern.pattern_screen import (
@@ -156,8 +157,8 @@ class ScreeningService(BaseService):
     def run_radar_resonance_screen(self, *, top_n: int = 50) -> ScreenerRunResult:
         return run_radar_resonance_screen(top_n=top_n)
 
-    def run_leader_screen(self, *, top_n: int = 12, variant: str = "mainline") -> ScreenerRunResult:
-        pick_variant = "all_market" if variant == "all_market" else "mainline"
+    def run_leader_screen(self, *, top_n: int = 12, variant: LeaderPickVariant | str = "mainline") -> ScreenerRunResult:
+        pick_variant: LeaderPickVariant = "all_market" if variant == "all_market" else "mainline"
         return run_leader_screen(top_n=top_n, variant=pick_variant)
 
     def run_industry_screen(self, industry: str, *, top_n: int = 50) -> ScreenerRunResult:

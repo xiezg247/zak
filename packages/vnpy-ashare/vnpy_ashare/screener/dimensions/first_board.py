@@ -7,14 +7,14 @@ from typing import Any
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_first_board import (
     build_first_board_candidates,
-    format_seal_time_label,
-    load_limit_list_first_time_map,
     rank_first_board_pool,
 )
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
+from vnpy_ashare.trading.signals.intraday_seal_time import build_first_time_map
+from vnpy_ashare.trading.signals.seal_time import format_seal_time_label
 
 
 def run_first_board(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], int]:
@@ -32,7 +32,7 @@ def run_first_board(pool_size: int, *, weight: float) -> tuple[list[DimensionHit
     if not candidates:
         return [], snapshot.total
 
-    first_time_map = load_limit_list_first_time_map()
+    first_time_map = build_first_time_map(candidates)
     ranked = rank_first_board_pool(
         candidates,
         first_time_map=first_time_map,

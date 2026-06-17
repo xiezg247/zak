@@ -81,10 +81,7 @@ def format_trading_discipline_extra(
     if realized is not None:
         lines.append(f"- 今日已实现：{float(realized):+.2f} 元")
 
-    lines.append(
-        f"- 风控闸：{snap_data.get('risk_gate_state')} "
-        f"({'可新开仓' if snap_data.get('allow_new_positions') else '不建议新开仓'})"
-    )
+    lines.append(f"- 风控闸：{snap_data.get('risk_gate_state')} ({'可新开仓' if snap_data.get('allow_new_positions') else '不建议新开仓'})")
 
     if vt_symbol and position_cache is not None:
         item_snap = position_cache.get(vt_symbol)

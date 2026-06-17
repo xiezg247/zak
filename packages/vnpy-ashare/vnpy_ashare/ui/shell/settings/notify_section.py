@@ -7,18 +7,19 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_ashare_engine
-from vnpy_ashare.ui.shell.settings.snapshot import resolve_env_config
 from vnpy_ashare.config.schema import ENV_NOTIFY_SPECS, ConfigFieldSpec
 from vnpy_ashare.notifications.events import (
     DEFAULT_EVENT_SUBSCRIPTIONS,
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
+    NOTIFY_EVENT_JOURNAL_VIOLATION,
     NOTIFY_EVENT_POSITION_ALERT,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
 )
-from vnpy_ashare.notifications.prefs import load_notify_prefs, save_event_subscription
+from vnpy_ashare.notifications.prefs import load_notify_prefs, save_event_subscription, save_use_interactive_card
+from vnpy_ashare.ui.shell.settings.snapshot import resolve_env_config
 from vnpy_common.ui.feedback import page_notify
 
 if TYPE_CHECKING:
@@ -31,6 +32,7 @@ _EVENT_LABELS: dict[str, str] = {
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE: "情绪阶段变更",
     NOTIFY_EVENT_RISK_GATE_CHANGE: "风控状态变更",
     NOTIFY_EVENT_POSITION_ALERT: "持仓异动提醒",
+    NOTIFY_EVENT_JOURNAL_VIOLATION: "流水违规提醒",
 }
 
 
@@ -52,10 +54,7 @@ class NotifySettingsSection(QtWidgets.QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(12)
 
-        hint = QtWidgets.QLabel(
-            "通过飞书群自定义机器人 Webhook 推送任务提醒（不含买卖建议）。"
-            "Webhook URL 仅存于本机 .env，请勿分享或提交版本库。"
-        )
+        hint = QtWidgets.QLabel("通过飞书群自定义机器人 Webhook 推送任务提醒（不含买卖建议）。Webhook URL 仅存于本机 .env，请勿分享或提交版本库。")
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
         root.addWidget(hint)
@@ -86,6 +85,15 @@ class NotifySettingsSection(QtWidgets.QWidget):
             self._event_checks[event_id] = check
             events_layout.addWidget(check)
         root.addWidget(events_group)
+
+        card_group = QtWidgets.QGroupBox("飞书卡片")
+        card_group.setObjectName("SettingsGroup")
+        card_layout = QtWidgets.QVBoxLayout(card_group)
+        self._interactive_check = QtWidgets.QCheckBox("使用 interactive 卡片（替代纯文本）")
+        self._interactive_check.setObjectName("SettingsCheck")
+        self._interactive_check.setToolTip("配置 NOTIFY_OPEN_URL 后卡片底部显示「打开 zak」按钮")
+        card_layout.addWidget(self._interactive_check)
+        root.addWidget(card_group)
 
         test_row = QtWidgets.QHBoxLayout()
         test_button = QtWidgets.QPushButton("发送飞书测试消息")
@@ -125,6 +133,7 @@ class NotifySettingsSection(QtWidgets.QWidget):
         prefs = load_notify_prefs()
         for event_id, check in self._event_checks.items():
             check.setChecked(prefs.event_subscriptions.get(event_id, False))
+        self._interactive_check.setChecked(prefs.use_interactive_card)
 
         service = self._notification_service()
         if service is not None and service.last_error:
@@ -135,6 +144,7 @@ class NotifySettingsSection(QtWidgets.QWidget):
     def save_subscriptions(self) -> None:
         for event_id, check in self._event_checks.items():
             save_event_subscription(event_id, check.isChecked())
+        save_use_interactive_card(self._interactive_check.isChecked())
 
     def _notification_service(self):
         parent = self._dialog.parent()

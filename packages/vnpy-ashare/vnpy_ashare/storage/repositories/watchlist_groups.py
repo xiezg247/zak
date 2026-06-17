@@ -24,7 +24,7 @@ def _parse_cap_pct(value: object) -> float | None:
     if value is None:
         return None
     try:
-        pct = float(value)
+        pct = float(str(value))
     except (TypeError, ValueError):
         return None
     if pct <= 0 or pct > 1:

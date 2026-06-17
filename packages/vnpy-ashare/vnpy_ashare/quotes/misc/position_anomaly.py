@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
-
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
 from vnpy_ashare.trading.journal.float_loss_hold import is_float_loss_hold
 

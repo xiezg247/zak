@@ -117,7 +117,7 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareLimitBoardStrategy": StrategyMeta(
         class_name="AshareLimitBoardStrategy",
         title="A 股极致短线·打板",
-        summary=("涨停价触及与封板回封规则（MVP：日 K 涨停 + 封板代理；完整分 K Phase 5）。"),
+        summary=("涨停价触及与封板回封规则；日 K 回测 + limit_list_d 封板时间；一字板可过滤。"),
         tags=("极致短线", "打板", "日 K"),
         scenarios=("情绪启动–高潮", "龙头与核心跟风", "10cm 主板"),
         anti_scenarios=("退潮 / 冰点", "20cm 创科", "一字缩量板"),
@@ -127,7 +127,7 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareIntradayBreakoutStrategy": StrategyMeta(
         class_name="AshareIntradayBreakoutStrategy",
         title="A 股极致短线·半路",
-        summary=("带量拉升突破关键位（MVP：日 K 涨幅 3–7% + 量比代理）。"),
+        summary=("带量拉升突破关键位；日 K 涨幅 3–7% + 量比，快线在慢线上方确认。"),
         tags=("极致短线", "半路", "日 K"),
         scenarios=("题材发酵", "板块联动拉升", "20cm 弹性票"),
         anti_scenarios=("无量脉冲", "尾盘偷袭"),
@@ -137,7 +137,7 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AsharePullbackStrategy": StrategyMeta(
         class_name="AsharePullbackStrategy",
         title="A 股极致短线·低吸",
-        summary=("核心分歧回踩 MA5 或日内承接（MVP：日 K MA5 缩量回踩）。"),
+        summary=("核心分歧回踩 MA5 或日内承接；日 K 缩量回踩 + 趋势过滤。"),
         tags=("极致短线", "低吸", "日 K"),
         scenarios=("分歧期核心票", "龙头炸板回踩", "MA5 附近承接"),
         anti_scenarios=("趋势破坏", "退潮期抄底"),

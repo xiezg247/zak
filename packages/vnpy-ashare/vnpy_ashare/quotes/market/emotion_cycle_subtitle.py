@@ -2,26 +2,20 @@
 
 from __future__ import annotations
 
-import time
-
-from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, load_emotion_cycle_snapshot
-
-_CACHE_TTL_SEC = 30.0
-_cached_snapshot: EmotionCycleSnapshot | None = None
-_cached_at: float = 0.0
+from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, load_emotion_cycle_snapshot, peek_emotion_cycle_snapshot
 
 
-def _cached_emotion_cycle_snapshot() -> EmotionCycleSnapshot | None:
-    global _cached_snapshot, _cached_at
-    now = time.monotonic()
-    if _cached_snapshot is None or now - _cached_at >= _CACHE_TTL_SEC:
-        _cached_snapshot = load_emotion_cycle_snapshot()
-        _cached_at = now
-    return _cached_snapshot
+def _resolve_snapshot(*, snapshot: EmotionCycleSnapshot | None) -> EmotionCycleSnapshot | None:
+    if snapshot is not None:
+        return snapshot
+    peeked = peek_emotion_cycle_snapshot()
+    if peeked is not None:
+        return peeked
+    return load_emotion_cycle_snapshot(fetch_if_missing=False)
 
 
 def emotion_cycle_subtitle_suffix(*, snapshot: EmotionCycleSnapshot | None = None) -> str:
-    cycle = snapshot if snapshot is not None else _cached_emotion_cycle_snapshot()
+    cycle = _resolve_snapshot(snapshot=snapshot)
     if cycle is None:
         return ""
     pos_max = int(cycle.position_pct_max * 100)

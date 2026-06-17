@@ -17,6 +17,7 @@ from vnpy_ashare.screener.sector.sector_summary import attach_industry
 LimitLadderVariant = Literal["by_height", "by_sector"]
 
 _LADDER_BUCKET_ORDER = ("5板+", "4板", "3板", "2板", "首板")
+LADDER_BUCKET_LABELS: tuple[str, ...] = _LADDER_BUCKET_ORDER
 
 
 def ladder_bucket_label(boards: int) -> str:

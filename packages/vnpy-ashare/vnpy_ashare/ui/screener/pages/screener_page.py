@@ -55,9 +55,9 @@ from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSide
 from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
 from vnpy_ashare.ui.screener.workers import (
     IndustryScreenRunWorker,
+    LeaderScreenRunWorker,
     PatternScreenRunWorker,
     RadarResonanceRunWorker,
-    LeaderScreenRunWorker,
     ScreenerBatchDownloadWorker,
     ScreenerRunWorker,
 )

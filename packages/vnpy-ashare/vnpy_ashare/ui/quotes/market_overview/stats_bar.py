@@ -13,6 +13,9 @@ from vnpy_ashare.ui.quotes.table.columns import format_amount
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
+# 两市成交额低于 1 万亿时短线赚钱效应偏弱（单位：元）
+MARKET_TURNOVER_TRILLION_YUAN = 1e12
+
 
 def _format_updated_at(raw: str | None) -> str:
     if not raw:
@@ -239,7 +242,7 @@ class MarketStatsBar(QtWidgets.QWidget):
         self._emotion_chip.set_loading()
 
     def render_emotion_cycle(self, snapshot) -> None:
-        self._emotion_chip.render(snapshot)
+        self._emotion_chip.apply_snapshot(snapshot)
 
     def set_empty(self) -> None:
         self.set_loading()
@@ -267,10 +270,44 @@ class MarketStatsBar(QtWidgets.QWidget):
             color=down_color,
             subtitle=f"跌停 · {limit_tag}",
         )
-        self._amount_chip.set_value(format_amount(breadth.total_amount))
+        self._amount_chip.set_value(
+            format_amount(breadth.total_amount),
+            color=self._amount_color(breadth.total_amount),
+            subtitle=self._amount_subtitle(breadth.total_amount),
+        )
+        self._amount_chip.setToolTip(self._amount_tooltip(breadth.total_amount))
         self._ratio_bar.set_counts(breadth.up, breadth.down, breadth.flat)
         self._updated_label.setText(_format_updated_at(breadth.updated_at))
         self._render_environment(self._last_environment)
+
+    def _amount_trillion(self, amount: float) -> float:
+        if amount <= 0:
+            return 0.0
+        return amount / MARKET_TURNOVER_TRILLION_YUAN
+
+    def _amount_subtitle(self, amount: float) -> str:
+        trillion = self._amount_trillion(amount)
+        if trillion <= 0:
+            return "成交额"
+        return f"成交额 · {trillion:.2f}万亿"
+
+    def _amount_color(self, amount: float) -> str:
+        trillion = self._amount_trillion(amount)
+        if trillion <= 0:
+            return ""
+        tokens = theme_manager().tokens()
+        if trillion >= 1.0:
+            return pct_change_color(1.0, tokens)
+        return tokens.semantic_warning
+
+    @staticmethod
+    def _amount_tooltip(amount: float) -> str:
+        trillion = amount / MARKET_TURNOVER_TRILLION_YUAN if amount > 0 else 0.0
+        if trillion >= 1.0:
+            return "两市成交额 ≥ 1 万亿，流动性尚可（规则参考）"
+        if trillion > 0:
+            return "两市成交额 < 1 万亿，短线赚钱效应偏弱（规则参考）"
+        return "成交额合计"
 
     def render_environment(self, env: MarketEnvironmentSnapshot | None) -> None:
         self._last_environment = env

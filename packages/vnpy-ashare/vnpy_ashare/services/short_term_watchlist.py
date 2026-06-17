@@ -87,11 +87,11 @@ def build_short_term_watchlist_snapshot(
     resonance_top_n: int = 5,
 ) -> dict[str, object]:
     """A-02：短线观察组成员 + 雷达共振 Top N。"""
+    from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
     from vnpy_ashare.quotes.radar.radar_resonance_store import (
         get_radar_resonance_entries,
         radar_resonance_updated_at,
     )
-    from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
 
     top_n = max(1, min(int(resonance_top_n), 20))
     observation: list[dict[str, str]] = []

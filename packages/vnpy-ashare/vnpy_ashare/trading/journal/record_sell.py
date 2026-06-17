@@ -27,7 +27,7 @@ def record_sell_from_position(
     trade_date = (sell_date or datetime.now(CHINA_TZ).date().isoformat())[:10]
     _, pnl, pnl_pct = compute_unrealized_pnl(cost_price, volume, sell_price)
     latest_buy = query_latest_buy_journal(symbol, exchange.name)
-    emotion = load_emotion_cycle_snapshot()
+    emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
     return insert_trade_journal_entry(
         symbol=symbol,
         exchange=exchange.name,

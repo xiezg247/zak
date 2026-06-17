@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label
 
@@ -39,7 +39,7 @@ class EmotionCycleChip(QtWidgets.QFrame):
         self._value.setStyleSheet("")
         self.setToolTip("等待市场广度数据")
 
-    def render(self, snapshot: EmotionCycleSnapshot | None) -> None:
+    def apply_snapshot(self, snapshot: EmotionCycleSnapshot | None) -> None:
         if snapshot is None:
             self.set_loading()
             return

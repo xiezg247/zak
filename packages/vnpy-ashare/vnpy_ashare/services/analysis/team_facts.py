@@ -234,6 +234,52 @@ def attach_diagnose_cache(service: AnalysisService, payload: dict[str, Any]) -> 
     attach_diagnose_snapshot(payload, cached, source="context_cache")
 
 
+def attach_ultra_short_strategy_context(service: AnalysisService, payload: dict[str, Any]) -> None:
+    """并入极致短线维度：情绪周期 + 打板/突破信号。"""
+    strategy = payload.get("strategy")
+    if not isinstance(strategy, dict) or strategy.get("error"):
+        return
+    symbol = str(payload.get("symbol") or strategy.get("symbol") or "")
+    if not symbol:
+        return
+
+    emotion = None
+    try:
+        from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
+
+        emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
+    except Exception:
+        emotion = None
+
+    limit_board: dict[str, Any] = {}
+    short_breakout: dict[str, Any] = {}
+    try:
+        limit_board = service.strategy_signals(
+            symbol,
+            class_name="AshareLimitBoardStrategy",
+            fast_window=5,
+            slow_window=10,
+        )
+        short_breakout = service.strategy_signals(
+            symbol,
+            class_name="AshareShortBreakoutStrategy",
+            fast_window=5,
+            slow_window=10,
+        )
+    except Exception:
+        pass
+
+    strategy["ultra_short"] = {
+        "emotion_stage": emotion.stage if emotion is not None else "",
+        "emotion_stage_label": emotion.stage_label if emotion is not None else "",
+        "allow_new_positions": emotion.allow_new_positions if emotion is not None else True,
+        "limit_board_signal": str(limit_board.get("signal") or ""),
+        "limit_board_label": str(limit_board.get("signal_label") or ""),
+        "short_breakout_signal": str(short_breakout.get("signal") or ""),
+        "short_breakout_label": str(short_breakout.get("signal_label") or ""),
+    }
+
+
 def prefetch_team_facts(service: AnalysisService, symbol: str) -> dict[str, Any]:
     """并行预取财务 / 风险 / 策略 + 可选问小达诊断（diagnose_stock 同源）。"""
     item = parse_stock_symbol(symbol)
@@ -280,4 +326,5 @@ def prefetch_team_facts(service: AnalysisService, symbol: str) -> dict[str, Any]
         item,
         diagnose=diagnose_data,
     )
+    attach_ultra_short_strategy_context(service, payload)
     return payload

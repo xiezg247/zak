@@ -11,7 +11,7 @@ from typing import Any
 
 import requests
 
-from vnpy_ashare.notifications.models import NotifyDeliveryResult
+from vnpy_ashare.notifications.models import NotifyDeliveryResult, NotifyOutboundMessage
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +35,33 @@ class FeishuWebhookChannel:
         return bool(self._webhook_url)
 
     def send_text(self, text: str) -> NotifyDeliveryResult:
+        return self.send_outbound(NotifyOutboundMessage(text=text))
+
+    def send_interactive(self, card: dict[str, Any]) -> NotifyDeliveryResult:
+        return self.send_outbound(NotifyOutboundMessage(text="", interactive_card=card))
+
+    def send_outbound(self, message: NotifyOutboundMessage) -> NotifyDeliveryResult:
         if not self._webhook_url:
             return NotifyDeliveryResult(success=False, message="未配置 FEISHU_WEBHOOK_URL")
 
-        payload: dict[str, Any] = {
-            "msg_type": "text",
-            "content": {"text": text},
-        }
+        if message.interactive_card is not None:
+            payload: dict[str, Any] = {
+                "msg_type": "interactive",
+                "card": message.interactive_card,
+            }
+        else:
+            payload = {
+                "msg_type": "text",
+                "content": {"text": message.text},
+            }
+        return self._post_payload(payload)
+
+    def _post_payload(self, payload: dict[str, Any]) -> NotifyDeliveryResult:
+        body = dict(payload)
         if self._webhook_secret:
             timestamp = str(int(time.time()))
-            payload["timestamp"] = timestamp
-            payload["sign"] = _build_sign(timestamp, self._webhook_secret)
+            body["timestamp"] = timestamp
+            body["sign"] = _build_sign(timestamp, self._webhook_secret)
 
         last_error = "发送失败"
         last_status: int | None = None
@@ -56,23 +72,23 @@ class FeishuWebhookChannel:
             try:
                 response = requests.post(
                     self._webhook_url,
-                    json=payload,
+                    json=body,
                     timeout=_REQUEST_TIMEOUT_SEC,
                 )
                 last_status = response.status_code
                 if response.status_code != 200:
                     last_error = f"HTTP {response.status_code}"
                     continue
-                body = response.json()
-                status_code = body.get("StatusCode", body.get("code"))
+                resp_body = response.json()
+                status_code = resp_body.get("StatusCode", resp_body.get("code"))
                 if status_code in (0, "0", None):
-                    logger.info("feishu notify sent http=%s", response.status_code)
+                    logger.info("feishu notify sent http=%s type=%s", response.status_code, body.get("msg_type"))
                     return NotifyDeliveryResult(
                         success=True,
                         message="已发送",
                         status_code=response.status_code,
                     )
-                last_error = str(body.get("StatusMessage") or body.get("msg") or "StatusCode 非 0")
+                last_error = str(resp_body.get("StatusMessage") or resp_body.get("msg") or "StatusCode 非 0")
             except requests.RequestException as ex:
                 last_error = str(ex)
                 logger.warning("feishu notify attempt=%s failed: %s", attempt + 1, ex)

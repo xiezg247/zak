@@ -80,12 +80,15 @@ class DisciplineContextTests(unittest.TestCase):
             on_plan=True,
         )
 
-        with patch(
-            "vnpy_ashare.trading.journal.discipline_context.today_trade_date",
-            return_value="2026-06-17",
-        ), patch(
-            "vnpy_ashare.trading.risk.realized_pnl.today_trade_date",
-            return_value="2026-06-17",
+        with (
+            patch(
+                "vnpy_ashare.trading.journal.discipline_context.today_trade_date",
+                return_value="2026-06-17",
+            ),
+            patch(
+                "vnpy_ashare.trading.risk.realized_pnl.today_trade_date",
+                return_value="2026-06-17",
+            ),
         ):
             snap = build_trading_discipline_snapshot()
 
@@ -102,12 +105,15 @@ class DisciplineContextTests(unittest.TestCase):
         plans_repo.activate_trading_plan(plan_id)
         cache = {"600000.SSE": _snap()}
 
-        with patch(
-            "vnpy_ashare.trading.journal.discipline_context.today_trade_date",
-            return_value="2026-06-17",
-        ), patch(
-            "vnpy_ashare.trading.risk.realized_pnl.today_trade_date",
-            return_value="2026-06-17",
+        with (
+            patch(
+                "vnpy_ashare.trading.journal.discipline_context.today_trade_date",
+                return_value="2026-06-17",
+            ),
+            patch(
+                "vnpy_ashare.trading.risk.realized_pnl.today_trade_date",
+                return_value="2026-06-17",
+            ),
         ):
             text = format_trading_discipline_extra(
                 position_cache=cache,

@@ -19,7 +19,7 @@ def _coerce_float(value: object, *, default: float | None = None) -> float | Non
     if value is None or str(value).strip() == "":
         return default
     try:
-        return float(value)
+        return float(str(value))
     except (TypeError, ValueError):
         return default
 

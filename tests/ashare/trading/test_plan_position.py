@@ -17,8 +17,8 @@ from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
 from vnpy_ashare.trading.risk.plan_position import (
     format_group_position_tab_label,
     format_plan_vs_actual_cell,
-    summarize_group_position,
     sum_plan_pct,
+    summarize_group_position,
 )
 
 
