@@ -15,7 +15,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
 
 def test_radar_cards_count_and_categories() -> None:
     cards = list_radar_cards()
-    assert len(cards) == 10
+    assert len(cards) == 13
     categories = {card.category for card in cards}
     assert categories == {"screen", "discovery", "watchlist", "sector", "outlook"}
     assert RADAR_GRID_COLUMNS == 3
@@ -26,7 +26,7 @@ def test_radar_layout_sections_and_modes() -> None:
     assert [section.mode for section in RADAR_LAYOUT_SECTIONS] == ["statistical", "predictive"]
     statistical = list_radar_cards_for_mode("statistical")
     predictive = list_radar_cards_for_mode("predictive")
-    assert len(statistical) == 6
+    assert len(statistical) == 9
     assert len(predictive) == 4
     assert all(spec.mode == "statistical" for spec in statistical)
     assert all(spec.mode == "predictive" for spec in predictive)
@@ -142,7 +142,7 @@ def test_auto_refresh_intervals() -> None:
     auto_ids = auto_refresh_card_ids()
     assert "discovery_volume_surge" in auto_ids
     assert "watchlist_intraday" in auto_ids
-    assert "sector_theme" in auto_ids
+    assert "discovery_first_board" in auto_ids
     manual_ids = manual_only_card_ids()
     assert "outlook_watch" in manual_ids
     assert "outlook_scenario" in manual_ids

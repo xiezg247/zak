@@ -21,10 +21,14 @@ from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
 from vnpy_ashare.screener.dimensions.volume_dedup import apply_volume_liquidity_dedup
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.recipe.recipe import DimensionSpec, ScreenRecipe, resolve_recipe
+from vnpy_ashare.screener.recipe.recipe import DimensionSpec, ScreenRecipe, resolve_recipe, RECIPE_EMOTION_GATE_ONLY
 from vnpy_ashare.screener.run.export import resolve_export_columns
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
-from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_modulation, sentiment_gate_enabled
+from vnpy_ashare.screener.sentiment.sentiment_gate import (
+    apply_emotion_gate_only_finalize,
+    apply_sentiment_modulation,
+    sentiment_gate_enabled,
+)
 
 DEFAULT_RECIPE_DIMENSION_MAX_WORKERS = 4
 
@@ -104,14 +108,27 @@ def run_recipe_object(
         reverse=True,
     )
     merged_rows = apply_recipe_filters(merged_rows)
-    use_sentiment = sentiment_gate_enabled() and (recipe.trigger_kind == "intraday" or any(spec.dimension_id == "sentiment_gate" for spec in recipe.dimensions))
+    use_sentiment = sentiment_gate_enabled() and (
+        recipe.trigger_kind == "intraday"
+        or any(spec.dimension_id == "sentiment_gate" for spec in recipe.dimensions)
+        or recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY
+    )
     merged_rows, _sentiment_meta = apply_sentiment_modulation(merged_rows, enabled=use_sentiment)
+
+    gate_meta: dict[str, Any] | None = None
+    if recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY:
+        merged_rows, gate_meta = apply_emotion_gate_only_finalize(merged_rows, top_n=limit)
+
     rows = merged_rows[: max(1, min(int(limit), 200))]
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    condition = f"{condition_prefix} · {recipe.name}"
+    if gate_meta and gate_meta.get("gate_message"):
+        condition += f" · {gate_meta['gate_message']}"
+
     return ScreenerRunResult(
         rows=rows,
-        condition=f"{condition_prefix} · {recipe.name}",
+        condition=condition,
         updated_at=now,
         total_scanned=total_scanned,
         source="recipe",

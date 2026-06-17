@@ -164,7 +164,7 @@ def fetch_limit_list_d(*, trade_date: str | None = None, limit_type: str | None 
     pro = get_tushare_pro()
     params: dict[str, Any] = {
         "trade_date": trade_date,
-        "fields": "ts_code,trade_date,name,limit,limit_times",
+        "fields": "ts_code,trade_date,name,limit,limit_times,first_time,last_time",
     }
     if limit_type:
         params["limit_type"] = limit_type
@@ -190,6 +190,8 @@ def fetch_limit_list_d(*, trade_date: str | None = None, limit_type: str | None 
                 "name": str(record.get("name", "") or "").strip(),
                 "limit": str(record.get("limit", "") or "").strip(),
                 "limit_times": limit_times,
+                "first_time": str(record.get("first_time", "") or "").strip(),
+                "last_time": str(record.get("last_time", "") or "").strip(),
                 "vt_symbol": vt_symbol or "",
             }
         )

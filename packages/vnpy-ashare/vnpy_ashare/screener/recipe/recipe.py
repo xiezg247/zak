@@ -15,6 +15,10 @@ TriggerKind = Literal["intraday", "post_close"]
 
 RECIPE_INTRADAY_MULTI = "intraday_multi"
 RECIPE_INTRADAY_AGGRESSIVE = "intraday_aggressive"
+RECIPE_ULTRA_SHORT_LIMIT = "ultra_short_limit"
+RECIPE_ULTRA_SHORT_FIRST_BOARD = "ultra_short_first_board"
+RECIPE_CM20_ELASTIC = "cm20_elastic"
+RECIPE_EMOTION_GATE_ONLY = "emotion_gate_only"
 RECIPE_POST_CLOSE_MULTI = "post_close_multi"
 
 
@@ -61,6 +65,9 @@ DIMENSION_CATALOG: dict[str, dict[str, Any]] = {
     "intraday_breakout": {"label": "突破", "trigger_kinds": ("intraday",)},
     "moneyflow_intraday": {"label": "盘中资金", "trigger_kinds": ("intraday",)},
     "sentiment_gate": {"label": "环境", "trigger_kinds": ("intraday",)},
+    "limit_board": {"label": "连板涨停", "trigger_kinds": ("intraday",)},
+    "first_board": {"label": "首板", "trigger_kinds": ("intraday",)},
+    "cm20_elastic": {"label": "20cm弹性", "trigger_kinds": ("intraday",)},
     "moneyflow": {"label": "资金", "trigger_kinds": ("post_close",)},
     "low_pe": {"label": "估值", "trigger_kinds": ("post_close",)},
 }
@@ -98,6 +105,61 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         top_n=20,
         pool_size=80,
         min_dimensions=3,
+    ),
+    RECIPE_ULTRA_SHORT_LIMIT: ScreenRecipe(
+        recipe_id=RECIPE_ULTRA_SHORT_LIMIT,
+        name="极致短线·涨停",
+        trigger_kind="intraday",
+        dimensions=(
+            DimensionSpec("limit_board", "连板涨停", 0.35),
+            DimensionSpec("sector_strength", "板块", 0.25),
+            DimensionSpec("turnover", "换手", 0.20),
+            DimensionSpec("concept_strength", "概念", 0.12),
+            DimensionSpec("sentiment_gate", "环境", 0.08),
+        ),
+        top_n=15,
+        pool_size=60,
+        min_dimensions=2,
+    ),
+    RECIPE_ULTRA_SHORT_FIRST_BOARD: ScreenRecipe(
+        recipe_id=RECIPE_ULTRA_SHORT_FIRST_BOARD,
+        name="极致短线·首板",
+        trigger_kind="intraday",
+        dimensions=(
+            DimensionSpec("first_board", "首板", 0.40),
+            DimensionSpec("concept_strength", "概念", 0.25),
+            DimensionSpec("sector_strength", "板块", 0.20),
+            DimensionSpec("turnover", "换手", 0.15),
+        ),
+        top_n=12,
+        pool_size=50,
+        min_dimensions=2,
+    ),
+    RECIPE_CM20_ELASTIC: ScreenRecipe(
+        recipe_id=RECIPE_CM20_ELASTIC,
+        name="20cm·弹性",
+        trigger_kind="intraday",
+        dimensions=(
+            DimensionSpec("cm20_elastic", "20cm弹性", 0.45),
+            DimensionSpec("concept_strength", "概念", 0.35),
+            DimensionSpec("turnover", "换手", 0.20),
+        ),
+        top_n=15,
+        pool_size=50,
+        min_dimensions=2,
+    ),
+    RECIPE_EMOTION_GATE_ONLY: ScreenRecipe(
+        recipe_id=RECIPE_EMOTION_GATE_ONLY,
+        name="情绪观察",
+        trigger_kind="intraday",
+        dimensions=(
+            DimensionSpec("momentum", "动量", 0.40),
+            DimensionSpec("sector_strength", "板块", 0.35),
+            DimensionSpec("sentiment_gate", "环境", 0.25),
+        ),
+        top_n=3,
+        pool_size=60,
+        min_dimensions=1,
     ),
     RECIPE_POST_CLOSE_MULTI: ScreenRecipe(
         recipe_id=RECIPE_POST_CLOSE_MULTI,

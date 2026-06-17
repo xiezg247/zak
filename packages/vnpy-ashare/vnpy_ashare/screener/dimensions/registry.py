@@ -6,7 +6,10 @@ from collections.abc import Callable
 
 from vnpy_ashare.screener.dimensions.base import DimensionHit
 from vnpy_ashare.screener.dimensions.concept_strength import run_concept_strength
+from vnpy_ashare.screener.dimensions.cm20_elastic import run_cm20_elastic
+from vnpy_ashare.screener.dimensions.first_board import run_first_board
 from vnpy_ashare.screener.dimensions.intraday_breakout import run_intraday_breakout
+from vnpy_ashare.screener.dimensions.limit_board import run_limit_board
 from vnpy_ashare.screener.dimensions.low_pe import run_low_pe
 from vnpy_ashare.screener.dimensions.momentum import run_momentum
 from vnpy_ashare.screener.dimensions.moneyflow import run_moneyflow
@@ -28,6 +31,9 @@ DIMENSION_RUNNERS: dict[str, DimensionRunner] = {
     "sector_strength": run_sector_strength,
     "concept_strength": run_concept_strength,
     "intraday_breakout": run_intraday_breakout,
+    "limit_board": run_limit_board,
+    "first_board": run_first_board,
+    "cm20_elastic": run_cm20_elastic,
     "moneyflow_intraday": run_moneyflow_intraday,
     "sentiment_gate": run_sentiment_gate,
     "moneyflow": run_moneyflow,

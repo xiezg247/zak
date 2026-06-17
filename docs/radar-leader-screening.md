@@ -492,9 +492,9 @@ ui/screener/workers/              # LeaderScreenWorker
 
 ### Phase 2 — 发现卡 + 板块改造
 
-- [ ] `discovery_limit_ladder`  
-- [ ] `discovery_first_board`  
-- [ ] `sector_theme` → `leaders_tiered`  
+- [x] `discovery_limit_ladder`  
+- [x] `discovery_first_board`  
+- [x] `sector_theme` → `leaders_tiered`  
 - [ ] 封板时间 / 一字板过滤（分 K 或 Tushare）  
 
 ### Phase 3 — 联动与 gate

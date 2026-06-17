@@ -158,6 +158,39 @@ def apply_sentiment_modulation(
     return rows, meta
 
 
+def apply_emotion_gate_only_finalize(
+    rows: list[dict[str, Any]],
+    *,
+    top_n: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """R-04：冰点空池；退潮 Top3 观察；其余阶段带情绪备注。"""
+    cycle = try_load_emotion_cycle_snapshot()
+    if cycle is None:
+        return rows[:top_n], None
+
+    meta: dict[str, Any] = {
+        "emotion_stage": cycle.stage,
+        "emotion_stage_label": cycle.stage_label,
+        "allow_new_positions": cycle.allow_new_positions,
+    }
+
+    if cycle.stage == "ice":
+        meta["gate_message"] = f"{cycle.stage_label}·不宜新开"
+        return [], meta
+
+    if cycle.stage == "recession":
+        observation = rows[: min(top_n, 3)]
+        for row in observation:
+            reason = str(row.get("hit_reason") or "")
+            row["hit_reason"] = f"退潮观察 · {reason}" if reason else "退潮观察"
+            row["emotion_note"] = cycle.stage_label
+        meta["gate_message"] = "退潮期仅保留 Top3 观察"
+        return observation, meta
+
+    meta["gate_message"] = f"{cycle.stage_label}·情绪观察"
+    return rows[:top_n], meta
+
+
 def apply_sentiment_snapshot_prefilter(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """恐贪前置缩池：极度恐惧时剔除涨幅过高的标的（先于维度打分）。"""
     if not sentiment_gate_enabled() or not rows:

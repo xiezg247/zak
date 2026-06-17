@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -86,27 +87,57 @@ def _row_from_sector_hit(row: dict[str, Any]) -> RadarRow | None:
 
 
 def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
-    hits, total = run_sector_strength(pool_size, weight=1.0)
+    """兼容旧 variant=leaders：与 leaders_tiered 相同。"""
+    return _build_leaders_tiered_rows(pool_size)
+
+
+def _build_leaders_tiered_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
+    hits, total = run_sector_strength(max(pool_size * 4, 40), weight=1.0)
     candidates = [dict(hit.row) for hit in hits]
     ranked = rank_sector_leaders(candidates, max_per_sector=5)
+
+    by_industry: dict[str, list[LeaderScoredRow]] = defaultdict(list)
+    industry_order: list[str] = []
+    for scored in ranked:
+        industry = str(scored.row.get("industry") or "").strip() or "—"
+        if industry not in by_industry:
+            industry_order.append(industry)
+        by_industry[industry].append(scored)
+
+    tier_limits = {"dragon_1": 1, "dragon_2": 1, "follower": 1}
     rows: list[RadarRow] = []
-    industries: list[str] = []
-    for scored in ranked[:pool_size]:
-        parsed = _row_from_leader_scored(scored)
-        if parsed is None:
-            continue
-        rows.append(parsed)
-        industry = str(scored.row.get("industry") or "")
-        if industry and industry not in industries:
-            industries.append(industry)
+    tier_parts: list[str] = []
+    for industry in industry_order:
+        tier_counts: dict[str, int] = defaultdict(int)
+        sector_added = 0
+        for scored in by_industry[industry]:
+            tier = scored.leader_tier or "follower"
+            limit = tier_limits.get(tier, 0)
+            if limit and tier_counts[tier] >= limit:
+                continue
+            if tier in tier_limits:
+                tier_counts[tier] += 1
+            parsed = _row_from_leader_scored(scored)
+            if parsed is None:
+                continue
+            rows.append(parsed)
+            sector_added += 1
+            if len(rows) >= pool_size:
+                break
+        if sector_added:
+            dragons = tier_counts.get("dragon_1", 0) + tier_counts.get("dragon_2", 0)
+            tier_parts.append(f"{industry}×{dragons or sector_added}")
+        if len(rows) >= pool_size:
+            break
+
     subtitle = ""
-    if industries:
-        subtitle = "主线：" + "、".join(industries[:3])
+    if tier_parts:
+        subtitle = "分层：" + "、".join(tier_parts[:4])
     if total:
         subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {total} 只"
     if rows:
-        subtitle = (subtitle + " · " if subtitle else "") + "龙头分排序"
-    return rows, subtitle, total, tuple(industries[:6])
+        subtitle = (subtitle + " · " if subtitle else "") + "龙一/龙二/跟风"
+    return rows, subtitle, total, tuple(industry_order[:6])
 
 
 def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
@@ -151,12 +182,15 @@ def _build_breadth_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple
     return rows, subtitle, snapshot.total, tuple(str(item.get("industry") or "") for item in leaders[:6])
 
 
-def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders") -> RadarCardData:
+def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders_tiered") -> RadarCardData:
     if variant == "breadth":
         rows, subtitle, total, sector_names = _build_breadth_rows(spec.top_n)
         empty = "暂无板块广度数据，请先同步行业信息或采集行情。"
+    elif variant in {"leaders", "leaders_tiered"}:
+        rows, subtitle, total, sector_names = _build_leaders_tiered_rows(spec.top_n)
+        empty = "暂无板块主线数据，请先同步行业信息或采集行情。"
     else:
-        rows, subtitle, total, sector_names = _build_leaders_rows(spec.top_n)
+        rows, subtitle, total, sector_names = _build_leaders_tiered_rows(spec.top_n)
         empty = "暂无板块主线数据，请先同步行业信息或采集行情。"
 
     if not rows:

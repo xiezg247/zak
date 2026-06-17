@@ -82,8 +82,8 @@ def hard_filter_preset(preset_id: str) -> HardFilterPrefs:
         return HardFilterPrefs(
             exclude_st=True,
             exclude_suspended=True,
-            min_amount_wan=1000.0,
-            min_total_mv_yi=20.0,
+            min_amount_wan=5000.0,
+            min_total_mv_yi=30.0,
             exclude_new_listing=False,
             min_listing_days=60,
             exclude_limit_board=False,

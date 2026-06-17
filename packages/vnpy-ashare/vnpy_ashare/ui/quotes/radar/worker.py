@@ -20,6 +20,7 @@ class RadarCardLoadWorker(QtCore.QThread):
         screen_task_variant: str,
         sector_variant: str,
         leader_pick_variant: str,
+        limit_ladder_variant: str,
         scenario_variant: str,
         force_recompute: bool = False,
         quote_only: bool = False,
@@ -31,6 +32,7 @@ class RadarCardLoadWorker(QtCore.QThread):
         self._screen_task_variant = screen_task_variant
         self._sector_variant = sector_variant
         self._leader_pick_variant = leader_pick_variant
+        self._limit_ladder_variant = limit_ladder_variant
         self._scenario_variant = scenario_variant
         self._force_recompute = force_recompute
         self._quote_only = quote_only
@@ -56,6 +58,7 @@ class RadarCardLoadWorker(QtCore.QThread):
                     screen_task_variant=self._screen_task_variant,
                     sector_variant=self._sector_variant,
                     leader_pick_variant=self._leader_pick_variant,
+                    limit_ladder_variant=self._limit_ladder_variant,
                     scenario_variant=self._scenario_variant,
                     force_recompute=self._force_recompute,
                 )

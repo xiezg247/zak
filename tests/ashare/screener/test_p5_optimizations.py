@@ -17,7 +17,7 @@ from vnpy_ashare.screener.dimensions.history_signals import (
 )
 from vnpy_ashare.screener.dimensions.moneyflow_resolve import _moneyflow_score_adjustment
 from vnpy_ashare.screener.dimensions.volume_ratio import _volume_ratio_tier_factor
-from vnpy_ashare.screener.hard_filter_prefs import PRESET_CONSERVATIVE, hard_filter_preset
+from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, PRESET_CONSERVATIVE, hard_filter_preset
 from vnpy_ashare.screener.hard_filters import is_at_limit_board, is_new_listing
 from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_snapshot_prefilter
 
@@ -72,6 +72,13 @@ def test_is_new_listing_and_limit_board() -> None:
     assert is_new_listing({"vt_symbol": "301086.SZSE", "list_date": recent})
     assert is_at_limit_board({"vt_symbol": "600000.SSE", "change_pct": 10.0, "symbol": "600000"})
     assert not is_at_limit_board({"vt_symbol": "600000.SSE", "change_pct": 5.0, "symbol": "600000"})
+
+
+def test_aggressive_hard_filter_preset() -> None:
+    prefs = hard_filter_preset(PRESET_AGGRESSIVE)
+    assert prefs.min_amount_wan == 5000.0
+    assert prefs.min_total_mv_yi == 30.0
+    assert not prefs.exclude_limit_board
 
 
 def test_conservative_hard_filter_preset() -> None:

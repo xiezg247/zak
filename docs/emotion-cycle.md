@@ -95,7 +95,7 @@ class EmotionCycleSnapshot:
 | 选股 Hub 批量入自选 | `recession` → 确认对话框 |
 | 雷达卡片 subtitle | 追加「环境：发酵期 · 建议 5 成」 |
 | 持仓登记 | `recession` → warning toast（不阻断记账） |
-| Recipe `emotion_gate_only` | 退潮返回 Top 0–3 观察 |
+| Recipe `emotion_gate_only` | 退潮 Top3 观察；冰点空池 ✅ |
 
 ---
 

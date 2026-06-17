@@ -7,6 +7,7 @@ from typing import Any
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
+    DEFAULT_LIMIT_LADDER_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
@@ -24,7 +25,9 @@ from vnpy_ashare.quotes.radar.radar_models import (
 )
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
+from vnpy_ashare.quotes.radar.radar_first_board import load_first_board
 from vnpy_ashare.quotes.radar.radar_leader_pick import load_leader_pick
+from vnpy_ashare.quotes.radar.radar_limit_ladder import load_limit_ladder
 from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
@@ -476,6 +479,7 @@ def load_radar_card(
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
+    limit_ladder_variant: str = DEFAULT_LIMIT_LADDER_VARIANT,
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
     force_recompute: bool = False,
 ) -> RadarCardData:
@@ -490,6 +494,7 @@ def load_radar_card(
                 screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
                 leader_pick_variant=leader_pick_variant,
+                limit_ladder_variant=limit_ladder_variant,
                 scenario_variant=scenario_variant,
                 force_recompute=force_recompute,
             )
@@ -503,6 +508,7 @@ def load_radar_card(
                 screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
                 leader_pick_variant=leader_pick_variant,
+                limit_ladder_variant=limit_ladder_variant,
                 scenario_variant=scenario_variant,
                 force_recompute=force_recompute,
             )
@@ -511,6 +517,7 @@ def load_radar_card(
         screen_task_variant=screen_task_variant,
         sector_variant=sector_variant,
         leader_pick_variant=leader_pick_variant,
+        limit_ladder_variant=limit_ladder_variant,
         scenario_variant=scenario_variant,
         force_recompute=force_recompute,
     )
@@ -520,6 +527,8 @@ _RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
     {
         "discovery_volume_surge",
         "discovery_moneyflow_intraday",
+        "discovery_limit_ladder",
+        "discovery_first_board",
         "watchlist_intraday",
         "sector_theme",
         "leader_pick",
@@ -544,6 +553,7 @@ def _load_radar_card_uncached(
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
+    limit_ladder_variant: str = DEFAULT_LIMIT_LADDER_VARIANT,
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
     force_recompute: bool = False,
 ) -> RadarCardData:
@@ -560,6 +570,13 @@ def _load_radar_card_uncached(
         return load_discovery_volume_surge(spec)
     if spec.id == "discovery_moneyflow_intraday":
         return load_discovery_moneyflow_intraday(spec)
+    if spec.id == "discovery_limit_ladder":
+        from vnpy_ashare.quotes.radar.radar_limit_ladder import LimitLadderVariant
+
+        ladder_variant: LimitLadderVariant = "by_sector" if limit_ladder_variant == "by_sector" else "by_height"
+        return load_limit_ladder(spec, variant=ladder_variant)
+    if spec.id == "discovery_first_board":
+        return load_first_board(spec)
     if spec.id == "watchlist_intraday":
         return load_watchlist_intraday(spec)
     if spec.id == "sector_theme":

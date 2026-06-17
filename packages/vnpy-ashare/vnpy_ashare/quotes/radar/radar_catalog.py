@@ -42,6 +42,8 @@ RADAR_SECTOR_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
 CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
     "discovery_volume_surge": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_moneyflow_intraday": RADAR_DISCOVERY_REFRESH_OPTIONS,
+    "discovery_limit_ladder": RADAR_DISCOVERY_REFRESH_OPTIONS,
+    "discovery_first_board": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "watchlist_intraday": RADAR_WATCHLIST_REFRESH_OPTIONS,
     "sector_theme": RADAR_SECTOR_REFRESH_OPTIONS,
 }
@@ -50,6 +52,8 @@ CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
 RADAR_FULL_REFRESH_EVERY: dict[str, int] = {
     "discovery_volume_surge": 5,
     "discovery_moneyflow_intraday": 5,
+    "discovery_limit_ladder": 5,
+    "discovery_first_board": 5,
     "watchlist_intraday": 5,
     "sector_theme": 3,
 }
@@ -115,6 +119,19 @@ RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
         auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS,
     ),
     RadarCardSpec(
+        "discovery_limit_ladder",
+        "发现·连板梯队",
+        "discovery",
+        has_task_variants=True,
+        auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS,
+    ),
+    RadarCardSpec(
+        "discovery_first_board",
+        "发现·首板人气",
+        "discovery",
+        auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS,
+    ),
+    RadarCardSpec(
         "watchlist_intraday",
         "自选·异动",
         "watchlist",
@@ -157,7 +174,7 @@ SCREEN_TASK_VARIANTS: tuple[RadarVariant, ...] = (
 )
 
 SECTOR_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("leaders", "板块龙头"),
+    RadarVariant("leaders_tiered", "龙一分层"),
     RadarVariant("breadth", "广度扩散"),
 )
 
@@ -166,14 +183,21 @@ LEADER_PICK_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant("all_market", "全市场"),
 )
 
+LIMIT_LADDER_VARIANTS: tuple[RadarVariant, ...] = (
+    RadarVariant("by_height", "按高度"),
+    RadarVariant("by_sector", "按板块"),
+)
+
 DEFAULT_SCREEN_TASK_VARIANT = "scheduled_post_close"
-DEFAULT_SECTOR_VARIANT = "leaders"
+DEFAULT_SECTOR_VARIANT = "leaders_tiered"
 DEFAULT_LEADER_PICK_VARIANT = "mainline"
+DEFAULT_LIMIT_LADDER_VARIANT = "by_height"
 
 CARD_VARIANTS: dict[str, tuple[RadarVariant, ...]] = {
     "screen_task": SCREEN_TASK_VARIANTS,
     "sector_theme": SECTOR_VARIANTS,
     "leader_pick": LEADER_PICK_VARIANTS,
+    "discovery_limit_ladder": LIMIT_LADDER_VARIANTS,
     "outlook_scenario": SCENARIO_VARIANTS,
     "outlook_predict": PREDICT_MODEL_VARIANTS,
 }
@@ -205,6 +229,8 @@ def default_variant_for_card(card_id: str) -> str:
     defaults = {
         "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
         "sector_theme": DEFAULT_SECTOR_VARIANT,
+        "leader_pick": DEFAULT_LEADER_PICK_VARIANT,
+        "discovery_limit_ladder": DEFAULT_LIMIT_LADDER_VARIANT,
         "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
         "outlook_predict": DEFAULT_PREDICT_MODEL_VARIANT,
     }

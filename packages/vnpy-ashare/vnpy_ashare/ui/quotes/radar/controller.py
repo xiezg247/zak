@@ -14,6 +14,7 @@ from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
+    DEFAULT_LIMIT_LADDER_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
@@ -64,6 +65,7 @@ class RadarController(QtCore.QObject):
             "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
             "sector_theme": DEFAULT_SECTOR_VARIANT,
             "leader_pick": DEFAULT_LEADER_PICK_VARIANT,
+            "discovery_limit_ladder": DEFAULT_LIMIT_LADDER_VARIANT,
             "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
             "outlook_predict": load_predict_model_mode(),
         }
@@ -260,6 +262,7 @@ class RadarController(QtCore.QObject):
             screen_task_variant=self._card_variants.get("screen_task", DEFAULT_SCREEN_TASK_VARIANT),
             sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
             leader_pick_variant=self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT),
+            limit_ladder_variant=self._card_variants.get("discovery_limit_ladder", DEFAULT_LIMIT_LADDER_VARIANT),
             scenario_variant=self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
             force_recompute=force_recompute,
             quote_only=quote_only,

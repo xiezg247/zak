@@ -80,10 +80,10 @@ resonance 加权（权重可配置，D-03 将增加「短线模式」预设）
 | card_id | 标题 | ID | Phase |
 |---------|------|-----|-------|
 | `leader_pick` | 选股·龙头 | G-04, G-05 | 1 |
-| `discovery_limit_ladder` | 发现·连板梯队 | D-01 | 2 |
-| `discovery_first_board` | 发现·首板人气 | D-02 | 2 |
+| `discovery_limit_ladder` | 发现·连板梯队 | D-01 | **已有** |
+| `discovery_first_board` | 发现·首板人气 | D-02 | **已有** |
 
-`sector_theme` variant **leaders** 将升级为龙一 / 龙二 / 跟风分层（G-02）。
+`sector_theme` variant **leaders_tiered** 按板块展示龙一 / 龙二 / 跟风（G-02 **已有**）。
 
 ---
 

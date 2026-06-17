@@ -33,10 +33,10 @@
 
 | ID | 名称 | 状态 | Phase | 依赖 | 文档 |
 |----|------|------|-------|------|------|
-| R-01 | `ultra_short_limit` | **待建** | 1 | 硬过滤激进模板、G-04 | [intraday-screening.md](./intraday-screening.md) |
-| R-02 | `ultra_short_first_board` | **待建** | 2 | D-02, 封板代理 | 同上 |
-| R-03 | `cm20_elastic` | **待建** | 2 | 板块白名单 | 同上 |
-| R-04 | `emotion_gate_only` | **待建** | 1 | T-03 | [emotion-cycle.md](./emotion-cycle.md) |
+| R-01 | `ultra_short_limit` | **已有** | 1 | 硬过滤激进模板、G-04 | [intraday-screening.md](./intraday-screening.md) |
+| R-02 | `ultra_short_first_board` | **已有** | 2 | D-02, 封板代理 | 同上 |
+| R-03 | `cm20_elastic` | **已有** | 2 | 板块白名单 | 同上 |
+| R-04 | `emotion_gate_only` | **已有** | 1 | T-03 | [emotion-cycle.md](./emotion-cycle.md) |
 | — | `intraday_multi`（默认盘中） | **已有** | 0 | Redis | [intraday-screening.md](./intraday-screening.md) |
 
 **硬过滤**：保守 / 均衡 / 激进三模板；激进模板 Phase 1 与 R-01 同批交付。
@@ -49,8 +49,8 @@
 
 | ID | 能力 | 状态 | Phase | 文档 |
 |----|------|------|-------|------|
-| D-01 | `discovery_limit_ladder` 连板梯队 | **待建** | 2 | [radar-page.md](./radar-page.md) |
-| D-02 | `discovery_first_board` 首板人气 | **待建** | 2 | 同上 |
+| D-01 | `discovery_limit_ladder` 连板梯队 | **已有** | 2 | [radar-page.md](./radar-page.md) |
+| D-02 | `discovery_first_board` 首板人气 | **已有** | 2 | 同上 |
 | D-03 | 共振权重「短线模式」 | **待建** | 1 | [radar-leader-screening.md](./radar-leader-screening.md) |
 | D-04 | 共振 → 短线观察组 | **待建** | 1 | [watchlist-groups.md](./watchlist-groups.md) |
 | — | 现有 10 卡 + 共振总览 | **已有** | 0 | [radar-page.md](./radar-page.md) |
@@ -59,8 +59,8 @@
 
 | ID | 差距 | 优先级 | Phase | 状态 |
 |----|------|--------|-------|------|
-| G-01 | 连板梯队视图 | P0 | 2 | **待建** |
-| G-02 | 龙一 / 龙二 / 跟风 | P0 | 1 | **待建** |
+| G-01 | 连板梯队视图 | P0 | 2 | **已有** |
+| G-02 | 龙一 / 龙二 / 跟风 | P0 | 1 | **已有** |
 | G-03 | 首板人气 | P1 | 2 | **待建** |
 | G-04 | `leader_score` | P0 | 1 | **部分**（核心评分+板块卡） |
 | G-05 | `run_leader_screen` Hub 入口 | P0 | 1 | **已有** |

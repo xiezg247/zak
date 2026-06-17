@@ -10,6 +10,8 @@ _KEY_PREFIX = "quotes/radar/resonance_weight/"
 DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
     "discovery_volume_surge": 2.0,
     "discovery_moneyflow_intraday": 2.0,
+    "discovery_limit_ladder": 2.0,
+    "discovery_first_board": 1.75,
     "watchlist_intraday": 1.5,
     "sector_theme": 1.25,
     "leader_pick": 2.5,
@@ -24,6 +26,8 @@ DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
 _WEIGHT_LABELS: dict[str, str] = {
     "discovery_volume_surge": "发现·放量异动",
     "discovery_moneyflow_intraday": "发现·资金异动",
+    "discovery_limit_ladder": "发现·连板梯队",
+    "discovery_first_board": "发现·首板人气",
     "watchlist_intraday": "自选·异动",
     "sector_theme": "板块·主线",
     "leader_pick": "选股·龙头",
