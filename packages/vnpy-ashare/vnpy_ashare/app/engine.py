@@ -45,7 +45,11 @@ class AshareEngine(BaseEngine):
         self.stock_analysis_service = StockAnalysisService(self)
         self.sector_flow_service = SectorFlowService(self)
         from vnpy_ashare.notifications.service import NotificationService
+        from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleTracker
+        from vnpy_ashare.trading.risk.gate import RiskGateEngine
 
+        self.emotion_cycle_tracker = EmotionCycleTracker()
+        self.risk_gate_engine = RiskGateEngine()
         self.notification_service = NotificationService(self)
         self.scheduler.add_job_finished_hook(self.notification_service.on_job_finished)
 

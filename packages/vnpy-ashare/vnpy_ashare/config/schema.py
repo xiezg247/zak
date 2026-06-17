@@ -120,6 +120,14 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         description="飞书群 → 设置 → 群机器人 → 添加自定义机器人",
     ),
     ConfigFieldSpec(
+        "FEISHU_WEBHOOK_SECRET",
+        "飞书签名校验 Secret",
+        "消息通知",
+        "",
+        sensitive=True,
+        description="机器人开启签名校验时填写；留空则不签名",
+    ),
+    ConfigFieldSpec(
         "NOTIFY_MIN_INTERVAL_SEC",
         "通知最小间隔（秒）",
         "消息通知",
@@ -205,7 +213,7 @@ VT_SPECS_BY_GROUP = _index_specs(VT_CONFIG_SPECS)
 ENV_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "PostgreSQL")
 ENV_DB_KEYS: frozenset[str] = frozenset({"DATABASE_NAME"}) | ENV_POSTGRES_KEYS
 ENV_NOTIFY_KEYS: frozenset[str] = frozenset(
-    {"NOTIFY_ENABLED", "FEISHU_WEBHOOK_URL", "NOTIFY_MIN_INTERVAL_SEC"},
+    {"NOTIFY_ENABLED", "FEISHU_WEBHOOK_URL", "FEISHU_WEBHOOK_SECRET", "NOTIFY_MIN_INTERVAL_SEC"},
 )
 
 ENV_SPEC_BY_KEY: dict[str, ConfigFieldSpec] = {spec.key: spec for spec in ENV_CONFIG_SPECS}

@@ -211,6 +211,19 @@ CREATE TABLE IF NOT EXISTS sector_flow_daily (
 
 CREATE INDEX IF NOT EXISTS idx_sector_flow_daily_lookup
     ON sector_flow_daily(sector_kind, sector_id, trade_date DESC);
+
+CREATE TABLE IF NOT EXISTS notify_delivery_log (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    channel TEXT NOT NULL DEFAULT 'feishu',
+    payload_json TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL,
+    error TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_notify_delivery_log_created
+    ON notify_delivery_log(created_at DESC);
 """
 
 

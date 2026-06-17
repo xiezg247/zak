@@ -18,8 +18,10 @@ _MAX_QUEUE_SIZE = 50
 
 @dataclass(frozen=True)
 class _QueuedMessage:
+    event_id: str
     text: str
-    on_complete: Callable[[NotifyDeliveryResult], None] | None = None
+    payload: dict
+    on_complete: Callable[[str, dict, NotifyDeliveryResult], None] | None = None
 
 
 class NotifyDispatcher:
@@ -40,15 +42,18 @@ class NotifyDispatcher:
 
     def enqueue(
         self,
+        event_id: str,
         text: str,
         *,
-        on_complete: Callable[[NotifyDeliveryResult], None] | None = None,
+        payload: dict | None = None,
+        on_complete: Callable[[str, dict, NotifyDeliveryResult], None] | None = None,
     ) -> bool:
-        item = _QueuedMessage(text=text, on_complete=on_complete)
+        data = dict(payload or {})
+        item = _QueuedMessage(event_id=event_id, text=text, payload=data, on_complete=on_complete)
         if self._sync:
             result = self._deliver(text)
             if on_complete is not None:
-                on_complete(result)
+                on_complete(event_id, data, result)
             return result.success
 
         try:
@@ -79,7 +84,7 @@ class NotifyDispatcher:
             result = self._deliver(item.text)
             if item.on_complete is not None:
                 try:
-                    item.on_complete(result)
+                    item.on_complete(item.event_id, item.payload, result)
                 except Exception:
                     logger.exception("notify on_complete failed")
 

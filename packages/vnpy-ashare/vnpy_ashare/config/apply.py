@@ -36,7 +36,9 @@ _SOFT_RELOAD_ENV_KEYS: frozenset[str] = frozenset(
     }
 )
 _RESTART_ENV_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group in {"数据库", "PostgreSQL"} or spec.key == "DATABASE_NAME")
-_NOTIFY_ENV_KEYS: frozenset[str] = frozenset({"NOTIFY_ENABLED", "FEISHU_WEBHOOK_URL", "NOTIFY_MIN_INTERVAL_SEC"})
+_NOTIFY_ENV_KEYS: frozenset[str] = frozenset(
+    {"NOTIFY_ENABLED", "FEISHU_WEBHOOK_URL", "FEISHU_WEBHOOK_SECRET", "NOTIFY_MIN_INTERVAL_SEC"},
+)
 
 _VT_LABELS: dict[str, str] = {spec.key: spec.label for spec in VT_CONFIG_SPECS}
 _ENV_LABELS: dict[str, str] = {spec.key: spec.label for spec in ENV_CONFIG_SPECS}

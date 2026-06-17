@@ -7,7 +7,10 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from vnpy_ashare.notifications.events import (
+    NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_MANUAL_TEST,
+    NOTIFY_EVENT_POSITION_ALERT,
+    NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
@@ -40,6 +43,52 @@ def format_notify_text(event_id: str, payload: dict[str, Any]) -> str:
             lines.append(f"ID {job_id}")
         if message:
             lines.append(message)
+        lines.append(f"时间 {now}")
+        return "\n".join(lines)
+
+    if event_id == NOTIFY_EVENT_EMOTION_STAGE_CHANGE:
+        stage_label = str(payload.get("stage_label") or payload.get("stage") or "")
+        limit_up = payload.get("limit_up_count")
+        limit_down = payload.get("limit_down_count")
+        pos_max = payload.get("position_pct_max")
+        lines = [f"【zak】情绪阶段 → {stage_label}"]
+        if limit_up is not None and limit_down is not None:
+            lines.append(f"涨停 {limit_up} · 跌停 {limit_down}")
+        if pos_max is not None:
+            lines.append(f"建议总仓位 ≤ {int(float(pos_max) * 100)}%")
+        if not payload.get("allow_new_positions", True):
+            lines.append("建议：不开新仓（规则参考，非投资建议）")
+        lines.append(f"时间 {now}")
+        return "\n".join(lines)
+
+    if event_id == NOTIFY_EVENT_RISK_GATE_CHANGE:
+        state_label = str(payload.get("state_label") or payload.get("state") or "")
+        lines = [f"【zak】风控状态 → {state_label}"]
+        for warning in payload.get("warnings") or ():
+            lines.append(str(warning))
+        daily = payload.get("daily_pnl_pct")
+        if daily is not None:
+            lines.append(f"当日盈亏合计 {daily:.1f}%")
+        lines.append("请复盘后再操作")
+        lines.append(f"时间 {now}")
+        return "\n".join(lines)
+
+    if event_id == NOTIFY_EVENT_POSITION_ALERT:
+        name = str(payload.get("name") or "")
+        symbol = str(payload.get("symbol") or "")
+        reasons = str(payload.get("reasons") or "")
+        pnl = payload.get("pnl_pct")
+        exit_signal = str(payload.get("exit_signal") or "")
+        t1_locked = payload.get("t1_locked")
+        lines = ["【zak】持仓提醒", f"{name} {symbol}".strip()]
+        if reasons:
+            lines.append(f"标签：{reasons}")
+        if pnl is not None:
+            lines.append(f"浮盈 {float(pnl):+.1f}%")
+        if exit_signal:
+            lines.append(f"退出信号：{exit_signal}")
+        if t1_locked is not None:
+            lines.append(f"T+1：{'锁定' if t1_locked else '可卖'}")
         lines.append(f"时间 {now}")
         return "\n".join(lines)
 

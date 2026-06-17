@@ -313,9 +313,9 @@ Worker 内 HTTP 失败：重试 2 次（指数退避）；仍失败写 `last_err
 
 ### Phase 2 — 短线体系联动
 
-- [ ] `emotion_stage_change`、`risk_gate_change`
-- [ ] `position_alert`（去重）
-- [ ] 签名校验、delivery log
+- [x] `emotion_stage_change`、`risk_gate_change`
+- [x] `position_alert`（去重）
+- [x] 签名校验、delivery log
 
 ### Phase 3 — 扩展
 

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.preferences import WatchlistSignalConfig
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.position_snapshot import PositionRecord, build_position_snapshot
@@ -181,6 +182,18 @@ class WatchlistPositionController:
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
             panel.render_panel()
+        self._scan_position_alerts()
+
+    def _scan_position_alerts(self) -> None:
+        engine = get_ashare_engine(self._page._get_main_engine())
+        if engine is None:
+            return
+        service = engine.notification_service
+        if service is None:
+            return
+        from vnpy_ashare.notifications.position_alerts import scan_watchlist_position_alerts
+
+        scan_watchlist_position_alerts(self._page, service)
 
     def hydrate_from_disk(self) -> bool:
         """从磁盘恢复策略信号到内存并渲染（冷启动快速展示）。"""

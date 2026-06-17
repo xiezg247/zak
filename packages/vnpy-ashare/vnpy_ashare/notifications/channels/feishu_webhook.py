@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import logging
 import time
 from typing import Any
@@ -16,9 +19,16 @@ _RETRY_DELAYS_SEC = (1.0, 3.0)
 _REQUEST_TIMEOUT_SEC = 10.0
 
 
+def _build_sign(timestamp: str, secret: str) -> str:
+    string_to_sign = f"{timestamp}\n{secret}"
+    digest = hmac.new(string_to_sign.encode("utf-8"), digestmod=hashlib.sha256).digest()
+    return base64.b64encode(digest).decode("utf-8")
+
+
 class FeishuWebhookChannel:
-    def __init__(self, webhook_url: str) -> None:
+    def __init__(self, webhook_url: str, *, webhook_secret: str = "") -> None:
         self._webhook_url = webhook_url.strip()
+        self._webhook_secret = webhook_secret.strip()
 
     @property
     def configured(self) -> bool:
@@ -32,6 +42,11 @@ class FeishuWebhookChannel:
             "msg_type": "text",
             "content": {"text": text},
         }
+        if self._webhook_secret:
+            timestamp = str(int(time.time()))
+            payload["timestamp"] = timestamp
+            payload["sign"] = _build_sign(timestamp, self._webhook_secret)
+
         last_error = "发送失败"
         last_status: int | None = None
 

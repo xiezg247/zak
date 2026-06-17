@@ -11,7 +11,9 @@ from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.notifications.channels.feishu_webhook import FeishuWebhookChannel
 from vnpy_ashare.notifications.dispatcher import NotifyDispatcher
 from vnpy_ashare.notifications.events import (
+    NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_MANUAL_TEST,
+    NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
@@ -19,7 +21,11 @@ from vnpy_ashare.notifications.events import (
 from vnpy_ashare.notifications.formatters import format_notify_text
 from vnpy_ashare.notifications.models import NotifyDeliveryResult
 from vnpy_ashare.notifications.rules import NotifyRulesEngine
+from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot
+from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.services.base import BaseService
+from vnpy_ashare.storage.repositories.notify_delivery_log import append_notify_delivery_log
+from vnpy_ashare.trading.risk.gate import RiskGateSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +70,50 @@ class NotificationService(BaseService):
 
         self._rules.mark_sent(event_id, dedupe_key)
 
-        def on_complete(result: NotifyDeliveryResult) -> None:
+        def on_complete(
+            completed_event_id: str,
+            completed_payload: dict,
+            result: NotifyDeliveryResult,
+        ) -> None:
             if result.success:
                 self.last_error = None
             else:
                 self.last_error = result.message
+            try:
+                append_notify_delivery_log(
+                    event_type=completed_event_id,
+                    payload=completed_payload,
+                    status="ok" if result.success else "failed",
+                    error="" if result.success else result.message,
+                )
+            except Exception:
+                logger.exception("notify delivery log write failed")
 
-        if not self._dispatcher.enqueue(text, on_complete=on_complete):
+        if not self._dispatcher.enqueue(
+            event_id,
+            text,
+            payload=data,
+            on_complete=on_complete,
+        ):
             self.last_error = "通知队列已满"
+
+    def on_market_breadth(self, breadth: MarketBreadthSnapshot) -> None:
+        tracker = getattr(self.engine, "emotion_cycle_tracker", None)
+        if tracker is None:
+            return
+        changed = tracker.update(breadth)
+        if changed is None:
+            return
+        self._notify_emotion_stage_change(changed)
+
+    def evaluate_risk_gate(self, *, avg_float_pnl_pct: float | None = None) -> None:
+        gate = getattr(self.engine, "risk_gate_engine", None)
+        if gate is None:
+            return
+        changed = gate.evaluate(avg_float_pnl_pct=avg_float_pnl_pct)
+        if changed is None:
+            return
+        self._notify_risk_gate_change(changed)
 
     def test_send(self) -> NotifyDeliveryResult:
         ok, reason = self._rules.should_send(NOTIFY_EVENT_MANUAL_TEST, "manual_test")
@@ -81,6 +123,15 @@ class NotificationService(BaseService):
         text = format_notify_text(NOTIFY_EVENT_MANUAL_TEST, {})
         result = self._build_channel().send_text(text)
         self.last_error = None if result.success else result.message
+        try:
+            append_notify_delivery_log(
+                event_type=NOTIFY_EVENT_MANUAL_TEST,
+                payload={},
+                status="ok" if result.success else "failed",
+                error="" if result.success else result.message,
+            )
+        except Exception:
+            logger.exception("notify delivery log write failed")
         return result
 
     def on_job_finished(self, job_id: str, result: JobResult) -> None:
@@ -113,9 +164,37 @@ class NotificationService(BaseService):
             },
         )
 
+    def _notify_emotion_stage_change(self, snapshot: EmotionCycleSnapshot) -> None:
+        self.notify(
+            NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
+            dedupe_key=snapshot.stage,
+            payload={
+                "stage": snapshot.stage,
+                "stage_label": snapshot.stage_label,
+                "limit_up_count": snapshot.limit_up_count,
+                "limit_down_count": snapshot.limit_down_count,
+                "position_pct_max": snapshot.position_pct_max,
+                "allow_new_positions": snapshot.allow_new_positions,
+            },
+        )
+
+    def _notify_risk_gate_change(self, snapshot: RiskGateSnapshot) -> None:
+        self.notify(
+            NOTIFY_EVENT_RISK_GATE_CHANGE,
+            dedupe_key=snapshot.state,
+            payload={
+                "state": snapshot.state,
+                "state_label": snapshot.state_label,
+                "warnings": list(snapshot.warnings),
+                "daily_pnl_pct": snapshot.daily_pnl_pct,
+                "avg_float_pnl_pct": snapshot.avg_float_pnl_pct,
+            },
+        )
+
     def _build_channel(self) -> FeishuWebhookChannel:
         url = os.environ.get("FEISHU_WEBHOOK_URL", "").strip()
-        return FeishuWebhookChannel(url)
+        secret = os.environ.get("FEISHU_WEBHOOK_SECRET", "").strip()
+        return FeishuWebhookChannel(url, webhook_secret=secret)
 
     def _resolve_job_name(self, job_id: str) -> str:
         scheduler = getattr(self.engine, "scheduler", None)

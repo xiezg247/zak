@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.ai.context.market_overview import sync_market_overview_context, sync_market_overview_partial
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
@@ -97,6 +98,7 @@ class MarketOverviewController(QtCore.QObject):
         breadth, sectors = build_overview_from_market_rows(rows, updated_at=updated_at)
         if breadth is not None:
             self._panel.apply_breadth(breadth)
+            self._notify_market_breadth(breadth)
         if sectors:
             self._panel.apply_sectors(sectors)
         sync_market_overview_partial(breadth=breadth, sectors=sectors or None)
@@ -104,8 +106,19 @@ class MarketOverviewController(QtCore.QObject):
 
     def _apply_overview(self, data: MarketOverviewData) -> None:
         self._panel.apply_data(data)
+        if data.breadth is not None:
+            self._notify_market_breadth(data.breadth)
         sync_market_overview_context(data)
         self._publish_ai_context()
+
+    def _notify_market_breadth(self, breadth) -> None:
+        main_engine = self._page._get_main_engine()
+        engine = get_ashare_engine(main_engine)
+        if engine is None:
+            return
+        service = engine.notification_service
+        if service is not None:
+            service.on_market_breadth(breadth)
 
     def _publish_ai_context(self) -> None:
         actions = getattr(self._page, "_actions", None)

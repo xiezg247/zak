@@ -9,7 +9,15 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.ui.shell.settings.snapshot import resolve_env_config
 from vnpy_ashare.config.schema import ENV_NOTIFY_SPECS, ConfigFieldSpec
-from vnpy_ashare.notifications.events import DEFAULT_EVENT_SUBSCRIPTIONS
+from vnpy_ashare.notifications.events import (
+    DEFAULT_EVENT_SUBSCRIPTIONS,
+    NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
+    NOTIFY_EVENT_POSITION_ALERT,
+    NOTIFY_EVENT_RISK_GATE_CHANGE,
+    NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
+    NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
+    NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
+)
 from vnpy_ashare.notifications.prefs import load_notify_prefs, save_event_subscription
 from vnpy_common.ui.feedback import page_notify
 
@@ -17,9 +25,12 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.settings.dialog import SettingsDialog
 
 _EVENT_LABELS: dict[str, str] = {
-    "screener_intraday_done": "盘中选股完成",
-    "screener_post_close_done": "盘后选股完成",
-    "scheduler_job_failed": "定时任务失败",
+    NOTIFY_EVENT_SCREENER_INTRADAY_DONE: "盘中选股完成",
+    NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE: "盘后选股完成",
+    NOTIFY_EVENT_SCHEDULER_JOB_FAILED: "定时任务失败",
+    NOTIFY_EVENT_EMOTION_STAGE_CHANGE: "情绪阶段变更",
+    NOTIFY_EVENT_RISK_GATE_CHANGE: "风控状态变更",
+    NOTIFY_EVENT_POSITION_ALERT: "持仓异动提醒",
 }
 
 
