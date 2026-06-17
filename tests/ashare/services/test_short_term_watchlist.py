@@ -1,0 +1,111 @@
+"""短线观察分组写入测试。"""
+
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from vnpy.trader.constant import Exchange
+
+from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.services.short_term_watchlist import (
+    SHORT_TERM_OBSERVATION_GROUP_NAME,
+    add_rows_to_short_term_observation_group,
+    collect_dragon_1_rows,
+    ensure_short_term_observation_group,
+)
+from vnpy_ashare.storage.connection import init_app_db
+from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
+from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
+
+
+def _row(vt_symbol: str, *, tier: str = "") -> RadarRow:
+    symbol = vt_symbol.split(".")[0]
+    return RadarRow(
+        vt_symbol=vt_symbol,
+        name=symbol,
+        symbol=symbol,
+        price=10.0,
+        change_pct=5.0,
+        metric_label="",
+        metric_value="",
+        sub_label="",
+        sub_value="",
+        leader_tier=tier,
+    )
+
+
+class _WatchlistServiceStub:
+    def list_groups(self):
+        return groups_repo.load_watchlist_groups()
+
+    def create_group(self, name: str):
+        return groups_repo.create_watchlist_group(name)
+
+    def add(self, symbol: str, exchange: Exchange, name: str = "") -> bool:
+        return watchlist_repo.add_watchlist_item(symbol, exchange, name)
+
+    def add_failure_reason(self, symbol: str, exchange: Exchange):
+        return watchlist_repo.watchlist_add_failure_reason(symbol, exchange)
+
+    def add_to_group(self, group_id: str, symbol: str, exchange: Exchange) -> bool:
+        return groups_repo.add_watchlist_group_member(group_id, symbol, exchange)
+
+    def group_member_keys(self, group_id: str):
+        return groups_repo.load_watchlist_group_member_keys(group_id)
+
+
+class TestShortTermWatchlist(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.db_path = Path(self._tmp.name)
+        self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
+        self._patcher.start()
+        init_app_db()
+        self.service = _WatchlistServiceStub()
+
+    def tearDown(self) -> None:
+        self._patcher.stop()
+        self.db_path.unlink(missing_ok=True)
+
+    def test_ensure_creates_observation_group(self) -> None:
+        group_id, created = ensure_short_term_observation_group(self.service)
+        self.assertIsNotNone(group_id)
+        self.assertTrue(created)
+        names = [group.name for group in self.service.list_groups()]
+        self.assertIn(SHORT_TERM_OBSERVATION_GROUP_NAME, names)
+
+        group_id_again, created_again = ensure_short_term_observation_group(self.service)
+        self.assertEqual(group_id, group_id_again)
+        self.assertFalse(created_again)
+
+    def test_add_rows_to_observation_group(self) -> None:
+        rows = (_row("600519.SSE"), _row("000001.SZSE"))
+        result = add_rows_to_short_term_observation_group(self.service, rows)
+        self.assertEqual(result.watchlist_added, 2)
+        self.assertEqual(result.group_added, 2)
+        self.assertTrue(result.group_created)
+        self.assertTrue(watchlist_repo.watchlist_contains("600519", Exchange.SSE))
+
+        group_id = groups_repo.load_watchlist_groups()[0].id
+        self.assertIn(("600519", Exchange.SSE.name), groups_repo.load_watchlist_group_member_keys(group_id))
+
+    def test_collect_dragon_1_rows(self) -> None:
+        payload = {
+            "leader_pick": RadarCardData(
+                card_id="leader_pick",
+                title="龙头",
+                subtitle="",
+                rows=(
+                    _row("600519.SSE", tier="dragon_1"),
+                    _row("000001.SZSE", tier="dragon_2"),
+                ),
+                empty_message="",
+                updated_at="",
+            )
+        }
+        dragons = collect_dragon_1_rows(payload)
+        self.assertEqual(len(dragons), 1)
+        self.assertEqual(dragons[0].vt_symbol, "600519.SSE")

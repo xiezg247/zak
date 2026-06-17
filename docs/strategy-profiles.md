@@ -149,10 +149,10 @@
 
 | ID | 任务 | 状态 |
 |----|------|------|
-| SP-01 | Profile 枚举 + QSettings | 待建 |
-| SP-02 | 信号区 Profile 下拉 | 待建 |
-| SP-03 | 持仓区 header 展示 Profile | 待建 |
-| SP-04 | 新用户默认 Profile 配置项（仍默认 medium_watch 直至极致短线策略就绪） | 待建 |
+| SP-01 | Profile 枚举 + QSettings | 已有 |
+| SP-02 | 信号区 Profile 下拉 | 已有 |
+| SP-03 | 持仓区 header 展示 Profile | 已有 |
+| SP-04 | 新用户默认 Profile 配置项（仍默认 medium_watch 直至极致短线策略就绪） | 已有 |
 | SP-05 | 新增 LimitBoard / OvernightExit 策略与 registry | 待建 |
 
 ---

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label
 from vnpy_ashare.quotes.radar.radar_loaders import RadarRow
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
@@ -35,6 +36,8 @@ class RadarStockRowWidget(QtWidgets.QFrame):
 
         self._resonance_badge = QtWidgets.QLabel("★" if resonance >= 2 else "")
         self._resonance_badge.setObjectName("RadarResonanceBadge")
+        self._tier_badge = QtWidgets.QLabel("")
+        self._tier_badge.setObjectName("RadarLeaderTierBadge")
         self._name_label = QtWidgets.QLabel(row.name)
         self._name_label.setObjectName("RadarRowName")
         self._symbol_label = QtWidgets.QLabel(row.symbol)
@@ -47,6 +50,7 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         title_row.setContentsMargins(0, 0, 0, 0)
         title_row.setSpacing(4)
         title_row.addWidget(self._resonance_badge)
+        title_row.addWidget(self._tier_badge)
         title_row.addWidget(self._name_label, stretch=1)
         name_col.addLayout(title_row)
         name_col.addWidget(self._symbol_label)
@@ -108,6 +112,23 @@ class RadarStockRowWidget(QtWidgets.QFrame):
 
     def _apply_row(self) -> None:
         row = self._row
+        tier_label = leader_tier_label(row.leader_tier)
+        if tier_label:
+            self._tier_badge.setText(tier_label)
+            self._tier_badge.show()
+            tokens = theme_manager().tokens()
+            tier_color = tokens.text_secondary
+            if row.leader_tier == "dragon_1":
+                tier_color = tokens.up_color
+            elif row.leader_tier == "dragon_2":
+                tier_color = tokens.accent
+            self._tier_badge.setStyleSheet(
+                f"color: {tier_color}; background-color: {tokens.panel_bg}; "
+                f"border: 1px solid {tokens.panel_border}; "
+                f"border-radius: 3px; padding: 0 4px; font-size: 11px; font-weight: 600;"
+            )
+        else:
+            self._tier_badge.hide()
         if row.metric_label and row.metric_value:
             self._metric_chip.setText(f"{row.metric_label} {row.metric_value}")
             self._metric_chip.show()

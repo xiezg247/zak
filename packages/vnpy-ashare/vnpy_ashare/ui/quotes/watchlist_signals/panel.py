@@ -22,6 +22,12 @@ from vnpy_ashare.config.preferences import (
     save_signal_panel_expanded,
     save_signal_panel_symbols,
 )
+from vnpy_ashare.config.preferences.strategy_profile import (
+    list_strategy_profiles,
+    load_strategy_profile_id,
+    match_strategy_profile,
+    save_strategy_profile_id,
+)
 from vnpy_ashare.config.preferences.signal_panel_columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,
     resolve_signal_panel_columns,
@@ -100,6 +106,15 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._toggle.setChecked(load_signal_panel_enabled())
         self._toggle.toggled.connect(self._on_enabled_toggled)
 
+        self._profile_combo = QtWidgets.QComboBox(self)
+        self._profile_combo.setObjectName("StrategyProfileCombo")
+        self._profile_combo.setMinimumWidth(96)
+        self._profile_combo.setToolTip("策略 Profile：切换后同步信号策略与参数")
+        for spec in list_strategy_profiles():
+            self._profile_combo.addItem(spec.title, spec.profile_id)
+        self._profile_combo.currentIndexChanged.connect(self._on_profile_changed)
+        self.sync_strategy_profile_combo(load_strategy_profile_id())
+
         self._strategy_combo = QtWidgets.QComboBox(self)
         self._strategy_combo.setObjectName("SignalStrategyCombo")
         self._strategy_combo.setMinimumWidth(108)
@@ -156,6 +171,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
         header.addWidget(self._collapse_button)
         header.addWidget(QtWidgets.QLabel("策略信号", self))
+        header.addWidget(self._profile_combo)
         header.addWidget(self._toggle)
         header.addStretch()
         header.addWidget(self._strategy_combo)
@@ -327,6 +343,19 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._fast_spin.blockSignals(False)
         self._slow_spin.blockSignals(False)
 
+    def sync_strategy_profile_combo(self, profile_id: str) -> None:
+        self._profile_combo.blockSignals(True)
+        index = self._profile_combo.findData(profile_id)
+        if index >= 0:
+            self._profile_combo.setCurrentIndex(index)
+        self._profile_combo.blockSignals(False)
+
+    def _on_profile_changed(self, _index: int) -> None:
+        profile_id = str(self._profile_combo.currentData() or "")
+        if not profile_id:
+            return
+        self._page.apply_strategy_profile(profile_id)
+
     def _on_strategy_changed(self, _index: int) -> None:
         class_name = str(self._strategy_combo.currentData() or DEFAULT_CLASS)
         defaults = STRATEGY_SIGNAL_DEFAULTS.get(class_name)
@@ -338,6 +367,12 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self._slow_spin.setValue(max(slow, fast + 1))
             self._fast_spin.blockSignals(False)
             self._slow_spin.blockSignals(False)
+        matched = match_strategy_profile(self.read_config())
+        save_strategy_profile_id(matched)
+        self.sync_strategy_profile_combo(matched)
+        position_panel = getattr(self._page, "position_panel", None)
+        if position_panel is not None:
+            position_panel.sync_strategy_profile_combo(matched)
         self._emit_config_changed()
 
     def set_symbols(self, symbols: list[str], *, save: bool = True) -> None:

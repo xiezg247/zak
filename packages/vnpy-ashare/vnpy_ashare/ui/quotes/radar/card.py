@@ -35,6 +35,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     row_selected = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
     batch_add_watchlist_requested = QtCore.Signal(str)
+    add_observation_group_requested = QtCore.Signal(str)
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
     sector_flow_requested = QtCore.Signal(str)
@@ -237,6 +238,16 @@ class RadarCardWidget(QtWidgets.QFrame):
             footer.addWidget(self._train_model_button)
         else:
             self._train_model_button = None
+        self._observation_group_button: QtWidgets.QPushButton | None = None
+        if spec.id == "leader_pick":
+            self._observation_group_button = QtWidgets.QPushButton("加观察组")
+            self._observation_group_button.setObjectName("RadarCardObservationGroup")
+            self._observation_group_button.setFlat(True)
+            self._observation_group_button.setToolTip("加入自选并写入「短线观察」分组")
+            self._observation_group_button.clicked.connect(
+                lambda: self.add_observation_group_requested.emit(self.card_id),
+            )
+            footer.addWidget(self._observation_group_button)
         self._add_all_button = QtWidgets.QPushButton("全部加自选")
         self._add_all_button.setObjectName("RadarCardAddAll")
         self._add_all_button.setFlat(True)
@@ -387,8 +398,12 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._view_run_button.hide()
         if data.rows and self._show_add_watchlist_actions:
             self._add_all_button.show()
+            if self._observation_group_button is not None:
+                self._observation_group_button.show()
         else:
             self._add_all_button.hide()
+            if self._observation_group_button is not None:
+                self._observation_group_button.hide()
         self._apply_meta_label(data)
         self._clear_row_widgets()
         if data.rows:
@@ -481,6 +496,7 @@ class RadarBoard(QtWidgets.QWidget):
     row_selected = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
     batch_add_watchlist_requested = QtCore.Signal(str)
+    add_observation_group_requested = QtCore.Signal(str)
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
     sector_flow_requested = QtCore.Signal(str)
@@ -601,6 +617,7 @@ class RadarBoard(QtWidgets.QWidget):
         card.row_selected.connect(self.row_selected.emit)
         card.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
         card.batch_add_watchlist_requested.connect(self.batch_add_watchlist_requested.emit)
+        card.add_observation_group_requested.connect(self.add_observation_group_requested.emit)
         card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
         card.view_run_requested.connect(self.view_run_requested.emit)
         card.sector_flow_requested.connect(self.sector_flow_requested.emit)

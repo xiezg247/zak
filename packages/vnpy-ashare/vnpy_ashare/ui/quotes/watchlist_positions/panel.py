@@ -17,6 +17,7 @@ from vnpy_ashare.config.preferences import (
     save_position_panel_enabled,
     save_position_panel_expanded,
 )
+from vnpy_ashare.config.preferences.strategy_profile import list_strategy_profiles, load_strategy_profile_id
 from vnpy_ashare.domain.position_snapshot import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.signal_snapshot import signal_missing_kline
 from vnpy_ashare.quotes.misc.position_anomaly import (
@@ -90,6 +91,15 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._follow_check.setChecked(position_cfg.follow_signal)
         self._follow_check.toggled.connect(self._on_follow_toggled)
 
+        self._profile_combo = QtWidgets.QComboBox(self)
+        self._profile_combo.setObjectName("StrategyProfileCombo")
+        self._profile_combo.setMinimumWidth(96)
+        self._profile_combo.setToolTip("策略 Profile（与信号区同步）")
+        for spec in list_strategy_profiles():
+            self._profile_combo.addItem(spec.title, spec.profile_id)
+        self._profile_combo.currentIndexChanged.connect(self._on_profile_changed)
+        self.sync_strategy_profile_combo(load_strategy_profile_id())
+
         self._strategy_label = QtWidgets.QLabel("", self)
         self._strategy_label.setObjectName("SectionLabel")
 
@@ -129,6 +139,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         header.addWidget(QtWidgets.QLabel("持仓策略", self))
         header.addWidget(self._toggle)
         header.addStretch()
+        header.addWidget(self._profile_combo)
         header.addWidget(self._follow_check)
         header.addWidget(self._strategy_label)
         header.addWidget(self._fast_spin)
@@ -193,6 +204,19 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             fast_window=fast,
             slow_window=slow,
         ).normalized()
+
+    def sync_strategy_profile_combo(self, profile_id: str) -> None:
+        self._profile_combo.blockSignals(True)
+        index = self._profile_combo.findData(profile_id)
+        if index >= 0:
+            self._profile_combo.setCurrentIndex(index)
+        self._profile_combo.blockSignals(False)
+
+    def _on_profile_changed(self, _index: int) -> None:
+        profile_id = str(self._profile_combo.currentData() or "")
+        if not profile_id:
+            return
+        self._page.apply_strategy_profile(profile_id)
 
     def apply_config(self, config: WatchlistPositionConfig) -> None:
         item = config.normalized()

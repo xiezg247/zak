@@ -181,12 +181,14 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.result_action_bar = ScreenerResultActionBar(main_panel)
         self.select_all_btn = self.result_action_bar.select_all_btn
         self.add_watchlist_btn = self.result_action_bar.add_watchlist_btn
+        self.add_observation_group_btn = self.result_action_bar.add_observation_group_btn
         self.download_btn = self.result_action_bar.download_btn
         self.backtest_btn = self.result_action_bar.backtest_btn
         self.batch_backtest_btn = self.result_action_bar.batch_backtest_btn
         self.reference_peer_btn = self.result_action_bar.reference_peer_btn
         self.select_all_btn.clicked.connect(self._select_all)
         self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
+        self.add_observation_group_btn.clicked.connect(self._add_selected_to_observation_group)
         self.download_btn.clicked.connect(self._download_selected_bars)
         self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
         self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
@@ -372,6 +374,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self.delete_scheme_btn,
             self.select_all_btn,
             self.add_watchlist_btn,
+            self.add_observation_group_btn,
             self.download_btn,
             self.backtest_btn,
             self.batch_backtest_btn,
@@ -1046,6 +1049,11 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self._toast.warning("请先勾选要加入自选的标的")
             return
 
+        from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
+
+        if not confirm_recession_batch_watchlist(self):
+            return
+
         added = skipped = 0
         full_hit = False
         for row in selected:
@@ -1067,6 +1075,32 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             msg += f" · 跳过 {skipped} 只"
         if full_hit:
             msg += f" · 自选已满（最多 {self._watchlist_service.max_items} 只）"
+        self._append_action_log(msg)
+        self._toast.success(msg)
+
+    def _add_selected_to_observation_group(self) -> None:
+        if self._watchlist_service is None:
+            self._toast.warning("自选服务未就绪")
+            return
+        selected = self._iter_checked_rows()
+        if not selected:
+            self._toast.warning("请先勾选要加入观察组的标的")
+            return
+        from vnpy_ashare.services.short_term_watchlist import (
+            SHORT_TERM_OBSERVATION_GROUP_NAME,
+            add_screener_rows_to_short_term_observation_group,
+        )
+
+        result = add_screener_rows_to_short_term_observation_group(self._watchlist_service, selected)
+        if result.group_added == 0 and result.watchlist_added == 0:
+            self._toast.warning(f"标的已在「{SHORT_TERM_OBSERVATION_GROUP_NAME}」或无法加入")
+            return
+        parts = [f"已写入「{SHORT_TERM_OBSERVATION_GROUP_NAME}」{result.group_added} 只"]
+        if result.watchlist_added:
+            parts.append(f"新入自选 {result.watchlist_added} 只")
+        if result.skipped:
+            parts.append(f"跳过 {result.skipped} 只")
+        msg = " · ".join(parts)
         self._append_action_log(msg)
         self._toast.success(msg)
 

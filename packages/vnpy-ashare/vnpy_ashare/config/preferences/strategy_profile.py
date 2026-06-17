@@ -1,0 +1,110 @@
+"""策略 Profile 枚举与 QSettings（SP-01 / SP-04）。"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal
+
+from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.preferences.watchlist_signal import (
+    WatchlistSignalConfig,
+    load_watchlist_signal_config,
+    save_watchlist_signal_config,
+)
+
+StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
+
+STRATEGY_PROFILE_KEY = "trading/strategy_profile"
+DEFAULT_STRATEGY_PROFILE: StrategyProfileId = "medium_watch"
+
+
+@dataclass(frozen=True)
+class StrategyProfileSpec:
+    profile_id: StrategyProfileId
+    title: str
+    signal_class_name: str
+    fast_window: int
+    slow_window: int
+    transition_hint: str = ""
+
+
+STRATEGY_PROFILES: tuple[StrategyProfileSpec, ...] = (
+    StrategyProfileSpec(
+        profile_id="ultra_short",
+        title="极致短线",
+        signal_class_name="AshareShortBreakoutStrategy",
+        fast_window=5,
+        slow_window=10,
+        transition_hint="过渡：日 K 突破信号，非打板规则",
+    ),
+    StrategyProfileSpec(
+        profile_id="short_swing",
+        title="短线波段",
+        signal_class_name="AshareShortBreakoutStrategy",
+        fast_window=5,
+        slow_window=10,
+    ),
+    StrategyProfileSpec(
+        profile_id="medium_watch",
+        title="中线观察",
+        signal_class_name="AshareDoubleMaStrategy",
+        fast_window=10,
+        slow_window=20,
+    ),
+    StrategyProfileSpec(
+        profile_id="trend",
+        title="趋势中线",
+        signal_class_name="AshareTrendMaStrategy",
+        fast_window=20,
+        slow_window=60,
+    ),
+)
+
+_PROFILE_BY_ID: dict[str, StrategyProfileSpec] = {item.profile_id: item for item in STRATEGY_PROFILES}
+
+
+def list_strategy_profiles() -> tuple[StrategyProfileSpec, ...]:
+    return STRATEGY_PROFILES
+
+
+def get_strategy_profile(profile_id: str) -> StrategyProfileSpec:
+    return _PROFILE_BY_ID.get(profile_id, _PROFILE_BY_ID[DEFAULT_STRATEGY_PROFILE])
+
+
+def load_strategy_profile_id() -> StrategyProfileId:
+    settings = get_settings()
+    raw = str(settings.value(STRATEGY_PROFILE_KEY, DEFAULT_STRATEGY_PROFILE) or DEFAULT_STRATEGY_PROFILE)
+    if raw in _PROFILE_BY_ID:
+        return raw  # type: ignore[return-value]
+    return DEFAULT_STRATEGY_PROFILE
+
+
+def save_strategy_profile_id(profile_id: StrategyProfileId) -> None:
+    get_settings().setValue(STRATEGY_PROFILE_KEY, profile_id)
+
+
+def profile_signal_config(profile_id: str) -> WatchlistSignalConfig:
+    spec = get_strategy_profile(profile_id)
+    return WatchlistSignalConfig(
+        class_name=spec.signal_class_name,
+        fast_window=spec.fast_window,
+        slow_window=spec.slow_window,
+    ).normalized()
+
+
+def apply_strategy_profile(profile_id: StrategyProfileId) -> WatchlistSignalConfig:
+    """写入 Profile 并同步信号区策略参数。"""
+    cfg = profile_signal_config(profile_id)
+    save_strategy_profile_id(profile_id)
+    save_watchlist_signal_config(cfg)
+    return cfg
+
+
+def match_strategy_profile(config: WatchlistSignalConfig | None = None) -> StrategyProfileId:
+    """根据当前信号配置推断最接近的 Profile。"""
+    item = (config or load_watchlist_signal_config()).normalized()
+    for spec in STRATEGY_PROFILES:
+        probe = profile_signal_config(spec.profile_id)
+        if probe.class_name == item.class_name and probe.fast_window == item.fast_window and probe.slow_window == item.slow_window:
+            return spec.profile_id
+    return load_strategy_profile_id()

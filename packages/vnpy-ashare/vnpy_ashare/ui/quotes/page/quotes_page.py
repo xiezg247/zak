@@ -638,6 +638,19 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._signals.invalidate_cache()
         self._signals.refresh(force=True)
 
+    def apply_strategy_profile(self, profile_id: str) -> None:
+        from vnpy_ashare.config.preferences.strategy_profile import apply_strategy_profile
+
+        self.signal_config = apply_strategy_profile(profile_id)
+        signal_panel = self.signal_panel
+        if signal_panel is not None:
+            signal_panel.apply_config(self.signal_config)
+            signal_panel.sync_strategy_profile_combo(profile_id)
+        position_panel = self.position_panel
+        if position_panel is not None:
+            position_panel.sync_strategy_profile_combo(profile_id)
+        self.refresh_watchlist_signals()
+
     def refresh_watchlist_positions(self) -> None:
         self._positions.invalidate_cache()
         self._positions.refresh(force=True)

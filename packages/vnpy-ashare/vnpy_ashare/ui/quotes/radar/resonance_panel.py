@@ -26,6 +26,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
     row_selected = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
     batch_add_watchlist_requested = QtCore.Signal()
+    add_dragon_observation_group_requested = QtCore.Signal()
     stock_analysis_requested = QtCore.Signal(str)
     ai_resonance_requested = QtCore.Signal()
     open_screener_requested = QtCore.Signal()
@@ -109,6 +110,10 @@ class RadarResonancePanel(QtWidgets.QFrame):
         self._add_all_button = QtWidgets.QPushButton("全部加自选")
         self._add_all_button.setObjectName("RadarResonanceAddAll")
         self._add_all_button.clicked.connect(self.batch_add_watchlist_requested.emit)
+        self._dragon_observation_button = QtWidgets.QPushButton("龙一加观察组")
+        self._dragon_observation_button.setObjectName("RadarResonanceDragonObservation")
+        self._dragon_observation_button.setToolTip("将 leader_pick 龙一写入「短线观察」分组")
+        self._dragon_observation_button.clicked.connect(self.add_dragon_observation_group_requested.emit)
         self._ai_button = QtWidgets.QPushButton("AI 解读")
         self._ai_button.setObjectName("RadarResonanceAi")
         self._ai_button.clicked.connect(self.ai_resonance_requested.emit)
@@ -124,10 +129,11 @@ class RadarResonancePanel(QtWidgets.QFrame):
         self._weights_button.setToolTip("配置各卡片共振加权分")
         self._weights_button.clicked.connect(self.resonance_weights_requested.emit)
         toolbar.addWidget(self._add_all_button, 0, 0)
-        toolbar.addWidget(self._ai_button, 0, 1)
-        toolbar.addWidget(self._screener_button, 1, 0)
-        toolbar.addWidget(self._leader_button, 1, 1)
-        toolbar.addWidget(self._weights_button, 2, 0)
+        toolbar.addWidget(self._dragon_observation_button, 0, 1)
+        toolbar.addWidget(self._ai_button, 1, 0)
+        toolbar.addWidget(self._screener_button, 1, 1)
+        toolbar.addWidget(self._leader_button, 2, 0)
+        toolbar.addWidget(self._weights_button, 2, 1)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
@@ -239,6 +245,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
 
     def _set_actions_enabled(self, enabled: bool) -> None:
         self._add_all_button.setEnabled(enabled)
+        self._dragon_observation_button.setEnabled(enabled)
         self._ai_button.setEnabled(enabled)
         self._screener_button.setEnabled(enabled)
 

@@ -25,7 +25,7 @@
 | T-03 | 情绪周期引擎 | **部分** | 1 | T-01, 连板 | `emotion_cycle.py`；[emotion-cycle.md](./emotion-cycle.md) |
 | T-04 | 择时闸 UI 芯片 | **已有** | 1 | T-03 | 市场页 stats_bar |
 | T-05 | sentiment_gate × 周期系数 | **已有** | 1 | T-03 | `screener/sentiment/sentiment_gate` |
-| T-06 | 退潮期批量入自选软拦截 | **待建** | 1 | T-03 | 选股 `ScreenerResultActionBar` |
+| T-06 | 退潮期批量入自选软拦截 | **已有** | 1 | T-03 | 选股 `ScreenerResultActionBar` |
 
 ---
 
@@ -51,8 +51,8 @@
 |----|------|------|-------|------|
 | D-01 | `discovery_limit_ladder` 连板梯队 | **已有** | 2 | [radar-page.md](./radar-page.md) |
 | D-02 | `discovery_first_board` 首板人气 | **已有** | 2 | 同上 |
-| D-03 | 共振权重「短线模式」 | **待建** | 1 | [radar-leader-screening.md](./radar-leader-screening.md) |
-| D-04 | 共振 → 短线观察组 | **待建** | 1 | [watchlist-groups.md](./watchlist-groups.md) |
+| D-03 | 共振权重「短线模式」 | **已有** | 1 | [radar-leader-screening.md](./radar-leader-screening.md) |
+| D-04 | 共振 → 短线观察组 | **已有** | 1 | [watchlist-groups.md](./watchlist-groups.md) |
 | — | 现有 10 卡 + 共振总览 | **已有** | 0 | [radar-page.md](./radar-page.md) |
 
 ### 4.2 龙头专项（G-）
@@ -61,12 +61,12 @@
 |----|------|--------|-------|------|
 | G-01 | 连板梯队视图 | P0 | 2 | **已有** |
 | G-02 | 龙一 / 龙二 / 跟风 | P0 | 1 | **已有** |
-| G-03 | 首板人气 | P1 | 2 | **待建** |
-| G-04 | `leader_score` | P0 | 1 | **部分**（核心评分+板块卡） |
+| G-03 | 首板人气 | P1 | 2 | **已有** |
+| G-04 | `leader_score` | P0 | 1 | **已有**（评分+板块/龙头卡+选股输出） |
 | G-05 | `run_leader_screen` Hub 入口 | P0 | 1 | **已有** |
-| G-06 | `RadarRow` 扩展字段 | P0 | 1 | **部分** |
+| G-06 | `RadarRow` 扩展字段 | P0 | 1 | **已有**（tier 角标+metric/sub 展示） |
 | G-07 | 概念 + 行业统一 scoring | P1 | 4 | **规划** |
-| G-08 | 情绪 gate 龙头选股 | P1 | 1 | **待建**（依赖 T-03） |
+| G-08 | 情绪 gate 龙头选股 | P1 | 1 | **已有**（`run_leader_screen` 退潮/冰点空池） |
 
 ---
 
@@ -79,10 +79,10 @@
 | S-03 | 持仓退出规则集 | **部分** | 2 | [watchlist-positions.md](./watchlist-positions.md) |
 | S-04 | 分 K 买卖参考线 | **待建** | 2 | — |
 | S-05 | 开盘 30 分钟止损提醒 | **部分** | 2 | `position_anomaly` |
-| SP-01 | Profile 枚举 + QSettings | **待建** | 1 | [strategy-profiles.md](./strategy-profiles.md) |
-| SP-02 | 信号区 Profile 下拉 | **待建** | 1 | 同上 |
-| SP-03 | 持仓区 header Profile | **待建** | 1 | 同上 |
-| SP-04 | 新用户默认 Profile 配置 | **待建** | 1 | 同上 |
+| SP-01 | Profile 枚举 + QSettings | **已有** | 1 | [strategy-profiles.md](./strategy-profiles.md) |
+| SP-02 | 信号区 Profile 下拉 | **已有** | 1 | 同上 |
+| SP-03 | 持仓区 header Profile | **已有** | 1 | 同上 |
+| SP-04 | 新用户默认 Profile 配置 | **已有** | 1 | 同上 |
 | SP-05 | LimitBoard / OvernightExit | **待建** | 2–5 | 同上 |
 | — | 四套现有策略（双均线等） | **已有** | 0 | `strategies/registry.py` |
 
@@ -150,7 +150,7 @@
 | A-04 | `get_trade_journal` | **待建** | 4 | 同上 |
 | A-05 | `check_risk_gate` | **待建** | 3 | 同上 |
 | A-06 | `evaluate_entry_mode` | **待建** | 2 | vnpy-analysis 扩展 |
-| A-07 | `run_leader_screen` | **待建** | 1 | vnpy-screening 扩展 |
+| A-07 | `run_leader_screen` | **已有** | 1 | vnpy-screening 扩展 |
 | — | 现有 Skills 清单 | **已有** | 0 | [ai-data-routing.md](./ai-data-routing.md) |
 
 ---

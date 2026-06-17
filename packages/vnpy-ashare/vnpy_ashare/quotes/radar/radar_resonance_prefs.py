@@ -69,5 +69,33 @@ def save_radar_resonance_weights(weights: dict[str, float]) -> None:
         _SETTINGS.setValue(f"{_KEY_PREFIX}{card_id}", value)
 
 
+SHORT_TERM_RADAR_RESONANCE_WEIGHTS: dict[str, float] = {
+    "discovery_volume_surge": 2.5,
+    "discovery_moneyflow_intraday": 2.5,
+    "discovery_limit_ladder": 2.5,
+    "discovery_first_board": 2.0,
+    "watchlist_intraday": 1.25,
+    "sector_theme": 1.5,
+    "leader_pick": 3.0,
+    "screen_latest": 0.75,
+    "screen_task": 0.75,
+    "outlook_watch": 0.5,
+    "outlook_hold": 0.5,
+    "outlook_scenario": 0.5,
+    "outlook_predict": 0.5,
+}
+
+
+def apply_short_term_radar_resonance_weights() -> dict[str, float]:
+    """D-03：一键应用「短线龙头」共振权重预设。"""
+    save_radar_resonance_weights(SHORT_TERM_RADAR_RESONANCE_WEIGHTS)
+    return load_radar_resonance_weights()
+
+
+def reset_radar_resonance_weights_to_default() -> dict[str, float]:
+    save_radar_resonance_weights(DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS)
+    return load_radar_resonance_weights()
+
+
 def radar_card_resonance_weight(card_id: str) -> float:
     return float(load_radar_resonance_weights().get(card_id, 1.0))
