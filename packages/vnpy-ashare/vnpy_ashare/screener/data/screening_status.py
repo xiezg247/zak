@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_ashare_trading_session
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
@@ -16,15 +18,14 @@ from vnpy_ashare.screener.run.runner import resolve_preset_input
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
 
 
-@dataclass(frozen=True)
-class ScreeningDataStatus:
+class ScreeningDataStatus(FrozenModel):
     """选股页顶部数据状态快照。"""
 
-    phase: str
-    trading: bool
-    expected_source: str
-    quote_age_seconds: float | None
-    quote_updated_at: str | None
+    phase: str = Field(description="当前市场阶段标签")
+    trading: bool = Field(description="是否处于交易时段")
+    expected_source: str = Field(description="预期行情数据来源")
+    quote_age_seconds: float | None = Field(description="行情快照年龄（秒）")
+    quote_updated_at: str | None = Field(description="行情快照更新时间")
 
     @property
     def can_refresh_quotes(self) -> bool:

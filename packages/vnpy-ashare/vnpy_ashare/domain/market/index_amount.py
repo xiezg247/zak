@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 
 
-@dataclass(frozen=True)
-class IndexAmountPoint:
-    trade_date: str
-    amount_yi: float
+class IndexAmountPoint(FrozenModel):
+    trade_date: str = Field(description="交易日 YYYY-MM-DD")
+    amount_yi: float = Field(description="成交额（亿元）")
 
 
-@dataclass(frozen=True)
-class IndexAmountSeries:
-    ts_code: str
-    label: str
-    points: tuple[IndexAmountPoint, ...]
-    error: str = ""
+class IndexAmountSeries(FrozenModel):
+    ts_code: str = Field(description="Tushare 指数代码")
+    label: str = Field(description="指数展示名")
+    points: tuple[IndexAmountPoint, ...] = Field(description="历史成交额序列")
+    error: str = Field(default="", description="拉取错误信息")
 
     @property
     def latest_yi(self) -> float:

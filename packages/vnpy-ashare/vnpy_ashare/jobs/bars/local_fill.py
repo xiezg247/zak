@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+
+from pydantic import Field
 
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
@@ -23,23 +24,22 @@ from vnpy_ashare.data.bar_health import (
 from vnpy_ashare.data.bar_store import get_scope_overview
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem
 
 
-@dataclass(frozen=True)
-class BatchFillProgress:
-    current: int
-    total: int
-    label: str
+class BatchFillProgress(FrozenModel):
+    current: int = Field(description="当前进度序号")
+    total: int = Field(description="总任务数")
+    label: str = Field(description="当前标的展示名")
 
 
-@dataclass(frozen=True)
-class BatchFillResult:
-    attempted: int
-    success: int
-    failed: list[str]
-    bars_added: int
-    up_to_date: int
+class BatchFillResult(FrozenModel):
+    attempted: int = Field(description="尝试补全数量")
+    success: int = Field(description="成功数量")
+    failed: list[str] = Field(description="失败标的列表")
+    bars_added: int = Field(description="新增 K 线根数")
+    up_to_date: int = Field(description="已是最新数量")
 
     @property
     def message(self) -> str:
@@ -105,12 +105,11 @@ def fill_stale_daily_bar(
     )
 
 
-@dataclass(frozen=True)
-class _StaleFillOutcome:
-    label: str
-    success: bool
-    added: int
-    failed: bool
+class _StaleFillOutcome(FrozenModel):
+    label: str = Field(description="标的展示名")
+    success: bool = Field(description="是否成功")
+    added: int = Field(description="新增 K 线根数")
+    failed: bool = Field(description="是否失败")
 
 
 def _fill_stale_item(
@@ -257,23 +256,21 @@ def fill_gap_ranges(
     return total
 
 
-@dataclass(frozen=True)
-class BatchGapFillProgress:
-    phase: str
-    current: int
-    total: int
-    label: str
+class BatchGapFillProgress(FrozenModel):
+    phase: str = Field(description="当前阶段标识")
+    current: int = Field(description="当前进度序号")
+    total: int = Field(description="总任务数")
+    label: str = Field(description="当前标的展示名")
 
 
-@dataclass(frozen=True)
-class BatchGapFillResult:
-    scanned: int
-    with_gaps: int
-    attempted: int
-    success: int
-    failed: list[str]
-    bars_added: int
-    gap_ranges_fixed: int
+class BatchGapFillResult(FrozenModel):
+    scanned: int = Field(description="已扫描标的数")
+    with_gaps: int = Field(description="存在断层的标的数")
+    attempted: int = Field(description="尝试修复数量")
+    success: int = Field(description="成功数量")
+    failed: list[str] = Field(description="失败标的列表")
+    bars_added: int = Field(description="新增 K 线根数")
+    gap_ranges_fixed: int = Field(description="修复的断层区间数")
 
     @property
     def message(self) -> str:
@@ -300,12 +297,11 @@ def count_scannable_daily_items(
     return sum(1 for item in stocks if bar_meta.get((item.symbol, item.exchange)))
 
 
-@dataclass(frozen=True)
-class _GapFixOutcome:
-    label: str
-    success: bool
-    added: int
-    gap_count: int
+class _GapFixOutcome(FrozenModel):
+    label: str = Field(description="标的展示名")
+    success: bool = Field(description="是否成功")
+    added: int = Field(description="新增 K 线根数")
+    gap_count: int = Field(description="修复的断层区间数")
 
 
 def _fix_gap_item(entry: tuple[StockItem, BarMeta, list[GapRange]]) -> _GapFixOutcome:
@@ -386,7 +382,7 @@ def batch_fill_gap_daily_bars(
         nonlocal completed
         completed += 1
         if progress is not None:
-            progress(BatchGapFillProgress("fix", completed, total_fix, outcome.label))
+            progress(BatchGapFillProgress(phase='fix', current=completed, total=total_fix, label=outcome.label))
 
     if workers <= 1:
         outcomes: list[_GapFixOutcome] = []
@@ -396,7 +392,7 @@ def batch_fill_gap_daily_bars(
             outcome = _fix_gap_item(entry)
             outcomes.append(outcome)
             if progress is not None:
-                progress(BatchGapFillProgress("fix", index, total_fix, outcome.label))
+                progress(BatchGapFillProgress(phase='fix', current=index, total=total_fix, label=outcome.label))
             if index < total_fix and delay > 0:
                 time.sleep(delay)
     else:

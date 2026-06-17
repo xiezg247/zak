@@ -6,8 +6,10 @@ import logging
 import queue
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass
 
+from pydantic import ConfigDict, Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.notifications.channels.feishu_webhook import FeishuWebhookChannel
 from vnpy_ashare.notifications.core.models import NotifyDeliveryResult, NotifyOutboundMessage
 
@@ -16,12 +18,21 @@ logger = logging.getLogger(__name__)
 _MAX_QUEUE_SIZE = 50
 
 
-@dataclass(frozen=True)
-class _QueuedMessage:
-    event_id: str
-    outbound: NotifyOutboundMessage
-    payload: dict
-    on_complete: Callable[[str, dict, NotifyDeliveryResult], None] | None = None
+class _QueuedMessage(FrozenModel):
+    event_id: str = Field(description="事件标识")
+    outbound: NotifyOutboundMessage = Field(description="出站消息体")
+    payload: dict = Field(description="附加 payload（落库用）")
+    on_complete: Callable[[str, dict, NotifyDeliveryResult], None] | None = Field(
+        default=None,
+        description="投递完成回调",
+    )
+
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+        validate_assignment=True,
+        arbitrary_types_allowed=True,
+    )
 
 
 class NotifyDispatcher:

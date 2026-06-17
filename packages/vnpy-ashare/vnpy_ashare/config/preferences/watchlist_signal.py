@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
+
+from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
+from vnpy_ashare.domain.base import FrozenModel
 
 SIGNAL_STRATEGY_KEY = "watchlist/signal_strategy"
 SIGNAL_FAST_KEY = "watchlist/signal_fast_window"
@@ -24,11 +26,10 @@ DEFAULT_FAST = 10
 DEFAULT_SLOW = 20
 
 
-@dataclass(frozen=True)
-class WatchlistSignalConfig:
-    class_name: str = DEFAULT_CLASS
-    fast_window: int = DEFAULT_FAST
-    slow_window: int = DEFAULT_SLOW
+class WatchlistSignalConfig(FrozenModel):
+    class_name: str = Field(default=DEFAULT_CLASS, description="策略类名")
+    fast_window: int = Field(default=DEFAULT_FAST, description="快线窗口")
+    slow_window: int = Field(default=DEFAULT_SLOW, description="慢线窗口")
 
     def normalized(self) -> WatchlistSignalConfig:
         supported = set(list_supported_signal_strategies())

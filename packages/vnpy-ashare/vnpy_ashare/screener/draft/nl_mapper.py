@@ -7,8 +7,11 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
 from typing import Literal
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
 from vnpy_ashare.screener.draft.draft_store import Confidence, ScreenerDraft, make_draft
@@ -33,28 +36,26 @@ TOP_N_MAX = 200
 TOP_N_DEFAULT = 20
 
 
-@dataclass
-class ProposeInput:
+class ProposeInput(MutableModel):
     """LLM propose_screening 工具的结构化输入。"""
 
-    intent: str
-    preset: str = ""
-    top_n: int = TOP_N_DEFAULT
-    min_change_pct: float | None = None
-    max_change_pct: float | None = None
-    min_turnover: float | None = None
-    scheme_name: str | None = None
-    confidence: Confidence = "medium"
+    intent: str = Field(description="用户意图描述")
+    preset: str = Field(default="", description="preset 名称")
+    top_n: int = Field(default=TOP_N_DEFAULT, description="返回条数上限")
+    min_change_pct: float | None = Field(default=None, description="最低涨幅（%）")
+    max_change_pct: float | None = Field(default=None, description="最高涨幅（%）")
+    min_turnover: float | None = Field(default=None, description="最低换手率（%）")
+    scheme_name: str | None = Field(default=None, description="已保存方案名称")
+    confidence: Confidence = Field(default="medium", description="解析置信度")
 
 
-@dataclass
-class ProposeResult:
+class ProposeResult(MutableModel):
     """提案结果：待确认草案 / 需追问 / 错误。"""
 
-    kind: ProposeKind
-    draft: ScreenerDraft | None = None
-    questions: list[str] | None = None
-    message: str = ""
+    kind: ProposeKind = Field(description="提案结果类型")
+    draft: ScreenerDraft | None = Field(default=None, description="待确认草案")
+    questions: list[str] | None = Field(default=None, description="追问问题列表")
+    message: str = Field(default="", description="错误或提示信息")
 
 
 _PRESET_ALIASES: dict[str, str] = {

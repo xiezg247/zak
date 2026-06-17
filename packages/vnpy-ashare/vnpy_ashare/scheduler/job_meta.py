@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.storage.connection import connect, get_meta, set_meta
 
 _META_PREFIX = "scheduler/job_last_run/"
 _MAX_MESSAGE_LEN = 500
 
 
-@dataclass(frozen=True)
-class JobRunMeta:
-    last_run_at: str
-    last_message: str
-    last_success: bool | None
+class JobRunMeta(FrozenModel):
+    last_run_at: str = Field(description="上次执行时间（中国时区 ISO）")
+    last_message: str = Field(description="上次执行摘要")
+    last_success: bool | None = Field(description="上次是否成功（None 表示未知）")
 
 
 def _meta_key(job_id: str) -> str:

@@ -92,7 +92,7 @@ class RunOutputSettingsTests(unittest.TestCase):
 
 class SignalMissingKlineTests(unittest.TestCase):
     def test_detects_kline_warning(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_missing_kline
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_missing_kline
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -111,14 +111,14 @@ class SignalMissingKlineTests(unittest.TestCase):
         self.assertTrue(signal_missing_kline(snap))
 
     def test_ignores_empty_snapshot(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import signal_missing_kline
+        from vnpy_ashare.domain.trading.signal_snapshot import signal_missing_kline
 
         self.assertFalse(signal_missing_kline(None))
 
 
 class SignalAsOfStaleTests(unittest.TestCase):
     def test_stale_when_bar_end_differs(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_as_of_stale
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_as_of_stale
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -137,7 +137,7 @@ class SignalAsOfStaleTests(unittest.TestCase):
         self.assertTrue(signal_as_of_stale(snap, bar_end_date="2026-06-09"))
 
     def test_fresh_when_bar_end_matches(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_as_of_stale
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_as_of_stale
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -156,7 +156,7 @@ class SignalAsOfStaleTests(unittest.TestCase):
         self.assertFalse(signal_as_of_stale(snap, bar_end_date="2026-06-09"))
 
     def test_missing_kline_not_stale(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_as_of_stale
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_as_of_stale
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -177,7 +177,7 @@ class SignalAsOfStaleTests(unittest.TestCase):
 
 class SignalRowSortTests(unittest.TestCase):
     def test_buy_ranks_above_hold(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_row_sort_key
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_row_sort_key
 
         buy = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -231,7 +231,7 @@ class SignalDiskCacheTests(unittest.TestCase):
         self._tmp.rmdir()
 
     def test_disk_cache_roundtrip(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
         from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 
         snap = SignalSnapshot(
@@ -258,7 +258,7 @@ class SignalDiskCacheTests(unittest.TestCase):
         self.assertEqual(loaded.ref_buy_price, 10.5)
 
     def test_disk_cache_miss_when_bar_as_of_changes(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
         from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 
         snap = SignalSnapshot(
@@ -285,7 +285,7 @@ class SignalDiskCacheTests(unittest.TestCase):
         self.assertEqual(latest.signal, "hold")
 
     def test_load_many_falls_back_to_latest_snapshot(self) -> None:
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
         from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 
         snap = SignalSnapshot(

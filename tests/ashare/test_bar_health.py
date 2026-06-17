@@ -23,7 +23,7 @@ from vnpy_ashare.data.bar_health import (
     status_label,
 )
 from vnpy_ashare.data.bar_store import PeriodBarOverview
-from vnpy_ashare.domain.calendar import is_trading_day, last_trading_day, trading_days_between
+from vnpy_ashare.domain.time.calendar import is_trading_day, last_trading_day, trading_days_between
 
 
 class CalendarTests(unittest.TestCase):

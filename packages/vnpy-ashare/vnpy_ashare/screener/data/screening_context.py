@@ -5,12 +5,13 @@ from __future__ import annotations
 import os
 import threading
 from contextlib import contextmanager
-from dataclasses import dataclass, field
 
+from pydantic import ConfigDict, PrivateAttr
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic, fetch_stock_industry_map
@@ -32,21 +33,26 @@ def _history_lookback_bars() -> int:
         return 25
 
 
-@dataclass
-class ScreeningContext:
+class ScreeningContext(MutableModel):
     """同一次配方 / 雷达刷新内共享的数据快照。"""
 
-    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    _snapshot: MarketQuotesSnapshot | None = None
-    _snapshot_loaded: bool = False
-    _snapshot_error: MarketQuotesLoadError | None = None
-    _volume_ratio_map: dict[str, float] | None = None
-    _volume_ratio_loaded: bool = False
-    _avg_turnover_map: dict[str, float] | None = None
-    _avg_turnover_loaded: bool = False
-    _industry_map: dict[str, str] | None = None
-    _industry_map_loaded: bool = False
-    _history_bars_map: dict[tuple[str, Exchange], list[BarData]] = field(default_factory=dict)
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+        arbitrary_types_allowed=True,
+    )
+
+    _lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
+    _snapshot: MarketQuotesSnapshot | None = PrivateAttr(default=None)
+    _snapshot_loaded: bool = PrivateAttr(default=False)
+    _snapshot_error: MarketQuotesLoadError | None = PrivateAttr(default=None)
+    _volume_ratio_map: dict[str, float] | None = PrivateAttr(default=None)
+    _volume_ratio_loaded: bool = PrivateAttr(default=False)
+    _avg_turnover_map: dict[str, float] | None = PrivateAttr(default=None)
+    _avg_turnover_loaded: bool = PrivateAttr(default=False)
+    _industry_map: dict[str, str] | None = PrivateAttr(default=None)
+    _industry_map_loaded: bool = PrivateAttr(default=False)
+    _history_bars_map: dict[tuple[str, Exchange], list[BarData]] = PrivateAttr(default_factory=dict)
 
     def load_history_bars_for_symbols(
         self,

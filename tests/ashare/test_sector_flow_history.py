@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from vnpy_ashare.domain.sector_flow import SectorFlowRow
+from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
 from vnpy_ashare.storage.repositories.sector_flow_history import load_sector_flow_history, upsert_sector_flow_day
 
 
@@ -16,7 +16,7 @@ class SectorFlowHistoryRepositoryTests(unittest.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         self._db_path = Path(self._tmpdir.name) / "test.db"
         self._patch = mock.patch(
-            "vnpy_common.paths.get_app_db_path",
+            "vnpy_ashare.storage.connection._db_path",
             return_value=self._db_path,
         )
         self._patch.start()
@@ -63,13 +63,13 @@ class SectorFlowHistoryRepositoryTests(unittest.TestCase):
 
 class SectorFlowHistoryMergeTests(unittest.TestCase):
     def test_merge_prefers_local_on_same_date(self) -> None:
-        from vnpy_ashare.domain.sector_flow import SectorFlowHistoryPoint
+        from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint
         from vnpy_ashare.storage.repositories.sector_flow_history import merge_sector_flow_history
 
-        local = [SectorFlowHistoryPoint("20240925", 10.0)]
+        local = [SectorFlowHistoryPoint(trade_date="20240925", net_flow_yi=10.0)]
         remote = [
-            SectorFlowHistoryPoint("20240925", 9.0),
-            SectorFlowHistoryPoint("20240926", -1.0),
+            SectorFlowHistoryPoint(trade_date="20240925", net_flow_yi=9.0),
+            SectorFlowHistoryPoint(trade_date="20240926", net_flow_yi=-1.0),
         ]
         merged = merge_sector_flow_history(local, remote, limit=5)
         self.assertEqual(len(merged), 2)

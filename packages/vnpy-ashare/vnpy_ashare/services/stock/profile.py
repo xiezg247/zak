@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -31,34 +34,32 @@ _VALUATION_TTL_DAYS = 7
 _PEER_TOP_N = 10
 
 
-@dataclass
-class ValuationProfile:
-    ts_code: str
-    vt_symbol: str
-    trade_date: str = ""
-    pe_ttm: float | None = None
-    pb: float | None = None
-    total_mv: float | None = None
-    circ_mv: float | None = None
-    pe_percentile_3y: float | None = None
-    pb_percentile_3y: float | None = None
-    history_days: int = 0
-    synced: bool = False
-    message: str = ""
+class ValuationProfile(MutableModel):
+    ts_code: str = Field(description="Tushare 代码")
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    trade_date: str = Field(default="", description="交易日")
+    pe_ttm: float | None = Field(default=None, description="市盈率 TTM")
+    pb: float | None = Field(default=None, description="pb")
+    total_mv: float | None = Field(default=None, description="total mv")
+    circ_mv: float | None = Field(default=None, description="circ mv")
+    pe_percentile_3y: float | None = Field(default=None, description="pe percentile 3y")
+    pb_percentile_3y: float | None = Field(default=None, description="pb percentile 3y")
+    history_days: int = Field(default=0, description="history days")
+    synced: bool = Field(default=False, description="synced")
+    message: str = Field(default="", description="说明信息")
 
 
-@dataclass
-class SectorProfile:
-    ts_code: str
-    vt_symbol: str
-    name: str
-    industry: str = ""
-    trade_date: str = ""
-    sector_count: int = 0
-    sector_avg_change_pct: float | None = None
-    sector_rank: int | None = None
-    peers: list[dict[str, Any]] = field(default_factory=list)
-    disclosure: list[dict[str, str]] = field(default_factory=list)
+class SectorProfile(MutableModel):
+    ts_code: str = Field(description="Tushare 代码")
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    name: str = Field(description="名称")
+    industry: str = Field(default="", description="所属行业")
+    trade_date: str = Field(default="", description="交易日")
+    sector_count: int = Field(default=0, description="sector count")
+    sector_avg_change_pct: float | None = Field(default=None, description="sector avg change pct")
+    sector_rank: int | None = Field(default=None, description="sector rank")
+    peers: list[dict[str, Any]] = Field(default_factory=list, description="peers")
+    disclosure: list[dict[str, str]] = Field(default_factory=list, description="disclosure")
 
 
 def _percentile_rank(values: list[float], current: float | None) -> float | None:

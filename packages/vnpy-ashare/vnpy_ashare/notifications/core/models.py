@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import Any
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
 
 
-@dataclass(frozen=True)
-class NotifyDeliveryResult:
-    success: bool
-    message: str
-    status_code: int | None = None
+class NotifyDeliveryResult(FrozenModel):
+    success: bool = Field(description="投递是否成功")
+    message: str = Field(description="结果说明或错误信息")
+    status_code: int | None = Field(default=None, description="HTTP 状态码")
 
 
-@dataclass(frozen=True)
-class NotifyOutboundMessage:
-    text: str
-    interactive_card: dict | None = None
+class NotifyOutboundMessage(MutableModel):
+    text: str = Field(description="纯文本消息正文")
+    interactive_card: dict[str, Any] | None = Field(default=None, description="飞书交互卡片 JSON")

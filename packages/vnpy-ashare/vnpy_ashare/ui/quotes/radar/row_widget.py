@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label
@@ -105,7 +103,7 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         if price == self._row.price and change_pct == self._row.change_pct:
             return
 
-        self._row = replace(self._row, price=price, change_pct=change_pct)
+        self._row = self._row.model_copy(update={"price": price, "change_pct": change_pct})
         self._apply_row()
 
     def refresh_theme(self) -> None:

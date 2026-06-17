@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Literal
 
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
@@ -16,14 +19,13 @@ _STATE_LABELS: dict[RiskGateState, str] = {
 }
 
 
-@dataclass(frozen=True)
-class RiskGateSnapshot:
-    state: RiskGateState
-    state_label: str
-    allow_new_positions: bool
-    daily_pnl_pct: float | None
-    avg_float_pnl_pct: float | None
-    warnings: tuple[str, ...]
+class RiskGateSnapshot(FrozenModel):
+    state: RiskGateState = Field(description="风控闸状态")
+    state_label: str = Field(description="风控闸状态中文标签")
+    allow_new_positions: bool = Field(description="是否允许新开仓")
+    daily_pnl_pct: float | None = Field(description="当日盈亏占比（%）")
+    avg_float_pnl_pct: float | None = Field(description="持仓平均浮盈占比（%）")
+    warnings: tuple[str, ...] = Field(description="风险提示列表")
 
 
 def read_total_capital() -> float | None:

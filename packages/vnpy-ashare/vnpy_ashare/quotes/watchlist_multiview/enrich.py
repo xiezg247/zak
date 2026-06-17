@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING, Literal
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -72,16 +71,17 @@ def enrich_multiview_rows(
         row_kind: Literal["daily", "intraday", "minute", "none"] = sparkline_kind if points else "none"
 
         enriched.append(
-            replace(
-                row,
-                signal_label=signal_label,
-                has_position=has_position,
-                position_pnl_pct=position_pnl_pct,
-                industry=industry,
-                sector_rank=sector_rank,
-                sector_avg_change=sector_avg,
-                sparkline_points=points,
-                sparkline_kind=row_kind,
-            )
+            row.model_copy(
+                update={
+                    "signal_label": signal_label,
+                    "has_position": has_position,
+                    "position_pnl_pct": position_pnl_pct,
+                    "industry": industry,
+                    "sector_rank": sector_rank,
+                    "sector_avg_change": sector_avg,
+                    "sparkline_points": points,
+                    "sparkline_kind": row_kind,
+                },
+            ),
         )
     return tuple(enriched)

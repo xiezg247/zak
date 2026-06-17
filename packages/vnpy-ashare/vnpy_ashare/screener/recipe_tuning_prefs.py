@@ -2,31 +2,31 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_METRIC_SCORE_BLEND
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.config.preferences._settings import get_settings
 
 _SETTINGS = get_settings()
 _KEY_PREFIX = "screener/recipe_tuning/"
 
 
-@dataclass(frozen=True)
-class RecipeTuningPrefs:
-    metric_score_blend: float
-    momentum_min_change_pct: float
-    momentum_max_change_pct: float
-    momentum_fear_max_change_pct: float
-    sentiment_gate_enabled: bool
-    extreme_fear_momentum: float
-    extreme_fear_sector: float
-    extreme_fear_breakout: float
-    fear_momentum: float
-    extreme_greed_turnover: float
-    extreme_greed_volume_surge: float
-    greed_turnover: float
-    breakout_lookback_days: int
-    volume_liquidity_dedup_factor: float
+class RecipeTuningPrefs(FrozenModel):
+    metric_score_blend: float = Field(description="指标评分混合权重")
+    momentum_min_change_pct: float = Field(description="动量维度最低涨幅（%）")
+    momentum_max_change_pct: float = Field(description="动量维度最高涨幅（%）")
+    momentum_fear_max_change_pct: float = Field(description="恐慌期动量最高涨幅（%）")
+    sentiment_gate_enabled: bool = Field(description="是否启用情绪门控")
+    extreme_fear_momentum: float = Field(description="极度恐慌时动量权重衰减")
+    extreme_fear_sector: float = Field(description="极度恐慌时板块权重衰减")
+    extreme_fear_breakout: float = Field(description="极度恐慌时突破权重衰减")
+    fear_momentum: float = Field(description="恐慌时动量权重衰减")
+    extreme_greed_turnover: float = Field(description="极度贪婪时换手权重衰减")
+    extreme_greed_volume_surge: float = Field(description="极度贪婪时放量权重衰减")
+    greed_turnover: float = Field(description="贪婪时换手权重衰减")
+    breakout_lookback_days: int = Field(description="突破回看天数")
+    volume_liquidity_dedup_factor: float = Field(description="放量与流动性去重系数")
 
 
 def default_recipe_tuning_prefs() -> RecipeTuningPrefs:

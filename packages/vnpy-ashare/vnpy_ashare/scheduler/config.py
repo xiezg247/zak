@@ -3,167 +3,185 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
 from pathlib import Path
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_common.paths import APP_ID, VNTRADER_DIR
 
 SCHEDULER_CONFIG_PATH = VNTRADER_DIR / f"{APP_ID}_scheduler.json"
 
 
-@dataclass
-class JobConfig:
-    enabled: bool = False
-    interval_seconds: int = 30
-    cron_hour: int = 8
-    cron_minute: int = 0
-    cron_day_of_week: str = "mon"
-    download_start: str = "2020-01-01"
+class JobConfig(MutableModel):
+    enabled: bool = Field(default=False, description="是否启用")
+    interval_seconds: int = Field(default=30, description="间隔触发秒数")
+    cron_hour: int = Field(default=8, description="Cron 小时")
+    cron_minute: int = Field(default=0, description="Cron 分钟")
+    cron_day_of_week: str = Field(default="mon", description="Cron 星期")
+    download_start: str = Field(default="2020-01-01", description="批量下载起始日")
 
 
-@dataclass
-class AutoScreenJobConfig:
-    enabled: bool = False
-    recipe_id: str = ""
-    top_n: int = 20
-    cron_hour: int = 16
-    cron_minute: int = 35
-    cron_day_of_week: str = "mon-fri"
-    cron_hours: str = "10,14"
-    cron_minute_intraday: int = 2
+class AutoScreenJobConfig(MutableModel):
+    enabled: bool = Field(default=False, description="是否启用")
+    recipe_id: str = Field(default="", description="配方 ID")
+    top_n: int = Field(default=20, description="输出 Top N")
+    cron_hour: int = Field(default=16, description="Cron 小时（收盘后）")
+    cron_minute: int = Field(default=35, description="Cron 分钟")
+    cron_day_of_week: str = Field(default="mon-fri", description="Cron 星期")
+    cron_hours: str = Field(default="10,14", description="盘中 Cron 小时列表")
+    cron_minute_intraday: int = Field(default=2, description="盘中 Cron 分钟")
 
 
-@dataclass
-class SchedulerConfig:
-    collect_quotes: JobConfig = field(default_factory=lambda: JobConfig(enabled=False, interval_seconds=30))
-    sync_universe: JobConfig = field(
+class SchedulerConfig(MutableModel):
+    collect_quotes: JobConfig = Field(
+        default_factory=lambda: JobConfig(enabled=False, interval_seconds=30),
+        description="行情采集任务配置",
+    )
+    sync_universe: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=8,
             cron_minute=0,
             cron_day_of_week="mon",
-        )
+        ),
+        description="同步 A 股列表任务配置",
     )
-    sync_stock_industry: JobConfig = field(
+    sync_stock_industry: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=True,
             cron_hour=8,
             cron_minute=10,
             cron_day_of_week="mon",
-        )
+        ),
+        description="同步行业分类任务配置",
     )
-    sync_trade_calendar: JobConfig = field(
+    sync_trade_calendar: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=7,
             cron_minute=50,
             cron_day_of_week="mon",
-        )
+        ),
+        description="同步交易日历任务配置",
     )
-    batch_download_universe: JobConfig = field(
+    batch_download_universe: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=25,
             cron_day_of_week="mon-fri",
             download_start="2020-01-01",
-        )
+        ),
+        description="全市场日 K 批量下载配置",
     )
-    prefetch_moneyflow: JobConfig = field(
+    prefetch_moneyflow: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=31,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="预取资金流任务配置",
     )
-    sync_sector_flow_daily: JobConfig = field(
+    sync_sector_flow_daily: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=36,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="同步板块日终资金流配置",
     )
-    sync_suspend_daily: JobConfig = field(
+    sync_suspend_daily: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=33,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="同步停复牌任务配置",
     )
-    prefetch_tushare: JobConfig = field(
+    prefetch_tushare: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=32,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="预取 Tushare 因子任务配置",
     )
-    prefetch_concept_board: JobConfig = field(
+    prefetch_concept_board: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=33,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="预取概念板块任务配置",
     )
-    warm_market_summary: JobConfig = field(
+    warm_market_summary: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=34,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="预热市场摘要任务配置",
     )
-    sync_watchlist_financials: JobConfig = field(
+    sync_watchlist_financials: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=True,
             cron_hour=16,
             cron_minute=45,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="同步自选财报任务配置",
     )
-    sync_disclosure_calendar: JobConfig = field(
+    sync_disclosure_calendar: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=True,
             cron_hour=16,
             cron_minute=40,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="同步披露日历任务配置",
     )
-    batch_fill_stale: JobConfig = field(
+    batch_fill_stale: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=17,
             cron_minute=0,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="批量补全过期日 K 配置",
     )
-    screen_intraday: AutoScreenJobConfig = field(
+    screen_intraday: AutoScreenJobConfig = Field(
         default_factory=lambda: AutoScreenJobConfig(
             enabled=False,
             recipe_id="intraday_multi",
             cron_hours="10,14",
             cron_minute_intraday=2,
-        )
+        ),
+        description="盘中自动选股配置",
     )
-    screen_post_close: AutoScreenJobConfig = field(
+    screen_post_close: AutoScreenJobConfig = Field(
         default_factory=lambda: AutoScreenJobConfig(
             enabled=False,
             recipe_id="post_close_multi",
             cron_hour=16,
             cron_minute=35,
-        )
+        ),
+        description="收盘后自动选股配置",
     )
-    scan_horizon_outlook: JobConfig = field(
+    scan_horizon_outlook: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=False,
             cron_hour=16,
             cron_minute=40,
             cron_day_of_week="mon-fri",
-        )
+        ),
+        description="雷达展望扫描任务配置",
     )
 
     def to_dict(self) -> dict:

@@ -6,7 +6,7 @@ import unittest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from vnpy_ashare.domain.market_hours import next_intraday_screen_at, screen_after_collect_delay_seconds
+from vnpy_ashare.domain.time.market_hours import next_intraday_screen_at, screen_after_collect_delay_seconds
 
 
 class TestMarketHoursScreen(unittest.TestCase):

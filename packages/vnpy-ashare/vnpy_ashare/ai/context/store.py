@@ -18,9 +18,12 @@ UI 层禁止 ``from vnpy_ashare.ai.context.store import set_*``。
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from typing import Any
 
 from vnpy_ashare.quotes.core.quote_rows import (
@@ -35,16 +38,15 @@ _backtest_summary: dict[str, Any] | None = None
 _market_overview_context: dict[str, Any] | None = None
 
 
-@dataclass
-class BacktestSummary:
+class BacktestSummary(MutableModel):
     """最近一次回测摘要。"""
 
-    strategy: str
-    vt_symbol: str
-    interval: str
-    start: str
-    end: str
-    statistics: dict[str, Any] = field(default_factory=dict)
+    strategy: str = Field(description="strategy")
+    vt_symbol: str = Field(description="VeighNa 合约代码")
+    interval: str = Field(description="interval")
+    start: str = Field(description="开始日期")
+    end: str = Field(description="结束日期")
+    statistics: dict[str, Any] = Field(default_factory=dict, description="statistics")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -57,14 +59,13 @@ class BacktestSummary:
         }
 
 
-@dataclass
-class ScreeningResultContext:
+class ScreeningResultContext(MutableModel):
     """最近一次选股结果快照（供 Skill / 悬浮球读取）。"""
 
-    condition: str
-    count: int
-    updated_at: str | None
-    rows: list[dict[str, Any]]
+    condition: str = Field(description="condition")
+    count: int = Field(description="数量")
+    updated_at: str | None = Field(description="更新时间")
+    rows: list[dict[str, Any]] = Field(description="数据行列表")
 
 
 _screening_result: ScreeningResultContext | None = None

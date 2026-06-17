@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -48,14 +51,13 @@ def format_config_value(value: object) -> str:
     return str(value)
 
 
-@dataclass(frozen=True)
-class MetadataStorageEntry:
+class MetadataStorageEntry(FrozenModel):
     """固定 SQLite 元数据文件（不受 DATABASE_NAME 影响）。"""
 
-    key: str
-    relative: str
-    path: Path
-    description: str
+    key: str = Field(description="键名")
+    relative: str = Field(description="相对路径")
+    path: Path = Field(description="绝对路径")
+    description: str = Field(description="文件用途说明")
 
 
 def metadata_storage_entries(
@@ -143,13 +145,12 @@ def collect_database_runtime_updates(
     return merged
 
 
-@dataclass(frozen=True)
-class ResolvedConfigItem:
-    spec: ConfigFieldSpec
-    value: str
-    default: str
-    source: ConfigSource
-    file_value: str = ""
+class ResolvedConfigItem(FrozenModel):
+    spec: ConfigFieldSpec = Field(description="配置项元数据")
+    value: str = Field(description="当前生效值")
+    default: str = Field(description="默认值")
+    source: ConfigSource = Field(description="数据来源")
+    file_value: str = Field(default="", description="配置文件中的原始值")
 
 
 def resolve_env_config(env_file: Path = ENV_FILE) -> list[ResolvedConfigItem]:

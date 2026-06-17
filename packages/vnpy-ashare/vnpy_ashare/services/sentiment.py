@@ -5,9 +5,12 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 import math
 import time
-from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -36,29 +39,27 @@ COMPONENT_WEIGHTS: dict[str, float] = {
 _CACHE_TTL_SEC = 600
 
 
-@dataclass
-class FearGreedComponent:
+class FearGreedComponent(MutableModel):
     """恐贪指数单个分项（score 0–100，越高越贪婪）。"""
 
-    name: str
-    score: float
-    weight: float
-    raw: dict[str, Any] = field(default_factory=dict)
-    hint: str = ""
+    name: str = Field(description="名称")
+    score: float = Field(description="得分")
+    weight: float = Field(description="分项权重")
+    raw: dict[str, Any] = Field(default_factory=dict, description="raw")
+    hint: str = Field(default="", description="hint")
 
 
-@dataclass
-class FearGreedSnapshot:
+class FearGreedSnapshot(MutableModel):
     """某交易日恐贪指数快照。"""
 
-    index: float
-    label: str
-    trade_date: str
-    as_of: str
-    components: list[FearGreedComponent]
-    warnings: list[str] = field(default_factory=list)
-    sources: list[str] = field(default_factory=list)
-    disclaimer: str = "恐贪指数由公开行情数据加权计算，仅供参考，不构成投资建议。"
+    index: float = Field(description="恐贪指数（0–100）")
+    label: str = Field(description="展示标签")
+    trade_date: str = Field(description="交易日")
+    as_of: str = Field(description="计算时间")
+    components: list[FearGreedComponent] = Field(description="分项列表")
+    warnings: list[str] = Field(default_factory=list, description="warnings")
+    sources: list[str] = Field(default_factory=list, description="sources")
+    disclaimer: str = Field(default="恐贪指数由公开行情数据加权计算，仅供参考，不构成投资建议。", description="disclaimer")
 
     def to_dict(self, *, include_components: bool = True) -> dict[str, Any]:
         payload: dict[str, Any] = {

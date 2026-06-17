@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from vnpy_ashare.domain.sector_flow import SectorFlowRow
+from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
 from vnpy_ashare.services.sector_flow import (
     aggregate_sector_rows,
     build_official_snapshot,

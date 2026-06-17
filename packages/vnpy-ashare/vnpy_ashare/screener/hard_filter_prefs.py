@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_MIN_AMOUNT_YUAN, DEFAULT_MIN_TOTAL_MV_WAN
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.config.preferences._settings import get_settings
 
 _SETTINGS = get_settings()
@@ -25,17 +26,16 @@ PRESET_BALANCED = "balanced"
 PRESET_AGGRESSIVE = "aggressive"
 
 
-@dataclass(frozen=True)
-class HardFilterPrefs:
-    exclude_st: bool
-    exclude_suspended: bool
-    min_amount_wan: float
-    min_total_mv_yi: float
-    exclude_new_listing: bool
-    min_listing_days: int
-    exclude_limit_board: bool
-    allowed_industries: str = ""
-    allowed_market_boards: str = ""
+class HardFilterPrefs(FrozenModel):
+    exclude_st: bool = Field(description="是否排除 ST 股")
+    exclude_suspended: bool = Field(description="是否排除停牌股")
+    min_amount_wan: float = Field(description="最低成交额（万元）")
+    min_total_mv_yi: float = Field(description="最低总市值（亿元）")
+    exclude_new_listing: bool = Field(description="是否排除新股")
+    min_listing_days: int = Field(description="最低上市天数")
+    exclude_limit_board: bool = Field(description="是否排除连板涨停股")
+    allowed_industries: str = Field(default="", description="允许的行业（逗号分隔）")
+    allowed_market_boards: str = Field(default="", description="允许的板块（逗号分隔）")
 
     @property
     def min_amount_yuan(self) -> float:

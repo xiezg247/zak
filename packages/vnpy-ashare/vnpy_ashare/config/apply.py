@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from dotenv import load_dotenv
+from pydantic import ConfigDict, Field
 from vnpy.trader.setting import SETTINGS
 
 from vnpy_ashare.app.engine_access import get_ashare_engine
@@ -14,11 +14,10 @@ from vnpy_ashare.config.datafeed_reload import reload_datafeed_stack
 from vnpy_ashare.config.fonts import apply_app_font, resolve_font_family
 from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, VT_CONFIG_SPECS
 from vnpy_ashare.config.vt_settings import reload_vnpy_settings
+from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 from vnpy_common.paths import ENV_FILE
 from vnpy_common.ui.theme import theme_manager
-
-if TYPE_CHECKING:
-    from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 
 ApplyTier = Literal["instant", "soft_reload", "restart_required"]
 
@@ -50,21 +49,21 @@ _VT_LABELS: dict[str, str] = {spec.key: spec.label for spec in VT_CONFIG_SPECS}
 _ENV_LABELS: dict[str, str] = {spec.key: spec.label for spec in ENV_CONFIG_SPECS}
 
 
-@dataclass
-class ApplyResult:
-    key: str
-    label: str
-    tier: ApplyTier
-    success: bool
-    message: str
+class ApplyResult(MutableModel):
+    key: str = Field(description="配置键名")
+    label: str = Field(description="展示标签")
+    tier: ApplyTier = Field(description="应用分级")
+    success: bool = Field(description="是否应用成功")
+    message: str = Field(description="应用结果说明")
 
 
-@dataclass
-class ApplyContext:
-    llm_engine: Any | None = None
-    scheduler: TaskSchedulerManager | None = None
-    notification_service: Any | None = None
-    reload_env: bool = False
+class ApplyContext(MutableModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    llm_engine: Any | None = Field(default=None, description="LLM 引擎实例")
+    scheduler: TaskSchedulerManager | None = Field(default=None, description="任务调度器")
+    notification_service: Any | None = Field(default=None, description="通知服务实例")
+    reload_env: bool = Field(default=False, description="是否重新加载环境变量")
 
 
 def vt_apply_tier(key: str) -> ApplyTier:

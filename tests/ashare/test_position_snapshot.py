@@ -6,14 +6,14 @@ import unittest
 from datetime import date
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.domain.position_snapshot import (
+from vnpy_ashare.domain.trading.position import (
     PositionRecord,
     build_position_snapshot,
     compute_unrealized_pnl,
     position_row_sort_key,
     position_t1_locked,
 )
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 
 
 def _signal(signal: str = "hold") -> SignalSnapshot:
@@ -81,12 +81,26 @@ class PositionSnapshotTests(unittest.TestCase):
 
     def test_position_row_sort_key_prioritizes_sell(self) -> None:
         sell_snap = build_position_snapshot(
-            PositionRecord("600000", "SSE", "", 10.0, 100, "2026-06-01"),
+            PositionRecord(
+                symbol="600000",
+                exchange="SSE",
+                name="",
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+            ),
             signal=_signal("sell"),
             last_price=9.0,
         )
         hold_snap = build_position_snapshot(
-            PositionRecord("600519", "SSE", "", 10.0, 100, "2026-06-01"),
+            PositionRecord(
+                symbol="600519",
+                exchange="SSE",
+                name="",
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+            ),
             signal=_signal("hold"),
             last_price=12.0,
         )

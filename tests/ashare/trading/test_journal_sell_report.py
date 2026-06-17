@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.position_snapshot import PositionRecord
+from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories import trade_journal as journal_repo
 from vnpy_ashare.trading.journal.record_add import should_tag_add_loss
@@ -86,7 +86,14 @@ class JournalSellReportTests(unittest.TestCase):
         self.assertAlmostEqual(report.profit_loss_ratio or 0, 10.0)
 
     def test_should_tag_add_loss(self) -> None:
-        record = PositionRecord("600519", "SSE", "", 100.0, 100, "2026-06-01")
+        record = PositionRecord(
+            symbol="600519",
+            exchange="SSE",
+            name="",
+            cost_price=100.0,
+            volume=100,
+            buy_date="2026-06-01",
+        )
         self.assertTrue(should_tag_add_loss(record, new_volume=200, last_price=95.0))
         self.assertFalse(should_tag_add_loss(record, new_volume=200, last_price=105.0))
         self.assertFalse(should_tag_add_loss(record, new_volume=100, last_price=90.0))

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from datetime import timedelta
 from typing import Literal
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.screener.recipe.recipe import (
@@ -24,21 +27,19 @@ TOP_N_MAX = 200
 TOP_N_DEFAULT = 20
 
 
-@dataclass
-class ProposeRecipeInput:
-    intent: str
-    trigger_kind: str = ""
-    recipe_id: str = ""
-    top_n: int = TOP_N_DEFAULT
-    confidence: Confidence = "medium"
+class ProposeRecipeInput(MutableModel):
+    intent: str = Field(description="用户意图描述")
+    trigger_kind: str = Field(default="", description="触发类型（盘中/盘后）")
+    recipe_id: str = Field(default="", description="配方 id")
+    top_n: int = Field(default=TOP_N_DEFAULT, description="返回条数上限")
+    confidence: Confidence = Field(default="medium", description="解析置信度")
 
 
-@dataclass
-class ProposeRecipeResult:
-    kind: ProposeRecipeKind
-    draft: RecipeDraft | None = None
-    questions: list[str] | None = None
-    message: str = ""
+class ProposeRecipeResult(MutableModel):
+    kind: ProposeRecipeKind = Field(description="提案结果类型")
+    draft: RecipeDraft | None = Field(default=None, description="待确认草案")
+    questions: list[str] | None = Field(default=None, description="追问问题列表")
+    message: str = Field(default="", description="错误或提示信息")
 
 
 _INTRADAY_HINTS = (

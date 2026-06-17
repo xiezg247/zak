@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Literal
 
 from vnpy_ashare.config.preferences._settings import get_settings
@@ -139,59 +142,61 @@ TABLE_HEADERS_WITH_LOCAL = quote_table_headers(tail_header="本地")
 TABLE_HEADERS_LOCAL = LOCAL_TABLE_HEADERS
 
 
-@dataclass(frozen=True)
-class PageConfig:
-    title: str
-    scope_key: str
-    search_placeholder: str
-    show_sync_button: bool
-    show_download_button: bool
-    show_local_column: bool
-    require_keyword: bool
-    show_fill_button: bool = False
-    show_redownload_button: bool = False
-    show_delete_button: bool = False
-    show_run_output_panel: bool = False
-    show_batch_fill_button: bool = False
-    show_batch_gap_fill_button: bool = False
-    use_local_table: bool = False
-    use_local_pagination: bool = False
-    local_page_size: int = LOCAL_PAGE_SIZE
-    show_add_watchlist_button: bool = False
-    show_remove_watchlist_button: bool = False
-    auto_refresh_quotes: bool = True
-    quote_refresh_ms: int = MARKET_QUOTE_REFRESH_MS
-    quote_source: Literal["market", "watchlist"] | None = None
-    quote_refresh_source: Literal["market", "watchlist"] | None = None  # auto-refresh 数据源（None=同 quote_source）
-    show_depth_panel: bool = False
-    show_chart_tabs: bool = False
-    use_quote_stream: bool = False
-    use_market_rank: bool = False
-    market_full_list: bool = False
-    market_scroll_paging: bool = False
-    market_page_size: int = MARKET_PAGE_SIZE
-    market_live_display_limit: int = MARKET_LIVE_DISPLAY_LIMIT
-    table_header_sortable: bool = False
-    show_watchlist_move_buttons: bool = False
-    show_refresh_quotes_button: bool = False
-    show_backtest_button: bool = True
-    show_batch_backtest_button: bool = False
-    show_diagnose_button: bool = False
-    show_diagnose_panel: bool = False
-    show_kline: bool = True
-    show_board_filter: bool = False
-    show_industry_filter: bool = False
-    hide_quote_header: bool = False
-    column_configurable: bool = False
-    show_rank_sidebar: bool = False
-    use_radar_cards: bool = False
-    default_rank_id: str = "change_pct"
-    show_watchlist_signals: bool = False
-    show_watchlist_positions: bool = False
-    show_stock_notes: bool = False
-    show_watchlist_multiview: bool = False
-    show_watchlist_groups: bool = False
-    search_max_width: int = 280
+class PageConfig(FrozenModel):
+    title: str = Field(description="页面标题")
+    scope_key: str = Field(description="页面作用域键（用于列配置持久化）")
+    search_placeholder: str = Field(description="搜索框占位文案")
+    show_sync_button: bool = Field(description="是否显示同步按钮")
+    show_download_button: bool = Field(description="是否显示下载按钮")
+    show_local_column: bool = Field(description="是否显示本地数据列")
+    require_keyword: bool = Field(description="搜索是否必须输入关键词")
+    show_fill_button: bool = Field(default=False, description="是否显示补缺按钮")
+    show_redownload_button: bool = Field(default=False, description="是否显示重下按钮")
+    show_delete_button: bool = Field(default=False, description="是否显示删除按钮")
+    show_run_output_panel: bool = Field(default=False, description="是否显示任务输出面板")
+    show_batch_fill_button: bool = Field(default=False, description="是否显示批量补缺按钮")
+    show_batch_gap_fill_button: bool = Field(default=False, description="是否显示批量断层补缺按钮")
+    use_local_table: bool = Field(default=False, description="是否使用本地数据表格")
+    use_local_pagination: bool = Field(default=False, description="是否使用本地分页")
+    local_page_size: int = Field(default=LOCAL_PAGE_SIZE, description="本地分页每页条数")
+    show_add_watchlist_button: bool = Field(default=False, description="是否显示加入自选按钮")
+    show_remove_watchlist_button: bool = Field(default=False, description="是否显示移出自选按钮")
+    auto_refresh_quotes: bool = Field(default=True, description="是否自动刷新行情")
+    quote_refresh_ms: int = Field(default=MARKET_QUOTE_REFRESH_MS, description="行情自动刷新间隔（毫秒）")
+    quote_source: Literal["market", "watchlist"] | None = Field(default=None, description="行情数据源：全市场或自选")
+    quote_refresh_source: Literal["market", "watchlist"] | None = Field(
+        default=None,
+        description="自动刷新数据源（None 表示与 quote_source 相同）",
+    )
+    show_depth_panel: bool = Field(default=False, description="是否显示五档盘口面板")
+    show_chart_tabs: bool = Field(default=False, description="是否显示图表 Tab")
+    use_quote_stream: bool = Field(default=False, description="是否使用 WebSocket 行情流")
+    use_market_rank: bool = Field(default=False, description="是否启用市场榜单侧栏")
+    market_full_list: bool = Field(default=False, description="市场页是否加载全量列表")
+    market_scroll_paging: bool = Field(default=False, description="市场页是否滚动分页")
+    market_page_size: int = Field(default=MARKET_PAGE_SIZE, description="市场页每页条数")
+    market_live_display_limit: int = Field(default=MARKET_LIVE_DISPLAY_LIMIT, description="市场页实时展示上限")
+    table_header_sortable: bool = Field(default=False, description="表头是否可排序")
+    show_watchlist_move_buttons: bool = Field(default=False, description="是否显示自选排序按钮")
+    show_refresh_quotes_button: bool = Field(default=False, description="是否显示手动刷新行情按钮")
+    show_backtest_button: bool = Field(default=True, description="是否显示跳转回测按钮")
+    show_batch_backtest_button: bool = Field(default=False, description="是否显示批量回测按钮")
+    show_diagnose_button: bool = Field(default=False, description="是否显示诊断按钮")
+    show_diagnose_panel: bool = Field(default=False, description="是否显示诊断面板")
+    show_kline: bool = Field(default=True, description="是否显示 K 线图")
+    show_board_filter: bool = Field(default=False, description="是否显示板块筛选")
+    show_industry_filter: bool = Field(default=False, description="是否显示行业筛选")
+    hide_quote_header: bool = Field(default=False, description="是否隐藏行情区标题栏")
+    column_configurable: bool = Field(default=False, description="列是否可配置")
+    show_rank_sidebar: bool = Field(default=False, description="是否显示榜单侧栏")
+    use_radar_cards: bool = Field(default=False, description="是否使用雷达卡片布局")
+    default_rank_id: str = Field(default="change_pct", description="默认榜单 ID")
+    show_watchlist_signals: bool = Field(default=False, description="是否显示自选信号区")
+    show_watchlist_positions: bool = Field(default=False, description="是否显示自选持仓区")
+    show_stock_notes: bool = Field(default=False, description="是否显示个股笔记区")
+    show_watchlist_multiview: bool = Field(default=False, description="是否显示自选多维看盘")
+    show_watchlist_groups: bool = Field(default=False, description="是否显示自选分组")
+    search_max_width: int = Field(default=280, description="搜索框最大宽度（像素）")
 
 
 DEFAULT_WATCHLIST_COLUMNS: list[str] = [

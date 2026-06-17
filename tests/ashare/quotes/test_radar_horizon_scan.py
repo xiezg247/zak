@@ -82,7 +82,7 @@ def test_prefilter_skips_symbols_without_local_daily_k() -> None:
 
 
 def test_outlook_judgment_subline_prefers_scenario() -> None:
-    from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+    from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
     from vnpy_ashare.quotes.radar.radar_horizon_rules import outlook_judgment_subline
 
     snapshot = SignalSnapshot(

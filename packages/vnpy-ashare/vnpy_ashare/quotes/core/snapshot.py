@@ -2,29 +2,30 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 
-@dataclass
-class QuoteSnapshot:
-    symbol: str
-    name: str
-    last_price: float
-    prev_close: float
-    open_price: float
-    high_price: float
-    low_price: float
-    change_amount: float
-    change_pct: float
-    turnover_rate: float
-    volume: float
-    amount: float = 0.0
-    amplitude: float = 0.0
-    volume_ratio: float = 0.0
-    net_mf_amount: float = 0.0
-    change_speed_5m: float = 0.0
-    limit_times: float = 0.0
-    trade_time: str = ""
+class QuoteSnapshot(MutableModel):
+    symbol: str = Field(description="证券代码")
+    name: str = Field(description="证券名称")
+    last_price: float = Field(description="最新价")
+    prev_close: float = Field(description="昨收价")
+    open_price: float = Field(description="开盘价")
+    high_price: float = Field(description="最高价")
+    low_price: float = Field(description="最低价")
+    change_amount: float = Field(description="涨跌额")
+    change_pct: float = Field(description="涨跌幅（%）")
+    turnover_rate: float = Field(description="换手率（%）")
+    volume: float = Field(description="成交量")
+    amount: float = Field(default=0.0, description="成交额")
+    amplitude: float = Field(default=0.0, description="振幅（%）")
+    volume_ratio: float = Field(default=0.0, description="量比")
+    net_mf_amount: float = Field(default=0.0, description="主力净流入（万元）")
+    change_speed_5m: float = Field(default=0.0, description="5 分钟涨速（%）")
+    limit_times: float = Field(default=0.0, description="连板数")
+    trade_time: str = Field(default="", description="行情时间戳")
 
     @property
     def is_rise(self) -> bool:

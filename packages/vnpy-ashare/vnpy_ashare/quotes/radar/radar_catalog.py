@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Literal
 
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import (
@@ -24,26 +27,25 @@ RADAR_WATCHLIST_AUTO_REFRESH_MS = 60_000
 RADAR_SECTOR_AUTO_REFRESH_MS = 180_000
 
 
-@dataclass(frozen=True)
-class RadarRefreshOption:
-    ms: int
-    label: str
+class RadarRefreshOption(FrozenModel):
+    ms: int = Field(description="刷新间隔（毫秒）")
+    label: str = Field(description="展示标签")
 
 
 RADAR_DISCOVERY_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
-    RadarRefreshOption(RADAR_REFRESH_OFF_MS, "不刷新"),
-    RadarRefreshOption(30_000, "30 秒"),
-    RadarRefreshOption(60_000, "1 分钟"),
-    RadarRefreshOption(120_000, "2 分钟"),
+    RadarRefreshOption(ms=RADAR_REFRESH_OFF_MS, label='不刷新'),
+    RadarRefreshOption(ms=30000, label='30 秒'),
+    RadarRefreshOption(ms=60000, label='1 分钟'),
+    RadarRefreshOption(ms=120000, label='2 分钟'),
 )
 
 RADAR_WATCHLIST_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = RADAR_DISCOVERY_REFRESH_OPTIONS
 
 RADAR_SECTOR_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
-    RadarRefreshOption(RADAR_REFRESH_OFF_MS, "不刷新"),
-    RadarRefreshOption(60_000, "1 分钟"),
-    RadarRefreshOption(180_000, "3 分钟"),
-    RadarRefreshOption(300_000, "5 分钟"),
+    RadarRefreshOption(ms=RADAR_REFRESH_OFF_MS, label='不刷新'),
+    RadarRefreshOption(ms=60000, label='1 分钟'),
+    RadarRefreshOption(ms=180000, label='3 分钟'),
+    RadarRefreshOption(ms=300000, label='5 分钟'),
 )
 
 CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
@@ -56,107 +58,58 @@ CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
 }
 
 
-@dataclass(frozen=True)
-class RadarLayoutSection:
-    mode: RadarCardMode
-    title: str
-    hint: str
+class RadarLayoutSection(FrozenModel):
+    mode: RadarCardMode = Field(description="模式")
+    title: str = Field(description="标题")
+    hint: str = Field(description="提示文案")
 
 
 RADAR_LAYOUT_SECTIONS: tuple[RadarLayoutSection, ...] = (
-    RadarLayoutSection(
-        "statistical",
-        "盘面统计",
-        "选股结果、盘中异动与板块主线，描述当前盘面",
-    ),
-    RadarLayoutSection(
-        "predictive",
-        "前瞻展望",
-        "策略信号与统计情景，非确定性预测",
-    ),
+    RadarLayoutSection(mode='statistical', title='盘面统计', hint='选股结果、盘中异动与板块主线，描述当前盘面'),
+    RadarLayoutSection(mode='predictive', title='前瞻展望', hint='策略信号与统计情景，非确定性预测'),
 )
 
 
-@dataclass(frozen=True)
-class RadarCardSpec:
-    id: str
-    title: str
-    category: RadarCategory
-    mode: RadarCardMode = "statistical"
-    top_n: int = 8
-    has_task_variants: bool = False
-    auto_refresh_ms: int | None = None
+class RadarCardSpec(FrozenModel):
+    id: str = Field(description="主键 ID")
+    title: str = Field(description="标题")
+    category: RadarCategory = Field(description="分类")
+    mode: RadarCardMode = Field(default="statistical", description="mode")
+    top_n: int = Field(default=8, description="top n")
+    has_task_variants: bool = Field(default=False, description="has task variants")
+    auto_refresh_ms: int | None = Field(default=None, description="auto refresh ms")
 
 
-@dataclass(frozen=True)
-class RadarVariant:
-    key: str
-    label: str
+class RadarVariant(FrozenModel):
+    key: str = Field(description="键名")
+    label: str = Field(description="展示标签")
 
 
 SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("scenario_bull", "偏多情景"),
-    RadarVariant("scenario_volatile", "高波动"),
-    RadarVariant("scenario_bear", "偏空情景"),
+    RadarVariant(key='scenario_bull', label='偏多情景'),
+    RadarVariant(key='scenario_volatile', label='高波动'),
+    RadarVariant(key='scenario_bear', label='偏空情景'),
 )
 
 RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
-    RadarCardSpec("screen_latest", "选股结果·最新", "screen"),
-    RadarCardSpec("screen_task", "选股结果·任务", "screen", has_task_variants=True),
-    RadarCardSpec(
-        "discovery_volume_surge",
-        "发现·放量异动",
-        "discovery",
-        auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS,
-    ),
-    RadarCardSpec(
-        "discovery_moneyflow_intraday",
-        "发现·资金异动",
-        "discovery",
-        auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS,
-    ),
-    RadarCardSpec(
-        "discovery_limit_ladder",
-        "发现·连板梯队",
-        "discovery",
-        has_task_variants=True,
-        auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS,
-    ),
-    RadarCardSpec(
-        "discovery_first_board",
-        "发现·首板人气",
-        "discovery",
-        auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS,
-    ),
-    RadarCardSpec(
-        "watchlist_intraday",
-        "自选·异动",
-        "watchlist",
-        auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS,
-    ),
-    RadarCardSpec(
-        "sector_theme",
-        "板块·主线",
-        "sector",
-        has_task_variants=True,
-        auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS,
-    ),
-    RadarCardSpec("leader_pick", "选股·龙头", "screen", top_n=12),
-    RadarCardSpec("outlook_watch", "未来·关注", "outlook", mode="predictive"),
-    RadarCardSpec("outlook_hold", "未来·可持", "outlook", mode="predictive"),
-    RadarCardSpec(
-        "outlook_scenario",
-        "未来·情景",
-        "outlook",
-        mode="predictive",
-        has_task_variants=True,
-    ),
-    RadarCardSpec("outlook_predict", "未来·预测", "outlook", mode="predictive", has_task_variants=True),
+    RadarCardSpec(id='screen_latest', title='选股结果·最新', category='screen'),
+    RadarCardSpec(id='screen_task', title='选股结果·任务', category='screen', has_task_variants=True),
+    RadarCardSpec(id='discovery_volume_surge', title='发现·放量异动', category='discovery', auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
+    RadarCardSpec(id='discovery_moneyflow_intraday', title='发现·资金异动', category='discovery', auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
+    RadarCardSpec(id='discovery_limit_ladder', title='发现·连板梯队', category='discovery', has_task_variants=True, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
+    RadarCardSpec(id='discovery_first_board', title='发现·首板人气', category='discovery', auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
+    RadarCardSpec(id='watchlist_intraday', title='自选·异动', category='watchlist', auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
+    RadarCardSpec(id='sector_theme', title='板块·主线', category='sector', has_task_variants=True, auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS),
+    RadarCardSpec(id='leader_pick', title='选股·龙头', category='screen', top_n=12),
+    RadarCardSpec(id='outlook_watch', title='未来·关注', category='outlook', mode='predictive'),
+    RadarCardSpec(id='outlook_hold', title='未来·可持', category='outlook', mode='predictive'),
+    RadarCardSpec(id='outlook_scenario', title='未来·情景', category='outlook', mode='predictive', has_task_variants=True),
+    RadarCardSpec(id='outlook_predict', title='未来·预测', category='outlook', mode='predictive', has_task_variants=True),
 )
 
 PREDICT_MODEL_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("auto", "自动"),
-    RadarVariant("baseline", "统计基线"),
+    RadarVariant(key='auto', label='自动'),
+    RadarVariant(key='baseline', label='统计基线'),
 )
 
 DEFAULT_PREDICT_MODEL_VARIANT = "auto"
@@ -164,24 +117,24 @@ DEFAULT_PREDICT_MODEL_VARIANT = "auto"
 DEFAULT_SCENARIO_VARIANT = "scenario_bull"
 
 SCREEN_TASK_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("scheduled_intraday", "盘中任务"),
-    RadarVariant("scheduled_post_close", "盘后任务"),
-    RadarVariant("strategy", "条件选股"),
+    RadarVariant(key='scheduled_intraday', label='盘中任务'),
+    RadarVariant(key='scheduled_post_close', label='盘后任务'),
+    RadarVariant(key='strategy', label='条件选股'),
 )
 
 SECTOR_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("leaders_tiered", "龙一分层"),
-    RadarVariant("breadth", "广度扩散"),
+    RadarVariant(key='leaders_tiered', label='龙一分层'),
+    RadarVariant(key='breadth', label='广度扩散'),
 )
 
 LEADER_PICK_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("mainline", "主线龙头"),
-    RadarVariant("all_market", "全市场"),
+    RadarVariant(key='mainline', label='主线龙头'),
+    RadarVariant(key='all_market', label='全市场'),
 )
 
 LIMIT_LADDER_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant("by_height", "按高度"),
-    RadarVariant("by_sector", "按板块"),
+    RadarVariant(key='by_height', label='按高度'),
+    RadarVariant(key='by_sector', label='按板块'),
 )
 
 DEFAULT_SCREEN_TASK_VARIANT = "scheduled_post_close"
@@ -265,11 +218,11 @@ def full_refresh_options_for_card(card_id: str) -> tuple[RadarRefreshOption, ...
     if card_id not in CARD_REFRESH_OPTIONS:
         return ()
     return (
-        RadarRefreshOption(1, "每次全量"),
-        RadarRefreshOption(2, "每2次"),
-        RadarRefreshOption(3, "每3次"),
-        RadarRefreshOption(5, "每5次"),
-        RadarRefreshOption(10, "每10次"),
+        RadarRefreshOption(ms=1, label='每次全量'),
+        RadarRefreshOption(ms=2, label='每2次'),
+        RadarRefreshOption(ms=3, label='每3次'),
+        RadarRefreshOption(ms=5, label='每5次'),
+        RadarRefreshOption(ms=10, label='每10次'),
     )
 
 

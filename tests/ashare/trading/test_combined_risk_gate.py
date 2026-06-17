@@ -6,7 +6,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot
 from vnpy_ashare.trading.risk.combined import (
     compute_actual_position_pct,

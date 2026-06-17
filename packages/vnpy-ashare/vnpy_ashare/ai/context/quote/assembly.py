@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any
 
 from vnpy_ashare.ai.context.quote.format import format_quote_summary
@@ -71,14 +74,13 @@ DEFAULT_FALLBACK_NAME = "科大讯飞"
 DEFAULT_FALLBACK_VT_SYMBOL = "002230.SZSE"
 
 
-@dataclass(frozen=True)
-class StockBinding:
+class StockBinding(FrozenModel):
     """快捷动作绑定的单票标识（symbol / vt_symbol / 展示名）。"""
 
-    symbol: str
-    exchange_cn: str
-    name: str
-    vt_symbol: str
+    symbol: str = Field(description="六位股票代码")
+    exchange_cn: str = Field(description="exchange cn")
+    name: str = Field(description="名称")
+    vt_symbol: str = Field(description="VeighNa 合约代码")
 
     @property
     def title(self) -> str:

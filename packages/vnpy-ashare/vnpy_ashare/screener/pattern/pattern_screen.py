@@ -6,14 +6,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any
+
+from pydantic import Field
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
@@ -46,12 +48,11 @@ _PATTERN_LABELS: dict[str, str] = {
 }
 
 
-@dataclass(frozen=True)
-class PatternScreenInput:
+class PatternScreenInput(FrozenModel):
     """形态选股请求（pattern 可为 id 或中文别名）。"""
 
-    pattern: str
-    top_n: int = 20
+    pattern: str = Field(description="形态 id 或中文别名")
+    top_n: int = Field(default=20, description="返回条数上限")
 
 
 def normalize_pattern_id(name: str) -> str:

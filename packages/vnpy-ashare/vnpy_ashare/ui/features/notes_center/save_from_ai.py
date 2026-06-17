@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from collections.abc import Sequence
-from dataclasses import dataclass
 from typing import Protocol
 
 from vnpy.trader.constant import Exchange
@@ -17,11 +20,10 @@ from vnpy_ashare.ui.features.stock_analysis.save_report_dialog import SaveAnalys
 from vnpy_common.ai.access import get_ai_context
 
 
-@dataclass(frozen=True)
-class ContextStock:
-    symbol: str
-    exchange: str
-    name: str
+class ContextStock(FrozenModel):
+    symbol: str = Field(description="六位股票代码")
+    exchange: str = Field(description="交易所代码")
+    name: str = Field(description="名称")
 
     @property
     def vt_symbol(self) -> str:

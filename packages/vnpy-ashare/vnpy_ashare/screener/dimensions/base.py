@@ -2,23 +2,24 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.screener.dimensions.scoring import blended_score, rank_score
 
 
-@dataclass
-class DimensionHit:
+class DimensionHit(MutableModel):
     """单维度命中记录。"""
 
-    vt_symbol: str
-    dimension_id: str
-    label: str
-    weight: float
-    score: float
-    reason: str
-    row: dict[str, Any]
+    vt_symbol: str = Field(description="标的 vt_symbol")
+    dimension_id: str = Field(description="维度标识")
+    label: str = Field(description="维度展示名")
+    weight: float = Field(description="维度权重")
+    score: float = Field(description="维度得分")
+    reason: str = Field(description="命中原因")
+    row: dict[str, Any] = Field(description="原始行情行")
 
 
 def quote_hits(

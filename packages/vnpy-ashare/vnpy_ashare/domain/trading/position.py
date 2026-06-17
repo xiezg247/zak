@@ -2,29 +2,30 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.signal_snapshot import SignalKind, SignalSnapshot
 
 PositionSource = Literal["manual", "gateway", "paper"]
 
 
-@dataclass(frozen=True)
-class PositionRecord:
+class PositionRecord(FrozenModel):
     """zak.db 持仓行（投研记账）。"""
 
-    symbol: str
-    exchange: str
-    name: str
-    cost_price: float
-    volume: int
-    buy_date: str
-    notes: str = ""
-    source: PositionSource = "manual"
-    plan_pct: float | None = None
+    symbol: str = Field(description="六位股票代码")
+    exchange: str = Field(description="交易所代码")
+    name: str = Field(description="证券简称")
+    cost_price: float = Field(description="持仓成本价")
+    volume: int = Field(description="持仓数量（股）")
+    buy_date: str = Field(description="买入日期 YYYY-MM-DD")
+    notes: str = Field(default="", description="备注")
+    source: PositionSource = Field(default="manual", description="持仓来源：manual/gateway/paper")
+    plan_pct: float | None = Field(default=None, description="计划仓位比例（%）")
 
     @property
     def vt_symbol(self) -> str:
@@ -35,24 +36,23 @@ class PositionRecord:
         return f"{self.cost_price}:{self.volume}:{self.buy_date}"
 
 
-@dataclass(frozen=True)
-class PositionSnapshot:
-    vt_symbol: str
-    name: str
-    cost_price: float
-    volume: int
-    buy_date: str
-    source: PositionSource
-    last_price: float | None
-    market_value: float | None
-    unrealized_pnl: float | None
-    unrealized_pnl_pct: float | None
-    exit_signal: SignalKind
-    signal_snapshot: SignalSnapshot | None
-    t1_locked: bool
-    exit_ref_price: float | None
-    dist_exit_pct: float | None
-    warnings: tuple[str, ...]
+class PositionSnapshot(FrozenModel):
+    vt_symbol: str = Field(description="VeighNa 合约代码")
+    name: str = Field(description="证券简称")
+    cost_price: float = Field(description="持仓成本价")
+    volume: int = Field(description="持仓数量（股）")
+    buy_date: str = Field(description="买入日期")
+    source: PositionSource = Field(description="持仓来源")
+    last_price: float | None = Field(description="最新价")
+    market_value: float | None = Field(description="持仓市值")
+    unrealized_pnl: float | None = Field(description="浮动盈亏")
+    unrealized_pnl_pct: float | None = Field(description="浮动盈亏比例（%）")
+    exit_signal: SignalKind = Field(description="策略退出信号")
+    signal_snapshot: SignalSnapshot | None = Field(description="完整策略信号快照")
+    t1_locked: bool = Field(description="是否 T+1 锁定不可卖")
+    exit_ref_price: float | None = Field(description="退出参考价")
+    dist_exit_pct: float | None = Field(description="现价距退出参考价（%）")
+    warnings: tuple[str, ...] = Field(description="信号警告列表")
 
     @property
     def t1_status_label(self) -> str:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.config.preferences.strategy_profile import load_strategy_profile_id
@@ -59,7 +58,7 @@ def apply_overnight_exit_overlay(
         )
         exit_signal = "sell"
     elif evaluation.warnings and base_signal is not None:
-        base_signal = replace(base_signal, warnings=merged_warnings)
+        base_signal = base_signal.model_copy(update={"warnings": merged_warnings})
 
     return PositionSnapshot(
         vt_symbol=snapshot.vt_symbol,

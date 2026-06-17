@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any, Literal
 
 from vnpy_ashare.domain.time.china import format_china_datetime
@@ -65,18 +68,17 @@ _AMOUNT_FLOOR = 1e12
 _FEAR_GREED_OVERHEAT = 85.0
 
 
-@dataclass(frozen=True)
-class EmotionCycleSnapshot:
-    stage: EmotionStage
-    stage_label: str
-    position_pct_min: float
-    position_pct_max: float
-    position_factor: float
-    allowed_modes: tuple[str, ...]
-    allow_new_positions: bool
-    warnings: tuple[str, ...]
-    inputs: dict[str, Any]
-    updated_at: str
+class EmotionCycleSnapshot(FrozenModel):
+    stage: EmotionStage = Field(description="情绪阶段")
+    stage_label: str = Field(description="阶段中文标签")
+    position_pct_min: float = Field(description="建议仓位下限（0–1）")
+    position_pct_max: float = Field(description="建议仓位上限（0–1）")
+    position_factor: float = Field(description="仓位系数（0–1）")
+    allowed_modes: tuple[str, ...] = Field(description="允许的买点模式")
+    allow_new_positions: bool = Field(description="是否允许新开仓")
+    warnings: tuple[str, ...] = Field(description="风险提示列表")
+    inputs: dict[str, Any] = Field(description="判定输入因子")
+    updated_at: str = Field(description="更新时间")
 
     @property
     def limit_up_count(self) -> int:
@@ -170,7 +172,7 @@ def classify_emotion_cycle(inputs: EmotionCycleInputs) -> EmotionCycleSnapshot:
         allowed_modes=tuple(modes),
         allow_new_positions=stage not in {"recession", "ice"},
         warnings=tuple(warnings),
-        inputs=inputs.as_dict(),
+        inputs=inputs.model_dump(),
         updated_at=updated_at,
     )
 

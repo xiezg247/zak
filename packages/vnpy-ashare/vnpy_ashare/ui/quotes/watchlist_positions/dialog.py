@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from datetime import datetime
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -19,13 +22,12 @@ from vnpy_ashare.trading.risk.position_size import (
 _COST_PRICE_PLACES = 4
 
 
-@dataclass(frozen=True)
-class PositionFormData:
-    cost_price: float
-    volume: int
-    buy_date: str
-    notes: str
-    plan_pct: float | None = None
+class PositionFormData(FrozenModel):
+    cost_price: float = Field(description="持仓成本价")
+    volume: int = Field(description="持仓数量（股）")
+    buy_date: str = Field(description="买入日期")
+    notes: str = Field(description="备注")
+    plan_pct: float | None = Field(default=None, description="计划仓位比例（%）")
 
 
 class PositionEditDialog(QtWidgets.QDialog):

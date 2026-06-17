@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Literal
+
+from pydantic import Field
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 
 SignalKind = Literal["buy", "sell", "hold", "na"]
 
@@ -40,32 +45,31 @@ _KLINE_WARNING_MARKERS = ("K 线不足", "暂无足够 K 线", "下载日 K")
 _SIGNAL_TRANSITION_TRACKED = frozenset({"buy", "sell", "hold"})
 
 
-@dataclass(frozen=True)
-class SignalSnapshot:
-    vt_symbol: str
-    strategy_id: str
-    as_of: str
-    signal: SignalKind
-    signal_label: str
-    signal_date: str | None
-    ref_buy_price: float | None
-    ref_sell_price: float | None
-    strength: float | None
-    reason_summary: str
-    reasons: tuple[str, ...]
-    warnings: tuple[str, ...]
-    last_close: float | None = None
-    action_ref_buy_price: float | None = None
-    action_ref_sell_price: float | None = None
-    fast_ma: float | None = None
-    slow_ma: float | None = None
-    volume_ratio_5d: float | None = None
-    ma_gap_pct: float | None = None
-    strength_cross: float | None = None
-    strength_alignment: float | None = None
-    strength_volume: float | None = None
-    strength_pattern: float | None = None
-    relative_index_pct: float | None = None
+class SignalSnapshot(FrozenModel):
+    vt_symbol: str = Field(description="VeighNa 合约代码")
+    strategy_id: str = Field(description="策略标识")
+    as_of: str = Field(description="信号计算截止交易日")
+    signal: SignalKind = Field(description="信号类型：buy/sell/hold/na")
+    signal_label: str = Field(description="信号展示文案")
+    signal_date: str | None = Field(description="信号触发日 YYYY-MM-DD")
+    ref_buy_price: float | None = Field(description="参考买入锚价")
+    ref_sell_price: float | None = Field(description="参考卖出锚价")
+    strength: float | None = Field(description="综合信号强度 0-100")
+    reason_summary: str = Field(description="理由摘要")
+    reasons: tuple[str, ...] = Field(description="详细理由列表")
+    warnings: tuple[str, ...] = Field(description="警告信息列表")
+    last_close: float | None = Field(default=None, description="最近收盘价")
+    action_ref_buy_price: float | None = Field(default=None, description="动作买入锚价")
+    action_ref_sell_price: float | None = Field(default=None, description="动作卖出锚价")
+    fast_ma: float | None = Field(default=None, description="快线均线值")
+    slow_ma: float | None = Field(default=None, description="慢线均线值")
+    volume_ratio_5d: float | None = Field(default=None, description="5 日量比")
+    ma_gap_pct: float | None = Field(default=None, description="快慢均线间距（%）")
+    strength_cross: float | None = Field(default=None, description="交叉强度分项")
+    strength_alignment: float | None = Field(default=None, description="均线排列强度分项")
+    strength_volume: float | None = Field(default=None, description="量能强度分项")
+    strength_pattern: float | None = Field(default=None, description="形态强度分项")
+    relative_index_pct: float | None = Field(default=None, description="相对基准指数超额（%）")
 
     @property
     def tooltip(self) -> str:
@@ -95,31 +99,10 @@ def signal_as_of_stale(snapshot: SignalSnapshot | None, *, bar_end_date: str | N
 
 def signal_snapshot_to_dict(snapshot: SignalSnapshot) -> dict[str, Any]:
     """序列化信号快照（供 AI 工具 JSON 返回）。"""
-    return {
-        "vt_symbol": snapshot.vt_symbol,
-        "strategy_id": snapshot.strategy_id,
-        "as_of": snapshot.as_of,
-        "signal": snapshot.signal,
-        "signal_label": snapshot.signal_label,
-        "signal_date": snapshot.signal_date,
-        "ref_buy_price": snapshot.ref_buy_price,
-        "ref_sell_price": snapshot.ref_sell_price,
-        "action_ref_buy_price": snapshot.action_ref_buy_price,
-        "action_ref_sell_price": snapshot.action_ref_sell_price,
-        "strength": snapshot.strength,
-        "reason_summary": snapshot.reason_summary,
-        "warnings": list(snapshot.warnings),
-        "last_close": snapshot.last_close,
-        "fast_ma": snapshot.fast_ma,
-        "slow_ma": snapshot.slow_ma,
-        "volume_ratio_5d": snapshot.volume_ratio_5d,
-        "ma_gap_pct": snapshot.ma_gap_pct,
-        "strength_cross": snapshot.strength_cross,
-        "strength_alignment": snapshot.strength_alignment,
-        "strength_volume": snapshot.strength_volume,
-        "strength_pattern": snapshot.strength_pattern,
-        "relative_index_pct": snapshot.relative_index_pct,
-    }
+    return snapshot.model_dump(
+        mode="json",
+        exclude={"reasons"},
+    )
 
 
 def detect_signal_transitions(

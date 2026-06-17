@@ -6,9 +6,10 @@ import logging
 import threading
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, cast
+
+from pydantic import ConfigDict, Field
 
 from apscheduler.events import EVENT_JOB_MAX_INSTANCES
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -16,6 +17,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs.bars import batch_download_universe_daily_bars, batch_fill_downloaded_stale_job
@@ -71,42 +73,45 @@ def _normalize_cron_hours(raw: str, *, default: str = "10,14") -> str:
     return ",".join(parts)
 
 
-@dataclass
-class JobRunRecord:
-    finished_at: str
-    job_id: str
-    job_name: str
-    success: bool
-    message: str
-    skipped: bool = False
-    started_at: str | None = None
-    running: bool = False
-    detail_lines: list[str] = field(default_factory=list)
+class JobRunRecord(MutableModel):
+    finished_at: str = Field(description="结束时间")
+    job_id: str = Field(description="任务 ID")
+    job_name: str = Field(description="任务名称")
+    success: bool = Field(description="是否成功")
+    message: str = Field(description="结果摘要")
+    skipped: bool = Field(default=False, description="是否跳过")
+    started_at: str | None = Field(default=None, description="开始时间")
+    running: bool = Field(default=False, description="是否执行中")
+    detail_lines: list[str] = Field(default_factory=list, description="详细日志行")
 
 
-@dataclass
-class JobStatus:
-    job_id: str
-    name: str
-    description: str
-    schedule_text: str
-    enabled: bool
-    running: bool = False
-    last_run_at: str | None = None
-    last_message: str | None = None
-    last_success: bool | None = None
-    next_run_at: str | None = None
+class JobStatus(MutableModel):
+    job_id: str = Field(description="任务 ID")
+    name: str = Field(description="任务名称")
+    description: str = Field(description="任务说明")
+    schedule_text: str = Field(description="调度说明文案")
+    enabled: bool = Field(description="是否启用")
+    running: bool = Field(default=False, description="是否执行中")
+    last_run_at: str | None = Field(default=None, description="上次执行时间")
+    last_message: str | None = Field(default=None, description="上次执行摘要")
+    last_success: bool | None = Field(default=None, description="上次是否成功")
+    next_run_at: str | None = Field(default=None, description="下次执行时间")
 
 
-@dataclass
-class _JobMeta:
-    job_id: str
-    name: str
-    description: str
-    runner: Callable[[], JobResult]
-    config_attr: str
-    schedule_builder: Callable[[Any], Any]
-    schedule_text_builder: Callable[[Any], str]
+class _JobMeta(MutableModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+        arbitrary_types_allowed=True,
+    )
+
+    job_id: str = Field(description="任务 ID")
+    name: str = Field(description="任务名称")
+    description: str = Field(description="任务说明")
+    runner: Callable[[], JobResult] = Field(description="任务执行函数")
+    config_attr: str = Field(description="SchedulerConfig 属性名")
+    schedule_builder: Callable[[Any], Any] = Field(description="构建 APScheduler trigger")
+    schedule_text_builder: Callable[[Any], str] = Field(description="构建调度说明文案")
 
 
 class TaskSchedulerManager:

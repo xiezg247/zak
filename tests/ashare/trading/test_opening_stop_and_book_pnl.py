@@ -7,7 +7,7 @@ from datetime import date
 from unittest.mock import patch
 
 from strategies.signals import build_signal_payload_for_strategy
-from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.misc.position_anomaly import position_anomaly_reasons
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss, is_within_opening_minutes

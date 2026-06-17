@@ -6,14 +6,16 @@ import importlib
 import os
 import sys
 import traceback
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+
+from pydantic import Field
 
 from vnpy.trader.constant import Interval
 from vnpy_ctastrategy.backtesting import BacktestingEngine, BacktestingMode
 
 from vnpy_ashare.config.vt_settings import reload_vnpy_settings
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_common.paths import PROJECT_ROOT, resolve_project_root
 
 _STRATEGY_PRIORITY = ("ashare_template.py",)
@@ -21,22 +23,21 @@ _WORKER_BOOTSTRAPPED = False
 _STRATEGY_SKIP = frozenset({"__init__", "registry", "signals"})
 
 
-@dataclass(frozen=True)
-class BacktestTask:
+class BacktestTask(FrozenModel):
     """可序列化的单标的回测任务。"""
 
-    vt_symbol: str
-    name: str
-    class_name: str
-    interval: str
-    start: str
-    end: str
-    rate: float
-    slippage: float
-    size: int
-    pricetick: float
-    capital: float
-    setting: dict[str, Any]
+    vt_symbol: str = Field(description="VeighNa 合约代码")
+    name: str = Field(description="证券简称")
+    class_name: str = Field(description="策略类名")
+    interval: str = Field(description="K 线周期")
+    start: str = Field(description="回测起始日")
+    end: str = Field(description="回测结束日")
+    rate: float = Field(description="手续费率")
+    slippage: float = Field(description="滑点")
+    size: int = Field(description="合约乘数")
+    pricetick: float = Field(description="最小变动价位")
+    capital: float = Field(description="初始资金")
+    setting: dict[str, Any] = Field(description="策略参数字典")
 
 
 def batch_backtest_max_workers(*, item_count: int) -> int:

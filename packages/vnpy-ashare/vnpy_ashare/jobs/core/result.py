@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import datetime
 
+from pydantic import Field
 
-@dataclass
-class JobResult:
-    success: bool
-    message: str
-    skipped: bool = False
-    finished_at: datetime = field(default_factory=datetime.now)
+from vnpy_ashare.domain.base import MutableModel
+
+
+class JobResult(MutableModel):
+    success: bool = Field(description="任务是否成功")
+    message: str = Field(description="结果说明")
+    skipped: bool = Field(default=False, description="是否跳过执行")
+    finished_at: datetime = Field(default_factory=datetime.now, description="完成时间")

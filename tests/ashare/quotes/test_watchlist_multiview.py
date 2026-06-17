@@ -131,8 +131,8 @@ class WatchlistMultiViewLoaderTests(unittest.TestCase):
 
 class WatchlistMultiViewEnrichTests(unittest.TestCase):
     def test_enrich_signal_position_sector(self) -> None:
-        from vnpy_ashare.domain.position_snapshot import PositionSnapshot
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.domain.trading.position import PositionSnapshot
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
         from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem
         from vnpy_ashare.quotes.watchlist_multiview.enrich import enrich_multiview_rows
 
@@ -200,8 +200,8 @@ class WatchlistMultiViewEnrichTests(unittest.TestCase):
 
 class WatchlistMultiViewSummaryTests(unittest.TestCase):
     def test_build_board_summary(self) -> None:
-        from vnpy_ashare.domain.position_snapshot import PositionSnapshot
-        from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.domain.trading.position import PositionSnapshot
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
         from vnpy_ashare.quotes.watchlist_multiview.summary import build_multiview_board_summary
 
         rows = (

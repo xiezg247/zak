@@ -6,9 +6,12 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
@@ -35,35 +38,33 @@ CREATE INDEX IF NOT EXISTS idx_backtest_runs_batch ON backtest_runs(batch_id);
 """
 
 
-@dataclass
-class BatchBacktestSession:
-    batch_id: str
-    strategy: str
-    start_date: str
-    end_date: str
-    row_count: int
-    success_count: int
-    error_count: int
-    source: str
-    created_at: str
+class BatchBacktestSession(MutableModel):
+    batch_id: str = Field(description="批量回测批次 ID")
+    strategy: str = Field(description="策略类名")
+    start_date: str = Field(description="回测起始日")
+    end_date: str = Field(description="回测结束日")
+    row_count: int = Field(description="总行数")
+    success_count: int = Field(description="成功数")
+    error_count: int = Field(description="失败数")
+    source: str = Field(description="来源标识")
+    created_at: str = Field(description="创建时间")
 
 
-@dataclass
-class BacktestRunRecord:
-    id: str
-    vt_symbol: str
-    strategy: str
-    interval: str
-    start_date: str
-    end_date: str
-    total_return: float | None
-    max_drawdown: float | None
-    sharpe_ratio: float | None
-    trade_count: int | None
-    source: str
-    batch_id: str | None
-    raw_statistics: dict[str, Any]
-    created_at: str
+class BacktestRunRecord(MutableModel):
+    id: str = Field(description="记录主键")
+    vt_symbol: str = Field(description="VeighNa 合约代码")
+    strategy: str = Field(description="策略类名")
+    interval: str = Field(description="K 线周期")
+    start_date: str = Field(description="回测起始日")
+    end_date: str = Field(description="回测结束日")
+    total_return: float | None = Field(description="总收益率")
+    max_drawdown: float | None = Field(description="最大回撤")
+    sharpe_ratio: float | None = Field(description="夏普比率")
+    trade_count: int | None = Field(description="成交笔数")
+    source: str = Field(description="来源：single/batch")
+    batch_id: str | None = Field(description="批量回测批次 ID")
+    raw_statistics: dict[str, Any] = Field(description="原始统计 JSON")
+    created_at: str = Field(description="创建时间")
 
     def to_summary_dict(self) -> dict[str, Any]:
         """与 context_store BacktestSummary.to_dict() 对齐。"""

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -18,16 +21,15 @@ from vnpy_ashare.services.stock.profile import sync_disclosure_calendar
 from vnpy_ashare.storage.repositories.disclosure import list_disclosure_calendar, upsert_disclosure_rows
 
 
-@dataclass
-class EventsProfile:
-    ts_code: str
-    vt_symbol: str
-    disclosure: list[dict[str, str]] = field(default_factory=list)
-    dividends: list[dict[str, Any]] = field(default_factory=list)
-    share_float: list[dict[str, Any]] = field(default_factory=list)
-    announcements: list[dict[str, Any]] = field(default_factory=list)
-    upcoming_hints: list[str] = field(default_factory=list)
-    message: str = ""
+class EventsProfile(MutableModel):
+    ts_code: str = Field(description="Tushare 代码")
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    disclosure: list[dict[str, str]] = Field(default_factory=list, description="disclosure")
+    dividends: list[dict[str, Any]] = Field(default_factory=list, description="dividends")
+    share_float: list[dict[str, Any]] = Field(default_factory=list, description="share float")
+    announcements: list[dict[str, Any]] = Field(default_factory=list, description="announcements")
+    upcoming_hints: list[str] = Field(default_factory=list, description="upcoming hints")
+    message: str = Field(default="", description="说明信息")
 
 
 def _parse_yyyymmdd(text: str) -> datetime | None:

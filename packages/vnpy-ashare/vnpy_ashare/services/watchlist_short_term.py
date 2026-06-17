@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 
 from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -32,12 +35,11 @@ def ensure_short_term_observation_group(service: WatchlistService) -> tuple[str 
     return created, created is not None
 
 
-@dataclass(frozen=True)
-class ShortTermObservationBatchResult:
-    watchlist_added: int
-    group_added: int
-    skipped: int
-    group_created: bool
+class ShortTermObservationBatchResult(FrozenModel):
+    watchlist_added: int = Field(description="新增至自选数")
+    group_added: int = Field(description="新增至分组数")
+    skipped: int = Field(description="跳过数量")
+    group_created: bool = Field(description="是否新建分组")
 
 
 def add_rows_to_short_term_observation_group(
@@ -47,7 +49,12 @@ def add_rows_to_short_term_observation_group(
     """先确保在自选池，再写入「短线观察」分组。"""
     group_id, group_created = ensure_short_term_observation_group(service)
     if group_id is None:
-        return ShortTermObservationBatchResult(0, 0, len(rows), False)
+        return ShortTermObservationBatchResult(
+            watchlist_added=0,
+            group_added=0,
+            skipped=len(rows),
+            group_created=False,
+        )
 
     existing_members = service.group_member_keys(group_id)
     watchlist_added = group_added = skipped = 0

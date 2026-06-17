@@ -16,7 +16,7 @@ class SectorFlowSyncJobTests(unittest.TestCase):
         self._tmpdir = tempfile.TemporaryDirectory()
         self._db_path = Path(self._tmpdir.name) / "test.db"
         self._patch = mock.patch(
-            "vnpy_common.paths.get_app_db_path",
+            "vnpy_ashare.storage.connection._db_path",
             return_value=self._db_path,
         )
         self._patch.start()

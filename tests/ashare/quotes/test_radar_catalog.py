@@ -60,7 +60,7 @@ def test_card_variants_registry() -> None:
 
 
 def test_scenario_scores() -> None:
-    from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+    from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
     from vnpy_ashare.quotes.radar.radar_horizon_scenario import (
         ScenarioMetrics,
         bearish_score,

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any, Literal
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
@@ -20,32 +23,30 @@ _MODE_LABELS: dict[EntryMode, str] = {
 }
 
 
-@dataclass(frozen=True)
-class EntryModeScore:
-    mode: EntryMode
-    label: str
-    score: float
-    reasons: tuple[str, ...]
+class EntryModeScore(FrozenModel):
+    mode: EntryMode = Field(description="模式")
+    label: str = Field(description="展示标签")
+    score: float = Field(description="得分")
+    reasons: tuple[str, ...] = Field(description="理由")
 
 
-@dataclass(frozen=True)
-class EntryModeEvaluation:
-    vt_symbol: str
-    name: str
-    symbol: str
-    board_tag: str
-    change_pct: float | None
-    at_limit_board: bool
-    leader_tier: str
-    limit_times: float | None
-    recommended_mode: EntryMode | None
-    recommended_label: str
-    scores: tuple[EntryModeScore, ...]
-    emotion_stage: str
-    emotion_stage_label: str
-    allow_new_positions: bool
-    allowed_modes: tuple[str, ...]
-    warnings: tuple[str, ...]
+class EntryModeEvaluation(FrozenModel):
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    name: str = Field(description="名称")
+    symbol: str = Field(description="六位股票代码")
+    board_tag: str = Field(description="板块标签")
+    change_pct: float | None = Field(description="涨跌幅（%）")
+    at_limit_board: bool = Field(description="是否触及涨跌停")
+    leader_tier: str = Field(description="龙头分层")
+    limit_times: float | None = Field(description="连板数")
+    recommended_mode: EntryMode | None = Field(description="推荐买点模式")
+    recommended_label: str = Field(description="推荐模式标签")
+    scores: tuple[EntryModeScore, ...] = Field(description="各模式评分")
+    emotion_stage: str = Field(description="情绪阶段")
+    emotion_stage_label: str = Field(description="情绪阶段标签")
+    allow_new_positions: bool = Field(description="是否允许新开仓")
+    allowed_modes: tuple[str, ...] = Field(description="允许的买点模式")
+    warnings: tuple[str, ...] = Field(description="风险提示列表")
 
     def to_dict(self) -> dict[str, Any]:
         return {

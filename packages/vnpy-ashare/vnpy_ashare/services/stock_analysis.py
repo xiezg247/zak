@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 from typing import TYPE_CHECKING, Any, Literal
 
 from vnpy_ashare.ai.context import parse_stock_symbol
@@ -29,25 +32,24 @@ if TYPE_CHECKING:
 StockAnalysisScope = Literal["overview", "sector", "concept", "capital", "events", "holders", "financial"]
 
 
-@dataclass
-class StockAnalysisPayload:
-    vt_symbol: str
-    scope: StockAnalysisScope = "overview"
-    diagnose: dict[str, Any] = field(default_factory=dict)
-    technical: dict[str, Any] = field(default_factory=dict)
-    financial_bundle: FinancialBundle | None = None
-    financial_sync: FinancialSyncResult | None = None
-    sector: SectorProfile | None = None
-    valuation: ValuationProfile | None = None
-    moneyflow: MoneyflowProfile | None = None
-    concept: ConceptProfile | None = None
-    events: EventsProfile | None = None
-    holders: HolderProfile | None = None
-    valuation_history: list[ValuationRow] = field(default_factory=list)
-    relative_returns: dict[str, float | None] = field(default_factory=dict)
-    overview_dashboard: OverviewDashboard | None = None
-    quote_summary: dict[str, Any] = field(default_factory=dict)
-    warnings: list[str] = field(default_factory=list)
+class StockAnalysisPayload(MutableModel):
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    scope: StockAnalysisScope = Field(default="overview", description="scope")
+    diagnose: dict[str, Any] = Field(default_factory=dict, description="diagnose")
+    technical: dict[str, Any] = Field(default_factory=dict, description="technical")
+    financial_bundle: FinancialBundle | None = Field(default=None, description="financial bundle")
+    financial_sync: FinancialSyncResult | None = Field(default=None, description="financial sync")
+    sector: SectorProfile | None = Field(default=None, description="sector")
+    valuation: ValuationProfile | None = Field(default=None, description="valuation")
+    moneyflow: MoneyflowProfile | None = Field(default=None, description="moneyflow")
+    concept: ConceptProfile | None = Field(default=None, description="concept")
+    events: EventsProfile | None = Field(default=None, description="events")
+    holders: HolderProfile | None = Field(default=None, description="holders")
+    valuation_history: list[ValuationRow] = Field(default_factory=list, description="valuation history")
+    relative_returns: dict[str, float | None] = Field(default_factory=dict, description="relative returns")
+    overview_dashboard: OverviewDashboard | None = Field(default=None, description="overview dashboard")
+    quote_summary: dict[str, Any] = Field(default_factory=dict, description="quote summary")
+    warnings: list[str] = Field(default_factory=list, description="warnings")
 
 
 class StockAnalysisService(BaseService):

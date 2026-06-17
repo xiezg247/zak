@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 from typing import Any
 
 from vnpy_ashare.ai.context import parse_stock_symbol
@@ -10,12 +13,11 @@ from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.concept import fetch_stock_concepts
 
 
-@dataclass
-class ConceptProfile:
-    ts_code: str
-    vt_symbol: str
-    concepts: list[dict[str, Any]] = field(default_factory=list)
-    message: str = ""
+class ConceptProfile(MutableModel):
+    ts_code: str = Field(description="Tushare 代码")
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    concepts: list[dict[str, Any]] = Field(default_factory=list, description="concepts")
+    message: str = Field(default="", description="说明信息")
 
 
 def build_concept_profile(vt_symbol: str) -> ConceptProfile:

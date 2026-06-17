@@ -2,25 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.core.numbers import coerce_float
 from vnpy_ashare.storage.connection import connect
 
 
-@dataclass(frozen=True)
-class ValuationRow:
-    ts_code: str
-    trade_date: str
-    close: float | None
-    pe_ttm: float | None
-    pb: float | None
-    total_mv: float | None
-    circ_mv: float | None
-    turnover_rate: float | None
-    fetched_at: str
+class ValuationRow(FrozenModel):
+    ts_code: str = Field(description="Tushare 证券代码")
+    trade_date: str = Field(description="交易日 YYYYMMDD")
+    close: float | None = Field(description="收盘价")
+    pe_ttm: float | None = Field(description="市盈率 TTM")
+    pb: float | None = Field(description="市净率")
+    total_mv: float | None = Field(description="总市值")
+    circ_mv: float | None = Field(description="流通市值")
+    turnover_rate: float | None = Field(description="换手率")
+    fetched_at: str = Field(description="抓取时间 ISO")
 
 
 def _now_iso() -> str:

@@ -151,7 +151,7 @@ class VnpyTradingSkill(SkillTemplate):
     def get_trading_plan(self, trade_date: str | None = None) -> str:
         from datetime import datetime
 
-        from vnpy_ashare.domain.market_hours import CHINA_TZ
+        from vnpy_ashare.domain.time.market_hours import CHINA_TZ
         from vnpy_ashare.storage.repositories.trading_plans import load_active_trading_plan
 
         day = (trade_date or "").strip() or datetime.now(CHINA_TZ).date().isoformat()
@@ -225,7 +225,7 @@ class VnpyTradingSkill(SkillTemplate):
     ) -> str:
         from datetime import datetime, timedelta
 
-        from vnpy_ashare.domain.market_hours import CHINA_TZ
+        from vnpy_ashare.domain.time.market_hours import CHINA_TZ
         from vnpy_ashare.trading.journal.report import load_journal_report
 
         end = (end_date or "").strip() or datetime.now(CHINA_TZ).date().isoformat()

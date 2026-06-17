@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
@@ -14,12 +16,11 @@ class MarketQuotesLoadError(RuntimeError):
     """行情数据不可用。"""
 
 
-@dataclass(frozen=True)
-class MarketQuotesSnapshot:
-    rows: list[dict[str, Any]]
-    updated_at: str | None
-    total: int
-    source: str = "quote"
+class MarketQuotesSnapshot(FrozenModel):
+    rows: list[dict[str, Any]] = Field(description="行情行列表")
+    updated_at: str | None = Field(description="快照更新时间")
+    total: int = Field(description="有效行情条数")
+    source: str = Field(default="quote", description="数据来源标识")
 
 
 def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any, Literal
 
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
@@ -30,14 +33,13 @@ _DEFAULT_WEIGHTS: dict[str, float] = {
 _FOLLOWER_MIN_SCORE = 35.0
 
 
-@dataclass(frozen=True)
-class LeaderScoredRow:
-    row: dict[str, Any]
-    leader_score: float
-    leader_tier: LeaderTier
-    limit_times: float
-    sector_axis: str = ""
-    sector_name: str = ""
+class LeaderScoredRow(FrozenModel):
+    row: dict[str, Any] = Field(description="原始行情行")
+    leader_score: float = Field(description="龙头评分")
+    leader_tier: LeaderTier = Field(description="龙头分层")
+    limit_times: float = Field(description="连板数")
+    sector_axis: str = Field(default="", description="sector axis")
+    sector_name: str = Field(default="", description="sector name")
 
 
 def leader_tier_label(tier: str) -> str:

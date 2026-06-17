@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal
+
+from pydantic import Field
 
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.watchlist_signal import (
@@ -11,6 +12,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_watchlist_signal_config,
     save_watchlist_signal_config,
 )
+from vnpy_ashare.domain.base import FrozenModel
 
 StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
 
@@ -18,14 +20,13 @@ STRATEGY_PROFILE_KEY = "trading/strategy_profile"
 DEFAULT_STRATEGY_PROFILE: StrategyProfileId = "medium_watch"
 
 
-@dataclass(frozen=True)
-class StrategyProfileSpec:
-    profile_id: StrategyProfileId
-    title: str
-    signal_class_name: str
-    fast_window: int
-    slow_window: int
-    transition_hint: str = ""
+class StrategyProfileSpec(FrozenModel):
+    profile_id: StrategyProfileId = Field(description="策略画像标识")
+    title: str = Field(description="策略画像展示标题")
+    signal_class_name: str = Field(description="信号策略类名")
+    fast_window: int = Field(description="快线窗口")
+    slow_window: int = Field(description="慢线窗口")
+    transition_hint: str = Field(default="", description="切换提示说明")
 
 
 STRATEGY_PROFILES: tuple[StrategyProfileSpec, ...] = (

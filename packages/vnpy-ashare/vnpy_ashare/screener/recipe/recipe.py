@@ -6,8 +6,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Literal
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 
 from vnpy_ashare.screener.recipe.recipe_store import get_saved_recipe, list_saved_recipes
 
@@ -22,37 +25,34 @@ RECIPE_EMOTION_GATE_ONLY = "emotion_gate_only"
 RECIPE_POST_CLOSE_MULTI = "post_close_multi"
 
 
-@dataclass(frozen=True)
-class DimensionSpec:
+class DimensionSpec(FrozenModel):
     """配方内单个因子维度（权重参与 composite_score 加权）。"""
 
-    dimension_id: str
-    label: str
-    weight: float
+    dimension_id: str = Field(description="维度标识")
+    label: str = Field(description="维度展示名")
+    weight: float = Field(description="维度权重")
 
 
-@dataclass(frozen=True)
-class ScreenRecipe:
+class ScreenRecipe(FrozenModel):
     """多因子选股配方；``min_dimensions`` 为命中维度数下限。"""
 
-    recipe_id: str
-    name: str
-    trigger_kind: TriggerKind
-    dimensions: tuple[DimensionSpec, ...]
-    top_n: int = 20
-    pool_size: int = 50
-    min_dimensions: int = 1
-    builtin: bool = True
+    recipe_id: str = Field(description="配方 id")
+    name: str = Field(description="配方名称")
+    trigger_kind: TriggerKind = Field(description="触发类型（盘中/盘后）")
+    dimensions: tuple[DimensionSpec, ...] = Field(description="维度规格列表")
+    top_n: int = Field(default=20, description="返回条数上限")
+    pool_size: int = Field(default=50, description="候选池大小")
+    min_dimensions: int = Field(default=1, description="最低命中维度数")
+    builtin: bool = Field(default=True, description="是否为内置配方")
 
 
-@dataclass(frozen=True)
-class RecipeCatalogEntry:
+class RecipeCatalogEntry(FrozenModel):
     """配方目录项（内置 / 用户保存）。"""
 
-    recipe_id: str
-    display_name: str
-    trigger_kind: TriggerKind
-    builtin: bool
+    recipe_id: str = Field(description="配方 id")
+    display_name: str = Field(description="展示名称")
+    trigger_kind: TriggerKind = Field(description="触发类型（盘中/盘后）")
+    builtin: bool = Field(description="是否为内置配方")
 
 
 DIMENSION_CATALOG: dict[str, dict[str, Any]] = {
@@ -78,12 +78,12 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="盘中多因子",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("momentum", "动量", 0.28),
-            DimensionSpec("volume_ratio", "量比", 0.23),
-            DimensionSpec("sector_strength", "板块", 0.18),
-            DimensionSpec("concept_strength", "概念", 0.08),
-            DimensionSpec("turnover", "换手", 0.14),
-            DimensionSpec("volume_surge", "放量", 0.09),
+            DimensionSpec(dimension_id='momentum', label='动量', weight=0.28),
+            DimensionSpec(dimension_id='volume_ratio', label='量比', weight=0.23),
+            DimensionSpec(dimension_id='sector_strength', label='板块', weight=0.18),
+            DimensionSpec(dimension_id='concept_strength', label='概念', weight=0.08),
+            DimensionSpec(dimension_id='turnover', label='换手', weight=0.14),
+            DimensionSpec(dimension_id='volume_surge', label='放量', weight=0.09),
         ),
         top_n=20,
         pool_size=80,
@@ -94,13 +94,13 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="盘中激进",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("momentum", "动量", 0.25),
-            DimensionSpec("volume_ratio", "量比", 0.20),
-            DimensionSpec("intraday_breakout", "突破", 0.15),
-            DimensionSpec("moneyflow_intraday", "盘中资金", 0.15),
-            DimensionSpec("concept_strength", "概念", 0.10),
-            DimensionSpec("sector_strength", "板块", 0.10),
-            DimensionSpec("turnover", "换手", 0.05),
+            DimensionSpec(dimension_id='momentum', label='动量', weight=0.25),
+            DimensionSpec(dimension_id='volume_ratio', label='量比', weight=0.2),
+            DimensionSpec(dimension_id='intraday_breakout', label='突破', weight=0.15),
+            DimensionSpec(dimension_id='moneyflow_intraday', label='盘中资金', weight=0.15),
+            DimensionSpec(dimension_id='concept_strength', label='概念', weight=0.1),
+            DimensionSpec(dimension_id='sector_strength', label='板块', weight=0.1),
+            DimensionSpec(dimension_id='turnover', label='换手', weight=0.05),
         ),
         top_n=20,
         pool_size=80,
@@ -111,11 +111,11 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="极致短线·涨停",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("limit_board", "连板涨停", 0.35),
-            DimensionSpec("sector_strength", "板块", 0.25),
-            DimensionSpec("turnover", "换手", 0.20),
-            DimensionSpec("concept_strength", "概念", 0.12),
-            DimensionSpec("sentiment_gate", "环境", 0.08),
+            DimensionSpec(dimension_id='limit_board', label='连板涨停', weight=0.35),
+            DimensionSpec(dimension_id='sector_strength', label='板块', weight=0.25),
+            DimensionSpec(dimension_id='turnover', label='换手', weight=0.2),
+            DimensionSpec(dimension_id='concept_strength', label='概念', weight=0.12),
+            DimensionSpec(dimension_id='sentiment_gate', label='环境', weight=0.08),
         ),
         top_n=15,
         pool_size=60,
@@ -126,10 +126,10 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="极致短线·首板",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("first_board", "首板", 0.40),
-            DimensionSpec("concept_strength", "概念", 0.25),
-            DimensionSpec("sector_strength", "板块", 0.20),
-            DimensionSpec("turnover", "换手", 0.15),
+            DimensionSpec(dimension_id='first_board', label='首板', weight=0.4),
+            DimensionSpec(dimension_id='concept_strength', label='概念', weight=0.25),
+            DimensionSpec(dimension_id='sector_strength', label='板块', weight=0.2),
+            DimensionSpec(dimension_id='turnover', label='换手', weight=0.15),
         ),
         top_n=12,
         pool_size=50,
@@ -140,9 +140,9 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="20cm·弹性",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("cm20_elastic", "20cm弹性", 0.45),
-            DimensionSpec("concept_strength", "概念", 0.35),
-            DimensionSpec("turnover", "换手", 0.20),
+            DimensionSpec(dimension_id='cm20_elastic', label='20cm弹性', weight=0.45),
+            DimensionSpec(dimension_id='concept_strength', label='概念', weight=0.35),
+            DimensionSpec(dimension_id='turnover', label='换手', weight=0.2),
         ),
         top_n=15,
         pool_size=50,
@@ -153,9 +153,9 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="情绪观察",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("momentum", "动量", 0.40),
-            DimensionSpec("sector_strength", "板块", 0.35),
-            DimensionSpec("sentiment_gate", "环境", 0.25),
+            DimensionSpec(dimension_id='momentum', label='动量', weight=0.4),
+            DimensionSpec(dimension_id='sector_strength', label='板块', weight=0.35),
+            DimensionSpec(dimension_id='sentiment_gate', label='环境', weight=0.25),
         ),
         top_n=3,
         pool_size=60,
@@ -166,9 +166,9 @@ BUILTIN_RECIPES: dict[str, ScreenRecipe] = {
         name="盘后多因子",
         trigger_kind="post_close",
         dimensions=(
-            DimensionSpec("moneyflow", "资金", 0.45),
-            DimensionSpec("low_pe", "估值", 0.35),
-            DimensionSpec("momentum", "动量", 0.20),
+            DimensionSpec(dimension_id='moneyflow', label='资金', weight=0.45),
+            DimensionSpec(dimension_id='low_pe', label='估值', weight=0.35),
+            DimensionSpec(dimension_id='momentum', label='动量', weight=0.2),
         ),
         top_n=20,
         pool_size=50,

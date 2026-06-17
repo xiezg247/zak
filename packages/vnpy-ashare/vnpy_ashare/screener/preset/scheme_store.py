@@ -6,8 +6,11 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import Any
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
@@ -23,15 +26,14 @@ CREATE TABLE IF NOT EXISTS screener_schemes (
 """
 
 
-@dataclass
-class SavedScheme:
+class SavedScheme(MutableModel):
     """用户保存的选股方案。"""
 
-    id: str
-    name: str
-    config: dict[str, Any]
-    created_at: str
-    updated_at: str
+    id: str = Field(description="方案 id")
+    name: str = Field(description="方案名称")
+    config: dict[str, Any] = Field(description="方案配置")
+    created_at: str = Field(description="创建时间")
+    updated_at: str = Field(description="更新时间")
 
 
 @contextmanager

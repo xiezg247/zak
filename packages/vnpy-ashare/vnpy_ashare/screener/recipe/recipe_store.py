@@ -6,8 +6,11 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import Any, Literal
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
@@ -26,16 +29,15 @@ CREATE TABLE IF NOT EXISTS screener_recipes (
 """
 
 
-@dataclass
-class SavedRecipe:
+class SavedRecipe(MutableModel):
     """用户保存的多因子选股配方。"""
 
-    id: str
-    name: str
-    trigger_kind: TriggerKind
-    config: dict[str, Any]
-    created_at: str
-    updated_at: str
+    id: str = Field(description="配方 id")
+    name: str = Field(description="配方名称")
+    trigger_kind: TriggerKind = Field(description="触发类型（盘中/盘后）")
+    config: dict[str, Any] = Field(description="配方配置")
+    created_at: str = Field(description="创建时间")
+    updated_at: str = Field(description="更新时间")
 
 
 @contextmanager

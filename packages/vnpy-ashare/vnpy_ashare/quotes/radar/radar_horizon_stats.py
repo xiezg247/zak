@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
 
 
-@dataclass(frozen=True)
-class HorizonScanStats:
-    scanned_total: int
-    excluded_count: int
-    prefilter_total: int
-    refined_total: int
-    kline_missing: int
+
+class HorizonScanStats(FrozenModel):
+    scanned_total: int = Field(description="全市场扫描总数")
+    excluded_count: int = Field(description="排除标的数")
+    prefilter_total: int = Field(description="粗筛池数量")
+    refined_total: int = Field(description="精算数量")
+    kline_missing: int = Field(description="日 K 缺失数量")

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 import math
-from dataclasses import dataclass
 from typing import Any
 
 from vnpy_ashare.screener.data.market_benchmark import (
@@ -22,15 +25,14 @@ _WEIGHT_TURNOVER = 0.10
 PREDICT_HORIZON_DAYS = 5
 
 
-@dataclass(frozen=True)
-class BaselinePredictHit:
-    vt_symbol: str
-    score: float
-    p_up: float
-    relative_strength: float
-    change_pct: float
-    volume_ratio: float
-    turnover_rate: float
+class BaselinePredictHit(FrozenModel):
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    score: float = Field(description="得分")
+    p_up: float = Field(description="看涨概率（0–1）")
+    relative_strength: float = Field(description="相对强度（%）")
+    change_pct: float = Field(description="涨跌幅（%）")
+    volume_ratio: float = Field(description="量比")
+    turnover_rate: float = Field(description="换手率（%）")
 
 
 def _clamp(value: float, low: float, high: float) -> float:

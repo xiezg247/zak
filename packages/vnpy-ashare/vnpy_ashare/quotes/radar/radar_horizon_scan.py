@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.data.bar_access import iter_bar_overviews
@@ -77,13 +80,12 @@ def horizon_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
     return f"当前无符合「{card_title}」条件的标的（已扫描 {stats.scanned_total} 只）。"
 
 
-@dataclass(frozen=True)
-class HorizonScanResult:
-    variant: str
-    rows: tuple[RadarRow, ...]
-    stats: HorizonScanStats
-    strategy_key: str
-    computed_at: str
+class HorizonScanResult(FrozenModel):
+    variant: str = Field(description="变体标识")
+    rows: tuple[RadarRow, ...] = Field(description="数据行列表")
+    stats: HorizonScanStats = Field(description="扫描统计")
+    strategy_key: str = Field(description="策略配置键")
+    computed_at: str = Field(description="计算时间")
 
 
 def prefilter_horizon_universe(

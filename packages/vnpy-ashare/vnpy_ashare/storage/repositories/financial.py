@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.storage.connection import connect
 
 REPORT_TYPES: tuple[str, ...] = (
@@ -20,43 +22,41 @@ REPORT_TYPES: tuple[str, ...] = (
 )
 
 
-@dataclass
-class FinancialSyncMeta:
-    ts_code: str
-    last_sync_at: str
-    latest_end_date: str = ""
-    latest_ann_date: str = ""
-    sync_status: str = "ok"
-    error_message: str = ""
-    periods_count: int = 0
-    last_access_at: str = ""
+class FinancialSyncMeta(MutableModel):
+    ts_code: str = Field(description="Tushare 证券代码")
+    last_sync_at: str = Field(description="上次同步时间")
+    latest_end_date: str = Field(default="", description="最新报告期")
+    latest_ann_date: str = Field(default="", description="最新公告日")
+    sync_status: str = Field(default="ok", description="同步状态")
+    error_message: str = Field(default="", description="错误信息")
+    periods_count: int = Field(default=0, description="已同步期数")
+    last_access_at: str = Field(default="", description="上次访问时间")
 
 
-@dataclass
-class FinancialSnapshotRow:
-    ts_code: str
-    end_date: str
-    revenue: float | None = None
-    net_income: float | None = None
-    operate_profit: float | None = None
-    basic_eps: float | None = None
-    total_assets: float | None = None
-    total_liab: float | None = None
-    total_equity: float | None = None
-    ocf: float | None = None
-    icf: float | None = None
-    fcf_flow: float | None = None
-    free_cashflow: float | None = None
-    roe: float | None = None
-    gross_margin: float | None = None
-    net_margin: float | None = None
-    debt_ratio: float | None = None
-    current_ratio: float | None = None
-    revenue_yoy: float | None = None
-    net_income_yoy: float | None = None
-    roe_yoy: float | None = None
-    ocf_to_profit: float | None = None
-    computed_at: str = ""
+class FinancialSnapshotRow(MutableModel):
+    ts_code: str = Field(description="Tushare 证券代码")
+    end_date: str = Field(description="报告期截止日")
+    revenue: float | None = Field(default=None, description="营业收入")
+    net_income: float | None = Field(default=None, description="净利润")
+    operate_profit: float | None = Field(default=None, description="营业利润")
+    basic_eps: float | None = Field(default=None, description="基本每股收益")
+    total_assets: float | None = Field(default=None, description="总资产")
+    total_liab: float | None = Field(default=None, description="总负债")
+    total_equity: float | None = Field(default=None, description="股东权益")
+    ocf: float | None = Field(default=None, description="经营现金流")
+    icf: float | None = Field(default=None, description="投资现金流")
+    fcf_flow: float | None = Field(default=None, description="筹资现金流")
+    free_cashflow: float | None = Field(default=None, description="自由现金流")
+    roe: float | None = Field(default=None, description="净资产收益率")
+    gross_margin: float | None = Field(default=None, description="毛利率")
+    net_margin: float | None = Field(default=None, description="净利率")
+    debt_ratio: float | None = Field(default=None, description="资产负债率")
+    current_ratio: float | None = Field(default=None, description="流动比率")
+    revenue_yoy: float | None = Field(default=None, description="营收同比")
+    net_income_yoy: float | None = Field(default=None, description="净利润同比")
+    roe_yoy: float | None = Field(default=None, description="ROE 同比")
+    ocf_to_profit: float | None = Field(default=None, description="经营现金流/净利润")
+    computed_at: str = Field(default="", description="计算时间")
 
 
 def upsert_report(

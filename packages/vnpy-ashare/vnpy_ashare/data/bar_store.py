@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 import threading
-from dataclasses import dataclass
 from datetime import datetime
 
 from vnpy.trader.constant import Exchange, Interval
@@ -21,14 +24,13 @@ _overview_cache_lock = threading.Lock()
 _overview_by_interval: dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]] | None = None
 
 
-@dataclass(frozen=True)
-class PeriodBarOverview:
-    symbol: str
-    exchange: Exchange
-    period: str
-    start: datetime
-    end: datetime
-    count: int
+class PeriodBarOverview(FrozenModel):
+    symbol: str = Field(description="六位股票代码")
+    exchange: Exchange = Field(description="交易所代码")
+    period: str = Field(description="K 线周期")
+    start: datetime = Field(description="开始日期")
+    end: datetime = Field(description="结束日期")
+    count: int = Field(description="数量")
 
 
 def get_period_overview(

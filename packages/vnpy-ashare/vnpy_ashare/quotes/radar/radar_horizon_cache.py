@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 import json
 import sqlite3
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
@@ -54,17 +57,16 @@ def _connect():
         conn.close()
 
 
-@dataclass(frozen=True)
-class HorizonCacheEntry:
-    variant: str
-    rows: tuple[RadarRow, ...]
-    scanned_total: int
-    excluded_count: int
-    prefilter_total: int
-    refined_total: int
-    kline_missing: int
-    strategy_key: str
-    computed_at: str
+class HorizonCacheEntry(FrozenModel):
+    variant: str = Field(description="变体标识")
+    rows: tuple[RadarRow, ...] = Field(description="数据行列表")
+    scanned_total: int = Field(description="全市场扫描总数")
+    excluded_count: int = Field(description="排除标的数")
+    prefilter_total: int = Field(description="粗筛池数量")
+    refined_total: int = Field(description="精算数量")
+    kline_missing: int = Field(description="日 K 缺失数量")
+    strategy_key: str = Field(description="策略配置键")
+    computed_at: str = Field(description="计算时间")
 
 
 def get_horizon_cache(variant: str) -> HorizonCacheEntry | None:

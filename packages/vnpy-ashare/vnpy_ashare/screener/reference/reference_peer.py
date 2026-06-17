@@ -8,10 +8,12 @@ from __future__ import annotations
 import math
 import os
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from typing import Any
 
 from dotenv import load_dotenv
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
@@ -58,17 +60,16 @@ def env_default_reference_peer_top_n() -> int:
         return DEFAULT_TOP_N
 
 
-@dataclass
-class ReferencePeerRunResult:
+class ReferencePeerRunResult(MutableModel):
     """标杆对标选股结果（含步骤日志）。"""
 
-    reference_vt_symbol: str
-    reference_name: str
-    reference_industry: str
-    trade_date: str
-    rows: list[dict[str, Any]]
-    steps: list[str] = field(default_factory=list)
-    total_scanned: int = 0
+    reference_vt_symbol: str = Field(description="标杆股 vt_symbol")
+    reference_name: str = Field(description="标杆股简称")
+    reference_industry: str = Field(description="标杆股行业")
+    trade_date: str = Field(description="基本面数据交易日")
+    rows: list[dict[str, Any]] = Field(description="对标结果行")
+    steps: list[str] = Field(default_factory=list, description="执行步骤日志")
+    total_scanned: int = Field(default=0, description="扫描标的总数")
 
 
 def run_reference_peer_screen(

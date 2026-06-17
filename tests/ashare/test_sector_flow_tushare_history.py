@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from vnpy_ashare.domain.sector_flow import SectorFlowRow
+from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
 from vnpy_ashare.integrations.tushare.sector_moneyflow import fetch_sector_flow_history_from_tushare
 
 

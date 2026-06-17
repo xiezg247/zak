@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import Any
 
+from pydantic import Field
 
-@dataclass
-class ScreenerRunResult:
+from vnpy_ashare.domain.base import MutableModel
+
+
+class ScreenerRunResult(MutableModel):
     """单次选股执行结果。"""
 
-    rows: list[dict[str, Any]]
-    condition: str
-    updated_at: str | None
-    total_scanned: int
-    source: str
-    columns: list[tuple[str, str]] = field(default_factory=list)
+    rows: list[dict[str, Any]] = Field(description="选股结果行")
+    condition: str = Field(description="选股条件描述")
+    updated_at: str | None = Field(description="数据更新时间")
+    total_scanned: int = Field(description="扫描标的总数")
+    source: str = Field(description="数据来源标识")
+    columns: list[tuple[str, str]] = Field(default_factory=list, description="导出列定义")

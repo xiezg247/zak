@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from collections.abc import Mapping
-from dataclasses import dataclass
 
 from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
 
@@ -37,14 +40,13 @@ def sum_plan_pct(records: list[PositionRecord]) -> float | None:
     return round(sum(values), 4)
 
 
-@dataclass(frozen=True)
-class GroupPositionSummary:
-    group_id: str
-    position_count: int
-    actual_pct: float | None
-    plan_cap_pct: float | None
-    plan_pct_sum: float | None
-    over_cap: bool
+class GroupPositionSummary(FrozenModel):
+    group_id: str = Field(description="分组 ID")
+    position_count: int = Field(description="持仓数量")
+    actual_pct: float | None = Field(description="实际仓位占比（0–1）")
+    plan_cap_pct: float | None = Field(description="计划仓位上限（0–1）")
+    plan_pct_sum: float | None = Field(description="计划占比合计（0–1）")
+    over_cap: bool = Field(description="是否超出上限")
 
 
 def summarize_group_position(

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import threading
 import uuid
-from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Literal
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.screener.run.runner import ScreenerRequest
@@ -20,21 +23,20 @@ _lock = threading.Lock()
 _drafts: dict[str, ScreenerDraft] = {}
 
 
-@dataclass
-class ScreenerDraft:
+class ScreenerDraft(MutableModel):
     """待用户确认的选股草案（内存，带 TTL）。"""
 
-    id: str
-    natural_language: str
-    request: ScreenerRequest
-    summary: str
-    preset_label: str
-    source: str
-    confidence: Confidence
-    warnings: list[str]
-    status: DraftStatus
-    created_at: str
-    expires_at: str
+    id: str = Field(description="草案 id")
+    natural_language: str = Field(description="用户原始自然语言")
+    request: ScreenerRequest = Field(description="解析后的选股请求")
+    summary: str = Field(description="人类可读摘要")
+    preset_label: str = Field(description="preset 展示标签")
+    source: str = Field(description="数据来源标识")
+    confidence: Confidence = Field(description="解析置信度")
+    warnings: list[str] = Field(description="警告信息列表")
+    status: DraftStatus = Field(description="草案状态")
+    created_at: str = Field(description="创建时间")
+    expires_at: str = Field(description="过期时间")
 
 
 def _now() -> datetime:
@@ -65,7 +67,7 @@ def get_draft(draft_id: str) -> ScreenerDraft | None:
         if draft.status != "pending":
             return draft
         if _now() >= datetime.strptime(draft.expires_at, "%Y-%m-%d %H:%M:%S"):
-            expired = replace(draft, status="expired")
+            expired = draft.model_copy(update={"status": "expired"})
             _drafts[draft_id] = expired
             return expired
         return draft
@@ -78,9 +80,9 @@ def consume_draft(draft_id: str) -> ScreenerDraft | None:
         if draft is None or draft.status != "pending":
             return None
         if _now() >= datetime.strptime(draft.expires_at, "%Y-%m-%d %H:%M:%S"):
-            _drafts[draft_id] = replace(draft, status="expired")
+            _drafts[draft_id] = draft.model_copy(update={"status": "expired"})
             return None
-        confirmed = replace(draft, status="confirmed")
+        confirmed = draft.model_copy(update={"status": "confirmed"})
         _drafts[draft_id] = confirmed
         return confirmed
 
@@ -91,7 +93,7 @@ def cancel_draft(draft_id: str) -> bool:
         draft = _drafts.get(draft_id)
         if draft is None or draft.status != "pending":
             return False
-        _drafts[draft_id] = replace(draft, status="cancelled")
+        _drafts[draft_id] = draft.model_copy(update={"status": "cancelled"})
         return True
 
 

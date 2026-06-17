@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any
 
 from vnpy_ashare.config.preferences.trading_risk import (
@@ -12,16 +15,15 @@ from vnpy_ashare.config.preferences.trading_risk import (
 )
 
 
-@dataclass(frozen=True)
-class PositionSizeResult:
-    max_shares: int
-    max_loss_amount: float
-    per_trade_risk_pct: float
-    stop_loss_pct: float
-    cost_price: float
-    total_capital: float
-    volume_exceeds_suggestion: bool | None = None
-    requested_volume: int | None = None
+class PositionSizeResult(FrozenModel):
+    max_shares: int = Field(description="单笔建议最大股数")
+    max_loss_amount: float = Field(description="单笔最大亏损金额")
+    per_trade_risk_pct: float = Field(description="单笔风险占比（0–1）")
+    stop_loss_pct: float = Field(description="止损比例（0–1）")
+    cost_price: float = Field(description="成本价")
+    total_capital: float = Field(description="总资金")
+    volume_exceeds_suggestion: bool | None = Field(default=None, description="volume exceeds suggestion")
+    requested_volume: int | None = Field(default=None, description="requested volume")
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {

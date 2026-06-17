@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from dataclasses import replace
 from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
@@ -467,7 +466,7 @@ def incremental_refresh_radar_card_quotes(data: RadarCardData) -> RadarCardData:
     with screening_context_scope() as ctx:
         preload_screening_context_quotes(ctx)
         enriched = enrich_radar_rows(data.rows)
-    return replace(data, rows=enriched)
+    return data.model_copy(update={"rows": enriched})
 
 
 def load_radar_card(

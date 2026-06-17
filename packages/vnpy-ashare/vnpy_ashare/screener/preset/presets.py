@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal
+
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 
 SCREENER_CHANGE_TOP = "涨幅榜"
 SCREENER_TURNOVER = "换手率排行"
@@ -21,46 +24,30 @@ SCHEME_KIND_INDUSTRY = "industry"
 SourceKind = Literal["quote", "tushare"]
 
 
-@dataclass(frozen=True)
-class PresetDefinition:
+class PresetDefinition(FrozenModel):
     """内置选股方案元数据。
 
     ``source``：quote（Redis 行情）或 tushare；
     ``rule_kind``：rules 模块内的规则分支标识。
     """
 
-    name: str
-    source: SourceKind
-    rule_kind: str
-    description: str
+    name: str = Field(description="方案显示名")
+    source: SourceKind = Field(description="数据来源类型")
+    rule_kind: str = Field(description="规则分支标识")
+    description: str = Field(description="方案说明")
 
 
 BUILTIN_PRESETS: tuple[PresetDefinition, ...] = (
-    PresetDefinition(SCREENER_CHANGE_TOP, "quote", "change_top", "Redis 行情 · 涨幅排序"),
-    PresetDefinition(SCREENER_STRONG_UP, "quote", "strong_up", "Redis 行情 · 涨幅 ≥ 5%"),
-    PresetDefinition(SCREENER_TURNOVER, "quote", "turnover", "Redis 行情 · 换手率排序"),
-    PresetDefinition(SCREENER_VOLUME_RATIO, "quote", "volume_ratio", "Redis+Tushare · 量比排序"),
-    PresetDefinition(SCREENER_VOLUME_SURGE, "quote", "volume", "Redis 行情 · 成交量排序"),
-    PresetDefinition(SCREENER_CUSTOM, "quote", "custom", "Redis 行情 · 自定义区间"),
-    PresetDefinition(SCREENER_LOW_PE, "tushare", "low_pe", "Tushare daily_basic · PE TTM < 15"),
-    PresetDefinition(
-        SCREENER_LARGE_CAP,
-        "tushare",
-        "large_cap",
-        "Tushare daily_basic · 总市值 ≥ 50 亿",
-    ),
-    PresetDefinition(
-        SCREENER_MONEYFLOW_IN,
-        "tushare",
-        "moneyflow_in",
-        "Tushare moneyflow · 单日主力净流入 Top",
-    ),
-    PresetDefinition(
-        SCREENER_LIMIT_UP,
-        "tushare",
-        "limit_up",
-        "Tushare limit_list_d · 当日涨停",
-    ),
+    PresetDefinition(name=SCREENER_CHANGE_TOP, source='quote', rule_kind='change_top', description='Redis 行情 · 涨幅排序'),
+    PresetDefinition(name=SCREENER_STRONG_UP, source='quote', rule_kind='strong_up', description='Redis 行情 · 涨幅 ≥ 5%'),
+    PresetDefinition(name=SCREENER_TURNOVER, source='quote', rule_kind='turnover', description='Redis 行情 · 换手率排序'),
+    PresetDefinition(name=SCREENER_VOLUME_RATIO, source='quote', rule_kind='volume_ratio', description='Redis+Tushare · 量比排序'),
+    PresetDefinition(name=SCREENER_VOLUME_SURGE, source='quote', rule_kind='volume', description='Redis 行情 · 成交量排序'),
+    PresetDefinition(name=SCREENER_CUSTOM, source='quote', rule_kind='custom', description='Redis 行情 · 自定义区间'),
+    PresetDefinition(name=SCREENER_LOW_PE, source='tushare', rule_kind='low_pe', description='Tushare daily_basic · PE TTM < 15'),
+    PresetDefinition(name=SCREENER_LARGE_CAP, source='tushare', rule_kind='large_cap', description='Tushare daily_basic · 总市值 ≥ 50 亿'),
+    PresetDefinition(name=SCREENER_MONEYFLOW_IN, source='tushare', rule_kind='moneyflow_in', description='Tushare moneyflow · 单日主力净流入 Top'),
+    PresetDefinition(name=SCREENER_LIMIT_UP, source='tushare', rule_kind='limit_up', description='Tushare limit_list_d · 当日涨停'),
 )
 
 _PRESET_MAP = {item.name: item for item in BUILTIN_PRESETS}

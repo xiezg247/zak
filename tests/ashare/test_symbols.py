@@ -27,7 +27,7 @@ class SymbolConversionTests(unittest.TestCase):
         self.assertEqual(symbol_exchange_to_ts_code("600519", Exchange.SSE), "600519.SH")
 
     def test_stock_item_ts_code_property(self) -> None:
-        item = StockItem("600519", Exchange.SSE, "贵州茅台")
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         self.assertEqual(item.ts_code, "600519.SH")
         self.assertEqual(item.tickflow_symbol, "600519.SH")
 

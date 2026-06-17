@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from vnpy_ashare.domain.market_hours import CHINA_TZ
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.trading.signals.intraday_seal_time import (
     detect_seal_time_from_minute_bars,
     infer_prev_close_from_row,

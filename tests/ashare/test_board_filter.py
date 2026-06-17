@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.domain.board import matches_board
+from vnpy_ashare.domain.market.board import matches_board
 
 
 class BoardFilterTests(unittest.TestCase):

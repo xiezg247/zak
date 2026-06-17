@@ -9,9 +9,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.screener.data.data_source import (
     enrich_recipe_rows,
     fetch_fundamental_screening_rows,
@@ -40,16 +42,15 @@ from vnpy_ashare.screener.run.industry_screen import run_industry_screen
 from vnpy_ashare.screener.run.result import ScreenerRunResult
 
 
-@dataclass
-class ScreenerRequest:
+class ScreenerRequest(MutableModel):
     """选股请求；``scheme_id`` 非空时走已保存方案。"""
 
-    preset: str
-    top_n: int = 20
-    min_change_pct: float | None = None
-    max_change_pct: float | None = None
-    min_turnover: float | None = None
-    scheme_id: str | None = None
+    preset: str = Field(description="内置 preset 名称")
+    top_n: int = Field(default=20, description="返回条数上限")
+    min_change_pct: float | None = Field(default=None, description="最低涨幅（%）")
+    max_change_pct: float | None = Field(default=None, description="最高涨幅（%）")
+    min_turnover: float | None = Field(default=None, description="最低换手率（%）")
+    scheme_id: str | None = Field(default=None, description="已保存方案 id")
 
 
 def run_screener(request: ScreenerRequest) -> ScreenerRunResult:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import Literal, cast
 
 from vnpy.event import Event, EventEngine
@@ -64,7 +63,11 @@ def normalize_ai_action(data: AiActionRequest) -> AiActionRequest:
     assert isinstance(payload, AskAiRequest)
     if payload.action_id:
         return data
-    return replace(data, payload=replace(payload, action_id=data.action_id))
+    return data.model_copy(
+        update={
+            "payload": payload.model_copy(update={"action_id": data.action_id}),
+        },
+    )
 
 
 def put_ai_action(

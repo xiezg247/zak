@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 import time
-from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -39,25 +42,23 @@ _EARNINGS_TTL_DAYS = 1
 _SYNC_DELAY_SECONDS = 0.35
 
 
-@dataclass
-class FinancialSyncResult:
-    ts_code: str
-    vt_symbol: str
-    synced: bool
-    skipped: bool = False
-    message: str = ""
-    periods_written: int = 0
-    warnings: list[str] = field(default_factory=list)
+class FinancialSyncResult(MutableModel):
+    ts_code: str = Field(description="Tushare 代码")
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    synced: bool = Field(description="是否同步成功")
+    skipped: bool = Field(default=False, description="skipped")
+    message: str = Field(default="", description="说明信息")
+    periods_written: int = Field(default=0, description="periods written")
+    warnings: list[str] = Field(default_factory=list, description="warnings")
 
 
-@dataclass
-class FinancialBundle:
-    ts_code: str
-    vt_symbol: str
-    name: str
-    sync_meta: FinancialSyncMeta | None
-    snapshots: list[FinancialSnapshotRow]
-    reports: dict[str, list[dict[str, Any]]]
+class FinancialBundle(MutableModel):
+    ts_code: str = Field(description="Tushare 代码")
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    name: str = Field(description="名称")
+    sync_meta: FinancialSyncMeta | None = Field(description="同步元数据")
+    snapshots: list[FinancialSnapshotRow] = Field(description="财报快照列表")
+    reports: dict[str, list[dict[str, Any]]] = Field(description="原始报告")
 
 
 def _prior_year_end_date(end_date: str) -> str | None:

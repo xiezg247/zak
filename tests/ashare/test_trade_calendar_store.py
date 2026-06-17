@@ -6,7 +6,7 @@ import unittest
 from datetime import date, datetime
 from unittest.mock import patch
 
-from vnpy_ashare.domain.calendar import is_trading_day, last_trading_day
+from vnpy_ashare.domain.time.calendar import is_trading_day, last_trading_day
 from vnpy_ashare.storage.connection import get_meta, set_meta
 from vnpy_ashare.storage.repositories.trade_calendar import (
     TRADE_CAL_SYNCED_AT_KEY,

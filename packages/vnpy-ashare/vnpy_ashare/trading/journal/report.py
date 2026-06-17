@@ -2,31 +2,33 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 
 from vnpy_ashare.domain.trading.journal import TradeJournalEntry
 from vnpy_ashare.storage.repositories.trade_journal import query_trade_journal
 
 
-@dataclass(frozen=True)
-class JournalReport:
-    total_entries: int
-    buy_count: int
-    sell_count: int
-    on_plan_count: int
-    violation_count: int
-    off_plan_count: int
-    add_loss_count: int
-    float_loss_hold_count: int
-    win_count: int
-    loss_count: int
-    win_rate_pct: float | None
-    profit_loss_ratio: float | None
-    on_plan_ratio_pct: float | None
-    violation_ratio_pct: float | None
-    realized_pnl_total: float
-    avg_win: float | None
-    avg_loss: float | None
+class JournalReport(FrozenModel):
+    total_entries: int = Field(description="流水总条数")
+    buy_count: int = Field(description="买入次数")
+    sell_count: int = Field(description="卖出次数")
+    on_plan_count: int = Field(description="按计划交易次数")
+    violation_count: int = Field(description="违规交易次数")
+    off_plan_count: int = Field(description="计划外交易次数")
+    add_loss_count: int = Field(description="亏损加仓次数")
+    float_loss_hold_count: int = Field(description="浮亏持有次数")
+    win_count: int = Field(description="盈利卖出次数")
+    loss_count: int = Field(description="亏损卖出次数")
+    win_rate_pct: float | None = Field(description="胜率（%）")
+    profit_loss_ratio: float | None = Field(description="盈亏比")
+    on_plan_ratio_pct: float | None = Field(description="按计划交易占比（%）")
+    violation_ratio_pct: float | None = Field(description="违规交易占比（%）")
+    realized_pnl_total: float = Field(description="已实现盈亏合计")
+    avg_win: float | None = Field(description="平均盈利")
+    avg_loss: float | None = Field(description="平均亏损")
 
     def to_dict(self) -> dict[str, object]:
         return {

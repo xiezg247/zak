@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from vnpy.trader.constant import Exchange
 from vnpy.trader.utility import extract_vt_symbol
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 SUFFIX_TO_EXCHANGE: dict[str, Exchange] = {
     "SH": Exchange.SSE,
@@ -26,11 +27,10 @@ _VT_EXCHANGE_TO_SUFFIX: dict[str, str] = {
 }
 
 
-@dataclass
-class StockItem:
-    symbol: str
-    exchange: Exchange
-    name: str = ""
+class StockItem(MutableModel):
+    symbol: str = Field(description="六位股票代码")
+    exchange: Exchange = Field(description="VeighNa 交易所枚举")
+    name: str = Field(default="", description="证券简称")
 
     @property
     def vt_symbol(self) -> str:

@@ -2,31 +2,30 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
 
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
 from vnpy_ashare.screener.draft.nl_mapper import clamp_top_n, normalize_preset_name
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM, get_preset
 from vnpy_ashare.screener.run.runner import ScreenerRequest, resolve_preset_input
 
 
-@dataclass(frozen=True)
-class AutoScreenInput:
+class AutoScreenInput(FrozenModel):
     """Skill screen_by_condition 的结构化输入。"""
 
-    name: str
-    top_n: int = 20
-    min_change_pct: float | None = None
-    max_change_pct: float | None = None
-    min_turnover: float | None = None
+    name: str = Field(description="选股条件名称")
+    top_n: int = Field(default=20, description="返回条数上限")
+    min_change_pct: float | None = Field(default=None, description="最低涨幅（%）")
+    max_change_pct: float | None = Field(default=None, description="最高涨幅（%）")
+    min_turnover: float | None = Field(default=None, description="最低换手率（%）")
 
 
-@dataclass
-class AutoScreenResult:
+class AutoScreenResult(MutableModel):
     """解析结果：可直接执行 / 错误。"""
 
-    ok: bool
-    request: ScreenerRequest | None = None
-    error: str = ""
+    ok: bool = Field(description="是否解析成功")
+    request: ScreenerRequest | None = Field(default=None, description="解析后的选股请求")
+    error: str = Field(default="", description="错误信息")
 
 
 def resolve_auto_screen_request(data: AutoScreenInput) -> AutoScreenResult:

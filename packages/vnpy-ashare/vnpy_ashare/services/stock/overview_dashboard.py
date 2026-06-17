@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any, Literal
 
 from vnpy_ashare.ai.context import get_screening_results, parse_stock_symbol
@@ -21,35 +24,31 @@ OverviewJumpTarget = Literal["chart", "sector", "capital", "events", "holders", 
 AlertSeverity = Literal["info", "warn"]
 
 
-@dataclass(frozen=True)
-class DataReadinessItem:
-    key: str
-    label: str
-    status: ReadinessStatus
-    detail: str = ""
-    jump_target: OverviewJumpTarget | None = None
+class DataReadinessItem(FrozenModel):
+    key: str = Field(description="键名")
+    label: str = Field(description="展示标签")
+    status: ReadinessStatus = Field(description="状态")
+    detail: str = Field(default="", description="detail")
+    jump_target: OverviewJumpTarget | None = Field(default=None, description="jump target")
 
 
-@dataclass(frozen=True)
-class OverviewAlert:
-    text: str
-    severity: AlertSeverity = "info"
-    jump_target: OverviewJumpTarget | None = None
+class OverviewAlert(FrozenModel):
+    text: str = Field(description="文本内容")
+    severity: AlertSeverity = Field(default="info", description="severity")
+    jump_target: OverviewJumpTarget | None = Field(default=None, description="jump target")
 
 
-@dataclass(frozen=True)
-class ScreeningHit:
-    condition: str
-    rank: int
-    total: int
-    updated_at: str | None = None
+class ScreeningHit(FrozenModel):
+    condition: str = Field(description="条件")
+    rank: int = Field(description="排名")
+    total: int = Field(description="总数")
+    updated_at: str | None = Field(default=None, description="更新时间")
 
 
-@dataclass
-class OverviewDashboard:
-    readiness: list[DataReadinessItem] = field(default_factory=list)
-    alerts: list[OverviewAlert] = field(default_factory=list)
-    screening: ScreeningHit | None = None
+class OverviewDashboard(MutableModel):
+    readiness: list[DataReadinessItem] = Field(default_factory=list, description="readiness")
+    alerts: list[OverviewAlert] = Field(default_factory=list, description="alerts")
+    screening: ScreeningHit | None = Field(default=None, description="screening")
 
 
 def find_screening_hit(vt_symbol: str) -> ScreeningHit | None:
@@ -81,84 +80,54 @@ def _readiness_daily_bars(technical: dict[str, Any]) -> DataReadinessItem:
     last_close = technical.get("last_close")
     bars_used = int(technical.get("bars_used") or 0)
     if any("K 线" in item for item in warnings) or last_close is None:
-        return DataReadinessItem(
-            "daily_bars",
-            "日K",
-            "missing",
-            "请先下载日K",
-            "chart",
-        )
+        return DataReadinessItem(key='daily_bars', label='日K', status='missing', detail='请先下载日K', jump_target='chart')
     as_of = str(technical.get("as_of") or "—")
     if bars_used >= 60:
-        return DataReadinessItem("daily_bars", "日K", "ready", f"截至 {as_of}", "chart")
-    return DataReadinessItem(
-        "daily_bars",
-        "日K",
-        "partial",
-        f"仅 {bars_used} 根 · {as_of}",
-        "chart",
-    )
+        return DataReadinessItem(key='daily_bars', label='日K', status='ready', detail=f'截至 {as_of}', jump_target='chart')
+    return DataReadinessItem(key='daily_bars', label='日K', status='partial', detail=f'仅 {bars_used} 根 · {as_of}', jump_target='chart')
 
 
 def _readiness_financial(engine: Any, vt_symbol: str) -> DataReadinessItem:
     financial = getattr(engine, "financial_service", None)
     if financial is None:
-        return DataReadinessItem("financial", "财报", "missing", "服务不可用", "financial")
+        return DataReadinessItem(key='financial', label='财报', status='missing', detail='服务不可用', jump_target='financial')
     bundle = financial.get_bundle(vt_symbol)
     if bundle.snapshots:
         end_date = bundle.snapshots[0].end_date or "—"
-        return DataReadinessItem("financial", "财报", "ready", f"报告期 {end_date}", "financial")
+        return DataReadinessItem(key='financial', label='财报', status='ready', detail=f'报告期 {end_date}', jump_target='financial')
     if bundle.sync_meta is not None:
-        return DataReadinessItem("financial", "财报", "partial", "本地无快照", "financial")
-    return DataReadinessItem("financial", "财报", "missing", "请同步财报", "financial")
+        return DataReadinessItem(key='financial', label='财报', status='partial', detail='本地无快照', jump_target='financial')
+    return DataReadinessItem(key='financial', label='财报', status='missing', detail='请同步财报', jump_target='financial')
 
 
 def _readiness_valuation(ts_code: str) -> DataReadinessItem:
     if not ts_code:
-        return DataReadinessItem("valuation", "估值", "missing", "无法解析", "sector")
+        return DataReadinessItem(key='valuation', label='估值', status='missing', detail='无法解析', jump_target='sector')
     history_days = len(list_valuation_history(ts_code, limit=750))
     if history_days >= 120:
-        return DataReadinessItem("valuation", "估值", "ready", f"历史 {history_days} 日", "sector")
+        return DataReadinessItem(key='valuation', label='估值', status='ready', detail=f'历史 {history_days} 日', jump_target='sector')
     if history_days > 0:
-        return DataReadinessItem("valuation", "估值", "partial", f"样本 {history_days} 日", "sector")
-    return DataReadinessItem("valuation", "估值", "missing", "打开板块 Tab 同步", "sector")
+        return DataReadinessItem(key='valuation', label='估值', status='partial', detail=f'样本 {history_days} 日', jump_target='sector')
+    return DataReadinessItem(key='valuation', label='估值', status='missing', detail='打开板块 Tab 同步', jump_target='sector')
 
 
 def _readiness_moneyflow(vt_symbol: str) -> DataReadinessItem:
     if not _tushare_configured():
-        return DataReadinessItem(
-            "moneyflow",
-            "资金流",
-            "unconfigured",
-            "需 TUSHARE_TOKEN",
-            "capital",
-        )
+        return DataReadinessItem(key='moneyflow', label='资金流', status='unconfigured', detail='需 TUSHARE_TOKEN', jump_target='capital')
     profile = build_moneyflow_profile(vt_symbol, history_days=5)
     if profile.history:
         latest = profile.latest.trade_date if profile.latest else profile.history[0].trade_date
-        return DataReadinessItem(
-            "moneyflow",
-            "资金流",
-            "ready",
-            f"最新 {latest or '—'}",
-            "capital",
-        )
+        return DataReadinessItem(key='moneyflow', label='资金流', status='ready', detail=f'最新 {latest or '—'}', jump_target='capital')
     message = profile.message or "暂无数据"
     if "未配置" in message or "TUSHARE" in message.upper():
-        return DataReadinessItem("moneyflow", "资金流", "unconfigured", "需 TUSHARE_TOKEN", "capital")
-    return DataReadinessItem("moneyflow", "资金流", "missing", "暂无缓存", "capital")
+        return DataReadinessItem(key='moneyflow', label='资金流', status='unconfigured', detail='需 TUSHARE_TOKEN', jump_target='capital')
+    return DataReadinessItem(key='moneyflow', label='资金流', status='missing', detail='暂无缓存', jump_target='capital')
 
 
 def _readiness_holders() -> DataReadinessItem:
     if not _tushare_configured():
-        return DataReadinessItem(
-            "holders",
-            "股东",
-            "unconfigured",
-            "需 TUSHARE_TOKEN",
-            "holders",
-        )
-    return DataReadinessItem("holders", "股东", "partial", "切换 Tab 加载", "holders")
+        return DataReadinessItem(key='holders', label='股东', status='unconfigured', detail='需 TUSHARE_TOKEN', jump_target='holders')
+    return DataReadinessItem(key='holders', label='股东', status='partial', detail='切换 Tab 加载', jump_target='holders')
 
 
 def _disclosure_alerts(ts_code: str) -> list[OverviewAlert]:

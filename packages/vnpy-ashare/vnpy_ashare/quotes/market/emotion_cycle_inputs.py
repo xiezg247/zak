@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any
 
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
@@ -10,30 +13,16 @@ from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
 
-@dataclass(frozen=True)
-class EmotionCycleInputs:
-    limit_up_count: int
-    limit_down_count: int
-    up_ratio: float
-    total_amount: float
-    max_limit_times: int
-    limit_ladder_depth: int
-    index_above_ma5: bool | None = None
-    fear_greed_index: float | None = None
-    updated_at: str | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "limit_up_count": self.limit_up_count,
-            "limit_down_count": self.limit_down_count,
-            "up_ratio": round(self.up_ratio, 4),
-            "total_amount": self.total_amount,
-            "max_limit_times": self.max_limit_times,
-            "limit_ladder_depth": self.limit_ladder_depth,
-            "index_above_ma5": self.index_above_ma5,
-            "fear_greed_index": self.fear_greed_index,
-            "updated_at": self.updated_at,
-        }
+class EmotionCycleInputs(FrozenModel):
+    limit_up_count: int = Field(description="涨停家数")
+    limit_down_count: int = Field(description="跌停家数")
+    up_ratio: float = Field(description="上涨占比（0–1）")
+    total_amount: float = Field(description="成交额合计")
+    max_limit_times: int = Field(description="最高连板数")
+    limit_ladder_depth: int = Field(description="连板梯队层数")
+    index_above_ma5: bool | None = Field(default=None, description="大盘是否在5日均线上方")
+    fear_greed_index: float | None = Field(default=None, description="恐贪指数")
+    updated_at: str | None = Field(default=None, description="数据更新时间")
 
 
 def compute_limit_ladder_stats(limit_times_map: dict[str, float]) -> tuple[int, int]:

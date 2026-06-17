@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.domain.stock_note import StockNoteBundle
+from vnpy_ashare.domain.models.stock_note import StockNoteBundle
 from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.storage.connection import init_app_db
 

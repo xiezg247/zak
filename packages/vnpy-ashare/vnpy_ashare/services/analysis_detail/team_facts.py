@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import concurrent.futures
-from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
@@ -103,7 +102,7 @@ def _resolve_vt_symbol(symbol: str) -> str | None:
 
 
 def _metrics_to_dict(metrics: DiagnoseMetrics) -> dict[str, Any]:
-    data = asdict(metrics)
+    data = metrics.model_dump()
     return {key: value for key, value in data.items() if value is not None and value != ""}
 
 

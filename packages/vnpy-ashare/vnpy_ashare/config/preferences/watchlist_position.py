@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
@@ -12,6 +12,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_SLOW,
     WatchlistSignalConfig,
 )
+from vnpy_ashare.domain.base import FrozenModel
 
 POSITION_PANEL_ENABLED_KEY = "watchlist/position_panel/enabled"
 POSITION_PANEL_EXPANDED_KEY = "watchlist/position_panel/expanded"
@@ -23,12 +24,11 @@ POSITION_PANEL_DEFAULT_HEIGHT = 220
 POSITION_PANEL_COLLAPSED_HEIGHT = 32
 
 
-@dataclass(frozen=True)
-class WatchlistPositionConfig:
-    follow_signal: bool = True
-    class_name: str = DEFAULT_CLASS
-    fast_window: int = DEFAULT_FAST
-    slow_window: int = DEFAULT_SLOW
+class WatchlistPositionConfig(FrozenModel):
+    follow_signal: bool = Field(default=True, description="是否跟随信号区策略")
+    class_name: str = Field(default=DEFAULT_CLASS, description="策略类名")
+    fast_window: int = Field(default=DEFAULT_FAST, description="快线窗口")
+    slow_window: int = Field(default=DEFAULT_SLOW, description="慢线窗口")
 
     def normalized(self) -> WatchlistPositionConfig:
         supported = set(list_supported_signal_strategies())

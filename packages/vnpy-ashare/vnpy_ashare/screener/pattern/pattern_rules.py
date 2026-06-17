@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from vnpy.trader.object import BarData
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 
 
-@dataclass(frozen=True)
-class BarSeries:
-    closes: list[float]
-    highs: list[float]
-    lows: list[float]
-    volumes: list[float]
+class BarSeries(FrozenModel):
+    closes: list[float] = Field(description="收盘价序列")
+    highs: list[float] = Field(description="最高价序列")
+    lows: list[float] = Field(description="最低价序列")
+    volumes: list[float] = Field(description="成交量序列")
 
     @classmethod
     def from_bars(cls, bars: list[BarData]) -> BarSeries:
@@ -24,10 +24,9 @@ class BarSeries:
         )
 
 
-@dataclass(frozen=True)
-class PatternMatch:
-    score: float
-    hint: str
+class PatternMatch(FrozenModel):
+    score: float = Field(description="形态匹配得分")
+    hint: str = Field(description="形态匹配说明")
 
 
 def _ma(values: list[float], window: int) -> float | None:

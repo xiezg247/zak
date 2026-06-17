@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
 
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
+from vnpy_ashare.domain.base import FrozenModel
 
 PREFIX = "trading/risk"
 
@@ -24,17 +25,16 @@ def _coerce_float(value: object, *, default: float | None = None) -> float | Non
         return default
 
 
-@dataclass(frozen=True)
-class TradingRiskPrefs:
-    total_capital: float | None
-    per_trade_risk_pct: float
-    stop_loss_pct: float
-    daily_pnl_pct: float | None
-    realized_pnl_today: float | None
-    caution_daily_pct: float
-    halt_daily_pct: float
-    caution_float_pct: float
-    manual_halt: bool
+class TradingRiskPrefs(FrozenModel):
+    total_capital: float | None = Field(description="总资金")
+    per_trade_risk_pct: float = Field(description="单笔风险占比")
+    stop_loss_pct: float = Field(description="止损比例")
+    daily_pnl_pct: float | None = Field(description="当日盈亏比例")
+    realized_pnl_today: float | None = Field(description="当日已实现盈亏")
+    caution_daily_pct: float = Field(description="日亏警戒比例")
+    halt_daily_pct: float = Field(description="日亏熔断比例")
+    caution_float_pct: float = Field(description="浮亏警戒比例")
+    manual_halt: bool = Field(description="是否手动熔断")
 
     def normalized(self) -> TradingRiskPrefs:
         per_trade = self.per_trade_risk_pct

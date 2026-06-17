@@ -9,9 +9,11 @@ import json
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
 
@@ -30,18 +32,17 @@ CREATE INDEX IF NOT EXISTS idx_screener_runs_created ON screener_runs(created_at
 """
 
 
-@dataclass
-class ScreenerRunRecord:
+class ScreenerRunRecord(MutableModel):
     """单次选股运行记录。"""
 
-    id: str
-    condition: str
-    source: str
-    row_count: int
-    total_scanned: int
-    config: dict[str, Any]
-    rows: list[dict[str, Any]]
-    created_at: str
+    id: str = Field(description="运行记录 id")
+    condition: str = Field(description="选股条件描述")
+    source: str = Field(description="数据来源标识")
+    row_count: int = Field(description="结果行数")
+    total_scanned: int = Field(description="扫描标的总数")
+    config: dict[str, Any] = Field(description="运行配置元数据")
+    rows: list[dict[str, Any]] = Field(description="选股结果行")
+    created_at: str = Field(description="创建时间")
 
 
 @contextmanager

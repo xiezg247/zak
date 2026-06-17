@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.domain.signal_snapshot import (
+from vnpy_ashare.domain.trading.signal_snapshot import (
     SignalSnapshot,
     detect_signal_transitions,
     dist_anchor_exceeds_warn,

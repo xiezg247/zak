@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
@@ -37,17 +40,16 @@ RUN_OUTPUT_COLLAPSED_HEIGHT = 32
 TABLE_MIN_HEIGHT = 160
 
 
-@dataclass(frozen=True)
-class _CenterPanelSpec:
-    key: str
-    default_height: int
-    collapsed_height: int
+class _CenterPanelSpec(FrozenModel):
+    key: str = Field(description="键名")
+    default_height: int = Field(description="展开时默认高度")
+    collapsed_height: int = Field(description="折叠时高度")
 
 
 _CENTER_PANEL_SPECS: tuple[_CenterPanelSpec, ...] = (
-    _CenterPanelSpec("signal", SIGNAL_PANEL_DEFAULT_HEIGHT, SIGNAL_PANEL_COLLAPSED_HEIGHT),
-    _CenterPanelSpec("position", POSITION_PANEL_DEFAULT_HEIGHT, POSITION_PANEL_COLLAPSED_HEIGHT),
-    _CenterPanelSpec("run", RUN_OUTPUT_EXPANDED_HEIGHT, RUN_OUTPUT_COLLAPSED_HEIGHT),
+    _CenterPanelSpec(key='signal', default_height=SIGNAL_PANEL_DEFAULT_HEIGHT, collapsed_height=SIGNAL_PANEL_COLLAPSED_HEIGHT),
+    _CenterPanelSpec(key='position', default_height=POSITION_PANEL_DEFAULT_HEIGHT, collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT),
+    _CenterPanelSpec(key='run', default_height=RUN_OUTPUT_EXPANDED_HEIGHT, collapsed_height=RUN_OUTPUT_COLLAPSED_HEIGHT),
 )
 
 

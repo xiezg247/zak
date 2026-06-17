@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -84,14 +83,15 @@ def get_cached_tushare_factor_maps(*, force_refresh: bool = False) -> tuple[dict
 
 def merge_quote_snapshot(existing: QuoteSnapshot, incoming: QuoteSnapshot) -> QuoteSnapshot:
     """合并快照：实时字段用 incoming，日频因子在 incoming 缺失时保留 existing。"""
-    return replace(
-        incoming,
-        name=incoming.name or existing.name,
-        turnover_rate=incoming.turnover_rate if incoming.turnover_rate > 0 else existing.turnover_rate,
-        volume_ratio=incoming.volume_ratio if incoming.volume_ratio > 0 else existing.volume_ratio,
-        net_mf_amount=incoming.net_mf_amount if incoming.net_mf_amount != 0 else existing.net_mf_amount,
-        change_speed_5m=incoming.change_speed_5m if incoming.change_speed_5m != 0 else existing.change_speed_5m,
-        limit_times=incoming.limit_times if incoming.limit_times >= 1 else existing.limit_times,
+    return incoming.model_copy(
+        update={
+            "name": incoming.name or existing.name,
+            "turnover_rate": incoming.turnover_rate if incoming.turnover_rate > 0 else existing.turnover_rate,
+            "volume_ratio": incoming.volume_ratio if incoming.volume_ratio > 0 else existing.volume_ratio,
+            "net_mf_amount": incoming.net_mf_amount if incoming.net_mf_amount != 0 else existing.net_mf_amount,
+            "change_speed_5m": incoming.change_speed_5m if incoming.change_speed_5m != 0 else existing.change_speed_5m,
+            "limit_times": incoming.limit_times if incoming.limit_times >= 1 else existing.limit_times,
+        },
     )
 
 

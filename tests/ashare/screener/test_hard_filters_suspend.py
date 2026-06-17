@@ -6,7 +6,7 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
-from vnpy_ashare.domain.calendar import last_trading_day
+from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.screener.hard_filter_prefs import (
     HardFilterPrefs,
     default_hard_filter_prefs,

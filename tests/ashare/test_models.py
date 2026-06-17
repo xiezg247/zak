@@ -12,7 +12,7 @@ from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 
 class TestStockItem(unittest.TestCase):
     def test_vt_symbol(self) -> None:
-        item = StockItem("600519", Exchange.SSE, "贵州茅台")
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         self.assertEqual(item.vt_symbol, "600519.SSE")
         self.assertEqual(item.tickflow_symbol, "600519.SH")
 
@@ -30,7 +30,7 @@ class TestStockItem(unittest.TestCase):
 
 class BacktestRequestTest(unittest.TestCase):
     def test_vt_symbol_from_stock_item(self) -> None:
-        item = StockItem("600519", Exchange.SSE, "贵州茅台")
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
         req = BacktestRequest(
             vt_symbol=item.vt_symbol,
             source_page="自选",

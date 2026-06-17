@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import TYPE_CHECKING, Literal
 
 from vnpy_ashare.config.preferences.trading_risk import DEFAULT_STOP_LOSS_PCT, load_trading_risk_prefs
@@ -17,21 +20,19 @@ ExitSignal = Literal["buy", "sell", "hold", "na"]
 RuleStatus = Literal["triggered", "near", "clear"]
 
 
-@dataclass(frozen=True)
-class ExitRuleHit:
-    rule_id: str
-    label: str
-    status: RuleStatus
-    detail: str
+class ExitRuleHit(FrozenModel):
+    rule_id: str = Field(description="规则 ID")
+    label: str = Field(description="展示标签")
+    status: RuleStatus = Field(description="状态")
+    detail: str = Field(description="详情说明")
 
 
-@dataclass(frozen=True)
-class OvernightExitEvaluation:
-    signal: ExitSignal
-    ref_sell_price: float | None
-    rules: tuple[ExitRuleHit, ...]
-    warnings: tuple[str, ...]
-    reasons: tuple[str, ...]
+class OvernightExitEvaluation(FrozenModel):
+    signal: ExitSignal = Field(description="退出信号")
+    ref_sell_price: float | None = Field(description="参考卖出价")
+    rules: tuple[ExitRuleHit, ...] = Field(description="规则列表")
+    warnings: tuple[str, ...] = Field(description="风险提示列表")
+    reasons: tuple[str, ...] = Field(description="理由")
 
 
 def _quote_row(quote: QuoteSnapshot | None, *, vt_symbol: str) -> dict[str, object]:

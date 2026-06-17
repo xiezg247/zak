@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, cast
 
@@ -255,7 +254,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         if excess is None:
             return snapshot
 
-        return replace(snapshot, relative_index_pct=excess)
+        return snapshot.model_copy(update={"relative_index_pct": excess})
 
     def enrich_relative_index_batch(
         self,

@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories import trade_journal as journal_repo
 from vnpy_ashare.storage.repositories import trading_plans as plans_repo

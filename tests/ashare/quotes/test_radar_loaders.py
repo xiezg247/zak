@@ -357,7 +357,7 @@ def test_load_watchlist_intraday_fallback_rank(monkeypatch) -> None:
 
 
 def test_classify_scenario_hint_picks_highest_match(monkeypatch) -> None:
-    from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+    from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
     from vnpy_ashare.quotes.radar.radar_horizon_scenario import ScenarioMetrics, classify_scenario_hint
 
     snapshot = SignalSnapshot(
@@ -610,7 +610,7 @@ def test_build_radar_card_ai_prompt_watchlist() -> None:
 
 
 def test_transition_label() -> None:
-    from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+    from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
     from vnpy_ashare.quotes.radar.radar_signals import transition_label
 
     before = SignalSnapshot(

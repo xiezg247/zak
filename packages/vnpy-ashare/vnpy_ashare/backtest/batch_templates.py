@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 from datetime import timedelta
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.screener.batch.batch_actions import BatchBacktestParams
 from vnpy_ashare.screener.recipe.recipe import (
     RECIPE_CM20_ELASTIC,
@@ -14,14 +16,13 @@ from vnpy_ashare.screener.recipe.recipe import (
 )
 
 
-@dataclass(frozen=True)
-class BatchBacktestTemplate:
-    template_id: str
-    title: str
-    class_name: str
-    lookback_days: int
-    strategy_setting: dict[str, Any]
-    note: str = ""
+class BatchBacktestTemplate(FrozenModel):
+    template_id: str = Field(description="模板标识")
+    title: str = Field(description="展示标题")
+    class_name: str = Field(description="策略类名")
+    lookback_days: int = Field(description="回测区间天数")
+    strategy_setting: dict[str, Any] = Field(description="策略参数字典")
+    note: str = Field(default="", description="补充说明")
 
 
 _TEMPLATES: dict[str, BatchBacktestTemplate] = {
@@ -156,12 +157,13 @@ def apply_batch_backtest_template(
     else:
         setting = None
 
-    return replace(
-        params,
-        class_name=class_name,
-        start=start,
-        end=end,
-        strategy_setting=setting,
+    return params.model_copy(
+        update={
+            "class_name": class_name,
+            "start": start,
+            "end": end,
+            "strategy_setting": setting,
+        },
     )
 
 

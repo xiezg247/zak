@@ -4,23 +4,24 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.storage.connection import connect, init_app_db
 
 _MAX_ROWS = 500
 
 
-@dataclass(frozen=True)
-class NotifyDeliveryRecord:
-    id: str
-    event_type: str
-    channel: str
-    payload_json: str
-    status: str
-    error: str
-    created_at: str
+class NotifyDeliveryRecord(FrozenModel):
+    id: str = Field(description="记录主键")
+    event_type: str = Field(description="事件类型")
+    channel: str = Field(description="通知渠道")
+    payload_json: str = Field(description="payload JSON")
+    status: str = Field(description="投递状态")
+    error: str = Field(description="错误信息")
+    created_at: str = Field(description="创建时间")
 
 
 def append_notify_delivery_log(

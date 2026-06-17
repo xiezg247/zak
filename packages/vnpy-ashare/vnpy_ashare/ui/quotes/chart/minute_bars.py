@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from datetime import datetime
 from enum import Enum
 
@@ -30,17 +33,15 @@ class MinuteBarDiff(str, Enum):
     REPLACE = "replace"
 
 
-@dataclass(frozen=True)
-class OverviewFingerprint:
-    start: datetime
-    end: datetime
+class OverviewFingerprint(FrozenModel):
+    start: datetime = Field(description="开始日期")
+    end: datetime = Field(description="结束日期")
 
 
-@dataclass
-class MinuteBarChange:
-    diff: MinuteBarDiff
-    bars: list[BarData]
-    patch_from: int = 0
+class MinuteBarChange(MutableModel):
+    diff: MinuteBarDiff = Field(description="增量更新类型")
+    bars: list[BarData] = Field(description="合并后的 K 线序列")
+    patch_from: int = Field(default=0, description="尾部 patch 起始索引")
 
 
 def bar_values_equal(left: BarData, right: BarData) -> bool:
@@ -79,13 +80,13 @@ def compute_minute_bar_change(
     """对比合并前后序列，决定全量替换或尾部 patch。"""
     merged = merge_minute_bars(existing, incoming)
     if bars_list_equal(existing, merged):
-        return MinuteBarChange(MinuteBarDiff.NOOP, existing)
+        return MinuteBarChange(diff=MinuteBarDiff.NOOP, bars=existing)
 
     if not merged:
-        return MinuteBarChange(MinuteBarDiff.REPLACE, merged)
+        return MinuteBarChange(diff=MinuteBarDiff.REPLACE, bars=merged)
 
     if not existing:
-        return MinuteBarChange(MinuteBarDiff.REPLACE, merged)
+        return MinuteBarChange(diff=MinuteBarDiff.REPLACE, bars=merged)
 
     min_len = min(len(existing), len(merged))
     first_diff = min_len
@@ -95,24 +96,23 @@ def compute_minute_bar_change(
             break
 
     if first_diff == min_len and len(merged) == len(existing):
-        return MinuteBarChange(MinuteBarDiff.NOOP, existing)
+        return MinuteBarChange(diff=MinuteBarDiff.NOOP, bars=existing)
 
     if first_diff >= len(existing) - 1 and all(bar_values_equal(existing[index], merged[index]) for index in range(first_diff)):
-        return MinuteBarChange(MinuteBarDiff.TAIL_PATCH, merged, patch_from=first_diff)
+        return MinuteBarChange(diff=MinuteBarDiff.TAIL_PATCH, bars=merged, patch_from=first_diff)
 
-    return MinuteBarChange(MinuteBarDiff.REPLACE, merged)
+    return MinuteBarChange(diff=MinuteBarDiff.REPLACE, bars=merged)
 
 
-@dataclass
-class MinuteBarSession:
+class MinuteBarSession(MutableModel):
     """分 K 内存会话：缓存已渲染序列与本地 overview 指纹。"""
 
-    key: tuple[str, Exchange, str] | None = None
-    bars: list[BarData] = field(default_factory=list)
-    from_local: bool = False
-    overview: OverviewFingerprint | None = None
-    start_text: str = ""
-    end_text: str = ""
+    key: tuple[str, Exchange, str] | None = Field(default=None, description="会话键（代码、交易所、周期）")
+    bars: list[BarData] = Field(default_factory=list, description="缓存的 K 线序列")
+    from_local: bool = Field(default=False, description="是否来自本地数据库")
+    overview: OverviewFingerprint | None = Field(default=None, description="本地 overview 指纹")
+    start_text: str = Field(default="", description="起始时间展示文案")
+    end_text: str = Field(default="", description="结束时间展示文案")
 
     def reset(self) -> None:
         self.key = None
@@ -152,7 +152,7 @@ class MinuteBarSession:
         self.bars = list(bars)
         self.from_local = from_local
         if from_local and start is not None and end is not None:
-            self.overview = OverviewFingerprint(start, end)
+            self.overview = OverviewFingerprint(start=start, end=end)
             self.start_text = start.strftime("%Y-%m-%d")
             self.end_text = end.strftime("%Y-%m-%d %H:%M")
         else:

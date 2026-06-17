@@ -2,25 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.domain.symbols import StockItem
 
 from vnpy.trader.ui import QtCore, QtGui
-
-if TYPE_CHECKING:
-    from vnpy_ashare.domain.symbols import StockItem
 
 _INVALID_PARENT = QtCore.QModelIndex()
 _ParentIndex = QtCore.QModelIndex | QtCore.QPersistentModelIndex
 
 
-@dataclass
-class QuoteCell:
-    text: str = ""
-    sort_key: float | str = ""
-    color: str | None = None
-    stock_item: StockItem | None = None
-    tooltip: str | None = None
+class QuoteCell(MutableModel):
+    text: str = Field(default="", description="文本内容")
+    sort_key: float | str = Field(default="", description="排序键")
+    color: str | None = Field(default=None, description="单元格文字颜色")
+    stock_item: StockItem | None = Field(default=None, description="关联标的")
+    tooltip: str | None = Field(default=None, description="悬停提示")
 
 
 class QuoteTableModel(QtCore.QAbstractTableModel):
@@ -56,7 +54,15 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             self._ensure_row_widths()
             empty_row = [QuoteCell() for _ in range(len(self._headers))]
             for _ in range(len(self._rows), count):
-                self._rows.append([QuoteCell(cell.text, cell.sort_key, cell.color, cell.stock_item) for cell in empty_row])
+                self._rows.append([
+                    QuoteCell(
+                        text=cell.text,
+                        sort_key=cell.sort_key,
+                        color=cell.color,
+                        stock_item=cell.stock_item,
+                    )
+                    for cell in empty_row
+                ])
         self.endResetModel()
 
     def set_rows(self, rows: list[list[QuoteCell]]) -> None:

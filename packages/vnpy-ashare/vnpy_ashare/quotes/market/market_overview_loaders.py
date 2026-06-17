@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from typing import Any
 
 from vnpy_ashare.integrations.tickflow import fetch_index_ticker
@@ -19,20 +22,18 @@ SECTOR_TOP_N = 10
 SECTOR_MIN_STOCKS = 3
 
 
-@dataclass(frozen=True)
-class SectorRankItem:
-    industry: str
-    count: int
-    avg_change_pct: float
+class SectorRankItem(FrozenModel):
+    industry: str = Field(description="所属行业")
+    count: int = Field(description="数量")
+    avg_change_pct: float = Field(description="平均涨跌幅（%）")
 
 
-@dataclass(frozen=True)
-class MarketOverviewData:
-    indices: list[tuple[str, QuoteSnapshot]]
-    breadth: MarketBreadthSnapshot | None
-    sectors: list[SectorRankItem]
-    environment: MarketEnvironmentSnapshot | None = None
-    limit_ladder_counts: dict[str, int] | None = None
+class MarketOverviewData(FrozenModel):
+    indices: list[tuple[str, QuoteSnapshot]] = Field(description="指数列表")
+    breadth: MarketBreadthSnapshot | None = Field(description="市场广度")
+    sectors: list[SectorRankItem] = Field(description="行业榜")
+    environment: MarketEnvironmentSnapshot | None = Field(default=None, description="environment")
+    limit_ladder_counts: dict[str, int] | None = Field(default=None, description="limit ladder counts")
 
 
 def _quote_rows_for_overview() -> tuple[list[dict[str, Any]], str | None]:

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from typing import Any
 
 McpExecute = Callable[[str, dict[str, Any]], str]
 
 
-@dataclass
-class McpBinding:
-    execute: McpExecute | None = None
-    tool_names: list[str] = field(default_factory=list)
+class McpBinding(MutableModel):
+    execute: McpExecute | None = Field(default=None, description="execute")
+    tool_names: list[str] = Field(default_factory=list, description="tool names")

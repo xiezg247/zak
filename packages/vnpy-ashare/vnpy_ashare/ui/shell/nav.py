@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -15,36 +18,34 @@ if TYPE_CHECKING:
     from vnpy_common.ui.theme import ThemeTokens
 
 
-@dataclass(frozen=True)
-class NavEntry:
-    key: str
-    label: str
+class NavEntry(FrozenModel):
+    key: str = Field(description="键名")
+    label: str = Field(description="展示标签")
 
 
-@dataclass(frozen=True)
-class NavGroup:
-    entries: tuple[NavEntry, ...]
+class NavGroup(FrozenModel):
+    entries: tuple[NavEntry, ...] = Field(description="导航项列表")
 
 
 # 主窗口左侧菜单（自选首页；组间以分隔线区分）
 APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     NavGroup(
-        (
-            NavEntry("watchlist", "自选"),
-            NavEntry("market", "市场"),
-            NavEntry("sector_flow", "板块资金"),
-            NavEntry("radar", "雷达"),
-            NavEntry("local", "本地"),
+        entries=(
+            NavEntry(key='watchlist', label='自选'),
+            NavEntry(key='market', label='市场'),
+            NavEntry(key='sector_flow', label='板块资金'),
+            NavEntry(key='radar', label='雷达'),
+            NavEntry(key='local', label='本地'),
         ),
     ),
     NavGroup(
-        (NavEntry("screener", "选股"),),
+        entries=(NavEntry(key='screener', label='选股'),),
     ),
-    NavGroup((NavEntry("ai_assistant", "AI 助手"),)),
+    NavGroup(entries=(NavEntry(key='ai_assistant', label='AI 助手'),)),
     NavGroup(
-        (
-            NavEntry("cta_backtest", "策略回测"),
-            NavEntry("batch_backtest", "回测对比"),
+        entries=(
+            NavEntry(key='cta_backtest', label='策略回测'),
+            NavEntry(key='batch_backtest', label='回测对比'),
         ),
     ),
 )
@@ -53,8 +54,8 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS 
 
 # 菜单栏「后台」入口（不在侧栏展示）
 BACKSTAGE_ENTRIES: tuple[NavEntry, ...] = (
-    NavEntry("scheduler", "定时任务"),
-    NavEntry("data_manager", "数据管理"),
+    NavEntry(key='scheduler', label='定时任务'),
+    NavEntry(key='data_manager', label='数据管理'),
 )
 
 BACKSTAGE_PAGE_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)

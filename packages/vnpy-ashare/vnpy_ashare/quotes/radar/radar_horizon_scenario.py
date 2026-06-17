@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 import math
-from dataclasses import dataclass
 from datetime import datetime
 
 from vnpy_ashare.data.bar_access import load_scope_bars
@@ -31,14 +34,13 @@ SCENARIO_VARIANT_LABELS: dict[str, str] = {
 }
 
 
-@dataclass(frozen=True)
-class ScenarioMetrics:
-    snapshot: SignalSnapshot
-    momentum_pct: float | None
-    daily_vol_pct: float | None
-    band_move_pct: float | None
-    band_lower: float | None
-    band_upper: float | None
+class ScenarioMetrics(FrozenModel):
+    snapshot: SignalSnapshot = Field(description="信号快照")
+    momentum_pct: float | None = Field(description="动量涨跌幅（%）")
+    daily_vol_pct: float | None = Field(description="日波动率（%）")
+    band_move_pct: float | None = Field(description="参考带波动幅度（%）")
+    band_lower: float | None = Field(description="参考带下沿")
+    band_upper: float | None = Field(description="参考带上沿")
 
 
 def _estimate_bar_stats(

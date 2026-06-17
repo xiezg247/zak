@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from datetime import datetime
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -12,10 +15,9 @@ from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import compute_unrealized_pnl
 
 
-@dataclass(frozen=True)
-class PositionSellFormData:
-    sell_price: float
-    sell_date: str
+class PositionSellFormData(FrozenModel):
+    sell_price: float = Field(description="卖出价格")
+    sell_date: str = Field(description="卖出日期")
 
 
 class PositionSellDialog(QtWidgets.QDialog):

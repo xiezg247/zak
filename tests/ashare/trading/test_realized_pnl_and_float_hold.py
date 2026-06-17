@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories import trade_journal as journal_repo
 from vnpy_ashare.trading.journal.float_loss_hold import (

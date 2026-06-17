@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.config.fonts import default_font_family
 from vnpy_llm.config import DEFAULT_BASE_URL, DEFAULT_MODEL
 
@@ -12,198 +14,90 @@ ValueKind = Literal["text", "secret", "bool", "int", "choice"]
 ConfigSource = Literal["env", "default", "vt_file"]
 
 
-@dataclass(frozen=True)
-class ConfigFieldSpec:
-    key: str
-    label: str
-    group: str
-    default: str
-    sensitive: bool = False
-    kind: ValueKind = "text"
-    choices: tuple[str, ...] = ()
-    description: str = ""
+class ConfigFieldSpec(FrozenModel):
+    key: str = Field(description="配置键名")
+    label: str = Field(description="展示标签")
+    group: str = Field(description="配置分组")
+    default: str = Field(description="默认值")
+    sensitive: bool = Field(default=False, description="是否为敏感字段")
+    kind: ValueKind = Field(default="text", description="值类型")
+    choices: tuple[str, ...] = Field(default_factory=tuple, description="可选值列表")
+    description: str = Field(default="", description="字段说明")
 
 
 ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
+    ConfigFieldSpec(key='TICKFLOW_API_KEY', label='TickFlow API Key', group='数据源', default='', sensitive=True, description='主行情数据源，https://tickflow.org'),
+    ConfigFieldSpec(key='TUSHARE_TOKEN', label='Tushare Token', group='数据源', default='', sensitive=True, description='财务/选股辅助，https://tushare.pro'),
     ConfigFieldSpec(
-        "TICKFLOW_API_KEY",
-        "TickFlow API Key",
-        "数据源",
-        "",
-        sensitive=True,
-        description="主行情数据源，https://tickflow.org",
-    ),
-    ConfigFieldSpec(
-        "TUSHARE_TOKEN",
-        "Tushare Token",
-        "数据源",
-        "",
-        sensitive=True,
-        description="财务/选股辅助，https://tushare.pro",
-    ),
-    ConfigFieldSpec(
-        "DATAFEED_NAME",
-        "默认行情数据源",
-        "数据源",
-        "tickflow",
+        key="DATAFEED_NAME",
+        label="默认行情数据源",
+        group="数据源",
+        default="tickflow",
         kind="choice",
         choices=("tickflow", "tushare"),
     ),
     ConfigFieldSpec(
-        "DATABASE_NAME",
-        "K 线数据库类型",
-        "数据库",
-        "sqlite",
+        key="DATABASE_NAME",
+        label="K 线数据库类型",
+        group="数据库",
+        default="sqlite",
         kind="choice",
         choices=("sqlite", "postgresql"),
     ),
-    ConfigFieldSpec(
-        "REDIS_URL",
-        "Redis URL",
-        "Redis 行情",
-        "redis://127.0.0.1:6379/0",
-        description="例：redis://127.0.0.1:6379/0 或 redis://:password@host:6379/0",
-    ),
-    ConfigFieldSpec(
-        "QUOTE_COLLECT_INTERVAL",
-        "行情采集间隔（秒）",
-        "Redis 行情",
-        "15",
-        kind="int",
-    ),
-    ConfigFieldSpec(
-        "LLM_API_BASE",
-        "LLM API Base",
-        "大模型",
-        DEFAULT_BASE_URL,
-    ),
-    ConfigFieldSpec(
-        "LLM_API_KEY",
-        "LLM API Key",
-        "大模型",
-        "",
-        sensitive=True,
-    ),
-    ConfigFieldSpec(
-        "LLM_MODEL",
-        "LLM Model",
-        "大模型",
-        DEFAULT_MODEL,
-    ),
-    ConfigFieldSpec("LLM_MAX_TOKENS", "LLM Max Tokens", "大模型", "4096", kind="int"),
-    ConfigFieldSpec("LLM_TEMPERATURE", "LLM Temperature", "大模型", "0.7"),
-    ConfigFieldSpec("POSTGRES_HOST", "PostgreSQL 主机", "PostgreSQL", "localhost"),
-    ConfigFieldSpec("POSTGRES_PORT", "PostgreSQL 端口", "PostgreSQL", "5432", kind="int"),
-    ConfigFieldSpec("POSTGRES_USER", "PostgreSQL 用户名", "PostgreSQL", "zak"),
-    ConfigFieldSpec(
-        "POSTGRES_PASSWORD",
-        "PostgreSQL 密码",
-        "PostgreSQL",
-        "zak",
-        sensitive=True,
-    ),
-    ConfigFieldSpec("POSTGRES_DATABASE", "PostgreSQL 库名", "PostgreSQL", "zak"),
-    ConfigFieldSpec(
-        "NOTIFY_ENABLED",
-        "启用消息通知",
-        "消息通知",
-        "false",
-        kind="bool",
-        description="开启后按下方事件订阅向飞书 Webhook 推送",
-    ),
-    ConfigFieldSpec(
-        "FEISHU_WEBHOOK_URL",
-        "飞书 Webhook URL",
-        "消息通知",
-        "",
-        sensitive=True,
-        description="飞书群 → 设置 → 群机器人 → 添加自定义机器人",
-    ),
-    ConfigFieldSpec(
-        "FEISHU_WEBHOOK_SECRET",
-        "飞书签名校验 Secret",
-        "消息通知",
-        "",
-        sensitive=True,
-        description="机器人开启签名校验时填写；留空则不签名",
-    ),
-    ConfigFieldSpec(
-        "NOTIFY_MIN_INTERVAL_SEC",
-        "通知最小间隔（秒）",
-        "消息通知",
-        "30",
-        kind="int",
-        description="两次出站之间的最短间隔，默认 30",
-    ),
-    ConfigFieldSpec(
-        "NOTIFY_FEISHU_INTERACTIVE",
-        "飞书 interactive 卡片",
-        "消息通知",
-        "true",
-        kind="bool",
-        description="true 时发送卡片消息；可被 QSettings 覆盖",
-    ),
-    ConfigFieldSpec(
-        "NOTIFY_OPEN_URL",
-        "卡片按钮链接",
-        "消息通知",
-        "",
-        description="可选；配置后卡片底部显示「打开 zak」按钮",
-    ),
+    ConfigFieldSpec(key='REDIS_URL', label='Redis URL', group='Redis 行情', default='redis://127.0.0.1:6379/0', description='例：redis://127.0.0.1:6379/0 或 redis://:password@host:6379/0'),
+    ConfigFieldSpec(key='QUOTE_COLLECT_INTERVAL', label='行情采集间隔（秒）', group='Redis 行情', default='15', kind='int'),
+    ConfigFieldSpec(key='LLM_API_BASE', label='LLM API Base', group='大模型', default=DEFAULT_BASE_URL),
+    ConfigFieldSpec(key='LLM_API_KEY', label='LLM API Key', group='大模型', default='', sensitive=True),
+    ConfigFieldSpec(key='LLM_MODEL', label='LLM Model', group='大模型', default=DEFAULT_MODEL),
+    ConfigFieldSpec(key='LLM_MAX_TOKENS', label='LLM Max Tokens', group='大模型', default='4096', kind='int'),
+    ConfigFieldSpec(key='LLM_TEMPERATURE', label='LLM Temperature', group='大模型', default='0.7'),
+    ConfigFieldSpec(key='POSTGRES_HOST', label='PostgreSQL 主机', group='PostgreSQL', default='localhost'),
+    ConfigFieldSpec(key='POSTGRES_PORT', label='PostgreSQL 端口', group='PostgreSQL', default='5432', kind='int'),
+    ConfigFieldSpec(key='POSTGRES_USER', label='PostgreSQL 用户名', group='PostgreSQL', default='zak'),
+    ConfigFieldSpec(key='POSTGRES_PASSWORD', label='PostgreSQL 密码', group='PostgreSQL', default='zak', sensitive=True),
+    ConfigFieldSpec(key='POSTGRES_DATABASE', label='PostgreSQL 库名', group='PostgreSQL', default='zak'),
+    ConfigFieldSpec(key='NOTIFY_ENABLED', label='启用消息通知', group='消息通知', default='false', kind='bool', description='开启后按下方事件订阅向飞书 Webhook 推送'),
+    ConfigFieldSpec(key='FEISHU_WEBHOOK_URL', label='飞书 Webhook URL', group='消息通知', default='', sensitive=True, description='飞书群 → 设置 → 群机器人 → 添加自定义机器人'),
+    ConfigFieldSpec(key='FEISHU_WEBHOOK_SECRET', label='飞书签名校验 Secret', group='消息通知', default='', sensitive=True, description='机器人开启签名校验时填写；留空则不签名'),
+    ConfigFieldSpec(key='NOTIFY_MIN_INTERVAL_SEC', label='通知最小间隔（秒）', group='消息通知', default='30', kind='int', description='两次出站之间的最短间隔，默认 30'),
+    ConfigFieldSpec(key='NOTIFY_FEISHU_INTERACTIVE', label='飞书 interactive 卡片', group='消息通知', default='true', kind='bool', description='true 时发送卡片消息；可被 QSettings 覆盖'),
+    ConfigFieldSpec(key='NOTIFY_OPEN_URL', label='卡片按钮链接', group='消息通知', default='', description='可选；配置后卡片底部显示「打开 zak」按钮'),
 )
 
 VT_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
     ConfigFieldSpec(
-        "datafeed.name",
-        "数据源",
-        "数据服务",
-        "tickflow",
+        key="datafeed.name",
+        label="数据源",
+        group="数据服务",
+        default="tickflow",
         kind="choice",
         choices=("tickflow", "tushare"),
     ),
-    ConfigFieldSpec("datafeed.username", "数据源用户名", "数据服务", "api_key"),
+    ConfigFieldSpec(key='datafeed.username', label='数据源用户名', group='数据服务', default='api_key'),
+    ConfigFieldSpec(key='datafeed.password', label='API Key / Token', group='数据服务', default='', sensitive=True),
     ConfigFieldSpec(
-        "datafeed.password",
-        "API Key / Token",
-        "数据服务",
-        "",
-        sensitive=True,
-    ),
-    ConfigFieldSpec(
-        "database.name",
-        "K 线数据库类型",
-        "K 线",
-        "sqlite",
+        key="database.name",
+        label="K 线数据库类型",
+        group="K 线",
+        default="sqlite",
         kind="choice",
         choices=("sqlite", "postgresql"),
     ),
-    ConfigFieldSpec("database.host", "PostgreSQL 主机", "K 线", ""),
-    ConfigFieldSpec("database.port", "PostgreSQL 端口", "K 线", "0", kind="int"),
-    ConfigFieldSpec("database.user", "PostgreSQL 用户名", "K 线", ""),
-    ConfigFieldSpec("database.password", "PostgreSQL 密码", "K 线", "", sensitive=True),
-    ConfigFieldSpec("database.database", "K 线 SQLite 文件", "K 线", "database.db"),
+    ConfigFieldSpec(key='database.host', label='PostgreSQL 主机', group='K 线', default=''),
+    ConfigFieldSpec(key='database.port', label='PostgreSQL 端口', group='K 线', default='0', kind='int'),
+    ConfigFieldSpec(key='database.user', label='PostgreSQL 用户名', group='K 线', default=''),
+    ConfigFieldSpec(key='database.password', label='PostgreSQL 密码', group='K 线', default='', sensitive=True),
+    ConfigFieldSpec(key='database.database', label='K 线 SQLite 文件', group='K 线', default='database.db'),
+    ConfigFieldSpec(key='database.meta.app', label='元数据 SQLite 文件', group='元数据', default='zak.db', description='相对 ~/.vntrader/；自选、universe、回测/选股历史'),
+    ConfigFieldSpec(key='database.meta.chat', label='AI 对话 SQLite 文件', group='元数据', default='llm_chat.db', description='相对 ~/.vntrader/；不受 database.name 影响'),
+    ConfigFieldSpec(key="font.family", label="字体", group="界面与日志", default=default_font_family()),
+    ConfigFieldSpec(key='font.size', label='字号', group='界面与日志', default='12', kind='int'),
+    ConfigFieldSpec(key='log.active', label='启用日志', group='界面与日志', default='true', kind='bool'),
     ConfigFieldSpec(
-        "database.meta.app",
-        "元数据 SQLite 文件",
-        "元数据",
-        "zak.db",
-        description="相对 ~/.vntrader/；自选、universe、回测/选股历史",
-    ),
-    ConfigFieldSpec(
-        "database.meta.chat",
-        "AI 对话 SQLite 文件",
-        "元数据",
-        "llm_chat.db",
-        description="相对 ~/.vntrader/；不受 database.name 影响",
-    ),
-    ConfigFieldSpec("font.family", "字体", "界面与日志", default_font_family()),
-    ConfigFieldSpec("font.size", "字号", "界面与日志", "12", kind="int"),
-    ConfigFieldSpec("log.active", "启用日志", "界面与日志", "true", kind="bool"),
-    ConfigFieldSpec(
-        "log.level",
-        "日志级别",
-        "界面与日志",
-        "INFO",
+        key="log.level",
+        label="日志级别",
+        group="界面与日志",
+        default="INFO",
         kind="choice",
         choices=("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"),
     ),

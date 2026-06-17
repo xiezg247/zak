@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 import json
 import sqlite3
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
@@ -55,13 +58,12 @@ def _connect():
         conn.close()
 
 
-@dataclass(frozen=True)
-class PredictCacheEntry:
-    variant: str
-    rows: tuple[RadarRow, ...]
-    stats: HorizonScanStats
-    model_label: str
-    computed_at: str
+class PredictCacheEntry(FrozenModel):
+    variant: str = Field(description="变体标识")
+    rows: tuple[RadarRow, ...] = Field(description="数据行列表")
+    stats: HorizonScanStats = Field(description="扫描统计")
+    model_label: str = Field(description="模型标签")
+    computed_at: str = Field(description="计算时间")
 
 
 def get_predict_cache(variant: str) -> PredictCacheEntry | None:

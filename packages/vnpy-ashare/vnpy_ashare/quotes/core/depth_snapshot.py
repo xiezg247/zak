@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 
 
-@dataclass
-class DepthSnapshot:
-    symbol: str
-    bid_prices: list[float]
-    bid_volumes: list[int]
-    ask_prices: list[float]
-    ask_volumes: list[int]
-    timestamp: int = 0
+class DepthSnapshot(MutableModel):
+    symbol: str = Field(description="证券代码")
+    bid_prices: list[float] = Field(description="买一至买五价格")
+    bid_volumes: list[int] = Field(description="买一至买五量")
+    ask_prices: list[float] = Field(description="卖一至卖五价格")
+    ask_volumes: list[int] = Field(description="卖一至卖五量")
+    timestamp: int = Field(default=0, description="快照时间戳（毫秒）")
 
     @classmethod
     def from_tickflow(cls, data: dict) -> DepthSnapshot:

@@ -7,10 +7,10 @@ import time
 import uuid
 from collections.abc import Callable, Mapping
 from concurrent.futures import ProcessPoolExecutor
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange, Interval
 from vnpy_ctabacktester.engine import APP_NAME, BacktesterEngine
 
@@ -25,38 +25,37 @@ from vnpy_ashare.backtest.run_store import save_backtest_run
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.jobs.core.result import JobResult
 
 
-@dataclass(frozen=True)
-class BatchBacktestParams:
+class BatchBacktestParams(FrozenModel):
     """批量回测共用参数（策略、区间、费率）。"""
 
-    class_name: str
-    start: datetime
-    end: datetime
-    interval: Interval = Interval.DAILY
-    rate: float = ASHARE_BACKTEST_DEFAULTS["rate"]
-    slippage: float = ASHARE_BACKTEST_DEFAULTS["slippage"]
-    size: int = ASHARE_BACKTEST_DEFAULTS["size"]
-    pricetick: float = ASHARE_BACKTEST_DEFAULTS["pricetick"]
-    capital: float = ASHARE_BACKTEST_DEFAULTS["capital"]
-    strategy_setting: Mapping[str, Any] | None = None
+    class_name: str = Field(description="策略类名")
+    start: datetime = Field(description="回测起始时间")
+    end: datetime = Field(description="回测结束时间")
+    interval: Interval = Field(default=Interval.DAILY, description="K 线周期")
+    rate: float = Field(default=ASHARE_BACKTEST_DEFAULTS["rate"], description="手续费率")
+    slippage: float = Field(default=ASHARE_BACKTEST_DEFAULTS["slippage"], description="滑点")
+    size: int = Field(default=ASHARE_BACKTEST_DEFAULTS["size"], description="合约乘数")
+    pricetick: float = Field(default=ASHARE_BACKTEST_DEFAULTS["pricetick"], description="最小价格变动")
+    capital: float = Field(default=ASHARE_BACKTEST_DEFAULTS["capital"], description="初始资金")
+    strategy_setting: Mapping[str, Any] | None = Field(default=None, description="策略参数字典")
 
 
-@dataclass
-class BatchBacktestRow:
+class BatchBacktestRow(MutableModel):
     """单标的批量回测结果行。"""
 
-    vt_symbol: str
-    name: str
-    total_return: float | None = None
-    max_drawdown: float | None = None
-    sharpe_ratio: float | None = None
-    total_trade_count: int | None = None
-    error: str = ""
+    vt_symbol: str = Field(description="标的 vt_symbol")
+    name: str = Field(description="证券简称")
+    total_return: float | None = Field(default=None, description="总收益率")
+    max_drawdown: float | None = Field(default=None, description="最大回撤")
+    sharpe_ratio: float | None = Field(default=None, description="夏普比率")
+    total_trade_count: int | None = Field(default=None, description="总成交笔数")
+    error: str = Field(default="", description="错误信息")
 
     def to_dict(self) -> dict[str, Any]:
         return {

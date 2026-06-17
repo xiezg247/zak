@@ -18,7 +18,7 @@ from vnpy_ashare.config.preferences import (
     save_position_panel_expanded,
     save_watchlist_position_config,
 )
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
 
 

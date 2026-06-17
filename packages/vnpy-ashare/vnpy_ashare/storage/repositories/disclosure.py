@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.storage.connection import connect
 
 
-@dataclass(frozen=True)
-class DisclosureRow:
-    ts_code: str
-    end_date: str
-    pre_date: str
-    ann_date: str
-    actual_date: str
-    fetched_at: str
+class DisclosureRow(FrozenModel):
+    ts_code: str = Field(description="Tushare 证券代码")
+    end_date: str = Field(description="报告期截止日")
+    pre_date: str = Field(description="预计披露日")
+    ann_date: str = Field(description="公告披露日")
+    actual_date: str = Field(description="实际披露日")
+    fetched_at: str = Field(description="抓取时间 ISO")
 
 
 def _now_iso() -> str:

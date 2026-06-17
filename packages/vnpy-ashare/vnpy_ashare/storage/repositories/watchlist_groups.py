@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.storage.connection import connect, init_app_db
 
 WATCHLIST_MAX_GROUPS = 10
 
 
-@dataclass(frozen=True)
-class WatchlistGroupRecord:
-    id: str
-    name: str
-    sort_order: int
-    position_cap_pct: float | None = None
+class WatchlistGroupRecord(FrozenModel):
+    id: str = Field(description="分组主键")
+    name: str = Field(description="分组名称")
+    sort_order: int = Field(description="排序序号")
+    position_cap_pct: float | None = Field(default=None, description="组内单票仓位上限（0-1）")
 
 
 def _parse_cap_pct(value: object) -> float | None:
@@ -42,10 +42,10 @@ def load_watchlist_groups() -> list[WatchlistGroupRecord]:
         rows = conn.execute("SELECT id, name, sort_order, position_cap_pct FROM watchlist_groups ORDER BY sort_order, name").fetchall()
     return [
         WatchlistGroupRecord(
-            str(row["id"]),
-            str(row["name"]),
-            int(row["sort_order"]),
-            _parse_cap_pct(row["position_cap_pct"] if "position_cap_pct" in row.keys() else None),
+            id=str(row["id"]),
+            name=str(row["name"]),
+            sort_order=int(row["sort_order"]),
+            position_cap_pct=_parse_cap_pct(row["position_cap_pct"] if "position_cap_pct" in row.keys() else None),
         )
         for row in rows
     ]

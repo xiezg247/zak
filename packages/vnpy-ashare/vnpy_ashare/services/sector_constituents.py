@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import Any
 
 from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowRow
@@ -113,9 +112,9 @@ def compute_divergence_rows(
     hits: list[SectorFlowRow] = []
     for row in rows:
         if row.change_pct >= min_change_pct and row.net_flow_yi <= -min_flow_yi:
-            hits.append(replace(row, divergence_kind="价涨流出"))
+            hits.append(row.model_copy(update={"divergence_kind": "价涨流出"}))
         elif row.change_pct <= -min_change_pct and row.net_flow_yi >= min_flow_yi:
-            hits.append(replace(row, divergence_kind="价跌流入"))
+            hits.append(row.model_copy(update={"divergence_kind": "价跌流入"}))
     hits.sort(
         key=lambda item: abs(item.change_pct) + abs(item.net_flow_yi),
         reverse=True,

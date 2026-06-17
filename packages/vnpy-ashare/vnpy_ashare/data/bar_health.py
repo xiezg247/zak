@@ -8,7 +8,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from datetime import date, datetime
 from enum import Enum
 
@@ -32,13 +35,12 @@ class BarHealthStatus(str, Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True)
-class BarMeta:
+class BarMeta(FrozenModel):
     """本地 K 线元数据（起止日期与条数）。"""
 
-    start: datetime
-    end: datetime
-    count: int
+    start: datetime = Field(description="开始日期")
+    end: datetime = Field(description="结束日期")
+    count: int = Field(description="数量")
 
 
 def effective_bar_start(value: datetime | None) -> datetime | None:
@@ -63,23 +65,21 @@ def clip_bars_from_unified_start(bars: list[BarData]) -> list[BarData]:
     return [bar for bar in bars if bar.datetime.date() >= floor]
 
 
-@dataclass(frozen=True)
-class GapRange:
+class GapRange(FrozenModel):
     """连续缺失交易日区间。"""
 
-    start: date
-    end: date
-    missing_days: int
+    start: date = Field(description="开始日期")
+    end: date = Field(description="结束日期")
+    missing_days: int = Field(description="缺失交易日数")
 
 
-@dataclass(frozen=True)
-class BarGapResult:
+class BarGapResult(FrozenModel):
     """断层扫描结果（含期望/实际交易日数）。"""
 
-    status: BarHealthStatus
-    gaps: list[GapRange]
-    expected_days: int
-    actual_days: int
+    status: BarHealthStatus = Field(description="状态")
+    gaps: list[GapRange] = Field(description="断层列表")
+    expected_days: int = Field(description="期望交易日数")
+    actual_days: int = Field(description="实际覆盖交易日数")
 
 
 def list_status(meta: BarMeta | None, *, as_of: date | None = None) -> BarHealthStatus:

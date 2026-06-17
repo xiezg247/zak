@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from collections.abc import Mapping
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, load_emotion_cycle_snapshot
@@ -13,16 +16,15 @@ if TYPE_CHECKING:
     from vnpy_ashare.domain.trading.position import PositionSnapshot
 
 
-@dataclass(frozen=True)
-class CombinedRiskGateSnapshot:
-    account: RiskGateSnapshot
-    emotion: EmotionCycleSnapshot | None
-    allow_new_positions: bool
-    emotion_position_pct_min: float | None
-    emotion_position_pct_max: float | None
-    actual_position_pct: float | None
-    total_capital: float | None
-    warnings: tuple[str, ...]
+class CombinedRiskGateSnapshot(FrozenModel):
+    account: RiskGateSnapshot = Field(description="账户风控闸快照")
+    emotion: EmotionCycleSnapshot | None = Field(description="情绪周期快照")
+    allow_new_positions: bool = Field(description="是否允许新开仓")
+    emotion_position_pct_min: float | None = Field(description="情绪建议仓位下限（0–1）")
+    emotion_position_pct_max: float | None = Field(description="情绪建议仓位上限（0–1）")
+    actual_position_pct: float | None = Field(description="实际仓位占比（0–1）")
+    total_capital: float | None = Field(description="总资金")
+    warnings: tuple[str, ...] = Field(description="风险提示列表")
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {

@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from vnpy_ashare.domain.index_amount import IndexAmountSeries
+from vnpy_ashare.domain.market.index_amount import IndexAmountSeries
 from vnpy_ashare.integrations.tushare.index_amount import (
     clear_index_amount_memory_cache,
     fetch_index_amount_history,

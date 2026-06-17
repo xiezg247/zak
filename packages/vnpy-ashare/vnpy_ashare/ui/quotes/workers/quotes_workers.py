@@ -6,7 +6,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from datetime import datetime, timedelta
 from typing import Literal
 
@@ -61,48 +64,44 @@ from vnpy_ashare.ui.quotes.chart.minute_bars import LIVE_MINUTE_TAIL_COUNT
 # 读 K 线 / universe 列表 → bar_access；下载与同步 → bars / universe（写路径）
 
 
-@dataclass
-class MarketPageResult:
+class MarketPageResult(MutableModel):
     """市场页分页加载结果（标的 + Redis 行情）。"""
 
-    items: list[StockItem]
-    quotes: dict[str, QuoteSnapshot]
-    total: int
-    page: int
-    page_size: int
-    mode: str
-    updated_at: str | None = None
-    board: str | None = None
+    items: list[StockItem] = Field(description="标的列表")
+    quotes: dict[str, QuoteSnapshot] = Field(description="行情快照字典（TickFlow 代码 → 快照）")
+    total: int = Field(description="总条数")
+    page: int = Field(description="当前页码")
+    page_size: int = Field(description="每页条数")
+    mode: str = Field(description="加载模式")
+    updated_at: str | None = Field(default=None, description="更新时间")
+    board: str | None = Field(default=None, description="板块筛选条件")
 
 
-@dataclass
-class MarketFullResult:
+class MarketFullResult(MutableModel):
     """市场页全量加载结果（涨幅榜序 + Redis 行情）。"""
 
-    items: list[StockItem]
-    quotes: dict[str, QuoteSnapshot]
-    updated_at: str | None = None
+    items: list[StockItem] = Field(description="标的列表")
+    quotes: dict[str, QuoteSnapshot] = Field(description="行情快照字典")
+    updated_at: str | None = Field(default=None, description="更新时间")
 
 
-@dataclass
-class LoadedBars:
+class LoadedBars(MutableModel):
     """日 K 加载结果。"""
 
-    item: StockItem
-    bars: list[BarData]
-    start: datetime
-    end: datetime
+    item: StockItem = Field(description="当前标的")
+    bars: list[BarData] = Field(description="K 线序列")
+    start: datetime = Field(description="开始日期")
+    end: datetime = Field(description="结束日期")
 
 
-@dataclass
-class LoadedPeriodBars:
+class LoadedPeriodBars(MutableModel):
     """分 K 加载结果（本地或 TickFlow 远端）。"""
 
-    bars: list[BarData]
-    from_local: bool
-    period: str
-    start: datetime | None = None
-    end: datetime | None = None
+    bars: list[BarData] = Field(description="K 线序列")
+    from_local: bool = Field(description="是否来自本地数据库")
+    period: str = Field(description="K 线周期")
+    start: datetime | None = Field(default=None, description="开始日期")
+    end: datetime | None = Field(default=None, description="结束日期")
 
 
 FULL_BAR_START = datetime(2020, 1, 1)
@@ -190,10 +189,9 @@ class UniverseLoadWorker(QtCore.QThread):
             self.failed.emit(str(ex))
 
 
-@dataclass(frozen=True)
-class UniverseLoadResult:
-    items: list
-    total: int
+class UniverseLoadResult(FrozenModel):
+    items: list = Field(description="标的列表")
+    total: int = Field(description="总条数")
 
 
 class UniverseSyncWorker(QtCore.QThread):

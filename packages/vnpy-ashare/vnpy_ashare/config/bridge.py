@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+from pydantic import Field
 
 from vnpy_ashare.config.fonts import default_font_family
 from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, normalize_database_name
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_common.paths import DEFAULT_META_APP_FILE, DEFAULT_META_CHAT_FILE, ENV_FILE, META_APP_SETTING_KEY, META_CHAT_SETTING_KEY
 
 
@@ -134,15 +135,14 @@ def build_vt_settings_from_env_file(env_file: Path = ENV_FILE) -> dict[str, Any]
     return build_vt_settings_from_env_values(env)
 
 
-@dataclass(frozen=True)
-class ConfigDrift:
+class ConfigDrift(FrozenModel):
     """运行时 vt_setting 与 .env 不一致项。"""
 
-    category: str
-    env_key: str
-    vt_key: str
-    env_value: str
-    vt_value: str
+    category: str = Field(description="漂移类别")
+    env_key: str = Field(description="环境变量键名")
+    vt_key: str = Field(description="vt_setting 键名")
+    env_value: str = Field(description="环境变量值")
+    vt_value: str = Field(description="vt_setting 值")
 
     @property
     def message(self) -> str:

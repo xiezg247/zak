@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
+
 from datetime import datetime
 from typing import Protocol
 
@@ -15,21 +18,19 @@ from vnpy_ashare.data.bar_access import build_symbol_name_map, iter_bar_overview
 from vnpy_ashare.data.minute_periods import bar_interval, is_daily_scope
 
 
-@dataclass(frozen=True)
-class OverviewRow:
-    symbol: str
-    exchange: Exchange
-    period: str
-    count: int
-    start: datetime
-    end: datetime
-    stock_name: str
-    interval: Interval
+class OverviewRow(FrozenModel):
+    symbol: str = Field(description="六位股票代码")
+    exchange: Exchange = Field(description="交易所代码")
+    period: str = Field(description="K 线周期")
+    count: int = Field(description="数量")
+    start: datetime = Field(description="开始日期")
+    end: datetime = Field(description="结束日期")
+    stock_name: str = Field(description="证券简称")
+    interval: Interval = Field(description="VeighNa K 线周期枚举")
 
 
-@dataclass(frozen=True)
-class TreeRefreshPayload:
-    rows: list[OverviewRow]
+class TreeRefreshPayload(FrozenModel):
+    rows: list[OverviewRow] = Field(description="数据行列表")
 
 
 def _overview_group_key(period: str) -> str:

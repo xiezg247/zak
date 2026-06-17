@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -66,4 +65,4 @@ def enrich_radar_row_relative_strength(row: RadarRow, quote_row: dict[str, Any])
     if sub is None:
         return row
 
-    return replace(row, sub_label=sub[0], sub_value=sub[1])
+    return row.model_copy(update={"sub_label": sub[0], "sub_value": sub[1]})

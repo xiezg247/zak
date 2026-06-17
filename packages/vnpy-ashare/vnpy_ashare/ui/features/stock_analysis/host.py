@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import ConfigDict, Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 from typing import TYPE_CHECKING
 
 from vnpy.event import EventEngine
@@ -17,13 +20,14 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
-@dataclass
-class StockAnalysisHost:
-    main_engine: MainEngine | None
-    event_engine: EventEngine | None = None
-    source_page: str = ""
-    retired_workers: list[QtCore.QThread] = field(default_factory=list)
-    quote_map: dict[str, QuoteSnapshot] | None = None
+class StockAnalysisHost(MutableModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    main_engine: MainEngine | None = Field(description="VeighNa 主引擎")
+    event_engine: EventEngine | None = Field(default=None, description="事件引擎")
+    source_page: str = Field(default="", description="来源页面名称")
+    retired_workers: list[QtCore.QThread] = Field(default_factory=list, description="待回收的后台线程")
+    quote_map: dict[str, QuoteSnapshot] | None = Field(default=None, description="行情快照缓存")
 
     @classmethod
     def from_quotes_page(cls, page: QuotesPage) -> StockAnalysisHost:

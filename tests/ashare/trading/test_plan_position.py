@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.position_snapshot import PositionRecord, PositionSnapshot
+from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories import positions as positions_repo
 from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
@@ -25,9 +25,32 @@ from vnpy_ashare.trading.risk.plan_position import (
 class PlanPositionTests(unittest.TestCase):
     def test_sum_plan_pct(self) -> None:
         records = [
-            PositionRecord("600000", "SSE", "", 10.0, 100, "2026-06-01", plan_pct=0.2),
-            PositionRecord("600519", "SSE", "", 10.0, 100, "2026-06-01", plan_pct=0.1),
-            PositionRecord("000001", "SZSE", "", 10.0, 100, "2026-06-01"),
+            PositionRecord(
+                symbol="600000",
+                exchange="SSE",
+                name="",
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+                plan_pct=0.2,
+            ),
+            PositionRecord(
+                symbol="600519",
+                exchange="SSE",
+                name="",
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+                plan_pct=0.1,
+            ),
+            PositionRecord(
+                symbol="000001",
+                exchange="SZSE",
+                name="",
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+            ),
         ]
         self.assertAlmostEqual(sum_plan_pct(records), 0.3)
 
@@ -38,7 +61,15 @@ class PlanPositionTests(unittest.TestCase):
 
     def test_group_position_summary(self) -> None:
         records = [
-            PositionRecord("600519", "SSE", "", 100.0, 100, "2026-06-01", plan_pct=0.15),
+            PositionRecord(
+                symbol="600519",
+                exchange="SSE",
+                name="",
+                cost_price=100.0,
+                volume=100,
+                buy_date="2026-06-01",
+                plan_pct=0.15,
+            ),
         ]
         cache = {
             "600519.SSE": PositionSnapshot(

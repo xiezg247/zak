@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
+
 from datetime import timedelta
 from typing import Any
 
@@ -15,37 +18,34 @@ from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow
 
 
-@dataclass
-class DiagnoseMetrics:
-    macd: float | None = None
-    dif: float | None = None
-    dea: float | None = None
-    kdj_k: float | None = None
-    kdj_d: float | None = None
-    kdj_j: float | None = None
-    rsi: float | None = None
-    pe_ttm: float | None = None
-    roe: float | None = None
-    main_net: float | None = None
-    industry: str = ""
-    source: str = "tdx_mcp"
+class DiagnoseMetrics(MutableModel):
+    macd: float | None = Field(default=None, description="MACD 值")
+    dif: float | None = Field(default=None, description="DIF 值")
+    dea: float | None = Field(default=None, description="DEA 值")
+    kdj_k: float | None = Field(default=None, description="kdj k")
+    kdj_d: float | None = Field(default=None, description="kdj d")
+    kdj_j: float | None = Field(default=None, description="kdj j")
+    rsi: float | None = Field(default=None, description="RSI 值")
+    pe_ttm: float | None = Field(default=None, description="市盈率 TTM")
+    roe: float | None = Field(default=None, description="净资产收益率")
+    main_net: float | None = Field(default=None, description="主力净流入")
+    industry: str = Field(default="", description="所属行业")
+    source: str = Field(default="tdx_mcp", description="数据来源")
 
 
-@dataclass
-class MoneyflowDayRow:
-    trade_date: str
-    net_mf_amount: float | None = None
-    buy_elg_amount: float | None = None
-    sell_elg_amount: float | None = None
+class MoneyflowDayRow(MutableModel):
+    trade_date: str = Field(description="交易日")
+    net_mf_amount: float | None = Field(default=None, description="net mf amount")
+    buy_elg_amount: float | None = Field(default=None, description="buy elg amount")
+    sell_elg_amount: float | None = Field(default=None, description="sell elg amount")
 
 
-@dataclass
-class MoneyflowProfile:
-    ts_code: str
-    vt_symbol: str
-    latest: MoneyflowDayRow | None = None
-    history: list[MoneyflowDayRow] = field(default_factory=list)
-    message: str = ""
+class MoneyflowProfile(MutableModel):
+    ts_code: str = Field(description="Tushare 代码")
+    vt_symbol: str = Field(description="合约代码（含交易所）")
+    latest: MoneyflowDayRow | None = Field(default=None, description="latest")
+    history: list[MoneyflowDayRow] = Field(default_factory=list, description="history")
+    message: str = Field(default="", description="说明信息")
 
 
 def _to_float(value: Any) -> float | None:

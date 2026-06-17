@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from vnpy.trader.utility import ZoneInfo
 
-from vnpy_ashare.domain.market_hours import (
+from vnpy_ashare.domain.time.market_hours import (
     DAILY_CHART_TAB,
     INTRADAY_CHART_TAB,
     ashare_market_phase,
@@ -40,7 +40,7 @@ class MarketHoursTests(unittest.TestCase):
 
     def test_holiday_weekday(self) -> None:
         dt = datetime(2026, 6, 5, 10, 0, tzinfo=CHINA_TZ)
-        with patch("vnpy_ashare.domain.market_hours.is_trading_day", return_value=False):
+        with patch("vnpy_ashare.domain.time.market_hours.is_trading_day", return_value=False):
             self.assertFalse(is_ashare_trading_session(dt))
 
     def test_default_tab(self) -> None:

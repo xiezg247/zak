@@ -9,7 +9,7 @@ from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.object import BarData
 from vnpy.trader.utility import ZoneInfo
 
-from vnpy_ashare.domain.market_hours import (
+from vnpy_ashare.domain.time.market_hours import (
     INTRADAY_SESSION_MINUTES,
     MORNING_SESSION_MINUTES,
     bar_session_minute,

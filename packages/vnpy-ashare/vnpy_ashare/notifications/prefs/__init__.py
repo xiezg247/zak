@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
 
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.notifications.core.events import DEFAULT_EVENT_SUBSCRIPTIONS
 
 _EVENT_PREFIX = "notify/events/"
 _INTERACTIVE_KEY = "notify/use_interactive_card"
 
 
-@dataclass(frozen=True)
-class NotifyPrefs:
-    event_subscriptions: dict[str, bool]
-    use_interactive_card: bool = True
+class NotifyPrefs(FrozenModel):
+    event_subscriptions: dict[str, bool] = Field(description="各事件类型的订阅开关")
+    use_interactive_card: bool = Field(default=True, description="是否优先发送交互卡片")
 
 
 def load_notify_prefs() -> NotifyPrefs:
