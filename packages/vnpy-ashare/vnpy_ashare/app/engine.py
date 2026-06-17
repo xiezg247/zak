@@ -44,7 +44,12 @@ class AshareEngine(BaseEngine):
         self.sentiment_service = SentimentService(self)
         self.stock_analysis_service = StockAnalysisService(self)
         self.sector_flow_service = SectorFlowService(self)
+        from vnpy_ashare.notifications.service import NotificationService
+
+        self.notification_service = NotificationService(self)
+        self.scheduler.add_job_finished_hook(self.notification_service.on_job_finished)
 
     def close(self) -> None:
+        self.notification_service.shutdown()
         self.scheduler.shutdown()
         super().close()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 from collections import deque
 from collections.abc import Callable
@@ -17,8 +18,8 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.jobs import (
-    JobResult,
     batch_download_universe_daily_bars,
     batch_fill_downloaded_stale_job,
     collect_market_quotes,
@@ -48,6 +49,8 @@ from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5
+
+logger = logging.getLogger(__name__)
 _SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 _MAX_RUN_LOG = 200
 _MAX_RUN_DETAIL_LINES = 400
@@ -121,6 +124,7 @@ class TaskSchedulerManager:
         self._lock = threading.Lock()
         self._status: dict[str, JobStatus] = {}
         self._listeners: list[Callable[[str], None]] = []
+        self._job_finished_hooks: list[Callable[[str, JobResult], None]] = []
         self._run_log: deque[JobRunRecord] = deque(maxlen=_MAX_RUN_LOG)
 
         self._jobs: dict[str, _JobMeta] = {
@@ -399,6 +403,13 @@ class TaskSchedulerManager:
     def remove_listener(self, callback: Callable[[str], None]) -> None:
         if callback in self._listeners:
             self._listeners.remove(callback)
+
+    def add_job_finished_hook(self, callback: Callable[[str, JobResult], None]) -> None:
+        self._job_finished_hooks.append(callback)
+
+    def get_job_name(self, job_id: str) -> str:
+        meta = self._jobs.get(job_id)
+        return meta.name if meta is not None else job_id
 
     def _notify(self, job_id: str) -> None:
         for callback in list(self._listeners):
@@ -689,6 +700,13 @@ class TaskSchedulerManager:
 
         self._refresh_status_cache()
         self._notify(job_id)
+
+        finished = JobResult(success=success, message=message, skipped=skipped)
+        for hook in list(self._job_finished_hooks):
+            try:
+                hook(job_id, finished)
+            except Exception:
+                logger.exception("job_finished_hook failed job_id=%s", job_id)
 
         if job_id == _COLLECT_QUOTES_JOB_ID and self._get_job_config(job_id).enabled:
             self._schedule_collect_quotes()

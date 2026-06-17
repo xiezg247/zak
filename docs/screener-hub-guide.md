@@ -16,7 +16,8 @@
 | 功能 | 说明 |
 |------|------|
 | 形态选股 | 老鸭头、W 底等；优先问小达 MCP |
-| 雷达共振 | 使用雷达页最新共振列表（需先在雷达页刷新） |
+| 雷达共振 | 使用雷达页最新共振列表（需先在 [雷达页](./radar-page.md) 刷新） |
+| 雷达龙头 | 使用雷达龙头评分池（需先刷新「选股·龙头」卡；**待建**，见 [雷达选龙头](./radar-leader-screening.md)） |
 | 行业成分 | 输入行业名（如「银行」）筛选成分股 |
 
 ### 多因子配方
@@ -36,6 +37,7 @@
 |------|------|
 | 全选 | 勾选全部结果行 |
 | 加入自选 | 批量写入自选池（上限 50） |
+| 加入观察组（规划 D-04） | 写入「短线观察」分组 Tab |
 | 下载日 K | 为选中标的补本地 K 线 |
 | 策略回测 | 单只带入回测页 |
 | 批量回测 | 多只 → 回测对比页 |
@@ -58,6 +60,8 @@
 | 行业白名单 | 空 = 不限 |
 | 板块白名单 | 沪深主板 / 创业板 / 科创板 / 北交所 |
 
+**模板快捷**：保守 / 均衡 / **激进**（极致短线，见 [intraday-screening §2.6](./intraday-screening.md#26-硬过滤模板激进规划)）。退潮期（T-03）建议切保守或停止选股。
+
 环境变量 `RECIPE_*` 可覆盖 QSettings，详见 [盘中选股 §2.3](./intraday-screening.md#23-硬过滤)。
 
 ## AI 对话选股
@@ -70,8 +74,10 @@
 | 涨幅榜 / 低 PE | `screen_by_condition` |
 | 老鸭头 / W 底 | `screen_by_pattern` |
 | 解读这次结果 | `get_screening_context` |
+| 今天能不能做短线 | `get_emotion_cycle`（规划；未建则恐贪 + 文案说明） |
+| 龙头池 / 连板 | `run_leader_screen`（规划） |
 
-路由表见 [AI 数据路由 §选股](./ai-data-routing.md#选股)。
+路由表见 [AI 数据路由](./ai-data-routing.md#择时与短线工具规划)。
 
 ## 常见问题
 
@@ -81,11 +87,16 @@
 | 财务类 preset 失败 | 配置 `.env` 中 `TUSHARE_TOKEN` |
 | 批量回测无数据 | 先「下载日 K」或到本地页补全 |
 | 量比维度异常 | Tushare 不可用时降级为成交量排序 |
+| 雷达龙头无数据 | 先在雷达页刷新「选股·龙头」卡；情绪退潮时可能 gate 为空 |
+| 退潮仍想选股 | 使用 R-04 或仅观察 Top3；勿批量打板 |
 
 ---
 
 ## 参考
 
 - [产品说明 §选股 Hub](./product-plan.md#选股-hub)
+- [盘中选股](./intraday-screening.md)（R-01–R-04、激进硬过滤）
+- [雷达页](./radar-page.md) / [雷达选龙头](./radar-leader-screening.md)
+- [implementation-roadmap.md](./implementation-roadmap.md)
 - [架构说明](./architecture.md)
-- [数据设计 §screener_runs](./data-design.md#17-screener_runs--选股运行历史)
+- [数据设计 §1.8 screener_runs](./data-design.md#18-screener_runs--选股运行历史)

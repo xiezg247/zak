@@ -38,6 +38,10 @@ class ConfigApplyTierTest(unittest.TestCase):
     def test_env_llm_instant(self) -> None:
         self.assertEqual(env_apply_tier("LLM_API_KEY"), "instant")
 
+    def test_env_notify_instant(self) -> None:
+        self.assertEqual(env_apply_tier("NOTIFY_ENABLED"), "instant")
+        self.assertEqual(env_apply_tier("FEISHU_WEBHOOK_URL"), "instant")
+
     def test_env_database_restart(self) -> None:
         self.assertEqual(env_apply_tier("DATABASE_NAME"), "restart_required")
 

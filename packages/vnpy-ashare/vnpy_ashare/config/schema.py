@@ -103,6 +103,30 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         sensitive=True,
     ),
     ConfigFieldSpec("POSTGRES_DATABASE", "PostgreSQL 库名", "PostgreSQL", "zak"),
+    ConfigFieldSpec(
+        "NOTIFY_ENABLED",
+        "启用消息通知",
+        "消息通知",
+        "false",
+        kind="bool",
+        description="开启后按下方事件订阅向飞书 Webhook 推送",
+    ),
+    ConfigFieldSpec(
+        "FEISHU_WEBHOOK_URL",
+        "飞书 Webhook URL",
+        "消息通知",
+        "",
+        sensitive=True,
+        description="飞书群 → 设置 → 群机器人 → 添加自定义机器人",
+    ),
+    ConfigFieldSpec(
+        "NOTIFY_MIN_INTERVAL_SEC",
+        "通知最小间隔（秒）",
+        "消息通知",
+        "30",
+        kind="int",
+        description="两次出站之间的最短间隔，默认 30",
+    ),
 )
 
 VT_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
@@ -180,9 +204,15 @@ VT_SPECS_BY_GROUP = _index_specs(VT_CONFIG_SPECS)
 
 ENV_POSTGRES_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "PostgreSQL")
 ENV_DB_KEYS: frozenset[str] = frozenset({"DATABASE_NAME"}) | ENV_POSTGRES_KEYS
+ENV_NOTIFY_KEYS: frozenset[str] = frozenset(
+    {"NOTIFY_ENABLED", "FEISHU_WEBHOOK_URL", "NOTIFY_MIN_INTERVAL_SEC"},
+)
 
 ENV_SPEC_BY_KEY: dict[str, ConfigFieldSpec] = {spec.key: spec for spec in ENV_CONFIG_SPECS}
-ENV_GENERAL_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in ENV_CONFIG_SPECS if spec.key not in ENV_DB_KEYS)
+ENV_GENERAL_SPECS: tuple[ConfigFieldSpec, ...] = tuple(
+    spec for spec in ENV_CONFIG_SPECS if spec.key not in ENV_DB_KEYS and spec.key not in ENV_NOTIFY_KEYS
+)
+ENV_NOTIFY_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in ENV_CONFIG_SPECS if spec.key in ENV_NOTIFY_KEYS)
 
 VT_META_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(spec for spec in VT_CONFIG_SPECS if spec.key.startswith("database.meta."))
 VT_DB_SPECS: tuple[ConfigFieldSpec, ...] = tuple(

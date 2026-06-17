@@ -161,7 +161,91 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 详见 [看盘页个股笔记](./stock-notes.md)。
 
-### 1.10 其它 App DB 表
+### 1.10 `watchlist_groups` — 自选分组
+
+定义文件：`vnpy_ashare/storage/repositories/watchlist_groups.py`（`connection.py` 建表）。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | TEXT PK | UUID |
+| `name` | TEXT | 分组名（如「短线观察」） |
+| `sort_order` | INTEGER | Tab 顺序 |
+
+关联表 `watchlist_group_members`：`(group_id, symbol, exchange)` PK，标的可属于多组；删除分组 CASCADE 成员。
+
+**用途：** 自选页 Tab 切换（P-06 **已有**）；规划 D-04 雷达共振一键写入观察组。详见 [自选分组](./watchlist-groups.md)。
+
+### 1.11 交易计划与流水（规划）
+
+> **状态**：表结构为框架期 spec，代码待建（J-01、J-02）。详见 [交易计划与流水](./trading-plan-journal.md)。
+
+#### `trading_plans`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | TEXT PK | UUID |
+| `trade_date` | TEXT | 计划适用交易日 |
+| `emotion_expected` | TEXT | 预期情绪阶段 |
+| `max_position_pct` | REAL | 计划总仓位 0–100 |
+| `notes` | TEXT | 备忘 |
+| `status` | TEXT | `draft` / `active` / `archived` |
+| `created_at` / `updated_at` | TEXT | 时间戳 |
+
+#### `trading_plan_symbols`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `plan_id` | TEXT FK | → `trading_plans.id` |
+| `symbol` / `exchange` | TEXT | 标的 |
+| `allowed_modes_json` | TEXT | 打板 / 半路 / 低吸 |
+| `entry_conditions_json` | TEXT | 结构化入场条件 |
+| `exit_conditions_json` | TEXT | 结构化退出条件 |
+
+#### `trade_journal`
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | TEXT PK | UUID |
+| `symbol` / `exchange` | TEXT | 标的 |
+| `trade_date` | TEXT | 交易日 |
+| `side` | TEXT | `buy` / `sell` |
+| `mode` | TEXT | `limit_board` / `halfway` / `pullback` 等 |
+| `price` / `volume` | REAL / INTEGER | 成交价、数量 |
+| `pnl_pct` | REAL | 盈亏 %（卖出行） |
+| `off_plan` | INTEGER | 是否计划外（0/1） |
+| `plan_id` | TEXT | 关联计划（可空） |
+| `notes` | TEXT | 备注 |
+| `created_at` | TEXT | 写入时间 |
+
+**用途：** K-05 违规统计、J-05 复盘报表；与 `stock_note_entries` 并存（笔记偏定性，流水偏聚合）。
+
+### 1.12 `notify_delivery_log`（规划）
+
+> **状态**：Phase 2（N-05）。详见 [消息通知](./notifications.md)。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | TEXT PK | UUID |
+| `event_type` | TEXT | 如 `screener_intraday_done` |
+| `channel` | TEXT | `feishu` |
+| `payload_json` | TEXT | 发送内容摘要 |
+| `status` | TEXT | `sent` / `failed` / `deduped` |
+| `error` | TEXT | 失败原因 |
+| `created_at` | TEXT | 时间戳 |
+
+### 1.13 风控与交易配置（非 DB）
+
+以下存 **QSettings** 或 `.env`，不落 App DB 表：
+
+| 键 / 环境变量 | 说明 | 文档 |
+|---------------|------|------|
+| `trading/strategy_profile` | 策略 Profile | [strategy-profiles.md](./strategy-profiles.md) |
+| `trading/total_capital` 等 | 总资金、单笔止损 % | [risk-gate.md](./risk-gate.md) |
+| `FEISHU_WEBHOOK_URL` | 飞书 Webhook | [notifications.md](./notifications.md) |
+| `NOTIFY_*` | 通知开关与限频 | 同上 |
+| `RECIPE_*` | 硬过滤 env 覆盖 | [intraday-screening.md](./intraday-screening.md) |
+
+### 1.14 其它 App DB 表
 
 | 表 | 说明 |
 |----|------|

@@ -33,6 +33,22 @@
 | `DATAFEED_NAME` / `TICKFLOW_*` / `TUSHARE_*` | **软重载** | 同步写入 vt_setting 后合并 SETTINGS |
 | `DATABASE_NAME` / `POSTGRES_*` | **需重启** | 同步后标注重启 |
 | `REDIS_URL` / `QUOTE_COLLECT_INTERVAL` | **软重载** | 进程内 `load_dotenv`；采集任务下次调度读新 env |
+| `FEISHU_WEBHOOK_URL` / `FEISHU_WEBHOOK_SECRET` | **即时** | `NotificationService.reload()` |
+| `NOTIFY_ENABLED` | **即时** | 总开关 |
+| `NOTIFY_MIN_INTERVAL_SEC` | **即时** | 出站限频 |
+| `RECIPE_*`（硬过滤覆盖） | **即时** | 选股下次运行读新 env；见 [intraday-screening §2.3](./intraday-screening.md#23-硬过滤) |
+
+### QSettings（配置页 / 业务页，即时）
+
+| 键前缀 | 说明 | 文档 |
+|--------|------|------|
+| `trading/strategy_profile` | 策略 Profile | [strategy-profiles.md](./strategy-profiles.md) |
+| `trading/total_capital` 等 | 风控参数 | [risk-gate.md](./risk-gate.md) |
+| `notify/events` | 飞书事件订阅多选 | [notifications.md](./notifications.md) |
+| `screener_ui/hard_filter_*` | 硬过滤模板与阈值 | [intraday-screening.md](./intraday-screening.md) |
+| `watchlist_groups/*` | 分组 Tab 状态 | [watchlist-groups.md](./watchlist-groups.md) |
+
+> 交易 / 风控 / 通知模块实现前，配置页可先占位；保存行为与上表档位一致。
 
 ## 架构
 

@@ -1,0 +1,30 @@
+"""通知 QSettings 偏好。"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
+from vnpy_ashare.notifications.events import DEFAULT_EVENT_SUBSCRIPTIONS
+
+_EVENT_PREFIX = "notify/events/"
+
+
+@dataclass(frozen=True)
+class NotifyPrefs:
+    event_subscriptions: dict[str, bool]
+
+
+def load_notify_prefs() -> NotifyPrefs:
+    settings = get_settings()
+    subscriptions: dict[str, bool] = {}
+    for event_id, default in DEFAULT_EVENT_SUBSCRIPTIONS.items():
+        key = f"{_EVENT_PREFIX}{event_id}"
+        subscriptions[event_id] = coerce_settings_bool(settings.value(key), default=default)
+    return NotifyPrefs(event_subscriptions=subscriptions)
+
+
+def save_event_subscription(event_id: str, enabled: bool) -> None:
+    settings = get_settings()
+    settings.setValue(f"{_EVENT_PREFIX}{event_id}", enabled)
+    settings.sync()

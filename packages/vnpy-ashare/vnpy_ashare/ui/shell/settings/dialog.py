@@ -35,6 +35,7 @@ from vnpy_ashare.config.vt_settings import (
     save_runtime_settings,
     sync_vt_settings_from_env,
 )
+from vnpy_ashare.ui.shell.settings.notify_section import NotifySettingsSection
 from vnpy_ashare.ui.shell.settings.snapshot import (
     collect_database_runtime_updates,
     detect_database_mode,
@@ -178,7 +179,13 @@ class SettingsDialog(QtWidgets.QDialog):
         body_layout.addStretch()
 
         scroll.setWidget(scroll_body)
-        root.addWidget(scroll, stretch=1)
+
+        self._tabs = QtWidgets.QTabWidget()
+        self._tabs.setObjectName("SettingsTabs")
+        self._tabs.addTab(scroll, "常规")
+        self._notify_section = NotifySettingsSection(self)
+        self._tabs.addTab(self._notify_section, "通知")
+        root.addWidget(self._tabs, stretch=1)
 
         button_row = QtWidgets.QHBoxLayout()
         sync_button = QtWidgets.QPushButton("从 .env 同步")
@@ -417,6 +424,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self._update_database_status()
         self._refresh_metadata_table(settings)
         self._update_drift_warning(settings)
+        self._notify_section.refresh()
 
     def _refresh_metadata_table(self, settings: dict) -> None:
         self._meta_root_label.setText(format_meta_storage_root())
@@ -631,11 +639,16 @@ class SettingsDialog(QtWidgets.QDialog):
         env_changed = diff_settings(previous_env, env_updates)
         runtime_changed = diff_settings(previous_runtime, runtime_updates)
 
+        self._notify_section.save_subscriptions()
+        ctx = build_apply_context(self)
+        if ctx.notification_service is not None:
+            ctx.notification_service.reload()
+
         if not env_changed and not runtime_changed:
-            page_notify(self, "没有变更", level="info")
+            page_notify(self, "事件订阅已保存", level="success")
+            self.refresh()
             return
 
-        ctx = build_apply_context(self)
         results: list = []
         env_path: str | None = None
         runtime_path: str | None = None

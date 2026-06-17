@@ -25,6 +25,7 @@ _RESTART_VT_PREFIXES: tuple[str, ...] = ("database.",)
 _DATAFEED_ENV_KEYS: frozenset[str] = frozenset({"DATAFEED_NAME", "TICKFLOW_API_KEY", "TUSHARE_TOKEN"})
 
 _INSTANT_ENV_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group == "大模型")
+_LLM_ENV_KEYS: frozenset[str] = _INSTANT_ENV_KEYS
 _SOFT_RELOAD_ENV_KEYS: frozenset[str] = frozenset(
     {
         "DATAFEED_NAME",
@@ -35,6 +36,7 @@ _SOFT_RELOAD_ENV_KEYS: frozenset[str] = frozenset(
     }
 )
 _RESTART_ENV_KEYS: frozenset[str] = frozenset(spec.key for spec in ENV_CONFIG_SPECS if spec.group in {"数据库", "PostgreSQL"} or spec.key == "DATABASE_NAME")
+_NOTIFY_ENV_KEYS: frozenset[str] = frozenset({"NOTIFY_ENABLED", "FEISHU_WEBHOOK_URL", "NOTIFY_MIN_INTERVAL_SEC"})
 
 _VT_LABELS: dict[str, str] = {spec.key: spec.label for spec in VT_CONFIG_SPECS}
 _ENV_LABELS: dict[str, str] = {spec.key: spec.label for spec in ENV_CONFIG_SPECS}
@@ -53,6 +55,7 @@ class ApplyResult:
 class ApplyContext:
     llm_engine: Any | None = None
     scheduler: TaskSchedulerManager | None = None
+    notification_service: Any | None = None
     reload_env: bool = False
 
 
@@ -67,7 +70,7 @@ def vt_apply_tier(key: str) -> ApplyTier:
 
 
 def env_apply_tier(key: str) -> ApplyTier:
-    if key in _INSTANT_ENV_KEYS:
+    if key in _INSTANT_ENV_KEYS or key in _NOTIFY_ENV_KEYS:
         return "instant"
     if key in _SOFT_RELOAD_ENV_KEYS:
         return "soft_reload"
@@ -103,6 +106,7 @@ def build_apply_context(parent: Any | None) -> ApplyContext:
         ashare = get_ashare_engine(main_engine)
         if ashare is not None:
             ctx.scheduler = ashare.scheduler
+            ctx.notification_service = ashare.notification_service
     return ctx
 
 
@@ -149,8 +153,11 @@ def apply_env_side_effects(
     ctx = context or ApplyContext()
     results: list[ApplyResult] = []
 
-    if changed_env_keys & _INSTANT_ENV_KEYS:
+    if changed_env_keys & _LLM_ENV_KEYS:
         results.append(_apply_llm_reload(ctx))
+
+    if changed_env_keys & _NOTIFY_ENV_KEYS:
+        results.append(_apply_notify_reload(ctx))
 
     datafeed_env_changed = bool(changed_env_keys & _DATAFEED_ENV_KEYS)
     datafeed_ok = True
@@ -372,4 +379,34 @@ def _apply_llm_reload(ctx: ApplyContext) -> ApplyResult:
         tier="instant",
         success=False,
         message="未检测到 LLM_API_KEY",
+    )
+
+
+def _apply_notify_reload(ctx: ApplyContext) -> ApplyResult:
+    key = "NOTIFY_ENABLED"
+    service = ctx.notification_service
+    if service is None:
+        return ApplyResult(
+            key=key,
+            label="消息通知",
+            tier="instant",
+            success=True,
+            message="已写入 .env（下次启动引擎后生效）",
+        )
+    try:
+        service.reload()
+    except Exception as exc:
+        return ApplyResult(
+            key=key,
+            label="消息通知",
+            tier="instant",
+            success=False,
+            message=f"重载失败：{exc}",
+        )
+    return ApplyResult(
+        key=key,
+        label="消息通知",
+        tier="instant",
+        success=True,
+        message="通知配置已重载",
     )

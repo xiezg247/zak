@@ -110,6 +110,35 @@ def run_dimension(spec: DimensionSpec, pool_size: int) -> tuple[list[DimensionHi
 - `top_n`: 20
 - `pool_size`: 80
 
+### 2.5 极致短线 Recipe（规划 R-01–R-04）
+
+> 状态与分期见 [implementation-roadmap.md §3](./implementation-roadmap.md#3-选股-reciper-)。实现前 Hub 仅内置 `intraday_multi`。
+
+| ID | 名称 | trigger | 核心维度 | 用途 |
+|----|------|---------|----------|------|
+| R-01 | `ultra_short_limit` | intraday | 涨停 + 连板 + 板块强度 + 换手 | 极致短线主池（Phase 1） |
+| R-02 | `ultra_short_first_board` | intraday | 首板 + 封板时间代理 + 题材 | 启动期试错 |
+| R-03 | `cm20_elastic` | intraday | 涨幅 + 小盘 + 概念强度 | 20cm 弹性 |
+| R-04 | `emotion_gate_only` | intraday | sentiment_gate × 其它配方 | 退潮期空池或 Top3 观察 |
+
+**R-04 行为**：当 T-03 阶段为 `retreat`（退潮）时，其它 intraday 配方前置 gate，返回空结果或仅观察名单；与 [emotion-cycle.md](./emotion-cycle.md) gate 一致。
+
+### 2.6 硬过滤模板「激进」（规划）
+
+与 R-01 同批交付；在现有保守 / 均衡 / 激进三档中扩展 **激进** 默认值：
+
+| 规则 | 激进模板值 | 均衡（现有默认） |
+|------|------------|------------------|
+| 最低成交额 | ≥ 5000 万 | 3000 万 |
+| 流通市值带 | 30–200 亿（主板）/ 20–150 亿（创科） | 最低总市值 50 亿 |
+| 排除 ST / 停牌 | 强制 | 强制 |
+| 排除一字板 | 可选（打板场景可关） | — |
+| 排除涨跌停 | 关（需含涨停池） | 可选 |
+
+QSettings：`screener_ui/hard_filter_template=aggressive`；`RECIPE_*` env 仍可覆盖。
+
+**退潮软拦截（T-06）**：情绪阶段为退潮时，结果操作条「加入自选」批量操作弹出确认，并建议改用 R-04 或空仓。
+
 ## 3. AI + Skills
 
 ### 3.1 vnpy-screening 工具
@@ -231,7 +260,9 @@ recipe 维度 → load_screening_quote_snapshot() / Tushare fallback
 ## 参考
 
 - [选股 Hub 使用指南](./screener-hub-guide.md)
+- [implementation-roadmap.md](./implementation-roadmap.md)（R-01–R-04）
+- [emotion-cycle.md](./emotion-cycle.md)（R-04 gate）
 - [产品说明 §选股 Hub](./product-plan.md#选股-hub)
 - [架构说明 §选股 Hub](./architecture.md)
 - [AI 数据路由 §选股](./ai-data-routing.md#选股)
-- [数据设计 §screener_runs](./data-design.md#17-screener_runs--选股运行历史)
+- [数据设计 §1.8 screener_runs](./data-design.md#18-screener_runs--选股运行历史)

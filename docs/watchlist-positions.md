@@ -1,0 +1,190 @@
+# 自选页持仓区
+
+> **定位**：投研**记账 + 规则退出参考**，非券商实盘同步。服务极致短线 **隔日卖点** 与 T+1 约束。策略 Profile 见 [策略配置方案](./strategy-profiles.md)。
+
+---
+
+## 1. 功能概述
+
+自选页中部 **持仓区**（`WatchlistPositionPanel`）：登记成本、数量、买入日；结合行情与策略信号展示浮盈、T+1 状态、退出信号与异动标签。
+
+| 项 | 约定 |
+|----|------|
+| 页面范围 | 自选页（`show_watchlist_positions=True`） |
+| 上限 | 20 只（`POSITION_MAX_ITEMS`） |
+| 数据源 | `watchlist_positions` @ zak.db |
+| 合规 | 规则参考价 + `SIGNAL_DISCLAIMER` |
+| 与笔记 | 持仓 `notes` 字段 **不合并** 笔记中心（见 [stock-notes.md](./stock-notes.md)） |
+
+---
+
+## 2. 布局
+
+与信号区共用 `center_splitter`（见 [watchlist-signals.md §2](./watchlist-signals.md#2-布局)）：
+
+```text
+┌─ 自选主表 ─────────────────┐
+├─ 策略信号区 ───────────────┤
+├─ 持仓区 WatchlistPositionPanel │
+├─ 运行输出 ─────────────────┤
+└────────────────────────────┘
+```
+
+### 2.1 表格列（默认）
+
+| 列 | 说明 |
+|----|------|
+| 代码 / 名称 | |
+| 成本价 / 持仓量 / 买入日 | 登记字段 |
+| 现价 / 浮盈 / 浮盈% | 实时行情计算 |
+| T+1 | 「T+1 锁定」/「可卖」 |
+| 退出信号 | 策略 buy/sell/hold |
+| 参考卖价 | 来自 `SignalSnapshot.ref_sell_price` |
+
+**规划列**（[交易体系 §4.2、§5.3](./trading-system.md)）：隔日规则状态、异动、策略 Profile。
+
+---
+
+## 3. 模块结构
+
+```text
+domain/position_snapshot.py          # PositionRecord / PositionSnapshot
+storage/repositories/positions.py    # CRUD
+config/preferences/watchlist_position.py
+ui/quotes/watchlist_positions/
+├── panel.py
+├── controller.py
+├── worker.py          # WatchlistPositionWorker
+├── cache.py           # 磁盘短缓存
+└── dialog.py          # PositionEditDialog
+quotes/misc/position_anomaly.py      # 异动标签
+```
+
+---
+
+## 4. 数据模型
+
+```sql
+CREATE TABLE watchlist_positions (
+    symbol TEXT NOT NULL,
+    exchange TEXT NOT NULL,
+    cost_price REAL NOT NULL,
+    volume INTEGER NOT NULL,
+    buy_date TEXT NOT NULL,      -- YYYY-MM-DD
+    notes TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'manual',  -- manual | gateway | paper（预留）
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (symbol, exchange)
+);
+```
+
+### 4.1 PositionSnapshot 字段
+
+| 字段 | 说明 |
+|------|------|
+| `t1_locked` | 买入日 ≥ 当日 → 不可卖提示 |
+| `exit_signal` | 绑定策略的 sell/hold/buy |
+| `exit_ref_price` / `dist_exit_pct` | 距参考卖价 |
+| `signal_snapshot` | 完整策略快照 |
+| `warnings` | K 线不足等 |
+
+计算：`build_position_snapshot()` @ `domain/position_snapshot.py`。
+
+---
+
+## 5. 策略与 Profile
+
+| 配置 | QSettings | 默认 |
+|------|-----------|------|
+| 启用面板 | `watchlist/position_panel/enabled` | true |
+| 展开 | `watchlist/position_panel/expanded` | true |
+| 跟随信号区策略 | `watchlist/position_panel/follow_signal` | true |
+| 独立策略 | `watchlist/position_panel/strategy` | `AshareDoubleMaStrategy` |
+
+`follow_signal=true` 时，退出信号与信号区 `WatchlistSignalConfig` 一致；否则用持仓区独立 class_name / 快慢线。
+
+**极致短线目标**：Profile=`ultra_short` 时绑定 `AshareOvernightExitStrategy` 规则集（**待建**）；当前仍回落到双均线或 ShortBreakout。
+
+---
+
+## 6. 异动检测（已有）
+
+`position_anomaly.py` 阈值：
+
+| 标签 | 条件 |
+|------|------|
+| 卖出信号 | `exit_signal == sell` |
+| 急跌 | 日内涨幅 ≤ −3% |
+| 大涨 | 日内 ≥ 5% 或接近涨停 |
+| 放量 | 量比 ≥ 1.2 且 \|涨跌\| ≥ 1.5% |
+| 浮亏 | 浮盈% ≤ −5% |
+| 浮盈 | 浮盈% ≥ 15% |
+
+**规划扩展**（隔日卖铁则）：
+
+| 标签 | 条件 |
+|------|------|
+| 低开止损 | 该高开却低开，30 分钟不翻红 |
+| 破开盘价 | 跌破开盘价且反弹无力 |
+| 上午必卖 | 极致短线持仓日 + 午后仍弱势 |
+
+---
+
+## 7. 刷新与缓存
+
+与信号区类似：
+
+| 触发 | 行为 |
+|------|------|
+| 定时器 | 增量刷新持仓名单 |
+| 手动刷新 | force 重算 |
+| 策略参数变更 | invalidate + 全量 |
+| 行情 tick | 现价 / 浮盈 / 异动 |
+
+磁盘缓存：`watchlist_position_cache.db`（config_key 含策略参数）。
+
+---
+
+## 8. 交互
+
+| 操作 | 行为 |
+|------|------|
+| 登记持仓 | 主表选中 → 「登记持仓」→ `PositionEditDialog` |
+| 编辑 / 删除 | 持仓区右键或工具栏 |
+| 单击行 | 联动主表、图表 |
+| 统计栏筛选 | 待卖 / T+1 锁 / 浮亏（已有 filter） |
+
+---
+
+## 9. 与短线工作流
+
+```text
+雷达龙头 → 观察组 → 信号区监控 → 登记持仓
+                              │
+                              ▼
+                    T+1 锁定 + 隔日 exit 规则（待建）
+                              │
+                              ▼
+                    笔记流水复盘 + trade_journal（待建）
+```
+
+登记时 **规划**：`emotion_cycle` 退潮期 toast 警告；`risk_gate` 单笔 2% 计算器（见 [risk-gate.md](./risk-gate.md)）。
+
+---
+
+## 10. AI
+
+| 入口 | prompt |
+|------|--------|
+| 问 AI（持仓） | `build_positions_ai_prompt` — 含成本、浮盈、T+1、退出信号 |
+| 隔日卖点检查 | `evaluate_overnight_exit`（**待建**） |
+
+---
+
+## 参考
+
+- [交易体系 §4.2、§5](./trading-system.md)
+- [自选策略信号区](./watchlist-signals.md)
+- [风控体系](./risk-gate.md)

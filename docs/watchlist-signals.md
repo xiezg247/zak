@@ -1,5 +1,7 @@
 # 自选页策略信号区
 
+> **交易风格**：默认 `AshareDoubleMaStrategy`（中线观察 Profile）。极致短线 / 短线波段切换见 [策略配置方案](./strategy-profiles.md)；Profile UI 待建（SP-02）。
+
 ## 1. 功能概述
 
 自选页中部提供**独立策略信号区**：用户手动维护监控名单，基于双均线（可配快/慢线）展示买入/卖出/观望与参考价；与主表、图表、AI 联动；分层缓存与增量刷新。
@@ -8,7 +10,7 @@
 |----|------|
 | 页面范围 | 仅自选页（`page_name == "自选"`，`show_watchlist_signals=True`） |
 | 监控范围 | 信号区名单，**非**全自选池 |
-| 策略 | 默认 `AshareDoubleMaStrategy`，快 10 / 慢 20 |
+| 策略 | 默认 `AshareDoubleMaStrategy`，快 10 / 慢 20；可选 `AshareShortBreakoutStrategy` 等（`strategies/registry.py`） |
 | 合规 | `SIGNAL_DISCLAIMER`：规则计算结果，仅供研究，不构成买卖建议 |
 | 自选池上限 | 50 只（`WATCHLIST_MAX_ITEMS`） |
 | 信号区上限 | 10 只（`SIGNAL_PANEL_MAX_SYMBOLS`） |

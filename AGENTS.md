@@ -11,3 +11,10 @@
 Source Control 的 ✨ 按钮**只读**根目录 [`.cursorrules`](.cursorrules)（不读本文件或 `.cursor/rules/`）。改 commit 语言请编辑 `.cursorrules` 中的 `Commit Message Rules`。
 
 Agent 对话提交时见 [.cursor/rules/commit-messages.mdc](.cursor/rules/commit-messages.mdc)。
+
+## Superpowers（spec / plan，本地）
+
+- **可用**：实现前用 Superpowers skills（`brainstorming` → `writing-plans` → 执行）写设计与任务计划。
+- **路径**：`docs/superpowers/specs/`、`docs/superpowers/plans/`（见该目录 [README](docs/superpowers/README.md)）。
+- **不提交 Git**：已在 [`.gitignore`](.gitignore) 排除；与已提交的 `docs/*.md` 产品文档分工见 superpowers README。
+- **已提交文档**：`docs/trading-system.md`、`docs/implementation-roadmap.md` 等仍为需求总纲；实现完成后更新其中**状态**即可。
