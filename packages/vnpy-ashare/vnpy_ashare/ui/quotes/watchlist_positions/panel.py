@@ -569,7 +569,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
             self._page._toast.warning(f"{hint}（登记仅作记账参考）")
 
-
         today = datetime.now(CHINA_TZ).date().isoformat()
         if not self._confirm_plan_violations(item, buy_date=today):
             return False
@@ -715,7 +714,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         )
         if plan_hint:
             parts.append(plan_hint)
-
 
         end_day = datetime.now(CHINA_TZ).date()
         start_day = end_day - timedelta(days=6)

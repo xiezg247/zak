@@ -114,7 +114,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._content_host = LoadingContentHost(self._splitter)
         layout.addWidget(self._content_host, stretch=1)
 
-
         theme_manager().bind_stylesheet(self, extra=build_sector_flow_stylesheet)
 
     @property

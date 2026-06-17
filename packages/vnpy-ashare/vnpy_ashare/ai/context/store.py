@@ -18,14 +18,13 @@ UI 层禁止 ``from vnpy_ashare.ai.context.store import set_*``。
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import MutableModel
-
 import threading
 from collections.abc import Callable
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.quotes.core.quote_rows import (
     clear_market_quote_rows_cache,
 )

@@ -283,7 +283,6 @@ def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             item["last_price"] = item["close"]
 
         if _missing_display_value(item.get("flow_kind")):
-
             if row_has_moneyflow_fields(item):
                 item = enrich_moneyflow_row_with_kind(item)
 

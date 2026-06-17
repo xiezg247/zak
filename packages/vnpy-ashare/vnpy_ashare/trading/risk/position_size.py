@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Any
+
+from pydantic import Field
 
 from vnpy_ashare.config.preferences.trading_risk import (
     DEFAULT_PER_TRADE_RISK_PCT,
     DEFAULT_STOP_LOSS_PCT,
     load_trading_risk_prefs,
 )
+from vnpy_ashare.domain.base import FrozenModel
 
 
 class PositionSizeResult(FrozenModel):

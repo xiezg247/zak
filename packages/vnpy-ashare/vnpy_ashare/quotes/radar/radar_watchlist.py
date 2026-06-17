@@ -81,7 +81,6 @@ def _quotes_for_candidates(candidates: list[str]) -> dict[str, dict[str, Any]]:
 
     if missing_tf:
         try:
-
             quotes = RedisQuoteStore().get_quotes(missing_tf)
             for tf_symbol, quote in quotes.items():
                 item = parse_tickflow_symbol(tf_symbol, quote.name)

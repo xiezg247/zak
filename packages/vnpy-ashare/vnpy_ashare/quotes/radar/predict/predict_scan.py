@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol

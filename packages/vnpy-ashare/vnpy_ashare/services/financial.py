@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import MutableModel
-
 import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from pydantic import Field
+
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.financial import (
     fetch_all_financial_reports,

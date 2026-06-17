@@ -5,8 +5,8 @@ from __future__ import annotations
 from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_METRIC_SCORE_BLEND
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.domain.base import FrozenModel
 
 _SETTINGS = get_settings()
 _KEY_PREFIX = "screener/recipe_tuning/"

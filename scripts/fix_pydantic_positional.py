@@ -24,36 +24,36 @@ def field_names_for_class(source: str, class_name: str) -> list[str]:
 
 
 def convert_call(text: str, class_name: str, fields: list[str]) -> str:
-  pattern = re.compile(
-      rf"{re.escape(class_name)}\((.*?)\)(?=[,\n\)])",
-      re.DOTALL,
-  )
+    pattern = re.compile(
+        rf"{re.escape(class_name)}\((.*?)\)(?=[,\n\)])",
+        re.DOTALL,
+    )
 
-  def repl(match: re.Match[str]) -> str:
-      inner = match.group(1).strip()
-      if not inner or "=" in inner.split(",")[0]:
-          return match.group(0)
-      try:
-          node = ast.parse(f"__wrapper__({inner})", mode="eval")
-      except SyntaxError:
-          return match.group(0)
-      call = node.body  # type: ignore[assignment]
-      if not isinstance(call, ast.Call):
-          return match.group(0)
-      args = call.args
-      if not args:
-          return match.group(0)
-      kw = list(call.keywords)
-      if len(args) > len(fields):
-          return match.group(0)
-      parts: list[str] = []
-      for name, arg in zip(fields, args):
-          parts.append(f"{name}={ast.unparse(arg)}")
-      for kwarg in kw:
-          parts.append(f"{kwarg.arg}={ast.unparse(kwarg.value)}")
-      return f"{class_name}({', '.join(parts)})"
+    def repl(match: re.Match[str]) -> str:
+        inner = match.group(1).strip()
+        if not inner or "=" in inner.split(",")[0]:
+            return match.group(0)
+        try:
+            node = ast.parse(f"__wrapper__({inner})", mode="eval")
+        except SyntaxError:
+            return match.group(0)
+        call = node.body  # type: ignore[assignment]
+        if not isinstance(call, ast.Call):
+            return match.group(0)
+        args = call.args
+        if not args:
+            return match.group(0)
+        kw = list(call.keywords)
+        if len(args) > len(fields):
+            return match.group(0)
+        parts: list[str] = []
+        for name, arg in zip(fields, args, strict=True):
+            parts.append(f"{name}={ast.unparse(arg)}")
+        for kwarg in kw:
+            parts.append(f"{kwarg.arg}={ast.unparse(kwarg.value)}")
+        return f"{class_name}({', '.join(parts)})"
 
-  return pattern.sub(repl, text)
+    return pattern.sub(repl, text)
 
 
 def process_file(path: Path) -> bool:

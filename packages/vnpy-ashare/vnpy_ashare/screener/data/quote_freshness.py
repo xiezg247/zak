@@ -56,7 +56,6 @@ def ensure_fresh_quotes_for_screening(
             return False, "暂无全市场行情快照"
         return False, f"行情已过时 {int(age)} 秒（阈值 {limit}s）"
 
-
     result = collect_market_quotes()
     if not result.success:
         stale = f"（原快照 {int(age)}s 前）" if age is not None else ""

@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from collections.abc import Sequence
 from typing import Protocol
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.app.engine_access import get_note_service
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.services.note import build_report_context_json
 from vnpy_ashare.ui.features.stock_analysis.save_report_dialog import SaveAnalysisReportDialog

@@ -105,7 +105,6 @@ def count_limit_from_rows(limit_rows: list[dict[str, Any]]) -> tuple[int, int]:
 def merge_official_limit_counts(breadth: MarketBreadthSnapshot) -> MarketBreadthSnapshot:
     """若 Tushare 涨跌停列表可用，覆盖近似涨跌停计数。"""
     try:
-
         limit_rows, _trade_date = fetch_limit_list_d()
     except Exception:
         return breadth

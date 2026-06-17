@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
-
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.trading.journal import TradeJournalEntry
 from vnpy_ashare.storage.repositories.trade_journal import query_trade_journal
 

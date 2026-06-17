@@ -97,7 +97,6 @@ class DataLoaderController:
         if page._market_total > 0 and loaded >= page._market_total:
             return
 
-
         now = time.monotonic()
         if now - page._market_last_load_more_at < MARKET_SCROLL_LOAD_COOLDOWN_MS / 1000:
             return

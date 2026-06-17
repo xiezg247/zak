@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
+from vnpy_ashare.domain.base import FrozenModel
 
 
 class HorizonScanStats(FrozenModel):

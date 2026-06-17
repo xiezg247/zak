@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.integrations.tickflow import fetch_index_ticker
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot

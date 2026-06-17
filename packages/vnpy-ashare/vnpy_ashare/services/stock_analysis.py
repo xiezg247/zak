@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import MutableModel
-
 from typing import TYPE_CHECKING, Any, Literal
 
+from pydantic import Field
+
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.financial import FinancialBundle, FinancialSyncResult
 from vnpy_ashare.services.stock.concept import ConceptProfile, build_concept_profile

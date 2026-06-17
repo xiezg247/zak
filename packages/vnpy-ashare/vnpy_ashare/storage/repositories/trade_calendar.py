@@ -37,12 +37,10 @@ def _default_cal_end(today: date | None = None) -> date:
 
 def _get_tushare_pro():
 
-
     load_dotenv(ENV_FILE)
     token = os.getenv("TUSHARE_TOKEN") or os.getenv("TS_TOKEN")
     if not token:
         try:
-
             token = SETTINGS.get("datafeed.password") or ""
         except Exception:
             token = ""

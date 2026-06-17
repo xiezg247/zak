@@ -371,7 +371,7 @@ class StockAnalysisChartTab(QtWidgets.QWidget):
                 incoming = cast(list[BarData], result)
             else:
                 incoming = []
-            change = MinuteBarChange(MinuteBarDiff.REPLACE, incoming)
+            change = MinuteBarChange(diff=MinuteBarDiff.REPLACE, bars=incoming)
             chart = self._minute_chart
             if isinstance(chart, AshareChartWidget):
                 if change.bars:

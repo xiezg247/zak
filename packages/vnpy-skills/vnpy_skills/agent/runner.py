@@ -8,6 +8,9 @@ import sys
 import tempfile
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+from vnpy_common.paths import ENV_FILE
 from vnpy_skills.agent.skill import AgentSkill
 
 MAX_OUTPUT_CHARS = 60_000
@@ -33,10 +36,6 @@ def run_python_in_skill(
 
     # 注入项目 .env（TUSHARE_TOKEN / TICKFLOW_API_KEY 等）
     try:
-        from dotenv import load_dotenv
-
-        from vnpy_common.paths import ENV_FILE
-
         load_dotenv(ENV_FILE, override=False)
         for key, value in os.environ.items():
             env[key] = value

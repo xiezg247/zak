@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import MutableModel
-
 from datetime import timedelta
 from typing import Any
 
+from pydantic import Field
+
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import china_now, format_china_date_compact
 from vnpy_ashare.domain.trading.signal_benchmark import resolve_benchmark_return_pct
 from vnpy_ashare.domain.trading.signal_snapshot import SIGNAL_LABELS, SignalSnapshot

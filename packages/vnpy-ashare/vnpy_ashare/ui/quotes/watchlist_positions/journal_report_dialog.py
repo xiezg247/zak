@@ -97,7 +97,6 @@ class JournalReportDialog(QtWidgets.QDialog):
 
     def _copy_prompt(self) -> None:
 
-
         end = datetime.now(CHINA_TZ).date()
         start = end - timedelta(days=int(self._days_spin.value()) - 1)
         payload = build_journal_prompt(days=int(self._days_spin.value()))
@@ -106,7 +105,6 @@ class JournalReportDialog(QtWidgets.QDialog):
         self._summary.setText(f"已复制复盘 Prompt（{start.isoformat()} ~ {end.isoformat()}）")
 
     def _export_csv(self) -> None:
-
 
         end = datetime.now(CHINA_TZ).date()
         start = end - timedelta(days=int(self._days_spin.value()) - 1)

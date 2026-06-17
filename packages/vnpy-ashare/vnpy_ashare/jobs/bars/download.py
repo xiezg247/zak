@@ -9,16 +9,15 @@ import traceback
 from datetime import datetime
 from typing import Literal
 
+from pydantic import Field
 from vnpy.trader.constant import Interval
 
 from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.jobs.core.progress import job_log, job_progress
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.storage.connection import get_meta, set_meta
@@ -121,18 +120,18 @@ def _download_one(
             output=lambda _msg: None,
         )
         job_log(f"✓ {item.vt_symbol}")
-        return _DownloadOutcome(vt_symbol=item.vt_symbol, status='ok', reason='')
+        return _DownloadOutcome(vt_symbol=item.vt_symbol, status="ok", reason="")
     except Exception as ex:
         if _is_no_data_error(ex):
             reason = str(ex)
             _record_no_data_skip(item.vt_symbol, reason=reason)
             _logger.info("跳过 %s：Tushare 无日 K（已记入跳过列表，下次不再重试）", item.vt_symbol)
             job_log(f"− {item.vt_symbol} 无数据")
-            return _DownloadOutcome(vt_symbol=item.vt_symbol, status='skipped', reason=reason)
+            return _DownloadOutcome(vt_symbol=item.vt_symbol, status="skipped", reason=reason)
         msg = traceback.format_exc().strip().split("\n")[-1]
         _logger.warning("下载 %s 失败: %s", item.vt_symbol, msg)
         job_log(f"✗ {item.vt_symbol} {msg}")
-        return _DownloadOutcome(vt_symbol=item.vt_symbol, status='failed', reason=msg)
+        return _DownloadOutcome(vt_symbol=item.vt_symbol, status="failed", reason=msg)
 
 
 def batch_download_universe_daily_bars(

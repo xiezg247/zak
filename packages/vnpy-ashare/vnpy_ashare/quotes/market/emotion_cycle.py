@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Any, Literal
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle_cache import (
@@ -192,7 +191,6 @@ def load_emotion_cycle_snapshot(
         peeked = peek_emotion_cycle_snapshot()
         if peeked is not None:
             return peeked
-
 
         cached = get_market_quotes_cache()
         if cached:

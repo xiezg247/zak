@@ -517,7 +517,6 @@ class AshareMainWindow(MainWindow):
             assert isinstance(payload, FillScreenerRequest)
             self._handle_fill_screener(payload)
         elif action.kind == AI_ACTION_FILL_RECIPE:
-
             assert isinstance(payload, FillRecipeRequest)
             self._handle_fill_recipe(payload)
         elif action.kind == AI_ACTION_ASK_AI:

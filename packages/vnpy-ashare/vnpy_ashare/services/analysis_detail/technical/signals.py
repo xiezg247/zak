@@ -33,6 +33,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
     _engine: AshareEngine
     _benchmark_return_cache_key: int | None
     _benchmark_return_cache_val: float | None
+
     def strategy_signals(
         self,
         symbol: str,

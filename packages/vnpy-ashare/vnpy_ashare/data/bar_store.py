@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 import threading
 from datetime import datetime
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import BarOverview, get_database
 from vnpy.trader.object import BarData
@@ -19,6 +16,7 @@ from vnpy_ashare.data.minute_periods import (
     is_daily_scope,
     normalize_period,
 )
+from vnpy_ashare.domain.base import FrozenModel
 
 _overview_cache_lock = threading.Lock()
 _overview_by_interval: dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]] | None = None

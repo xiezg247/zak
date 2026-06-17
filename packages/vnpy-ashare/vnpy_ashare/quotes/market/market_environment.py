@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
-
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.integrations.tushare.factors import fetch_moneyflow_hsgt_window
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 

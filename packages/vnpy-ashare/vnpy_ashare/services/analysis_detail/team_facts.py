@@ -39,7 +39,6 @@ def snapshot_row_to_dict(row: FinancialSnapshotRow) -> dict[str, Any]:
 def lookup_daily_basic(vt_symbol: str) -> dict[str, Any] | None:
     """从 Tushare daily_basic 缓存查找单票估值。"""
     try:
-
         rows, trade_date = fetch_daily_basic_with_fallback()
     except Exception:
         return None
@@ -245,7 +244,6 @@ def attach_ultra_short_strategy_context(service: AnalysisService, payload: dict[
 
     emotion = None
     try:
-
         emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
     except Exception:
         emotion = None

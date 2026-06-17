@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import MutableModel
-
 from typing import Any
 
+from pydantic import Field
+
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.concept import fetch_stock_concepts
 

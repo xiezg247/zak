@@ -89,7 +89,6 @@ def _format_cell_text(key: str, value: Any) -> str:
     if value is None or value == "":
         return "—"
     if key == "flow_kind":
-
         return flow_kind_label(str(value))
     if isinstance(value, float):
         if key in _SIGNED_PERCENT_KEYS:

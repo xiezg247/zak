@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Any
+
 from pydantic import Field
 
 from vnpy_ashare.domain.base import MutableModel
-
-from collections.abc import Callable
-from typing import Any
 
 McpExecute = Callable[[str, dict[str, Any]], str]
 

@@ -109,7 +109,6 @@ class MarketOverviewController(QtCore.QObject):
         if sectors:
             self._panel.apply_sectors(sectors)
         if ladder_counts is None:
-
             ladder_counts = peek_limit_ladder_counts()
         if ladder_counts is not None:
             self._panel.apply_limit_ladder(ladder_counts)

@@ -38,7 +38,6 @@ def build_watchlist_multiview_board(
 
     quotes_by_vt = _quotes_for_candidates(candidates)
     try:
-
         quotes_by_vt = enrich_quotes_with_moneyflow(quotes_by_vt)
     except Exception:
         pass

@@ -76,7 +76,6 @@ def record_float_loss_hold_if_needed(
         emotion_stage="",
     )
     if entry_id is not None and notify_engine is not None:
-
         publish_journal_violation(
             notify_engine,
             symbol=symbol,

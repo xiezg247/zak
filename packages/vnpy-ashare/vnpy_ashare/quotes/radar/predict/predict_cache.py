@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 import json
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import cast
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import (
@@ -84,11 +83,7 @@ def get_predict_cache(variant: str) -> PredictCacheEntry | None:
     vt_symbols = [str(item.get("vt_symbol") or "").strip() for item in payload if isinstance(item, dict)]
     vt_symbols = [vt for vt in vt_symbols if vt]
     quotes = quotes_for_vt_symbols(vt_symbols)
-    rows = tuple(
-        radar_row_from_cache_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {}))
-        for item in payload
-        if isinstance(item, dict)
-    )
+    rows = tuple(radar_row_from_cache_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {})) for item in payload if isinstance(item, dict))
     stats = HorizonScanStats(
         scanned_total=int(row["scanned_total"] or 0),
         excluded_count=int(row["excluded_count"] or 0),

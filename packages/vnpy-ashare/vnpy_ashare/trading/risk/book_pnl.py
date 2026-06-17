@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
+from pydantic import Field
+
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.trading.risk.combined import compute_avg_float_pnl_pct
 from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today, today_trade_date
 

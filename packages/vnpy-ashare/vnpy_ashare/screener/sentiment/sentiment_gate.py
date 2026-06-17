@@ -45,7 +45,6 @@ def apply_sentiment_modulation(
             "fear_greed_label": snapshot.label,
         }
 
-
         tuning = load_recipe_tuning_prefs()
 
         for row in rows:

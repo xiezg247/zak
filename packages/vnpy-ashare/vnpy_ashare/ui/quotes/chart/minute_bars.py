@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from datetime import datetime
 from enum import Enum
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bar_access import get_period_overview
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
 
 LIVE_MINUTE_TAIL_COUNT = 5
 
@@ -137,7 +135,7 @@ class MinuteBarSession(MutableModel):
         overview = get_period_overview(symbol, exchange, period)
         if overview is None:
             return False
-        return OverviewFingerprint(overview.start, overview.end) == self.overview
+        return OverviewFingerprint(start=overview.start, end=overview.end) == self.overview
 
     def apply_loaded(
         self,

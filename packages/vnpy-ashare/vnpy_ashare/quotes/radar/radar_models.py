@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
@@ -135,7 +136,6 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
 
     if missing_tf:
         try:
-
             quotes = RedisQuoteStore().get_quotes(missing_tf)
             for tf_symbol, quote in quotes.items():
                 item = parse_tickflow_symbol(tf_symbol, quote.name)

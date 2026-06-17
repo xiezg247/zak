@@ -10,7 +10,6 @@ from vnpy_llm.ui.panel.md_renderer import render_markdown
 
 def render_markdown_html(text: str) -> str:
     try:
-
         return str(render_markdown(text))
     except ImportError:
         return _fallback_html(text)

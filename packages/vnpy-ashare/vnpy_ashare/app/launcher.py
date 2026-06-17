@@ -28,7 +28,6 @@ _DEFERRED_APP_DELAY_MS = 0
 
 def _optional_llm_app():
     try:
-
         return LlmApp
     except ImportError:
         return None

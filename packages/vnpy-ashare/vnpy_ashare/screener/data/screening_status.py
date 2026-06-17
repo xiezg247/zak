@@ -79,7 +79,6 @@ def request_uses_live_quotes(
 ) -> bool:
     """策略选股请求是否会走 Redis 实时行情。"""
     if scheme_id:
-
         scheme = get_scheme(scheme_id)
         if scheme is not None:
             if str(scheme.config.get("kind") or "") == "industry":
@@ -91,7 +90,6 @@ def request_uses_live_quotes(
 
     label = (preset or "").strip()
     if label.startswith("我的 · "):
-
         resolved = resolve_preset_input(label)
         return preset_uses_live_quotes(resolved.preset)
     return preset_uses_live_quotes(label)

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange
 from vnpy.trader.utility import extract_vt_symbol
-from pydantic import Field
 
 from vnpy_ashare.domain.base import MutableModel
 

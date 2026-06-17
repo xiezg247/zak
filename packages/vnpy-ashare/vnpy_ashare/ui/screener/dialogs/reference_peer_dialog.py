@@ -252,7 +252,6 @@ class ReferencePeerDialog(QtWidgets.QDialog):
             if self._watchlist_add(item.symbol, item.exchange, name):
                 added += 1
             else:
-
                 reason = watchlist_add_failure_reason(item.symbol, item.exchange)
                 if reason == "full":
                     full_hit = True
@@ -262,7 +261,6 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         if skipped:
             message += f" · 跳过 {skipped} 只"
         if full_hit:
-
             message += f" · 自选已满（最多 {WATCHLIST_MAX_ITEMS} 只）"
         self._summary_label.setText(message)
 

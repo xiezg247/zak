@@ -165,7 +165,6 @@ def _style_plot_axes(plot: pg.PlotItem, palette: ChartPalette, *, sides: tuple[s
 
 def style_intraday_price_plot(plot: pg.PlotItem, palette: ChartPalette | None = None) -> None:
     if palette is None:
-
         palette = chart_palette(theme_manager().tokens())
     plot.showGrid(x=True, y=True, alpha=GRID_ALPHA)
     plot.setLabel("left", "")
@@ -175,7 +174,6 @@ def style_intraday_price_plot(plot: pg.PlotItem, palette: ChartPalette | None = 
 
 def style_intraday_volume_plot(plot: pg.PlotItem, palette: ChartPalette | None = None) -> None:
     if palette is None:
-
         palette = chart_palette(theme_manager().tokens())
     plot.showGrid(x=False, y=True, alpha=0.08)
     plot.setLabel("left", "")

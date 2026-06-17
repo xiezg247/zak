@@ -54,7 +54,6 @@ def format_relative_updated_at(
     date_part, time_part = text.split("T", 1)
     time_short = time_part[:5] if len(time_part) >= 5 else time_part
     if today is None:
-
         today = format_china_date()
     if date_part == today:
         body = time_short
@@ -73,7 +72,6 @@ def resolve_trade_time_from_tickflow_row(row: dict) -> str:
     timestamp = row.get("timestamp")
     if symbol and timestamp is not None:
         try:
-
             return str(instrument_timestamp_to_trade_time(symbol, int(float(timestamp)), unit="ms"))
         except Exception:
             return ""

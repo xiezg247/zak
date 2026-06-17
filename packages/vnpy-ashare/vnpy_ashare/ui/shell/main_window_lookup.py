@@ -6,11 +6,7 @@ from vnpy.trader.ui import QtWidgets
 
 
 def _is_ashare_main_window(widget: QtWidgets.QWidget) -> bool:
-    return (
-        hasattr(widget, "register_floating_overlay")
-        and hasattr(widget, "unregister_floating_overlay")
-        and hasattr(widget, "on_floating_overlay_resized")
-    )
+    return hasattr(widget, "register_floating_overlay") and hasattr(widget, "unregister_floating_overlay") and hasattr(widget, "on_floating_overlay_resized")
 
 
 def find_ashare_main_window(start: QtWidgets.QWidget) -> QtWidgets.QWidget | None:

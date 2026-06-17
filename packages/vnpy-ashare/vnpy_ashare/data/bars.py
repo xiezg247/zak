@@ -55,11 +55,9 @@ def download_bars(
         raise ValueError(f"非 A 股交易所: {exchange.value}")
 
     if interval == Interval.DAILY:
-
         return download_daily_bars_tushare(symbol, exchange, start=start, end=end)
 
     if interval == Interval.MINUTE:
-
         return download_minute_bars_tushare(symbol, exchange, start=start, end=end, period="1m")
 
     raise RuntimeError(f"历史 K 线下载仅支持日 K 与 1 分 K（Tushare），当前 interval={interval.value}")

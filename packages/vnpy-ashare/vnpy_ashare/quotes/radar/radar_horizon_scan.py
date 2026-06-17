@@ -4,13 +4,11 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
-
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_missing_kline
@@ -98,7 +96,13 @@ def prefilter_horizon_universe(
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
-        return [], HorizonScanStats(0, len(exclusion), 0, 0, 0)
+        return [], HorizonScanStats(
+            scanned_total=0,
+            excluded_count=len(exclusion),
+            prefilter_total=0,
+            refined_total=0,
+            kline_missing=0,
+        )
 
     scanned_total = int(snapshot.total or len(snapshot.rows))
     filtered = apply_screening_filters(list(snapshot.rows))
@@ -115,7 +119,13 @@ def prefilter_horizon_universe(
 
     excluded_count = len(exclusion)
     if not candidates:
-        return [], HorizonScanStats(scanned_total, excluded_count, 0, 0, 0)
+        return [], HorizonScanStats(
+            scanned_total=scanned_total,
+            excluded_count=excluded_count,
+            prefilter_total=0,
+            refined_total=0,
+            kline_missing=0,
+        )
 
     ranked = sorted(candidates, key=_quote_liquidity_key, reverse=True)
     cap = max(1, min(int(max_items), HORIZON_PREFILTER_TOP))

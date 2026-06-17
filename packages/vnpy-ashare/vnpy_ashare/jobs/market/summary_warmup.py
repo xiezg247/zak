@@ -27,7 +27,6 @@ def warm_market_summary(*, include_ladder: bool = False) -> JobResult:
     if not rows:
         return JobResult(success=False, message="Redis 无有效行情行")
 
-
     set_market_quote_rows_cache(rows)
 
     breadth = _load_breadth(rows, updated_at=snapshot.updated_at)

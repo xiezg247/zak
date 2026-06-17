@@ -32,7 +32,6 @@ def _industry_from_diagnose(diagnose: dict[str, Any] | None) -> str | None:
 
 def _lookup_industry(ts_code: str) -> str | None:
     try:
-
         value = (fetch_stock_industry_map().get(ts_code) or "").strip()
         return value or None
     except Exception:

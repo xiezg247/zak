@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import Field
-
 from vnpy.trader.constant import Interval
 from vnpy_ctastrategy.backtesting import BacktestingEngine, BacktestingMode
 
@@ -64,7 +63,6 @@ def _ensure_worker_runtime() -> None:
         sys.path.insert(0, root_text)
     os.chdir(root)
     try:
-
         reload_vnpy_settings()
     except Exception:
         pass

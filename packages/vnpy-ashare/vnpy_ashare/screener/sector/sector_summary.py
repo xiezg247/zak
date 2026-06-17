@@ -31,7 +31,6 @@ def attach_concept(
 ) -> list[dict[str, Any]]:
     """为行情行附加 ``concept`` 字段（主概念名）。"""
     if vt_to_concept is None:
-
         mapping, _hot = build_hot_concept_vt_symbol_map()
     else:
         mapping = vt_to_concept
@@ -57,7 +56,6 @@ def attach_sector_fields(
     """附加行业 + 概念；至少有一轴则保留。返回 (rows, hot_concept_names)。"""
     mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
     if vt_to_concept is None:
-
         concept_map, hot_names = build_hot_concept_vt_symbol_map()
     else:
         concept_map = vt_to_concept

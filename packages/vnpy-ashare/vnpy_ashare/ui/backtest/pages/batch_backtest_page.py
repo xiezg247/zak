@@ -27,7 +27,6 @@ _SOURCE_LABELS = {
 
 def _strategy_title(class_name: str) -> str:
     try:
-
         for meta in STRATEGY_REGISTRY.values():
             if meta.class_name == class_name:
                 return str(meta.title)

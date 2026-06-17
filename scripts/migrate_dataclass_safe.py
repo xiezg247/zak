@@ -62,15 +62,15 @@ def desc(name: str) -> str:
 def field_line(name: str, type_ann: str, default: str | None) -> str:
     d = desc(name)
     if default is None:
-        return f"    {name}: {type_ann} = Field(description=\"{d}\")"
+        return f'    {name}: {type_ann} = Field(description="{d}")'
     if default.startswith("field("):
         if "default_factory=list" in default:
-            return f"    {name}: {type_ann} = Field(default_factory=list, description=\"{d}\")"
+            return f'    {name}: {type_ann} = Field(default_factory=list, description="{d}")'
         if "default_factory=dict" in default:
-            return f"    {name}: {type_ann} = Field(default_factory=dict, description=\"{d}\")"
+            return f'    {name}: {type_ann} = Field(default_factory=dict, description="{d}")'
         if "default_factory=set" in default:
-            return f"    {name}: {type_ann} = Field(default_factory=set, description=\"{d}\")"
-    return f"    {name}: {type_ann} = Field(default={default}, description=\"{d}\")"
+            return f'    {name}: {type_ann} = Field(default_factory=set, description="{d}")'
+    return f'    {name}: {type_ann} = Field(default={default}, description="{d}")'
 
 
 def migrate_file(path: Path) -> bool:
@@ -140,12 +140,7 @@ def migrate_file(path: Path) -> bool:
                     i += 1
                     continue
                 ann_req = re.match(r"^(\s+)(\w+):\s*([^#\n]+?)\s*$", line)
-                if (
-                    ann_req
-                    and "Field(" not in line
-                    and ann_req.group(2) not in ("model_config",)
-                    and not ann_req.group(3).strip().endswith(":")
-                ):
+                if ann_req and "Field(" not in line and ann_req.group(2) not in ("model_config",) and not ann_req.group(3).strip().endswith(":"):
                     out.append(field_line(ann_req.group(2), ann_req.group(3).strip(), None))
                     changed = True
                     i += 1

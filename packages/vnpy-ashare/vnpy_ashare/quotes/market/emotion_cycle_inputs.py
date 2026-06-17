@@ -4,10 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
-from typing import Any
-
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index

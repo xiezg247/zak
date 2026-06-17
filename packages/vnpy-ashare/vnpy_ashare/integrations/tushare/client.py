@@ -17,12 +17,10 @@ class TushareNotConfiguredError(RuntimeError):
 
 def get_tushare_pro():
 
-
     load_dotenv(ENV_FILE)
     token = os.getenv("TUSHARE_TOKEN") or os.getenv("TS_TOKEN")
     if not token:
         try:
-
             token = SETTINGS.get("datafeed.password") or ""
         except Exception:
             token = ""

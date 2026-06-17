@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from collections.abc import Mapping
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
 
 

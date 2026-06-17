@@ -89,7 +89,6 @@ def _run_collect_quotes(*, force: bool) -> JobResult:
 
     result = collect_market_quotes()
     if result.success and not result.skipped:
-
         warm = warm_market_summary(include_ladder=False)
         if warm.message:
             result = JobResult(

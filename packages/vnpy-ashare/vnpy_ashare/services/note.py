@@ -51,7 +51,6 @@ class NoteService(BaseService):
     @staticmethod
     def _symbol_name_map() -> dict[tuple[str, str], str]:
 
-
         mapping: dict[tuple[str, str], str] = {}
         for symbol, exchange, name in load_universe_rows():
             mapping[(symbol, exchange.name)] = name

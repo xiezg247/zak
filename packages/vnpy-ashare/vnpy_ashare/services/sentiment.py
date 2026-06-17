@@ -5,15 +5,14 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import MutableModel
-
 import math
 import time
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro

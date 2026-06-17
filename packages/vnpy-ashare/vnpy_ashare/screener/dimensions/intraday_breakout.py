@@ -196,7 +196,6 @@ def _minute_bar_confirms_breakout(row: dict[str, Any]) -> bool:
     if item is None:
         return True
     try:
-
         bars = fetch_intraday_bars(item)
     except Exception:
         return True

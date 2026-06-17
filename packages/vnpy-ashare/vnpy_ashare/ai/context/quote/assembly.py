@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Any
+
+from pydantic import Field
 
 from vnpy_ashare.ai.context.quote.format import format_quote_summary
 from vnpy_ashare.ai.context.quote.prompts import (
@@ -30,6 +28,7 @@ from vnpy_ashare.ai.context.quote.prompts import (
 )
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE, exchange_to_cn
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.storage.repositories.positions import position_contains

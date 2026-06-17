@@ -9,13 +9,12 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any, cast
 
-from pydantic import ConfigDict, Field
-
 from apscheduler.events import EVENT_JOB_MAX_INSTANCES
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+from pydantic import ConfigDict, Field
 
 from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime

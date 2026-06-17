@@ -108,7 +108,6 @@ def build_apply_context(parent: Any | None) -> ApplyContext:
         ctx.llm_engine = parent._get_llm_engine()
     main_engine = getattr(parent, "main_engine", None)
     if main_engine is not None:
-
         ashare = get_ashare_engine(main_engine)
         if ashare is not None:
             ctx.scheduler = ashare.scheduler
@@ -148,8 +147,6 @@ def apply_env_side_effects(
     """`.env` 变更或「从 .env 同步」后的副作用（LLM 重载等）。"""
     if not changed_env_keys:
         return []
-
-
 
     if ENV_FILE.is_file():
         load_dotenv(ENV_FILE, override=True)
@@ -334,7 +331,6 @@ def _apply_log_settings() -> bool:
 
 def _apply_font_settings() -> bool:
     try:
-
         SETTINGS["font.family"] = resolve_font_family(SETTINGS.get("font.family"))
         SETTINGS["font.size"] = int(SETTINGS.get("font.size", 12))
         if not apply_app_font():

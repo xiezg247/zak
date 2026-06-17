@@ -29,4 +29,3 @@ __all__ = [
     "quote_snapshot_from_row",
     "resolve_quote_snapshot",
 ]
-

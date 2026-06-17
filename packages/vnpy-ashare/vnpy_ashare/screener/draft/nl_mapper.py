@@ -12,7 +12,6 @@ from typing import Literal
 from pydantic import Field
 
 from vnpy_ashare.domain.base import MutableModel
-
 from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
 from vnpy_ashare.screener.draft.draft_store import Confidence, ScreenerDraft, make_draft
 from vnpy_ashare.screener.preset.presets import (

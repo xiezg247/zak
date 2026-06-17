@@ -16,7 +16,6 @@ def _moneyflow_map_from_tushare(vt_symbols: list[str]) -> dict[str, float]:
     if not vt_symbols:
         return {}
     try:
-
         rows, _ = fetch_moneyflow_with_fallback(max_lookback=5)
     except Exception:
         return {}
@@ -44,7 +43,6 @@ def _moneyflow_map_from_mcp(rows: list[dict[str, Any]], *, limit: int) -> dict[s
     if not rows:
         return {}
     try:
-
         return fetch_intraday_moneyflow_map(rows, top_n=limit)
     except Exception:
         return {}

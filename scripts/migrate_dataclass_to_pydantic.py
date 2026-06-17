@@ -97,9 +97,7 @@ def convert_file(path: Path) -> bool:
             text = "from pydantic import Field\n\n" + text
 
     needs_frozen = "FrozenModel" in text or "@dataclass(frozen=True)" in original
-    needs_mutable = "MutableModel" in text or (
-        "@dataclass\n" in original and "@dataclass(frozen=True)" not in original
-    )
+    needs_mutable = "MutableModel" in text or ("@dataclass\n" in original and "@dataclass(frozen=True)" not in original)
     if "@dataclass(frozen=True)" in original:
         needs_frozen = True
     if re.search(r"^@dataclass\s*$", original, re.MULTILINE):
@@ -159,9 +157,7 @@ def convert_file(path: Path) -> bool:
         r"^(\s+)(\w+):\s*([^=\n#]+)$",
         lambda m: (
             f'{m.group(1)}{m.group(2)}: {m.group(3).strip()} = Field(description="{field_description(m.group(2))}")'
-            if "Field(" not in m.group(0) and m.group(3).strip() not in ("",)
-            and not m.group(2).startswith("_")
-            and m.group(2) not in ("model_config",)
+            if "Field(" not in m.group(0) and m.group(3).strip() not in ("",) and not m.group(2).startswith("_") and m.group(2) not in ("model_config",)
             else m.group(0)
         ),
         text,

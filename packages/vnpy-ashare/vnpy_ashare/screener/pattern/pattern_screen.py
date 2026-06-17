@@ -9,7 +9,6 @@ from collections.abc import Callable
 from typing import Any
 
 from pydantic import Field
-
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 

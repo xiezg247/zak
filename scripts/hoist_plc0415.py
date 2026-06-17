@@ -17,9 +17,7 @@ def _module_insert_line(lines: list[str]) -> int:
         idx = 1
     while idx < len(lines) and (lines[idx].strip() == "" or lines[idx].strip().startswith("#")):
         idx += 1
-    if idx < len(lines) and (
-        lines[idx].strip().startswith('"""') or lines[idx].strip().startswith("'''")
-    ):
+    if idx < len(lines) and (lines[idx].strip().startswith('"""') or lines[idx].strip().startswith("'''")):
         quote = lines[idx].strip()[:3]
         if lines[idx].count(quote) >= 2 and lines[idx].strip() != quote:
             idx += 1
@@ -47,10 +45,7 @@ def _collect_nested_imports(node: ast.AST) -> list[tuple[int, str]]:
             self._in_function = 0
 
         def visit_If(self, node: ast.If) -> None:
-            is_tc = (
-                isinstance(node.test, ast.Name)
-                and node.test.id == "TYPE_CHECKING"
-            ) or (
+            is_tc = (isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING") or (
                 isinstance(node.test, ast.Attribute)
                 and isinstance(node.test.value, ast.Name)
                 and node.test.value.id == "typing"

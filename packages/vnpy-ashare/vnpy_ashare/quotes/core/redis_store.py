@@ -133,7 +133,6 @@ class RedisQuoteStore:
                 quote.trade_time = fallback_time
             result[tf_symbol] = quote
         if enrich_factors and result:
-
             fill_missing_tushare_factors(result)
             backfill_rank_scores_from_zset(self, result)
         return result

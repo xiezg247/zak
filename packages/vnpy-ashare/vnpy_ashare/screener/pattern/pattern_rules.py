@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from vnpy.trader.object import BarData
 from pydantic import Field
+from vnpy.trader.object import BarData
 
 from vnpy_ashare.domain.base import FrozenModel
 

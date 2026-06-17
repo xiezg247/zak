@@ -66,7 +66,6 @@ class QuotesShellWidget(QtWidgets.QWidget):
         if self.PAGE_NAME == "市场":
             sidebar = self.page.rank_sidebar
             if sidebar is not None:
-
                 QtCore.QTimer.singleShot(
                     0,
                     lambda: sync_rank_splitter_for_expansion(self.page, sidebar.is_expanded()),
@@ -79,7 +78,6 @@ class QuotesShellWidget(QtWidgets.QWidget):
         if self.PAGE_NAME == "市场":
             sidebar = self.page.rank_sidebar
             if sidebar is not None:
-
                 QtCore.QTimer.singleShot(
                     0,
                     lambda: sync_rank_splitter_for_expansion(self.page, sidebar.is_expanded()),

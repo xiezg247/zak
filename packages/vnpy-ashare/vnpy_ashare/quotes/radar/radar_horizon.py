@@ -12,7 +12,6 @@ from vnpy_ashare.quotes.radar.radar_horizon_cache import (
     build_horizon_subtitle,
     get_horizon_cache,
 )
-from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_horizon_scan import (
     cache_entry_from_scan,
     collect_daily_k_ready_vt_symbols,
@@ -20,6 +19,7 @@ from vnpy_ashare.quotes.radar.radar_horizon_scan import (
     scan_horizon_variant,
 )
 from vnpy_ashare.quotes.radar.radar_horizon_scenario import SCENARIO_VARIANT_LABELS, SCENARIO_VARIANTS
+from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows
 
 OUTLOOK_CARD_VARIANTS: dict[str, str] = {
@@ -145,7 +145,6 @@ def load_outlook_horizon(
                 else "本地暂无日 K 数据，请先运行「全市场日 K」后再刷新展望卡。"
             ),
         )
-
 
     scan_result = scan_horizon_variant(resolved_variant, top_n=spec.top_n, config=config)
 

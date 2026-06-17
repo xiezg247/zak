@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Literal
 
+from pydantic import Field
+
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_ashare_trading_session
 from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS, quote_table_headers
 

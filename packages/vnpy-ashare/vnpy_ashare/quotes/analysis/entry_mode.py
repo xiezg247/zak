@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Any, Literal
 
+from pydantic import Field
+
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label, load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes, quotes_for_vt_symbols

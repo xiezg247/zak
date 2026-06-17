@@ -7,7 +7,6 @@ from collections.abc import Callable
 from datetime import date, datetime, timedelta
 
 from pydantic import Field
-
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 
@@ -345,7 +344,7 @@ def batch_fill_gap_daily_bars(
             break
         label = format_vt_symbol_cn(item.symbol, item.exchange)
         if progress is not None:
-            progress(BatchGapFillProgress("scan", index, len(candidates), label))
+            progress(BatchGapFillProgress(phase="scan", current=index, total=len(candidates), label=label))
 
         meta = bar_meta[(item.symbol, item.exchange)]
         try:
@@ -382,7 +381,7 @@ def batch_fill_gap_daily_bars(
         nonlocal completed
         completed += 1
         if progress is not None:
-            progress(BatchGapFillProgress(phase='fix', current=completed, total=total_fix, label=outcome.label))
+            progress(BatchGapFillProgress(phase="fix", current=completed, total=total_fix, label=outcome.label))
 
     if workers <= 1:
         outcomes: list[_GapFixOutcome] = []
@@ -392,7 +391,7 @@ def batch_fill_gap_daily_bars(
             outcome = _fix_gap_item(entry)
             outcomes.append(outcome)
             if progress is not None:
-                progress(BatchGapFillProgress(phase='fix', current=index, total=total_fix, label=outcome.label))
+                progress(BatchGapFillProgress(phase="fix", current=index, total=total_fix, label=outcome.label))
             if index < total_fix and delay > 0:
                 time.sleep(delay)
     else:

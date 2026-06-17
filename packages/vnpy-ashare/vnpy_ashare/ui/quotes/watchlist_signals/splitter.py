@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import TYPE_CHECKING
 
+from pydantic import Field
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences import (
@@ -16,6 +13,7 @@ from vnpy_ashare.config.preferences import (
     load_signal_panel_expanded,
     save_center_splitter_sizes,
 )
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.ui.components.splitter_utils import (
     bind_splitter_persistence,
     clamp_primary_sizes,
@@ -47,9 +45,9 @@ class _CenterPanelSpec(FrozenModel):
 
 
 _CENTER_PANEL_SPECS: tuple[_CenterPanelSpec, ...] = (
-    _CenterPanelSpec(key='signal', default_height=SIGNAL_PANEL_DEFAULT_HEIGHT, collapsed_height=SIGNAL_PANEL_COLLAPSED_HEIGHT),
-    _CenterPanelSpec(key='position', default_height=POSITION_PANEL_DEFAULT_HEIGHT, collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT),
-    _CenterPanelSpec(key='run', default_height=RUN_OUTPUT_EXPANDED_HEIGHT, collapsed_height=RUN_OUTPUT_COLLAPSED_HEIGHT),
+    _CenterPanelSpec(key="signal", default_height=SIGNAL_PANEL_DEFAULT_HEIGHT, collapsed_height=SIGNAL_PANEL_COLLAPSED_HEIGHT),
+    _CenterPanelSpec(key="position", default_height=POSITION_PANEL_DEFAULT_HEIGHT, collapsed_height=POSITION_PANEL_COLLAPSED_HEIGHT),
+    _CenterPanelSpec(key="run", default_height=RUN_OUTPUT_EXPANDED_HEIGHT, collapsed_height=RUN_OUTPUT_COLLAPSED_HEIGHT),
 )
 
 
@@ -224,7 +222,6 @@ def restore_center_splitter(page: QuotesPage) -> None:
             signal_panel.sync_splitter_geometry()
     position_panel = page.position_panel
     if position_panel is not None:
-
         position_panel.set_expanded(load_position_panel_expanded(), emit=False)
     run_panel = _run_output_panel(page)
     if run_panel is not None:

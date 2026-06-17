@@ -151,7 +151,6 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
             updated_at="",
         )
 
-
     enriched = attach_industry(snapshot.rows)
     limit_map = get_cached_limit_times_map()
     candidates = build_first_board_candidates(enriched, limit_times_map=limit_map)

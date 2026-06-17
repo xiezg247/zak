@@ -113,7 +113,6 @@ def _build_badge(data: AiContextData) -> str:
 def _build_chip_text(data: AiContextData) -> str:
     parts: list[str] = []
     if data.page == "市场":
-
         overview = format_market_overview_extra()
         if overview:
             first_line = overview.splitlines()[0]

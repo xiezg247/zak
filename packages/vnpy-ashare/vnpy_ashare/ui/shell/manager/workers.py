@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from datetime import datetime
 from typing import Protocol
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore
@@ -16,6 +13,7 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.app.engine_access import get_bar_service
 from vnpy_ashare.data.bar_access import build_symbol_name_map, iter_bar_overviews
 from vnpy_ashare.data.minute_periods import bar_interval, is_daily_scope
+from vnpy_ashare.domain.base import FrozenModel
 
 
 class OverviewRow(FrozenModel):

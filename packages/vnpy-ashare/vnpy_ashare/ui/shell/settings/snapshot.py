@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import Field
 
 from vnpy_ashare.config.bridge import (
     database_settings_from_env,
@@ -29,6 +26,7 @@ from vnpy_ashare.config.schema import (
     normalize_database_name,
 )
 from vnpy_ashare.config.vt_settings import build_vt_settings, default_vt_settings, load_runtime_settings
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_common.paths import ENV_FILE, VNTRADER_DIR, get_app_db_path, get_chat_db_path, meta_db_filenames
 
 

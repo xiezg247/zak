@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.ui.styles import ACCENT_COLOR, NAV_MUTED_COLOR
 from vnpy_common.ui.theme import theme_manager
 
@@ -31,21 +29,21 @@ class NavGroup(FrozenModel):
 APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     NavGroup(
         entries=(
-            NavEntry(key='watchlist', label='自选'),
-            NavEntry(key='market', label='市场'),
-            NavEntry(key='sector_flow', label='板块资金'),
-            NavEntry(key='radar', label='雷达'),
-            NavEntry(key='local', label='本地'),
+            NavEntry(key="watchlist", label="自选"),
+            NavEntry(key="market", label="市场"),
+            NavEntry(key="sector_flow", label="板块资金"),
+            NavEntry(key="radar", label="雷达"),
+            NavEntry(key="local", label="本地"),
         ),
     ),
     NavGroup(
-        entries=(NavEntry(key='screener', label='选股'),),
+        entries=(NavEntry(key="screener", label="选股"),),
     ),
-    NavGroup(entries=(NavEntry(key='ai_assistant', label='AI 助手'),)),
+    NavGroup(entries=(NavEntry(key="ai_assistant", label="AI 助手"),)),
     NavGroup(
         entries=(
-            NavEntry(key='cta_backtest', label='策略回测'),
-            NavEntry(key='batch_backtest', label='回测对比'),
+            NavEntry(key="cta_backtest", label="策略回测"),
+            NavEntry(key="batch_backtest", label="回测对比"),
         ),
     ),
 )
@@ -54,8 +52,8 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS 
 
 # 菜单栏「后台」入口（不在侧栏展示）
 BACKSTAGE_ENTRIES: tuple[NavEntry, ...] = (
-    NavEntry(key='scheduler', label='定时任务'),
-    NavEntry(key='data_manager', label='数据管理'),
+    NavEntry(key="scheduler", label="定时任务"),
+    NavEntry(key="data_manager", label="数据管理"),
 )
 
 BACKSTAGE_PAGE_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)
@@ -366,7 +364,6 @@ class SidebarNav(QtWidgets.QWidget):
 
     def refresh_theme(self, tokens: ThemeTokens | None = None) -> None:
         if tokens is None:
-
             tokens = theme_manager().tokens()
         nav_bg = tokens.nav_bg
         self._scroll.setStyleSheet(

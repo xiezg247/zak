@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
-from typing import Literal
+from vnpy_ashare.domain.base import FrozenModel
 
 WatchlistMultiSortKey = Literal["sort_order", "change_pct", "anomaly_score"]
 

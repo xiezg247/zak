@@ -62,7 +62,6 @@ def compute_beta_vs_hs300(
 
 def fetch_market_sentiment() -> dict[str, Any] | None:
     try:
-
         snapshot = try_fetch_fear_greed_index()
     except Exception:
         return None

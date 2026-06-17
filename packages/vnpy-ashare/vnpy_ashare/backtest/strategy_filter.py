@@ -9,7 +9,6 @@ _ASHARE_BASE_NAME = "AShareTemplate"
 
 def _registry_class_names() -> frozenset[str]:
     try:
-
         return frozenset(STRATEGY_REGISTRY)
     except ImportError:
         return frozenset()

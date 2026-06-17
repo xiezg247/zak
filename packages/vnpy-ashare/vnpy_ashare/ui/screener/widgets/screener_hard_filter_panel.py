@@ -130,7 +130,6 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
 
     def _load_industry_combo_items(self) -> None:
         try:
-
             self._industry_names = sorted({name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()})
         except Exception:
             self._industry_names = []

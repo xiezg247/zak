@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from datetime import datetime
 
+from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config import format_decimal_field
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import compute_unrealized_pnl
 

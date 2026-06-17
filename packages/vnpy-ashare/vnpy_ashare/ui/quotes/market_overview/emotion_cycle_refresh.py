@@ -39,7 +39,6 @@ def _start_background_load(chip: EmotionCycleChip) -> None:
     if thread_is_active(_active_worker):
         return
 
-
     worker = EmotionCycleLoadWorker()
     _active_worker = worker
 

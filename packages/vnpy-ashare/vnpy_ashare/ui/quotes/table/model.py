@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pydantic import Field
+from vnpy.trader.ui import QtCore, QtGui
 
 from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.symbols import StockItem
-
-from vnpy.trader.ui import QtCore, QtGui
 
 _INVALID_PARENT = QtCore.QModelIndex()
 _ParentIndex = QtCore.QModelIndex | QtCore.QPersistentModelIndex
@@ -54,15 +53,17 @@ class QuoteTableModel(QtCore.QAbstractTableModel):
             self._ensure_row_widths()
             empty_row = [QuoteCell() for _ in range(len(self._headers))]
             for _ in range(len(self._rows), count):
-                self._rows.append([
-                    QuoteCell(
-                        text=cell.text,
-                        sort_key=cell.sort_key,
-                        color=cell.color,
-                        stock_item=cell.stock_item,
-                    )
-                    for cell in empty_row
-                ])
+                self._rows.append(
+                    [
+                        QuoteCell(
+                            text=cell.text,
+                            sort_key=cell.sort_key,
+                            color=cell.color,
+                            stock_item=cell.stock_item,
+                        )
+                        for cell in empty_row
+                    ]
+                )
         self.endResetModel()
 
     def set_rows(self, rows: list[list[QuoteCell]]) -> None:

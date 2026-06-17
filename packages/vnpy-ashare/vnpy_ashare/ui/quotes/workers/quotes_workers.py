@@ -6,13 +6,10 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from datetime import datetime, timedelta
 from typing import Literal
 
+from pydantic import Field
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 from vnpy.trader.object import BarData
@@ -41,6 +38,7 @@ from vnpy_ashare.data.bars import (
     search_downloaded_stocks_page,
 )
 from vnpy_ashare.data.minute_periods import period_step
+from vnpy_ashare.domain.base import FrozenModel, MutableModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tickflow import (

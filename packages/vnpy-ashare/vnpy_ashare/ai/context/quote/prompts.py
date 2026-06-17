@@ -14,7 +14,6 @@ _TREND_SCENARIO_OUTPUT = (
 def resolve_signal_prompt_params() -> tuple[str, int, int]:
     """读取自选页信号区策略参数（与信号面板设置一致）。"""
     try:
-
         cfg = load_watchlist_signal_config()
         return cfg.class_name, cfg.fast_window, cfg.slow_window
     except Exception:

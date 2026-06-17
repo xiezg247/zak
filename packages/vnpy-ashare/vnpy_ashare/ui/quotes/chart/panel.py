@@ -658,7 +658,7 @@ class ChartPanel(QtWidgets.QWidget):
             else:
                 incoming = []
             if mode == "full" or not self._minute_session.matches_key(session_key):
-                change = MinuteBarChange(MinuteBarDiff.REPLACE, incoming)
+                change = MinuteBarChange(diff=MinuteBarDiff.REPLACE, bars=incoming)
             else:
                 change = compute_minute_bar_change(self._minute_session.bars, incoming)
 

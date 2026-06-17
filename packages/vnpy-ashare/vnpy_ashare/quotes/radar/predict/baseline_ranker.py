@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 import math
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
     market_benchmark_change_pct,

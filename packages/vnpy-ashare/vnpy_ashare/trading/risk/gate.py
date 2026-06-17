@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
-
 from typing import Literal
 
+from pydantic import Field
+
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
+from vnpy_ashare.domain.base import FrozenModel
 
 RiskGateState = Literal["normal", "caution", "halt"]
 

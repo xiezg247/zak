@@ -94,7 +94,6 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
 def _run_from_scheme(scheme: SavedScheme, *, top_n: int) -> ScreenerRunResult:
     config = dict(scheme.config)
     if str(config.get("kind") or "") == SCHEME_KIND_INDUSTRY:
-
         industry = str(config.get("industry") or "").strip()
         if not industry:
             raise ValueError(f"方案「{scheme.name}」缺少行业字段")
