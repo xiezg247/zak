@@ -16,6 +16,7 @@ from vnpy_ashare.storage.repositories.positions import (
     add_position_item,
     clear_positions,
     load_position_rows,
+    load_position_row,
     position_add_failure_reason,
     position_at_capacity,
     position_contains,
@@ -114,14 +115,45 @@ class PositionService(BaseService):
             return False
         if not watchlist_contains(symbol, exchange):
             return False
-        return add_position_item(
+        normalized_cost = normalize_cost_price(cost_price)
+        normalized_volume = normalize_volume(volume)
+        normalized_date = buy_date[:10]
+        ok = add_position_item(
+            symbol,
+            exchange,
+            cost_price=normalized_cost,
+            volume=normalized_volume,
+            buy_date=normalized_date,
+            notes=notes.strip(),
+            plan_pct=plan_pct,
+        )
+        if ok:
+            self._record_buy_journal(
+                symbol,
+                exchange,
+                cost_price=normalized_cost,
+                volume=normalized_volume,
+                buy_date=normalized_date,
+            )
+        return ok
+
+    def _record_buy_journal(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        *,
+        cost_price: float,
+        volume: int,
+        buy_date: str,
+    ) -> None:
+        from vnpy_ashare.trading.journal.record_buy import record_buy_from_position
+
+        record_buy_from_position(
             symbol,
             exchange,
             cost_price=normalize_cost_price(cost_price),
             volume=normalize_volume(volume),
             buy_date=buy_date[:10],
-            notes=notes.strip(),
-            plan_pct=plan_pct,
         )
 
     def update(
@@ -134,22 +166,128 @@ class PositionService(BaseService):
         buy_date: str,
         notes: str = "",
         plan_pct: float | None = None,
+        last_price: float | None = None,
     ) -> bool:
         error = self.validate_inputs(cost_price=cost_price, volume=volume, buy_date=buy_date)
         if error is not None:
             return False
-        return update_position_item(
+        existing_row = load_position_row(symbol, exchange)
+        if existing_row is None:
+            return False
+        old_volume = int(existing_row["volume"])
+        normalized_cost = normalize_cost_price(cost_price)
+        normalized_volume = normalize_volume(volume)
+        normalized_date = buy_date[:10]
+        ok = update_position_item(
             symbol,
             exchange,
-            cost_price=normalize_cost_price(cost_price),
-            volume=normalize_volume(volume),
-            buy_date=buy_date[:10],
+            cost_price=normalized_cost,
+            volume=normalized_volume,
+            buy_date=normalized_date,
             notes=notes.strip(),
             plan_pct=plan_pct,
         )
+        if ok and normalized_volume > old_volume:
+            from vnpy_ashare.domain.position_snapshot import PositionRecord
+            from vnpy_ashare.trading.journal.record_add import (
+                record_volume_increase_buy,
+                should_tag_add_loss,
+            )
 
-    def remove(self, symbol: str, exchange: Exchange) -> bool:
-        return remove_position_item(symbol, exchange)
+            record = PositionRecord(
+                symbol=symbol,
+                exchange=exchange.value,
+                name="",
+                cost_price=float(existing_row["cost_price"]),
+                volume=old_volume,
+                buy_date=str(existing_row["buy_date"]),
+            )
+            add_loss = should_tag_add_loss(record, new_volume=normalized_volume, last_price=last_price)
+            record_volume_increase_buy(
+                symbol,
+                exchange,
+                cost_price=normalized_cost,
+                delta_volume=normalized_volume - old_volume,
+                buy_date=normalized_date,
+                add_loss=add_loss,
+            )
+        return ok
 
-    def clear(self) -> None:
+    def remove(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        *,
+        sell_price: float | None = None,
+        sell_date: str | None = None,
+        reason: str = "",
+    ) -> bool:
+        row = load_position_row(symbol, exchange)
+        if row is None:
+            return False
+        cost_price = float(row["cost_price"])
+        volume = int(row["volume"])
+        price = sell_price if sell_price is not None and sell_price > 0 else cost_price
+        ok = remove_position_item(symbol, exchange)
+        if ok:
+            self._record_sell_journal(
+                symbol,
+                exchange,
+                cost_price=cost_price,
+                volume=volume,
+                sell_price=price,
+                sell_date=sell_date,
+                reason=reason,
+            )
+        return ok
+
+    def clear(
+        self,
+        *,
+        sell_prices: dict[tuple[str, str], float] | None = None,
+        sell_date: str | None = None,
+    ) -> None:
+        rows = load_position_rows()
         clear_positions()
+        for row in rows:
+            symbol = str(row["symbol"])
+            exchange_name = str(row["exchange"])
+            try:
+                exchange = Exchange(exchange_name)
+            except ValueError:
+                continue
+            key = (symbol, exchange_name)
+            cost_price = float(row["cost_price"])
+            sell_price = (sell_prices or {}).get(key, cost_price)
+            self._record_sell_journal(
+                symbol,
+                exchange,
+                cost_price=cost_price,
+                volume=int(row["volume"]),
+                sell_price=sell_price,
+                sell_date=sell_date,
+                reason="批量清仓",
+            )
+
+    def _record_sell_journal(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        *,
+        cost_price: float,
+        volume: int,
+        sell_price: float,
+        sell_date: str | None,
+        reason: str,
+    ) -> None:
+        from vnpy_ashare.trading.journal.record_sell import record_sell_from_position
+
+        record_sell_from_position(
+            symbol,
+            exchange,
+            cost_price=cost_price,
+            volume=volume,
+            sell_price=sell_price,
+            sell_date=sell_date,
+            reason=reason,
+        )

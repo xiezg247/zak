@@ -45,6 +45,19 @@ def load_position_rows() -> list[dict[str, str | float | int]]:
     return [_row_to_position(row) for row in rows]
 
 
+def load_position_row(symbol: str, exchange: Exchange) -> dict[str, str | float | int | None] | None:
+    init_app_db()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at
+            FROM watchlist_positions WHERE symbol = ? AND exchange = ?
+            """,
+            (symbol, exchange.name),
+        ).fetchone()
+    return _row_to_position(row) if row is not None else None
+
+
 def position_item_count() -> int:
     init_app_db()
     with connect() as conn:

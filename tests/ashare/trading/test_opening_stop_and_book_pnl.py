@@ -85,7 +85,10 @@ class BookPnlTest(unittest.TestCase):
         cache = {"600000.SSE": _snap(unrealized_pnl=-200.0)}
         with patch(
             "vnpy_ashare.trading.risk.book_pnl.load_trading_risk_prefs",
-        ) as mock_prefs:
+        ) as mock_prefs, patch(
+            "vnpy_ashare.trading.risk.book_pnl.resolve_realized_pnl_today",
+            return_value=(-500.0, 0.0, -500.0),
+        ):
             from vnpy_ashare.config.preferences.trading_risk import TradingRiskPrefs
 
             mock_prefs.return_value = TradingRiskPrefs(

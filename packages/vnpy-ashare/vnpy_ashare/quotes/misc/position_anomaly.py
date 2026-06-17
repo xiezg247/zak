@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
+from vnpy_ashare.trading.journal.float_loss_hold import is_float_loss_hold
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.position_snapshot import PositionSnapshot
@@ -23,6 +24,7 @@ _ANOMALY_WEIGHTS: dict[str, int] = {
     "开盘止损": 95,
     "急跌": 80,
     "浮亏": 60,
+    "浮亏扛单": 58,
     "放量": 40,
     "大涨": 30,
     "浮盈": 20,
@@ -53,7 +55,9 @@ def position_anomaly_reasons(
 
     if snap is not None and snap.unrealized_pnl_pct is not None:
         pnl_pct = float(snap.unrealized_pnl_pct)
-        if pnl_pct <= FLOAT_LOSS_PCT:
+        if is_float_loss_hold(snap):
+            reasons.append("浮亏扛单")
+        elif pnl_pct <= FLOAT_LOSS_PCT:
             reasons.append("浮亏")
         elif pnl_pct >= FLOAT_GAIN_PCT:
             reasons.append("浮盈")

@@ -9,6 +9,11 @@ from vnpy_ashare.config.preferences.trading_risk import (
     load_trading_risk_prefs,
     save_trading_risk_prefs,
 )
+from vnpy_ashare.trading.risk.realized_pnl import (
+    format_realized_pnl_hint,
+    resolve_realized_pnl_today,
+    today_trade_date,
+)
 
 
 class RiskSettingsDialog(QtWidgets.QDialog):
@@ -54,15 +59,26 @@ class RiskSettingsDialog(QtWidgets.QDialog):
             self._daily_pnl_edit.setText(f"{prefs.daily_pnl_pct:.1f}")
         layout.addRow("当日盈亏", self._daily_pnl_edit)
 
+        effective, journal_total, manual = resolve_realized_pnl_today(today_trade_date())
+        journal_hint = format_realized_pnl_hint(
+            journal_total=journal_total,
+            manual=manual,
+            effective=effective,
+        )
+        self._journal_label = QtWidgets.QLabel(journal_hint or "今日暂无登记卖出", self)
+        self._journal_label.setObjectName("SettingsHint")
+        self._journal_label.setWordWrap(True)
+        layout.addRow("登记卖出汇总", self._journal_label)
+
         self._realized_spin = QtWidgets.QDoubleSpinBox(self)
         self._realized_spin.setRange(-9_999_999.0, 9_999_999.0)
         self._realized_spin.setDecimals(0)
         self._realized_spin.setSuffix(" 元")
         self._realized_spin.setSpecialValueText("未填写")
-        self._realized_spin.setToolTip("当日已实现盈亏（MVP 手动填写，与持仓浮盈合计展示）")
+        self._realized_spin.setToolTip("额外已实现（非登记卖出部分，与流水汇总相加）")
         if prefs.realized_pnl_today is not None:
             self._realized_spin.setValue(prefs.realized_pnl_today)
-        layout.addRow("今日已实现", self._realized_spin)
+        layout.addRow("额外已实现", self._realized_spin)
 
         self._caution_daily_spin = QtWidgets.QDoubleSpinBox(self)
         self._caution_daily_spin.setRange(-50.0, 0.0)

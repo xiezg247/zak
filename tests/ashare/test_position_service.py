@@ -22,6 +22,15 @@ class PositionServiceTests(unittest.TestCase):
         self.db_path = Path(self._tmp.name)
         self._patcher = patch("vnpy_ashare.storage.connection._db_path", return_value=self.db_path)
         self._patcher.start()
+        self._emotion_patcher = patch(
+            "vnpy_ashare.trading.journal.plan_check.load_emotion_cycle_snapshot",
+            return_value=None,
+        )
+        self._emotion_patcher.start()
+        self._journal_patcher = patch.object(PositionService, "_record_buy_journal")
+        self._journal_patcher.start()
+        self._sell_patcher = patch.object(PositionService, "_record_sell_journal")
+        self._sell_patcher.start()
         init_app_db()
         add_watchlist_item("600000", Exchange.SSE, "浦发银行")
         engine = Mock()
@@ -30,6 +39,9 @@ class PositionServiceTests(unittest.TestCase):
         self.service = PositionService(engine)
 
     def tearDown(self) -> None:
+        self._sell_patcher.stop()
+        self._journal_patcher.stop()
+        self._emotion_patcher.stop()
         self._patcher.stop()
         self.db_path.unlink(missing_ok=True)
 

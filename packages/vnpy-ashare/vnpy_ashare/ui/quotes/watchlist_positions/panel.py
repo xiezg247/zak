@@ -41,6 +41,11 @@ from vnpy_ashare.trading.risk.combined import (
     load_combined_risk_gate_snapshot,
 )
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
+from vnpy_ashare.ui.quotes.watchlist_positions.journal_report_dialog import JournalReportDialog
+from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
+from vnpy_ashare.ui.quotes.watchlist_positions.sell_dialog import PositionSellDialog
+from vnpy_ashare.trading.journal.plan_check import check_buy_against_plan
+from vnpy_ashare.trading.journal.report import format_journal_report_hint, load_journal_report
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
@@ -142,6 +147,16 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._refresh_button.setObjectName("SecondaryButton")
         self._refresh_button.clicked.connect(self.refresh_requested.emit)
 
+        self._plan_button = QtWidgets.QPushButton("今日计划", self)
+        self._plan_button.setObjectName("SecondaryButton")
+        self._plan_button.setToolTip("查看/编辑当日交易计划（计划外登记将标记 off_plan）")
+        self._plan_button.clicked.connect(self._on_plan_clicked)
+
+        self._journal_button = QtWidgets.QPushButton("复盘", self)
+        self._journal_button.setObjectName("SecondaryButton")
+        self._journal_button.setToolTip("近 7 日流水胜率、盈亏比与违规统计")
+        self._journal_button.clicked.connect(self._on_journal_clicked)
+
         self._risk_button = QtWidgets.QPushButton("风控设置", self)
         self._risk_button.setObjectName("SecondaryButton")
         self._risk_button.setToolTip("总资金、单笔风险与风控闸阈值")
@@ -166,6 +181,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         header.addWidget(self._remove_button)
         header.addWidget(self._clear_button)
         header.addWidget(self._refresh_button)
+        header.addWidget(self._plan_button)
+        header.addWidget(self._journal_button)
         header.addWidget(self._risk_button)
         root.addLayout(header)
 
@@ -243,6 +260,30 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         if RiskSettingsDialog.open_and_save(self):
             self._page.status_label.setText("已保存交易风控设置")
             self.render_panel()
+
+    def _on_plan_clicked(self) -> None:
+        dialog = TradingPlanDialog(page=self._page, parent=self)
+        dialog.exec()
+
+    def _on_journal_clicked(self) -> None:
+        dialog = JournalReportDialog(parent=self)
+        dialog.exec()
+
+    def _confirm_plan_violations(self, item, *, buy_date: str) -> bool:
+        check = check_buy_against_plan(item.symbol, item.exchange, trade_date=buy_date)
+        if not check.warnings:
+            return True
+        if "off_plan" not in check.violation_tags and "recession_buy" not in check.violation_tags:
+            return True
+        hint = "；".join(check.warnings)
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "计划外登记",
+            f"{hint}\n登记后将写入流水并标记 {', '.join(check.violation_tags)}。\n仍要登记？",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        return answer == QtWidgets.QMessageBox.StandardButton.Yes
 
     def apply_config(self, config: WatchlistPositionConfig) -> None:
         item = config.normalized()
@@ -452,6 +493,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             self._page._toast.warning(error)
             return
         if existing:
+            snap = self._page.position_cache.get(vt_symbol)
+            last_price = snap.last_price if snap is not None else None
             ok = service.update(
                 item.symbol,
                 item.exchange,
@@ -460,6 +503,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 buy_date=form.buy_date,
                 notes=form.notes,
                 plan_pct=form.plan_pct,
+                last_price=last_price,
             )
         else:
             ok = service.add(
@@ -482,6 +526,11 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             else:
                 self._page._toast.warning("保存失败")
             return
+        if not existing:
+            check = check_buy_against_plan(item.symbol, item.exchange, trade_date=form.buy_date)
+            if check.violation_tags:
+                tags = "、".join(check.violation_tags)
+                self._page._toast.warning(f"已登记；流水标记 {tags}")
         self._page.status_label.setText(f"已保存持仓：{vt_symbol}")
         self.rows_changed.emit()
 
@@ -517,6 +566,13 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         elif not combined.allow_new_positions:
             hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
             self._page._toast.warning(f"{hint}（登记仅作记账参考）")
+        from datetime import datetime
+
+        from vnpy_ashare.domain.market_hours import CHINA_TZ
+
+        today = datetime.now(CHINA_TZ).date().isoformat()
+        if not self._confirm_plan_violations(item, buy_date=today):
+            return False
         title = f"登记持仓 · {item.symbol}"
         dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, parent=self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
@@ -546,9 +602,32 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         service = self._page._get_position_service()
         if stock is None or service is None:
             return
-        if service.remove(stock.symbol, stock.exchange):
+        record = next((row for row in self._records() if row.vt_symbol == vt_symbol), None)
+        if record is None:
+            return
+        snap = self._page.position_cache.get(vt_symbol)
+        suggested = snap.last_price if snap is not None else None
+        sell_dialog = PositionSellDialog(
+            vt_symbol=vt_symbol,
+            cost_price=record.cost_price,
+            volume=record.volume,
+            suggested_price=suggested,
+            parent=self,
+        )
+        if sell_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        form = sell_dialog.read_form()
+        if form is None:
+            self._page._toast.warning("请填写有效卖出价")
+            return
+        if service.remove(
+            stock.symbol,
+            stock.exchange,
+            sell_price=form.sell_price,
+            sell_date=form.sell_date,
+        ):
             self._page.position_cache.pop(vt_symbol, None)
-            self._page.status_label.setText(f"已移出持仓：{vt_symbol}")
+            self._page.status_label.setText(f"已移出持仓并记卖出流水：{vt_symbol}")
             self.rows_changed.emit()
 
     def _on_clear_clicked(self) -> None:
@@ -636,6 +715,17 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         )
         if plan_hint:
             parts.append(plan_hint)
+        from datetime import datetime, timedelta
+
+        from vnpy_ashare.domain.market_hours import CHINA_TZ
+
+        end_day = datetime.now(CHINA_TZ).date()
+        start_day = end_day - timedelta(days=6)
+        journal_hint = format_journal_report_hint(
+            load_journal_report(start_date=start_day.isoformat(), end_date=end_day.isoformat())
+        )
+        if journal_hint:
+            parts.append(journal_hint)
         parts.extend(
             [
                 self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),

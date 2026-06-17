@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.position_snapshot import PositionSnapshot
@@ -76,8 +77,20 @@ class PositionAnomalyTests(unittest.TestCase):
         self.assertIn("放量", reasons)
 
     def test_float_loss(self) -> None:
-        reasons = position_anomaly_reasons(snap=_snap(unrealized_pnl_pct=-6.0), quote=None)
+        with patch(
+            "vnpy_ashare.quotes.misc.position_anomaly.is_float_loss_hold",
+            return_value=False,
+        ):
+            reasons = position_anomaly_reasons(snap=_snap(unrealized_pnl_pct=-6.0), quote=None)
         self.assertIn("浮亏", reasons)
+
+    def test_float_loss_hold(self) -> None:
+        with patch(
+            "vnpy_ashare.quotes.misc.position_anomaly.is_float_loss_hold",
+            return_value=True,
+        ):
+            reasons = position_anomaly_reasons(snap=_snap(unrealized_pnl_pct=-8.0), quote=None)
+        self.assertIn("浮亏扛单", reasons)
 
     def test_float_gain(self) -> None:
         reasons = position_anomaly_reasons(snap=_snap(unrealized_pnl_pct=16.0), quote=None)

@@ -110,7 +110,7 @@
 | K-02 | 单笔风险计算器 | **已有** | 3 | 登记对话框 + `compute_position_size` |
 | K-03 | 当日已实现 + 浮亏汇总 | **已有** | 3 | 记账浮盈 + 手动已实现 |
 | K-04 | normal / caution / halt | **已有** | 3 | MVP 状态机 + 登记软拦截 |
-| K-05 | 违规 off_plan 标记 | **待建** | 4 | [trading-plan-journal.md](./trading-plan-journal.md) |
+| K-05 | 违规 off_plan 标记 | **已有** | 4 | [trading-plan-journal.md](./trading-plan-journal.md) |
 
 ---
 
@@ -118,11 +118,11 @@
 
 | ID | 能力 | 状态 | Phase | 存储 | 文档 |
 |----|------|------|-------|------|------|
-| J-01 | `trading_plans` 表 | **待建** | 4 | App DB | [trading-plan-journal.md](./trading-plan-journal.md) |
-| J-02 | `trade_journal` 表 | **待建** | 3–4 | App DB | 同上 |
-| J-03 | `propose_trading_plan` AI | **待建** | 4 | — | [ai-data-routing.md](./ai-data-routing.md) |
-| J-04 | 计划内 / 计划外校验 | **待建** | 4 | J-01, P-01 | 同上 |
-| J-05 | 复盘报表（胜率 / 盈亏比） | **规划** | 5 | J-02 | 同上 |
+| J-01 | `trading_plans` 表 | **已有** | 4 | App DB | [trading-plan-journal.md](./trading-plan-journal.md) |
+| J-02 | `trade_journal` 表 | **已有** | 3–4 | App DB | 同上 |
+| J-03 | `propose_trading_plan` AI | **已有** | 4 | — | [ai-data-routing.md](./ai-data-routing.md) |
+| J-04 | 计划内 / 计划外校验 | **已有** | 4 | J-01, P-01 | 同上 |
+| J-05 | 复盘报表（胜率 / 盈亏比） | **已有** | 5 | J-02 | 同上 |
 | — | 笔记流水 `stock_note_entries` | **已有** | 0 | App DB | [stock-notes.md](./stock-notes.md) |
 
 ---
@@ -146,8 +146,8 @@
 |----|------|------|-------|---------------|
 | A-01 | `get_emotion_cycle` | **已有** | 1 | vnpy-sentiment 扩展 |
 | A-02 | `get_short_term_watchlist` | **已有** | 1 | vnpy-watchlist 扩展 |
-| A-03 | `propose_trading_plan` | **待建** | 4 | vnpy-trading（新） |
-| A-04 | `get_trade_journal` | **待建** | 4 | 同上 |
+| A-03 | `propose_trading_plan` | **已有** | 4 | vnpy-trading（新） |
+| A-04 | `get_trade_journal` | **已有** | 4 | 同上 |
 | A-05 | `check_risk_gate` | **已有** | 3 | vnpy-trading Skill |
 | A-06 | `evaluate_entry_mode` | **已有** | 2 | vnpy-analysis 扩展 |
 | A-07 | `run_leader_screen` | **已有** | 1 | vnpy-screening 扩展 |

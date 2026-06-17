@@ -171,6 +171,9 @@ class WatchlistPositionController:
                 )
         if self._page.config.show_watchlist_multiview:
             self._page._multiview.on_signal_or_position_updated()
+        from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
+
+        scan_and_record_float_loss_holds(self._page.position_cache)
 
     def refresh_quotes_only(self) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:

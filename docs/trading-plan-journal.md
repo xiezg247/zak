@@ -9,8 +9,8 @@
 | 轨道 | 形态 | 状态 | 用途 |
 |------|------|------|------|
 | **笔记流水** | `stock_note_entries` 自由文本 | **已有** | 快速记录、AI 可读 |
-| **交易流水** | `trade_journal` 结构化 | **待建** | 胜率、盈亏比、违规统计 |
-| **次日计划** | `trading_plans` | **待建** | 盘前 3–5 只 + 仓位 + 条件 |
+| **交易流水** | `trade_journal` 结构化 | **已有** | 胜率、盈亏比、违规统计 |
+| **次日计划** | `trading_plans` | **已有** | 盘前 3–5 只 + 仓位 + 条件 |
 
 与 [stock-notes.md](./stock-notes.md) 关系：笔记偏定性；本模块偏**可聚合字段**。
 
@@ -37,7 +37,7 @@ TradingPlan
 └── status              # draft | active | archived
 ```
 
-存储：`zak.db` 新表 `trading_plans` + `trading_plan_symbols`（规划）。
+存储：`zak.db` 表 `trading_plans` + `trading_plan_symbols`（**已有**）。
 
 ### 2.2 工作流
 

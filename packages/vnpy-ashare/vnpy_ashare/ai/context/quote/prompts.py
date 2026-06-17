@@ -111,6 +111,7 @@ def build_positions_ai_prompt(
     volume: int | None = None,
     unrealized_pnl_pct: float | None = None,
     t1_locked: bool | None = None,
+    discipline_extra: str = "",
 ) -> str:
     """生成持仓策略分析预填文案。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol
@@ -126,11 +127,14 @@ def build_positions_ai_prompt(
     if t1_locked is not None:
         context_parts.append("T+1 锁定" if t1_locked else "可卖（非 T+1 锁定）")
     context_line = f"已知持仓：{'；'.join(context_parts)}。" if context_parts else ""
+    discipline = (discipline_extra or "").strip()
+    discipline_block = f"\n\n{discipline}" if discipline else ""
     return (
         f"请从持仓策略角度分析 {title} 的退出时机与风险。"
         f"{context_line}"
         f"请先核对记账持仓，再分析双均线（MA{fast}/MA{slow}）退出信号。"
         "结合持仓成本、浮盈与策略信号做研究解读，禁止给出具体买卖价或仓位建议。"
+        f"{discipline_block}"
     )
 
 
