@@ -21,10 +21,10 @@ Agent 可调用的业务 Skill：Python 实现（`*.py`）+ 可选 `SKILL.md`（
 |------|------------|----------|
 | `vnpy_context_skill.py` | vnpy-context | get_quote_context |
 | `vnpy_data_skill.py` | vnpy-data | get_bars_summary, get_bars_data |
-| `vnpy_analysis_skill.py` | vnpy-analysis | technical_snapshot, explain_screening_run, … |
+| `vnpy_analysis_skill.py` | vnpy-analysis | technical_snapshot、evaluate_entry_mode、explain_screening_run、… |
 | `vnpy_screening_skill.py` | vnpy-screening | run_recipe, screen_by_condition, … |
 | `vnpy_backtest_skill.py` | vnpy-backtest | get_backtest_result, … |
-| `vnpy_watchlist_skill.py` | vnpy-watchlist | get_watchlist, add_to_watchlist, … |
+| `vnpy_watchlist_skill.py` | vnpy-watchlist | get_watchlist、get_short_term_watchlist、add_to_watchlist、… |
 | `vnpy_notes_skill.py` | vnpy-notes | get_stock_notes, … |
 | `vnpy_sentiment_skill.py` | vnpy-sentiment | get_ashare_fear_greed_index、get_emotion_cycle |
 | `tdx_diagnose_skill.py` | tdx-stock-diagnose | diagnose_stock |

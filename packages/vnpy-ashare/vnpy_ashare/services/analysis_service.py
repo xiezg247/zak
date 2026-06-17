@@ -419,3 +419,8 @@ class AnalysisService(BaseService):
 
     def get_diagnose_result(self) -> dict[str, Any] | None:
         return self._diagnose.get_diagnose_result()
+
+    def evaluate_entry_mode(self, symbol: str) -> dict[str, Any]:
+        from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
+
+        return evaluate_entry_mode_for_symbol(symbol)

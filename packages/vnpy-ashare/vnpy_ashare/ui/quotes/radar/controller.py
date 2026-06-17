@@ -154,6 +154,7 @@ class RadarController(QtCore.QObject):
             predict_card.set_variant_key(predict_mode)
         self._board.update_tab_badges()
         self._sync_resonance_tab_from_board()
+        self._page._refresh_emotion_cycle_chip()
         self.refresh()
         self._start_auto_refresh()
         self._session_timer.start()

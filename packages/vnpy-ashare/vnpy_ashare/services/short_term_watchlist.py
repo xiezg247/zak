@@ -81,6 +81,66 @@ def collect_dragon_1_rows(payload: dict[str, RadarCardData]) -> tuple[RadarRow, 
     return tuple(row for row in data.rows if row.leader_tier == "dragon_1")
 
 
+def build_short_term_watchlist_snapshot(
+    service: WatchlistService,
+    *,
+    resonance_top_n: int = 5,
+) -> dict[str, object]:
+    """A-02：短线观察组成员 + 雷达共振 Top N。"""
+    from vnpy_ashare.quotes.radar.radar_resonance_store import (
+        get_radar_resonance_entries,
+        radar_resonance_updated_at,
+    )
+    from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
+
+    top_n = max(1, min(int(resonance_top_n), 20))
+    observation: list[dict[str, str]] = []
+    group_id = find_short_term_observation_group_id(service)
+    if group_id:
+        items_by_key = {(row["symbol"], row["exchange"]): row for row in service.get_items()}
+        for symbol, exchange_name in sorted(service.group_member_keys(group_id)):
+            item = items_by_key.get((symbol, exchange_name), {})
+            observation.append(
+                {
+                    "vt_symbol": f"{symbol}.{exchange_name}",
+                    "symbol": symbol,
+                    "name": str(item.get("name") or symbol),
+                    "exchange": exchange_name,
+                }
+            )
+
+    resonance_top = [
+        {
+            "vt_symbol": entry.vt_symbol,
+            "name": entry.name,
+            "card_count": entry.card_count,
+            "resonance_score": entry.resonance_score,
+            "card_titles": list(entry.card_titles),
+        }
+        for entry in get_radar_resonance_entries()[:top_n]
+    ]
+
+    active_group_id = load_active_watchlist_group_id()
+    active_group_name = ""
+    if active_group_id:
+        for group in service.list_groups():
+            if group.id == active_group_id:
+                active_group_name = group.name
+                break
+
+    return {
+        "observation_group_name": SHORT_TERM_OBSERVATION_GROUP_NAME,
+        "observation_group_id": group_id,
+        "observation_symbols": observation,
+        "observation_count": len(observation),
+        "resonance_top_n": top_n,
+        "resonance_symbols": resonance_top,
+        "resonance_updated_at": radar_resonance_updated_at(),
+        "active_watchlist_group_id": active_group_id,
+        "active_watchlist_group": active_group_name,
+    }
+
+
 def _radar_row_from_screener_dict(row: dict) -> RadarRow | None:
     from vnpy_ashare.domain.symbols import parse_stock_symbol
 

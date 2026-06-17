@@ -149,7 +149,7 @@ page.all_stocks → apply_filter()
 | `active_watchlist_group` | 当前 Tab 名称 |
 | `group_symbols` | 激活时分组成员 vt_symbol 列表 |
 
-工具：`get_short_term_watchlist`（见 [交易体系 §9](./trading-system.md)）。
+工具：`get_short_term_watchlist`（**已有**，vnpy-watchlist）。
 
 ---
 

@@ -38,6 +38,12 @@ def _row(vt_symbol: str, *, tier: str = "") -> RadarRow:
 
 
 class _WatchlistServiceStub:
+    def get_items(self):
+        return [
+            {"symbol": symbol, "exchange": exchange.value, "name": name}
+            for symbol, exchange, name in watchlist_repo.load_watchlist_rows()
+        ]
+
     def list_groups(self):
         return groups_repo.load_watchlist_groups()
 
@@ -109,3 +115,31 @@ class TestShortTermWatchlist(unittest.TestCase):
         dragons = collect_dragon_1_rows(payload)
         self.assertEqual(len(dragons), 1)
         self.assertEqual(dragons[0].vt_symbol, "600519.SSE")
+
+    def test_build_short_term_watchlist_snapshot(self) -> None:
+        from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
+        from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
+        from vnpy_ashare.services.short_term_watchlist import build_short_term_watchlist_snapshot
+
+        watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台")
+        result = add_rows_to_short_term_observation_group(self.service, (_row("600519.SSE"),))
+        self.assertEqual(result.group_added, 1)
+
+        set_radar_resonance_entries(
+            (
+                RadarResonanceEntry(
+                    vt_symbol="000001.SZSE",
+                    name="平安银行",
+                    symbol="000001",
+                    card_count=3,
+                    card_titles=("发现·放量", "板块·主线"),
+                    price=10.0,
+                    change_pct=5.0,
+                    resonance_score=4.5,
+                ),
+            )
+        )
+        snapshot = build_short_term_watchlist_snapshot(self.service, resonance_top_n=3)
+        self.assertEqual(snapshot["observation_count"], 1)
+        self.assertEqual(len(snapshot["resonance_symbols"]), 1)
+        self.assertEqual(snapshot["resonance_symbols"][0]["vt_symbol"], "000001.SZSE")

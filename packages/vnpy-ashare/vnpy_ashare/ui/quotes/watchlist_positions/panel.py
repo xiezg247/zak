@@ -468,6 +468,11 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         if service.contains(item.symbol, item.exchange):
             self._page._toast.warning("该标的已登记持仓，请使用编辑")
             return False
+        from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
+
+        cycle = load_emotion_cycle_snapshot()
+        if cycle is not None and cycle.stage == "recession":
+            self._page._toast.warning("退潮期：不建议短线新开仓，登记仅作记账参考")
         title = f"登记持仓 · {item.symbol}"
         dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, parent=self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:

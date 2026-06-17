@@ -302,6 +302,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self._table.rebuild_table()
         if self.config.use_radar_cards:
             self._update_quote_source_label()
+            self._refresh_emotion_cycle_chip()
             controller = getattr(self, "_radar_controller", None)
             if controller is not None:
                 controller.activate()
@@ -339,6 +340,15 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self._stock_notes.on_selection_item()
         if self.config.show_watchlist_multiview:
             self._multiview.restore_view_mode()
+        self._refresh_emotion_cycle_chip()
+
+    def _refresh_emotion_cycle_chip(self) -> None:
+        chip = getattr(self, "emotion_cycle_chip", None)
+        if chip is None:
+            return
+        from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_refresh import refresh_emotion_cycle_chip
+
+        refresh_emotion_cycle_chip(chip)
 
     def deactivate(self) -> None:
         if self.config.use_radar_cards:

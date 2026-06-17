@@ -22,7 +22,7 @@
 |----|------|------|-------|------|-------------|
 | T-01 | 市场广度条 | **已有** | 0 | Redis / TickFlow | 市场页；[market-page.md](./market-page.md) |
 | T-02 | 恐贪 + 北向环境 | **已有** | 0 | Tushare | `market_environment` |
-| T-03 | 情绪周期引擎 | **部分** | 1 | T-01, 连板 | `emotion_cycle.py`；[emotion-cycle.md](./emotion-cycle.md) |
+| T-03 | 情绪周期引擎 | **已有** | 1 | T-01, 连板 | `emotion_cycle.py`；[emotion-cycle.md](./emotion-cycle.md) |
 | T-04 | 择时闸 UI 芯片 | **已有** | 1 | T-03 | 市场页 stats_bar |
 | T-05 | sentiment_gate × 周期系数 | **已有** | 1 | T-03 | `screener/sentiment/sentiment_gate` |
 | T-06 | 退潮期批量入自选软拦截 | **已有** | 1 | T-03 | 选股 `ScreenerResultActionBar` |
@@ -74,8 +74,8 @@
 
 | ID | 能力 | 状态 | Phase | 文档 |
 |----|------|------|-------|------|
-| S-01 | 短线策略族注册 | **待建** | 2 | [strategy-profiles.md](./strategy-profiles.md) |
-| S-02 | 信号区 Profile 切换 | **待建** | 1 | 同上 |
+| S-01 | 短线策略族注册 | **已有** | 2 | [strategy-profiles.md](./strategy-profiles.md) |
+| S-02 | 信号区 Profile 切换 | **已有** | 1 | 同上 |
 | S-03 | 持仓退出规则集 | **部分** | 2 | [watchlist-positions.md](./watchlist-positions.md) |
 | S-04 | 分 K 买卖参考线 | **待建** | 2 | — |
 | S-05 | 开盘 30 分钟止损提醒 | **部分** | 2 | `position_anomaly` |
@@ -145,11 +145,11 @@
 | ID | 工具 | 状态 | Phase | Skill（规划） |
 |----|------|------|-------|---------------|
 | A-01 | `get_emotion_cycle` | **已有** | 1 | vnpy-sentiment 扩展 |
-| A-02 | `get_short_term_watchlist` | **待建** | 1 | vnpy-watchlist 扩展 |
+| A-02 | `get_short_term_watchlist` | **已有** | 1 | vnpy-watchlist 扩展 |
 | A-03 | `propose_trading_plan` | **待建** | 4 | vnpy-trading（新） |
 | A-04 | `get_trade_journal` | **待建** | 4 | 同上 |
 | A-05 | `check_risk_gate` | **待建** | 3 | 同上 |
-| A-06 | `evaluate_entry_mode` | **待建** | 2 | vnpy-analysis 扩展 |
+| A-06 | `evaluate_entry_mode` | **已有** | 2 | vnpy-analysis 扩展 |
 | A-07 | `run_leader_screen` | **已有** | 1 | vnpy-screening 扩展 |
 | — | 现有 Skills 清单 | **已有** | 0 | [ai-data-routing.md](./ai-data-routing.md) |
 

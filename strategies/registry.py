@@ -114,12 +114,64 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
         ),
         supports_signals=True,
     ),
+    "AshareLimitBoardStrategy": StrategyMeta(
+        class_name="AshareLimitBoardStrategy",
+        title="A 股极致短线·打板",
+        summary=("涨停价触及与封板回封规则（规划）。依赖分 K / 涨停价 / 封板状态，Phase 5 交付。"),
+        tags=("极致短线", "打板", "规划"),
+        scenarios=("情绪启动–高潮", "龙头与核心跟风", "10cm 主板"),
+        anti_scenarios=("退潮 / 冰点", "20cm 创科", "一字缩量板"),
+        param_hints=(("seal_time_cutoff", "封板时间上限，默认 10:30"),),
+        supports_signals=False,
+    ),
+    "AshareIntradayBreakoutStrategy": StrategyMeta(
+        class_name="AshareIntradayBreakoutStrategy",
+        title="A 股极致短线·半路",
+        summary=("带量拉升突破关键位（规划）。涨幅 3%–7%、时段 9:40–10:30。"),
+        tags=("极致短线", "半路", "规划"),
+        scenarios=("题材发酵", "板块联动拉升", "20cm 弹性票"),
+        anti_scenarios=("无量脉冲", "尾盘偷袭"),
+        param_hints=(("min_change_pct", "最低涨幅，默认 3"), ("max_change_pct", "最高涨幅，默认 7")),
+        supports_signals=False,
+    ),
+    "AsharePullbackStrategy": StrategyMeta(
+        class_name="AsharePullbackStrategy",
+        title="A 股极致短线·低吸",
+        summary=("核心分歧回踩 MA5 或日内承接（规划）。优先 14:30 后确认。"),
+        tags=("极致短线", "低吸", "规划"),
+        scenarios=("分歧期核心票", "龙头炸板回踩", "MA5 附近承接"),
+        anti_scenarios=("趋势破坏", "退潮期抄底"),
+        param_hints=(("ma_window", "回踩均线，默认 5"),),
+        supports_signals=False,
+    ),
+    "AshareOvernightExitStrategy": StrategyMeta(
+        class_name="AshareOvernightExitStrategy",
+        title="A 股隔日退出规则集",
+        summary=("高开低走 30 分钟止损、隔日卖铁则等退出规则（规划，非独立 CTA）。"),
+        tags=("极致短线", "退出", "规划"),
+        scenarios=("持仓区绑定", "隔日计划执行"),
+        anti_scenarios=("中线趋势持仓", "无分 K 数据时仅提示"),
+        param_hints=(("stop_minutes", "开盘止损观察分钟，默认 30"),),
+        supports_signals=False,
+    ),
 }
+
+ULTRA_SHORT_STRATEGY_CLASS_NAMES: tuple[str, ...] = (
+    "AshareLimitBoardStrategy",
+    "AshareIntradayBreakoutStrategy",
+    "AsharePullbackStrategy",
+    "AshareOvernightExitStrategy",
+)
 
 
 def list_signal_strategy_metas() -> list[StrategyMeta]:
     """返回支持自选信号计算的已注册策略元数据。"""
     return [meta for meta in STRATEGY_REGISTRY.values() if meta.supports_signals]
+
+
+def list_ultra_short_strategy_metas() -> list[StrategyMeta]:
+    """S-01：极致短线策略族元数据（含规划项）。"""
+    return [STRATEGY_REGISTRY[name] for name in ULTRA_SHORT_STRATEGY_CLASS_NAMES if name in STRATEGY_REGISTRY]
 
 
 def get_strategy_meta(class_name: str) -> StrategyMeta | None:

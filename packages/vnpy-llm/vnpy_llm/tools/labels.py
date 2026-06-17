@@ -5,6 +5,7 @@ from __future__ import annotations
 _TOOL_LABELS: dict[str, str] = {
     "get_quote_context": "读取当前上下文",
     "get_watchlist": "查询自选池",
+    "get_short_term_watchlist": "查询短线观察组与共振",
     "get_bars_summary": "查询K线概览",
     "get_bars_data": "加载K线数据",
     "diagnose_stock": "综合诊断",
@@ -13,6 +14,7 @@ _TOOL_LABELS: dict[str, str] = {
     "list_watchlist_signal_panel": "扫描信号区",
     "historical_pattern_summary": "统计历史走势",
     "trend_scenario_summary": "走势情景摘要",
+    "evaluate_entry_mode": "评估打板/半路/低吸",
     "get_screening_context": "读取选股结果",
     "explain_screening_run": "编排选股解读",
     "list_strategies": "列出可用策略",

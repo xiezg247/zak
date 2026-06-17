@@ -55,6 +55,19 @@ class VnpyWatchlistSkill(SkillTemplate):
                 description="获取自选页持仓记账列表（成本、数量、买入日；投研记账，非券商实盘）",
                 parameters={"type": "object", "properties": {}},
             ),
+            ToolSpec(
+                name="get_short_term_watchlist",
+                description="获取短线观察组成员与雷达共振 Top N（次日计划 / 盘中短线上下文）",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "resonance_top_n": {
+                            "type": "integer",
+                            "description": "共振列表返回条数，默认 5，最大 20",
+                        },
+                    },
+                },
+            ),
         ]
 
     def _get_watchlist_service(self):
@@ -121,6 +134,13 @@ class VnpyWatchlistSkill(SkillTemplate):
             },
             ensure_ascii=False,
         )
+
+    def get_short_term_watchlist(self, resonance_top_n: int = 5) -> str:
+        from vnpy_ashare.services.short_term_watchlist import build_short_term_watchlist_snapshot
+
+        svc = self._get_watchlist_service()
+        payload = build_short_term_watchlist_snapshot(svc, resonance_top_n=resonance_top_n)
+        return json.dumps(payload, ensure_ascii=False)
 
     def remove_from_watchlist(self, symbol: str) -> str:
         item = parse_stock_symbol(symbol)

@@ -332,6 +332,11 @@ class QuotesPageShell:
             toolbar.addWidget(page.add_signal_panel_button)
         if page.config.show_watchlist_positions:
             toolbar.addWidget(page.register_position_button)
+        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
+            from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
+
+            page.emotion_cycle_chip = EmotionCycleChip(page)
+            toolbar.addWidget(page.emotion_cycle_chip)
         if page.config.show_stock_notes:
             toolbar.addWidget(page.quick_note_button)
             toolbar.addWidget(page.notes_center_button)
@@ -689,6 +694,10 @@ class QuotesPageShell:
         toolbar.addWidget(page.refresh_radar_button)
         toolbar.addWidget(page.refresh_radar_all_button)
         toolbar.addWidget(page.radar_ai_button)
+        from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
+
+        page.emotion_cycle_chip = EmotionCycleChip(page)
+        toolbar.addWidget(page.emotion_cycle_chip)
         toolbar.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget()

@@ -173,6 +173,20 @@ class VnpyAnalysisSkill(SkillTemplate):
                     "required": ["symbol"],
                 },
             ),
+            ToolSpec(
+                name="evaluate_entry_mode",
+                description=(
+                    "评估单票更适合打板、半路还是低吸；结合涨跌幅、10cm/20cm、连板地位与情绪周期。"
+                    "用户问「这只能打板吗」「能不能追」「半路还是低吸」时调用。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "股票代码，如 600519.SSE"},
+                    },
+                    "required": ["symbol"],
+                },
+            ),
         ]
 
     def _get_analysis_service(self):
@@ -259,4 +273,9 @@ class VnpyAnalysisSkill(SkillTemplate):
             fast_window=int(fast_window or 10),
             slow_window=int(slow_window or 20),
         )
+        return json.dumps(result, ensure_ascii=False)
+
+    def evaluate_entry_mode(self, symbol: str) -> str:
+        svc = self._get_analysis_service()
+        result = svc.evaluate_entry_mode(symbol)
         return json.dumps(result, ensure_ascii=False)
