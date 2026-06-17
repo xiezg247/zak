@@ -8,7 +8,13 @@ from typing import Any
 from pydantic import ConfigDict, Field
 
 from vnpy_common.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import (
+    QuoteRow,
+    QuoteRowLike,
+    coerce_quote_row,
+    quote_row_payload,
+    quote_row_to_dict,
+)
 
 _SCORE_KEYS = frozenset(
     {
@@ -88,7 +94,8 @@ class ScreenerResultRow(FrozenModel):
         return key in self.to_dict()
 
     def to_dict(self) -> dict[str, Any]:
-        payload = self.quote.model_dump(mode="python", exclude_defaults=True)
+        """扁平选股结果 dict（行情瘦身 + scores + tags）。"""
+        payload = quote_row_payload(self.quote)
         payload.update(self.scores)
         payload.update(self.tags)
         return payload
@@ -146,6 +153,7 @@ ScreeningRowInput = ScreeningRowLike | QuoteRowLike
 
 
 def screening_row_to_dict(row: ScreeningRowInput) -> dict[str, Any]:
+    """选股/雷达管道边界：结构化行或 mapping → 完整 flat dict。"""
     if isinstance(row, ScreenerResultRow):
         return row.to_dict()
-    return coerce_quote_row(row).to_dict()
+    return quote_row_to_dict(row)

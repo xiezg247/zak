@@ -26,6 +26,7 @@ from vnpy_ashare.domain.market.quote_row import (
     quote_row_copy,
     quote_row_from_mapping,
     quote_row_from_stock_and_snapshot,
+    quote_row_payload,
     quote_row_to_dict,
     quote_rows_by_vt,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "coerce_quote_row",
     "coerce_quote_rows",
     "quote_row_copy",
+    "quote_row_payload",
     "matches_board",
     "quote_row_from_mapping",
     "quote_row_from_stock_and_snapshot",

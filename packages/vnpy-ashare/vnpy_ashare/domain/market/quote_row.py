@@ -10,6 +10,7 @@ from pydantic import ConfigDict, Field, model_validator
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_common.domain.base import MutableModel
+from vnpy_common.domain.serialize import dump_python
 
 
 class QuoteRow(MutableModel):
@@ -55,8 +56,8 @@ class QuoteRow(MutableModel):
         return payload
 
     def to_dict(self) -> dict[str, Any]:
-        """含 extra 字段的 plain dict。"""
-        return self.model_dump(mode="python")
+        """含 extra 字段的完整 plain dict（进程内边界）。"""
+        return dump_python(self)
 
     def get(self, key: str, default: Any = None) -> Any:
         if key in type(self).model_fields:
@@ -146,8 +147,15 @@ def quote_row_copy(row: QuoteRowLike, **updates: Any) -> QuoteRow:
 QuoteRowLike = QuoteRow | Mapping[str, Any]
 
 
+def quote_row_payload(row: QuoteRowLike) -> dict[str, Any]:
+    """配方/enrich 管道用的瘦身行情 dict（排除声明字段默认值）。"""
+    if isinstance(row, QuoteRow):
+        return dump_python(row, exclude_defaults=True)
+    return dict(row)
+
+
 def quote_row_to_dict(row: QuoteRowLike) -> dict[str, Any]:
-    """序列化边界：优先 ``QuoteRow.to_dict()``，plain mapping 则 ``dict()``。"""
+    """序列化边界：完整 plain dict（含 extra 与默认值）。"""
     if isinstance(row, QuoteRow):
         return row.to_dict()
     return dict(row)

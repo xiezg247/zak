@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from datetime import date, timedelta
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_rows
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_rows, quote_row_payload
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
@@ -223,12 +223,6 @@ def _missing_display_value(value: Any) -> bool:
     return value is None or value == ""
 
 
-def _recipe_row_payload(row: QuoteRowLike) -> dict[str, Any]:
-    if isinstance(row, QuoteRow):
-        return row.model_dump(mode="python", exclude_defaults=True)
-    return dict(row)
-
-
 def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
     """补全配方结果展示字段（各维度 row 通常只含单维度指标）。"""
     if not rows:
@@ -257,7 +251,7 @@ def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
 
     enriched: list[dict[str, Any]] = []
     for row in rows:
-        item = _recipe_row_payload(row)
+        item = quote_row_payload(row)
         vt_symbol = str(item.get("vt_symbol") or "").strip()
         fund = fund_map.get(vt_symbol)
         mf = mf_map.get(vt_symbol)

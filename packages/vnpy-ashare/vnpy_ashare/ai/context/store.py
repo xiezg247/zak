@@ -30,6 +30,7 @@ from vnpy_ashare.domain.screener.result_row import (
 )
 from vnpy_ashare.quotes.core.quote_rows import clear_market_quote_rows_cache
 from vnpy_common.ai.protocol import AiContextData
+from vnpy_common.domain.serialize import dump_python
 
 _lock = threading.Lock()
 _listeners: list[Callable[[AiContextData], None]] = []
@@ -83,7 +84,7 @@ def get_backtest_summary_dict() -> dict[str, Any] | None:
 
 def set_backtest_summary(summary: BacktestSummary | None) -> None:
     """写入回测摘要（``BacktestSummary`` 转 dict 后存 session）。"""
-    sync_backtest_summary_dict(summary.model_dump(mode="python") if summary else None)
+    sync_backtest_summary_dict(dump_python(summary) if summary else None)
 
 
 def clear_all() -> None:

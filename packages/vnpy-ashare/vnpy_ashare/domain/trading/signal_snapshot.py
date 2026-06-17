@@ -9,6 +9,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from vnpy_common.domain.base import FrozenModel
+from vnpy_common.domain.serialize import dump_json
 
 SignalKind = Literal["buy", "sell", "hold", "na"]
 
@@ -97,10 +98,7 @@ def signal_as_of_stale(snapshot: SignalSnapshot | None, *, bar_end_date: str | N
 
 def signal_snapshot_to_dict(snapshot: SignalSnapshot) -> dict[str, Any]:
     """序列化信号快照（供 AI 工具 JSON 返回）。"""
-    return snapshot.model_dump(
-        mode="json",
-        exclude={"reasons"},
-    )
+    return dump_json(snapshot, exclude={"reasons"})
 
 
 def detect_signal_transitions(
