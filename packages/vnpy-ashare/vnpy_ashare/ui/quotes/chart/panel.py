@@ -245,6 +245,7 @@ class ChartPanel(QtWidgets.QWidget):
         self._signal_snapshot = snapshot
         if snapshot is None:
             self.daily_chart.clear_reference_lines()
+            self.minute_chart.clear_reference_lines()
             self.ref_legend.clear()
             self._update_ref_legend_visibility()
             return
@@ -268,6 +269,13 @@ class ChartPanel(QtWidgets.QWidget):
             action_buy=action_buy,
             action_sell=action_sell,
         )
+        self.minute_chart.set_reference_lines(
+            ref_buy=ref_buy,
+            ref_sell=ref_sell,
+            last_price=last_price,
+            action_buy=action_buy,
+            action_sell=action_sell,
+        )
         self.ref_legend.set_reference_lines(
             ref_buy=ref_buy,
             ref_sell=ref_sell,
@@ -276,9 +284,9 @@ class ChartPanel(QtWidgets.QWidget):
         self._update_ref_legend_visibility()
 
     def _update_ref_legend_visibility(self) -> None:
-        on_daily = self.tab_bar.currentIndex() == DAILY_TAB_INDEX
+        on_kline = self.tab_bar.currentIndex() in (DAILY_TAB_INDEX, MINUTE_TAB_INDEX)
         has_lines = self.ref_legend.has_entries()
-        self.ref_legend.setVisible(on_daily and has_lines)
+        self.ref_legend.setVisible(on_kline and has_lines)
 
     def load_item(self, item: StockItem | None, *, quote: QuoteSnapshot | None = None) -> None:
         is_new = item is not None and (self._item is None or (item.symbol, item.exchange) != (self._item.symbol, self._item.exchange))
@@ -297,6 +305,7 @@ class ChartPanel(QtWidgets.QWidget):
         if is_new:
             self._signal_snapshot = None
             self.daily_chart.clear_reference_lines()
+            self.minute_chart.clear_reference_lines()
             self.ref_legend.clear()
             if self.tab_bar.currentIndex() == MINUTE_TAB_INDEX:
                 self._reset_minute_chart()
@@ -684,6 +693,8 @@ class ChartPanel(QtWidgets.QWidget):
                     chart.apply_bars(change)
                     self._minute_loaded_period = target_period
                     self._minute_loaded_key = target_key
+                    if self._signal_snapshot is not None:
+                        self.apply_signal_reference(self._signal_snapshot, quote=self._last_quote)
                 else:
                     self._reset_minute_chart()
                     self._minute_session.reset()

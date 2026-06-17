@@ -162,6 +162,7 @@ SUPPORTED_SIGNAL_STRATEGIES: dict[str, str] = {
     "AshareShortBreakoutStrategy": "short_breakout",
     "AshareSwingMaStrategy": "swing_ma",
     "AshareTrendMaStrategy": "trend_ma",
+    "AshareLimitBoardStrategy": "limit_board",
 }
 
 STRATEGY_SIGNAL_DEFAULTS: dict[str, tuple[int, int]] = {
@@ -169,6 +170,7 @@ STRATEGY_SIGNAL_DEFAULTS: dict[str, tuple[int, int]] = {
     "AshareShortBreakoutStrategy": (5, 10),
     "AshareSwingMaStrategy": (10, 20),
     "AshareTrendMaStrategy": (20, 60),
+    "AshareLimitBoardStrategy": (5, 10),
 }
 
 STRATEGY_SIGNAL_RECENT_DAYS: dict[str, int] = {
@@ -176,6 +178,7 @@ STRATEGY_SIGNAL_RECENT_DAYS: dict[str, int] = {
     "AshareShortBreakoutStrategy": 2,
     "AshareSwingMaStrategy": 5,
     "AshareTrendMaStrategy": 15,
+    "AshareLimitBoardStrategy": 1,
 }
 
 
@@ -1973,5 +1976,17 @@ def build_signal_payload_for_strategy(
             lows=lows,
             volumes=volumes,
             relative_index_pct=relative_index_pct,
+        )
+    if kind == "limit_board":
+        from strategies.ultra_short_signals import build_limit_board_signal_payload
+
+        return build_limit_board_signal_payload(
+            closes,
+            dates,
+            vt_symbol=vt_symbol,
+            strategy_id=strategy_id,
+            highs=highs,
+            volumes=volumes,
+            recent_days=recent_days,
         )
     return None

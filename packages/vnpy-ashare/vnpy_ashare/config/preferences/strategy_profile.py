@@ -32,10 +32,10 @@ STRATEGY_PROFILES: tuple[StrategyProfileSpec, ...] = (
     StrategyProfileSpec(
         profile_id="ultra_short",
         title="极致短线",
-        signal_class_name="AshareShortBreakoutStrategy",
+        signal_class_name="AshareLimitBoardStrategy",
         fast_window=5,
         slow_window=10,
-        transition_hint="过渡：日 K 突破信号，非打板规则",
+        transition_hint="打板日 K 代理；隔日退出绑定 OvernightExit",
     ),
     StrategyProfileSpec(
         profile_id="short_swing",

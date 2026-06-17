@@ -1,0 +1,110 @@
+"""交易风控 QSettings（K-01）。"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
+
+PREFIX = "trading/risk"
+
+DEFAULT_PER_TRADE_RISK_PCT = 0.02
+DEFAULT_STOP_LOSS_PCT = 0.05
+DEFAULT_CAUTION_DAILY_PCT = -3.0
+DEFAULT_HALT_DAILY_PCT = -5.0
+DEFAULT_CAUTION_FLOAT_PCT = -5.0
+
+
+def _coerce_float(value: object, *, default: float | None = None) -> float | None:
+    if value is None or str(value).strip() == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+@dataclass(frozen=True)
+class TradingRiskPrefs:
+    total_capital: float | None
+    per_trade_risk_pct: float
+    stop_loss_pct: float
+    daily_pnl_pct: float | None
+    caution_daily_pct: float
+    halt_daily_pct: float
+    caution_float_pct: float
+    manual_halt: bool
+
+    def normalized(self) -> TradingRiskPrefs:
+        per_trade = self.per_trade_risk_pct
+        if per_trade <= 0 or per_trade > 0.5:
+            per_trade = DEFAULT_PER_TRADE_RISK_PCT
+        stop_loss = self.stop_loss_pct
+        if stop_loss <= 0 or stop_loss > 0.5:
+            stop_loss = DEFAULT_STOP_LOSS_PCT
+        total = self.total_capital
+        if total is not None and total <= 0:
+            total = None
+        return TradingRiskPrefs(
+            total_capital=total,
+            per_trade_risk_pct=per_trade,
+            stop_loss_pct=stop_loss,
+            daily_pnl_pct=self.daily_pnl_pct,
+            caution_daily_pct=self.caution_daily_pct,
+            halt_daily_pct=self.halt_daily_pct,
+            caution_float_pct=self.caution_float_pct,
+            manual_halt=self.manual_halt,
+        )
+
+
+def load_trading_risk_prefs() -> TradingRiskPrefs:
+    settings = get_settings()
+    return TradingRiskPrefs(
+        total_capital=_coerce_float(settings.value(f"{PREFIX}/total_capital")),
+        per_trade_risk_pct=_coerce_float(
+            settings.value(f"{PREFIX}/per_trade_risk_pct"),
+            default=DEFAULT_PER_TRADE_RISK_PCT,
+        )
+        or DEFAULT_PER_TRADE_RISK_PCT,
+        stop_loss_pct=_coerce_float(
+            settings.value(f"{PREFIX}/stop_loss_pct"),
+            default=DEFAULT_STOP_LOSS_PCT,
+        )
+        or DEFAULT_STOP_LOSS_PCT,
+        daily_pnl_pct=_coerce_float(settings.value(f"{PREFIX}/daily_pnl_pct")),
+        caution_daily_pct=_coerce_float(
+            settings.value(f"{PREFIX}/caution_daily_pct"),
+            default=DEFAULT_CAUTION_DAILY_PCT,
+        )
+        or DEFAULT_CAUTION_DAILY_PCT,
+        halt_daily_pct=_coerce_float(
+            settings.value(f"{PREFIX}/halt_daily_pct"),
+            default=DEFAULT_HALT_DAILY_PCT,
+        )
+        or DEFAULT_HALT_DAILY_PCT,
+        caution_float_pct=_coerce_float(
+            settings.value(f"{PREFIX}/caution_float_pct"),
+            default=DEFAULT_CAUTION_FLOAT_PCT,
+        )
+        or DEFAULT_CAUTION_FLOAT_PCT,
+        manual_halt=coerce_settings_bool(settings.value(f"{PREFIX}/manual_halt"), default=False),
+    ).normalized()
+
+
+def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
+    item = prefs.normalized()
+    settings = get_settings()
+    if item.total_capital is None:
+        settings.remove(f"{PREFIX}/total_capital")
+    else:
+        settings.setValue(f"{PREFIX}/total_capital", item.total_capital)
+    settings.setValue(f"{PREFIX}/per_trade_risk_pct", item.per_trade_risk_pct)
+    settings.setValue(f"{PREFIX}/stop_loss_pct", item.stop_loss_pct)
+    if item.daily_pnl_pct is None:
+        settings.remove(f"{PREFIX}/daily_pnl_pct")
+    else:
+        settings.setValue(f"{PREFIX}/daily_pnl_pct", item.daily_pnl_pct)
+    settings.setValue(f"{PREFIX}/caution_daily_pct", item.caution_daily_pct)
+    settings.setValue(f"{PREFIX}/halt_daily_pct", item.halt_daily_pct)
+    settings.setValue(f"{PREFIX}/caution_float_pct", item.caution_float_pct)
+    settings.setValue(f"{PREFIX}/manual_halt", int(item.manual_halt))

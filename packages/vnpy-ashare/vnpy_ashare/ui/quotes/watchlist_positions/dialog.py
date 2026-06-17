@@ -10,6 +10,10 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.config import format_decimal_field
 from vnpy_ashare.domain.market_hours import CHINA_TZ
 from vnpy_ashare.domain.position_snapshot import PositionRecord
+from vnpy_ashare.trading.risk.position_size import (
+    compute_position_size_from_prefs,
+    format_position_size_hint,
+)
 
 _COST_PRICE_PLACES = 4
 
@@ -63,6 +67,11 @@ class PositionEditDialog(QtWidgets.QDialog):
         self._notes_edit = QtWidgets.QLineEdit(self)
         layout.addRow("备注", self._notes_edit)
 
+        self._risk_hint = QtWidgets.QLabel("", self)
+        self._risk_hint.setObjectName("SettingsHint")
+        self._risk_hint.setWordWrap(True)
+        layout.addRow("", self._risk_hint)
+
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -81,6 +90,19 @@ class PositionEditDialog(QtWidgets.QDialog):
             self._cost_edit.setText(format_decimal_field(10.0, places=_COST_PRICE_PLACES))
             self._volume_spin.setValue(100)
             self._buy_date.setDate(QtCore.QDate(today.year, today.month, today.day))
+
+        self._cost_edit.textChanged.connect(self._refresh_risk_hint)
+        self._volume_spin.valueChanged.connect(self._refresh_risk_hint)
+        self._refresh_risk_hint()
+
+    def _refresh_risk_hint(self) -> None:
+        cost = self._parse_cost_price()
+        volume = int(self._volume_spin.value())
+        if cost is None:
+            self._risk_hint.setText(format_position_size_hint(None))
+            return
+        result = compute_position_size_from_prefs(cost_price=cost, requested_volume=volume)
+        self._risk_hint.setText(format_position_size_hint(result))
 
     def _parse_cost_price(self) -> float | None:
         text = self._cost_edit.text().strip()

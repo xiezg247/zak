@@ -28,6 +28,11 @@ from vnpy_ashare.quotes.misc.position_anomaly import (
 )
 from vnpy_ashare.services.signals import signal_cell_color
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
+from vnpy_ashare.trading.risk.combined import (
+    compute_avg_float_pnl_pct,
+    format_emotion_position_hint,
+    load_combined_risk_gate_snapshot,
+)
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
@@ -129,6 +134,11 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._refresh_button.setObjectName("SecondaryButton")
         self._refresh_button.clicked.connect(self.refresh_requested.emit)
 
+        self._risk_button = QtWidgets.QPushButton("风控设置", self)
+        self._risk_button.setObjectName("SecondaryButton")
+        self._risk_button.setToolTip("总资金、单笔风险与风控闸阈值")
+        self._risk_button.clicked.connect(self._on_risk_settings_clicked)
+
         self._collapse_button = QtWidgets.QToolButton(self)
         self._collapse_button.setCheckable(True)
         self._collapse_button.setChecked(self._expanded)
@@ -148,6 +158,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         header.addWidget(self._remove_button)
         header.addWidget(self._clear_button)
         header.addWidget(self._refresh_button)
+        header.addWidget(self._risk_button)
         root.addLayout(header)
 
         self._stats_label = QtWidgets.QLabel("", self)
@@ -217,6 +228,13 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         if not profile_id:
             return
         self._page.apply_strategy_profile(profile_id)
+
+    def _on_risk_settings_clicked(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
+
+        if RiskSettingsDialog.open_and_save(self):
+            self._page.status_label.setText("已保存交易风控设置")
+            self.render_panel()
 
     def apply_config(self, config: WatchlistPositionConfig) -> None:
         item = config.normalized()
@@ -468,11 +486,27 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         if service.contains(item.symbol, item.exchange):
             self._page._toast.warning("该标的已登记持仓，请使用编辑")
             return False
-        from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
-
-        cycle = load_emotion_cycle_snapshot()
-        if cycle is not None and cycle.stage == "recession":
-            self._page._toast.warning("退潮期：不建议短线新开仓，登记仅作记账参考")
+        combined = load_combined_risk_gate_snapshot(
+            avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
+            position_cache=self._page.position_cache,
+        )
+        if combined.account.state == "halt":
+            hint = "；".join(combined.account.warnings) or "账户熔断"
+            self._page._toast.warning(f"{hint}：不建议新开仓（登记不阻断，仅记账）")
+        elif combined.account.state == "caution":
+            hint = "；".join(combined.account.warnings) or "账户警戒"
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "风控警戒",
+                f"{hint}\n仍要登记持仓？",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                return False
+        elif not combined.allow_new_positions:
+            hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
+            self._page._toast.warning(f"{hint}（登记仅作记账参考）")
         title = f"登记持仓 · {item.symbol}"
         dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, parent=self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
@@ -566,14 +600,31 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 has_pnl = True
         pnl_text = f"{total_pnl:+.2f}" if has_pnl else "—"
         updated = f" · 更新 {self._updated_at}" if self._updated_at else ""
+        combined = load_combined_risk_gate_snapshot(
+            avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
+            position_cache=self._page.position_cache,
+        )
         parts = [
             f"持仓 {len(records)}",
             f"总浮盈 {pnl_text}",
-            self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),
-            self._stats_link("sell", f"卖出信号 {sell_count}", colors.fall),
-            self._stats_link("t1", f"T+1 {t1_count}", colors.flat),
-            self._stats_link("missing", f"缺日K {missing_count}", warning_color),
+            f"风控 {combined.account.state_label}",
         ]
+        emotion_hint = format_emotion_position_hint(
+            position_pct_min=combined.emotion_position_pct_min,
+            position_pct_max=combined.emotion_position_pct_max,
+        )
+        if emotion_hint:
+            parts.append(emotion_hint)
+        if combined.actual_position_pct is not None:
+            parts.append(f"实际 {int(combined.actual_position_pct * 100)}%")
+        parts.extend(
+            [
+                self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),
+                self._stats_link("sell", f"卖出信号 {sell_count}", colors.fall),
+                self._stats_link("t1", f"T+1 {t1_count}", colors.flat),
+                self._stats_link("missing", f"缺日K {missing_count}", warning_color),
+            ]
+        )
         self._stats_label.setText(" · ".join(parts) + updated)
 
     def _row_values(self, record: PositionRecord):

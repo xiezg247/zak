@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from vnpy_ashare.config.preferences._settings import coerce_settings_int, get_settings
+from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
 
 RiskGateState = Literal["normal", "caution", "halt"]
 
@@ -26,23 +26,43 @@ class RiskGateSnapshot:
     warnings: tuple[str, ...]
 
 
-def _read_float(key: str) -> float | None:
-    raw = get_settings().value(key)
-    if raw is None or str(raw).strip() == "":
-        return None
-    try:
-        return float(raw)
-    except (TypeError, ValueError):
-        return None
+def read_total_capital() -> float | None:
+    return load_trading_risk_prefs().total_capital
 
 
-def _coerce_float(value: object, *, default: float) -> float:
-    if value is None:
-        return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+def build_risk_gate_snapshot(*, avg_float_pnl_pct: float | None = None) -> RiskGateSnapshot:
+    """评估当前风控闸快照（无状态变更检测）。"""
+    prefs = load_trading_risk_prefs()
+    daily_pnl = prefs.daily_pnl_pct
+    caution_daily = prefs.caution_daily_pct
+    halt_daily = prefs.halt_daily_pct
+    caution_float = prefs.caution_float_pct
+
+    warnings: list[str] = []
+    state: RiskGateState = "normal"
+
+    if daily_pnl is not None and daily_pnl <= halt_daily:
+        state = "halt"
+        warnings.append(f"当日盈亏 {daily_pnl:.1f}% 触发熔断阈值")
+    elif daily_pnl is not None and daily_pnl <= caution_daily:
+        state = "caution"
+        warnings.append(f"当日盈亏 {daily_pnl:.1f}% 触发警戒阈值")
+    elif avg_float_pnl_pct is not None and avg_float_pnl_pct <= caution_float:
+        state = "caution"
+        warnings.append(f"持仓平均浮盈 {avg_float_pnl_pct:.1f}% 触发警戒")
+
+    if prefs.manual_halt:
+        state = "halt"
+        warnings.append("手动熔断已开启")
+
+    return RiskGateSnapshot(
+        state=state,
+        state_label=_STATE_LABELS[state],
+        allow_new_positions=state == "normal",
+        daily_pnl_pct=daily_pnl,
+        avg_float_pnl_pct=avg_float_pnl_pct,
+        warnings=tuple(warnings),
+    )
 
 
 class RiskGateEngine:
@@ -57,37 +77,7 @@ class RiskGateEngine:
         return self._last_snapshot
 
     def evaluate(self, *, avg_float_pnl_pct: float | None = None) -> RiskGateSnapshot | None:
-        settings = get_settings()
-        daily_pnl = _read_float("trading/risk/daily_pnl_pct")
-        caution_daily = _coerce_float(settings.value("trading/risk/caution_daily_pct"), default=-3.0)
-        halt_daily = _coerce_float(settings.value("trading/risk/halt_daily_pct"), default=-5.0)
-        caution_float = _coerce_float(settings.value("trading/risk/caution_float_pct"), default=-5.0)
-
-        warnings: list[str] = []
-        state: RiskGateState = "normal"
-
-        if daily_pnl is not None and daily_pnl <= halt_daily:
-            state = "halt"
-            warnings.append(f"当日盈亏 {daily_pnl:.1f}% 触发熔断阈值")
-        elif daily_pnl is not None and daily_pnl <= caution_daily:
-            state = "caution"
-            warnings.append(f"当日盈亏 {daily_pnl:.1f}% 触发警戒阈值")
-        elif avg_float_pnl_pct is not None and avg_float_pnl_pct <= caution_float:
-            state = "caution"
-            warnings.append(f"持仓平均浮盈 {avg_float_pnl_pct:.1f}% 触发警戒")
-
-        if coerce_settings_int(settings.value("trading/risk/manual_halt"), default=0):
-            state = "halt"
-            warnings.append("手动熔断已开启")
-
-        snapshot = RiskGateSnapshot(
-            state=state,
-            state_label=_STATE_LABELS[state],
-            allow_new_positions=state == "normal",
-            daily_pnl_pct=daily_pnl,
-            avg_float_pnl_pct=avg_float_pnl_pct,
-            warnings=tuple(warnings),
-        )
+        snapshot = build_risk_gate_snapshot(avg_float_pnl_pct=avg_float_pnl_pct)
         self._last_snapshot = snapshot
         if snapshot.state == self._last_state:
             return None

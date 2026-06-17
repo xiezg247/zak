@@ -144,6 +144,9 @@ class WatchlistPositionController:
         quote = self._page.quote_map.get(item.tickflow_symbol) if item is not None else None
         last_price = quote.last_price if quote and quote.last_price > 0 else None
         snap = build_position_snapshot(record, signal=signal, last_price=last_price)
+        from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
+
+        snap = apply_overnight_exit_overlay(record, snap, quote=quote)
         self._page.position_cache[record.vt_symbol] = snap
 
     def _apply_refresh_result(self) -> None:

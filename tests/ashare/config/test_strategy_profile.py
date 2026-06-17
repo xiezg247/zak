@@ -22,11 +22,11 @@ def test_default_profile_is_medium_watch() -> None:
 
 def test_apply_strategy_profile_persists_signal_config() -> None:
     cfg = apply_strategy_profile("ultra_short")
-    assert cfg.class_name == "AshareShortBreakoutStrategy"
+    assert cfg.class_name == "AshareLimitBoardStrategy"
     assert cfg.fast_window == 5
     assert load_strategy_profile_id() == "ultra_short"
     loaded = load_watchlist_signal_config()
-    assert loaded.class_name == "AshareShortBreakoutStrategy"
+    assert loaded.class_name == "AshareLimitBoardStrategy"
     save_strategy_profile_id(DEFAULT_STRATEGY_PROFILE)
     apply_strategy_profile(DEFAULT_STRATEGY_PROFILE)
 

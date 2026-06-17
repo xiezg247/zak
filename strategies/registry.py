@@ -117,12 +117,12 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareLimitBoardStrategy": StrategyMeta(
         class_name="AshareLimitBoardStrategy",
         title="A 股极致短线·打板",
-        summary=("涨停价触及与封板回封规则（规划）。依赖分 K / 涨停价 / 封板状态，Phase 5 交付。"),
-        tags=("极致短线", "打板", "规划"),
+        summary=("涨停价触及与封板回封规则（MVP：日 K 涨停 + 封板代理；完整分 K Phase 5）。"),
+        tags=("极致短线", "打板", "日 K"),
         scenarios=("情绪启动–高潮", "龙头与核心跟风", "10cm 主板"),
         anti_scenarios=("退潮 / 冰点", "20cm 创科", "一字缩量板"),
         param_hints=(("seal_time_cutoff", "封板时间上限，默认 10:30"),),
-        supports_signals=False,
+        supports_signals=True,
     ),
     "AshareIntradayBreakoutStrategy": StrategyMeta(
         class_name="AshareIntradayBreakoutStrategy",
@@ -147,8 +147,8 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
     "AshareOvernightExitStrategy": StrategyMeta(
         class_name="AshareOvernightExitStrategy",
         title="A 股隔日退出规则集",
-        summary=("高开低走 30 分钟止损、隔日卖铁则等退出规则（规划，非独立 CTA）。"),
-        tags=("极致短线", "退出", "规划"),
+        summary=("高开低走止损、隔日卖铁则等退出规则（MVP：行情字段 + 持仓 overlay）。"),
+        tags=("极致短线", "退出", "持仓区"),
         scenarios=("持仓区绑定", "隔日计划执行"),
         anti_scenarios=("中线趋势持仓", "无分 K 数据时仅提示"),
         param_hints=(("stop_minutes", "开盘止损观察分钟，默认 30"),),

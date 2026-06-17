@@ -121,7 +121,7 @@ UI：`PositionEditDialog` 底部展示「按 2% 风控建议 ≤ N 股」。
 | 工具 | 说明 |
 |------|------|
 | `check_risk_gate` | 返回 RiskGateSnapshot |
-| `compute_position_size` | 单笔 2% 计算器 |
+| `compute_position_size` | 单笔 2% 计算器 ✅ |
 
 Prompt：halt/caution 时必须引用具体回撤数字，禁止编造。
 
