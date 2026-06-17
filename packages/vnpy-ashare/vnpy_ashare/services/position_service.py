@@ -60,6 +60,7 @@ class PositionService(BaseService):
                     buy_date=str(row["buy_date"]),
                     notes=str(row.get("notes") or ""),
                     source=str(row.get("source") or "manual"),  # type: ignore[arg-type]
+                    plan_pct=row.get("plan_pct"),  # type: ignore[arg-type]
                 )
             )
         return records
@@ -106,6 +107,7 @@ class PositionService(BaseService):
         volume: int,
         buy_date: str,
         notes: str = "",
+        plan_pct: float | None = None,
     ) -> bool:
         error = self.validate_inputs(cost_price=cost_price, volume=volume, buy_date=buy_date)
         if error is not None:
@@ -119,6 +121,7 @@ class PositionService(BaseService):
             volume=normalize_volume(volume),
             buy_date=buy_date[:10],
             notes=notes.strip(),
+            plan_pct=plan_pct,
         )
 
     def update(
@@ -130,6 +133,7 @@ class PositionService(BaseService):
         volume: int,
         buy_date: str,
         notes: str = "",
+        plan_pct: float | None = None,
     ) -> bool:
         error = self.validate_inputs(cost_price=cost_price, volume=volume, buy_date=buy_date)
         if error is not None:
@@ -141,6 +145,7 @@ class PositionService(BaseService):
             volume=normalize_volume(volume),
             buy_date=buy_date[:10],
             notes=notes.strip(),
+            plan_pct=plan_pct,
         )
 
     def remove(self, symbol: str, exchange: Exchange) -> bool:

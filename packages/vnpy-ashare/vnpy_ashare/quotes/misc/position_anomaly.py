@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 
+from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
+
 if TYPE_CHECKING:
     from vnpy_ashare.domain.position_snapshot import PositionSnapshot
     from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
@@ -18,6 +20,7 @@ FLOAT_GAIN_PCT = 15.0
 
 _ANOMALY_WEIGHTS: dict[str, int] = {
     "卖出信号": 100,
+    "开盘止损": 95,
     "急跌": 80,
     "浮亏": 60,
     "放量": 40,
@@ -36,6 +39,9 @@ def position_anomaly_reasons(
         reasons.append("卖出信号")
 
     if quote is not None and quote.last_price > 0:
+        opening_hit, _detail = detect_opening_stop_loss(quote)
+        if opening_hit:
+            reasons.append("开盘止损")
         change_pct = float(quote.change_pct or 0)
         volume_ratio = float(quote.volume_ratio or 0)
         if change_pct <= INTRADAY_DROP_PCT:

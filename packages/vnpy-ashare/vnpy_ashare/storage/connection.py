@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS watchlist (
 CREATE TABLE IF NOT EXISTS watchlist_groups (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    sort_order INTEGER NOT NULL DEFAULT 0
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    position_cap_pct REAL
 );
 
 CREATE TABLE IF NOT EXISTS watchlist_group_members (
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS watchlist_positions (
     buy_date TEXT NOT NULL,
     notes TEXT NOT NULL DEFAULT '',
     source TEXT NOT NULL DEFAULT 'manual',
+    plan_pct REAL,
     sort_order INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -249,10 +251,27 @@ def connect():
         conn.close()
 
 
+def _ensure_column(
+    conn: sqlite3.Connection,
+    table: str,
+    column: str,
+    definition: str,
+) -> None:
+    columns = {str(row[1]) for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in columns:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {definition}")
+
+
+def _migrate_app_db(conn: sqlite3.Connection) -> None:
+    _ensure_column(conn, "watchlist_positions", "plan_pct", "plan_pct REAL")
+    _ensure_column(conn, "watchlist_groups", "position_cap_pct", "position_cap_pct REAL")
+
+
 def init_app_db() -> Path:
     """初始化数据库表结构。"""
     with connect() as conn:
         conn.executescript(_SCHEMA)
+        _migrate_app_db(conn)
     return _db_path()
 
 

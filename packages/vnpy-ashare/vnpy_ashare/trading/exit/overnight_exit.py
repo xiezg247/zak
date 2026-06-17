@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Literal
 from vnpy_ashare.config.preferences.trading_risk import DEFAULT_STOP_LOSS_PCT, load_trading_risk_prefs
 from vnpy_ashare.domain.position_snapshot import PositionRecord, position_t1_locked
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
+from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
 
 if TYPE_CHECKING:
     from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
@@ -95,8 +96,21 @@ def evaluate_overnight_exit(
         signal = "sell"
 
     if quote is not None and prev_close is not None and open_price is not None and last is not None:
+        opening_hit, opening_detail = detect_opening_stop_loss(quote)
+        if opening_hit:
+            rules.append(
+                ExitRuleHit(
+                    rule_id="opening_30min_stop",
+                    label="开盘止损",
+                    status="triggered",
+                    detail=opening_detail,
+                )
+            )
+            reasons.append(opening_detail)
+            signal = "sell"
+
         gap_pct = (open_price - prev_close) / prev_close * 100
-        if gap_pct < -0.5 and last < open_price and last < prev_close:
+        if not opening_hit and gap_pct < -0.5 and last < open_price and last < prev_close:
             rules.append(
                 ExitRuleHit(
                     rule_id="gap_down_weak",

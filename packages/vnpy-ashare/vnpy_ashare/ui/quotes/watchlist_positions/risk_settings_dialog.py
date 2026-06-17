@@ -54,6 +54,16 @@ class RiskSettingsDialog(QtWidgets.QDialog):
             self._daily_pnl_edit.setText(f"{prefs.daily_pnl_pct:.1f}")
         layout.addRow("当日盈亏", self._daily_pnl_edit)
 
+        self._realized_spin = QtWidgets.QDoubleSpinBox(self)
+        self._realized_spin.setRange(-9_999_999.0, 9_999_999.0)
+        self._realized_spin.setDecimals(0)
+        self._realized_spin.setSuffix(" 元")
+        self._realized_spin.setSpecialValueText("未填写")
+        self._realized_spin.setToolTip("当日已实现盈亏（MVP 手动填写，与持仓浮盈合计展示）")
+        if prefs.realized_pnl_today is not None:
+            self._realized_spin.setValue(prefs.realized_pnl_today)
+        layout.addRow("今日已实现", self._realized_spin)
+
         self._caution_daily_spin = QtWidgets.QDoubleSpinBox(self)
         self._caution_daily_spin.setRange(-50.0, 0.0)
         self._caution_daily_spin.setDecimals(1)
@@ -96,11 +106,14 @@ class RiskSettingsDialog(QtWidgets.QDialog):
                 daily_pnl = float(daily_text)
             except ValueError:
                 daily_pnl = None
+        realized_val = self._realized_spin.value()
+        realized = realized_val if realized_val != 0.0 else None
         return TradingRiskPrefs(
             total_capital=None if capital <= 0 else capital,
             per_trade_risk_pct=self._per_trade_spin.value() / 100.0,
             stop_loss_pct=self._stop_loss_spin.value() / 100.0,
             daily_pnl_pct=daily_pnl,
+            realized_pnl_today=realized,
             caution_daily_pct=self._caution_daily_spin.value(),
             halt_daily_pct=self._halt_daily_spin.value(),
             caution_float_pct=self._caution_float_spin.value(),

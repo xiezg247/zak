@@ -62,6 +62,7 @@ class CombinedRiskGateTest(unittest.TestCase):
             per_trade_risk_pct=0.02,
             stop_loss_pct=0.05,
             daily_pnl_pct=-6.0,
+            realized_pnl_today=None,
             caution_daily_pct=-3.0,
             halt_daily_pct=-5.0,
             caution_float_pct=-5.0,

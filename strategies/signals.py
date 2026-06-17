@@ -163,6 +163,8 @@ SUPPORTED_SIGNAL_STRATEGIES: dict[str, str] = {
     "AshareSwingMaStrategy": "swing_ma",
     "AshareTrendMaStrategy": "trend_ma",
     "AshareLimitBoardStrategy": "limit_board",
+    "AshareIntradayBreakoutStrategy": "intraday_breakout",
+    "AsharePullbackStrategy": "pullback",
 }
 
 STRATEGY_SIGNAL_DEFAULTS: dict[str, tuple[int, int]] = {
@@ -171,6 +173,8 @@ STRATEGY_SIGNAL_DEFAULTS: dict[str, tuple[int, int]] = {
     "AshareSwingMaStrategy": (10, 20),
     "AshareTrendMaStrategy": (20, 60),
     "AshareLimitBoardStrategy": (5, 10),
+    "AshareIntradayBreakoutStrategy": (5, 10),
+    "AsharePullbackStrategy": (5, 10),
 }
 
 STRATEGY_SIGNAL_RECENT_DAYS: dict[str, int] = {
@@ -179,6 +183,8 @@ STRATEGY_SIGNAL_RECENT_DAYS: dict[str, int] = {
     "AshareSwingMaStrategy": 5,
     "AshareTrendMaStrategy": 15,
     "AshareLimitBoardStrategy": 1,
+    "AshareIntradayBreakoutStrategy": 1,
+    "AsharePullbackStrategy": 2,
 }
 
 
@@ -1981,6 +1987,30 @@ def build_signal_payload_for_strategy(
         from strategies.ultra_short_signals import build_limit_board_signal_payload
 
         return build_limit_board_signal_payload(
+            closes,
+            dates,
+            vt_symbol=vt_symbol,
+            strategy_id=strategy_id,
+            highs=highs,
+            volumes=volumes,
+            recent_days=recent_days,
+        )
+    if kind == "intraday_breakout":
+        from strategies.ultra_short_signals import build_intraday_breakout_signal_payload
+
+        return build_intraday_breakout_signal_payload(
+            closes,
+            dates,
+            vt_symbol=vt_symbol,
+            strategy_id=strategy_id,
+            highs=highs,
+            volumes=volumes,
+            recent_days=recent_days,
+        )
+    if kind == "pullback":
+        from strategies.ultra_short_signals import build_pullback_signal_payload
+
+        return build_pullback_signal_payload(
             closes,
             dates,
             vt_symbol=vt_symbol,

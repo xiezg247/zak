@@ -29,6 +29,7 @@ from vnpy_ashare.storage.repositories.watchlist_groups import (
     remove_watchlist_group_member,
     rename_watchlist_group,
     set_watchlist_group_membership,
+    update_watchlist_group_position_cap,
 )
 
 WatchlistAddFailure = Literal["duplicate", "full"]
@@ -95,3 +96,6 @@ class WatchlistService(BaseService):
 
     def set_item_groups(self, symbol: str, exchange: Exchange, group_ids: set[str]) -> None:
         set_watchlist_group_membership(symbol, exchange, group_ids)
+
+    def set_group_position_cap(self, group_id: str, position_cap_pct: float | None) -> bool:
+        return update_watchlist_group_position_cap(group_id, position_cap_pct)

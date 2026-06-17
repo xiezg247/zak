@@ -78,7 +78,7 @@
 | S-02 | 信号区 Profile 切换 | **已有** | 1 | 同上 |
 | S-03 | 持仓退出规则集 | **已有** | 2 | ultra_short OvernightExit overlay |
 | S-04 | 分 K 买卖参考线 | **已有** | 2 | 分 K Tab 叠加参考线 |
-| S-05 | 开盘 30 分钟止损提醒 | **部分** | 2 | `position_anomaly` |
+| S-05 | 开盘 30 分钟止损提醒 | **已有** | 2 | `opening_stop` + 持仓异动 |
 | SP-01 | Profile 枚举 + QSettings | **已有** | 1 | [strategy-profiles.md](./strategy-profiles.md) |
 | SP-02 | 信号区 Profile 下拉 | **已有** | 1 | 同上 |
 | SP-03 | 持仓区 header Profile | **已有** | 1 | 同上 |
@@ -95,10 +95,10 @@
 | P-01 | 持仓记账 | **已有** | 0 | [watchlist-positions.md](./watchlist-positions.md) |
 | P-02 | T+1 锁定 | **已有** | 0 | 同上 |
 | P-03 | 浮盈 / exit_signal | **已有** | 0 | 同上 |
-| P-04 | 计划仓位 % | **待建** | 3 | 同上 |
+| P-04 | 计划仓位 % | **已有** | 3 | 同上 |
 | P-05 | 情绪仓位系数对比 | **已有** | 3 | 持仓区 stats；依赖 T-03 |
 | P-06 | 自选分组 Tab | **已有** | 0 | [watchlist-groups.md](./watchlist-groups.md) |
-| P-07 | 分组级仓位汇总 | **待建** | 3 | 同上 |
+| P-07 | 分组级仓位汇总 | **已有** | 3 | 同上 |
 
 ---
 
@@ -108,7 +108,7 @@
 |----|------|------|-------|------|
 | K-01 | 总资金与风控参数 | **已有** | 3 | 持仓区「风控设置」 |
 | K-02 | 单笔风险计算器 | **已有** | 3 | 登记对话框 + `compute_position_size` |
-| K-03 | 当日已实现 + 浮亏汇总 | **待建** | 3 | 同上 |
+| K-03 | 当日已实现 + 浮亏汇总 | **已有** | 3 | 记账浮盈 + 手动已实现 |
 | K-04 | normal / caution / halt | **已有** | 3 | MVP 状态机 + 登记软拦截 |
 | K-05 | 违规 off_plan 标记 | **待建** | 4 | [trading-plan-journal.md](./trading-plan-journal.md) |
 

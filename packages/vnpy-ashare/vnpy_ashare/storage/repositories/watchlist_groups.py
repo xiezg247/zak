@@ -17,6 +17,19 @@ class WatchlistGroupRecord:
     id: str
     name: str
     sort_order: int
+    position_cap_pct: float | None = None
+
+
+def _parse_cap_pct(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        pct = float(value)
+    except (TypeError, ValueError):
+        return None
+    if pct <= 0 or pct > 1:
+        return None
+    return round(pct, 4)
 
 
 def _normalize_group_name(name: str) -> str:
@@ -26,8 +39,16 @@ def _normalize_group_name(name: str) -> str:
 def load_watchlist_groups() -> list[WatchlistGroupRecord]:
     init_app_db()
     with connect() as conn:
-        rows = conn.execute("SELECT id, name, sort_order FROM watchlist_groups ORDER BY sort_order, name").fetchall()
-    return [WatchlistGroupRecord(str(row["id"]), str(row["name"]), int(row["sort_order"])) for row in rows]
+        rows = conn.execute("SELECT id, name, sort_order, position_cap_pct FROM watchlist_groups ORDER BY sort_order, name").fetchall()
+    return [
+        WatchlistGroupRecord(
+            str(row["id"]),
+            str(row["name"]),
+            int(row["sort_order"]),
+            _parse_cap_pct(row["position_cap_pct"] if "position_cap_pct" in row.keys() else None),
+        )
+        for row in rows
+    ]
 
 
 def watchlist_group_count() -> int:
@@ -130,6 +151,19 @@ def remove_watchlist_group_member(group_id: str, symbol: str, exchange: Exchange
             WHERE group_id = ? AND symbol = ? AND exchange = ?
             """,
             (group_id, symbol, exchange.name),
+        )
+    return bool(cursor.rowcount > 0)
+
+
+def update_watchlist_group_position_cap(group_id: str, position_cap_pct: float | None) -> bool:
+    if not watchlist_group_exists(group_id):
+        return False
+    cap = _parse_cap_pct(position_cap_pct)
+    init_app_db()
+    with connect() as conn:
+        cursor = conn.execute(
+            "UPDATE watchlist_groups SET position_cap_pct = ? WHERE id = ?",
+            (cap, group_id),
         )
     return bool(cursor.rowcount > 0)
 

@@ -18,6 +18,7 @@ class WatchlistGroupTabBar(QtWidgets.QWidget):
     add_requested = QtCore.Signal()
     rename_requested = QtCore.Signal(str)
     delete_requested = QtCore.Signal(str)
+    position_cap_requested = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -35,6 +36,7 @@ class WatchlistGroupTabBar(QtWidgets.QWidget):
         active_group_id: str | None,
         *,
         max_groups: int,
+        tab_labels: dict[str, str] | None = None,
     ) -> None:
         while self._layout.count():
             item = self._layout.takeAt(0)
@@ -56,7 +58,8 @@ class WatchlistGroupTabBar(QtWidgets.QWidget):
         self._layout.addWidget(separator)
 
         for group in groups:
-            button = self._make_tab(group.name, group.id)
+            label = (tab_labels or {}).get(group.id, group.name)
+            button = self._make_tab(label, group.id)
             button.setChecked(group.id == active_group_id)
             button.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
             button.customContextMenuRequested.connect(
@@ -96,9 +99,12 @@ class WatchlistGroupTabBar(QtWidgets.QWidget):
     ) -> None:
         menu = QtWidgets.QMenu(button)
         rename_action = menu.addAction("重命名")
+        cap_action = menu.addAction("设置仓位上限")
         delete_action = menu.addAction("删除")
         chosen = menu.exec(button.mapToGlobal(pos))
         if chosen is rename_action:
             self.rename_requested.emit(group_id)
+        elif chosen is cap_action:
+            self.position_cap_requested.emit(group_id)
         elif chosen is delete_action:
             self.delete_requested.emit(group_id)

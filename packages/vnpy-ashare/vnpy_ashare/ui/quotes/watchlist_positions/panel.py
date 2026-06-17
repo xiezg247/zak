@@ -28,6 +28,13 @@ from vnpy_ashare.quotes.misc.position_anomaly import (
 )
 from vnpy_ashare.services.signals import signal_cell_color
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
+from vnpy_ashare.trading.risk.book_pnl import format_book_pnl_hint, summarize_book_pnl
+from vnpy_ashare.trading.risk.plan_position import (
+    compute_position_actual_pct,
+    format_plan_position_hint,
+    format_plan_vs_actual_cell,
+    sum_plan_pct,
+)
 from vnpy_ashare.trading.risk.combined import (
     compute_avg_float_pnl_pct,
     format_emotion_position_hint,
@@ -49,6 +56,7 @@ _PANEL_COLUMNS = (
     ("last_price", "现价"),
     ("pnl", "浮盈(元)"),
     ("pnl_pct", "浮盈%"),
+    ("plan_pct", "计划/实际%"),
     ("t1_status", "T+1"),
     ("exit_signal", "退出信号"),
     ("ref_sell_price", "参考卖价"),
@@ -451,6 +459,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 volume=form.volume,
                 buy_date=form.buy_date,
                 notes=form.notes,
+                plan_pct=form.plan_pct,
             )
         else:
             ok = service.add(
@@ -460,6 +469,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 volume=form.volume,
                 buy_date=form.buy_date,
                 notes=form.notes,
+                plan_pct=form.plan_pct,
             )
         if not ok:
             reason = service.add_failure_reason(item.symbol, item.exchange) if not existing else None
@@ -604,11 +614,14 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
             position_cache=self._page.position_cache,
         )
+        book_hint = format_book_pnl_hint(summarize_book_pnl(self._page.position_cache))
         parts = [
             f"持仓 {len(records)}",
             f"总浮盈 {pnl_text}",
-            f"风控 {combined.account.state_label}",
         ]
+        if book_hint:
+            parts.append(book_hint)
+        parts.append(f"风控 {combined.account.state_label}")
         emotion_hint = format_emotion_position_hint(
             position_pct_min=combined.emotion_position_pct_min,
             position_pct_max=combined.emotion_position_pct_max,
@@ -617,6 +630,12 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             parts.append(emotion_hint)
         if combined.actual_position_pct is not None:
             parts.append(f"实际 {int(combined.actual_position_pct * 100)}%")
+        plan_hint = format_plan_position_hint(
+            actual_pct=combined.actual_position_pct,
+            plan_pct_sum=sum_plan_pct(records),
+        )
+        if plan_hint:
+            parts.append(plan_hint)
         parts.extend(
             [
                 self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),
@@ -647,12 +666,27 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         }
         locked = position_t1_locked(buy_date) if buy_date != "—" else False
         values["t1_status"] = "T+1 锁定" if locked else "可卖"
+        combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
+        market_value = None
+        if snap is not None and snap.market_value is not None:
+            market_value = snap.market_value
+        elif last_price is not None and record.volume > 0:
+            market_value = last_price * record.volume
+        actual_pct = compute_position_actual_pct(
+            market_value=market_value,
+            total_capital=combined.total_capital,
+        )
+        plan_cell, plan_tooltip = format_plan_vs_actual_cell(
+            plan_pct=record.plan_pct,
+            actual_pct=actual_pct,
+        )
+        values["plan_pct"] = plan_cell
         if snap is None:
             values["pnl"] = "—"
             values["pnl_pct"] = "—"
             values["exit_signal"] = "待计算"
             values["ref_sell_price"] = "—"
-            return values, snap, quote
+            return values, snap, quote, plan_tooltip
         pnl = snap.unrealized_pnl
         values["pnl"] = f"{pnl:+.2f}" if pnl is not None else "—"
         pnl_pct = snap.unrealized_pnl_pct
@@ -661,7 +695,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         values["exit_signal"] = snap.exit_signal_label
         ref_sell = snap.exit_ref_price
         values["ref_sell_price"] = f"{ref_sell:.2f}" if ref_sell is not None else "—"
-        return values, snap, quote
+        return values, snap, quote, plan_tooltip
 
     def render_panel(self) -> None:
         if self._building:
@@ -709,7 +743,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
             for row, record in enumerate(records):
                 rendered.append(record.vt_symbol)
-                values, snap, quote = self._row_values(record)
+                values, snap, quote, plan_tooltip = self._row_values(record)
                 _, _, anomaly_reasons = self._anomaly_context(record)
                 row_anomaly = bool(anomaly_reasons)
                 anomaly_tip = format_anomaly_tags(anomaly_reasons)
@@ -753,6 +787,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                             item_cell.setToolTip(tip)
                     elif key == "exit_signal" and snap is not None:
                         item_cell.setToolTip(snap.exit_signal_tooltip)
+                    elif key == "plan_pct" and plan_tooltip:
+                        item_cell.setToolTip(plan_tooltip)
                     if fg:
                         item_cell.setForeground(QtGui.QColor(fg))
                     else:

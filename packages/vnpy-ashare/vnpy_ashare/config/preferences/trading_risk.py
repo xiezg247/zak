@@ -30,6 +30,7 @@ class TradingRiskPrefs:
     per_trade_risk_pct: float
     stop_loss_pct: float
     daily_pnl_pct: float | None
+    realized_pnl_today: float | None
     caution_daily_pct: float
     halt_daily_pct: float
     caution_float_pct: float
@@ -50,6 +51,7 @@ class TradingRiskPrefs:
             per_trade_risk_pct=per_trade,
             stop_loss_pct=stop_loss,
             daily_pnl_pct=self.daily_pnl_pct,
+            realized_pnl_today=self.realized_pnl_today,
             caution_daily_pct=self.caution_daily_pct,
             halt_daily_pct=self.halt_daily_pct,
             caution_float_pct=self.caution_float_pct,
@@ -72,6 +74,7 @@ def load_trading_risk_prefs() -> TradingRiskPrefs:
         )
         or DEFAULT_STOP_LOSS_PCT,
         daily_pnl_pct=_coerce_float(settings.value(f"{PREFIX}/daily_pnl_pct")),
+        realized_pnl_today=_coerce_float(settings.value(f"{PREFIX}/realized_pnl_today")),
         caution_daily_pct=_coerce_float(
             settings.value(f"{PREFIX}/caution_daily_pct"),
             default=DEFAULT_CAUTION_DAILY_PCT,
@@ -104,6 +107,10 @@ def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
         settings.remove(f"{PREFIX}/daily_pnl_pct")
     else:
         settings.setValue(f"{PREFIX}/daily_pnl_pct", item.daily_pnl_pct)
+    if item.realized_pnl_today is None:
+        settings.remove(f"{PREFIX}/realized_pnl_today")
+    else:
+        settings.setValue(f"{PREFIX}/realized_pnl_today", item.realized_pnl_today)
     settings.setValue(f"{PREFIX}/caution_daily_pct", item.caution_daily_pct)
     settings.setValue(f"{PREFIX}/halt_daily_pct", item.halt_daily_pct)
     settings.setValue(f"{PREFIX}/caution_float_pct", item.caution_float_pct)

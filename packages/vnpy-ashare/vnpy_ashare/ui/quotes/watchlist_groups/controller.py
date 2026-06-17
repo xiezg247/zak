@@ -8,7 +8,9 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord
+from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord, load_watchlist_group_member_keys
+from vnpy_ashare.trading.risk.gate import read_total_capital
+from vnpy_ashare.trading.risk.plan_position import format_group_position_tab_label, summarize_group_position
 from vnpy_ashare.ui.quotes.watchlist_groups.prefs import (
     load_active_watchlist_group_id,
     save_active_watchlist_group_id,
@@ -77,6 +79,7 @@ class WatchlistGroupController(QtCore.QObject):
         tab_bar.add_requested.connect(self._on_add_group)
         tab_bar.rename_requested.connect(self._on_rename_group)
         tab_bar.delete_requested.connect(self._on_delete_group)
+        tab_bar.position_cap_requested.connect(self._on_set_group_position_cap)
         self.refresh_groups()
 
     def _populate_tab_bar(self) -> None:
@@ -88,8 +91,39 @@ class WatchlistGroupController(QtCore.QObject):
             self._groups,
             self._active_group_id,
             max_groups=service.max_groups,
+            tab_labels=self._group_tab_labels(),
         )
         self._sync_move_buttons()
+
+    def _position_records(self):
+        service = self._page._get_position_service()
+        if service is None:
+            return []
+        return service.get_items()
+
+    def _group_tab_labels(self) -> dict[str, str]:
+        records = self._position_records()
+        if not records:
+            return {}
+        service = self._service()
+        if service is None:
+            return {}
+        total_capital = read_total_capital()
+        labels: dict[str, str] = {}
+        for group in self._groups:
+            member_keys = load_watchlist_group_member_keys(group.id)
+            summary = summarize_group_position(
+                group_id=group.id,
+                member_keys=member_keys,
+                records=records,
+                position_cache=self._page.position_cache,
+                total_capital=total_capital,
+                position_cap_pct=group.position_cap_pct,
+            )
+            if summary.position_count <= 0 and summary.plan_cap_pct is None:
+                continue
+            labels[group.id] = format_group_position_tab_label(group.name, summary)
+        return labels
 
     def _on_tab_selected(self, group_id: str) -> None:
         normalized = str(group_id or "").strip() or None
@@ -174,6 +208,46 @@ class WatchlistGroupController(QtCore.QObject):
         self.apply_display_stocks()
         self.groups_changed.emit()
         self._page.status_label.setText(f"已删除分组「{group.name}」")
+
+    def _on_set_group_position_cap(self, group_id: str) -> None:
+        service = self._service()
+        if service is None:
+            return
+        group = next((item for item in self._groups if item.id == group_id), None)
+        if group is None:
+            return
+        initial = ""
+        if group.position_cap_pct is not None:
+            initial = str(int(round(group.position_cap_pct * 100)))
+        text, ok = QtWidgets.QInputDialog.getText(
+            self._page,
+            "设置仓位上限",
+            f"分组「{group.name}」计划总仓位上限（%，留空清除）：",
+            text=initial,
+        )
+        if not ok:
+            return
+        normalized = str(text or "").strip()
+        cap_pct = None
+        if normalized:
+            try:
+                pct_value = float(normalized)
+            except ValueError:
+                page_notify(self._page, "请输入有效数字", level="warning")
+                return
+            if pct_value <= 0 or pct_value > 100:
+                page_notify(self._page, "上限须在 1–100% 之间", level="warning")
+                return
+            cap_pct = pct_value / 100.0
+        if not service.set_group_position_cap(group_id, cap_pct):
+            page_notify(self._page, "保存仓位上限失败", level="warning")
+            return
+        self.refresh_groups()
+        self.groups_changed.emit()
+        if cap_pct is None:
+            self._page.status_label.setText(f"已清除分组「{group.name}」仓位上限")
+        else:
+            self._page.status_label.setText(f"分组「{group.name}」仓位上限 {int(cap_pct * 100)}%")
 
     def filter_stocks(self, stocks: list[StockItem]) -> list[StockItem]:
         if not self._active_group_id:

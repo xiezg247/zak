@@ -373,6 +373,9 @@ class WatchlistPositionController:
         missing = self._symbols_needing_refresh(list(record_map), record_map)
         if missing:
             self.refresh(symbols=missing)
+        groups = getattr(self._page, "_watchlist_groups", None)
+        if groups is not None:
+            groups.refresh_groups()
 
     def on_panel_enabled_changed(self, enabled: bool) -> None:
         if enabled:

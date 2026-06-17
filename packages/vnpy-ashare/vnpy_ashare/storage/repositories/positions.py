@@ -17,7 +17,9 @@ def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
-def _row_to_position(row) -> dict[str, str | float | int]:
+def _row_to_position(row) -> dict[str, str | float | int | None]:
+    plan_raw = row["plan_pct"] if "plan_pct" in row.keys() else None
+    plan_pct = float(plan_raw) if plan_raw is not None else None
     return {
         "symbol": row["symbol"],
         "exchange": row["exchange"],
@@ -26,6 +28,7 @@ def _row_to_position(row) -> dict[str, str | float | int]:
         "buy_date": row["buy_date"],
         "notes": row["notes"] or "",
         "source": row["source"] or "manual",
+        "plan_pct": plan_pct,
         "sort_order": int(row["sort_order"]),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
@@ -36,7 +39,7 @@ def load_position_rows() -> list[dict[str, str | float | int]]:
     init_app_db()
     with connect() as conn:
         rows = conn.execute(
-            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at "
+            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at "
             "FROM watchlist_positions ORDER BY sort_order, symbol"
         ).fetchall()
     return [_row_to_position(row) for row in rows]
@@ -81,6 +84,7 @@ def add_position_item(
     buy_date: str,
     notes: str = "",
     source: str = "manual",
+    plan_pct: float | None = None,
 ) -> bool:
     if position_add_failure_reason(symbol, exchange) is not None:
         return False
@@ -91,9 +95,9 @@ def add_position_item(
     with connect() as conn:
         sort_order = conn.execute("SELECT COUNT(*) FROM watchlist_positions").fetchone()[0]
         conn.execute(
-            "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (symbol, exchange.name, cost_price, volume, buy_date, notes, source, sort_order, now, now),
+            "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (symbol, exchange.name, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, now, now),
         )
     return True
 
@@ -106,6 +110,7 @@ def update_position_item(
     volume: int,
     buy_date: str,
     notes: str = "",
+    plan_pct: float | None = None,
 ) -> bool:
     if not position_contains(symbol, exchange):
         return False
@@ -115,8 +120,8 @@ def update_position_item(
     init_app_db()
     with connect() as conn:
         cursor = conn.execute(
-            "UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, updated_at = ? WHERE symbol = ? AND exchange = ?",
-            (cost_price, volume, buy_date, notes, now, symbol, exchange.name),
+            "UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, plan_pct = ?, updated_at = ? WHERE symbol = ? AND exchange = ?",
+            (cost_price, volume, buy_date, notes, plan_pct, now, symbol, exchange.name),
         )
         return bool(cursor.rowcount > 0)
 
@@ -125,8 +130,8 @@ def _rewrite_position_order(conn, rows) -> None:
     conn.execute("DELETE FROM watchlist_positions")
     for index, row in enumerate(rows):
         conn.execute(
-            "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 row["symbol"],
                 row["exchange"],
@@ -135,6 +140,7 @@ def _rewrite_position_order(conn, rows) -> None:
                 row["buy_date"],
                 row["notes"],
                 row["source"],
+                row.get("plan_pct"),
                 index,
                 row["created_at"],
                 row["updated_at"],
@@ -152,7 +158,7 @@ def remove_position_item(symbol: str, exchange: Exchange) -> bool:
         if cursor.rowcount == 0:
             return False
         rows = conn.execute(
-            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, sort_order, created_at, updated_at "
+            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at "
             "FROM watchlist_positions ORDER BY sort_order, symbol"
         ).fetchall()
         _rewrite_position_order(conn, rows)

@@ -24,6 +24,7 @@ class PositionRecord:
     buy_date: str
     notes: str = ""
     source: PositionSource = "manual"
+    plan_pct: float | None = None
 
     @property
     def vt_symbol(self) -> str:
