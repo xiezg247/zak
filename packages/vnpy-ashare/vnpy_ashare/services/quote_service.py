@@ -78,10 +78,7 @@ class QuoteService(BaseService):
 
     def set_market_quotes_cache(self, items: list[Any], quotes: dict[str, QuoteSnapshot]) -> None:
         """缓存市场页行情，供 ScreeningService / AI 选股使用。"""
-        from vnpy_ashare.quotes.market.emotion_cycle import invalidate_emotion_cycle_cache
-
         set_market_quotes_cache(items, quotes)
-        invalidate_emotion_cycle_cache()
 
     def get_market_quotes_cache(self) -> list[dict[str, Any]]:
         return get_market_quotes_cache()

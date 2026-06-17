@@ -83,6 +83,8 @@ class TestSchedulerConfig(unittest.TestCase):
         self.assertIn("prefetch_moneyflow", job_ids)
         self.assertIn("batch_download_universe", job_ids)
         self.assertIn("batch_fill_stale", job_ids)
+        self.assertIn("prefetch_concept_board", job_ids)
+        self.assertIn("warm_market_summary", job_ids)
         self.assertNotIn("batch_download", job_ids)
 
     def test_new_job_config_roundtrip(self) -> None:
@@ -130,9 +132,15 @@ class TestSchedulerConfig(unittest.TestCase):
             "vnpy_ashare.scheduler.manager.is_ashare_trading_session",
             return_value=True,
         ):
-            with patch(
-                "vnpy_ashare.scheduler.manager.collect_market_quotes",
-                return_value=JobResult(success=True, message="ok"),
+            with (
+                patch(
+                    "vnpy_ashare.scheduler.manager.collect_market_quotes",
+                    return_value=JobResult(success=True, message="ok"),
+                ),
+                patch(
+                    "vnpy_ashare.scheduler.manager.warm_market_summary",
+                    return_value=JobResult(success=True, message="warm"),
+                ),
             ):
                 manager.start()
                 time.sleep(0.2)
@@ -142,7 +150,7 @@ class TestSchedulerConfig(unittest.TestCase):
                 assert status is not None
                 self.assertIn("交易时段内", status.schedule_text)
                 self.assertFalse(status.running)
-                self.assertEqual(status.last_message, "ok")
+                self.assertIn("ok", status.last_message or "")
 
                 job = manager._scheduler.get_job("collect_quotes")
                 self.assertIsNotNone(job)

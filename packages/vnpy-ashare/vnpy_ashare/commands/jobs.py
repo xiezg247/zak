@@ -23,6 +23,7 @@ from vnpy_ashare.jobs import (
     sync_trade_calendar_job,
     sync_universe_job,
     sync_watchlist_financials_job,
+    warm_market_summary,
 )
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.scheduler.config import load_scheduler_config
@@ -38,6 +39,7 @@ JOB_CATALOG: dict[str, tuple[str, str]] = {
     "prefetch_moneyflow": ("主力资金预拉", "收盘后拉取全市场 moneyflow 主力资金流向到本地缓存"),
     "sync_sector_flow_daily": ("板块资金同步", "收盘后拉取东财行业/同花顺概念板块资金流近 N 日到本地"),
     "prefetch_concept_board": ("概念板块预拉", "预热同花顺概念指数、行情与强势概念成分映射"),
+    "warm_market_summary": ("市场摘要预热", "计算情绪周期与连板梯队并写入内存缓存"),
     "sync_suspend_daily": ("停牌日同步", "收盘后增量拉取最近交易日全市场停牌记录"),
     "prefetch_tushare": ("Tushare 因子预拉", "收盘后拉取 daily_basic、涨跌停、指数、北向等写入本地缓存"),
     "sync_watchlist_financials": ("同步自选财报", "增量拉取自选池三表与财务指标到本地"),
@@ -61,6 +63,7 @@ _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
     "sync_watchlist_financials": sync_watchlist_financials_job,
     "sync_disclosure_calendar": sync_disclosure_calendar_job,
     "batch_fill_stale": batch_fill_downloaded_stale_job,
+    "warm_market_summary": lambda: warm_market_summary(include_ladder=True),
 }
 
 
@@ -85,6 +88,16 @@ def _run_collect_quotes(*, force: bool) -> JobResult:
         )
 
     result = collect_market_quotes()
+    if result.success and not result.skipped:
+        from vnpy_ashare.jobs.market_summary_warmup import warm_market_summary
+
+        warm = warm_market_summary(include_ladder=False)
+        if warm.message:
+            result = JobResult(
+                success=result.success,
+                skipped=result.skipped,
+                message=f"{result.message} · {warm.message}",
+            )
     if force and not is_ashare_trading_session(now):
         return JobResult(
             success=result.success,

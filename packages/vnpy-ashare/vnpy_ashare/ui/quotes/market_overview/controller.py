@@ -107,6 +107,10 @@ class MarketOverviewController(QtCore.QObject):
             self._apply_emotion_cycle(breadth)
         if sectors:
             self._panel.apply_sectors(sectors)
+        if ladder_counts is None:
+            from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
+
+            ladder_counts = peek_limit_ladder_counts()
         if ladder_counts is not None:
             self._panel.apply_limit_ladder(ladder_counts)
         sync_market_overview_partial(breadth=breadth, sectors=sectors or None)

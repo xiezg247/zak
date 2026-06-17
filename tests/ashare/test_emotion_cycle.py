@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from vnpy_ashare.quotes.market.emotion_cycle import (
     classify_emotion_cycle,
@@ -72,4 +73,11 @@ class EmotionCycleEngineTest(unittest.TestCase):
 
     def test_load_without_fetch_skips_network_when_no_cache(self) -> None:
         invalidate_emotion_cycle_cache()
-        self.assertIsNone(load_emotion_cycle_snapshot(fetch_if_missing=False))
+        with (
+            patch("vnpy_ashare.ai.context.store.get_market_quotes_cache", return_value=[]),
+            patch(
+                "vnpy_ashare.screener.data.quotes_loader.load_market_quote_rows",
+                side_effect=AssertionError("should not fetch"),
+            ),
+        ):
+            self.assertIsNone(load_emotion_cycle_snapshot(fetch_if_missing=False))

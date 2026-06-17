@@ -11,6 +11,7 @@ from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot, compute_market_breadth, merge_official_limit_counts
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, load_market_environment
+from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts, resolve_limit_ladder_counts
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
 
@@ -80,7 +81,7 @@ def load_market_overview() -> MarketOverviewData:
         breadth=_load_breadth(rows, updated_at=updated_at),
         sectors=load_sector_ranks(rows),
         environment=load_market_environment(),
-        limit_ladder_counts=compute_limit_ladder_counts(rows),
+        limit_ladder_counts=resolve_limit_ladder_counts(rows, compute=compute_limit_ladder_counts),
     )
 
 
@@ -98,5 +99,7 @@ def build_overview_from_market_rows(
         empty_ladder = {label: 0 for label in compute_limit_ladder_counts([])} if include_ladder_counts else None
         return None, [], empty_ladder
     breadth = _load_breadth(rows, updated_at=updated_at)
-    ladder = compute_limit_ladder_counts(rows) if include_ladder_counts else None
+    ladder = None
+    if include_ladder_counts:
+        ladder = peek_limit_ladder_counts() or compute_limit_ladder_counts(rows)
     return breadth, load_sector_ranks(rows), ladder

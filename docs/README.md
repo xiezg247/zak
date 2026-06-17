@@ -14,6 +14,7 @@
 | [策略配置方案](./strategy-profiles.md) | 现有四套策略去留、Profile 映射 |
 | [架构说明](./architecture.md) | GUI 分层、Service、行情 Provider、AI 编排 |
 | [数据设计](./data-design.md) | 双存储（SQLite 元数据 + SQLite/PostgreSQL K 线）+ Redis + context_store |
+| [数据流与触发方式](./data-flow.md) | 冷启动 / 打开页 / 定时 / 手动四档数据流 |
 
 ## 功能域
 

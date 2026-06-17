@@ -144,8 +144,19 @@ def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
                 "amount": getattr(quote, "amount", 0) if quote else 0,
             }
         )
+    set_market_quote_rows_cache(rows)
+
+
+def set_market_quote_rows_cache(rows: list[dict[str, Any]]) -> None:
+    """直接写入行情行缓存（定时预热 job 使用）。"""
+    global _market_quotes
+    from vnpy_ashare.quotes.market.emotion_cycle import invalidate_emotion_cycle_cache
+    from vnpy_ashare.quotes.market.market_summary_cache import invalidate_limit_ladder_cache
+
     with _lock:
-        _market_quotes = rows
+        _market_quotes = [dict(row) for row in rows]
+    invalidate_emotion_cycle_cache()
+    invalidate_limit_ladder_cache()
 
 
 def get_market_quotes_cache() -> list[dict[str, Any]]:

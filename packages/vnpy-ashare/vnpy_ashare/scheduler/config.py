@@ -101,6 +101,22 @@ class SchedulerConfig:
             cron_day_of_week="mon-fri",
         )
     )
+    prefetch_concept_board: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=33,
+            cron_day_of_week="mon-fri",
+        )
+    )
+    warm_market_summary: JobConfig = field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=34,
+            cron_day_of_week="mon-fri",
+        )
+    )
     sync_watchlist_financials: JobConfig = field(
         default_factory=lambda: JobConfig(
             enabled=True,
@@ -191,6 +207,8 @@ class SchedulerConfig:
             "sync_sector_flow_daily": dump_job(self.sync_sector_flow_daily),
             "sync_suspend_daily": dump_job(self.sync_suspend_daily),
             "prefetch_tushare": dump_job(self.prefetch_tushare),
+            "prefetch_concept_board": dump_job(self.prefetch_concept_board),
+            "warm_market_summary": dump_job(self.warm_market_summary),
             "sync_watchlist_financials": dump_job(self.sync_watchlist_financials),
             "sync_disclosure_calendar": dump_job(self.sync_disclosure_calendar),
             "batch_fill_stale": dump_job(self.batch_fill_stale),
@@ -237,6 +255,8 @@ class SchedulerConfig:
             sync_sector_flow_daily=load_job("sync_sector_flow_daily", defaults.sync_sector_flow_daily),
             sync_suspend_daily=load_job("sync_suspend_daily", defaults.sync_suspend_daily),
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
+            prefetch_concept_board=load_job("prefetch_concept_board", defaults.prefetch_concept_board),
+            warm_market_summary=load_job("warm_market_summary", defaults.warm_market_summary),
             sync_watchlist_financials=load_job("sync_watchlist_financials", defaults.sync_watchlist_financials),
             sync_disclosure_calendar=load_job("sync_disclosure_calendar", defaults.sync_disclosure_calendar),
             batch_fill_stale=load_job("batch_fill_stale", defaults.batch_fill_stale),

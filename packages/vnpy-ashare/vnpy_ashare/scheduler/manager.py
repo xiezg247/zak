@@ -22,6 +22,7 @@ from vnpy_ashare.jobs import (
     batch_download_universe_daily_bars,
     batch_fill_downloaded_stale_job,
     collect_market_quotes,
+    prefetch_concept_board,
     prefetch_moneyflow,
     prefetch_tushare_factors,
     sync_disclosure_calendar_job,
@@ -31,6 +32,7 @@ from vnpy_ashare.jobs import (
     sync_trade_calendar_job,
     sync_universe_job,
     sync_watchlist_financials_job,
+    warm_market_summary,
 )
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
@@ -232,7 +234,7 @@ class TaskSchedulerManager:
                 job_id="prefetch_tushare",
                 name="Tushare 因子预拉",
                 description="收盘后拉取 daily_basic、涨跌停、指数、北向、stock_basic 等写入本地缓存",
-                runner=prefetch_tushare_factors,
+                runner=self._run_prefetch_tushare,
                 config_attr="prefetch_tushare",
                 schedule_builder=lambda cfg: CronTrigger(
                     day_of_week=cfg.cron_day_of_week,
@@ -240,6 +242,32 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于盘后自动选股）",
+            ),
+            "prefetch_concept_board": _JobMeta(
+                job_id="prefetch_concept_board",
+                name="概念板块预拉",
+                description="预热同花顺概念指数、当日行情与强势概念成分映射（雷达概念维度依赖）",
+                runner=prefetch_concept_board,
+                config_attr="prefetch_concept_board",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在 Tushare 因子预拉之后）",
+            ),
+            "warm_market_summary": _JobMeta(
+                job_id="warm_market_summary",
+                name="市场摘要预热",
+                description="收盘后计算情绪周期与连板梯队并写入内存缓存，供 UI / 风控只读（避免启动阻塞）",
+                runner=lambda: warm_market_summary(include_ladder=True),
+                config_attr="warm_market_summary",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在概念预拉之后；含连板统计）",
             ),
             "sync_watchlist_financials": _JobMeta(
                 job_id="sync_watchlist_financials",
@@ -350,12 +378,29 @@ class TaskSchedulerManager:
             )
 
         result = collect_market_quotes()
+        if result.success and not result.skipped:
+            warm = warm_market_summary(include_ladder=False)
+            if warm.message:
+                result = JobResult(
+                    success=result.success,
+                    skipped=result.skipped,
+                    message=f"{result.message} · {warm.message}",
+                )
         if force and not is_ashare_trading_session(now):
             return JobResult(
                 success=result.success,
                 skipped=False,
                 message=f"非交易时段手动采集 · {result.message}",
             )
+        return result
+
+    def _run_prefetch_tushare(self) -> JobResult:
+        result = prefetch_tushare_factors()
+        if not result.success or result.skipped:
+            return result
+        warm = warm_market_summary(include_ladder=False)
+        if warm.message:
+            return JobResult(success=result.success, message=f"{result.message} · {warm.message}")
         return result
 
     def _next_collect_quotes_run_at(self, *, prefer_immediate: bool = False) -> datetime:
