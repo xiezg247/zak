@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 WatchlistMultiSortKey = Literal["sort_order", "change_pct", "anomaly_score"]
 

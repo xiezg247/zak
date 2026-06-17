@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable
-from typing import Any
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import parse_stock_symbol
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.reference.reference_peer import (
     REFERENCE_PEER_TOP_N_MAX,
     ReferencePeerRunResult,
@@ -222,7 +222,7 @@ class ReferencePeerDialog(QtWidgets.QDialog):
         page_notify(self, message, level="warning", title="参考选股")
         self._cleanup_worker(worker)
 
-    def _populate_results(self, rows: list[dict[str, Any]]) -> None:
+    def _populate_results(self, rows: list[ScreenerResultRow]) -> None:
         self._table.blockSignals(True)
         try:
             populate_screener_results_table(self._table, rows, _RESULT_COLUMNS)

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from vnpy_ashare.domain.market.board import matches_board
-from vnpy_ashare.domain.market.quote_row import quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, quote_row_copy
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.hard_filters import apply_screening_filters, row_symbol
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
@@ -17,14 +15,14 @@ _CM20_SWEET_MV_YI = (20.0, 80.0)
 _CM20_MAX_MV_YI = 150.0
 
 
-def is_cm20_row(row: dict[str, Any]) -> bool:
+def is_cm20_row(row: QuoteRowLike) -> bool:
     symbol = row_symbol(row)
     if not symbol:
         return False
     return matches_board(symbol, "创业板") or matches_board(symbol, "科创板")
 
 
-def cm20_elastic_score(row: dict[str, Any], *, amount_rank: float = 0.5) -> float:
+def cm20_elastic_score(row: QuoteRowLike, *, amount_rank: float = 0.5) -> float:
     change = float(row.get("change_pct") or 0)
     change_score = min(1.0, max(0.0, change / 20.0))
     mv_wan = float(row.get("total_mv") or row.get("circ_mv") or 0)
@@ -43,7 +41,7 @@ def cm20_elastic_score(row: dict[str, Any], *, amount_rank: float = 0.5) -> floa
     return round(max(0.0, min(100.0, raw * 100.0)), 1)
 
 
-def _amount_rank_map(rows: list[dict[str, Any]]) -> dict[str, float]:
+def _amount_rank_map(rows: list[QuoteRowLike]) -> dict[str, float]:
     amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
     amounts = [(vt, amt) for vt, amt in amounts if vt]
     if not amounts:
@@ -70,39 +68,36 @@ def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
     if not enriched:
         return [], snapshot.total
 
-    candidates: list[dict[str, Any]] = []
+    candidates: list[QuoteRow] = []
     for row in enriched:
         if not is_cm20_row(row):
             continue
         change = float(row.get("change_pct") or 0)
         if change < _CM20_MIN_CHANGE:
             continue
-        item = dict(row)
-        item["board_tag"] = "20cm"
-        candidates.append(item)
+        candidates.append(quote_row_copy(row, board_tag="20cm"))
 
     filtered = apply_screening_filters(candidates)
     if not filtered:
         return [], snapshot.total
 
-    filtered_rows = [quote_row_to_dict(row) for row in filtered]
-    amount_ranks = _amount_rank_map(filtered_rows)
-    filtered_rows.sort(
+    amount_ranks = _amount_rank_map(filtered)
+    filtered.sort(
         key=lambda item: (
             cm20_elastic_score(item, amount_rank=amount_ranks.get(str(item.get("vt_symbol") or ""), 0.0)),
             float(item.get("change_pct") or 0),
         ),
         reverse=True,
     )
-    top_rows = filtered_rows[:pool_size]
+    top_rows: list[QuoteRowLike] = list(filtered[:pool_size])
 
     hits: list[DimensionHit] = []
-    for row in top_rows:
-        vt_symbol = str(row.get("vt_symbol") or "")
+    for top_row in top_rows:
+        vt_symbol = str(top_row.get("vt_symbol") or "")
         if not vt_symbol:
             continue
         amount_rank = amount_ranks.get(vt_symbol, 0.0)
-        score = cm20_elastic_score(row, amount_rank=amount_rank)
+        score = cm20_elastic_score(top_row, amount_rank=amount_rank)
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
@@ -110,14 +105,14 @@ def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
                 label="20cm",
                 weight=weight,
                 score=score,
-                reason=_cm20_reason(row, score),
-                row=row,
+                reason=_cm20_reason(top_row, score),
+                row=dimension_hit_row(top_row),
             )
         )
     return hits, snapshot.total
 
 
-def _cm20_reason(row: dict[str, Any], score: float) -> str:
+def _cm20_reason(row: QuoteRowLike, score: float) -> str:
     symbol = row_symbol(row)
     board = "创" if symbol.startswith("300") else "科"
     change = float(row.get("change_pct") or 0)

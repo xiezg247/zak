@@ -7,8 +7,8 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
 
 _SCORE_KEYS = frozenset(
     {
@@ -19,6 +19,19 @@ _SCORE_KEYS = frozenset(
         "resonance_score",
         "p_up",
         "score",
+        "similarity_score",
+        "momentum_5d",
+        "relative_strength",
+        "market_relative_strength",
+        "industry_relative_strength",
+        "relative_turnover",
+        "avg_turnover_rate",
+        "benchmark_change_pct",
+        "relative_volume",
+        "predict_relative_strength",
+        "predict_change_pct",
+        "predict_volume_ratio",
+        "predict_turnover_rate",
     }
 )
 _TAG_KEYS = frozenset(
@@ -37,6 +50,11 @@ _TAG_KEYS = frozenset(
         "leader_tier_label",
         "sector_name",
         "sector_axis",
+        "reference_vt_symbol",
+        "strength_basis",
+        "updated_at",
+        "trade_date",
+        "moneyflow_proxy",
     }
 )
 
@@ -70,7 +88,7 @@ class ScreenerResultRow(FrozenModel):
         return key in self.to_dict()
 
     def to_dict(self) -> dict[str, Any]:
-        payload = self.quote.to_dict()
+        payload = self.quote.model_dump(mode="python", exclude_defaults=True)
         payload.update(self.scores)
         payload.update(self.tags)
         return payload
@@ -123,8 +141,11 @@ def coerce_screener_result_rows(
 # 选股结果行边界类型（结构化行或 plain mapping）
 ScreeningRowLike = ScreenerResultRow | Mapping[str, Any]
 
+# 维度 / 行业 enrich 等管道可接受的行情或结果行
+ScreeningRowInput = ScreeningRowLike | QuoteRowLike
 
-def screening_row_to_dict(row: ScreeningRowLike) -> dict[str, Any]:
+
+def screening_row_to_dict(row: ScreeningRowInput) -> dict[str, Any]:
     if isinstance(row, ScreenerResultRow):
         return row.to_dict()
-    return dict(row)
+    return coerce_quote_row(row).to_dict()

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
@@ -45,8 +45,7 @@ def board_display_text(boards: int) -> str:
 
 
 def _tickflow_key(row: QuoteRowLike) -> str:
-    payload = quote_row_to_dict(row)
-    vt_symbol = str(payload.get("vt_symbol") or "").strip()
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
     item = parse_stock_symbol(vt_symbol)
     if item is not None:
         return item.tickflow_symbol
@@ -54,39 +53,39 @@ def _tickflow_key(row: QuoteRowLike) -> str:
 
 
 def resolve_limit_times(row: QuoteRowLike, *, limit_times_map: dict[str, float] | None = None) -> int:
-    merged = merge_row_quotes(quote_row_to_dict(row))
+    merged = merge_row_quotes(row)
     boards = int(float(merged.get("limit_times") or 0))
     if boards >= 1:
         return boards
     limit_map = limit_times_map if limit_times_map is not None else get_cached_limit_times_map()
-    mapped = int(float(limit_map.get(_tickflow_key(merged)) or 0))
+    mapped = int(float(limit_map.get(_tickflow_key(row)) or 0))
     if mapped >= 1:
         return mapped
-    if is_at_limit_board(merged):
+    if is_at_limit_board(row):
         return 1
     return 0
 
 
-def enrich_limit_times(row: QuoteRowLike, *, limit_times_map: dict[str, float] | None = None) -> dict[str, Any]:
-    merged = dict(merge_row_quotes(quote_row_to_dict(row)))
+def enrich_limit_times(row: QuoteRowLike, *, limit_times_map: dict[str, float] | None = None) -> QuoteRow:
+    merged = merge_row_quotes(row)
     boards = resolve_limit_times(merged, limit_times_map=limit_times_map)
     if boards >= 1:
-        merged["limit_times"] = boards
-    return merged
+        return quote_row_copy(row, limit_times=boards)
+    return coerce_quote_row(row)
 
 
 def build_limit_ladder_candidates(
     rows: Sequence[QuoteRowLike],
     *,
     limit_times_map: dict[str, float] | None = None,
-) -> list[dict[str, Any]]:
+) -> list[QuoteRow]:
     """涨停池：limit_times ≥ 1 或近似涨停，经硬过滤。"""
     enriched = [enrich_limit_times(row, limit_times_map=limit_times_map) for row in rows]
     limit_up = [row for row in enriched if resolve_limit_times(row, limit_times_map=limit_times_map) >= 1]
-    return [quote_row_to_dict(row) for row in apply_screening_filters(limit_up)]
+    return [coerce_quote_row(row) for row in apply_screening_filters(limit_up)]
 
 
-def count_ladder_buckets(candidates: list[dict[str, Any]]) -> dict[str, int]:
+def count_ladder_buckets(candidates: Sequence[QuoteRowLike]) -> dict[str, int]:
     counts: dict[str, int] = {label: 0 for label in _LADDER_BUCKET_ORDER}
     for row in candidates:
         label = ladder_bucket_label(resolve_limit_times(row))
@@ -105,34 +104,34 @@ def build_ladder_subtitle(*, counts: dict[str, int], total_scanned: int, variant
     return subtitle
 
 
-def _sort_key(row: dict[str, Any]) -> tuple[int, float, float]:
+def _sort_key(row: QuoteRowLike) -> tuple[int, float, float]:
     boards = resolve_limit_times(row)
     amount = float(row.get("amount") or 0)
     change = float(row.get("change_pct") or 0)
     return boards, amount, change
 
 
-def select_by_height(candidates: list[dict[str, Any]], *, top_n: int) -> list[dict[str, Any]]:
+def select_by_height(candidates: Sequence[QuoteRowLike], *, top_n: int) -> list[QuoteRow]:
     ranked = sorted(candidates, key=_sort_key, reverse=True)
-    return ranked[:top_n]
+    return [coerce_quote_row(row) for row in ranked[:top_n]]
 
 
-def select_by_sector(candidates: list[dict[str, Any]], *, top_n: int) -> list[dict[str, Any]]:
+def select_by_sector(candidates: Sequence[QuoteRowLike], *, top_n: int) -> list[QuoteRow]:
     """每行业取连板最高的一只，再按高度与成交额排序。"""
-    by_industry: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    by_industry: dict[str, list[QuoteRowLike]] = defaultdict(list)
     for row in candidates:
         industry = str(row.get("industry") or "").strip() or "—"
         by_industry[industry].append(row)
 
-    picked: list[dict[str, Any]] = []
+    picked: list[QuoteRowLike] = []
     for industry_rows in by_industry.values():
         best = max(industry_rows, key=_sort_key)
         picked.append(best)
     ranked = sorted(picked, key=_sort_key, reverse=True)
-    return ranked[:top_n]
+    return [coerce_quote_row(row) for row in ranked[:top_n]]
 
 
-def _row_to_radar(row: dict[str, Any]) -> RadarRow | None:
+def _row_to_radar(row: QuoteRowLike) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None

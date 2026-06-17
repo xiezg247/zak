@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 SignalKind = Literal["buy", "sell", "hold", "na"]
 

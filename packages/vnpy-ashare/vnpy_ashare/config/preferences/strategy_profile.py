@@ -12,7 +12,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_watchlist_signal_config,
     save_watchlist_signal_config,
 )
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
 

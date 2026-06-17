@@ -8,8 +8,8 @@ from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
-from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.screener.result_row import ScreeningRowLike, screening_row_to_dict
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.format import format_amount, format_pct, format_volume
 from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
@@ -49,7 +49,7 @@ from vnpy_ashare.screener.data.screening_context import (
     screening_context_scope,
 )
 from vnpy_ashare.screener.data.screening_sentiment_prefilter import apply_sentiment_prefilter_to_context
-from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
 from vnpy_ashare.screener.dimensions.moneyflow_resolve import (
     build_moneyflow_source_subtitle,
     resolve_moneyflow_hits,
@@ -64,11 +64,7 @@ from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_s
 
 def _radar_source_payload(row: QuoteRowLike | ScreeningRowLike) -> dict[str, Any]:
     """选股结果行 / 行情行 → plain dict（供 merge_row_quotes / RadarRow 构建）。"""
-    if isinstance(row, ScreenerResultRow):
-        return row.to_dict()
-    if isinstance(row, dict):
-        return dict(row)
-    return quote_row_to_dict(row)
+    return screening_row_to_dict(row)
 
 
 def _discovery_pool_size(top_n: int) -> int:
@@ -311,14 +307,14 @@ def _discovery_hits_card(
 
     filter_inputs: list[dict[str, Any]] = []
     for hit in hits:
-        row = dict(hit.row)
+        row = screening_row_to_dict(hit.row)
         vt = str(row.get("vt_symbol") or "").strip()
         mapped_name = str(name_map.get(vt) or row.get("name") or "").strip()
         if mapped_name:
             row["name"] = mapped_name
         filter_inputs.append(row)
     filtered_rows = apply_screening_filters(filter_inputs)
-    allowed_vt = {str(quote_row_to_dict(row).get("vt_symbol") or "") for row in filtered_rows}
+    allowed_vt = {str(row.get("vt_symbol") or "") for row in filtered_rows}
     for hit in hits:
         vt = str(hit.row.get("vt_symbol") or "").strip()
         if vt not in allowed_vt:
@@ -389,7 +385,7 @@ def _volume_liquidity_proxy(pool_size: int, total: int):
                 weight=1.0,
                 score=rank_score(index, min(len(ranked), pool_size)),
                 reason=f"放量：流动性代理，排名第 {index}",
-                row=quote_row_to_dict(row),
+                row=dimension_hit_row(row),
             )
         )
     return hits, snapshot.total

@@ -9,9 +9,9 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.screener.recipe.recipe import TriggerKind
+from vnpy_common.domain.base import MutableModel
 
 DraftStatus = Literal["pending", "confirmed", "cancelled", "expired"]
 Confidence = Literal["high", "medium", "low"]

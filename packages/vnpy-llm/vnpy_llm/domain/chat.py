@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_llm.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 
 class ChatMessage(FrozenModel):

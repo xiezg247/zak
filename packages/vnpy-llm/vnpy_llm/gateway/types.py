@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_llm.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 Surface = Literal["floating", "assistant"]
 

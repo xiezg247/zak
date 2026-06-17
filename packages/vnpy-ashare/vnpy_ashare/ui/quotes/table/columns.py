@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import Field
 
 from vnpy_ashare.config import exchange_to_cn
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.quote_time import format_trade_time_display

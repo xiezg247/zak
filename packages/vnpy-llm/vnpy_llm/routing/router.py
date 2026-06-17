@@ -9,7 +9,7 @@ from typing import Any, TypeVar, cast
 from pydantic import Field
 
 from vnpy_llm.chat.client import LlmClientError, create_openai_client
-from vnpy_llm.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_llm.config.settings import LlmConfig
 from vnpy_llm.routing.intent import (
     BacktestAction,

@@ -7,9 +7,9 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.signal_snapshot import SignalKind, SignalSnapshot
+from vnpy_common.domain.base import FrozenModel
 
 PositionSource = Literal["manual", "gateway", "paper"]
 

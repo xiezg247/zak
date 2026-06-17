@@ -14,7 +14,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from vnpy_common.ai.access import get_ai_context
-from vnpy_llm.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_llm.chat.client import LlmClientError, StreamCancelled
 from vnpy_llm.config.settings import LlmConfig, team_deep_mode_enabled
 from vnpy_llm.graph.agents.base import build_agent_system_prompt

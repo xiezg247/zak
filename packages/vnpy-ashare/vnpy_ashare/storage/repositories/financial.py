@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.storage.connection import connect
 
 REPORT_TYPES: tuple[str, ...] = (

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date, datetime
-from typing import Any
 
 from vnpy_ashare.config.constants.recipe import (
     DEFAULT_MIN_AMOUNT_YUAN,
@@ -23,6 +22,7 @@ from vnpy_ashare.config.constants.recipe import (
     ENV_MIN_LISTING_DAYS,
     ENV_MIN_TOTAL_MV_WAN,
 )
+from vnpy_ashare.config.trading_universe import MarketBoardFilter, effective_market_board_filter
 from vnpy_ashare.domain.core.env import (
     env_or_prefs_bool,
     env_or_prefs_nonneg_float,
@@ -30,7 +30,7 @@ from vnpy_ashare.domain.core.env import (
     env_or_prefs_str,
 )
 from vnpy_ashare.domain.market.board import matches_board
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol, vt_symbol_to_ts_code
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.factors import (
@@ -97,9 +97,27 @@ def recipe_allowed_industries() -> frozenset[str]:
     return parse_allowed_industries(raw)
 
 
-def recipe_allowed_market_boards() -> frozenset[str]:
+def recipe_preference_market_boards() -> frozenset[str]:
+    """选股硬过滤中的板块白名单（不含账户交易上限）。"""
     raw = env_or_prefs_str(ENV_ALLOWED_MARKET_BOARDS, prefs=lambda: load_hard_filter_prefs().allowed_market_boards)
     return parse_allowed_market_boards(raw)
+
+
+def resolve_market_board_filter(
+    *,
+    recipe_boards: frozenset[str] | None = None,
+    override_boards: frozenset[str] | None = None,
+) -> MarketBoardFilter:
+    """解析市场板块过滤；``active`` 为 False 表示不限制板块。"""
+    if override_boards is not None:
+        return MarketBoardFilter(active=True, boards=override_boards)
+    recipe = recipe_preference_market_boards() if recipe_boards is None else recipe_boards
+    return effective_market_board_filter(recipe_boards=recipe)
+
+
+def recipe_allowed_market_boards() -> frozenset[str]:
+    """有效板块白名单：账户交易上限 ∩ 选股偏好（二者均未设时为空集）。"""
+    return resolve_market_board_filter().boards
 
 
 def is_st_stock(name: str) -> bool:
@@ -116,7 +134,7 @@ def _screening_vt_name_map() -> dict[str, str]:
     return mapping
 
 
-def _names_for_st_check(row: dict[str, Any], name_map: dict[str, str] | None) -> list[str]:
+def _names_for_st_check(row: QuoteRowLike, name_map: dict[str, str] | None) -> list[str]:
     candidates: list[str] = []
     for candidate in (
         str(row.get("name") or "").strip(),
@@ -171,7 +189,7 @@ def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
     return keys
 
 
-def is_row_suspended(row: dict[str, Any], suspended_keys: frozenset[tuple[str, str]]) -> bool:
+def is_row_suspended(row: QuoteRowLike, suspended_keys: frozenset[tuple[str, str]]) -> bool:
     key = row_symbol_exchange(row)
     return key is not None and key in suspended_keys
 
@@ -235,9 +253,9 @@ def row_symbol(row: QuoteRowLike) -> str:
     return vt_symbol
 
 
-def passes_market_board_filter(row: dict[str, Any], allowed: frozenset[str]) -> bool:
+def passes_market_board_filter(row: QuoteRowLike, allowed: frozenset[str]) -> bool:
     if not allowed:
-        return True
+        return False
 
     symbol = row_symbol(row)
     if not symbol:
@@ -245,7 +263,7 @@ def passes_market_board_filter(row: dict[str, Any], allowed: frozenset[str]) -> 
     return any(matches_board(symbol, board) for board in allowed)
 
 
-def row_industry(row: dict[str, Any], industry_map: dict[str, str] | None = None) -> str:
+def row_industry(row: QuoteRowLike, industry_map: dict[str, str] | None = None) -> str:
     industry = str(row.get("industry") or "").strip()
     if industry:
         return industry
@@ -259,7 +277,7 @@ def row_industry(row: dict[str, Any], industry_map: dict[str, str] | None = None
     return str(mapping.get(ts_code) or "").strip()
 
 
-def passes_industry_filter(row: dict[str, Any], allowed: frozenset[str], industry_map: dict[str, str] | None = None) -> bool:
+def passes_industry_filter(row: QuoteRowLike, allowed: frozenset[str], industry_map: dict[str, str] | None = None) -> bool:
     if not allowed:
         return True
     industry = row_industry(row, industry_map)
@@ -272,7 +290,7 @@ def _ts_code_to_vt_symbol(ts_code: str) -> str:
     return ts_code_to_vt_symbol(ts_code) or ""
 
 
-def is_new_listing(row: dict[str, Any], list_date_map: dict[str, str] | None = None) -> bool:
+def is_new_listing(row: QuoteRowLike, list_date_map: dict[str, str] | None = None) -> bool:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return False
@@ -292,7 +310,7 @@ def is_new_listing(row: dict[str, Any], list_date_map: dict[str, str] | None = N
     return (date.today() - listed).days < min_days
 
 
-def limit_board_threshold_pct(row: dict[str, Any], market_board_map: dict[str, str] | None = None) -> float:
+def limit_board_threshold_pct(row: QuoteRowLike, market_board_map: dict[str, str] | None = None) -> float:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     market = str(row.get("market") or "").strip()
     if not market and vt_symbol:
@@ -306,7 +324,7 @@ def limit_board_threshold_pct(row: dict[str, Any], market_board_map: dict[str, s
     return 9.8
 
 
-def is_at_limit_board(row: dict[str, Any], market_board_map: dict[str, str] | None = None) -> bool:
+def is_at_limit_board(row: QuoteRowLike, market_board_map: dict[str, str] | None = None) -> bool:
     change = float(row.get("change_pct") or row.get("pct_chg") or 0)
     threshold = limit_board_threshold_pct(row, market_board_map=market_board_map)
     return change >= threshold or change <= -threshold
@@ -347,24 +365,26 @@ def passes_screening_hard_filter(
     allowed_industries: frozenset[str] | None = None,
     allowed_market_boards: frozenset[str] | None = None,
 ) -> bool:
-    payload = quote_row_to_dict(row)
-    boards = allowed_market_boards if allowed_market_boards is not None else recipe_allowed_market_boards()
-    if boards and not passes_market_board_filter(payload, boards):
+    if allowed_market_boards is not None:
+        board_filter = MarketBoardFilter(active=True, boards=allowed_market_boards)
+    else:
+        board_filter = resolve_market_board_filter()
+    if board_filter.active and not passes_market_board_filter(row, board_filter.boards):
         return False
     allowed = allowed_industries if allowed_industries is not None else recipe_allowed_industries()
-    if allowed and not passes_industry_filter(payload, allowed, industry_map=industry_map):
+    if allowed and not passes_industry_filter(row, allowed, industry_map=industry_map):
         return False
     if recipe_exclude_suspended_enabled():
         keys = suspended_keys if suspended_keys is not None else _suspended_keys_for_screening()
-        if is_row_suspended(payload, keys):
+        if is_row_suspended(row, keys):
             return False
     if recipe_exclude_st_enabled():
-        for name in _names_for_st_check(payload, name_map):
+        for name in _names_for_st_check(row, name_map):
             if is_st_stock(name):
                 return False
-    if recipe_exclude_new_listing_enabled() and is_new_listing(payload, list_date_map=list_date_map):
+    if recipe_exclude_new_listing_enabled() and is_new_listing(row, list_date_map=list_date_map):
         return False
-    if recipe_exclude_limit_board_enabled() and is_at_limit_board(payload, market_board_map=market_board_map):
+    if recipe_exclude_limit_board_enabled() and is_at_limit_board(row, market_board_map=market_board_map):
         return False
     return passes_liquidity_filter(row)
 
@@ -372,7 +392,6 @@ def passes_screening_hard_filter(
 def apply_recipe_filters(rows: Sequence[QuoteRowLike]) -> list[QuoteRowLike]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
     allowed_industries = recipe_allowed_industries()
-    allowed_market_boards = recipe_allowed_market_boards()
     suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
     name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
     list_date_map = _list_date_map_for_screening() if recipe_exclude_new_listing_enabled() else None
@@ -389,7 +408,6 @@ def apply_recipe_filters(rows: Sequence[QuoteRowLike]) -> list[QuoteRowLike]:
             market_board_map=market_board_map,
             industry_map=industry_map,
             allowed_industries=allowed_industries,
-            allowed_market_boards=allowed_market_boards,
         )
     ]
 

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, quote_hits
 from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
@@ -43,7 +44,7 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
 
     filtered = apply_screening_filters(enriched)
     filtered.sort(key=lambda item: float(item.get("volume_ratio") or 0), reverse=True)
-    rows: list[dict[str, Any]] = []
+    rows: list[QuoteRow] = []
     for item in filtered[:pool_size]:
         base = _quote_row(item)
         base["volume_ratio"] = float(item.get("volume_ratio") or 0)
@@ -116,15 +117,17 @@ def _volume_ratio_from_tushare_only(
                 weight=weight,
                 score=round(base * _volume_ratio_tier_factor(ratio), 1),
                 reason=_volume_ratio_reason({"volume_ratio": ratio}, index),
-                row={
-                    "symbol": row.get("symbol", ""),
-                    "name": row.get("name", ""),
-                    "vt_symbol": vt_symbol,
-                    "close": row.get("close", 0),
-                    "volume_ratio": ratio,
-                    "turnover_rate": row.get("turnover_rate", 0),
-                    "source": "tushare",
-                },
+                row=dimension_hit_row(
+                    {
+                        "symbol": row.get("symbol", ""),
+                        "name": row.get("name", ""),
+                        "vt_symbol": vt_symbol,
+                        "close": row.get("close", 0),
+                        "volume_ratio": ratio,
+                        "turnover_rate": row.get("turnover_rate", 0),
+                        "source": "tushare",
+                    }
+                ),
             )
         )
     return hits, len(basic_rows)

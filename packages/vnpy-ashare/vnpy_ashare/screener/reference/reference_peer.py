@@ -13,13 +13,14 @@ from typing import Any
 from dotenv import load_dotenv
 from pydantic import Field
 
-from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_stock_industry_map
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback, iter_trade_date_strs
+from vnpy_common.domain.base import MutableModel
 from vnpy_common.paths import ENV_FILE
 
 ProgressCallback = Callable[[str], None]
@@ -65,7 +66,7 @@ class ReferencePeerRunResult(MutableModel):
     reference_name: str = Field(description="标杆股简称")
     reference_industry: str = Field(description="标杆股行业")
     trade_date: str = Field(description="基本面数据交易日")
-    rows: list[dict[str, Any]] = Field(description="对标结果行")
+    rows: list[ScreenerResultRow] = Field(description="对标结果行")
     steps: list[str] = Field(default_factory=list, description="执行步骤日志")
     total_scanned: int = Field(default=0, description="扫描标的总数")
 
@@ -144,7 +145,7 @@ def run_reference_peer_screen(
     ref_mv = _positive_float(reference.get("circ_mv") or reference.get("total_mv"))
 
     progress("正在计算估值接近度与走势相似度…")
-    scored: list[dict[str, Any]] = []
+    scored: list[ScreenerResultRow] = []
     for row in candidates:
         check_cancelled()
         ts_code = str(row.get("ts_code", ""))
@@ -167,31 +168,35 @@ def run_reference_peer_screen(
             f"近{_MOMENTUM_DAYS}日涨跌 {cand_momentum:+.2f}%（标杆 {ref_momentum:+.2f}%）",
         ]
         scored.append(
-            {
-                "symbol": row.get("symbol", ""),
-                "name": row.get("name", ""),
-                "vt_symbol": row.get("vt_symbol", ""),
-                "reference_vt_symbol": vt_symbol,
-                "similarity_score": composite,
-                "hit_reason": reasons[0] if len(reasons) == 1 else "；".join(reasons[:2]),
-                "hit_reasons": reasons,
-                "industry": ref_industry,
-                "pe_ttm": row.get("pe_ttm") or row.get("pe") or 0,
-                "circ_mv": row.get("circ_mv") or row.get("total_mv") or 0,
-                "momentum_5d": round(cand_momentum, 2),
-                "source": "reference_peer",
-            }
+            ScreenerResultRow.from_mapping(
+                {
+                    "symbol": row.get("symbol", ""),
+                    "name": row.get("name", ""),
+                    "vt_symbol": row.get("vt_symbol", ""),
+                    "reference_vt_symbol": vt_symbol,
+                    "similarity_score": composite,
+                    "hit_reason": reasons[0] if len(reasons) == 1 else "；".join(reasons[:2]),
+                    "hit_reasons": reasons,
+                    "industry": ref_industry,
+                    "pe_ttm": row.get("pe_ttm") or row.get("pe") or 0,
+                    "circ_mv": row.get("circ_mv") or row.get("total_mv") or 0,
+                    "momentum_5d": round(cand_momentum, 2),
+                    "source": "reference_peer",
+                }
+            )
         )
 
     scored.sort(
-        key=lambda item: (float(item.get("similarity_score") or 0),),
+        key=lambda item: float(item.get("similarity_score") or 0),
         reverse=True,
     )
     rows = scored[: clamp_reference_peer_top_n(top_n)]
     progress(f"完成，命中 {len(rows)} 条同类标的")
     now = format_china_datetime()
-    for row in rows:
-        row["updated_at"] = now
+    rows = [
+        item.model_copy(update={"tags": {**item.tags, "updated_at": now}})
+        for item in rows
+    ]
 
     return ReferencePeerRunResult(
         reference_vt_symbol=vt_symbol,

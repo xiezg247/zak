@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, load_emotion_cycle_snapshot
 from vnpy_ashare.trading.risk.gate import RiskGateSnapshot, build_risk_gate_snapshot, read_total_capital
 

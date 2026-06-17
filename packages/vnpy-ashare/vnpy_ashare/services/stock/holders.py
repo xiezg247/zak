@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_ashare.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.corporate import fetch_top10_holders
 

@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 
 
 class JobResult(MutableModel):

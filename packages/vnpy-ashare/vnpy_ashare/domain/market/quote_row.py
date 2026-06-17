@@ -7,9 +7,9 @@ from typing import Any
 
 from pydantic import ConfigDict, Field, model_validator
 
-from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_common.domain.base import MutableModel
 
 
 class QuoteRow(MutableModel):
@@ -135,10 +135,19 @@ def coerce_quote_rows(rows: Sequence[QuoteRow | Mapping[str, Any]]) -> list[Quot
     return [coerce_quote_row(row) for row in rows]
 
 
+def quote_row_copy(row: QuoteRowLike, **updates: Any) -> QuoteRow:
+    """复制行情行并写入扩展字段（行业/概念/维度评分等）。"""
+    item = coerce_quote_row(row)
+    for key, value in updates.items():
+        item[key] = value
+    return item
+
+
 QuoteRowLike = QuoteRow | Mapping[str, Any]
 
 
 def quote_row_to_dict(row: QuoteRowLike) -> dict[str, Any]:
+    """序列化边界：优先 ``QuoteRow.to_dict()``，plain mapping 则 ``dict()``。"""
     if isinstance(row, QuoteRow):
         return row.to_dict()
     return dict(row)

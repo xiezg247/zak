@@ -10,8 +10,8 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.screener.recipe.recipe_store import get_saved_recipe, list_saved_recipes
+from vnpy_common.domain.base import FrozenModel
 
 TriggerKind = Literal["intraday", "post_close"]
 

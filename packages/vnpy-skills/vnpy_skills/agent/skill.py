@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import Field
 
-from vnpy_skills.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_skills.domain.frontmatter import SkillFrontmatter, parse_skill_document
 
 

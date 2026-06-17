@@ -16,7 +16,7 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from pydantic import ConfigDict, Field
 
-from vnpy_ashare.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs.bars import batch_download_universe_daily_bars, batch_fill_downloaded_stale_job

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
@@ -14,7 +14,7 @@ from vnpy_ashare.screener.data.market_benchmark import (
 )
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, fundamental_base_row, quote_hits
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, fundamental_base_row, quote_hits
 from vnpy_ashare.screener.dimensions.history_signals import (
     attach_momentum_persistence,
     load_history_bars_map,
@@ -42,7 +42,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
 
         scored_rows: list[dict[str, Any]] = []
         for row in enriched:
-            merged = dict(row)
+            merged = coerce_quote_row(row).to_dict()
             change = float(merged.get("change_pct") or merged.get("pct_chg") or 0)
             if not _momentum_change_allowed(change):
                 continue
@@ -67,16 +67,21 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         attach_momentum_persistence(top_for_history, bars_map)
         hit_rows: list[QuoteRowLike] = []
         for item in filtered_rows[:pool_size]:
-            base = _quote_row(item)
-            base["benchmark_change_pct"] = market_benchmark
-            base["relative_strength"] = float(item.get("relative_strength") or 0)
-            base["strength_basis"] = str(item.get("strength_basis") or "大盘")
-            base["market_relative_strength"] = float(item.get("market_relative_strength") or 0)
-            if item.get("industry_relative_strength") is not None:
-                base["industry_relative_strength"] = float(item["industry_relative_strength"])
-            if item.get("industry"):
-                base["industry"] = item["industry"]
-            hit_rows.append(base)
+            hit_rows.append(
+                quote_row_copy(
+                    _quote_row(item),
+                    benchmark_change_pct=market_benchmark,
+                    relative_strength=float(item.get("relative_strength") or 0),
+                    strength_basis=str(item.get("strength_basis") or "大盘"),
+                    market_relative_strength=float(item.get("market_relative_strength") or 0),
+                    **(
+                        {"industry_relative_strength": float(item["industry_relative_strength"])}
+                        if item.get("industry_relative_strength") is not None
+                        else {}
+                    ),
+                    **({"industry": item["industry"]} if item.get("industry") else {}),
+                )
+            )
 
         return quote_hits(
             hit_rows,
@@ -96,8 +101,8 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         market_benchmark = market_benchmark_change_pct(enriched or raw_rows)
         industry_avg = industry_avg_change_map(enriched)
         scored: list[tuple[dict[str, Any], float, str]] = []
-        for row in enriched:
-            item = dict(row)
+        for enriched_row in enriched:
+            item = coerce_quote_row(enriched_row).to_dict()
             change = float(item.get("change_pct") or item.get("pct_chg") or 0)
             if not _momentum_change_allowed(change):
                 continue
@@ -118,17 +123,19 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         top = scored[:pool_size]
         strength_values = [rs for _, rs, _ in top]
         hits: list[DimensionHit] = []
-        for index, (row, rs, basis) in enumerate(top, start=1):
-            vt_symbol = str(row.get("vt_symbol") or "")
+        for index, (scored_row, rs, basis) in enumerate(top, start=1):
+            vt_symbol = str(scored_row.get("vt_symbol") or "")
             if not vt_symbol:
                 continue
-            base_row = fundamental_base_row(row)
-            base_row["relative_strength"] = rs
-            base_row["strength_basis"] = basis
-            base_row["benchmark_change_pct"] = market_benchmark
-            base_row["market_relative_strength"] = float(row.get("market_relative_strength") or 0)
-            if row.get("industry_relative_strength") is not None:
-                base_row["industry_relative_strength"] = float(row["industry_relative_strength"])
+            base_row = quote_row_copy(
+                fundamental_base_row(scored_row),
+                relative_strength=rs,
+                strength_basis=basis,
+                benchmark_change_pct=market_benchmark,
+                market_relative_strength=float(scored_row.get("market_relative_strength") or 0),
+            )
+            if scored_row.get("industry_relative_strength") is not None:
+                base_row["industry_relative_strength"] = float(scored_row["industry_relative_strength"])
             hits.append(
                 DimensionHit(
                     vt_symbol=vt_symbol,
@@ -137,13 +144,13 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
                     weight=weight,
                     score=blended_score(index, len(top), rs, strength_values),
                     reason=_momentum_reason(base_row, index),
-                    row=base_row,
+                    row=dimension_hit_row(base_row),
                 )
             )
         return hits, len(raw_rows)
 
 
-def _momentum_reason(row: dict[str, Any], rank: int) -> str:
+def _momentum_reason(row: QuoteRowLike, rank: int) -> str:
     change = float(row.get("change_pct") or row.get("pct_chg") or 0)
     rs = float(row.get("relative_strength") or 0)
     basis = str(row.get("strength_basis") or "大盘")

@@ -7,15 +7,16 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.screener.result_row import ScreeningRowLike, screening_row_to_dict
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.radar.radar_relative_strength import enrich_radar_row_relative_strength
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_common.domain.base import FrozenModel
 
 
 class RadarRow(FrozenModel):
@@ -63,10 +64,11 @@ def quote_map() -> dict[str, QuoteRow]:
     return quote_rows_by_vt_symbol()
 
 
-def merge_row_quotes(row: QuoteRow | Mapping[str, Any]) -> dict[str, Any]:
+def merge_row_quotes(row: QuoteRow | ScreeningRowLike) -> dict[str, Any]:
     """合并行情缓存，补全 volume / amount / 现价等字段。"""
-    vt_symbol = str(row.get("vt_symbol") or "").strip()
-    merged = coerce_quote_row(row).to_dict()
+    payload = screening_row_to_dict(row)
+    vt_symbol = str(payload.get("vt_symbol") or "").strip()
+    merged = coerce_quote_row(payload).to_dict()
     quote = quote_map().get(vt_symbol)
     if quote is None:
         return merged

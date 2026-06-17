@@ -6,48 +6,47 @@ from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, quote_row_copy
+from vnpy_ashare.domain.screener.result_row import ScreeningRowInput, screening_row_to_dict
 from vnpy_ashare.domain.symbols import vt_symbol_to_ts_code
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
 
-def attach_industry(rows: Sequence[QuoteRowLike], industry_map: dict[str, str] | None = None) -> list[dict[str, Any]]:
+def attach_industry(
+    rows: Sequence[ScreeningRowInput],
+    industry_map: dict[str, str] | None = None,
+) -> list[QuoteRow]:
     """为行情行附加 ``industry`` 字段。"""
     mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
-    enriched: list[dict[str, Any]] = []
+    enriched: list[QuoteRow] = []
     for row in rows:
-        payload = quote_row_to_dict(row)
+        payload = screening_row_to_dict(row)
         ts_code = vt_symbol_to_ts_code(str(payload.get("vt_symbol") or ""))
         industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
         if not industry:
             continue
-        merged = dict(payload)
-        merged["industry"] = industry
-        enriched.append(merged)
+        enriched.append(quote_row_copy(payload, industry=industry))
     return enriched
 
 
 def attach_concept(
     rows: Sequence[QuoteRowLike],
     vt_to_concept: dict[str, str] | None = None,
-) -> list[dict[str, Any]]:
+) -> list[QuoteRow]:
     """为行情行附加 ``concept`` 字段（主概念名）。"""
     if vt_to_concept is None:
         mapping, _hot = build_hot_concept_vt_symbol_map()
     else:
         mapping = vt_to_concept
 
-    enriched: list[dict[str, Any]] = []
+    enriched: list[QuoteRow] = []
     for row in rows:
-        payload = quote_row_to_dict(row)
-        vt_symbol = str(payload.get("vt_symbol") or "").strip()
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
         concept = mapping.get(vt_symbol, "").strip()
         if not concept:
             continue
-        merged = dict(payload)
-        merged["concept"] = concept
-        enriched.append(merged)
+        enriched.append(quote_row_copy(row, concept=concept))
     return enriched
 
 
@@ -56,7 +55,7 @@ def attach_sector_fields(
     *,
     industry_map: dict[str, str] | None = None,
     vt_to_concept: dict[str, str] | None = None,
-) -> tuple[list[dict[str, Any]], list[str]]:
+) -> tuple[list[QuoteRow], list[str]]:
     """附加行业 + 概念；至少有一轴则保留。返回 (rows, hot_concept_names)。"""
     mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
     if vt_to_concept is None:
@@ -65,21 +64,20 @@ def attach_sector_fields(
         concept_map = vt_to_concept
         hot_names = sorted({name for name in concept_map.values() if name})
 
-    enriched: list[dict[str, Any]] = []
+    enriched: list[QuoteRow] = []
     for row in rows:
-        payload = quote_row_to_dict(row)
-        ts_code = vt_symbol_to_ts_code(str(payload.get("vt_symbol") or ""))
+        ts_code = vt_symbol_to_ts_code(str(row.get("vt_symbol") or ""))
         industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
-        vt_symbol = str(payload.get("vt_symbol") or "").strip()
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
         concept = concept_map.get(vt_symbol, "").strip()
         if not industry and not concept:
             continue
-        merged = dict(payload)
+        updates: dict[str, Any] = {}
         if industry:
-            merged["industry"] = industry
+            updates["industry"] = industry
         if concept:
-            merged["concept"] = concept
-        enriched.append(merged)
+            updates["concept"] = concept
+        enriched.append(quote_row_copy(row, **updates))
     return enriched, hot_names
 
 
@@ -93,11 +91,10 @@ def compute_sector_distribution(
     """按行业/概念统计标的数、上涨占比与平均涨幅，降序返回 Top N。"""
     buckets: dict[str, list[float]] = defaultdict(list)
     for row in rows:
-        payload = quote_row_to_dict(row)
-        sector = str(payload.get(sector_field) or "").strip()
+        sector = str(row.get(sector_field) or "").strip()
         if not sector:
             continue
-        pct = float(payload.get("change_pct") or payload.get("pct_chg") or 0)
+        pct = float(row.get("change_pct") or row.get("pct_chg") or 0)
         buckets[sector].append(pct)
 
     stats: list[dict[str, Any]] = []
@@ -172,7 +169,7 @@ def breadth_leader_candidates(
     *,
     pool_size: int,
     min_stocks_per_industry: int = 3,
-) -> list[dict[str, Any]]:
+) -> list[QuoteRow]:
     """广度扩散：强势行业内按个股涨幅取候选。"""
     strong = top_industries_by_breadth(
         rows,
@@ -183,23 +180,25 @@ def breadth_leader_candidates(
         return []
 
     industry_names = {str(item["industry"]) for item in strong}
-    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    buckets: dict[str, list[QuoteRow]] = defaultdict(list)
     for row in rows:
-        payload = quote_row_to_dict(row)
-        industry = str(payload.get("industry") or "").strip()
+        industry = str(row.get("industry") or "").strip()
         if industry in industry_names:
-            buckets[industry].append(dict(payload))
+            buckets[industry].append(quote_row_copy(row))
 
-    candidates: list[dict[str, Any]] = []
+    candidates: list[QuoteRow] = []
     stat_map = {str(item["industry"]): item for item in strong}
     for industry, items in buckets.items():
         stat = stat_map.get(industry, {})
         ranked = sorted(items, key=lambda item: float(item.get("change_pct") or 0), reverse=True)
         for item in ranked[: max(2, pool_size // 5)]:
-            merged = dict(item)
-            merged["breadth_ratio"] = float(stat.get("advance_pct") or 0)
-            merged["industry_avg_change"] = float(stat.get("avg_change_pct") or 0)
-            candidates.append(merged)
+            candidates.append(
+                quote_row_copy(
+                    item,
+                    breadth_ratio=float(stat.get("advance_pct") or 0),
+                    industry_avg_change=float(stat.get("avg_change_pct") or 0),
+                )
+            )
 
     candidates.sort(
         key=lambda item: (

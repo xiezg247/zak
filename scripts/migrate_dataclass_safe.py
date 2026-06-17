@@ -157,11 +157,11 @@ def migrate_file(path: Path) -> bool:
             "from __future__ import annotations\n\nfrom pydantic import Field\n\n",
             1,
         )
-    if "from vnpy_ashare.domain.base import" not in new_text:
+    if "from vnpy_common.domain.base import" not in new_text:
         if "FrozenModel" in new_text:
-            imp = "from vnpy_ashare.domain.base import FrozenModel, MutableModel\n\n"
+            imp = "from vnpy_common.domain.base import FrozenModel, MutableModel\n\n"
         else:
-            imp = "from vnpy_ashare.domain.base import MutableModel\n\n"
+            imp = "from vnpy_common.domain.base import MutableModel\n\n"
         new_text = new_text.replace("from pydantic import Field\n\n", f"from pydantic import Field\n\n{imp}", 1)
 
     new_text = re.sub(r"from dataclasses import dataclass, field\n", "", new_text)

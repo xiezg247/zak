@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
@@ -54,19 +54,18 @@ def _today_trade_date() -> str:
 
 
 def _proxy_flow_yi(row: QuoteRowLike) -> float:
-    payload = quote_row_to_dict(row)
-    net_mf = float(payload.get("net_mf_amount") or 0)
+    net_mf = float(row.get("net_mf_amount") or 0)
     if net_mf != 0:
         return net_mf / 10000.0
-    amount = float(payload.get("amount") or 0)
-    change = float(payload.get("change_pct") or 0)
+    amount = float(row.get("amount") or 0)
+    change = float(row.get("change_pct") or 0)
     if amount <= 0:
         return 0.0
     return amount * change / 100.0 / 1e8
 
 
 def _flow_source_for_rows(items: Sequence[QuoteRowLike]) -> str:
-    if any(float(quote_row_to_dict(row).get("net_mf_amount") or 0) != 0 for row in items):
+    if any(float(row.get("net_mf_amount") or 0) != 0 for row in items):
         return "tushare"
     return "proxy"
 

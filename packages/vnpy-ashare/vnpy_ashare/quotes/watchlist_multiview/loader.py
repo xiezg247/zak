@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
@@ -12,7 +14,7 @@ from vnpy_ashare.quotes.radar.radar_watchlist import (
     _quotes_for_candidates,
     _watchlist_metric,
 )
-from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiRow
+from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiRow, WatchlistMultiSortKey
 from vnpy_ashare.quotes.watchlist_multiview.sort import sort_multiview_rows
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 
@@ -76,7 +78,10 @@ def build_watchlist_multiview_board(
             )
         )
 
-    key = sort_key if sort_key in ("sort_order", "change_pct", "anomaly_score") else "sort_order"
+    key = cast(
+        WatchlistMultiSortKey,
+        sort_key if sort_key in ("sort_order", "change_pct", "anomaly_score") else "sort_order",
+    )
     sorted_rows = sort_multiview_rows(rows, sort_key=key)
     return WatchlistMultiBoardData(
         rows=tuple(sorted_rows),

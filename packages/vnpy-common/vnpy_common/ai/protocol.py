@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_common.ai.base import FrozenModel, MutableModel
+from vnpy_common.domain.base import FrozenModel, MutableModel
 
 
 class QuickAction(MutableModel):

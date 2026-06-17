@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_llm.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 
 TraceKind = Literal["routing", "tool", "reply", "error", "handoff", "team"]
 TraceStatus = Literal["running", "ok", "error"]

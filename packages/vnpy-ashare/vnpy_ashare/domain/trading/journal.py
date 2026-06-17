@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 JournalSide = Literal["buy", "sell", "hold"]
 

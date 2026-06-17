@@ -16,7 +16,7 @@ from vnpy_ashare.data.minute_periods import (
     is_daily_scope,
     normalize_period,
 )
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 _overview_cache_lock = threading.Lock()
 _overview_by_interval: dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]] | None = None

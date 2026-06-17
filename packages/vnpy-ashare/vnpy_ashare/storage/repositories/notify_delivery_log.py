@@ -7,7 +7,7 @@ import uuid
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.storage.connection import connect, init_app_db
 

@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
-from vnpy_llm.domain.base import FrozenModel, MutableModel
+from vnpy_common.domain.base import FrozenModel, MutableModel
 from vnpy_llm.routing.intent import (
     BacktestIntent,
     IntentAnalysis,

@@ -6,10 +6,8 @@ import math
 from collections.abc import Sequence
 from typing import Any
 
-from pydantic import Field
-
-from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_copy
+from vnpy_ashare.domain.screener.predict import BaselinePredictHit
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
     market_benchmark_change_pct,
@@ -24,16 +22,6 @@ _WEIGHT_VOLUME = 0.20
 _WEIGHT_TURNOVER = 0.10
 
 PREDICT_HORIZON_DAYS = 5
-
-
-class BaselinePredictHit(FrozenModel):
-    vt_symbol: str = Field(description="合约代码（含交易所）")
-    score: float = Field(description="得分")
-    p_up: float = Field(description="看涨概率（0–1）")
-    relative_strength: float = Field(description="相对强度（%）")
-    change_pct: float = Field(description="涨跌幅（%）")
-    volume_ratio: float = Field(description="量比")
-    turnover_rate: float = Field(description="换手率（%）")
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -61,17 +49,19 @@ def _prepare_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
     industry_avg = industry_avg_change_map(enriched)
     prepared: list[dict[str, Any]] = []
     for row in enriched:
-        merged = dict(row)
         rs, _basis = resolve_relative_strength(
-            merged,
+            row,
             market_benchmark=market_benchmark,
             industry_avg_map=industry_avg,
         )
-        merged["predict_relative_strength"] = float(rs)
-        merged["predict_change_pct"] = float(merged.get("change_pct") or merged.get("pct_chg") or 0)
-        merged["predict_volume_ratio"] = float(merged.get("volume_ratio") or 1.0)
-        merged["predict_turnover_rate"] = float(merged.get("turnover_rate") or 0.0)
-        prepared.append(merged)
+        merged = quote_row_copy(
+            row,
+            predict_relative_strength=float(rs),
+            predict_change_pct=float(row.get("change_pct") or row.get("pct_chg") or 0),
+            predict_volume_ratio=float(row.get("volume_ratio") or 1.0),
+            predict_turnover_rate=float(row.get("turnover_rate") or 0.0),
+        )
+        prepared.append(merged.to_dict())
     return prepared
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import Field
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.trading.plan import TradingPlanRecord
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.storage.repositories.trading_plans import load_active_trading_plan

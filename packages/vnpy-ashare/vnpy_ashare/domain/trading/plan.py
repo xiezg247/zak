@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 TradingPlanStatus = Literal["draft", "active", "archived"]
 TradeMode = Literal["limit_board", "halfway", "pullback", "swing", "other"]

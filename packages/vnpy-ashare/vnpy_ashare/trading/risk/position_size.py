@@ -11,7 +11,7 @@ from vnpy_ashare.config.preferences.trading_risk import (
     DEFAULT_STOP_LOSS_PCT,
     load_trading_risk_prefs,
 )
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 
 class PositionSizeResult(FrozenModel):

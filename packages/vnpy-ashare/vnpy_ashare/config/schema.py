@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import Field
 
 from vnpy_ashare.config.fonts import default_font_family
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_llm.config import DEFAULT_BASE_URL, DEFAULT_MODEL
 
 ValueKind = Literal["text", "secret", "bool", "int", "choice"]
@@ -30,6 +30,13 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
         key="TICKFLOW_API_KEY", label="TickFlow API Key", group="数据源", default="", sensitive=True, description="主行情数据源，https://tickflow.org"
     ),
     ConfigFieldSpec(key="TUSHARE_TOKEN", label="Tushare Token", group="数据源", default="", sensitive=True, description="财务/选股辅助，https://tushare.pro"),
+    ConfigFieldSpec(
+        key="ASHARE_TRADING_BOARDS",
+        label="可交易市场板块",
+        group="数据源",
+        default="",
+        description="账户可交易范围，逗号分隔：沪深主板,创业板,科创板,北交所；留空不限制。选股板块白名单不能超出此范围",
+    ),
     ConfigFieldSpec(
         key="DATAFEED_NAME",
         label="默认行情数据源",

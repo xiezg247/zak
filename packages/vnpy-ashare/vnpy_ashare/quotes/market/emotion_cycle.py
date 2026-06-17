@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle_cache import (

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
-from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
 from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
 
 
@@ -27,7 +27,7 @@ def run_moneyflow(pool_size: int, *, weight: float) -> tuple[list[DimensionHit],
                 weight=weight,
                 score=rank_score(index, len(rows)),
                 reason=f"资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
-                row=enrich_moneyflow_row_with_kind(dict(row)),
+                row=dimension_hit_row(enrich_moneyflow_row_with_kind(dict(row))),
             )
         )
     return hits, len(raw_rows)

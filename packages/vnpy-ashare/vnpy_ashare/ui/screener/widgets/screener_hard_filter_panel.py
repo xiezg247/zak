@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.config.trading_universe import get_trading_allowed_boards, trading_boards_hint
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 from vnpy_ashare.screener.hard_filter_prefs import (
     MARKET_BOARD_FILTER_OPTIONS,
@@ -31,6 +32,10 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self.setObjectName("ScreenerFormBox")
         self._industry_names: list[str] = []
         self._market_board_checks: dict[str, QtWidgets.QCheckBox] = {}
+        self._board_hint = QtWidgets.QLabel("")
+        self._board_hint.setObjectName("ScreenerHint")
+        self._board_hint.setWordWrap(True)
+        self._board_hint.hide()
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(6)
@@ -100,6 +105,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
             board_layout.addWidget(check)
         board_layout.addStretch()
         form.addRow("市场板块", board_row)
+        form.addRow("", self._board_hint)
 
         self.allowed_industries_combo = QtWidgets.QComboBox()
         self.allowed_industries_combo.setObjectName("ToolbarCombo")
@@ -115,7 +121,10 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
 
         layout.addLayout(form)
 
-        hint = QtWidgets.QLabel("未勾选市场板块表示不限；0 表示不限制；环境变量 RECIPE_* 仍可覆盖上述设置。")
+        hint = QtWidgets.QLabel(
+            "未勾选市场板块表示不限（若已配置 ASHARE_TRADING_BOARDS 则退回账户可交易范围）；"
+            "0 表示不限制；环境变量 RECIPE_* 仍可覆盖上述设置。"
+        )
         hint.setObjectName("ScreenerHint")
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -186,9 +195,31 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         for check in self._market_board_checks.values():
             check.blockSignals(False)
         self.allowed_industries_combo.blockSignals(False)
+        self._apply_trading_board_ceiling()
+
+    def _apply_trading_board_ceiling(self) -> None:
+        ceiling = get_trading_allowed_boards()
+        hint = trading_boards_hint()
+        if hint:
+            self._board_hint.setText(f"账户可交易板块：{hint}（不可超出此范围）")
+            self._board_hint.show()
+        else:
+            self._board_hint.hide()
+
+        for label, check in self._market_board_checks.items():
+            if ceiling and label not in ceiling:
+                check.blockSignals(True)
+                check.setChecked(False)
+                check.setEnabled(False)
+                check.blockSignals(False)
+            else:
+                check.setEnabled(True)
 
     def current_prefs(self) -> HardFilterPrefs:
+        ceiling = get_trading_allowed_boards()
         selected_boards = [label for label, check in self._market_board_checks.items() if check.isChecked()]
+        if ceiling:
+            selected_boards = [label for label in selected_boards if label in ceiling]
         industries_text = ""
         line_edit = self.allowed_industries_combo.lineEdit()
         if line_edit is not None:

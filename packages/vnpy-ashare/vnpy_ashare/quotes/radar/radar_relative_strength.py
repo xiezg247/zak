@@ -21,7 +21,7 @@ from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
 def build_relative_strength_subline(
-    row: dict[str, Any],
+    row: QuoteRowLike,
     *,
     snapshot_rows: Sequence[QuoteRowLike] | None = None,
 ) -> tuple[str, str] | None:
@@ -40,7 +40,7 @@ def build_relative_strength_subline(
     market_benchmark = market_benchmark_change_pct(enriched or pool)
     industry_avg = industry_avg_change_map(enriched)
 
-    merged = dict(row)
+    merged: QuoteRowLike = row
     if industry_map and not merged.get("industry"):
         enriched_one = attach_industry([merged], industry_map=industry_map)
         if enriched_one:

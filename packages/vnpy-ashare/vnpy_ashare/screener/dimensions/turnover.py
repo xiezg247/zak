@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_avg_turnover_map
@@ -37,7 +38,7 @@ def run_turnover(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
 
     filtered = apply_screening_filters(enriched)
     filtered.sort(key=lambda item: float(item.get("relative_turnover") or 0), reverse=True)
-    rows: list[dict[str, Any]] = []
+    rows: list[QuoteRow] = []
     for item in filtered[:pool_size]:
         base = _quote_row(item)
         base["avg_turnover_rate"] = float(item.get("avg_turnover_rate") or 0)

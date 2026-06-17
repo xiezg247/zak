@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from vnpy_ashare.ai.context import get_screening_results, parse_stock_symbol
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
+from vnpy_common.domain.base import FrozenModel, MutableModel
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.services.stock.context import (
     MoneyflowDayRow,

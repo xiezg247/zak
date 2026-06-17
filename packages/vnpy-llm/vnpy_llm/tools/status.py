@@ -8,7 +8,7 @@ from typing import Literal, cast
 from pydantic import Field
 
 from skills.registry import OFFICIAL_SKILLS
-from vnpy_llm.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_mcp.app.engine import McpEngine
 from vnpy_skills.app.engine import SkillEngine
 

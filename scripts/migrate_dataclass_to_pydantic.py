@@ -103,7 +103,7 @@ def convert_file(path: Path) -> bool:
     if re.search(r"^@dataclass\s*$", original, re.MULTILINE):
         needs_mutable = True
 
-    base_import = "from vnpy_ashare.domain.base import "
+    base_import = "from vnpy_common.domain.base import "
     bases: list[str] = []
     if needs_frozen:
         bases.append("FrozenModel")
@@ -113,7 +113,7 @@ def convert_file(path: Path) -> bool:
         bases = ["FrozenModel"]
 
     import_line = base_import + ", ".join(dict.fromkeys(bases)) + "\n"
-    if "from vnpy_ashare.domain.base import" not in text:
+    if "from vnpy_common.domain.base import" not in text:
         text = text.replace("from pydantic import Field\n\n", f"from pydantic import Field\n\n{import_line}\n", 1)
 
     # @dataclass(frozen=True) -> remove

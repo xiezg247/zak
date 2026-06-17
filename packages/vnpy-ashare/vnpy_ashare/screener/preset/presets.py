@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 SCREENER_CHANGE_TOP = "涨幅榜"
 SCREENER_TURNOVER = "换手率排行"

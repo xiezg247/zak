@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import os
-from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.symbols import parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow import fetch_intraday_bars
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.dimensions.history_signals import (
     bars_for_vt_symbol,
     breaks_rolling_high,
@@ -67,18 +66,17 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
     top_candidates = candidates[:pool_size]
     strength_values = [strength for _, strength in top_candidates]
     for index, (row, strength) in enumerate(top_candidates, start=1):
-        payload = quote_row_to_dict(row)
-        vt_symbol = str(payload.get("vt_symbol") or "")
+        vt_symbol = str(row.get("vt_symbol") or "")
         if not vt_symbol:
             continue
-        prev = float(payload.get("prev_close") or 0)
-        high = float(payload.get("high_price") or 0)
-        last = float(payload.get("last_price") or 0)
+        prev = float(row.get("prev_close") or 0)
+        high = float(row.get("high_price") or 0)
+        last = float(row.get("last_price") or 0)
         volume_ratio = _row_volume_ratio(row, ratio_map)
         ratio_note = f"，量比 {volume_ratio:.2f}" if volume_ratio is not None else ""
         lookback_note = ""
-        if payload.get("breakout_lookback_days"):
-            lookback_note = f"，突破近 {int(payload['breakout_lookback_days'])} 日高"
+        if row.get("breakout_lookback_days"):
+            lookback_note = f"，突破近 {int(row.get('breakout_lookback_days') or 0)} 日高"
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
@@ -92,7 +90,7 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
                     strength_values,
                 ),
                 reason=(f"突破：较昨收 +{strength:.2f}%，日内高 {high:.2f}（昨收 {prev:.2f}，现价 {last:.2f}{lookback_note}{ratio_note}）"),
-                row=payload,
+                row=dimension_hit_row(coerce_quote_row(row)),
             )
         )
     return hits, snapshot.total
@@ -149,10 +147,16 @@ def _apply_rolling_high_confirm(
             confirmed.append((row, strength))
             continue
         if breaks_rolling_high(last, rolling_high, _MIN_BREAK_PCT):
-            merged = quote_row_to_dict(row)
-            merged["breakout_lookback_days"] = lookback_days
-            merged["breakout_rolling_high"] = rolling_high
-            confirmed.append((merged, strength))
+            confirmed.append(
+                (
+                    quote_row_copy(
+                        row,
+                        breakout_lookback_days=lookback_days,
+                        breakout_rolling_high=rolling_high,
+                    ),
+                    strength,
+                )
+            )
     return confirmed if confirmed else candidates
 
 
@@ -179,10 +183,10 @@ def _apply_minute_confirm(
 
     probe = candidates[: max(sample, pool_size)]
 
-    def worker(item: tuple[QuoteRowLike, float]) -> tuple[dict[str, Any], float] | None:
+    def worker(item: tuple[QuoteRowLike, float]) -> tuple[QuoteRowLike, float] | None:
         row, strength = item
         if _minute_bar_confirms_breakout(row):
-            return quote_row_to_dict(row), strength
+            return coerce_quote_row(row), strength
         return None
 
     confirmed = run_parallel_map(probe, worker, max_workers=min(4, len(probe)))

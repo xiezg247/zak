@@ -10,8 +10,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfi
 from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
-from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import coerce_quote_row
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_missing_kline
@@ -36,6 +35,7 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
+from vnpy_common.domain.base import FrozenModel
 
 HORIZON_PREFILTER_TOP = 600
 
@@ -113,13 +113,12 @@ def prefilter_horizon_universe(
     k_ready = collect_daily_k_ready_vt_symbols(min_bars, config=config)
     candidates: list[dict[str, Any]] = []
     for row in filtered:
-        payload = quote_row_to_dict(row)
-        vt_symbol = str(payload.get("vt_symbol") or "").strip()
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
         if not vt_symbol or vt_symbol in exclusion:
             continue
         if vt_symbol not in k_ready:
             continue
-        candidates.append(payload)
+        candidates.append(coerce_quote_row(row).to_dict())
 
     excluded_count = len(exclusion)
     if not candidates:

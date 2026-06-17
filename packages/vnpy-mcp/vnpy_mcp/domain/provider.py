@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_mcp.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_skills.domain import ToolSpec
 
 

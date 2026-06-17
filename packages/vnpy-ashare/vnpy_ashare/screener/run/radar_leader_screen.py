@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.market.quote_row import quote_row_to_dict
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
@@ -23,7 +22,7 @@ _VARIANT_LABELS: dict[str, str] = {
 
 
 def leader_scored_to_result_row(scored: LeaderScoredRow) -> ScreenerResultRow:
-    row = quote_row_to_dict(scored.row)
+    row = dict(scored.row)
     tier_label = leader_tier_label(scored.leader_tier)
     sector_name = scored.sector_name or str(row.get("industry") or row.get("concept") or "—")
     axis_label = "概念" if scored.sector_axis == "concept" else "行业"

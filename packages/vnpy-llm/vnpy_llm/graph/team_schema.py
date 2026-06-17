@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import Field, ValidationError
 
-from vnpy_llm.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 TEAM_SCORE_JSON_EXAMPLE = """```json
 {

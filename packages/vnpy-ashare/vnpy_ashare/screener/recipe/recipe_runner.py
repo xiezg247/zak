@@ -13,7 +13,7 @@ from vnpy_ashare.config.constants.recipe import (
 )
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.env import env_str
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import coerce_quote_row
 from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.moneyflow_kind import (
@@ -113,7 +113,7 @@ def run_recipe_object(
         reverse=True,
     )
     merged_rows = [
-        quote_row_to_dict(row) if isinstance(row, QuoteRow) else dict(row)
+        coerce_quote_row(row).to_dict()
         for row in apply_recipe_filters(merged_rows)
     ]
     use_sentiment = sentiment_gate_enabled() and (

@@ -14,7 +14,7 @@ from vnpy.trader.constant import Interval
 from vnpy_ctastrategy.backtesting import BacktestingEngine, BacktestingMode
 
 from vnpy_ashare.config.vt_settings import reload_vnpy_settings
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_common.paths import PROJECT_ROOT, resolve_project_root
 
 _STRATEGY_PRIORITY = ("ashare_template.py",)

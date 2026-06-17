@@ -6,13 +6,13 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import (
     full_refresh_every_n_ticks as _load_full_refresh_every_n_ticks,
 )
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
     radar_card_resonance_weight as _load_radar_card_resonance_weight,
 )
+from vnpy_common.domain.base import FrozenModel
 
 RadarCategory = Literal["screen", "discovery", "watchlist", "sector", "outlook"]
 RadarCardMode = Literal["statistical", "predictive"]

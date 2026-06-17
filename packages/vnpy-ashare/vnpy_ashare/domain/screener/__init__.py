@@ -1,5 +1,6 @@
 """选股领域模型。"""
 
+from vnpy_ashare.domain.screener.predict import BaselinePredictHit, PredictHit
 from vnpy_ashare.domain.screener.result_row import (
     ScreenerResultRow,
     ScreeningRowLike,
@@ -11,6 +12,8 @@ from vnpy_ashare.domain.screener.result_row import (
 )
 
 __all__ = [
+    "BaselinePredictHit",
+    "PredictHit",
     "ScreeningRowLike",
     "ScreenerResultRow",
     "coerce_screener_result_row",

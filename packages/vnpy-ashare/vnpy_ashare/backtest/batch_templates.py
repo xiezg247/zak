@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.screener.batch.batch_actions import BatchBacktestParams
 from vnpy_ashare.screener.recipe.recipe import (
     RECIPE_CM20_ELASTIC,

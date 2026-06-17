@@ -14,7 +14,6 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.symbols import StockItem
@@ -25,6 +24,7 @@ from vnpy_ashare.screener.pattern.pattern_rules import PATTERN_MATCHERS, BarSeri
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.preset.rules import apply_quote_preset
 from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
+from vnpy_common.domain.base import FrozenModel
 
 MAX_PATTERN_SCAN = 1200
 

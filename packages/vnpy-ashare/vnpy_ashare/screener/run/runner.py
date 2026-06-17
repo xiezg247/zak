@@ -13,7 +13,6 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.screener.data.data_source import (
     enrich_recipe_rows,
@@ -40,6 +39,7 @@ from vnpy_ashare.screener.preset.rules import (
 from vnpy_ashare.screener.preset.scheme_store import SavedScheme, get_scheme, list_schemes
 from vnpy_ashare.screener.run.industry_screen import run_industry_screen
 from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
+from vnpy_common.domain.base import MutableModel
 
 
 class ScreenerRequest(MutableModel):

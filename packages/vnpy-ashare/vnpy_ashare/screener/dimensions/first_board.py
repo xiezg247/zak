@@ -11,7 +11,7 @@ from vnpy_ashare.quotes.radar.radar_first_board import (
 )
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 from vnpy_ashare.trading.signals.intraday_seal_time import build_first_time_map
 from vnpy_ashare.trading.signals.seal_time import format_seal_time_label
@@ -56,7 +56,7 @@ def run_first_board(pool_size: int, *, weight: float) -> tuple[list[DimensionHit
                 weight=weight,
                 score=popularity,
                 reason=_first_board_reason(row, seal_label),
-                row=row,
+                row=dimension_hit_row(row),
             )
         )
     return hits, snapshot.total

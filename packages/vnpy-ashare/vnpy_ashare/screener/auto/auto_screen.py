@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel, MutableModel
 from vnpy_ashare.screener.draft.nl_mapper import clamp_top_n, normalize_preset_name
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM, get_preset
 from vnpy_ashare.screener.run.runner import ScreenerRequest, resolve_preset_input
+from vnpy_common.domain.base import FrozenModel, MutableModel
 
 
 class AutoScreenInput(FrozenModel):

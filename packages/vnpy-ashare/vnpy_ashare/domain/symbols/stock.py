@@ -6,7 +6,7 @@ from pydantic import Field
 from vnpy.trader.constant import Exchange
 from vnpy.trader.utility import extract_vt_symbol
 
-from vnpy_ashare.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 
 SUFFIX_TO_EXCHANGE: dict[str, Exchange] = {
     "SH": Exchange.SSE,

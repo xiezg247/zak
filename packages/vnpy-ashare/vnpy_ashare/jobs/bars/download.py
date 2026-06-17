@@ -15,7 +15,7 @@ from vnpy.trader.constant import Interval
 from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.jobs.core.progress import job_log, job_progress

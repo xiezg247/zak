@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.screener.result_row import ScreeningRowInput, ScreeningRowLike
+
 FlowKind = Literal["main", "active", "proxy"]
 
 FLOW_KIND_LABELS: dict[FlowKind, str] = {
@@ -30,7 +33,7 @@ def flow_kind_label(kind: str | None) -> str:
     return FLOW_KIND_LABELS["main"]
 
 
-def classify_moneyflow_row(row: dict[str, Any]) -> FlowKind:
+def classify_moneyflow_row(row: ScreeningRowInput) -> FlowKind:
     """基于 Tushare 档位与数据来源标注资金类型。"""
     explicit = str(row.get("flow_kind") or "").strip()
     if explicit in FLOW_KIND_LABELS:
@@ -75,8 +78,10 @@ def classify_moneyflow_row(row: dict[str, Any]) -> FlowKind:
     return "proxy"
 
 
-def enrich_moneyflow_row_with_kind(row: dict[str, Any]) -> dict[str, Any]:
-    item = dict(row)
+def enrich_moneyflow_row_with_kind(row: QuoteRowLike) -> dict[str, Any]:
+    from vnpy_ashare.domain.market.quote_row import coerce_quote_row
+
+    item = coerce_quote_row(row).to_dict()
     item["flow_kind"] = classify_moneyflow_row(item)
     return item
 
@@ -87,7 +92,7 @@ def flow_kind_score_factor(kind: str | None) -> float:
     return 1.0
 
 
-def row_flow_kind(row: dict[str, Any]) -> FlowKind:
+def row_flow_kind(row: ScreeningRowLike | QuoteRowLike) -> FlowKind:
     kind = str(row.get("flow_kind") or "").strip()
     if kind in FLOW_KIND_LABELS:
         return kind
@@ -96,7 +101,7 @@ def row_flow_kind(row: dict[str, Any]) -> FlowKind:
 
 def moneyflow_dimension_score_factor(
     dimension_id: str,
-    row: dict[str, Any],
+    row: ScreeningRowLike,
 ) -> float:
     """资金相关维度在配方 composite 中的得分系数。"""
     if dimension_id not in MONEYFLOW_DIMENSION_IDS:
@@ -104,7 +109,7 @@ def moneyflow_dimension_score_factor(
     return flow_kind_score_factor(row_flow_kind(row))
 
 
-def row_has_moneyflow_fields(row: dict[str, Any]) -> bool:
+def row_has_moneyflow_fields(row: ScreeningRowLike) -> bool:
     if row.get("moneyflow_proxy"):
         return True
     if float(row.get("net_mf_amount") or 0) != 0:

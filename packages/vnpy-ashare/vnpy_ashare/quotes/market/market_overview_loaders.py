@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.integrations.tickflow import fetch_index_ticker

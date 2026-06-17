@@ -16,7 +16,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bar_store import PeriodBarOverview
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.time.calendar import last_trading_day, trading_days_between
 from vnpy_ashare.storage.repositories.symbol_suspend import load_suspend_days
 

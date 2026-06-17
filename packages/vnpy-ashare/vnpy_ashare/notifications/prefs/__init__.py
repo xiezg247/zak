@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import Field
 
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, get_settings
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.notifications.core.events import DEFAULT_EVENT_SUBSCRIPTIONS
 
 _EVENT_PREFIX = "notify/events/"

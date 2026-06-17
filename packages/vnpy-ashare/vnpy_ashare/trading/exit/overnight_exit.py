@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import Field
 
 from vnpy_ashare.config.preferences.trading_risk import DEFAULT_STOP_LOSS_PCT, load_trading_risk_prefs
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.trading.position import PositionRecord, position_t1_locked
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss

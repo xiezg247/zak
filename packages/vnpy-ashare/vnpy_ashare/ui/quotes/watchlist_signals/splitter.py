@@ -13,7 +13,7 @@ from vnpy_ashare.config.preferences import (
     load_signal_panel_expanded,
     save_center_splitter_sizes,
 )
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.ui.components.splitter_utils import (
     bind_splitter_persistence,
     clamp_primary_sizes,

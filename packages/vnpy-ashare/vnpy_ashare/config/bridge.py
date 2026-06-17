@@ -11,7 +11,7 @@ from pydantic import Field
 
 from vnpy_ashare.config.fonts import default_font_family
 from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, normalize_database_name
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_common.paths import DEFAULT_META_APP_FILE, DEFAULT_META_CHAT_FILE, ENV_FILE, META_APP_SETTING_KEY, META_CHAT_SETTING_KEY
 
 

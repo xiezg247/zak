@@ -23,6 +23,7 @@ from vnpy_ashare.config.preferences import (
 )
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId, apply_strategy_profile
+from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -1164,7 +1165,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         if self.config.use_local_table:
             self.local_period_combo.setEnabled(not busy)
         if self.config.show_board_filter:
-            self.board_combo.setEnabled(not busy)
+            self.board_combo.setEnabled(not busy and not is_market_board_combo_locked())
         if self.industry_filter is not None:
             self.industry_filter.setEnabled(not busy)
         rank_list = getattr(self, "rank_list", None)

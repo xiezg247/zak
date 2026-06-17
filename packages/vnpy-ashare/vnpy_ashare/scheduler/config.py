@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_common.paths import APP_ID, VNTRADER_DIR
 
 SCHEDULER_CONFIG_PATH = VNTRADER_DIR / f"{APP_ID}_scheduler.json"

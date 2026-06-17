@@ -9,7 +9,7 @@ from collections.abc import Callable
 
 from pydantic import ConfigDict, Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.notifications.channels.feishu_webhook import FeishuWebhookChannel
 from vnpy_ashare.notifications.core.models import NotifyDeliveryResult, NotifyOutboundMessage
 

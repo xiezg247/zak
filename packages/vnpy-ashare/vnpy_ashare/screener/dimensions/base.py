@@ -5,11 +5,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
-from vnpy_ashare.domain.base import MutableModel
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.dimensions.scoring import blended_score, rank_score
+from vnpy_common.domain.base import MutableModel
 
 
 class DimensionHit(MutableModel):
@@ -21,12 +22,21 @@ class DimensionHit(MutableModel):
     weight: float = Field(description="维度权重")
     score: float = Field(description="维度得分")
     reason: str = Field(description="命中原因")
-    row: dict[str, Any] = Field(description="原始行情行")
+    row: ScreenerResultRow = Field(description="结构化行情行（含维度扩展列）")
+
+    @field_validator("row", mode="before")
+    @classmethod
+    def _coerce_hit_row(cls, value: Any) -> ScreenerResultRow:
+        return dimension_hit_row(value)
 
 
-def dimension_row_payload(row: QuoteRowLike) -> dict[str, Any]:
-    """维度命中行归一化为 plain dict（供 ``DimensionHit.row`` 使用）。"""
-    return quote_row_to_dict(row)
+def dimension_hit_row(row: QuoteRowLike | ScreenerResultRow | dict[str, Any]) -> ScreenerResultRow:
+    """维度命中行归一化为 ``ScreenerResultRow``。"""
+    if isinstance(row, ScreenerResultRow):
+        return row
+    if isinstance(row, dict):
+        return ScreenerResultRow.from_mapping(row)
+    return ScreenerResultRow.from_quote_row(coerce_quote_row(row))
 
 
 def quote_hits(
@@ -66,16 +76,17 @@ def quote_hits(
                 weight=weight,
                 score=score,
                 reason=reason_builder(row, index),
-                row=dimension_row_payload(row),
+                row=dimension_hit_row(row),
             )
         )
     return hits
 
 
-def merge_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def merge_rows(rows: Sequence[ScreenerResultRow | dict[str, Any]]) -> dict[str, Any]:
     merged: dict[str, Any] = {}
     for row in rows:
-        for key, value in row.items():
+        payload = row.to_dict() if isinstance(row, ScreenerResultRow) else dict(row)
+        for key, value in payload.items():
             if key in merged and merged[key] not in (None, "", 0):
                 continue
             if value not in (None, ""):
@@ -83,17 +94,21 @@ def merge_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     return merged
 
 
-def fundamental_base_row(row: dict[str, Any]) -> dict[str, Any]:
+def fundamental_base_row(row: QuoteRowLike) -> QuoteRow:
     pct = row.get("pct_chg", row.get("change_pct", 0))
-    return {
-        "symbol": row.get("symbol", ""),
-        "name": row.get("name", ""),
-        "vt_symbol": row.get("vt_symbol", ""),
-        "close": row.get("close", 0),
-        "pe_ttm": row.get("pe_ttm", 0),
-        "pct_chg": pct,
-        "change_pct": pct,
-        "turnover_rate": row.get("turnover_rate", 0),
-        "volume_ratio": row.get("volume_ratio", 0),
-        "source": row.get("source", "tushare"),
-    }
+    result = quote_row_copy(
+        row,
+        symbol=str(row.get("symbol") or ""),
+        name=str(row.get("name") or ""),
+        vt_symbol=str(row.get("vt_symbol") or ""),
+        close=float(row.get("close") or 0),
+        change_pct=float(pct or 0),
+        turnover_rate=float(row.get("turnover_rate") or 0),
+        volume_ratio=float(row.get("volume_ratio") or 0),
+        source=str(row.get("source") or "tushare"),
+    )
+    if row.get("pe_ttm") not in (None, ""):
+        result["pe_ttm"] = float(row.get("pe_ttm") or 0)
+    if pct not in (None, ""):
+        result["pct_chg"] = float(pct or 0)
+    return result

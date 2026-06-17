@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, quote_row_copy
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, score_market_leaders
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
@@ -27,7 +27,7 @@ def build_leader_candidate_pool(
     *,
     variant: LeaderPickVariant = "mainline",
     pool_size: int = 80,
-) -> tuple[list[dict[str, Any]], int]:
+) -> tuple[list[QuoteRow | dict[str, Any]], int]:
     """构建龙头评分候选池；返回 (candidates, total_scanned)。"""
     try:
         snapshot = load_screening_quote_snapshot()
@@ -42,19 +42,22 @@ def build_leader_candidate_pool(
         hits, _total = run_sector_strength(max(pool_size, 40), weight=1.0)
         hit_rows = [merge_row_quotes(hit.row) for hit in hits]
         enriched_hits, hot_concepts = attach_sector_fields(hit_rows)
-        for row in enriched_hits:
+        pool_rows: list[QuoteRow | dict[str, Any]] = []
+        for row in enriched_hits or hit_rows:
             vt = str(row.get("vt_symbol") or "")
             if vt:
-                row.setdefault("sector_strength_bonus", 1.0)
-        attach_first_time_fields(enriched_hits or hit_rows)
-        return enriched_hits or hit_rows, snapshot.total
+                pool_rows.append(quote_row_copy(row, sector_strength_bonus=1.0))
+            else:
+                pool_rows.append(row)
+        attach_first_time_fields(pool_rows)
+        return pool_rows, snapshot.total
 
     distribution = compute_sector_distribution(enriched, top_n=10, min_stocks=3)
     concept_distribution = compute_sector_distribution(enriched, top_n=10, min_stocks=3, sector_field="concept")
     strong = {str(item["industry"]) for item in distribution[:_STRONG_INDUSTRY_TOP]}
     strong_concepts = {str(item["concept"]) for item in concept_distribution[:_STRONG_INDUSTRY_TOP]}
     strong |= set(hot_concepts)
-    candidates: list[dict[str, Any]] = []
+    candidates: list[QuoteRow | dict[str, Any]] = []
     for row in enriched:
         industry = str(row.get("industry") or "").strip()
         concept = str(row.get("concept") or "").strip()

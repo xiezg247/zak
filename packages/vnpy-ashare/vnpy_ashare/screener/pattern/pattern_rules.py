@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import Field
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 
 class BarSeries(FrozenModel):

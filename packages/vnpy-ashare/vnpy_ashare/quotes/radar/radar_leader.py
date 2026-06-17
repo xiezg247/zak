@@ -7,11 +7,11 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_row
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.signals.seal_time import seal_time_score
+from vnpy_common.domain.base import FrozenModel
 
 LeaderTier = Literal["dragon_1", "dragon_2", "follower", ""]
 
@@ -58,7 +58,7 @@ def _norm_limit_times(limit_times: float) -> float:
     return _clamp01(boards / 5.0)
 
 
-def _seal_quality_proxy(row: dict[str, Any]) -> float:
+def _seal_quality_proxy(row: QuoteRowLike) -> float:
     """Phase 1：涨停 + 非近似一字 + 成交额分位代理。"""
     change = float(row.get("change_pct") or 0)
     if not is_at_limit_board(row):
@@ -77,7 +77,7 @@ def _seal_quality_proxy(row: dict[str, Any]) -> float:
     return 0.4
 
 
-def _norm_net_mf(row: dict[str, Any], *, max_abs: float) -> float:
+def _norm_net_mf(row: QuoteRowLike, *, max_abs: float) -> float:
     raw = float(row.get("net_mf_amount") or 0)
     if max_abs <= 0:
         return 0.5 if raw > 0 else 0.0
@@ -86,7 +86,7 @@ def _norm_net_mf(row: dict[str, Any], *, max_abs: float) -> float:
     return _clamp01(raw / max_abs)
 
 
-def _amount_rank_in_group(rows: list[dict[str, Any]]) -> dict[str, float]:
+def _amount_rank_in_group(rows: Sequence[QuoteRowLike]) -> dict[str, float]:
     amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
     amounts = [(vt, amt) for vt, amt in amounts if vt]
     if not amounts:
@@ -104,7 +104,7 @@ def _amount_rank_in_group(rows: list[dict[str, Any]]) -> dict[str, float]:
 
 
 def compute_leader_score(
-    row: dict[str, Any],
+    row: QuoteRowLike,
     *,
     amount_rank: float = 0.5,
     sector_strength_bonus: float = 1.0,
@@ -134,7 +134,7 @@ def compute_leader_score(
 
 
 def rank_sector_leaders(
-    candidates: list[dict[str, Any]],
+    candidates: Sequence[QuoteRowLike],
     *,
     sector_key: str = "industry",
     max_per_sector: int = 5,
@@ -149,7 +149,7 @@ def rank_sector_leaders(
         key = str(row.get(sector_key) or "—")
         if key == "—":
             continue
-        grouped.setdefault(key, []).append(dict(row))
+        grouped.setdefault(key, []).append(coerce_quote_row(row).to_dict())
 
     ranked: list[LeaderScoredRow] = []
     for group_name, group_rows in grouped.items():
@@ -229,8 +229,8 @@ def rank_unified_sector_leaders(
     strong_concepts: set[str] | None = None,
 ) -> list[LeaderScoredRow]:
     """行业 + 概念双轴统一 scoring；每票取更强分层结果（G-07）。"""
-    industry_rows = [quote_row_to_dict(row) for row in candidates if str(quote_row_to_dict(row).get("industry") or "").strip()]
-    concept_rows = [quote_row_to_dict(row) for row in candidates if str(quote_row_to_dict(row).get("concept") or "").strip()]
+    industry_rows = [row for row in candidates if str(row.get("industry") or "").strip()]
+    concept_rows = [row for row in candidates if str(row.get("concept") or "").strip()]
 
     by_vt: dict[str, LeaderScoredRow] = {}
     for axis, rows, strong in (

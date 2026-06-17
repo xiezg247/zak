@@ -14,6 +14,7 @@ from vnpy_ashare.data.bar_health import (
     list_status,
     status_label,
 )
+from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
@@ -581,7 +582,7 @@ class TableController:
         page.search_edit.blockSignals(True)
         page.search_edit.clear()
         page.search_edit.blockSignals(False)
-        if page.config.show_board_filter and page._market_board is not None:
+        if page.config.show_board_filter and page._market_board is not None and not is_market_board_combo_locked():
             page.board_combo.blockSignals(True)
             page.board_combo.setCurrentIndex(0)
             page.board_combo.blockSignals(False)

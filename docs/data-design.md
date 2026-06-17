@@ -449,7 +449,7 @@ REDIS_DB=0
 
 ## 五、内存 Pydantic 模型（非持久化）
 
-以下为项目内部传递数据的结构化类型，继承 `FrozenModel` / `MutableModel`（`vnpy_ashare/domain/base.py`），不直接对应数据库表：
+以下为项目内部传递数据的结构化类型，继承 `FrozenModel` / `MutableModel`（`vnpy_common/domain/base.py`，跨包共用），不直接对应数据库表：
 
 | 类名 | 定义文件 | 用途 |
 |------|----------|------|

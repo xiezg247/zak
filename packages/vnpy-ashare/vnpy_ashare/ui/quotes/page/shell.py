@@ -28,6 +28,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,
 )
+from vnpy_ashare.ui.quotes.page.market_board_filter import configure_market_board_combo
 from vnpy_ashare.ui.quotes.page.run_log import (
     load_run_output_expanded,
     on_run_output_expansion_changed,
@@ -135,8 +136,11 @@ class QuotesPageShell:
             page.view_multiview_button.setCheckable(True)
         page.board_combo = QtWidgets.QComboBox()
         page.board_combo.setObjectName("BoardCombo")
-        page.board_combo.addItems(["全部", "沪深主板", "创业板", "科创板", "北交所"])
         page.board_combo.setVisible(page.config.show_board_filter)
+        if page.config.show_board_filter:
+            page._market_board = configure_market_board_combo(page.board_combo)
+        else:
+            page.board_combo.addItems(["全部", "沪深主板", "创业板", "科创板", "北交所"])
         page.board_combo.currentIndexChanged.connect(page._on_board_changed)
 
         page.industry_filter = None

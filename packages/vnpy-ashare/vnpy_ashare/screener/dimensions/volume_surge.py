@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
@@ -45,7 +46,7 @@ def run_volume_surge(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
 
     filtered = apply_screening_filters(enriched)
     filtered.sort(key=lambda item: float(item.get("relative_volume") or 0), reverse=True)
-    rows: list[dict[str, Any]] = []
+    rows: list[QuoteRow] = []
     for item in filtered[:pool_size]:
         base = _quote_row(item)
         base["volume_ratio"] = float(item.get("volume_ratio") or 0)

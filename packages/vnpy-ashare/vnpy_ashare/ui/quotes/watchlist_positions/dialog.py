@@ -8,7 +8,7 @@ from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config import format_decimal_field
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.trading.risk.plan_position import normalize_plan_pct

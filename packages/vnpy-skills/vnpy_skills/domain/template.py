@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_skills.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 
 class ToolSpec(FrozenModel):

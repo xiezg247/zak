@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
@@ -32,7 +31,7 @@ def run_sector_strength(pool_size: int, *, weight: float) -> tuple[list[Dimensio
     if not strong_industries:
         return [], snapshot.total
 
-    candidates: list[dict[str, Any]] = []
+    candidates: list[QuoteRow] = []
     for row in enriched:
         industry = str(row.get("industry") or "")
         if industry not in strong_industries:

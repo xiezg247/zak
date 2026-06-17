@@ -7,8 +7,7 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.screener.result_row import ScreeningRowLike, screening_row_to_dict
+from vnpy_ashare.domain.screener.result_row import ScreeningRowLike
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_ashare_trading_session
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
@@ -18,6 +17,7 @@ from vnpy_ashare.screener.preset.scheme_store import get_scheme
 from vnpy_ashare.screener.recipe.recipe import ScreenRecipe, TriggerKind, resolve_recipe
 from vnpy_ashare.screener.run.runner import resolve_preset_input
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
+from vnpy_common.domain.base import FrozenModel
 
 
 class ScreeningDataStatus(FrozenModel):
@@ -151,7 +151,7 @@ def format_sector_insight(rows: Sequence[ScreeningRowLike], *, top_n: int = 5) -
     """格式化行业分布摘要行。"""
     if not rows:
         return ""
-    enriched = attach_industry([screening_row_to_dict(row) for row in rows])
+    enriched = attach_industry(rows)
     stats = compute_sector_distribution(enriched, top_n=top_n, min_stocks=1)
     if not stats:
         return ""

@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_llm.config.settings import LlmConfig
-from vnpy_llm.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_llm.graph.state import SupervisorDecision
 from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.routing.router import RouteContext, build_route_context

@@ -14,9 +14,9 @@ from typing import Any
 
 from pydantic import Field, field_validator
 
-from vnpy_ashare.domain.base import MutableModel
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
+from vnpy_common.domain.base import MutableModel
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """

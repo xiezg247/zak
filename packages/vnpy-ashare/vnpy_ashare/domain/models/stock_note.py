@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 
 class StockNoteMemo(FrozenModel):

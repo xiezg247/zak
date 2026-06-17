@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
@@ -13,7 +16,7 @@ from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, iter_trade_date_strs, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
-from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
 from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
 
 _INTRADAY_DIMENSION_ID = "moneyflow_intraday"
@@ -26,7 +29,7 @@ _STREAK_TIER_3_BONUS = 0.08
 _STREAK_TIER_5_BONUS = 0.15
 
 
-def _tier_net_amount(row: dict[str, Any]) -> float:
+def _tier_net_amount(row: QuoteRowLike) -> float:
     """特大单净流入优先，用于排序与分档。"""
     elg = float(row.get("buy_elg_amount") or 0) - float(row.get("sell_elg_amount") or 0)
     if elg != 0:
@@ -178,7 +181,7 @@ def _post_close_tushare_hits(
                 weight=weight,
                 score=round(adjusted, 1),
                 reason=f"资金：主力净流入 {amount:,.0f} 万{streak_note}{divergence_note}，排名第 {index}",
-                row=merged,
+                row=dimension_hit_row(merged),
             )
         )
     return hits, len(raw_rows), trade_date
@@ -214,23 +217,22 @@ def _hits_from_mcp_map(
         base = row_by_vt.get(vt_symbol)
         if base is None:
             continue
-        merged = quote_row_to_dict(base)
-        merged["net_mf_amount"] = amount
+        merged = quote_row_copy(base, net_mf_amount=amount)
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
                 dimension_id=_INTRADAY_DIMENSION_ID,
                 label=_INTRADAY_LABEL,
                 weight=weight,
-                score=round(_moneyflow_score_adjustment(merged, rank_score(index, len(ranked))), 1),
+                score=round(_moneyflow_score_adjustment(merged.to_dict(), rank_score(index, len(ranked))), 1),
                 reason=f"盘中资金：主力净流入 {amount:,.0f} 万，排名第 {index}",
-                row=merged,
+                row=dimension_hit_row(merged),
             )
         )
     return hits
 
 
-def _proxy_liquidity_score(row: dict[str, Any]) -> float:
+def _proxy_liquidity_score(row: QuoteRowLike) -> float:
     change = float(row.get("change_pct") or 0)
     if change <= 0:
         return 0.0
@@ -250,13 +252,13 @@ def _hits_from_proxy(
     *,
     weight: float,
 ) -> list[DimensionHit]:
-    scored: list[tuple[dict[str, Any], float]] = []
+    scored: list[tuple[QuoteRow, float]] = []
     for row in rows:
-        payload = quote_row_to_dict(row)
-        score = _proxy_liquidity_score(payload)
+        item = coerce_quote_row(row)
+        score = _proxy_liquidity_score(item)
         if score <= 0:
             continue
-        scored.append((payload, score))
+        scored.append((item, score))
     scored.sort(key=lambda item: item[1], reverse=True)
     hits: list[DimensionHit] = []
     for index, (payload, _proxy) in enumerate(scored[:pool_size], start=1):
@@ -272,16 +274,15 @@ def _hits_from_proxy(
                 weight=weight,
                 score=rank_score(index, min(len(scored), pool_size)),
                 reason=(f"盘中资金：涨幅 {float(payload.get('change_pct') or 0):+.2f}% + 成交额 {amount:,.0f} 万（代理），排名第 {index}"),
-                row={**payload, "moneyflow_proxy": True},
+                row=dimension_hit_row(quote_row_copy(payload, moneyflow_proxy=True)),
             )
         )
     return hits
 
 
-def _merge_quote_fields(row: dict[str, Any], quote_row: QuoteRowLike | None) -> dict[str, Any]:
+def _merge_quote_fields(row: QuoteRowLike, quote_row: QuoteRowLike | None) -> dict[str, Any]:
     item = dict(row)
     if quote_row is not None:
-        quote_payload = quote_row_to_dict(quote_row)
         for key in (
             "change_pct",
             "pct_chg",
@@ -292,7 +293,7 @@ def _merge_quote_fields(row: dict[str, Any], quote_row: QuoteRowLike | None) -> 
             "volume",
             "name",
         ):
-            value = quote_payload.get(key)
+            value = quote_row.get(key)
             if value not in (None, ""):
                 item[key] = value
     return item
@@ -304,7 +305,7 @@ def _enrich_hits_with_kind(
 ) -> list[DimensionHit]:
     enriched: list[DimensionHit] = []
     for hit in hits:
-        merged = _merge_quote_fields(hit.row, quote_map.get(hit.vt_symbol))
+        merged = _merge_quote_fields(hit.row.to_dict(), quote_map.get(hit.vt_symbol))
         if hit.dimension_id == _INTRADAY_DIMENSION_ID and "代理" in hit.reason:
             merged["moneyflow_proxy"] = True
         row = enrich_moneyflow_row_with_kind(merged)
@@ -316,7 +317,7 @@ def _enrich_hits_with_kind(
                 weight=hit.weight,
                 score=hit.score,
                 reason=hit.reason,
-                row=row,
+                row=dimension_hit_row(row),
             )
         )
     return enriched

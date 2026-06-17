@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pydantic import Field
 
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
-from vnpy_llm.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 from vnpy_llm.chat.store import ChatMessage, ChatSession, ChatStore
 
 SessionNotify = Callable[["SessionNotification"], None]

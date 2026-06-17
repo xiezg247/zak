@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.ai.context import get_screening_results
-from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, screening_row_to_dict
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.run.run_diff import compute_run_diff
 from vnpy_ashare.screener.run.run_store import find_previous_run_by_recipe, get_run
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
@@ -125,7 +125,7 @@ class TechnicalScreeningMixin(_TechnicalAnalyzerBase):
                 rows = list(ctx.rows)
 
         if rows:
-            enriched = attach_industry([screening_row_to_dict(row) for row in rows])
+            enriched = attach_industry(rows)
             payload["sector_distribution"] = compute_sector_distribution(enriched)
             preview = payload.get("preview") or []
             industry_by_vt = {str(r.get("vt_symbol") or ""): str(r.get("industry") or "") for r in enriched}

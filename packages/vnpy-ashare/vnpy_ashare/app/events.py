@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from vnpy_ashare.domain.base import MutableModel
+from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.screener.run.runner import ScreenerRequest
 
 EVENT_OPEN_BACKTEST = "eOpenBacktest"

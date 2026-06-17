@@ -8,8 +8,8 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
 
 # 近似涨跌停阈值（未区分 ST 5% / 20% 等规则）
@@ -32,8 +32,7 @@ class MarketBreadthSnapshot(FrozenModel):
 
 
 def _coerce_change_pct(row: QuoteRowLike) -> float | None:
-    payload = quote_row_to_dict(row)
-    raw = payload.get("change_pct")
+    raw = row.get("change_pct")
     if raw is None:
         return None
     try:
@@ -46,8 +45,7 @@ def _coerce_change_pct(row: QuoteRowLike) -> float | None:
 
 
 def _coerce_amount(row: QuoteRowLike) -> float:
-    payload = quote_row_to_dict(row)
-    raw = payload.get("amount")
+    raw = row.get("amount")
     if raw is None:
         return 0.0
     try:

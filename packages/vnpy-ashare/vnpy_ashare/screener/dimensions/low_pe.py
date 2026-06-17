@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
+from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
-from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
 from vnpy_ashare.screener.preset.rules import apply_low_pe
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
-def _industry_pe_median(rows: list[dict]) -> dict[str, float]:
+def _industry_pe_median(rows: Sequence[QuoteRowLike]) -> dict[str, float]:
     buckets: dict[str, list[float]] = defaultdict(list)
     for row in rows:
         pe = float(row.get("pe_ttm") or 0)
@@ -30,9 +33,9 @@ def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], in
     enriched = attach_industry(raw_rows, industry_map=industry_map)
     industry_median = _industry_pe_median(enriched)
 
-    filtered: list[dict] = []
-    for row in enriched:
-        item = dict(row)
+    filtered: list[dict[str, Any]] = []
+    for enriched_row in enriched:
+        item = coerce_quote_row(enriched_row).to_dict()
         pe = float(item.get("pe_ttm") or 0)
         if pe <= 0 or pe >= 15:
             continue
@@ -45,19 +48,20 @@ def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], in
             item["pe_vs_industry"] = round(pe / median_pe, 2)
         filtered.append(item)
 
+    result_rows: list[QuoteRow]
     if not filtered:
-        rows = apply_low_pe(raw_rows, top_n=pool_size)
+        result_rows = apply_low_pe(raw_rows, top_n=pool_size)
     else:
         filtered.sort(key=lambda item: float(item.get("pe_ttm") or 0))
-        rows = filtered[:pool_size]
+        result_rows = [coerce_quote_row(item) for item in filtered[:pool_size]]
 
     hits: list[DimensionHit] = []
-    for index, row in enumerate(rows, start=1):
-        vt_symbol = str(row.get("vt_symbol") or "")
+    for index, hit_row in enumerate(result_rows, start=1):
+        vt_symbol = str(hit_row.get("vt_symbol") or "")
         if not vt_symbol:
             continue
-        pe = float(row.get("pe_ttm") or 0)
-        vs_industry = row.get("pe_vs_industry")
+        pe = float(hit_row.get("pe_ttm") or 0)
+        vs_industry = hit_row.get("pe_vs_industry")
         industry_note = f"，行业相对 {vs_industry}" if vs_industry is not None else ""
         hits.append(
             DimensionHit(
@@ -65,9 +69,9 @@ def run_low_pe(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], in
                 dimension_id="low_pe",
                 label="估值",
                 weight=weight,
-                score=rank_score(index, len(rows)),
+                score=rank_score(index, len(result_rows)),
                 reason=f"估值：PE(TTM) {pe:.2f}{industry_note}，排名第 {index}",
-                row=dict(row),
+                row=dimension_hit_row(hit_row),
             )
         )
     return hits, len(raw_rows)

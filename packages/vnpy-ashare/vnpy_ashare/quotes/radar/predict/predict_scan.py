@@ -6,21 +6,21 @@ from collections.abc import Sequence
 
 from pydantic import Field
 
-from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.screener.predict import BaselinePredictHit, PredictHit
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
-from vnpy_ashare.quotes.radar.predict.baseline_ranker import BaselinePredictHit, rank_baseline_predict
+from vnpy_ashare.quotes.radar.predict.baseline_ranker import rank_baseline_predict
 from vnpy_ashare.quotes.radar.predict.predict_cache import put_predict_cache
 from vnpy_ashare.quotes.radar.predict.predict_prefs import PredictModelMode, load_predict_model_mode
-from vnpy_ashare.quotes.radar.predict.types import PredictHit
 from vnpy_ashare.quotes.radar.radar_horizon_scan import prefilter_horizon_universe
 from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_common.domain.base import FrozenModel
 
 PREDICT_VARIANT_BASELINE = "predict_baseline"
 

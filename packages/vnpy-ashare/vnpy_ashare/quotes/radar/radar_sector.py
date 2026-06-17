@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
+from vnpy_ashare.domain.screener.result_row import screening_row_to_dict
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
@@ -23,7 +25,7 @@ from vnpy_ashare.screener.sector.sector_summary import (
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
 
-def _sector_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
+def _sector_metric(row: QuoteRowLike) -> tuple[str, str, str, str]:
     merged = merge_row_quotes(row)
     industry = str(merged.get("industry") or "—")
     change = float(merged.get("change_pct") or 0)
@@ -64,7 +66,7 @@ def _row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
     )
 
 
-def _row_from_sector_hit(row: dict[str, Any]) -> RadarRow | None:
+def _row_from_sector_hit(row: QuoteRowLike) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None
@@ -97,7 +99,7 @@ def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple
 
 def _build_leaders_tiered_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
     hits, total = run_sector_strength(max(pool_size * 4, 40), weight=1.0)
-    candidates = [dict(hit.row) for hit in hits]
+    candidates: list[QuoteRow] = [coerce_quote_row(screening_row_to_dict(hit.row)) for hit in hits]
     enriched, hot_concepts = attach_sector_fields(candidates)
     if enriched:
         candidates = enriched

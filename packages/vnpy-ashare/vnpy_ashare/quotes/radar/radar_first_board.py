@@ -25,7 +25,7 @@ from vnpy_ashare.trading.signals.seal_time import format_seal_time_label, seal_t
 _STRONG_INDUSTRY_TOP = 5
 
 
-def _amount_rank_map(rows: list[dict[str, Any]]) -> dict[str, float]:
+def _amount_rank_map(rows: Sequence[QuoteRowLike]) -> dict[str, float]:
     amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
     amounts = [(vt, amt) for vt, amt in amounts if vt]
     if not amounts:
@@ -58,14 +58,14 @@ def build_first_board_candidates(
     rows: Sequence[QuoteRowLike],
     *,
     limit_times_map: dict[str, float] | None = None,
-) -> list[dict[str, Any]]:
+) -> list[QuoteRowLike]:
     """当日首板池：limit_times == 1。"""
     limit_up = build_limit_ladder_candidates(rows, limit_times_map=limit_times_map)
     return [row for row in limit_up if resolve_limit_times(row, limit_times_map=limit_times_map) == 1]
 
 
 def compute_first_board_score(
-    row: dict[str, Any],
+    row: QuoteRowLike,
     *,
     amount_rank: float,
     sector_bonus: float,
@@ -86,17 +86,17 @@ def compute_first_board_score(
 
 
 def rank_first_board_pool(
-    candidates: list[dict[str, Any]],
+    candidates: Sequence[QuoteRowLike],
     *,
     first_time_map: dict[str, str] | None = None,
     top_n: int = 8,
-) -> list[tuple[dict[str, Any], float, str]]:
+) -> list[tuple[QuoteRowLike, float, str]]:
     if not candidates:
         return []
     time_map = first_time_map or {}
     amount_ranks = _amount_rank_map(candidates)
     strong = _strong_industries()
-    scored: list[tuple[dict[str, Any], float, str]] = []
+    scored: list[tuple[QuoteRowLike, float, str]] = []
     for row in candidates:
         vt = str(row.get("vt_symbol") or "")
         industry = str(row.get("industry") or "").strip()
@@ -113,7 +113,7 @@ def rank_first_board_pool(
     return scored[:top_n]
 
 
-def _row_to_radar(row: dict[str, Any], *, popularity: float, seal_label: str) -> RadarRow | None:
+def _row_to_radar(row: QuoteRowLike, *, popularity: float, seal_label: str) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None

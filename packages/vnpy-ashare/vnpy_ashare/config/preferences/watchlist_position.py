@@ -12,7 +12,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_SLOW,
     WatchlistSignalConfig,
 )
-from vnpy_ashare.domain.base import FrozenModel
+from vnpy_common.domain.base import FrozenModel
 
 POSITION_PANEL_ENABLED_KEY = "watchlist/position_panel/enabled"
 POSITION_PANEL_EXPANDED_KEY = "watchlist/position_panel/expanded"

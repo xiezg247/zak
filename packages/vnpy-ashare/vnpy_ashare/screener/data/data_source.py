@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from datetime import date, timedelta
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_rows, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_rows
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
@@ -61,11 +61,10 @@ def merge_quotes_into_fundamentals(
         if quote is None:
             merged.append(item)
             continue
-        quote_payload = quote_row_to_dict(quote)
-        last_price = quote_payload.get("last_price")
+        last_price = quote.get("last_price")
         if last_price:
             item["close"] = float(last_price)
-        turnover = quote_payload.get("turnover_rate")
+        turnover = quote.get("turnover_rate")
         if turnover:
             item["turnover_rate"] = float(turnover)
         item["source"] = "quote+tushare"
@@ -224,6 +223,12 @@ def _missing_display_value(value: Any) -> bool:
     return value is None or value == ""
 
 
+def _recipe_row_payload(row: QuoteRowLike) -> dict[str, Any]:
+    if isinstance(row, QuoteRow):
+        return row.model_dump(mode="python", exclude_defaults=True)
+    return dict(row)
+
+
 def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
     """补全配方结果展示字段（各维度 row 通常只含单维度指标）。"""
     if not rows:
@@ -252,12 +257,12 @@ def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
 
     enriched: list[dict[str, Any]] = []
     for row in rows:
-        item = quote_row_to_dict(row)
+        item = _recipe_row_payload(row)
         vt_symbol = str(item.get("vt_symbol") or "").strip()
         fund = fund_map.get(vt_symbol)
         mf = mf_map.get(vt_symbol)
-        fund_payload = quote_row_to_dict(fund) if fund is not None else {}
-        mf_payload = quote_row_to_dict(mf) if mf is not None else {}
+        fund_payload = fund.to_dict() if fund is not None else {}
+        mf_payload = mf.to_dict() if mf is not None else {}
         ts_code = str(fund_payload.get("ts_code") or mf_payload.get("ts_code") or "")
 
         if _missing_display_value(item.get("symbol")) and fund_payload.get("symbol"):

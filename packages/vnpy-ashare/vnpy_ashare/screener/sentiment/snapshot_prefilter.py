@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 from vnpy_ashare.config.constants.recipe import ENV_SENTIMENT_GATE
 from vnpy_ashare.domain.core.env import env_or_prefs_bool
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
@@ -36,8 +36,7 @@ def apply_sentiment_snapshot_prefilter(rows: Sequence[QuoteRowLike]) -> list[Quo
 
     filtered: list[QuoteRowLike] = []
     for row in materialized:
-        payload = quote_row_to_dict(row)
-        change = float(payload.get("change_pct") or payload.get("pct_chg") or 0)
+        change = float(row.get("change_pct") or row.get("pct_chg") or 0)
         if change > cap:
             continue
         filtered.append(row)
