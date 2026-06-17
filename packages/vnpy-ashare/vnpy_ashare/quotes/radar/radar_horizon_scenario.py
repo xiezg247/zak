@@ -5,16 +5,14 @@ from __future__ import annotations
 import math
 from datetime import datetime
 
-from pydantic import Field
-
 from vnpy_ashare.data.bar_access import load_scope_bars
+from vnpy_ashare.domain.radar.scenario import ScenarioMetrics
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_is_fresh, signal_missing_kline
 from vnpy_ashare.quotes.radar.radar_horizon_rules import _has_near_unlock, last_price_for_snapshot
 from vnpy_ashare.quotes.radar.radar_models import RadarRow, merge_row_quotes
-from vnpy_common.domain.base import FrozenModel
 
 SCENARIO_VARIANTS: frozenset[str] = frozenset(
     {"scenario_bull", "scenario_volatile", "scenario_bear"},
@@ -31,15 +29,6 @@ SCENARIO_VARIANT_LABELS: dict[str, str] = {
     "scenario_volatile": "高波动",
     "scenario_bear": "偏空",
 }
-
-
-class ScenarioMetrics(FrozenModel):
-    snapshot: SignalSnapshot = Field(description="信号快照")
-    momentum_pct: float | None = Field(description="动量涨跌幅（%）")
-    daily_vol_pct: float | None = Field(description="日波动率（%）")
-    band_move_pct: float | None = Field(description="参考带波动幅度（%）")
-    band_lower: float | None = Field(description="参考带下沿")
-    band_upper: float | None = Field(description="参考带上沿")
 
 
 def _estimate_bar_stats(

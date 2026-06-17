@@ -5,10 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from pydantic import Field
-
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_common.domain.base import MutableModel
+from vnpy_ashare.domain.stock.events import EventsProfile
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.corporate import (
     fetch_announcements,
@@ -18,17 +16,6 @@ from vnpy_ashare.integrations.tushare.corporate import (
 from vnpy_ashare.integrations.tushare.disclosure import fetch_disclosure_dates
 from vnpy_ashare.services.stock.profile import sync_disclosure_calendar
 from vnpy_ashare.storage.repositories.disclosure import list_disclosure_calendar, upsert_disclosure_rows
-
-
-class EventsProfile(MutableModel):
-    ts_code: str = Field(description="Tushare 代码")
-    vt_symbol: str = Field(description="合约代码（含交易所）")
-    disclosure: list[dict[str, str]] = Field(default_factory=list, description="披露计划")
-    dividends: list[dict[str, Any]] = Field(default_factory=list, description="分红记录")
-    share_float: list[dict[str, Any]] = Field(default_factory=list, description="限售解禁")
-    announcements: list[dict[str, Any]] = Field(default_factory=list, description="公司公告")
-    upcoming_hints: list[str] = Field(default_factory=list, description="近期事件提示")
-    message: str = Field(default="", description="说明信息")
 
 
 def _parse_yyyymmdd(text: str) -> datetime | None:

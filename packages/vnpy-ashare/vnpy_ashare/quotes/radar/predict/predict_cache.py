@@ -8,8 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import cast
 
-from pydantic import Field
-
+from vnpy_ashare.domain.radar.predict import PredictCacheEntry
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import (
@@ -18,7 +17,6 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_common.domain.base import FrozenModel
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """
@@ -55,14 +53,6 @@ def _connect():
         raise
     finally:
         conn.close()
-
-
-class PredictCacheEntry(FrozenModel):
-    variant: str = Field(description="变体标识")
-    rows: tuple[RadarRow, ...] = Field(description="数据行列表")
-    stats: HorizonScanStats = Field(description="扫描统计")
-    model_label: str = Field(description="模型标签")
-    computed_at: str = Field(description="计算时间")
 
 
 def get_predict_cache(variant: str) -> PredictCacheEntry | None:

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from pydantic import Field
-
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.radar.predict import PredictScanResult
 from vnpy_ashare.domain.screener.predict import BaselinePredictHit, PredictHit
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
@@ -20,17 +19,10 @@ from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_common.domain.base import FrozenModel
 
 PREDICT_VARIANT_BASELINE = "predict_baseline"
 
-
-class PredictScanResult(FrozenModel):
-    variant: str = Field(description="变体标识")
-    rows: tuple[RadarRow, ...] = Field(description="数据行列表")
-    stats: HorizonScanStats = Field(description="扫描统计")
-    model_label: str = Field(description="模型标签")
-    computed_at: str = Field(description="计算时间")
+__all__ = ["PREDICT_VARIANT_BASELINE", "PredictScanResult", "run_predict_scan"]
 
 
 def _quote_rows_for_prefilter(prefilter: list[str]) -> list[QuoteRowLike]:

@@ -4,19 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field
-
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_common.domain.base import MutableModel
+from vnpy_ashare.domain.stock.concept import ConceptProfile
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.concept import fetch_stock_concepts
-
-
-class ConceptProfile(MutableModel):
-    ts_code: str = Field(description="Tushare 代码")
-    vt_symbol: str = Field(description="合约代码（含交易所）")
-    concepts: list[dict[str, Any]] = Field(default_factory=list, description="概念题材列表")
-    message: str = Field(default="", description="说明信息")
 
 
 def build_concept_profile(vt_symbol: str) -> ConceptProfile:

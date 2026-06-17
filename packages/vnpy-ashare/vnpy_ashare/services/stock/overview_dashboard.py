@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
-from pydantic import Field
+from typing import Any
 
 from vnpy_ashare.ai.context import get_screening_results, parse_stock_symbol
-from vnpy_common.domain.base import FrozenModel, MutableModel
+from vnpy_ashare.domain.stock.overview import (
+    AlertSeverity,
+    DataReadinessItem,
+    OverviewAlert,
+    OverviewDashboard,
+    OverviewJumpTarget,
+    ReadinessStatus,
+    ScreeningHit,
+)
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.services.stock.context import (
     MoneyflowDayRow,
@@ -17,37 +23,6 @@ from vnpy_ashare.services.stock.context import (
 from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 from vnpy_ashare.services.stock.profile import build_valuation_profile
 from vnpy_ashare.storage.repositories.valuation import list_valuation_history
-
-ReadinessStatus = Literal["ready", "partial", "missing", "unconfigured"]
-OverviewJumpTarget = Literal["chart", "sector", "capital", "events", "holders", "financial"]
-AlertSeverity = Literal["info", "warn"]
-
-
-class DataReadinessItem(FrozenModel):
-    key: str = Field(description="键名")
-    label: str = Field(description="展示标签")
-    status: ReadinessStatus = Field(description="状态")
-    detail: str = Field(default="", description="详情说明")
-    jump_target: OverviewJumpTarget | None = Field(default=None, description="跳转 Tab")
-
-
-class OverviewAlert(FrozenModel):
-    text: str = Field(description="文本内容")
-    severity: AlertSeverity = Field(default="info", description="严重级别")
-    jump_target: OverviewJumpTarget | None = Field(default=None, description="跳转 Tab")
-
-
-class ScreeningHit(FrozenModel):
-    condition: str = Field(description="条件")
-    rank: int = Field(description="排名")
-    total: int = Field(description="总数")
-    updated_at: str | None = Field(default=None, description="更新时间")
-
-
-class OverviewDashboard(MutableModel):
-    readiness: list[DataReadinessItem] = Field(default_factory=list, description="数据就绪项")
-    alerts: list[OverviewAlert] = Field(default_factory=list, description="关键提醒")
-    screening: ScreeningHit | None = Field(default=None, description="选股命中上下文")
 
 
 def find_screening_hit(vt_symbol: str) -> ScreeningHit | None:

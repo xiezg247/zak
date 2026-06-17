@@ -1,6 +1,7 @@
 """选股领域模型。"""
 
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
+from vnpy_ashare.domain.screener.page_context import BacktestSummary, ScreeningResultContext
 from vnpy_ashare.domain.screener.predict import BaselinePredictHit, PredictHit
 from vnpy_ashare.domain.screener.quotes_snapshot import MarketQuotesSnapshot
 from vnpy_ashare.domain.screener.recipe import (
@@ -28,6 +29,7 @@ from vnpy_ashare.domain.screener.result_row import (
 from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 
 __all__ = [
+    "BacktestSummary",
     "BaselinePredictHit",
     "DimensionHit",
     "DimensionSpec",
@@ -42,6 +44,7 @@ __all__ = [
     "RECIPE_ULTRA_SHORT_LIMIT",
     "RecipeCatalogEntry",
     "ScreenRecipe",
+    "ScreeningResultContext",
     "ScreeningRowLike",
     "ScreenerResultRow",
     "ScreenerRunResult",

@@ -4,20 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field
-
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_common.domain.base import MutableModel
+from vnpy_ashare.domain.stock.holders import HolderProfile
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.corporate import fetch_top10_holders
-
-
-class HolderProfile(MutableModel):
-    ts_code: str = Field(description="Tushare 代码")
-    vt_symbol: str = Field(description="合约代码（含交易所）")
-    end_date: str = Field(default="", description="报告期")
-    holders: list[dict[str, Any]] = Field(default_factory=list, description="前十大股东")
-    message: str = Field(default="", description="说明信息")
 
 
 def build_holder_profile(vt_symbol: str) -> HolderProfile:

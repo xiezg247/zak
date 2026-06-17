@@ -5,46 +5,14 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from pydantic import Field
-
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_common.domain.base import MutableModel
+from vnpy_ashare.domain.stock.context import DiagnoseMetrics, MoneyflowDayRow, MoneyflowProfile
 from vnpy_ashare.domain.time.china import china_now, format_china_date_compact
 from vnpy_ashare.domain.trading.signal_benchmark import resolve_benchmark_return_pct
 from vnpy_ashare.domain.trading.signal_snapshot import SIGNAL_LABELS, SignalSnapshot
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow
-
-
-class DiagnoseMetrics(MutableModel):
-    macd: float | None = Field(default=None, description="MACD 值")
-    dif: float | None = Field(default=None, description="DIF 值")
-    dea: float | None = Field(default=None, description="DEA 值")
-    kdj_k: float | None = Field(default=None, description="KDJ K 值")
-    kdj_d: float | None = Field(default=None, description="KDJ D 值")
-    kdj_j: float | None = Field(default=None, description="KDJ J 值")
-    rsi: float | None = Field(default=None, description="RSI 值")
-    pe_ttm: float | None = Field(default=None, description="市盈率 TTM")
-    roe: float | None = Field(default=None, description="净资产收益率")
-    main_net: float | None = Field(default=None, description="主力净流入")
-    industry: str = Field(default="", description="所属行业")
-    source: str = Field(default="tdx_mcp", description="数据来源")
-
-
-class MoneyflowDayRow(MutableModel):
-    trade_date: str = Field(description="交易日")
-    net_mf_amount: float | None = Field(default=None, description="主力净流入（万元）")
-    buy_elg_amount: float | None = Field(default=None, description="特大单买入金额")
-    sell_elg_amount: float | None = Field(default=None, description="特大单卖出金额")
-
-
-class MoneyflowProfile(MutableModel):
-    ts_code: str = Field(description="Tushare 代码")
-    vt_symbol: str = Field(description="合约代码（含交易所）")
-    latest: MoneyflowDayRow | None = Field(default=None, description="最新一日资金流")
-    history: list[MoneyflowDayRow] = Field(default_factory=list, description="历史资金流")
-    message: str = Field(default="", description="说明信息")
 
 
 def _to_float(value: Any) -> float | None:
