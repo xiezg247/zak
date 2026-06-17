@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from vnpy_ashare.domain.calendar import last_trading_day
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.services.base import BaseService
 
 FEAR_GREED_LABELS: tuple[tuple[float, str], ...] = (
@@ -205,7 +206,7 @@ class SentimentService(BaseService):
             index=round(index, 1),
             label=label_for_index(index),
             trade_date=f"{trade_date[:4]}-{trade_date[4:6]}-{trade_date[6:8]}",
-            as_of=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            as_of=format_china_datetime(),
             components=components,
             warnings=warnings,
             sources=sources,

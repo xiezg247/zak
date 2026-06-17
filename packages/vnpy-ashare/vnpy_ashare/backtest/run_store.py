@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """
@@ -100,7 +101,7 @@ def _connect():
 
 
 def _now() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return format_china_datetime()
 
 
 def _to_float(value: Any) -> float | None:

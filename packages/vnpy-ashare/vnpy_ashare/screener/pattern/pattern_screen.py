@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
 from vnpy.trader.constant import Exchange
@@ -15,6 +14,7 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
@@ -142,7 +142,7 @@ def run_pattern_screen(
         return ScreenerRunResult(
             rows=rows[:top_n],
             condition=f"形态 · {label}",
-            updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            updated_at=format_china_datetime(),
             total_scanned=len(quote_rows),
             source="quote",
             columns=resolve_export_columns(rows),
@@ -187,7 +187,7 @@ def run_pattern_screen(
     return ScreenerRunResult(
         rows=rows,
         condition=f"形态 · {label}",
-        updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        updated_at=format_china_datetime(),
         total_scanned=scanned,
         source="bar",
         columns=resolve_export_columns(rows),

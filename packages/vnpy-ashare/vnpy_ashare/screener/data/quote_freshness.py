@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
+from vnpy_ashare.config.constants.recipe import (
+    DEFAULT_MAX_QUOTE_AGE_SECONDS,
+    ENV_QUOTE_MAX_AGE_SEC,
+)
+from vnpy_ashare.domain.env import env_str
+from vnpy_ashare.domain.market_hours import CHINA_TZ
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
-_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
-DEFAULT_MAX_AGE_SECONDS = 90
+DEFAULT_MAX_AGE_SECONDS = DEFAULT_MAX_QUOTE_AGE_SECONDS
 
 
 def quote_snapshot_age_seconds() -> float | None:
@@ -23,13 +26,13 @@ def quote_snapshot_age_seconds() -> float | None:
     except ValueError:
         return None
     if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=_SHANGHAI_TZ)
-    now = datetime.now(_SHANGHAI_TZ)
-    return max(0.0, (now - ts.astimezone(_SHANGHAI_TZ)).total_seconds())
+        ts = ts.replace(tzinfo=CHINA_TZ)
+    now = datetime.now(CHINA_TZ)
+    return max(0.0, (now - ts.astimezone(CHINA_TZ)).total_seconds())
 
 
 def max_quote_age_seconds() -> int:
-    raw = os.getenv("RECIPE_QUOTE_MAX_AGE_SEC", str(DEFAULT_MAX_AGE_SECONDS)).strip()
+    raw = env_str(ENV_QUOTE_MAX_AGE_SEC) or str(DEFAULT_MAX_AGE_SECONDS)
     try:
         return max(30, int(raw))
     except ValueError:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.domain.format import format_amount, format_volume
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
@@ -54,20 +55,14 @@ def _screener_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
         return "换手", f"{turnover:.2f}%", "", ""
     amount = float(row.get("amount") or 0)
     if amount > 0:
-        from vnpy_ashare.ui.quotes.table.columns import format_amount
-
         return "成交额", format_amount(amount), "", ""
     volume = float(row.get("volume") or 0)
     if volume > 0:
-        from vnpy_ashare.ui.quotes.table.columns import format_volume
-
         return "成交量", format_volume(volume), "", ""
     return "", "", "", ""
 
 
 def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
-    from vnpy_ashare.ui.quotes.table.columns import format_amount, format_volume
-
     merged = merge_row_quotes(row)
     volume = float(merged.get("volume") or 0)
     amount = float(merged.get("amount") or 0)
@@ -85,7 +80,6 @@ def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
 
 def _moneyflow_metric(row: dict[str, Any], _hit=None) -> tuple[str, str, str, str]:
     from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
-    from vnpy_ashare.ui.quotes.table.columns import format_amount
 
     merged = merge_row_quotes(row)
     kind = classify_moneyflow_row(merged)

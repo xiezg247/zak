@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label
 from vnpy_ashare.quotes.radar.radar_leader_pick import (
@@ -64,7 +64,7 @@ def run_leader_screen(
         return ScreenerRunResult(
             rows=[],
             condition=f"雷达龙头（{stage}·不宜新开）",
-            updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            updated_at=format_china_datetime(),
             total_scanned=0,
             source="radar_leader",
             columns=resolve_export_columns([]),
@@ -105,7 +105,7 @@ def run_leader_screen(
     return ScreenerRunResult(
         rows=rows,
         condition=condition,
-        updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        updated_at=format_china_datetime(),
         total_scanned=total_scanned,
         source="radar_leader",
         columns=resolve_export_columns(rows),

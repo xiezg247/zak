@@ -7,6 +7,7 @@ from datetime import datetime
 from statistics import median
 
 from vnpy_ashare.data.bar_access import iter_bar_overviews, load_scope_bars
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.radar.predict.factor_panel import FEATURE_NAMES, features_from_bar_window
 from vnpy_ashare.quotes.radar.predict.labels import forward_direction_label, forward_return_pct
@@ -163,7 +164,7 @@ def run_train_radar_ranker(
             "sample_count": len(features_rows),
             "symbol_count": len(items),
             "val_auc": val_auc,
-            "trained_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "trained_at": format_china_datetime_minute(),
         }
     )
     clear_booster_cache()

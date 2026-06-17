@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.config.preferences._settings import get_settings
+
 if TYPE_CHECKING:
     from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -21,7 +23,7 @@ def run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
 
 
 def _settings() -> QtCore.QSettings:
-    return QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    return get_settings()
 
 
 def _coerce_settings_bool(value: object, *, default: bool) -> bool:

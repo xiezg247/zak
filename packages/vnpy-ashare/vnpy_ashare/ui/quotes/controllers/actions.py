@@ -26,7 +26,7 @@ from vnpy_ashare.services.signals import format_signal_context_extra
 from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
-from vnpy_ashare.ui.quotes.table.columns import format_volume
+from vnpy_ashare.domain.format import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR

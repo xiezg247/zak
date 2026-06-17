@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.quotes.rank.rank_catalog import DEFAULT_RANK_ID, get_rank_definition, rank_definition_row
 from vnpy_ashare.ui.quotes.features.market_rank_sidebar import rank_id_from_sidebar_row
 
@@ -28,7 +29,7 @@ class MarketRankFeature:
         page = self._page
         if not page.config.show_rank_sidebar:
             return page.config.default_rank_id
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings = get_settings()
         saved = str(settings.value(RANK_SETTINGS_KEY, "") or "").strip()
         if saved:
             return get_rank_definition(saved).id
@@ -37,7 +38,7 @@ class MarketRankFeature:
     def save_rank_id_pref(self, rank_id: str) -> None:
         if not self._page.config.show_rank_sidebar:
             return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings = get_settings()
         settings.setValue(RANK_SETTINGS_KEY, rank_id)
 
     def sync_sort_from_catalog(self) -> None:

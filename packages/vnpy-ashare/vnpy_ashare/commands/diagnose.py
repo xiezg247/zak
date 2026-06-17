@@ -7,6 +7,8 @@ import json
 from datetime import datetime
 from typing import Any
 
+from vnpy_ashare.domain.datetime import format_china_date, format_china_datetime
+
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 from vnpy.trader.object import BarData
@@ -57,7 +59,7 @@ def technical_snapshot(symbol: str, exchange: Exchange, lookback: int = 60) -> d
             "symbol": f"{symbol}.{exchange.value}",
             "warnings": ["本地暂无足够 K 线，请先下载日 K 数据"],
             "sources": ["bar"],
-            "as_of": datetime.now().strftime("%Y-%m-%d"),
+            "as_of": format_china_date(),
         }
 
     tail = bars[-lookback:] if len(bars) >= lookback else bars
@@ -196,7 +198,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     result = {
         "symbol": f"{symbol}.{exchange.value}",
         "name": "科大讯飞" if symbol == "002230" else symbol,
-        "as_of": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "as_of": format_china_datetime(),
         "technical": tech,
         "historical_20d": hist,
         "disclaimer": "以上内容来自工具数据，不构成投资建议。",

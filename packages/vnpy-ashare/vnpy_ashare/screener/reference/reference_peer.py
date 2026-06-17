@@ -8,11 +8,12 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_stock_industry_map
+from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback, iter_trade_date_strs
 
 ProgressCallback = Callable[[str], None]
@@ -104,7 +105,7 @@ def run_reference_peer_screen(
 
     check_cancelled()
     industry_map = fetch_stock_industry_map()
-    by_symbol = {str(row["vt_symbol"]): row for row in fund_rows if row.get("vt_symbol")}
+    by_symbol = quote_rows_by_vt_symbol(fund_rows)
 
     reference = by_symbol.get(vt_symbol)
     if reference is None:
@@ -188,7 +189,7 @@ def run_reference_peer_screen(
     )
     rows = scored[: clamp_reference_peer_top_n(top_n)]
     progress(f"完成，命中 {len(rows)} 条同类标的")
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = format_china_datetime()
     for row in rows:
         row["updated_at"] = now
 

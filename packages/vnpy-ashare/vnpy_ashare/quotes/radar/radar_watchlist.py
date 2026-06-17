@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.domain.format import format_amount
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
@@ -169,8 +170,6 @@ def _watchlist_metric(
     if volume_ratio >= 1.3:
         return "量比", f"{volume_ratio:.2f}", "涨幅", format_pct(change)
     if amount > 0:
-        from vnpy_ashare.ui.quotes.table.columns import format_amount
-
         return "成交额", format_amount(amount), "涨幅", format_pct(change)
     return "换手", f"{turnover:.2f}%" if turnover > 0 else "—", "涨幅", format_pct(change)
 

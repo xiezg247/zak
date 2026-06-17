@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-
+from vnpy_ashare.domain.format import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
@@ -15,12 +14,6 @@ from vnpy_ashare.quotes.radar.radar_watchlist import (
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiRow
 from vnpy_ashare.quotes.watchlist_multiview.sort import sort_multiview_rows
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
-
-
-def _float_or_none(value: Any) -> float | None:
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        return float(value)
-    return None
 
 
 def build_watchlist_multiview_board(
@@ -72,10 +65,10 @@ def build_watchlist_multiview_board(
                 name=name,
                 sort_order=sort_orders.get(vt_symbol, 0),
                 last_price=last_price,
-                change_pct=_float_or_none(merged.get("change_pct")),
-                volume_ratio=_float_or_none(merged.get("volume_ratio")),
-                turnover_rate=_float_or_none(merged.get("turnover_rate")),
-                change_speed_5m=_float_or_none(merged.get("change_speed_5m")),
+                change_pct=float_or_none(merged.get("change_pct")),
+                volume_ratio=float_or_none(merged.get("volume_ratio")),
+                turnover_rate=float_or_none(merged.get("turnover_rate")),
+                change_speed_5m=float_or_none(merged.get("change_speed_5m")),
                 metric_label=metric_label,
                 metric_value=metric_value,
                 sub_label=sub_label,

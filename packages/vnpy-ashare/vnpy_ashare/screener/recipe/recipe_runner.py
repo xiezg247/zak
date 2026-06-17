@@ -5,10 +5,14 @@
 
 from __future__ import annotations
 
-import os
-from datetime import datetime
 from typing import Any
 
+from vnpy_ashare.config.constants.recipe import (
+    DEFAULT_RECIPE_DIMENSION_MAX_WORKERS,
+    ENV_DIMENSION_MAX_WORKERS,
+)
+from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.env import env_str
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.quotes.market.moneyflow_kind import (
     enrich_moneyflow_row_with_kind,
@@ -30,12 +34,10 @@ from vnpy_ashare.screener.sentiment.sentiment_gate import (
     sentiment_gate_enabled,
 )
 
-DEFAULT_RECIPE_DIMENSION_MAX_WORKERS = 4
-
 
 def recipe_dimension_max_workers(*, dimension_count: int) -> int:
     """配方维度并行数（RECIPE_DIMENSION_MAX_WORKERS，默认 4，上限 8）。"""
-    raw = os.getenv("RECIPE_DIMENSION_MAX_WORKERS", str(DEFAULT_RECIPE_DIMENSION_MAX_WORKERS)).strip()
+    raw = env_str(ENV_DIMENSION_MAX_WORKERS) or str(DEFAULT_RECIPE_DIMENSION_MAX_WORKERS)
     try:
         configured = int(raw)
     except ValueError:
@@ -120,7 +122,7 @@ def run_recipe_object(
         merged_rows, gate_meta = apply_emotion_gate_only_finalize(merged_rows, top_n=limit)
 
     rows = merged_rows[: max(1, min(int(limit), 200))]
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now = format_china_datetime()
 
     condition = f"{condition_prefix} · {recipe.name}"
     if gate_meta and gate_meta.get("gate_message"):

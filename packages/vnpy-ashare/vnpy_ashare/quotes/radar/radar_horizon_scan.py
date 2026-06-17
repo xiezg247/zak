@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.data.download_concurrency import run_parallel_map
@@ -226,7 +226,7 @@ def scan_horizon_variant(
             name_map=name_map,
             scenario_hints=scenario_hints,
         )
-    computed_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    computed_at = format_china_datetime_minute()
     stats = HorizonScanStats(
         scanned_total=base_stats.scanned_total,
         excluded_count=base_stats.excluded_count,

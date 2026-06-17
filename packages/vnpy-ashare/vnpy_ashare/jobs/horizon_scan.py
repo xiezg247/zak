@@ -2,19 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
-from zoneinfo import ZoneInfo
+from datetime import time
 
 from vnpy_ashare.domain.calendar import is_trading_day
+from vnpy_ashare.domain.datetime import china_now
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.quotes.radar.radar_horizon_scan import run_horizon_outlook_scan
-
-_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 
 def run_horizon_outlook_scan_job(*, force: bool = False) -> JobResult:
     """盘后全市场展望扫描：关注 / 可持 / 情景 / 预测基线。"""
-    now = datetime.now(_SHANGHAI_TZ)
+    now = china_now()
     if not force:
         if not is_trading_day(now.date()):
             return JobResult(

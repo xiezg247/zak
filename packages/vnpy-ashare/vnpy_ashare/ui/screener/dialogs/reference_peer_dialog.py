@@ -10,6 +10,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.screener.reference.reference_peer import (
     REFERENCE_PEER_TOP_N_MAX,
     ReferencePeerRunResult,
@@ -38,7 +39,7 @@ _RESULT_COLUMNS: list[tuple[str, str]] = [
     ("momentum_5d", "5日涨跌%"),
 ]
 
-_SETTINGS = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+_SETTINGS = get_settings()
 _SETTINGS_TOP_N_KEY = "reference_peer/top_n"
 
 

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.notifications.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_JOURNAL_VIOLATION,
@@ -17,11 +16,9 @@ from vnpy_ashare.notifications.events import (
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
 )
 
-_SHANGHAI = ZoneInfo("Asia/Shanghai")
-
 
 def _now_text() -> str:
-    return datetime.now(_SHANGHAI).strftime("%Y-%m-%d %H:%M:%S")
+    return format_china_datetime()
 
 
 def format_notify_text(event_id: str, payload: dict[str, Any]) -> str:

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Literal
 
+from vnpy_ashare.config.preferences._settings import get_settings
+
 PredictModelMode = Literal["auto", "baseline", "lgb"]
 
 _SETTINGS_KEY = "quotes/radar/predict_model_mode"
@@ -12,9 +14,7 @@ _VALID_MODES = frozenset({"auto", "baseline", "lgb"})
 
 
 def load_predict_model_mode() -> PredictModelMode:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     raw = str(settings.value(_SETTINGS_KEY, _DEFAULT_MODE) or _DEFAULT_MODE).strip()
     if raw in _VALID_MODES:
         return raw  # type: ignore[return-value]
@@ -22,10 +22,8 @@ def load_predict_model_mode() -> PredictModelMode:
 
 
 def save_predict_model_mode(mode: PredictModelMode) -> None:
-    from vnpy.trader.ui import QtCore
-
     if mode not in _VALID_MODES:
         msg = f"未知预测模型模式：{mode}"
         raise ValueError(msg)
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     settings.setValue(_SETTINGS_KEY, mode)

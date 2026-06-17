@@ -7,6 +7,7 @@ from typing import Any
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
+from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
@@ -111,7 +112,7 @@ def _try_quote_snapshot() -> MarketQuotesSnapshot | None:
 def _quote_map_from_snapshot(snapshot: MarketQuotesSnapshot | None) -> dict[str, dict[str, Any]]:
     if snapshot is None:
         return {}
-    return {str(row.get("vt_symbol") or ""): row for row in snapshot.rows if row.get("vt_symbol")}
+    return quote_rows_by_vt_symbol(snapshot.rows)
 
 
 def _intraday_hits(
@@ -205,7 +206,7 @@ def _hits_from_mcp_map(
     *,
     weight: float,
 ) -> list[DimensionHit]:
-    row_by_vt = {str(row.get("vt_symbol") or ""): row for row in rows}
+    row_by_vt = quote_rows_by_vt_symbol(rows)
     ranked = sorted(flow_map.items(), key=lambda item: item[1], reverse=True)[:pool_size]
     hits: list[DimensionHit] = []
     for index, (vt_symbol, amount) in enumerate(ranked, start=1):

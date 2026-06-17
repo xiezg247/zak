@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.quotes.rank.rank_catalog import iter_rank_sidebar_rows
 from vnpy_ashare.ui.components.splitter_utils import (
     set_splitter_sizes_quiet,
@@ -29,7 +30,7 @@ RANK_ITEM_INDENT = 14
 
 
 def load_rank_sidebar_expanded(*, default: bool = True) -> bool:
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     value = settings.value(RANK_SIDEBAR_EXPANDED_KEY)
     if value is None:
         return default
@@ -39,7 +40,7 @@ def load_rank_sidebar_expanded(*, default: bool = True) -> bool:
 
 
 def save_rank_sidebar_expanded(expanded: bool) -> None:
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     settings.setValue(RANK_SIDEBAR_EXPANDED_KEY, expanded)
 
 

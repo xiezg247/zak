@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Any
+
+from vnpy_ashare.config.constants.recipe import ENV_SENTIMENT_GATE
+from vnpy_ashare.domain.env import env_or_prefs_bool
+from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.sentiment_service import FearGreedSnapshot
 
 
 def sentiment_gate_enabled() -> bool:
-    raw = os.getenv("RECIPE_SENTIMENT_GATE", "").strip()
-    if raw:
-        return raw.lower() not in ("0", "false", "no")
-    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
-
-    return load_recipe_tuning_prefs().sentiment_gate_enabled
+    return env_or_prefs_bool(ENV_SENTIMENT_GATE, prefs=lambda: load_recipe_tuning_prefs().sentiment_gate_enabled)
 
 
 def try_fetch_fear_greed_index(*, include_components: bool = False) -> FearGreedSnapshot | None:

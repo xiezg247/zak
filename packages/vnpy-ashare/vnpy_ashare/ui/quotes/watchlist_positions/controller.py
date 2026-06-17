@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from vnpy_ashare.domain.datetime import format_china_time_hm
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
@@ -152,7 +152,7 @@ class WatchlistPositionController:
     def _apply_refresh_result(self) -> None:
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
-            panel.set_updated_at(datetime.now().strftime("%H:%M"))
+            panel.set_updated_at(format_china_time_hm())
             panel.render_panel()
         signal_panel = getattr(self._page, "signal_panel", None)
         if signal_panel is not None and signal_panel.enabled:

@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy.trader.ui import QtCore
+from vnpy_ashare.config.constants.recipe import DEFAULT_METRIC_SCORE_BLEND
+from vnpy_ashare.config.preferences._settings import get_settings
 
-from vnpy_ashare.screener.dimensions.scoring import DEFAULT_METRIC_SCORE_BLEND
-
-_SETTINGS = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+_SETTINGS = get_settings()
 _KEY_PREFIX = "screener/recipe_tuning/"
 
 

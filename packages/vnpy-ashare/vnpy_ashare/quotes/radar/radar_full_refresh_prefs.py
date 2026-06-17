@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore
-
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.quotes.radar.radar_catalog import RADAR_FULL_REFRESH_EVERY
 
-_SETTINGS = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+_SETTINGS = get_settings()
 _KEY_PREFIX = "quotes/radar/full_refresh_every/"
 
 

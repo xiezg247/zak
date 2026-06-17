@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
-
-_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 _entries: tuple[RadarResonanceEntry, ...] = ()
 _updated_at: str | None = None
@@ -16,7 +12,7 @@ _updated_at: str | None = None
 def set_radar_resonance_entries(entries: tuple[RadarResonanceEntry, ...]) -> None:
     global _entries, _updated_at
     _entries = tuple(entries)
-    _updated_at = datetime.now(_SHANGHAI_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    _updated_at = format_china_datetime()
 
 
 def get_radar_resonance_entries() -> tuple[RadarResonanceEntry, ...]:

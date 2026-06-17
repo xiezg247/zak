@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
 from typing import Any
 
-from vnpy.trader.utility import ZoneInfo
-
 from vnpy_ashare.ai.context.store import get_market_quotes_cache
+from vnpy_ashare.domain.datetime import format_china_date
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.sector_flow import SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
@@ -28,7 +26,6 @@ from vnpy_ashare.storage.repositories.sector_flow_history import (
     upsert_sector_history_points,
 )
 
-_CHINA_TZ = ZoneInfo("Asia/Shanghai")
 _MIN_STOCKS = 3
 _TOP_EACH_SIDE = 24
 _MIN_CACHE_ROWS_FOR_SECTOR = 500
@@ -51,7 +48,7 @@ def split_sector_display_rows(
 
 
 def _today_trade_date() -> str:
-    return datetime.now(_CHINA_TZ).strftime("%Y-%m-%d")
+    return format_china_date()
 
 
 def _proxy_flow_yi(row: dict[str, Any]) -> float:

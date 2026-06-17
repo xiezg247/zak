@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from vnpy_ashare.domain.datetime import format_china_time_hm
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
@@ -120,7 +120,7 @@ class WatchlistSignalController:
                 self._page.signal_cache.update(enriched)
         panel = getattr(self._page, "signal_panel", None)
         if panel is not None:
-            panel.set_updated_at(datetime.now().strftime("%H:%M"))
+            panel.set_updated_at(format_china_time_hm())
             panel.render_panel()
         self._sync_chart_signal_reference()
         if self._page.config.show_watchlist_multiview:

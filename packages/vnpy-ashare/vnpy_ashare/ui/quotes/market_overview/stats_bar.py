@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from vnpy_ashare.domain.quote_time import format_relative_updated_at
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-from vnpy_ashare.ui.quotes.table.columns import format_amount
+from vnpy_ashare.domain.format import format_amount
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
@@ -18,18 +18,7 @@ MARKET_TURNOVER_TRILLION_YUAN = 1e12
 
 
 def _format_updated_at(raw: str | None) -> str:
-    if not raw:
-        return ""
-    text = raw.strip()
-    if "T" not in text:
-        return f"更新 {text}"
-    date_part, time_part = text.split("T", 1)
-    time_short = time_part[:5] if len(time_part) >= 5 else time_part
-    today = datetime.now().strftime("%Y-%m-%d")
-    if date_part == today:
-        return f"更新 {time_short}"
-    mm_dd = date_part[5:10] if len(date_part) >= 10 else date_part
-    return f"更新 {mm_dd} {time_short}"
+    return format_relative_updated_at(raw)
 
 
 def _format_trade_date(raw: str) -> str:

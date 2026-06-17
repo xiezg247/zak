@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from datetime import date, timedelta
 from typing import Any
 
+from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.tushare.factors import (
@@ -30,11 +31,11 @@ def merge_quotes_into_fundamentals(
     quote_rows: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
-    quote_map = {str(row.get("vt_symbol", "")): row for row in quote_rows if row.get("vt_symbol")}
+    quote_map = quote_rows_by_vt_symbol(quote_rows)
     merged: list[dict[str, Any]] = []
     for row in fund_rows:
         item = dict(row)
-        quote = quote_map.get(str(item.get("vt_symbol", "")))
+        quote = quote_map.get(str(item.get("vt_symbol", "")).strip())
         if quote is None:
             merged.append(item)
             continue
@@ -108,9 +109,10 @@ def fetch_moneyflow_with_fallback(
 
 
 def _merge_moneyflow_into_quote_rows(quote_rows: list[dict[str, Any]], mf_rows: list[dict[str, Any]]) -> None:
-    mf_map = {str(row.get("vt_symbol") or ""): row for row in mf_rows if row.get("vt_symbol")}
+    mf_map = quote_rows_by_vt_symbol(mf_rows)
     for row in quote_rows:
-        mf = mf_map.get(str(row.get("vt_symbol") or ""))
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        mf = mf_map.get(vt_symbol)
         if mf is None:
             continue
         for key in (
@@ -284,21 +286,21 @@ def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     try:
         fund_rows, trade_date, _ = fetch_fundamental_screening_rows()
-        fund_map = {str(row.get("vt_symbol") or ""): row for row in fund_rows if row.get("vt_symbol")}
+        fund_map = quote_rows_by_vt_symbol(fund_rows)
         pct_map = fetch_daily_pct_map(trade_date)
     except Exception:
         pass
 
     try:
         mf_rows, _trade_date = fetch_moneyflow_with_fallback()
-        mf_map = {str(row.get("vt_symbol") or ""): row for row in mf_rows if row.get("vt_symbol")}
+        mf_map = quote_rows_by_vt_symbol(mf_rows)
     except Exception:
         pass
 
     enriched: list[dict[str, Any]] = []
     for row in rows:
         item = dict(row)
-        vt_symbol = str(item.get("vt_symbol") or "")
+        vt_symbol = str(item.get("vt_symbol") or "").strip()
         fund = fund_map.get(vt_symbol, {})
         mf = mf_map.get(vt_symbol, {})
         ts_code = str(fund.get("ts_code") or mf.get("ts_code") or "")

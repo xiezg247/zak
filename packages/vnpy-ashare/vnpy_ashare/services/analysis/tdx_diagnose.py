@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from datetime import datetime
+from vnpy_ashare.domain.datetime import format_china_datetime
 from typing import Any
 
 from vnpy_ashare.ai.context import parse_stock_symbol
@@ -76,7 +76,7 @@ def run_tdx_diagnose(
     return {
         "symbol": item.vt_symbol,
         "name": item.name or str(fields.get("sec_name") or label),
-        "as_of": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "as_of": format_china_datetime(),
         "quote": _summarize_quote(quote),
         "technical": _summarize_section(sections.get("technical") or {}, "technical"),
         "fundamental": _summarize_section(sections.get("fundamental") or {}, "fundamental"),

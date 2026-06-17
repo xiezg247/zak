@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 
 from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signal_config
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_RECENT_DAYS
@@ -69,7 +69,7 @@ def _empty_horizon_card(
         subtitle=subtitle,
         rows=(),
         empty_message=empty_message,
-        updated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        updated_at=format_china_datetime_minute(),
         total_count=scanned_total,
     )
 

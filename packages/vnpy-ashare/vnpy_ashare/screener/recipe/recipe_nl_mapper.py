@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
+
+from vnpy_ashare.domain.datetime import china_now, format_china_datetime
 from typing import Literal
 
 from vnpy_ashare.screener.recipe.recipe import (
@@ -101,7 +103,7 @@ def validate_and_build_recipe(data: ProposeRecipeInput) -> ProposeRecipeResult:
     top_n = max(TOP_N_MIN, min(int(data.top_n or TOP_N_DEFAULT), TOP_N_MAX))
     dims = " + ".join(spec.label for spec in recipe.dimensions)
     summary = f"{recipe.name}（{dims}）Top {top_n}"
-    now = datetime.now()
+    now = china_now()
     expires = now + timedelta(minutes=10)
 
     draft = RecipeDraft(
@@ -114,8 +116,8 @@ def validate_and_build_recipe(data: ProposeRecipeInput) -> ProposeRecipeResult:
         confidence=data.confidence,
         warnings=[],
         status="pending",
-        created_at=now.strftime("%Y-%m-%d %H:%M:%S"),
-        expires_at=expires.strftime("%Y-%m-%d %H:%M:%S"),
+        created_at=format_china_datetime(now),
+        expires_at=format_china_datetime(expires),
     )
     return ProposeRecipeResult(
         kind="pending_confirm",

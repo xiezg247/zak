@@ -6,12 +6,17 @@ import json
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from pathlib import Path
 from typing import Any, cast
 
 from vnpy_ashare.quotes.radar.radar_horizon_scan import HorizonScanStats
-from vnpy_ashare.quotes.radar.radar_models import RadarRow, enrich_radar_row, float_or_none, quotes_for_vt_symbols
+from vnpy_ashare.quotes.radar.radar_models import (
+    RadarRow,
+    quotes_for_vt_symbols,
+    radar_row_from_cache_dict,
+    radar_row_to_cache_dict,
+)
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """
@@ -59,40 +64,6 @@ class PredictCacheEntry:
     computed_at: str
 
 
-def _row_to_dict(row: RadarRow) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "vt_symbol": row.vt_symbol,
-        "name": row.name,
-        "symbol": row.symbol,
-        "metric_label": row.metric_label,
-        "metric_value": row.metric_value,
-        "sub_label": row.sub_label,
-        "sub_value": row.sub_value,
-    }
-    if row.price is not None:
-        payload["last_close"] = row.price
-    if row.change_pct is not None:
-        payload["change_pct"] = row.change_pct
-    return payload
-
-
-def _row_from_dict(raw: dict[str, Any], *, quote: dict[str, Any] | None = None) -> RadarRow:
-    vt_symbol = str(raw.get("vt_symbol") or "").strip()
-    base = quote if quote is not None else {"vt_symbol": vt_symbol}
-    row = RadarRow(
-        vt_symbol=vt_symbol,
-        name=str(raw.get("name") or ""),
-        symbol=str(raw.get("symbol") or ""),
-        price=float_or_none(raw.get("last_close")),
-        change_pct=float_or_none(raw.get("change_pct")),
-        metric_label=str(raw.get("metric_label") or ""),
-        metric_value=str(raw.get("metric_value") or ""),
-        sub_label=str(raw.get("sub_label") or ""),
-        sub_value=str(raw.get("sub_value") or ""),
-    )
-    return enrich_radar_row(row, base)
-
-
 def get_predict_cache(variant: str) -> PredictCacheEntry | None:
     text = str(variant or "").strip()
     if not text:
@@ -111,7 +82,11 @@ def get_predict_cache(variant: str) -> PredictCacheEntry | None:
     vt_symbols = [str(item.get("vt_symbol") or "").strip() for item in payload if isinstance(item, dict)]
     vt_symbols = [vt for vt in vt_symbols if vt]
     quotes = quotes_for_vt_symbols(vt_symbols)
-    rows = tuple(_row_from_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {})) for item in payload if isinstance(item, dict))
+    rows = tuple(
+        radar_row_from_cache_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {}))
+        for item in payload
+        if isinstance(item, dict)
+    )
     stats = HorizonScanStats(
         scanned_total=int(row["scanned_total"] or 0),
         excluded_count=int(row["excluded_count"] or 0),
@@ -144,8 +119,8 @@ def put_predict_cache(
     model_label: str,
     computed_at: str | None = None,
 ) -> None:
-    payload = [_row_to_dict(row) for row in rows]
-    ts = computed_at or datetime.now().strftime("%Y-%m-%d %H:%M")
+    payload = [radar_row_to_cache_dict(row) for row in rows]
+    ts = computed_at or format_china_datetime_minute()
     with _connect() as conn:
         conn.execute(
             """

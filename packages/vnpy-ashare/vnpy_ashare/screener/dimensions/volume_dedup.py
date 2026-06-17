@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-import os
-
+from vnpy_ashare.config.constants.recipe import (
+    DEFAULT_VOLUME_LIQUIDITY_DEDUP_FACTOR,
+    ENV_VOLUME_LIQUIDITY_DEDUP_FACTOR,
+)
+from vnpy_ashare.domain.env import env_or_prefs_float
 from vnpy_ashare.screener.dimensions.base import DimensionHit
+from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
 _VOLUME_LIQUIDITY_IDS = frozenset({"volume_ratio", "volume_surge"})
-_DEFAULT_DEDUP_FACTOR = 0.5
 
 
 def build_volume_discovery_subtitle(hits: list[DimensionHit]) -> str:
@@ -23,15 +26,12 @@ def build_volume_discovery_subtitle(hits: list[DimensionHit]) -> str:
 
 
 def volume_liquidity_dedup_factor() -> float:
-    raw = os.getenv("RECIPE_VOLUME_LIQUIDITY_DEDUP_FACTOR", "").strip()
-    if raw:
-        try:
-            return max(0.0, min(float(raw), 1.0))
-        except ValueError:
-            return _DEFAULT_DEDUP_FACTOR
-    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
-
-    return load_recipe_tuning_prefs().volume_liquidity_dedup_factor
+    return env_or_prefs_float(
+        ENV_VOLUME_LIQUIDITY_DEDUP_FACTOR,
+        default=DEFAULT_VOLUME_LIQUIDITY_DEDUP_FACTOR,
+        prefs=lambda: load_recipe_tuning_prefs().volume_liquidity_dedup_factor,
+        clamp=(0.0, 1.0),
+    )
 
 
 def apply_volume_liquidity_dedup(hits: list[DimensionHit]) -> list[DimensionHit]:

@@ -25,11 +25,17 @@ from typing import Any
 
 from vnpy_common.ai.protocol import AiContextData
 
+from vnpy_ashare.quotes.core.quote_rows import (
+    clear_market_quote_rows_cache,
+    get_market_quotes_cache,
+    set_market_quote_rows_cache,
+    set_market_quotes_cache,
+)
+
 _lock = threading.Lock()
 _listeners: list[Callable[[AiContextData], None]] = []
 _ai_context = AiContextData()
 _backtest_summary: dict[str, Any] | None = None
-_market_quotes: list[dict[str, Any]] = []
 _market_overview_context: dict[str, Any] | None = None
 
 
@@ -115,54 +121,14 @@ def set_backtest_summary(summary: BacktestSummary | None) -> None:
 
 def clear_all() -> None:
     """清空全部 session 缓存（登出 / 重置时）。"""
-    global _ai_context, _backtest_summary, _market_quotes, _market_overview_context, _screening_result, _diagnose_result
+    global _ai_context, _backtest_summary, _market_overview_context, _screening_result, _diagnose_result
     with _lock:
         _ai_context = AiContextData()
         _backtest_summary = None
-        _market_quotes = []
         _market_overview_context = None
         _screening_result = None
         _diagnose_result = None
-
-
-def set_market_quotes_cache(items: list[Any], quotes: dict[str, Any]) -> None:
-    """缓存市场页行情行（QuoteService 写入，ScreeningService 选股 fallback 读取）。"""
-    global _market_quotes
-    rows: list[dict[str, Any]] = []
-    for item in items:
-        tickflow_symbol = getattr(item, "tickflow_symbol", "")
-        quote = quotes.get(tickflow_symbol)
-        rows.append(
-            {
-                "symbol": getattr(item, "symbol", ""),
-                "name": getattr(item, "name", ""),
-                "vt_symbol": getattr(item, "vt_symbol", ""),
-                "last_price": getattr(quote, "last_price", 0) if quote else 0,
-                "change_pct": getattr(quote, "change_pct", 0) if quote else 0,
-                "turnover_rate": getattr(quote, "turnover_rate", 0) if quote else 0,
-                "volume": getattr(quote, "volume", 0) if quote else 0,
-                "amount": getattr(quote, "amount", 0) if quote else 0,
-            }
-        )
-    set_market_quote_rows_cache(rows)
-
-
-def set_market_quote_rows_cache(rows: list[dict[str, Any]]) -> None:
-    """直接写入行情行缓存（定时预热 job 使用）。"""
-    global _market_quotes
-    from vnpy_ashare.quotes.market.emotion_cycle import invalidate_emotion_cycle_cache
-    from vnpy_ashare.quotes.market.market_summary_cache import invalidate_limit_ladder_cache
-
-    with _lock:
-        _market_quotes = [dict(row) for row in rows]
-    invalidate_emotion_cycle_cache()
-    invalidate_limit_ladder_cache()
-
-
-def get_market_quotes_cache() -> list[dict[str, Any]]:
-    """读取市场页行情缓存（无 Redis 时选股 fallback）。"""
-    with _lock:
-        return list(_market_quotes)
+    clear_market_quote_rows_cache()
 
 
 def set_market_overview_context(payload: dict[str, Any] | None) -> None:

@@ -1,6 +1,6 @@
 """终端用户偏好（QSettings），供 Service / AI / UI 共用。"""
 
-from vnpy_ashare.config.preferences._settings import SETTINGS_APP, SETTINGS_ORG
+from vnpy_ashare.config.preferences._settings import SETTINGS_APP, SETTINGS_ORG, get_settings
 from vnpy_ashare.config.preferences.signal_panel_columns import (
     DEFAULT_VISIBLE_OPTIONAL_KEYS,
     SIGNAL_PANEL_FIXED_KEYS,
@@ -50,6 +50,7 @@ __all__ = [
     "POSITION_PANEL_DEFAULT_HEIGHT",
     "SETTINGS_APP",
     "SETTINGS_ORG",
+    "get_settings",
     "SIGNAL_PANEL_FIXED_KEYS",
     "SIGNAL_PANEL_MAX_SYMBOLS",
     "SIGNAL_PANEL_OPTIONAL_COLUMNS",

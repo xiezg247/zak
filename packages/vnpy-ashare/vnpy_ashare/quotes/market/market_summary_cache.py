@@ -2,32 +2,27 @@
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
+from vnpy_ashare.quotes.core.cache_ttl import TtlCache
+
 _CACHE_TTL_SEC = 300.0
-_ladder_counts: dict[str, int] | None = None
-_ladder_cached_at: float = 0.0
+_ladder_cache: TtlCache[dict[str, int]] = TtlCache()
 
 
 def store_limit_ladder_counts(counts: dict[str, int] | None) -> None:
-    global _ladder_counts, _ladder_cached_at
-    _ladder_counts = dict(counts) if counts else None
-    _ladder_cached_at = time.monotonic()
+    _ladder_cache.store(dict(counts) if counts else None)
 
 
 def peek_limit_ladder_counts(*, max_age_sec: float = _CACHE_TTL_SEC) -> dict[str, int] | None:
-    if _ladder_counts is None:
+    cached = _ladder_cache.peek(max_age_sec=max_age_sec)
+    if cached is None:
         return None
-    if time.monotonic() - _ladder_cached_at > max_age_sec:
-        return None
-    return dict(_ladder_counts)
+    return dict(cached)
 
 
 def invalidate_limit_ladder_cache() -> None:
-    global _ladder_counts, _ladder_cached_at
-    _ladder_counts = None
-    _ladder_cached_at = 0.0
+    _ladder_cache.invalidate()
 
 
 def resolve_limit_ladder_counts(

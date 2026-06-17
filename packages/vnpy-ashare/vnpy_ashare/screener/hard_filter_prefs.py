@@ -4,14 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy.trader.ui import QtCore
+from vnpy_ashare.config.constants.recipe import DEFAULT_MIN_AMOUNT_YUAN, DEFAULT_MIN_TOTAL_MV_WAN
+from vnpy_ashare.config.preferences._settings import get_settings
 
-from vnpy_ashare.screener.hard_filters import (
-    DEFAULT_MIN_AMOUNT_YUAN,
-    DEFAULT_MIN_TOTAL_MV_WAN,
-)
-
-_SETTINGS = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+_SETTINGS = get_settings()
 _KEY_EXCLUDE_ST = "screener/hard_filter/exclude_st"
 _KEY_EXCLUDE_SUSPENDED = "screener/hard_filter/exclude_suspended"
 _KEY_MIN_AMOUNT_WAN = "screener/hard_filter/min_amount_wan"

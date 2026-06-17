@@ -35,6 +35,32 @@ def format_batch_updated_at(value: str | None) -> str:
     return text
 
 
+def format_relative_updated_at(
+    raw: str | None,
+    *,
+    today: str | None = None,
+    prefix: str = "更新",
+) -> str:
+    """ISO / 空格分隔时间 → 相对展示（今日仅 HH:MM，否则 MM-DD HH:MM）。"""
+    if not raw:
+        return ""
+    text = raw.strip()
+    if "T" not in text:
+        return f"{prefix} {text}" if prefix else text
+    date_part, time_part = text.split("T", 1)
+    time_short = time_part[:5] if len(time_part) >= 5 else time_part
+    if today is None:
+        from vnpy_ashare.domain.datetime import format_china_date
+
+        today = format_china_date()
+    if date_part == today:
+        body = time_short
+    else:
+        mm_dd = date_part[5:10] if len(date_part) >= 10 else date_part
+        body = f"{mm_dd} {time_short}"
+    return f"{prefix} {body}" if prefix else body
+
+
 def resolve_trade_time_from_tickflow_row(row: dict) -> str:
     raw = row.get("trade_time")
     if not is_missing_time_value(raw):

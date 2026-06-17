@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.data.bar_health import (
     BarHealthStatus,
     format_meta_datetime,
@@ -150,7 +151,7 @@ class TableController:
         page = self._p
         if not page.config.column_configurable:
             return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings = get_settings()
         settings.setValue(
             self.column_settings_key(),
             ",".join(self.visible_columns) + "|" + ",".join(self.visible_tail_columns),
@@ -160,7 +161,7 @@ class TableController:
         page = self._p
         if not page.config.column_configurable:
             return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings = get_settings()
         value = settings.value(self.column_settings_key())
         if not isinstance(value, str):
             return

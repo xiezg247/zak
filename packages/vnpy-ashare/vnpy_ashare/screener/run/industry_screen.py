@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.run.export import resolve_export_columns
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
-
-_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 
 def _quote_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -56,7 +53,7 @@ def run_industry_screen(
     sorted_rows = sorted(filtered, key=lambda row: float(row.get("change_pct") or 0), reverse=True)
     top_n = max(1, min(int(top_n or 50), 200))
     rows = [_quote_row(row) for row in sorted_rows[:top_n]]
-    updated_at = datetime.now(_SHANGHAI_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    updated_at = format_china_datetime()
     return ScreenerRunResult(
         rows=rows,
         condition=f"{label} 成分",

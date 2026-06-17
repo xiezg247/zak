@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS, quote_table_headers
 
 MAX_DISPLAY_ROWS = 300
@@ -53,18 +54,14 @@ def _coerce_settings_int(value: object, *, default: int) -> int:
 
 
 def load_radar_card_refresh_ms(card_id: str, default_ms: int | None) -> int:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     key = f"{RADAR_CARD_REFRESH_SETTINGS_PREFIX}/{card_id}"
     fallback = int(default_ms or 0)
     return _coerce_settings_int(settings.value(key), default=fallback)
 
 
 def save_radar_card_refresh_ms(card_id: str, ms: int) -> None:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     key = f"{RADAR_CARD_REFRESH_SETTINGS_PREFIX}/{card_id}"
     settings.setValue(key, int(ms))
 
@@ -78,9 +75,7 @@ def _coerce_settings_bool(value: object, *, default: bool) -> bool:
 
 
 def load_market_auto_refresh_pref() -> bool:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     return _coerce_settings_bool(
         settings.value(MARKET_AUTO_REFRESH_SETTINGS_KEY),
         default=MARKET_AUTO_REFRESH_DEFAULT,
@@ -88,9 +83,7 @@ def load_market_auto_refresh_pref() -> bool:
 
 
 def save_market_auto_refresh_pref(enabled: bool) -> None:
-    from vnpy.trader.ui import QtCore
-
-    settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+    settings = get_settings()
     settings.setValue(MARKET_AUTO_REFRESH_SETTINGS_KEY, enabled)
 
 

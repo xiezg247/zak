@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Literal
-from zoneinfo import ZoneInfo
 
+from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.quotes.core.cache_ttl import TtlCache
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 
 EmotionStage = Literal["ice", "startup", "climax", "divergence", "recession"]
 EmotionMode = Literal["limit_board", "halfway", "pullback"]
-
-_SHANGHAI = ZoneInfo("Asia/Shanghai")
 
 _STAGE_LABELS: dict[EmotionStage, str] = {
     "ice": "冰点",
@@ -49,32 +46,6 @@ _MODE_LABELS: dict[EmotionMode, str] = {
 _AMOUNT_FLOOR = 1e12
 _FEAR_GREED_OVERHEAT = 85.0
 _CACHE_TTL_SEC = 30.0
-
-_cached_snapshot: EmotionCycleSnapshot | None = None
-_cached_at: float = 0.0
-
-
-def peek_emotion_cycle_snapshot(*, max_age_sec: float = _CACHE_TTL_SEC) -> EmotionCycleSnapshot | None:
-    """读取内存缓存，不触发任何 I/O。"""
-    if _cached_snapshot is None:
-        return None
-    if time.monotonic() - _cached_at > max_age_sec:
-        return None
-    return _cached_snapshot
-
-
-def store_emotion_cycle_snapshot(snapshot: EmotionCycleSnapshot | None) -> None:
-    """写入内存缓存（市场页 Worker / 控制器刷新后调用）。"""
-    global _cached_snapshot, _cached_at
-    _cached_snapshot = snapshot
-    _cached_at = time.monotonic()
-
-
-def invalidate_emotion_cycle_cache() -> None:
-    """行情缓存更新时丢弃情绪快照，避免与旧广度不一致。"""
-    global _cached_snapshot, _cached_at
-    _cached_snapshot = None
-    _cached_at = 0.0
 
 
 @dataclass(frozen=True)
@@ -118,6 +89,24 @@ class EmotionCycleSnapshot:
         }
 
 
+_emotion_cache: TtlCache[EmotionCycleSnapshot] = TtlCache()
+
+
+def peek_emotion_cycle_snapshot(*, max_age_sec: float = _CACHE_TTL_SEC) -> EmotionCycleSnapshot | None:
+    """读取内存缓存，不触发任何 I/O。"""
+    return _emotion_cache.peek(max_age_sec=max_age_sec)
+
+
+def store_emotion_cycle_snapshot(snapshot: EmotionCycleSnapshot | None) -> None:
+    """写入内存缓存（市场页 Worker / 控制器刷新后调用）。"""
+    _emotion_cache.store(snapshot)
+
+
+def invalidate_emotion_cycle_cache() -> None:
+    """行情缓存更新时丢弃情绪快照，避免与旧广度不一致。"""
+    _emotion_cache.invalidate()
+
+
 def format_mode_label(mode: str) -> str:
     if mode == "limit_board":
         return _MODE_LABELS["limit_board"]
@@ -129,7 +118,7 @@ def format_mode_label(mode: str) -> str:
 
 
 def _now_text() -> str:
-    return datetime.now(_SHANGHAI).strftime("%Y-%m-%d %H:%M:%S")
+    return format_china_datetime()
 
 
 def _classify_stage(inputs: EmotionCycleInputs) -> EmotionStage:
@@ -203,7 +192,7 @@ def load_emotion_cycle_snapshot(
         if peeked is not None:
             return peeked
 
-        from vnpy_ashare.ai.context.store import get_market_quotes_cache
+        from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
         from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
         from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 

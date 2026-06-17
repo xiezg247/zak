@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from vnpy_ashare.domain.format import coerce_float
 from vnpy_ashare.storage.connection import connect
 
 
@@ -26,15 +27,6 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def _float_or_none(value: Any) -> float | None:
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
 def upsert_valuation_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
     if not rows:
         return 0
@@ -43,12 +35,12 @@ def upsert_valuation_rows(ts_code: str, rows: list[dict[str, Any]]) -> int:
         (
             ts_code,
             str(row.get("trade_date", "")),
-            _float_or_none(row.get("close")),
-            _float_or_none(row.get("pe_ttm")),
-            _float_or_none(row.get("pb")),
-            _float_or_none(row.get("total_mv")),
-            _float_or_none(row.get("circ_mv")),
-            _float_or_none(row.get("turnover_rate")),
+            coerce_float(row.get("close")),
+            coerce_float(row.get("pe_ttm")),
+            coerce_float(row.get("pb")),
+            coerce_float(row.get("total_mv")),
+            coerce_float(row.get("circ_mv")),
+            coerce_float(row.get("turnover_rate")),
             fetched_at,
         )
         for row in rows

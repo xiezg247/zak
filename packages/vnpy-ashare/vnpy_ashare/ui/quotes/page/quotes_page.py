@@ -17,6 +17,7 @@ from vnpy_ashare.app.engine_access import (
     get_quote_service,
     get_watchlist_service,
 )
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences import (
     WatchlistPositionConfig,
     load_watchlist_position_config,
@@ -415,13 +416,13 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
     def _save_splitter(self) -> None:
         if self._splitter is None:
             return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings = get_settings()
         settings.setValue(self._splitter_settings_key(), self._splitter.saveState())
 
     def _restore_splitter(self) -> None:
         if self._splitter is None:
             return
-        settings = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+        settings = get_settings()
         state = settings.value(self._splitter_settings_key())
         if state is not None:
             self._splitter.restoreState(state)

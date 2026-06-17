@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, time
-from zoneinfo import ZoneInfo
+from datetime import time
 
 from vnpy_ashare.domain.calendar import is_trading_day
+from vnpy_ashare.domain.datetime import china_now
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.quotes.radar.predict.model_paths import (
     lightgbm_available,
@@ -15,13 +15,12 @@ from vnpy_ashare.quotes.radar.predict.model_paths import (
 from vnpy_ashare.quotes.radar.predict.predict_scan import run_predict_scan
 from vnpy_ashare.quotes.radar.predict.train_ranker import run_train_radar_ranker
 
-_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 _DEFAULT_MAX_AGE_DAYS = 30
 
 
 def run_radar_predict_train_job(*, force: bool = False, max_age_days: int = _DEFAULT_MAX_AGE_DAYS) -> JobResult:
     """盘后按需重训 LightGBM，并刷新预测卡缓存。"""
-    now = datetime.now(_SHANGHAI_TZ)
+    now = china_now()
     if not force:
         if not is_trading_day(now.date()):
             return JobResult(success=True, skipped=True, message="非交易日，已跳过")

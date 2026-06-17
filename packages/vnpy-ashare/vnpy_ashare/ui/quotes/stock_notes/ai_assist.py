@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.ai.context.quote.format import format_quote_snapshot_line
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_llm.chat.client import LlmClientError, complete_chat_completion
 from vnpy_llm.config.settings import LlmConfig
 
@@ -64,12 +64,6 @@ def build_quote_snapshot_line(page: QuotesPage, item: StockItem) -> str:
     if quote is None:
         return ""
     return format_quote_snapshot_line(quote)
-
-
-def format_quote_snapshot_line(quote: QuoteSnapshot) -> str:
-    if (quote.last_price or 0) <= 0:
-        return ""
-    return f"现价 {quote.last_price:.2f}，涨跌 {quote.change_pct:+.2f}%"
 
 
 def build_quote_snapshot_for_item(item: StockItem) -> str:

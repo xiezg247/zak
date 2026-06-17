@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from datetime import datetime
+from vnpy_ashare.domain.datetime import format_china_datetime
 from typing import Any
 
 from vnpy.trader.constant import Exchange
@@ -165,7 +165,7 @@ def run_pattern_screen_mcp(
     return ScreenerRunResult(
         rows=rows,
         condition=f"形态 · {label}",
-        updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        updated_at=format_china_datetime(),
         total_scanned=total_scanned,
         source="mcp",
         columns=resolve_export_columns(rows),

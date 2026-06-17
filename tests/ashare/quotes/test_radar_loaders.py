@@ -139,7 +139,7 @@ def test_merge_row_quotes_fills_from_cache(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
 
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.get_market_quotes_cache",
+        "vnpy_ashare.quotes.core.quote_rows.get_market_quotes_cache",
         lambda: [{"vt_symbol": "600000.SSE", "amount": 99_000_000, "volume": 12345}],
     )
     merged = merge_row_quotes({"vt_symbol": "600000.SSE", "volume": 0})

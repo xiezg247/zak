@@ -9,7 +9,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, cast
-from zoneinfo import ZoneInfo
 
 from apscheduler.events import EVENT_JOB_MAX_INSTANCES
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -17,6 +16,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from vnpy_ashare.domain.datetime import china_now, format_china_datetime
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs import (
     batch_download_universe_daily_bars,
@@ -53,7 +53,6 @@ _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5
 
 logger = logging.getLogger(__name__)
-_SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 _MAX_RUN_LOG = 200
 _MAX_RUN_DETAIL_LINES = 400
 
@@ -365,7 +364,7 @@ class TaskSchedulerManager:
         return max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)
 
     def _run_collect_quotes(self, *, force: bool = False) -> JobResult:
-        now = datetime.now(_SHANGHAI_TZ)
+        now = china_now()
         if not force and not is_ashare_trading_session(now):
             nxt = next_quotes_collect_at(
                 now,
@@ -404,7 +403,7 @@ class TaskSchedulerManager:
         return result
 
     def _next_collect_quotes_run_at(self, *, prefer_immediate: bool = False) -> datetime:
-        now = datetime.now(_SHANGHAI_TZ)
+        now = china_now()
         if prefer_immediate and is_ashare_trading_session(now):
             return now
         return next_quotes_collect_at(
@@ -498,7 +497,7 @@ class TaskSchedulerManager:
             if self._scheduler.running:
                 job = self._scheduler.get_job(job_id)
                 if job and job.next_run_time:
-                    next_run = job.next_run_time.strftime("%Y-%m-%d %H:%M:%S")
+                    next_run = format_china_datetime(job.next_run_time)
 
             last_run_at, last_message, last_success = self._resolve_last_run_fields(job_id)
             self._status[job_id] = JobStatus(
@@ -632,7 +631,7 @@ class TaskSchedulerManager:
         self._notify(record.job_id)
 
     def _begin_run_log(self, job_id: str, meta: _JobMeta) -> JobRunRecord:
-        started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        started_at = format_china_datetime()
         record = JobRunRecord(
             started_at=started_at,
             finished_at=started_at,
@@ -656,7 +655,7 @@ class TaskSchedulerManager:
         success: bool,
         skipped: bool,
     ) -> None:
-        finished_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        finished_at = format_china_datetime()
         record.running = False
         record.finished_at = finished_at
         record.message = message

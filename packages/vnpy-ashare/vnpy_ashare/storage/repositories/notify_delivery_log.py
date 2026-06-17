@@ -5,12 +5,9 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
+from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.storage.connection import connect, init_app_db
-
-_SHANGHAI = ZoneInfo("Asia/Shanghai")
 _MAX_ROWS = 500
 
 
@@ -35,7 +32,7 @@ def append_notify_delivery_log(
 ) -> str:
     init_app_db()
     record_id = uuid.uuid4().hex
-    created_at = datetime.now(_SHANGHAI).strftime("%Y-%m-%d %H:%M:%S")
+    created_at = format_china_datetime()
     payload_json = json.dumps(payload or {}, ensure_ascii=False)
     with connect() as conn:
         conn.execute(

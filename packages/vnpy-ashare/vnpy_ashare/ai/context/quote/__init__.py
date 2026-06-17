@@ -28,7 +28,7 @@ from vnpy_ashare.ai.context.quote.assembly import (
     resolve_selected_stock_binding,
     resolve_vt_symbol,
 )
-from vnpy_ashare.ai.context.quote.format import format_quote_summary
+from vnpy_ashare.ai.context.quote.format import format_quote_snapshot_line, format_quote_summary
 from vnpy_ashare.ai.context.quote.prompts import (
     build_add_watchlist_prompt,
     build_bar_health_prompt,
@@ -87,6 +87,7 @@ __all__ = [
     "build_trend_ai_prompt",
     "build_trend_forecast_menu",
     "build_trend_scenario_ai_prompt",
+    "format_quote_snapshot_line",
     "format_quote_summary",
     "is_symbol_in_positions",
     "is_symbol_in_watchlist",

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore
+from vnpy_ashare.config.preferences._settings import get_settings
 
-_SETTINGS = QtCore.QSettings("vnpy_ashare", "ZakTerminal")
+_SETTINGS = get_settings()
 _KEY_PREFIX = "quotes/radar/resonance_weight/"
 
 DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {

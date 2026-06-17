@@ -5,6 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from vnpy_ashare.config import exchange_to_cn
+from vnpy_ashare.domain.format import (
+    format_amount,
+    format_net_mf_amount,
+    format_volume,
+)
 from vnpy_ashare.domain.quote_time import format_trade_time_display
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
@@ -101,32 +106,6 @@ def quote_table_headers(
     if tail_header is not None:
         return base + [tail_header]
     return base
-
-
-def format_volume(volume: float) -> str:
-    if volume <= 0:
-        return "—"
-    if volume >= 1e8:
-        return f"{volume / 1e8:.2f}亿"
-    if volume >= 1e4:
-        return f"{volume / 1e4:.2f}万"
-    return f"{volume:.0f}"
-
-
-def format_amount(amount: float) -> str:
-    if amount <= 0:
-        return "—"
-    if amount >= 1e8:
-        return f"{amount / 1e8:.2f}亿"
-    if amount >= 1e4:
-        return f"{amount / 1e4:.2f}万"
-    return f"{amount:.2f}"
-
-
-def format_net_mf_amount(amount: float) -> str:
-    if amount == 0:
-        return "—"
-    return f"{amount:,.0f}万"
 
 
 def format_limit_times(boards: float) -> str:

@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-import os
-
-DEFAULT_METRIC_SCORE_BLEND = 0.5
+from vnpy_ashare.config.constants.recipe import (
+    DEFAULT_METRIC_SCORE_BLEND,
+    ENV_METRIC_SCORE_BLEND,
+)
+from vnpy_ashare.domain.env import env_or_prefs_float
+from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
 
 def metric_score_blend() -> float:
-    raw = os.getenv("RECIPE_METRIC_SCORE_BLEND", "").strip()
-    if raw:
-        try:
-            value = float(raw)
-        except ValueError:
-            return DEFAULT_METRIC_SCORE_BLEND
-        return max(0.0, min(1.0, value))
-    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
-
-    return load_recipe_tuning_prefs().metric_score_blend
+    return env_or_prefs_float(
+        ENV_METRIC_SCORE_BLEND,
+        default=DEFAULT_METRIC_SCORE_BLEND,
+        prefs=lambda: load_recipe_tuning_prefs().metric_score_blend,
+        clamp=(0.0, 1.0),
+    )
 
 
 def rank_score(rank: int, total: int) -> float:

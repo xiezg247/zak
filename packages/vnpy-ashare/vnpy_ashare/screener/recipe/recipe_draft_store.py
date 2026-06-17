@@ -5,9 +5,10 @@ from __future__ import annotations
 import threading
 import uuid
 from dataclasses import dataclass, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Literal
 
+from vnpy_ashare.domain.datetime import china_now, format_china_datetime
 from vnpy_ashare.screener.recipe.recipe import TriggerKind
 
 DraftStatus = Literal["pending", "confirmed", "cancelled", "expired"]
@@ -37,11 +38,11 @@ class RecipeDraft:
 
 
 def _now() -> datetime:
-    return datetime.now()
+    return china_now()
 
 
 def _fmt(dt: datetime) -> str:
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return format_china_datetime(dt)
 
 
 def create_draft_id() -> str:

@@ -5,13 +5,34 @@
 
 from __future__ import annotations
 
-import os
 from datetime import date, datetime
 from typing import Any
 
-DEFAULT_MIN_AMOUNT_YUAN = 30_000_000.0  # 3000 万元
-# Tushare daily_basic.total_mv 单位为万元；50 亿 = 500000 万元
-DEFAULT_MIN_TOTAL_MV_WAN = 500_000.0
+from vnpy_ashare.config.constants.recipe import (
+    DEFAULT_MIN_AMOUNT_YUAN,
+    DEFAULT_MIN_LISTING_DAYS,
+    DEFAULT_MIN_TOTAL_MV_WAN,
+    ENV_ALLOWED_INDUSTRIES,
+    ENV_ALLOWED_MARKET_BOARDS,
+    ENV_EXCLUDE_LIMIT_BOARD,
+    ENV_EXCLUDE_NEW_LISTING,
+    ENV_EXCLUDE_ST,
+    ENV_EXCLUDE_SUSPENDED,
+    ENV_MIN_AMOUNT_YUAN,
+    ENV_MIN_LISTING_DAYS,
+    ENV_MIN_TOTAL_MV_WAN,
+)
+from vnpy_ashare.domain.env import (
+    env_or_prefs_bool,
+    env_or_prefs_nonneg_float,
+    env_or_prefs_nonneg_int,
+    env_or_prefs_str,
+)
+from vnpy_ashare.screener.hard_filter_prefs import (
+    load_hard_filter_prefs,
+    parse_allowed_industries,
+    parse_allowed_market_boards,
+)
 
 _suspend_keys_cache: tuple[date, frozenset[tuple[str, str]]] | None = None
 _list_date_map_cache: tuple[date, dict[str, str]] | None = None
@@ -20,96 +41,52 @@ _industry_map_cache: tuple[date, dict[str, str]] | None = None
 
 
 def recipe_min_amount_yuan() -> float:
-    raw = os.getenv("RECIPE_MIN_AMOUNT_YUAN", "").strip()
-    if raw:
-        try:
-            return max(0.0, float(raw))
-        except ValueError:
-            return DEFAULT_MIN_AMOUNT_YUAN
-    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-    return load_hard_filter_prefs().min_amount_yuan
+    return env_or_prefs_nonneg_float(
+        ENV_MIN_AMOUNT_YUAN,
+        default=DEFAULT_MIN_AMOUNT_YUAN,
+        prefs=lambda: load_hard_filter_prefs().min_amount_yuan,
+    )
 
 
 def recipe_exclude_st_enabled() -> bool:
-    raw = os.getenv("RECIPE_EXCLUDE_ST", "").strip()
-    if raw:
-        return raw.lower() not in ("0", "false", "no")
-    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-    return load_hard_filter_prefs().exclude_st
+    return env_or_prefs_bool(ENV_EXCLUDE_ST, prefs=lambda: load_hard_filter_prefs().exclude_st)
 
 
 def recipe_exclude_suspended_enabled() -> bool:
-    raw = os.getenv("RECIPE_EXCLUDE_SUSPENDED", "").strip()
-    if raw:
-        return raw.lower() not in ("0", "false", "no")
-    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-    return load_hard_filter_prefs().exclude_suspended
+    return env_or_prefs_bool(ENV_EXCLUDE_SUSPENDED, prefs=lambda: load_hard_filter_prefs().exclude_suspended)
 
 
 def recipe_min_total_mv_wan() -> float:
-    raw = os.getenv("RECIPE_MIN_TOTAL_MV_WAN", "").strip()
-    if raw:
-        try:
-            return max(0.0, float(raw))
-        except ValueError:
-            return DEFAULT_MIN_TOTAL_MV_WAN
-    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-    return load_hard_filter_prefs().min_total_mv_wan
+    return env_or_prefs_nonneg_float(
+        ENV_MIN_TOTAL_MV_WAN,
+        default=DEFAULT_MIN_TOTAL_MV_WAN,
+        prefs=lambda: load_hard_filter_prefs().min_total_mv_wan,
+    )
 
 
 def recipe_exclude_new_listing_enabled() -> bool:
-    raw = os.getenv("RECIPE_EXCLUDE_NEW_LISTING", "").strip()
-    if raw:
-        return raw.lower() not in ("0", "false", "no")
-    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-    return load_hard_filter_prefs().exclude_new_listing
+    return env_or_prefs_bool(ENV_EXCLUDE_NEW_LISTING, prefs=lambda: load_hard_filter_prefs().exclude_new_listing)
 
 
 def recipe_min_listing_days() -> int:
-    raw = os.getenv("RECIPE_MIN_LISTING_DAYS", "").strip()
-    if raw:
-        try:
-            return max(0, int(raw))
-        except ValueError:
-            return 60
-    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-    return load_hard_filter_prefs().min_listing_days
+    return env_or_prefs_nonneg_int(
+        ENV_MIN_LISTING_DAYS,
+        default=DEFAULT_MIN_LISTING_DAYS,
+        prefs=lambda: load_hard_filter_prefs().min_listing_days,
+    )
 
 
 def recipe_exclude_limit_board_enabled() -> bool:
-    raw = os.getenv("RECIPE_EXCLUDE_LIMIT_BOARD", "").strip()
-    if raw:
-        return raw.lower() not in ("0", "false", "no")
-    from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-    return load_hard_filter_prefs().exclude_limit_board
+    return env_or_prefs_bool(ENV_EXCLUDE_LIMIT_BOARD, prefs=lambda: load_hard_filter_prefs().exclude_limit_board)
 
 
 def recipe_allowed_industries() -> frozenset[str]:
-    raw = os.getenv("RECIPE_ALLOWED_INDUSTRIES", "").strip()
-    if not raw:
-        from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-        raw = load_hard_filter_prefs().allowed_industries
-    from vnpy_ashare.screener.hard_filter_prefs import parse_allowed_industries
-
+    raw = env_or_prefs_str(ENV_ALLOWED_INDUSTRIES, prefs=lambda: load_hard_filter_prefs().allowed_industries)
     return parse_allowed_industries(raw)
 
 
 def recipe_allowed_market_boards() -> frozenset[str]:
-    raw = os.getenv("RECIPE_ALLOWED_MARKET_BOARDS", "").strip()
-    if not raw:
-        from vnpy_ashare.screener.hard_filter_prefs import load_hard_filter_prefs
-
-        raw = load_hard_filter_prefs().allowed_market_boards
-    from vnpy_ashare.screener.hard_filter_prefs import parse_allowed_market_boards
-
+    raw = env_or_prefs_str(ENV_ALLOWED_MARKET_BOARDS, prefs=lambda: load_hard_filter_prefs().allowed_market_boards)
     return parse_allowed_market_boards(raw)
 
 
