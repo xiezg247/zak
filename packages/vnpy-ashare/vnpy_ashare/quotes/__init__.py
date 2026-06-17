@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.domain.market.indices import MARKET_INDICES
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 from vnpy_ashare.quotes.core.provider import (
     QuoteProviderError,
@@ -14,7 +15,6 @@ from vnpy_ashare.quotes.core.provider import (
     quote_snapshot_from_row,
     resolve_quote_snapshot,
 )
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 __all__ = [
     "MARKET_INDICES",

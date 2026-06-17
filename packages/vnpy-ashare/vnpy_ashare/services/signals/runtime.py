@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import (
     INTRADAY_ANCHOR_MIN_DELTA,
     INTRADAY_CROSS_NEAR_PCT,
@@ -21,7 +22,6 @@ from vnpy_ashare.domain.trading.signal_snapshot import (
     signal_missing_kline,
     signal_sort_key,
 )
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 
 def structure_broken(

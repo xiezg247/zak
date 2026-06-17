@@ -3,8 +3,8 @@
 from datetime import datetime
 from unittest.mock import patch
 
-from vnpy_ashare.domain.time.market_hours import CHINA_TZ, INTRADAY_SESSION_MINUTES, elapsed_trading_minutes
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ, INTRADAY_SESSION_MINUTES, elapsed_trading_minutes
 from vnpy_ashare.quotes.misc.volume_ratio import compute_intraday_volume_ratio, fill_intraday_volume_ratios
 
 

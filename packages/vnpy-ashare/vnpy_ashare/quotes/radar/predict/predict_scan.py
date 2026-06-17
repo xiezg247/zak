@@ -40,7 +40,7 @@ def _quote_rows_for_prefilter(prefilter: list[str]) -> list[dict[str, Any]]:
     except MarketQuotesLoadError:
         return []
     wanted = set(prefilter)
-    return [dict(row) for row in snapshot.rows if str(row.get("vt_symbol") or "").strip() in wanted]
+    return [row.to_dict() for row in snapshot.rows if str(row.get("vt_symbol") or "").strip() in wanted]
 
 
 def _baseline_to_hit(hit: BaselinePredictHit) -> PredictHit:

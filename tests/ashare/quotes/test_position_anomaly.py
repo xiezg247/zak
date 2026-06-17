@@ -6,8 +6,8 @@ import unittest
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.quotes.misc.position_anomaly import (
     format_anomaly_tags,
     is_position_anomaly,

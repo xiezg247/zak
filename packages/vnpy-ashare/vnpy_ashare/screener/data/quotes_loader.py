@@ -6,9 +6,9 @@ from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_from_stock_and_snapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 
 class MarketQuotesLoadError(RuntimeError):

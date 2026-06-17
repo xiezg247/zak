@@ -6,9 +6,8 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow
-
 from strategies.ultra_short_signals import calc_limit_price
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
@@ -133,7 +132,7 @@ def build_first_time_map(
 
 
 def attach_first_time_fields(
-    rows: Sequence[QuoteRow | MutableMapping[str, Any]],
+    rows: Sequence[QuoteRow | dict[str, Any]],
     *,
     max_intraday_fetch: int = 0,
 ) -> None:

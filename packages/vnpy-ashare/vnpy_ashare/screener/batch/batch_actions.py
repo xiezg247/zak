@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from typing import Any
@@ -26,6 +26,7 @@ from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
 from vnpy_ashare.domain.base import FrozenModel, MutableModel
+from vnpy_ashare.domain.screener.result_row import ScreeningRowLike
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.jobs.core.result import JobResult
@@ -69,7 +70,10 @@ class BatchBacktestRow(MutableModel):
         }
 
 
-def rows_to_stock_items(rows: list[dict[str, Any]]) -> list[StockItem]:
+ScreeningRow = ScreeningRowLike
+
+
+def rows_to_stock_items(rows: Sequence[ScreeningRowLike]) -> list[StockItem]:
     """选股结果行 → 去重 StockItem 列表。"""
     items: list[StockItem] = []
     seen: set[tuple[str, Exchange]] = set()
@@ -88,7 +92,7 @@ def rows_to_stock_items(rows: list[dict[str, Any]]) -> list[StockItem]:
 
 
 def batch_download_daily_bars(
-    rows: list[dict[str, Any]],
+    rows: Sequence[ScreeningRowLike],
     *,
     start: datetime | None = None,
     end: datetime | None = None,
@@ -182,7 +186,7 @@ def _ensure_backtest_app(main_engine) -> None:
 
 def run_batch_backtests(
     main_engine,
-    rows: list[dict[str, Any]],
+    rows: Sequence[ScreeningRowLike],
     params: BatchBacktestParams,
 ) -> list[BatchBacktestRow]:
     """批量回测：统一走独立 BacktestingEngine（多标的时进程池并行）。"""

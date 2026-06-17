@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pydantic import ConfigDict, Field
@@ -56,6 +56,15 @@ class ScreenerResultRow(FrozenModel):
             return self.tags[key]
         return default
 
+    def __getitem__(self, key: str) -> Any:
+        payload = self.to_dict()
+        if key not in payload:
+            raise KeyError(key)
+        return payload[key]
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.to_dict()
+
     def to_dict(self) -> dict[str, Any]:
         payload = self.quote.to_dict()
         payload.update(self.scores)
@@ -91,3 +100,21 @@ def screener_rows_from_mappings(rows: list[Mapping[str, Any]]) -> list[ScreenerR
 
 def screener_rows_to_dicts(rows: list[ScreenerResultRow]) -> list[dict[str, Any]]:
     return [row.to_dict() for row in rows]
+
+
+def coerce_screener_result_row(row: ScreenerResultRow | QuoteRow | Mapping[str, Any]) -> ScreenerResultRow:
+    if isinstance(row, ScreenerResultRow):
+        return row
+    if isinstance(row, QuoteRow):
+        return ScreenerResultRow.from_quote_row(row)
+    return ScreenerResultRow.from_mapping(row)
+
+
+def coerce_screener_result_rows(
+    rows: Sequence[ScreenerResultRow | QuoteRow | Mapping[str, Any]],
+) -> list[ScreenerResultRow]:
+    return [coerce_screener_result_row(row) for row in rows]
+
+
+# 选股结果行边界类型（结构化行或 plain mapping）
+ScreeningRowLike = ScreenerResultRow | Mapping[str, Any]

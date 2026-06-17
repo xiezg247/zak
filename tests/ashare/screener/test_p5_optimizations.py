@@ -19,7 +19,7 @@ from vnpy_ashare.screener.dimensions.moneyflow_resolve import _moneyflow_score_a
 from vnpy_ashare.screener.dimensions.volume_ratio import _volume_ratio_tier_factor
 from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, PRESET_CONSERVATIVE, hard_filter_preset
 from vnpy_ashare.screener.hard_filters import is_at_limit_board, is_new_listing
-from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_snapshot_prefilter
+from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter
 
 
 def _bars(closes: list[float]) -> list[BarData]:
@@ -91,12 +91,12 @@ def test_conservative_hard_filter_preset() -> None:
 def test_sentiment_snapshot_prefilter_caps_high_momentum() -> None:
     rows = [{"change_pct": 12.0}, {"change_pct": 3.0}]
     with (
-        patch("vnpy_ashare.screener.sentiment.sentiment_gate.sentiment_gate_enabled", return_value=True),
+        patch("vnpy_ashare.screener.sentiment.snapshot_prefilter.sentiment_gate_enabled", return_value=True),
         patch(
-            "vnpy_ashare.screener.sentiment.sentiment_gate.try_fetch_fear_greed_index",
+            "vnpy_ashare.screener.sentiment.snapshot_prefilter.try_fetch_fear_greed_index",
             return_value=type("Snap", (), {"index": 20.0})(),
         ),
-        patch("vnpy_ashare.screener.dimensions.momentum._momentum_change_bounds", return_value=(0.5, 9.5)),
+        patch("vnpy_ashare.screener.sentiment.snapshot_prefilter.momentum_change_bounds", return_value=(0.5, 9.5)),
     ):
         filtered = apply_sentiment_snapshot_prefilter(rows)
     assert len(filtered) == 1
@@ -104,7 +104,19 @@ def test_sentiment_snapshot_prefilter_caps_high_momentum() -> None:
 
 
 def test_outlook_cross_ref_includes_resonance() -> None:
-    rows = (RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),)
+    rows = (
+        RadarRow(
+            vt_symbol="600000.SSE",
+            name="浦发",
+            symbol="600000",
+            price=10.0,
+            change_pct=1.0,
+            metric_label="买入",
+            metric_value="70",
+            sub_label="事件",
+            sub_value="—",
+        ),
+    )
     with (
         patch("vnpy_ashare.quotes.radar.radar_cross_refs.latest_recipe_vt_symbols", return_value=set()),
         patch(

@@ -6,9 +6,9 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 from vnpy_ashare.domain.market.indices import MARKET_INDICES
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.quote_time import resolve_trade_time_from_tickflow_row
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_tickflow.client import get_tickflow_client
 
 QUOTE_BATCH_SIZE = 80

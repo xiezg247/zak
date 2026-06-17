@@ -18,6 +18,17 @@ def test_rows_to_stock_items_deduplicates():
     assert items[1].symbol == "000001"
 
 
+def test_rows_to_stock_items_accepts_screener_result_row():
+    from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
+
+    rows = [
+        ScreenerResultRow.from_mapping({"vt_symbol": "600519.SSE", "name": "贵州茅台"}),
+    ]
+    items = rows_to_stock_items(rows)
+    assert len(items) == 1
+    assert items[0].symbol == "600519"
+
+
 def test_watchlist_items_to_rows():
     rows = watchlist_items_to_rows(
         [

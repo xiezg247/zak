@@ -135,16 +135,19 @@ def test_liquidity_metric_prefers_amount_when_volume_missing() -> None:
     assert sub_label == "涨幅"
 
 
-def test_merge_row_quotes_fills_from_cache(monkeypatch) -> None:
+def test_merge_row_quotes_fills_from_cache() -> None:
+    from vnpy_ashare.domain.market.quote_row import QuoteRow
+    from vnpy_ashare.quotes.core.quote_rows import clear_market_quote_rows_cache, set_market_quote_rows_cache
     from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
 
-    monkeypatch.setattr(
-        "vnpy_ashare.quotes.core.quote_rows.get_market_quotes_cache",
-        lambda: [{"vt_symbol": "600000.SSE", "amount": 99_000_000, "volume": 12345}],
-    )
-    merged = merge_row_quotes({"vt_symbol": "600000.SSE", "volume": 0})
-    assert merged["amount"] == 99_000_000
-    assert merged["volume"] == 12345
+    clear_market_quote_rows_cache()
+    try:
+        set_market_quote_rows_cache([QuoteRow(vt_symbol="600000.SSE", amount=99_000_000, volume=12345)])
+        merged = merge_row_quotes({"vt_symbol": "600000.SSE", "volume": 0})
+        assert merged["amount"] == 99_000_000
+        assert merged["volume"] == 12345
+    finally:
+        clear_market_quote_rows_cache()
 
 
 def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:

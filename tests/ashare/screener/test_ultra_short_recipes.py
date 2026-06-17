@@ -16,7 +16,7 @@ from vnpy_ashare.screener.recipe.recipe import (
     RECIPE_ULTRA_SHORT_LIMIT,
     list_recipe_catalog,
 )
-from vnpy_ashare.screener.sentiment.sentiment_gate import apply_emotion_gate_only_finalize
+from vnpy_ashare.screener.sentiment.emotion_gate import apply_emotion_gate_only_finalize
 
 
 class UltraShortRecipeTest(unittest.TestCase):
@@ -56,7 +56,7 @@ class UltraShortRecipeTest(unittest.TestCase):
 
         rows = [{"vt_symbol": "600000.SSE", "composite_score": 80.0, "hit_reason": "动量"}]
         cycle = MagicMock(stage="ice", stage_label="冰点", allow_new_positions=False)
-        with patch("vnpy_ashare.screener.sentiment.sentiment_gate.try_load_emotion_cycle_snapshot", return_value=cycle):
+        with patch("vnpy_ashare.screener.sentiment.emotion_gate.try_load_emotion_cycle_snapshot", return_value=cycle):
             result, meta = apply_emotion_gate_only_finalize(rows, top_n=3)
         self.assertEqual(result, [])
         self.assertIn("不宜新开", meta["gate_message"])
@@ -66,7 +66,7 @@ class UltraShortRecipeTest(unittest.TestCase):
 
         rows = [{"vt_symbol": f"60000{i}.SSE", "composite_score": 90 - i, "hit_reason": f"r{i}"} for i in range(5)]
         cycle = MagicMock(stage="recession", stage_label="退潮", allow_new_positions=False)
-        with patch("vnpy_ashare.screener.sentiment.sentiment_gate.try_load_emotion_cycle_snapshot", return_value=cycle):
+        with patch("vnpy_ashare.screener.sentiment.emotion_gate.try_load_emotion_cycle_snapshot", return_value=cycle):
             result, meta = apply_emotion_gate_only_finalize(rows, top_n=3)
         self.assertEqual(len(result), 3)
         self.assertIn("退潮观察", result[0]["hit_reason"])
@@ -123,7 +123,7 @@ class UltraShortRecipeTest(unittest.TestCase):
         self.assertEqual(hits[0].dimension_id, "cm20_elastic")
 
     @patch("vnpy_ashare.quotes.radar.radar_sector.run_sector_strength")
-    @patch("vnpy_ashare.quotes.radar.radar_sector.rank_sector_leaders")
+    @patch("vnpy_ashare.quotes.radar.radar_sector.rank_unified_sector_leaders")
     def test_leaders_tiered_limits_per_sector(self, mock_rank, mock_strength) -> None:
         from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow
 
@@ -132,9 +132,9 @@ class UltraShortRecipeTest(unittest.TestCase):
         row_c = {"vt_symbol": "C.SSE", "industry": "银行", "change_pct": 8.0, "amount": 8e7}
         mock_strength.return_value = ([], 500)
         mock_rank.return_value = [
-            LeaderScoredRow(row=row_a1, leader_score=90.0, leader_tier="dragon_1", limit_times=3),
-            LeaderScoredRow(row=row_a2, leader_score=80.0, leader_tier="dragon_2", limit_times=2),
-            LeaderScoredRow(row=row_c, leader_score=75.0, leader_tier="dragon_1", limit_times=2),
+            LeaderScoredRow(row=row_a1, leader_score=90.0, leader_tier="dragon_1", limit_times=3, sector_name="半导体"),
+            LeaderScoredRow(row=row_a2, leader_score=80.0, leader_tier="dragon_2", limit_times=2, sector_name="半导体"),
+            LeaderScoredRow(row=row_c, leader_score=75.0, leader_tier="dragon_1", limit_times=2, sector_name="银行"),
         ]
         rows, subtitle, total, sectors = _build_leaders_tiered_rows(8)
         symbols = [row.symbol for row in rows]

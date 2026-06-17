@@ -9,8 +9,8 @@ from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
 from vnpy_ashare.trading.journal.float_loss_hold import is_float_loss_hold
 
 if TYPE_CHECKING:
-    from vnpy_ashare.domain.trading.position import PositionSnapshot
     from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+    from vnpy_ashare.domain.trading.position import PositionSnapshot
 
 INTRADAY_DROP_PCT = -3.0
 INTRADAY_SURGE_PCT = 5.0

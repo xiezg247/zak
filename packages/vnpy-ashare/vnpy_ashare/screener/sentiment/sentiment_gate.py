@@ -33,9 +33,6 @@ def apply_sentiment_modulation(
     if not enabled or not rows:
         return rows, None
 
-    if not enabled or not rows:
-        return rows, None
-
     snapshot = try_fetch_fear_greed_index()
     meta: dict[str, Any] | None = None
     if snapshot is not None:

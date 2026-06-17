@@ -7,9 +7,9 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.integrations.tickflow import fetch_index_ticker
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot, compute_market_breadth, merge_official_limit_counts
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, load_market_environment

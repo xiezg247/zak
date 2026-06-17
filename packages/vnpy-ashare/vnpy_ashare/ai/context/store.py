@@ -25,7 +25,11 @@ from typing import Any
 from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.base import MutableModel
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, coerce_quote_rows
+from vnpy_ashare.domain.screener.result_row import (
+    ScreenerResultRow,
+    coerce_screener_result_row,
+    coerce_screener_result_rows,
+)
 from vnpy_ashare.quotes.core.quote_rows import (
     clear_market_quote_rows_cache,
 )
@@ -55,14 +59,14 @@ class ScreeningResultContext(MutableModel):
     condition: str = Field(description="选股条件描述")
     count: int = Field(description="数量")
     updated_at: str | None = Field(description="更新时间")
-    rows: list[QuoteRow] = Field(description="数据行列表")
+    rows: list[ScreenerResultRow] = Field(description="数据行列表")
 
     @field_validator("rows", mode="before")
     @classmethod
-    def _coerce_rows(cls, value: Any) -> list[QuoteRow]:
+    def _coerce_rows(cls, value: Any) -> list[ScreenerResultRow]:
         if value is None:
             return []
-        return coerce_quote_rows(value)
+        return coerce_screener_result_rows(value)
 
 
 _screening_result: ScreeningResultContext | None = None
@@ -142,12 +146,12 @@ def get_market_overview_context() -> dict[str, Any] | None:
 def set_screening_results(
     *,
     condition: str,
-    rows: Sequence[QuoteRow | Mapping[str, Any]],
+    rows: Sequence[ScreenerResultRow | Mapping[str, Any]],
     updated_at: str | None = None,
 ) -> None:
     """写入选股结果快照（ScreeningService.persist_run_result 调用）。"""
     global _screening_result
-    normalized = coerce_quote_rows(rows)
+    normalized = coerce_screener_result_rows(rows)
     with _lock:
         _screening_result = ScreeningResultContext(
             condition=condition,
@@ -167,7 +171,7 @@ def get_screening_results() -> ScreeningResultContext | None:
             condition=ctx.condition,
             count=ctx.count,
             updated_at=ctx.updated_at,
-            rows=[coerce_quote_row(row) for row in ctx.rows],
+            rows=[coerce_screener_result_row(row) for row in ctx.rows],
         )
 
 

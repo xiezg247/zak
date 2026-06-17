@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 import tests._bootstrap  # noqa: F401
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import (
     SignalSnapshot,
     detect_signal_transitions,
@@ -17,7 +18,6 @@ from vnpy_ashare.domain.trading.signal_snapshot import (
     signal_is_strong,
     signal_snapshot_to_dict,
 )
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.services.signals import (
     build_intraday_cross_hints,
     build_price_field_explanations,

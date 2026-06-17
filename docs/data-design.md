@@ -456,7 +456,7 @@ REDIS_DB=0
 | `StockItem` | `vnpy_ashare/domain/symbols/stock.py` | A 股标的统一模型（symbol, exchange, name） |
 | `QuoteSnapshot` | `vnpy_ashare/domain/market/quote_snapshot.py` | TickFlow / Redis 行情快照 |
 | `QuoteRow` | `vnpy_ashare/domain/market/quote_row.py` | 全市场行情行（选股 / 雷达 / 缓存共用） |
-| `ScreenerResultRow` | `vnpy_ashare/domain/screener/result_row.py` | 选股结果结构化行（行情 + 评分 + 标签） |
+| `ScreenerResultRow` | `vnpy_ashare/domain/screener/result_row.py` | 选股结果结构化行（`quote` + `scores` + `tags`）；`ScreenerRunResult` / `ScreeningResultContext` / 落库 `rows` 均为此类型 |
 | `DepthSnapshot` | `vnpy_ashare/domain/market/depth_snapshot.py` | 五档盘口快照（bid/ask 各 5 档） |
 | `SignalSnapshot` | `vnpy_ashare/domain/trading/signal_snapshot.py` | 策略信号快照（含强度、锚价、理由） |
 | `PeriodBarOverview` | `vnpy_ashare/data/bar_store.py` | 单标的 K 线概况（symbol, period, start, end, count） |

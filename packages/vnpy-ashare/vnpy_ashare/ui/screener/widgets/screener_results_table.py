@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.domain.screener.result_row import ScreeningRowLike
 from vnpy_ashare.quotes.market.moneyflow_kind import flow_kind_label
 from vnpy_common.ui.scroll_area import style_market_table_scroll_bars
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
+
+ScreeningTableRow = ScreeningRowLike
 
 ROW_DATA_ROLE = QtCore.Qt.ItemDataRole.UserRole
 _SORT_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -149,7 +153,7 @@ def clear_screener_results_table(table: QtWidgets.QTableWidget) -> None:
 
 def apply_screener_results_view(
     table: QtWidgets.QTableWidget,
-    rows: list[dict[str, Any]],
+    rows: Sequence[ScreeningTableRow],
     columns: list[tuple[str, str]],
     *,
     empty_label: QtWidgets.QLabel | None = None,
@@ -181,7 +185,7 @@ def apply_screener_results_view(
 
 def populate_screener_results_table(
     table: QtWidgets.QTableWidget,
-    rows: list[dict[str, Any]],
+    rows: Sequence[ScreeningTableRow],
     columns: list[tuple[str, str]],
 ) -> None:
     display_columns = _display_columns(columns)
@@ -251,6 +255,8 @@ def iter_checked_table_rows(table: QtWidgets.QTableWidget) -> list[dict[str, Any
             data = item.data(ROW_DATA_ROLE)
             if isinstance(data, dict):
                 rows.append(data)
+            elif hasattr(data, "to_dict"):
+                rows.append(data.to_dict())
     return rows
 
 

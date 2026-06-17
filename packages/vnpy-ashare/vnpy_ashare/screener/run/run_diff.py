@@ -4,19 +4,19 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_screener_result_row
 from vnpy_ashare.screener.run.run_store import find_previous_run_by_condition, find_previous_run_by_recipe
 
 DiffStatus = Literal["新增", "保留", ""]
 
 
-def symbol_set(rows: list[QuoteRow]) -> set[str]:
+def symbol_set(rows: list[ScreenerResultRow]) -> set[str]:
     return {str(row.get("vt_symbol") or "").strip() for row in rows if row.get("vt_symbol")}
 
 
 def compute_run_diff(
-    current_rows: list[QuoteRow],
-    previous_rows: list[QuoteRow],
+    current_rows: list[ScreenerResultRow],
+    previous_rows: list[ScreenerResultRow],
 ) -> dict[str, Any]:
     """对比两次结果的 vt_symbol 集合。"""
     current = symbol_set(current_rows)
@@ -37,18 +37,18 @@ def compute_run_diff(
 
 
 def enrich_recipe_run(
-    rows: list[QuoteRow],
+    rows: list[ScreenerResultRow],
     recipe_id: str,
     config: dict[str, Any],
-) -> list[QuoteRow]:
+) -> list[ScreenerResultRow]:
     """同配方对比上次 run，写入 config.run_diff 与行级 diff_status。"""
     rid = (recipe_id or "").strip()
     if not rid:
-        return [coerce_quote_row(row) for row in rows]
+        return [coerce_screener_result_row(row) for row in rows]
 
     previous = find_previous_run_by_recipe(rid)
     if previous is None:
-        return [coerce_quote_row(row) for row in rows]
+        return [coerce_screener_result_row(row) for row in rows]
     diff = compute_run_diff(rows, previous.rows)
     config["run_diff"] = {
         "previous_run_id": previous.id,
@@ -60,20 +60,20 @@ def enrich_recipe_run(
 
 
 def enrich_condition_run(
-    rows: list[QuoteRow],
+    rows: list[ScreenerResultRow],
     condition: str,
     config: dict[str, Any],
     *,
     source: str = "",
-) -> list[QuoteRow]:
+) -> list[ScreenerResultRow]:
     """同 condition 对比上次 run（雷达共振 / 行业成分等）。"""
     label = (condition or "").strip()
     if not label:
-        return [coerce_quote_row(row) for row in rows]
+        return [coerce_screener_result_row(row) for row in rows]
 
     previous = find_previous_run_by_condition(label, source=source)
     if previous is None:
-        return [coerce_quote_row(row) for row in rows]
+        return [coerce_screener_result_row(row) for row in rows]
     diff = compute_run_diff(rows, previous.rows)
     config["run_diff"] = {
         "previous_run_id": previous.id,
@@ -85,17 +85,17 @@ def enrich_condition_run(
 
 
 def annotate_rows_with_diff(
-    rows: list[QuoteRow],
+    rows: list[ScreenerResultRow],
     diff: dict[str, Any] | None,
-) -> list[QuoteRow]:
+) -> list[ScreenerResultRow]:
     """为当前结果行写入 ``diff_status``（新增/保留）。"""
     if not diff:
-        return [coerce_quote_row(row) for row in rows]
+        return [coerce_screener_result_row(row) for row in rows]
     new_set = set(diff.get("new") or [])
     stay_set = set(diff.get("stay") or [])
-    annotated: list[QuoteRow] = []
+    annotated: list[ScreenerResultRow] = []
     for row in rows:
-        normalized = coerce_quote_row(row)
+        normalized = coerce_screener_result_row(row)
         vt = str(normalized.get("vt_symbol") or "")
         if vt in new_set:
             status: DiffStatus = "新增"
@@ -103,5 +103,7 @@ def annotate_rows_with_diff(
             status = "保留"
         else:
             status = ""
-        annotated.append(normalized.model_copy(update={"diff_status": status}))
+        tags = dict(normalized.tags)
+        tags["diff_status"] = status
+        annotated.append(normalized.model_copy(update={"tags": tags}))
     return annotated

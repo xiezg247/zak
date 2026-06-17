@@ -39,6 +39,7 @@ class QuoteRow(MutableModel):
     limit_times: float = Field(default=0.0, description="连板数")
     change_speed_5m: float = Field(default=0.0, description="5 分钟涨速（%）")
     amplitude: float = Field(default=0.0, description="振幅（%）")
+    close: float = Field(default=0.0, description="收盘价（常与 last_price 相同）")
     first_time: str | None = Field(default=None, description="首次触板时间")
     seal_time_score: float | None = Field(default=None, description="封板时间得分")
 
@@ -83,7 +84,7 @@ class QuoteRow(MutableModel):
             raise KeyError(key)
         del extra[key]
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[str]:  # type: ignore[override]
         return iter(self.to_dict())
 
     def __len__(self) -> int:

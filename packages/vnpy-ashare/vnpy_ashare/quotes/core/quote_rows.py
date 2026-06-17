@@ -8,13 +8,12 @@ from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
-    coerce_quote_row,
     coerce_quote_rows,
     quote_row_from_stock_and_snapshot,
     quote_rows_by_vt,
 )
-from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.market.cache_invalidation import on_market_quotes_updated
 
 _lock = threading.Lock()

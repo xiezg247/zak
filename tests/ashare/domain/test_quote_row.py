@@ -10,9 +10,9 @@ from vnpy_ashare.domain.market.quote_row import (
     quote_row_from_mapping,
     quote_row_from_stock_and_snapshot,
 )
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache, set_market_quote_rows_cache
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields, infer_prev_close_from_row
 
 

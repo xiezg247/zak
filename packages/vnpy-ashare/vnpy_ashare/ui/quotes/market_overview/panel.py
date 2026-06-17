@@ -5,8 +5,8 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market.index_amount import IndexAmountSeries
-from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot

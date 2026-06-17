@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.domain.core.numbers import float_or_none
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
@@ -62,7 +63,7 @@ def quote_map() -> dict[str, QuoteRow]:
     return quote_rows_by_vt_symbol()
 
 
-def merge_row_quotes(row: QuoteRow | dict[str, Any]) -> dict[str, Any]:
+def merge_row_quotes(row: QuoteRow | Mapping[str, Any]) -> dict[str, Any]:
     """合并行情缓存，补全 volume / amount / 现价等字段。"""
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     merged = coerce_quote_row(row).to_dict()
@@ -90,7 +91,7 @@ def merge_row_quotes(row: QuoteRow | dict[str, Any]) -> dict[str, Any]:
 
 
 def _ingest_quote_row(
-    row: QuoteRow | dict[str, Any],
+    row: QuoteRow | Mapping[str, Any],
     *,
     by_vt: dict[str, dict[str, Any]],
     by_symbol: dict[str, dict[str, Any]],

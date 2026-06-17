@@ -15,7 +15,7 @@ from typing import Any
 from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.base import MutableModel
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_rows
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
 
@@ -43,15 +43,15 @@ class ScreenerRunRecord(MutableModel):
     row_count: int = Field(description="结果行数")
     total_scanned: int = Field(description="扫描标的总数")
     config: dict[str, Any] = Field(description="运行配置元数据")
-    rows: list[QuoteRow] = Field(description="选股结果行")
+    rows: list[ScreenerResultRow] = Field(description="选股结果行")
     created_at: str = Field(description="创建时间")
 
     @field_validator("rows", mode="before")
     @classmethod
-    def _coerce_rows(cls, value: Any) -> list[QuoteRow]:
+    def _coerce_rows(cls, value: Any) -> list[ScreenerResultRow]:
         if value is None:
             return []
-        return coerce_quote_rows(value)
+        return coerce_screener_result_rows(value)
 
 
 @contextmanager
@@ -79,14 +79,14 @@ def save_run(
     *,
     condition: str,
     source: str,
-    rows: Sequence[QuoteRow | Mapping[str, Any]],
+    rows: Sequence[ScreenerResultRow | Mapping[str, Any]],
     total_scanned: int = 0,
     config: dict[str, Any] | None = None,
 ) -> ScreenerRunRecord:
     """持久化选股结果并返回完整记录。"""
     run_id = uuid.uuid4().hex
     now = _now()
-    normalized = coerce_quote_rows(rows)
+    normalized = coerce_screener_result_rows(rows)
     payload = json.dumps([row.to_dict() for row in normalized], ensure_ascii=False)
     config_payload = json.dumps(config or {}, ensure_ascii=False)
     with _connect() as conn:
