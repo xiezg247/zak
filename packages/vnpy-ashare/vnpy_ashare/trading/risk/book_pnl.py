@@ -5,27 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from pydantic import Field
-
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.trading.risk import BookPnlSummary
 from vnpy_ashare.trading.risk.combined import compute_avg_float_pnl_pct
 from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today, today_trade_date
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.trading.position import PositionSnapshot
-
-
-class BookPnlSummary(FrozenModel):
-    total_float_pnl: float = Field(description="浮动盈亏合计")
-    position_count: int = Field(description="持仓数量")
-    total_float_pnl_pct: float | None = Field(description="浮动盈亏占比（%）")
-    avg_float_pnl_pct: float | None = Field(description="持仓平均浮盈占比（%）")
-    realized_pnl_today: float | None = Field(description="当日已实现盈亏")
-    realized_pnl_journal: float | None = Field(description="登记已实现盈亏")
-    realized_pnl_manual: float | None = Field(description="手动录入已实现盈亏")
-    combined_pnl_amount: float | None = Field(description="合计盈亏金额")
-    combined_pnl_pct: float | None = Field(description="合计盈亏占比（%）")
 
 
 def summarize_book_pnl(

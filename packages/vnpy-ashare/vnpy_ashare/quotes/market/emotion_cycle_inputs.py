@@ -2,24 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
+from vnpy_ashare.domain.market.emotion import EmotionCycleInputs
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
-from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
-
-class EmotionCycleInputs(FrozenModel):
-    limit_up_count: int = Field(description="涨停家数")
-    limit_down_count: int = Field(description="跌停家数")
-    up_ratio: float = Field(description="上涨占比（0–1）")
-    total_amount: float = Field(description="成交额合计")
-    max_limit_times: int = Field(description="最高连板数")
-    limit_ladder_depth: int = Field(description="连板梯队层数")
-    index_above_ma5: bool | None = Field(default=None, description="大盘是否在5日均线上方")
-    fear_greed_index: float | None = Field(default=None, description="恐贪指数")
-    updated_at: str | None = Field(default=None, description="数据更新时间")
+__all__ = ["EmotionCycleInputs", "build_emotion_cycle_inputs", "compute_limit_ladder_stats"]
 
 
 def compute_limit_ladder_stats(limit_times_map: dict[str, float]) -> tuple[int, int]:

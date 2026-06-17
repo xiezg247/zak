@@ -2,29 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
-from pydantic import Field
-
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.trading.risk import RiskGateSnapshot, RiskGateState
 
-RiskGateState = Literal["normal", "caution", "halt"]
+__all__ = ["RiskGateSnapshot", "RiskGateState", "build_risk_gate_snapshot", "read_total_capital"]
 
 _STATE_LABELS: dict[RiskGateState, str] = {
     "normal": "正常",
     "caution": "警戒",
     "halt": "熔断",
 }
-
-
-class RiskGateSnapshot(FrozenModel):
-    state: RiskGateState = Field(description="风控闸状态")
-    state_label: str = Field(description="风控闸状态中文标签")
-    allow_new_positions: bool = Field(description="是否允许新开仓")
-    daily_pnl_pct: float | None = Field(description="当日盈亏占比（%）")
-    avg_float_pnl_pct: float | None = Field(description="持仓平均浮盈占比（%）")
-    warnings: tuple[str, ...] = Field(description="风险提示列表")
 
 
 def read_total_capital() -> float | None:

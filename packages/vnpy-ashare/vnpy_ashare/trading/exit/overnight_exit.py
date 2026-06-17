@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
-
-from pydantic import Field
+from typing import TYPE_CHECKING
 
 from vnpy_ashare.config.preferences.trading_risk import DEFAULT_STOP_LOSS_PCT, load_trading_risk_prefs
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.trading.exit import ExitRuleHit, ExitSignal, OvernightExitEvaluation, RuleStatus
 from vnpy_ashare.domain.trading.position import PositionRecord, position_t1_locked
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
@@ -15,23 +13,13 @@ from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
 if TYPE_CHECKING:
     from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
-ExitSignal = Literal["buy", "sell", "hold", "na"]
-RuleStatus = Literal["triggered", "near", "clear"]
-
-
-class ExitRuleHit(FrozenModel):
-    rule_id: str = Field(description="规则 ID")
-    label: str = Field(description="展示标签")
-    status: RuleStatus = Field(description="状态")
-    detail: str = Field(description="详情说明")
-
-
-class OvernightExitEvaluation(FrozenModel):
-    signal: ExitSignal = Field(description="退出信号")
-    ref_sell_price: float | None = Field(description="参考卖出价")
-    rules: tuple[ExitRuleHit, ...] = Field(description="规则列表")
-    warnings: tuple[str, ...] = Field(description="风险提示列表")
-    reasons: tuple[str, ...] = Field(description="理由")
+__all__ = [
+    "ExitRuleHit",
+    "ExitSignal",
+    "OvernightExitEvaluation",
+    "RuleStatus",
+    "evaluate_overnight_exit",
+]
 
 
 def _quote_row(quote: QuoteSnapshot | None, *, vt_symbol: str) -> dict[str, object]:

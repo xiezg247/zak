@@ -5,7 +5,6 @@ from __future__ import annotations
 import threading
 from datetime import datetime
 
-from pydantic import Field
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import BarOverview, get_database
 from vnpy.trader.object import BarData
@@ -16,19 +15,10 @@ from vnpy_ashare.data.minute_periods import (
     is_daily_scope,
     normalize_period,
 )
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.data.bar import PeriodBarOverview
 
 _overview_cache_lock = threading.Lock()
 _overview_by_interval: dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]] | None = None
-
-
-class PeriodBarOverview(FrozenModel):
-    symbol: str = Field(description="六位股票代码")
-    exchange: Exchange = Field(description="交易所代码")
-    period: str = Field(description="K 线周期")
-    start: datetime = Field(description="开始日期")
-    end: datetime = Field(description="结束日期")
-    count: int = Field(description="数量")
 
 
 def get_period_overview(

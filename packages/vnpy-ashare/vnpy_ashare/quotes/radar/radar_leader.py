@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal
-
-from pydantic import Field
+from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_row
+from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.signals.seal_time import seal_time_score
-from vnpy_common.domain.base import FrozenModel
 
-LeaderTier = Literal["dragon_1", "dragon_2", "follower", ""]
+__all__ = [
+    "LeaderScoredRow",
+    "LeaderTier",
+    "compute_leader_score",
+    "leader_tier_label",
+    "rank_sector_leaders",
+    "rank_unified_sector_leaders",
+    "score_market_leaders",
+]
 
 _TIER_LABELS: dict[str, str] = {
     "dragon_1": "龙一",
@@ -32,15 +38,6 @@ _DEFAULT_WEIGHTS: dict[str, float] = {
 }
 
 _FOLLOWER_MIN_SCORE = 35.0
-
-
-class LeaderScoredRow(FrozenModel):
-    row: dict[str, Any] = Field(description="原始行情行")
-    leader_score: float = Field(description="龙头评分")
-    leader_tier: LeaderTier = Field(description="龙头分层")
-    limit_times: float = Field(description="连板数")
-    sector_axis: str = Field(default="", description="板块坐标轴")
-    sector_name: str = Field(default="", description="板块名称")
 
 
 def leader_tier_label(tier: str) -> str:

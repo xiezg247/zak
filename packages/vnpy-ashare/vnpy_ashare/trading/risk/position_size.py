@@ -4,44 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field
-
 from vnpy_ashare.config.preferences.trading_risk import (
     DEFAULT_PER_TRADE_RISK_PCT,
     DEFAULT_STOP_LOSS_PCT,
     load_trading_risk_prefs,
 )
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.trading.risk import PositionSizeResult
 
-
-class PositionSizeResult(FrozenModel):
-    max_shares: int = Field(description="单笔建议最大股数")
-    max_loss_amount: float = Field(description="单笔最大亏损金额")
-    per_trade_risk_pct: float = Field(description="单笔风险占比（0–1）")
-    stop_loss_pct: float = Field(description="止损比例（0–1）")
-    cost_price: float = Field(description="成本价")
-    total_capital: float = Field(description="总资金")
-    volume_exceeds_suggestion: bool | None = Field(default=None, description="请求股数是否超出建议")
-    requested_volume: int | None = Field(default=None, description="请求买入股数")
-
-    def to_dict(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "max_shares": self.max_shares,
-            "max_loss_amount": round(self.max_loss_amount, 2),
-            "per_trade_risk_pct": self.per_trade_risk_pct,
-            "stop_loss_pct": self.stop_loss_pct,
-            "cost_price": self.cost_price,
-            "total_capital": self.total_capital,
-        }
-        if self.volume_exceeds_suggestion is not None:
-            payload["volume_exceeds_suggestion"] = self.volume_exceeds_suggestion
-        if self.requested_volume is not None:
-            payload["requested_volume"] = self.requested_volume
-        return payload
+__all__ = ["PositionSizeResult", "compute_position_size", "evaluate_position_size"]
 
 
 def compute_position_size(
-    *,
     total_capital: float,
     cost_price: float,
     stop_loss_pct: float = DEFAULT_STOP_LOSS_PCT,

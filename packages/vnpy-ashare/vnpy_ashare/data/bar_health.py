@@ -9,36 +9,17 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from enum import Enum
 
-from pydantic import Field
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bar_store import PeriodBarOverview
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.data.bar_health import BarGapResult, BarHealthStatus, BarMeta, GapRange
 from vnpy_ashare.domain.time.calendar import last_trading_day, trading_days_between
 from vnpy_ashare.storage.repositories.symbol_suspend import load_suspend_days
 
 # 本地日 K 统一起点：早于该日的不展示、不参与断层扫描
 UNIFIED_BAR_START = datetime(2020, 1, 2)
-
-
-class BarHealthStatus(str, Enum):
-    """日 K 健康状态。"""
-
-    OK = "ok"
-    STALE = "stale"
-    GAPS = "gaps"
-    UNKNOWN = "unknown"
-
-
-class BarMeta(FrozenModel):
-    """本地 K 线元数据（起止日期与条数）。"""
-
-    start: datetime = Field(description="开始日期")
-    end: datetime = Field(description="结束日期")
-    count: int = Field(description="数量")
 
 
 def effective_bar_start(value: datetime | None) -> datetime | None:
@@ -61,23 +42,6 @@ def clip_bars_from_unified_start(bars: list[BarData]) -> list[BarData]:
     """丢弃统一起点之前的 K 线。"""
     floor = UNIFIED_BAR_START.date()
     return [bar for bar in bars if bar.datetime.date() >= floor]
-
-
-class GapRange(FrozenModel):
-    """连续缺失交易日区间。"""
-
-    start: date = Field(description="开始日期")
-    end: date = Field(description="结束日期")
-    missing_days: int = Field(description="缺失交易日数")
-
-
-class BarGapResult(FrozenModel):
-    """断层扫描结果（含期望/实际交易日数）。"""
-
-    status: BarHealthStatus = Field(description="状态")
-    gaps: list[GapRange] = Field(description="断层列表")
-    expected_days: int = Field(description="期望交易日数")
-    actual_days: int = Field(description="实际覆盖交易日数")
 
 
 def list_status(meta: BarMeta | None, *, as_of: date | None = None) -> BarHealthStatus:

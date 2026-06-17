@@ -1,6 +1,4 @@
-"""任务执行结果。"""
-
-from __future__ import annotations
+"""后台任务领域模型。"""
 
 from vnpy_ashare.domain.jobs.result import JobResult
 

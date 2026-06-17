@@ -2,20 +2,46 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
-from pydantic import Field
-
+from vnpy_ashare.domain.radar.catalog import (
+    RadarCardMode,
+    RadarCardSpec,
+    RadarCategory,
+    RadarLayoutSection,
+    RadarRefreshOption,
+    RadarVariant,
+)
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import (
     full_refresh_every_n_ticks as _load_full_refresh_every_n_ticks,
 )
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
     radar_card_resonance_weight as _load_radar_card_resonance_weight,
 )
-from vnpy_common.domain.base import FrozenModel
 
-RadarCategory = Literal["screen", "discovery", "watchlist", "sector", "outlook"]
-RadarCardMode = Literal["statistical", "predictive"]
+__all__ = [
+    "CARD_REFRESH_OPTIONS",
+    "RADAR_CARD_SPECS",
+    "RADAR_DISCOVERY_AUTO_REFRESH_MS",
+    "RADAR_DISCOVERY_REFRESH_OPTIONS",
+    "RADAR_GRID_COLUMNS",
+    "RADAR_LAYOUT_SECTIONS",
+    "RADAR_REFRESH_OFF_MS",
+    "RADAR_SECTOR_AUTO_REFRESH_MS",
+    "RADAR_SECTOR_REFRESH_OPTIONS",
+    "RADAR_WATCHLIST_AUTO_REFRESH_MS",
+    "RADAR_WATCHLIST_REFRESH_OPTIONS",
+    "SCENARIO_VARIANTS",
+    "RadarCardMode",
+    "RadarCardSpec",
+    "RadarCategory",
+    "RadarLayoutSection",
+    "RadarRefreshOption",
+    "RadarVariant",
+    "card_spec",
+    "default_auto_refresh_ms",
+    "full_refresh_every_n_ticks",
+    "radar_card_resonance_weight",
+    "refresh_options_for_card",
+]
 
 RADAR_GRID_COLUMNS = 3
 
@@ -24,11 +50,6 @@ RADAR_REFRESH_OFF_MS = 0
 RADAR_DISCOVERY_AUTO_REFRESH_MS = 60_000
 RADAR_WATCHLIST_AUTO_REFRESH_MS = 60_000
 RADAR_SECTOR_AUTO_REFRESH_MS = 180_000
-
-
-class RadarRefreshOption(FrozenModel):
-    ms: int = Field(description="刷新间隔（毫秒）")
-    label: str = Field(description="展示标签")
 
 
 RADAR_DISCOVERY_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
@@ -57,31 +78,10 @@ CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
 }
 
 
-class RadarLayoutSection(FrozenModel):
-    mode: RadarCardMode = Field(description="模式")
-    title: str = Field(description="标题")
-    hint: str = Field(description="提示文案")
-
-
 RADAR_LAYOUT_SECTIONS: tuple[RadarLayoutSection, ...] = (
     RadarLayoutSection(mode="statistical", title="盘面统计", hint="选股结果、盘中异动与板块主线，描述当前盘面"),
     RadarLayoutSection(mode="predictive", title="前瞻展望", hint="策略信号与统计情景，非确定性预测"),
 )
-
-
-class RadarCardSpec(FrozenModel):
-    id: str = Field(description="主键 ID")
-    title: str = Field(description="标题")
-    category: RadarCategory = Field(description="分类")
-    mode: RadarCardMode = Field(default="statistical", description="卡片模式")
-    top_n: int = Field(default=8, description="展示条数")
-    has_task_variants: bool = Field(default=False, description="是否有任务变体")
-    auto_refresh_ms: int | None = Field(default=None, description="自动刷新间隔（毫秒）")
-
-
-class RadarVariant(FrozenModel):
-    key: str = Field(description="键名")
-    label: str = Field(description="展示标签")
 
 
 SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (

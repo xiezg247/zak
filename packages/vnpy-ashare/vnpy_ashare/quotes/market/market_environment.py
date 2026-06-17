@@ -2,18 +2,11 @@
 
 from __future__ import annotations
 
-from pydantic import Field
-
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.market.environment import MarketEnvironmentSnapshot
 from vnpy_ashare.integrations.tushare.factors import fetch_moneyflow_hsgt_window
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
-
-class MarketEnvironmentSnapshot(FrozenModel):
-    fear_greed_index: float | None = Field(description="恐贪指数")
-    fear_greed_label: str = Field(description="恐贪指数标签")
-    north_money: float | None = Field(description="北向资金（百万元）")
-    north_trade_date: str = Field(default="", description="北向资金交易日")
+__all__ = ["MarketEnvironmentSnapshot", "format_north_money_hsgt", "load_market_environment"]
 
 
 def format_north_money_hsgt(north_money: float | None) -> str:

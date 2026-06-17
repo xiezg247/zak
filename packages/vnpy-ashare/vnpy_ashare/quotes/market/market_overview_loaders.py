@@ -5,36 +5,30 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from pydantic import Field
-
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
+from vnpy_ashare.domain.market.environment import MarketEnvironmentSnapshot
+from vnpy_ashare.domain.market.overview import MarketOverviewData, SectorRankItem
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.integrations.tickflow import fetch_index_ticker
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts
-from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot, compute_market_breadth, merge_official_limit_counts
-from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, load_market_environment
+from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
+from vnpy_ashare.quotes.market.market_environment import load_market_environment
 from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts, resolve_limit_ladder_counts
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
 
+__all__ = [
+    "MarketOverviewData",
+    "SECTOR_MIN_STOCKS",
+    "SECTOR_TOP_N",
+    "SectorRankItem",
+    "load_market_overview",
+]
+
 SECTOR_TOP_N = 10
 SECTOR_MIN_STOCKS = 3
-
-
-class SectorRankItem(FrozenModel):
-    industry: str = Field(description="所属行业")
-    count: int = Field(description="数量")
-    avg_change_pct: float = Field(description="平均涨跌幅（%）")
-
-
-class MarketOverviewData(FrozenModel):
-    indices: list[tuple[str, QuoteSnapshot]] = Field(description="指数列表")
-    breadth: MarketBreadthSnapshot | None = Field(description="市场广度")
-    sectors: list[SectorRankItem] = Field(description="行业榜")
-    environment: MarketEnvironmentSnapshot | None = Field(default=None, description="大盘环境指标")
-    limit_ladder_counts: dict[str, int] | None = Field(default=None, description="涨跌停梯队统计")
 
 
 def _quote_rows_for_overview() -> tuple[Sequence[QuoteRowLike], str | None]:

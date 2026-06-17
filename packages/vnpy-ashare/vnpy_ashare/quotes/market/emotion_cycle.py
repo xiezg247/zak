@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
-
-from pydantic import Field
-
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
+from vnpy_ashare.domain.market.emotion import (
+    EmotionCycleInputs,
+    EmotionCycleSnapshot,
+    EmotionMode,
+    EmotionStage,
+)
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle_cache import (
@@ -14,14 +16,17 @@ from vnpy_ashare.quotes.market.emotion_cycle_cache import (
     peek_emotion_cycle_snapshot,
     store_emotion_cycle_snapshot,
 )
-from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, build_emotion_cycle_inputs
-from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
+from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
+from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
 from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 
 __all__ = [
+    "EmotionCycleInputs",
     "EmotionCycleSnapshot",
     "EmotionCycleTracker",
+    "EmotionMode",
+    "EmotionStage",
     "classify_emotion_cycle",
     "format_mode_label",
     "invalidate_emotion_cycle_cache",
@@ -29,9 +34,6 @@ __all__ = [
     "peek_emotion_cycle_snapshot",
     "store_emotion_cycle_snapshot",
 ]
-
-EmotionStage = Literal["ice", "startup", "climax", "divergence", "recession"]
-EmotionMode = Literal["limit_board", "halfway", "pullback"]
 
 _STAGE_LABELS: dict[EmotionStage, str] = {
     "ice": "冰点",
@@ -65,46 +67,6 @@ _MODE_LABELS: dict[EmotionMode, str] = {
 
 _AMOUNT_FLOOR = 1e12
 _FEAR_GREED_OVERHEAT = 85.0
-
-
-class EmotionCycleSnapshot(FrozenModel):
-    stage: EmotionStage = Field(description="情绪阶段")
-    stage_label: str = Field(description="阶段中文标签")
-    position_pct_min: float = Field(description="建议仓位下限（0–1）")
-    position_pct_max: float = Field(description="建议仓位上限（0–1）")
-    position_factor: float = Field(description="仓位系数（0–1）")
-    allowed_modes: tuple[str, ...] = Field(description="允许的买点模式")
-    allow_new_positions: bool = Field(description="是否允许新开仓")
-    warnings: tuple[str, ...] = Field(description="风险提示列表")
-    inputs: dict[str, Any] = Field(description="判定输入因子")
-    updated_at: str = Field(description="更新时间")
-
-    @property
-    def limit_up_count(self) -> int:
-        return int(self.inputs.get("limit_up_count", 0))
-
-    @property
-    def limit_down_count(self) -> int:
-        return int(self.inputs.get("limit_down_count", 0))
-
-    @property
-    def up_ratio(self) -> float:
-        return float(self.inputs.get("up_ratio", 0.0))
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "stage": self.stage,
-            "stage_label": self.stage_label,
-            "position_pct_min": self.position_pct_min,
-            "position_pct_max": self.position_pct_max,
-            "position_factor": round(self.position_factor, 3),
-            "allowed_modes": list(self.allowed_modes),
-            "allowed_mode_labels": [format_mode_label(mode) for mode in self.allowed_modes],
-            "allow_new_positions": self.allow_new_positions,
-            "warnings": list(self.warnings),
-            "inputs": dict(self.inputs),
-            "updated_at": self.updated_at,
-        }
 
 
 def format_mode_label(mode: str) -> str:

@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from pydantic import Field
-
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
+from vnpy_ashare.domain.trading.risk import GroupPositionSummary
+
+__all__ = [
+    "GroupPositionSummary",
+    "compute_position_actual_pct",
+    "normalize_plan_pct",
+    "summarize_group_position",
+    "sum_plan_pct",
+]
 
 
 def normalize_plan_pct(value: float | None) -> float | None:
@@ -37,15 +43,6 @@ def sum_plan_pct(records: list[PositionRecord]) -> float | None:
     if not values:
         return None
     return round(sum(values), 4)
-
-
-class GroupPositionSummary(FrozenModel):
-    group_id: str = Field(description="分组 ID")
-    position_count: int = Field(description="持仓数量")
-    actual_pct: float | None = Field(description="实际仓位占比（0–1）")
-    plan_cap_pct: float | None = Field(description="计划仓位上限（0–1）")
-    plan_pct_sum: float | None = Field(description="计划占比合计（0–1）")
-    over_cap: bool = Field(description="是否超出上限")
 
 
 def summarize_group_position(

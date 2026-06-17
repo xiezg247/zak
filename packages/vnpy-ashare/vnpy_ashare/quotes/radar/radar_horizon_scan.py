@@ -28,6 +28,7 @@ from vnpy_ashare.quotes.radar.radar_horizon_scenario import (
     filter_scenario_metrics,
     scenario_sort_key,
 )
+from vnpy_ashare.domain.radar.horizon import HorizonScanResult
 from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
@@ -79,14 +80,6 @@ def horizon_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
     if local_daily_k_insufficient(stats):
         return f"本地日 K 覆盖不足，请先运行「全市场日 K」或「补全本地日 K」（粗筛 {stats.prefilter_total} 只，可算信号 0 只）。"
     return f"当前无符合「{card_title}」条件的标的（已扫描 {stats.scanned_total} 只）。"
-
-
-class HorizonScanResult(FrozenModel):
-    variant: str = Field(description="变体标识")
-    rows: tuple[RadarRow, ...] = Field(description="数据行列表")
-    stats: HorizonScanStats = Field(description="扫描统计")
-    strategy_key: str = Field(description="策略配置键")
-    computed_at: str = Field(description="计算时间")
 
 
 def prefilter_horizon_universe(

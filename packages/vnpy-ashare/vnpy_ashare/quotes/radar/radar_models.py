@@ -5,10 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from pydantic import Field
-
 from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.radar.card import RadarCardData, RadarResonanceEntry, RadarRow
 from vnpy_ashare.domain.screener.result_row import ScreeningRowLike, screening_row_to_dict
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
@@ -16,47 +15,16 @@ from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.radar.radar_relative_strength import enrich_radar_row_relative_strength
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_common.domain.base import FrozenModel
 
-
-class RadarRow(FrozenModel):
-    vt_symbol: str = Field(description="合约代码（含交易所）")
-    name: str = Field(description="证券名称")
-    symbol: str = Field(description="证券代码")
-    price: float | None = Field(description="最新价")
-    change_pct: float | None = Field(description="涨跌幅（%）")
-    metric_label: str = Field(description="主指标标签")
-    metric_value: str = Field(description="主指标值")
-    sub_label: str = Field(description="副指标标签")
-    sub_value: str = Field(description="副指标值")
-    leader_score: float | None = Field(default=None, description="龙头评分")
-    leader_tier: str = Field(default="", description="龙头分层（龙一/龙二/跟风）")
-    limit_times: float | None = Field(default=None, description="连板数")
-
-
-class RadarCardData(FrozenModel):
-    card_id: str = Field(description="卡片唯一标识")
-    title: str = Field(description="卡片标题")
-    subtitle: str = Field(description="卡片副标题")
-    rows: tuple[RadarRow, ...] = Field(description="卡片行数据")
-    empty_message: str = Field(description="无数据时的提示文案")
-    updated_at: str = Field(description="数据更新时间")
-    run_id: str = Field(default="", description="选股任务运行 ID")
-    detail_page_key: str = Field(default="", description="详情页跳转键")
-    total_count: int = Field(default=0, description="符合条件的标的总数")
-    ai_hint: str = Field(default="", description="AI 分析提示语")
-    sector_names: tuple[str, ...] = Field(default=(), description="关联板块名称")
-
-
-class RadarResonanceEntry(FrozenModel):
-    vt_symbol: str = Field(description="合约代码（含交易所）")
-    name: str = Field(description="证券名称")
-    symbol: str = Field(description="证券代码")
-    card_count: int = Field(description="共振卡片数量")
-    card_titles: tuple[str, ...] = Field(description="共振卡片标题列表")
-    price: float | None = Field(description="最新价")
-    change_pct: float | None = Field(description="涨跌幅（%）")
-    resonance_score: float = Field(default=0.0, description="共振得分")
+__all__ = [
+    "RadarCardData",
+    "RadarResonanceEntry",
+    "RadarRow",
+    "enrich_radar_rows",
+    "merge_row_quotes",
+    "quote_map",
+    "resolve_radar_rows",
+]
 
 
 def quote_map() -> dict[str, QuoteRow]:

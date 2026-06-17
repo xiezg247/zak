@@ -5,56 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from pydantic import Field
-
-from vnpy_common.domain.base import FrozenModel
+from vnpy_ashare.domain.trading.risk import CombinedRiskGateSnapshot
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, load_emotion_cycle_snapshot
-from vnpy_ashare.trading.risk.gate import RiskGateSnapshot, build_risk_gate_snapshot, read_total_capital
+from vnpy_ashare.trading.risk.gate import build_risk_gate_snapshot, read_total_capital
+
+__all__ = ["CombinedRiskGateSnapshot", "build_combined_risk_gate_snapshot", "compute_actual_position_pct", "compute_avg_float_pnl_pct"]
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.trading.position import PositionSnapshot
-
-
-class CombinedRiskGateSnapshot(FrozenModel):
-    account: RiskGateSnapshot = Field(description="账户风控闸快照")
-    emotion: EmotionCycleSnapshot | None = Field(description="情绪周期快照")
-    allow_new_positions: bool = Field(description="是否允许新开仓")
-    emotion_position_pct_min: float | None = Field(description="情绪建议仓位下限（0–1）")
-    emotion_position_pct_max: float | None = Field(description="情绪建议仓位上限（0–1）")
-    actual_position_pct: float | None = Field(description="实际仓位占比（0–1）")
-    total_capital: float | None = Field(description="总资金")
-    warnings: tuple[str, ...] = Field(description="风险提示列表")
-
-    def to_dict(self) -> dict[str, Any]:
-        payload: dict[str, Any] = {
-            "allow_new_positions": self.allow_new_positions,
-            "account": {
-                "state": self.account.state,
-                "state_label": self.account.state_label,
-                "allow_new_positions": self.account.allow_new_positions,
-                "daily_pnl_pct": self.account.daily_pnl_pct,
-                "avg_float_pnl_pct": self.account.avg_float_pnl_pct,
-                "warnings": list(self.account.warnings),
-            },
-            "warnings": list(self.warnings),
-        }
-        if self.emotion is not None:
-            payload["emotion"] = {
-                "stage": self.emotion.stage,
-                "stage_label": self.emotion.stage_label,
-                "position_pct_min": self.emotion.position_pct_min,
-                "position_pct_max": self.emotion.position_pct_max,
-                "allow_new_positions": self.emotion.allow_new_positions,
-            }
-        if self.emotion_position_pct_min is not None:
-            payload["emotion_position_pct_min"] = self.emotion_position_pct_min
-        if self.emotion_position_pct_max is not None:
-            payload["emotion_position_pct_max"] = self.emotion_position_pct_max
-        if self.actual_position_pct is not None:
-            payload["actual_position_pct"] = self.actual_position_pct
-        if self.total_capital is not None:
-            payload["total_capital"] = self.total_capital
-        return payload
 
 
 def compute_avg_float_pnl_pct(
