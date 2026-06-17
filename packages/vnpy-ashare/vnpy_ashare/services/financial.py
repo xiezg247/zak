@@ -45,10 +45,10 @@ class FinancialSyncResult(MutableModel):
     ts_code: str = Field(description="Tushare 代码")
     vt_symbol: str = Field(description="合约代码（含交易所）")
     synced: bool = Field(description="是否同步成功")
-    skipped: bool = Field(default=False, description="skipped")
+    skipped: bool = Field(default=False, description="是否跳过同步")
     message: str = Field(default="", description="说明信息")
-    periods_written: int = Field(default=0, description="periods written")
-    warnings: list[str] = Field(default_factory=list, description="warnings")
+    periods_written: int = Field(default=0, description="写入报告期数")
+    warnings: list[str] = Field(default_factory=list, description="警告信息")
 
 
 class FinancialBundle(MutableModel):

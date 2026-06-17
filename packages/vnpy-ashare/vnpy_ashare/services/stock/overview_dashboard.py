@@ -27,14 +27,14 @@ class DataReadinessItem(FrozenModel):
     key: str = Field(description="键名")
     label: str = Field(description="展示标签")
     status: ReadinessStatus = Field(description="状态")
-    detail: str = Field(default="", description="detail")
-    jump_target: OverviewJumpTarget | None = Field(default=None, description="jump target")
+    detail: str = Field(default="", description="详情说明")
+    jump_target: OverviewJumpTarget | None = Field(default=None, description="跳转 Tab")
 
 
 class OverviewAlert(FrozenModel):
     text: str = Field(description="文本内容")
-    severity: AlertSeverity = Field(default="info", description="severity")
-    jump_target: OverviewJumpTarget | None = Field(default=None, description="jump target")
+    severity: AlertSeverity = Field(default="info", description="严重级别")
+    jump_target: OverviewJumpTarget | None = Field(default=None, description="跳转 Tab")
 
 
 class ScreeningHit(FrozenModel):
@@ -45,9 +45,9 @@ class ScreeningHit(FrozenModel):
 
 
 class OverviewDashboard(MutableModel):
-    readiness: list[DataReadinessItem] = Field(default_factory=list, description="readiness")
-    alerts: list[OverviewAlert] = Field(default_factory=list, description="alerts")
-    screening: ScreeningHit | None = Field(default=None, description="screening")
+    readiness: list[DataReadinessItem] = Field(default_factory=list, description="数据就绪项")
+    alerts: list[OverviewAlert] = Field(default_factory=list, description="关键提醒")
+    screening: ScreeningHit | None = Field(default=None, description="选股命中上下文")
 
 
 def find_screening_hit(vt_symbol: str) -> ScreeningHit | None:

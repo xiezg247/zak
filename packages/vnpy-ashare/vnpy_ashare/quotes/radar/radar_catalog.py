@@ -73,10 +73,10 @@ class RadarCardSpec(FrozenModel):
     id: str = Field(description="主键 ID")
     title: str = Field(description="标题")
     category: RadarCategory = Field(description="分类")
-    mode: RadarCardMode = Field(default="statistical", description="mode")
-    top_n: int = Field(default=8, description="top n")
-    has_task_variants: bool = Field(default=False, description="has task variants")
-    auto_refresh_ms: int | None = Field(default=None, description="auto refresh ms")
+    mode: RadarCardMode = Field(default="statistical", description="卡片模式")
+    top_n: int = Field(default=8, description="展示条数")
+    has_task_variants: bool = Field(default=False, description="是否有任务变体")
+    auto_refresh_ms: int | None = Field(default=None, description="自动刷新间隔（毫秒）")
 
 
 class RadarVariant(FrozenModel):

@@ -13,7 +13,7 @@ class MarketEnvironmentSnapshot(FrozenModel):
     fear_greed_index: float | None = Field(description="恐贪指数")
     fear_greed_label: str = Field(description="恐贪指数标签")
     north_money: float | None = Field(description="北向资金（百万元）")
-    north_trade_date: str = Field(default="", description="north trade date")
+    north_trade_date: str = Field(default="", description="北向资金交易日")
 
 
 def format_north_money_hsgt(north_money: float | None) -> str:

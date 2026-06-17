@@ -8,12 +8,14 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_rows, quote_rows_to_dicts
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
 
@@ -41,8 +43,15 @@ class ScreenerRunRecord(MutableModel):
     row_count: int = Field(description="结果行数")
     total_scanned: int = Field(description="扫描标的总数")
     config: dict[str, Any] = Field(description="运行配置元数据")
-    rows: list[dict[str, Any]] = Field(description="选股结果行")
+    rows: list[QuoteRow] = Field(description="选股结果行")
     created_at: str = Field(description="创建时间")
+
+    @field_validator("rows", mode="before")
+    @classmethod
+    def _coerce_rows(cls, value: Any) -> list[QuoteRow]:
+        if value is None:
+            return []
+        return coerce_quote_rows(value)
 
 
 @contextmanager
@@ -70,14 +79,15 @@ def save_run(
     *,
     condition: str,
     source: str,
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRow | Mapping[str, Any]],
     total_scanned: int = 0,
     config: dict[str, Any] | None = None,
 ) -> ScreenerRunRecord:
     """持久化选股结果并返回完整记录。"""
     run_id = uuid.uuid4().hex
     now = _now()
-    payload = json.dumps(rows, ensure_ascii=False)
+    normalized = coerce_quote_rows(rows)
+    payload = json.dumps(quote_rows_to_dicts(normalized), ensure_ascii=False)
     config_payload = json.dumps(config or {}, ensure_ascii=False)
     with _connect() as conn:
         conn.execute(
@@ -90,7 +100,7 @@ def save_run(
                 run_id,
                 condition,
                 source,
-                len(rows),
+                len(normalized),
                 total_scanned,
                 config_payload,
                 payload,
@@ -101,10 +111,10 @@ def save_run(
         id=run_id,
         condition=condition,
         source=source,
-        row_count=len(rows),
+        row_count=len(normalized),
         total_scanned=total_scanned,
         config=config or {},
-        rows=list(rows),
+        rows=normalized,
         created_at=now,
     )
 

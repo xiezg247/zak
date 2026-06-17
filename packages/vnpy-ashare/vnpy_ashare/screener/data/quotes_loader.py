@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_from_stock_and_snapshot
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
@@ -17,7 +16,7 @@ class MarketQuotesLoadError(RuntimeError):
 
 
 class MarketQuotesSnapshot(FrozenModel):
-    rows: list[dict[str, Any]] = Field(description="行情行列表")
+    rows: list[QuoteRow] = Field(description="行情行列表")
     updated_at: str | None = Field(description="快照更新时间")
     total: int = Field(description="有效行情条数")
     source: str = Field(default="quote", description="数据来源标识")
@@ -31,7 +30,7 @@ def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapsh
         raise MarketQuotesLoadError("暂无全市场行情。请在「工具 → 立即执行 → 行情采集」运行后再选股。")
 
     quotes = store.get_quotes(tf_symbols, enrich_factors=enrich_factors)
-    rows: list[dict[str, Any]] = []
+    rows: list[QuoteRow] = []
     for tf_symbol in tf_symbols:
         quote = quotes.get(tf_symbol)
         if quote is None:
@@ -39,7 +38,7 @@ def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapsh
         item = parse_tickflow_symbol(tf_symbol, quote.name)
         if item is None:
             continue
-        rows.append(_row_from_item_quote(item, quote))
+        rows.append(quote_row_from_stock_and_snapshot(item, quote))
 
     if not rows:
         raise MarketQuotesLoadError("Redis 中无有效行情快照，请先运行行情采集。")
@@ -52,23 +51,11 @@ def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapsh
     )
 
 
-def _row_from_item_quote(item: StockItem, quote: QuoteSnapshot) -> dict[str, Any]:
-    return {
-        "symbol": item.symbol,
-        "name": quote.name or item.name,
-        "vt_symbol": item.vt_symbol,
-        "exchange": item.exchange.value,
-        "last_price": quote.last_price,
-        "prev_close": quote.prev_close,
-        "open_price": quote.open_price,
-        "high_price": quote.high_price,
-        "low_price": quote.low_price,
-        "change_pct": quote.change_pct,
-        "turnover_rate": quote.turnover_rate,
-        "volume": quote.volume,
-        "amount": quote.amount,
-        "volume_ratio": quote.volume_ratio,
-        "net_mf_amount": quote.net_mf_amount,
-        "limit_times": quote.limit_times,
-        "change_speed_5m": quote.change_speed_5m,
-    }
+def row_from_item_quote(item: StockItem, quote: QuoteSnapshot) -> QuoteRow:
+    """公开别名，供 data_source / 测试使用。"""
+    return quote_row_from_stock_and_snapshot(item, quote)
+
+
+def rows_as_dicts(rows: list[QuoteRow]) -> list[dict]:
+    """过渡期：导出或 JSON 序列化。"""
+    return [row.to_dict() for row in rows]

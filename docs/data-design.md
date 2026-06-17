@@ -447,22 +447,24 @@ REDIS_DB=0
 
 ---
 
-## 五、内存 Dataclass 模型（非持久化）
+## 五、内存 Pydantic 模型（非持久化）
 
-以下为项目内部传递数据的结构化类型，不直接对应数据库表：
+以下为项目内部传递数据的结构化类型，继承 `FrozenModel` / `MutableModel`（`vnpy_ashare/domain/base.py`），不直接对应数据库表：
 
 | 类名 | 定义文件 | 用途 |
 |------|----------|------|
-| `StockItem` | `vnpy_ashare/models.py:23` | A 股标的统一模型（symbol, exchange, name） |
-| `QuoteSnapshot` | `vnpy_ashare/quotes/core/snapshot.py` | TickFlow / Redis 行情快照（14 个字段） |
+| `StockItem` | `vnpy_ashare/domain/symbols/stock.py` | A 股标的统一模型（symbol, exchange, name） |
+| `QuoteSnapshot` | `vnpy_ashare/quotes/core/snapshot.py` | TickFlow / Redis 行情快照 |
+| `QuoteRow` | `vnpy_ashare/domain/market/quote_row.py` | 全市场行情行（选股 / 雷达 / 缓存共用） |
 | `DepthSnapshot` | `vnpy_ashare/quotes/core/depth_snapshot.py` | 五档盘口快照（bid/ask 各 5 档） |
-| `PeriodBarOverview` | `vnpy_ashare/bar_store.py:22` | 单标的 K 线概况（symbol, period, start, end, count） |
-| `BarMeta` | `vnpy_ashare/bar_health.py:19` | K 线元信息（start, end, count） |
-| `BarGapResult` | `vnpy_ashare/bar_health.py:33` | K 线断层检测结果 |
-| `GapRange` | `vnpy_ashare/bar_health.py:27` | 断层区间 |
-| `ChatMessage` | `vnpy_llm/store.py:36` | 聊天消息（role, content, created_at） |
-| `AiContextData` | `vnpy_ashare/ai/context.py` | 当前页 / 选中标的 / K 线摘要等 AI 上下文 |
-| `BacktestSummary` 等 | `vnpy_ashare/ai/context/store.py` | 终端内存缓存（回测摘要、选股结果、诊断结果；线程安全） |
+| `SignalSnapshot` | `vnpy_ashare/domain/trading/signal_snapshot.py` | 策略信号快照（含强度、锚价、理由） |
+| `PeriodBarOverview` | `vnpy_ashare/data/bar_store.py` | 单标的 K 线概况（symbol, period, start, end, count） |
+| `BarMeta` / `BarGapResult` | `vnpy_ashare/data/bar_health.py` | K 线元信息与断层检测 |
+| `ChatMessage` | `vnpy_llm/store.py` | 聊天消息（仍为 dataclass） |
+| `AiContextData` | `vnpy_common/ai/protocol.py` | 当前页 / 选中标的 / K 线摘要等 AI 上下文（仍为 dataclass） |
+| `BacktestSummary` 等 | `vnpy_ashare/ai/context/store.py` | 终端内存缓存（回测摘要、选股结果；线程安全） |
+
+**约定**：跨模块复用的领域类型优先放入 `domain/`；仅模块内使用的 DTO 可留在原路径但须继承基类；序列化统一用 `model_dump(mode="json")`。
 
 ---
 
@@ -472,7 +474,7 @@ REDIS_DB=0
 ┌──────────────────────────────────────────────────────────────────┐
 │  GUI 层（Views / Pages / Dialogs）                                │
 ├──────────────────────────────────────────────────────────────────┤
-│  内存 Dataclass（StockItem / QuoteSnapshot / ChatMessage 等）       │
+│  内存 Pydantic 模型（StockItem / QuoteSnapshot / SignalSnapshot 等）  │
 ├──────────┬──────────────────────┬───────────────┬────────────────┤
 │ App DB   │ K 线 DB               │ LLM Chat DB   │ Redis           │
 │ SQLite   │ SQLite 或 PostgreSQL  │ SQLite        │ (redis-py)      │

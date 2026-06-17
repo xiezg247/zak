@@ -19,12 +19,13 @@ UI 层禁止 ``from vnpy_ashare.ai.context.store import set_*``。
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, coerce_quote_rows
 from vnpy_ashare.quotes.core.quote_rows import (
     clear_market_quote_rows_cache,
 )
@@ -40,12 +41,12 @@ _market_overview_context: dict[str, Any] | None = None
 class BacktestSummary(MutableModel):
     """最近一次回测摘要。"""
 
-    strategy: str = Field(description="strategy")
+    strategy: str = Field(description="策略名称")
     vt_symbol: str = Field(description="VeighNa 合约代码")
-    interval: str = Field(description="interval")
+    interval: str = Field(description="K 线周期")
     start: str = Field(description="开始日期")
     end: str = Field(description="结束日期")
-    statistics: dict[str, Any] = Field(default_factory=dict, description="statistics")
+    statistics: dict[str, Any] = Field(default_factory=dict, description="回测统计指标")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -61,10 +62,17 @@ class BacktestSummary(MutableModel):
 class ScreeningResultContext(MutableModel):
     """最近一次选股结果快照（供 Skill / 悬浮球读取）。"""
 
-    condition: str = Field(description="condition")
+    condition: str = Field(description="选股条件描述")
     count: int = Field(description="数量")
     updated_at: str | None = Field(description="更新时间")
-    rows: list[dict[str, Any]] = Field(description="数据行列表")
+    rows: list[QuoteRow] = Field(description="数据行列表")
+
+    @field_validator("rows", mode="before")
+    @classmethod
+    def _coerce_rows(cls, value: Any) -> list[QuoteRow]:
+        if value is None:
+            return []
+        return coerce_quote_rows(value)
 
 
 _screening_result: ScreeningResultContext | None = None
@@ -144,17 +152,18 @@ def get_market_overview_context() -> dict[str, Any] | None:
 def set_screening_results(
     *,
     condition: str,
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRow | Mapping[str, Any]],
     updated_at: str | None = None,
 ) -> None:
     """写入选股结果快照（ScreeningService.persist_run_result 调用）。"""
     global _screening_result
+    normalized = coerce_quote_rows(rows)
     with _lock:
         _screening_result = ScreeningResultContext(
             condition=condition,
-            count=len(rows),
+            count=len(normalized),
             updated_at=updated_at,
-            rows=list(rows),
+            rows=normalized,
         )
 
 
@@ -168,7 +177,7 @@ def get_screening_results() -> ScreeningResultContext | None:
             condition=ctx.condition,
             count=ctx.count,
             updated_at=ctx.updated_at,
-            rows=list(ctx.rows),
+            rows=[coerce_quote_row(row) for row in ctx.rows],
         )
 
 

@@ -13,5 +13,5 @@ McpExecute = Callable[[str, dict[str, Any]], str]
 
 
 class McpBinding(MutableModel):
-    execute: McpExecute | None = Field(default=None, description="execute")
-    tool_names: list[str] = Field(default_factory=list, description="tool names")
+    execute: McpExecute | None = Field(default=None, description="MCP 执行函数")
+    tool_names: list[str] = Field(default_factory=list, description="可用工具名列表")

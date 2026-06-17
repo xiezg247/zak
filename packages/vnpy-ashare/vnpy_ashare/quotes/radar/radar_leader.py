@@ -37,8 +37,8 @@ class LeaderScoredRow(FrozenModel):
     leader_score: float = Field(description="龙头评分")
     leader_tier: LeaderTier = Field(description="龙头分层")
     limit_times: float = Field(description="连板数")
-    sector_axis: str = Field(default="", description="sector axis")
-    sector_name: str = Field(default="", description="sector name")
+    sector_axis: str = Field(default="", description="板块坐标轴")
+    sector_name: str = Field(default="", description="板块名称")
 
 
 def leader_tier_label(tier: str) -> str:

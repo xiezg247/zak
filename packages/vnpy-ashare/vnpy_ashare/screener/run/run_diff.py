@@ -4,18 +4,19 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_as_dict
 from vnpy_ashare.screener.run.run_store import find_previous_run_by_condition, find_previous_run_by_recipe
 
 DiffStatus = Literal["新增", "保留", ""]
 
 
-def symbol_set(rows: list[dict[str, Any]]) -> set[str]:
+def symbol_set(rows: list[QuoteRowLike]) -> set[str]:
     return {str(row.get("vt_symbol") or "").strip() for row in rows if row.get("vt_symbol")}
 
 
 def compute_run_diff(
-    current_rows: list[dict[str, Any]],
-    previous_rows: list[dict[str, Any]],
+    current_rows: list[QuoteRowLike],
+    previous_rows: list[QuoteRowLike],
 ) -> dict[str, Any]:
     """对比两次结果的 vt_symbol 集合。"""
     current = symbol_set(current_rows)
@@ -36,18 +37,18 @@ def compute_run_diff(
 
 
 def enrich_recipe_run(
-    rows: list[dict[str, Any]],
+    rows: list[QuoteRowLike],
     recipe_id: str,
     config: dict[str, Any],
-) -> list[dict[str, Any]]:
+) -> list[QuoteRow]:
     """同配方对比上次 run，写入 config.run_diff 与行级 diff_status。"""
     rid = (recipe_id or "").strip()
     if not rid:
-        return rows
+        return [coerce_quote_row(row) for row in rows]
 
     previous = find_previous_run_by_recipe(rid)
     if previous is None:
-        return rows
+        return [coerce_quote_row(row) for row in rows]
     diff = compute_run_diff(rows, previous.rows)
     config["run_diff"] = {
         "previous_run_id": previous.id,
@@ -59,20 +60,20 @@ def enrich_recipe_run(
 
 
 def enrich_condition_run(
-    rows: list[dict[str, Any]],
+    rows: list[QuoteRowLike],
     condition: str,
     config: dict[str, Any],
     *,
     source: str = "",
-) -> list[dict[str, Any]]:
+) -> list[QuoteRow]:
     """同 condition 对比上次 run（雷达共振 / 行业成分等）。"""
     label = (condition or "").strip()
     if not label:
-        return rows
+        return [coerce_quote_row(row) for row in rows]
 
     previous = find_previous_run_by_condition(label, source=source)
     if previous is None:
-        return rows
+        return [coerce_quote_row(row) for row in rows]
     diff = compute_run_diff(rows, previous.rows)
     config["run_diff"] = {
         "previous_run_id": previous.id,
@@ -84,23 +85,27 @@ def enrich_condition_run(
 
 
 def annotate_rows_with_diff(
-    rows: list[dict[str, Any]],
+    rows: list[QuoteRowLike],
     diff: dict[str, Any] | None,
-) -> list[dict[str, Any]]:
+) -> list[QuoteRow]:
     """为当前结果行写入 ``diff_status``（新增/保留）。"""
     if not diff:
-        return rows
+        return [coerce_quote_row(row) for row in rows]
     new_set = set(diff.get("new") or [])
     stay_set = set(diff.get("stay") or [])
-    annotated: list[dict[str, Any]] = []
+    annotated: list[QuoteRow] = []
     for row in rows:
-        merged = dict(row)
-        vt = str(merged.get("vt_symbol") or "")
+        vt = str(row.get("vt_symbol") or "")
         if vt in new_set:
-            merged["diff_status"] = "新增"
+            status: DiffStatus = "新增"
         elif vt in stay_set:
-            merged["diff_status"] = "保留"
+            status = "保留"
         else:
-            merged["diff_status"] = ""
-        annotated.append(merged)
+            status = ""
+        if isinstance(row, QuoteRow):
+            annotated.append(row.model_copy(update={"diff_status": status}))
+        else:
+            merged = quote_row_as_dict(row)
+            merged["diff_status"] = status
+            annotated.append(coerce_quote_row(merged))
     return annotated

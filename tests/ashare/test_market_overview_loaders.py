@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from dataclasses import replace
 from unittest.mock import patch
 
 from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
@@ -54,7 +53,7 @@ class MarketOverviewLoaderTests(unittest.TestCase):
         self.assertEqual(merged.limit_source, "tushare")
 
     def test_merge_official_limit_counts_keeps_base_when_empty(self) -> None:
-        base = replace(compute_market_breadth([{"change_pct": 1.0, "amount": 0}]), limit_up=9, limit_down=1)
+        base = compute_market_breadth([{"change_pct": 1.0, "amount": 0}]).model_copy(update={"limit_up": 9, "limit_down": 1})
         with patch(
             "vnpy_ashare.integrations.tushare.factors.fetch_limit_list_d",
             return_value=([], "20250612"),

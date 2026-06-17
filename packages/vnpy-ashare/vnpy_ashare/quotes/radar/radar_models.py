@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_as_dict
 from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
@@ -56,16 +57,19 @@ class RadarResonanceEntry(FrozenModel):
     resonance_score: float = Field(default=0.0, description="共振得分")
 
 
-def quote_map() -> dict[str, dict[str, Any]]:
+def quote_map() -> dict[str, QuoteRow]:
     """vt_symbol → 行情行（读进程内缓存）。"""
     return quote_rows_by_vt_symbol()
 
 
-def merge_row_quotes(row: dict[str, Any]) -> dict[str, Any]:
+def merge_row_quotes(row: QuoteRow | dict[str, Any]) -> dict[str, Any]:
     """合并行情缓存，补全 volume / amount / 现价等字段。"""
     vt_symbol = str(row.get("vt_symbol") or "").strip()
-    merged = dict(row)
-    quote = quote_map().get(vt_symbol, {})
+    merged = quote_row_as_dict(row) if isinstance(row, QuoteRow) else dict(row)
+    quote = quote_map().get(vt_symbol)
+    if quote is None:
+        return merged
+    quote_dict = quote_row_as_dict(quote)
     for key in (
         "volume",
         "amount",
@@ -77,7 +81,7 @@ def merge_row_quotes(row: dict[str, Any]) -> dict[str, Any]:
         "net_mf_amount",
         "name",
     ):
-        cached = quote.get(key)
+        cached = quote_dict.get(key)
         if cached in (None, "", 0, 0.0):
             continue
         if not merged.get(key):
@@ -86,23 +90,24 @@ def merge_row_quotes(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _ingest_quote_row(
-    row: dict[str, Any],
+    row: QuoteRow | dict[str, Any],
     *,
     by_vt: dict[str, dict[str, Any]],
     by_symbol: dict[str, dict[str, Any]],
 ) -> None:
-    vt_symbol = str(row.get("vt_symbol") or "").strip()
-    symbol = str(row.get("symbol") or "").strip()
+    payload = quote_row_as_dict(row) if isinstance(row, QuoteRow) else dict(row)
+    vt_symbol = str(payload.get("vt_symbol") or "").strip()
+    symbol = str(payload.get("symbol") or "").strip()
     if not vt_symbol and symbol:
         item = parse_stock_symbol(symbol)
         if item is not None:
             vt_symbol = item.vt_symbol
-            row = dict(row)
-            row["vt_symbol"] = vt_symbol
+            payload = dict(payload)
+            payload["vt_symbol"] = vt_symbol
     if vt_symbol:
-        by_vt[vt_symbol] = dict(row)
+        by_vt[vt_symbol] = dict(payload)
     if symbol:
-        by_symbol[symbol] = dict(row)
+        by_symbol[symbol] = dict(payload)
 
 
 def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
@@ -116,7 +121,7 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
     try:
         snapshot = load_screening_quote_snapshot()
         for row in snapshot.rows:
-            _ingest_quote_row(dict(row), by_vt=by_vt, by_symbol=by_symbol)
+            _ingest_quote_row(row, by_vt=by_vt, by_symbol=by_symbol)
     except MarketQuotesLoadError:
         pass
 

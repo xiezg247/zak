@@ -77,7 +77,7 @@ class StockBinding(FrozenModel):
     """快捷动作绑定的单票标识（symbol / vt_symbol / 展示名）。"""
 
     symbol: str = Field(description="六位股票代码")
-    exchange_cn: str = Field(description="exchange cn")
+    exchange_cn: str = Field(description="交易所中文名")
     name: str = Field(description="名称")
     vt_symbol: str = Field(description="VeighNa 合约代码")
 

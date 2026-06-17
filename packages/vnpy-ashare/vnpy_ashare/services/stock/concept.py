@@ -15,7 +15,7 @@ from vnpy_ashare.integrations.tushare.concept import fetch_stock_concepts
 class ConceptProfile(MutableModel):
     ts_code: str = Field(description="Tushare 代码")
     vt_symbol: str = Field(description="合约代码（含交易所）")
-    concepts: list[dict[str, Any]] = Field(default_factory=list, description="concepts")
+    concepts: list[dict[str, Any]] = Field(default_factory=list, description="概念题材列表")
     message: str = Field(default="", description="说明信息")
 
 

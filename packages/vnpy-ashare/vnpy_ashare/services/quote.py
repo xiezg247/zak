@@ -12,6 +12,7 @@ from vnpy_ashare.ai.context import (
     set_ai_context,
 )
 from vnpy_ashare.ai.context.market_overview import merge_market_overview_extra
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.core.quote_rows import (
@@ -84,5 +85,5 @@ class QuoteService(BaseService):
         """缓存市场页行情，供 ScreeningService / AI 选股使用。"""
         write_market_quotes_cache(items, quotes)
 
-    def get_market_quotes_cache(self) -> list[dict[str, Any]]:
+    def get_market_quotes_cache(self) -> list[QuoteRow]:
         return read_market_quotes_cache()

@@ -29,17 +29,17 @@ class WatchlistMultiRow(FrozenModel):
     sub_value: str = Field(description="副指标值")
     anomaly_score: float = Field(description="异动评分")
 
-    signal_label: str | None = Field(default=None, description="signal label")
-    has_position: bool = Field(default=False, description="has position")
-    position_pnl_pct: float | None = Field(default=None, description="position pnl pct")
+    signal_label: str | None = Field(default=None, description="策略信号标签")
+    has_position: bool = Field(default=False, description="是否持仓")
+    position_pnl_pct: float | None = Field(default=None, description="持仓盈亏比例（%）")
     industry: str | None = Field(default=None, description="所属行业")
-    sector_rank: int | None = Field(default=None, description="sector rank")
-    sector_avg_change: float | None = Field(default=None, description="sector avg change")
-    sparkline_points: tuple[float, ...] = Field(default=(), description="sparkline points")
-    sparkline_kind: Literal["daily", "intraday", "minute", "none"] = Field(default="none", description="sparkline kind")
+    sector_rank: int | None = Field(default=None, description="板块内涨幅排名")
+    sector_avg_change: float | None = Field(default=None, description="板块平均涨跌幅（%）")
+    sparkline_points: tuple[float, ...] = Field(default=(), description="迷你图数据点")
+    sparkline_kind: Literal["daily", "intraday", "minute", "none"] = Field(default="none", description="迷你图类型")
 
 
 class WatchlistMultiBoardData(FrozenModel):
     rows: tuple[WatchlistMultiRow, ...] = Field(description="数据行列表")
-    empty_message: str = Field(default="", description="empty message")
-    total_count: int = Field(default=0, description="total count")
+    empty_message: str = Field(default="", description="空态提示")
+    total_count: int = Field(default=0, description="总行数")

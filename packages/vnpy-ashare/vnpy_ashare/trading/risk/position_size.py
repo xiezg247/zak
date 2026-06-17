@@ -21,8 +21,8 @@ class PositionSizeResult(FrozenModel):
     stop_loss_pct: float = Field(description="止损比例（0–1）")
     cost_price: float = Field(description="成本价")
     total_capital: float = Field(description="总资金")
-    volume_exceeds_suggestion: bool | None = Field(default=None, description="volume exceeds suggestion")
-    requested_volume: int | None = Field(default=None, description="requested volume")
+    volume_exceeds_suggestion: bool | None = Field(default=None, description="请求股数是否超出建议")
+    requested_volume: int | None = Field(default=None, description="请求买入股数")
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {

@@ -38,13 +38,13 @@ class ValuationProfile(MutableModel):
     vt_symbol: str = Field(description="合约代码（含交易所）")
     trade_date: str = Field(default="", description="交易日")
     pe_ttm: float | None = Field(default=None, description="市盈率 TTM")
-    pb: float | None = Field(default=None, description="pb")
-    total_mv: float | None = Field(default=None, description="total mv")
-    circ_mv: float | None = Field(default=None, description="circ mv")
-    pe_percentile_3y: float | None = Field(default=None, description="pe percentile 3y")
-    pb_percentile_3y: float | None = Field(default=None, description="pb percentile 3y")
-    history_days: int = Field(default=0, description="history days")
-    synced: bool = Field(default=False, description="synced")
+    pb: float | None = Field(default=None, description="市净率")
+    total_mv: float | None = Field(default=None, description="总市值（万元）")
+    circ_mv: float | None = Field(default=None, description="流通市值（万元）")
+    pe_percentile_3y: float | None = Field(default=None, description="PE 三年分位")
+    pb_percentile_3y: float | None = Field(default=None, description="PB 三年分位")
+    history_days: int = Field(default=0, description="历史样本天数")
+    synced: bool = Field(default=False, description="是否已同步")
     message: str = Field(default="", description="说明信息")
 
 
@@ -54,11 +54,11 @@ class SectorProfile(MutableModel):
     name: str = Field(description="名称")
     industry: str = Field(default="", description="所属行业")
     trade_date: str = Field(default="", description="交易日")
-    sector_count: int = Field(default=0, description="sector count")
-    sector_avg_change_pct: float | None = Field(default=None, description="sector avg change pct")
-    sector_rank: int | None = Field(default=None, description="sector rank")
-    peers: list[dict[str, Any]] = Field(default_factory=list, description="peers")
-    disclosure: list[dict[str, str]] = Field(default_factory=list, description="disclosure")
+    sector_count: int = Field(default=0, description="板块成分股数量")
+    sector_avg_change_pct: float | None = Field(default=None, description="板块平均涨跌幅（%）")
+    sector_rank: int | None = Field(default=None, description="板块内涨幅排名")
+    peers: list[dict[str, Any]] = Field(default_factory=list, description="同行业对标股")
+    disclosure: list[dict[str, str]] = Field(default_factory=list, description="披露计划")
 
 
 def _percentile_rank(values: list[float], current: float | None) -> float | None:
