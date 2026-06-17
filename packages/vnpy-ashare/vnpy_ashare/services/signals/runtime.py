@@ -21,7 +21,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import (
     signal_missing_kline,
     signal_sort_key,
 )
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 
 def structure_broken(

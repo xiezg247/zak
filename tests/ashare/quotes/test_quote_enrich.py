@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from vnpy_ashare.quotes.core.enrich import enrich_quotes_with_tushare_factors, load_tushare_factor_maps_by_tickflow
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 
 def _quote(tf_symbol: str = "600000.SH") -> QuoteSnapshot:

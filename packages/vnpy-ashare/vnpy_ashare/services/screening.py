@@ -27,7 +27,7 @@ from vnpy_ashare.ai.context import (
 from vnpy_ashare.ai.context import (
     set_screening_results as _set_screening_results,
 )
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows, resolve_result_source_tag
@@ -287,10 +287,10 @@ class ScreeningService(BaseService):
     def format_source_tag(self, source: str) -> str:
         return resolve_result_source_tag(source)
 
-    def resolve_export_columns(self, rows: list[QuoteRowLike]) -> list[tuple[str, str]]:
+    def resolve_export_columns(self, rows: list[QuoteRow]) -> list[tuple[str, str]]:
         return resolve_export_columns(rows)
 
-    def export_csv(self, rows: list[QuoteRowLike], path: str) -> None:
+    def export_csv(self, rows: list[QuoteRow], path: str) -> None:
         export_rows_to_csv(rows, path)
 
     def get_run_record(self, run_id: str):

@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_catalog import DEFAULT_RANK_ID, RankDefinition, get_rank_definition
 from vnpy_ashare.quotes.rank.rank_engine import (
     finalize_rank_catalog,

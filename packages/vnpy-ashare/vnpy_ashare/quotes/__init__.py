@@ -14,7 +14,7 @@ from vnpy_ashare.quotes.core.provider import (
     quote_snapshot_from_row,
     resolve_quote_snapshot,
 )
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 __all__ = [
     "MARKET_INDICES",

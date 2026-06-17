@@ -11,8 +11,7 @@ from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
-from vnpy_ashare.domain.market.quote_row import quote_row_as_dict
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.quotes.rank.rank_scope import (
     build_stock_items_from_rank_symbols,
@@ -230,7 +229,7 @@ def resolve_quote_snapshot(
             vt = str(row.get("vt_symbol") or "").strip()
             sym = str(row.get("symbol") or "").strip()
             if vt == item.vt_symbol or sym == item.symbol:
-                quote = quote_snapshot_from_row(quote_row_as_dict(row), tickflow_symbol=tf_symbol)
+                quote = quote_snapshot_from_row(row.to_dict(), tickflow_symbol=tf_symbol)
                 if quote is not None:
                     return quote
     except Exception:
@@ -242,7 +241,7 @@ def resolve_quote_snapshot(
             vt = str(row.get("vt_symbol") or "").strip()
             sym = str(row.get("symbol") or "").strip()
             if vt == item.vt_symbol or sym == item.symbol:
-                quote = quote_snapshot_from_row(quote_row_as_dict(row), tickflow_symbol=tf_symbol)
+                quote = quote_snapshot_from_row(row.to_dict(), tickflow_symbol=tf_symbol)
                 if quote is not None:
                     if not quote.trade_time and snapshot.updated_at:
                         quote = QuoteSnapshot(

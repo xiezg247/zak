@@ -48,16 +48,6 @@ class BacktestSummary(MutableModel):
     end: str = Field(description="结束日期")
     statistics: dict[str, Any] = Field(default_factory=dict, description="回测统计指标")
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "strategy": self.strategy,
-            "vt_symbol": self.vt_symbol,
-            "interval": self.interval,
-            "start": self.start,
-            "end": self.end,
-            "statistics": self.statistics,
-        }
-
 
 class ScreeningResultContext(MutableModel):
     """最近一次选股结果快照（供 Skill / 悬浮球读取）。"""
@@ -120,7 +110,7 @@ def get_backtest_summary_dict() -> dict[str, Any] | None:
 
 def set_backtest_summary(summary: BacktestSummary | None) -> None:
     """写入回测摘要（``BacktestSummary`` 转 dict 后存 session）。"""
-    sync_backtest_summary_dict(summary.to_dict() if summary else None)
+    sync_backtest_summary_dict(summary.model_dump(mode="python") if summary else None)
 
 
 def clear_all() -> None:

@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_as_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
@@ -65,11 +65,11 @@ def quote_map() -> dict[str, QuoteRow]:
 def merge_row_quotes(row: QuoteRow | dict[str, Any]) -> dict[str, Any]:
     """合并行情缓存，补全 volume / amount / 现价等字段。"""
     vt_symbol = str(row.get("vt_symbol") or "").strip()
-    merged = quote_row_as_dict(row) if isinstance(row, QuoteRow) else dict(row)
+    merged = coerce_quote_row(row).to_dict()
     quote = quote_map().get(vt_symbol)
     if quote is None:
         return merged
-    quote_dict = quote_row_as_dict(quote)
+    quote_dict = quote.to_dict()
     for key in (
         "volume",
         "amount",
@@ -95,7 +95,7 @@ def _ingest_quote_row(
     by_vt: dict[str, dict[str, Any]],
     by_symbol: dict[str, dict[str, Any]],
 ) -> None:
-    payload = quote_row_as_dict(row) if isinstance(row, QuoteRow) else dict(row)
+    payload = coerce_quote_row(row).to_dict()
     vt_symbol = str(payload.get("vt_symbol") or "").strip()
     symbol = str(payload.get("symbol") or "").strip()
     if not vt_symbol and symbol:

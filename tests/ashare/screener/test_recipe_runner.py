@@ -164,8 +164,8 @@ def test_run_recipe_applies_flow_kind_score_factor():
         name="测试资金类型",
         trigger_kind="intraday",
         dimensions=(
-            DimensionSpec("moneyflow_intraday", "盘中资金", 0.5),
-            DimensionSpec("moneyflow", "资金", 0.5),
+            DimensionSpec(dimension_id="moneyflow_intraday", label="盘中资金", weight=0.5),
+            DimensionSpec(dimension_id="moneyflow", label="资金", weight=0.5),
         ),
         top_n=5,
         pool_size=10,

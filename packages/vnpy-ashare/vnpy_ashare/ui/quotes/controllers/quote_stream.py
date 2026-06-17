@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge, can_use_tickflow_stream
-from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.ui.quotes.page.config import (
     STREAM_CHART_QUOTE_DEBOUNCE_MS,

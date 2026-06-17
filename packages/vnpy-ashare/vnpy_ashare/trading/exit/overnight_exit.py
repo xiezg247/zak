@@ -13,7 +13,7 @@ from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
 
 if TYPE_CHECKING:
-    from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+    from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 ExitSignal = Literal["buy", "sell", "hold", "na"]
 RuleStatus = Literal["triggered", "near", "clear"]

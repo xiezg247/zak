@@ -10,7 +10,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.trading.exit.overnight_exit import evaluate_overnight_exit
 
 if TYPE_CHECKING:
-    from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+    from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 
 def apply_overnight_exit_overlay(

@@ -15,7 +15,7 @@ from typing import Any
 from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.base import MutableModel
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_rows, quote_rows_to_dicts
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
 
@@ -87,7 +87,7 @@ def save_run(
     run_id = uuid.uuid4().hex
     now = _now()
     normalized = coerce_quote_rows(rows)
-    payload = json.dumps(quote_rows_to_dicts(normalized), ensure_ascii=False)
+    payload = json.dumps([row.to_dict() for row in normalized], ensure_ascii=False)
     config_payload = json.dumps(config or {}, ensure_ascii=False)
     with _connect() as conn:
         conn.execute(

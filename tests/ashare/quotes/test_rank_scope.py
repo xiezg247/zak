@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.quotes.rank.rank_scope import load_market_rank_catalog, load_watchlist_rank_catalog
 

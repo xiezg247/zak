@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.ai.context.store import get_market_overview_context, set_market_overview_context
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt

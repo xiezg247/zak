@@ -8,7 +8,7 @@ from vnpy_ashare.config import exchange_to_cn
 from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.quote_time import format_trade_time_display
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.format import (
     format_amount,
     format_net_mf_amount,

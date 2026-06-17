@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.integrations.tickflow.quotes import get_tickflow_client, parse_quote_row
-from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 if TYPE_CHECKING:
     from tickflow.resources.stream import MarketStream

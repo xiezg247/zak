@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.misc.speed_baseline import (
     SPEED_BASELINE_AT_KEY,
     SPEED_BASELINE_HASH_KEY,

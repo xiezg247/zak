@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 
 from pydantic import ConfigDict, Field, model_validator
 
 from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 
 class QuoteRow(MutableModel):
@@ -54,7 +54,7 @@ class QuoteRow(MutableModel):
         return payload
 
     def to_dict(self) -> dict[str, Any]:
-        """含 extra 字段的 plain dict（兼容旧 dict 管道）。"""
+        """含 extra 字段的 plain dict。"""
         return self.model_dump(mode="python")
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -134,21 +134,6 @@ def coerce_quote_rows(rows: Sequence[QuoteRow | Mapping[str, Any]]) -> list[Quot
     return [coerce_quote_row(row) for row in rows]
 
 
-def quote_row_as_dict(row: QuoteRow | Mapping[str, Any]) -> dict[str, Any]:
-    if isinstance(row, QuoteRow):
-        return row.to_dict()
-    return dict(row)
-
-
 def quote_rows_by_vt(rows: Sequence[QuoteRow | Mapping[str, Any]] | None = None) -> dict[str, QuoteRow]:
     source = coerce_quote_rows(rows) if rows is not None else []
     return {row.vt_symbol.strip(): row for row in source if row.vt_symbol.strip()}
-
-
-def quote_rows_to_dicts(rows: Sequence[QuoteRow | Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """批量转为 plain dict（导出 / JSON 持久化）。"""
-    return [quote_row_as_dict(row) for row in rows]
-
-
-# 供 isinstance 检查 dict 兼容层
-QuoteRowLike = QuoteRow | MutableMapping[str, Any]

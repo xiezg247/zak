@@ -11,7 +11,7 @@ from vnpy.trader.ui import QtWidgets
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.ui.quotes.controllers.quote_stream import QuoteStreamController
 from vnpy_ashare.ui.quotes.page.config import STREAM_CHART_QUOTE_DEBOUNCE_MS
 

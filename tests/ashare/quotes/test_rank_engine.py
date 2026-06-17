@@ -2,7 +2,7 @@
 
 import pytest
 
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_DOWN_PCT, LIMIT_UP_PCT
 from vnpy_ashare.quotes.rank.rank_catalog import NEAR_LIMIT_UP_MIN, get_rank_definition
 from vnpy_ashare.quotes.rank.rank_engine import (

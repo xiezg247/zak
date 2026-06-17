@@ -6,7 +6,7 @@ from datetime import datetime, time
 
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, MORNING_OPEN
 from vnpy_ashare.domain.time.quote_time import normalize_datetime_text
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 OPENING_STOP_MINUTES = 30
 

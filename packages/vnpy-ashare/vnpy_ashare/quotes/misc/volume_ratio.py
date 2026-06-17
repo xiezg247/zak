@@ -10,7 +10,7 @@ from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import INTRADAY_SESSION_MINUTES, elapsed_trading_minutes
 from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
 from vnpy_ashare.integrations.tushare.client import get_tushare_pro
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 _AVG_VOLUME_CACHE: tuple[dict[str, float], float] | None = None
 _AVG_VOLUME_TTL_SEC = 300.0

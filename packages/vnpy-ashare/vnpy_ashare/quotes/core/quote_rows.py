@@ -10,12 +10,11 @@ from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
     coerce_quote_row,
     coerce_quote_rows,
-    quote_row_as_dict,
     quote_row_from_stock_and_snapshot,
     quote_rows_by_vt,
 )
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.cache_invalidation import on_market_quotes_updated
 
 _lock = threading.Lock()
@@ -83,8 +82,3 @@ def quote_rows_by_vt_symbol(rows: Sequence[QuoteRow | Mapping[str, Any]] | None 
     else:
         source = coerce_quote_rows(rows)
     return quote_rows_by_vt(source)
-
-
-# 过渡期：UI / 导出仍可直接拿 plain dict
-def get_market_quotes_cache_as_dicts() -> list[dict[str, Any]]:
-    return [quote_row_as_dict(row) for row in get_market_quotes_cache()]

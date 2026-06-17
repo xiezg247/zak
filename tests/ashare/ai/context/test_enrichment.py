@@ -35,9 +35,15 @@ class TestEnrichment(unittest.TestCase):
         self.assertEqual(data.badge, "自选")
         self.assertIn("贵州茅台", data.chip_text)
         self.assertIn("+2.30%", data.chip_text)
-        self.assertEqual(len(data.actions), 5)
-        self.assertTrue(all(action.has_menu for action in data.actions[:4]))
-        self.assertEqual(data.actions[4].id, "reference_peer")
+        self.assertEqual(len(data.actions), 7)
+        ids = [action.id for action in data.actions]
+        self.assertEqual(
+            ids[:5],
+            ["diagnose", "team_analysis", "technical", "trend_forecast", "recent_trend"],
+        )
+        self.assertEqual(ids[5:], ["reference_peer", "note_review"])
+        self.assertTrue(data.actions[0].has_menu)
+        self.assertTrue(data.actions[2].has_menu)
 
     def test_screener_badge_with_count(self) -> None:
         set_screening_results(

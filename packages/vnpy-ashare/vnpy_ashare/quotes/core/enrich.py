@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.core.limit_times_cache import (
     load_limit_times_map_by_tickflow,
     store_limit_times_map_cache,
 )
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.quotes.misc.volume_ratio import fill_intraday_volume_ratios
 

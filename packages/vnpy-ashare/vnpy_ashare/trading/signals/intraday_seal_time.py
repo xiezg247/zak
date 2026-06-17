@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 
 from strategies.ultra_short_signals import calc_limit_price
 from vnpy_ashare.domain.symbols import parse_stock_symbol
@@ -21,7 +21,7 @@ class _MinuteBar(Protocol):
     high_price: float
 
 
-def infer_prev_close_from_row(row: QuoteRowLike | Mapping[str, Any]) -> float | None:
+def infer_prev_close_from_row(row: QuoteRow | Mapping[str, Any]) -> float | None:
     """由现价与涨跌幅反推昨收。"""
     last_raw = row.get("last_price") if row.get("last_price") is not None else row.get("close")
     change_raw = row.get("change_pct")
@@ -106,7 +106,7 @@ def resolve_first_time(
 
 
 def build_first_time_map(
-    rows: Sequence[QuoteRowLike | Mapping[str, Any]],
+    rows: Sequence[QuoteRow | Mapping[str, Any]],
     *,
     max_intraday_fetch: int = 0,
 ) -> dict[str, str]:

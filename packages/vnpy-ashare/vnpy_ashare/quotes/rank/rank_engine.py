@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_catalog import RankDefinition, RankFilter
 
 RankScope = Literal["all", "watchlist"]

@@ -1,4 +1,4 @@
-"""行情快照数据结构。"""
+"""TickFlow / Redis 行情快照领域模型。"""
 
 from __future__ import annotations
 

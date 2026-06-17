@@ -454,9 +454,10 @@ REDIS_DB=0
 | 类名 | 定义文件 | 用途 |
 |------|----------|------|
 | `StockItem` | `vnpy_ashare/domain/symbols/stock.py` | A 股标的统一模型（symbol, exchange, name） |
-| `QuoteSnapshot` | `vnpy_ashare/quotes/core/snapshot.py` | TickFlow / Redis 行情快照 |
+| `QuoteSnapshot` | `vnpy_ashare/domain/market/quote_snapshot.py` | TickFlow / Redis 行情快照 |
 | `QuoteRow` | `vnpy_ashare/domain/market/quote_row.py` | 全市场行情行（选股 / 雷达 / 缓存共用） |
-| `DepthSnapshot` | `vnpy_ashare/quotes/core/depth_snapshot.py` | 五档盘口快照（bid/ask 各 5 档） |
+| `ScreenerResultRow` | `vnpy_ashare/domain/screener/result_row.py` | 选股结果结构化行（行情 + 评分 + 标签） |
+| `DepthSnapshot` | `vnpy_ashare/domain/market/depth_snapshot.py` | 五档盘口快照（bid/ask 各 5 档） |
 | `SignalSnapshot` | `vnpy_ashare/domain/trading/signal_snapshot.py` | 策略信号快照（含强度、锚价、理由） |
 | `PeriodBarOverview` | `vnpy_ashare/data/bar_store.py` | 单标的 K 线概况（symbol, period, start, end, count） |
 | `BarMeta` / `BarGapResult` | `vnpy_ashare/data/bar_health.py` | K 线元信息与断层检测 |

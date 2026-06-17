@@ -66,7 +66,7 @@ class BacktestRunRecord(MutableModel):
     created_at: str = Field(description="创建时间")
 
     def to_summary_dict(self) -> dict[str, Any]:
-        """与 context_store BacktestSummary.to_dict() 对齐。"""
+        """与 context_store BacktestSummary.model_dump() 对齐。"""
         return {
             "strategy": self.strategy,
             "vt_symbol": self.vt_symbol,
@@ -203,7 +203,7 @@ def save_backtest_run(
 
 
 def save_backtest_summary_dict(summary: dict[str, Any], *, source: str = "single") -> BacktestRunRecord:
-    """从 BacktestSummary.to_dict() 写入。"""
+    """从 BacktestSummary.model_dump() 写入。"""
     return save_backtest_run(
         vt_symbol=str(summary.get("vt_symbol", "")),
         strategy=str(summary.get("strategy", "")),

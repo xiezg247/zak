@@ -34,7 +34,7 @@ from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.services.analysis import AnalysisService

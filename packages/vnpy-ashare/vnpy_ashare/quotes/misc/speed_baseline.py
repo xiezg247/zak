@@ -6,7 +6,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+    from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 SPEED_BASELINE_HASH_KEY = "zak:speed:baseline"
 SPEED_BASELINE_AT_KEY = "zak:meta:speed_baseline_at"

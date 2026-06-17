@@ -8,7 +8,7 @@ from vnpy_ashare.domain.base import FrozenModel
 from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_from_stock_and_snapshot
 from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 
 class MarketQuotesLoadError(RuntimeError):
@@ -54,8 +54,3 @@ def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapsh
 def row_from_item_quote(item: StockItem, quote: QuoteSnapshot) -> QuoteRow:
     """公开别名，供 data_source / 测试使用。"""
     return quote_row_from_stock_and_snapshot(item, quote)
-
-
-def rows_as_dicts(rows: list[QuoteRow]) -> list[dict]:
-    """过渡期：导出或 JSON 序列化。"""
-    return [row.to_dict() for row in rows]

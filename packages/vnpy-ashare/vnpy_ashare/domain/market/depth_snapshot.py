@@ -1,4 +1,4 @@
-"""五档盘口快照。"""
+"""五档盘口快照领域模型。"""
 
 from __future__ import annotations
 

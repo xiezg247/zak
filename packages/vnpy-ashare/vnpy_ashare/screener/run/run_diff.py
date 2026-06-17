@@ -4,19 +4,19 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_as_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.screener.run.run_store import find_previous_run_by_condition, find_previous_run_by_recipe
 
 DiffStatus = Literal["新增", "保留", ""]
 
 
-def symbol_set(rows: list[QuoteRowLike]) -> set[str]:
+def symbol_set(rows: list[QuoteRow]) -> set[str]:
     return {str(row.get("vt_symbol") or "").strip() for row in rows if row.get("vt_symbol")}
 
 
 def compute_run_diff(
-    current_rows: list[QuoteRowLike],
-    previous_rows: list[QuoteRowLike],
+    current_rows: list[QuoteRow],
+    previous_rows: list[QuoteRow],
 ) -> dict[str, Any]:
     """对比两次结果的 vt_symbol 集合。"""
     current = symbol_set(current_rows)
@@ -37,7 +37,7 @@ def compute_run_diff(
 
 
 def enrich_recipe_run(
-    rows: list[QuoteRowLike],
+    rows: list[QuoteRow],
     recipe_id: str,
     config: dict[str, Any],
 ) -> list[QuoteRow]:
@@ -60,7 +60,7 @@ def enrich_recipe_run(
 
 
 def enrich_condition_run(
-    rows: list[QuoteRowLike],
+    rows: list[QuoteRow],
     condition: str,
     config: dict[str, Any],
     *,
@@ -85,7 +85,7 @@ def enrich_condition_run(
 
 
 def annotate_rows_with_diff(
-    rows: list[QuoteRowLike],
+    rows: list[QuoteRow],
     diff: dict[str, Any] | None,
 ) -> list[QuoteRow]:
     """为当前结果行写入 ``diff_status``（新增/保留）。"""
@@ -95,17 +95,13 @@ def annotate_rows_with_diff(
     stay_set = set(diff.get("stay") or [])
     annotated: list[QuoteRow] = []
     for row in rows:
-        vt = str(row.get("vt_symbol") or "")
+        normalized = coerce_quote_row(row)
+        vt = str(normalized.get("vt_symbol") or "")
         if vt in new_set:
             status: DiffStatus = "新增"
         elif vt in stay_set:
             status = "保留"
         else:
             status = ""
-        if isinstance(row, QuoteRow):
-            annotated.append(row.model_copy(update={"diff_status": status}))
-        else:
-            merged = quote_row_as_dict(row)
-            merged["diff_status"] = status
-            annotated.append(coerce_quote_row(merged))
+        annotated.append(normalized.model_copy(update={"diff_status": status}))
     return annotated

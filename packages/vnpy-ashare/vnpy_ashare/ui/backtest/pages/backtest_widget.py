@@ -508,7 +508,7 @@ class BacktesterWidget(VnpyBacktesterManager):
             end=end_dt.strftime("%Y-%m-%d"),
             statistics=dict(statistics),
         )
-        summary_dict = summary.to_dict()
+        summary_dict = summary.model_dump(mode="python")
         self._write_backtest_summary_log(summary_dict)
         backtest_service = get_backtest_service(self.main_engine)
         if backtest_service is not None:

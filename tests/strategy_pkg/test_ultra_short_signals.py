@@ -8,7 +8,7 @@ from datetime import date
 from strategies.signals import build_signal_payload_for_strategy
 from strategies.ultra_short_signals import build_limit_board_signal_payload, calc_limit_price
 from vnpy_ashare.domain.trading.position import PositionRecord
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.trading.exit.overnight_exit import evaluate_overnight_exit
 
 
