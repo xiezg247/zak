@@ -10,6 +10,7 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.screener.data.screening_context_registry import get_screening_context
 
 
 def history_lookback_bars() -> int:
@@ -21,7 +22,6 @@ def history_lookback_bars() -> int:
 
 
 def load_history_bars_map(vt_symbols: list[str]) -> dict[tuple[str, Exchange], list[BarData]]:
-    from vnpy_ashare.screener.data.screening_context import get_screening_context
 
     ctx = get_screening_context()
     if ctx is not None:

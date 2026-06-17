@@ -7,6 +7,7 @@ from typing import Any
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.signal_benchmark import SIGNAL_BENCHMARK_SYMBOL
+from vnpy_ashare.screener.sentiment.sentiment_gate import try_fetch_fear_greed_index
 
 
 def _bar_close_map(bars: list[Any]) -> dict[Any, float]:
@@ -61,7 +62,6 @@ def compute_beta_vs_hs300(
 
 def fetch_market_sentiment() -> dict[str, Any] | None:
     try:
-        from vnpy_ashare.screener.sentiment.sentiment_gate import try_fetch_fear_greed_index
 
         snapshot = try_fetch_fear_greed_index()
     except Exception:

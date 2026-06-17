@@ -12,8 +12,10 @@ from datetime import datetime
 from typing import Any
 
 from vnpy.trader.constant import Exchange, Interval
+from vnpy_ctabacktester.engine import APP_NAME, BacktesterEngine
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.backtest.app import AshareCtaBacktesterApp
 from vnpy_ashare.backtest.batch_runner import (
     batch_backtest_max_workers,
     run_single_backtest_task,
@@ -23,6 +25,7 @@ from vnpy_ashare.backtest.run_store import save_backtest_run
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
+from vnpy_ashare.domain.datetime import format_china_date
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.jobs.result import JobResult
 
@@ -155,7 +158,7 @@ def load_batch_backtest_defaults() -> BatchBacktestParams:
             pass
 
     start_text = str(data.get("start", "2020-01-01"))
-    end_text = str(data.get("end", datetime.now().strftime("%Y-%m-%d")))
+    end_text = str(data.get("end", format_china_date()))
     return BatchBacktestParams(
         class_name=str(data.get("class_name", ASHARE_BACKTEST_DEFAULTS["class_name"])),
         start=datetime.strptime(start_text[:10], "%Y-%m-%d"),
@@ -170,12 +173,10 @@ def load_batch_backtest_defaults() -> BatchBacktestParams:
 
 def _ensure_backtest_app(main_engine) -> None:
     """自选/选股页批量回测时，回测 App 可能尚未延迟注册。"""
-    from vnpy_ctabacktester.engine import APP_NAME, BacktesterEngine
 
     engine = main_engine.get_engine(APP_NAME)
     if isinstance(engine, BacktesterEngine):
         return
-    from vnpy_ashare.backtest.app import AshareCtaBacktesterApp
 
     main_engine.add_app(AshareCtaBacktesterApp)
 

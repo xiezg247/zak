@@ -27,6 +27,7 @@ from vnpy_ashare.data.bar_access import (
 )
 from vnpy_ashare.data.bar_health import BarMeta, inspect_bar_gaps
 from vnpy_ashare.data.bars import (
+    cleanup_invalid_daily_bars,
     count_downloaded_stocks,
     default_minute_download_start,
     download_bars,
@@ -48,6 +49,12 @@ from vnpy_ashare.integrations.tickflow import (
 from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
 from vnpy_ashare.quotes.core.provider import get_redis_provider
+from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
+from vnpy_ashare.quotes.rank.rank_scope import (
+    build_stock_items_from_rank_symbols,
+    load_market_rank_catalog,
+    load_watchlist_rank_catalog,
+)
 from vnpy_ashare.storage.universe import load_universe, sync_universe
 from vnpy_ashare.ui.quotes.chart.minute_bars import LIVE_MINUTE_TAIL_COUNT
 
@@ -115,8 +122,6 @@ class InvalidBarCleanupWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            from vnpy_ashare.data.bars import cleanup_invalid_daily_bars
-
             self.finished.emit(cleanup_invalid_daily_bars())
         except Exception as ex:
             self.failed.emit(str(ex))
@@ -712,16 +717,8 @@ class MarketFullLoadWorker(QtCore.QThread):
             provider = get_redis_provider()
             updated_at: str | None = provider.updated_at()
             store = provider._store
-            from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
-
             spec = get_rank_definition(self.rank_id)
             name_map = {(symbol, exchange): name for symbol, exchange, name in load_universe_rows()}
-
-            from vnpy_ashare.quotes.rank.rank_scope import (
-                build_stock_items_from_rank_symbols,
-                load_market_rank_catalog,
-                load_watchlist_rank_catalog,
-            )
 
             if spec.scope == "watchlist":
                 tf_symbols, quotes = load_watchlist_rank_catalog(store, spec)

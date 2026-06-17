@@ -5,8 +5,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Protocol
 
+from strategies.ultra_short_signals import calc_limit_price
 from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session
-from vnpy_ashare.trading.signals.seal_time import parse_clock_minutes
+from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
+from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_first_time_map
+from vnpy_ashare.trading.signals.seal_time import parse_clock_minutes, seal_time_score
 
 
 class _MinuteBar(Protocol):
@@ -63,10 +67,6 @@ def fetch_intraday_seal_time(
     """拉 TickFlow 当日分 K，解析首次触板时间；失败返回空串。"""
     if prev_close <= 0:
         return ""
-    from strategies.ultra_short_signals import calc_limit_price
-    from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-    from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
-
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return ""
@@ -98,8 +98,6 @@ def resolve_first_time(
     if fallback:
         return fallback
     if limit_list_map is None:
-        from vnpy_ashare.quotes.radar.radar_first_board import load_limit_list_first_time_map
-
         return str(load_limit_list_first_time_map().get(vt_symbol) or "").strip()
     return ""
 
@@ -110,8 +108,6 @@ def build_first_time_map(
     max_intraday_fetch: int = 0,
 ) -> dict[str, str]:
     """合并 limit_list_d 与盘中 TickFlow 触板时间（仅补缺失项）。"""
-    from vnpy_ashare.quotes.radar.radar_first_board import load_limit_list_first_time_map
-
     result = dict(load_limit_list_first_time_map())
     if not is_ashare_trading_session() or max_intraday_fetch <= 0:
         return result
@@ -135,8 +131,6 @@ def build_first_time_map(
 
 def attach_first_time_fields(rows: list[dict[str, Any]], *, max_intraday_fetch: int = 0) -> None:
     """为行写入 first_time / seal_time_score（就地修改）。"""
-    from vnpy_ashare.trading.signals.seal_time import seal_time_score
-
     if not rows:
         return
     time_map = build_first_time_map(rows, max_intraday_fetch=max_intraday_fetch)

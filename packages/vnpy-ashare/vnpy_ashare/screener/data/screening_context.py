@@ -2,19 +2,34 @@
 
 from __future__ import annotations
 
+import os
 import threading
 from contextlib import contextmanager
-from contextvars import ContextVar
 from dataclasses import dataclass, field
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
+from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
+from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic, fetch_stock_industry_map
-from vnpy_ashare.screener.data.data_source import iter_trade_date_strs
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
+from vnpy_ashare.screener.data.quote_snapshot_cache import register_cached_quote_snapshot_reader
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
+from vnpy_ashare.screener.data.screening_context_registry import (
+    activate_screening_context,
+    deactivate_screening_context,
+    get_screening_context,
+)
+from vnpy_ashare.domain.trade_dates import iter_trade_date_strs
 
-_screening_ctx: ContextVar[ScreeningContext | None] = ContextVar("screening_ctx", default=None)
+
+def _history_lookback_bars() -> int:
+    raw = os.getenv("SCREENING_HISTORY_LOOKBACK_BARS", "25").strip()
+    try:
+        return max(10, min(int(raw), 60))
+    except ValueError:
+        return 25
 
 
 @dataclass
@@ -37,10 +52,6 @@ class ScreeningContext:
         self,
         vt_symbols: list[str],
     ) -> dict[tuple[str, Exchange], list[BarData]]:
-        from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
-        from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
-        from vnpy_ashare.screener.dimensions.history_signals import history_lookback_bars
-
         items: list[StockItem] = []
         for vt_symbol in vt_symbols:
             item = parse_stock_symbol(vt_symbol)
@@ -51,7 +62,7 @@ class ScreeningContext:
                 continue
             items.append(item)
         if items:
-            loaded = load_daily_bars_batch(items, lookback_bars=history_lookback_bars())
+            loaded = load_daily_bars_batch(items, lookback_bars=_history_lookback_bars())
             with self._lock:
                 self._history_bars_map.update(loaded)
         return dict(self._history_bars_map)
@@ -73,8 +84,6 @@ class ScreeningContext:
             return self._snapshot
         with self._lock:
             if not self._snapshot_loaded:
-                from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
-
                 try:
                     self._snapshot = load_screening_quote_snapshot_uncached()
                 except MarketQuotesLoadError as exc:
@@ -124,10 +133,6 @@ class ScreeningContext:
                     self._industry_map = {}
                 self._industry_map_loaded = True
         return self._industry_map or {}
-
-
-def get_screening_context() -> ScreeningContext | None:
-    return _screening_ctx.get()
 
 
 def get_cached_quote_snapshot() -> MarketQuotesSnapshot | None:
@@ -200,29 +205,16 @@ def get_stock_industry_map() -> dict[str, str]:
 def screening_context_scope():
     """进入配方 / 雷达批量加载作用域，子线程通过 copy_context 继承。"""
     ctx = ScreeningContext()
-    token = _screening_ctx.set(ctx)
+    token = activate_screening_context(ctx)
     try:
         yield ctx
     finally:
-        _screening_ctx.reset(token)
+        deactivate_screening_context(token)
 
 
 def preload_screening_context(ctx: ScreeningContext) -> None:
     """预加载常用字段，避免并行维度重复拉 Redis / Tushare。"""
     ctx.preload_quote_snapshot()
-    snapshot = ctx._snapshot
-    if snapshot is not None and snapshot.rows:
-        from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
-        from vnpy_ashare.screener.sentiment.sentiment_gate import apply_sentiment_snapshot_prefilter
-
-        filtered = apply_sentiment_snapshot_prefilter(list(snapshot.rows))
-        if len(filtered) != len(snapshot.rows):
-            ctx._snapshot = MarketQuotesSnapshot(
-                rows=filtered,
-                updated_at=snapshot.updated_at,
-                total=snapshot.total,
-                source=snapshot.source,
-            )
     ctx.preload_volume_ratio_map()
     ctx.preload_avg_turnover_map()
     ctx.preload_industry_map()
@@ -231,3 +223,6 @@ def preload_screening_context(ctx: ScreeningContext) -> None:
 def preload_screening_context_quotes(ctx: ScreeningContext) -> None:
     """仅预加载行情快照（选股 / 展望卡补现价用）。"""
     ctx.preload_quote_snapshot()
+
+
+register_cached_quote_snapshot_reader(get_cached_quote_snapshot)

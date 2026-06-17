@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+try:
+    from vnpy_llm.app.engine import APP_NAME, LlmEngine
+except ImportError:
+    APP_NAME = ""
+    LlmEngine = None  # type: ignore[misc,assignment]
+
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
 
@@ -12,11 +18,7 @@ if TYPE_CHECKING:
 
 def get_last_assistant_message(main_engine: MainEngine | None) -> str:
     """返回当前 LLM 会话中最后一条非空 assistant 消息。"""
-    if main_engine is None:
-        return ""
-    try:
-        from vnpy_llm.app.engine import APP_NAME, LlmEngine
-    except ImportError:
+    if main_engine is None or LlmEngine is None:
         return ""
     engine = main_engine.get_engine(APP_NAME)
     if not isinstance(engine, LlmEngine):
@@ -29,11 +31,7 @@ def get_last_assistant_message(main_engine: MainEngine | None) -> str:
 
 def get_llm_engine(main_engine: MainEngine | None) -> LlmEngine | None:
     """从 MainEngine 获取 LlmEngine（可选依赖 vnpy-llm）。"""
-    if main_engine is None:
-        return None
-    try:
-        from vnpy_llm.app.engine import APP_NAME, LlmEngine
-    except ImportError:
+    if main_engine is None or LlmEngine is None:
         return None
     engine = main_engine.get_engine(APP_NAME)
     if isinstance(engine, LlmEngine):

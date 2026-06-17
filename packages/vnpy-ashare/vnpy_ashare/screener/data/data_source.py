@@ -6,25 +6,23 @@ from collections.abc import Iterator
 from datetime import date, timedelta
 from typing import Any
 
-from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
-from vnpy_ashare.integrations.tushare.factors import (
-    fetch_daily_basic,
-    fetch_daily_pct_map,
-    fetch_moneyflow,
+from vnpy_ashare.domain.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
+from vnpy_ashare.integrations.tushare.factor_fallback import (
+    fetch_daily_basic_with_fallback as _fetch_daily_basic_with_fallback,
+    fetch_moneyflow_with_fallback as _fetch_moneyflow_with_fallback,
 )
+from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map
+from vnpy_ashare.integrations.tushare.limit_list_fallback import fetch_limit_list_with_fallback
+from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
+from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
+from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind, row_has_moneyflow_fields
 from vnpy_ashare.screener.data.quotes_loader import (
     MarketQuotesLoadError,
     MarketQuotesSnapshot,
     load_market_quote_rows,
 )
-
-DEFAULT_LOOKBACK_DAYS = 10
-
-# 最近一次成功回退到的交易日（减少长假后重复逐日探测）
-_LAST_SUCCESS_TRADE_DATE: dict[str, str] = {}
-
 
 def merge_quotes_into_fundamentals(
     fund_rows: list[dict[str, Any]],
@@ -50,39 +48,12 @@ def merge_quotes_into_fundamentals(
     return merged
 
 
-def iter_trade_date_strs(
-    *,
-    max_lookback: int = DEFAULT_LOOKBACK_DAYS,
-    start: date | None = None,
-) -> Iterator[str]:
-    """从 start（默认最近交易日）向前遍历交易日。"""
-    current = start or last_trading_day()
-    for _ in range(max(1, max_lookback)):
-        yield current.strftime("%Y%m%d")
-        current = last_trading_day(on_or_before=current - timedelta(days=1))
-
-
 def fetch_daily_basic_with_fallback(
     *,
     max_lookback: int = DEFAULT_LOOKBACK_DAYS,
     start: date | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
-    """按交易日回退拉取 daily_basic，直到有数据或耗尽 lookback。"""
-    if start is None and max_lookback == DEFAULT_LOOKBACK_DAYS:
-        hinted = _LAST_SUCCESS_TRADE_DATE.get("daily_basic")
-        if hinted:
-            rows, _ = fetch_daily_basic(trade_date=hinted)
-            if rows:
-                return rows, hinted
-
-    last_tried = ""
-    for trade_date in iter_trade_date_strs(max_lookback=max_lookback, start=start):
-        last_tried = trade_date
-        rows, _ = fetch_daily_basic(trade_date=trade_date)
-        if rows:
-            _LAST_SUCCESS_TRADE_DATE["daily_basic"] = trade_date
-            return rows, trade_date
-    return [], last_tried
+    return _fetch_daily_basic_with_fallback(max_lookback=max_lookback, start=start)
 
 
 def fetch_moneyflow_with_fallback(
@@ -90,22 +61,7 @@ def fetch_moneyflow_with_fallback(
     max_lookback: int = DEFAULT_LOOKBACK_DAYS,
     start: date | None = None,
 ) -> tuple[list[dict[str, Any]], str]:
-    """按交易日回退拉取 moneyflow，直到有数据或耗尽 lookback。"""
-    if start is None and max_lookback == DEFAULT_LOOKBACK_DAYS:
-        hinted = _LAST_SUCCESS_TRADE_DATE.get("moneyflow")
-        if hinted:
-            rows, _ = fetch_moneyflow(trade_date=hinted)
-            if rows:
-                return rows, hinted
-
-    last_tried = ""
-    for trade_date in iter_trade_date_strs(max_lookback=max_lookback, start=start):
-        last_tried = trade_date
-        rows, _ = fetch_moneyflow(trade_date=trade_date)
-        if rows:
-            _LAST_SUCCESS_TRADE_DATE["moneyflow"] = trade_date
-            return rows, trade_date
-    return [], last_tried
+    return _fetch_moneyflow_with_fallback(max_lookback=max_lookback, start=start)
 
 
 def _merge_moneyflow_into_quote_rows(quote_rows: list[dict[str, Any]], mf_rows: list[dict[str, Any]]) -> None:
@@ -127,24 +83,6 @@ def _merge_moneyflow_into_quote_rows(quote_rows: list[dict[str, Any]], mf_rows: 
         ):
             if row.get(key) in (None, "", 0, 0.0) and mf.get(key) not in (None, "", 0, 0.0):
                 row[key] = mf[key]
-
-
-def fetch_limit_list_with_fallback(
-    *,
-    max_lookback: int = DEFAULT_LOOKBACK_DAYS,
-    start: date | None = None,
-    limit_type: str | None = "U",
-) -> tuple[list[dict[str, Any]], str]:
-    """按交易日回退拉取涨跌停列表（默认涨停）。"""
-    from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
-
-    last_tried = ""
-    for trade_date in iter_trade_date_strs(max_lookback=max_lookback, start=start):
-        last_tried = trade_date
-        rows, _ = fetch_limit_list_d(trade_date=trade_date, limit_type=limit_type)
-        if rows:
-            return rows, trade_date
-    return [], last_tried
 
 
 def daily_basic_to_quote_rows(
@@ -211,16 +149,6 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
         )
 
     return load_market_quote_rows()
-
-
-def load_screening_quote_snapshot() -> MarketQuotesSnapshot:
-    """行情快照；活跃 ScreeningContext 内复用同一份数据。"""
-    from vnpy_ashare.screener.data.screening_context import get_cached_quote_snapshot
-
-    cached = get_cached_quote_snapshot()
-    if cached is not None:
-        return cached
-    return load_screening_quote_snapshot_uncached()
 
 
 def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:
@@ -333,10 +261,14 @@ def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             item["last_price"] = item["close"]
 
         if _missing_display_value(item.get("flow_kind")):
-            from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind, row_has_moneyflow_fields
 
             if row_has_moneyflow_fields(item):
                 item = enrich_moneyflow_row_with_kind(item)
 
         enriched.append(item)
     return enriched
+
+
+from vnpy_ashare.quotes.core.screening_snapshot_router import register_uncached_quote_snapshot_loader
+
+register_uncached_quote_snapshot_loader(load_screening_quote_snapshot_uncached)

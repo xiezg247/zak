@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from vnpy_ashare.screener.run.run_store import find_previous_run_by_condition, find_previous_run_by_recipe
+
 DiffStatus = Literal["新增", "保留", ""]
 
 
@@ -42,7 +44,6 @@ def enrich_recipe_run(
     rid = (recipe_id or "").strip()
     if not rid:
         return rows
-    from vnpy_ashare.screener.run.run_store import find_previous_run_by_recipe
 
     previous = find_previous_run_by_recipe(rid)
     if previous is None:
@@ -68,7 +69,6 @@ def enrich_condition_run(
     label = (condition or "").strip()
     if not label:
         return rows
-    from vnpy_ashare.screener.run.run_store import find_previous_run_by_condition
 
     previous = find_previous_run_by_condition(label, source=source)
     if previous is None:

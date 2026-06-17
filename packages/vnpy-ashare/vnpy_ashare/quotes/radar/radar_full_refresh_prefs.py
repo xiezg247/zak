@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.quotes.radar.radar_catalog import RADAR_FULL_REFRESH_EVERY
+from vnpy_ashare.quotes.radar.radar_catalog_defaults import RADAR_FULL_REFRESH_EVERY
 
 _SETTINGS = get_settings()
 _KEY_PREFIX = "quotes/radar/full_refresh_every/"

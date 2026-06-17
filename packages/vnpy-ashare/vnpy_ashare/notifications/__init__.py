@@ -8,6 +8,7 @@ from vnpy_ashare.notifications.events import (
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
 )
 from vnpy_ashare.notifications.models import NotifyDeliveryResult
+from vnpy_ashare.notifications.service import NotificationService
 
 __all__ = [
     "DEFAULT_EVENT_SUBSCRIPTIONS",
@@ -22,7 +23,6 @@ __all__ = [
 
 def __getattr__(name: str):
     if name == "NotificationService":
-        from vnpy_ashare.notifications.service import NotificationService
 
         return NotificationService
     msg = f"module {__name__!r} has no attribute {name!r}"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
+from vnpy_ashare.quotes.radar.radar_resonance_store import get_radar_resonance_entries
 from vnpy_ashare.screener.run.run_store import get_latest_run
 
 
@@ -19,7 +20,6 @@ def latest_recipe_vt_symbols(limit: int = 200) -> set[str]:
 
 
 def latest_resonance_vt_symbols(limit: int = 200) -> set[str]:
-    from vnpy_ashare.quotes.radar.radar_resonance_store import get_radar_resonance_entries
 
     entries = get_radar_resonance_entries()
     symbols: set[str] = set()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.quotes.core.quote_rows import set_market_quote_rows_cache
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts
@@ -26,7 +27,6 @@ def warm_market_summary(*, include_ladder: bool = False) -> JobResult:
     if not rows:
         return JobResult(success=False, message="Redis 无有效行情行")
 
-    from vnpy_ashare.quotes.core.quote_rows import set_market_quote_rows_cache
 
     set_market_quote_rows_cache(rows)
 

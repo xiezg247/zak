@@ -56,11 +56,7 @@ def test_rank_baseline_predict_orders_by_composite_score(monkeypatch) -> None:
     assert 0.05 <= hits[0].p_up <= 0.95
 
 
-def test_rank_predict_hits_fallback_without_lgb(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.predict.predict_scan.lgb_model_ready",
-        lambda: False,
-    )
+def test_rank_predict_hits_uses_baseline(monkeypatch) -> None:
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.predict.baseline_ranker.get_stock_industry_map",
         lambda: {},
@@ -141,10 +137,6 @@ def test_scan_predict_baseline_builds_rows(monkeypatch) -> None:
 
 def test_rank_predict_hits_force_baseline(monkeypatch) -> None:
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.predict.predict_scan.lgb_model_ready",
-        lambda: True,
-    )
-    monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.predict.baseline_ranker.get_stock_industry_map",
         lambda: {},
     )
@@ -166,17 +158,19 @@ def test_rank_predict_hits_force_baseline(monkeypatch) -> None:
     assert label == "统计基线"
 
 
-def test_manifest_model_caption_and_retrain() -> None:
+def test_manifest_model_caption_and_age() -> None:
     from vnpy_ashare.quotes.radar.predict.model_paths import manifest_model_age_days, manifest_model_caption
 
     manifest = {
         "trained_at": "2020-01-01 10:00",
         "val_auc": 0.6123,
         "sample_count": 1200,
+        "model_label": "示例模型",
     }
     caption = manifest_model_caption(manifest)
     assert "AUC 0.612" in caption
     assert "样本 1200" in caption
+    assert "示例模型" in caption
     age = manifest_model_age_days(manifest)
     assert age is not None and age > 100
 
@@ -189,10 +183,6 @@ def test_load_outlook_predict_no_cache(monkeypatch) -> None:
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.radar_horizon_predict.collect_daily_k_ready_vt_symbols",
         lambda: {"600000.SSE"},
-    )
-    monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_horizon_predict.lgb_model_ready",
-        lambda: False,
     )
     spec = RADAR_CARD_BY_ID["outlook_predict"]
     data = load_outlook_predict(spec, force_recompute=False)
@@ -210,19 +200,20 @@ def test_build_predict_ai_prompt() -> None:
         change_pct=1.5,
         metric_label="看涨概率",
         metric_value="62%",
-        sub_label="模型分",
+        sub_label="基准分",
         sub_value="62.0",
     )
     data = RadarCardData(
         card_id="outlook_predict",
         title="未来·预测",
-        subtitle="约 5 日 · LightGBM",
+        subtitle="约 5 日 · 统计基线",
         rows=(row,),
         empty_message="",
         updated_at="2025-01-01",
     )
     prompt = build_predict_ai_prompt(data)
     assert "未来·预测" in prompt
+    assert "统计基线" in prompt
     assert "非确定性预测" in prompt
     assert "浦发" in prompt
     assert "62%" in prompt

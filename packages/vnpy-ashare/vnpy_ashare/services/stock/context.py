@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.domain.datetime import china_now, format_china_date_compact
 from vnpy_ashare.domain.signal_benchmark import resolve_benchmark_return_pct
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_LABELS, SignalSnapshot
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
@@ -229,8 +230,9 @@ def lookup_latest_moneyflow(vt_symbol: str) -> MoneyflowDayRow | None:
 def fetch_stock_moneyflow_series(ts_code: str, *, days: int = 20) -> list[MoneyflowDayRow]:
     """拉取单票近 N 日主力资金流（万元）。"""
     days = max(5, min(int(days or 20), 60))
-    end = datetime.now().strftime("%Y%m%d")
-    start = (datetime.now() - timedelta(days=days * 2)).strftime("%Y%m%d")
+    now = china_now()
+    end = format_china_date_compact(now)
+    start = format_china_date_compact(now - timedelta(days=days * 2))
     try:
         pro = get_tushare_pro()
         frame = pro.moneyflow(

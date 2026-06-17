@@ -19,6 +19,7 @@ from vnpy_ashare.screener.recipe.recipe import (
     screen_recipe_from_config,
 )
 from vnpy_ashare.screener.recipe.recipe_store import delete_recipe, get_saved_recipe, save_recipe
+from vnpy_ashare.ui.screener.dialogs.recipe_tuning_dialog import RecipeTuningDialog
 from vnpy_common.ui.feedback import confirm_action, page_notify
 
 _RECIPE_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
@@ -338,7 +339,6 @@ class ScreenerRecipePanel(QtWidgets.QGroupBox):
         self._reload_recipe_combo(None)
 
     def _open_tuning_dialog(self) -> None:
-        from vnpy_ashare.ui.screener.dialogs.recipe_tuning_dialog import RecipeTuningDialog
 
         dialog = RecipeTuningDialog(self)
         if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:

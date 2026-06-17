@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Protocol
 
 from vnpy.trader.constant import Exchange
@@ -12,6 +11,7 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.app.engine_access import get_note_service
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from vnpy_ashare.services.note_service import build_report_context_json
 from vnpy_ashare.ui.features.stock_analysis.save_report_dialog import SaveAnalysisReportDialog
 from vnpy_common.ai.access import get_ai_context
@@ -40,7 +40,7 @@ def resolve_context_stock() -> ContextStock | None:
 
 
 def default_ai_report_title(stock: ContextStock, *, turn_count: int = 1) -> str:
-    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    stamp = format_china_datetime_minute()
     head = stock.name or stock.symbol
     if turn_count <= 1:
         return f"{head} · AI 对话 · {stamp}"

@@ -15,7 +15,8 @@ from vnpy_ashare.domain.stock_note import StockNoteIndexRow
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.ui.features.notes_center.memo_view import NotesCenterMemoView
 from vnpy_ashare.ui.features.notes_center.reports_view import NotesCenterReportsView
-from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, show_stock_analysis_vt_symbol
+from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
+from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
 from vnpy_ashare.ui.quotes.stock_notes.ai_assist import (
     NoteAiWorker,
     apply_expanded_memo,

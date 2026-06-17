@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 from vnpy_ashare.screener.hard_filter_prefs import (
     MARKET_BOARD_FILTER_OPTIONS,
     PRESET_AGGRESSIVE,
@@ -129,7 +130,6 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
 
     def _load_industry_combo_items(self) -> None:
         try:
-            from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
             self._industry_names = sorted({name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()})
         except Exception:

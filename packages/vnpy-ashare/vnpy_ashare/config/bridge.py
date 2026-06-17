@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from vnpy_ashare.config.fonts import default_font_family
 from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, normalize_database_name
-from vnpy_common.paths import ENV_FILE
+from vnpy_common.paths import DEFAULT_META_APP_FILE, DEFAULT_META_CHAT_FILE, ENV_FILE, META_APP_SETTING_KEY, META_CHAT_SETTING_KEY
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -85,7 +85,6 @@ def database_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
 
 def meta_database_settings() -> dict[str, str]:
     """元数据 SQLite 路径（固定本地，不随 DATABASE_NAME 切换）。"""
-    from vnpy_common.paths import DEFAULT_META_APP_FILE, DEFAULT_META_CHAT_FILE, META_APP_SETTING_KEY, META_CHAT_SETTING_KEY
 
     return {
         META_APP_SETTING_KEY: DEFAULT_META_APP_FILE,

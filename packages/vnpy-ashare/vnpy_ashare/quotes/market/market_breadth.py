@@ -6,6 +6,8 @@ import math
 from dataclasses import dataclass, replace
 from typing import Any, Literal
 
+from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
+
 # 近似涨跌停阈值（未区分 ST 5% / 20% 等规则）
 LIMIT_UP_PCT = 9.85
 LIMIT_DOWN_PCT = -9.85
@@ -102,7 +104,6 @@ def count_limit_from_rows(limit_rows: list[dict[str, Any]]) -> tuple[int, int]:
 def merge_official_limit_counts(breadth: MarketBreadthSnapshot) -> MarketBreadthSnapshot:
     """若 Tushare 涨跌停列表可用，覆盖近似涨跌停计数。"""
     try:
-        from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
 
         limit_rows, _trade_date = fetch_limit_list_d()
     except Exception:

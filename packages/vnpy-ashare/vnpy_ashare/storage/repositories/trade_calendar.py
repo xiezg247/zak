@@ -6,7 +6,12 @@ import os
 import threading
 from datetime import date, datetime, timedelta
 
+import tushare as ts
+from dotenv import load_dotenv
+from vnpy.trader.setting import SETTINGS
+
 from vnpy_ashare.storage.connection import connect, get_meta, set_meta
+from vnpy_common.paths import ENV_FILE
 
 TRADE_CAL_SYNCED_AT_KEY = "trade_calendar_synced_at"
 TRADE_CAL_RANGE_START_KEY = "trade_calendar_range_start"
@@ -31,22 +36,18 @@ def _default_cal_end(today: date | None = None) -> date:
 
 
 def _get_tushare_pro():
-    from dotenv import load_dotenv
 
-    from vnpy_common.paths import ENV_FILE
 
     load_dotenv(ENV_FILE)
     token = os.getenv("TUSHARE_TOKEN") or os.getenv("TS_TOKEN")
     if not token:
         try:
-            from vnpy.trader.setting import SETTINGS
 
             token = SETTINGS.get("datafeed.password") or ""
         except Exception:
             token = ""
     if not token:
         return None
-    import tushare as ts
 
     ts.set_token(token)
     return ts.pro_api(token)

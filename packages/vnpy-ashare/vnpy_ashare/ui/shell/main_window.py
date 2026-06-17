@@ -7,6 +7,7 @@ from importlib import import_module
 from types import ModuleType
 
 from vnpy.event import Event, EventEngine
+from vnpy.trader.constant import Exchange
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import MainWindow
 from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
@@ -25,9 +26,11 @@ from vnpy_ashare.app.events import (
     AskAiRequest,
     BacktestRequest,
     BatchBacktestViewRequest,
+    FillRecipeRequest,
     FillScreenerRequest,
     OrbAttentionRequest,
 )
+from vnpy_ashare.app.deferred_apps import register_deferred_apps
 from vnpy_ashare.domain.ai_actions import (
     AI_ACTION_ASK_AI,
     AI_ACTION_FILL_RECIPE,
@@ -37,7 +40,9 @@ from vnpy_ashare.domain.ai_actions import (
     AI_ACTION_ORB_ATTENTION,
     normalize_ai_action,
 )
+from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
 from vnpy_ashare.ui.backtest import BatchBacktestPageWidget
+from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener import ScreenerHubPageWidget
 from vnpy_ashare.ui.sector_flow import SectorFlowPageWidget
@@ -186,9 +191,6 @@ class AshareMainWindow(MainWindow):
         ai_tools_action.triggered.connect(self._open_ai_tools_dialog)
         audit_action = tools_menu.addAction("AI 工具审计…")
         audit_action.triggered.connect(self._open_ai_tool_audit_dialog)
-        tools_menu.addSeparator()
-        radar_train_action = tools_menu.addAction("雷达模型训练…")
-        radar_train_action.triggered.connect(self._open_radar_predict_train_dialog)
 
         help_menu = bar.addMenu("帮助")
         shortcuts_action = help_menu.addAction("键盘快捷键…")
@@ -331,7 +333,6 @@ class AshareMainWindow(MainWindow):
 
     def _bootstrap_stock_industry_if_needed(self, scheduler) -> None:
         """行业映射缓存为空时，调度器启动后补跑一次同步任务。"""
-        from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
 
         if get_cached_industry_map() is not None:
             return
@@ -516,7 +517,6 @@ class AshareMainWindow(MainWindow):
             assert isinstance(payload, FillScreenerRequest)
             self._handle_fill_screener(payload)
         elif action.kind == AI_ACTION_FILL_RECIPE:
-            from vnpy_ashare.app.events import FillRecipeRequest
 
             assert isinstance(payload, FillRecipeRequest)
             self._handle_fill_recipe(payload)
@@ -754,17 +754,7 @@ class AshareMainWindow(MainWindow):
             parent=self,
         )
 
-    def _open_radar_predict_train_dialog(self) -> None:
-        from vnpy_ashare.ui.quotes.radar.train_dialog import show_radar_predict_train_dialog
-
-        show_radar_predict_train_dialog(
-            self.main_engine,
-            self.event_engine,
-            parent=self,
-        )
-
     def _open_notes_center_dialog(self) -> None:
-        from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
 
         show_notes_center_dialog(
             self.main_engine,
@@ -775,7 +765,6 @@ class AshareMainWindow(MainWindow):
 
     def focus_watchlist_symbol(self, symbol: str, exchange_name: str) -> None:
         """切换到自选页并选中指定标的。"""
-        from vnpy.trader.constant import Exchange
 
         index = self._nav_index_for_key("watchlist")
         if index is None:
@@ -797,9 +786,8 @@ class AshareMainWindow(MainWindow):
     def _ensure_deferred_apps(self) -> None:
         if self._deferred_apps_registered:
             return
-        from vnpy_ashare.app.launcher import _register_deferred_apps
 
-        _register_deferred_apps(self.main_engine)
+        register_deferred_apps(self.main_engine)
         self._deferred_apps_registered = True
 
     def _get_or_create_page(self, key: str) -> QtWidgets.QWidget | None:

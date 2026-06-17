@@ -9,6 +9,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences import (
     load_center_splitter_sizes,
+    load_position_panel_expanded,
     load_signal_panel_expanded,
     save_center_splitter_sizes,
 )
@@ -20,6 +21,8 @@ from vnpy_ashare.ui.components.splitter_utils import (
     set_splitter_sizes_quiet,
     splitter_total_height,
 )
+from vnpy_ashare.ui.quotes.page.run_log import sync_run_output_expansion
+from vnpy_ashare.ui.quotes.page.run_output_state import load_run_output_expanded, run_output_panel
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -63,7 +66,6 @@ def center_splitter(page: QuotesPage) -> QtWidgets.QSplitter | None:
 
 
 def _run_output_panel(page: QuotesPage) -> QtWidgets.QWidget | None:
-    from vnpy_ashare.ui.quotes.page.run_log import run_output_panel
 
     return run_output_panel(page)
 
@@ -212,7 +214,6 @@ def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
 
 
 def restore_center_splitter(page: QuotesPage) -> None:
-    from vnpy_ashare.ui.quotes.page.run_log import load_run_output_expanded, sync_run_output_expansion
 
     signal_panel = page.signal_panel
     if signal_panel is not None:
@@ -221,7 +222,6 @@ def restore_center_splitter(page: QuotesPage) -> None:
             signal_panel.sync_splitter_geometry()
     position_panel = page.position_panel
     if position_panel is not None:
-        from vnpy_ashare.config.preferences import load_position_panel_expanded
 
         position_panel.set_expanded(load_position_panel_expanded(), emit=False)
     run_panel = _run_output_panel(page)

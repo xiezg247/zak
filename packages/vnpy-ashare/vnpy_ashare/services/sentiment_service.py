@@ -13,6 +13,7 @@ from typing import Any
 
 from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.services.base import BaseService
 
 FEAR_GREED_LABELS: tuple[tuple[float, str], ...] = (
@@ -162,7 +163,6 @@ class SentimentService(BaseService):
         return last_trading_day()
 
     def _compute_for_day(self, day: date) -> FearGreedSnapshot:
-        from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 
         trade_date = day.strftime("%Y%m%d")
         warnings: list[str] = []
@@ -424,3 +424,6 @@ def _std(values: list[float]) -> float:
 def _shift_trade_date(trade_date: str, offset: int) -> str:
     day = datetime.strptime(trade_date, "%Y%m%d").date()
     return (day + timedelta(days=offset)).strftime("%Y%m%d")
+
+
+from vnpy_ashare.screener.sentiment import fear_greed_index as _fear_greed_bootstrap  # noqa: F401

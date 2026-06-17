@@ -5,9 +5,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtWidgets as QtW
 
 from vnpy_ashare.domain.market_hours import CHINA_TZ
-from vnpy_ashare.trading.journal.report import load_journal_report
+from vnpy_ashare.trading.journal.prompt import build_journal_prompt
+from vnpy_ashare.trading.journal.report import format_journal_entries_csv, load_journal_report
 
 
 class JournalReportDialog(QtWidgets.QDialog):
@@ -94,9 +96,7 @@ class JournalReportDialog(QtWidgets.QDialog):
             self._table.setItem(index, 1, QtWidgets.QTableWidgetItem(value))
 
     def _copy_prompt(self) -> None:
-        from vnpy.trader.ui import QtWidgets as QtW
 
-        from vnpy_ashare.trading.journal.prompt import build_journal_prompt
 
         end = datetime.now(CHINA_TZ).date()
         start = end - timedelta(days=int(self._days_spin.value()) - 1)
@@ -106,9 +106,7 @@ class JournalReportDialog(QtWidgets.QDialog):
         self._summary.setText(f"已复制复盘 Prompt（{start.isoformat()} ~ {end.isoformat()}）")
 
     def _export_csv(self) -> None:
-        from vnpy.trader.ui import QtWidgets as QtW
 
-        from vnpy_ashare.trading.journal.report import format_journal_entries_csv
 
         end = datetime.now(CHINA_TZ).date()
         start = end - timedelta(days=int(self._days_spin.value()) - 1)

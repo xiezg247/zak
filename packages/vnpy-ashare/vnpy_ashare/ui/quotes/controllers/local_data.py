@@ -46,6 +46,7 @@ from vnpy_ashare.ui.quotes.workers import (
     BatchFillWorker,
     BatchGapFillWorker,
     DownloadWorker,
+    InvalidBarCleanupWorker,
     LoadedBars,
     MinuteDownloadWorker,
     ScopeBarsLoadWorker,
@@ -185,8 +186,6 @@ class LocalDataController:
 
     def schedule_invalid_bar_cleanup(self) -> None:
         """后台清理无效日 K 概览，避免进入本地页时在主线程扫描全库。"""
-        from vnpy_ashare.config import format_vt_symbol_cn
-        from vnpy_ashare.ui.quotes.workers import InvalidBarCleanupWorker
 
         page = self._page
         if page._thread_active(getattr(page, "_invalid_bar_cleanup_worker", None)):

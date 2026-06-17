@@ -89,7 +89,6 @@ def build_signal_snapshot(
 
 
 def load_cached_signals(vt_symbols: list[str], *, config: WatchlistSignalConfig | None = None) -> dict[str, SignalSnapshot]:
-    from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 
     cfg = (config or load_watchlist_signal_config()).normalized()
     cache = WatchlistSignalDiskCache()

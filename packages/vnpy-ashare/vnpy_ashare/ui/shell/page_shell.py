@@ -6,6 +6,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.ui.quotes.features.market_rank_sidebar import sync_rank_splitter_for_expansion
 from vnpy_ashare.ui.quotes.market_discovery import MarketDiscoveryController, MarketDiscoveryStrip
 from vnpy_ashare.ui.quotes.market_overview import MarketOverviewController, MarketOverviewPanel
 from vnpy_ashare.ui.quotes.market_overview.header import MarketHeaderPanel
@@ -65,7 +66,6 @@ class QuotesShellWidget(QtWidgets.QWidget):
         if self.PAGE_NAME == "市场":
             sidebar = self.page.rank_sidebar
             if sidebar is not None:
-                from vnpy_ashare.ui.quotes.features.market_rank_sidebar import sync_rank_splitter_for_expansion
 
                 QtCore.QTimer.singleShot(
                     0,
@@ -79,7 +79,6 @@ class QuotesShellWidget(QtWidgets.QWidget):
         if self.PAGE_NAME == "市场":
             sidebar = self.page.rank_sidebar
             if sidebar is not None:
-                from vnpy_ashare.ui.quotes.features.market_rank_sidebar import sync_rank_splitter_for_expansion
 
                 QtCore.QTimer.singleShot(
                     0,

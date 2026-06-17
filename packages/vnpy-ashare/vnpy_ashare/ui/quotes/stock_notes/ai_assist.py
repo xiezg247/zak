@@ -9,8 +9,15 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.ai.context.quote.format import format_quote_snapshot_line
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
 from vnpy_llm.chat.client import LlmClientError, complete_chat_completion
 from vnpy_llm.config.settings import LlmConfig
+
+try:
+    from vnpy_llm.app.engine import APP_NAME, LlmEngine
+except ImportError:
+    APP_NAME = ""
+    LlmEngine = None  # type: ignore[misc,assignment]
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -44,11 +51,7 @@ class NoteAiWorker(QtCore.QThread):
 
 
 def get_llm_config(main_engine: MainEngine | None) -> LlmConfig | None:
-    if main_engine is None:
-        return None
-    try:
-        from vnpy_llm.app.engine import APP_NAME, LlmEngine
-    except ImportError:
+    if main_engine is None or LlmEngine is None:
         return None
     engine = main_engine.get_engine(APP_NAME)
     if not isinstance(engine, LlmEngine):
@@ -67,8 +70,6 @@ def build_quote_snapshot_line(page: QuotesPage, item: StockItem) -> str:
 
 
 def build_quote_snapshot_for_item(item: StockItem) -> str:
-    from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
-
     quote = resolve_quote_snapshot(item)
     if quote is None:
         return ""

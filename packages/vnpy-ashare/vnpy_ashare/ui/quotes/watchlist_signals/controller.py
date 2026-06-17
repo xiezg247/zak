@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.datetime import format_china_time_hm
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.config.preferences import WatchlistSignalConfig, save_watchlist_signal_config
 from vnpy_ashare.data.bar_health import format_meta_date
+from vnpy_ashare.domain.datetime import format_china_time_hm
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
+from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
@@ -166,7 +167,6 @@ class WatchlistSignalController:
             symbols=list(after),
             name_for=self._resolve_symbol_name,
         )
-        from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 
         for line in lines:
             self._page._toast.info(f"策略信号变更：{line}")

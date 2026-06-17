@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import os
+from dataclasses import replace
 from typing import Any
 
-from vnpy_ashare.domain.format import format_amount, format_volume
+from vnpy_ashare.data.download_concurrency import run_parallel_map
+from vnpy_ashare.domain.format import float_or_none
+from vnpy_ashare.quotes.format import format_amount, format_pct, format_volume
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
@@ -15,23 +20,43 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     RADAR_CARD_BY_ID,
     RADAR_CARD_SPECS,
     RadarCardSpec,
+    radar_card_mode,
+    radar_card_resonance_weight,
 )
 from vnpy_ashare.quotes.radar.radar_first_board import load_first_board
-from vnpy_ashare.quotes.radar.radar_leader_pick import load_leader_pick
-from vnpy_ashare.quotes.radar.radar_limit_ladder import load_limit_ladder
+from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt, load_outlook_horizon
+from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt, load_outlook_predict
+from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant, load_leader_pick
+from vnpy_ashare.quotes.radar.radar_limit_ladder import LimitLadderVariant, load_limit_ladder
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarCardData,
     RadarResonanceEntry,
     RadarRow,
-    float_or_none,
-    format_pct,
+    enrich_radar_rows,
     merge_row_quotes,
 )
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
+from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
 from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
+from vnpy_ashare.screener.data.screening_context import (
+    preload_screening_context,
+    preload_screening_context_quotes,
+    screening_context_scope,
+)
+from vnpy_ashare.screener.data.screening_sentiment_prefilter import apply_sentiment_prefilter_to_context
+from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
+from vnpy_ashare.screener.dimensions.moneyflow_resolve import (
+    build_moneyflow_source_subtitle,
+    resolve_moneyflow_hits,
+)
+from vnpy_ashare.screener.dimensions.volume_dedup import build_volume_discovery_subtitle
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
+from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
 
 
@@ -79,8 +104,6 @@ def _liquidity_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
 
 
 def _moneyflow_metric(row: dict[str, Any], _hit=None) -> tuple[str, str, str, str]:
-    from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
-
     merged = merge_row_quotes(row)
     kind = classify_moneyflow_row(merged)
     kind_label = flow_kind_label(kind)
@@ -160,8 +183,6 @@ def _row_from_dict(row: dict[str, Any], *, name_map: dict[str, str] | None = Non
 
 
 def _relative_strength_subline(row: dict[str, Any]) -> tuple[str, str] | None:
-    from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
-
     return build_relative_strength_subline(row)
 
 
@@ -275,7 +296,6 @@ def _discovery_hits_card(
     rows: list[RadarRow] = []
     vt_symbols = [str(hit.row.get("vt_symbol") or "").strip() for hit in hits]
     name_map = name_map_for_symbols([vt for vt in vt_symbols if vt])
-    from vnpy_ashare.screener.hard_filters import apply_screening_filters
 
     filter_inputs: list[dict[str, Any]] = []
     for hit in hits:
@@ -339,12 +359,6 @@ def _volume_surge_needs_ratio_fallback(hits) -> bool:
 
 def _volume_liquidity_proxy(pool_size: int, total: int):
     """成交量/量比均不可用时的成交额/换手代理排行。"""
-    from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-    from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-    from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
-    from vnpy_ashare.screener.hard_filters import apply_screening_filters
-    from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
-
     try:
         snapshot = load_screening_quote_snapshot()
     except MarketQuotesLoadError:
@@ -391,8 +405,6 @@ def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
             return "量比", f"{ratio:.2f}", "涨幅", format_pct(change)
         return _liquidity_metric(row)
 
-    from vnpy_ashare.screener.dimensions.volume_dedup import build_volume_discovery_subtitle
-
     subtitle_suffix = build_volume_discovery_subtitle(hits)
     data = _discovery_hits_card(
         spec,
@@ -420,10 +432,6 @@ def load_discovery_volume_surge(spec: RadarCardSpec) -> RadarCardData:
 
 def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
     pool_size = _discovery_pool_size(spec.top_n)
-    from vnpy_ashare.screener.dimensions.moneyflow_resolve import (
-        build_moneyflow_source_subtitle,
-        resolve_moneyflow_hits,
-    )
 
     hits, total, trade_date = resolve_moneyflow_hits(pool_size, weight=1.0, enrich_kind=True)
     subtitle_suffix = build_moneyflow_source_subtitle(hits, trade_date)
@@ -454,11 +462,6 @@ def load_discovery_moneyflow_intraday(spec: RadarCardSpec) -> RadarCardData:
 
 def incremental_refresh_radar_card_quotes(data: RadarCardData) -> RadarCardData:
     """仅刷新卡片行的现价与涨幅，不重算发现 / 板块等指标。"""
-    from dataclasses import replace
-
-    from vnpy_ashare.quotes.radar.radar_models import enrich_radar_rows
-    from vnpy_ashare.screener.data.screening_context import preload_screening_context_quotes, screening_context_scope
-
     if not data.rows:
         return data
     with screening_context_scope() as ctx:
@@ -479,10 +482,9 @@ def load_radar_card(
 ) -> RadarCardData:
     """加载单张雷达卡片；行情类卡片自动复用 ScreeningContext。"""
     if card_id in _RADAR_FULL_CONTEXT_CARD_IDS:
-        from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
-
         with screening_context_scope() as ctx:
             preload_screening_context(ctx)
+            apply_sentiment_prefilter_to_context(ctx)
             return _load_radar_card_uncached(
                 card_id,
                 screen_task_variant=screen_task_variant,
@@ -493,8 +495,6 @@ def load_radar_card(
                 force_recompute=force_recompute,
             )
     if card_id in _RADAR_QUOTE_CONTEXT_CARD_IDS:
-        from vnpy_ashare.screener.data.screening_context import preload_screening_context_quotes, screening_context_scope
-
         with screening_context_scope() as ctx:
             preload_screening_context_quotes(ctx)
             return _load_radar_card_uncached(
@@ -565,8 +565,6 @@ def _load_radar_card_uncached(
     if spec.id == "discovery_moneyflow_intraday":
         return load_discovery_moneyflow_intraday(spec)
     if spec.id == "discovery_limit_ladder":
-        from vnpy_ashare.quotes.radar.radar_limit_ladder import LimitLadderVariant
-
         ladder_variant: LimitLadderVariant = "by_sector" if limit_ladder_variant == "by_sector" else "by_height"
         return load_limit_ladder(spec, variant=ladder_variant)
     if spec.id == "discovery_first_board":
@@ -576,25 +574,17 @@ def _load_radar_card_uncached(
     if spec.id == "sector_theme":
         return load_sector_theme(spec, variant=sector_variant)
     if spec.id == "leader_pick":
-        from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
-
         pick_variant: LeaderPickVariant = "mainline" if leader_pick_variant != "all_market" else "all_market"
         return load_leader_pick(spec, variant=pick_variant)
     if spec.id in ("outlook_watch", "outlook_hold"):
-        from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
-
         return load_outlook_horizon(spec, force_recompute=force_recompute)
     if spec.id == "outlook_scenario":
-        from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
-
         return load_outlook_horizon(
             spec,
             variant=scenario_variant,
             force_recompute=force_recompute,
         )
     if spec.id == "outlook_predict":
-        from vnpy_ashare.quotes.radar.radar_horizon_predict import load_outlook_predict
-
         return load_outlook_predict(spec, force_recompute=force_recompute)
     msg = f"未实现的雷达卡片加载器：{card_id}"
     raise ValueError(msg)
@@ -606,11 +596,6 @@ def load_radar_board(
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
 ) -> dict[str, RadarCardData]:
     """加载全部雷达卡片（共享 ScreeningContext + 并行加载）。"""
-    import os
-
-    from vnpy_ashare.data.download_concurrency import run_parallel_map
-    from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
-
     raw_workers = os.getenv("RADAR_BOARD_MAX_WORKERS", "4").strip()
     try:
         max_workers = max(1, min(int(raw_workers), 8))
@@ -619,6 +604,7 @@ def load_radar_board(
 
     with screening_context_scope() as ctx:
         preload_screening_context(ctx)
+        apply_sentiment_prefilter_to_context(ctx)
 
         def load_one(spec: RadarCardSpec) -> tuple[str, RadarCardData]:
             return spec.id, load_radar_card(
@@ -638,8 +624,6 @@ def load_radar_board(
 def _accumulate_radar_resonance(
     payload: dict[str, RadarCardData],
 ) -> dict[str, dict[str, Any]]:
-    from vnpy_ashare.quotes.radar.radar_catalog import radar_card_resonance_weight
-
     grouped: dict[str, dict[str, Any]] = {}
     for data in payload.values():
         card_weight = radar_card_resonance_weight(data.card_id)
@@ -672,8 +656,6 @@ def build_radar_resonance_list(
     mode 为 statistical / predictive 时仅统计对应分区卡片。
     """
     if mode is not None:
-        from vnpy_ashare.quotes.radar.radar_catalog import radar_card_mode
-
         payload = {card_id: data for card_id, data in payload.items() if radar_card_mode(card_id) == mode}
     grouped = _accumulate_radar_resonance(payload)
     entries: list[RadarResonanceEntry] = []
@@ -732,8 +714,6 @@ def build_radar_resonance_ai_prompt(payload: dict[str, RadarCardData]) -> str:
 def compute_radar_resonance(payload: dict[str, RadarCardData], *, min_cards: int = 2, mode: str | None = None) -> dict[str, int]:
     """统计在多张卡片中出现的标的（共振卡数）。"""
     if mode is not None:
-        from vnpy_ashare.quotes.radar.radar_catalog import radar_card_mode
-
         payload = {card_id: data for card_id, data in payload.items() if radar_card_mode(card_id) == mode}
     grouped = _accumulate_radar_resonance(payload)
     return {vt_symbol: int(bucket.get("card_count") or 0) for vt_symbol, bucket in grouped.items() if int(bucket.get("card_count") or 0) >= min_cards}
@@ -790,13 +770,9 @@ def build_radar_card_ai_prompt(
     elif card_id == "sector_theme":
         lines[0] = "请解读雷达「板块·主线」：归纳今日行业轮动与龙头特征。"
     elif card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
-        from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt
-
         single = build_outlook_ai_prompt({card_id: data}, card_id=card_id)
         return single or "\n".join(lines).strip()
     elif card_id == "outlook_predict":
-        from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt
-
         return build_predict_ai_prompt(data)
 
     for row in data.rows:
@@ -845,9 +821,6 @@ def build_radar_ai_prompt(
                 marker = "★ " if row.vt_symbol in resonance else ""
                 lines.append(f"- {marker}{_row_ai_summary(row)}")
         lines.append("")
-    from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt
-    from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt
-
     for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
         outlook_prompt = build_outlook_ai_prompt(payload, card_id=outlook_card_id)
         if outlook_prompt:

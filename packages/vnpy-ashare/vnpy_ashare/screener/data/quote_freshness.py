@@ -10,6 +10,7 @@ from vnpy_ashare.config.constants.recipe import (
 )
 from vnpy_ashare.domain.env import env_str
 from vnpy_ashare.domain.market_hours import CHINA_TZ
+from vnpy_ashare.jobs.quotes import collect_market_quotes
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
 DEFAULT_MAX_AGE_SECONDS = DEFAULT_MAX_QUOTE_AGE_SECONDS
@@ -55,7 +56,6 @@ def ensure_fresh_quotes_for_screening(
             return False, "暂无全市场行情快照"
         return False, f"行情已过时 {int(age)} 秒（阈值 {limit}s）"
 
-    from vnpy_ashare.jobs.quotes import collect_market_quotes
 
     result = collect_market_quotes()
     if not result.success:

@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.run.export import resolve_export_columns
-from vnpy_ashare.screener.run.runner import ScreenerRunResult
+from vnpy_ashare.screener.run.result import ScreenerRunResult
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
@@ -37,8 +38,6 @@ def run_industry_screen(
     if not label:
         raise ValueError("行业名称不能为空")
     if quote_rows is None:
-        from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-
         snapshot = load_screening_quote_snapshot()
         quote_rows = snapshot.rows
     if not quote_rows:

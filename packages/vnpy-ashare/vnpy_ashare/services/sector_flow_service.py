@@ -18,7 +18,7 @@ from vnpy_ashare.integrations.tushare.sector_moneyflow import (
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.services.sector_constituents import compute_divergence_rows, load_sector_leaders
+from vnpy_ashare.services.sector_constituents import compute_divergence_rows, load_sector_leaders, resolve_concept_vt_symbols
 from vnpy_ashare.storage.repositories.sector_flow_history import (
     load_sector_flow_history,
     merge_sector_flow_history,
@@ -352,7 +352,6 @@ class SectorFlowService(BaseService):
         return merge_sector_flow_history(local, remote, limit=limit)
 
     def resolve_concept_vt_symbols(self, sector: SectorFlowRow) -> list[str]:
-        from vnpy_ashare.services.sector_constituents import resolve_concept_vt_symbols
 
         return sorted(resolve_concept_vt_symbols(sector))
 

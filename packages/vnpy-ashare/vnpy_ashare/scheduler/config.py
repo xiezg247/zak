@@ -165,14 +165,6 @@ class SchedulerConfig:
             cron_day_of_week="mon-fri",
         )
     )
-    train_radar_predict: JobConfig = field(
-        default_factory=lambda: JobConfig(
-            enabled=False,
-            cron_hour=16,
-            cron_minute=50,
-            cron_day_of_week="mon-fri",
-        )
-    )
 
     def to_dict(self) -> dict:
         def dump_job(job: JobConfig) -> dict:
@@ -215,7 +207,6 @@ class SchedulerConfig:
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
             "scan_horizon_outlook": dump_job(self.scan_horizon_outlook),
-            "train_radar_predict": dump_job(self.train_radar_predict),
         }
 
     @classmethod
@@ -263,7 +254,6 @@ class SchedulerConfig:
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
             scan_horizon_outlook=load_job("scan_horizon_outlook", defaults.scan_horizon_outlook),
-            train_radar_predict=load_job("train_radar_predict", defaults.train_radar_predict),
         )
 
 

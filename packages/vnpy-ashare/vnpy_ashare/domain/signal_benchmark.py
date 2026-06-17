@@ -6,6 +6,8 @@ from typing import Any, Protocol
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.integrations.tushare.factors import fetch_index_daily_snapshot
+
 SIGNAL_BENCHMARK_SYMBOL = "000300"
 SIGNAL_BENCHMARK_LOOKBACK = 20
 SIGNAL_BENCHMARK_TS_CODE = "000300.SH"
@@ -48,7 +50,6 @@ def benchmark_return_from_tushare_cache(
     ts_code: str = SIGNAL_BENCHMARK_TS_CODE,
 ) -> float | None:
     """读取 Tushare index_daily 本地缓存（必要时拉取一次）。"""
-    from vnpy_ashare.integrations.tushare.factors import fetch_index_daily_snapshot
 
     try:
         rows, _trade_date = fetch_index_daily_snapshot()

@@ -23,6 +23,7 @@ from vnpy_ashare.data.minute_periods import (
     normalize_period,
 )
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.integrations.tushare.bars import download_daily_bars_tushare, download_minute_bars_tushare
 from vnpy_ashare.storage.repositories.universe import load_universe_names_for_keys
 from vnpy_ashare.storage.repositories.watchlist import import_watchlist_csv, load_watchlist_rows
 
@@ -54,12 +55,10 @@ def download_bars(
         raise ValueError(f"非 A 股交易所: {exchange.value}")
 
     if interval == Interval.DAILY:
-        from vnpy_ashare.integrations.tushare.bars import download_daily_bars_tushare
 
         return download_daily_bars_tushare(symbol, exchange, start=start, end=end)
 
     if interval == Interval.MINUTE:
-        from vnpy_ashare.integrations.tushare.bars import download_minute_bars_tushare
 
         return download_minute_bars_tushare(symbol, exchange, start=start, end=end, period="1m")
 
@@ -85,7 +84,6 @@ def download_period_bars(
         raise ValueError(f"非 A 股交易所: {exchange.value}")
 
     period = normalize_period(period)
-    from vnpy_ashare.integrations.tushare.bars import download_minute_bars_tushare
 
     return download_minute_bars_tushare(
         symbol,

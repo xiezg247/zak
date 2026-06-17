@@ -7,10 +7,11 @@ import argparse
 from vnpy.trader.database import get_database
 from vnpy.trader.setting import SETTINGS
 
+from vnpy_mcp.config import load_all_mcp_servers
+from vnpy_mcp.remote import McpClientError, list_remote_tools
+
 
 def _cmd_mcp_list(_args: argparse.Namespace) -> int:
-    from vnpy_mcp.config import load_all_mcp_servers
-    from vnpy_mcp.remote import McpClientError, list_remote_tools
 
     configs = load_all_mcp_servers()
     if not configs:
@@ -54,19 +55,6 @@ def _cmd_db_check(_args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_train_radar_ranker(args: argparse.Namespace) -> int:
-    from vnpy_ashare.quotes.radar.predict.train_ranker import run_train_radar_ranker
-
-    result = run_train_radar_ranker(
-        horizon=int(args.horizon),
-        max_symbols=int(args.max_symbols),
-        min_bars=int(args.min_bars),
-        sample_stride=int(args.sample_stride),
-    )
-    print(result.message)
-    return 0 if result.success else 1
-
-
 def register(subparsers: argparse._SubParsersAction) -> None:
     tools = subparsers.add_parser("tools", help="运维与调试")
     tools_sub = tools.add_subparsers(dest="tools_command", required=True)
@@ -76,10 +64,3 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
     db = tools_sub.add_parser("db-check", help="检查 K 线数据库连接")
     db.set_defaults(handler=_cmd_db_check)
-
-    train = tools_sub.add_parser("train-radar-ranker", help="训练雷达预测 LightGBM 模型")
-    train.add_argument("--horizon", type=int, default=5, help="预测 horizon（交易日）")
-    train.add_argument("--max-symbols", type=int, default=400, help="最多采样标的数")
-    train.add_argument("--min-bars", type=int, default=80, help="标的最少 K 线条数")
-    train.add_argument("--sample-stride", type=int, default=3, help="每只股票采样步长")
-    train.set_defaults(handler=_cmd_train_radar_ranker)

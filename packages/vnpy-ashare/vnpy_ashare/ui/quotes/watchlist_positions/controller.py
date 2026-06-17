@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.datetime import format_china_time_hm
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
@@ -10,8 +9,12 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.preferences import WatchlistSignalConfig
 from vnpy_ashare.data.bar_health import format_meta_date
+from vnpy_ashare.domain.datetime import format_china_time_hm
 from vnpy_ashare.domain.position_snapshot import PositionRecord, build_position_snapshot
 from vnpy_ashare.domain.signal_snapshot import signal_as_of_stale
+from vnpy_ashare.notifications.position_alerts import scan_watchlist_position_alerts
+from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
+from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
 from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
@@ -144,7 +147,6 @@ class WatchlistPositionController:
         quote = self._page.quote_map.get(item.tickflow_symbol) if item is not None else None
         last_price = quote.last_price if quote and quote.last_price > 0 else None
         snap = build_position_snapshot(record, signal=signal, last_price=last_price)
-        from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 
         snap = apply_overnight_exit_overlay(record, snap, quote=quote)
         self._page.position_cache[record.vt_symbol] = snap
@@ -171,7 +173,6 @@ class WatchlistPositionController:
                 )
         if self._page.config.show_watchlist_multiview:
             self._page._multiview.on_signal_or_position_updated()
-        from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
 
         engine = get_ashare_engine(self._page._get_main_engine())
         scan_and_record_float_loss_holds(self._page.position_cache, notify_engine=engine)
@@ -198,7 +199,6 @@ class WatchlistPositionController:
         service = engine.notification_service
         if service is None:
             return
-        from vnpy_ashare.notifications.position_alerts import scan_watchlist_position_alerts
 
         scan_watchlist_position_alerts(self._page, service)
 

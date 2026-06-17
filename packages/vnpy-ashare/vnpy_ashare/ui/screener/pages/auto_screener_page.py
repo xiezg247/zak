@@ -28,8 +28,14 @@ from vnpy_ashare.screener.data.screening_status import build_run_insight_detail,
 from vnpy_ashare.screener.recipe.recipe import TriggerKind
 from vnpy_ashare.screener.run.run_diff import enrich_condition_run, enrich_recipe_run
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
+from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
 from vnpy_ashare.services.screening_service import ScreeningService
+from vnpy_ashare.services.short_term_watchlist import (
+    SHORT_TERM_OBSERVATION_GROUP_NAME,
+    add_screener_rows_to_short_term_observation_group,
+)
 from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
+from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, wire_stock_analysis_context_menu
 from vnpy_ashare.ui.screener import show_reference_peer_dialog
 from vnpy_ashare.ui.screener.widgets.screener_config_section import ScreenerConfigSection
 from vnpy_ashare.ui.screener.widgets.screener_hard_filter_panel import ScreenerHardFilterPanel
@@ -45,6 +51,7 @@ from vnpy_ashare.ui.screener.widgets.screener_layout import (
 )
 from vnpy_ashare.ui.screener.widgets.screener_recipe_panel import ScreenerRecipePanel
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
+    ROW_DATA_ROLE,
     apply_screener_results_view,
     configure_screener_results_table,
     iter_checked_table_rows,
@@ -266,9 +273,6 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.result_table = QtWidgets.QTableWidget(0, 0)
         configure_screener_results_table(self.result_table)
         wire_screener_results_table(self.result_table, select_all_btn=self.select_all_btn)
-        from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, wire_stock_analysis_context_menu
-        from vnpy_ashare.ui.screener.widgets.screener_results_table import ROW_DATA_ROLE
-
         wire_stock_analysis_context_menu(
             self.result_table,
             host=StockAnalysisHost.from_main_engine(
@@ -758,8 +762,6 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         if not selected:
             self._toast.warning("请先勾选要加入自选的标的")
             return
-        from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
-
         if not confirm_recession_batch_watchlist(self):
             return
         added = skipped = 0
@@ -794,11 +796,6 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         if not selected:
             self._toast.warning("请先勾选要加入观察组的标的")
             return
-        from vnpy_ashare.services.short_term_watchlist import (
-            SHORT_TERM_OBSERVATION_GROUP_NAME,
-            add_screener_rows_to_short_term_observation_group,
-        )
-
         result = add_screener_rows_to_short_term_observation_group(self._watchlist_service, selected)
         if result.group_added == 0 and result.watchlist_added == 0:
             self._toast.warning(f"标的已在「{SHORT_TERM_OBSERVATION_GROUP_NAME}」或无法加入")

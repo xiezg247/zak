@@ -14,6 +14,7 @@ from vnpy_ashare.quotes.watchlist_multiview import (
 )
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiSortKey
 from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import SparklineKind, SparklineMode
+from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.watchlist_multiview.settings import (
     ViewMode,
@@ -330,7 +331,6 @@ class WatchlistMultiViewController:
         item = self._page.find_stock_item(vt_symbol)
         if item is None:
             return
-        from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
 
         quote = self._page.quote_map.get(item.tickflow_symbol)
         show_stock_analysis_from_quotes_page(item, self._page, quote=quote)

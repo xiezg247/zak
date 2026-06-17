@@ -8,10 +8,10 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable
-from vnpy_ashare.domain.datetime import format_china_datetime
 from typing import Any
 
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.domain.datetime import format_china_datetime
 
 _MCPExecute = Callable[[str, dict[str, Any]], str]
 

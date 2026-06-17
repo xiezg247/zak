@@ -20,6 +20,11 @@ from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 if TYPE_CHECKING:
     from tickflow.resources.stream import MarketStream
 
+try:
+    from tickflow.resources.stream import MarketStream
+except ImportError:
+    MarketStream = None  # type: ignore[misc,assignment]
+
 _logger = logging.getLogger(__name__)
 
 _PROXY_ENV_KEYS = (
@@ -73,9 +78,7 @@ def _patch_market_stream_shutdown() -> None:
     global _market_stream_shutdown_patched
     if _market_stream_shutdown_patched:
         return
-    try:
-        from tickflow.resources.stream import MarketStream
-    except ImportError:
+    if MarketStream is None:
         return
 
     original_close = MarketStream.close

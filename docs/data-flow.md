@@ -31,7 +31,7 @@ prefetch_moneyflow (16:31)
   → prefetch_concept_board (16:33)
   → warm_market_summary (16:34)     # 含连板梯队（慢，仅盘后）
   → sync_suspend / sync_sector_flow …
-  → screen_post_close → scan_horizon_outlook → train_radar_predict
+  → screen_post_close → scan_horizon_outlook
 ```
 
 | job_id | 说明 |

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label
@@ -102,7 +104,6 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         """增量刷新现价与涨幅，保留指标 chip。"""
         if price == self._row.price and change_pct == self._row.change_pct:
             return
-        from dataclasses import replace
 
         self._row = replace(self._row, price=price, change_pct=change_pct)
         self._apply_row()

@@ -27,8 +27,7 @@ dependencies = [
 
 [project.optional-dependencies]
 llm = ["vnpy-llm"]
-predict = ["lightgbm>=4.0.0", "numpy>=1.24.0"]
-full = ["vnpy-llm", "lightgbm>=4.0.0", "numpy>=1.24.0"]
+full = ["vnpy-llm"]
 
 [project.scripts]
 zak = "vnpy_ashare.cli:main"

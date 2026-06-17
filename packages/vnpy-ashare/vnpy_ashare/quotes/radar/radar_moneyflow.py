@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.domain.format import float_or_none
+from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.domain.symbols import parse_stock_symbol
-from vnpy_ashare.quotes.radar.radar_models import float_or_none, format_pct, merge_row_quotes
+from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
+from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
+from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 
 
 def _moneyflow_map_from_tushare(vt_symbols: list[str]) -> dict[str, float]:
     if not vt_symbols:
         return {}
     try:
-        from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
 
         rows, _ = fetch_moneyflow_with_fallback(max_lookback=5)
     except Exception:
@@ -41,7 +44,6 @@ def _moneyflow_map_from_mcp(rows: list[dict[str, Any]], *, limit: int) -> dict[s
     if not rows:
         return {}
     try:
-        from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 
         return fetch_intraday_moneyflow_map(rows, top_n=limit)
     except Exception:

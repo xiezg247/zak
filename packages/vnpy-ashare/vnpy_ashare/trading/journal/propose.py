@@ -13,6 +13,13 @@ from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.services.short_term_watchlist import (
     SHORT_TERM_OBSERVATION_GROUP_NAME,
     build_short_term_watchlist_snapshot,
+    ensure_short_term_observation_group,
+)
+from vnpy_ashare.storage.repositories.trading_plans import (
+    activate_trading_plan,
+    create_trading_plan,
+    load_trading_plan,
+    replace_trading_plan_symbols,
 )
 from vnpy_ashare.storage.repositories.watchlist_groups import load_watchlist_groups
 
@@ -96,12 +103,6 @@ def persist_trading_plan_draft(
     *,
     activate: bool = False,
 ) -> str | None:
-    from vnpy_ashare.storage.repositories.trading_plans import (
-        activate_trading_plan,
-        create_trading_plan,
-        replace_trading_plan_symbols,
-    )
-
     trade_date = str(draft.get("trade_date") or "")
     if not trade_date:
         return None
@@ -139,9 +140,6 @@ def persist_trading_plan_draft(
 
 
 def sync_plan_to_observation_group(plan_id: str, watchlist_service) -> int:
-    from vnpy_ashare.services.short_term_watchlist import ensure_short_term_observation_group
-    from vnpy_ashare.storage.repositories.trading_plans import load_trading_plan
-
     plan = load_trading_plan(plan_id)
     if plan is None or watchlist_service is None:
         return 0

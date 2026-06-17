@@ -11,7 +11,9 @@ from datetime import datetime
 from typing import Any
 
 from vnpy.trader.constant import Interval
+from vnpy_ctastrategy.backtesting import BacktestingEngine, BacktestingMode
 
+from vnpy_ashare.config.vt_settings import reload_vnpy_settings
 from vnpy_common.paths import PROJECT_ROOT, resolve_project_root
 
 _STRATEGY_PRIORITY = ("ashare_template.py",)
@@ -61,7 +63,6 @@ def _ensure_worker_runtime() -> None:
         sys.path.insert(0, root_text)
     os.chdir(root)
     try:
-        from vnpy_ashare.config.vt_settings import reload_vnpy_settings
 
         reload_vnpy_settings()
     except Exception:
@@ -106,7 +107,6 @@ def _load_strategy_from_module(module_stem: str, class_name: str) -> type | None
 
 def run_single_backtest_task(task: BacktestTask) -> dict[str, Any]:
     """在子进程或主线程执行单标的回测，返回 BatchBacktestRow 字段结构的 dict。"""
-    from vnpy_ctastrategy.backtesting import BacktestingEngine, BacktestingMode
 
     _ensure_worker_runtime()
     row: dict[str, Any] = {

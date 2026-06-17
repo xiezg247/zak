@@ -6,6 +6,9 @@
 from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 
+from vnpy_ashare.app.constants import APP_NAME
+from vnpy_ashare.notifications.service import NotificationService
+from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleTracker
 from vnpy_ashare.scheduler import TaskSchedulerManager
 from vnpy_ashare.services import (
     AnalysisService,
@@ -21,8 +24,7 @@ from vnpy_ashare.services import (
     StockAnalysisService,
     WatchlistService,
 )
-
-APP_NAME = "Ashare"
+from vnpy_ashare.trading.risk.gate import RiskGateEngine
 
 
 class AshareEngine(BaseEngine):
@@ -44,9 +46,6 @@ class AshareEngine(BaseEngine):
         self.sentiment_service = SentimentService(self)
         self.stock_analysis_service = StockAnalysisService(self)
         self.sector_flow_service = SectorFlowService(self)
-        from vnpy_ashare.notifications.service import NotificationService
-        from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleTracker
-        from vnpy_ashare.trading.risk.gate import RiskGateEngine
 
         self.emotion_cycle_tracker = EmotionCycleTracker()
         self.risk_gate_engine = RiskGateEngine()

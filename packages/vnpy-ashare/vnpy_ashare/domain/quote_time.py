@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from tickflow.utils import instrument_timestamp_to_trade_time
+
+from vnpy_ashare.domain.datetime import format_china_date
+
 
 def normalize_datetime_text(value: str) -> str:
     return value.strip().replace("T", " ")
@@ -50,7 +54,6 @@ def format_relative_updated_at(
     date_part, time_part = text.split("T", 1)
     time_short = time_part[:5] if len(time_part) >= 5 else time_part
     if today is None:
-        from vnpy_ashare.domain.datetime import format_china_date
 
         today = format_china_date()
     if date_part == today:
@@ -70,7 +73,6 @@ def resolve_trade_time_from_tickflow_row(row: dict) -> str:
     timestamp = row.get("timestamp")
     if symbol and timestamp is not None:
         try:
-            from tickflow.utils import instrument_timestamp_to_trade_time
 
             return str(instrument_timestamp_to_trade_time(symbol, int(float(timestamp)), unit="ms"))
         except Exception:

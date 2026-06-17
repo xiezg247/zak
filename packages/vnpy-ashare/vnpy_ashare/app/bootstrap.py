@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.ai.context import build_stock_completion_items
+from vnpy_ashare.ai.context import store as context_store
+from vnpy_ashare.ai.ui.floating_actions import build_quick_actions_for_panel
+from vnpy_ashare.config.vt_settings import load_runtime_settings
+from vnpy_ashare.ui.components.chart_style import refresh_charts_for_theme
+from vnpy_common.ai import access
+from vnpy_common.paths import register_settings_loader
+from vnpy_common.ui.theme.manager import theme_manager
+
 
 def install_shared_bridges() -> None:
-    from vnpy_ashare.ai.context import build_stock_completion_items
-    from vnpy_ashare.ai.context import store as context_store
-    from vnpy_ashare.ai.ui.floating_actions import build_quick_actions_for_panel
-    from vnpy_ashare.config.vt_settings import load_runtime_settings
-    from vnpy_ashare.ui.components.chart_style import refresh_charts_for_theme
-    from vnpy_common.ai import access
-    from vnpy_common.paths import register_settings_loader
-    from vnpy_common.ui.theme.manager import theme_manager
 
     register_settings_loader(load_runtime_settings)
     access.register_context_store(

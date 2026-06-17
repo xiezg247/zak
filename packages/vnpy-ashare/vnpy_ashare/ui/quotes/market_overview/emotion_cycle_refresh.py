@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot, peek_emotion_cycle_snapshot
+from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_worker import EmotionCycleLoadWorker
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 
 if TYPE_CHECKING:
@@ -17,7 +19,6 @@ _retired_workers: list[QtCore.QThread] = []
 
 def refresh_emotion_cycle_chip(chip: EmotionCycleChip) -> None:
     """优先用缓存；无缓存则显示 loading 并在后台拉取，不阻塞 UI 启动。"""
-    from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot, peek_emotion_cycle_snapshot
 
     peeked = peek_emotion_cycle_snapshot()
     if peeked is not None:
@@ -38,7 +39,6 @@ def _start_background_load(chip: EmotionCycleChip) -> None:
     if thread_is_active(_active_worker):
         return
 
-    from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_worker import EmotionCycleLoadWorker
 
     worker = EmotionCycleLoadWorker()
     _active_worker = worker

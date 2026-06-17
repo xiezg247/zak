@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_ashare.screener.batch.batch_actions import batch_download_daily_bars, run_batch_backtests
 from vnpy_ashare.screener.data.screening_status import (
     prepare_quotes_for_screening,
@@ -223,7 +224,6 @@ class PatternScreenRunWorker(QtCore.QThread):
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            from vnpy_ashare.app.engine_access import get_screening_service
 
             service = get_screening_service(self.main_engine)
             if service is None:
@@ -269,7 +269,6 @@ class IndustryScreenRunWorker(QtCore.QThread):
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            from vnpy_ashare.app.engine_access import get_screening_service
 
             service = get_screening_service(self.main_engine)
             if service is None:
@@ -313,7 +312,6 @@ class RadarResonanceRunWorker(QtCore.QThread):
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            from vnpy_ashare.app.engine_access import get_screening_service
 
             service = get_screening_service(self.main_engine)
             if service is None:
@@ -359,7 +357,6 @@ class LeaderScreenRunWorker(QtCore.QThread):
             if self._cancel_requested:
                 self.failed.emit("已取消")
                 return
-            from vnpy_ashare.app.engine_access import get_screening_service
 
             service = get_screening_service(self.main_engine)
             if service is None:

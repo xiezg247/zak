@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
+from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 
 
@@ -72,8 +74,6 @@ class IndustryFilterCombo(QtWidgets.QWidget):
     def ensure_options_loaded(self) -> None:
         if self._industries:
             return
-        from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
-        from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
         mapping = get_cached_industry_map() or fetch_stock_industry_map()
         industries = sorted({str(name).strip() for name in mapping.values() if str(name).strip()})

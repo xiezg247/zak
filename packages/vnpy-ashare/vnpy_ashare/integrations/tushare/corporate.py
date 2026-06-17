@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, cast
 
+from vnpy_ashare.domain.datetime import china_now, format_china_date_compact
 from vnpy_ashare.domain.numbers import safe_float
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 
@@ -120,8 +121,9 @@ def fetch_announcements(ts_code: str, *, days: int = 180, limit: int = 20) -> li
     ts_code = str(ts_code or "").strip()
     if not ts_code:
         return []
-    end = datetime.now().strftime("%Y%m%d")
-    start = (datetime.now() - timedelta(days=max(days, 30))).strftime("%Y%m%d")
+    now = china_now()
+    end = format_china_date_compact(now)
+    start = format_china_date_compact(now - timedelta(days=max(days, 30)))
     try:
         pro = get_tushare_pro()
         frame = pro.anns(

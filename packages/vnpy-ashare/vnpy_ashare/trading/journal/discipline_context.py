@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from vnpy.trader.constant import Exchange
+
 from vnpy_ashare.storage.repositories.trade_journal import count_trade_journal_for_date
 from vnpy_ashare.storage.repositories.trading_plans import load_active_trading_plan
 from vnpy_ashare.trading.journal.float_loss_hold import scan_float_loss_holds
@@ -87,7 +89,6 @@ def format_trading_discipline_extra(
         item_snap = position_cache.get(vt_symbol)
         if item_snap is not None:
             symbol, exchange_name = vt_symbol.split(".", 1)
-            from vnpy.trader.constant import Exchange
 
             try:
                 exchange = Exchange(exchange_name)
@@ -108,7 +109,6 @@ def check_symbol_off_plan_hint(vt_symbol: str, *, trade_date: str | None = None)
     parts = vt_symbol.split(".", 1)
     if len(parts) != 2:
         return None
-    from vnpy.trader.constant import Exchange
 
     try:
         exchange = Exchange(parts[1])

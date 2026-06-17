@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.styles import ACCENT_COLOR, NAV_MUTED_COLOR
+from vnpy_common.ui.theme import theme_manager
 
 if TYPE_CHECKING:
     from vnpy_common.ui.theme import ThemeTokens
@@ -364,7 +365,6 @@ class SidebarNav(QtWidgets.QWidget):
 
     def refresh_theme(self, tokens: ThemeTokens | None = None) -> None:
         if tokens is None:
-            from vnpy_common.ui.theme import theme_manager
 
             tokens = theme_manager().tokens()
         nav_bg = tokens.nav_bg

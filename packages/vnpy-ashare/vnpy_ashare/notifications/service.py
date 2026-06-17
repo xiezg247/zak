@@ -22,7 +22,7 @@ from vnpy_ashare.notifications.events import (
 from vnpy_ashare.notifications.models import NotifyDeliveryResult
 from vnpy_ashare.notifications.rules import NotifyRulesEngine
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, classify_emotion_cycle
-from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
+from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.storage.repositories.notify_delivery_log import append_notify_delivery_log
@@ -110,7 +110,6 @@ class NotificationService(BaseService):
         return snapshot
 
     def on_market_breadth(self, breadth: MarketBreadthSnapshot) -> None:
-        from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 
         self.publish_emotion_cycle(build_emotion_cycle_inputs(breadth))
 

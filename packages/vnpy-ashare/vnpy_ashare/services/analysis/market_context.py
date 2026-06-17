@@ -9,6 +9,7 @@ from vnpy_ashare.domain.signal_benchmark import (
     compute_relative_index_excess,
     resolve_benchmark_return_pct,
 )
+from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
 from vnpy_ashare.services.analysis.risk_metrics import fetch_market_sentiment
 
@@ -30,7 +31,6 @@ def _industry_from_diagnose(diagnose: dict[str, Any] | None) -> str | None:
 
 def _lookup_industry(ts_code: str) -> str | None:
     try:
-        from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
         value = (fetch_stock_industry_map().get(ts_code) or "").strip()
         return value or None

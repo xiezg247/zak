@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, cast
+
+from vnpy_ashare.domain.datetime import format_china_date
 
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
@@ -65,7 +68,7 @@ class TechnicalAnalyzer:
                 "scope": scope or "daily",
                 "warnings": ["本地暂无足够 K 线，请先在数据管理页下载日 K"],
                 "sources": ["bar"],
-                "as_of": datetime.now().strftime("%Y-%m-%d"),
+                "as_of": format_china_date(),
             }
 
         tail = bars[-lookback:] if len(bars) >= lookback else bars
@@ -790,7 +793,6 @@ class TechnicalAnalyzer:
         excess = self._relative_index_excess(item.symbol, item.exchange)
         if excess is None:
             return snapshot
-        from dataclasses import replace
 
         return replace(snapshot, relative_index_pct=excess)
 

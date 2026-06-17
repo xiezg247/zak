@@ -7,6 +7,7 @@ from typing import Protocol, cast
 import pyqtgraph as pg
 from vnpy.chart import ChartWidget
 
+from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_chart import (
     AVG_LINE_COLOR,
     AXIS_COLOR,
@@ -80,7 +81,6 @@ class _CandleColorTarget(Protocol):
 
 def apply_candle_colors(item: object, *, tokens: ThemeTokens | None = None) -> None:
     """A 股红涨绿跌实心 K 线。"""
-    from vnpy_common.ui.theme import theme_manager
 
     target = cast(_CandleColorTarget, item)
 
@@ -96,7 +96,6 @@ def apply_candle_colors(item: object, *, tokens: ThemeTokens | None = None) -> N
 
 def apply_sparkline_plot_theme(plot: pg.PlotWidget, tokens: ThemeTokens | None = None) -> None:
     """轻量折线/迷你图主题（普通 PlotWidget，非 vnpy ChartWidget）。"""
-    from vnpy_common.ui.theme import theme_manager
 
     if tokens is None:
         tokens = theme_manager().tokens()
@@ -118,7 +117,6 @@ def apply_sparkline_plot_theme(plot: pg.PlotWidget, tokens: ThemeTokens | None =
 
 
 def apply_ashare_chart_theme(chart: ChartWidget, tokens: ThemeTokens | None = None) -> None:
-    from vnpy_common.ui.theme import theme_manager
 
     manager = theme_manager()
     if tokens is None:
@@ -167,7 +165,6 @@ def _style_plot_axes(plot: pg.PlotItem, palette: ChartPalette, *, sides: tuple[s
 
 def style_intraday_price_plot(plot: pg.PlotItem, palette: ChartPalette | None = None) -> None:
     if palette is None:
-        from vnpy_common.ui.theme import theme_manager
 
         palette = chart_palette(theme_manager().tokens())
     plot.showGrid(x=True, y=True, alpha=GRID_ALPHA)
@@ -178,7 +175,6 @@ def style_intraday_price_plot(plot: pg.PlotItem, palette: ChartPalette | None = 
 
 def style_intraday_volume_plot(plot: pg.PlotItem, palette: ChartPalette | None = None) -> None:
     if palette is None:
-        from vnpy_common.ui.theme import theme_manager
 
         palette = chart_palette(theme_manager().tokens())
     plot.showGrid(x=False, y=True, alpha=0.08)

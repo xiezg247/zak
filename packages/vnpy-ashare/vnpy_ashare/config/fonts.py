@@ -6,6 +6,9 @@ import functools
 import platform
 from typing import cast
 
+from vnpy.trader.setting import SETTINGS
+from vnpy.trader.ui import QtGui, QtWidgets
+
 WINDOWS_FONTS = ("微软雅黑", "Microsoft YaHei", "SimHei")
 MACOS_FONTS = ("PingFang SC", "Helvetica Neue", "Arial")
 LINUX_FONTS = ("Noto Sans CJK SC", "WenQuanYi Micro Hei", "Arial")
@@ -43,7 +46,6 @@ def resolve_font_family(configured: str | None = None) -> str:
 
 @functools.lru_cache(maxsize=1)
 def _installed_font_families() -> frozenset[str]:
-    from vnpy.trader.ui import QtGui
 
     return frozenset(QtGui.QFontDatabase.families())
 
@@ -78,8 +80,6 @@ def clear_font_cache() -> None:
 
 def app_font_from_settings(settings: dict | None = None):
     """从 SETTINGS 或传入 dict 构建 QFont。"""
-    from vnpy.trader.setting import SETTINGS
-    from vnpy.trader.ui import QtGui
 
     src = settings if settings is not None else SETTINGS
     family = resolve_font_family(str(src.get("font.family", "")))
@@ -93,7 +93,6 @@ def app_font_from_settings(settings: dict | None = None):
 
 def apply_app_font(*, settings: dict | None = None) -> bool:
     """将字体应用到 QApplication（GUI 运行时）。"""
-    from vnpy.trader.ui import QtWidgets
 
     app = QtWidgets.QApplication.instance()
     if app is None:

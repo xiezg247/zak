@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
+
 _HS300_LABEL = "沪深300"
 _HS300_SYMBOL = "000300.SH"
 
@@ -12,7 +14,6 @@ _HS300_SYMBOL = "000300.SH"
 def market_benchmark_change_pct(rows: list[dict[str, Any]]) -> float:
     """优先沪深300涨幅；不可用则退回全市场涨幅均值。"""
     try:
-        from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 
         for label, quote in fetch_index_ticker():
             if label == _HS300_LABEL or str(quote.symbol or "") == _HS300_SYMBOL:

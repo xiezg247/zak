@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.domain.market_hours import ashare_market_phase_label, is_ashare_trading_session
 from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS, quote_table_headers
 
 MAX_DISPLAY_ROWS = 300
@@ -31,7 +32,6 @@ RADAR_MANUAL_REFRESH_HINT = "↻ 全量刷新，下拉可选「仅更新行情�
 
 
 def radar_refresh_hint() -> str:
-    from vnpy_ashare.domain.market_hours import ashare_market_phase_label, is_ashare_trading_session
 
     phase = ashare_market_phase_label()
     auto_part = "异动卡按设定周期刷新" if is_ashare_trading_session() else "异动卡暂停自动刷新"

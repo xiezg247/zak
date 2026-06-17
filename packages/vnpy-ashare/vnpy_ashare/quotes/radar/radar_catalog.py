@@ -5,6 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from vnpy_ashare.quotes.radar.radar_catalog_defaults import RADAR_FULL_REFRESH_EVERY
+from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import (
+    full_refresh_every_n_ticks as _load_full_refresh_every_n_ticks,
+)
+from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
+    radar_card_resonance_weight as _load_radar_card_resonance_weight,
+)
+
 RadarCategory = Literal["screen", "discovery", "watchlist", "sector", "outlook"]
 RadarCardMode = Literal["statistical", "predictive"]
 
@@ -46,16 +54,6 @@ CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
     "discovery_first_board": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "watchlist_intraday": RADAR_WATCHLIST_REFRESH_OPTIONS,
     "sector_theme": RADAR_SECTOR_REFRESH_OPTIONS,
-}
-
-# 自动刷新时每隔 N 次做一次全量重算（其余仅更新现价 / 涨幅）
-RADAR_FULL_REFRESH_EVERY: dict[str, int] = {
-    "discovery_volume_surge": 5,
-    "discovery_moneyflow_intraday": 5,
-    "discovery_limit_ladder": 5,
-    "discovery_first_board": 5,
-    "watchlist_intraday": 5,
-    "sector_theme": 3,
 }
 
 
@@ -160,7 +158,6 @@ RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
 PREDICT_MODEL_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant("auto", "自动"),
     RadarVariant("baseline", "统计基线"),
-    RadarVariant("lgb", "LightGBM"),
 )
 
 DEFAULT_PREDICT_MODEL_VARIANT = "auto"
@@ -262,9 +259,7 @@ def default_refresh_ms_for_card(card_id: str) -> int:
 
 def full_refresh_every_n_ticks(card_id: str) -> int:
     """自动刷新时每隔多少次触发一次全量指标重算。"""
-    from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import full_refresh_every_n_ticks as _load
-
-    return _load(card_id)
+    return _load_full_refresh_every_n_ticks(card_id)
 
 
 def full_refresh_options_for_card(card_id: str) -> tuple[RadarRefreshOption, ...]:
@@ -280,6 +275,4 @@ def full_refresh_options_for_card(card_id: str) -> tuple[RadarRefreshOption, ...
 
 
 def radar_card_resonance_weight(card_id: str) -> float:
-    from vnpy_ashare.quotes.radar.radar_resonance_prefs import radar_card_resonance_weight as _load_weight
-
-    return _load_weight(card_id)
+    return _load_radar_card_resonance_weight(card_id)

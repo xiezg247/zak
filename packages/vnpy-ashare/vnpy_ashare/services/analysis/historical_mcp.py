@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
 from typing import Any
 
 from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.domain.datetime import format_china_date
 from vnpy_ashare.services.analysis.mcp_binding import McpBinding
 from vnpy_ashare.services.analysis.tdx_diagnose import _call_wenda, _pick_wenda_tool, _to_float
 from vnpy_ashare.services.analysis.technical import TechnicalAnalyzer
@@ -95,7 +95,7 @@ def fetch_historical_pattern_mcp(
 
     return {
         **base,
-        "as_of": datetime.now().strftime("%Y-%m-%d"),
+        "as_of": format_china_date(),
         "return_pct": return_pct,
         "close_end": last_price,
         "change_pct_today": change_pct,

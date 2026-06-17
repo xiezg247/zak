@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 
 from vnpy_ashare.app.engine_access import get_bar_service
 from vnpy_ashare.data.bar_access import count_universe, universe_exists
+from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
+from vnpy_ashare.ui.quotes.page.config import MARKET_SCROLL_LOAD_COOLDOWN_MS
 from vnpy_ashare.ui.quotes.workers import (
     MarketFullLoadWorker,
     MarketFullResult,
@@ -95,7 +97,6 @@ class DataLoaderController:
         if page._market_total > 0 and loaded >= page._market_total:
             return
 
-        from vnpy_ashare.ui.quotes.page.config import MARKET_SCROLL_LOAD_COOLDOWN_MS
 
         now = time.monotonic()
         if now - page._market_last_load_more_at < MARKET_SCROLL_LOAD_COOLDOWN_MS / 1000:
@@ -370,7 +371,6 @@ class DataLoaderController:
                 return
             start_row = len(page.display_stocks)
             page.display_stocks.extend(result.items)
-            from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 
             merge_quote_maps_into(page.quote_map, result.quotes)
             page._table.append_rows(start_row, result.items, result.quotes)

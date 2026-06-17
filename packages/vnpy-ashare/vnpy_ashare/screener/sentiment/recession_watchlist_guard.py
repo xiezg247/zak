@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
+
 
 def is_emotion_recession() -> bool:
-    from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 
     cycle = load_emotion_cycle_snapshot(fetch_if_missing=True)
     return cycle is not None and cycle.stage == "recession"

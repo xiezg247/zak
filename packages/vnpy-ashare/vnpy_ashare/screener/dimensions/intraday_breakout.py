@@ -7,6 +7,7 @@ from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.symbols import parse_tickflow_symbol
+from vnpy_ashare.integrations.tickflow import fetch_intraday_bars
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
@@ -18,6 +19,7 @@ from vnpy_ashare.screener.dimensions.history_signals import (
     rolling_high_before_last,
 )
 from vnpy_ashare.screener.dimensions.scoring import blended_score
+from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
 _META_DIMENSION_ID = "intraday_breakout"
 _MIN_CHANGE_PCT = 0.5
@@ -35,7 +37,6 @@ def _breakout_lookback_days() -> int:
             return max(0, min(int(raw), 60))
         except ValueError:
             return _DEFAULT_LOOKBACK_DAYS
-    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
     return load_recipe_tuning_prefs().breakout_lookback_days
 
@@ -195,7 +196,6 @@ def _minute_bar_confirms_breakout(row: dict[str, Any]) -> bool:
     if item is None:
         return True
     try:
-        from vnpy_ashare.integrations.tickflow import fetch_intraday_bars
 
         bars = fetch_intraday_bars(item)
     except Exception:

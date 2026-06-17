@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.quote_time import format_relative_updated_at
-
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.quotes.format import format_amount
+from vnpy_ashare.domain.quote_time import format_relative_updated_at
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-from vnpy_ashare.domain.format import format_amount
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 

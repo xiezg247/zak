@@ -12,6 +12,7 @@ from vnpy_ashare.storage.repositories.trade_journal import (
     has_violation_tag_on_date,
     insert_trade_journal_entry,
 )
+from vnpy_ashare.trading.journal.violation_notify import publish_journal_violation
 from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
 
 
@@ -75,7 +76,6 @@ def record_float_loss_hold_if_needed(
         emotion_stage="",
     )
     if entry_id is not None and notify_engine is not None:
-        from vnpy_ashare.trading.journal.violation_notify import publish_journal_violation
 
         publish_journal_violation(
             notify_engine,

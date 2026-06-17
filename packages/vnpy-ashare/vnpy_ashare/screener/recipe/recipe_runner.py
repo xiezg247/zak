@@ -11,9 +11,9 @@ from vnpy_ashare.config.constants.recipe import (
     DEFAULT_RECIPE_DIMENSION_MAX_WORKERS,
     ENV_DIMENSION_MAX_WORKERS,
 )
+from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.domain.env import env_str
-from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.quotes.market.moneyflow_kind import (
     enrich_moneyflow_row_with_kind,
     moneyflow_dimension_score_factor,
@@ -21,6 +21,7 @@ from vnpy_ashare.quotes.market.moneyflow_kind import (
 )
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 from vnpy_ashare.screener.data.screening_context import preload_screening_context, screening_context_scope
+from vnpy_ashare.screener.data.screening_sentiment_prefilter import apply_sentiment_prefilter_to_context
 from vnpy_ashare.screener.dimensions.base import DimensionHit, merge_rows
 from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dimension_specs
 from vnpy_ashare.screener.dimensions.volume_dedup import apply_volume_liquidity_dedup
@@ -76,6 +77,7 @@ def run_recipe_object(
 
     with screening_context_scope() as ctx:
         preload_screening_context(ctx)
+        apply_sentiment_prefilter_to_context(ctx)
         scoring_specs = scoring_dimension_specs(list(recipe.dimensions))
         dimension_results = _run_all_dimensions(scoring_specs, recipe.pool_size)
         for _spec, dimension_hits, scanned in dimension_results:

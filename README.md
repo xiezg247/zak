@@ -19,7 +19,6 @@
 
 - Python 3.10+
 - [uv](https://docs.astral.sh/uv/)
-- **雷达预测（LightGBM）**：默认随 `vnpy-ashare[full]` 安装；也可 `uv sync --extra predict`。macOS 还需 OpenMP 运行时（`libomp`），`bash bin/install.sh` 会尝试 `brew install libomp`；手动安装：`brew install libomp`。
 
 ## 快速开始
 

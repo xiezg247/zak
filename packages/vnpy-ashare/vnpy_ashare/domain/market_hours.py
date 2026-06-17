@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, time, timedelta
 
 from vnpy.trader.utility import ZoneInfo
@@ -91,7 +92,6 @@ def _next_session_start_after(dt: datetime) -> datetime:
 
 def screen_after_collect_delay_seconds() -> int:
     """盘中选股相对行情采集的默认延迟（秒）。"""
-    import os
 
     raw = os.getenv("SCREEN_AFTER_COLLECT_SEC", "90").strip()
     try:

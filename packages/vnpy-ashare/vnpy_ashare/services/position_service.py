@@ -26,6 +26,12 @@ from vnpy_ashare.storage.repositories.positions import (
 )
 from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
+from vnpy_ashare.trading.journal.record_add import (
+    record_volume_increase_buy,
+    should_tag_add_loss,
+)
+from vnpy_ashare.trading.journal.record_buy import record_buy_from_position
+from vnpy_ashare.trading.journal.record_sell import record_sell_from_position
 
 PositionAddFailure = Literal["duplicate", "full", "not_in_watchlist"]
 
@@ -160,8 +166,6 @@ class PositionService(BaseService):
         volume: int,
         buy_date: str,
     ) -> None:
-        from vnpy_ashare.trading.journal.record_buy import record_buy_from_position
-
         record_buy_from_position(
             symbol,
             exchange,
@@ -203,12 +207,6 @@ class PositionService(BaseService):
             plan_pct=plan_pct,
         )
         if ok and normalized_volume > old_volume:
-            from vnpy_ashare.domain.position_snapshot import PositionRecord
-            from vnpy_ashare.trading.journal.record_add import (
-                record_volume_increase_buy,
-                should_tag_add_loss,
-            )
-
             record = PositionRecord(
                 symbol=symbol,
                 exchange=exchange.value,
@@ -296,8 +294,6 @@ class PositionService(BaseService):
         sell_date: str | None,
         reason: str,
     ) -> None:
-        from vnpy_ashare.trading.journal.record_sell import record_sell_from_position
-
         record_sell_from_position(
             symbol,
             exchange,

@@ -12,6 +12,17 @@ from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel, create_daily_chart
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
+from vnpy_ashare.ui.quotes.chart.section import (
+    chart_side_expanded_min_width,
+    sync_chart_splitter_for_expansion,
+)
+from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
+    MarketRankSidebar,
+    MarketRankSplitterResizeFilter,
+    clamp_rank_splitter_sizes,
+    sync_rank_splitter_for_expansion,
+)
+from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
 from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
@@ -22,8 +33,11 @@ from vnpy_ashare.ui.quotes.page.run_log import (
     on_run_output_expansion_changed,
 )
 from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
+from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
 from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
 from vnpy_ashare.ui.quotes.table import LOCAL_TABLE_HEADERS, QuoteTableModel
+from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
+from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
 from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
 from vnpy_ashare.ui.quotes.watchlist_signals import (
     WatchlistSignalPanel,
@@ -34,6 +48,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals import (
 from vnpy_ashare.ui.styles import apply_toolbar_combo_style
 from vnpy_common.ui.feedback import PageToastHost
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.build_extra import build_radar_stylesheet
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
@@ -333,8 +348,6 @@ class QuotesPageShell:
         if page.config.show_watchlist_positions:
             toolbar.addWidget(page.register_position_button)
         if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
-            from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-
             page.emotion_cycle_chip = EmotionCycleChip(page)
             toolbar.addWidget(page.emotion_cycle_chip)
         if page.config.show_stock_notes:
@@ -518,8 +531,6 @@ class QuotesPageShell:
                 center_layout.addWidget(page._stats_label)
             page.watchlist_group_tab_bar = None
             if page.config.show_watchlist_groups:
-                from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
-
                 page.watchlist_group_tab_bar = WatchlistGroupTabBar(center_widget)
                 center_layout.addWidget(page.watchlist_group_tab_bar)
             page._market_table_host = MarketTableHost(
@@ -530,8 +541,6 @@ class QuotesPageShell:
             page._center_view_stack = None
             page.multiview_board = None
             if page.config.show_watchlist_multiview:
-                from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
-
                 page.multiview_board = WatchlistMultiViewBoard(page)
                 page._center_view_stack = QtWidgets.QStackedWidget()
                 page._center_view_stack.setObjectName("WatchlistCenterViewStack")
@@ -583,10 +592,6 @@ class QuotesPageShell:
 
             page._right_panel_widget = page.chart_section
             splitter.addWidget(page.chart_section)
-            from vnpy_ashare.ui.quotes.chart.section import (
-                chart_side_expanded_min_width,
-                sync_chart_splitter_for_expansion,
-            )
 
             page.chart_section.setMinimumWidth(chart_side_expanded_min_width(page))
             if not page.chart_section.is_expanded():
@@ -611,13 +616,6 @@ class QuotesPageShell:
 
             main_content = center_widget
             if page.config.show_rank_sidebar:
-                from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
-                    MarketRankSidebar,
-                    MarketRankSplitterResizeFilter,
-                    clamp_rank_splitter_sizes,
-                    sync_rank_splitter_for_expansion,
-                )
-
                 rank_sidebar = MarketRankSidebar(page)
                 page.rank_sidebar = rank_sidebar
                 page.rank_list = rank_sidebar.rank_list
@@ -680,8 +678,6 @@ class QuotesPageShell:
         root.addWidget(page._toast)
 
     def _build_radar_layout(self, page: QuotesPage) -> None:
-        from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
-
         page.refresh_radar_button = QtWidgets.QPushButton("刷新当前区", page)
         page.refresh_radar_button.setToolTip("刷新当前分区内的全部卡片")
         page.refresh_radar_all_button = QtWidgets.QPushButton("刷新全部", page)
@@ -694,8 +690,6 @@ class QuotesPageShell:
         toolbar.addWidget(page.refresh_radar_button)
         toolbar.addWidget(page.refresh_radar_all_button)
         toolbar.addWidget(page.radar_ai_button)
-        from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-
         page.emotion_cycle_chip = EmotionCycleChip(page)
         toolbar.addWidget(page.emotion_cycle_chip)
         toolbar.addStretch(1)
@@ -709,8 +703,6 @@ class QuotesPageShell:
 
         page.radar_board = RadarBoard(page)
         page.radar_resonance_panel = RadarResonancePanel(page)
-        from vnpy_common.ui.theme.build_extra import build_radar_stylesheet
-
         theme_manager().bind_stylesheet(page.radar_board, extra=build_radar_stylesheet)
         theme_manager().bind_stylesheet(page.radar_resonance_panel, extra=build_radar_stylesheet)
         page._radar_controller = RadarController(

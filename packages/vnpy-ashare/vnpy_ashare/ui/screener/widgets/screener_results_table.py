@@ -6,6 +6,8 @@ from typing import Any, cast
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.quotes.market.moneyflow_kind import flow_kind_label
+from vnpy_common.ui.scroll_area import style_market_table_scroll_bars
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
@@ -72,7 +74,6 @@ def configure_screener_results_table(table: QtWidgets.QTableWidget) -> None:
     table.setShowGrid(False)
     table.setWordWrap(False)
     table.setItemDelegate(ScreenerResultsTableDelegate(table))
-    from vnpy_common.ui.scroll_area import style_market_table_scroll_bars
 
     style_market_table_scroll_bars(table)
     header = table.horizontalHeader()
@@ -88,7 +89,6 @@ def _format_cell_text(key: str, value: Any) -> str:
     if value is None or value == "":
         return "—"
     if key == "flow_kind":
-        from vnpy_ashare.quotes.market.moneyflow_kind import flow_kind_label
 
         return flow_kind_label(str(value))
     if isinstance(value, float):

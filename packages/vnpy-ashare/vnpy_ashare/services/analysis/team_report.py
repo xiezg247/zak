@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from typing import Any
 from urllib.parse import quote
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from vnpy_ashare.storage.repositories import stock_analysis_reports as reports_repo
 
 
@@ -32,7 +32,7 @@ def persist_team_analysis_report(
         return None
 
     head = (name or item.name or item.symbol).strip()
-    stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    stamp = format_china_datetime_minute()
     title = f"{head} · 投研团队 · {stamp}"
 
     context = {

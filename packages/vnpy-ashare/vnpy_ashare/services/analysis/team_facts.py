@@ -7,6 +7,8 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
+from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback
 from vnpy_ashare.services.analysis.market_context import build_team_market_context
 from vnpy_ashare.services.stock.context import DiagnoseMetrics, extract_diagnose_metrics
 from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow, list_snapshots
@@ -38,7 +40,6 @@ def snapshot_row_to_dict(row: FinancialSnapshotRow) -> dict[str, Any]:
 def lookup_daily_basic(vt_symbol: str) -> dict[str, Any] | None:
     """从 Tushare daily_basic 缓存查找单票估值。"""
     try:
-        from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback
 
         rows, trade_date = fetch_daily_basic_with_fallback()
     except Exception:
@@ -245,7 +246,6 @@ def attach_ultra_short_strategy_context(service: AnalysisService, payload: dict[
 
     emotion = None
     try:
-        from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 
         emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
     except Exception:

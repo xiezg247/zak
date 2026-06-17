@@ -8,6 +8,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market_hours import CHINA_TZ
+from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.domain.trading_plan import TradingPlanRecord
 from vnpy_ashare.storage.repositories.trading_plans import (
     activate_trading_plan,
@@ -96,7 +97,6 @@ class TradingPlanDialog(QtWidgets.QDialog):
         return f"{qdate.year():04d}-{qdate.month():02d}-{qdate.day():02d}"
 
     def _parse_symbols(self) -> list[tuple[str, Exchange]]:
-        from vnpy_ashare.domain.symbols import parse_stock_symbol
 
         rows: list[tuple[str, Exchange]] = []
         for line in self._symbols_edit.toPlainText().splitlines():

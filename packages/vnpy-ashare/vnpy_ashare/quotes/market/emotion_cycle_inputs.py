@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
-from vnpy_ashare.screener.sentiment.sentiment_gate import try_fetch_fear_greed_index
+from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
+from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
 
 @dataclass(frozen=True)
@@ -56,7 +56,10 @@ def build_emotion_cycle_inputs(
 ) -> EmotionCycleInputs:
     up_total = breadth.up + breadth.down
     up_ratio = (breadth.up / up_total) if up_total > 0 else 0.0
-    limit_map = limit_times_map if limit_times_map is not None else get_cached_limit_times_map()
+    if limit_times_map is None:
+        limit_map = get_cached_limit_times_map()
+    else:
+        limit_map = limit_times_map
     max_limit_times, ladder_depth = compute_limit_ladder_stats(limit_map)
 
     fg = fear_greed_index

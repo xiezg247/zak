@@ -16,6 +16,7 @@ from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
+from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
 from vnpy_ashare.ui.quotes.market_overview.worker import MarketOverviewLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -108,7 +109,6 @@ class MarketOverviewController(QtCore.QObject):
         if sectors:
             self._panel.apply_sectors(sectors)
         if ladder_counts is None:
-            from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
 
             ladder_counts = peek_limit_ladder_counts()
         if ladder_counts is not None:

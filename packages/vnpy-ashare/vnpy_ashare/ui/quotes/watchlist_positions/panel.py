@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
@@ -18,6 +19,7 @@ from vnpy_ashare.config.preferences import (
     save_position_panel_expanded,
 )
 from vnpy_ashare.config.preferences.strategy_profile import list_strategy_profiles, load_strategy_profile_id
+from vnpy_ashare.domain.market_hours import CHINA_TZ
 from vnpy_ashare.domain.position_snapshot import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.signal_snapshot import signal_missing_kline
 from vnpy_ashare.quotes.misc.position_anomaly import (
@@ -45,6 +47,7 @@ from vnpy_ashare.trading.risk.plan_position import (
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.journal_report_dialog import JournalReportDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
+from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.sell_dialog import PositionSellDialog
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
@@ -255,7 +258,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._page.apply_strategy_profile(profile_id)
 
     def _on_risk_settings_clicked(self) -> None:
-        from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
 
         if RiskSettingsDialog.open_and_save(self):
             self._page.status_label.setText("已保存交易风控设置")
@@ -566,9 +568,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         elif not combined.allow_new_positions:
             hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
             self._page._toast.warning(f"{hint}（登记仅作记账参考）")
-        from datetime import datetime
 
-        from vnpy_ashare.domain.market_hours import CHINA_TZ
 
         today = datetime.now(CHINA_TZ).date().isoformat()
         if not self._confirm_plan_violations(item, buy_date=today):
@@ -715,9 +715,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         )
         if plan_hint:
             parts.append(plan_hint)
-        from datetime import datetime, timedelta
 
-        from vnpy_ashare.domain.market_hours import CHINA_TZ
 
         end_day = datetime.now(CHINA_TZ).date()
         start_day = end_day - timedelta(days=6)

@@ -7,10 +7,10 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.app.engine_access import get_quote_service
+from vnpy_ashare.app.engine_access import get_quote_service, get_sector_flow_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.market_hours import ashare_market_phase_label, is_ashare_trading_session
-from vnpy_ashare.domain.sector_flow import SectorFlowRow, SectorFlowSnapshot
+from vnpy_ashare.domain.sector_flow import SectorConstituentRow, SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.services.sector_flow_service import SectorFlowService
 from vnpy_ashare.ui.sector_flow.leaders_worker import SectorLeadersLoadWorker
 from vnpy_ashare.ui.sector_flow.worker import SectorFlowLoadWorker
@@ -61,7 +61,6 @@ class SectorFlowController(QtCore.QObject):
     def _get_service(self) -> SectorFlowService | None:
         if self._service is not None:
             return self._service
-        from vnpy_ashare.app.engine_access import get_sector_flow_service
 
         service = get_sector_flow_service(self._main_engine)
         if service is not None:
@@ -152,7 +151,6 @@ class SectorFlowController(QtCore.QObject):
         release_thread(self._retired, worker)
 
     def _on_leaders_loaded(self, sector: SectorFlowRow, result: object, history: object) -> None:
-        from vnpy_ashare.domain.sector_flow import SectorConstituentRow, SectorFlowHistoryPoint
 
         if isinstance(result, Exception):
             self._panel.detail.show_sector(sector, [], history=[] if not isinstance(history, list) else history)

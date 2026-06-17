@@ -10,6 +10,7 @@ DATETIME_FMT = "%Y-%m-%d %H:%M:%S"
 DATETIME_MINUTE_FMT = "%Y-%m-%d %H:%M"
 TIME_HM_FMT = "%H:%M"
 DATE_FMT = "%Y-%m-%d"
+DATE_COMPACT_FMT = "%Y%m%d"
 
 
 def china_now() -> datetime:
@@ -34,6 +35,11 @@ def format_china_time_hm(dt: datetime | None = None) -> str:
 
 def format_china_date(dt: datetime | None = None) -> str:
     return _format_china(dt, DATE_FMT)
+
+
+def format_china_date_compact(dt: datetime | None = None) -> str:
+    """东八区日期 → YYYYMMDD（Tushare API 常用）。"""
+    return _format_china(dt, DATE_COMPACT_FMT)
 
 
 def _format_china(dt: datetime | None, fmt: str) -> str:

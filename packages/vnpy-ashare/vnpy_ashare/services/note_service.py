@@ -17,6 +17,8 @@ from vnpy_ashare.domain.stock_note import (
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.storage.repositories import stock_analysis_reports as reports_repo
 from vnpy_ashare.storage.repositories import stock_notes as stock_notes_repo
+from vnpy_ashare.storage.repositories.universe import load_universe_rows
+from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 
 
 class NoteService(BaseService):
@@ -49,8 +51,6 @@ class NoteService(BaseService):
     @staticmethod
     def _symbol_name_map() -> dict[tuple[str, str], str]:
 
-        from vnpy_ashare.storage.repositories.universe import load_universe_rows
-        from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 
         mapping: dict[tuple[str, str], str] = {}
         for symbol, exchange, name in load_universe_rows():

@@ -6,9 +6,27 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from vnpy_ashare.domain.datetime import format_china_datetime
-from vnpy_ashare.quotes.core.cache_ttl import TtlCache
+from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_ashare.quotes.market.emotion_cycle_cache import (
+    invalidate_emotion_cycle_cache,
+    peek_emotion_cycle_snapshot,
+    store_emotion_cycle_snapshot,
+)
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
+from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+
+__all__ = [
+    "EmotionCycleSnapshot",
+    "EmotionCycleTracker",
+    "classify_emotion_cycle",
+    "format_mode_label",
+    "invalidate_emotion_cycle_cache",
+    "load_emotion_cycle_snapshot",
+    "peek_emotion_cycle_snapshot",
+    "store_emotion_cycle_snapshot",
+]
 
 EmotionStage = Literal["ice", "startup", "climax", "divergence", "recession"]
 EmotionMode = Literal["limit_board", "halfway", "pullback"]
@@ -45,7 +63,6 @@ _MODE_LABELS: dict[EmotionMode, str] = {
 
 _AMOUNT_FLOOR = 1e12
 _FEAR_GREED_OVERHEAT = 85.0
-_CACHE_TTL_SEC = 30.0
 
 
 @dataclass(frozen=True)
@@ -87,24 +104,6 @@ class EmotionCycleSnapshot:
             "inputs": dict(self.inputs),
             "updated_at": self.updated_at,
         }
-
-
-_emotion_cache: TtlCache[EmotionCycleSnapshot] = TtlCache()
-
-
-def peek_emotion_cycle_snapshot(*, max_age_sec: float = _CACHE_TTL_SEC) -> EmotionCycleSnapshot | None:
-    """读取内存缓存，不触发任何 I/O。"""
-    return _emotion_cache.peek(max_age_sec=max_age_sec)
-
-
-def store_emotion_cycle_snapshot(snapshot: EmotionCycleSnapshot | None) -> None:
-    """写入内存缓存（市场页 Worker / 控制器刷新后调用）。"""
-    _emotion_cache.store(snapshot)
-
-
-def invalidate_emotion_cycle_cache() -> None:
-    """行情缓存更新时丢弃情绪快照，避免与旧广度不一致。"""
-    _emotion_cache.invalidate()
 
 
 def format_mode_label(mode: str) -> str:
@@ -192,9 +191,6 @@ def load_emotion_cycle_snapshot(
         if peeked is not None:
             return peeked
 
-        from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
-        from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
-        from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 
         cached = get_market_quotes_cache()
         if cached:

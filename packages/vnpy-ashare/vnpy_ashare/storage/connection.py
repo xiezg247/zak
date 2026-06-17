@@ -6,6 +6,8 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
+from vnpy_common.paths import get_app_db_path
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
@@ -278,7 +280,6 @@ CREATE INDEX IF NOT EXISTS idx_trade_journal_trade_date
 
 
 def _db_path() -> Path:
-    from vnpy_common.paths import get_app_db_path
 
     return get_app_db_path()
 

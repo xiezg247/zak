@@ -10,7 +10,9 @@ from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.data.quote_freshness import ensure_fresh_quotes_for_screening, quote_snapshot_age_seconds
 from vnpy_ashare.screener.preset.presets import get_preset
+from vnpy_ashare.screener.preset.scheme_store import get_scheme
 from vnpy_ashare.screener.recipe.recipe import ScreenRecipe, TriggerKind, resolve_recipe
+from vnpy_ashare.screener.run.runner import resolve_preset_input
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
 
 
@@ -76,7 +78,6 @@ def request_uses_live_quotes(
 ) -> bool:
     """策略选股请求是否会走 Redis 实时行情。"""
     if scheme_id:
-        from vnpy_ashare.screener.preset.scheme_store import get_scheme
 
         scheme = get_scheme(scheme_id)
         if scheme is not None:
@@ -89,7 +90,6 @@ def request_uses_live_quotes(
 
     label = (preset or "").strip()
     if label.startswith("我的 · "):
-        from vnpy_ashare.screener.run.runner import resolve_preset_input
 
         resolved = resolve_preset_input(label)
         return preset_uses_live_quotes(resolved.preset)

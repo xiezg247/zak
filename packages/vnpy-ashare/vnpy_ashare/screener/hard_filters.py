@@ -22,17 +22,27 @@ from vnpy_ashare.config.constants.recipe import (
     ENV_MIN_LISTING_DAYS,
     ENV_MIN_TOTAL_MV_WAN,
 )
+from vnpy_ashare.domain.board import matches_board
+from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.env import (
     env_or_prefs_bool,
     env_or_prefs_nonneg_float,
     env_or_prefs_nonneg_int,
     env_or_prefs_str,
 )
+from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol, vt_symbol_to_ts_code
+from vnpy_ashare.integrations.tushare.factors import (
+    fetch_stock_basic_snapshot,
+    fetch_stock_industry_map,
+    fetch_stock_market_board_map,
+)
 from vnpy_ashare.screener.hard_filter_prefs import (
     load_hard_filter_prefs,
     parse_allowed_industries,
     parse_allowed_market_boards,
 )
+from vnpy_ashare.storage.repositories.symbol_suspend import ensure_suspend_keys_for_screening
+from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 
 _suspend_keys_cache: tuple[date, frozenset[tuple[str, str]]] | None = None
 _list_date_map_cache: tuple[date, dict[str, str]] | None = None
@@ -97,8 +107,6 @@ def is_st_stock(name: str) -> bool:
 
 def _screening_vt_name_map() -> dict[str, str]:
     """vt_symbol → 名称；用于 row.name 缺失或与 universe 不一致时的 ST 判定。"""
-    from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
-
     mapping: dict[str, str] = {}
     for (symbol, exchange), name in build_symbol_name_map().items():
         if name:
@@ -152,8 +160,6 @@ def clear_suspend_screening_cache() -> None:
 
 def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
     global _suspend_keys_cache
-    from vnpy_ashare.domain.calendar import last_trading_day
-    from vnpy_ashare.storage.repositories.symbol_suspend import ensure_suspend_keys_for_screening
 
     day = last_trading_day()
     if _suspend_keys_cache is not None and _suspend_keys_cache[0] == day:
@@ -170,8 +176,6 @@ def is_row_suspended(row: dict[str, Any], suspended_keys: frozenset[tuple[str, s
 
 def _list_date_map_for_screening() -> dict[str, str]:
     global _list_date_map_cache
-    from vnpy_ashare.domain.calendar import last_trading_day
-    from vnpy_ashare.integrations.tushare.factors import fetch_stock_basic_snapshot
 
     day = last_trading_day()
     if _list_date_map_cache is not None and _list_date_map_cache[0] == day:
@@ -193,8 +197,6 @@ def _list_date_map_for_screening() -> dict[str, str]:
 
 def _market_board_map_for_screening() -> dict[str, str]:
     global _market_board_map_cache
-    from vnpy_ashare.domain.calendar import last_trading_day
-    from vnpy_ashare.integrations.tushare.factors import fetch_stock_market_board_map
 
     day = last_trading_day()
     if _market_board_map_cache is not None and _market_board_map_cache[0] == day:
@@ -208,8 +210,6 @@ def _market_board_map_for_screening() -> dict[str, str]:
 
 def _industry_map_for_screening() -> dict[str, str]:
     global _industry_map_cache
-    from vnpy_ashare.domain.calendar import last_trading_day
-    from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
     day = last_trading_day()
     if _industry_map_cache is not None and _industry_map_cache[0] == day:
@@ -236,7 +236,6 @@ def row_symbol(row: dict[str, Any]) -> str:
 def passes_market_board_filter(row: dict[str, Any], allowed: frozenset[str]) -> bool:
     if not allowed:
         return True
-    from vnpy_ashare.domain.board import matches_board
 
     symbol = row_symbol(row)
     if not symbol:
@@ -251,8 +250,6 @@ def row_industry(row: dict[str, Any], industry_map: dict[str, str] | None = None
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return ""
-    from vnpy_ashare.domain.symbols import vt_symbol_to_ts_code
-
     ts_code = vt_symbol_to_ts_code(vt_symbol)
     if not ts_code:
         return ""
@@ -270,8 +267,6 @@ def passes_industry_filter(row: dict[str, Any], allowed: frozenset[str], industr
 
 
 def _ts_code_to_vt_symbol(ts_code: str) -> str:
-    from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol
-
     return ts_code_to_vt_symbol(ts_code) or ""
 
 

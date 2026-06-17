@@ -6,9 +6,10 @@ from typing import Any
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
-from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
+from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
-from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, load_screening_quote_snapshot
+from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
+from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback, iter_trade_date_strs, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
 from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
 from vnpy_ashare.screener.preset.rules import apply_moneyflow_in
@@ -49,8 +50,6 @@ def _moneyflow_score_adjustment(row: dict[str, Any], base_score: float) -> float
 
 def count_positive_moneyflow_streak(vt_symbol: str, *, max_days: int = 5) -> int:
     """连续净流入天数（仅读本地 Tushare 缓存，无缓存则跳过）。"""
-    from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
-    from vnpy_ashare.screener.data.data_source import iter_trade_date_strs
 
     streak = 0
     for trade_date in iter_trade_date_strs(max_lookback=max_days):

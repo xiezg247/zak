@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.radar_resonance_store import (
+    get_radar_resonance_entries,
+    radar_resonance_updated_at,
+)
 from vnpy_ashare.services.watchlist_service import WatchlistService
 
 SHORT_TERM_OBSERVATION_GROUP_NAME = "短线观察"
@@ -87,12 +92,6 @@ def build_short_term_watchlist_snapshot(
     resonance_top_n: int = 5,
 ) -> dict[str, object]:
     """A-02：短线观察组成员 + 雷达共振 Top N。"""
-    from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
-    from vnpy_ashare.quotes.radar.radar_resonance_store import (
-        get_radar_resonance_entries,
-        radar_resonance_updated_at,
-    )
-
     top_n = max(1, min(int(resonance_top_n), 20))
     observation: list[dict[str, str]] = []
     group_id = find_short_term_observation_group_id(service)
@@ -142,8 +141,6 @@ def build_short_term_watchlist_snapshot(
 
 
 def _radar_row_from_screener_dict(row: dict) -> RadarRow | None:
-    from vnpy_ashare.domain.symbols import parse_stock_symbol
-
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None

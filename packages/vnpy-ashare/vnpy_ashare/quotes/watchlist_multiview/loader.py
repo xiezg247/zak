@@ -5,6 +5,7 @@ from __future__ import annotations
 from vnpy_ashare.domain.format import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_moneyflow import enrich_quotes_with_moneyflow
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_watchlist import (
     _intraday_score,
@@ -37,7 +38,6 @@ def build_watchlist_multiview_board(
 
     quotes_by_vt = _quotes_for_candidates(candidates)
     try:
-        from vnpy_ashare.quotes.radar.radar_moneyflow import enrich_quotes_with_moneyflow
 
         quotes_by_vt = enrich_quotes_with_moneyflow(quotes_by_vt)
     except Exception:

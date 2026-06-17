@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions
+from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions, format_market_overview_extra
 from vnpy_ashare.ai.context.quote import (
     build_assistant_quick_actions,
     build_assistant_screening_menus,
@@ -113,7 +113,6 @@ def _build_badge(data: AiContextData) -> str:
 def _build_chip_text(data: AiContextData) -> str:
     parts: list[str] = []
     if data.page == "市场":
-        from vnpy_ashare.ai.context.market_overview import format_market_overview_extra
 
         overview = format_market_overview_extra()
         if overview:

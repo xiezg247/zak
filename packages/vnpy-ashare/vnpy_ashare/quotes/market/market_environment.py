@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from vnpy_ashare.integrations.tushare.factors import fetch_moneyflow_hsgt_window
+from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
+
 
 @dataclass(frozen=True)
 class MarketEnvironmentSnapshot:
@@ -28,8 +31,6 @@ def load_market_environment() -> MarketEnvironmentSnapshot:
     fear_index: float | None = None
     fear_label = ""
     try:
-        from vnpy_ashare.screener.sentiment.sentiment_gate import try_fetch_fear_greed_index
-
         snapshot = try_fetch_fear_greed_index()
         if snapshot is not None:
             fear_index = float(snapshot.index)
@@ -40,8 +41,6 @@ def load_market_environment() -> MarketEnvironmentSnapshot:
     north_money: float | None = None
     north_trade_date = ""
     try:
-        from vnpy_ashare.integrations.tushare.factors import fetch_moneyflow_hsgt_window
-
         rows, trade_date = fetch_moneyflow_hsgt_window()
         if rows:
             latest = max(rows, key=lambda row: str(row.get("trade_date") or ""))

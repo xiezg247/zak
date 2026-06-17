@@ -5,9 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Any
 
-from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
-from vnpy_ashare.domain.format import float_or_none, format_pct
+from vnpy_ashare.domain.format import float_or_none
+from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
+from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
+from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.radar.radar_relative_strength import enrich_radar_row_relative_strength
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
@@ -135,7 +138,6 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
 
     if missing_tf:
         try:
-            from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
             quotes = RedisQuoteStore().get_quotes(missing_tf)
             for tf_symbol, quote in quotes.items():
@@ -175,7 +177,6 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
 
 def enrich_radar_row(row: RadarRow, quote: dict[str, Any]) -> RadarRow:
     """用全市场行情补全 RadarRow 的现价、涨幅与相对强度副标题。"""
-    from vnpy_ashare.quotes.radar.radar_relative_strength import enrich_radar_row_relative_strength
 
     merged = merge_row_quotes(quote)
     price = float_or_none(merged.get("last_price") or merged.get("close"))

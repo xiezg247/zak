@@ -5,10 +5,12 @@ from __future__ import annotations
 import os
 from datetime import datetime
 
+import redis
 from dotenv import load_dotenv
 
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.quote_time import normalize_datetime_text
+from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset, fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.misc.speed_baseline import apply_change_speed_5m
 from vnpy_ashare.quotes.rank.rank_engine import compute_intraday_change_pct
@@ -48,7 +50,6 @@ def rank_key(field: str) -> str:
 def create_redis_client():
     load_dotenv(ENV_FILE)
     url = os.getenv("REDIS_URL", "").strip() or "redis://127.0.0.1:6379/0"
-    import redis
 
     return redis.from_url(
         url,
@@ -132,7 +133,6 @@ class RedisQuoteStore:
                 quote.trade_time = fallback_time
             result[tf_symbol] = quote
         if enrich_factors and result:
-            from vnpy_ashare.quotes.core.enrich import backfill_rank_scores_from_zset, fill_missing_tushare_factors
 
             fill_missing_tushare_factors(result)
             backfill_rank_scores_from_zset(self, result)

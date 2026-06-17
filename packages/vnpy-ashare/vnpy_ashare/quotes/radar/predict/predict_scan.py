@@ -1,4 +1,4 @@
-"""雷达预测扫描（粗筛池 + LGB / 基线排序）。"""
+"""雷达预测扫描（粗筛池 + 统计基线排序）。"""
 
 from __future__ import annotations
 
@@ -8,10 +8,9 @@ from typing import Any
 from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
-from vnpy_ashare.quotes.radar.predict.bar_features import enrich_quote_rows_with_bar_features
 from vnpy_ashare.quotes.radar.predict.baseline_ranker import BaselinePredictHit, rank_baseline_predict
+from vnpy_ashare.quotes.radar.predict.predict_cache import put_predict_cache
 from vnpy_ashare.quotes.radar.predict.predict_prefs import PredictModelMode, load_predict_model_mode
-from vnpy_ashare.quotes.radar.predict.ranker_lgb import lgb_model_ready, rank_lgb_predict
 from vnpy_ashare.quotes.radar.predict.types import PredictHit
 from vnpy_ashare.quotes.radar.radar_horizon_scan import HorizonScanStats, prefilter_horizon_universe
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
@@ -20,7 +19,6 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
 PREDICT_VARIANT_BASELINE = "predict_baseline"
-PREDICT_VARIANT_LGB = "predict_lgb"
 
 
 @dataclass(frozen=True)
@@ -59,28 +57,9 @@ def rank_predict_hits(
     top_n: int,
     mode: PredictModelMode | None = None,
 ) -> tuple[list[PredictHit], str, str]:
-    """优先 LightGBM，失败或无 artifact 时回退统计基线（受模型模式偏好约束）。"""
+    """统计基线排序（auto / baseline 均走基线；后续可扩展 ML 模型）。"""
+    _ = mode or load_predict_model_mode()
     limit = max(1, int(top_n))
-    resolved_mode = mode or load_predict_model_mode()
-
-    if resolved_mode == "baseline":
-        baseline_hits = [_baseline_to_hit(hit) for hit in rank_baseline_predict(quote_rows)[:limit]]
-        return baseline_hits, PREDICT_VARIANT_BASELINE, "统计基线"
-
-    if resolved_mode == "lgb":
-        if lgb_model_ready():
-            enriched = enrich_quote_rows_with_bar_features(quote_rows, max_compute=120)
-            lgb_hits = rank_lgb_predict(enriched)[:limit]
-            if lgb_hits:
-                return lgb_hits, PREDICT_VARIANT_LGB, lgb_hits[0].model_label
-        baseline_hits = [_baseline_to_hit(hit) for hit in rank_baseline_predict(quote_rows)[:limit]]
-        return baseline_hits, PREDICT_VARIANT_BASELINE, "统计基线（LGB 不可用）"
-
-    if lgb_model_ready():
-        enriched = enrich_quote_rows_with_bar_features(quote_rows, max_compute=120)
-        lgb_hits = rank_lgb_predict(enriched)[:limit]
-        if lgb_hits:
-            return lgb_hits, PREDICT_VARIANT_LGB, lgb_hits[0].model_label
     baseline_hits = [_baseline_to_hit(hit) for hit in rank_baseline_predict(quote_rows)[:limit]]
     return baseline_hits, PREDICT_VARIANT_BASELINE, "统计基线"
 
@@ -105,7 +84,7 @@ def _hit_to_row(hit: PredictHit, *, name_map: dict[str, str], quote_row: dict[st
 
 
 def scan_predict(*, top_n: int = 8) -> PredictScanResult:
-    """全市场粗筛后做预测排序（LGB 优先）。"""
+    """全市场粗筛后做预测排序。"""
     excluded = collect_outlook_exclusion_vt_symbols()
     prefilter, stats = prefilter_horizon_universe(excluded)
     quote_rows = _quote_rows_for_prefilter(prefilter)
@@ -164,7 +143,6 @@ def predict_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
 def run_predict_scan(*, top_n: int = 8) -> PredictScanResult:
     """执行预测扫描并写入缓存。"""
     scan = scan_predict(top_n=top_n)
-    from vnpy_ashare.quotes.radar.predict.predict_cache import put_predict_cache
 
     put_predict_cache(
         variant=scan.variant,
@@ -179,7 +157,6 @@ def run_predict_scan(*, top_n: int = 8) -> PredictScanResult:
 def run_predict_baseline_scan(*, top_n: int = 8) -> PredictScanResult:
     """仅基线扫描并写缓存（兼容旧调用）。"""
     scan = scan_predict_baseline(top_n=top_n)
-    from vnpy_ashare.quotes.radar.predict.predict_cache import put_predict_cache
 
     put_predict_cache(
         variant=scan.variant,

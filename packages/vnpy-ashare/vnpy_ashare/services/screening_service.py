@@ -26,6 +26,7 @@ from vnpy_ashare.ai.context import (
 from vnpy_ashare.ai.context import (
     set_screening_results as _set_screening_results,
 )
+from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows, resolve_result_source_tag
 from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
@@ -168,7 +169,6 @@ class ScreeningService(BaseService):
         return run_industry_screen(industry, top_n=top_n, quote_rows=quote_rows)
 
     def _run_pattern_screen_mcp(self, pattern_id: str, *, top_n: int = 20) -> ScreenerRunResult | None:
-        from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
 
         analysis = getattr(self.engine, "analysis_service", None)
         if analysis is None:

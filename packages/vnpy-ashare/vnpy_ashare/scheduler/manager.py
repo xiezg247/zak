@@ -18,26 +18,23 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from vnpy_ashare.domain.datetime import china_now, format_china_datetime
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session, next_quotes_collect_at
-from vnpy_ashare.jobs import (
-    batch_download_universe_daily_bars,
-    batch_fill_downloaded_stale_job,
-    collect_market_quotes,
-    prefetch_concept_board,
-    prefetch_moneyflow,
-    prefetch_tushare_factors,
-    sync_disclosure_calendar_job,
-    sync_sector_flow_daily_job,
-    sync_stock_industry_job,
-    sync_suspend_daily_job,
-    sync_trade_calendar_job,
-    sync_universe_job,
-    sync_watchlist_financials_job,
-    warm_market_summary,
-)
+from vnpy_ashare.jobs.batch_fill_downloaded import batch_fill_downloaded_stale_job
+from vnpy_ashare.jobs.concept_prefetch import prefetch_concept_board
+from vnpy_ashare.jobs.disclosure_sync import sync_disclosure_calendar_job
+from vnpy_ashare.jobs.financial_sync import sync_watchlist_financials_job
+from vnpy_ashare.jobs.market_summary_warmup import warm_market_summary
+from vnpy_ashare.jobs.moneyflow_prefetch import prefetch_moneyflow
+from vnpy_ashare.jobs.quotes import collect_market_quotes
+from vnpy_ashare.jobs.sector_flow_sync import sync_sector_flow_daily_job
+from vnpy_ashare.jobs.stock_industry import sync_stock_industry_job
+from vnpy_ashare.jobs.suspend_sync import sync_suspend_daily_job
+from vnpy_ashare.jobs.trade_calendar import sync_trade_calendar_job
+from vnpy_ashare.jobs.tushare_prefetch import prefetch_tushare_factors
+from vnpy_ashare.jobs.universe import sync_universe_job
+from vnpy_ashare.jobs.universe_download import batch_download_universe_daily_bars
 from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
 from vnpy_ashare.jobs.progress import bind_job_log
-from vnpy_ashare.jobs.radar_predict_train import run_radar_predict_train_job
 from vnpy_ashare.jobs.result import JobResult
 from vnpy_ashare.scheduler.config import (
     AutoScreenJobConfig,
@@ -341,19 +338,6 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在盘后自动选股之后）",
-            ),
-            "train_radar_predict": _JobMeta(
-                job_id="train_radar_predict",
-                name="雷达预测重训",
-                description="收盘后按需重训 LightGBM（模型超过 30 天或缺失时），并刷新预测缓存",
-                runner=run_radar_predict_train_job,
-                config_attr="train_radar_predict",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在雷达展望扫描之后）",
             ),
         }
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)
@@ -673,7 +657,6 @@ class TaskSchedulerManager:
             "screen_intraday",
             "screen_post_close",
             "scan_horizon_outlook",
-            "train_radar_predict",
         )
         self._scheduler.add_job(
             self._wrap_job,
@@ -707,8 +690,6 @@ class TaskSchedulerManager:
                 result = run_scheduled_auto_screen(job_id, force=force)
             elif job_id == "scan_horizon_outlook":
                 result = run_horizon_outlook_scan_job(force=force)
-            elif job_id == "train_radar_predict":
-                result = run_radar_predict_train_job(force=force)
             else:
                 result = meta.runner()
             message = result.message

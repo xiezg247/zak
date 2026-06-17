@@ -17,12 +17,12 @@ from vnpy_ashare.app.engine_access import (
     get_quote_service,
     get_watchlist_service,
 )
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences import (
     WatchlistPositionConfig,
     load_watchlist_position_config,
 )
-from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId
+from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId, apply_strategy_profile
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -36,12 +36,15 @@ from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
+from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.services.analysis_service import AnalysisService
 from vnpy_ashare.services.note_service import NoteService
 from vnpy_ashare.services.position_service import PositionService
 from vnpy_ashare.services.watchlist_service import WatchlistService
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
 from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
+from vnpy_ashare.ui.quotes.chart.section import sync_chart_splitter_for_expansion
 from vnpy_ashare.ui.quotes.controllers import (
     ActionsController,
     DataLoaderController,
@@ -53,6 +56,8 @@ from vnpy_ashare.ui.quotes.controllers import (
     WatchlistController,
 )
 from vnpy_ashare.ui.quotes.features import MarketRankFeature, StockNotesFeature, WatchlistPanelsFeature
+from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID
+from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_refresh import refresh_emotion_cycle_chip
 from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
     MARKET_SCROLL_DEBOUNCE_MS,
@@ -348,7 +353,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         chip = getattr(self, "emotion_cycle_chip", None)
         if chip is None:
             return
-        from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_refresh import refresh_emotion_cycle_chip
 
         refresh_emotion_cycle_chip(chip)
 
@@ -591,8 +595,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
 
     def open_industry_drilldown(self, industry: str, *, rank_id: str = "net_mf_in") -> None:
         """从板块资金等入口下钻：主力净流入榜 + 行业成分筛选。"""
-        from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
-        from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID
 
         cleaned = str(industry or "").strip()
         if not cleaned:
@@ -618,8 +620,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         rank_id: str = "net_mf_in",
     ) -> None:
         """从板块资金概念 Tab 下钻：主力净流入榜 + 概念成分白名单。"""
-        from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
-        from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID
 
         label = str(concept_name or "").strip()
         cleaned = {str(item).strip() for item in vt_symbols if str(item or "").strip()}
@@ -651,7 +651,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._signals.refresh(force=True)
 
     def apply_strategy_profile(self, profile_id: str) -> None:
-        from vnpy_ashare.config.preferences.strategy_profile import apply_strategy_profile
 
         typed_id = cast(StrategyProfileId, profile_id)
         self.signal_config = apply_strategy_profile(typed_id)
@@ -686,7 +685,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._watchlist_panels.on_signal_panel_expansion_changed(expanded)
 
     def _on_chart_section_expansion_changed(self, expanded: bool) -> None:
-        from vnpy_ashare.ui.quotes.chart.section import sync_chart_splitter_for_expansion
 
         sync_chart_splitter_for_expansion(self, expanded)
 
@@ -714,7 +712,6 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._stock_notes.focus_quick_note()
 
     def open_notes_center(self) -> None:
-        from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
 
         main_engine = self._get_main_engine()
         if main_engine is None:

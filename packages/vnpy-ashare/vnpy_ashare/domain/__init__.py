@@ -1,13 +1,13 @@
 """领域模型与 A 股通用规则。"""
 
-from vnpy_ashare.domain.numbers import safe_float
-from vnpy_ashare.domain.format import (
+from vnpy_ashare.domain.format import float_or_none
+from vnpy_ashare.quotes.format import (
     format_amount,
     format_net_mf_amount,
     format_pct,
     format_volume,
-    float_or_none,
 )
+from vnpy_ashare.domain.numbers import safe_float
 from vnpy_ashare.domain.symbols import (
     StockItem,
     parse_stock_symbol,

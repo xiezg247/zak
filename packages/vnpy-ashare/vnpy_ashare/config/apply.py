@@ -6,10 +6,16 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
+from dotenv import load_dotenv
 from vnpy.trader.setting import SETTINGS
 
+from vnpy_ashare.app.engine_access import get_ashare_engine
+from vnpy_ashare.config.datafeed_reload import reload_datafeed_stack
+from vnpy_ashare.config.fonts import apply_app_font, resolve_font_family
 from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, VT_CONFIG_SPECS
 from vnpy_ashare.config.vt_settings import reload_vnpy_settings
+from vnpy_common.paths import ENV_FILE
+from vnpy_common.ui.theme import theme_manager
 
 if TYPE_CHECKING:
     from vnpy_ashare.scheduler.manager import TaskSchedulerManager
@@ -103,7 +109,6 @@ def build_apply_context(parent: Any | None) -> ApplyContext:
         ctx.llm_engine = parent._get_llm_engine()
     main_engine = getattr(parent, "main_engine", None)
     if main_engine is not None:
-        from vnpy_ashare.app.engine_access import get_ashare_engine
 
         ashare = get_ashare_engine(main_engine)
         if ashare is not None:
@@ -145,9 +150,7 @@ def apply_env_side_effects(
     if not changed_env_keys:
         return []
 
-    from dotenv import load_dotenv
 
-    from vnpy_common.paths import ENV_FILE
 
     if ENV_FILE.is_file():
         load_dotenv(ENV_FILE, override=True)
@@ -311,7 +314,6 @@ def _apply_restart_vt(changed: dict) -> list[ApplyResult]:
 
 
 def _reload_datafeed_stack() -> tuple[bool, str]:
-    from vnpy_ashare.config.datafeed_reload import reload_datafeed_stack
 
     return reload_datafeed_stack()
 
@@ -333,13 +335,11 @@ def _apply_log_settings() -> bool:
 
 def _apply_font_settings() -> bool:
     try:
-        from vnpy_ashare.config.fonts import apply_app_font, resolve_font_family
 
         SETTINGS["font.family"] = resolve_font_family(SETTINGS.get("font.family"))
         SETTINGS["font.size"] = int(SETTINGS.get("font.size", 12))
         if not apply_app_font():
             return False
-        from vnpy_common.ui.theme import theme_manager
 
         theme_manager().apply()
         return True

@@ -96,7 +96,5 @@ def ensure_vt_settings_from_env() -> bool:
 
 def reload_vnpy_settings() -> None:
     """将 vt_setting.json 合并进 vnpy 全局 SETTINGS（生成新文件后调用）。"""
-    from vnpy.trader.setting import SETTING_FILENAME, SETTINGS
-    from vnpy.trader.utility import load_json
 
     SETTINGS.update(load_json(SETTING_FILENAME))

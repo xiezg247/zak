@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows, load_screening_quote_snapshot
@@ -22,28 +23,9 @@ from vnpy_ashare.screener.dimensions.history_signals import (
 from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
+from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
-from vnpy_ashare.screener.sentiment.sentiment_gate import try_fetch_fear_greed_index
-
-
-def _momentum_change_bounds() -> tuple[float, float]:
-    import os
-
-    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
-
-    prefs = load_recipe_tuning_prefs()
-    min_raw = os.getenv("MOMENTUM_MIN_CHANGE_PCT", "").strip()
-    max_raw = os.getenv("MOMENTUM_MAX_CHANGE_PCT", "").strip()
-    fear_max_raw = os.getenv("MOMENTUM_FEAR_MAX_CHANGE_PCT", "").strip()
-
-    min_change = float(min_raw) if min_raw else prefs.momentum_min_change_pct
-    max_change = float(max_raw) if max_raw else prefs.momentum_max_change_pct
-    fear_max = float(fear_max_raw) if fear_max_raw else prefs.momentum_fear_max_change_pct
-
-    snapshot = try_fetch_fear_greed_index()
-    if snapshot is not None and float(snapshot.index) < 30:
-        max_change = min(max_change, fear_max)
-    return min_change, max_change
+from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds as _momentum_change_bounds
 
 
 def _momentum_change_allowed(change: float) -> bool:

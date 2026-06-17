@@ -9,7 +9,6 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.ai.context import parse_stock_symbol
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
-from vnpy_ashare.ui.features.stock_analysis.dialog import StockAnalysisDialog
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 
 if TYPE_CHECKING:
@@ -24,6 +23,8 @@ def show_stock_analysis_dialog(
     parent: QtWidgets.QWidget | None = None,
     modality: QtCore.Qt.WindowModality = QtCore.Qt.WindowModality.WindowModal,
 ) -> None:
+    from vnpy_ashare.ui.features.stock_analysis.dialog import StockAnalysisDialog
+
     dialog = StockAnalysisDialog(item=item, host=host, quote=quote, parent=parent)
     dialog.setWindowModality(modality)
     dialog.show()

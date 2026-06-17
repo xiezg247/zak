@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.quotes.radar.radar_models import format_pct
+from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiRow
 from vnpy_ashare.ui.quotes.watchlist_multiview.sparkline import DailySparkline
 from vnpy_common.ui.theme import theme_manager

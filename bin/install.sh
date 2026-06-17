@@ -19,10 +19,6 @@ export UV_INDEX_URL="$MIRROR"
 echo "使用镜像源: $MIRROR"
 uv sync
 
-if [[ -f "$ROOT_DIR/bin/ensure_libomp.sh" ]]; then
-    bash "$ROOT_DIR/bin/ensure_libomp.sh"
-fi
-
 echo ""
 echo "安装完成。下一步："
 echo "  cp .env.example .env"

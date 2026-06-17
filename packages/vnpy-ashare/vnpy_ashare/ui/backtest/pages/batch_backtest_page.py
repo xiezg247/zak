@@ -8,6 +8,7 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from strategies.registry import STRATEGY_REGISTRY
 from vnpy_ashare.ai.context import sync_batch_compare_context
 from vnpy_ashare.backtest.run_store import (
     BatchBacktestSession,
@@ -26,7 +27,6 @@ _SOURCE_LABELS = {
 
 def _strategy_title(class_name: str) -> str:
     try:
-        from strategies.registry import STRATEGY_REGISTRY
 
         for meta in STRATEGY_REGISTRY.values():
             if meta.class_name == class_name:

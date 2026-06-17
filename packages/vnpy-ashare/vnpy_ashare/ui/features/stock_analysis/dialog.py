@@ -7,7 +7,7 @@ from typing import Any
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.context import build_diagnose_ai_prompt
+from vnpy_ashare.ai.context import build_diagnose_ai_prompt, parse_stock_symbol
 from vnpy_ashare.ai.llm_bridge import get_llm_engine
 from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
@@ -21,7 +21,9 @@ from vnpy_ashare.ui.features.stock_analysis.concept_tab import ConceptAnalysisTa
 from vnpy_ashare.ui.features.stock_analysis.events_tab import EventsAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.financial_tab import FinancialAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.holders_tab import HoldersAnalysisTab
+from vnpy_ashare.ui.features.notes_center.report_launcher import open_notes_reports_center
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
+from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 from vnpy_ashare.ui.features.stock_analysis.overview_panel import OverviewAnalysisPanel
 from vnpy_ashare.ui.features.stock_analysis.sector_tab import SectorAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.worker import (
@@ -198,14 +200,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             main.on_floating_overlay_resized(self)
 
     def _find_ashare_main_window(self) -> Any | None:
-        from vnpy_ashare.ui.shell.main_window import AshareMainWindow
-
-        parent: QtWidgets.QWidget | None = self
-        while parent is not None:
-            if isinstance(parent, AshareMainWindow):
-                return parent
-            parent = parent.parentWidget()
-        return None
+        return find_ashare_main_window(self)
 
     def _init_idle_tabs(self) -> None:
         self._sector_tab.show_idle()
@@ -289,14 +284,15 @@ class StockAnalysisDialog(QtWidgets.QDialog):
     def _open_peer_analysis(self, vt_symbol: str, name: str) -> None:
         if not vt_symbol or vt_symbol == self._item.vt_symbol:
             return
-        from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
-
-        show_stock_analysis_vt_symbol(
-            vt_symbol,
-            self._host,
-            name=name,
-            parent=self,
-        )
+        item = parse_stock_symbol(vt_symbol)
+        if item is None:
+            return
+        if name and not item.name:
+            item = StockItem(symbol=item.symbol, exchange=item.exchange, name=name)
+        quote = self._host.quote_for_item(item)
+        peer = StockAnalysisDialog(item=item, host=self._host, quote=quote, parent=self)
+        peer.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        peer.show()
 
     def _build_quote_metrics_section(self) -> QtWidgets.QWidget:
         self._quote_tiles = {
@@ -692,7 +688,6 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._status_label.setText("已在 AI 助手页打开解读")
 
     def _open_reports_center(self) -> None:
-        from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
 
         parent = self.parent()
         focus_watchlist = None
@@ -704,11 +699,10 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         main_engine = self._host.main_engine
         if main_engine is None:
             return
-        show_notes_center_dialog(
+        open_notes_reports_center(
             main_engine,
             self._host.event_engine,
             focus_watchlist=focus_watchlist,
             initial_vt_symbol=self._item.vt_symbol,
-            initial_tab="reports",
             parent=self,
         )

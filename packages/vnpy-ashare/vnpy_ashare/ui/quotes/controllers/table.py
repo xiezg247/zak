@@ -18,8 +18,10 @@ from vnpy_ashare.domain.board import matches_board
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.quote_time import format_batch_updated_at
 from vnpy_ashare.domain.signal_snapshot import SIGNAL_COLUMN_KEYS
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map, fetch_stock_market_board_map
 from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
 from vnpy_ashare.ui.quotes.page.config import (
     ALL_TAIL_COLUMNS,
     DEFAULT_WATCHLIST_COLUMNS,
@@ -356,7 +358,6 @@ class TableController:
         cached = page._industry_map_cache
         if cached is not None:
             return cached
-        from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
         page._industry_map_cache = fetch_stock_industry_map()
         return page._industry_map_cache
@@ -366,7 +367,6 @@ class TableController:
         cached = page._market_board_map_cache
         if cached is not None:
             return cached
-        from vnpy_ashare.integrations.tushare.factors import fetch_stock_market_board_map
 
         page._market_board_map_cache = fetch_stock_market_board_map()
         return page._market_board_map_cache
@@ -569,7 +569,6 @@ class TableController:
 
     def focus_market_symbol(self, vt_symbol: str) -> bool:
         """清除筛选并翻页定位到主表中的标的。"""
-        from vnpy_ashare.domain.symbols import parse_stock_symbol
 
         page = self._p
         if not page.config.use_market_rank or not page.config.market_full_list:
@@ -892,7 +891,6 @@ class TableController:
             return self._market_board_map(self._p).get(item.ts_code, "").lower()
         if quote is None:
             return float("-inf")
-        from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
 
         if column_key == "intraday_change_pct":
             return quote_rank_value(quote, column_key)

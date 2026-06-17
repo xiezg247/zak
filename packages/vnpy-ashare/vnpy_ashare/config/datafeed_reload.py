@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+import vnpy.trader.datafeed as datafeed_module
+from vnpy.trader.datafeed import get_datafeed
 from vnpy.trader.setting import SETTINGS
+
+from vnpy_ashare.quotes.core.provider import reset_quote_providers
 
 
 def reload_vnpy_datafeed(*, output: Callable[[str], None] | None = None) -> tuple[bool, str]:
     """丢弃 vnpy 全局 datafeed 缓存并按当前 SETTINGS 重建。"""
-    import vnpy.trader.datafeed as datafeed_module
-    from vnpy.trader.datafeed import get_datafeed
 
     datafeed_module.datafeed = None
     sink = output or (lambda _msg: None)
@@ -29,7 +31,6 @@ def reload_vnpy_datafeed(*, output: Callable[[str], None] | None = None) -> tupl
 
 def reload_datafeed_stack(*, output: Callable[[str], None] | None = None) -> tuple[bool, str]:
     """重建 vnpy datafeed，并重置行情 Provider 懒加载缓存。"""
-    from vnpy_ashare.quotes.core.provider import reset_quote_providers
 
     ok, message = reload_vnpy_datafeed(output=output)
     reset_quote_providers()

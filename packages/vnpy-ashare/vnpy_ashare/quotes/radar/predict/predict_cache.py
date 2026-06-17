@@ -6,10 +6,10 @@ import json
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from pathlib import Path
 from typing import Any, cast
 
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.radar_horizon_scan import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarRow,
@@ -104,7 +104,7 @@ def get_predict_cache(variant: str) -> PredictCacheEntry | None:
 
 
 def get_latest_predict_cache() -> PredictCacheEntry | None:
-    for variant in ("predict_lgb", "predict_baseline"):
+    for variant in ("predict_baseline",):
         cached = get_predict_cache(variant)
         if cached is not None:
             return cached

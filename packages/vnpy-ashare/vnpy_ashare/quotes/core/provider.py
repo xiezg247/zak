@@ -8,8 +8,17 @@ from typing import Any, Literal
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
+from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
+from vnpy_ashare.quotes.rank.rank_scope import (
+    build_stock_items_from_rank_symbols,
+    load_market_rank_catalog,
+    load_watchlist_rank_catalog,
+    paginate_symbols,
+)
+from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
 
 QuoteSource = Literal["market", "watchlist"]
 
@@ -53,14 +62,6 @@ class RedisQuoteProvider(QuoteProvider):
         *,
         rank_id: str = "change_pct",
     ) -> tuple[list[StockItem], dict[str, QuoteSnapshot], int]:
-        from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
-        from vnpy_ashare.quotes.rank.rank_scope import (
-            build_stock_items_from_rank_symbols,
-            load_market_rank_catalog,
-            load_watchlist_rank_catalog,
-            paginate_symbols,
-        )
-
         spec = get_rank_definition(rank_id)
         if spec.scope == "watchlist":
             tf_symbols, quotes = load_watchlist_rank_catalog(self._store, spec)
@@ -224,8 +225,6 @@ def resolve_quote_snapshot(
         pass
 
     try:
-        from vnpy_ashare.ai.context.store import get_market_quotes_cache
-
         for row in get_market_quotes_cache():
             vt = str(row.get("vt_symbol") or "").strip()
             sym = str(row.get("symbol") or "").strip()
@@ -237,8 +236,6 @@ def resolve_quote_snapshot(
         pass
 
     try:
-        from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-
         snapshot = load_screening_quote_snapshot()
         for row in snapshot.rows:
             vt = str(row.get("vt_symbol") or "").strip()

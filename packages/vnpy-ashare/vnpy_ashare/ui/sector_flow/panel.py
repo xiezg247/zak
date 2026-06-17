@@ -9,6 +9,7 @@ from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
 from vnpy_ashare.ui.sector_flow.table import SectorFlowTable
 from vnpy_common.ui.loading_overlay import LoadingContentHost
 from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.build_extra import build_sector_flow_stylesheet
 
 _TAB_INFLOW = 0
 _TAB_OUTFLOW = 1
@@ -113,7 +114,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._content_host = LoadingContentHost(self._splitter)
         layout.addWidget(self._content_host, stretch=1)
 
-        from vnpy_common.ui.theme.build_extra import build_sector_flow_stylesheet
 
         theme_manager().bind_stylesheet(self, extra=build_sector_flow_stylesheet)
 

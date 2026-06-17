@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
+from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,
@@ -107,7 +108,6 @@ def apply_limit_up(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[str, 
 
 
 def _sort_by_volume_ratio(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 
     ratio_map = get_volume_ratio_map()
     enriched: list[dict[str, Any]] = []

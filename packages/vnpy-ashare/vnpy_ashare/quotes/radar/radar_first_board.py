@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import _seal_quality_proxy
 from vnpy_ashare.quotes.radar.radar_limit_ladder import (
@@ -12,27 +13,15 @@ from vnpy_ashare.quotes.radar.radar_limit_ladder import (
     resolve_limit_times,
 )
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
-from vnpy_ashare.screener.data.data_source import fetch_limit_list_with_fallback, load_screening_quote_snapshot
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+from vnpy_ashare.screener.data.limit_list_first_time import load_limit_list_first_time_map
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
+from vnpy_ashare.trading.signals.intraday_seal_time import build_first_time_map
 from vnpy_ashare.trading.signals.seal_time import format_seal_time_label, seal_time_score
 
 _STRONG_INDUSTRY_TOP = 5
-
-
-def load_limit_list_first_time_map() -> dict[str, str]:
-    """vt_symbol → first_time（Tushare limit_list_d，缺失则空）。"""
-    rows, _ = fetch_limit_list_with_fallback(limit_type="U")
-    result: dict[str, str] = {}
-    for row in rows:
-        vt_symbol = str(row.get("vt_symbol") or "").strip()
-        if not vt_symbol:
-            continue
-        first_time = str(row.get("first_time") or "").strip()
-        if first_time:
-            result[vt_symbol] = first_time
-    return result
 
 
 def _amount_rank_map(rows: list[dict[str, Any]]) -> dict[str, float]:
@@ -163,8 +152,6 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
             updated_at="",
         )
 
-    from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
-    from vnpy_ashare.trading.signals.intraday_seal_time import build_first_time_map
 
     enriched = attach_industry(snapshot.rows)
     limit_map = get_cached_limit_times_map()

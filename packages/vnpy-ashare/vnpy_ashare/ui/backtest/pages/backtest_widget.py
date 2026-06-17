@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import platform
+import shutil
+import subprocess
 from datetime import datetime, timedelta
 from typing import cast
 
@@ -46,6 +49,7 @@ from vnpy_ashare.ui.styles import (
 from vnpy_common.ui.feedback import TaskGuard, page_notify
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
+from vnpy_common.ui.theme.html_palette import html_palette
 
 _LOG_MAP: dict[str, str] = {
     "初始化CTA回测引擎": "初始化策略回测引擎",
@@ -240,8 +244,6 @@ class BacktesterWidget(VnpyBacktesterManager):
         self._on_strategy_index_changed(self.class_combo.currentIndex())
 
     def _build_strategy_guide_html(self, class_name: str) -> str:
-        from vnpy_common.ui.theme import theme_manager
-        from vnpy_common.ui.theme.html_palette import html_palette
 
         name = class_name.strip()
         tokens = theme_manager().tokens()
@@ -466,9 +468,6 @@ class BacktesterWidget(VnpyBacktesterManager):
             self._begin_backtest_task("optimization", "正在参数优化…")
 
     def edit_strategy_code(self) -> None:
-        import platform
-        import shutil
-        import subprocess
 
         class_name = self.class_combo.current_class_name()
         if not class_name:

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from vnpy_ashare.quotes.radar.radar_models import RadarRow
 
-from vnpy_ashare.quotes.radar.radar_models import format_pct
+from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
     market_benchmark_change_pct,
@@ -64,6 +65,5 @@ def enrich_radar_row_relative_strength(row: RadarRow, quote_row: dict[str, Any])
     sub = build_relative_strength_subline(quote_row)
     if sub is None:
         return row
-    from dataclasses import replace
 
     return replace(row, sub_label=sub[0], sub_value=sub[1])

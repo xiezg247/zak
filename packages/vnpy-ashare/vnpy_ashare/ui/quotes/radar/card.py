@@ -20,7 +20,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     variants_for_card,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_refresh_every
-from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
+from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow, compute_radar_resonance
 from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_ashare.ui.quotes.radar.section_prefs import load_radar_board_mode, save_radar_board_mode
@@ -51,7 +51,6 @@ class RadarCardWidget(QtWidgets.QFrame):
     refresh_requested = QtCore.Signal(str)
     quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
-    train_model_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
     full_refresh_interval_changed = QtCore.Signal(str, int)
 
@@ -237,16 +236,6 @@ class RadarCardWidget(QtWidgets.QFrame):
             footer.addWidget(self._sector_flow_button)
         else:
             self._sector_flow_button = None
-        self._train_model_button: QtWidgets.QPushButton | None = None
-        if spec.id == "outlook_predict":
-            self._train_model_button = QtWidgets.QPushButton("训练模型…")
-            self._train_model_button.setObjectName("RadarCardTrainModel")
-            self._train_model_button.setFlat(True)
-            self._train_model_button.setToolTip("训练或更新 LightGBM 预测模型")
-            self._train_model_button.clicked.connect(lambda: self.train_model_requested.emit(self.card_id))
-            footer.addWidget(self._train_model_button)
-        else:
-            self._train_model_button = None
         self._observation_group_button: QtWidgets.QPushButton | None = None
         if spec.id in _OBSERVATION_GROUP_CARD_IDS:
             self._observation_group_button = QtWidgets.QPushButton("加观察组")
@@ -514,7 +503,6 @@ class RadarBoard(QtWidgets.QWidget):
     refresh_requested = QtCore.Signal(str)
     quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
-    train_model_requested = QtCore.Signal(str)
     auto_refresh_changed = QtCore.Signal(str, int)
     full_refresh_interval_changed = QtCore.Signal(str, int)
     mode_changed = QtCore.Signal(str)
@@ -595,24 +583,9 @@ class RadarBoard(QtWidgets.QWidget):
             save_radar_board_mode(mode)
 
     def update_tab_badges(self) -> None:
-        from vnpy_ashare.quotes.radar.predict.model_paths import (
-            lightgbm_unavailable_hint,
-            lightgbm_unavailable_reason,
-            should_retrain_predict_model,
-        )
-
         for section_index, section in enumerate(RADAR_LAYOUT_SECTIONS):
-            title = section.title
-            tooltip = section.hint
-            if section.mode == "predictive":
-                if lightgbm_unavailable_reason() is not None:
-                    title = f"{title} ·"
-                    tooltip = f"{section.hint}\n{lightgbm_unavailable_hint()}"
-                elif should_retrain_predict_model():
-                    title = f"{title} ·"
-                    tooltip = f"{section.hint}\n建议重训预测模型"
-            self._tabs.setTabText(section_index, title)
-            self._tabs.setTabToolTip(section_index, tooltip)
+            self._tabs.setTabText(section_index, section.title)
+            self._tabs.setTabToolTip(section_index, section.hint)
 
     def _on_tab_changed(self, index: int) -> None:
         if index < 0 or index >= len(RADAR_LAYOUT_SECTIONS):
@@ -635,7 +608,6 @@ class RadarBoard(QtWidgets.QWidget):
         card.refresh_requested.connect(self.refresh_requested.emit)
         card.quote_refresh_requested.connect(self.quote_refresh_requested.emit)
         card.ai_requested.connect(self.ai_requested.emit)
-        card.train_model_requested.connect(self.train_model_requested.emit)
         card.auto_refresh_changed.connect(self.auto_refresh_changed.emit)
         card.full_refresh_interval_changed.connect(self.full_refresh_interval_changed.emit)
         self._cards[spec.id] = card
@@ -649,8 +621,6 @@ class RadarBoard(QtWidgets.QWidget):
             widget.update_mode_badge()
 
     def apply_board(self, payload: dict[str, RadarCardData]) -> None:
-        from vnpy_ashare.quotes.radar.radar_loaders import compute_radar_resonance
-
         resonance = compute_radar_resonance(payload)
         for card_id, data in payload.items():
             self.apply_card(card_id, data, resonance_counts=resonance)

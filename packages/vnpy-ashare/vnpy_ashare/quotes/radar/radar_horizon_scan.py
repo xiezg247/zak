@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from vnpy_ashare.domain.datetime import format_china_datetime_minute
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
+from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_missing_kline
+from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.radar.radar_horizon_cache import HorizonCacheEntry, put_horizon_cache
 from vnpy_ashare.quotes.radar.radar_horizon_rules import (
     build_outlook_rows,
@@ -46,8 +48,6 @@ def collect_daily_k_ready_vt_symbols(
 ) -> set[str]:
     """本地日 K 条数达信号计算下限的 vt_symbol 集合（用 overview 粗判，避免全量 load）。"""
     required = int(min_bars or horizon_min_signal_bars(config))
-    from vnpy_ashare.data.bar_access import iter_bar_overviews
-    from vnpy_ashare.domain.symbols import StockItem
 
     ready: set[str] = set()
     for row in iter_bar_overviews(scope="daily"):

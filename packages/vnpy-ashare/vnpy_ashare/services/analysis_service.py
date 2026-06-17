@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from vnpy_ashare.config.preferences import load_signal_panel_symbols
+from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
+from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
+
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
 
@@ -279,8 +283,6 @@ class AnalysisService(BaseService):
         include_live_quote: bool = False,
     ) -> dict[str, Any]:
         """批量返回信号区名单的策略快照（可选附带实时行情修饰）。"""
-        from vnpy_ashare.config.preferences import load_signal_panel_symbols
-        from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
 
         symbols = load_signal_panel_symbols()
         if not symbols:
@@ -421,6 +423,5 @@ class AnalysisService(BaseService):
         return self._diagnose.get_diagnose_result()
 
     def evaluate_entry_mode(self, symbol: str) -> dict[str, Any]:
-        from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
 
         return evaluate_entry_mode_for_symbol(symbol)

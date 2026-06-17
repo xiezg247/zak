@@ -8,10 +8,11 @@ import sys
 
 from dotenv import load_dotenv
 
+from vnpy_common.paths import ENV_FILE, resolve_project_root
+
 
 def bootstrap_runtime() -> None:
     """加载 .env 并将工作目录切到仓库根（sys.path 由 vnpy_ashare.__init__ 注入）。"""
-    from vnpy_common.paths import ENV_FILE, resolve_project_root
 
     root = resolve_project_root()
     os.environ.setdefault("ZAK_PROJECT_ROOT", str(root))

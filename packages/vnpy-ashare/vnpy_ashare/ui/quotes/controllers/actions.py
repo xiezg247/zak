@@ -19,14 +19,16 @@ from vnpy_ashare.ai.context import (
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
+from vnpy_ashare.quotes.format import format_volume
 from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
+from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.services.signals import format_signal_context_extra
+from vnpy_ashare.trading.journal.discipline_context import format_trading_discipline_extra
 from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
-from vnpy_ashare.domain.format import format_volume
 from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener import show_reference_peer_dialog
 from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
@@ -157,7 +159,6 @@ class ActionsController:
         page = self._p
         if page.page_name != "自选" or not page.config.show_watchlist_positions:
             return ""
-        from vnpy_ashare.trading.journal.discipline_context import format_trading_discipline_extra
 
         vt_symbol = page.current_item.vt_symbol if page.current_item is not None else None
         return format_trading_discipline_extra(
@@ -374,7 +375,6 @@ class ActionsController:
             try:
                 if not page._active:
                     return
-                from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 
                 merge_quote_maps_into(page.quote_map, quotes)
                 if page.config.market_full_list and page._market_catalog_loaded:
@@ -496,7 +496,6 @@ class ActionsController:
         name = quote.name if quote and quote.name else item.name
         cfg = page.position_config.normalized().effective_signal_config(page.signal_config)
         snap = page.position_cache.get(item.vt_symbol)
-        from vnpy_ashare.trading.journal.discipline_context import format_trading_discipline_extra
 
         discipline = format_trading_discipline_extra(
             position_cache=page.position_cache,

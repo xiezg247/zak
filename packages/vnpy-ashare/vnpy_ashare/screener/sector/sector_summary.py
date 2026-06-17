@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Any
 
 from vnpy_ashare.domain.symbols import vt_symbol_to_ts_code
+from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
 
@@ -30,7 +31,6 @@ def attach_concept(
 ) -> list[dict[str, Any]]:
     """为行情行附加 ``concept`` 字段（主概念名）。"""
     if vt_to_concept is None:
-        from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 
         mapping, _hot = build_hot_concept_vt_symbol_map()
     else:
@@ -57,7 +57,6 @@ def attach_sector_fields(
     """附加行业 + 概念；至少有一轴则保留。返回 (rows, hot_concept_names)。"""
     mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
     if vt_to_concept is None:
-        from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 
         concept_map, hot_names = build_hot_concept_vt_symbol_map()
     else:

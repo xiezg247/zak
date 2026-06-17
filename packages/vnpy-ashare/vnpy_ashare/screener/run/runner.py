@@ -36,18 +36,8 @@ from vnpy_ashare.screener.preset.rules import (
 )
 from vnpy_ashare.screener.preset.scheme_store import SavedScheme, get_scheme, list_schemes
 from vnpy_ashare.screener.run.export import resolve_export_columns
-
-
-@dataclass
-class ScreenerRunResult:
-    """单次选股执行结果。"""
-
-    rows: list[dict[str, Any]]
-    condition: str
-    updated_at: str | None
-    total_scanned: int
-    source: str
-    columns: list[tuple[str, str]] = field(default_factory=list)
+from vnpy_ashare.screener.run.industry_screen import run_industry_screen
+from vnpy_ashare.screener.run.result import ScreenerRunResult
 
 
 @dataclass
@@ -103,7 +93,6 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
 def _run_from_scheme(scheme: SavedScheme, *, top_n: int) -> ScreenerRunResult:
     config = dict(scheme.config)
     if str(config.get("kind") or "") == SCHEME_KIND_INDUSTRY:
-        from vnpy_ashare.screener.run.industry_screen import run_industry_screen
 
         industry = str(config.get("industry") or "").strip()
         if not industry:

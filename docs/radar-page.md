@@ -33,7 +33,7 @@
 | `outlook_watch` | 未来·关注 | outlook | 前瞻 | 手动 | — |
 | `outlook_hold` | 未来·可持 | outlook | 前瞻 | 手动 | — |
 | `outlook_scenario` | 未来·情景 | outlook | 前瞻 | 手动 | 偏多 / 高波动 / 偏空 |
-| `outlook_predict` | 未来·预测 | outlook | 前瞻 | 手动 | auto / baseline / LightGBM |
+| `outlook_predict` | 未来·预测 | outlook | 前瞻 | 手动 | auto / baseline（统计基线） |
 
 **loader 入口**：`load_radar_board()` → 各 `load_*`（`radar_loaders.py`）。
 

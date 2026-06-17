@@ -14,7 +14,9 @@ UI / Worker 获取业务能力的统一入口，避免页面散落 ``getattr(eng
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
+
+from vnpy_ashare.app.constants import APP_NAME
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
@@ -38,12 +40,10 @@ def get_ashare_engine(main_engine: MainEngine | None) -> AshareEngine | None:
     """从 MainEngine 获取 AshareEngine；未注册或类型不符时返回 None。"""
     if main_engine is None:
         return None
-    from vnpy_ashare.app.engine import APP_NAME, AshareEngine
-
     engine = main_engine.get_engine(APP_NAME)
-    if isinstance(engine, AshareEngine):
-        return engine
-    return None
+    if engine is None or not hasattr(engine, "quote_service"):
+        return None
+    return cast("AshareEngine", engine)
 
 
 def get_service(main_engine: MainEngine | None, name: str):

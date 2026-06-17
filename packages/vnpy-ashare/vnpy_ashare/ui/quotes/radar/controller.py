@@ -18,6 +18,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
+    RADAR_CARD_BY_ID,
     auto_refresh_card_ids,
     full_refresh_every_n_ticks,
     list_radar_cards,
@@ -33,8 +34,16 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
     build_radar_resonance_list,
     compute_radar_resonance,
 )
+from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
+from vnpy_ashare.services.short_term_watchlist import (
+    SHORT_TERM_OBSERVATION_GROUP_NAME,
+    add_rows_to_short_term_observation_group,
+    collect_dragon_1_rows,
+)
+from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
+from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -88,7 +97,6 @@ class RadarController(QtCore.QObject):
         board.refresh_requested.connect(self._on_card_refresh_requested)
         board.quote_refresh_requested.connect(self._on_card_quote_refresh_requested)
         board.ai_requested.connect(self.request_card_ai)
-        board.train_model_requested.connect(self._on_train_model_requested)
         board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
         board.full_refresh_interval_changed.connect(self._on_full_refresh_interval_changed)
         board.mode_changed.connect(self._on_board_mode_changed)
@@ -121,8 +129,6 @@ class RadarController(QtCore.QObject):
         host.open_screener_leader_screen(variant=variant)
 
     def _on_resonance_weights_requested(self) -> None:
-        from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
-
         dialog = RadarResonanceWeightDialog(self._page)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
@@ -140,8 +146,6 @@ class RadarController(QtCore.QObject):
 
     def _reload_cards_after_resonance_weight_change(self) -> None:
         """权重变更后全量重算发现 / 板块 / 自选等指标卡（保留展望等缓存卡）。"""
-        from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
-
         reload_ids = [card_id for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS if card_id in self._last_payload and not card_id.startswith("outlook_")]
         for card_id in reload_ids:
             self.refresh_card(card_id, force_recompute=True)
@@ -389,8 +393,6 @@ class RadarController(QtCore.QObject):
         panel.apply_entries(entries, statistical=statistical, predictive=predictive)
 
     def _on_card_failed(self, card_id: str, message: str) -> None:
-        from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
-
         widget = self._board.card(card_id)
         data = self._last_payload.get(card_id)
         if widget is not None:
@@ -459,27 +461,6 @@ class RadarController(QtCore.QObject):
         sector_ids = card.sector_names() if card is not None else []
         host.open_sector_flow(sector_ids if sector_ids else None)
 
-    def _on_train_model_requested(self, card_id: str) -> None:
-        if card_id != "outlook_predict":
-            return
-        main_engine = self._page._get_main_engine()
-        event_engine = self._page.event_engine
-        if main_engine is None or event_engine is None:
-            page_notify(self._page, "引擎未就绪，无法打开训练对话框", level="warning")
-            return
-        from vnpy_ashare.ui.quotes.radar.train_dialog import show_radar_predict_train_dialog
-
-        def _on_predict_trained() -> None:
-            self._board.update_tab_badges()
-            self.refresh_card("outlook_predict")
-
-        show_radar_predict_train_dialog(
-            main_engine,
-            event_engine,
-            parent=self._page,
-            on_trained=_on_predict_trained,
-        )
-
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page
         while widget is not None:
@@ -542,8 +523,6 @@ class RadarController(QtCore.QObject):
         page_notify(self._page, message)
 
     def _notify_observation_group_result(self, result) -> None:
-        from vnpy_ashare.services.short_term_watchlist import SHORT_TERM_OBSERVATION_GROUP_NAME
-
         if result.group_added == 0 and result.watchlist_added == 0:
             if result.skipped:
                 page_notify(self._page, f"标的已在「{SHORT_TERM_OBSERVATION_GROUP_NAME}」或无法加入")
@@ -568,8 +547,6 @@ class RadarController(QtCore.QObject):
         if data is None or not data.rows:
             page_notify(self._page, "该卡片暂无可加入标的", level="warning")
             return
-        from vnpy_ashare.services.short_term_watchlist import add_rows_to_short_term_observation_group
-
         result = add_rows_to_short_term_observation_group(service, data.rows)
         self._notify_observation_group_result(result)
 
@@ -578,11 +555,6 @@ class RadarController(QtCore.QObject):
         if service is None:
             page_notify(self._page, "自选服务未就绪", level="warning")
             return
-        from vnpy_ashare.services.short_term_watchlist import (
-            add_rows_to_short_term_observation_group,
-            collect_dragon_1_rows,
-        )
-
         rows = collect_dragon_1_rows(self._last_payload)
         if not rows:
             page_notify(self._page, "暂无龙一标的", level="warning")
@@ -629,8 +601,6 @@ class RadarController(QtCore.QObject):
         page_notify(self._page, message)
 
     def _on_stock_analysis(self, vt_symbol: str) -> None:
-        from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
-
         item = parse_stock_symbol(vt_symbol)
         if item is None:
             page_notify(self._page, f"无法解析合约：{vt_symbol}", level="warning")

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from strategies.registry import STRATEGY_REGISTRY
+
 _ASHARE_BASE_NAME = "AShareTemplate"
 
 
 def _registry_class_names() -> frozenset[str]:
     try:
-        from strategies.registry import STRATEGY_REGISTRY
 
         return frozenset(STRATEGY_REGISTRY)
     except ImportError:

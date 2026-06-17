@@ -26,6 +26,7 @@ from vnpy_ashare.jobs import (
     warm_market_summary,
 )
 from vnpy_ashare.jobs.horizon_scan import run_horizon_outlook_scan_job
+from vnpy_ashare.jobs.market_summary_warmup import warm_market_summary
 from vnpy_ashare.scheduler.config import load_scheduler_config
 
 _COLLECT_QUOTES_INTERVAL_MIN = 5
@@ -89,7 +90,6 @@ def _run_collect_quotes(*, force: bool) -> JobResult:
 
     result = collect_market_quotes()
     if result.success and not result.skipped:
-        from vnpy_ashare.jobs.market_summary_warmup import warm_market_summary
 
         warm = warm_market_summary(include_ladder=False)
         if warm.message:

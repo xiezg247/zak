@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signal_config
+
 _TREND_SCENARIO_OUTPUT = (
     "按乐观/基准/悲观三情景输出（概率表述 + 触发/失效条件）。"
     "本地情景摘要已含技术面与方向提示，数据充分时直接作答，勿重复拉取行情或策略信号；"
@@ -12,7 +14,6 @@ _TREND_SCENARIO_OUTPUT = (
 def resolve_signal_prompt_params() -> tuple[str, int, int]:
     """读取自选页信号区策略参数（与信号面板设置一致）。"""
     try:
-        from vnpy_ashare.config.preferences import load_watchlist_signal_config
 
         cfg = load_watchlist_signal_config()
         return cfg.class_name, cfg.fast_window, cfg.slow_window

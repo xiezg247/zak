@@ -12,6 +12,7 @@ from vnpy_ashare.config.preferences.stock_notes import (
     TAB_MEMO,
     load_stock_note_active_tab,
     load_stock_note_panel_expanded,
+    load_stock_note_quick_tab,
     save_stock_note_active_tab,
     save_stock_note_panel_expanded,
 )
@@ -142,7 +143,6 @@ class StockNotePanel(QtWidgets.QWidget):
 
     def focus_for_quick_note(self) -> None:
         self.expand()
-        from vnpy_ashare.config.preferences.stock_notes import load_stock_note_quick_tab
 
         tab = load_stock_note_quick_tab()
         if tab == TAB_MEMO:

@@ -23,7 +23,6 @@ dev = [
     "types-redis>=4.6.0.20241004",
     "types-pyside6>=6.10.1.1",
 ]
-predict = ["lightgbm>=4.0.0"]  # macOS 另需系统库 libomp，见 bin/ensure_libomp.sh
 
 [tool.uv.sources]
 vnpy-common = { workspace = true }
@@ -48,6 +47,7 @@ select = [
     "I",
     "UP",
     "B",
+    "PLC0415",
 ]
 ignore = [
     "E501",
@@ -58,6 +58,13 @@ ignore = [
 "tests/_bootstrap.py" = ["E402"]
 "tests/**" = ["F841"]
 "packages/vnpy-ashare/vnpy_ashare/cli.py" = ["E402"]
+"packages/vnpy-ashare/vnpy_ashare/screener/__init__.py" = ["PLC0415"]
+"packages/vnpy-ashare/vnpy_ashare/scheduler/__init__.py" = ["PLC0415"]
+"packages/vnpy-ashare/vnpy_ashare/ui/features/notes_center/__init__.py" = ["PLC0415"]
+"packages/vnpy-ashare/vnpy_ashare/ui/features/notes_center/report_launcher.py" = ["PLC0415"]
+"packages/vnpy-ashare/vnpy_ashare/ui/features/stock_analysis/__init__.py" = ["PLC0415"]
+"packages/vnpy-ashare/vnpy_ashare/ui/features/stock_analysis/open.py" = ["PLC0415"]
+"packages/vnpy-ashare/vnpy_ashare/ui/quotes/page/run_log.py" = ["PLC0415"]
 "packages/vnpy-ashare/vnpy_ashare/ui/quotes/quotes_config.py" = ["E402"]
 "packages/vnpy-mcp/vnpy_mcp/domain/provider.py" = ["B027"]
 "packages/vnpy-skills/vnpy_skills/domain/template.py" = ["B027"]

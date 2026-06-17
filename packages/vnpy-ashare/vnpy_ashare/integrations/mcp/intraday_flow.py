@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -133,7 +134,6 @@ def _extract_amount_field(item: Any) -> float | None:
 
 
 def _parse_flow_from_text(text: str) -> float | None:
-    import re
 
     patterns = (
         r"主力净流入[^\d\-+]*([\-+]?\d+(?:\.\d+)?)",

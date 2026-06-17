@@ -6,15 +6,19 @@
 from __future__ import annotations
 
 import math
+import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
+
+from dotenv import load_dotenv
 
 from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_stock_industry_map
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback, iter_trade_date_strs
+from vnpy_common.paths import ENV_FILE
 
 ProgressCallback = Callable[[str], None]
 CancelledCallback = Callable[[], bool]
@@ -41,11 +45,8 @@ def clamp_reference_peer_top_n(value: int | None) -> int:
 
 def env_default_reference_peer_top_n() -> int:
     """从 .env REFERENCE_PEER_TOP_N 读取默认 Top N。"""
-    import os
 
-    from dotenv import load_dotenv
 
-    from vnpy_common.paths import ENV_FILE
 
     load_dotenv(ENV_FILE)
     raw = os.getenv("REFERENCE_PEER_TOP_N", "").strip()

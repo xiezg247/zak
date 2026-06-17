@@ -5,10 +5,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import timedelta
-
-from vnpy_ashare.domain.datetime import china_now, format_china_datetime
 from typing import Literal
 
+from vnpy_ashare.domain.datetime import china_now, format_china_datetime
 from vnpy_ashare.screener.recipe.recipe import (
     RECIPE_INTRADAY_MULTI,
     RECIPE_POST_CLOSE_MULTI,

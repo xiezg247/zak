@@ -7,11 +7,11 @@ import json
 from datetime import datetime
 from typing import Any
 
-from vnpy_ashare.domain.datetime import format_china_date, format_china_datetime
-
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 from vnpy.trader.object import BarData
+
+from vnpy_ashare.domain.datetime import format_china_date, format_china_datetime
 
 
 def load_daily_bars(symbol: str, exchange: Exchange) -> list[BarData]:

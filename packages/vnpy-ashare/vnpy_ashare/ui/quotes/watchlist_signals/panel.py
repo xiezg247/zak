@@ -17,6 +17,7 @@ from vnpy_ashare.config.preferences import (
     load_signal_panel_expanded,
     load_signal_panel_symbols,
     normalize_signal_panel_symbols,
+    normalize_visible_optional_keys,
     save_signal_panel_columns,
     save_signal_panel_enabled,
     save_signal_panel_expanded,
@@ -298,7 +299,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             keys.append(key)
         elif not checked and key in keys:
             keys.remove(key)
-        from vnpy_ashare.config.preferences import normalize_visible_optional_keys
 
         self._visible_column_keys = normalize_visible_optional_keys(keys)
         save_signal_panel_columns(self._visible_column_keys)

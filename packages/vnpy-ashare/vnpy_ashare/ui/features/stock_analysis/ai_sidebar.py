@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.theme import theme_manager
 from vnpy_llm.ui.panel.chat import AiChatPanel
@@ -164,21 +165,7 @@ class StockAnalysisAiSidebar(QtWidgets.QWidget):
         return win
 
     def _find_main_window(self) -> QtWidgets.QWidget | None:
-        from vnpy_ashare.ui.shell.main_window import AshareMainWindow
-
-        parent: QtWidgets.QWidget | None = self
-        while parent is not None:
-            if isinstance(parent, AshareMainWindow):
-                return parent
-            parent = parent.parentWidget()
-
-        win = self.window()
-        if isinstance(win, AshareMainWindow):
-            return win
-        for widget in QtWidgets.QApplication.topLevelWidgets():
-            if isinstance(widget, AshareMainWindow):
-                return widget
-        return None
+        return find_ashare_main_window(self)
 
     def _on_theme_changed(self) -> None:
         panel = self._panel

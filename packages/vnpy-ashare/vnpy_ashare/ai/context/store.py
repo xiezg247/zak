@@ -23,14 +23,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from vnpy_common.ai.protocol import AiContextData
-
 from vnpy_ashare.quotes.core.quote_rows import (
     clear_market_quote_rows_cache,
     get_market_quotes_cache,
-    set_market_quote_rows_cache,
     set_market_quotes_cache,
 )
+from vnpy_common.ai.protocol import AiContextData
 
 _lock = threading.Lock()
 _listeners: list[Callable[[AiContextData], None]] = []

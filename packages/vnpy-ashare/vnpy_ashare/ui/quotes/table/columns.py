@@ -5,14 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from vnpy_ashare.config import exchange_to_cn
-from vnpy_ashare.domain.format import (
+from vnpy_ashare.domain.quote_time import format_trade_time_display
+from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.format import (
     format_amount,
     format_net_mf_amount,
     format_volume,
 )
-from vnpy_ashare.domain.quote_time import format_trade_time_display
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 
 
 @dataclass(frozen=True)

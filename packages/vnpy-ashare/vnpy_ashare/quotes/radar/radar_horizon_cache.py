@@ -6,10 +6,10 @@ import json
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
-from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from pathlib import Path
 from typing import Any, cast
 
+from vnpy_ashare.domain.datetime import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarRow,
     quotes_for_vt_symbols,
