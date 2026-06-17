@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import Field
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
@@ -9,6 +11,7 @@ from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import quote_row_to_dict
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_missing_kline
@@ -108,14 +111,15 @@ def prefilter_horizon_universe(
     filtered = apply_screening_filters(list(snapshot.rows))
     min_bars = horizon_min_signal_bars(config)
     k_ready = collect_daily_k_ready_vt_symbols(min_bars, config=config)
-    candidates: list[dict] = []
+    candidates: list[dict[str, Any]] = []
     for row in filtered:
-        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        payload = quote_row_to_dict(row)
+        vt_symbol = str(payload.get("vt_symbol") or "").strip()
         if not vt_symbol or vt_symbol in exclusion:
             continue
         if vt_symbol not in k_ready:
             continue
-        candidates.append(dict(row))
+        candidates.append(payload)
 
     excluded_count = len(exclusion)
     if not candidates:

@@ -8,7 +8,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.signals.seal_time import seal_time_score
@@ -222,15 +222,15 @@ def _pick_better_leader(a: LeaderScoredRow, b: LeaderScoredRow) -> LeaderScoredR
 
 
 def rank_unified_sector_leaders(
-    candidates: list[dict[str, Any]],
+    candidates: Sequence[QuoteRowLike],
     *,
     max_per_sector: int = 5,
     strong_industries: set[str] | None = None,
     strong_concepts: set[str] | None = None,
 ) -> list[LeaderScoredRow]:
     """行业 + 概念双轴统一 scoring；每票取更强分层结果（G-07）。"""
-    industry_rows = [row for row in candidates if str(row.get("industry") or "").strip()]
-    concept_rows = [row for row in candidates if str(row.get("concept") or "").strip()]
+    industry_rows = [quote_row_to_dict(row) for row in candidates if str(quote_row_to_dict(row).get("industry") or "").strip()]
+    concept_rows = [quote_row_to_dict(row) for row in candidates if str(quote_row_to_dict(row).get("concept") or "").strip()]
 
     by_vt: dict[str, LeaderScoredRow] = {}
     for axis, rows, strong in (

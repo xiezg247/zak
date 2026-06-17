@@ -3467,11 +3467,15 @@ name = "vnpy-common"
 version = "0.1.0"
 source = { editable = "packages/vnpy-common" }
 dependencies = [
+    { name = "pydantic" },
     { name = "vnpy" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "vnpy", specifier = ">=4.0.0" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "vnpy", specifier = ">=4.0.0" },
+]
 
 [[package]]
 name = "vnpy-ctabacktester"

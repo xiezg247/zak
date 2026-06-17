@@ -37,7 +37,7 @@ class MarketOverviewData(FrozenModel):
     limit_ladder_counts: dict[str, int] | None = Field(default=None, description="涨跌停梯队统计")
 
 
-def _quote_rows_for_overview() -> tuple[list[QuoteRowLike], str | None]:
+def _quote_rows_for_overview() -> tuple[Sequence[QuoteRowLike], str | None]:
     cached = get_market_quotes_cache()
     if cached:
         return cached, None

@@ -35,7 +35,7 @@ def enrich_multiview_rows(
     position_cache = position_cache or {}
     sparklines = sparklines or {}
 
-    sectors = load_sector_ranks(get_market_quotes_cache() or {})
+    sectors = load_sector_ranks(get_market_quotes_cache() or [])
     sector_lookup = _sector_rank_map(sectors)
 
     industries = industry_map

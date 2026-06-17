@@ -3,29 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
-
-
-def _quote_row(row: QuoteRowLike) -> dict[str, Any]:
-    return {
-        "symbol": row.get("symbol", ""),
-        "name": row.get("name", ""),
-        "vt_symbol": row.get("vt_symbol", ""),
-        "last_price": row.get("last_price", 0),
-        "change_pct": row.get("change_pct", 0),
-        "turnover_rate": row.get("turnover_rate", 0),
-        "volume": row.get("volume", 0),
-        "amount": row.get("amount", 0),
-        "industry": row.get("industry", ""),
-        "source": row.get("source", "quote"),
-    }
 
 
 def run_industry_screen(
@@ -52,10 +37,9 @@ def run_industry_screen(
     filtered = apply_screening_filters(matched)
     sorted_rows = sorted(filtered, key=lambda row: float(row.get("change_pct") or 0), reverse=True)
     top_n = max(1, min(int(top_n or 50), 200))
-    rows = [_quote_row(row) for row in sorted_rows[:top_n]]
     updated_at = format_china_datetime()
     return build_screener_run_result(
-        rows=rows,
+        rows=coerce_screener_result_rows(sorted_rows[:top_n]),
         condition=f"{label} 成分",
         updated_at=updated_at,
         total_scanned=len(matched),

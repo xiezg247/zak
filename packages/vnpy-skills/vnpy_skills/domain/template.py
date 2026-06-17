@@ -5,18 +5,20 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import Field
 
-@dataclass(frozen=True)
-class ToolSpec:
+from vnpy_skills.domain.base import FrozenModel
+
+
+class ToolSpec(FrozenModel):
     """OpenAI Function Calling 工具定义。"""
 
-    name: str
-    description: str
-    parameters: dict[str, Any]
-    handler: str | None = None
+    name: str = Field(description="工具名称")
+    description: str = Field(description="工具说明")
+    parameters: dict[str, Any] = Field(description="JSON Schema 参数")
+    handler: str | None = Field(default=None, description="处理函数名（默认同 name）")
 
     def to_openai_tool(self) -> dict[str, Any]:
         return {

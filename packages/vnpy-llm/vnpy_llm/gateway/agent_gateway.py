@@ -113,16 +113,16 @@ class AgentGateway:
         if note.trace_changed:
             payload["trace_changed"] = True
         if payload:
-            self._emit(AgentEvent(AgentEventType.SESSION_CHANGED, payload))
+            self._emit(AgentEvent(type=AgentEventType.SESSION_CHANGED, payload=payload))
 
     def _on_trace_changed(self) -> None:
-        self._emit(AgentEvent(AgentEventType.TRACE_CHANGED, {}))
+        self._emit(AgentEvent(type=AgentEventType.TRACE_CHANGED, payload={}))
 
     def _on_context_changed(self, data: AiContextData) -> None:
         self._emit(
             AgentEvent(
-                AgentEventType.CONTEXT_CHANGED,
-                {"text": data.to_text()},
+                type=AgentEventType.CONTEXT_CHANGED,
+                payload={"text": data.to_text()},
             )
         )
 
@@ -214,8 +214,8 @@ class AgentGateway:
     def _emit_tools_status(self) -> None:
         self._emit(
             AgentEvent(
-                AgentEventType.TOOLS_STATUS,
-                {"snapshot": self.get_tools_status()},
+                type=AgentEventType.TOOLS_STATUS,
+                payload={"snapshot": self.get_tools_status()},
             )
         )
 
@@ -361,7 +361,7 @@ class AgentGateway:
 
     def _execute_tool(self, session_id: str, name: str, arguments: dict[str, Any]) -> str:
         step_id = self._trace.begin_tool(name, arguments)
-        self._emit(AgentEvent(AgentEventType.TOOL_STARTED, {"name": name}))
+        self._emit(AgentEvent(type=AgentEventType.TOOL_STARTED, payload={"name": name}))
         result = ""
         success = True
         try:
@@ -384,7 +384,7 @@ class AgentGateway:
                     )
             except Exception:
                 pass
-            self._emit(AgentEvent(AgentEventType.TOOL_FINISHED, {"name": name}))
+            self._emit(AgentEvent(type=AgentEventType.TOOL_FINISHED, payload={"name": name}))
 
     def send(self, request: SendRequest) -> Iterator[str]:
         """单轮回复入口：有 Skill 工具走 LangGraph，否则纯文本流。"""
@@ -401,7 +401,7 @@ class AgentGateway:
         self._streaming = True
         self._cancel_requested = False
         self._team_run_cache.clear()
-        self._emit(AgentEvent(AgentEventType.CHAT_STARTED, {"session_id": session_id}))
+        self._emit(AgentEvent(type=AgentEventType.CHAT_STARTED, payload={"session_id": session_id}))
         self.append_local_message(session_id, role="user", content=user_text)
         turn = self._trace.begin_turn(session_id, user_text)
         turn_ok = True
@@ -461,7 +461,7 @@ class AgentGateway:
                 on_team_trace=team_trace,
             ):
                 chunks.append(delta)
-                self._emit(AgentEvent(AgentEventType.CHAT_DELTA, {"delta": delta}))
+                self._emit(AgentEvent(type=AgentEventType.CHAT_DELTA, payload={"delta": delta}))
                 yield delta
             content = "".join(chunks).strip()
             if content:
@@ -469,7 +469,7 @@ class AgentGateway:
                 if content != "".join(chunks).strip():
                     suffix = content[len("".join(chunks).strip()) :]
                     if suffix:
-                        self._emit(AgentEvent(AgentEventType.CHAT_DELTA, {"delta": suffix}))
+                        self._emit(AgentEvent(type=AgentEventType.CHAT_DELTA, payload={"delta": suffix}))
                         yield suffix
             if content:
                 self.append_local_message(session_id, role="assistant", content=content)
@@ -478,14 +478,14 @@ class AgentGateway:
             cancelled = True
             turn_ok = False
             _persist_partial()
-            self._emit(AgentEvent(AgentEventType.CHAT_CANCELLED, {"session_id": session_id}))
+            self._emit(AgentEvent(type=AgentEventType.CHAT_CANCELLED, payload={"session_id": session_id}))
         except Exception as ex:
             turn_ok = False
             self._trace.add_error(str(ex))
             self._emit(
                 AgentEvent(
-                    AgentEventType.CHAT_FAILED,
-                    {"session_id": session_id, "error": str(ex)},
+                    type=AgentEventType.CHAT_FAILED,
+                    payload={"session_id": session_id, "error": str(ex)},
                 )
             )
             raise
@@ -496,8 +496,8 @@ class AgentGateway:
                 self._trace.finish_turn(ok=turn_ok)
             self._emit(
                 AgentEvent(
-                    AgentEventType.CHAT_FINISHED,
-                    {"session_id": session_id, "turn_id": turn.turn_id},
+                    type=AgentEventType.CHAT_FINISHED,
+                    payload={"session_id": session_id, "turn_id": turn.turn_id},
                 )
             )
 

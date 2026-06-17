@@ -30,7 +30,7 @@ from vnpy_ashare.domain.core.env import (
     env_or_prefs_str,
 )
 from vnpy_ashare.domain.market.board import matches_board
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol, vt_symbol_to_ts_code
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.factors import (
@@ -337,7 +337,7 @@ def passes_liquidity_filter(row: QuoteRowLike) -> bool:
 
 
 def passes_screening_hard_filter(
-    row: dict[str, Any],
+    row: QuoteRowLike,
     *,
     suspended_keys: frozenset[tuple[str, str]] | None = None,
     name_map: dict[str, str] | None = None,
@@ -347,23 +347,24 @@ def passes_screening_hard_filter(
     allowed_industries: frozenset[str] | None = None,
     allowed_market_boards: frozenset[str] | None = None,
 ) -> bool:
+    payload = quote_row_to_dict(row)
     boards = allowed_market_boards if allowed_market_boards is not None else recipe_allowed_market_boards()
-    if boards and not passes_market_board_filter(row, boards):
+    if boards and not passes_market_board_filter(payload, boards):
         return False
     allowed = allowed_industries if allowed_industries is not None else recipe_allowed_industries()
-    if allowed and not passes_industry_filter(row, allowed, industry_map=industry_map):
+    if allowed and not passes_industry_filter(payload, allowed, industry_map=industry_map):
         return False
     if recipe_exclude_suspended_enabled():
         keys = suspended_keys if suspended_keys is not None else _suspended_keys_for_screening()
-        if is_row_suspended(row, keys):
+        if is_row_suspended(payload, keys):
             return False
     if recipe_exclude_st_enabled():
-        for name in _names_for_st_check(row, name_map):
+        for name in _names_for_st_check(payload, name_map):
             if is_st_stock(name):
                 return False
-    if recipe_exclude_new_listing_enabled() and is_new_listing(row, list_date_map=list_date_map):
+    if recipe_exclude_new_listing_enabled() and is_new_listing(payload, list_date_map=list_date_map):
         return False
-    if recipe_exclude_limit_board_enabled() and is_at_limit_board(row, market_board_map=market_board_map):
+    if recipe_exclude_limit_board_enabled() and is_at_limit_board(payload, market_board_map=market_board_map):
         return False
     return passes_liquidity_filter(row)
 

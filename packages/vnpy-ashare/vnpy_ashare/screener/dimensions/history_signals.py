@@ -112,6 +112,8 @@ def attach_momentum_persistence(
     window: int = 5,
 ) -> None:
     for row in rows:
+        if not isinstance(row, dict):
+            continue
         vt_symbol = str(row.get("vt_symbol") or "")
         bars = bars_for_vt_symbol(vt_symbol, bars_map)
         if not bars:

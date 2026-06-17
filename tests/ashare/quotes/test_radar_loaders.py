@@ -29,6 +29,27 @@ def _sample_row(vt_symbol: str, *, name: str = "测试") -> RadarRow:
     )
 
 
+def _sample_card(
+    card_id: str,
+    title: str,
+    *,
+    subtitle: str = "",
+    rows: tuple[RadarRow, ...] = (),
+    empty_message: str = "",
+    updated_at: str = "",
+    **kwargs: object,
+) -> RadarCardData:
+    return RadarCardData(
+        card_id=card_id,
+        title=title,
+        subtitle=subtitle,
+        rows=rows,
+        empty_message=empty_message,
+        updated_at=updated_at,
+        **kwargs,
+    )
+
+
 def test_load_screen_latest_empty(monkeypatch) -> None:
     monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_loaders.get_latest_run", lambda: None)
     spec = RADAR_CARD_BY_ID["screen_latest"]
@@ -50,8 +71,8 @@ def test_load_discovery_moneyflow_intraday_empty(monkeypatch) -> None:
 
 def test_compute_radar_resonance() -> None:
     payload = {
-        "a": RadarCardData("a", "卡A", "", (_sample_row("600000.SSE"),), "", ""),
-        "b": RadarCardData("b", "卡B", "", (_sample_row("600000.SSE"), _sample_row("000001.SZSE")), "", ""),
+        "a": _sample_card("a", "卡A", rows=(_sample_row("600000.SSE"),)),
+        "b": _sample_card("b", "卡B", rows=(_sample_row("600000.SSE"), _sample_row("000001.SZSE"))),
     }
     resonance = compute_radar_resonance(payload)
     assert resonance == {"600000.SSE": 2}
@@ -59,8 +80,8 @@ def test_compute_radar_resonance() -> None:
 
 def test_build_radar_ai_prompt_includes_resonance() -> None:
     payload = {
-        "a": RadarCardData("a", "选股", "共 1 只", (_sample_row("600000.SSE", name="浦发"),), "", "2025-01-01"),
-        "b": RadarCardData("b", "发现", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
+        "a": _sample_card("a", "选股", subtitle="共 1 只", rows=(_sample_row("600000.SSE", name="浦发"),), updated_at="2025-01-01"),
+        "b": _sample_card("b", "发现", rows=(_sample_row("600000.SSE", name="浦发"),)),
     }
     prompt = build_radar_ai_prompt(payload)
     assert "共振标的" in prompt
@@ -70,14 +91,11 @@ def test_build_radar_ai_prompt_includes_resonance() -> None:
 
 def test_build_radar_resonance_list() -> None:
     payload = {
-        "a": RadarCardData("a", "选股", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
-        "b": RadarCardData(
+        "a": _sample_card("a", "选股", rows=(_sample_row("600000.SSE", name="浦发"),)),
+        "b": _sample_card(
             "b",
             "发现",
-            "",
-            (_sample_row("600000.SSE", name="浦发"), _sample_row("000001.SZSE", name="平安")),
-            "",
-            "",
+            rows=(_sample_row("600000.SSE", name="浦发"), _sample_row("000001.SZSE", name="平安")),
         ),
     }
     entries = build_radar_resonance_list(payload)
@@ -89,17 +107,14 @@ def test_build_radar_resonance_list() -> None:
 
 def test_build_radar_resonance_list_by_mode() -> None:
     payload = {
-        "screen_latest": RadarCardData("screen_latest", "选股", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
-        "discovery_volume_surge": RadarCardData(
+        "screen_latest": _sample_card("screen_latest", "选股", rows=(_sample_row("600000.SSE", name="浦发"),)),
+        "discovery_volume_surge": _sample_card(
             "discovery_volume_surge",
             "发现",
-            "",
-            (_sample_row("600000.SSE", name="浦发"),),
-            "",
-            "",
+            rows=(_sample_row("600000.SSE", name="浦发"),),
         ),
-        "outlook_watch": RadarCardData("outlook_watch", "关注", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
-        "outlook_hold": RadarCardData("outlook_hold", "可持", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
+        "outlook_watch": _sample_card("outlook_watch", "关注", rows=(_sample_row("600000.SSE", name="浦发"),)),
+        "outlook_hold": _sample_card("outlook_hold", "可持", rows=(_sample_row("600000.SSE", name="浦发"),)),
     }
 
     all_entries = build_radar_resonance_list(payload)
@@ -119,8 +134,8 @@ def test_build_radar_resonance_list_by_mode() -> None:
 
 def test_build_radar_resonance_ai_prompt() -> None:
     payload = {
-        "a": RadarCardData("a", "选股", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
-        "b": RadarCardData("b", "发现", "", (_sample_row("600000.SSE", name="浦发"),), "", ""),
+        "a": _sample_card("a", "选股", rows=(_sample_row("600000.SSE", name="浦发"),)),
+        "b": _sample_card("b", "发现", rows=(_sample_row("600000.SSE", name="浦发"),)),
     }
     prompt = build_radar_resonance_ai_prompt(payload)
     assert "共振标的" in prompt
@@ -155,7 +170,7 @@ def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
     from vnpy_ashare.screener.dimensions.base import DimensionHit, rank_score
 
     monkeypatch.setattr(
-        "vnpy_ashare.domain.market_hours.is_ashare_trading_session",
+        "vnpy_ashare.domain.time.market_hours.is_ashare_trading_session",
         lambda: False,
     )
 
@@ -189,7 +204,7 @@ def test_load_discovery_moneyflow_fallback(monkeypatch) -> None:
         return [hit], 100, "20260612"
 
     monkeypatch.setattr(
-        "vnpy_ashare.screener.dimensions.moneyflow_resolve.resolve_moneyflow_hits",
+        "vnpy_ashare.quotes.radar.radar_loaders.resolve_moneyflow_hits",
         _fake_resolve,
     )
     data = load_discovery_moneyflow_intraday(RADAR_CARD_BY_ID["discovery_moneyflow_intraday"])
@@ -579,13 +594,11 @@ def test_build_outlook_ai_prompt() -> None:
     from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt
 
     payload = {
-        "outlook_watch": RadarCardData(
+        "outlook_watch": _sample_card(
             "outlook_watch",
             "未来·关注",
-            "约 5 日窗口",
-            (_sample_row("600000.SSE", name="浦发"),),
-            "",
-            "",
+            subtitle="约 5 日窗口",
+            rows=(_sample_row("600000.SSE", name="浦发"),),
         ),
     }
     prompt = build_outlook_ai_prompt(payload, card_id="outlook_watch")
@@ -596,13 +609,11 @@ def test_build_outlook_ai_prompt() -> None:
 def test_build_radar_card_ai_prompt_watchlist() -> None:
     from vnpy_ashare.quotes.radar.radar_loaders import build_radar_card_ai_prompt
 
-    data = RadarCardData(
+    data = _sample_card(
         "watchlist_intraday",
         "自选·异动",
-        "自选异动 Top 1",
-        (_sample_row("600000.SSE", name="浦发"),),
-        "",
-        "",
+        subtitle="自选异动 Top 1",
+        rows=(_sample_row("600000.SSE", name="浦发"),),
         ai_hint="信号跃迁 1 只：观望→买入",
     )
     prompt = build_radar_card_ai_prompt("watchlist_intraday", data)
@@ -653,15 +664,15 @@ def test_build_outlook_digest() -> None:
 
     rows = (
         RadarRow(
-            "600000.SSE",
-            "浦发",
-            "600000",
-            10.0,
-            1.0,
-            "买入",
-            "72",
-            "5日情景",
-            "偏多",
+            vt_symbol="600000.SSE",
+            name="浦发",
+            symbol="600000",
+            price=10.0,
+            change_pct=1.0,
+            metric_label="买入",
+            metric_value="72",
+            sub_label="5日情景",
+            sub_value="偏多",
         ),
     )
     digest = build_outlook_digest(rows, variant="watch_next")
@@ -717,16 +728,14 @@ def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
     from vnpy_ashare.quotes.radar.radar_loaders import incremental_refresh_radar_card_quotes
 
     original_row = _sample_row("600000.SSE", name="浦发")
-    data = RadarCardData(
+    data = _sample_card(
         "discovery_volume_surge",
         "发现·放量",
-        "Top 8",
-        (original_row,),
-        "",
-        "",
+        subtitle="Top 8",
+        rows=(original_row,),
     )
     monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.radar_models.enrich_radar_rows",
+        "vnpy_ashare.quotes.radar.radar_loaders.enrich_radar_rows",
         lambda rows: tuple(
             RadarRow(
                 vt_symbol=row.vt_symbol,
@@ -741,6 +750,10 @@ def test_incremental_refresh_radar_card_quotes(monkeypatch) -> None:
             )
             for row in rows
         ),
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.radar_loaders.preload_screening_context_quotes",
+        lambda _ctx: None,
     )
     refreshed = incremental_refresh_radar_card_quotes(data)
     assert refreshed.subtitle == "Top 8"

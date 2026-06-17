@@ -4,19 +4,20 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from typing import Any
 
+from pydantic import Field
+
+from vnpy_mcp.domain.base import MutableModel
 from vnpy_skills.domain import ToolSpec
 
 
-@dataclass
-class McpToolInfo:
+class McpToolInfo(MutableModel):
     """远端 MCP 工具元数据。"""
 
-    name: str
-    description: str = ""
-    input_schema: dict[str, Any] = field(default_factory=dict)
+    name: str = Field(description="工具名称")
+    description: str = Field(default="", description="工具说明")
+    input_schema: dict[str, Any] = Field(default_factory=dict, description="JSON Schema 参数")
 
 
 class McpProvider(ABC):

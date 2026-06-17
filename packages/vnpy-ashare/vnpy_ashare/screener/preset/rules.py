@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
@@ -48,7 +48,7 @@ def apply_quote_preset(
     min_change_pct: float | None = None,
     max_change_pct: float | None = None,
     min_turnover: float | None = None,
-) -> list[QuoteRowLike]:
+) -> list[dict[str, Any]]:
     """对行情行应用 preset 规则，返回标准化结果行（最多 top_n 条）。"""
     preset = preset.strip()
     top_n = max(1, min(int(top_n or 20), 200))
@@ -71,7 +71,8 @@ def apply_quote_preset(
         filtered = [q for q in quotes if float(q.get("change_pct") or 0) >= STRONG_UP_MIN_CHANGE_PCT]
         sorted_quotes = sorted(filtered, key=lambda q: q.get("change_pct", 0), reverse=True)
     elif preset == SCREENER_VOLUME_RATIO:
-        sorted_quotes = _sort_by_volume_ratio(quotes)
+        volume_ratio_rows = _sort_by_volume_ratio(quotes)
+        return [_quote_row(q) for q in volume_ratio_rows[:top_n]]
     elif preset == SCREENER_TURNOVER:
         sorted_quotes = sorted(quotes, key=lambda q: q.get("turnover_rate", 0), reverse=True)
     elif preset == SCREENER_VOLUME_SURGE:
@@ -81,16 +82,16 @@ def apply_quote_preset(
     return [_quote_row(q) for q in sorted_quotes[:top_n]]
 
 
-def apply_low_pe(rows: list[dict[str, Any]], *, top_n: int, max_pe_ttm: float = 15.0) -> list[dict[str, Any]]:
+def apply_low_pe(rows: Sequence[QuoteRowLike], *, top_n: int, max_pe_ttm: float = 15.0) -> list[dict[str, Any]]:
     """PE(TTM) 在 (0, max_pe_ttm) 内升序取 top_n。"""
     rows = apply_screening_filters(rows)
     filtered = [row for row in rows if row.get("pe_ttm", 0) > 0 and row.get("pe_ttm", 0) < max_pe_ttm]
     filtered.sort(key=lambda r: r.get("pe_ttm", 0))
-    return [_fundamental_row(r) for r in filtered[:top_n]]
+    return [_fundamental_row(quote_row_to_dict(r)) for r in filtered[:top_n]]
 
 
 def apply_large_cap(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     top_n: int,
     min_total_mv: float = MIN_TOTAL_MV_50YI,
@@ -99,17 +100,17 @@ def apply_large_cap(
     rows = apply_screening_filters(rows)
     filtered = [row for row in rows if row.get("total_mv", 0) >= min_total_mv]
     filtered.sort(key=lambda r: r.get("total_mv", 0), reverse=True)
-    return [_fundamental_row(r) for r in filtered[:top_n]]
+    return [_fundamental_row(quote_row_to_dict(r)) for r in filtered[:top_n]]
 
 
-def apply_limit_up(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[str, Any]]:
+def apply_limit_up(rows: Sequence[QuoteRowLike], *, top_n: int) -> list[dict[str, Any]]:
     """涨停列表按连板次数降序取 top_n。"""
     rows = apply_screening_filters(rows)
     sorted_rows = sorted(rows, key=lambda r: float(r.get("limit_times") or 0), reverse=True)
-    return [_limit_up_row(r) for r in sorted_rows[:top_n]]
+    return [_limit_up_row(quote_row_to_dict(r)) for r in sorted_rows[:top_n]]
 
 
-def _sort_by_volume_ratio(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _sort_by_volume_ratio(quotes: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
 
     ratio_map = get_volume_ratio_map()
     enriched: list[dict[str, Any]] = []
@@ -125,12 +126,12 @@ def _sort_by_volume_ratio(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return enriched
 
 
-def apply_moneyflow_in(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[str, Any]]:
+def apply_moneyflow_in(rows: Sequence[QuoteRowLike], *, top_n: int) -> list[dict[str, Any]]:
     """主力净流入 > 0 降序取 top_n。"""
     rows = apply_screening_filters(rows)
     filtered = [row for row in rows if row.get("net_mf_amount", 0) > 0]
     filtered.sort(key=lambda r: r.get("net_mf_amount", 0), reverse=True)
-    return [_moneyflow_row(r) for r in filtered[:top_n]]
+    return [_moneyflow_row(quote_row_to_dict(r)) for r in filtered[:top_n]]
 
 
 _DISPLAY_FUNDAMENTAL_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")

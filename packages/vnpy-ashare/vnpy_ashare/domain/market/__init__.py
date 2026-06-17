@@ -6,10 +6,12 @@ from vnpy_ashare.domain.market.index_amount import IndexAmountSeries
 from vnpy_ashare.domain.market.indices import MARKET_INDEX_TS_CODES, MARKET_INDICES
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
+    QuoteRowLike,
     coerce_quote_row,
     coerce_quote_rows,
     quote_row_from_mapping,
     quote_row_from_stock_and_snapshot,
+    quote_row_to_dict,
     quote_rows_by_vt,
 )
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
@@ -26,6 +28,7 @@ __all__ = [
     "MARKET_INDICES",
     "MARKET_INDEX_TS_CODES",
     "QuoteRow",
+    "QuoteRowLike",
     "QuoteSnapshot",
     "SectorConstituentRow",
     "SectorFlowHistoryPoint",
@@ -36,5 +39,6 @@ __all__ = [
     "matches_board",
     "quote_row_from_mapping",
     "quote_row_from_stock_and_snapshot",
+    "quote_row_to_dict",
     "quote_rows_by_vt",
 ]

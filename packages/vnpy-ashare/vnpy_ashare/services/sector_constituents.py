@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowRow
@@ -46,7 +45,7 @@ def _filter_industry_rows(
     industry: str,
     *,
     industry_map: dict[str, str] | None,
-) -> list[dict[str, Any]]:
+) -> list[QuoteRowLike]:
     enriched = attach_industry(quote_rows, industry_map=industry_map)
     return [row for row in enriched if str(row.get("industry") or "").strip() == industry]
 

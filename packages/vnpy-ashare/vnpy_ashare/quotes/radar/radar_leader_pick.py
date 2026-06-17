@@ -40,7 +40,7 @@ def build_leader_candidate_pool(
 
     if variant == "mainline":
         hits, _total = run_sector_strength(max(pool_size, 40), weight=1.0)
-        hit_rows = [merge_row_quotes(dict(hit.row)) for hit in hits]
+        hit_rows = [merge_row_quotes(hit.row) for hit in hits]
         enriched_hits, hot_concepts = attach_sector_fields(hit_rows)
         for row in enriched_hits:
             vt = str(row.get("vt_symbol") or "")

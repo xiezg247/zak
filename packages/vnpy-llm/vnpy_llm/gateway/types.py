@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
+
+from pydantic import Field
+
+from vnpy_llm.domain.base import FrozenModel
 
 Surface = Literal["floating", "assistant"]
 
@@ -23,21 +26,18 @@ class AgentEventType(str, Enum):
     SESSION_CHANGED = "session.changed"
 
 
-@dataclass(frozen=True)
-class AgentEvent:
-    type: AgentEventType
-    payload: dict[str, Any] = field(default_factory=dict)
+class AgentEvent(FrozenModel):
+    type: AgentEventType = Field(description="事件类型")
+    payload: dict[str, Any] = Field(default_factory=dict, description="事件载荷")
 
 
-@dataclass(frozen=True)
-class SendRequest:
-    session_id: str
-    user_text: str
-    surface: Surface | None = None
-    scene: str = ""
+class SendRequest(FrozenModel):
+    session_id: str = Field(description="会话 ID")
+    user_text: str = Field(description="用户输入")
+    surface: Surface | None = Field(default=None, description="悬浮球或全屏助手")
+    scene: str = Field(default="", description="场景标识")
 
 
-@dataclass(frozen=True)
-class SendResult:
-    session_id: str
-    turn_id: str
+class SendResult(FrozenModel):
+    session_id: str = Field(description="会话 ID")
+    turn_id: str = Field(description="轮次 ID")

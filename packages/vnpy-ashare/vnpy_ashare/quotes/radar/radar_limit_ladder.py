@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from typing import Any, Literal
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
@@ -42,16 +44,17 @@ def board_display_text(boards: int) -> str:
     return "—"
 
 
-def _tickflow_key(row: dict[str, Any]) -> str:
-    vt_symbol = str(row.get("vt_symbol") or "").strip()
+def _tickflow_key(row: QuoteRowLike) -> str:
+    payload = quote_row_to_dict(row)
+    vt_symbol = str(payload.get("vt_symbol") or "").strip()
     item = parse_stock_symbol(vt_symbol)
     if item is not None:
         return item.tickflow_symbol
     return vt_symbol.split(".")[0]
 
 
-def resolve_limit_times(row: dict[str, Any], *, limit_times_map: dict[str, float] | None = None) -> int:
-    merged = merge_row_quotes(row)
+def resolve_limit_times(row: QuoteRowLike, *, limit_times_map: dict[str, float] | None = None) -> int:
+    merged = merge_row_quotes(quote_row_to_dict(row))
     boards = int(float(merged.get("limit_times") or 0))
     if boards >= 1:
         return boards
@@ -64,8 +67,8 @@ def resolve_limit_times(row: dict[str, Any], *, limit_times_map: dict[str, float
     return 0
 
 
-def enrich_limit_times(row: dict[str, Any], *, limit_times_map: dict[str, float] | None = None) -> dict[str, Any]:
-    merged = dict(merge_row_quotes(row))
+def enrich_limit_times(row: QuoteRowLike, *, limit_times_map: dict[str, float] | None = None) -> dict[str, Any]:
+    merged = dict(merge_row_quotes(quote_row_to_dict(row)))
     boards = resolve_limit_times(merged, limit_times_map=limit_times_map)
     if boards >= 1:
         merged["limit_times"] = boards
@@ -73,14 +76,14 @@ def enrich_limit_times(row: dict[str, Any], *, limit_times_map: dict[str, float]
 
 
 def build_limit_ladder_candidates(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     limit_times_map: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
     """涨停池：limit_times ≥ 1 或近似涨停，经硬过滤。"""
-    enriched = [enrich_limit_times(dict(row), limit_times_map=limit_times_map) for row in rows]
+    enriched = [enrich_limit_times(row, limit_times_map=limit_times_map) for row in rows]
     limit_up = [row for row in enriched if resolve_limit_times(row, limit_times_map=limit_times_map) >= 1]
-    return apply_screening_filters(limit_up)
+    return [quote_row_to_dict(row) for row in apply_screening_filters(limit_up)]
 
 
 def count_ladder_buckets(candidates: list[dict[str, Any]]) -> dict[str, int]:

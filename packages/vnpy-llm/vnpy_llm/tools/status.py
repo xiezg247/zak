@@ -2,39 +2,39 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal, cast
 
+from pydantic import Field
+
 from skills.registry import OFFICIAL_SKILLS
+from vnpy_llm.domain.base import FrozenModel
 from vnpy_mcp.app.engine import McpEngine
 from vnpy_skills.app.engine import SkillEngine
 
 ToolProviderState = Literal["ready", "missing_env", "connect_failed", "disabled"]
 
 
-@dataclass(frozen=True)
-class ToolProviderStatus:
+class ToolProviderStatus(FrozenModel):
     """单个 Skill 或 MCP 提供者状态。"""
 
-    kind: Literal["skill", "mcp"]
-    name: str
-    title: str
-    state: ToolProviderState
-    tool_count: int
-    missing_env: tuple[str, ...] = ()
-    error: str = ""
-    summary: str = ""
+    kind: Literal["skill", "mcp"] = Field(description="提供者类型")
+    name: str = Field(description="内部名称")
+    title: str = Field(description="展示标题")
+    state: ToolProviderState = Field(description="就绪状态")
+    tool_count: int = Field(description="可用工具数")
+    missing_env: tuple[str, ...] = Field(default_factory=tuple, description="缺失环境变量")
+    error: str = Field(default="", description="连接错误摘要")
+    summary: str = Field(default="", description="能力摘要")
 
 
-@dataclass(frozen=True)
-class ToolsStatusSnapshot:
+class ToolsStatusSnapshot(FrozenModel):
     """Skills + MCP 工具能力快照（AI 工具对话框展示）。"""
 
-    skills: tuple[ToolProviderStatus, ...] = ()
-    mcps: tuple[ToolProviderStatus, ...] = ()
-    total_tools: int = 0
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    skills: tuple[ToolProviderStatus, ...] = Field(default_factory=tuple, description="Skill 状态列表")
+    mcps: tuple[ToolProviderStatus, ...] = Field(default_factory=tuple, description="MCP 状态列表")
+    total_tools: int = Field(default=0, description="可用工具总数")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="快照时间")
 
     @property
     def ready_skill_count(self) -> int:

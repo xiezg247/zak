@@ -14,6 +14,7 @@ from vnpy_ashare.config.constants.recipe import (
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.env import env_str
 from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_to_dict
+from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.moneyflow_kind import (
     enrich_moneyflow_row_with_kind,
@@ -134,7 +135,7 @@ def run_recipe_object(
         condition += f" · {gate_meta['gate_message']}"
 
     return build_screener_run_result(
-        rows=rows,
+        rows=coerce_screener_result_rows(rows),
         condition=condition,
         updated_at=now,
         total_scanned=total_scanned,

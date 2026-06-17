@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from datetime import date, timedelta
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_rows, quote_row_to_dict
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_rows, quote_row_to_dict
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
@@ -50,7 +50,7 @@ __all__ = [
 
 def merge_quotes_into_fundamentals(
     fund_rows: list[dict[str, Any]],
-    quote_rows: list[QuoteRowLike],
+    quote_rows: Sequence[QuoteRowLike],
 ) -> list[dict[str, Any]]:
     """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
     quote_map = quote_rows_by_vt_symbol(quote_rows)
@@ -227,14 +227,14 @@ def _missing_display_value(value: Any) -> bool:
 def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
     """补全配方结果展示字段（各维度 row 通常只含单维度指标）。"""
     if not rows:
-        return rows
+        return []
 
     vt_symbols = {str(row.get("vt_symbol") or "") for row in rows} - {""}
     if not vt_symbols:
-        return rows
+        return []
 
-    fund_map: dict[str, QuoteRowLike] = {}
-    mf_map: dict[str, QuoteRowLike] = {}
+    fund_map: dict[str, QuoteRow] = {}
+    mf_map: dict[str, QuoteRow] = {}
     pct_map: dict[str, float] = {}
 
     try:
@@ -252,16 +252,18 @@ def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
 
     enriched: list[dict[str, Any]] = []
     for row in rows:
-        item = dict(row)
+        item = quote_row_to_dict(row)
         vt_symbol = str(item.get("vt_symbol") or "").strip()
-        fund = fund_map.get(vt_symbol, {})
-        mf = mf_map.get(vt_symbol, {})
-        ts_code = str(fund.get("ts_code") or mf.get("ts_code") or "")
+        fund = fund_map.get(vt_symbol)
+        mf = mf_map.get(vt_symbol)
+        fund_payload = quote_row_to_dict(fund) if fund is not None else {}
+        mf_payload = quote_row_to_dict(mf) if mf is not None else {}
+        ts_code = str(fund_payload.get("ts_code") or mf_payload.get("ts_code") or "")
 
-        if _missing_display_value(item.get("symbol")) and fund.get("symbol"):
-            item["symbol"] = fund["symbol"]
+        if _missing_display_value(item.get("symbol")) and fund_payload.get("symbol"):
+            item["symbol"] = fund_payload["symbol"]
         if _missing_display_value(item.get("name")):
-            item["name"] = fund.get("name") or mf.get("name") or item.get("name", "")
+            item["name"] = fund_payload.get("name") or mf_payload.get("name") or item.get("name", "")
 
         if _missing_display_value(item.get("change_pct")):
             change = item.get("pct_chg")
@@ -271,16 +273,16 @@ def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
                 item["change_pct"] = change
 
         for key in ("turnover_rate", "pe_ttm", "close", "volume_ratio", "total_mv", "circ_mv", "pb", "trade_date"):
-            if _missing_display_value(item.get(key)) and not _missing_display_value(fund.get(key)):
-                item[key] = fund[key]
+            if _missing_display_value(item.get(key)) and not _missing_display_value(fund_payload.get(key)):
+                item[key] = fund_payload[key]
 
         for key in ("net_mf_amount", "buy_elg_amount", "sell_elg_amount"):
-            if _missing_display_value(item.get(key)) and not _missing_display_value(mf.get(key)):
-                item[key] = mf[key]
+            if _missing_display_value(item.get(key)) and not _missing_display_value(mf_payload.get(key)):
+                item[key] = mf_payload[key]
 
         for key in ("buy_lg_amount", "sell_lg_amount", "buy_md_amount", "sell_md_amount"):
-            if _missing_display_value(item.get(key)) and not _missing_display_value(mf.get(key)):
-                item[key] = mf[key]
+            if _missing_display_value(item.get(key)) and not _missing_display_value(mf_payload.get(key)):
+                item[key] = mf_payload[key]
 
         if _missing_display_value(item.get("last_price")) and not _missing_display_value(item.get("close")):
             item["last_price"] = item["close"]

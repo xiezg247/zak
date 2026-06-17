@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
-
+from vnpy_ashare.domain.market.quote_row import quote_row_to_dict
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label
@@ -22,8 +22,8 @@ _VARIANT_LABELS: dict[str, str] = {
 }
 
 
-def leader_scored_to_row(scored: LeaderScoredRow) -> dict[str, Any]:
-    row = dict(scored.row)
+def leader_scored_to_result_row(scored: LeaderScoredRow) -> ScreenerResultRow:
+    row = quote_row_to_dict(scored.row)
     tier_label = leader_tier_label(scored.leader_tier)
     sector_name = scored.sector_name or str(row.get("industry") or row.get("concept") or "—")
     axis_label = "概念" if scored.sector_axis == "concept" else "行业"
@@ -45,7 +45,12 @@ def leader_scored_to_row(scored: LeaderScoredRow) -> dict[str, Any]:
             "source": "radar_leader",
         },
     )
-    return row
+    return ScreenerResultRow.from_mapping(row)
+
+
+def leader_scored_to_row(scored: LeaderScoredRow) -> dict:
+    """兼容旧调用：返回 flat dict。"""
+    return leader_scored_to_result_row(scored).to_dict()
 
 
 def run_leader_screen(
@@ -94,7 +99,7 @@ def run_leader_screen(
         strong_industries=strong_industries,
         strong_concepts=strong_concepts,
     )
-    rows = [leader_scored_to_row(item) for item in ranked]
+    rows = [leader_scored_to_result_row(item) for item in ranked]
 
     condition = f"雷达龙头 · {variant_label}"
     if cycle is not None:

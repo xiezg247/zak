@@ -183,9 +183,9 @@ def run_pattern_screen(
         hits.append((match.score, row))
 
     hits.sort(key=lambda pair: pair[0], reverse=True)
-    rows = apply_screening_filters([row for _, row in hits])[:top_n]
+    filtered_rows = apply_screening_filters([row for _, row in hits])[:top_n]
     return build_screener_run_result(
-        rows=coerce_screener_result_rows(rows),
+        rows=coerce_screener_result_rows(filtered_rows),
         condition=f"形态 · {label}",
         updated_at=format_china_datetime(),
         total_scanned=scanned,

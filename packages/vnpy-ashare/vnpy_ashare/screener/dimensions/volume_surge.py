@@ -43,10 +43,10 @@ def run_volume_surge(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
     if not enriched:
         return [], snapshot.total
 
-    enriched = apply_screening_filters(enriched)
-    enriched.sort(key=lambda item: float(item.get("relative_volume") or 0), reverse=True)
+    filtered = apply_screening_filters(enriched)
+    filtered.sort(key=lambda item: float(item.get("relative_volume") or 0), reverse=True)
     rows: list[dict[str, Any]] = []
-    for item in enriched[:pool_size]:
+    for item in filtered[:pool_size]:
         base = _quote_row(item)
         base["volume_ratio"] = float(item.get("volume_ratio") or 0)
         base["relative_volume"] = float(item.get("relative_volume") or 0)

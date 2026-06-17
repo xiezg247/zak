@@ -9,10 +9,12 @@ import re
 import time
 from collections import defaultdict
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
 from typing import Any, Literal
 
+from pydantic import Field
+
 from vnpy_common.ai.access import get_ai_context
+from vnpy_llm.domain.base import MutableModel
 from vnpy_llm.chat.client import LlmClientError, StreamCancelled
 from vnpy_llm.config.settings import LlmConfig, team_deep_mode_enabled
 from vnpy_llm.graph.agents.base import build_agent_system_prompt
@@ -51,28 +53,25 @@ _JSON_BLOCK_PATTERN = re.compile(r"```json\s*\{.*?\}\s*```", re.DOTALL)
 StreamEventKind = Literal["delta", "done", "error"]
 
 
-@dataclass
-class AgentTaskSpec:
-    user_msg: dict[str, Any]
-    use_tools: bool
-    max_rounds: int
+class AgentTaskSpec(MutableModel):
+    user_msg: dict[str, Any] = Field(description="子 Agent 用户消息")
+    use_tools: bool = Field(description="是否启用工具")
+    max_rounds: int = Field(description="最大工具轮次")
 
 
-@dataclass
-class AgentResult:
-    agent: AgentName
-    markdown: str = ""
-    json_data: dict[str, Any] | None = None
-    error: str | None = None
-    timed_out: bool = False
+class AgentResult(MutableModel):
+    agent: AgentName = Field(description="Agent 标识")
+    markdown: str = Field(default="", description="Markdown 输出")
+    json_data: dict[str, Any] | None = Field(default=None, description="结构化评分 JSON")
+    error: str | None = Field(default=None, description="错误信息")
+    timed_out: bool = Field(default=False, description="是否超时")
 
 
-@dataclass
-class AgentStreamEvent:
-    agent: AgentName
-    kind: StreamEventKind
-    text: str = ""
-    result: AgentResult | None = None
+class AgentStreamEvent(MutableModel):
+    agent: AgentName = Field(description="Agent 标识")
+    kind: StreamEventKind = Field(description="流事件类型")
+    text: str = Field(default="", description="增量文本")
+    result: AgentResult | None = Field(default=None, description="完成时的结果")
 
 
 def _filter_tools_for_team_agent(
@@ -168,20 +167,20 @@ def _run_single_agent_streaming(
             if should_cancel and should_cancel():
                 raise StreamCancelled("用户已停止生成")
             chunks.append(delta)
-            event_queue.put(AgentStreamEvent(agent, "delta", delta))
+            event_queue.put(AgentStreamEvent(agent=agent, kind="delta", text=delta))
 
         result.markdown = "".join(chunks)
         result.json_data = _normalize_score_json(result.markdown, agent)
-        event_queue.put(AgentStreamEvent(agent, "done", result=result))
+        event_queue.put(AgentStreamEvent(agent=agent, kind="done", result=result))
     except StreamCancelled:
         result.error = "用户取消"
         result.markdown = "".join(chunks)
-        event_queue.put(AgentStreamEvent(agent, "error", "用户取消", result=result))
+        event_queue.put(AgentStreamEvent(agent=agent, kind="error", text="用户取消", result=result))
         raise
     except Exception as ex:
         result.error = str(ex)
         result.markdown = "".join(chunks)
-        event_queue.put(AgentStreamEvent(agent, "error", str(ex), result=result))
+        event_queue.put(AgentStreamEvent(agent=agent, kind="error", text=str(ex), result=result))
 
 
 def _yield_agent_section_header(agent: AgentName, started: set[AgentName]) -> Iterator[str]:

@@ -11,7 +11,7 @@ from vnpy_ashare.screener.sentiment.recession_watchlist_guard import is_emotion_
 class TestRecessionWatchlistGuard(unittest.TestCase):
     def test_not_recession_when_snapshot_missing(self) -> None:
         with patch(
-            "vnpy_ashare.quotes.market.emotion_cycle.load_emotion_cycle_snapshot",
+            "vnpy_ashare.screener.sentiment.recession_watchlist_guard.load_emotion_cycle_snapshot",
             return_value=None,
         ):
             self.assertFalse(is_emotion_recession())
@@ -32,7 +32,7 @@ class TestRecessionWatchlistGuard(unittest.TestCase):
             updated_at="2026-06-17",
         )
         with patch(
-            "vnpy_ashare.quotes.market.emotion_cycle.load_emotion_cycle_snapshot",
+            "vnpy_ashare.screener.sentiment.recession_watchlist_guard.load_emotion_cycle_snapshot",
             return_value=snapshot,
         ):
             self.assertTrue(is_emotion_recession())
@@ -53,7 +53,7 @@ class TestRecessionWatchlistGuard(unittest.TestCase):
             updated_at="2026-06-17",
         )
         with patch(
-            "vnpy_ashare.quotes.market.emotion_cycle.load_emotion_cycle_snapshot",
+            "vnpy_ashare.screener.sentiment.recession_watchlist_guard.load_emotion_cycle_snapshot",
             return_value=snapshot,
         ):
             self.assertFalse(is_emotion_recession())

@@ -3,25 +3,26 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
 
+from pydantic import Field
+
+from vnpy_skills.domain.base import MutableModel
 from vnpy_skills.domain.frontmatter import SkillFrontmatter, parse_skill_document
 
 
-@dataclass
-class AgentSkill:
+class AgentSkill(MutableModel):
     """官方 / 第三方 SKILL.md 技能包。"""
 
-    name: str
-    root: Path
-    description: str = ""
-    author: str = ""
-    version: str = ""
-    skill_md: str = ""
-    body: str = ""
-    frontmatter: SkillFrontmatter = field(default_factory=SkillFrontmatter)
-    env_requirements: list[tuple[str, bool]] = field(default_factory=list)
+    name: str = Field(description="技能名称")
+    root: Path = Field(description="技能根目录")
+    description: str = Field(default="", description="技能说明")
+    author: str = Field(default="", description="作者")
+    version: str = Field(default="", description="版本号")
+    skill_md: str = Field(default="", description="SKILL.md 全文")
+    body: str = Field(default="", description="SKILL.md 正文")
+    frontmatter: SkillFrontmatter = Field(default_factory=SkillFrontmatter, description="YAML frontmatter")
+    env_requirements: list[tuple[str, bool]] = Field(default_factory=list, description="所需环境变量")
 
     @classmethod
     def from_directory(cls, root: Path) -> AgentSkill | None:

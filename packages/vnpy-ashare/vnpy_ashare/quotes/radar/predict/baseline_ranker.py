@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import Any
 
 from pydantic import Field
 
@@ -53,12 +54,12 @@ def _sigmoid_p_up(score: float) -> float:
     return _clamp(1.0 / (1.0 + math.exp(-x)), 0.05, 0.95)
 
 
-def _prepare_rows(rows: Sequence[QuoteRowLike]) -> Sequence[QuoteRowLike]:
+def _prepare_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
     industry_map = get_stock_industry_map()
     enriched = attach_industry(rows, industry_map=industry_map)
     market_benchmark = market_benchmark_change_pct(enriched or rows)
     industry_avg = industry_avg_change_map(enriched)
-    prepared: Sequence[QuoteRowLike] = []
+    prepared: list[dict[str, Any]] = []
     for row in enriched:
         merged = dict(row)
         rs, _basis = resolve_relative_strength(

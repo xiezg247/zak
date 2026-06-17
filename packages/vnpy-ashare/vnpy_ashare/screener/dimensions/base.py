@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.base import MutableModel
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.screener.dimensions.scoring import blended_score, rank_score
 
 
@@ -22,6 +22,11 @@ class DimensionHit(MutableModel):
     score: float = Field(description="维度得分")
     reason: str = Field(description="命中原因")
     row: dict[str, Any] = Field(description="原始行情行")
+
+
+def dimension_row_payload(row: QuoteRowLike) -> dict[str, Any]:
+    """维度命中行归一化为 plain dict（供 ``DimensionHit.row`` 使用）。"""
+    return quote_row_to_dict(row)
 
 
 def quote_hits(
@@ -61,7 +66,7 @@ def quote_hits(
                 weight=weight,
                 score=score,
                 reason=reason_builder(row, index),
-                row=dict(row),
+                row=dimension_row_payload(row),
             )
         )
     return hits

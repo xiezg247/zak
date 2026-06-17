@@ -24,7 +24,7 @@ def test_screening_context_caches_quote_snapshot() -> None:
         return snapshot
 
     with patch(
-        "vnpy_ashare.screener.data.data_source.load_screening_quote_snapshot_uncached",
+        "vnpy_ashare.screener.data.screening_context.load_screening_quote_snapshot_uncached",
         side_effect=_load,
     ):
         with screening_context_scope() as ctx:
@@ -42,7 +42,7 @@ def test_volume_ratio_skips_rows_without_ratio() -> None:
     snapshot = MarketQuotesSnapshot(
         rows=[
             {"vt_symbol": "600000.SSE", "symbol": "600000", "volume": 999_999, "change_pct": 1.0},
-            {"vt_symbol": "000001.SZSE", "symbol": "000001", "volume": 1, "change_pct": 2.0},
+            {"vt_symbol": "000001.SZSE", "symbol": "000001", "volume": 1, "amount": 50_000_000, "change_pct": 2.0},
         ],
         updated_at="x",
         total=2,

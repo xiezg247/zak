@@ -9,6 +9,7 @@ description = "zak 共享基础设施：路径、AI 协议、终端主题"
 requires-python = ">=3.10"
 dependencies = [
     "vnpy>=4.0.0",
+    "pydantic>=2.0",
 ]
 
 [tool.setuptools.packages.find]

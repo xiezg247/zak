@@ -39,22 +39,29 @@ def test_weighted_resonance_prefers_discovery_cards() -> None:
         }
     )
     payload = {
-        "screen_latest": RadarCardData("screen_latest", "选股", "", (_sample_row("600000.SSE"),), "", ""),
+        "screen_latest": RadarCardData(
+            card_id="screen_latest",
+            title="选股",
+            subtitle="",
+            rows=(_sample_row("600000.SSE"),),
+            empty_message="",
+            updated_at="",
+        ),
         "discovery_volume_surge": RadarCardData(
-            "discovery_volume_surge",
-            "发现·放量",
-            "",
-            (_sample_row("000001.SZSE", name="平安"),),
-            "",
-            "",
+            card_id="discovery_volume_surge",
+            title="发现·放量",
+            subtitle="",
+            rows=(_sample_row("000001.SZSE", name="平安"),),
+            empty_message="",
+            updated_at="",
         ),
         "b": RadarCardData(
-            "screen_task",
-            "选股任务",
-            "",
-            (_sample_row("600000.SSE", name="浦发"), _sample_row("000001.SZSE", name="平安")),
-            "",
-            "",
+            card_id="screen_task",
+            title="选股任务",
+            subtitle="",
+            rows=(_sample_row("600000.SSE", name="浦发"), _sample_row("000001.SZSE", name="平安")),
+            empty_message="",
+            updated_at="",
         ),
     }
     scores = compute_radar_resonance_scores(payload)
@@ -68,7 +75,7 @@ def test_weighted_resonance_prefers_discovery_cards() -> None:
 
 def test_market_benchmark_fallback_to_mean() -> None:
     with patch(
-        "vnpy_ashare.integrations.tickflow.quotes.fetch_index_ticker",
+        "vnpy_ashare.screener.data.market_benchmark.fetch_index_ticker",
         side_effect=RuntimeError("offline"),
     ):
         benchmark = market_benchmark_change_pct(

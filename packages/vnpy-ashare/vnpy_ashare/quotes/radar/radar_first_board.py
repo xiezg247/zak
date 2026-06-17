@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
@@ -53,7 +55,7 @@ def _strong_industries() -> set[str]:
 
 
 def build_first_board_candidates(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     limit_times_map: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:

@@ -40,7 +40,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         market_benchmark = market_benchmark_change_pct(enriched or snapshot.rows)
         industry_avg = industry_avg_change_map(enriched)
 
-        scored_rows: list[QuoteRowLike] = []
+        scored_rows: list[dict[str, Any]] = []
         for row in enriched:
             merged = dict(row)
             change = float(merged.get("change_pct") or merged.get("pct_chg") or 0)
@@ -60,13 +60,13 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
                 merged["industry_relative_strength"] = relative_strength_pct(merged, industry_avg_pct)
             scored_rows.append(merged)
 
-        scored_rows = apply_screening_filters(scored_rows)
-        scored_rows.sort(key=lambda item: float(item.get("relative_strength") or 0), reverse=True)
-        top_for_history = scored_rows[: pool_size * 2]
+        filtered_rows = apply_screening_filters(scored_rows)
+        filtered_rows.sort(key=lambda item: float(item.get("relative_strength") or 0), reverse=True)
+        top_for_history = filtered_rows[: pool_size * 2]
         bars_map = load_history_bars_map([str(item.get("vt_symbol") or "") for item in top_for_history if item.get("vt_symbol")])
         attach_momentum_persistence(top_for_history, bars_map)
         hit_rows: list[QuoteRowLike] = []
-        for item in scored_rows[:pool_size]:
+        for item in filtered_rows[:pool_size]:
             base = _quote_row(item)
             base["benchmark_change_pct"] = market_benchmark
             base["relative_strength"] = float(item.get("relative_strength") or 0)

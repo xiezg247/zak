@@ -35,10 +35,10 @@ def run_turnover(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
     if not enriched:
         return [], snapshot.total
 
-    enriched = apply_screening_filters(enriched)
-    enriched.sort(key=lambda item: float(item.get("relative_turnover") or 0), reverse=True)
+    filtered = apply_screening_filters(enriched)
+    filtered.sort(key=lambda item: float(item.get("relative_turnover") or 0), reverse=True)
     rows: list[dict[str, Any]] = []
-    for item in enriched[:pool_size]:
+    for item in filtered[:pool_size]:
         base = _quote_row(item)
         base["avg_turnover_rate"] = float(item.get("avg_turnover_rate") or 0)
         base["relative_turnover"] = float(item.get("relative_turnover") or 0)

@@ -3,23 +3,24 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+
+from pydantic import Field
 
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
+from vnpy_llm.domain.base import FrozenModel
 from vnpy_llm.chat.store import ChatMessage, ChatSession, ChatStore
 
 SessionNotify = Callable[["SessionNotification"], None]
 
 
-@dataclass(frozen=True)
-class SessionNotification:
+class SessionNotification(FrozenModel):
     """会话变更通知（由 LlmEngine 转为 Qt 信号与 Trace 加载）。"""
 
-    messages_changed: bool = False
-    sessions_changed: bool = False
-    trace_changed: bool = False
-    trace_session_loaded: str | None = None
-    trace_clear_session: str | None = None
+    messages_changed: bool = Field(default=False, description="消息列表是否变更")
+    sessions_changed: bool = Field(default=False, description="会话列表是否变更")
+    trace_changed: bool = Field(default=False, description="Trace 是否变更")
+    trace_session_loaded: str | None = Field(default=None, description="需加载 Trace 的会话 ID")
+    trace_clear_session: str | None = Field(default=None, description="需清空 Trace 的会话 ID")
 
 
 class SessionManager:

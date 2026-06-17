@@ -41,10 +41,10 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
     if not enriched:
         return _volume_ratio_from_tushare_only(pool_size, weight=weight)
 
-    enriched = apply_screening_filters(enriched)
-    enriched.sort(key=lambda item: float(item.get("volume_ratio") or 0), reverse=True)
+    filtered = apply_screening_filters(enriched)
+    filtered.sort(key=lambda item: float(item.get("volume_ratio") or 0), reverse=True)
     rows: list[dict[str, Any]] = []
-    for item in enriched[:pool_size]:
+    for item in filtered[:pool_size]:
         base = _quote_row(item)
         base["volume_ratio"] = float(item.get("volume_ratio") or 0)
         rows.append(base)

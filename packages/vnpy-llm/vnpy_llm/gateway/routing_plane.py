@@ -2,21 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from pydantic import Field
+
 from vnpy_llm.config.settings import LlmConfig
+from vnpy_llm.domain.base import FrozenModel
 from vnpy_llm.graph.state import SupervisorDecision
 from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.routing.router import RouteContext, build_route_context
 
 
-@dataclass(frozen=True)
-class RoutingDecision:
+class RoutingDecision(FrozenModel):
     """意图分类 + Supervisor 委派的合并结果。"""
 
-    route_ctx: RouteContext
-    supervisor: SupervisorDecision
+    route_ctx: RouteContext = Field(description="意图路由上下文")
+    supervisor: SupervisorDecision = Field(description="Supervisor 委派决策")
 
 
 class RoutingPlane:

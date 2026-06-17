@@ -9,7 +9,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
 
 # 近似涨跌停阈值（未区分 ST 5% / 20% 等规则）
@@ -31,8 +31,9 @@ class MarketBreadthSnapshot(FrozenModel):
     limit_source: LimitSource = Field(default="approx", description="涨跌停计数来源")
 
 
-def _coerce_change_pct(row: dict[str, Any]) -> float | None:
-    raw = row.get("change_pct")
+def _coerce_change_pct(row: QuoteRowLike) -> float | None:
+    payload = quote_row_to_dict(row)
+    raw = payload.get("change_pct")
     if raw is None:
         return None
     try:
@@ -44,8 +45,9 @@ def _coerce_change_pct(row: dict[str, Any]) -> float | None:
     return value
 
 
-def _coerce_amount(row: dict[str, Any]) -> float:
-    raw = row.get("amount")
+def _coerce_amount(row: QuoteRowLike) -> float:
+    payload = quote_row_to_dict(row)
+    raw = payload.get("amount")
     if raw is None:
         return 0.0
     try:

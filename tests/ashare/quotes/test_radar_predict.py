@@ -92,7 +92,13 @@ def test_scan_predict_baseline_builds_rows(monkeypatch) -> None:
         "vnpy_ashare.quotes.radar.predict.predict_scan.prefilter_horizon_universe",
         lambda _excluded: (
             ["600000.SSE", "000001.SZSE"],
-            HorizonScanStats(100, 0, 2, 0, 0),
+            HorizonScanStats(
+                scanned_total=100,
+                excluded_count=0,
+                prefilter_total=2,
+                refined_total=0,
+                kline_missing=0,
+            ),
         ),
     )
     monkeypatch.setattr(

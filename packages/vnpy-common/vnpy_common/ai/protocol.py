@@ -2,38 +2,38 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
+
+from vnpy_common.ai.base import FrozenModel, MutableModel
 
 
-@dataclass
-class QuickAction:
+class QuickAction(MutableModel):
     """悬浮球/面板可点击的快捷动作；`children` 非空时展示二级菜单。"""
 
-    id: str
-    label: str
-    prompt: str = ""
-    auto_send: bool = False
-    tooltip: str = ""
-    children: list[QuickAction] = field(default_factory=list)
+    id: str = Field(description="动作标识")
+    label: str = Field(description="展示标签")
+    prompt: str = Field(default="", description="点击后填入的提示词")
+    auto_send: bool = Field(default=False, description="是否自动发送")
+    tooltip: str = Field(default="", description="悬停提示")
+    children: list[QuickAction] = Field(default_factory=list, description="二级菜单项")
 
     @property
     def has_menu(self) -> bool:
         return bool(self.children)
 
 
-@dataclass
-class AiContextData:
+class AiContextData(MutableModel):
     """AI 助手当前会话上下文（页面、选中标的、摘要与快捷动作）。"""
 
-    page: str = ""
-    symbol: str = ""
-    exchange: str = ""
-    name: str = ""
-    quote_summary: str = ""
-    extra: str = ""
-    badge: str = ""
-    chip_text: str = ""
-    actions: list[QuickAction] = field(default_factory=list)
+    page: str = Field(default="", description="当前页面")
+    symbol: str = Field(default="", description="证券代码")
+    exchange: str = Field(default="", description="交易所")
+    name: str = Field(default="", description="证券名称")
+    quote_summary: str = Field(default="", description="行情摘要")
+    extra: str = Field(default="", description="附加说明")
+    badge: str = Field(default="", description="悬浮球角标")
+    chip_text: str = Field(default="", description="上下文芯片文案")
+    actions: list[QuickAction] = Field(default_factory=list, description="快捷动作列表")
 
     def to_text(self) -> str:
         """序列化为 System Prompt 可读的多行文本。"""
@@ -50,9 +50,8 @@ class AiContextData:
         return "\n".join(lines)
 
 
-@dataclass(frozen=True)
-class StockCompletionItem:
+class StockCompletionItem(FrozenModel):
     """输入联想项：短标签 + 完整 prompt。"""
 
-    label: str
-    prompt: str
+    label: str = Field(description="展示标签")
+    prompt: str = Field(description="完整提示词")

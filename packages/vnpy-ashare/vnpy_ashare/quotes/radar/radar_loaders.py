@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.numbers import float_or_none
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningRowLike
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.format import format_amount, format_pct, format_volume
 from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
@@ -57,6 +60,15 @@ from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
+
+
+def _radar_source_payload(row: QuoteRowLike | ScreeningRowLike) -> dict[str, Any]:
+    """选股结果行 / 行情行 → plain dict（供 merge_row_quotes / RadarRow 构建）。"""
+    if isinstance(row, ScreenerResultRow):
+        return row.to_dict()
+    if isinstance(row, dict):
+        return dict(row)
+    return quote_row_to_dict(row)
 
 
 def _discovery_pool_size(top_n: int) -> int:
@@ -153,17 +165,18 @@ def _resolve_row_display_name(
     return vt_symbol.split(".")[0]
 
 
-def _row_from_dict(row: dict[str, Any], *, name_map: dict[str, str] | None = None) -> RadarRow | None:
-    vt_symbol = str(row.get("vt_symbol") or "").strip()
+def _row_from_dict(row: QuoteRowLike | ScreeningRowLike, *, name_map: dict[str, str] | None = None) -> RadarRow | None:
+    payload = _radar_source_payload(row)
+    vt_symbol = str(payload.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None
     item = parse_stock_symbol(vt_symbol)
-    merged = merge_row_quotes(row)
+    merged = merge_row_quotes(payload)
     lookup = name_map or {}
-    name = _resolve_row_display_name(vt_symbol, row, merged, item=item, name_map=lookup)
-    symbol = str(row.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
+    name = _resolve_row_display_name(vt_symbol, payload, merged, item=item, name_map=lookup)
+    symbol = str(payload.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
     price = float_or_none(merged.get("last_price") or merged.get("close"))
-    change_pct = float_or_none(merged.get("change_pct") or row.get("change_pct") or row.get("pct_chg"))
+    change_pct = float_or_none(merged.get("change_pct") or payload.get("change_pct") or payload.get("pct_chg"))
     metric_label, metric_value, sub_label, sub_value = _screener_metric(merged)
     rs_sub = _relative_strength_subline(merged)
     if rs_sub is not None:
@@ -185,9 +198,9 @@ def _relative_strength_subline(row: dict[str, Any]) -> tuple[str, str] | None:
     return build_relative_strength_subline(row)
 
 
-def _rows_from_screener(rows: list[dict[str, Any]], *, top_n: int) -> tuple[RadarRow, ...]:
+def _rows_from_screener(rows: Sequence[ScreeningRowLike], *, top_n: int) -> tuple[RadarRow, ...]:
     batch = rows[:top_n]
-    vt_symbols = [str(row.get("vt_symbol") or "").strip() for row in batch]
+    vt_symbols = [str(_radar_source_payload(row).get("vt_symbol") or "").strip() for row in batch]
     name_map = name_map_for_symbols([vt for vt in vt_symbols if vt])
     result: list[RadarRow] = []
     for row in batch:
@@ -305,16 +318,15 @@ def _discovery_hits_card(
             row["name"] = mapped_name
         filter_inputs.append(row)
     filtered_rows = apply_screening_filters(filter_inputs)
-    allowed_vt = {str(row.get("vt_symbol") or "") for row in filtered_rows}
+    allowed_vt = {str(quote_row_to_dict(row).get("vt_symbol") or "") for row in filtered_rows}
     for hit in hits:
         vt = str(hit.row.get("vt_symbol") or "").strip()
         if vt not in allowed_vt:
             continue
-        row = hit.row
-        parsed = _row_from_dict(row, name_map=name_map)
+        parsed = _row_from_dict(hit.row, name_map=name_map)
         if parsed is None:
             continue
-        metric_label, metric_value, sub_label, sub_value = metric_builder(row, hit)
+        metric_label, metric_value, sub_label, sub_value = metric_builder(_radar_source_payload(hit.row), hit)
         rows.append(
             RadarRow(
                 vt_symbol=parsed.vt_symbol,
@@ -377,7 +389,7 @@ def _volume_liquidity_proxy(pool_size: int, total: int):
                 weight=1.0,
                 score=rank_score(index, min(len(ranked), pool_size)),
                 reason=f"放量：流动性代理，排名第 {index}",
-                row=dict(row),
+                row=quote_row_to_dict(row),
             )
         )
     return hits, snapshot.total

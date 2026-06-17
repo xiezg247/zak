@@ -50,11 +50,11 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
 
     ratio_map = get_volume_ratio_map()
     candidates: list[tuple[QuoteRowLike, float]] = []
-    for row in snapshot.rows:
-        strength = _quote_breakout_strength(row, ratio_map)
+    for quote in snapshot.rows:
+        strength = _quote_breakout_strength(quote, ratio_map)
         if strength is None:
             continue
-        candidates.append((row, strength))
+        candidates.append((quote, strength))
 
     candidates.sort(key=lambda item: item[1], reverse=True)
     lookback = _breakout_lookback_days()

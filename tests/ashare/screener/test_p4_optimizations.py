@@ -71,7 +71,19 @@ def test_relative_strength_subline_with_industry() -> None:
 
 
 def test_outlook_cross_ref_suffix() -> None:
-    rows = (RadarRow("600000.SSE", "浦发", "600000", 10.0, 1.0, "买入", "70", "事件", "—"),)
+    rows = (
+        RadarRow(
+            vt_symbol="600000.SSE",
+            name="浦发",
+            symbol="600000",
+            price=10.0,
+            change_pct=1.0,
+            metric_label="买入",
+            metric_value="70",
+            sub_label="事件",
+            sub_value="—",
+        ),
+    )
     with patch(
         "vnpy_ashare.quotes.radar.radar_cross_refs.latest_recipe_vt_symbols",
         return_value={"600000.SSE"},

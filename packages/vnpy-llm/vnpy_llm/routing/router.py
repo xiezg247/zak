@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
 from typing import Any, TypeVar, cast
+
+from pydantic import Field
 
 from vnpy_llm.chat.client import LlmClientError, create_openai_client
 from vnpy_llm.domain.base import FrozenModel
@@ -161,13 +162,12 @@ screening 补充：短线游资/题材活跃 → recipe_id=intraday_multi；中�
 confidence=low 表示意图模糊，需要主对话追问。"""
 
 
-@dataclass(frozen=True)
-class RouteContext:
+class RouteContext(FrozenModel):
     """路由结果与过滤后的工具。"""
 
-    analysis: IntentAnalysis
-    tools: list[dict[str, Any]]
-    routing_hint: str
+    analysis: IntentAnalysis = Field(description="意图分析结果")
+    tools: list[dict[str, Any]] = Field(description="过滤后的 OpenAI tools")
+    routing_hint: str = Field(description="注入对话的路由提示")
 
 
 def filter_tools_by_route(

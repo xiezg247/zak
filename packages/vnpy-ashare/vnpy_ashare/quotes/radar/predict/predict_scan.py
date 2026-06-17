@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
 
 from pydantic import Field
 
@@ -33,7 +33,7 @@ class PredictScanResult(FrozenModel):
     computed_at: str = Field(description="计算时间")
 
 
-def _quote_rows_for_prefilter(prefilter: list[str]) -> list[dict[str, Any]]:
+def _quote_rows_for_prefilter(prefilter: list[str]) -> list[QuoteRowLike]:
     if not prefilter:
         return []
     try:
@@ -41,7 +41,7 @@ def _quote_rows_for_prefilter(prefilter: list[str]) -> list[dict[str, Any]]:
     except MarketQuotesLoadError:
         return []
     wanted = set(prefilter)
-    return [row.to_dict() for row in snapshot.rows if str(row.get("vt_symbol") or "").strip() in wanted]
+    return [row for row in snapshot.rows if str(row.get("vt_symbol") or "").strip() in wanted]
 
 
 def _baseline_to_hit(hit: BaselinePredictHit) -> PredictHit:
@@ -55,7 +55,7 @@ def _baseline_to_hit(hit: BaselinePredictHit) -> PredictHit:
 
 
 def rank_predict_hits(
-    quote_rows: list[dict[str, Any]],
+    quote_rows: Sequence[QuoteRowLike],
     *,
     top_n: int,
     mode: PredictModelMode | None = None,

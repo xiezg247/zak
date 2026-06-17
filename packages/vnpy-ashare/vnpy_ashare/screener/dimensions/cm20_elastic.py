@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.market.board import matches_board
+from vnpy_ashare.domain.market.quote_row import quote_row_to_dict
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit
@@ -84,15 +85,16 @@ def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
     if not filtered:
         return [], snapshot.total
 
-    amount_ranks = _amount_rank_map(filtered)
-    filtered.sort(
+    filtered_rows = [quote_row_to_dict(row) for row in filtered]
+    amount_ranks = _amount_rank_map(filtered_rows)
+    filtered_rows.sort(
         key=lambda item: (
             cm20_elastic_score(item, amount_rank=amount_ranks.get(str(item.get("vt_symbol") or ""), 0.0)),
             float(item.get("change_pct") or 0),
         ),
         reverse=True,
     )
-    top_rows = filtered[:pool_size]
+    top_rows = filtered_rows[:pool_size]
 
     hits: list[DimensionHit] = []
     for row in top_rows:

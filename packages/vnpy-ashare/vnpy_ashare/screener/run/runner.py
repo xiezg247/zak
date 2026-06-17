@@ -14,6 +14,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.screener.data.data_source import (
     enrich_recipe_rows,
     fetch_fundamental_screening_rows,
@@ -69,7 +70,7 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
             snapshot = load_screening_quote_snapshot()
         except MarketQuotesLoadError as ex:
             raise RuntimeError(str(ex)) from ex
-        rows = apply_quote_preset(
+        preset_rows = apply_quote_preset(
             preset.name,
             snapshot.rows,
             top_n=request.top_n,
@@ -77,9 +78,9 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
             max_change_pct=request.max_change_pct,
             min_turnover=request.min_turnover,
         )
-        rows = enrich_recipe_rows(rows)
+        enriched_rows = enrich_recipe_rows(preset_rows)
         return build_screener_run_result(
-            rows=rows,
+            rows=coerce_screener_result_rows(enriched_rows),
             condition=preset.name,
             updated_at=snapshot.updated_at,
             total_scanned=snapshot.total,
@@ -122,7 +123,7 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
             raise RuntimeError("Tushare moneyflow 在最近多个交易日均无数据，请稍后重试或检查积分权限。")
         rows = apply_moneyflow_in(raw_rows, top_n=top_n)
         return build_screener_run_result(
-            rows=rows,
+            rows=coerce_screener_result_rows(rows),
             condition=preset.name,
             updated_at=trade_date,
             total_scanned=len(raw_rows),
@@ -135,7 +136,7 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
             raise RuntimeError("Tushare 涨停列表在最近多个交易日均无数据，请稍后重试或检查积分权限。")
         rows = apply_limit_up(raw_rows, top_n=top_n)
         return build_screener_run_result(
-            rows=rows,
+            rows=coerce_screener_result_rows(rows),
             condition=preset.name,
             updated_at=trade_date,
             total_scanned=len(raw_rows),
@@ -152,7 +153,7 @@ def _run_tushare_preset(preset: PresetDefinition, *, top_n: int) -> ScreenerRunR
         raise ValueError(f"未实现的 Tushare 方案：{preset.name}")
 
     return build_screener_run_result(
-        rows=rows,
+        rows=coerce_screener_result_rows(rows),
         condition=preset.name,
         updated_at=trade_date,
         total_scanned=len(raw_rows),

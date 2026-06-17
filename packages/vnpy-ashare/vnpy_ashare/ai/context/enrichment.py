@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from dataclasses import replace
 
 from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions, format_market_overview_extra
 from vnpy_ashare.ai.context.quote import (
@@ -20,7 +19,7 @@ def enrich_context_with_actions(data: AiContextData) -> AiContextData:
     badge = _build_badge(data)
     chip_text = _build_chip_text(data)
     actions = _build_actions(data)
-    return replace(data, badge=badge, chip_text=chip_text, actions=actions)
+    return data.model_copy(update={"badge": badge, "chip_text": chip_text, "actions": actions})
 
 
 def build_interpret_screen_action() -> QuickAction | None:

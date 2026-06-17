@@ -28,8 +28,24 @@ def test_intraday_aggressive_recipe_exists() -> None:
 
 def test_volume_liquidity_dedup_weakens_surge() -> None:
     hits = [
-        DimensionHit("600000.SSE", "volume_ratio", "量比", 0.25, 80.0, "量比", {}),
-        DimensionHit("600000.SSE", "volume_surge", "放量", 0.1, 70.0, "放量", {}),
+        DimensionHit(
+            vt_symbol="600000.SSE",
+            dimension_id="volume_ratio",
+            label="量比",
+            weight=0.25,
+            score=80.0,
+            reason="量比",
+            row={},
+        ),
+        DimensionHit(
+            vt_symbol="600000.SSE",
+            dimension_id="volume_surge",
+            label="放量",
+            weight=0.1,
+            score=70.0,
+            reason="放量",
+            row={},
+        ),
     ]
     with patch(
         "vnpy_ashare.screener.dimensions.volume_dedup.volume_liquidity_dedup_factor",
@@ -41,5 +57,15 @@ def test_volume_liquidity_dedup_weakens_surge() -> None:
 
 
 def test_build_volume_discovery_subtitle_ratio() -> None:
-    hits = [DimensionHit("600000.SSE", "volume_ratio", "量比", 1.0, 80.0, "量比", {})]
+    hits = [
+        DimensionHit(
+            vt_symbol="600000.SSE",
+            dimension_id="volume_ratio",
+            label="量比",
+            weight=1.0,
+            score=80.0,
+            reason="量比",
+            row={},
+        ),
+    ]
     assert "量比排序" in build_volume_discovery_subtitle(hits)

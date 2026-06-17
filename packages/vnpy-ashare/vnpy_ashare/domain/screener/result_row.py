@@ -33,6 +33,10 @@ _TAG_KEYS = frozenset(
         "industry",
         "concept",
         "source",
+        "leader_tier",
+        "leader_tier_label",
+        "sector_name",
+        "sector_axis",
     }
 )
 
