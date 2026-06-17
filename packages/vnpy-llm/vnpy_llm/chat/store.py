@@ -5,12 +5,12 @@ from __future__ import annotations
 import sqlite3
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import cast
 
 from vnpy_common.paths import get_chat_db_path
+from vnpy_llm.domain.chat import ChatMessage, ChatSession
 
 
 # 测试可 patch 此函数
@@ -38,27 +38,6 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE INDEX IF NOT EXISTS idx_messages_session ON messages(session_id, id);
 """
-
-
-@dataclass
-class ChatMessage:
-    """单条对话消息。"""
-
-    role: str
-    content: str
-    created_at: str = ""
-
-
-@dataclass
-class ChatSession:
-    """对话会话元数据（不含消息正文）。"""
-
-    id: str
-    title: str
-    created_at: str
-    updated_at: str
-    message_count: int = 0
-    scene: str = ""
 
 
 @contextmanager
@@ -137,13 +116,15 @@ class ChatStore:
                 (limit,),
             ).fetchall()
         return [
-            ChatSession(
-                id=str(row["id"]),
-                title=str(row["title"] or "新会话"),
-                created_at=str(row["created_at"]),
-                updated_at=str(row["updated_at"]),
-                message_count=int(row["message_count"]),
-                scene=str(row["scene"] or ""),
+            ChatSession.model_validate(
+                {
+                    "id": str(row["id"]),
+                    "title": str(row["title"] or "新会话"),
+                    "created_at": str(row["created_at"]),
+                    "updated_at": str(row["updated_at"]),
+                    "message_count": int(row["message_count"]),
+                    "scene": str(row["scene"] or ""),
+                }
             )
             for row in rows
         ]
@@ -163,13 +144,15 @@ class ChatStore:
             ).fetchone()
         if row is None:
             return None
-        return ChatSession(
-            id=str(row["id"]),
-            title=str(row["title"] or "新会话"),
-            created_at=str(row["created_at"]),
-            updated_at=str(row["updated_at"]),
-            message_count=int(row["message_count"]),
-            scene=str(row["scene"] or ""),
+        return ChatSession.model_validate(
+            {
+                "id": str(row["id"]),
+                "title": str(row["title"] or "新会话"),
+                "created_at": str(row["created_at"]),
+                "updated_at": str(row["updated_at"]),
+                "message_count": int(row["message_count"]),
+                "scene": str(row["scene"] or ""),
+            }
         )
 
     def update_session_scene(self, session_id: str, scene: str) -> None:
@@ -199,7 +182,16 @@ class ChatStore:
                 "SELECT role, content, created_at FROM messages WHERE session_id=? ORDER BY id",
                 (session_id,),
             ).fetchall()
-        messages = [ChatMessage(role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"])) for row in rows]
+        messages = [
+            ChatMessage.model_validate(
+                {
+                    "role": str(row["role"]),
+                    "content": str(row["content"]),
+                    "created_at": str(row["created_at"]),
+                }
+            )
+            for row in rows
+        ]
         if len(messages) > MAX_MESSAGES_PER_SESSION:
             messages = messages[-MAX_MESSAGES_PER_SESSION:]
         return messages

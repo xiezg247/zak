@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
@@ -66,7 +67,7 @@ def rank_predict_hits(
     return baseline_hits, PREDICT_VARIANT_BASELINE, "统计基线"
 
 
-def _hit_to_row(hit: PredictHit, *, name_map: dict[str, str], quote_row: dict[str, Any]) -> RadarRow:
+def _hit_to_row(hit: PredictHit, *, name_map: dict[str, str], quote_row: QuoteRowLike) -> RadarRow:
     item = parse_stock_symbol(hit.vt_symbol)
     symbol = item.symbol if item is not None else hit.vt_symbol.split(".")[0]
     name = name_map.get(hit.vt_symbol) or str(quote_row.get("name") or symbol)

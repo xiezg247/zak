@@ -13,8 +13,7 @@ from vnpy_ashare.quotes.radar.radar_leader_pick import (
     rank_leader_pool,
 )
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
-from vnpy_ashare.screener.run.export import resolve_export_columns
-from vnpy_ashare.screener.run.runner import ScreenerRunResult
+from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
 
 _VARIANT_LABELS: dict[str, str] = {
@@ -61,13 +60,12 @@ def run_leader_screen(
 
     if cycle is not None and cycle.stage in {"recession", "ice"}:
         stage = cycle.stage_label
-        return ScreenerRunResult(
+        return build_screener_run_result(
             rows=[],
             condition=f"雷达龙头（{stage}·不宜新开）",
             updated_at=format_china_datetime(),
             total_scanned=0,
             source="radar_leader",
-            columns=resolve_export_columns([]),
         )
 
     candidates, total_scanned = build_leader_candidate_pool(
@@ -102,11 +100,10 @@ def run_leader_screen(
     if cycle is not None:
         condition += f" · {cycle.stage_label}"
 
-    return ScreenerRunResult(
+    return build_screener_run_result(
         rows=rows,
         condition=condition,
         updated_at=format_china_datetime(),
         total_scanned=total_scanned,
         source="radar_leader",
-        columns=resolve_export_columns(rows),
     )

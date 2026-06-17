@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from vnpy_mcp.config.base import FrozenConfigModel
 
 
-@dataclass(frozen=True)
-class McpProviderMeta:
+class McpProviderMeta(FrozenConfigModel):
     provider_name: str
     title: str
     summary: str
-    env_vars: tuple[str, ...]
-    tags: tuple[str, ...]
+    env_vars: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
 
 
 BUILTIN_MCP_PROVIDERS: dict[str, McpProviderMeta] = {

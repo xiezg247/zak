@@ -6,6 +6,10 @@ import json
 import re
 from typing import Any
 
+from pydantic import Field, ValidationError
+
+from vnpy_llm.domain.base import FrozenModel
+
 TEAM_SCORE_JSON_EXAMPLE = """```json
 {
   "score": 75,
@@ -23,15 +27,32 @@ TEAM_SCORE_JSON_INSTRUCTION = (
 )
 
 
+class TeamAgentScore(FrozenModel):
+    """子 Agent 结构化评分（financial / risk / strategy 共用）。"""
+
+    score: int = Field(ge=0, le=100)
+    summary: str = ""
+    highlights: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    raw_data: dict[str, Any] = Field(default_factory=dict)
+
+
+def _coerce_team_agent_score(data: dict[str, Any]) -> dict[str, Any] | None:
+    try:
+        return TeamAgentScore.model_validate(data).model_dump(exclude_defaults=True)
+    except ValidationError:
+        return None
+
+
 def normalize_agent_score(data: dict[str, Any] | None, dimension: str) -> dict[str, Any] | None:
     """兼容扁平 score 与历史嵌套 {financial: {score}} 格式。"""
     if not data:
         return None
     nested = data.get(dimension)
     if isinstance(nested, dict) and nested.get("score") is not None:
-        return nested
+        return _coerce_team_agent_score(nested)
     if data.get("score") is not None:
-        return data
+        return _coerce_team_agent_score(data)
     return None
 
 

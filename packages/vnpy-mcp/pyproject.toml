@@ -12,6 +12,7 @@ dependencies = [
     "mcp>=1.0.0",
     "anyio>=4.12.1",
     "python-dotenv>=1.0.0",
+    "pydantic>=2.0.0",
     "vnpy-common",
 ]
 

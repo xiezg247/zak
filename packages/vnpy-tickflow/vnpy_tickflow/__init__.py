@@ -2,7 +2,8 @@
 
 from vnpy_tickflow.client import get_tickflow_client, is_free_mode, resolve_tickflow_api_key
 from vnpy_tickflow.datafeed import TickflowDatafeed
-from vnpy_tickflow.klines import MAX_BARS_PER_REQUEST, fetch_klines_paged
+from vnpy_tickflow.klines import MAX_BARS_PER_REQUEST, dataframe_to_bars, fetch_klines_paged
+from vnpy_tickflow.types import TickflowKlineRow
 from vnpy_tickflow.mapping import (
     ASHARE_EXCHANGES,
     CHINA_TZ,
@@ -21,6 +22,8 @@ __all__ = [
     "FREE_PERIODS",
     "MAX_BARS_PER_REQUEST",
     "TickflowDatafeed",
+    "TickflowKlineRow",
+    "dataframe_to_bars",
     "fetch_klines_paged",
     "get_tickflow_client",
     "interval_to_period",

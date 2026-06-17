@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from vnpy_ashare.quotes.radar.radar_models import RadarRow
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
@@ -21,7 +23,7 @@ from vnpy_ashare.screener.sector.sector_summary import attach_industry
 def build_relative_strength_subline(
     row: dict[str, Any],
     *,
-    snapshot_rows: list[dict[str, Any]] | None = None,
+    snapshot_rows: Sequence[QuoteRowLike] | None = None,
 ) -> tuple[str, str] | None:
     """返回 (sub_label, sub_value)，无有效涨幅时返回 None。"""
     change = row.get("change_pct") if row.get("change_pct") not in (None, "") else row.get("pct_chg")

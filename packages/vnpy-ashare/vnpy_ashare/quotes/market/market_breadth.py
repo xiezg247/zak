@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
 
 # 近似涨跌停阈值（未区分 ST 5% / 20% 等规则）
@@ -56,7 +58,7 @@ def _coerce_amount(row: dict[str, Any]) -> float:
 
 
 def compute_market_breadth(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     updated_at: str | None = None,
 ) -> MarketBreadthSnapshot:

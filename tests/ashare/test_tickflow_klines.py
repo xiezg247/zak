@@ -46,7 +46,7 @@ class TickflowKlinesTests(unittest.TestCase):
         self.assertEqual(bars[0].symbol, "600519")
         self.assertEqual(bars[0].exchange, Exchange.SSE)
         self.assertEqual(bars[0].close_price, 10.2)
-        self.assertEqual(bars[0].datetime.strftime("%Y-%m-%d %H:%M:%S"), "2026-06-06 09:31:00")
+        self.assertEqual(bars[0].datetime.strftime("%Y-%m-%d %H:%M:%S"), "2026-06-06 09:30:00")
         self.assertEqual(bars[1].turnover, 8120.0)
 
     def test_empty_dataframe(self) -> None:

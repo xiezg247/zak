@@ -6,7 +6,6 @@
 
 from vnpy_ashare.integrations.tickflow.depth import DepthPermissionError, fetch_depth_from_tickflow
 from vnpy_ashare.integrations.tickflow.klines import (
-    dataframe_to_bars,
     fetch_history_bars,
     fetch_intraday_bars,
     fetch_minute_bars,
@@ -22,6 +21,7 @@ from vnpy_ashare.integrations.tickflow.quotes import (
 )
 from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge, can_use_tickflow_stream
 from vnpy_ashare.integrations.tickflow.universe import UNIVERSE_ID, fetch_universe_items
+from vnpy_tickflow.klines import dataframe_to_bars
 
 __all__ = [
     "DepthPermissionError",

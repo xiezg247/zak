@@ -3,63 +3,10 @@
 from __future__ import annotations
 
 import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
-_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
-
-
-def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
-    match = _FRONTMATTER_RE.match(text)
-    if not match:
-        return {}, text.strip()
-
-    raw = match.group(1)
-    body = text[match.end() :].strip()
-    meta: dict[str, Any] = {}
-
-    for line in raw.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if ":" not in line:
-            continue
-        key, value = line.split(":", 1)
-        meta[key.strip()] = value.strip().strip('"').strip("'")
-
-    return meta, body
-
-
-def _parse_env_requirements(meta: dict[str, Any]) -> list[tuple[str, bool]]:
-    """从 frontmatter 解析所需环境变量。"""
-    required: list[tuple[str, bool]] = []
-
-    credentials = meta.get("credentials")
-    if isinstance(credentials, list):
-        for item in credentials:
-            if isinstance(item, dict) and item.get("name"):
-                required.append((str(item["name"]), True))
-
-    # tickflow metadata JSON
-    metadata_raw = meta.get("metadata")
-    if isinstance(metadata_raw, str) and "env" in metadata_raw:
-        for name in re.findall(r'"([A-Z_]+)"', metadata_raw):
-            if name.endswith("_KEY") or name.endswith("_TOKEN"):
-                required.append((name, False))
-
-    if "TUSHARE_TOKEN" in str(meta):
-        required.append(("TUSHARE_TOKEN", False))
-
-    # 去重
-    seen: set[str] = set()
-    unique: list[tuple[str, bool]] = []
-    for name, strict in required:
-        if name not in seen:
-            seen.add(name)
-            unique.append((name, strict))
-    return unique
+from vnpy_skills.domain.frontmatter import SkillFrontmatter, parse_skill_document
 
 
 @dataclass
@@ -73,7 +20,7 @@ class AgentSkill:
     version: str = ""
     skill_md: str = ""
     body: str = ""
-    frontmatter: dict[str, Any] = field(default_factory=dict)
+    frontmatter: SkillFrontmatter = field(default_factory=SkillFrontmatter)
     env_requirements: list[tuple[str, bool]] = field(default_factory=list)
 
     @classmethod
@@ -83,19 +30,19 @@ class AgentSkill:
             return None
 
         text = skill_file.read_text(encoding="utf-8")
-        meta, body = _parse_frontmatter(text)
-        name = str(meta.get("name") or root.name)
+        frontmatter, body = parse_skill_document(text)
+        name = frontmatter.name or root.name
 
         return cls(
             name=name,
             root=root.resolve(),
-            description=str(meta.get("description") or ""),
-            author=str(meta.get("author") or ""),
-            version=str(meta.get("version") or ""),
+            description=frontmatter.description,
+            author=frontmatter.author,
+            version=frontmatter.version,
             skill_md=text,
             body=body,
-            frontmatter=meta,
-            env_requirements=_parse_env_requirements(meta),
+            frontmatter=frontmatter,
+            env_requirements=frontmatter.env_requirements(),
         )
 
     @property

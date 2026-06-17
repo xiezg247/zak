@@ -5,8 +5,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
@@ -24,7 +26,7 @@ MIN_TOTAL_MV_50YI = 500_000.0
 STRONG_UP_MIN_CHANGE_PCT = 5.0
 
 
-def _quote_liquidity_key(row: dict[str, Any]) -> float:
+def _quote_liquidity_key(row: QuoteRowLike) -> float:
     """成交量优先；缺失时用成交额或总市值排序（盘后 daily_basic 常无 amount）。"""
     volume = float(row.get("volume") or 0)
     if volume > 0:
@@ -40,13 +42,13 @@ def _quote_liquidity_key(row: dict[str, Any]) -> float:
 
 def apply_quote_preset(
     preset: str,
-    quotes: list[dict[str, Any]],
+    quotes: Sequence[QuoteRowLike],
     *,
     top_n: int = 20,
     min_change_pct: float | None = None,
     max_change_pct: float | None = None,
     min_turnover: float | None = None,
-) -> list[dict[str, Any]]:
+) -> list[QuoteRowLike]:
     """对行情行应用 preset 规则，返回标准化结果行（最多 top_n 条）。"""
     preset = preset.strip()
     top_n = max(1, min(int(top_n or 20), 200))
@@ -134,7 +136,7 @@ def apply_moneyflow_in(rows: list[dict[str, Any]], *, top_n: int) -> list[dict[s
 _DISPLAY_FUNDAMENTAL_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")
 
 
-def _quote_row(row: dict[str, Any]) -> dict[str, Any]:
+def _quote_row(row: QuoteRowLike) -> dict[str, Any]:
     last_price = row.get("last_price") or row.get("close") or 0
     close = row.get("close") or last_price or 0
     result: dict[str, Any] = {

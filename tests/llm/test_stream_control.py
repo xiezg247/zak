@@ -43,7 +43,7 @@ class StreamCancelTests(unittest.TestCase):
             api_base="https://example.com/v1",
             api_key="test-key",
             model="test-model",
-            max_tokens=128,
+            max_tokens=256,
             temperature=0.7,
         )
 

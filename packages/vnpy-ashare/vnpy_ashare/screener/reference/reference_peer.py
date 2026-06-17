@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 from pydantic import Field
 
 from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_stock_industry_map
@@ -203,7 +204,7 @@ def run_reference_peer_screen(
     )
 
 
-def _resolve_industry(row: dict[str, Any], industry_map: dict[str, str]) -> str:
+def _resolve_industry(row: QuoteRowLike, industry_map: dict[str, str]) -> str:
     ts_code = str(row.get("ts_code", ""))
     industry = industry_map.get(ts_code, "").strip()
     return industry or "未知"
@@ -244,7 +245,7 @@ def _momentum_score(reference: float, candidate: float) -> float:
     return round(max(0.0, 100.0 - min(diff, 40.0) * 2.5), 1)
 
 
-def _valuation_reason(row: dict[str, Any], *, ref_pe: float, ref_mv: float) -> str:
+def _valuation_reason(row: QuoteRowLike, *, ref_pe: float, ref_mv: float) -> str:
     pe = _positive_float(row.get("pe_ttm") or row.get("pe"))
     mv = _positive_float(row.get("circ_mv") or row.get("total_mv"))
     pe_text = f"PE {pe:.1f}" if pe > 0 else "PE —"

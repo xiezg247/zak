@@ -118,3 +118,9 @@ def coerce_screener_result_rows(
 
 # 选股结果行边界类型（结构化行或 plain mapping）
 ScreeningRowLike = ScreenerResultRow | Mapping[str, Any]
+
+
+def screening_row_to_dict(row: ScreeningRowLike) -> dict[str, Any]:
+    if isinstance(row, ScreenerResultRow):
+        return row.to_dict()
+    return dict(row)

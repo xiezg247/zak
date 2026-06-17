@@ -13,6 +13,7 @@ from vnpy_ashare.config.constants.recipe import (
 )
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.env import env_str
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_to_dict
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.moneyflow_kind import (
     enrich_moneyflow_row_with_kind,
@@ -27,8 +28,7 @@ from vnpy_ashare.screener.dimensions.registry import run_dimension, scoring_dime
 from vnpy_ashare.screener.dimensions.volume_dedup import apply_volume_liquidity_dedup
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.recipe.recipe import RECIPE_EMOTION_GATE_ONLY, DimensionSpec, ScreenRecipe, resolve_recipe
-from vnpy_ashare.screener.run.export import resolve_export_columns
-from vnpy_ashare.screener.run.runner import ScreenerRunResult
+from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.screener.sentiment.emotion_gate import apply_emotion_gate_only_finalize
 from vnpy_ashare.screener.sentiment.sentiment_gate import (
     apply_sentiment_modulation,
@@ -111,7 +111,10 @@ def run_recipe_object(
         ),
         reverse=True,
     )
-    merged_rows = apply_recipe_filters(merged_rows)
+    merged_rows = [
+        quote_row_to_dict(row) if isinstance(row, QuoteRow) else dict(row)
+        for row in apply_recipe_filters(merged_rows)
+    ]
     use_sentiment = sentiment_gate_enabled() and (
         recipe.trigger_kind == "intraday"
         or any(spec.dimension_id == "sentiment_gate" for spec in recipe.dimensions)
@@ -130,13 +133,12 @@ def run_recipe_object(
     if gate_meta and gate_meta.get("gate_message"):
         condition += f" · {gate_meta['gate_message']}"
 
-    return ScreenerRunResult(
+    return build_screener_run_result(
         rows=rows,
         condition=condition,
         updated_at=now,
         total_scanned=total_scanned,
         source="recipe",
-        columns=resolve_export_columns(rows),
     )
 
 

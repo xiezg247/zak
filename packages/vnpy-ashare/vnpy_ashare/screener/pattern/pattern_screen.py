@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from pydantic import Field
@@ -15,6 +15,8 @@ from vnpy.trader.object import BarData
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
@@ -22,8 +24,7 @@ from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.pattern.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.preset.rules import apply_quote_preset
-from vnpy_ashare.screener.run.export import resolve_export_columns
-from vnpy_ashare.screener.run.runner import ScreenerRunResult
+from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 
 MAX_PATTERN_SCAN = 1200
 
@@ -110,7 +111,7 @@ def run_pattern_screen(
     *,
     top_n: int = 20,
     load_bars: Callable[[str, Exchange], list[BarData]] | None = None,
-    quote_rows: list[dict[str, Any]] | None = None,
+    quote_rows: Sequence[QuoteRowLike] | None = None,
     max_scan: int = MAX_PATTERN_SCAN,
 ) -> ScreenerRunResult:
     """扫描本地日 K（或行情快照）执行形态选股。
@@ -139,13 +140,12 @@ def run_pattern_screen(
             )
             row["pattern_hint"] = "高换手 + 涨幅活跃"
         rows.sort(key=lambda item: float(item.get("pattern_score") or 0), reverse=True)
-        return ScreenerRunResult(
-            rows=rows[:top_n],
+        return build_screener_run_result(
+            rows=coerce_screener_result_rows(rows[:top_n]),
             condition=f"形态 · {label}",
             updated_at=format_china_datetime(),
             total_scanned=len(quote_rows),
             source="quote",
-            columns=resolve_export_columns(rows),
         )
 
     matcher = PATTERN_MATCHERS.get(pattern_id)
@@ -184,13 +184,12 @@ def run_pattern_screen(
 
     hits.sort(key=lambda pair: pair[0], reverse=True)
     rows = apply_screening_filters([row for _, row in hits])[:top_n]
-    return ScreenerRunResult(
-        rows=rows,
+    return build_screener_run_result(
+        rows=coerce_screener_result_rows(rows),
         condition=f"形态 · {label}",
         updated_at=format_china_datetime(),
         total_scanned=scanned,
         source="bar",
-        columns=resolve_export_columns(rows),
     )
 
 

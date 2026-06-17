@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from vnpy_llm.domain.base import FrozenModel
 
 IntentCategory = Literal[
     "general",
@@ -29,7 +31,7 @@ BacktestAction = Literal[
 ]
 
 
-class ScreeningIntent(BaseModel):
+class ScreeningIntent(FrozenModel):
     """选股意图结构化字段，供 run_recipe / screen_by_condition 路由预填。"""
 
     intent: str = Field(description="用户原话或归纳后的选股意图")
@@ -55,7 +57,7 @@ class ScreeningIntent(BaseModel):
     clarifying_questions: list[str] = Field(default_factory=list)
 
 
-class BacktestIntent(BaseModel):
+class BacktestIntent(FrozenModel):
     """回测相关意图结构化字段。"""
 
     action: BacktestAction = Field(
@@ -67,7 +69,7 @@ class BacktestIntent(BaseModel):
     confidence: Confidence = "medium"
 
 
-class IntentRoute(BaseModel):
+class IntentRoute(FrozenModel):
     """第一阶段意图路由：分类结果。"""
 
     category: IntentCategory
@@ -78,7 +80,7 @@ class IntentRoute(BaseModel):
 FearGreedEnrichment = Literal["skip", "consider", "highlight"]
 
 
-class MarketEnrichment(BaseModel):
+class MarketEnrichment(FrozenModel):
     """恐贪指数 enrichment 三档（由分类器 + 规则归一化）。"""
 
     fear_greed: FearGreedEnrichment = Field(
@@ -88,7 +90,7 @@ class MarketEnrichment(BaseModel):
     reasoning: str = ""
 
 
-class IntentAnalysis(BaseModel):
+class IntentAnalysis(FrozenModel):
     """单次 LLM 结构化输出：路由 + 域内意图 + 市场 enrichment。"""
 
     route: IntentRoute

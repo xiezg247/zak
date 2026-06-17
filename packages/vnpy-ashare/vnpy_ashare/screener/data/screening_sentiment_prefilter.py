@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.domain.market.quote_row import coerce_quote_rows
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
 from vnpy_ashare.screener.data.screening_context import ScreeningContext
 from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter
@@ -15,7 +16,7 @@ def apply_sentiment_prefilter_to_context(ctx: ScreeningContext) -> None:
     if len(filtered) == len(snapshot.rows):
         return
     ctx._snapshot = MarketQuotesSnapshot(
-        rows=filtered,
+        rows=coerce_quote_rows(filtered),
         updated_at=snapshot.updated_at,
         total=snapshot.total,
         source=snapshot.source,

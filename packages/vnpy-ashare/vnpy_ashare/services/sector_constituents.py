@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowRow
 from vnpy_ashare.integrations.tushare.concept_board import (
     fetch_ths_concept_index_map,
@@ -12,13 +14,14 @@ from vnpy_ashare.integrations.tushare.concept_board import (
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
-def _row_to_constituent(row: dict[str, Any]) -> SectorConstituentRow | None:
-    vt_symbol = str(row.get("vt_symbol") or "").strip()
+def _row_to_constituent(row: QuoteRowLike) -> SectorConstituentRow | None:
+    payload = quote_row_to_dict(row)
+    vt_symbol = str(payload.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None
-    name = str(row.get("name") or vt_symbol.split(".")[0]).strip()
-    change_pct = float(row.get("change_pct") or 0)
-    net_mf_wan = float(row.get("net_mf_amount") or 0)
+    name = str(payload.get("name") or vt_symbol.split(".")[0]).strip()
+    change_pct = float(payload.get("change_pct") or 0)
+    net_mf_wan = float(payload.get("net_mf_amount") or 0)
     return SectorConstituentRow(
         vt_symbol=vt_symbol,
         name=name,
@@ -39,7 +42,7 @@ def _resolve_concept_vt_symbols(sector: SectorFlowRow) -> set[str]:
 
 
 def _filter_industry_rows(
-    quote_rows: list[dict[str, Any]],
+    quote_rows: Sequence[QuoteRowLike],
     industry: str,
     *,
     industry_map: dict[str, str] | None,
@@ -54,7 +57,7 @@ def resolve_concept_vt_symbols(sector: SectorFlowRow) -> set[str]:
 
 def load_sector_leaders(
     sector: SectorFlowRow,
-    quote_rows: list[dict[str, Any]],
+    quote_rows: Sequence[QuoteRowLike],
     *,
     industry_map: dict[str, str] | None = None,
     limit: int = 5,
@@ -63,7 +66,11 @@ def load_sector_leaders(
     if sector.sector_kind == "concept":
         vt_symbols = _resolve_concept_vt_symbols(sector)
         if vt_symbols:
-            matched = [row for row in quote_rows if str(row.get("vt_symbol") or "") in vt_symbols]
+            matched = [
+                row
+                for row in quote_rows
+                if str(quote_row_to_dict(row).get("vt_symbol") or "") in vt_symbols
+            ]
         else:
             matched = []
     else:
@@ -73,8 +80,8 @@ def load_sector_leaders(
     ranked = sorted(
         matched,
         key=lambda item: (
-            float(item.get("change_pct") or 0),
-            float(item.get("net_mf_amount") or 0),
+            float(quote_row_to_dict(item).get("change_pct") or 0),
+            float(quote_row_to_dict(item).get("net_mf_amount") or 0),
         ),
         reverse=True,
     )

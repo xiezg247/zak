@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import traceback
 from glob import glob
 from pathlib import Path
@@ -14,9 +15,11 @@ from types import ModuleType
 from typing import Any
 
 from dotenv import load_dotenv
+from pydantic import ValidationError
 
 from vnpy_common.paths import ENV_FILE, PROJECT_ROOT
 from vnpy_skills.agent import AGENT_TOOL_SPECS, AgentSkill, read_skill_file, run_python_in_skill
+from vnpy_skills.agent.args import ListSkillFilesArgs, ReadSkillFileArgs, RunPythonArgs
 from vnpy_skills.domain import SkillTemplate, ToolSpec
 
 APP_NAME = "Skills"
@@ -181,24 +184,47 @@ class SkillEngine:
         return self.instances[owner].call_tool(name, arguments)
 
     def _execute_agent_tool(self, name: str, arguments: dict[str, Any]) -> str:
-        skill_name = str(arguments.get("skill", "")).strip()
-        skill = self.agent_skills.get(skill_name)
+        try:
+            if name == "read_skill_file":
+                args = ReadSkillFileArgs.model_validate(arguments)
+            elif name == "list_skill_files":
+                args = ListSkillFilesArgs.model_validate(arguments)
+            elif name == "run_python":
+                args = RunPythonArgs.model_validate(arguments)
+            else:
+                return f'{{"error": "未知 Agent 工具: {name}"}}'
+        except ValidationError as ex:
+            return json.dumps(
+                {
+                    "error": "参数错误",
+                    "details": ex.errors(include_url=False),
+                    "suggestion": "请检查 skill / path / code / script_path 等字段格式",
+                },
+                ensure_ascii=False,
+            )
+
+        skill = self.agent_skills.get(args.skill)
         if skill is None:
-            return f'{{"error": "未知 skill: {skill_name}，已加载: {list(self.agent_skills.keys())}"}}'
+            return json.dumps(
+                {
+                    "error": f"未知 skill: {args.skill}",
+                    "loaded": list(self.agent_skills.keys()),
+                },
+                ensure_ascii=False,
+            )
 
         if name == "read_skill_file":
-            path = str(arguments.get("path", "")).strip()
-            return read_skill_file(skill, path)
+            assert isinstance(args, ReadSkillFileArgs)
+            return read_skill_file(skill, args.path)
 
         if name == "list_skill_files":
-            subdir = str(arguments.get("subdir", "")).strip()
-            files = skill.list_files(subdir)
+            assert isinstance(args, ListSkillFilesArgs)
+            files = skill.list_files(args.subdir)
             return "\n".join(files) if files else "(无文件)"
 
         if name == "run_python":
-            code = str(arguments.get("code", ""))
-            script_path = str(arguments.get("script_path", ""))
-            return run_python_in_skill(skill, code, script_path=script_path)
+            assert isinstance(args, RunPythonArgs)
+            return run_python_in_skill(skill, args.code, script_path=args.script_path)
 
         return f'{{"error": "未知 Agent 工具: {name}"}}'
 

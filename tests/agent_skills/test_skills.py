@@ -21,6 +21,9 @@ class AgentSkillTests(unittest.TestCase):
         assert skill is not None
         self.assertEqual(skill.name, "tushare-data")
         self.assertIn("Tushare", skill.description)
+        env = dict(skill.env_requirements)
+        self.assertIn("TUSHARE_TOKEN", env)
+        self.assertTrue(env["TUSHARE_TOKEN"])
 
     def test_parse_tickflow_if_synced(self) -> None:
         root = PROJECT_ROOT / "skills" / "tickflow"
@@ -29,6 +32,8 @@ class AgentSkillTests(unittest.TestCase):
         skill = AgentSkill.from_directory(root)
         assert skill is not None
         self.assertEqual(skill.name, "tickflow")
+        env = dict(skill.env_requirements)
+        self.assertIn("TICKFLOW_API_KEY", env)
 
     def test_read_reference_if_synced(self) -> None:
         root = PROJECT_ROOT / "skills" / "tushare-data"

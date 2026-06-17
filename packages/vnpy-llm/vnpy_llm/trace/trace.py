@@ -5,50 +5,34 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
+
+from vnpy_llm.domain.trace import TraceKind, TraceStatus, TraceStep, TurnStatus, TurnTrace
 
 if TYPE_CHECKING:
     from vnpy_llm.trace.persistence import TracePersistence
 
-TraceKind = Literal["routing", "tool", "reply", "error", "handoff", "team"]
-TraceStatus = Literal["running", "ok", "error"]
-TurnStatus = Literal["running", "ok", "error"]
-
 _PREVIEW_MAX = 600
+
+__all__ = [
+    "TraceKind",
+    "TraceStatus",
+    "TraceStep",
+    "TurnStatus",
+    "TurnTrace",
+    "TraceStore",
+    "map_turns_to_user_messages",
+    "preview_text",
+    "step_from_dict",
+    "step_to_dict",
+    "turn_from_dict",
+    "turn_to_dict",
+]
 
 
 def _now_str() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-@dataclass
-class TraceStep:
-    """单步 Trace（路由 / 工具 / 回复 / 错误）。"""
-
-    id: str
-    turn_id: str
-    kind: TraceKind
-    name: str
-    status: TraceStatus
-    summary: str
-    detail: dict[str, Any] = field(default_factory=dict)
-    started_at: float = 0.0
-    duration_ms: int | None = None
-
-
-@dataclass
-class TurnTrace:
-    """一轮用户提问的完整 Trace（含多个 Step）。"""
-
-    turn_id: str
-    session_id: str
-    user_text: str
-    status: TurnStatus = "running"
-    steps: list[TraceStep] = field(default_factory=list)
-    started_at: float = 0.0
-    created_at: str = ""
 
 
 def preview_text(text: str, *, limit: int = _PREVIEW_MAX) -> str:
@@ -93,55 +77,22 @@ def map_turns_to_user_messages(
 
 def step_to_dict(step: TraceStep) -> dict[str, Any]:
     """TraceStep → SQLite 持久化 dict。"""
-    return {
-        "id": step.id,
-        "turn_id": step.turn_id,
-        "kind": step.kind,
-        "name": step.name,
-        "status": step.status,
-        "summary": step.summary,
-        "detail": step.detail,
-        "duration_ms": step.duration_ms,
-    }
+    return step.persist_dict()
 
 
 def step_from_dict(data: dict[str, Any]) -> TraceStep:
     """dict → TraceStep。"""
-    return TraceStep(
-        id=str(data["id"]),
-        turn_id=str(data["turn_id"]),
-        kind=data["kind"],
-        name=str(data["name"]),
-        status=data["status"],
-        summary=str(data.get("summary", "")),
-        detail=dict(data.get("detail") or {}),
-        duration_ms=data.get("duration_ms"),
-    )
+    return TraceStep.model_validate(data)
 
 
 def turn_to_dict(turn: TurnTrace) -> dict[str, Any]:
     """TurnTrace → SQLite 持久化 dict。"""
-    return {
-        "turn_id": turn.turn_id,
-        "session_id": turn.session_id,
-        "user_text": turn.user_text,
-        "status": turn.status,
-        "created_at": turn.created_at,
-        "steps": [step_to_dict(step) for step in turn.steps],
-    }
+    return turn.persist_dict()
 
 
 def turn_from_dict(data: dict[str, Any]) -> TurnTrace:
     """dict → TurnTrace。"""
-    steps = [step_from_dict(item) for item in (data.get("steps") or [])]
-    return TurnTrace(
-        turn_id=str(data["turn_id"]),
-        session_id=str(data["session_id"]),
-        user_text=str(data.get("user_text", "")),
-        status=data.get("status", "ok"),
-        steps=steps,
-        created_at=str(data.get("created_at") or ""),
-    )
+    return TurnTrace.from_persist_dict(data)
 
 
 class TraceStore:

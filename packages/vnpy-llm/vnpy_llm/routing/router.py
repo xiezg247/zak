@@ -7,9 +7,8 @@ import re
 from dataclasses import dataclass
 from typing import Any, TypeVar, cast
 
-from pydantic import BaseModel
-
 from vnpy_llm.chat.client import LlmClientError, create_openai_client
+from vnpy_llm.domain.base import FrozenModel
 from vnpy_llm.config.settings import LlmConfig
 from vnpy_llm.routing.intent import (
     BacktestAction,
@@ -606,7 +605,7 @@ def _keyword_fallback(user_text: str, page: str) -> IntentAnalysis | None:
     return None
 
 
-_TModel = TypeVar("_TModel", bound=BaseModel)
+_TModel = TypeVar("_TModel", bound=FrozenModel)
 
 
 def _structured_parse(config: LlmConfig, messages: list[dict[str, str]], model_type: type[_TModel]) -> _TModel:

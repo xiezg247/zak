@@ -9,8 +9,7 @@ from vnpy_ashare.quotes.radar.radar_resonance_store import (
     get_radar_resonance_entries,
     radar_resonance_updated_at,
 )
-from vnpy_ashare.screener.run.export import resolve_export_columns
-from vnpy_ashare.screener.run.runner import ScreenerRunResult
+from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 
 
 def resonance_entries_to_rows(entries: tuple[RadarResonanceEntry, ...]) -> list[dict[str, Any]]:
@@ -42,11 +41,10 @@ def run_radar_resonance_screen(*, top_n: int = 50) -> ScreenerRunResult:
     top_n = max(1, min(int(top_n or 50), 200))
     sliced = entries[:top_n]
     rows = resonance_entries_to_rows(sliced)
-    return ScreenerRunResult(
+    return build_screener_run_result(
         rows=rows,
         condition="雷达共振",
         updated_at=radar_resonance_updated_at(),
         total_scanned=len(entries),
         source="radar",
-        columns=resolve_export_columns(rows),
     )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.core.numbers import float_or_none
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.quotes.format import format_pct
@@ -80,7 +81,7 @@ def enrich_quotes_with_moneyflow(
     return enriched
 
 
-def moneyflow_score_boost(row: dict[str, Any]) -> float:
+def moneyflow_score_boost(row: QuoteRowLike) -> float:
     merged = merge_row_quotes(row)
     net_mf = float_or_none(merged.get("net_mf_amount"))
     if net_mf is None or net_mf <= 0:
@@ -88,7 +89,7 @@ def moneyflow_score_boost(row: dict[str, Any]) -> float:
     return min(net_mf / 3000.0, 12.0)
 
 
-def watchlist_moneyflow_metric(row: dict[str, Any]) -> tuple[str, str, str, str] | None:
+def watchlist_moneyflow_metric(row: QuoteRowLike) -> tuple[str, str, str, str] | None:
     """有主力净流入时返回 (主指标, 主值, 副标签, 副值)。"""
     merged = merge_row_quotes(row)
     net_mf = float_or_none(merged.get("net_mf_amount"))

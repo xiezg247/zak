@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.domain.screener.result_row import ScreeningRowLike
 from vnpy_ashare.screener.data.screening_status import (
     ScreeningDataStatus,
     build_run_insight_detail,
@@ -123,7 +124,7 @@ class ScreenerResultInsights(QtWidgets.QWidget):
         if emit and changed:
             self.expansion_changed.emit(expanded)
 
-    def apply(self, rows: list[dict[str, Any]], config: dict[str, Any] | None = None) -> None:
+    def apply(self, rows: Sequence[ScreeningRowLike], config: dict[str, Any] | None = None) -> None:
         text = build_run_insight_detail(rows, config)
         self._summary_text = text
         self._label.setText(text)

@@ -6,9 +6,61 @@ import unittest
 from unittest.mock import MagicMock
 
 import pandas as pd
+from vnpy.trader.constant import Exchange, Interval
 
 import tests._bootstrap  # noqa: F401
-from vnpy_tickflow.klines import MAX_BARS_PER_REQUEST, fetch_klines_paged
+from vnpy_tickflow.klines import MAX_BARS_PER_REQUEST, dataframe_to_bars, fetch_klines_paged
+
+
+class DataframeToBarsTests(unittest.TestCase):
+    def test_trade_time_minute_adjustment(self) -> None:
+        df = pd.DataFrame(
+            [
+                {
+                    "trade_time": "2026-06-06 09:31:00",
+                    "open": 10.0,
+                    "high": 10.5,
+                    "low": 9.8,
+                    "close": 10.2,
+                    "volume": 1000,
+                    "amount": 10200.0,
+                }
+            ]
+        )
+        bars = dataframe_to_bars(
+            df,
+            symbol="600519",
+            exchange=Exchange.SSE,
+            interval=Interval.MINUTE,
+        )
+        self.assertEqual(len(bars), 1)
+        self.assertEqual(bars[0].datetime.strftime("%Y-%m-%d %H:%M:%S"), "2026-06-06 09:30:00")
+        self.assertEqual(bars[0].turnover, 10200.0)
+
+    def test_skips_nan_open(self) -> None:
+        df = pd.DataFrame([{"timestamp": 1000, "open": float("nan"), "close": 1.0}])
+        bars = dataframe_to_bars(
+            df,
+            symbol="600519",
+            exchange=Exchange.SSE,
+            interval=Interval.DAILY,
+        )
+        self.assertEqual(bars, [])
+
+    def test_sorts_by_datetime(self) -> None:
+        df = pd.DataFrame(
+            [
+                {"timestamp": 2000, "open": 2.0, "high": 2.0, "low": 2.0, "close": 2.0},
+                {"timestamp": 1000, "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0},
+            ]
+        )
+        bars = dataframe_to_bars(
+            df,
+            symbol="600519",
+            exchange=Exchange.SSE,
+            interval=Interval.DAILY,
+        )
+        self.assertLess(bars[0].datetime, bars[1].datetime)
 
 
 class KlinesPagedTests(unittest.TestCase):

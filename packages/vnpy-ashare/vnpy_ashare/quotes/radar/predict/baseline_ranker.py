@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from collections.abc import Sequence
 
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
     market_benchmark_change_pct,
@@ -52,12 +53,12 @@ def _sigmoid_p_up(score: float) -> float:
     return _clamp(1.0 / (1.0 + math.exp(-x)), 0.05, 0.95)
 
 
-def _prepare_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _prepare_rows(rows: Sequence[QuoteRowLike]) -> Sequence[QuoteRowLike]:
     industry_map = get_stock_industry_map()
     enriched = attach_industry(rows, industry_map=industry_map)
     market_benchmark = market_benchmark_change_pct(enriched or rows)
     industry_avg = industry_avg_change_map(enriched)
-    prepared: list[dict[str, Any]] = []
+    prepared: Sequence[QuoteRowLike] = []
     for row in enriched:
         merged = dict(row)
         rs, _basis = resolve_relative_strength(
@@ -73,7 +74,7 @@ def _prepare_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return prepared
 
 
-def rank_baseline_predict(rows: list[dict[str, Any]]) -> list[BaselinePredictHit]:
+def rank_baseline_predict(rows: Sequence[QuoteRowLike]) -> list[BaselinePredictHit]:
     """对候选池做截面百分位加权，返回按 score 降序的预测命中。"""
     prepared = _prepare_rows(rows)
     if not prepared:

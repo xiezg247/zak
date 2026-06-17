@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, datetime
 from typing import Any
 
@@ -29,6 +30,7 @@ from vnpy_ashare.domain.core.env import (
     env_or_prefs_str,
 )
 from vnpy_ashare.domain.market.board import matches_board
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol, vt_symbol_to_ts_code
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.factors import (
@@ -125,7 +127,7 @@ def _names_for_st_check(row: dict[str, Any], name_map: dict[str, str] | None) ->
     return candidates
 
 
-def row_amount_yuan(row: dict[str, Any]) -> float:
+def row_amount_yuan(row: QuoteRowLike) -> float:
     amount = row.get("amount")
     if amount not in (None, ""):
         return float(amount or 0)
@@ -137,7 +139,7 @@ def row_amount_yuan(row: dict[str, Any]) -> float:
     return 0.0
 
 
-def row_symbol_exchange(row: dict[str, Any]) -> tuple[str, str] | None:
+def row_symbol_exchange(row: QuoteRowLike) -> tuple[str, str] | None:
     symbol = str(row.get("symbol") or "").strip()
     exchange = str(row.get("exchange") or "").strip()
     if symbol and exchange:
@@ -223,7 +225,7 @@ def _industry_map_for_screening() -> dict[str, str]:
     return mapping
 
 
-def row_symbol(row: dict[str, Any]) -> str:
+def row_symbol(row: QuoteRowLike) -> str:
     symbol = str(row.get("symbol") or "").strip()
     if symbol:
         return symbol
@@ -310,7 +312,7 @@ def is_at_limit_board(row: dict[str, Any], market_board_map: dict[str, str] | No
     return change >= threshold or change <= -threshold
 
 
-def passes_liquidity_filter(row: dict[str, Any]) -> bool:
+def passes_liquidity_filter(row: QuoteRowLike) -> bool:
     """成交额或总市值（小资金）达标；无相关字段时不排除。"""
     min_amount = recipe_min_amount_yuan()
     min_mv = recipe_min_total_mv_wan()
@@ -366,7 +368,7 @@ def passes_screening_hard_filter(
     return passes_liquidity_filter(row)
 
 
-def apply_recipe_filters(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def apply_recipe_filters(rows: Sequence[QuoteRowLike]) -> list[QuoteRowLike]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
     allowed_industries = recipe_allowed_industries()
     allowed_market_boards = recipe_allowed_market_boards()

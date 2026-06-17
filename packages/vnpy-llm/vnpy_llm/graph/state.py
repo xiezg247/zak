@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, Field
 
+from vnpy_llm.domain.base import FrozenModel, MutableModel
 from vnpy_llm.routing.intent import (
     BacktestIntent,
     IntentAnalysis,
@@ -61,7 +62,7 @@ AGENT_STREAM_LABELS: dict[AgentName, str] = {
 }
 
 
-class SupervisorDecision(BaseModel):
+class SupervisorDecision(FrozenModel):
     """Supervisor 委派结果（意图路由 + handoff 规则）。"""
 
     target_agent: AgentName
@@ -72,8 +73,10 @@ class SupervisorDecision(BaseModel):
     handoff_reason: str = ""
 
 
-class GraphStreamContext(BaseModel):
+class GraphStreamContext(MutableModel):
     """Runner 拼装各 Agent system prompt 的共享上下文（每轮用户消息构建一次）。"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     analysis: IntentAnalysis
     user_text: str
@@ -86,5 +89,3 @@ class GraphStreamContext(BaseModel):
     strategy_prompt: str = ""
     team_prefetch: dict[str, Any] | None = None
     team_scores: dict[str, Any] | None = None
-
-    model_config = {"arbitrary_types_allowed": True}

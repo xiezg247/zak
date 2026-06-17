@@ -24,6 +24,7 @@ from vnpy_ashare.app.events import (
     FillRecipeRequest,
     OrbAttentionRequest,
 )
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.data.screening_status import build_run_insight_detail, recipe_uses_live_quotes
 from vnpy_ashare.screener.recipe.recipe import TriggerKind
 from vnpy_ashare.screener.run.run_diff import enrich_condition_run, enrich_recipe_run
@@ -94,7 +95,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._download_worker: ScreenerBatchDownloadWorker | None = None
         self._batch_backtest_flow: BatchBacktestFlow | None = None
         self._retired_workers: list[QtCore.QThread] = []
-        self._results: list[dict[str, Any]] = []
+        self._results: list[ScreenerResultRow] = []
         self._result_columns: list[tuple[str, str]] = []
         self._loaded_run_id: str | None = None
         self._watchlist_service = get_watchlist_service(main_engine)
@@ -614,7 +615,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         result: ScreenerRunResult,
         *,
         prefix: str = "",
-        rows: list[dict[str, Any]] | None = None,
+        rows: list[ScreenerResultRow] | None = None,
         config: dict[str, Any] | None = None,
     ) -> str:
         service = self._screening_service()

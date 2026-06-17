@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
@@ -108,7 +110,7 @@ def _try_quote_snapshot() -> MarketQuotesSnapshot | None:
         return None
 
 
-def _quote_map_from_snapshot(snapshot: MarketQuotesSnapshot | None) -> dict[str, dict[str, Any]]:
+def _quote_map_from_snapshot(snapshot: MarketQuotesSnapshot | None) -> dict[str, QuoteRow]:
     if snapshot is None:
         return {}
     return quote_rows_by_vt_symbol(snapshot.rows)
@@ -132,7 +134,7 @@ def _intraday_hits(
 
 def _post_close_tushare_hits(
     pool_size: int,
-    quote_map: dict[str, dict[str, Any]],
+    quote_map: dict[str, QuoteRow],
     *,
     weight: float,
     total: int,
@@ -200,7 +202,7 @@ def _turnover_proxy_hits(
 
 def _hits_from_mcp_map(
     flow_map: dict[str, float],
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     pool_size: int,
     *,
     weight: float,
@@ -212,7 +214,7 @@ def _hits_from_mcp_map(
         base = row_by_vt.get(vt_symbol)
         if base is None:
             continue
-        merged = dict(base)
+        merged = quote_row_to_dict(base)
         merged["net_mf_amount"] = amount
         hits.append(
             DimensionHit(
@@ -243,24 +245,25 @@ def _proxy_liquidity_score(row: dict[str, Any]) -> float:
 
 
 def _hits_from_proxy(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     pool_size: int,
     *,
     weight: float,
 ) -> list[DimensionHit]:
     scored: list[tuple[dict[str, Any], float]] = []
     for row in rows:
-        score = _proxy_liquidity_score(row)
+        payload = quote_row_to_dict(row)
+        score = _proxy_liquidity_score(payload)
         if score <= 0:
             continue
-        scored.append((row, score))
+        scored.append((payload, score))
     scored.sort(key=lambda item: item[1], reverse=True)
     hits: list[DimensionHit] = []
-    for index, (row, _proxy) in enumerate(scored[:pool_size], start=1):
-        vt_symbol = str(row.get("vt_symbol") or "")
+    for index, (payload, _proxy) in enumerate(scored[:pool_size], start=1):
+        vt_symbol = str(payload.get("vt_symbol") or "")
         if not vt_symbol:
             continue
-        amount = float(row.get("amount") or 0) / 1e4
+        amount = float(payload.get("amount") or 0) / 1e4
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
@@ -268,16 +271,17 @@ def _hits_from_proxy(
                 label=_INTRADAY_LABEL,
                 weight=weight,
                 score=rank_score(index, min(len(scored), pool_size)),
-                reason=(f"盘中资金：涨幅 {float(row.get('change_pct') or 0):+.2f}% + 成交额 {amount:,.0f} 万（代理），排名第 {index}"),
-                row={**dict(row), "moneyflow_proxy": True},
+                reason=(f"盘中资金：涨幅 {float(payload.get('change_pct') or 0):+.2f}% + 成交额 {amount:,.0f} 万（代理），排名第 {index}"),
+                row={**payload, "moneyflow_proxy": True},
             )
         )
     return hits
 
 
-def _merge_quote_fields(row: dict[str, Any], quote_row: dict[str, Any] | None) -> dict[str, Any]:
+def _merge_quote_fields(row: dict[str, Any], quote_row: QuoteRowLike | None) -> dict[str, Any]:
     item = dict(row)
-    if quote_row:
+    if quote_row is not None:
+        quote_payload = quote_row_to_dict(quote_row)
         for key in (
             "change_pct",
             "pct_chg",
@@ -288,7 +292,7 @@ def _merge_quote_fields(row: dict[str, Any], quote_row: dict[str, Any] | None) -
             "volume",
             "name",
         ):
-            value = quote_row.get(key)
+            value = quote_payload.get(key)
             if value not in (None, ""):
                 item[key] = value
     return item
@@ -296,7 +300,7 @@ def _merge_quote_fields(row: dict[str, Any], quote_row: dict[str, Any] | None) -
 
 def _enrich_hits_with_kind(
     hits: list[DimensionHit],
-    quote_map: dict[str, dict[str, Any]],
+    quote_map: dict[str, QuoteRow],
 ) -> list[DimensionHit]:
     enriched: list[DimensionHit] = []
     for hit in hits:

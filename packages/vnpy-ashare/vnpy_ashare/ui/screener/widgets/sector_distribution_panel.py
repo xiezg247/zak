@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.domain.screener.result_row import ScreeningRowLike, screening_row_to_dict
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
 
 
@@ -31,9 +33,10 @@ class SectorDistributionPanel(QtWidgets.QWidget):
 
         self.hide()
 
-    def apply_rows(self, rows: list[dict[str, Any]], *, top_n: int = 6) -> None:
+    def apply_rows(self, rows: Sequence[ScreeningRowLike], *, top_n: int = 6) -> None:
+        dict_rows = [screening_row_to_dict(row) for row in rows]
         stats = compute_sector_distribution(
-            attach_industry(rows),
+            attach_industry(dict_rows),
             top_n=top_n,
             min_stocks=1,
         )

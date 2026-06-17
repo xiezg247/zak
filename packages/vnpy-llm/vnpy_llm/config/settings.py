@@ -3,22 +3,23 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
+from pydantic import Field
+
+from vnpy_llm.domain.base import FrozenModel
 
 DEFAULT_MODEL = "deepseek-v4-pro"
 DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
 
 
-@dataclass(frozen=True)
-class LlmConfig:
-    api_base: str
-    api_key: str
-    model: str
-    max_tokens: int
-    temperature: float
+class LlmConfig(FrozenModel):
+    api_base: str = DEFAULT_BASE_URL
+    api_key: str = ""
+    model: str = DEFAULT_MODEL
+    max_tokens: int = Field(default=4096, ge=256, le=128_000)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
 
     @property
     def configured(self) -> bool:
@@ -47,10 +48,12 @@ def load_llm_config() -> LlmConfig:
         load_dotenv(env_file)
     else:
         load_dotenv()
-    return LlmConfig(
-        api_base=os.getenv("LLM_API_BASE", DEFAULT_BASE_URL).strip() or DEFAULT_BASE_URL,
-        api_key=os.getenv("LLM_API_KEY", "").strip(),
-        model=os.getenv("LLM_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL,
-        max_tokens=int(os.getenv("LLM_MAX_TOKENS", "4096")),
-        temperature=float(os.getenv("LLM_TEMPERATURE", "0.7")),
+    return LlmConfig.model_validate(
+        {
+            "api_base": os.getenv("LLM_API_BASE", DEFAULT_BASE_URL).strip() or DEFAULT_BASE_URL,
+            "api_key": os.getenv("LLM_API_KEY", "").strip(),
+            "model": os.getenv("LLM_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL,
+            "max_tokens": os.getenv("LLM_MAX_TOKENS", "4096"),
+            "temperature": os.getenv("LLM_TEMPERATURE", "0.7"),
+        }
     )

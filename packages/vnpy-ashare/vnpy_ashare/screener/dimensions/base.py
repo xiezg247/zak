@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import Field
 
 from vnpy_ashare.domain.base import MutableModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.screener.dimensions.scoring import blended_score, rank_score
 
 
@@ -23,7 +25,7 @@ class DimensionHit(MutableModel):
 
 
 def quote_hits(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     dimension_id: str,
     label: str,

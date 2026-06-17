@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.integrations.tickflow import fetch_index_ticker
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
@@ -35,7 +37,7 @@ class MarketOverviewData(FrozenModel):
     limit_ladder_counts: dict[str, int] | None = Field(default=None, description="涨跌停梯队统计")
 
 
-def _quote_rows_for_overview() -> tuple[list[dict[str, Any]], str | None]:
+def _quote_rows_for_overview() -> tuple[list[QuoteRowLike], str | None]:
     cached = get_market_quotes_cache()
     if cached:
         return cached, None
@@ -46,7 +48,7 @@ def _quote_rows_for_overview() -> tuple[list[dict[str, Any]], str | None]:
     return snapshot.rows, snapshot.updated_at
 
 
-def load_sector_ranks(rows: list[dict[str, Any]], *, top_n: int = SECTOR_TOP_N) -> list[SectorRankItem]:
+def load_sector_ranks(rows: Sequence[QuoteRowLike], *, top_n: int = SECTOR_TOP_N) -> list[SectorRankItem]:
     """按行业平均涨幅排序，返回 Top N。"""
     if not rows:
         return []
@@ -64,7 +66,7 @@ def load_sector_ranks(rows: list[dict[str, Any]], *, top_n: int = SECTOR_TOP_N) 
     ]
 
 
-def _load_breadth(rows: list[dict[str, Any]], *, updated_at: str | None) -> MarketBreadthSnapshot | None:
+def _load_breadth(rows: Sequence[QuoteRowLike], *, updated_at: str | None) -> MarketBreadthSnapshot | None:
     if not rows:
         return None
     breadth = compute_market_breadth(rows, updated_at=updated_at)

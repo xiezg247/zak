@@ -135,6 +135,15 @@ def coerce_quote_rows(rows: Sequence[QuoteRow | Mapping[str, Any]]) -> list[Quot
     return [coerce_quote_row(row) for row in rows]
 
 
-def quote_rows_by_vt(rows: Sequence[QuoteRow | Mapping[str, Any]] | None = None) -> dict[str, QuoteRow]:
+QuoteRowLike = QuoteRow | Mapping[str, Any]
+
+
+def quote_row_to_dict(row: QuoteRowLike) -> dict[str, Any]:
+    if isinstance(row, QuoteRow):
+        return row.to_dict()
+    return dict(row)
+
+
+def quote_rows_by_vt(rows: Sequence[QuoteRowLike] | None = None) -> dict[str, QuoteRow]:
     source = coerce_quote_rows(rows) if rows is not None else []
     return {row.vt_symbol.strip(): row for row in source if row.vt_symbol.strip()}

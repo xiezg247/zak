@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
@@ -39,7 +40,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         market_benchmark = market_benchmark_change_pct(enriched or snapshot.rows)
         industry_avg = industry_avg_change_map(enriched)
 
-        scored_rows: list[dict[str, Any]] = []
+        scored_rows: list[QuoteRowLike] = []
         for row in enriched:
             merged = dict(row)
             change = float(merged.get("change_pct") or merged.get("pct_chg") or 0)
@@ -64,7 +65,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         top_for_history = scored_rows[: pool_size * 2]
         bars_map = load_history_bars_map([str(item.get("vt_symbol") or "") for item in top_for_history if item.get("vt_symbol")])
         attach_momentum_persistence(top_for_history, bars_map)
-        rows: list[dict[str, Any]] = []
+        hit_rows: list[QuoteRowLike] = []
         for item in scored_rows[:pool_size]:
             base = _quote_row(item)
             base["benchmark_change_pct"] = market_benchmark
@@ -75,10 +76,10 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
                 base["industry_relative_strength"] = float(item["industry_relative_strength"])
             if item.get("industry"):
                 base["industry"] = item["industry"]
-            rows.append(base)
+            hit_rows.append(base)
 
         return quote_hits(
-            rows,
+            hit_rows,
             dimension_id="momentum",
             label="动量",
             weight=weight,

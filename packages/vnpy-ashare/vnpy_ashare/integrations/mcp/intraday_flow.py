@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.symbols import vt_symbol_to_symbol
 
 _McpExecutor = Callable[[str, dict[str, Any]], str]
@@ -36,7 +37,7 @@ def mcp_intraday_flow_enabled() -> bool:
 
 
 def fetch_intraday_moneyflow_map(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     top_n: int = 40,
 ) -> dict[str, float]:

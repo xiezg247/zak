@@ -4,21 +4,18 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-import pandas as pd
 from tickflow import TickFlow
 from vnpy.trader.datafeed import BaseDatafeed
 from vnpy.trader.object import BarData, HistoryRequest
 from vnpy.trader.setting import SETTINGS
-from vnpy.trader.utility import round_to
 
 from vnpy_tickflow.client import get_tickflow_client, is_free_mode
-from vnpy_tickflow.klines import fetch_klines_paged
+from vnpy_tickflow.klines import dataframe_to_bars, fetch_klines_paged
 from vnpy_tickflow.mapping import (
     ASHARE_EXCHANGES,
     CHINA_TZ,
     FREE_PERIODS,
     interval_to_period,
-    parse_datetime,
     to_tf_symbol,
 )
 
@@ -94,50 +91,14 @@ class TickflowDatafeed(BaseDatafeed):
         if df.empty:
             return []
 
-        return self._dataframe_to_bars(df, req)
-
-    def _dataframe_to_bars(self, df: pd.DataFrame, req: HistoryRequest) -> list[BarData]:
         interval = req.interval
         if interval is None:
             return []
-        bars: list[BarData] = []
-        for _, row in df.iterrows():
-            if pd.isna(row.get("open")):
-                continue
 
-            if "trade_time" in row and pd.notna(row["trade_time"]):
-                dt = parse_datetime(row["trade_time"], interval)
-            elif "timestamp" in row and pd.notna(row["timestamp"]):
-                dt = parse_datetime(row["timestamp"], interval)
-            elif "trade_date" in row and pd.notna(row["trade_date"]):
-                dt = parse_datetime(row["trade_date"], interval)
-            else:
-                continue
-
-            turnover = row.get("amount", 0)
-            if pd.isna(turnover):
-                turnover = 0
-
-            volume = row.get("volume", 0)
-            if pd.isna(volume):
-                volume = 0
-
-            bars.append(
-                BarData(
-                    symbol=req.symbol,
-                    exchange=req.exchange,
-                    interval=req.interval,
-                    datetime=dt,
-                    open_price=round_to(float(row["open"]), 0.000001),
-                    high_price=round_to(float(row["high"]), 0.000001),
-                    low_price=round_to(float(row["low"]), 0.000001),
-                    close_price=round_to(float(row["close"]), 0.000001),
-                    volume=float(volume),
-                    turnover=float(turnover),
-                    open_interest=0,
-                    gateway_name="TF",
-                )
-            )
-
-        bars.sort(key=lambda item: item.datetime)
-        return bars
+        return dataframe_to_bars(
+            df,
+            symbol=req.symbol,
+            exchange=req.exchange,
+            interval=interval,
+            gateway_name="TF",
+        )

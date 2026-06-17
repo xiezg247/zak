@@ -3,30 +3,33 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_to_dict
 from vnpy_ashare.domain.symbols import vt_symbol_to_ts_code
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
 
-def attach_industry(rows: list[dict[str, Any]], industry_map: dict[str, str] | None = None) -> list[dict[str, Any]]:
+def attach_industry(rows: Sequence[QuoteRowLike], industry_map: dict[str, str] | None = None) -> list[dict[str, Any]]:
     """为行情行附加 ``industry`` 字段。"""
     mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
     enriched: list[dict[str, Any]] = []
     for row in rows:
-        ts_code = vt_symbol_to_ts_code(str(row.get("vt_symbol") or ""))
+        payload = quote_row_to_dict(row)
+        ts_code = vt_symbol_to_ts_code(str(payload.get("vt_symbol") or ""))
         industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
         if not industry:
             continue
-        merged = dict(row)
+        merged = dict(payload)
         merged["industry"] = industry
         enriched.append(merged)
     return enriched
 
 
 def attach_concept(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     vt_to_concept: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """为行情行附加 ``concept`` 字段（主概念名）。"""
@@ -37,18 +40,19 @@ def attach_concept(
 
     enriched: list[dict[str, Any]] = []
     for row in rows:
-        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        payload = quote_row_to_dict(row)
+        vt_symbol = str(payload.get("vt_symbol") or "").strip()
         concept = mapping.get(vt_symbol, "").strip()
         if not concept:
             continue
-        merged = dict(row)
+        merged = dict(payload)
         merged["concept"] = concept
         enriched.append(merged)
     return enriched
 
 
 def attach_sector_fields(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     industry_map: dict[str, str] | None = None,
     vt_to_concept: dict[str, str] | None = None,
@@ -63,13 +67,14 @@ def attach_sector_fields(
 
     enriched: list[dict[str, Any]] = []
     for row in rows:
-        ts_code = vt_symbol_to_ts_code(str(row.get("vt_symbol") or ""))
+        payload = quote_row_to_dict(row)
+        ts_code = vt_symbol_to_ts_code(str(payload.get("vt_symbol") or ""))
         industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
-        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        vt_symbol = str(payload.get("vt_symbol") or "").strip()
         concept = concept_map.get(vt_symbol, "").strip()
         if not industry and not concept:
             continue
-        merged = dict(row)
+        merged = dict(payload)
         if industry:
             merged["industry"] = industry
         if concept:
@@ -79,7 +84,7 @@ def attach_sector_fields(
 
 
 def compute_sector_distribution(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     top_n: int = 8,
     min_stocks: int = 2,
@@ -88,10 +93,11 @@ def compute_sector_distribution(
     """按行业/概念统计标的数、上涨占比与平均涨幅，降序返回 Top N。"""
     buckets: dict[str, list[float]] = defaultdict(list)
     for row in rows:
-        sector = str(row.get(sector_field) or "").strip()
+        payload = quote_row_to_dict(row)
+        sector = str(payload.get(sector_field) or "").strip()
         if not sector:
             continue
-        pct = float(row.get("change_pct") or row.get("pct_chg") or 0)
+        pct = float(payload.get("change_pct") or payload.get("pct_chg") or 0)
         buckets[sector].append(pct)
 
     stats: list[dict[str, Any]] = []
@@ -123,7 +129,7 @@ def compute_sector_distribution(
 
 
 def top_industries_by_momentum(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     top_industry_count: int = 5,
     min_stocks_per_industry: int = 3,
@@ -138,7 +144,7 @@ def top_industries_by_momentum(
 
 
 def top_industries_by_breadth(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     top_industry_count: int = 5,
     min_stocks_per_industry: int = 3,
@@ -162,7 +168,7 @@ def top_industries_by_breadth(
 
 
 def breadth_leader_candidates(
-    rows: list[dict[str, Any]],
+    rows: Sequence[QuoteRowLike],
     *,
     pool_size: int,
     min_stocks_per_industry: int = 3,
@@ -179,9 +185,10 @@ def breadth_leader_candidates(
     industry_names = {str(item["industry"]) for item in strong}
     buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
-        industry = str(row.get("industry") or "").strip()
+        payload = quote_row_to_dict(row)
+        industry = str(payload.get("industry") or "").strip()
         if industry in industry_names:
-            buckets[industry].append(dict(row))
+            buckets[industry].append(dict(payload))
 
     candidates: list[dict[str, Any]] = []
     stat_map = {str(item["industry"]): item for item in strong}

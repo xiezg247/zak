@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
+
+from pydantic import Field, ValidationError, field_validator
 
 from vnpy_common.paths import PROJECT_ROOT
+from vnpy_mcp.config.base import FrozenConfigModel
 from vnpy_mcp.config.registry import BUILTIN_MCP_PROVIDERS
 
 DEFAULT_MCP_DIR = PROJECT_ROOT / "mcp"
@@ -39,15 +41,40 @@ _PLACEHOLDER_KEYS = frozenset(
 )
 
 
-@dataclass(frozen=True)
-class McpServerConfig:
+class McpServerConfig(FrozenConfigModel):
     name: str
     url: str = ""
-    headers: dict[str, str] = field(default_factory=dict)
+    headers: dict[str, str] = Field(default_factory=dict)
     enabled: bool = True
     title: str = ""
     description: str = ""
     source_path: str = ""
+
+    @field_validator("name", "title", "description", "source_path", mode="before")
+    @classmethod
+    def _coerce_text(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        return str(value)
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def _coerce_url(cls, value: Any) -> str:
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    @field_validator("enabled", mode="before")
+    @classmethod
+    def _coerce_enabled(cls, value: Any) -> bool:
+        return value if isinstance(value, bool) else True
+
+    @field_validator("headers", mode="before")
+    @classmethod
+    def _coerce_headers(cls, value: Any) -> dict[str, str]:
+        if not isinstance(value, dict):
+            return {}
+        return {str(key): str(val) for key, val in value.items()}
 
     @property
     def display_title(self) -> str:
@@ -144,29 +171,20 @@ def _source_label(path: Path) -> str:
 
 def _parse_server_entry(
     name: str,
-    entry: dict,
+    entry: dict[str, Any],
     *,
     source_path: str = "",
-) -> McpServerConfig:
-    url = str(entry.get("url") or "").strip()
-    headers_raw = entry.get("headers") or {}
-    headers: dict[str, str] = {}
-    if isinstance(headers_raw, dict):
-        headers = {str(k): str(v) for k, v in headers_raw.items()}
-
-    enabled = entry.get("enabled", True)
-    if not isinstance(enabled, bool):
-        enabled = True
-
-    return McpServerConfig(
-        name=str(entry.get("name") or name),
-        url=url,
-        headers=headers,
-        enabled=enabled,
-        title=str(entry.get("title") or ""),
-        description=str(entry.get("description") or ""),
-        source_path=source_path,
-    )
+) -> McpServerConfig | None:
+    try:
+        return McpServerConfig.model_validate(
+            {
+                **entry,
+                "name": entry.get("name") or name,
+                "source_path": source_path,
+            }
+        )
+    except ValidationError:
+        return None
 
 
 def _load_mcp_servers_file(path: Path) -> dict[str, McpServerConfig]:
@@ -191,7 +209,9 @@ def _load_mcp_servers_file(path: Path) -> dict[str, McpServerConfig]:
     for name, entry in servers.items():
         if not isinstance(entry, dict):
             continue
-        result[str(name)] = _parse_server_entry(str(name), entry, source_path=source_path)
+        config = _parse_server_entry(str(name), entry, source_path=source_path)
+        if config is not None:
+            result[str(name)] = config
     return result
 
 

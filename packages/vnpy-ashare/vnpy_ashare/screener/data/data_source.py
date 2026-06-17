@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import date, timedelta
 from typing import Any
 
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_rows, quote_row_to_dict
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
@@ -48,7 +50,7 @@ __all__ = [
 
 def merge_quotes_into_fundamentals(
     fund_rows: list[dict[str, Any]],
-    quote_rows: list[dict[str, Any]],
+    quote_rows: list[QuoteRowLike],
 ) -> list[dict[str, Any]]:
     """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
     quote_map = quote_rows_by_vt_symbol(quote_rows)
@@ -59,10 +61,11 @@ def merge_quotes_into_fundamentals(
         if quote is None:
             merged.append(item)
             continue
-        last_price = quote.get("last_price")
+        quote_payload = quote_row_to_dict(quote)
+        last_price = quote_payload.get("last_price")
         if last_price:
             item["close"] = float(last_price)
-        turnover = quote.get("turnover_rate")
+        turnover = quote_payload.get("turnover_rate")
         if turnover:
             item["turnover_rate"] = float(turnover)
         item["source"] = "quote+tushare"
@@ -164,7 +167,7 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
         except Exception:
             pass
         return MarketQuotesSnapshot(
-            rows=quote_rows,
+            rows=coerce_quote_rows(quote_rows),
             updated_at=trade_date,
             total=len(quote_rows),
             source="tushare",
@@ -221,7 +224,7 @@ def _missing_display_value(value: Any) -> bool:
     return value is None or value == ""
 
 
-def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def enrich_recipe_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
     """补全配方结果展示字段（各维度 row 通常只含单维度指标）。"""
     if not rows:
         return rows
@@ -230,8 +233,8 @@ def enrich_recipe_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if not vt_symbols:
         return rows
 
-    fund_map: dict[str, dict[str, Any]] = {}
-    mf_map: dict[str, dict[str, Any]] = {}
+    fund_map: dict[str, QuoteRowLike] = {}
+    mf_map: dict[str, QuoteRowLike] = {}
     pct_map: dict[str, float] = {}
 
     try:

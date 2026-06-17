@@ -7,6 +7,8 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 
+from pydantic import ValidationError
+
 from vnpy_llm.chat import store
 from vnpy_llm.trace.trace import TurnTrace, turn_from_dict, turn_to_dict
 
@@ -80,7 +82,7 @@ class TracePersistence:
             try:
                 payload = json.loads(str(row["trace_json"]))
                 turn = turn_from_dict(payload)
-            except (json.JSONDecodeError, KeyError, TypeError):
+            except (json.JSONDecodeError, KeyError, TypeError, ValidationError):
                 continue
             if turn.session_id != session_id:
                 turn.session_id = session_id

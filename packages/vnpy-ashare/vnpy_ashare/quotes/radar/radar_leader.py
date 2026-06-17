@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import Field
 
 from vnpy_ashare.domain.base import FrozenModel
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.signals.seal_time import seal_time_score
@@ -265,7 +267,7 @@ def rank_unified_sector_leaders(
 
 
 def score_market_leaders(
-    candidates: list[dict[str, Any]],
+    candidates: Sequence[QuoteRowLike],
     *,
     top_n: int = 12,
     strong_industries: set[str] | None = None,
