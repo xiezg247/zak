@@ -29,7 +29,7 @@ def _candidate(symbol: str, *, limit_times: int = 3) -> dict:
 def test_leader_scored_to_row_includes_hit_reason():
     scored = rank_sector_leaders([_candidate("AAA"), _candidate("BBB", limit_times=2)])[0]
     row = leader_scored_to_row(scored)
-    assert row["symbol"] == scored.row["symbol"]
+    assert row["symbol"] == scored.row.symbol
     assert row["source"] == "radar_leader"
     assert "龙头" in row["hit_reason"]
     assert row["leader_tier"] == "dragon_1"

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.domain.market.quote_row import quote_row_copy
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
@@ -22,29 +23,30 @@ _VARIANT_LABELS: dict[str, str] = {
 
 
 def leader_scored_to_result_row(scored: LeaderScoredRow) -> ScreenerResultRow:
-    row = dict(scored.row)
+    row = scored.row
     tier_label = leader_tier_label(scored.leader_tier)
     sector_name = scored.sector_name or str(row.get("industry") or row.get("concept") or "—")
     axis_label = "概念" if scored.sector_axis == "concept" else "行业"
     boards = int(scored.limit_times) if scored.limit_times >= 1 else 0
     board_text = f"{boards}板" if boards >= 1 else "—"
-    row.update(
-        {
-            "symbol": str(row.get("symbol") or row.get("vt_symbol", "").split(".")[0]),
-            "name": str(row.get("name") or row.get("symbol") or ""),
-            "last_price": float(row.get("last_price") or row.get("close") or 0),
-            "change_pct": float(row.get("change_pct") or 0),
-            "leader_score": scored.leader_score,
-            "leader_tier": scored.leader_tier,
-            "leader_tier_label": tier_label,
-            "limit_times": boards if boards >= 1 else row.get("limit_times"),
-            "sector_name": sector_name,
-            "sector_axis": scored.sector_axis or axis_label,
-            "hit_reason": (f"龙头 {tier_label} · {axis_label}{sector_name} · 评分 {scored.leader_score:.0f} · 连板 {board_text}"),
-            "source": "radar_leader",
-        },
+    enriched = quote_row_copy(
+        row,
+        symbol=str(row.symbol or row.vt_symbol.split(".")[0]),
+        name=str(row.name or row.symbol or ""),
+        last_price=float(row.last_price or row.close or 0),
+        change_pct=float(row.change_pct or 0),
+        leader_score=scored.leader_score,
+        leader_tier=scored.leader_tier,
+        leader_tier_label=tier_label,
+        limit_times=boards if boards >= 1 else row.limit_times,
+        sector_name=sector_name,
+        sector_axis=scored.sector_axis or axis_label,
+        hit_reason=(
+            f"龙头 {tier_label} · {axis_label}{sector_name} · 评分 {scored.leader_score:.0f} · 连板 {board_text}"
+        ),
+        source="radar_leader",
     )
-    return ScreenerResultRow.from_mapping(row)
+    return ScreenerResultRow.from_mapping(enriched.to_dict())
 
 
 def leader_scored_to_row(scored: LeaderScoredRow) -> dict:

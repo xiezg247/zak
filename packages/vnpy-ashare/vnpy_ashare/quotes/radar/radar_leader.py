@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
@@ -141,18 +140,18 @@ def rank_sector_leaders(
     if not candidates:
         return []
 
-    grouped: dict[str, list[dict[str, Any]]] = {}
+    grouped: dict[str, list[QuoteRow]] = {}
     for row in candidates:
         key = str(row.get(sector_key) or "—")
         if key == "—":
             continue
-        grouped.setdefault(key, []).append(coerce_quote_row(row).to_dict())
+        grouped.setdefault(key, []).append(coerce_quote_row(row))
 
     ranked: list[LeaderScoredRow] = []
     for group_name, group_rows in grouped.items():
         amount_ranks = _amount_rank_in_group(group_rows)
         max_mf = max(abs(float(row.get("net_mf_amount") or 0)) for row in group_rows)
-        scored: list[tuple[dict[str, Any], float, float]] = []
+        scored: list[tuple[QuoteRow, float, float]] = []
         for row in group_rows:
             vt = str(row.get("vt_symbol") or "")
             bonus = 1.0
