@@ -14,7 +14,7 @@ from vnpy_skills.domain import SkillTemplate, ToolSpec
 class VnpySentimentSkill(SkillTemplate):
     skill_name = "vnpy-sentiment"
     author = "zak"
-    description = "A 股全市场恐贪指数（0-100），供 AI 自主判断是否写入回答"
+    description = "A 股择时：恐贪指数与情绪周期，供 AI 自主判断是否写入回答"
 
     def on_init(self) -> None:
         load_dotenv(ENV_FILE, override=False)
@@ -50,6 +50,17 @@ class VnpySentimentSkill(SkillTemplate):
                     },
                 },
             ),
+            ToolSpec(
+                name="get_emotion_cycle",
+                description=(
+                    "查询 A 股短线情绪周期五阶段（冰点/启动/发酵高潮/分歧/退潮）、"
+                    "建议总仓位区间、允许模式（打板/半路/低吸）与原始输入计数。"
+                    "适合：今天能不能做短线、择时环境、仓位建议、打板/低吸是否合适。"
+                    "须引用返回的 inputs 涨跌停数，禁止编造。"
+                    "退潮/冰点时须明确不建议短线新开仓。"
+                ),
+                parameters={"type": "object", "properties": {}},
+            ),
         ]
 
     def _get_sentiment_service(self):
@@ -72,3 +83,14 @@ class VnpySentimentSkill(SkillTemplate):
             snapshot.to_dict(include_components=bool(include_components)),
             ensure_ascii=False,
         )
+
+    def get_emotion_cycle(self) -> str:
+        from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
+
+        snapshot = load_emotion_cycle_snapshot()
+        if snapshot is None:
+            return json.dumps(
+                {"error": "暂无市场广度数据，请先打开市场页或等待 Redis 行情同步"},
+                ensure_ascii=False,
+            )
+        return json.dumps(snapshot.to_dict(), ensure_ascii=False)

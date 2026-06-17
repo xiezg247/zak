@@ -6,6 +6,7 @@ from typing import Any
 
 from vnpy_ashare.ai.context.store import get_market_overview_context, set_market_overview_context
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
@@ -90,6 +91,24 @@ def _environment_line(env: MarketEnvironmentSnapshot | None) -> str:
     return "环境：" + ("；".join(parts) if parts else "暂无 Tushare 环境数据")
 
 
+def _emotion_line(snapshot: EmotionCycleSnapshot | None) -> str:
+    if snapshot is None:
+        return ""
+    pos_max = int(snapshot.position_pct_max * 100)
+    pos_min = int(snapshot.position_pct_min * 100)
+    if pos_max <= 0:
+        pos_text = "建议空仓"
+    elif pos_min == pos_max:
+        pos_text = f"建议总仓位 {pos_max}%"
+    else:
+        pos_text = f"建议总仓位 {pos_min}–{pos_max}%"
+    modes = "、".join(format_mode_label(mode) for mode in snapshot.allowed_modes) or "无"
+    line = f"情绪周期：{snapshot.stage_label}；{pos_text}；允许模式 {modes}"
+    if not snapshot.allow_new_positions:
+        line += "；不建议短线新开仓"
+    return line
+
+
 def build_market_overview_payload(
     data: MarketOverviewData,
     *,
@@ -101,6 +120,7 @@ def build_market_overview_payload(
         "sector_lines": _sector_lines(data.sectors),
         "breadth_line": _breadth_line(data.breadth),
         "environment_line": _environment_line(env),
+        "emotion_line": "",
     }
 
 
@@ -119,12 +139,15 @@ def format_market_overview_extra(payload: dict[str, Any] | None = None) -> str:
     environment_line = str(ctx.get("environment_line") or "").strip()
     if environment_line:
         lines.append(environment_line)
+    emotion_line = str(ctx.get("emotion_line") or "").strip()
+    if emotion_line:
+        lines.append(emotion_line)
     sector_lines = ctx.get("sector_lines") or []
     if sector_lines:
         lines.append("行业 Top：" + "；".join(str(item) for item in sector_lines))
     if len(lines) <= 1:
         return ""
-    lines.append("解读大盘时可结合 get_ashare_fear_greed_index；勿编造未在摘要中的数据。")
+    lines.append("解读大盘时可结合 get_ashare_fear_greed_index 与 get_emotion_cycle；勿编造未在摘要中的数据。")
     return "\n".join(lines)
 
 
@@ -142,6 +165,14 @@ def sync_market_overview_context(
         has_content = True
     if not has_content:
         set_market_overview_context(None)
+        return
+    set_market_overview_context(payload)
+
+
+def sync_emotion_cycle_context(snapshot: EmotionCycleSnapshot | None) -> None:
+    payload = dict(get_market_overview_context() or {})
+    payload["emotion_line"] = _emotion_line(snapshot)
+    if not payload.get("emotion_line") and not payload.get("breadth_line") and not payload.get("index_lines"):
         return
     set_market_overview_context(payload)
 

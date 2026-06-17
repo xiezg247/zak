@@ -21,7 +21,8 @@ from vnpy_ashare.notifications.events import (
 from vnpy_ashare.notifications.formatters import format_notify_text
 from vnpy_ashare.notifications.models import NotifyDeliveryResult
 from vnpy_ashare.notifications.rules import NotifyRulesEngine
-from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot
+from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, classify_emotion_cycle
+from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.storage.repositories.notify_delivery_log import append_notify_delivery_log
@@ -97,14 +98,21 @@ class NotificationService(BaseService):
         ):
             self.last_error = "通知队列已满"
 
-    def on_market_breadth(self, breadth: MarketBreadthSnapshot) -> None:
+    def publish_emotion_cycle(self, inputs: EmotionCycleInputs) -> EmotionCycleSnapshot:
         tracker = getattr(self.engine, "emotion_cycle_tracker", None)
         if tracker is None:
-            return
-        changed = tracker.update(breadth)
-        if changed is None:
-            return
-        self._notify_emotion_stage_change(changed)
+            return classify_emotion_cycle(inputs)
+        changed = tracker.update(inputs)
+        snapshot = tracker.last_snapshot
+        if changed is not None:
+            self._notify_emotion_stage_change(changed)
+        assert snapshot is not None
+        return snapshot
+
+    def on_market_breadth(self, breadth: MarketBreadthSnapshot) -> None:
+        from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
+
+        self.publish_emotion_cycle(build_emotion_cycle_inputs(breadth))
 
     def evaluate_risk_gate(self, *, avg_float_pnl_pct: float | None = None) -> None:
         gate = getattr(self.engine, "risk_gate_engine", None)

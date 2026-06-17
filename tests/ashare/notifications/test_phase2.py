@@ -15,6 +15,7 @@ from vnpy_ashare.notifications.formatters import format_notify_text
 from vnpy_ashare.notifications.prefs import NotifyPrefs
 from vnpy_ashare.notifications.service import NotificationService
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleTracker
+from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.trading.risk.gate import RiskGateEngine
 
@@ -105,11 +106,20 @@ class Phase2NotificationTest(unittest.TestCase):
         mock_send.return_value = type("R", (), {"success": True, "message": "ok", "status_code": 200})()
         engine = _FakeEngine()
         svc = NotificationService(engine, sync=True)
-        svc.on_market_breadth(_breadth(limit_up=85))
+        inputs = build_emotion_cycle_inputs(_breadth(limit_up=85))
+        with patch(
+            "vnpy_ashare.quotes.market.emotion_cycle_inputs.get_cached_limit_times_map",
+            return_value={"x": 5, "y": 4, "z": 3},
+        ):
+            svc.publish_emotion_cycle(inputs)
         mock_send.assert_called_once()
         self.assertIn("情绪阶段", mock_send.call_args.args[0])
         mock_log.assert_called_once()
-        svc.on_market_breadth(_breadth(limit_up=85))
+        with patch(
+            "vnpy_ashare.quotes.market.emotion_cycle_inputs.get_cached_limit_times_map",
+            return_value={"x": 5, "y": 4, "z": 3},
+        ):
+            svc.publish_emotion_cycle(inputs)
         mock_send.assert_called_once()
 
     @patch.dict(

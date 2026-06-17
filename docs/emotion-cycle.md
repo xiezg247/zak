@@ -13,7 +13,7 @@
 | 市场广度 | `quotes/market/market_breadth.py` | 涨跌停、涨跌家数、成交额 | **输入源** |
 | 恐贪指数 | `screener/sentiment/sentiment_gate.py` | 配方维度权重调制 | **因子级**，非总闸 |
 | 北向 / 环境 | `quotes/market/market_environment.py` | 辅助参考 | 可选输入 |
-| **情绪周期** | `quotes/market/emotion_cycle.py`（待建） | 五阶段标签 + 仓位系数 + 允许模式 | **总闸** |
+| **情绪周期** | `quotes/market/emotion_cycle.py` | 五阶段标签 + 仓位系数 + 允许模式 | **总闸** |
 
 ```text
 market_breadth + limit_ladder + index_ma5
@@ -147,7 +147,7 @@ quotes/market/
 
 | Phase | 交付 |
 |-------|------|
-| 1 | 引擎 + 市场页芯片 + `get_emotion_cycle` |
+| 1 | 引擎 + 市场页芯片 + `get_emotion_cycle` ✅ |
 | 2 | 雷达/选股 gate + 阈值设置 UI |
 | 3 | 连板断板率、昨最高板跌停（需日切缓存） |
 

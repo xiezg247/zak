@@ -8,6 +8,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
+from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.table.columns import format_amount
 from vnpy_common.ui.theme import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
@@ -182,6 +183,7 @@ class MarketStatsBar(QtWidgets.QWidget):
 
         chips_row = QtWidgets.QHBoxLayout()
         chips_row.setSpacing(6)
+        self._emotion_chip = EmotionCycleChip()
         self._up_chip = _StatChip("上涨")
         self._down_chip = _StatChip("下跌")
         self._flat_chip = _StatChip("持平")
@@ -195,6 +197,8 @@ class MarketStatsBar(QtWidgets.QWidget):
         self._updated_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
 
         for widget in (
+            self._emotion_chip,
+            _StatDivider(),
             self._up_chip,
             self._down_chip,
             self._flat_chip,
@@ -232,6 +236,10 @@ class MarketStatsBar(QtWidgets.QWidget):
         ):
             chip.set_value("—")
         self._fear_gauge.set_snapshot(None, "")
+        self._emotion_chip.set_loading()
+
+    def render_emotion_cycle(self, snapshot) -> None:
+        self._emotion_chip.render(snapshot)
 
     def set_empty(self) -> None:
         self.set_loading()

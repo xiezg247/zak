@@ -22,8 +22,8 @@
 |----|------|------|-------|------|-------------|
 | T-01 | 市场广度条 | **已有** | 0 | Redis / TickFlow | 市场页；[market-page.md](./market-page.md) |
 | T-02 | 恐贪 + 北向环境 | **已有** | 0 | Tushare | `market_environment` |
-| T-03 | 情绪周期引擎 | **待建** | 1 | T-01, 连板数据 | `quotes/market/emotion_cycle.py`；[emotion-cycle.md](./emotion-cycle.md) |
-| T-04 | 择时闸 UI 芯片 | **待建** | 1 | T-03 | 市场页 / 自选顶栏 |
+| T-03 | 情绪周期引擎 | **部分** | 1 | T-01, 连板 | `emotion_cycle.py`；[emotion-cycle.md](./emotion-cycle.md) |
+| T-04 | 择时闸 UI 芯片 | **已有** | 1 | T-03 | 市场页 stats_bar |
 | T-05 | sentiment_gate × 周期系数 | **部分** | 1 | T-03 | `screener/dimensions/sentiment_gate` |
 | T-06 | 退潮期批量入自选软拦截 | **待建** | 1 | T-03 | 选股 `ScreenerResultActionBar` |
 
@@ -144,7 +144,7 @@
 
 | ID | 工具 | 状态 | Phase | Skill（规划） |
 |----|------|------|-------|---------------|
-| A-01 | `get_emotion_cycle` | **待建** | 1 | vnpy-sentiment 扩展 |
+| A-01 | `get_emotion_cycle` | **已有** | 1 | vnpy-sentiment 扩展 |
 | A-02 | `get_short_term_watchlist` | **待建** | 1 | vnpy-watchlist 扩展 |
 | A-03 | `propose_trading_plan` | **待建** | 4 | vnpy-trading（新） |
 | A-04 | `get_trade_journal` | **待建** | 4 | 同上 |

@@ -40,6 +40,7 @@ _TOOL_LABELS: dict[str, str] = {
     "run_python": "执行数据分析",
     "list_skill_files": "列出 Skill 文件",
     "get_ashare_fear_greed_index": "查询 A 股恐贪指数",
+    "get_emotion_cycle": "查询 A 股情绪周期",
 }
 
 

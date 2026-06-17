@@ -7,6 +7,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.domain.index_amount import IndexAmountSeries
 from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
+from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
@@ -158,6 +159,9 @@ class MarketOverviewPanel(QtWidgets.QWidget):
     def apply_breadth(self, breadth: MarketBreadthSnapshot) -> None:
         self._last_breadth = breadth
         self._stats_bar.render_breadth(breadth)
+
+    def apply_emotion_cycle(self, snapshot: EmotionCycleSnapshot | None) -> None:
+        self._stats_bar.render_emotion_cycle(snapshot)
 
     def apply_sectors(self, sectors: list[SectorRankItem]) -> None:
         self._last_sectors = list(sectors)
