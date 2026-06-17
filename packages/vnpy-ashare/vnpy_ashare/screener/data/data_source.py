@@ -254,6 +254,8 @@ def resolve_result_source_tag(source: str) -> str:
     """将内部 source 标签转为 UI 展示文案。"""
     if source == "radar":
         return "雷达共振"
+    if source == "radar_leader":
+        return "雷达龙头"
     if source == "industry":
         return "行业成分"
     if source == "quote+tushare":

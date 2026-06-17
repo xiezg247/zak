@@ -22,6 +22,9 @@ class RadarRow:
     metric_value: str
     sub_label: str
     sub_value: str
+    leader_score: float | None = None
+    leader_tier: str = ""
+    limit_times: float | None = None
 
 
 @dataclass(frozen=True)

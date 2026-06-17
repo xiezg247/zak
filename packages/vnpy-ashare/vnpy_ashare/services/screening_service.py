@@ -47,6 +47,7 @@ from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_
 from vnpy_ashare.screener.reference.reference_peer import ReferencePeerRunResult, run_reference_peer_screen
 from vnpy_ashare.screener.run.export import export_rows_to_csv, resolve_export_columns
 from vnpy_ashare.screener.run.industry_screen import run_industry_screen
+from vnpy_ashare.screener.run.radar_leader_screen import run_leader_screen
 from vnpy_ashare.screener.run.radar_resonance import run_radar_resonance_screen
 from vnpy_ashare.screener.run.run_diff import enrich_condition_run, enrich_recipe_run
 from vnpy_ashare.screener.run.run_store import (
@@ -155,6 +156,10 @@ class ScreeningService(BaseService):
     def run_radar_resonance_screen(self, *, top_n: int = 50) -> ScreenerRunResult:
         return run_radar_resonance_screen(top_n=top_n)
 
+    def run_leader_screen(self, *, top_n: int = 12, variant: str = "mainline") -> ScreenerRunResult:
+        pick_variant = "all_market" if variant == "all_market" else "mainline"
+        return run_leader_screen(top_n=top_n, variant=pick_variant)
+
     def run_industry_screen(self, industry: str, *, top_n: int = 50) -> ScreenerRunResult:
         quote_rows, err = self.load_quote_rows()
         if not quote_rows:
@@ -239,8 +244,9 @@ class ScreeningService(BaseService):
         recipe_id = str(config.get("recipe_id") or "")
         if recipe_id and result.source == "recipe":
             rows = enrich_recipe_run(rows, recipe_id, config)
-        elif trigger in {"radar", "industry", "pattern"} or str(config.get("trigger") or "") in {
+        elif trigger in {"radar", "radar_leader", "industry", "pattern"} or str(config.get("trigger") or "") in {
             "radar",
+            "radar_leader",
             "industry",
             "pattern",
         }:

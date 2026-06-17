@@ -127,6 +127,7 @@ RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
         has_task_variants=True,
         auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS,
     ),
+    RadarCardSpec("leader_pick", "选股·龙头", "screen", top_n=12),
     RadarCardSpec("outlook_watch", "未来·关注", "outlook", mode="predictive"),
     RadarCardSpec("outlook_hold", "未来·可持", "outlook", mode="predictive"),
     RadarCardSpec(
@@ -160,12 +161,19 @@ SECTOR_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant("breadth", "广度扩散"),
 )
 
+LEADER_PICK_VARIANTS: tuple[RadarVariant, ...] = (
+    RadarVariant("mainline", "主线龙头"),
+    RadarVariant("all_market", "全市场"),
+)
+
 DEFAULT_SCREEN_TASK_VARIANT = "scheduled_post_close"
 DEFAULT_SECTOR_VARIANT = "leaders"
+DEFAULT_LEADER_PICK_VARIANT = "mainline"
 
 CARD_VARIANTS: dict[str, tuple[RadarVariant, ...]] = {
     "screen_task": SCREEN_TASK_VARIANTS,
     "sector_theme": SECTOR_VARIANTS,
+    "leader_pick": LEADER_PICK_VARIANTS,
     "outlook_scenario": SCENARIO_VARIANTS,
     "outlook_predict": PREDICT_MODEL_VARIANTS,
 }

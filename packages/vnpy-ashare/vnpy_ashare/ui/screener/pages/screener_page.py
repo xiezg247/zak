@@ -57,6 +57,7 @@ from vnpy_ashare.ui.screener.workers import (
     IndustryScreenRunWorker,
     PatternScreenRunWorker,
     RadarResonanceRunWorker,
+    LeaderScreenRunWorker,
     ScreenerBatchDownloadWorker,
     ScreenerRunWorker,
 )
@@ -85,6 +86,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._worker: ScreenerRunWorker | None = None
         self._pattern_worker: PatternScreenRunWorker | None = None
         self._radar_worker: RadarResonanceRunWorker | None = None
+        self._leader_worker: LeaderScreenRunWorker | None = None
         self._industry_worker: IndustryScreenRunWorker | None = None
         self._pending_industry: str = ""
         self._download_worker: ScreenerBatchDownloadWorker | None = None
@@ -272,6 +274,12 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.radar_resonance_btn.clicked.connect(self._run_radar_resonance)
         quick_layout.addWidget(self.radar_resonance_btn)
 
+        self.leader_screen_btn = QtWidgets.QPushButton("运行雷达龙头")
+        self.leader_screen_btn.setObjectName("SecondaryButton")
+        self.leader_screen_btn.setToolTip("按 leader_score 评分筛选主线龙头（含硬过滤与情绪周期 gate）")
+        self.leader_screen_btn.clicked.connect(self._run_leader_screen)
+        quick_layout.addWidget(self.leader_screen_btn)
+
         industry_row = QtWidgets.QHBoxLayout()
         self.industry_edit = QtWidgets.QLineEdit()
         self.industry_edit.setObjectName("ToolbarInput")
@@ -376,6 +384,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self.pattern_combo,
             self.pattern_run_btn,
             self.radar_resonance_btn,
+            self.leader_screen_btn,
             self.industry_edit,
             self.industry_run_btn,
         ]
@@ -554,12 +563,80 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             self._pattern_worker.request_cancel()
         if self._radar_worker is not None:
             self._radar_worker.request_cancel()
+        if self._leader_worker is not None:
+            self._leader_worker.request_cancel()
         if self._industry_worker is not None:
             self._industry_worker.request_cancel()
 
     def run_radar_resonance_screen(self) -> None:
         """供雷达共振面板等外部入口跳转并执行选股。"""
         self._run_radar_resonance()
+
+    def run_leader_screen(self, *, variant: str = "mainline") -> None:
+        """供雷达页 / 主窗口跳转并执行龙头选股。"""
+        self._run_leader_screen(variant=variant)
+
+    def _run_leader_screen(self, *, variant: str = "mainline") -> None:
+        if self._task_guard.active:
+            return
+        if self._leader_worker is not None and self._leader_worker.isRunning():
+            return
+        top_n = self.top_n_spin.value()
+        self._pending_leader_variant = variant
+        self._task_guard.begin(
+            "正在运行雷达龙头选股…",
+            widgets=self._task_lock_widgets(),
+            primary=self.leader_screen_btn,
+            primary_text="运行雷达龙头",
+            primary_handler=lambda: self._run_leader_screen(variant=variant),
+            on_cancel=self._cancel_screening,
+        )
+        self.run_output_panel.begin_run(label="雷达龙头", top_n=top_n, kind="雷达")
+        worker = LeaderScreenRunWorker(
+            self.main_engine,
+            top_n=top_n,
+            variant=variant,
+            parent=self,
+        )
+        self._leader_worker = worker
+        worker.finished.connect(self._on_leader_finished)
+        worker.failed.connect(self._on_leader_failed)
+        worker.start()
+
+    def _on_leader_finished(self, result: ScreenerRunResult) -> None:
+        worker = self._leader_worker
+        self._leader_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled:
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("雷达龙头选股已取消")
+            return
+        config = {
+            "trigger": "radar_leader",
+            "leader_variant": getattr(self, "_pending_leader_variant", "mainline"),
+        }
+        self._apply_screen_result(result, trigger="radar_leader", extra_config=config)
+
+    def _on_leader_failed(self, message: str) -> None:
+        worker = self._leader_worker
+        self._leader_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled or message == "已取消":
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("雷达龙头选股已取消")
+            return
+        self.run_output_panel.fail_run(message)
+        self._toast.error(message)
 
     def _run_radar_resonance(self) -> None:
         if self._task_guard.active:
@@ -798,7 +875,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         config: dict[str, Any] = dict(extra_config or {})
         config["trigger"] = trigger
         self._results = list(result.rows)
-        if trigger in ("radar", "industry", "pattern"):
+        if trigger in ("radar", "radar_leader", "industry", "pattern"):
             from vnpy_ashare.screener.run.run_diff import enrich_condition_run
 
             self._results = enrich_condition_run(

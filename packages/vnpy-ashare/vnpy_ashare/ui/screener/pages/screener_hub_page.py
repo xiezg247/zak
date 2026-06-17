@@ -94,6 +94,10 @@ class ScreenerHubPageWidget(QtWidgets.QWidget):
         self.select_tab("condition")
         self._condition_page.run_radar_resonance_screen()
 
+    def run_leader_screen(self, *, variant: str = "mainline") -> None:
+        self.select_tab("condition")
+        self._condition_page.run_leader_screen(variant=variant)
+
     def show_historical_run(self, run_id: str, *, page_key: str | None = None) -> None:
         tab = self._resolve_tab(run_id, page_key)
         self.select_tab(tab)

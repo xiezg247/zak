@@ -651,6 +651,16 @@ class AshareMainWindow(MainWindow):
         if widget is not None and hasattr(widget, "run_radar_resonance_screen"):
             widget.run_radar_resonance_screen()
 
+    def open_screener_leader_screen(self, *, variant: str = "mainline") -> None:
+        """从雷达页跳转到策略选股并执行龙头选股。"""
+        nav_index = self._nav_index_for_key("screener")
+        if nav_index is None:
+            return
+        self._show_page_by_key("screener", nav_index=nav_index)
+        widget = self._page_widgets.get("screener")
+        if widget is not None and hasattr(widget, "run_leader_screen"):
+            widget.run_leader_screen(variant=variant)
+
     def open_sector_flow(self, sector_ids: list[str] | None = None) -> None:
         """跳转到板块资金页，并可选预选行业。"""
         nav_index = self._nav_index_for_key("sector_flow")

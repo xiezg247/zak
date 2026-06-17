@@ -331,6 +331,52 @@ class RadarResonanceRunWorker(QtCore.QThread):
             self.failed.emit(str(ex))
 
 
+class LeaderScreenRunWorker(QtCore.QThread):
+    """后台执行雷达龙头选股；finished 发射 ScreenerRunResult。"""
+
+    finished = QtCore.Signal(object)
+    failed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        main_engine,
+        *,
+        top_n: int,
+        variant: str = "mainline",
+        parent: QtCore.QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.main_engine = main_engine
+        self.top_n = top_n
+        self.variant = variant
+        self._cancel_requested = False
+
+    def request_cancel(self) -> None:
+        self._cancel_requested = True
+
+    def run(self) -> None:
+        try:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            from vnpy_ashare.app.engine_access import get_screening_service
+
+            service = get_screening_service(self.main_engine)
+            if service is None:
+                self.failed.emit("选股服务未就绪")
+                return
+            result = service.run_leader_screen(top_n=self.top_n, variant=self.variant)
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.finished.emit(result)
+        except Exception as ex:
+            if self._cancel_requested:
+                self.failed.emit("已取消")
+                return
+            self.failed.emit(str(ex))
+
+
 class QuoteRefreshWorker(QtCore.QThread):
     """后台刷新 Redis 全市场行情快照。"""
 

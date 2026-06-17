@@ -6,6 +6,7 @@ from typing import Any
 
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_catalog import (
+    DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
@@ -23,6 +24,7 @@ from vnpy_ashare.quotes.radar.radar_models import (
 )
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
+from vnpy_ashare.quotes.radar.radar_leader_pick import load_leader_pick
 from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
@@ -473,6 +475,7 @@ def load_radar_card(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
     force_recompute: bool = False,
 ) -> RadarCardData:
@@ -486,6 +489,7 @@ def load_radar_card(
                 card_id,
                 screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
+                leader_pick_variant=leader_pick_variant,
                 scenario_variant=scenario_variant,
                 force_recompute=force_recompute,
             )
@@ -498,6 +502,7 @@ def load_radar_card(
                 card_id,
                 screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
+                leader_pick_variant=leader_pick_variant,
                 scenario_variant=scenario_variant,
                 force_recompute=force_recompute,
             )
@@ -505,6 +510,7 @@ def load_radar_card(
         card_id,
         screen_task_variant=screen_task_variant,
         sector_variant=sector_variant,
+        leader_pick_variant=leader_pick_variant,
         scenario_variant=scenario_variant,
         force_recompute=force_recompute,
     )
@@ -516,6 +522,7 @@ _RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
         "discovery_moneyflow_intraday",
         "watchlist_intraday",
         "sector_theme",
+        "leader_pick",
     }
 )
 
@@ -536,6 +543,7 @@ def _load_radar_card_uncached(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
     force_recompute: bool = False,
 ) -> RadarCardData:
@@ -556,6 +564,11 @@ def _load_radar_card_uncached(
         return load_watchlist_intraday(spec)
     if spec.id == "sector_theme":
         return load_sector_theme(spec, variant=sector_variant)
+    if spec.id == "leader_pick":
+        from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
+
+        pick_variant: LeaderPickVariant = "mainline" if leader_pick_variant != "all_market" else "all_market"
+        return load_leader_pick(spec, variant=pick_variant)
     if spec.id in ("outlook_watch", "outlook_hold"):
         from vnpy_ashare.quotes.radar.radar_horizon import load_outlook_horizon
 

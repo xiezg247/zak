@@ -30,6 +30,67 @@ def try_fetch_fear_greed_index(*, include_components: bool = False) -> FearGreed
         return None
 
 
+def try_load_emotion_cycle_snapshot():
+    try:
+        from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
+
+        return load_emotion_cycle_snapshot()
+    except Exception:
+        return None
+
+
+def apply_emotion_modulation(
+    rows: list[dict[str, Any]],
+    *,
+    snapshot: Any | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+    """按情绪周期 position_factor 缩放 composite_score；退潮期仅保留 Top3 观察。"""
+    if not rows:
+        return rows, None
+
+    cycle = snapshot if snapshot is not None else try_load_emotion_cycle_snapshot()
+    if cycle is None:
+        return rows, None
+
+    factor = float(cycle.position_factor)
+    meta: dict[str, Any] = {
+        "emotion_stage": cycle.stage,
+        "emotion_stage_label": cycle.stage_label,
+        "emotion_position_factor": round(factor, 3),
+        "allow_new_positions": cycle.allow_new_positions,
+    }
+
+    for row in rows:
+        base = float(row.get("composite_score") or 0)
+        adjusted = round(max(0.0, min(100.0, base * factor)), 1)
+        row["composite_score"] = adjusted
+        note = f"{cycle.stage_label} 仓位系数×{factor:.2f}"
+        if not cycle.allow_new_positions:
+            note += "（不建议新开）"
+        row["emotion_note"] = note
+
+    if cycle.stage == "recession":
+        rows.sort(
+            key=lambda item: (
+                float(item.get("composite_score") or 0),
+                len(item.get("hit_reasons") or []),
+            ),
+            reverse=True,
+        )
+        rows = rows[:3]
+        meta["emotion_capped"] = True
+        meta["emotion_cap_reason"] = "退潮期仅保留 Top3 观察"
+
+    rows.sort(
+        key=lambda item: (
+            float(item.get("composite_score") or 0),
+            len(item.get("hit_reasons") or []),
+        ),
+        reverse=True,
+    )
+    return rows, meta
+
+
 def apply_sentiment_modulation(
     rows: list[dict[str, Any]],
     *,
@@ -41,46 +102,48 @@ def apply_sentiment_modulation(
     if not enabled or not rows:
         return rows, None
 
-    snapshot = try_fetch_fear_greed_index()
-    if snapshot is None:
+    if not enabled or not rows:
         return rows, None
 
-    index = float(snapshot.index)
-    meta: dict[str, Any] = {
-        "fear_greed_index": round(index, 1),
-        "fear_greed_label": snapshot.label,
-    }
+    snapshot = try_fetch_fear_greed_index()
+    meta: dict[str, Any] | None = None
+    if snapshot is not None:
+        index = float(snapshot.index)
+        meta = {
+            "fear_greed_index": round(index, 1),
+            "fear_greed_label": snapshot.label,
+        }
 
-    from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
+        from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
-    tuning = load_recipe_tuning_prefs()
+        tuning = load_recipe_tuning_prefs()
 
-    for row in rows:
-        dims = row.get("dimensions") or {}
-        base = float(row.get("composite_score") or 0)
-        adjustment = 0.0
-        note = ""
+        for row in rows:
+            dims = row.get("dimensions") or {}
+            base = float(row.get("composite_score") or 0)
+            adjustment = 0.0
+            note = ""
 
-        if index < 30:
-            adjustment -= float(dims.get("momentum") or 0) * tuning.extreme_fear_momentum
-            adjustment -= float(dims.get("sector_strength") or 0) * tuning.extreme_fear_sector
-            adjustment -= float(dims.get("intraday_breakout") or 0) * tuning.extreme_fear_breakout
-            note = f"极度恐惧({index:.0f}) 削弱追高维度"
-        elif index < 45:
-            adjustment -= float(dims.get("momentum") or 0) * tuning.fear_momentum
-            note = f"恐惧({index:.0f}) 动量略降"
-        elif index > 75:
-            adjustment -= float(dims.get("turnover") or 0) * tuning.extreme_greed_turnover
-            adjustment -= float(dims.get("volume_surge") or 0) * tuning.extreme_greed_volume_surge
-            note = f"极度贪婪({index:.0f}) 换手/放量略降"
-        elif index > 60:
-            adjustment -= float(dims.get("turnover") or 0) * tuning.greed_turnover
-            note = f"贪婪({index:.0f}) 换手略降"
+            if index < 30:
+                adjustment -= float(dims.get("momentum") or 0) * tuning.extreme_fear_momentum
+                adjustment -= float(dims.get("sector_strength") or 0) * tuning.extreme_fear_sector
+                adjustment -= float(dims.get("intraday_breakout") or 0) * tuning.extreme_fear_breakout
+                note = f"极度恐惧({index:.0f}) 削弱追高维度"
+            elif index < 45:
+                adjustment -= float(dims.get("momentum") or 0) * tuning.fear_momentum
+                note = f"恐惧({index:.0f}) 动量略降"
+            elif index > 75:
+                adjustment -= float(dims.get("turnover") or 0) * tuning.extreme_greed_turnover
+                adjustment -= float(dims.get("volume_surge") or 0) * tuning.extreme_greed_volume_surge
+                note = f"极度贪婪({index:.0f}) 换手/放量略降"
+            elif index > 60:
+                adjustment -= float(dims.get("turnover") or 0) * tuning.greed_turnover
+                note = f"贪婪({index:.0f}) 换手略降"
 
-        if adjustment != 0.0:
-            row["composite_score"] = round(max(0.0, min(100.0, base + adjustment)), 1)
-            if note:
-                row["sentiment_note"] = note
+            if adjustment != 0.0:
+                row["composite_score"] = round(max(0.0, min(100.0, base + adjustment)), 1)
+                if note:
+                    row["sentiment_note"] = note
 
     rows.sort(
         key=lambda item: (
@@ -89,6 +152,9 @@ def apply_sentiment_modulation(
         ),
         reverse=True,
     )
+    rows, emotion_meta = apply_emotion_modulation(rows)
+    if emotion_meta:
+        meta = {**(meta or {}), **emotion_meta}
     return rows, meta
 
 

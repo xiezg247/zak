@@ -24,7 +24,7 @@
 | T-02 | 恐贪 + 北向环境 | **已有** | 0 | Tushare | `market_environment` |
 | T-03 | 情绪周期引擎 | **部分** | 1 | T-01, 连板 | `emotion_cycle.py`；[emotion-cycle.md](./emotion-cycle.md) |
 | T-04 | 择时闸 UI 芯片 | **已有** | 1 | T-03 | 市场页 stats_bar |
-| T-05 | sentiment_gate × 周期系数 | **部分** | 1 | T-03 | `screener/dimensions/sentiment_gate` |
+| T-05 | sentiment_gate × 周期系数 | **已有** | 1 | T-03 | `screener/sentiment/sentiment_gate` |
 | T-06 | 退潮期批量入自选软拦截 | **待建** | 1 | T-03 | 选股 `ScreenerResultActionBar` |
 
 ---
@@ -62,9 +62,9 @@
 | G-01 | 连板梯队视图 | P0 | 2 | **待建** |
 | G-02 | 龙一 / 龙二 / 跟风 | P0 | 1 | **待建** |
 | G-03 | 首板人气 | P1 | 2 | **待建** |
-| G-04 | `leader_score` | P0 | 1 | **待建** |
-| G-05 | `run_leader_screen` Hub 入口 | P0 | 1 | **部分**（文档已写，代码待建） |
-| G-06 | `RadarRow` 扩展字段 | P0 | 1 | **待建** |
+| G-04 | `leader_score` | P0 | 1 | **部分**（核心评分+板块卡） |
+| G-05 | `run_leader_screen` Hub 入口 | P0 | 1 | **已有** |
+| G-06 | `RadarRow` 扩展字段 | P0 | 1 | **部分** |
 | G-07 | 概念 + 行业统一 scoring | P1 | 4 | **规划** |
 | G-08 | 情绪 gate 龙头选股 | P1 | 1 | **待建**（依赖 T-03） |
 

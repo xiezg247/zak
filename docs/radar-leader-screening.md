@@ -69,6 +69,7 @@
 | 选股卡「查看完整」 | `open_screener_run(run_id)` |
 | 板块·主线「板块资金」 | `open_sector_flow(sector_names)` |
 | 共振侧栏「条件选股」 | `open_screener_radar_resonance()` |
+| 共振侧栏「龙头选股」 | `open_screener_leader_screen()` |
 | 行右键 / 批量 | 加自选、个股分析、AI |
 
 ### 2.2 「板块·主线」与真龙头的差距
@@ -483,11 +484,11 @@ ui/screener/workers/              # LeaderScreenWorker
 
 ### Phase 1 — 龙头评分 + 主卡（MVP）
 
-- [ ] `radar_leader.py` 评分与 `leader_tier` 分配  
-- [ ] 新卡 `leader_pick`（variant `mainline`）  
-- [ ] `RadarRow` 扩展 + 行 UI 角标  
-- [ ] `run_leader_screen` + Hub「雷达龙头」按钮  
-- [ ] 共振权重预设  
+- [x] `radar_leader.py` 评分与 `leader_tier` 分配
+- [x] 新卡 `leader_pick`（variant `mainline`）
+- [x] `RadarRow` 扩展 + 行 UI 角标
+- [x] `run_leader_screen` + Hub「雷达龙头」按钮
+- [x] 共振权重预设
 
 ### Phase 2 — 发现卡 + 板块改造
 

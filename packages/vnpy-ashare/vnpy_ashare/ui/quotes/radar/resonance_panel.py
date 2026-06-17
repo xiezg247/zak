@@ -29,6 +29,7 @@ class RadarResonancePanel(QtWidgets.QFrame):
     stock_analysis_requested = QtCore.Signal(str)
     ai_resonance_requested = QtCore.Signal()
     open_screener_requested = QtCore.Signal()
+    open_leader_screener_requested = QtCore.Signal()
     resonance_weights_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -114,6 +115,10 @@ class RadarResonancePanel(QtWidgets.QFrame):
         self._screener_button = QtWidgets.QPushButton("条件选股")
         self._screener_button.setObjectName("RadarResonanceScreener")
         self._screener_button.clicked.connect(self.open_screener_requested.emit)
+        self._leader_button = QtWidgets.QPushButton("龙头选股")
+        self._leader_button.setObjectName("RadarResonanceLeader")
+        self._leader_button.setToolTip("按 leader_score 执行龙头选股并打开 Hub")
+        self._leader_button.clicked.connect(self.open_leader_screener_requested.emit)
         self._weights_button = QtWidgets.QPushButton("权重")
         self._weights_button.setObjectName("RadarResonanceWeights")
         self._weights_button.setToolTip("配置各卡片共振加权分")
@@ -121,7 +126,8 @@ class RadarResonancePanel(QtWidgets.QFrame):
         toolbar.addWidget(self._add_all_button, 0, 0)
         toolbar.addWidget(self._ai_button, 0, 1)
         toolbar.addWidget(self._screener_button, 1, 0)
-        toolbar.addWidget(self._weights_button, 1, 1)
+        toolbar.addWidget(self._leader_button, 1, 1)
+        toolbar.addWidget(self._weights_button, 2, 0)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)

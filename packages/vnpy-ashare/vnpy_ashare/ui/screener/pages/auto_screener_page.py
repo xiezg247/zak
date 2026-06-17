@@ -56,6 +56,7 @@ from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRu
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
 from vnpy_ashare.ui.screener.workers import (
+    LeaderScreenRunWorker,
     RadarResonanceRunWorker,
     ScreenerBatchDownloadWorker,
     ScreenerRecipeRunWorker,
@@ -82,6 +83,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.setObjectName("MarketRoot")
         self._recipe_worker: ScreenerRecipeRunWorker | None = None
         self._radar_worker: RadarResonanceRunWorker | None = None
+        self._leader_worker: LeaderScreenRunWorker | None = None
         self._download_worker: ScreenerBatchDownloadWorker | None = None
         self._batch_backtest_flow: BatchBacktestFlow | None = None
         self._retired_workers: list[QtCore.QThread] = []
@@ -154,6 +156,12 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.radar_resonance_btn.setToolTip("使用雷达页最新共振列表选股")
         self.radar_resonance_btn.clicked.connect(self._run_radar_resonance)
         primary_toolbar.addWidget(self.radar_resonance_btn)
+
+        self.leader_screen_btn = QtWidgets.QPushButton("雷达龙头")
+        self.leader_screen_btn.setObjectName("SecondaryButton")
+        self.leader_screen_btn.setToolTip("按 leader_score 评分筛选主线龙头")
+        self.leader_screen_btn.clicked.connect(self._run_leader_screen)
+        primary_toolbar.addWidget(self.leader_screen_btn)
         primary_toolbar.addWidget(screener_toolbar_separator())
 
         self.export_btn = QtWidgets.QPushButton("导出 CSV")
@@ -295,6 +303,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
             self.export_btn,
             self.reference_peer_btn,
             self.radar_resonance_btn,
+            self.leader_screen_btn,
             *self.recipe_panel.task_lock_widgets(),
         ]
 
@@ -376,6 +385,10 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         """供主窗口等入口执行雷达共振选股。"""
         self._run_radar_resonance()
 
+    def run_leader_screen(self, *, variant: str = "mainline") -> None:
+        """供主窗口等入口执行雷达龙头选股。"""
+        self._run_leader_screen(variant=variant)
+
     def _run_radar_resonance(self) -> None:
         if self._task_guard.active:
             return
@@ -441,11 +454,87 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self.run_output_panel.fail_run(message)
         self._toast.error(message)
 
+    def _run_leader_screen(self, *, variant: str = "mainline") -> None:
+        if self._task_guard.active:
+            return
+        if self._leader_worker is not None and self._leader_worker.isRunning():
+            return
+        top_n = int(self.recipe_panel._top_n_spin.value())
+        self._pending_leader_variant = variant
+        self._task_guard.begin(
+            "正在运行雷达龙头选股…",
+            widgets=self._task_lock_widgets(),
+            primary=self.leader_screen_btn,
+            primary_text="雷达龙头",
+            primary_handler=lambda: self._run_leader_screen(variant=variant),
+            on_cancel=self._cancel_recipe,
+        )
+        self.run_output_panel.begin_run(label="雷达龙头", top_n=top_n, kind="雷达")
+        worker = LeaderScreenRunWorker(
+            self.main_engine,
+            top_n=top_n,
+            variant=variant,
+            parent=self,
+        )
+        self._leader_worker = worker
+        worker.finished.connect(self._on_leader_finished)
+        worker.failed.connect(self._on_leader_failed)
+        worker.start()
+
+    def _on_leader_finished(self, result: ScreenerRunResult) -> None:
+        worker = self._leader_worker
+        self._leader_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled:
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("雷达龙头选股已取消")
+            return
+        config = {
+            "trigger": "radar_leader",
+            "leader_variant": getattr(self, "_pending_leader_variant", "mainline"),
+        }
+        display_rows = enrich_condition_run(list(result.rows), result.condition, config, source=result.source)
+        summary = self._apply_result(result, rows=display_rows, config=config)
+        service = self._screening_service()
+        if service is not None:
+            service.persist_run_result(result, trigger="radar_leader", extra_config=config)
+        insight_detail = build_run_insight_detail(display_rows, config)
+        detail_lines = ["数据源 雷达龙头 · 已写入历史运行"]
+        if insight_detail:
+            detail_lines.append(insight_detail)
+        self.run_output_panel.complete_run(summary=summary, detail="\n".join(detail_lines))
+        self.run_sidebar.refresh()
+        sync_screener_page_context(self.main_engine)
+        self._toast.success(f"雷达龙头完成，命中 {len(result.rows)} 条")
+
+    def _on_leader_failed(self, message: str) -> None:
+        worker = self._leader_worker
+        self._leader_worker = None
+        self._release_worker(worker)
+        if not self._active:
+            self._task_guard.end()
+            return
+        cancelled = self._task_guard.cancelled
+        self._task_guard.end()
+        if cancelled or message == "已取消":
+            self.run_output_panel.fail_run("已取消")
+            self._toast.info("雷达龙头选股已取消")
+            return
+        self.run_output_panel.fail_run(message)
+        self._toast.error(message)
+
     def _cancel_recipe(self) -> None:
         if self._recipe_worker is not None:
             self._recipe_worker.request_cancel()
         if self._radar_worker is not None:
             self._radar_worker.request_cancel()
+        if self._leader_worker is not None:
+            self._leader_worker.request_cancel()
 
     def _on_recipe_finished(self, result: ScreenerRunResult, recipe_id: str) -> None:
         worker = self._recipe_worker

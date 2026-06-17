@@ -1,4 +1,4 @@
-"""雷达页：板块·主线 loader。"""
+"""板块·主线 loader（含 leader_score 分层）。"""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from typing import Any
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
+from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label, rank_sector_leaders
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, format_pct, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
@@ -25,6 +26,37 @@ def _sector_metric(row: dict[str, Any]) -> tuple[str, str, str, str]:
     if amount > 0:
         return "行业", industry[:8], "涨幅", format_pct(change)
     return "行业", industry[:8], "涨幅", format_pct(change)
+
+
+def _row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
+    row = merge_row_quotes(scored.row)
+    vt_symbol = str(row.get("vt_symbol") or "").strip()
+    if not vt_symbol:
+        return None
+    item = parse_stock_symbol(vt_symbol)
+    name = str(row.get("name") or (item.name if item else "") or vt_symbol)
+    symbol = str(row.get("symbol") or (item.symbol if item else vt_symbol.split(".")[0]))
+    price_raw = row.get("last_price") or row.get("close")
+    price = float(price_raw) if isinstance(price_raw, (int, float)) else None
+    change_raw = row.get("change_pct")
+    change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
+    tier_label = leader_tier_label(scored.leader_tier)
+    boards = scored.limit_times
+    board_text = f"{int(boards)}板" if boards >= 1 else "—"
+    return RadarRow(
+        vt_symbol=vt_symbol,
+        name=name,
+        symbol=symbol,
+        price=price,
+        change_pct=change_pct,
+        metric_label=tier_label or "龙头分",
+        metric_value=f"{scored.leader_score:.0f}" if tier_label else f"{scored.leader_score:.0f}",
+        sub_label="连板",
+        sub_value=board_text,
+        leader_score=scored.leader_score,
+        leader_tier=scored.leader_tier,
+        limit_times=scored.limit_times if scored.limit_times >= 1 else None,
+    )
 
 
 def _row_from_sector_hit(row: dict[str, Any]) -> RadarRow | None:
@@ -55,14 +87,16 @@ def _row_from_sector_hit(row: dict[str, Any]) -> RadarRow | None:
 
 def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
     hits, total = run_sector_strength(pool_size, weight=1.0)
+    candidates = [dict(hit.row) for hit in hits]
+    ranked = rank_sector_leaders(candidates, max_per_sector=5)
     rows: list[RadarRow] = []
     industries: list[str] = []
-    for hit in hits:
-        parsed = _row_from_sector_hit(hit.row)
+    for scored in ranked[:pool_size]:
+        parsed = _row_from_leader_scored(scored)
         if parsed is None:
             continue
         rows.append(parsed)
-        industry = str(hit.row.get("industry") or "")
+        industry = str(scored.row.get("industry") or "")
         if industry and industry not in industries:
             industries.append(industry)
     subtitle = ""
@@ -70,6 +104,8 @@ def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple
         subtitle = "主线：" + "、".join(industries[:3])
     if total:
         subtitle = (subtitle + " · " if subtitle else "") + f"扫描 {total} 只"
+    if rows:
+        subtitle = (subtitle + " · " if subtitle else "") + "龙头分排序"
     return rows, subtitle, total, tuple(industries[:6])
 
 

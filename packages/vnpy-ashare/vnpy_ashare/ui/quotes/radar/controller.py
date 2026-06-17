@@ -13,6 +13,7 @@ from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_catalog import (
+    DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
@@ -62,6 +63,7 @@ class RadarController(QtCore.QObject):
         self._card_variants: dict[str, str] = {
             "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
             "sector_theme": DEFAULT_SECTOR_VARIANT,
+            "leader_pick": DEFAULT_LEADER_PICK_VARIANT,
             "outlook_scenario": DEFAULT_SCENARIO_VARIANT,
             "outlook_predict": load_predict_model_mode(),
         }
@@ -96,6 +98,7 @@ class RadarController(QtCore.QObject):
             panel.stock_analysis_requested.connect(self._on_stock_analysis)
             panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
             panel.open_screener_requested.connect(self._on_open_screener_resonance)
+            panel.open_leader_screener_requested.connect(self._on_open_screener_leader)
             panel.resonance_weights_requested.connect(self._on_resonance_weights_requested)
 
     def _on_open_screener_resonance(self) -> None:
@@ -104,6 +107,14 @@ class RadarController(QtCore.QObject):
             page_notify(self._page, "无法打开选股页", level="warning")
             return
         host.open_screener_radar_resonance()
+
+    def _on_open_screener_leader(self) -> None:
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_screener_leader_screen"):
+            page_notify(self._page, "无法打开选股页", level="warning")
+            return
+        variant = self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT)
+        host.open_screener_leader_screen(variant=variant)
 
     def _on_resonance_weights_requested(self) -> None:
         from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
@@ -248,6 +259,7 @@ class RadarController(QtCore.QObject):
             card_id=card_id,
             screen_task_variant=self._card_variants.get("screen_task", DEFAULT_SCREEN_TASK_VARIANT),
             sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
+            leader_pick_variant=self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT),
             scenario_variant=self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
             force_recompute=force_recompute,
             quote_only=quote_only,
