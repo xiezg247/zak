@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date, datetime
+from typing import TypeVar
 
 from vnpy_ashare.config.constants.recipe import (
     DEFAULT_MIN_AMOUNT_YUAN,
@@ -30,8 +31,8 @@ from vnpy_ashare.domain.core.env import (
     env_or_prefs_str,
 )
 from vnpy_ashare.domain.market.board import matches_board
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol, vt_symbol_to_ts_code
+from vnpy_ashare.domain.screener.result_row import ScreeningFilterRow
+from vnpy_ashare.domain.symbols.stock import ts_code_to_vt_symbol, vt_symbol_to_ts_code
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.factors import (
     fetch_stock_basic_snapshot,
@@ -45,6 +46,8 @@ from vnpy_ashare.screener.hard_filter_prefs import (
 )
 from vnpy_ashare.storage.repositories.symbol_suspend import ensure_suspend_keys_for_screening
 from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
+
+T_ScreeningRow = TypeVar("T_ScreeningRow", bound=ScreeningFilterRow)
 
 _suspend_keys_cache: tuple[date, frozenset[tuple[str, str]]] | None = None
 _list_date_map_cache: tuple[date, dict[str, str]] | None = None
@@ -134,7 +137,7 @@ def _screening_vt_name_map() -> dict[str, str]:
     return mapping
 
 
-def _names_for_st_check(row: QuoteRowLike, name_map: dict[str, str] | None) -> list[str]:
+def _names_for_st_check(row: ScreeningFilterRow, name_map: dict[str, str] | None) -> list[str]:
     candidates: list[str] = []
     for candidate in (
         str(row.get("name") or "").strip(),
@@ -145,7 +148,7 @@ def _names_for_st_check(row: QuoteRowLike, name_map: dict[str, str] | None) -> l
     return candidates
 
 
-def row_amount_yuan(row: QuoteRowLike) -> float:
+def row_amount_yuan(row: ScreeningFilterRow) -> float:
     amount = row.get("amount")
     if amount not in (None, ""):
         return float(amount or 0)
@@ -157,7 +160,7 @@ def row_amount_yuan(row: QuoteRowLike) -> float:
     return 0.0
 
 
-def row_symbol_exchange(row: QuoteRowLike) -> tuple[str, str] | None:
+def row_symbol_exchange(row: ScreeningFilterRow) -> tuple[str, str] | None:
     symbol = str(row.get("symbol") or "").strip()
     exchange = str(row.get("exchange") or "").strip()
     if symbol and exchange:
@@ -189,7 +192,7 @@ def _suspended_keys_for_screening() -> frozenset[tuple[str, str]]:
     return keys
 
 
-def is_row_suspended(row: QuoteRowLike, suspended_keys: frozenset[tuple[str, str]]) -> bool:
+def is_row_suspended(row: ScreeningFilterRow, suspended_keys: frozenset[tuple[str, str]]) -> bool:
     key = row_symbol_exchange(row)
     return key is not None and key in suspended_keys
 
@@ -243,7 +246,7 @@ def _industry_map_for_screening() -> dict[str, str]:
     return mapping
 
 
-def row_symbol(row: QuoteRowLike) -> str:
+def row_symbol(row: ScreeningFilterRow) -> str:
     symbol = str(row.get("symbol") or "").strip()
     if symbol:
         return symbol
@@ -253,7 +256,7 @@ def row_symbol(row: QuoteRowLike) -> str:
     return vt_symbol
 
 
-def passes_market_board_filter(row: QuoteRowLike, allowed: frozenset[str]) -> bool:
+def passes_market_board_filter(row: ScreeningFilterRow, allowed: frozenset[str]) -> bool:
     if not allowed:
         return False
 
@@ -263,7 +266,7 @@ def passes_market_board_filter(row: QuoteRowLike, allowed: frozenset[str]) -> bo
     return any(matches_board(symbol, board) for board in allowed)
 
 
-def row_industry(row: QuoteRowLike, industry_map: dict[str, str] | None = None) -> str:
+def row_industry(row: ScreeningFilterRow, industry_map: dict[str, str] | None = None) -> str:
     industry = str(row.get("industry") or "").strip()
     if industry:
         return industry
@@ -277,7 +280,7 @@ def row_industry(row: QuoteRowLike, industry_map: dict[str, str] | None = None) 
     return str(mapping.get(ts_code) or "").strip()
 
 
-def passes_industry_filter(row: QuoteRowLike, allowed: frozenset[str], industry_map: dict[str, str] | None = None) -> bool:
+def passes_industry_filter(row: ScreeningFilterRow, allowed: frozenset[str], industry_map: dict[str, str] | None = None) -> bool:
     if not allowed:
         return True
     industry = row_industry(row, industry_map)
@@ -290,7 +293,7 @@ def _ts_code_to_vt_symbol(ts_code: str) -> str:
     return ts_code_to_vt_symbol(ts_code) or ""
 
 
-def is_new_listing(row: QuoteRowLike, list_date_map: dict[str, str] | None = None) -> bool:
+def is_new_listing(row: ScreeningFilterRow, list_date_map: dict[str, str] | None = None) -> bool:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return False
@@ -310,7 +313,7 @@ def is_new_listing(row: QuoteRowLike, list_date_map: dict[str, str] | None = Non
     return (date.today() - listed).days < min_days
 
 
-def limit_board_threshold_pct(row: QuoteRowLike, market_board_map: dict[str, str] | None = None) -> float:
+def limit_board_threshold_pct(row: ScreeningFilterRow, market_board_map: dict[str, str] | None = None) -> float:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     market = str(row.get("market") or "").strip()
     if not market and vt_symbol:
@@ -324,13 +327,13 @@ def limit_board_threshold_pct(row: QuoteRowLike, market_board_map: dict[str, str
     return 9.8
 
 
-def is_at_limit_board(row: QuoteRowLike, market_board_map: dict[str, str] | None = None) -> bool:
+def is_at_limit_board(row: ScreeningFilterRow, market_board_map: dict[str, str] | None = None) -> bool:
     change = float(row.get("change_pct") or row.get("pct_chg") or 0)
     threshold = limit_board_threshold_pct(row, market_board_map=market_board_map)
     return change >= threshold or change <= -threshold
 
 
-def passes_liquidity_filter(row: QuoteRowLike) -> bool:
+def passes_liquidity_filter(row: ScreeningFilterRow) -> bool:
     """成交额或总市值（小资金）达标；无相关字段时不排除。"""
     min_amount = recipe_min_amount_yuan()
     min_mv = recipe_min_total_mv_wan()
@@ -355,7 +358,7 @@ def passes_liquidity_filter(row: QuoteRowLike) -> bool:
 
 
 def passes_screening_hard_filter(
-    row: QuoteRowLike,
+    row: ScreeningFilterRow,
     *,
     suspended_keys: frozenset[tuple[str, str]] | None = None,
     name_map: dict[str, str] | None = None,
@@ -389,7 +392,7 @@ def passes_screening_hard_filter(
     return passes_liquidity_filter(row)
 
 
-def apply_recipe_filters(rows: Sequence[QuoteRowLike]) -> list[QuoteRowLike]:
+def apply_recipe_filters(rows: Sequence[T_ScreeningRow]) -> list[T_ScreeningRow]:
     """排除 ST、停牌与流动性 / 小市值不达标的标的。"""
     allowed_industries = recipe_allowed_industries()
     suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()

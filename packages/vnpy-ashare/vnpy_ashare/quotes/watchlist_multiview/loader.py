@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_moneyflow import enrich_quotes_with_moneyflow
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
@@ -19,33 +20,49 @@ from vnpy_ashare.quotes.watchlist_multiview.sort import sort_multiview_rows
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 
 
-def build_watchlist_multiview_board(
+def _quote_row_from_snapshot(item: StockItem, quote: QuoteSnapshot | None) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "vt_symbol": item.vt_symbol,
+        "symbol": item.symbol,
+        "name": item.name or "",
+    }
+    if quote is None:
+        return row
+    row.update(
+        {
+            "name": quote.name or item.name or "",
+            "last_price": quote.last_price,
+            "close": quote.last_price,
+            "change_pct": quote.change_pct,
+            "change_amount": quote.change_amount,
+            "turnover_rate": quote.turnover_rate,
+            "volume_ratio": quote.volume_ratio,
+            "net_mf_amount": quote.net_mf_amount,
+            "change_speed_5m": quote.change_speed_5m,
+            "volume": quote.volume,
+            "amount": quote.amount,
+        }
+    )
+    return row
+
+
+def _assemble_multiview_board(
+    candidates: list[str],
+    sort_orders: dict[str, int],
+    quotes_by_vt: dict[str, dict[str, Any]],
     *,
-    sort_key: str = "sort_order",
-    vt_symbols: tuple[str, ...] | None = None,
+    sort_key: str,
+    empty_message: str = "",
 ) -> WatchlistMultiBoardData:
-    watchlist = load_watchlist_rows()
-    if vt_symbols is not None:
-        allowed = set(vt_symbols)
-        watchlist = [row for row in watchlist if f"{row[0]}.{row[1].value}" in allowed]
-    if not watchlist:
-        return WatchlistMultiBoardData(rows=(), empty_message="自选池为空，请先添加自选。", total_count=0)
-
-    candidates: list[str] = []
-    sort_orders: dict[str, int] = {}
-    for index, (symbol, exchange, _name) in enumerate(watchlist):
-        vt_symbol = f"{symbol}.{exchange.value}"
-        candidates.append(vt_symbol)
-        sort_orders[vt_symbol] = index
-
-    quotes_by_vt = _quotes_for_candidates(candidates)
-    try:
-        quotes_by_vt = enrich_quotes_with_moneyflow(quotes_by_vt)
-    except Exception:
-        pass
+    if not candidates:
+        return WatchlistMultiBoardData(rows=(), empty_message=empty_message, total_count=0)
 
     name_map = name_map_for_symbols(candidates)
-    changes = [float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0) for vt in candidates if quotes_by_vt.get(vt)]
+    changes = [
+        float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0)
+        for vt in candidates
+        if quotes_by_vt.get(vt)
+    ]
     pool_median = sorted(changes)[len(changes) // 2] if changes else 0.0
 
     rows: list[WatchlistMultiRow] = []
@@ -85,6 +102,69 @@ def build_watchlist_multiview_board(
     sorted_rows = sort_multiview_rows(rows, sort_key=key)
     return WatchlistMultiBoardData(
         rows=tuple(sorted_rows),
-        empty_message="",
+        empty_message=empty_message,
         total_count=len(sorted_rows),
+    )
+
+
+def build_watchlist_multiview_board_from_page(
+    *,
+    stocks: list[StockItem],
+    quote_map: dict[str, QuoteSnapshot],
+    sort_key: str = "sort_order",
+    refresh_moneyflow: bool = False,
+) -> WatchlistMultiBoardData:
+    """从自选页内存行情构建多维看板（避免 tick 级重复 I/O）。"""
+    if not stocks:
+        return WatchlistMultiBoardData(rows=(), empty_message="自选池为空，请先添加自选。", total_count=0)
+
+    candidates = [item.vt_symbol for item in stocks]
+    sort_orders = {item.vt_symbol: index for index, item in enumerate(stocks)}
+    quotes_by_vt = {
+        item.vt_symbol: _quote_row_from_snapshot(item, quote_map.get(item.tickflow_symbol))
+        for item in stocks
+    }
+    if refresh_moneyflow:
+        try:
+            quotes_by_vt = enrich_quotes_with_moneyflow(quotes_by_vt)
+        except Exception:
+            pass
+    return _assemble_multiview_board(
+        candidates,
+        sort_orders,
+        quotes_by_vt,
+        sort_key=sort_key,
+    )
+
+
+def build_watchlist_multiview_board(
+    *,
+    sort_key: str = "sort_order",
+    vt_symbols: tuple[str, ...] | None = None,
+) -> WatchlistMultiBoardData:
+    watchlist = load_watchlist_rows()
+    if vt_symbols is not None:
+        allowed = set(vt_symbols)
+        watchlist = [row for row in watchlist if f"{row[0]}.{row[1].value}" in allowed]
+    if not watchlist:
+        return WatchlistMultiBoardData(rows=(), empty_message="自选池为空，请先添加自选。", total_count=0)
+
+    candidates: list[str] = []
+    sort_orders: dict[str, int] = {}
+    for index, (symbol, exchange, _name) in enumerate(watchlist):
+        vt_symbol = f"{symbol}.{exchange.value}"
+        candidates.append(vt_symbol)
+        sort_orders[vt_symbol] = index
+
+    quotes_by_vt = _quotes_for_candidates(candidates)
+    try:
+        quotes_by_vt = enrich_quotes_with_moneyflow(quotes_by_vt)
+    except Exception:
+        pass
+
+    return _assemble_multiview_board(
+        candidates,
+        sort_orders,
+        quotes_by_vt,
+        sort_key=sort_key,
     )

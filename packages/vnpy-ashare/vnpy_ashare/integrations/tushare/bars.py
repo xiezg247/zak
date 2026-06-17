@@ -13,7 +13,7 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bar_store import invalidate_bar_overview_cache
 from vnpy_ashare.data.minute_periods import normalize_period
-from vnpy_ashare.domain.symbols import symbol_exchange_to_ts_code
+from vnpy_ashare.domain.symbols.stock import symbol_exchange_to_ts_code
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.rate_limit import acquire_tushare, is_rate_limited, rate_limit_retry_delay
 

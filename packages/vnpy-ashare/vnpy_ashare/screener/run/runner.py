@@ -80,7 +80,7 @@ def run_screener(request: ScreenerRequest) -> ScreenerRunResult:
         )
         enriched_rows = enrich_recipe_rows(preset_rows)
         return build_screener_run_result(
-            rows=coerce_screener_result_rows(enriched_rows),
+            rows=enriched_rows,
             condition=preset.name,
             updated_at=snapshot.updated_at,
             total_scanned=snapshot.total,

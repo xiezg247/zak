@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.domain.screener.result_row import ScreeningRowInput, ScreeningRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.screener.result_row import ScreeningFilterRow, ScreenerResultRow
 
 FlowKind = Literal["main", "active", "proxy"]
 
@@ -33,7 +34,7 @@ def flow_kind_label(kind: str | None) -> str:
     return FLOW_KIND_LABELS["main"]
 
 
-def classify_moneyflow_row(row: ScreeningRowInput) -> FlowKind:
+def classify_moneyflow_row(row: ScreeningFilterRow) -> FlowKind:
     """基于 Tushare 档位与数据来源标注资金类型。"""
     explicit = str(row.get("flow_kind") or "").strip()
     if explicit in FLOW_KIND_LABELS:
@@ -78,12 +79,12 @@ def classify_moneyflow_row(row: ScreeningRowInput) -> FlowKind:
     return "proxy"
 
 
-def enrich_moneyflow_row_with_kind(row: QuoteRowLike) -> dict[str, Any]:
-    from vnpy_ashare.domain.market.quote_row import coerce_quote_row
-
-    item = coerce_quote_row(row).to_dict()
-    item["flow_kind"] = classify_moneyflow_row(item)
-    return item
+def enrich_moneyflow_row_with_kind(row: QuoteRow | Mapping[str, Any]) -> dict[str, Any]:
+    quote = coerce_quote_row(row)
+    kind = classify_moneyflow_row(quote)
+    payload = quote.to_dict()
+    payload["flow_kind"] = kind
+    return payload
 
 
 def flow_kind_score_factor(kind: str | None) -> float:
@@ -92,7 +93,7 @@ def flow_kind_score_factor(kind: str | None) -> float:
     return 1.0
 
 
-def row_flow_kind(row: ScreeningRowLike | QuoteRowLike) -> FlowKind:
+def row_flow_kind(row: ScreenerResultRow | QuoteRow) -> FlowKind:
     kind = str(row.get("flow_kind") or "").strip()
     if kind in FLOW_KIND_LABELS:
         return kind
@@ -101,7 +102,7 @@ def row_flow_kind(row: ScreeningRowLike | QuoteRowLike) -> FlowKind:
 
 def moneyflow_dimension_score_factor(
     dimension_id: str,
-    row: ScreeningRowLike,
+    row: ScreenerResultRow,
 ) -> float:
     """资金相关维度在配方 composite 中的得分系数。"""
     if dimension_id not in MONEYFLOW_DIMENSION_IDS:
@@ -109,7 +110,7 @@ def moneyflow_dimension_score_factor(
     return flow_kind_score_factor(row_flow_kind(row))
 
 
-def row_has_moneyflow_fields(row: ScreeningRowLike) -> bool:
+def row_has_moneyflow_fields(row: ScreenerResultRow) -> bool:
     if row.get("moneyflow_proxy"):
         return True
     if float(row.get("net_mf_amount") or 0) != 0:

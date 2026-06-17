@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Literal
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
-from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
+from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
+from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore

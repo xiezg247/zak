@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.services.screening import ScreeningService
 
 
@@ -54,12 +55,16 @@ class ScreeningServiceTests(unittest.TestCase):
             ) as mock_apply,
             patch(
                 "vnpy_ashare.services.screening.enrich_recipe_rows",
-                side_effect=lambda enriched: enriched,
+                side_effect=lambda enriched: [
+                    ScreenerResultRow.from_mapping(row) for row in enriched
+                ],
             ),
         ):
             result = self.service.screen_quote_preset("涨幅榜", top_n=3)
         mock_apply.assert_called_once_with("涨幅榜", rows, top_n=3)
-        self.assertEqual(result, [{"symbol": "600519"}])
+        self.assertEqual(len(result), 1)
+        self.assertIsInstance(result[0], ScreenerResultRow)
+        self.assertEqual(result[0].get("symbol"), "600519")
 
 
 if __name__ == "__main__":

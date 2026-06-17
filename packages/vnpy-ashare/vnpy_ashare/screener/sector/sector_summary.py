@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, quote_row_copy
-from vnpy_ashare.domain.screener.result_row import ScreeningRowInput, screening_row_to_dict
-from vnpy_ashare.domain.symbols import vt_symbol_to_ts_code
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningFilterRow, screening_row_to_dict
+from vnpy_ashare.domain.symbols.stock import vt_symbol_to_ts_code
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 
 
 def attach_industry(
-    rows: Sequence[ScreeningRowInput],
+    rows: Sequence[ScreeningFilterRow | Mapping[str, Any]],
     industry_map: dict[str, str] | None = None,
 ) -> list[QuoteRow]:
     """为行情行附加 ``industry`` 字段。"""
@@ -26,12 +26,13 @@ def attach_industry(
         industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
         if not industry:
             continue
-        enriched.append(quote_row_copy(payload, industry=industry))
+        quote = row.quote if isinstance(row, ScreenerResultRow) else row
+        enriched.append(quote_row_copy(quote, industry=industry))
     return enriched
 
 
 def attach_concept(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     vt_to_concept: dict[str, str] | None = None,
 ) -> list[QuoteRow]:
     """为行情行附加 ``concept`` 字段（主概念名）。"""
@@ -51,7 +52,7 @@ def attach_concept(
 
 
 def attach_sector_fields(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     industry_map: dict[str, str] | None = None,
     vt_to_concept: dict[str, str] | None = None,
@@ -82,7 +83,7 @@ def attach_sector_fields(
 
 
 def compute_sector_distribution(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     top_n: int = 8,
     min_stocks: int = 2,
@@ -126,7 +127,7 @@ def compute_sector_distribution(
 
 
 def top_industries_by_momentum(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     top_industry_count: int = 5,
     min_stocks_per_industry: int = 3,
@@ -141,7 +142,7 @@ def top_industries_by_momentum(
 
 
 def top_industries_by_breadth(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     top_industry_count: int = 5,
     min_stocks_per_industry: int = 3,
@@ -165,7 +166,7 @@ def top_industries_by_breadth(
 
 
 def breadth_leader_candidates(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     pool_size: int,
     min_stocks_per_industry: int = 3,

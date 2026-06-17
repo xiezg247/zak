@@ -13,8 +13,8 @@ from vnpy_ashare.ai.context import (
 )
 from vnpy_ashare.ai.context.market_overview import merge_market_overview_extra
 from vnpy_ashare.domain.market.quote_row import QuoteRow
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.core.quote_rows import (
     get_market_quotes_cache as read_market_quotes_cache,
 )

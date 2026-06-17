@@ -20,7 +20,7 @@ from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiReque
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.quotes.format import format_volume

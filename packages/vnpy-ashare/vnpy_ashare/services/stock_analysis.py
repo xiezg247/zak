@@ -9,15 +9,19 @@ from pydantic import Field
 from vnpy_ashare.ai.context import parse_stock_symbol
 from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.services.financial import FinancialBundle, FinancialSyncResult
-from vnpy_ashare.services.stock.concept import ConceptProfile, build_concept_profile
-from vnpy_ashare.services.stock.context import MoneyflowProfile, build_moneyflow_profile, compute_relative_returns
-from vnpy_ashare.services.stock.events import EventsProfile, build_events_profile
-from vnpy_ashare.services.stock.holders import HolderProfile, build_holder_profile
-from vnpy_ashare.services.stock.overview_dashboard import OverviewDashboard, build_overview_dashboard
+from vnpy_ashare.domain.financial.bundle import FinancialBundle, FinancialSyncResult
+from vnpy_ashare.domain.stock.concept import ConceptProfile
+from vnpy_ashare.domain.stock.context import MoneyflowProfile
+from vnpy_ashare.domain.stock.events import EventsProfile
+from vnpy_ashare.domain.stock.holders import HolderProfile
+from vnpy_ashare.domain.stock.overview import OverviewDashboard
+from vnpy_ashare.domain.stock.profile import SectorProfile, ValuationProfile
+from vnpy_ashare.services.stock.concept import build_concept_profile
+from vnpy_ashare.services.stock.context import build_moneyflow_profile, compute_relative_returns
+from vnpy_ashare.services.stock.events import build_events_profile
+from vnpy_ashare.services.stock.holders import build_holder_profile
+from vnpy_ashare.services.stock.overview_dashboard import build_overview_dashboard
 from vnpy_ashare.services.stock.profile import (
-    SectorProfile,
-    ValuationProfile,
     build_sector_profile,
     build_valuation_profile,
     sync_disclosure_calendar,

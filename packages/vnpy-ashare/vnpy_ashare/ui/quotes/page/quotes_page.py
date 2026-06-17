@@ -30,12 +30,12 @@ from vnpy_ashare.data.bar_health import (
     BarMeta,
 )
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.services.analysis import AnalysisService

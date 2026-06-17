@@ -9,12 +9,8 @@ from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.backtest.batch_runner import batch_backtest_max_workers, resolve_strategy_class
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.integrations.tickflow import (
-    QUOTE_BATCH_SIZE,
-    fetch_quotes_from_tickflow,
-    quote_fetch_max_workers,
-)
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.integrations.tickflow.quotes import QUOTE_BATCH_SIZE, fetch_quotes_from_tickflow, quote_fetch_max_workers
 from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     BatchBacktestRow,

@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 
 if TYPE_CHECKING:

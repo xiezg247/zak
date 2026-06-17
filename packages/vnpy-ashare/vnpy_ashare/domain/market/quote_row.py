@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import ConfigDict, Field, model_validator
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_common.domain.base import MutableModel
 from vnpy_common.domain.serialize import dump_python
 
@@ -136,31 +136,24 @@ def coerce_quote_rows(rows: Sequence[QuoteRow | Mapping[str, Any]]) -> list[Quot
     return [coerce_quote_row(row) for row in rows]
 
 
-def quote_row_copy(row: QuoteRowLike, **updates: Any) -> QuoteRow:
+def quote_row_copy(row: QuoteRow | Mapping[str, Any], **updates: Any) -> QuoteRow:
     """复制行情行并写入扩展字段（行业/概念/维度评分等）。"""
-    item = coerce_quote_row(row)
+    item = coerce_quote_row(row).model_copy(deep=True)
     for key, value in updates.items():
         item[key] = value
     return item
 
 
-QuoteRowLike = QuoteRow | Mapping[str, Any]
-
-
-def quote_row_payload(row: QuoteRowLike) -> dict[str, Any]:
+def quote_row_payload(row: QuoteRow) -> dict[str, Any]:
     """配方/enrich 管道用的瘦身行情 dict（排除声明字段默认值）。"""
-    if isinstance(row, QuoteRow):
-        return dump_python(row, exclude_defaults=True)
-    return dict(row)
+    return dump_python(row, exclude_defaults=True)
 
 
-def quote_row_to_dict(row: QuoteRowLike) -> dict[str, Any]:
+def quote_row_to_dict(row: QuoteRow) -> dict[str, Any]:
     """序列化边界：完整 plain dict（含 extra 与默认值）。"""
-    if isinstance(row, QuoteRow):
-        return row.to_dict()
-    return dict(row)
+    return row.to_dict()
 
 
-def quote_rows_by_vt(rows: Sequence[QuoteRowLike] | None = None) -> dict[str, QuoteRow]:
+def quote_rows_by_vt(rows: Sequence[QuoteRow] | None = None) -> dict[str, QuoteRow]:
     source = coerce_quote_rows(rows) if rows is not None else []
     return {row.vt_symbol.strip(): row for row in source if row.vt_symbol.strip()}

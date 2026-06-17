@@ -87,6 +87,62 @@ class WatchlistMultiViewLoaderTests(unittest.TestCase):
         self.assertEqual(data.rows, ())
         self.assertIn("自选池为空", data.empty_message)
 
+    def test_build_from_page_quote_map(self) -> None:
+        from vnpy.trader.constant import Exchange
+
+        from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+        from vnpy_ashare.domain.symbols.stock import StockItem
+        from vnpy_ashare.quotes.watchlist_multiview.loader import build_watchlist_multiview_board_from_page
+
+        items = [
+            StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发"),
+            StockItem(symbol="000001", exchange=Exchange.SZSE, name="平安"),
+        ]
+        quote_map = {
+            items[0].tickflow_symbol: QuoteSnapshot(
+                symbol="600000",
+                name="浦发",
+                last_price=10.5,
+                prev_close=10.0,
+                open_price=10.1,
+                high_price=10.6,
+                low_price=10.0,
+                change_amount=0.5,
+                change_pct=2.5,
+                turnover_rate=1.1,
+                volume=1000.0,
+                volume_ratio=1.4,
+            ),
+            items[1].tickflow_symbol: QuoteSnapshot(
+                symbol="000001",
+                name="平安",
+                last_price=12.0,
+                prev_close=12.1,
+                open_price=12.0,
+                high_price=12.2,
+                low_price=11.8,
+                change_amount=-0.1,
+                change_pct=-1.0,
+                turnover_rate=0.8,
+                volume=900.0,
+                volume_ratio=0.9,
+            ),
+        }
+        with patch(
+            "vnpy_ashare.quotes.watchlist_multiview.loader.enrich_quotes_with_moneyflow",
+            side_effect=lambda payload: payload,
+        ) as enrich:
+            data = build_watchlist_multiview_board_from_page(
+                stocks=items,
+                quote_map=quote_map,
+                sort_key="change_pct",
+                refresh_moneyflow=False,
+            )
+        enrich.assert_not_called()
+        self.assertEqual(len(data.rows), 2)
+        self.assertEqual(data.rows[0].vt_symbol, "600000.SSE")
+        self.assertEqual(data.rows[0].change_pct, 2.5)
+
     def test_build_rows_for_watchlist(self) -> None:
         watchlist = [("600000", Exchange.SSE, "浦发"), ("000001", Exchange.SZSE, "平安")]
         quotes = {
@@ -284,7 +340,7 @@ class WatchlistMultiViewSparklineDataTests(unittest.TestCase):
     def test_load_watchlist_sparklines_daily_mode(self) -> None:
         from vnpy.trader.constant import Exchange
 
-        from vnpy_ashare.domain.symbols import StockItem
+        from vnpy_ashare.domain.symbols.stock import StockItem
         from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import load_watchlist_sparklines
 
         items = [StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发")]
@@ -299,7 +355,7 @@ class WatchlistMultiViewSparklineDataTests(unittest.TestCase):
     def test_load_watchlist_sparklines_intraday_mode(self) -> None:
         from vnpy.trader.constant import Exchange
 
-        from vnpy_ashare.domain.symbols import StockItem
+        from vnpy_ashare.domain.symbols.stock import StockItem
         from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import load_watchlist_sparklines
 
         items = [StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发")]
@@ -314,7 +370,7 @@ class WatchlistMultiViewSparklineDataTests(unittest.TestCase):
     def test_load_watchlist_sparklines_minute_mode(self) -> None:
         from vnpy.trader.constant import Exchange
 
-        from vnpy_ashare.domain.symbols import StockItem
+        from vnpy_ashare.domain.symbols.stock import StockItem
         from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import load_watchlist_sparklines
 
         items = [StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发")]
@@ -335,6 +391,23 @@ class WatchlistMultiViewChartTabSyncTests(unittest.TestCase):
         self.assertEqual(_sparkline_mode_from_chart_tab(INTRADAY_TAB_INDEX), "intraday")
         self.assertEqual(_sparkline_mode_from_chart_tab(DAILY_TAB_INDEX), "daily")
         self.assertEqual(_sparkline_mode_from_chart_tab(MINUTE_TAB_INDEX), "minute")
+
+
+class WatchlistMultiViewMoneyflowCacheTests(unittest.TestCase):
+    def test_moneyflow_cache_avoids_repeat_tushare(self) -> None:
+        from vnpy_ashare.quotes.radar import radar_moneyflow as module
+
+        module.clear_moneyflow_cache()
+        quotes = {
+            "600000.SSE": {"vt_symbol": "600000.SSE", "symbol": "600000", "net_mf_amount": 0},
+        }
+        with patch.object(module, "_moneyflow_map_from_tushare", return_value={"600000.SSE": 1200.0}) as fetch:
+            first = module.enrich_quotes_with_moneyflow(quotes)
+            second = module.enrich_quotes_with_moneyflow(dict(quotes))
+        self.assertEqual(first["600000.SSE"]["net_mf_amount"], 1200.0)
+        self.assertEqual(second["600000.SSE"]["net_mf_amount"], 1200.0)
+        fetch.assert_called_once()
+        module.clear_moneyflow_cache()
 
 
 class WatchlistMultiViewSettingsTests(unittest.TestCase):

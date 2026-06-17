@@ -6,7 +6,7 @@ from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui
 
 from vnpy_common.domain.base import MutableModel
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 
 _INVALID_PARENT = QtCore.QModelIndex()
 _ParentIndex = QtCore.QModelIndex | QtCore.QPersistentModelIndex

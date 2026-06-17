@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import SparklineMode, load_watchlist_sparklines
 
 

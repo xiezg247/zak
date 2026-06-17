@@ -7,7 +7,7 @@ from datetime import datetime
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.plan import TradingPlanRecord
 from vnpy_ashare.storage.repositories.trading_plans import (

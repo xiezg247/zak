@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import INTRADAY_SESSION_MINUTES, elapsed_trading_minutes
 from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs

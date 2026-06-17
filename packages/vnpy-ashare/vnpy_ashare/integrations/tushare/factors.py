@@ -10,7 +10,7 @@ from typing import Any
 
 from vnpy_ashare.domain.core.numbers import safe_float
 from vnpy_ashare.domain.market.indices import MARKET_INDEX_TS_CODES
-from vnpy_ashare.domain.symbols import EXCHANGE_TO_SUFFIX, ts_code_to_vt_symbol
+from vnpy_ashare.domain.symbols.stock import EXCHANGE_TO_SUFFIX, ts_code_to_vt_symbol
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_DAILY_BASIC,

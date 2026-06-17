@@ -15,7 +15,7 @@ from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, lo
 from vnpy_ashare.services.analysis_detail.risk_metrics import fetch_market_sentiment
 
 if TYPE_CHECKING:
-    from vnpy_ashare.domain.symbols import StockItem
+    from vnpy_ashare.domain.symbols.stock import StockItem
     from vnpy_ashare.services.analysis import AnalysisService
 
 LOOKBACK_DAYS = 60

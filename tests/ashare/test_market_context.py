@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem
 from vnpy_ashare.services.analysis_detail.market_context import build_team_market_context
 

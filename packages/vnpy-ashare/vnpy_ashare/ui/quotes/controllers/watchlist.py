@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.config import format_vt_symbol_cn
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS, WatchlistService
 
 if TYPE_CHECKING:

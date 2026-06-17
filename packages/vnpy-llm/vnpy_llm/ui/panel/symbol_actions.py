@@ -195,7 +195,7 @@ class AssistantSymbolActions:
     def _parse_item(self, vt_symbol: str, *, name: str = ""):
         try:
             from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-            from vnpy_ashare.domain.symbols import StockItem
+            from vnpy_ashare.domain.symbols.stock import StockItem
         except ImportError:
             return None
         normalized = normalize_vt_symbol(vt_symbol) or vt_symbol

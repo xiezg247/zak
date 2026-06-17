@@ -13,7 +13,7 @@ from vnpy_ashare.domain.market.quote_row import (
     quote_rows_by_vt,
 )
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.market.cache_invalidation import on_market_quotes_updated
 
 _lock = threading.Lock()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.integrations.tushare.limit_list_fallback import fetch_limit_list_with_fallback
 
 _FACTOR_MAPS_TTL_SEC = 300.0

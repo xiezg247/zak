@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.domain.screener.result_row import screening_row_to_dict
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label, rank_unified_sector_leaders
@@ -25,7 +25,7 @@ from vnpy_ashare.screener.sector.sector_summary import (
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
 
-def _sector_metric(row: QuoteRowLike) -> tuple[str, str, str, str]:
+def _sector_metric(row: QuoteRow) -> tuple[str, str, str, str]:
     merged = merge_row_quotes(row)
     industry = str(merged.get("industry") or "—")
     change = float(merged.get("change_pct") or 0)
@@ -66,7 +66,7 @@ def _row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
     )
 
 
-def _row_from_sector_hit(row: QuoteRowLike) -> RadarRow | None:
+def _row_from_sector_hit(row: QuoteRow) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None

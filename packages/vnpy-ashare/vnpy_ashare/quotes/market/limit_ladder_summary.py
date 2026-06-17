@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_limit_ladder import (
     build_limit_ladder_candidates,
@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.radar.radar_limit_ladder import (
 )
 
 
-def compute_limit_ladder_counts(rows: Sequence[QuoteRowLike]) -> dict[str, int]:
+def compute_limit_ladder_counts(rows: Sequence[QuoteRow]) -> dict[str, int]:
     """按 5板+ / 4板 / … / 首板 统计涨停池数量。"""
     if not rows:
         return count_ladder_buckets([])

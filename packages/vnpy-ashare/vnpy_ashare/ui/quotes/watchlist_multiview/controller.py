@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.watchlist_multiview import (
     build_multiview_board_summary,
-    build_watchlist_multiview_board,
+    build_watchlist_multiview_board_from_page,
     enrich_multiview_rows,
 )
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiSortKey
@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 
 _SPARKLINE_REFRESH_MS = 60_000
+_MULTIVIEW_QUOTE_DEBOUNCE_MS = 800
 
 
 def _sparkline_mode_from_chart_tab(tab_index: int) -> SparklineMode:
@@ -69,6 +70,10 @@ class WatchlistMultiViewController:
         self._sparkline_refresh_timer = QtCore.QTimer(page)
         self._sparkline_refresh_timer.setInterval(_SPARKLINE_REFRESH_MS)
         self._sparkline_refresh_timer.timeout.connect(self._on_sparkline_refresh_tick)
+        self._quote_refresh_timer = QtCore.QTimer(page)
+        self._quote_refresh_timer.setSingleShot(True)
+        self._quote_refresh_timer.setInterval(_MULTIVIEW_QUOTE_DEBOUNCE_MS)
+        self._quote_refresh_timer.timeout.connect(self._flush_quote_refresh)
 
     @property
     def view_mode(self) -> ViewMode:
@@ -113,7 +118,7 @@ class WatchlistMultiViewController:
         if board is not None:
             board.apply_sort_key(sort_key)
         if self.is_multiview_active():
-            self.refresh(force=True)
+            self.refresh(force=True, refresh_moneyflow=False)
 
     def set_grid_columns(self, columns: int) -> None:
         normalized = max(2, min(4, int(columns)))
@@ -152,7 +157,7 @@ class WatchlistMultiViewController:
         self._sparklines.clear()
         self._sparkline_kind = "none"
         if self.is_multiview_active():
-            self.refresh(force=True)
+            self.refresh(force=True, refresh_moneyflow=True)
             self._schedule_sparkline_load()
 
     def on_bars_updated(self, vt_symbols: list[str] | None = None) -> None:
@@ -165,19 +170,26 @@ class WatchlistMultiViewController:
             self._schedule_sparkline_load(force=True)
 
     def on_quotes_updated(self) -> None:
-        if self.is_multiview_active():
-            self.refresh(force=False)
+        if not self.is_multiview_active():
+            return
+        self._quote_refresh_timer.start()
 
     def on_signal_or_position_updated(self) -> None:
         if self.is_multiview_active():
-            self.refresh(force=False)
+            self.refresh(force=False, refresh_moneyflow=False)
 
-    def refresh(self, *, force: bool) -> None:
-        del force
+    def _flush_quote_refresh(self) -> None:
+        if not self._page._active or not self.is_multiview_active():
+            return
+        self.refresh(force=False, refresh_moneyflow=False)
+
+    def refresh(self, *, force: bool = False, refresh_moneyflow: bool | None = None) -> None:
+        if refresh_moneyflow is None:
+            refresh_moneyflow = force
         board = getattr(self._page, "multiview_board", None)
         if board is None or not self.is_multiview_active():
             return
-        data = self._build_board_data()
+        data = self._build_board_data(refresh_moneyflow=refresh_moneyflow)
         self._last_board = data
         board.apply_board(data)
         current = self._page.current_item
@@ -185,13 +197,15 @@ class WatchlistMultiViewController:
             board.highlight_symbol(current.vt_symbol)
         self._emit_ai_context_if_needed()
 
-    def _build_board_data(self) -> WatchlistMultiBoardData:
+    def _build_board_data(self, *, refresh_moneyflow: bool = False) -> WatchlistMultiBoardData:
         page = self._page
-        vt_symbols = None
-        groups = getattr(page, "_watchlist_groups", None)
-        if groups is not None:
-            vt_symbols = groups.filtered_vt_symbols()
-        base = build_watchlist_multiview_board(sort_key=self._sort_key, vt_symbols=vt_symbols)
+        stocks = list(page.display_stocks) or list(page.all_stocks)
+        base = build_watchlist_multiview_board_from_page(
+            stocks=stocks,
+            quote_map=page.quote_map,
+            sort_key=self._sort_key,
+            refresh_moneyflow=refresh_moneyflow,
+        )
         signal_symbols = self._signal_symbols()
         rows = enrich_multiview_rows(
             base.rows,
@@ -241,7 +255,7 @@ class WatchlistMultiViewController:
                     if isinstance(points, dict):
                         self._sparklines.update(points)
                 if self.is_multiview_active():
-                    self.refresh(force=False)
+                    self.refresh(force=False, refresh_moneyflow=False)
             finally:
                 release_thread(page._retired_workers, worker, timeout_ms=0)
 
@@ -264,11 +278,12 @@ class WatchlistMultiViewController:
             if self._view_mode == "multiview":
                 self._sync_sparkline_mode_from_chart()
                 stack.setCurrentWidget(page.multiview_board)
-                self.refresh(force=True)
+                self.refresh(force=True, refresh_moneyflow=True)
                 self._schedule_sparkline_load()
                 self._sync_sparkline_refresh_timer()
             else:
                 stack.setCurrentWidget(page._market_table_host)
+                self._quote_refresh_timer.stop()
                 self._sparkline_refresh_timer.stop()
         finally:
             self._switching_view = False

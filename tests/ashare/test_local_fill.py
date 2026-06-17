@@ -9,7 +9,7 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.data.bar_health import BarHealthStatus, BarMeta, GapRange
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.jobs.bars.local_fill import (
     batch_fill_gap_daily_bars,
     batch_fill_stale_daily_bars,

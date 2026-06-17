@@ -6,7 +6,7 @@ import unittest
 from datetime import date
 from unittest.mock import patch
 
-from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
+from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.jobs.sync.suspend_sync import sync_suspend_daily_job
 
 

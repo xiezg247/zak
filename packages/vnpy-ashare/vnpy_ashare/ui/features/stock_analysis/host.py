@@ -10,8 +10,8 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore
 
 from vnpy_common.domain.base import MutableModel
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
 
 if TYPE_CHECKING:

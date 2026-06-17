@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 from vnpy.trader.ui import QtWidgets
 
 import vnpy_ashare.integrations.tickflow.stream as tickflow_stream_module
-from vnpy_ashare.integrations.tickflow import TickflowStreamBridge, can_use_tickflow_stream
+from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge, can_use_tickflow_stream
 
 
 class TickflowStreamBridgeTests(unittest.TestCase):

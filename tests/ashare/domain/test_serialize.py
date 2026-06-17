@@ -43,6 +43,11 @@ def test_screener_result_row_to_dict_uses_slim_quote() -> None:
     assert screening_row_to_dict(row) == payload
 
 
+def test_screening_row_to_dict_accepts_plain_mapping() -> None:
+    payload = {"vt_symbol": "600000.SSE", "change_pct": 1.5, "amount": 1000.0}
+    assert screening_row_to_dict(payload) == payload
+
+
 def test_signal_snapshot_to_dict_uses_json_mode() -> None:
     snapshot = SignalSnapshot(
         vt_symbol="600000.SSE",

@@ -13,8 +13,7 @@ from vnpy_ashare.config.constants.recipe import (
 )
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.env import env_str
-from vnpy_ashare.domain.market.quote_row import coerce_quote_row
-from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.moneyflow_kind import (
     enrich_moneyflow_row_with_kind,
@@ -86,25 +85,27 @@ def run_recipe_object(
             for hit in dimension_hits:
                 hits_by_symbol.setdefault(hit.vt_symbol, []).append(hit)
 
-    merged_rows: list[dict[str, Any]] = []
+    merged_payloads: list[dict[str, Any]] = []
     for _vt_symbol, hits in hits_by_symbol.items():
         if len(hits) < recipe.min_dimensions:
             continue
         hits = apply_volume_liquidity_dedup(hits)
         weight_sum = sum(item.weight for item in hits)
         composite = sum(item.score * item.weight * moneyflow_dimension_score_factor(item.dimension_id, item.row) for item in hits) / max(weight_sum, 1e-6)
-        base = merge_rows([item.row for item in hits])
-        if row_has_moneyflow_fields(base):
-            base = enrich_moneyflow_row_with_kind(base)
+        merged_row = ScreenerResultRow.from_mapping(merge_rows([item.row for item in hits]))
+        if row_has_moneyflow_fields(merged_row):
+            enriched = enrich_moneyflow_row_with_kind(merged_row.quote)
+            merged_row = ScreenerResultRow.from_mapping({**merged_row.to_dict(), **enriched})
+        base = merged_row.to_dict()
         reasons = [item.reason for item in hits]
         base["composite_score"] = round(composite, 1)
         base["hit_reasons"] = reasons
         base["hit_reason"] = reasons[0] if len(reasons) == 1 else "；".join(reasons[:2])
         base["dimensions"] = {item.dimension_id: round(item.score, 1) for item in hits}
         base["source"] = "recipe"
-        merged_rows.append(base)
+        merged_payloads.append(base)
 
-    merged_rows = enrich_recipe_rows(merged_rows)
+    merged_rows = enrich_recipe_rows(merged_payloads)
     merged_rows.sort(
         key=lambda row: (
             float(row.get("composite_score") or 0),
@@ -112,22 +113,19 @@ def run_recipe_object(
         ),
         reverse=True,
     )
-    merged_rows = [
-        coerce_quote_row(row).to_dict()
-        for row in apply_recipe_filters(merged_rows)
-    ]
+    filtered_rows = apply_recipe_filters(merged_rows)
     use_sentiment = sentiment_gate_enabled() and (
         recipe.trigger_kind == "intraday"
         or any(spec.dimension_id == "sentiment_gate" for spec in recipe.dimensions)
         or recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY
     )
-    merged_rows, _sentiment_meta = apply_sentiment_modulation(merged_rows, enabled=use_sentiment)
+    gated_rows, _sentiment_meta = apply_sentiment_modulation(filtered_rows, enabled=use_sentiment)
 
     gate_meta: dict[str, Any] | None = None
     if recipe.recipe_id == RECIPE_EMOTION_GATE_ONLY:
-        merged_rows, gate_meta = apply_emotion_gate_only_finalize(merged_rows, top_n=limit)
+        gated_rows, gate_meta = apply_emotion_gate_only_finalize(gated_rows, top_n=limit)
 
-    rows = merged_rows[: max(1, min(int(limit), 200))]
+    rows = gated_rows[: max(1, min(int(limit), 200))]
     now = format_china_datetime()
 
     condition = f"{condition_prefix} · {recipe.name}"
@@ -135,7 +133,7 @@ def run_recipe_object(
         condition += f" · {gate_meta['gate_message']}"
 
     return build_screener_run_result(
-        rows=coerce_screener_result_rows(rows),
+        rows=rows,
         condition=condition,
         updated_at=now,
         total_scanned=total_scanned,

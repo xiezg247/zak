@@ -8,7 +8,7 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.ai.context.quote.format import format_quote_snapshot_line
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
 from vnpy_llm.chat.client import LlmClientError, complete_chat_completion
 from vnpy_llm.config.settings import LlmConfig

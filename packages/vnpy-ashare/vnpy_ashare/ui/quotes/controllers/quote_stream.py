@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
-from vnpy_ashare.integrations.tickflow import TickflowStreamBridge, can_use_tickflow_stream
+from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge, can_use_tickflow_stream
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.ui.quotes.page.config import (
     STREAM_CHART_QUOTE_DEBOUNCE_MS,
@@ -114,8 +114,6 @@ class QuoteStreamController:
             return
 
         page._table.refresh_table_quotes_for_symbols(symbols)
-        if page.config.show_watchlist_positions:
-            page._positions.refresh_quotes_only()
         current = page.current_item
         if current is None or current.tickflow_symbol not in symbols:
             page._actions.schedule_ai_context()

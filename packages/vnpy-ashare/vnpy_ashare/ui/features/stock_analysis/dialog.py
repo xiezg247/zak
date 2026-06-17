@@ -11,8 +11,8 @@ from vnpy_ashare.ai.context import build_diagnose_ai_prompt, parse_stock_symbol
 from vnpy_ashare.ai.llm_bridge import get_llm_engine
 from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
 from vnpy_ashare.ui.features.notes_center.report_launcher import open_notes_reports_center
 from vnpy_ashare.ui.features.stock_analysis.ai_sidebar import StockAnalysisAiSidebar

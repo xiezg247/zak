@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 
 def format_quote_summary(quote: QuoteSnapshot | None) -> str:

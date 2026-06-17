@@ -8,8 +8,8 @@ import re
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.domain.symbols import vt_symbol_to_symbol
+from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.symbols.stock import vt_symbol_to_symbol
 
 _McpExecutor = Callable[[str, dict[str, Any]], str]
 _mcp_execute: _McpExecutor | None = None
@@ -37,7 +37,7 @@ def mcp_intraday_flow_enabled() -> bool:
 
 
 def fetch_intraday_moneyflow_map(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     top_n: int = 40,
 ) -> dict[str, float]:

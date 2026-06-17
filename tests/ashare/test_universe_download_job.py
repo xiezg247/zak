@@ -9,7 +9,7 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.data.bar_store import PeriodBarOverview
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.jobs.bars.download import (
     DEFAULT_UNIVERSE_DAILY_START,
     _download_one,
@@ -40,7 +40,7 @@ class UniverseDownloadJobTests(unittest.TestCase):
         self.assertIn("同步 A 股列表", result.message)
 
     def test_skips_when_token_missing(self) -> None:
-        from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
+        from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 
         with patch("vnpy_ashare.jobs.bars.download.universe_exists", return_value=True):
             with patch(

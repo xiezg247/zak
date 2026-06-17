@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_row, quote_row_copy
-from vnpy_ashare.domain.symbols import parse_tickflow_symbol
-from vnpy_ashare.integrations.tickflow import fetch_intraday_bars
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
+from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
@@ -48,7 +48,7 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
         return [], 0
 
     ratio_map = get_volume_ratio_map()
-    candidates: list[tuple[QuoteRowLike, float]] = []
+    candidates: list[tuple[QuoteRow, float]] = []
     for quote in snapshot.rows:
         strength = _quote_breakout_strength(quote, ratio_map)
         if strength is None:
@@ -96,7 +96,7 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
     return hits, snapshot.total
 
 
-def _row_volume_ratio(row: QuoteRowLike, ratio_map: dict[str, float]) -> float | None:
+def _row_volume_ratio(row: QuoteRow, ratio_map: dict[str, float]) -> float | None:
     ratio = float(row.get("volume_ratio") or 0)
     if ratio > 0:
         return ratio
@@ -107,7 +107,7 @@ def _row_volume_ratio(row: QuoteRowLike, ratio_map: dict[str, float]) -> float |
     return None
 
 
-def _quote_breakout_strength(row: QuoteRowLike, ratio_map: dict[str, float]) -> float | None:
+def _quote_breakout_strength(row: QuoteRow, ratio_map: dict[str, float]) -> float | None:
     prev = float(row.get("prev_close") or 0)
     high = float(row.get("high_price") or 0)
     last = float(row.get("last_price") or 0)
@@ -129,15 +129,15 @@ def _quote_breakout_strength(row: QuoteRowLike, ratio_map: dict[str, float]) -> 
 
 
 def _apply_rolling_high_confirm(
-    candidates: list[tuple[QuoteRowLike, float]],
+    candidates: list[tuple[QuoteRow, float]],
     lookback_days: int,
-) -> list[tuple[QuoteRowLike, float]]:
+) -> list[tuple[QuoteRow, float]]:
     vt_symbols = [str(row.get("vt_symbol") or "") for row, _ in candidates]
     bars_map = load_history_bars_map([vt for vt in vt_symbols if vt])
     if not bars_map:
         return candidates
 
-    confirmed: list[tuple[QuoteRowLike, float]] = []
+    confirmed: list[tuple[QuoteRow, float]] = []
     for row, strength in candidates:
         vt_symbol = str(row.get("vt_symbol") or "")
         last = float(row.get("last_price") or 0)
@@ -174,29 +174,29 @@ def _minute_confirm_sample() -> int:
 
 
 def _apply_minute_confirm(
-    candidates: list[tuple[QuoteRowLike, float]],
+    candidates: list[tuple[QuoteRow, float]],
     pool_size: int,
-) -> list[tuple[QuoteRowLike, float]]:
+) -> list[tuple[QuoteRow, float]]:
     sample = _minute_confirm_sample()
     if sample <= 0 or not candidates:
         return candidates
 
     probe = candidates[: max(sample, pool_size)]
 
-    def worker(item: tuple[QuoteRowLike, float]) -> tuple[QuoteRowLike, float] | None:
+    def worker(item: tuple[QuoteRow, float]) -> tuple[QuoteRow, float] | None:
         row, strength = item
         if _minute_bar_confirms_breakout(row):
             return coerce_quote_row(row), strength
         return None
 
     confirmed = run_parallel_map(probe, worker, max_workers=min(4, len(probe)))
-    kept: list[tuple[QuoteRowLike, float]] = [item for item in confirmed if item is not None]
+    kept: list[tuple[QuoteRow, float]] = [item for item in confirmed if item is not None]
     if kept:
         return kept
     return candidates[:pool_size]
 
 
-def _minute_bar_confirms_breakout(row: QuoteRowLike) -> bool:
+def _minute_bar_confirms_breakout(row: QuoteRow) -> bool:
     vt_symbol = str(row.get("vt_symbol") or "")
     item = parse_tickflow_symbol(vt_symbol, str(row.get("name") or ""))
     if item is None:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.symbols import parse_stock_symbol, vt_symbol_to_ts_code
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, vt_symbol_to_ts_code
 from vnpy_ashare.domain.trading.signal_snapshot import (
     SIGNAL_STRENGTH_STRONG,
     SignalSnapshot,

@@ -7,7 +7,7 @@ import unittest
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.table.columns import (
     build_quote_row,
     format_amount,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_from_stock_and_snapshot
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.screener.quotes_snapshot import MarketQuotesSnapshot
-from vnpy_ashare.domain.symbols import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.symbols.stock import StockItem, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
 __all__ = ["MarketQuotesLoadError", "MarketQuotesSnapshot", "load_market_quote_rows"]

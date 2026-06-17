@@ -7,8 +7,8 @@ from typing import cast
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet
 from vnpy_ashare.ui.quotes.chart.daily import (
     WATCHLIST_DAILY_BAR_PRESETS,

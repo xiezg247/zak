@@ -6,7 +6,7 @@ import unittest
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols import (
+from vnpy_ashare.domain.symbols.stock import (
     StockItem,
     parse_stock_symbol,
     symbol_exchange_to_tickflow,

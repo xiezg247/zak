@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.symbols import ts_code_to_vt_symbol
+from vnpy_ashare.domain.symbols.stock import ts_code_to_vt_symbol
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_THS_DAILY,
     DATASET_THS_INDEX,

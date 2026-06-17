@@ -5,8 +5,8 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.ai.context import StockBinding
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 
 # mock.patch 目标：assembly 内 `from repo import fn` 绑定，须 patch 使用处而非 repository 模块。
 WATCHLIST_ROWS = "vnpy_ashare.ai.context.quote.assembly.load_watchlist_rows"

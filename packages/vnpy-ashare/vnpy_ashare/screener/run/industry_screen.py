@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
@@ -17,7 +17,7 @@ def run_industry_screen(
     industry: str,
     *,
     top_n: int = 50,
-    quote_rows: Sequence[QuoteRowLike] | None = None,
+    quote_rows: Sequence[QuoteRow] | None = None,
 ) -> ScreenerRunResult:
     """筛选指定行业成分股，按涨幅降序取 top_n。"""
     label = (industry or "").strip()

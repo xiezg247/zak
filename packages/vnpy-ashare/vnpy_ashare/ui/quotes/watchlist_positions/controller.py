@@ -177,19 +177,34 @@ class WatchlistPositionController:
         engine = get_ashare_engine(self._page._get_main_engine())
         scan_and_record_float_loss_holds(self._page.position_cache, notify_engine=engine)
 
-    def refresh_quotes_only(self) -> None:
+    def refresh_quotes_only(self, tickflow_symbols: set[str] | None = None) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:
             return
         record_map = self._record_map()
-        for vt_symbol, record in record_map.items():
-            cached = self._page.position_cache.get(vt_symbol)
+        if tickflow_symbols:
+            targets: list[tuple[str, PositionRecord]] = []
+            for vt_symbol, record in record_map.items():
+                item = self._page.find_stock_item(vt_symbol)
+                if item is not None and item.tickflow_symbol in tickflow_symbols:
+                    targets.append((vt_symbol, record))
+        else:
+            targets = list(record_map.items())
+
+        if not targets:
+            return
+
+        for _vt_symbol, record in targets:
+            cached = self._page.position_cache.get(record.vt_symbol)
             if cached is None:
                 continue
             signal = cached.signal_snapshot
             self._rebuild_cache_entry(record, signal)
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
-            panel.render_panel()
+            if tickflow_symbols:
+                panel.update_rows_for_tickflow_symbols(tickflow_symbols)
+            else:
+                panel.render_panel()
         self._scan_position_alerts()
 
     def _scan_position_alerts(self) -> None:

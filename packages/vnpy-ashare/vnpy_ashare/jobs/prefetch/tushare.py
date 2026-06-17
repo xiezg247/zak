@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.factors import (
     fetch_daily_pct_map,
     fetch_index_daily_snapshot,

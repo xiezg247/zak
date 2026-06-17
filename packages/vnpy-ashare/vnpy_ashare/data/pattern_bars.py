@@ -10,7 +10,7 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bar_store import get_scope_overview, load_scope_bars
 from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 
 PATTERN_MIN_BARS = 60
 PATTERN_LOOKBACK_BARS = 120

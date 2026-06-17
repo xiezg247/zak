@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
@@ -65,7 +65,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         top_for_history = filtered_rows[: pool_size * 2]
         bars_map = load_history_bars_map([str(item.get("vt_symbol") or "") for item in top_for_history if item.get("vt_symbol")])
         attach_momentum_persistence(top_for_history, bars_map)
-        hit_rows: list[QuoteRowLike] = []
+        hit_rows: list[QuoteRow] = []
         for item in filtered_rows[:pool_size]:
             hit_rows.append(
                 quote_row_copy(
@@ -150,7 +150,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         return hits, len(raw_rows)
 
 
-def _momentum_reason(row: QuoteRowLike, rank: int) -> str:
+def _momentum_reason(row: QuoteRow, rank: int) -> str:
     change = float(row.get("change_pct") or row.get("pct_chg") or 0)
     rs = float(row.get("relative_strength") or 0)
     basis = str(row.get("strength_basis") or "大盘")

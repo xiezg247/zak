@@ -13,7 +13,7 @@ from typing import Any
 from vnpy_ashare.domain.sentiment.fear_greed import FearGreedComponent, FearGreedSnapshot
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.services.base import BaseService
 
 FEAR_GREED_LABELS: tuple[tuple[float, str], ...] = (

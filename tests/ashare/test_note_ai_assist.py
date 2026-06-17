@@ -53,7 +53,7 @@ class NoteAiAssistTests(unittest.TestCase):
         self.assertEqual(apply_expanded_memo("旧备忘", "", "新备忘"), "新备忘")
 
     def test_format_quote_snapshot_line(self) -> None:
-        from vnpy_ashare.quotes import QuoteSnapshot
+        from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
         from vnpy_ashare.ui.quotes.stock_notes.ai_assist import format_quote_snapshot_line
 
         quote = QuoteSnapshot(

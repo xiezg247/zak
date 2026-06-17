@@ -16,7 +16,7 @@ from vnpy_ashare.config.preferences.stock_notes import (
     save_stock_note_active_tab,
     save_stock_note_panel_expanded,
 )
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.stock_notes.ai_assist import (
     NoteAiWorker,
     apply_expanded_memo,

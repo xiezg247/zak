@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.sector_moneyflow import (
     fetch_moneyflow_cnt_ths,
     fetch_moneyflow_ind_dc,

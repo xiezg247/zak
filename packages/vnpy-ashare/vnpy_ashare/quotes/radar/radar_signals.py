@@ -8,7 +8,7 @@ from typing import Any
 from strategies.signals import build_signal_payload_for_strategy
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.data.bar_access import load_scope_bars
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalKind, SignalSnapshot, signal_missing_kline
 
 

@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 from strategies.ultra_short_signals import calc_limit_price
 from vnpy_ashare.domain.market.quote_row import QuoteRow
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_first_time_map

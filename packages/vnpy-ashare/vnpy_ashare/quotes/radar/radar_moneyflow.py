@@ -2,15 +2,46 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
 from vnpy_ashare.screener.data.data_source import fetch_moneyflow_with_fallback
+
+_MONEYFLOW_VT_CACHE: dict[str, float] = {}
+_MONEYFLOW_CACHE_AT: float = 0.0
+_MONEYFLOW_CACHE_TTL_SEC = 60.0
+
+
+def clear_moneyflow_cache() -> None:
+    """清空主力流缓存（测试或强制全量刷新）。"""
+    global _MONEYFLOW_VT_CACHE, _MONEYFLOW_CACHE_AT
+    _MONEYFLOW_VT_CACHE = {}
+    _MONEYFLOW_CACHE_AT = 0.0
+
+
+def _moneyflow_map_cached(vt_symbols: list[str]) -> dict[str, float]:
+    """Tushare 主力流映射，进程内 TTL 缓存避免高频重复拉取。"""
+    global _MONEYFLOW_VT_CACHE, _MONEYFLOW_CACHE_AT
+    if not vt_symbols:
+        return {}
+
+    now = time.monotonic()
+    want = set(vt_symbols)
+    cache_fresh = bool(_MONEYFLOW_VT_CACHE) and now - _MONEYFLOW_CACHE_AT < _MONEYFLOW_CACHE_TTL_SEC
+    if cache_fresh and want.issubset(_MONEYFLOW_VT_CACHE.keys()):
+        return {vt: _MONEYFLOW_VT_CACHE[vt] for vt in vt_symbols if vt in _MONEYFLOW_VT_CACHE}
+
+    fresh = _moneyflow_map_from_tushare(vt_symbols)
+    if fresh:
+        _MONEYFLOW_VT_CACHE.update(fresh)
+        _MONEYFLOW_CACHE_AT = now
+    return {vt: _MONEYFLOW_VT_CACHE[vt] for vt in vt_symbols if vt in _MONEYFLOW_VT_CACHE}
 
 
 def _moneyflow_map_from_tushare(vt_symbols: list[str]) -> dict[str, float]:
@@ -59,7 +90,7 @@ def enrich_quotes_with_moneyflow(
         return quotes_by_vt
 
     vt_symbols = list(quotes_by_vt)
-    flow_map = _moneyflow_map_from_tushare(vt_symbols)
+    flow_map = _moneyflow_map_cached(vt_symbols)
 
     missing: list[dict[str, Any]] = []
     for vt_symbol, row in quotes_by_vt.items():
@@ -81,7 +112,7 @@ def enrich_quotes_with_moneyflow(
     return enriched
 
 
-def moneyflow_score_boost(row: QuoteRowLike) -> float:
+def moneyflow_score_boost(row: QuoteRow) -> float:
     merged = merge_row_quotes(row)
     net_mf = float_or_none(merged.get("net_mf_amount"))
     if net_mf is None or net_mf <= 0:
@@ -89,7 +120,7 @@ def moneyflow_score_boost(row: QuoteRowLike) -> float:
     return min(net_mf / 3000.0, 12.0)
 
 
-def watchlist_moneyflow_metric(row: QuoteRowLike) -> tuple[str, str, str, str] | None:
+def watchlist_moneyflow_metric(row: QuoteRow) -> tuple[str, str, str, str] | None:
     """有主力净流入时返回 (主指标, 主值, 副标签, 副值)。"""
     merged = merge_row_quotes(row)
     net_mf = float_or_none(merged.get("net_mf_amount"))

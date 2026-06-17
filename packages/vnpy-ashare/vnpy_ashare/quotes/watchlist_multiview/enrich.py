@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache

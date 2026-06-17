@@ -11,7 +11,7 @@ from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.market.quote_row import coerce_quote_row
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_missing_kline
 from vnpy_ashare.quotes.radar.radar_horizon_cache import HorizonCacheEntry, put_horizon_cache

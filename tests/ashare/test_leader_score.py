@@ -125,7 +125,7 @@ class EmotionModulationTest(unittest.TestCase):
         self.assertTrue(meta and meta.get("emotion_capped"))
 
     @patch("vnpy_ashare.screener.sentiment.sentiment_gate.try_fetch_fear_greed_index", return_value=None)
-    @patch("vnpy_ashare.screener.sentiment.sentiment_gate.try_load_emotion_cycle_snapshot")
+    @patch("vnpy_ashare.screener.sentiment.emotion_gate.try_load_emotion_cycle_snapshot")
     @patch("vnpy_ashare.screener.sentiment.sentiment_gate.sentiment_gate_enabled", return_value=True)
     def test_sentiment_modulation_applies_emotion_when_no_fear_greed(
         self,

@@ -780,21 +780,140 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         values["ref_sell_price"] = f"{ref_sell:.2f}" if ref_sell is not None else "—"
         return values, snap, quote, plan_tooltip
 
+    def _sorted_display_records(self) -> list[PositionRecord]:
+        records = self._filtered_records()
+        if self._filter == "anomaly":
+            return records
+        return sorted(
+            records,
+            key=lambda record: (
+                position_row_sort_key(self._page.position_cache[record.vt_symbol])
+                if record.vt_symbol in self._page.position_cache
+                else (9, 0.0, record.vt_symbol)
+            ),
+        )
+
+    def _fill_row(
+        self,
+        row: int,
+        record: PositionRecord,
+        *,
+        total_capital: float | None,
+        colors,
+        warning_color: str,
+        highlight_bg: QtGui.QColor,
+    ) -> None:
+        values, snap, quote, plan_tooltip = self._row_values(record, total_capital=total_capital)
+        _, _, anomaly_reasons = self._anomaly_context(record)
+        row_anomaly = bool(anomaly_reasons)
+        anomaly_tip = format_anomaly_tags(anomaly_reasons)
+        buy_date = values.get("buy_date", "—")
+        t1_locked = snap.t1_locked if snap is not None else (position_t1_locked(buy_date) if buy_date != "—" else False)
+        config = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
+        for col, (key, _label) in enumerate(_PANEL_COLUMNS):
+            text = values.get(key, "—")
+            item_cell: QtWidgets.QTableWidgetItem | None = self._table.item(row, col)
+            if item_cell is None:
+                item_cell = QtWidgets.QTableWidgetItem(text)
+                self._table.setItem(row, col, item_cell)
+            elif item_cell.text() != text:
+                item_cell.setText(text)
+            item_cell.setData(QtCore.Qt.ItemDataRole.UserRole, record.vt_symbol)
+            fg = None
+            if key == "pnl" and snap is not None and snap.unrealized_pnl is not None:
+                fg = colors.rise if snap.unrealized_pnl >= 0 else colors.fall
+            elif key == "pnl_pct" and snap is not None and snap.unrealized_pnl_pct is not None:
+                fg = colors.rise if snap.unrealized_pnl_pct >= 0 else colors.fall
+            elif key == "t1_status":
+                if t1_locked:
+                    fg = warning_color
+                elif snap is not None:
+                    fg = colors.flat
+            elif key == "exit_signal" and snap is not None and snap.signal_snapshot is not None:
+                fg = signal_cell_color(
+                    "signal",
+                    snap.signal_snapshot,
+                    colors=colors,
+                    quote=quote,
+                    warning_color=warning_color,
+                    slow_window=config.slow_window,
+                    fast_window=config.fast_window,
+                )
+            if key == "t1_status":
+                if snap is not None:
+                    item_cell.setToolTip(snap.t1_status_tooltip)
+                elif buy_date != "—":
+                    tip = f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）" if t1_locked else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
+                    item_cell.setToolTip(tip)
+            elif key == "exit_signal" and snap is not None:
+                item_cell.setToolTip(snap.exit_signal_tooltip)
+            elif key == "plan_pct" and plan_tooltip:
+                item_cell.setToolTip(plan_tooltip)
+            if fg:
+                item_cell.setForeground(QtGui.QColor(fg))
+            else:
+                item_cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
+            if row_anomaly and self._filter != "anomaly":
+                item_cell.setBackground(highlight_bg)
+            elif self._filter != "anomaly":
+                item_cell.setData(QtCore.Qt.ItemDataRole.BackgroundRole, None)
+        if snap is not None and snap.signal_snapshot is not None:
+            symbol_cell = self._table.item(row, 0)
+            if symbol_cell is not None:
+                tip = snap.signal_snapshot.tooltip
+                if anomaly_tip:
+                    tip = f"{tip}\n异动：{anomaly_tip}" if tip else f"异动：{anomaly_tip}"
+                symbol_cell.setToolTip(tip)
+        elif anomaly_tip:
+            symbol_cell = self._table.item(row, 0)
+            if symbol_cell is not None:
+                symbol_cell.setToolTip(f"异动：{anomaly_tip}")
+
+    def update_rows_for_tickflow_symbols(self, tickflow_symbols: set[str]) -> None:
+        """行情推送时仅刷新受影响行（不重建表格、不重排）。"""
+        if not tickflow_symbols or not self.enabled or not self._expanded:
+            return
+        if not self._table.isVisible() or self._building:
+            return
+        if not self._records() or not self._rendered_symbols:
+            return
+
+        records = self._sorted_display_records()
+        if len(records) != len(self._rendered_symbols):
+            self.render_panel()
+            return
+        for record, rendered_vt in zip(records, self._rendered_symbols, strict=True):
+            if record.vt_symbol != rendered_vt:
+                self.render_panel()
+                return
+
+        combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
+        colors = market_colors(theme_manager().tokens())
+        warning_color = theme_manager().tokens().semantic_warning
+        highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
+        self._building = True
+        try:
+            for row, record in enumerate(records):
+                item = self._page.find_stock_item(record.vt_symbol)
+                if item is None or item.tickflow_symbol not in tickflow_symbols:
+                    continue
+                self._fill_row(
+                    row,
+                    record,
+                    total_capital=combined.total_capital,
+                    colors=colors,
+                    warning_color=warning_color,
+                    highlight_bg=highlight_bg,
+                )
+        finally:
+            self._building = False
+
     def render_panel(self) -> None:
         if self._building:
             return
         self._building = True
         try:
-            records = self._filtered_records()
-            if self._filter != "anomaly":
-                records = sorted(
-                    records,
-                    key=lambda record: (
-                        position_row_sort_key(self._page.position_cache[record.vt_symbol])
-                        if record.vt_symbol in self._page.position_cache
-                        else (9, 0.0, record.vt_symbol)
-                    ),
-                )
+            records = self._sorted_display_records()
             colors = market_colors(theme_manager().tokens())
             warning_color = theme_manager().tokens().semantic_warning
 
@@ -829,71 +948,14 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
             for row, record in enumerate(records):
                 rendered.append(record.vt_symbol)
-                values, snap, quote, plan_tooltip = self._row_values(record, total_capital=total_capital)
-                _, _, anomaly_reasons = self._anomaly_context(record)
-                row_anomaly = bool(anomaly_reasons)
-                anomaly_tip = format_anomaly_tags(anomaly_reasons)
-                buy_date = values.get("buy_date", "—")
-                t1_locked = snap.t1_locked if snap is not None else (position_t1_locked(buy_date) if buy_date != "—" else False)
-                config = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
-                for col, (key, _label) in enumerate(_PANEL_COLUMNS):
-                    text = values.get(key, "—")
-                    item_cell: QtWidgets.QTableWidgetItem | None = self._table.item(row, col)
-                    if item_cell is None:
-                        item_cell = QtWidgets.QTableWidgetItem(text)
-                        self._table.setItem(row, col, item_cell)
-                    elif item_cell.text() != text:
-                        item_cell.setText(text)
-                    item_cell.setData(QtCore.Qt.ItemDataRole.UserRole, record.vt_symbol)
-                    fg = None
-                    if key == "pnl" and snap is not None and snap.unrealized_pnl is not None:
-                        fg = colors.rise if snap.unrealized_pnl >= 0 else colors.fall
-                    elif key == "pnl_pct" and snap is not None and snap.unrealized_pnl_pct is not None:
-                        fg = colors.rise if snap.unrealized_pnl_pct >= 0 else colors.fall
-                    elif key == "t1_status":
-                        if t1_locked:
-                            fg = warning_color
-                        elif snap is not None:
-                            fg = colors.flat
-                    elif key == "exit_signal" and snap is not None and snap.signal_snapshot is not None:
-                        fg = signal_cell_color(
-                            "signal",
-                            snap.signal_snapshot,
-                            colors=colors,
-                            quote=quote,
-                            warning_color=warning_color,
-                            slow_window=config.slow_window,
-                            fast_window=config.fast_window,
-                        )
-                    if key == "t1_status":
-                        if snap is not None:
-                            item_cell.setToolTip(snap.t1_status_tooltip)
-                        elif buy_date != "—":
-                            tip = f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）" if t1_locked else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
-                            item_cell.setToolTip(tip)
-                    elif key == "exit_signal" and snap is not None:
-                        item_cell.setToolTip(snap.exit_signal_tooltip)
-                    elif key == "plan_pct" and plan_tooltip:
-                        item_cell.setToolTip(plan_tooltip)
-                    if fg:
-                        item_cell.setForeground(QtGui.QColor(fg))
-                    else:
-                        item_cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
-                    if row_anomaly and self._filter != "anomaly":
-                        item_cell.setBackground(highlight_bg)
-                    elif self._filter != "anomaly":
-                        item_cell.setData(QtCore.Qt.ItemDataRole.BackgroundRole, None)
-                if snap is not None and snap.signal_snapshot is not None:
-                    symbol_cell = self._table.item(row, 0)
-                    if symbol_cell is not None:
-                        tip = snap.signal_snapshot.tooltip
-                        if anomaly_tip:
-                            tip = f"{tip}\n异动：{anomaly_tip}" if tip else f"异动：{anomaly_tip}"
-                        symbol_cell.setToolTip(tip)
-                elif anomaly_tip:
-                    symbol_cell = self._table.item(row, 0)
-                    if symbol_cell is not None:
-                        symbol_cell.setToolTip(f"异动：{anomaly_tip}")
+                self._fill_row(
+                    row,
+                    record,
+                    total_capital=total_capital,
+                    colors=colors,
+                    warning_color=warning_color,
+                    highlight_bg=highlight_bg,
+                )
 
             self._rendered_symbols = rendered
             self._refresh_stats()

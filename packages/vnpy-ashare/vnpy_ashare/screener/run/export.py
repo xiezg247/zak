@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningRowLike
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 
 _QUOTE_COLUMNS = [
     ("symbol", "代码"),
@@ -66,40 +66,29 @@ _MONEYFLOW_COLUMNS = [
 _FUNDAMENTAL_FIELD_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")
 
 
-def _screening_get(row: ScreeningRowLike, key: str, default: Any = None) -> Any:
-    if isinstance(row, ScreenerResultRow):
-        return row.get(key, default)
-    getter = getattr(row, "get", None)
-    if callable(getter):
-        return getter(key, default)
-    return row[key] if key in row else default
-
-
-def _field_in_row(row: ScreeningRowLike, key: str) -> bool:
-    if isinstance(row, ScreenerResultRow):
-        return key in row
+def _field_in_row(row: ScreenerResultRow, key: str) -> bool:
     return key in row
 
 
-def _has_fundamental_display_data(rows: Sequence[ScreeningRowLike]) -> bool:
+def _has_fundamental_display_data(rows: Sequence[ScreenerResultRow]) -> bool:
     sample = rows[: min(5, len(rows))]
-    return any(_screening_get(row, key) not in (None, "") for row in sample for key in _FUNDAMENTAL_FIELD_KEYS)
+    return any(row.get(key) not in (None, "") for row in sample for key in _FUNDAMENTAL_FIELD_KEYS)
 
 
-def _is_moneyflow_primary_rows(rows: Sequence[ScreeningRowLike]) -> bool:
+def _is_moneyflow_primary_rows(rows: Sequence[ScreenerResultRow]) -> bool:
     """资金流 preset 结果（非行情 preset 附带补全的 net_mf_amount）。"""
     row = rows[0]
-    if _screening_get(row, "moneyflow_source"):
+    if row.get("moneyflow_source"):
         return True
-    return _screening_get(row, "net_mf_amount") is not None and _screening_get(row, "last_price") is None
+    return row.get("net_mf_amount") is not None and row.get("last_price") is None
 
 
-def resolve_export_columns(rows: Sequence[ScreeningRowLike]) -> list[tuple[str, str]]:
+def resolve_export_columns(rows: Sequence[ScreenerResultRow]) -> list[tuple[str, str]]:
     """根据首行字段推断导出列（field_key, 中文标题）。"""
     if not rows:
         return _QUOTE_COLUMNS
     sample = rows[0]
-    if _screening_get(sample, "hit_reason") or _screening_get(sample, "composite_score"):
+    if sample.get("hit_reason") or sample.get("composite_score"):
         optional = {"diff_status", "industry", "volume_ratio", "pe_ttm", "net_mf_amount", "flow_kind"}
         columns = [
             col
@@ -114,7 +103,7 @@ def resolve_export_columns(rows: Sequence[ScreeningRowLike]) -> list[tuple[str, 
     return _QUOTE_COLUMNS
 
 
-def export_rows_to_csv(rows: Sequence[ScreeningRowLike], path: str | Path) -> Path:
+def export_rows_to_csv(rows: Sequence[ScreenerResultRow], path: str | Path) -> Path:
     """将选股结果写入 UTF-8 BOM CSV，返回目标路径。"""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +112,6 @@ def export_rows_to_csv(rows: Sequence[ScreeningRowLike], path: str | Path) -> Pa
         writer = csv.writer(handle)
         writer.writerow([label for _, label in columns])
         for row in rows:
-            payload = row.to_dict() if isinstance(row, ScreenerResultRow) else dict(row)
+            payload = row.to_dict()
             writer.writerow([payload.get(key, "") for key, _ in columns])
     return target

@@ -8,9 +8,9 @@ from typing import Any
 from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
 from vnpy_ashare.domain.market.environment import MarketEnvironmentSnapshot
 from vnpy_ashare.domain.market.overview import MarketOverviewData, SectorRankItem
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.integrations.tickflow import fetch_index_ticker
+from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts
 from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
@@ -31,7 +31,7 @@ SECTOR_TOP_N = 10
 SECTOR_MIN_STOCKS = 3
 
 
-def _quote_rows_for_overview() -> tuple[Sequence[QuoteRowLike], str | None]:
+def _quote_rows_for_overview() -> tuple[Sequence[QuoteRow], str | None]:
     cached = get_market_quotes_cache()
     if cached:
         return cached, None
@@ -42,7 +42,7 @@ def _quote_rows_for_overview() -> tuple[Sequence[QuoteRowLike], str | None]:
     return snapshot.rows, snapshot.updated_at
 
 
-def load_sector_ranks(rows: Sequence[QuoteRowLike], *, top_n: int = SECTOR_TOP_N) -> list[SectorRankItem]:
+def load_sector_ranks(rows: Sequence[QuoteRow], *, top_n: int = SECTOR_TOP_N) -> list[SectorRankItem]:
     """按行业平均涨幅排序，返回 Top N。"""
     if not rows:
         return []
@@ -60,7 +60,7 @@ def load_sector_ranks(rows: Sequence[QuoteRowLike], *, top_n: int = SECTOR_TOP_N
     ]
 
 
-def _load_breadth(rows: Sequence[QuoteRowLike], *, updated_at: str | None) -> MarketBreadthSnapshot | None:
+def _load_breadth(rows: Sequence[QuoteRow], *, updated_at: str | None) -> MarketBreadthSnapshot | None:
     if not rows:
         return None
     breadth = compute_market_breadth(rows, updated_at=updated_at)

@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
+from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.bars.local_fill import BatchFillResult
 from vnpy_ashare.jobs.prefetch.moneyflow import prefetch_moneyflow

@@ -6,7 +6,7 @@ from pydantic import Field
 
 from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
 from vnpy_common.domain.base import FrozenModel
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_resonance_store import (
     get_radar_resonance_entries,

@@ -6,9 +6,9 @@ from collections.abc import Sequence
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.mcp.intraday_flow import fetch_intraday_moneyflow_map
 from vnpy_ashare.integrations.tushare.factors import DATASET_MONEYFLOW, get_cached_rows
@@ -29,7 +29,7 @@ _STREAK_TIER_3_BONUS = 0.08
 _STREAK_TIER_5_BONUS = 0.15
 
 
-def _tier_net_amount(row: QuoteRowLike) -> float:
+def _tier_net_amount(row: QuoteRow) -> float:
     """特大单净流入优先，用于排序与分档。"""
     elg = float(row.get("buy_elg_amount") or 0) - float(row.get("sell_elg_amount") or 0)
     if elg != 0:
@@ -205,7 +205,7 @@ def _turnover_proxy_hits(
 
 def _hits_from_mcp_map(
     flow_map: dict[str, float],
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     pool_size: int,
     *,
     weight: float,
@@ -232,7 +232,7 @@ def _hits_from_mcp_map(
     return hits
 
 
-def _proxy_liquidity_score(row: QuoteRowLike) -> float:
+def _proxy_liquidity_score(row: QuoteRow) -> float:
     change = float(row.get("change_pct") or 0)
     if change <= 0:
         return 0.0
@@ -247,7 +247,7 @@ def _proxy_liquidity_score(row: QuoteRowLike) -> float:
 
 
 def _hits_from_proxy(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     pool_size: int,
     *,
     weight: float,
@@ -280,7 +280,7 @@ def _hits_from_proxy(
     return hits
 
 
-def _merge_quote_fields(row: QuoteRowLike, quote_row: QuoteRowLike | None) -> dict[str, Any]:
+def _merge_quote_fields(row: QuoteRow, quote_row: QuoteRow | None) -> dict[str, Any]:
     item = dict(row)
     if quote_row is not None:
         for key in (

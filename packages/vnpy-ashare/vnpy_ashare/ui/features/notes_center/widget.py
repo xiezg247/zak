@@ -12,7 +12,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_note_service
 from vnpy_ashare.domain.models.stock_note import StockNoteIndexRow
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.features.notes_center.memo_view import NotesCenterMemoView
 from vnpy_ashare.ui.features.notes_center.reports_view import NotesCenterReportsView
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost

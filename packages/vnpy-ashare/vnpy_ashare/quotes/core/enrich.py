@@ -6,7 +6,7 @@ import time
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.integrations.tushare.factor_fallback import fetch_daily_basic_with_fallback, fetch_moneyflow_with_fallback
 from vnpy_ashare.quotes.core.limit_times_cache import (
     get_cached_limit_times_map,

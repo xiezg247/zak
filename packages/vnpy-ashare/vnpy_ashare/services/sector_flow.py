@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
@@ -53,7 +53,7 @@ def _today_trade_date() -> str:
     return format_china_date()
 
 
-def _proxy_flow_yi(row: QuoteRowLike) -> float:
+def _proxy_flow_yi(row: QuoteRow) -> float:
     net_mf = float(row.get("net_mf_amount") or 0)
     if net_mf != 0:
         return net_mf / 10000.0
@@ -64,14 +64,14 @@ def _proxy_flow_yi(row: QuoteRowLike) -> float:
     return amount * change / 100.0 / 1e8
 
 
-def _flow_source_for_rows(items: Sequence[QuoteRowLike]) -> str:
+def _flow_source_for_rows(items: Sequence[QuoteRow]) -> str:
     if any(float(row.get("net_mf_amount") or 0) != 0 for row in items):
         return "tushare"
     return "proxy"
 
 
 def diagnose_sector_flow_empty(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     raw_total: int,
     industry_map: dict[str, str] | None = None,
@@ -96,7 +96,7 @@ def diagnose_sector_flow_empty(
 
 
 def aggregate_sector_rows(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     industry_map: dict[str, str] | None = None,
 ) -> list[SectorFlowRow]:
@@ -105,7 +105,7 @@ def aggregate_sector_rows(
     if not enriched:
         return []
 
-    buckets: dict[str, list[QuoteRowLike]] = defaultdict(list)
+    buckets: dict[str, list[QuoteRow]] = defaultdict(list)
     for row in enriched:
         industry = str(row.get("industry") or "").strip()
         if industry:
@@ -149,7 +149,7 @@ def _format_trade_date_label(trade_date: str) -> str:
 
 
 def rows_from_dc_moneyflow(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     sector_kind: str,
     flow_source: str,
@@ -187,7 +187,7 @@ def rows_from_dc_moneyflow(
 
 
 def rows_from_ths_concept_moneyflow(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     top_each_side: int | None = _TOP_EACH_SIDE,
 ) -> list[SectorFlowRow]:
@@ -293,7 +293,7 @@ def finalize_official_snapshot(snapshot: SectorFlowSnapshot) -> SectorFlowSnapsh
 
 
 def build_sector_snapshot(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     updated_at: str | None,
     industry_map: dict[str, str] | None = None,
@@ -317,10 +317,10 @@ class SectorFlowService(BaseService):
 
     def __init__(self, engine: Any) -> None:
         super().__init__(engine)
-        self._last_quote_rows: Sequence[QuoteRowLike] = []
+        self._last_quote_rows: Sequence[QuoteRow] = []
         self._last_industry_map: dict[str, str] | None = None
 
-    def _cache_quote_context(self, rows: Sequence[QuoteRowLike], industry_map: dict[str, str] | None = None) -> None:
+    def _cache_quote_context(self, rows: Sequence[QuoteRow], industry_map: dict[str, str] | None = None) -> None:
         self._last_quote_rows = list(rows)
         if industry_map is not None:
             self._last_industry_map = industry_map
@@ -357,7 +357,7 @@ class SectorFlowService(BaseService):
 
         return sorted(resolve_concept_vt_symbols(sector))
 
-    def _resolve_quote_rows(self) -> tuple[list[QuoteRowLike], str | None, int, str | None]:
+    def _resolve_quote_rows(self) -> tuple[list[QuoteRow], str | None, int, str | None]:
         """优先使用市场页全量缓存，否则从 Redis 拉全市场（不做逐股 Tushare enrich）。"""
         quote_svc = getattr(self.engine, "quote_service", None)
         if quote_svc is not None:

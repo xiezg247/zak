@@ -10,8 +10,8 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.screener.data.screening_context_registry import get_screening_context
 
 
@@ -106,7 +106,7 @@ def breaks_rolling_high(last_price: float, rolling_high: float, min_break_pct: f
 
 
 def attach_momentum_persistence(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     bars_map: dict[tuple[str, Exchange], list[BarData]],
     *,
     window: int = 5,

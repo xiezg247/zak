@@ -9,7 +9,6 @@ from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.screener.result_row import (
     ScreenerResultRow,
-    ScreeningRowLike,
     coerce_screener_result_rows,
 )
 from vnpy_common.domain.base import MutableModel
@@ -35,7 +34,7 @@ class ScreenerRunResult(MutableModel):
 
 def build_screener_run_result(
     *,
-    rows: Sequence[ScreeningRowLike],
+    rows: Sequence[ScreenerResultRow],
     condition: str,
     updated_at: str | None,
     total_scanned: int,

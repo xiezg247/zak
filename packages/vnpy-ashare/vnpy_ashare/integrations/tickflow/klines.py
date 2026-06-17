@@ -8,7 +8,7 @@ from vnpy.trader.constant import Interval
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.minute_periods import bar_interval, normalize_period
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_tickflow.client import get_tickflow_client
 from vnpy_tickflow.klines import dataframe_to_bars, fetch_klines_paged
 from vnpy_tickflow.mapping import CHINA_TZ

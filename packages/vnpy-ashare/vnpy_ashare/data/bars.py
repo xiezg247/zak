@@ -22,7 +22,7 @@ from vnpy_ashare.data.minute_periods import (
     DEFAULT_MINUTE_DOWNLOAD_MONTHS,
     normalize_period,
 )
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.integrations.tushare.bars import download_daily_bars_tushare, download_minute_bars_tushare
 from vnpy_ashare.storage.repositories.universe import load_universe_names_for_keys
 from vnpy_ashare.storage.repositories.watchlist import import_watchlist_csv, load_watchlist_rows

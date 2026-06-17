@@ -6,7 +6,7 @@ import math
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy
 from vnpy_ashare.domain.screener.predict import BaselinePredictHit
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
@@ -42,7 +42,7 @@ def _sigmoid_p_up(score: float) -> float:
     return _clamp(1.0 / (1.0 + math.exp(-x)), 0.05, 0.95)
 
 
-def _prepare_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
+def _prepare_rows(rows: Sequence[QuoteRow]) -> list[dict[str, Any]]:
     industry_map = get_stock_industry_map()
     enriched = attach_industry(rows, industry_map=industry_map)
     market_benchmark = market_benchmark_change_pct(enriched or rows)
@@ -65,7 +65,7 @@ def _prepare_rows(rows: Sequence[QuoteRowLike]) -> list[dict[str, Any]]:
     return prepared
 
 
-def rank_baseline_predict(rows: Sequence[QuoteRowLike]) -> list[BaselinePredictHit]:
+def rank_baseline_predict(rows: Sequence[QuoteRow]) -> list[BaselinePredictHit]:
     """对候选池做截面百分位加权，返回按 score 降序的预测命中。"""
     prepared = _prepare_rows(rows)
     if not prepared:

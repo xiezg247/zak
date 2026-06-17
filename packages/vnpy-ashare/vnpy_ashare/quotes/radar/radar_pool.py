@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
-from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.storage.repositories.positions import load_position_rows
 from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows

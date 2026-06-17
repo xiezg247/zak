@@ -73,6 +73,94 @@ class PositionPanelSettingsTests(unittest.TestCase):
         self.assertEqual(effective.slow_window, 18)
 
 
+class PositionQuoteRefreshTests(unittest.TestCase):
+    def test_refresh_quotes_only_updates_matching_symbols(self) -> None:
+        from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
+        from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
+
+        class _Item:
+            def __init__(self, tickflow_symbol: str) -> None:
+                self.tickflow_symbol = tickflow_symbol
+
+        class _Panel:
+            def __init__(self) -> None:
+                self.tickflow_calls: list[set[str]] = []
+                self.render_calls = 0
+
+            def update_rows_for_tickflow_symbols(self, tickflow_symbols: set[str]) -> None:
+                self.tickflow_calls.append(set(tickflow_symbols))
+
+            def render_panel(self) -> None:
+                self.render_calls += 1
+
+        class _Page:
+            config = type("Cfg", (), {"show_watchlist_positions": True})()
+            _active = True
+            position_cache: dict = {}
+            quote_map: dict = {}
+
+            def find_stock_item(self, vt_symbol: str):
+                return self._items.get(vt_symbol)
+
+        page = _Page()
+        page._items = {
+            "600000.SSE": _Item("600000"),
+            "000001.SZSE": _Item("000001"),
+        }
+        page.position_cache = {
+            "600000.SSE": PositionSnapshot(
+                vt_symbol="600000.SSE",
+                name="浦发",
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+                source="manual",
+                last_price=10.0,
+                market_value=1000.0,
+                unrealized_pnl=0.0,
+                unrealized_pnl_pct=0.0,
+                exit_signal="hold",
+                signal_snapshot=None,
+                t1_locked=False,
+                exit_ref_price=None,
+                dist_exit_pct=None,
+                warnings=(),
+            ),
+        }
+        panel = _Panel()
+        page.position_panel = panel
+        controller = WatchlistPositionController.__new__(WatchlistPositionController)
+        controller._page = page
+        controller._record_map = lambda: {
+            "600000.SSE": PositionRecord(
+                symbol="600000",
+                exchange="SSE",
+                name="浦发",
+                cost_price=10.0,
+                volume=100,
+                buy_date="2026-06-01",
+                source="manual",
+            ),
+            "000001.SZSE": PositionRecord(
+                symbol="000001",
+                exchange="SZSE",
+                name="平安",
+                cost_price=12.0,
+                volume=100,
+                buy_date="2026-06-01",
+                source="manual",
+            ),
+        }
+        controller._rebuild_cache_entry = lambda record, signal: None  # type: ignore[method-assign]
+        controller._scan_position_alerts = lambda: None  # type: ignore[method-assign]
+
+        tickflow = page._items["600000.SSE"].tickflow_symbol
+        controller.refresh_quotes_only({tickflow})
+
+        self.assertEqual(panel.render_calls, 0)
+        self.assertEqual(panel.tickflow_calls, [{tickflow}])
+
+
 class PositionDiskCacheTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)

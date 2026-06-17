@@ -12,7 +12,7 @@ from vnpy_ashare.domain.market.breadth import (
     LimitSource,
     MarketBreadthSnapshot,
 )
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
 
 __all__ = [
@@ -24,7 +24,7 @@ __all__ = [
     "merge_official_limit_counts",
 ]
 
-def _coerce_change_pct(row: QuoteRowLike) -> float | None:
+def _coerce_change_pct(row: QuoteRow) -> float | None:
     raw = row.get("change_pct")
     if raw is None:
         return None
@@ -37,7 +37,7 @@ def _coerce_change_pct(row: QuoteRowLike) -> float | None:
     return value
 
 
-def _coerce_amount(row: QuoteRowLike) -> float:
+def _coerce_amount(row: QuoteRow) -> float:
     raw = row.get("amount")
     if raw is None:
         return 0.0
@@ -51,7 +51,7 @@ def _coerce_amount(row: QuoteRowLike) -> float:
 
 
 def compute_market_breadth(
-    rows: Sequence[QuoteRowLike],
+    rows: Sequence[QuoteRow],
     *,
     updated_at: str | None = None,
 ) -> MarketBreadthSnapshot:

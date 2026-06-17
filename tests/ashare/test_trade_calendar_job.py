@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
+from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.jobs.sync.trade_calendar import sync_trade_calendar_job
 
 

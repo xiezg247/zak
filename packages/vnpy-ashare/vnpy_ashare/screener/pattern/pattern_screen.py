@@ -14,9 +14,9 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_screener_result_rows
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
@@ -111,7 +111,7 @@ def run_pattern_screen(
     *,
     top_n: int = 20,
     load_bars: Callable[[str, Exchange], list[BarData]] | None = None,
-    quote_rows: Sequence[QuoteRowLike] | None = None,
+    quote_rows: Sequence[QuoteRow] | None = None,
     max_scan: int = MAX_PATTERN_SCAN,
 ) -> ScreenerRunResult:
     """扫描本地日 K（或行情快照）执行形态选股。
@@ -133,15 +133,18 @@ def run_pattern_screen(
                 min_turnover=3.0,
             )
         )
-        for row in rows:
-            row["pattern_score"] = round(
-                float(row.get("turnover_rate") or 0) * max(float(row.get("change_pct") or 0), 0.1),
+        scored: list[ScreenerResultRow] = []
+        for enriched_row in rows:
+            payload = enriched_row.to_dict()
+            payload["pattern_score"] = round(
+                float(payload.get("turnover_rate") or 0) * max(float(payload.get("change_pct") or 0), 0.1),
                 2,
             )
-            row["pattern_hint"] = "高换手 + 涨幅活跃"
-        rows.sort(key=lambda item: float(item.get("pattern_score") or 0), reverse=True)
+            payload["pattern_hint"] = "高换手 + 涨幅活跃"
+            scored.append(ScreenerResultRow.from_mapping(payload))
+        scored.sort(key=lambda item: float(item.get("pattern_score") or 0), reverse=True)
         return build_screener_run_result(
-            rows=coerce_screener_result_rows(rows[:top_n]),
+            rows=scored[:top_n],
             condition=f"形态 · {label}",
             updated_at=format_china_datetime(),
             total_scanned=len(quote_rows),

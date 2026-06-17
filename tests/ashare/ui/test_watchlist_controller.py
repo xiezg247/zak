@@ -13,7 +13,7 @@ from vnpy_ashare.app.engine_access import (
     get_service,
     get_watchlist_service,
 )
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
 
 

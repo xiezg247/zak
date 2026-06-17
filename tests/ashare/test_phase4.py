@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols import symbol_exchange_to_ts_code
+from vnpy_ashare.domain.symbols.stock import symbol_exchange_to_ts_code
 from vnpy_llm.tools import audit as tool_audit
 
 

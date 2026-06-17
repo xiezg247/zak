@@ -39,17 +39,14 @@ from vnpy_ashare.data.bars import (
 )
 from vnpy_ashare.data.minute_periods import period_step
 from vnpy_common.domain.base import FrozenModel, MutableModel
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.calendar import last_trading_day
-from vnpy_ashare.integrations.tickflow import (
-    DepthPermissionError,
-    fetch_depth_from_tickflow,
-    fetch_intraday_bars,
-    fetch_minute_bars,
-)
+from vnpy_ashare.integrations.tickflow.depth import DepthPermissionError, fetch_depth_from_tickflow
+from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars, fetch_minute_bars
 from vnpy_ashare.jobs.bars.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
-from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
-from vnpy_ashare.quotes.core.provider import get_redis_provider
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
+from vnpy_ashare.quotes.core.provider import QuoteSource, fetch_quotes, get_redis_provider
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.quotes.rank.rank_scope import (
     build_stock_items_from_rank_symbols,

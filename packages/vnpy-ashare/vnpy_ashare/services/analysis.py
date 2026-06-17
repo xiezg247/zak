@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from vnpy_ashare.config.preferences import load_signal_panel_symbols
-from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
+from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
 
 if TYPE_CHECKING:

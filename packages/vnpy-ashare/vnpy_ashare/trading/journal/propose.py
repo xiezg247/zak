@@ -7,7 +7,7 @@ from typing import Any
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.services.watchlist_short_term import (

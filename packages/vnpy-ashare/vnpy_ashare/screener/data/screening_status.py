@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_ashare.domain.screener.result_row import ScreeningRowLike
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_ashare_trading_session
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
@@ -147,7 +147,7 @@ def format_diff_insight(config: dict[str, Any] | None) -> str:
     return f"较上次：新增 {new_count} · 保留 {stay_count} · 剔除 {drop_count}"
 
 
-def format_sector_insight(rows: Sequence[ScreeningRowLike], *, top_n: int = 5) -> str:
+def format_sector_insight(rows: Sequence[ScreenerResultRow], *, top_n: int = 5) -> str:
     """格式化行业分布摘要行。"""
     if not rows:
         return ""
@@ -160,7 +160,7 @@ def format_sector_insight(rows: Sequence[ScreeningRowLike], *, top_n: int = 5) -
 
 
 def build_run_insight_detail(
-    rows: Sequence[ScreeningRowLike],
+    rows: Sequence[ScreenerResultRow],
     config: dict[str, Any] | None = None,
 ) -> str:
     """合并 diff + 板块洞察，写入运行输出 detail。"""

@@ -9,7 +9,7 @@ from vnpy.trader.object import BarData
 from vnpy_ashare.data.bar_access import get_period_overview, load_period_bars
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars, fetch_minute_bars
 
 SparklineKind = Literal["daily", "intraday", "minute", "none"]

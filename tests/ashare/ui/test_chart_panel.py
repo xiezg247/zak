@@ -7,7 +7,7 @@ import unittest
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.chart.daily import WATCHLIST_DAILY_BAR_PRESETS, WATCHLIST_DAILY_DEFAULT_BAR_COUNT
 from vnpy_ashare.ui.quotes.chart.panel import (
     DAILY_MISSING_HINT,

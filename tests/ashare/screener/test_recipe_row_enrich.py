@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 
 
@@ -76,13 +77,15 @@ def test_enrich_recipe_rows_fills_cross_dimension_fields() -> None:
     ):
         enriched = enrich_recipe_rows(rows)
 
-    moneyflow_row = next(row for row in enriched if row["vt_symbol"] == "600000.SSE")
-    assert moneyflow_row["change_pct"] == 2.5
-    assert moneyflow_row["pe_ttm"] == 6.1
-    assert moneyflow_row["turnover_rate"] == 0.8
-    assert moneyflow_row["net_mf_amount"] == 100_000
+    assert all(isinstance(row, ScreenerResultRow) for row in enriched)
 
-    valuation_row = next(row for row in enriched if row["vt_symbol"] == "000001.SZSE")
-    assert valuation_row["change_pct"] == -1.1
-    assert valuation_row["net_mf_amount"] == 50_000
-    assert valuation_row["pe_ttm"] == 5.5
+    moneyflow_row = next(row for row in enriched if row.get("vt_symbol") == "600000.SSE")
+    assert moneyflow_row.get("change_pct") == 2.5
+    assert moneyflow_row.get("pe_ttm") == 6.1
+    assert moneyflow_row.get("turnover_rate") == 0.8
+    assert moneyflow_row.get("net_mf_amount") == 100_000
+
+    valuation_row = next(row for row in enriched if row.get("vt_symbol") == "000001.SZSE")
+    assert valuation_row.get("change_pct") == -1.1
+    assert valuation_row.get("net_mf_amount") == 50_000
+    assert valuation_row.get("pe_ttm") == 5.5

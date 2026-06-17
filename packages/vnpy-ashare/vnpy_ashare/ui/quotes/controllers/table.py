@@ -16,12 +16,12 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.domain.market.board import matches_board
-from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.quote_time import format_batch_updated_at
 from vnpy_ashare.domain.trading.signal_snapshot import SIGNAL_COLUMN_KEYS
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map, fetch_stock_market_board_map
-from vnpy_ashare.quotes import QuoteSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
 from vnpy_ashare.ui.quotes.page.config import (
     ALL_TAIL_COLUMNS,
@@ -822,6 +822,8 @@ class TableController:
         self.schedule_stats_update()
         if page.config.show_watchlist_signals:
             page._signals.refresh_quotes_only(symbols)
+        if page.config.show_watchlist_positions:
+            page._positions.refresh_quotes_only(symbols)
         if page.config.show_watchlist_multiview:
             page._multiview.on_quotes_updated()
 

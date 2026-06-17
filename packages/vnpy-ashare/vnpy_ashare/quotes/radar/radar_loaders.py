@@ -8,9 +8,9 @@ from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.market.quote_row import QuoteRowLike
-from vnpy_ashare.domain.screener.result_row import ScreeningRowLike, screening_row_to_dict
-from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, screening_row_to_dict
+from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.format import format_amount, format_pct, format_volume
 from vnpy_ashare.quotes.market.moneyflow_kind import classify_moneyflow_row, flow_kind_label
 from vnpy_ashare.quotes.radar.radar_catalog import (
@@ -62,7 +62,7 @@ from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
 
 
-def _radar_source_payload(row: QuoteRowLike | ScreeningRowLike) -> dict[str, Any]:
+def _radar_source_payload(row: QuoteRow | ScreenerResultRow) -> dict[str, Any]:
     """选股结果行 / 行情行 → plain dict（供 merge_row_quotes / RadarRow 构建）。"""
     return screening_row_to_dict(row)
 
@@ -161,7 +161,7 @@ def _resolve_row_display_name(
     return vt_symbol.split(".")[0]
 
 
-def _row_from_dict(row: QuoteRowLike | ScreeningRowLike, *, name_map: dict[str, str] | None = None) -> RadarRow | None:
+def _row_from_dict(row: QuoteRow | ScreenerResultRow, *, name_map: dict[str, str] | None = None) -> RadarRow | None:
     payload = _radar_source_payload(row)
     vt_symbol = str(payload.get("vt_symbol") or "").strip()
     if not vt_symbol:
@@ -194,7 +194,7 @@ def _relative_strength_subline(row: dict[str, Any]) -> tuple[str, str] | None:
     return build_relative_strength_subline(row)
 
 
-def _rows_from_screener(rows: Sequence[ScreeningRowLike], *, top_n: int) -> tuple[RadarRow, ...]:
+def _rows_from_screener(rows: Sequence[ScreenerResultRow], *, top_n: int) -> tuple[RadarRow, ...]:
     batch = rows[:top_n]
     vt_symbols = [str(_radar_source_payload(row).get("vt_symbol") or "").strip() for row in batch]
     name_map = name_map_for_symbols([vt for vt in vt_symbols if vt])

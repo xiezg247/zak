@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
@@ -54,7 +54,7 @@ def _norm_limit_times(limit_times: float) -> float:
     return _clamp01(boards / 5.0)
 
 
-def _seal_quality_proxy(row: QuoteRowLike) -> float:
+def _seal_quality_proxy(row: QuoteRow) -> float:
     """Phase 1：涨停 + 非近似一字 + 成交额分位代理。"""
     change = float(row.get("change_pct") or 0)
     if not is_at_limit_board(row):
@@ -73,7 +73,7 @@ def _seal_quality_proxy(row: QuoteRowLike) -> float:
     return 0.4
 
 
-def _norm_net_mf(row: QuoteRowLike, *, max_abs: float) -> float:
+def _norm_net_mf(row: QuoteRow, *, max_abs: float) -> float:
     raw = float(row.get("net_mf_amount") or 0)
     if max_abs <= 0:
         return 0.5 if raw > 0 else 0.0
@@ -82,7 +82,7 @@ def _norm_net_mf(row: QuoteRowLike, *, max_abs: float) -> float:
     return _clamp01(raw / max_abs)
 
 
-def _amount_rank_in_group(rows: Sequence[QuoteRowLike]) -> dict[str, float]:
+def _amount_rank_in_group(rows: Sequence[QuoteRow]) -> dict[str, float]:
     amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
     amounts = [(vt, amt) for vt, amt in amounts if vt]
     if not amounts:
@@ -100,7 +100,7 @@ def _amount_rank_in_group(rows: Sequence[QuoteRowLike]) -> dict[str, float]:
 
 
 def compute_leader_score(
-    row: QuoteRowLike,
+    row: QuoteRow,
     *,
     amount_rank: float = 0.5,
     sector_strength_bonus: float = 1.0,
@@ -130,7 +130,7 @@ def compute_leader_score(
 
 
 def rank_sector_leaders(
-    candidates: Sequence[QuoteRowLike],
+    candidates: Sequence[QuoteRow],
     *,
     sector_key: str = "industry",
     max_per_sector: int = 5,
@@ -218,7 +218,7 @@ def _pick_better_leader(a: LeaderScoredRow, b: LeaderScoredRow) -> LeaderScoredR
 
 
 def rank_unified_sector_leaders(
-    candidates: Sequence[QuoteRowLike],
+    candidates: Sequence[QuoteRow],
     *,
     max_per_sector: int = 5,
     strong_industries: set[str] | None = None,
@@ -263,7 +263,7 @@ def rank_unified_sector_leaders(
 
 
 def score_market_leaders(
-    candidates: Sequence[QuoteRowLike],
+    candidates: Sequence[QuoteRow],
     *,
     top_n: int = 12,
     strong_industries: set[str] | None = None,

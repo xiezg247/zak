@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.auto.auto_screen import AutoScreenInput, resolve_auto_screen_request
 from vnpy_ashare.screener.draft.nl_mapper import ProposeInput, preset_catalog_for_prompt, validate_and_build
 from vnpy_ashare.screener.pattern.pattern_screen import (
@@ -454,7 +456,7 @@ class VnpyScreeningSkill(SkillTemplate):
             )
         return self._format_results(name, results)
 
-    def _format_results(self, name: str, results: list[dict]) -> str:
+    def _format_results(self, name: str, results: Sequence[ScreenerResultRow]) -> str:
         summary = []
         for r in results:
             summary.append(
