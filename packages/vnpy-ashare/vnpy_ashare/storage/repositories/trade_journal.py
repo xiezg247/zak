@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from vnpy_ashare.domain.trade_journal import TradeJournalEntry
+from vnpy_ashare.domain.trading.journal import TradeJournalEntry
 from vnpy_ashare.storage.connection import connect, init_app_db
 
 

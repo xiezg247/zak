@@ -30,8 +30,8 @@ from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.run.run_diff import enrich_condition_run
 from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult, build_industry_scheme_config
 from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
-from vnpy_ashare.services.screening_service import ScreeningService
-from vnpy_ashare.services.short_term_watchlist import (
+from vnpy_ashare.services.screening import ScreeningService
+from vnpy_ashare.services.watchlist_short_term import (
     SHORT_TERM_OBSERVATION_GROUP_NAME,
     add_screener_rows_to_short_term_observation_group,
 )

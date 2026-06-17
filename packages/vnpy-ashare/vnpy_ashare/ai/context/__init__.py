@@ -35,17 +35,19 @@ from vnpy_ashare.ai.context.store import (
     get_ai_context,
     get_backtest_summary_dict,
     get_diagnose_result,
-    get_market_quotes_cache,
     get_screening_results,
     register_context_listener,
     set_ai_context,
     set_backtest_summary,
     set_diagnose_result,
-    set_market_quotes_cache,
     set_screening_results,
     sync_backtest_summary_dict,
 )
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.quotes.core.quote_rows import (
+    get_market_quotes_cache,
+    set_market_quotes_cache,
+)
 from vnpy_common.ai.protocol import AiContextData, QuickAction, StockCompletionItem
 
 __all__ = [

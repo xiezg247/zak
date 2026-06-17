@@ -8,7 +8,7 @@ import sys
 import time
 from datetime import datetime
 
-from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs import collect_market_quotes
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 

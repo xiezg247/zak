@@ -38,15 +38,15 @@ from vnpy_ashare.data.bars import (
     search_downloaded_stocks_page,
 )
 from vnpy_ashare.data.minute_periods import period_step
-from vnpy_ashare.domain.calendar import last_trading_day
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tickflow import (
     DepthPermissionError,
     fetch_depth_from_tickflow,
     fetch_intraday_bars,
     fetch_minute_bars,
 )
-from vnpy_ashare.jobs.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
+from vnpy_ashare.jobs.bars.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.quotes import QuoteSnapshot, QuoteSource, fetch_index_ticker, fetch_quotes
 from vnpy_ashare.quotes.core.provider import get_redis_provider
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition

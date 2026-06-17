@@ -5,7 +5,7 @@ from __future__ import annotations
 import pyqtgraph as pg
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.domain.index_amount import IndexAmountSeries
+from vnpy_ashare.domain.market.index_amount import IndexAmountSeries
 from vnpy_ashare.ui.components.chart_style import apply_sparkline_plot_theme
 from vnpy_common.ui.theme import theme_manager
 

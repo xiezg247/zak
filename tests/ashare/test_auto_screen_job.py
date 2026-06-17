@@ -6,18 +6,18 @@ from datetime import datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
-from vnpy_ashare.jobs.auto_screen import run_scheduled_auto_screen
+from vnpy_ashare.jobs.screen.auto_screen import run_scheduled_auto_screen
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
 
 
 def test_screen_intraday_skips_off_hours():
     next_run = datetime(2026, 6, 10, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
     with patch(
-        "vnpy_ashare.jobs.auto_screen.is_ashare_trading_session",
+        "vnpy_ashare.jobs.screen.auto_screen.is_ashare_trading_session",
         return_value=False,
     ):
         with patch(
-            "vnpy_ashare.jobs.auto_screen.next_intraday_screen_at",
+            "vnpy_ashare.jobs.screen.auto_screen.next_intraday_screen_at",
             return_value=next_run,
         ):
             result = run_scheduled_auto_screen("screen_intraday", force=False)
@@ -35,14 +35,14 @@ def test_screen_intraday_force_runs():
         source="recipe",
     )
     with patch(
-        "vnpy_ashare.jobs.auto_screen.is_ashare_trading_session",
+        "vnpy_ashare.jobs.screen.auto_screen.is_ashare_trading_session",
         return_value=False,
     ):
         with patch(
-            "vnpy_ashare.jobs.auto_screen.run_recipe",
+            "vnpy_ashare.jobs.screen.auto_screen.run_recipe",
             return_value=fake_result,
         ):
-            with patch("vnpy_ashare.jobs.auto_screen.persist_scheduled_recipe_run"):
+            with patch("vnpy_ashare.jobs.screen.auto_screen.persist_scheduled_recipe_run"):
                 result = run_scheduled_auto_screen("screen_intraday", force=True)
 
     assert result.success is True
@@ -51,10 +51,9 @@ def test_screen_intraday_force_runs():
 
 def test_screen_post_close_skips_before_close():
     noon = datetime(2026, 6, 9, 12, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
-    with patch("vnpy_ashare.jobs.auto_screen.datetime") as mock_dt:
-        mock_dt.now.return_value = noon
+    with patch("vnpy_ashare.jobs.screen.auto_screen.china_now", return_value=noon):
         with patch(
-            "vnpy_ashare.jobs.auto_screen.is_trading_day",
+            "vnpy_ashare.jobs.screen.auto_screen.is_trading_day",
             return_value=True,
         ):
             result = run_scheduled_auto_screen("screen_post_close", force=False)

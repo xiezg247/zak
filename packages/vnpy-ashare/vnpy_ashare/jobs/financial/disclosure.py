@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.services.stock.profile import sync_watchlist_disclosure
 
 

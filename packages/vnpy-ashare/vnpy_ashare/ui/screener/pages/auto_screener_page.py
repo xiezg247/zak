@@ -29,8 +29,8 @@ from vnpy_ashare.screener.recipe.recipe import TriggerKind
 from vnpy_ashare.screener.run.run_diff import enrich_condition_run, enrich_recipe_run
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
 from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
-from vnpy_ashare.services.screening_service import ScreeningService
-from vnpy_ashare.services.short_term_watchlist import (
+from vnpy_ashare.services.screening import ScreeningService
+from vnpy_ashare.services.watchlist_short_term import (
     SHORT_TERM_OBSERVATION_GROUP_NAME,
     add_screener_rows_to_short_term_observation_group,
 )

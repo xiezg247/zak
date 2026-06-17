@@ -59,7 +59,7 @@ uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
 | `ui/backtest/pages/batch_backtest_page.py` | 回测对比页 |
 | `ui/quotes/controllers/batch_backtest.py` | 看盘页批量回测入口 |
 | `backtest/run_store.py` | `backtest_runs` 表 |
-| `services/backtest_service.py` | 摘要落库与 context |
+| `services/backtest.py` | 摘要落库与 context |
 | `ai/context/backtest.py` | 回测页 AI 上下文组装 |
 | `strategies/ashare_template.py` | 策略基类 `AShareTemplate` |
 

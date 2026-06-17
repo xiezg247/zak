@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from vnpy_ashare.domain.position_snapshot import PositionRecord, PositionSnapshot
+from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
 
 
 def normalize_plan_pct(value: float | None) -> float | None:

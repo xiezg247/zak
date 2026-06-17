@@ -6,7 +6,7 @@ from vnpy_ashare.config.constants.recipe import (
     DEFAULT_METRIC_SCORE_BLEND,
     ENV_METRIC_SCORE_BLEND,
 )
-from vnpy_ashare.domain.env import env_or_prefs_float
+from vnpy_ashare.domain.core.env import env_or_prefs_float
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.domain.quote_time import format_batch_updated_at
+from vnpy_ashare.domain.time.quote_time import format_batch_updated_at
 from vnpy_ashare.ui.quotes.workers import MarketPageResult
 
 if TYPE_CHECKING:

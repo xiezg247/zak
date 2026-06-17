@@ -8,8 +8,8 @@ from datetime import datetime
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config import format_decimal_field
-from vnpy_ashare.domain.market_hours import CHINA_TZ
-from vnpy_ashare.domain.position_snapshot import PositionRecord
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
+from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.trading.risk.plan_position import normalize_plan_pct
 from vnpy_ashare.trading.risk.position_size import (
     compute_position_size_from_prefs,

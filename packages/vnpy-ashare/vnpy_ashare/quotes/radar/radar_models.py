@@ -5,8 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Any
 
-from vnpy_ashare.domain.format import float_or_none
-from vnpy_ashare.quotes.format import format_pct
+from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore

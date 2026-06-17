@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
-from vnpy_ashare.services.sentiment_service import SentimentService, label_for_index
+from vnpy_ashare.services.sentiment import SentimentService, label_for_index
 
 
 def test_label_for_index():

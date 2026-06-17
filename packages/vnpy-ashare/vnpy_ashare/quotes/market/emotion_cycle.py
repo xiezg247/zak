@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle_cache import (
     invalidate_emotion_cycle_cache,

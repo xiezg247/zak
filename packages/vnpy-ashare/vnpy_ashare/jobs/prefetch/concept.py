@@ -8,8 +8,8 @@ from vnpy_ashare.integrations.tushare.concept_board import (
     fetch_ths_concept_index_map,
     fetch_ths_daily_pct_map,
 )
-from vnpy_ashare.jobs.progress import job_log
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.progress import job_log
+from vnpy_ashare.jobs.core.result import JobResult
 
 
 def prefetch_concept_board() -> JobResult:

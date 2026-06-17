@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.board import matches_board
+from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit

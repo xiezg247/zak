@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from vnpy_ashare.domain.format import coerce_float
+from vnpy_ashare.domain.core.numbers import coerce_float
 from vnpy_ashare.storage.connection import connect
 
 

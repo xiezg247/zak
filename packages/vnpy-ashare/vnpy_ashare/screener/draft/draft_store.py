@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from typing import Literal
 
-from vnpy_ashare.domain.datetime import china_now, format_china_datetime
+from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.screener.run.runner import ScreenerRequest
 
 DraftStatus = Literal["pending", "confirmed", "cancelled", "expired"]

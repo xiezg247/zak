@@ -10,7 +10,7 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_ashare.app.events import FillScreenerRequest
-from vnpy_ashare.domain.ai_actions import AI_ACTION_FILL_SCREENER, put_ai_action
+from vnpy_ashare.domain.ai.actions import AI_ACTION_FILL_SCREENER, put_ai_action
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft.draft_store import ScreenerDraft, cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.run.runner import ScreenerRunResult

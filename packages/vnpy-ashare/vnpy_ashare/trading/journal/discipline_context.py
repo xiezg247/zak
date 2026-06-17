@@ -16,7 +16,7 @@ from vnpy_ashare.trading.risk.combined import load_combined_risk_gate_snapshot
 from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today, today_trade_date
 
 if TYPE_CHECKING:
-    from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+    from vnpy_ashare.domain.trading.position import PositionSnapshot
 
 
 def build_trading_discipline_snapshot(

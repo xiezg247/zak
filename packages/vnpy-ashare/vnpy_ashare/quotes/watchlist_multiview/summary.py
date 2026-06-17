@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from vnpy_ashare.domain.position_snapshot import PositionSnapshot
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.trading.position import PositionSnapshot
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiRow
 
 

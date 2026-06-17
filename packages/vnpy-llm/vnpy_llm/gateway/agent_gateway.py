@@ -265,7 +265,7 @@ class AgentGateway:
         if "综合研判" not in content:
             return content
         try:
-            from vnpy_ashare.services.analysis.team_report import (
+            from vnpy_ashare.services.analysis_detail.team_report import (
                 persist_team_analysis_report,
                 team_report_href,
             )

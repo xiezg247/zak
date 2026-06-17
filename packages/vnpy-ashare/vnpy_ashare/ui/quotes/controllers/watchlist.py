@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.config import format_vt_symbol_cn
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.services.watchlist_service import WATCHLIST_MAX_ITEMS, WatchlistService
+from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS, WatchlistService
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

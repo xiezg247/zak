@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 
 

@@ -10,6 +10,7 @@ from vnpy_ashare.integrations.tickflow import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.quotes.rank.rank_scope import (
@@ -18,7 +19,6 @@ from vnpy_ashare.quotes.rank.rank_scope import (
     load_watchlist_rank_catalog,
     paginate_symbols,
 )
-from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
 
 QuoteSource = Literal["market", "watchlist"]
 

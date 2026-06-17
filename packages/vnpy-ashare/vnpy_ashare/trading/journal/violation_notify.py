@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.notifications.events import NOTIFY_EVENT_JOURNAL_VIOLATION
+from vnpy_ashare.notifications.core.events import NOTIFY_EVENT_JOURNAL_VIOLATION
 
 _VIOLATION_LABELS: dict[str, str] = {
     "off_plan": "计划外",

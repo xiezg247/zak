@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from vnpy_ashare.domain.numbers import safe_float
+from vnpy_ashare.domain.core.numbers import safe_float
 from vnpy_ashare.integrations.tushare.client import get_tushare_pro
 
 _REPORT_APIS: dict[str, str] = {

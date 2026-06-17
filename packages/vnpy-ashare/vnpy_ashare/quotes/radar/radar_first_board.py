@@ -14,7 +14,6 @@ from vnpy_ashare.quotes.radar.radar_limit_ladder import (
 )
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.limit_list_first_time import load_limit_list_first_time_map
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.sector.sector_summary import attach_industry

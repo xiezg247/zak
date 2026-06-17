@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from vnpy_ashare.domain.trade_journal import TradeJournalEntry
+from vnpy_ashare.domain.trading.journal import TradeJournalEntry
 from vnpy_ashare.storage.repositories.trade_journal import query_trade_journal
 
 

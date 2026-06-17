@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.jobs.progress import bind_job_log, job_log, job_progress
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.progress import bind_job_log, job_log, job_progress
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.scheduler.manager import JobRunRecord, TaskSchedulerManager
 from vnpy_common.ui.theme.build_extra import format_scheduler_run_log_html
 from vnpy_common.ui.theme.tokens import LIGHT_TOKENS

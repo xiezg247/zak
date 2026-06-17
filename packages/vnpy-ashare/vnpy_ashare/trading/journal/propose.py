@@ -7,10 +7,10 @@ from typing import Any
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.market_hours import CHINA_TZ
 from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
-from vnpy_ashare.services.short_term_watchlist import (
+from vnpy_ashare.services.watchlist_short_term import (
     SHORT_TERM_OBSERVATION_GROUP_NAME,
     build_short_term_watchlist_snapshot,
     ensure_short_term_observation_group,

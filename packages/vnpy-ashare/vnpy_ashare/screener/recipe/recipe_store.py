@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
 
 TriggerKind = Literal["intraday", "post_close"]

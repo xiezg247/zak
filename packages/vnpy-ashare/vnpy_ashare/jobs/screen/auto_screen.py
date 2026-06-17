@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from datetime import time
 
-from vnpy_ashare.domain.calendar import is_trading_day
-from vnpy_ashare.domain.datetime import china_now
-from vnpy_ashare.domain.market_hours import (
+from vnpy_ashare.domain.time.calendar import is_trading_day
+from vnpy_ashare.domain.time.china import china_now
+from vnpy_ashare.domain.time.market_hours import (
     is_ashare_trading_session,
     next_intraday_screen_at,
 )
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.scheduler.config import load_scheduler_config
 from vnpy_ashare.screener.data.quote_freshness import ensure_fresh_quotes_for_screening
 from vnpy_ashare.screener.recipe.recipe import (
@@ -19,7 +19,7 @@ from vnpy_ashare.screener.recipe.recipe import (
     resolve_recipe,
 )
 from vnpy_ashare.screener.recipe.recipe_runner import build_reason_summary, run_recipe
-from vnpy_ashare.services.screening_service import persist_scheduled_recipe_run
+from vnpy_ashare.services.screening import persist_scheduled_recipe_run
 
 # 定时 Job 无 MainEngine，落库经模块级 persist（run_store + context_store）
 

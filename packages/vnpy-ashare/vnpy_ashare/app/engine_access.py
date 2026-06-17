@@ -22,18 +22,18 @@ if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
 
     from vnpy_ashare.app.engine import AshareEngine
-    from vnpy_ashare.services.analysis_service import AnalysisService
-    from vnpy_ashare.services.backtest_service import BacktestService
-    from vnpy_ashare.services.bar_service import BarService
-    from vnpy_ashare.services.financial_service import FinancialService
-    from vnpy_ashare.services.note_service import NoteService
-    from vnpy_ashare.services.position_service import PositionService
-    from vnpy_ashare.services.quote_service import QuoteService
-    from vnpy_ashare.services.screening_service import ScreeningService
-    from vnpy_ashare.services.sector_flow_service import SectorFlowService
-    from vnpy_ashare.services.sentiment_service import SentimentService
-    from vnpy_ashare.services.stock_analysis_service import StockAnalysisService
-    from vnpy_ashare.services.watchlist_service import WatchlistService
+    from vnpy_ashare.services.analysis import AnalysisService
+    from vnpy_ashare.services.backtest import BacktestService
+    from vnpy_ashare.services.bar import BarService
+    from vnpy_ashare.services.financial import FinancialService
+    from vnpy_ashare.services.note import NoteService
+    from vnpy_ashare.services.position import PositionService
+    from vnpy_ashare.services.quote import QuoteService
+    from vnpy_ashare.services.screening import ScreeningService
+    from vnpy_ashare.services.sector_flow import SectorFlowService
+    from vnpy_ashare.services.sentiment import SentimentService
+    from vnpy_ashare.services.stock_analysis import StockAnalysisService
+    from vnpy_ashare.services.watchlist import WatchlistService
 
 
 def get_ashare_engine(main_engine: MainEngine | None) -> AshareEngine | None:

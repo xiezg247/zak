@@ -8,7 +8,7 @@ import pyqtgraph as pg
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.market_hours import (
+from vnpy_ashare.domain.time.market_hours import (
     INTRADAY_SESSION_MINUTES,
     MORNING_SESSION_MINUTES,
     bar_session_minute,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.storage.repositories.universe import universe_count
 from vnpy_ashare.storage.universe import sync_universe
 

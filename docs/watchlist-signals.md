@@ -49,7 +49,7 @@ ui/quotes/watchlist_signals/
 | 模块 | 路径 | 职责 |
 |------|------|------|
 | 快照模型 | `domain/signal_snapshot.py` | `SignalSnapshot`、缺 K 线 / stale 判定、行排序 |
-| 批量计算 | `services/analysis_service.py` | `batch_strategy_signals()` 并行 map |
+| 批量计算 | `services/analysis.py` | `batch_strategy_signals()` 并行 map |
 | 自选池 | `storage/app_db.py` | 50 上限、去重 |
 | 页面壳 | `ui/quotes/page/` | QuotesPage、shell、config、run_log |
 | 日 K 刷新 | `ui/quotes/controllers/local_data.py` | 下载/补缺口后 `refresh_symbols` |

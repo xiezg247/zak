@@ -12,7 +12,7 @@ from vnpy_ashare.ai.context.market_overview import (
     sync_market_overview_partial,
 )
 from vnpy_ashare.app.engine_access import get_ashare_engine
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session
+from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows

@@ -136,7 +136,7 @@ class VnpyWatchlistSkill(SkillTemplate):
         )
 
     def get_short_term_watchlist(self, resonance_top_n: int = 5) -> str:
-        from vnpy_ashare.services.short_term_watchlist import build_short_term_watchlist_snapshot
+        from vnpy_ashare.services.watchlist_short_term import build_short_term_watchlist_snapshot
 
         svc = self._get_watchlist_service()
         payload = build_short_term_watchlist_snapshot(svc, resonance_top_n=resonance_top_n)

@@ -14,8 +14,8 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
-from vnpy_ashare.domain.datetime import format_china_datetime
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.pattern.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch

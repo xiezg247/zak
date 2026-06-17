@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_snapshot_to_dict
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_snapshot_to_dict
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """

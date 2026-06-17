@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from vnpy_ashare.quotes.radar.radar_catalog_defaults import RADAR_FULL_REFRESH_EVERY
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import (
     full_refresh_every_n_ticks as _load_full_refresh_every_n_ticks,
 )

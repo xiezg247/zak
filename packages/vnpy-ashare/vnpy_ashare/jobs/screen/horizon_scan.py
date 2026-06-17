@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import time
 
-from vnpy_ashare.domain.calendar import is_trading_day
-from vnpy_ashare.domain.datetime import china_now
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.domain.time.calendar import is_trading_day
+from vnpy_ashare.domain.time.china import china_now
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.quotes.radar.predict.predict_scan import run_predict_scan
 from vnpy_ashare.quotes.radar.radar_horizon_scan import run_horizon_outlook_scan
 

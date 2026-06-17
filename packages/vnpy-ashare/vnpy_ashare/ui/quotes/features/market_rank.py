@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.quotes.rank.rank_catalog import DEFAULT_RANK_ID, get_rank_definition, rank_definition_row

@@ -6,8 +6,8 @@ import os
 
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.factors import fetch_moneyflow
-from vnpy_ashare.jobs.progress import job_log
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.progress import job_log
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.screener.data.data_source import iter_trade_date_strs
 
 

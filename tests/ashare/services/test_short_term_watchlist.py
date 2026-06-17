@@ -10,7 +10,7 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
-from vnpy_ashare.services.short_term_watchlist import (
+from vnpy_ashare.services.watchlist_short_term import (
     SHORT_TERM_OBSERVATION_GROUP_NAME,
     add_rows_to_short_term_observation_group,
     collect_dragon_1_rows,
@@ -116,7 +116,7 @@ class TestShortTermWatchlist(unittest.TestCase):
     def test_build_short_term_watchlist_snapshot(self) -> None:
         from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
         from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
-        from vnpy_ashare.services.short_term_watchlist import build_short_term_watchlist_snapshot
+        from vnpy_ashare.services.watchlist_short_term import build_short_term_watchlist_snapshot
 
         watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台")
         result = add_rows_to_short_term_observation_group(self.service, (_row("600519.SSE"),))

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from vnpy_ashare.notifications.models import NotifyDeliveryResult
+from vnpy_ashare.notifications.core.models import NotifyDeliveryResult
 
 
 class NotifyChannel(Protocol):

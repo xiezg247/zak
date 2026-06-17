@@ -19,7 +19,7 @@ class DownloadConcurrencyTests(unittest.TestCase):
         results = run_parallel_map(items, lambda value: value * 2, max_workers=2)
         self.assertEqual(results, [0, 2, 4, 6, 8, 10])
 
-    @patch("vnpy_ashare.jobs.local_fill.download_bars", return_value=1)
+    @patch("vnpy_ashare.jobs.bars.local_fill.download_bars", return_value=1)
     def test_batch_fill_stale_parallel(self, _mock) -> None:
         from datetime import datetime
 
@@ -27,7 +27,7 @@ class DownloadConcurrencyTests(unittest.TestCase):
 
         from vnpy_ashare.data.bar_health import BarMeta
         from vnpy_ashare.domain.symbols import StockItem
-        from vnpy_ashare.jobs.local_fill import batch_fill_stale_daily_bars
+        from vnpy_ashare.jobs.bars.local_fill import batch_fill_stale_daily_bars
 
         items = [
             StockItem(symbol="600519", exchange=Exchange.SSE, name="茅台"),

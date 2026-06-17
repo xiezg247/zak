@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 try:
     from tickflow.resources.stream import MarketStream
 except ImportError:
-    MarketStream = None  # type: ignore[misc,assignment]
+    MarketStream = None
 
 _logger = logging.getLogger(__name__)
 

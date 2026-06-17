@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from vnpy_ashare.domain.signal_snapshot import (
+from vnpy_ashare.domain.trading.signal_snapshot import (
     INTRADAY_ANCHOR_MIN_DELTA,
     INTRADAY_CROSS_NEAR_PCT,
     SIGNAL_BENCHMARK_LOOKBACK,

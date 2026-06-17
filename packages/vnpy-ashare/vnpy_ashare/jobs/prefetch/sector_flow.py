@@ -9,10 +9,10 @@ from vnpy_ashare.integrations.tushare.sector_moneyflow import (
     fetch_moneyflow_cnt_ths,
     fetch_moneyflow_ind_dc,
 )
-from vnpy_ashare.jobs.progress import job_log
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.progress import job_log
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.screener.data.data_source import iter_trade_date_strs
-from vnpy_ashare.services.sector_flow_service import rows_from_dc_moneyflow, rows_from_ths_concept_moneyflow
+from vnpy_ashare.services.sector_flow import rows_from_dc_moneyflow, rows_from_ths_concept_moneyflow
 from vnpy_ashare.storage.repositories.sector_flow_history import upsert_sector_flow_day
 
 

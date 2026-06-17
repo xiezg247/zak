@@ -10,7 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.scheduler.config import SchedulerConfig, load_scheduler_config, save_scheduler_config
 from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 

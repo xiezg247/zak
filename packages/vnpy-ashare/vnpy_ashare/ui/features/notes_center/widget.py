@@ -11,7 +11,7 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_note_service
-from vnpy_ashare.domain.stock_note import StockNoteIndexRow
+from vnpy_ashare.domain.models.stock_note import StockNoteIndexRow
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.ui.features.notes_center.memo_view import NotesCenterMemoView
 from vnpy_ashare.ui.features.notes_center.reports_view import NotesCenterReportsView
@@ -34,7 +34,7 @@ from vnpy_common.ui.qt_helpers import release_thread
 from vnpy_common.ui.theme import theme_manager
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.note_service import NoteService
+    from vnpy_ashare.services.note import NoteService
 
 _FILTER_ALL = "all"
 _FILTER_MEMO = "memo"

@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from vnpy_ashare.quotes.core.cache_ttl import TtlCache
 
+if TYPE_CHECKING:
+    from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot
+
 _CACHE_TTL_SEC = 30.0
-_emotion_cache: TtlCache[Any] = TtlCache()
+_emotion_cache: TtlCache[EmotionCycleSnapshot | None] = TtlCache()
 
 
-def peek_emotion_cycle_snapshot(*, max_age_sec: float = _CACHE_TTL_SEC) -> Any | None:
+def peek_emotion_cycle_snapshot(*, max_age_sec: float = _CACHE_TTL_SEC) -> EmotionCycleSnapshot | None:
     """读取内存缓存，不触发任何 I/O。"""
     return _emotion_cache.peek(max_age_sec=max_age_sec)
 
 
-def store_emotion_cycle_snapshot(snapshot: Any | None) -> None:
+def store_emotion_cycle_snapshot(snapshot: EmotionCycleSnapshot | None) -> None:
     """写入内存缓存（市场页 Worker / 控制器刷新后调用）。"""
     _emotion_cache.store(snapshot)
 

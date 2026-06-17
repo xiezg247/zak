@@ -9,10 +9,10 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.preferences import WatchlistSignalConfig
 from vnpy_ashare.data.bar_health import format_meta_date
-from vnpy_ashare.domain.datetime import format_china_time_hm
-from vnpy_ashare.domain.position_snapshot import PositionRecord, build_position_snapshot
-from vnpy_ashare.domain.signal_snapshot import signal_as_of_stale
-from vnpy_ashare.notifications.position_alerts import scan_watchlist_position_alerts
+from vnpy_ashare.domain.time.china import format_china_time_hm
+from vnpy_ashare.domain.trading.position import PositionRecord, build_position_snapshot
+from vnpy_ashare.domain.trading.signal_snapshot import signal_as_of_stale
+from vnpy_ashare.notifications.triggers import scan_watchlist_position_alerts
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
@@ -21,8 +21,8 @@ from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWo
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.analysis_service import AnalysisService
-    from vnpy_ashare.services.position_service import PositionService
+    from vnpy_ashare.services.analysis import AnalysisService
+    from vnpy_ashare.services.position import PositionService
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 

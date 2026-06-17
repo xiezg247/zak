@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label
 from vnpy_ashare.quotes.radar.radar_leader_pick import (

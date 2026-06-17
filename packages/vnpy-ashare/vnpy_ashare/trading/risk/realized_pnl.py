@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
-from vnpy_ashare.domain.market_hours import CHINA_TZ
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.storage.repositories.trade_journal import sum_realized_pnl_for_date
 
 

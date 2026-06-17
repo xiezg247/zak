@@ -10,8 +10,8 @@ from vnpy_ashare.integrations.tushare.factors import (
     fetch_moneyflow_hsgt_window,
     fetch_stock_basic_snapshot,
 )
-from vnpy_ashare.jobs.progress import job_log
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.progress import job_log
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback
 
 

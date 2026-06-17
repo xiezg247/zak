@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from strategies.ultra_short_signals import calc_limit_price
-from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session
 from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_first_time_map
 from vnpy_ashare.trading.signals.seal_time import parse_clock_minutes, seal_time_score

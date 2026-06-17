@@ -10,7 +10,7 @@ from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, load_e
 from vnpy_ashare.trading.risk.gate import RiskGateSnapshot, build_risk_gate_snapshot, read_total_capital
 
 if TYPE_CHECKING:
-    from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+    from vnpy_ashare.domain.trading.position import PositionSnapshot
 
 
 @dataclass(frozen=True)

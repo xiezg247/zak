@@ -6,7 +6,7 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.services.stock_analysis_service import (
+from vnpy_ashare.services.stock_analysis import (
     StockAnalysisPayload,
     StockAnalysisScope,
     StockAnalysisService,

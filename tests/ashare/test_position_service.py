@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 from vnpy.trader.constant import Exchange
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.services.position_service import PositionService
+from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item

@@ -9,8 +9,8 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
@@ -36,7 +36,7 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
 )
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
-from vnpy_ashare.services.short_term_watchlist import (
+from vnpy_ashare.services.watchlist_short_term import (
     SHORT_TERM_OBSERVATION_GROUP_NAME,
     add_rows_to_short_term_observation_group,
     collect_dragon_1_rows,

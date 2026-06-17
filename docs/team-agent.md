@@ -92,7 +92,7 @@ chief 输出含「综合研判」时，`persist_team_analysis_report()` 写入 `
 | 模块 | 路径 |
 |------|------|
 | 编排器 | `packages/vnpy-llm/vnpy_llm/graph/orchestrator.py` |
-| 预取 / 评分 | `services/analysis_service.py`, `graph/team_scoring.py` |
-| 研报落库 | `services/analysis/team_report.py` |
+| 预取 / 评分 | `services/analysis.py`, `graph/team_scoring.py` |
+| 研报落库 | `services/analysis_detail/team_report.py` |
 | 路由 | `routing/intent.py`, `routing/router.py` |
 | Agent prompt | `graph/agents/financial.py`, `risk.py`, `strategy.py`, `chief.py` |

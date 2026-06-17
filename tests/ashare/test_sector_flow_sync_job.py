@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from vnpy_ashare.jobs.sector_flow_sync import sync_sector_flow_daily_job
+from vnpy_ashare.jobs.prefetch.sector_flow import sync_sector_flow_daily_job
 from vnpy_ashare.storage.repositories.sector_flow_history import load_sector_flow_history
 
 
@@ -45,17 +45,17 @@ class SectorFlowSyncJobTests(unittest.TestCase):
             return [], trade_date
 
         with (
-            mock.patch("vnpy_ashare.jobs.sector_flow_sync.get_tushare_pro", return_value=object()),
+            mock.patch("vnpy_ashare.jobs.prefetch.sector_flow.get_tushare_pro", return_value=object()),
             mock.patch(
-                "vnpy_ashare.jobs.sector_flow_sync.iter_trade_date_strs",
+                "vnpy_ashare.jobs.prefetch.sector_flow.iter_trade_date_strs",
                 return_value=["20240927"],
             ),
             mock.patch(
-                "vnpy_ashare.jobs.sector_flow_sync.fetch_moneyflow_ind_dc",
+                "vnpy_ashare.jobs.prefetch.sector_flow.fetch_moneyflow_ind_dc",
                 side_effect=fake_dc,
             ),
             mock.patch(
-                "vnpy_ashare.jobs.sector_flow_sync.fetch_moneyflow_cnt_ths",
+                "vnpy_ashare.jobs.prefetch.sector_flow.fetch_moneyflow_cnt_ths",
                 return_value=([], "20240927"),
             ),
         ):

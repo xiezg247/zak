@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.services.short_term_watchlist import (
+from vnpy_ashare.services.watchlist_short_term import (
     SHORT_TERM_OBSERVATION_GROUP_NAME,
     add_screener_rows_to_short_term_observation_group,
 )

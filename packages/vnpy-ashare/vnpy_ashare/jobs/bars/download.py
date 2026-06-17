@@ -17,8 +17,8 @@ from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
-from vnpy_ashare.jobs.progress import job_log, job_progress
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.progress import job_log, job_progress
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.storage.connection import get_meta, set_meta
 from vnpy_ashare.storage.repositories.universe import load_universe_rows, universe_exists
 

@@ -14,6 +14,7 @@ from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.ui import AiPageWidget
 from vnpy_ashare.app.branding import window_title as build_window_title
+from vnpy_ashare.app.deferred_apps import register_deferred_apps
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import (
     EVENT_AI_ACTION,
@@ -30,8 +31,7 @@ from vnpy_ashare.app.events import (
     FillScreenerRequest,
     OrbAttentionRequest,
 )
-from vnpy_ashare.app.deferred_apps import register_deferred_apps
-from vnpy_ashare.domain.ai_actions import (
+from vnpy_ashare.domain.ai.actions import (
     AI_ACTION_ASK_AI,
     AI_ACTION_FILL_RECIPE,
     AI_ACTION_FILL_SCREENER,

@@ -8,8 +8,8 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.config.preferences import WatchlistSignalConfig, save_watchlist_signal_config
 from vnpy_ashare.data.bar_health import format_meta_date
-from vnpy_ashare.domain.datetime import format_china_time_hm
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
+from vnpy_ashare.domain.time.china import format_china_time_hm
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
@@ -18,7 +18,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.analysis_service import AnalysisService
+    from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 import threading
 import uuid
 from dataclasses import dataclass, replace
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Literal
 
-from vnpy_ashare.domain.datetime import china_now, format_china_datetime
+from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.screener.recipe.recipe import TriggerKind
 
 DraftStatus = Literal["pending", "confirmed", "cancelled", "expired"]

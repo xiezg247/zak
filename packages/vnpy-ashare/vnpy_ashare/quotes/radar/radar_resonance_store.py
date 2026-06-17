@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
 
 _entries: tuple[RadarResonanceEntry, ...] = ()

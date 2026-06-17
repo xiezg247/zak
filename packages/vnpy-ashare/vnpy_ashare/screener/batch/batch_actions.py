@@ -25,9 +25,9 @@ from vnpy_ashare.backtest.run_store import save_backtest_run
 from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
-from vnpy_ashare.domain.datetime import format_china_date
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.domain.time.china import format_china_date
+from vnpy_ashare.jobs.core.result import JobResult
 
 
 @dataclass(frozen=True)

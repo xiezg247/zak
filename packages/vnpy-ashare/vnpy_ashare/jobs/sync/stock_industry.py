@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_basic_snapshot
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 
 
 def sync_stock_industry_job(*, force: bool = True) -> JobResult:

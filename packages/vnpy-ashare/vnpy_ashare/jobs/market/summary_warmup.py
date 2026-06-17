@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.quotes.core.quote_rows import set_market_quote_rows_cache
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs

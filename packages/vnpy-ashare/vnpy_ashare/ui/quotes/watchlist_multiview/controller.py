@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.domain.market_hours import is_ashare_trading_session
+from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.watchlist_multiview import (
     build_multiview_board_summary,
     build_watchlist_multiview_board,

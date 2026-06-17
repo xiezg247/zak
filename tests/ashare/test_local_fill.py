@@ -10,7 +10,7 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.data.bar_health import BarHealthStatus, BarMeta, GapRange
 from vnpy_ashare.domain.symbols import StockItem
-from vnpy_ashare.jobs.local_fill import (
+from vnpy_ashare.jobs.bars.local_fill import (
     batch_fill_gap_daily_bars,
     batch_fill_stale_daily_bars,
     count_scannable_daily_items,
@@ -58,7 +58,7 @@ class LocalFillTests(unittest.TestCase):
     def test_count_scannable_daily_items(self) -> None:
         self.assertEqual(count_scannable_daily_items([self.moutai, self.pingan], self.bar_meta), 2)
 
-    @patch("vnpy_ashare.jobs.local_fill.download_bars", return_value=3)
+    @patch("vnpy_ashare.jobs.bars.local_fill.download_bars", return_value=3)
     def test_fill_stale_daily_bar(self, _mock_download) -> None:
         added = fill_stale_daily_bar(
             self.moutai,
@@ -67,7 +67,7 @@ class LocalFillTests(unittest.TestCase):
         )
         self.assertEqual(added, 3)
 
-    @patch("vnpy_ashare.jobs.local_fill.download_bars")
+    @patch("vnpy_ashare.jobs.bars.local_fill.download_bars")
     def test_batch_fill_stale_daily_bars(self, mock_download) -> None:
         mock_download.return_value = 2
         progress_labels: list[str] = []
@@ -85,7 +85,7 @@ class LocalFillTests(unittest.TestCase):
         self.assertEqual(progress_labels, ["600519.上交所"])
         self.assertIn("成功 1/1", result.message)
 
-    @patch("vnpy_ashare.jobs.local_fill.download_bars", return_value=2)
+    @patch("vnpy_ashare.jobs.bars.local_fill.download_bars", return_value=2)
     def test_fill_gap_ranges(self, mock_download) -> None:
         gaps = [
             GapRange(start=date(2026, 5, 10), end=date(2026, 5, 12), missing_days=3),
@@ -94,8 +94,8 @@ class LocalFillTests(unittest.TestCase):
         self.assertEqual(added, 2)
         mock_download.assert_called_once()
 
-    @patch("vnpy_ashare.jobs.local_fill.inspect_item_gaps")
-    @patch("vnpy_ashare.jobs.local_fill.download_bars", return_value=1)
+    @patch("vnpy_ashare.jobs.bars.local_fill.inspect_item_gaps")
+    @patch("vnpy_ashare.jobs.bars.local_fill.download_bars", return_value=1)
     def test_batch_fill_gap_daily_bars(self, _mock_download, mock_inspect) -> None:
         from vnpy_ashare.data.bar_health import BarGapResult
 

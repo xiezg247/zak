@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
-from vnpy_ashare.jobs.result import JobResult
-from vnpy_ashare.services.financial_service import sync_watchlist_financials
+from vnpy_ashare.jobs.core.result import JobResult
+from vnpy_ashare.services.financial import sync_watchlist_financials
 
 
 def sync_watchlist_financials_job(*, force: bool = False, years: int = 5) -> JobResult:

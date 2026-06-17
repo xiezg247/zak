@@ -7,9 +7,9 @@ from vnpy.trader.constant import Exchange
 from vnpy_ashare.data.bar_health import BarMeta, bar_meta_from_overview
 from vnpy_ashare.data.bar_store import iter_bar_overviews
 from vnpy_ashare.data.bars import load_downloaded_stocks
-from vnpy_ashare.jobs.local_fill import BatchFillProgress, batch_fill_stale_daily_bars, select_stale_daily_items
-from vnpy_ashare.jobs.progress import job_log, job_progress
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.bars.local_fill import BatchFillProgress, batch_fill_stale_daily_bars, select_stale_daily_items
+from vnpy_ashare.jobs.core.progress import job_log, job_progress
+from vnpy_ashare.jobs.core.result import JobResult
 
 
 def build_daily_bar_meta() -> dict[tuple[str, Exchange], BarMeta]:

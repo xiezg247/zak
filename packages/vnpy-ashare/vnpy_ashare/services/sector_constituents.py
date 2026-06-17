@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from vnpy_ashare.domain.sector_flow import SectorConstituentRow, SectorFlowRow
+from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowRow
 from vnpy_ashare.integrations.tushare.concept_board import (
     fetch_ths_concept_index_map,
     fetch_ths_member_vt_symbols,

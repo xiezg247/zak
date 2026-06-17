@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.services.analysis.team_report import persist_team_analysis_report
+from vnpy_ashare.services.analysis_detail.team_report import persist_team_analysis_report
 from vnpy_ashare.storage.repositories import stock_analysis_reports as repo
 
 

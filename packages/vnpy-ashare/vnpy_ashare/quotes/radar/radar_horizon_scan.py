@@ -8,9 +8,9 @@ from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfi
 from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
-from vnpy_ashare.domain.datetime import format_china_datetime_minute
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot, signal_missing_kline
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.time.china import format_china_datetime_minute
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_missing_kline
 from vnpy_ashare.quotes.radar.radar_horizon_cache import HorizonCacheEntry, put_horizon_cache
 from vnpy_ashare.quotes.radar.radar_horizon_rules import (
     build_outlook_rows,
@@ -25,9 +25,9 @@ from vnpy_ashare.quotes.radar.radar_horizon_scenario import (
     filter_scenario_metrics,
     scenario_sort_key,
 )
+from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
-from vnpy_ashare.quotes.radar.radar_signals import build_signal_snapshot
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
@@ -75,15 +75,6 @@ def horizon_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
     if local_daily_k_insufficient(stats):
         return f"本地日 K 覆盖不足，请先运行「全市场日 K」或「补全本地日 K」（粗筛 {stats.prefilter_total} 只，可算信号 0 只）。"
     return f"当前无符合「{card_title}」条件的标的（已扫描 {stats.scanned_total} 只）。"
-
-
-@dataclass(frozen=True)
-class HorizonScanStats:
-    scanned_total: int
-    excluded_count: int
-    prefilter_total: int
-    refined_total: int
-    kline_missing: int
 
 
 @dataclass(frozen=True)
@@ -142,6 +133,8 @@ def batch_build_signal_snapshots(
     *,
     config: WatchlistSignalConfig | None = None,
 ) -> dict[str, SignalSnapshot]:
+    from vnpy_ashare.quotes.radar.radar_signals import build_signal_snapshot
+
     if not vt_symbols:
         return {}
     cfg = (config or load_watchlist_signal_config()).normalized()

@@ -14,6 +14,7 @@ from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
+from vnpy_ashare.ui.features.notes_center.report_launcher import open_notes_reports_center
 from vnpy_ashare.ui.features.stock_analysis.ai_sidebar import StockAnalysisAiSidebar
 from vnpy_ashare.ui.features.stock_analysis.capital_tab import CapitalAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.chart_tab import StockAnalysisChartTab
@@ -21,9 +22,7 @@ from vnpy_ashare.ui.features.stock_analysis.concept_tab import ConceptAnalysisTa
 from vnpy_ashare.ui.features.stock_analysis.events_tab import EventsAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.financial_tab import FinancialAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.holders_tab import HoldersAnalysisTab
-from vnpy_ashare.ui.features.notes_center.report_launcher import open_notes_reports_center
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
-from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 from vnpy_ashare.ui.features.stock_analysis.overview_panel import OverviewAnalysisPanel
 from vnpy_ashare.ui.features.stock_analysis.sector_tab import SectorAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.worker import (
@@ -31,6 +30,7 @@ from vnpy_ashare.ui.features.stock_analysis.worker import (
     StockAnalysisScope,
     StockAnalysisWorker,
 )
+from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 from vnpy_common.ui.dialog_shell import (
     apply_standard_dialog_layout,
     build_panel_footer,

@@ -6,7 +6,7 @@ from typing import Any
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.position_snapshot import PositionRecord
+from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.storage.repositories.trade_journal import insert_trade_journal_entry
 from vnpy_ashare.trading.journal.plan_check import check_buy_against_plan

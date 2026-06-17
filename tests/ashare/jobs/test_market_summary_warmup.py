@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from vnpy_ashare.jobs.market_summary_warmup import warm_market_summary
+from vnpy_ashare.jobs.market.summary_warmup import warm_market_summary
 from vnpy_ashare.quotes.market.emotion_cycle import peek_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
@@ -12,7 +12,7 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, Marke
 
 def test_warm_market_summary_skips_without_redis() -> None:
     with patch(
-        "vnpy_ashare.jobs.market_summary_warmup.load_market_quote_rows",
+        "vnpy_ashare.jobs.market.summary_warmup.load_market_quote_rows",
         side_effect=MarketQuotesLoadError("无 Redis"),
     ):
         result = warm_market_summary(include_ladder=False)
@@ -33,9 +33,9 @@ def test_warm_market_summary_stores_emotion_and_ladder() -> None:
     breadth = type("B", (), {"up": 1, "down": 0, "flat": 0, "limit_up": 1, "limit_down": 0, "total_amount": 1e12, "updated_at": "2026-06-17"})()
 
     with (
-        patch("vnpy_ashare.jobs.market_summary_warmup.load_market_quote_rows", return_value=snapshot),
-        patch("vnpy_ashare.jobs.market_summary_warmup._load_breadth", return_value=breadth),
-        patch("vnpy_ashare.jobs.market_summary_warmup.compute_limit_ladder_counts", return_value={"首板": 1, "2板": 0, "3板": 0, "4板": 0, "5板+": 0}),
+        patch("vnpy_ashare.jobs.market.summary_warmup.load_market_quote_rows", return_value=snapshot),
+        patch("vnpy_ashare.jobs.market.summary_warmup._load_breadth", return_value=breadth),
+        patch("vnpy_ashare.jobs.market.summary_warmup.compute_limit_ladder_counts", return_value={"首板": 1, "2板": 0, "3板": 0, "4板": 0, "5板+": 0}),
     ):
         result = warm_market_summary(include_ladder=True)
 

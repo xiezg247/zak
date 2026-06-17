@@ -12,6 +12,7 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
 from vnpy_ashare.domain.symbols import StockItem, parse_stock_symbol
+from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic, fetch_stock_industry_map
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
 from vnpy_ashare.screener.data.quote_snapshot_cache import register_cached_quote_snapshot_reader
@@ -21,7 +22,6 @@ from vnpy_ashare.screener.data.screening_context_registry import (
     deactivate_screening_context,
     get_screening_context,
 )
-from vnpy_ashare.domain.trade_dates import iter_trade_date_strs
 
 
 def _history_lookback_bars() -> int:

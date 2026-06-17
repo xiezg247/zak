@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesSnapshot
+from vnpy_ashare.screener.data.screening_context import ScreeningContext
 from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter
 
 
-def apply_sentiment_prefilter_to_context(ctx: object) -> None:
+def apply_sentiment_prefilter_to_context(ctx: ScreeningContext) -> None:
     snapshot = getattr(ctx, "_snapshot", None)
     if snapshot is None or not getattr(snapshot, "rows", None):
         return

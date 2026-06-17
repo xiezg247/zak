@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.app.engine_access import get_screening_service
-from vnpy_ashare.services.screening_service import publish_screener_page_context
+from vnpy_ashare.services.screening import publish_screener_page_context
 
 
 def sync_screener_page_context(main_engine=None) -> None:

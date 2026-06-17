@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime
 from types import SimpleNamespace
 
-from vnpy_ashare.services.analysis_service import AnalysisService
+from vnpy_ashare.services.analysis import AnalysisService
 
 
 class _FakeBar:
@@ -160,7 +160,7 @@ class AnalysisServiceTests(unittest.TestCase):
 
 class TdxDiagnoseParseTests(unittest.TestCase):
     def test_parse_wenda_table(self) -> None:
-        from vnpy_ashare.services.analysis.tdx_diagnose import _parse_wenda_table
+        from vnpy_ashare.services.analysis_detail.tdx_diagnose import _parse_wenda_table
 
         raw = json.dumps(
             {

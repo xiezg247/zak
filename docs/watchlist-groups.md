@@ -54,7 +54,7 @@ ui/quotes/watchlist_groups/
 ├── tab_bar.py        # WatchlistGroupTabBar
 ├── controller.py   # WatchlistGroupController
 └── dialog.py         # （预留扩展）
-services/watchlist_service.py              # list_groups / add_to_group 等门面
+services/watchlist.py                        # list_groups / add_to_group 等门面
 ```
 
 | 模块 | 职责 |

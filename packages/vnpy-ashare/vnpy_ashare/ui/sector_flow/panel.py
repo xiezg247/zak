@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.sector_flow import SectorFlowRow, SectorFlowSnapshot
+from vnpy_ashare.domain.market.sector_flow import SectorFlowRow, SectorFlowSnapshot
 from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
 from vnpy_ashare.ui.sector_flow.table import SectorFlowTable
 from vnpy_common.ui.loading_overlay import LoadingContentHost

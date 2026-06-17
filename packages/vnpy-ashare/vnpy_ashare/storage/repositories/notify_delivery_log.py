@@ -6,7 +6,7 @@ import json
 import uuid
 from dataclasses import dataclass
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.storage.connection import connect, init_app_db
 
 _MAX_ROWS = 500

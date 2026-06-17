@@ -53,9 +53,9 @@ def __getattr__(name: str) -> Any:
 
         return TushareNotConfiguredError
     if name in {"MarketQuotesLoadError", "load_market_quote_rows"}:
-        from vnpy_ashare.screener.data import quotes_loader as _mod
+        from vnpy_ashare.screener.data import quotes_loader as _quotes_loader
 
-        return getattr(_mod, name)
+        return getattr(_quotes_loader, name)
     if name in {
         "BatchBacktestParams",
         "BatchBacktestRow",
@@ -64,13 +64,13 @@ def __getattr__(name: str) -> Any:
         "rows_to_stock_items",
         "run_batch_backtests",
     }:
-        from vnpy_ashare.screener.batch import batch_actions as _mod
+        from vnpy_ashare.screener.batch import batch_actions as _batch_actions
 
-        return getattr(_mod, name)
+        return getattr(_batch_actions, name)
     if name in {"SavedScheme", "delete_scheme", "list_schemes", "save_scheme"}:
-        from vnpy_ashare.screener.preset import scheme_store as _mod
+        from vnpy_ashare.screener.preset import scheme_store as _scheme_store
 
-        return getattr(_mod, name)
+        return getattr(_scheme_store, name)
     if name in {
         "ScreenerRequest",
         "ScreenerRunResult",
@@ -81,16 +81,16 @@ def __getattr__(name: str) -> Any:
         "resolve_preset_input",
         "run_screener",
     }:
-        from vnpy_ashare.screener.run import runner as _mod
+        from vnpy_ashare.screener.run import runner as _runner
 
-        return getattr(_mod, name)
+        return getattr(_runner, name)
     if name == "ScreenerRunRecord":
         from vnpy_ashare.screener.run.run_store import ScreenerRunRecord
 
         return ScreenerRunRecord
     if name in {"delete_run", "get_latest_run", "get_run", "list_runs", "save_run"}:
-        from vnpy_ashare.screener.run import run_store as _mod
+        from vnpy_ashare.screener.run import run_store as _run_store
 
-        return getattr(_mod, name)
+        return getattr(_run_store, name)
     msg = f"module {__name__!r} has no attribute {name!r}"
     raise AttributeError(msg)

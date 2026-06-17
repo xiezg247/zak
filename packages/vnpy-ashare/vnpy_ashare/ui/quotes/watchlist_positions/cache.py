@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.ui.quotes.watchlist_signals.cache import snapshot_from_payload, snapshot_to_payload
 from vnpy_common.paths import get_app_db_path
 

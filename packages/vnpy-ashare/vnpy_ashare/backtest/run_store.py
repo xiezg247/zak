@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """

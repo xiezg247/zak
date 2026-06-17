@@ -7,11 +7,10 @@ import os
 import re
 from typing import Any
 
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.notifications.channels.feishu_webhook import FeishuWebhookChannel
-from vnpy_ashare.notifications.delivery import build_notify_outbound
-from vnpy_ashare.notifications.dispatcher import NotifyDispatcher
-from vnpy_ashare.notifications.events import (
+from vnpy_ashare.notifications.content.delivery import build_notify_outbound
+from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
@@ -19,7 +18,8 @@ from vnpy_ashare.notifications.events import (
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
 )
-from vnpy_ashare.notifications.models import NotifyDeliveryResult
+from vnpy_ashare.notifications.core.models import NotifyDeliveryResult
+from vnpy_ashare.notifications.pipeline.dispatcher import NotifyDispatcher
 from vnpy_ashare.notifications.rules import NotifyRulesEngine
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, build_emotion_cycle_inputs

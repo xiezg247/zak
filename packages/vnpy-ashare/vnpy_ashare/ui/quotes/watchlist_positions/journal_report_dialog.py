@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from vnpy.trader.ui import QtWidgets
 from vnpy.trader.ui import QtWidgets as QtW
 
-from vnpy_ashare.domain.market_hours import CHINA_TZ
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.trading.journal.prompt import build_journal_prompt
 from vnpy_ashare.trading.journal.report import format_journal_entries_csv, load_journal_report
 

@@ -16,7 +16,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bar_store import PeriodBarOverview
-from vnpy_ashare.domain.calendar import last_trading_day, trading_days_between
+from vnpy_ashare.domain.time.calendar import last_trading_day, trading_days_between
 from vnpy_ashare.storage.repositories.symbol_suspend import load_suspend_days
 
 # 本地日 K 统一起点：早于该日的不展示、不参与断层扫描

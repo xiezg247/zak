@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
-from vnpy_ashare.quotes.format import format_amount, format_pct
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import parse_stock_symbol, parse_tickflow_symbol
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.format import format_amount, format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_horizon_scenario import batch_build_scenario_metrics, classify_scenario_hint
 from vnpy_ashare.quotes.radar.radar_models import (

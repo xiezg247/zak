@@ -22,7 +22,7 @@ from vnpy_common.ui.theme import theme_manager
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
 
-    from vnpy_ashare.services.screening_service import ScreeningService
+    from vnpy_ashare.services.screening import ScreeningService
 
 _RUN_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 _RUN_CONDITION_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1

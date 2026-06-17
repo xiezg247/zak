@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from vnpy_ashare.services.analysis.team_facts import (
+from vnpy_ashare.services.analysis_detail.team_facts import (
     build_financial_extras,
     prefetch_team_facts,
     snapshot_row_to_dict,
@@ -32,8 +32,8 @@ def test_snapshot_row_to_dict():
     assert data["end_date"] == "20241231"
 
 
-@patch("vnpy_ashare.services.analysis.team_facts.lookup_daily_basic")
-@patch("vnpy_ashare.services.analysis.team_facts.list_snapshots")
+@patch("vnpy_ashare.services.analysis_detail.team_facts.lookup_daily_basic")
+@patch("vnpy_ashare.services.analysis_detail.team_facts.list_snapshots")
 def test_build_financial_extras_merges_sources(mock_list: MagicMock, mock_lookup: MagicMock):
     mock_list.return_value = [_sample_row()]
     mock_lookup.return_value = {"pe_ttm": 25.0, "pb": 8.0, "trade_date": "20250613"}
@@ -46,8 +46,8 @@ def test_build_financial_extras_merges_sources(mock_list: MagicMock, mock_lookup
     assert extras["data_availability"]["pe_ttm"] is True
 
 
-@patch("vnpy_ashare.services.analysis.team_facts.list_snapshots", return_value=[])
-@patch("vnpy_ashare.services.analysis.team_facts.lookup_daily_basic", return_value=None)
+@patch("vnpy_ashare.services.analysis_detail.team_facts.list_snapshots", return_value=[])
+@patch("vnpy_ashare.services.analysis_detail.team_facts.lookup_daily_basic", return_value=None)
 def test_build_financial_extras_empty(_mock_list: MagicMock, _mock_lookup: MagicMock):
     extras = build_financial_extras("600519.SH", "600519.SSE")
     assert extras["latest_financials"] is None
@@ -55,7 +55,7 @@ def test_build_financial_extras_empty(_mock_list: MagicMock, _mock_lookup: Magic
     assert "暂无" in extras["note"]
 
 
-@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context")
+@patch("vnpy_ashare.services.analysis_detail.team_facts.build_team_market_context")
 def test_prefetch_team_facts_parallel(mock_market: MagicMock):
     mock_market.return_value = {"summary_lines": ["沪深300 近60日 +5.00%"]}
     service = MagicMock()
@@ -84,7 +84,7 @@ def test_prefetch_team_facts_invalid_symbol():
     service.analyze_financial.assert_not_called()
 
 
-@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context", return_value={"summary_lines": []})
+@patch("vnpy_ashare.services.analysis_detail.team_facts.build_team_market_context", return_value={"summary_lines": []})
 def test_attach_diagnose_cache_enriches_financial(_mock_market: MagicMock):
     service = MagicMock()
     service.get_diagnose_result.return_value = {
@@ -112,7 +112,7 @@ def test_attach_diagnose_cache_enriches_financial(_mock_market: MagicMock):
     assert "macd" in result["strategy"]["diagnose_indicators"]
 
 
-@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context", return_value={"summary_lines": []})
+@patch("vnpy_ashare.services.analysis_detail.team_facts.build_team_market_context", return_value={"summary_lines": []})
 def test_prefetch_fetches_diagnose_when_cache_miss(_mock_market: MagicMock):
     service = MagicMock()
     service.get_diagnose_result.return_value = None
@@ -136,7 +136,7 @@ def test_prefetch_fetches_diagnose_when_cache_miss(_mock_market: MagicMock):
     assert result["diagnose"]["source"] == "diagnose_stock"
 
 
-@patch("vnpy_ashare.services.analysis.team_facts.build_team_market_context", return_value={"summary_lines": []})
+@patch("vnpy_ashare.services.analysis_detail.team_facts.build_team_market_context", return_value={"summary_lines": []})
 def test_prefetch_fetches_diagnose_when_cache_symbol_mismatch(_mock_market: MagicMock):
     service = MagicMock()
     service.get_diagnose_result.return_value = {"symbol": "002230.SZSE"}

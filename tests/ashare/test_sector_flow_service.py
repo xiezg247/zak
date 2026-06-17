@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 
 from vnpy_ashare.domain.sector_flow import SectorFlowRow
-from vnpy_ashare.services.sector_flow_service import (
+from vnpy_ashare.services.sector_flow import (
     aggregate_sector_rows,
     build_official_snapshot,
     build_sector_snapshot,
@@ -66,7 +66,7 @@ class SectorFlowAggregatorTests(unittest.TestCase):
         # attach_industry will skip if no tushare map - rows already have industry
 
         with mock.patch(
-            "vnpy_ashare.services.sector_flow_service.attach_industry",
+            "vnpy_ashare.services.sector_flow.attach_industry",
             side_effect=lambda r, industry_map=None: r,
         ):
             result = aggregate_sector_rows(rows)
@@ -85,7 +85,7 @@ class SectorFlowAggregatorTests(unittest.TestCase):
             {"vt_symbol": "f.SSE", "change_pct": -0.5, "amount": 1e9, "net_mf_amount": -5000, "industry": "B"},
         ]
         with mock.patch(
-            "vnpy_ashare.services.sector_flow_service.attach_industry",
+            "vnpy_ashare.services.sector_flow.attach_industry",
             side_effect=lambda r, industry_map=None: r,
         ):
             snap = build_sector_snapshot(rows, updated_at="12:00")
@@ -129,7 +129,7 @@ class SectorFlowEmptyHintTests(unittest.TestCase):
     def test_diagnose_no_industry_map(self) -> None:
         rows = [{"vt_symbol": "600000.SSE", "change_pct": 1.0, "amount": 1e9}]
         with mock.patch(
-            "vnpy_ashare.services.sector_flow_service.attach_industry",
+            "vnpy_ashare.services.sector_flow.attach_industry",
             return_value=[],
         ):
             hint = diagnose_sector_flow_empty(rows, raw_total=100)
@@ -142,7 +142,7 @@ class SectorFlowEmptyHintTests(unittest.TestCase):
             {"vt_symbol": "b.SSE", "industry": "X", "change_pct": 2},
         ]
         with mock.patch(
-            "vnpy_ashare.services.sector_flow_service.attach_industry",
+            "vnpy_ashare.services.sector_flow.attach_industry",
             side_effect=lambda r, industry_map=None: r,
         ):
             hint = diagnose_sector_flow_empty(rows, raw_total=2)
@@ -151,7 +151,7 @@ class SectorFlowEmptyHintTests(unittest.TestCase):
     def test_snapshot_empty_hint(self) -> None:
         rows = [{"vt_symbol": "a.SSE", "industry": "X", "change_pct": 1}]
         with mock.patch(
-            "vnpy_ashare.services.sector_flow_service.attach_industry",
+            "vnpy_ashare.services.sector_flow.attach_industry",
             side_effect=lambda r, industry_map=None: r,
         ):
             snap = build_sector_snapshot(rows, updated_at="12:00")

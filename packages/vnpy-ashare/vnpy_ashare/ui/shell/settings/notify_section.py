@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.schema import ENV_NOTIFY_SPECS, ConfigFieldSpec
-from vnpy_ashare.notifications.events import (
+from vnpy_ashare.notifications.core.events import (
     DEFAULT_EVENT_SUBSCRIPTIONS,
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_JOURNAL_VIOLATION,

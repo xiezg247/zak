@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.analysis_service import AnalysisService
+    from vnpy_ashare.services.analysis import AnalysisService
 
 
 class WatchlistPositionWorker(QtCore.QThread):

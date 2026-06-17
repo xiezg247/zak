@@ -9,9 +9,9 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_quote_service, get_sector_flow_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
-from vnpy_ashare.domain.market_hours import ashare_market_phase_label, is_ashare_trading_session
-from vnpy_ashare.domain.sector_flow import SectorConstituentRow, SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
-from vnpy_ashare.services.sector_flow_service import SectorFlowService
+from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
+from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_ashare_trading_session
+from vnpy_ashare.services.sector_flow import SectorFlowService
 from vnpy_ashare.ui.sector_flow.leaders_worker import SectorLeadersLoadWorker
 from vnpy_ashare.ui.sector_flow.worker import SectorFlowLoadWorker
 from vnpy_common.ui.feedback import page_notify

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.services.watchlist_service import WatchlistService
+from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.panel_widgets import center_dialog_on_parent

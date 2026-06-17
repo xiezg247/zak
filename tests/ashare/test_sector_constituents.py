@@ -7,7 +7,7 @@ from unittest import mock
 
 from vnpy_ashare.domain.sector_flow import SectorFlowRow
 from vnpy_ashare.services.sector_constituents import compute_divergence_rows, load_sector_leaders
-from vnpy_ashare.services.sector_flow_service import build_official_snapshot
+from vnpy_ashare.services.sector_flow import build_official_snapshot
 
 
 class SectorDivergenceTests(unittest.TestCase):

@@ -11,7 +11,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtWidgets
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.services.note_service import NoteService
+from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.ui.features.notes_center.save_from_ai import (
     ContextStock,

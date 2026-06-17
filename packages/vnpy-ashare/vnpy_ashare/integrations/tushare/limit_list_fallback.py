@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from vnpy_ashare.domain.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
+from vnpy_ashare.domain.time.trade_dates import DEFAULT_LOOKBACK_DAYS, iter_trade_date_strs
 from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
 
 

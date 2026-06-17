@@ -13,7 +13,7 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_stock_industry_map
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol

@@ -8,18 +8,18 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.symbols import StockItem
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem
-from vnpy_ashare.services.analysis.market_context import build_team_market_context
+from vnpy_ashare.services.analysis_detail.market_context import build_team_market_context
 
 
 def _sample_item() -> StockItem:
     return StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
 
 
-@patch("vnpy_ashare.services.analysis.market_context.fetch_market_sentiment")
-@patch("vnpy_ashare.services.analysis.market_context.get_market_quotes_cache", return_value=[])
-@patch("vnpy_ashare.services.analysis.market_context.get_market_overview_context", return_value=None)
-@patch("vnpy_ashare.services.analysis.market_context.resolve_benchmark_return_pct", return_value=5.0)
-@patch("vnpy_ashare.services.analysis.market_context.compute_relative_index_excess", return_value=3.5)
+@patch("vnpy_ashare.services.analysis_detail.market_context.fetch_market_sentiment")
+@patch("vnpy_ashare.services.analysis_detail.market_context.get_market_quotes_cache", return_value=[])
+@patch("vnpy_ashare.services.analysis_detail.market_context.get_market_overview_context", return_value=None)
+@patch("vnpy_ashare.services.analysis_detail.market_context.resolve_benchmark_return_pct", return_value=5.0)
+@patch("vnpy_ashare.services.analysis_detail.market_context.compute_relative_index_excess", return_value=3.5)
 def test_build_team_market_context_summary(
     _mock_excess: MagicMock,
     _mock_bench: MagicMock,
@@ -48,12 +48,12 @@ def test_build_team_market_context_summary(
     assert ctx["sector"]["industry"] == "白酒"
 
 
-@patch("vnpy_ashare.services.analysis.market_context.fetch_market_sentiment", return_value=None)
-@patch("vnpy_ashare.services.analysis.market_context._load_sector_ranks")
-@patch("vnpy_ashare.services.analysis.market_context.get_market_quotes_cache")
-@patch("vnpy_ashare.services.analysis.market_context.get_market_overview_context")
-@patch("vnpy_ashare.services.analysis.market_context.resolve_benchmark_return_pct", return_value=-2.0)
-@patch("vnpy_ashare.services.analysis.market_context.compute_relative_index_excess", return_value=1.0)
+@patch("vnpy_ashare.services.analysis_detail.market_context.fetch_market_sentiment", return_value=None)
+@patch("vnpy_ashare.services.analysis_detail.market_context._load_sector_ranks")
+@patch("vnpy_ashare.services.analysis_detail.market_context.get_market_quotes_cache")
+@patch("vnpy_ashare.services.analysis_detail.market_context.get_market_overview_context")
+@patch("vnpy_ashare.services.analysis_detail.market_context.resolve_benchmark_return_pct", return_value=-2.0)
+@patch("vnpy_ashare.services.analysis_detail.market_context.compute_relative_index_excess", return_value=1.0)
 def test_build_team_market_context_uses_overview_cache(
     _mock_excess: MagicMock,
     _mock_bench: MagicMock,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from types import SimpleNamespace
 
-from vnpy_ashare.services.analysis.risk_metrics import compute_beta_vs_hs300
+from vnpy_ashare.services.analysis_detail.risk_metrics import compute_beta_vs_hs300
 
 
 def _bars(closes: list[float]):

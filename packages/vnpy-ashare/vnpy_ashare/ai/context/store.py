@@ -25,8 +25,6 @@ from typing import Any
 
 from vnpy_ashare.quotes.core.quote_rows import (
     clear_market_quote_rows_cache,
-    get_market_quotes_cache,
-    set_market_quotes_cache,
 )
 from vnpy_common.ai.protocol import AiContextData
 

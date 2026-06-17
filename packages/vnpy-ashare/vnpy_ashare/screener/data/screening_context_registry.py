@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 from contextvars import ContextVar, Token
-from typing import Any
+from typing import TYPE_CHECKING
 
-_screening_ctx: ContextVar[Any] = ContextVar("screening_ctx", default=None)
+if TYPE_CHECKING:
+    from vnpy_ashare.screener.data.screening_context import ScreeningContext
+
+_screening_ctx: ContextVar[ScreeningContext | None] = ContextVar("screening_ctx", default=None)
 
 
-def get_screening_context() -> Any:
+def get_screening_context() -> ScreeningContext | None:
     return _screening_ctx.get()
 
 
-def activate_screening_context(ctx: Any) -> Token[Any]:
+def activate_screening_context(ctx: ScreeningContext) -> Token[ScreeningContext | None]:
     return _screening_ctx.set(ctx)
 
 
-def deactivate_screening_context(token: Token[Any]) -> None:
+def deactivate_screening_context(token: Token[ScreeningContext | None]) -> None:
     _screening_ctx.reset(token)

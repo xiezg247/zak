@@ -7,9 +7,9 @@ import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
-from vnpy_ashare.domain.datetime import format_china_datetime_minute
+from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarRow,
     quotes_for_vt_symbols,

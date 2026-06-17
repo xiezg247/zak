@@ -6,7 +6,7 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.services.financial_service import FinancialBundle
+from vnpy_ashare.services.financial import FinancialBundle
 from vnpy_ashare.services.stock.context import build_financial_quality_hints
 from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow
 from vnpy_common.ui.data_table import configure_data_table

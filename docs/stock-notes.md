@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS stock_analysis_reports (
 domain/stock_note.py
 storage/repositories/stock_notes.py
 storage/repositories/stock_analysis_reports.py
-services/note_service.py
+services/note.py
 ui/quotes/stock_notes/          # 自选 Panel
 ├── panel.py
 ├── memo_tab.py

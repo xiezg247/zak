@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.config.constants.recipe import ENV_SENTIMENT_GATE
-from vnpy_ashare.domain.env import env_or_prefs_bool
+from vnpy_ashare.domain.core.env import env_or_prefs_bool
 from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index

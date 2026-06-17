@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any
 
-from vnpy_ashare.domain.index_amount import IndexAmountPoint, IndexAmountSeries
-from vnpy_ashare.domain.numbers import safe_float
+from vnpy_ashare.domain.core.numbers import safe_float
+from vnpy_ashare.domain.market.index_amount import IndexAmountPoint, IndexAmountSeries
 from vnpy_ashare.integrations.tushare.cache import DATASET_INDEX_DAILY, get_cached_rows, set_cached_rows
 from vnpy_ashare.integrations.tushare.client import get_tushare_pro
 from vnpy_ashare.integrations.tushare.factors import _latest_trade_date_str

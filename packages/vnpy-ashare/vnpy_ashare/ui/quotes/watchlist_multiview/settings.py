@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Literal
 
-from vnpy.trader.ui import QtCore, QtWidgets
-
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiSortKey
 

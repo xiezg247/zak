@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.market_indices import MARKET_INDICES
+from vnpy_ashare.domain.market.indices import MARKET_INDICES
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 from vnpy_ashare.quotes.core.provider import (
     QuoteProviderError,

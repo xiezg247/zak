@@ -6,8 +6,8 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.config.preferences.strategy_profile import load_strategy_profile_id
-from vnpy_ashare.domain.position_snapshot import PositionRecord, PositionSnapshot
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
+from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.trading.exit.overnight_exit import evaluate_overnight_exit
 
 if TYPE_CHECKING:

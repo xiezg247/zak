@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 import unittest
 
-from vnpy_ashare.services.analysis.historical_mcp import (
+from vnpy_ashare.services.analysis_detail.historical_mcp import (
     _extract_return_pct,
     fetch_historical_pattern_mcp,
     local_historical_sufficient,
 )
-from vnpy_ashare.services.analysis.mcp_binding import McpBinding
+from vnpy_ashare.services.analysis_detail.mcp_binding import McpBinding
 
 
 def _wenda_payload(**extra_fields: str) -> str:

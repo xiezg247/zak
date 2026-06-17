@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from vnpy_ashare.services.financial_service import compute_snapshots, sync_symbol_financials
+from vnpy_ashare.services.financial import compute_snapshots, sync_symbol_financials
 from vnpy_ashare.storage.repositories.financial import list_snapshots, upsert_report
 
 
@@ -73,7 +73,7 @@ class FinancialDerivedTests(unittest.TestCase):
         stored = list_snapshots(ts_code, limit=2)
         self.assertEqual(stored[0].end_date, "20231231")
 
-    @patch("vnpy_ashare.services.financial_service.fetch_all_financial_reports")
+    @patch("vnpy_ashare.services.financial.fetch_all_financial_reports")
     def test_sync_symbol_skips_when_fresh(self, mock_fetch) -> None:
         mock_fetch.return_value = {
             "income": [

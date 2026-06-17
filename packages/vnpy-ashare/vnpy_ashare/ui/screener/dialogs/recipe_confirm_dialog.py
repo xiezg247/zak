@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.app.engine_access import get_screening_service
 from vnpy_ashare.app.events import FillRecipeRequest
-from vnpy_ashare.domain.ai_actions import AI_ACTION_FILL_RECIPE, put_ai_action
+from vnpy_ashare.domain.ai.actions import AI_ACTION_FILL_RECIPE, put_ai_action
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_draft_store import RecipeDraft, cancel_recipe_draft, consume_recipe_draft, get_recipe_draft
 from vnpy_ashare.screener.run.runner import ScreenerRunResult

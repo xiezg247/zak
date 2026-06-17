@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.services.sector_flow_service import SectorFlowService
+from vnpy_ashare.services.sector_flow import SectorFlowService
 
 
 class SectorFlowLoadWorker(QtCore.QThread):

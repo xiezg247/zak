@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.stock_note import StockAnalysisReport
+from vnpy_ashare.domain.models.stock_note import StockAnalysisReport
 from vnpy_ashare.ui.markdown_render import render_markdown_html
 from vnpy_common.ui.theme import theme_manager
 

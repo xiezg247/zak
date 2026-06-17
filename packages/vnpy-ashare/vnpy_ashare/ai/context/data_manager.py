@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.app.engine_access import get_service
-from vnpy_ashare.services.bar_service import publish_data_manager_page_context
+from vnpy_ashare.services.bar import publish_data_manager_page_context
 
 
 def sync_data_manager_context(main_engine=None) -> None:

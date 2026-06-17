@@ -8,7 +8,7 @@ try:
     from vnpy_llm.app.engine import APP_NAME, LlmEngine
 except ImportError:
     APP_NAME = ""
-    LlmEngine = None  # type: ignore[misc,assignment]
+    LlmEngine = None
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine

@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label, rank_unified_sector_leaders
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes

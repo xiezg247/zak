@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.screener.sentiment.fear_greed_provider import register_fear_greed_fetcher
-from vnpy_ashare.services.sentiment_service import SentimentService
+from vnpy_ashare.services.sentiment import SentimentService
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.sentiment_service import FearGreedSnapshot
+    from vnpy_ashare.services.sentiment import FearGreedSnapshot
 
 
 def _fetch_fear_greed_index(*, include_components: bool = False) -> FearGreedSnapshot | None:

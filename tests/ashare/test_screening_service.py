@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.services.screening_service import ScreeningService
+from vnpy_ashare.services.screening import ScreeningService
 
 
 class ScreeningServiceTests(unittest.TestCase):
@@ -27,7 +27,7 @@ class ScreeningServiceTests(unittest.TestCase):
         snapshot.rows = [{"symbol": "000001", "change_pct": -0.5}]
         self.engine.quote_service.get_market_quotes_cache.return_value = []
         with patch(
-            "vnpy_ashare.services.screening_service.load_market_quote_rows",
+            "vnpy_ashare.services.screening.load_market_quote_rows",
             return_value=snapshot,
         ):
             loaded, err = self.service.load_quote_rows()
@@ -49,11 +49,11 @@ class ScreeningServiceTests(unittest.TestCase):
         with (
             patch.object(self.service, "load_quote_rows", return_value=(rows, None)),
             patch(
-                "vnpy_ashare.services.screening_service.apply_quote_preset",
+                "vnpy_ashare.services.screening.apply_quote_preset",
                 return_value=[{"symbol": "600519"}],
             ) as mock_apply,
             patch(
-                "vnpy_ashare.services.screening_service.enrich_recipe_rows",
+                "vnpy_ashare.services.screening.enrich_recipe_rows",
                 side_effect=lambda enriched: enriched,
             ),
         ):

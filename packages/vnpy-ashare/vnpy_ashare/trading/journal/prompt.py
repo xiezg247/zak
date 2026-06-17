@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from vnpy_ashare.domain.market_hours import CHINA_TZ
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.storage.repositories.trade_journal import query_trade_journal
 from vnpy_ashare.storage.repositories.trading_plans import load_active_trading_plan

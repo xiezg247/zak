@@ -28,19 +28,19 @@ from vnpy_ashare.data.bar_health import (
     BarHealthStatus,
     BarMeta,
 )
-from vnpy_ashare.domain.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
-from vnpy_ashare.domain.position_snapshot import PositionSnapshot
-from vnpy_ashare.domain.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.symbols import StockItem
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
+from vnpy_ashare.domain.trading.position import PositionSnapshot
+from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.integrations.tickflow import TickflowStreamBridge
 from vnpy_ashare.quotes import QuoteSnapshot
 from vnpy_ashare.quotes.core.depth_snapshot import DepthSnapshot
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
-from vnpy_ashare.services.analysis_service import AnalysisService
-from vnpy_ashare.services.note_service import NoteService
-from vnpy_ashare.services.position_service import PositionService
-from vnpy_ashare.services.watchlist_service import WatchlistService
+from vnpy_ashare.services.analysis import AnalysisService
+from vnpy_ashare.services.note import NoteService
+from vnpy_ashare.services.position import PositionService
+from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
 from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel

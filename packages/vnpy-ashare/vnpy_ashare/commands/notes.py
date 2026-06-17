@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_ashare.services.note_service import NoteService
+from vnpy_ashare.services.note import NoteService
 from vnpy_common.paths import BACKUP_DIR
 
 

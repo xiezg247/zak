@@ -34,7 +34,7 @@ from vnpy_ashare.config.preferences.strategy_profile import (
     save_strategy_profile_id,
 )
 from vnpy_ashare.data.bar_health import format_meta_date
-from vnpy_ashare.domain.signal_snapshot import (
+from vnpy_ashare.domain.trading.signal_snapshot import (
     SIGNAL_STRENGTH_STRONG,
     SignalSnapshot,
     signal_is_fresh,
@@ -42,7 +42,7 @@ from vnpy_ashare.domain.signal_snapshot import (
     signal_missing_kline,
     signal_row_sort_key,
 )
-from vnpy_ashare.services.signals import (
+from vnpy_ashare.services.signals.runtime import (
     build_price_field_explanations,
     build_runtime_signal_hints,
     format_strength_breakdown,

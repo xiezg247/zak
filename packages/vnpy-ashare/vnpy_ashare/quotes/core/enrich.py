@@ -7,6 +7,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.domain.symbols import parse_stock_symbol
+from vnpy_ashare.integrations.tushare.factor_fallback import fetch_daily_basic_with_fallback, fetch_moneyflow_with_fallback
 from vnpy_ashare.quotes.core.limit_times_cache import (
     get_cached_limit_times_map,
     load_limit_times_map_by_tickflow,
@@ -15,7 +16,6 @@ from vnpy_ashare.quotes.core.limit_times_cache import (
 from vnpy_ashare.quotes.core.snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.quotes.misc.volume_ratio import fill_intraday_volume_ratios
-from vnpy_ashare.integrations.tushare.factor_fallback import fetch_daily_basic_with_fallback, fetch_moneyflow_with_fallback
 
 if TYPE_CHECKING:
     from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore

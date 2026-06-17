@@ -18,8 +18,8 @@ from vnpy_ashare.data.bars import (
     load_watchlist,
 )
 from vnpy_ashare.data.minute_periods import MINUTE_PERIODS
-from vnpy_ashare.jobs.financial_sync import sync_watchlist_financials_job
-from vnpy_ashare.services.financial_service import FinancialSyncResult, sync_symbol_financials
+from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
+from vnpy_ashare.services.financial import FinancialSyncResult, sync_symbol_financials
 
 
 def _format_bar_date(value: datetime | None) -> str:

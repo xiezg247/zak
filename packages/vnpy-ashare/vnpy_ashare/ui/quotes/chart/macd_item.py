@@ -11,7 +11,7 @@ from vnpy.chart.manager import BarManager
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtGui
 
-from vnpy_ashare.domain.indicators import calc_macd
+from vnpy_ashare.domain.tech.indicators import calc_macd
 from vnpy_ashare.ui.components.chart_style import FALL_RGB, RISE_RGB
 
 

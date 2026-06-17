@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows, load_screening_quote_snapshot
@@ -20,12 +19,11 @@ from vnpy_ashare.screener.dimensions.history_signals import (
     load_history_bars_map,
     momentum_persistence_score_factor,
 )
+from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds as _momentum_change_bounds
 from vnpy_ashare.screener.dimensions.scoring import blended_score
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
-from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
-from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds as _momentum_change_bounds
 
 
 def _momentum_change_allowed(change: float) -> bool:

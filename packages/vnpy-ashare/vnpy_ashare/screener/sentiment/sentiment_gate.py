@@ -5,14 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from vnpy_ashare.config.constants.recipe import ENV_SENTIMENT_GATE
-from vnpy_ashare.domain.env import env_or_prefs_bool
+from vnpy_ashare.domain.core.env import env_or_prefs_bool
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
-from vnpy_ashare.screener.sentiment.emotion_gate import apply_emotion_gate_only_finalize, apply_emotion_modulation
+from vnpy_ashare.screener.sentiment.emotion_gate import apply_emotion_modulation
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index as _try_fetch_fear_greed_index
-from vnpy_ashare.screener.sentiment.snapshot_prefilter import apply_sentiment_snapshot_prefilter
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.sentiment_service import FearGreedSnapshot
+    from vnpy_ashare.services.sentiment import FearGreedSnapshot
 
 
 def sentiment_gate_enabled() -> bool:

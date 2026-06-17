@@ -11,7 +11,7 @@ from typing import Any
 
 import requests
 
-from vnpy_ashare.notifications.models import NotifyDeliveryResult, NotifyOutboundMessage
+from vnpy_ashare.notifications.core.models import NotifyDeliveryResult, NotifyOutboundMessage
 
 logger = logging.getLogger(__name__)
 

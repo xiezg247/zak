@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
-from vnpy_ashare.services.financial_service import sync_symbol_financials
+from vnpy_ashare.services.financial import sync_symbol_financials
 from vnpy_ashare.services.stock.profile import build_valuation_profile
 from vnpy_ashare.storage.repositories.disclosure import upsert_disclosure_rows
 from vnpy_ashare.storage.repositories.valuation import upsert_valuation_rows
@@ -47,7 +47,7 @@ class StockProfileServiceTests(unittest.TestCase):
         self.assertEqual(profile.pe_percentile_3y, 100.0)
         self.assertEqual(profile.pb_percentile_3y, 100.0)
 
-    @patch("vnpy_ashare.services.financial_service.fetch_all_financial_reports")
+    @patch("vnpy_ashare.services.financial.fetch_all_financial_reports")
     def test_disclosure_triggers_resync(self, mock_fetch) -> None:
         ts_code = "600519.SH"
         mock_fetch.return_value = {

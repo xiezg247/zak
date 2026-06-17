@@ -6,7 +6,7 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.notifications.prefs import NotifyPrefs
 from vnpy_ashare.notifications.service import NotificationService
 

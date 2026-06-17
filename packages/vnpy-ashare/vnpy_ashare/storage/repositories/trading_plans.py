@@ -8,7 +8,7 @@ from datetime import datetime
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.trading_plan import TradingPlanRecord, TradingPlanSymbolRecord
+from vnpy_ashare.domain.trading.plan import TradingPlanRecord, TradingPlanSymbolRecord
 from vnpy_ashare.storage.connection import connect, init_app_db
 
 PLAN_MAX_SYMBOLS = 5

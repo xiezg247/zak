@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from vnpy_ashare.integrations.tushare import TushareNotConfiguredError, get_tushare_pro
-from vnpy_ashare.jobs.progress import job_log
-from vnpy_ashare.jobs.result import JobResult
+from vnpy_ashare.jobs.core.progress import job_log
+from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.storage.repositories.symbol_suspend import DEFAULT_LOOKBACK_DAYS, sync_suspend_recent
 
 

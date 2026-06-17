@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.ai.context import clear_all, get_backtest_summary_dict
-from vnpy_ashare.services.backtest_service import BacktestService
+from vnpy_ashare.services.backtest import BacktestService
 
 
 class BacktestServiceSummaryTests(unittest.TestCase):
@@ -28,7 +28,7 @@ class BacktestServiceSummaryTests(unittest.TestCase):
             "statistics": {"total_return": 12.5},
         }
         with patch(
-            "vnpy_ashare.services.backtest_service.save_backtest_summary_dict",
+            "vnpy_ashare.services.backtest.save_backtest_summary_dict",
         ) as mock_save:
             self.service.persist_summary(summary, source="single")
         mock_save.assert_called_once()

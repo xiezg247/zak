@@ -6,9 +6,10 @@ from datetime import date, datetime, timedelta
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.calendar import last_trading_day, load_open_trading_days
+from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.suspend import fetch_suspend_d
 from vnpy_ashare.storage.connection import connect, set_meta
+from vnpy_ashare.storage.repositories.trade_calendar import load_open_trading_days
 
 SUSPEND_SYNCED_AT_KEY = "symbol_suspend_synced_at"
 SUSPEND_LAST_TRADE_DATE_KEY = "symbol_suspend_last_trade_date"

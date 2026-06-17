@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
-from vnpy_ashare.domain.position_snapshot import PositionSnapshot
+from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.storage.repositories.trade_journal import (
     has_sell_journal_since,
     has_violation_tag_on_date,

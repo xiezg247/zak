@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.format import float_or_none
+from vnpy_ashare.domain.core.numbers import float_or_none
 from vnpy_ashare.domain.symbols import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_moneyflow import enrich_quotes_with_moneyflow

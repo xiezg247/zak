@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.datetime import format_china_datetime
+from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.run.export import resolve_export_columns

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.sector_flow import SectorFlowHistoryPoint, SectorFlowRow
+from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, SectorFlowRow
 from vnpy_ashare.storage.connection import connect, init_app_db
 
 _HISTORY_LIMIT = 5
