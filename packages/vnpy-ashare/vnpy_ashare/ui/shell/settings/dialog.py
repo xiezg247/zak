@@ -35,6 +35,7 @@ from vnpy_ashare.config.vt_settings import (
     save_runtime_settings,
     sync_vt_settings_from_env,
 )
+from vnpy_ashare.ui.shell.settings.ai_section import AiSettingsSection
 from vnpy_ashare.ui.shell.settings.emotion_section import EmotionSettingsSection
 from vnpy_ashare.ui.shell.settings.notify_section import NotifySettingsSection
 from vnpy_ashare.ui.shell.settings.snapshot import (
@@ -186,6 +187,8 @@ class SettingsDialog(QtWidgets.QDialog):
         self._tabs.addTab(scroll, "常规")
         self._notify_section = NotifySettingsSection(self)
         self._tabs.addTab(self._notify_section, "通知")
+        self._ai_section = AiSettingsSection(self)
+        self._tabs.addTab(self._ai_section, "AI 助手")
         self._emotion_section = EmotionSettingsSection(self)
         self._tabs.addTab(self._emotion_section, "情绪周期")
         root.addWidget(self._tabs, stretch=1)
@@ -428,6 +431,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self._refresh_metadata_table(settings)
         self._update_drift_warning(settings)
         self._notify_section.refresh()
+        self._ai_section.refresh()
         self._emotion_section.refresh()
 
     def _refresh_metadata_table(self, settings: dict) -> None:
@@ -644,6 +648,7 @@ class SettingsDialog(QtWidgets.QDialog):
         runtime_changed = diff_settings(previous_runtime, runtime_updates)
 
         self._notify_section.save_subscriptions()
+        ai_saved = self._ai_section.save_prefs()
         emotion_saved = self._emotion_section.save_thresholds()
         ctx = build_apply_context(self)
         if ctx.notification_service is not None:
@@ -652,6 +657,8 @@ class SettingsDialog(QtWidgets.QDialog):
         if not env_changed and not runtime_changed:
             if emotion_saved:
                 page_notify(self, "情绪周期阈值已保存并生效", level="success")
+            elif ai_saved:
+                page_notify(self, "AI 助手偏好已保存并生效", level="success")
             else:
                 page_notify(self, "事件订阅已保存", level="success")
             self.refresh()

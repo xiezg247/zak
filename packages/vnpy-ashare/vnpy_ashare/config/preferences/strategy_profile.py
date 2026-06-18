@@ -12,6 +12,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_watchlist_signal_config,
     save_watchlist_signal_config,
 )
+from vnpy_ashare.screener.hard_filter_prefs import sync_hard_filter_for_strategy_profile
 from vnpy_common.domain.base import FrozenModel
 
 StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
@@ -94,10 +95,11 @@ def profile_signal_config(profile_id: str) -> WatchlistSignalConfig:
 
 
 def apply_strategy_profile(profile_id: StrategyProfileId) -> WatchlistSignalConfig:
-    """写入 Profile 并同步信号区策略参数。"""
+    """写入 Profile 并同步信号区策略参数与硬过滤模板。"""
     cfg = profile_signal_config(profile_id)
     save_strategy_profile_id(profile_id)
     save_watchlist_signal_config(cfg)
+    sync_hard_filter_for_strategy_profile(profile_id)
     return cfg
 
 

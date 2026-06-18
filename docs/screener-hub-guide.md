@@ -61,7 +61,7 @@
 | 行业白名单 | 空 = 不限 |
 | 板块白名单 | 沪深主板 / 创业板 / 科创板 / 北交所 |
 
-**模板快捷**：保守 / 均衡 / **激进**（极致短线，见 [intraday-screening §2.6](./intraday-screening.md#26-硬过滤模板激进规划)）。退潮期（T-03）建议切保守或停止选股。
+**模板快捷**：保守 / 均衡 / **激进**（极致短线）。切换策略 Profile 时会默认联动对应模板（`ultra_short`→激进、`trend`→保守）。退潮期（T-03）建议切保守或停止选股。
 
 环境变量 `RECIPE_*` 可覆盖 QSettings，详见 [盘中选股 §2.3](./intraday-screening.md#23-硬过滤)。
 
@@ -78,7 +78,7 @@
 | 今天能不能做短线 | `get_emotion_cycle`（**已有**） |
 | 龙头池 / 连板 | `run_leader_screen`（**已有**）；Hub 工具栏「运行雷达龙头」 |
 
-路由表见 [AI 数据路由](./ai-data-routing.md)。Post-Phase：结果区「过滤至短线主池」见 [roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
+路由表见 [AI 数据路由](./ai-data-routing.md)。`propose_screening` / `propose_recipe` 执行前会弹窗确认；结果区「过滤至短线主池」见 [roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
 
 ## 常见问题
 

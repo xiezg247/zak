@@ -239,5 +239,8 @@ Phase 5 ✅
 | P1 | 观察组+持仓 1m K 自动补全 | **已有** | Job `fill_focus_pool_minute` + 分 K 回测预检 |
 | P2 | 微信 / 邮件通知 | **不做** | 产品范围外；飞书已覆盖主通道，见 [notifications §1.3](./notifications.md#13-与-vnpy-内置通道关系) |
 | P2 | 券商持仓 `source=gateway` | **不做** | 维持手工记账；`PositionRecord.source` 字段保留兼容 |
+| — | Profile 切换同步硬过滤模板 | **已有** | `apply_strategy_profile` → 保守/均衡/激进 |
+| — | NL 选股 `propose_*` 执行前确认 | **已有** | `AgentGateway` + Qt 确认；系统配置 → AI 助手 |
+| — | 子文档 Post-Phase 表述对齐 | **已有** | trading-system §3.2、watchlist-groups、ai-data-routing 等 |
 
-> **Post-Phase 结论（2026-06）**：P0/P1 已全部交付；P2 两项经产品确认**不做**，backlog 关闭。
+> **Post-Phase 结论（2026-06）**：P0/P1 已全部交付；P2 两项经产品确认**不做**，backlog 关闭；续项（Profile/硬过滤、NL 确认、文档）已同步上表。

@@ -470,14 +470,14 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
 
 
 def _screening_tool_routing_lines(screening: ScreeningIntent) -> list[str]:
-    """选股工具路由提示：LLM 自主解析并直接执行，无弹窗确认。"""
+    """选股工具路由提示：LLM 解析 propose_* 后由客户端确认再执行。"""
     s = screening
     if s.clarification_needed or s.confidence == "low":
         return ["- 意图不够明确，请先向用户追问，勿调用选股工具"]
 
     if s.scheme_name:
         return [
-            f"- 已保存方案调用 propose_screening（scheme_name={s.scheme_name}, top_n={s.top_n}），解析后自动执行",
+            f"- 已保存方案调用 propose_screening（scheme_name={s.scheme_name}, top_n={s.top_n}），解析后需用户确认再执行",
         ]
 
     has_custom_threshold = any(value is not None for value in (s.min_change_pct, s.max_change_pct, s.min_turnover))
@@ -488,7 +488,7 @@ def _screening_tool_routing_lines(screening: ScreeningIntent) -> list[str]:
     if s.preset and s.confidence == "high":
         if has_custom_threshold:
             return [
-                f"- 自定义区间调用 propose_screening（preset={s.preset}, top_n={s.top_n}），解析后自动执行",
+                f"- 自定义区间调用 propose_screening（preset={s.preset}, top_n={s.top_n}），解析后需用户确认再执行",
             ]
         return [f"- 内置方案「{s.preset}」直接 screen_by_condition（name={s.preset}, top_n={s.top_n}）"]
 
@@ -498,11 +498,11 @@ def _screening_tool_routing_lines(screening: ScreeningIntent) -> list[str]:
         if s.preset:
             if has_custom_threshold:
                 return [
-                    f"- 调用 propose_screening（preset={s.preset}, top_n={s.top_n}），解析后自动执行",
+                    f"- 调用 propose_screening（preset={s.preset}, top_n={s.top_n}），解析后需用户确认再执行",
                 ]
             return [f"- 可直接 screen_by_condition（name={s.preset}, top_n={s.top_n}）"]
         return [
-            "- 复杂/自定义多因子调用 propose_recipe；已保存方案或需解析的条件调用 propose_screening（均自动执行）",
+            "- 复杂/自定义多因子调用 propose_recipe；已保存方案或需解析的条件调用 propose_screening（均需用户确认后执行）",
             "- recipe_id / preset 明确时仍可直接 run_recipe / screen_by_condition",
         ]
 

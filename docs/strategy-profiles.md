@@ -95,21 +95,20 @@
 
 ---
 
-## 5. UI 与持久化（规划）
+## 5. UI 与持久化（**已有**）
 
 | 项 | QSettings key | 说明 |
 |----|---------------|------|
 | 全局 Profile | `trading/strategy_profile` | `ultra_short \| short_swing \| medium_watch \| trend` |
-| 信号区覆盖 | `watchlist/signal_panel/*` | 已有 class_name；Profile 切换时批量写入 |
-| 持仓跟随 | `watchlist/position_panel/follow_signal` | 已有；true 时随信号区 |
+| 信号区覆盖 | `watchlist/signal_panel/*` | Profile 切换时批量写入 |
+| 硬过滤联动 | `screener/hard_filter/*` | Profile 切换时同步保守/均衡/激进模板 |
+| 持仓跟随 | `watchlist/position_panel/follow_signal` | true 时随信号区 |
 
-**自选页 header（规划）**：
+**自选页 header**：
 
 ```text
-策略 Profile [极致短线▾]  →  同步信号区 class_name + 持仓 effective_config
+策略 Profile [极致短线▾]  →  同步信号区 class_name + 硬过滤模板 + 持仓 effective_config
 ```
-
-**信号区**：下拉除 `class_name` 外，增加 Profile 快捷项（Profile 变更 → 推荐参数一键应用）。
 
 ---
 
@@ -148,6 +147,7 @@
 | SP-03 | 持仓区 header 展示 Profile | 已有 |
 | SP-04 | 新用户默认 Profile 配置项（仍默认 medium_watch 直至极致短线策略就绪） | 已有 |
 | SP-05 | LimitBoard / OvernightExit 策略与 registry | **已有** |
+| SP-06 | Profile 切换同步硬过滤模板 | **已有** | ultra_short→激进；trend→保守；其余→均衡 |
 
 ---
 

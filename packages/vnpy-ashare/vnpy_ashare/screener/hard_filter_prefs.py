@@ -25,6 +25,13 @@ PRESET_CONSERVATIVE = "conservative"
 PRESET_BALANCED = "balanced"
 PRESET_AGGRESSIVE = "aggressive"
 
+STRATEGY_PROFILE_HARD_FILTER_PRESET: dict[str, str] = {
+    "ultra_short": PRESET_AGGRESSIVE,
+    "short_swing": PRESET_BALANCED,
+    "medium_watch": PRESET_BALANCED,
+    "trend": PRESET_CONSERVATIVE,
+}
+
 
 class HardFilterPrefs(FrozenModel):
     exclude_st: bool = Field(description="是否排除 ST 股")
@@ -183,6 +190,15 @@ def apply_hard_filter_preset(preset_id: str) -> HardFilterPrefs:
     prefs = hard_filter_preset(preset_id)
     save_hard_filter_prefs(prefs)
     return prefs
+
+
+def hard_filter_preset_for_strategy_profile(profile_id: str) -> str:
+    return STRATEGY_PROFILE_HARD_FILTER_PRESET.get(profile_id, PRESET_BALANCED)
+
+
+def sync_hard_filter_for_strategy_profile(profile_id: str) -> HardFilterPrefs:
+    """策略 Profile 切换时同步硬过滤模板（保守 / 均衡 / 激进）。"""
+    return apply_hard_filter_preset(hard_filter_preset_for_strategy_profile(profile_id))
 
 
 def _read_float(raw, default: float) -> float:

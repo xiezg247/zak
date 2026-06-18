@@ -32,6 +32,11 @@ from vnpy_llm.routing.router import RouteContext, normalize_market_command, norm
 from vnpy_llm.tools.audit import log_tool_call
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TraceStep, TurnTrace
+from vnpy_llm.ui.nl_screening_confirm import (
+    NL_SCREENING_CONFIRM_TOOLS,
+    cancelled_nl_screening_result,
+    confirm_nl_screening_tool,
+)
 from vnpy_mcp.app.engine import McpEngine
 from vnpy_skills.app.engine import SkillEngine
 
@@ -370,6 +375,9 @@ class AgentGateway:
         result = ""
         success = True
         try:
+            if name in NL_SCREENING_CONFIRM_TOOLS and not confirm_nl_screening_tool(name, arguments):
+                result = cancelled_nl_screening_result(name)
+                return result
             result, success = self._tool_registry.execute(name, arguments)
             return result
         except Exception as ex:

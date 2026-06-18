@@ -27,7 +27,7 @@ SCREENING_PAGE_PROMPT = """【选股页】
 需要历史某次运行时可传 run_id；对比前几只技术面时可设 batch_top_n（最多 10）。
 不要编造未在结果中的标的或指标。
 意图明确：形态用 screen_by_pattern，多因子用 run_recipe，内置 preset 用 screen_by_condition。
-已保存方案、复杂自定义条件用 propose_screening / propose_recipe（解析后自动执行）。
+已保存方案、复杂自定义条件用 propose_screening / propose_recipe（解析后需用户在客户端确认再执行）。
 禁止 run_python 执行选股（tdx-stock-picker 无 Python 模块）。"""
 
 QUOTES_PAGE_PROMPT = """【看盘页】

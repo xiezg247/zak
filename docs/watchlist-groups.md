@@ -133,7 +133,7 @@ page.all_stocks → apply_filter()
 | 选股结果 | 结果操作条「加入观察组」 | **已有** |
 | 次日计划 | TradingPlan.watchlist 同步到该分组 | **已有**（计划对话框「同步观察组」） |
 
-**预设分组建议**（Post-Phase onboarding，非强制）：
+**预设分组建议**（onboarding 可选创建，**已有**）：
 
 | 名称 | 用途 |
 |------|------|
@@ -160,7 +160,7 @@ page.all_stocks → apply_filter()
 | 分组不能超自选池 | `add_watchlist_group_member` 要求 watchlist 行存在 |
 | 分组筛选 vs 搜索 | 搜索在筛选后的 `all_stocks` 上生效 |
 | 与信号区名单 | **独立**；信号区仍用 QSettings 逗号名单 |
-| 与持仓 | 持仓区显示全部记账头寸，不随分组 Tab 隐藏（Post-Phase：可选「仅观察组持仓」筛选） |
+| 与持仓 | 持仓区显示全部记账头寸；统计条「观察组 N」可筛选仅观察组持仓（**已有**） |
 
 ---
 

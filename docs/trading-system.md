@@ -120,16 +120,16 @@
 
 ### 3.2 与现有选股能力映射
 
-> **状态（2026-06）**：G-/D-/R- 主能力 **已有**；下表「剩余优化」为 Post-Phase backlog，见 [implementation-roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
+> **状态（2026-06）**：G-/D-/R- 主能力 **已有**；下表「剩余优化」为可选增强，Post-Phase P0/P1 见 [implementation-roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)（已关闭）。
 
 | 极致短线需求 | 现有模块 | 状态 | 剩余优化 |
 |--------------|----------|------|----------|
 | 涨停 / 连板池 | 市场页 `limit_up` + 梯队条；雷达 D-01 `discovery_limit_ladder` | **已有** | 市场页按 `limit_times` 分层筛选（可选） |
 | 题材龙头 | 雷达 `leader_pick` + `leader_score`；`run_leader_screen` | **已有** | 板块资金侧栏与雷达闭环仍独立入口 |
 | 人气 / 辨识度 | 雷达共振；R-01/R-02；封板时间 + 封单（`limit_list_d`） | **已有** | — |
-| 硬过滤 | `ScreenerHardFilterPanel` 保守/均衡/**激进** | **已有** | 新用户可选 onboarding 切极致短线 |
+| 硬过滤 | `ScreenerHardFilterPanel` 保守/均衡/**激进** | **已有** | Profile 切换默认联动模板（**已有**）；onboarding 切极致短线（**已有**） |
 | 20cm 弹性池 | Recipe R-03 `cm20_elastic` | **已有** | — |
-| 异动监管回避 | 概览 Tab + `assess_regulatory_deviation` | **已有** | Tushare `stk_shock` 与本地日 K 合并 |
+| 异动监管回避 | 概览 Tab + `assess_regulatory_deviation` + Tushare `stk_shock` | **已有** | — |
 
 ### 3.3 Recipe / Preset（R-01–R-04，**已有**）
 

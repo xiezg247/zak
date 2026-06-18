@@ -68,7 +68,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="propose_recipe",
                 description=(
-                    "解析自然语言为多因子配方并直接执行选股；"
+                    "解析自然语言为多因子配方并执行选股（客户端弹窗确认后执行）；"
                     "适用于自定义配方、复杂维度组合或意图需先解析的多因子场景。"
                     "recipe_id 已明确时也可直接用 run_recipe。"
                 ),
@@ -110,7 +110,7 @@ class VnpyScreeningSkill(SkillTemplate):
             ToolSpec(
                 name="propose_screening",
                 description=(
-                    "解析自然语言为选股条件并直接执行；"
+                    "解析自然语言为选股条件并执行（客户端弹窗确认后执行）；"
                     "适用于已保存方案名、复杂自定义区间或需先解析的条件选股。"
                     "内置 preset 明确时也可直接用 screen_by_condition。"
                 ),

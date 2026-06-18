@@ -127,7 +127,7 @@ def test_screening_tool_routing_scheme_name():
     lines = _screening_tool_routing_lines(
         ScreeningIntent(intent="我的方案", scheme_name="我的 · 低PE", confidence="high"),
     )
-    assert any("propose_screening" in line and "自动执行" in line for line in lines)
+    assert any("propose_screening" in line and "用户确认" in line for line in lines)
 
 
 def test_build_routing_hint_screening_medium():
