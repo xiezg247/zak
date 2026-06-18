@@ -1,4 +1,4 @@
-"""自选页工具栏控件（工作流预设、表格/多维切换）。"""
+"""自选页工具栏控件（工作流预设、表格/多维切换、自选分支动作收拢）。"""
 
 from __future__ import annotations
 
@@ -6,9 +6,97 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import layout_preset_options
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import load_watchlist_layout_preset
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
+    WatchlistToolbarPolicy,
+    configure_watchlist_action_button_visibility,
+    watchlist_toolbar_group3_visible,
+    watchlist_toolbar_policy,
+)
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import create_emotion_risk_more_buttons
+from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
+from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
+from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
 
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
+__all__ = [
+    "WatchlistToolbarPolicy",
+    "append_watchlist_pool_toolbar_actions",
+    "append_watchlist_strategy_toolbar_actions",
+    "configure_watchlist_action_button_visibility",
+    "create_layout_preset_combo",
+    "create_view_mode_buttons",
+    "watchlist_toolbar_group3_visible",
+    "watchlist_toolbar_policy",
+]
+
+
+def append_watchlist_pool_toolbar_actions(
+    page: WatchlistPoolHost,
+    toolbar: QtWidgets.QHBoxLayout,
+    more_actions: list[tuple[str, QtWidgets.QPushButton]],
+    *,
+    policy: WatchlistToolbarPolicy | None,
+    show_move_in_toolbar: bool,
+) -> None:
+    """自选池相关：加入/移出/排序/下载。"""
+    if page.config.show_add_watchlist_button:
+        toolbar.addWidget(page.add_watchlist_button)
+    if page.config.show_remove_watchlist_button:
+        if policy is not None:
+            more_actions.append(("移出自选", page.remove_watchlist_button))
+        else:
+            toolbar.addWidget(page.remove_watchlist_button)
+    if show_move_in_toolbar:
+        more_actions.extend(
+            [
+                ("上移", page.move_watchlist_up_button),
+                ("下移", page.move_watchlist_down_button),
+            ]
+        )
+    if page.config.show_download_button and policy is None:
+        toolbar.addWidget(page.download_button)
+
+
+def append_watchlist_strategy_toolbar_actions(
+    page: WatchlistPoolHost,
+    toolbar: QtWidgets.QHBoxLayout,
+    more_actions: list[tuple[str, QtWidgets.QPushButton]],
+    *,
+    policy: WatchlistToolbarPolicy | None,
+    show_backtest_in_toolbar: bool,
+    show_diagnose_in_toolbar: bool,
+) -> None:
+    """信号/持仓/笔记/诊断等自选页策略区动作。"""
+    if show_backtest_in_toolbar:
+        toolbar.addWidget(page.backtest_button)
+    if page.config.show_batch_backtest_button:
+        more_actions.append(("批量回测", page.batch_backtest_button))
+    if page.config.show_watchlist_signals:
+        toolbar.addWidget(page.add_signal_panel_button)
+    if page.config.show_watchlist_positions:
+        toolbar.addWidget(page.register_position_button)
+    if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
+        page.emotion_cycle_chip = EmotionCycleChip(page)
+        toolbar.addWidget(page.emotion_cycle_chip)
+        page.risk_gate_chip = RiskGateChip(page)
+        toolbar.addWidget(page.risk_gate_chip)
+        page.risk_gate_chip.clicked.connect(page._open_risk_settings)
+        if policy is not None:
+            more_actions.extend(create_emotion_risk_more_buttons(page))
+    if page.config.show_stock_notes:
+        toolbar.addWidget(page.quick_note_button)
+        if policy is not None:
+            more_actions.append(("笔记中心", page.notes_center_button))
+        else:
+            toolbar.addWidget(page.notes_center_button)
+    if show_diagnose_in_toolbar:
+        toolbar.addWidget(page.diagnose_button)
+    if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
+        if policy is not None:
+            more_actions.append(("刷新行情", page.refresh_quotes_button))
+        else:
+            toolbar.addWidget(page.refresh_quotes_button)
 
 
 def create_layout_preset_combo(page: WatchlistHost) -> QtWidgets.QComboBox:

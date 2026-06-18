@@ -24,6 +24,15 @@ from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
     clamp_rank_splitter_sizes,
     sync_rank_splitter_for_expansion,
 )
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar import (
+    append_watchlist_pool_toolbar_actions,
+    append_watchlist_strategy_toolbar_actions,
+)
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
+    configure_watchlist_action_button_visibility,
+    watchlist_toolbar_group3_visible,
+    watchlist_toolbar_policy,
+)
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
 from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
@@ -74,6 +83,8 @@ def _invoke_toolbar_action(button: QtWidgets.QPushButton) -> None:
 def _add_more_menu(
     toolbar: QtWidgets.QHBoxLayout,
     actions: list[tuple[str, QtWidgets.QPushButton]],
+    *,
+    action_registry: dict[str, QtGui.QAction] | None = None,
 ) -> None:
     if not actions:
         return
@@ -87,6 +98,8 @@ def _add_more_menu(
             lambda _checked=False, btn=action_btn: _invoke_toolbar_action(btn),
         )
         action_pairs.append((action, action_btn))
+        if action_registry is not None:
+            action_registry[label] = action
 
     def _sync_menu_actions() -> None:
         for action, btn in action_pairs:
@@ -219,20 +232,21 @@ class QuotesPageShell:
         page.move_watchlist_up_button = QtWidgets.QPushButton("上移", page)
         page.move_watchlist_up_button.clicked.connect(lambda: page._watchlist.move_selected("up"))
         page.move_watchlist_up_button.setEnabled(False)
-        show_move_in_toolbar = page.config.show_watchlist_move_buttons and watchlist_feature is None
-        page.move_watchlist_up_button.setVisible(show_move_in_toolbar)
 
         page.move_watchlist_down_button = QtWidgets.QPushButton("下移", page)
         page.move_watchlist_down_button.clicked.connect(lambda: page._watchlist.move_selected("down"))
         page.move_watchlist_down_button.setEnabled(False)
-        page.move_watchlist_down_button.setVisible(show_move_in_toolbar)
 
         page.backtest_button = QtWidgets.QPushButton("策略回测", page)
         page.backtest_button.setObjectName("SecondaryButton")
         page.backtest_button.clicked.connect(page._actions.open_backtest_for_selected)
         page.backtest_button.setEnabled(False)
-        show_backtest_in_toolbar = page.config.show_backtest_button and watchlist_feature is None
-        page.backtest_button.setVisible(show_backtest_in_toolbar)
+
+        watchlist_policy = watchlist_toolbar_policy(page)
+        show_move_in_toolbar, show_backtest_in_toolbar = configure_watchlist_action_button_visibility(
+            page,
+            watchlist_policy,
+        )
 
         page.batch_backtest_button = QtWidgets.QPushButton("批量回测", page)
         page.batch_backtest_button.setObjectName("SecondaryButton")
@@ -290,6 +304,7 @@ class QuotesPageShell:
         page.market_auto_refresh_checkbox.toggled.connect(page._on_market_auto_refresh_toggled)
 
         more_actions: list[tuple[str, QtWidgets.QPushButton]] = []
+        page._more_menu_actions = {}
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.setSpacing(8)
@@ -317,36 +332,24 @@ class QuotesPageShell:
             toolbar.addWidget(page.sync_button)
 
         # ── 分隔线 ──
-        group3_visible = (
-            page.config.show_add_watchlist_button
-            or (page.config.show_download_button and watchlist_feature is None)
-            or show_backtest_in_toolbar
-            or page.config.show_batch_backtest_button
-            or page.config.show_fill_button
-            or show_move_in_toolbar
+        group3_visible = watchlist_toolbar_group3_visible(
+            page,
+            policy=watchlist_policy,
+            show_backtest_in_toolbar=show_backtest_in_toolbar,
+            show_move_in_toolbar=show_move_in_toolbar,
         )
         if group2_visible and group3_visible:
             toolbar.addWidget(_toolbar_separator())
 
         if page.config.use_local_table:
             toolbar.addWidget(page.local_period_combo)
-        if page.config.show_add_watchlist_button:
-            toolbar.addWidget(page.add_watchlist_button)
-        if page.config.show_remove_watchlist_button:
-            if watchlist_feature is not None:
-                more_actions.append(("移出自选", page.remove_watchlist_button))
-            else:
-                toolbar.addWidget(page.remove_watchlist_button)
-        if show_move_in_toolbar:
-            more_actions.extend(
-                [
-                    ("上移", page.move_watchlist_up_button),
-                    ("下移", page.move_watchlist_down_button),
-                ]
-            )
-        # 自选页：下载 / 单只回测 / 排序仅在右键；批量回测仍在「更多」
-        if page.config.show_download_button and watchlist_feature is None:
-            toolbar.addWidget(page.download_button)
+        append_watchlist_pool_toolbar_actions(
+            page,
+            toolbar,
+            more_actions,
+            policy=watchlist_policy,
+            show_move_in_toolbar=show_move_in_toolbar,
+        )
         if page.config.show_fill_button:
             more_actions.append(("补全到最新", page.fill_button))
         if page.config.show_redownload_button:
@@ -358,39 +361,20 @@ class QuotesPageShell:
         if page.config.show_batch_gap_fill_button:
             more_actions.append(("修复断层", page.gap_fill_button))
             more_actions.append(("批量修复断层", page.batch_gap_fill_button))
-        if show_backtest_in_toolbar:
-            toolbar.addWidget(page.backtest_button)
-        if page.config.show_batch_backtest_button:
-            more_actions.append(("批量回测", page.batch_backtest_button))
-        if page.config.show_watchlist_signals:
-            toolbar.addWidget(page.add_signal_panel_button)
-        if page.config.show_watchlist_positions:
-            toolbar.addWidget(page.register_position_button)
-        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
-            page.emotion_cycle_chip = EmotionCycleChip(page)
-            toolbar.addWidget(page.emotion_cycle_chip)
-            page.risk_gate_chip = RiskGateChip(page)
-            toolbar.addWidget(page.risk_gate_chip)
-            page.risk_gate_chip.clicked.connect(page._open_risk_settings)
-        if page.config.show_stock_notes:
-            toolbar.addWidget(page.quick_note_button)
-            if watchlist_feature is not None:
-                more_actions.append(("笔记中心", page.notes_center_button))
-            else:
-                toolbar.addWidget(page.notes_center_button)
-        if show_diagnose_in_toolbar:
-            toolbar.addWidget(page.diagnose_button)
-        if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
-            if watchlist_feature is not None:
-                more_actions.append(("刷新行情", page.refresh_quotes_button))
-            else:
-                toolbar.addWidget(page.refresh_quotes_button)
+        append_watchlist_strategy_toolbar_actions(
+            page,
+            toolbar,
+            more_actions,
+            policy=watchlist_policy,
+            show_backtest_in_toolbar=show_backtest_in_toolbar,
+            show_diagnose_in_toolbar=show_diagnose_in_toolbar,
+        )
         if page.config.column_configurable:
             page.column_button = QtWidgets.QPushButton("列 ▾")
             page.column_button.setObjectName("SecondaryButton")
             page.column_button.clicked.connect(page._table.show_column_menu)
             toolbar.addWidget(page.column_button)
-        _add_more_menu(toolbar, more_actions)
+        _add_more_menu(toolbar, more_actions, action_registry=page._more_menu_actions)
         for _, menu_btn in more_actions:
             menu_btn.hide()
         toolbar.addStretch(1)

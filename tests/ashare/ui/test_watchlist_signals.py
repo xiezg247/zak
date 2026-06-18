@@ -44,7 +44,7 @@ class WatchlistSignalConfigTests(unittest.TestCase):
         a = WatchlistSignalConfig(fast_window=10, slow_window=20).cache_key()
         b = WatchlistSignalConfig(fast_window=12, slow_window=24).cache_key()
         self.assertNotEqual(a, b)
-        self.assertIn("AshareDoubleMaStrategy", a)
+        self.assertIn("AshareShortBreakoutStrategy", a)
 
     def test_to_strategy_setting(self) -> None:
         setting = WatchlistSignalConfig(fast_window=8, slow_window=18).to_strategy_setting()
@@ -52,7 +52,7 @@ class WatchlistSignalConfigTests(unittest.TestCase):
 
 
 class StrategyRegistrySignalTests(unittest.TestCase):
-    def test_double_ma_supports_signals(self) -> None:
+    def test_default_strategy_supports_signals(self) -> None:
         metas = list_signal_strategy_metas()
         self.assertTrue(any(meta.class_name == DEFAULT_CLASS for meta in metas))
 

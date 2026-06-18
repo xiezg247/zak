@@ -46,6 +46,9 @@ _OBSERVATION_GROUP_CARD_IDS = frozenset(
     }
 )
 
+_BODY_PAGE_ROWS = 0
+_BODY_PAGE_EMPTY = 1
+
 
 class RadarCardWidget(QtWidgets.QFrame):
     """单张雷达卡片。"""
@@ -77,6 +80,10 @@ class RadarCardWidget(QtWidgets.QFrame):
             object_name = "RadarCardManual"
         self.setObjectName(object_name)
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
 
         header = QtWidgets.QHBoxLayout()
         header.setSpacing(8)
@@ -220,6 +227,20 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._empty_label.setWordWrap(True)
         self._empty_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
+        self._empty_page = QtWidgets.QWidget()
+        self._empty_page.setObjectName("RadarCardEmptyPage")
+        empty_page_layout = QtWidgets.QVBoxLayout(self._empty_page)
+        empty_page_layout.setContentsMargins(0, 0, 0, 0)
+        empty_page_layout.addStretch(1)
+        empty_page_layout.addWidget(self._empty_label)
+        empty_page_layout.addStretch(1)
+
+        self._body_stack = QtWidgets.QStackedWidget()
+        self._body_stack.setObjectName("RadarCardBodyStack")
+        self._body_stack.addWidget(self._scroll)
+        self._body_stack.addWidget(self._empty_page)
+        self._body_stack.setCurrentIndex(_BODY_PAGE_ROWS)
+
         footer = QtWidgets.QHBoxLayout()
         footer.setSpacing(8)
         self._meta_label = QtWidgets.QLabel("")
@@ -270,8 +291,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         layout.addLayout(header)
         layout.addWidget(self._subtitle)
         layout.addWidget(self._ai_hint)
-        layout.addWidget(self._scroll, stretch=1)
-        layout.addWidget(self._empty_label)
+        layout.addWidget(self._body_stack, stretch=1)
         layout.addLayout(footer)
 
         self._run_id = ""
@@ -418,8 +438,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._apply_meta_label(data)
         self._clear_row_widgets()
         if data.rows:
-            self._scroll.show()
-            self._empty_label.hide()
+            self._body_stack.setCurrentIndex(_BODY_PAGE_ROWS)
             for row in data.rows:
                 resonance = self._resonance_counts.get(row.vt_symbol, 0)
                 widget = RadarStockRowWidget(
@@ -435,9 +454,8 @@ class RadarCardWidget(QtWidgets.QFrame):
                 self._rows_layout.insertWidget(self._rows_layout.count() - 1, widget)
                 self._row_widgets.append(widget)
             return
-        self._scroll.hide()
-        self._empty_label.show()
         self._empty_label.setText(data.empty_message or "暂无数据")
+        self._body_stack.setCurrentIndex(_BODY_PAGE_EMPTY)
 
     def update_resonance(self, resonance_counts: dict[str, int]) -> None:
         """仅更新共振标记，不重新加载卡片数据。"""
@@ -590,7 +608,12 @@ class RadarBoard(QtWidgets.QWidget):
                 specs = list_radar_cards_for_group(section.mode, group_key)
                 for index, spec in enumerate(specs):
                     card = self._wire_card(spec)
-                    grid.addWidget(card, index // columns, index % columns)
+                    grid.addWidget(
+                        card,
+                        index // columns,
+                        index % columns,
+                        QtCore.Qt.AlignmentFlag.AlignTop,
+                    )
 
                 row_count = max(1, (len(specs) + columns - 1) // columns)
                 for col in range(columns):

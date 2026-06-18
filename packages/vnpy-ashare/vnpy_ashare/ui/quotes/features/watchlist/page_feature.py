@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.quotes.features.watchlist.center_layout import build_watchlist_center_layout
 from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
-from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_layout_preset
+from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_layout_preset, apply_position_focus
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_watchlist_layout_preset
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo, create_view_mode_buttons
 from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
@@ -81,3 +81,6 @@ class WatchlistPageFeature:
                 combo.setCurrentIndex(index)
                 combo.blockSignals(False)
         apply_layout_preset(self._page, preset_id)
+
+    def apply_position_focus(self) -> None:
+        apply_position_focus(self._page)

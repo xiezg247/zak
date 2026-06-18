@@ -39,9 +39,14 @@ class EmotionCycleChip(QtWidgets.QFrame):
         self._value.setStyleSheet("")
         self.setToolTip("等待市场广度数据")
 
+    def set_unavailable(self, reason: str = "行情暂不可用") -> None:
+        self._value.setText("—")
+        self._value.setStyleSheet("color: #888888;")
+        self.setToolTip(reason)
+
     def apply_snapshot(self, snapshot: EmotionCycleSnapshot | None) -> None:
         if snapshot is None:
-            self.set_loading()
+            self.set_unavailable("暂无情绪周期数据（Redis 未就绪或读取超时，请检查行情采集）")
             return
 
         pos_max = int(snapshot.position_pct_max * 100)

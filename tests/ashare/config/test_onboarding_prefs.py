@@ -26,6 +26,13 @@ class UltraShortOnboardingPrefsTest(unittest.TestCase):
         ):
             self.assertTrue(should_offer_ultra_short_onboarding())
 
+    def test_should_not_offer_when_default_short_swing_profile(self) -> None:
+        with patch(
+            "vnpy_ashare.ui.quotes.onboarding.ultra_short.load_strategy_profile_id",
+            return_value="short_swing",
+        ):
+            self.assertFalse(should_offer_ultra_short_onboarding())
+
     def test_should_not_offer_when_done(self) -> None:
         save_ultra_short_onboarding_done(True)
         self.assertFalse(should_offer_ultra_short_onboarding())

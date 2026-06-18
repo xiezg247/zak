@@ -37,6 +37,14 @@ RANK_REDIS_FIELDS: tuple[str, ...] = (
 )
 # 盘中可能暂无新值（如窗口刚滚动、盘后静止），保留上一版榜避免 UI 整榜为空
 _RANK_PRESERVE_WHEN_EMPTY: frozenset[str] = frozenset({"change_speed_5m"})
+# 单次 pipeline 命令数上限，避免全市场 ~5k 标的一次 hgetall 写 socket 超时
+QUOTE_READ_BATCH_SIZE = 300
+
+
+def _iter_symbol_batches(symbols: list[str], batch_size: int) -> list[list[str]]:
+    if batch_size <= 0:
+        return [symbols] if symbols else []
+    return [symbols[index : index + batch_size] for index in range(0, len(symbols), batch_size)]
 
 
 def quote_key(tf_symbol: str) -> str:
@@ -115,10 +123,12 @@ class RedisQuoteStore:
         if not tf_symbols:
             return {}
 
-        pipe = self._client.pipeline(transaction=False)
-        for tf_symbol in tf_symbols:
-            pipe.hgetall(quote_key(tf_symbol))
-        rows = pipe.execute()
+        rows: list[dict] = []
+        for batch in _iter_symbol_batches(tf_symbols, QUOTE_READ_BATCH_SIZE):
+            pipe = self._client.pipeline(transaction=False)
+            for tf_symbol in batch:
+                pipe.hgetall(quote_key(tf_symbol))
+            rows.extend(pipe.execute())
 
         fallback_time = normalize_datetime_text(self.get_updated_at() or "")
 
@@ -141,10 +151,12 @@ class RedisQuoteStore:
         if not tf_symbols:
             return {}
         key = rank_key(field)
-        pipe = self._client.pipeline(transaction=False)
-        for tf_symbol in tf_symbols:
-            pipe.zscore(key, tf_symbol)
-        scores = pipe.execute()
+        scores: list = []
+        for batch in _iter_symbol_batches(tf_symbols, QUOTE_READ_BATCH_SIZE):
+            pipe = self._client.pipeline(transaction=False)
+            for tf_symbol in batch:
+                pipe.zscore(key, tf_symbol)
+            scores.extend(pipe.execute())
         result: dict[str, float] = {}
         for tf_symbol, score in zip(tf_symbols, scores, strict=True):
             if score is not None:

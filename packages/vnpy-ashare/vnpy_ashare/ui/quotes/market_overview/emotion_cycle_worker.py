@@ -11,5 +11,8 @@ class EmotionCycleLoadWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
 
     def run(self) -> None:
-
-        self.finished.emit(load_emotion_cycle_snapshot(fetch_if_missing=True))
+        try:
+            snapshot = load_emotion_cycle_snapshot(fetch_if_missing=True)
+        except Exception:
+            snapshot = None
+        self.finished.emit(snapshot)

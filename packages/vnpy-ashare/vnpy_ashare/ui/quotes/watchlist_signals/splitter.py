@@ -94,16 +94,59 @@ def compute_center_splitter_sizes(
     signal_min_height: int = 0,
     position_min_height: int = 0,
     run_min_height: int = 0,
+    table_ratio: float | None = None,
 ) -> dict[str, int]:
     """计算主表与各面板的像素高度。"""
     total = max(int(total_height), 360)
     panel_flags = (
-        (has_signal_panel, signal_expanded, signal_min_height),
-        (has_position_panel, position_expanded, position_min_height),
-        (has_run_output, run_expanded, run_min_height),
+        (has_signal_panel, signal_expanded, signal_min_height, "signal"),
+        (has_position_panel, position_expanded, position_min_height, "position"),
+        (has_run_output, run_expanded, run_min_height, "run"),
     )
+
+    if table_ratio is not None:
+        ratio = max(0.25, min(0.75, float(table_ratio)))
+        spec_by_key = {spec.key: spec for spec in _CENTER_PANEL_SPECS}
+        collapsed: dict[str, int] = {}
+        expanded_keys: list[str] = []
+        expanded_min: dict[str, int] = {}
+        for spec, (present, expanded, min_h, _key) in zip(_CENTER_PANEL_SPECS, panel_flags, strict=True):
+            if not present:
+                continue
+            if expanded:
+                expanded_keys.append(spec.key)
+                expanded_min[spec.key] = max(
+                    min_h,
+                    panel_slot_height(True, True, spec.default_height, spec.collapsed_height, min_h),
+                )
+            else:
+                collapsed[spec.key] = spec.collapsed_height
+
+        table_h = max(int(total * ratio), TABLE_MIN_HEIGHT)
+        fixed = sum(collapsed.values())
+        remaining = total - table_h - fixed
+        for key in expanded_keys:
+            need = expanded_min.get(key, spec_by_key[key].default_height)
+            if remaining < need:
+                table_h = max(TABLE_MIN_HEIGHT, table_h - (need - remaining))
+                remaining = total - table_h - fixed
+
+        slots: dict[str, int] = dict(collapsed)
+        slots["table"] = table_h
+        if len(expanded_keys) == 1:
+            key = expanded_keys[0]
+            slots[key] = max(remaining, expanded_min.get(key, 0))
+        elif expanded_keys:
+            share = max(remaining // len(expanded_keys), 0)
+            for key in expanded_keys:
+                slots[key] = max(share, expanded_min.get(key, 0))
+            overflow = sum(slots.values()) + slots["table"] - total
+            if overflow > 0:
+                slots["table"] = max(TABLE_MIN_HEIGHT, slots["table"] - overflow)
+        return slots
+
     slots: dict[str, int] = {}
-    for spec, (present, expanded, min_h) in zip(_CENTER_PANEL_SPECS, panel_flags, strict=True):
+    for spec, (present, expanded, min_h, _key) in zip(_CENTER_PANEL_SPECS, panel_flags, strict=True):
         slots[spec.key] = panel_slot_height(
             present,
             expanded,
@@ -113,6 +156,19 @@ def compute_center_splitter_sizes(
         )
     table_h = max(total - sum(slots.values()), TABLE_MIN_HEIGHT)
     return {"table": table_h, **slots}
+
+
+def _splitter_table_ratio_for_page(page: WatchlistHost) -> float | None:
+    if page.page_name != "自选":
+        return None
+    override = getattr(page, "_watchlist_table_ratio_override", None)
+    if override is not None:
+        return float(override)
+    from vnpy_ashare.ui.quotes.features.watchlist.prefs import load_watchlist_layout_preset
+    from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import PRESET_SPECS
+
+    preset_id = load_watchlist_layout_preset()
+    return PRESET_SPECS[preset_id].splitter_table_ratio
 
 
 def configure_center_splitter(splitter: QtWidgets.QSplitter) -> None:
@@ -183,6 +239,7 @@ def apply_center_splitter_sizes(page: WatchlistHost, *, _retry: int = 0) -> None
         signal_min_height=signal_panel.minimumHeight() if signal_panel is not None else 0,
         position_min_height=position_panel.minimumHeight() if position_panel is not None else 0,
         run_min_height=run_panel.minimumHeight() if run_panel is not None else 0,
+        table_ratio=_splitter_table_ratio_for_page(page),
     )
 
     widget_keys = _center_panel_widgets(page)

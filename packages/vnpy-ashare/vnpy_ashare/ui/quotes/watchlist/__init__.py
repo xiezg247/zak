@@ -2,5 +2,6 @@
 
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
+from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
 
-__all__ = ["WatchlistHost", "WatchlistPoolHost"]
+__all__ = ["WatchlistHost", "WatchlistPoolHost", "WatchlistStrategyRefreshScheduler"]

@@ -1,6 +1,7 @@
 # 自选页策略信号区
 
-> **交易风格**：默认 `AshareDoubleMaStrategy`（中线观察 Profile）。极致短线 / 短线波段切换见 [策略配置方案](./strategy-profiles.md)；Profile 下拉（SP-02）**已有**（信号区 + 持仓区）。
+> **UI 架构**（`features/watchlist/`、Host 协议、工作流预设）见 [watchlist-ui.md](./watchlist-ui.md)。  
+> **交易风格**：默认短线波段 Profile（`AshareShortBreakoutStrategy`）。极致短线 / 中线观察切换见 [策略配置方案](./strategy-profiles.md)；Profile 下拉（SP-02）**已有**（信号区 + 持仓区）。
 
 ## 1. 功能概述
 

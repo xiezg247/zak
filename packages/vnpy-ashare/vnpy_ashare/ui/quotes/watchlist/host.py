@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
     from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
     from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
+    from vnpy.trader.ui import QtWidgets
     from vnpy_common.ui.feedback import PageToastHost
 
 
@@ -37,6 +38,7 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     """QuotesPage 在自选页场景下对子 controller 暴露的能力集（扩展 WatchlistPoolHost）。"""
 
     bar_meta: dict[tuple[str, Exchange], BarMeta]
+    market_table: QtWidgets.QTableView
     signal_cache: dict[str, SignalSnapshot]
     signal_config: WatchlistSignalConfig
     position_config: WatchlistPositionConfig
@@ -73,3 +75,11 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     def apply_strategy_profile(self, profile_id: str) -> None: ...
 
     def apply_signal_panel_config(self) -> None: ...
+
+    def _wire_multiview(self) -> None: ...
+
+    def _wire_signal_panel(self) -> None: ...
+
+    def _wire_position_panel(self) -> None: ...
+
+    def _open_risk_settings(self) -> None: ...

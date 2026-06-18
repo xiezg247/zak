@@ -4,33 +4,20 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS
-from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS
-from vnpy_ashare.services.watchlist_short_term import (
-    SHORT_TERM_OBSERVATION_GROUP_NAME,
-    find_short_term_observation_group_id,
+from vnpy_ashare.storage.repositories.positions import position_item_count
+from vnpy_ashare.ui.quotes.features.watchlist.pool_context_summary import (
+    SHORT_TERM_OBSERVATION_MAX,
+    format_pool_context_summary,
 )
-from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS, position_item_count
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
-SHORT_TERM_OBSERVATION_MAX = 5
-
-
-def format_pool_context_summary(
-    *,
-    pool_count: int,
-    observation_count: int,
-    signal_count: int,
-    position_count: int,
-) -> str:
-    return (
-        f"自选 {pool_count}/{WATCHLIST_MAX_ITEMS}"
-        f" · 观察组 {observation_count}/{SHORT_TERM_OBSERVATION_MAX}"
-        f" · 信号 {signal_count}/{SIGNAL_PANEL_MAX_SYMBOLS}"
-        f" · 持仓 {position_count}/{POSITION_MAX_ITEMS}"
-    )
+__all__ = [
+    "SHORT_TERM_OBSERVATION_MAX",
+    "WatchlistPoolContextBar",
+    "format_pool_context_summary",
+]
 
 
 class WatchlistPoolContextBar(QtWidgets.QWidget):
@@ -51,7 +38,7 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         self._label.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._label.setToolTip(
             "四层池：自选（总名单）→ 观察组（计划候选）→ 信号（当日监控）→ 持仓（已登记）。"
-            "点击各段可切换视图；右键表行可回测、排序、下载与 AI 分析。"
+            "点击各段可切换视图：持仓段进入持仓专注（主表最小化）；右键表行可回测、排序、下载与 AI 分析。"
         )
         layout.addWidget(self._label, stretch=1)
 
@@ -75,6 +62,8 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         self._label.setText(text)
 
     def _observation_count(self) -> int:
+        from vnpy_ashare.services.watchlist_short_term import find_short_term_observation_group_id
+
         service = self._page._get_watchlist_service()
         if service is None:
             return 0
@@ -134,9 +123,9 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
             return
         if key == "position":
             if feature is not None:
-                feature.apply_layout_preset("register")
+                feature.apply_position_focus()
             else:
-                panel = getattr(page, "position_panel", None)
-                if panel is not None:
-                    panel.set_expanded(True)
-                    apply_center_splitter_sizes(page)
+                from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_position_focus
+
+                apply_position_focus(page)
+            return

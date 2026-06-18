@@ -61,6 +61,9 @@ def maybe_show_ultra_short_onboarding(page: QuotesPage) -> None:
         return
     if load_ultra_short_onboarding_done():
         return
+    # 仅对仍使用旧默认「中线观察」的用户提示迁移；新默认「短线波段」不再弹窗
+    if load_strategy_profile_id() != "medium_watch":
+        return
     page_id = id(page)
     if page_id in _prompted_pages:
         return

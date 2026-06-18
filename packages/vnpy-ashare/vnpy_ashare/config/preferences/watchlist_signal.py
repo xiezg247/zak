@@ -21,9 +21,9 @@ SIGNAL_PANEL_COLUMNS_KEY = "watchlist/signal_panel/columns"
 SIGNAL_CENTER_SPLITTER_SIZES_KEY = "watchlist/center_splitter/sizes"
 SIGNAL_PANEL_MAX_SYMBOLS = 10
 
-DEFAULT_CLASS = "AshareDoubleMaStrategy"
-DEFAULT_FAST = 10
-DEFAULT_SLOW = 20
+DEFAULT_CLASS = "AshareShortBreakoutStrategy"
+DEFAULT_FAST = 5
+DEFAULT_SLOW = 10
 
 
 class WatchlistSignalConfig(FrozenModel):

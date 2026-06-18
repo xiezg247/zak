@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId
 
 
+POSITION_FOCUS_TABLE_RATIO = 0.25
+
+
 @dataclass(frozen=True)
 class LayoutPresetSpec:
     """单套预设：面板折叠 + 默认 Tab + 视图 + 工具栏显隐。"""
@@ -18,6 +21,8 @@ class LayoutPresetSpec:
     force_table_view: bool
     show_register_toolbar: bool
     show_add_signal_toolbar: bool
+    show_emotion_risk_chips: bool = True
+    splitter_table_ratio: float | None = None
 
 
 PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
@@ -47,6 +52,8 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
         force_table_view=False,
         show_register_toolbar=True,
         show_add_signal_toolbar=False,
+        show_emotion_risk_chips=False,
+        splitter_table_ratio=0.4,
     ),
 }
 

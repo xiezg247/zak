@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import redis
+
 from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_from_stock_and_snapshot
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.screener.quotes_snapshot import MarketQuotesSnapshot
@@ -18,11 +20,15 @@ class MarketQuotesLoadError(RuntimeError):
 def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapshot:
     """读取 Redis 全市场快照并转为 ScreeningService 可用行。"""
     store = RedisQuoteStore()
-    tf_symbols = store.list_all_rank_symbols()
-    if not tf_symbols:
-        raise MarketQuotesLoadError("暂无全市场行情。请在「工具 → 立即执行 → 行情采集」运行后再选股。")
+    try:
+        tf_symbols = store.list_all_rank_symbols()
+        if not tf_symbols:
+            raise MarketQuotesLoadError("暂无全市场行情。请在「工具 → 立即执行 → 行情采集」运行后再选股。")
 
-    quotes = store.get_quotes(tf_symbols, enrich_factors=enrich_factors)
+        quotes = store.get_quotes(tf_symbols, enrich_factors=enrich_factors)
+    except redis.RedisError as exc:
+        raise MarketQuotesLoadError(f"Redis 行情读取失败：{exc}") from exc
+
     rows: list[QuoteRow] = []
     for tf_symbol in tf_symbols:
         quote = quotes.get(tf_symbol)

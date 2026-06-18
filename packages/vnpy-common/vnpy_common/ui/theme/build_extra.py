@@ -924,6 +924,10 @@ QScrollArea#RadarCardScroll {{
     background: transparent;
     border: none;
 }}
+QStackedWidget#RadarCardBodyStack,
+QWidget#RadarCardEmptyPage {{
+    background: transparent;
+}}
 QWidget#RadarCardRowsHost {{
     background: transparent;
 }}

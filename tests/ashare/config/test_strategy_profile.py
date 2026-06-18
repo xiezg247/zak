@@ -14,10 +14,11 @@ from vnpy_ashare.config.preferences.strategy_profile import (
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 
 
-def test_default_profile_is_medium_watch() -> None:
-    assert DEFAULT_STRATEGY_PROFILE == "medium_watch"
+def test_default_profile_is_short_swing() -> None:
+    assert DEFAULT_STRATEGY_PROFILE == "short_swing"
     spec = get_strategy_profile(DEFAULT_STRATEGY_PROFILE)
-    assert spec.signal_class_name == "AshareDoubleMaStrategy"
+    assert spec.signal_class_name == "AshareShortBreakoutStrategy"
+    assert spec.title == "短线波段"
 
 
 def test_apply_strategy_profile_persists_signal_config() -> None:

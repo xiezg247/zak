@@ -79,6 +79,7 @@ from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupCont
 from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
+from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
 from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes, restore_center_splitter
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
@@ -145,6 +146,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._signals = WatchlistSignalController(self)
         self._positions = WatchlistPositionController(self)
         self._multiview = WatchlistMultiViewController(self)
+        self._strategy_refresh = WatchlistStrategyRefreshScheduler(self, self._signals, self._positions)
         self._watchlist_groups: WatchlistGroupController | None = None
         self._loader = DataLoaderController(self)
         self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
@@ -342,12 +344,12 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self._on_chart_section_expansion_changed(chart_section.is_expanded())
         self._schedule_center_splitter_layout()
         self._update_quote_source_label()
+        if self.config.show_watchlist_signals or self.config.show_watchlist_positions:
+            self._strategy_refresh.start()
         if self.config.show_watchlist_signals:
-            self._signals.start()
             # 信号区名单来自 QSettings，不依赖自选表加载完成；避免列表加载取消后信号永不刷新。
             self._signals.on_stock_list_loaded()
         if self.config.show_watchlist_positions:
-            self._positions.start()
             self._positions.on_stock_list_loaded()
         if self.config.show_stock_notes:
             self._stock_notes.on_selection_item()
@@ -398,6 +400,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self.chart_panel.set_active(False)
         self._stream.stop()
         self._quote_timer.stop()
+        self._strategy_refresh.stop()
         self._signals.stop()
         self._positions.stop()
         panel = getattr(self, "stock_note_panel", None)

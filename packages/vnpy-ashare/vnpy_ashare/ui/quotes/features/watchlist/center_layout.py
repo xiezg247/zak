@@ -21,10 +21,10 @@ from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
 )
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
-def build_watchlist_center_layout(page: QuotesPage, center_layout: QtWidgets.QVBoxLayout) -> None:
+def build_watchlist_center_layout(page: WatchlistHost, center_layout: QtWidgets.QVBoxLayout) -> None:
     """组装自选页中部区域并挂载到 center_layout。"""
     page.watchlist_group_tab_bar = None
     if page.config.show_watchlist_groups:

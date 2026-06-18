@@ -16,7 +16,6 @@ from vnpy_ashare.notifications.core.position_alert_scan import PositionAlertRow,
 from vnpy_ashare.notifications.triggers.position_alerts import scan_position_alerts
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
-from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
@@ -35,8 +34,6 @@ class WatchlistPositionController:
         self._worker: QtCore.QThread | None = None
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
         self._disk_cache = WatchlistPositionDiskCache()
-        self._timer = QtCore.QTimer(page)
-        self._timer.timeout.connect(lambda: self.refresh(force=False))
 
     def _enabled(self) -> bool:
         if not self._page.config.show_watchlist_positions or self._page.page_name != "自选":
@@ -123,20 +120,12 @@ class WatchlistPositionController:
     def _symbols_needing_refresh(self, symbols: list[str], record_map: dict[str, PositionRecord]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol, record_map[symbol])]
 
-    def start(self) -> None:
-        if not self._page.config.show_watchlist_positions:
-            return
-        self._timer.setInterval(WATCHLIST_SIGNAL_REFRESH_MS)
-        if not self._timer.isActive():
-            self._timer.start()
-
     def _release_worker(self, worker: QtCore.QThread | None) -> None:
         if worker is None:
             return
         release_thread(self._page._retired_workers, worker, timeout_ms=0)
 
     def stop(self) -> None:
-        self._timer.stop()
         self._pending_refresh = None
         worker = self._worker
         if worker is not None:

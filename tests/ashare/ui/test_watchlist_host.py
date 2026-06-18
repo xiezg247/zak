@@ -29,9 +29,13 @@ class WatchlistHostProtocolTests(unittest.TestCase):
     def test_declares_watchlist_page_capabilities(self) -> None:
         names = set(getattr(WatchlistHost, "__annotations__", {}))
         self.assertIn("signal_cache", names)
+        self.assertIn("market_table", names)
         self.assertIn("display_stocks", names)
         self.assertIn("multiview_board", names)
         self.assertIn("find_stock_item", WatchlistHost.__dict__)
+        self.assertIn("_wire_multiview", WatchlistHost.__dict__)
+        self.assertIn("_wire_signal_panel", WatchlistHost.__dict__)
+        self.assertIn("_wire_position_panel", WatchlistHost.__dict__)
         self.assertIn("apply_strategy_profile", WatchlistHost.__dict__)
 
 

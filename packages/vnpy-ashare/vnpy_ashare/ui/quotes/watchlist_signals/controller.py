@@ -10,7 +10,6 @@ from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfi
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
-from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
@@ -30,8 +29,6 @@ class WatchlistSignalController:
         self._worker: WatchlistSignalWorker | None = None
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
         self._disk_cache = WatchlistSignalDiskCache()
-        self._timer = QtCore.QTimer(page)
-        self._timer.timeout.connect(lambda: self.refresh(force=False))
 
     def _enabled(self) -> bool:
         if not self._page.config.show_watchlist_signals or self._page.page_name != "自选":
@@ -70,21 +67,12 @@ class WatchlistSignalController:
     def _symbols_needing_refresh(self, symbols: list[str]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol)]
 
-    def start(self) -> None:
-        """启动定时刷新；搜索过滤时不强制全量重算（避免输入卡顿）。"""
-        if not self._page.config.show_watchlist_signals:
-            return
-        self._timer.setInterval(WATCHLIST_SIGNAL_REFRESH_MS)
-        if not self._timer.isActive():
-            self._timer.start()
-
     def _release_worker(self, worker: QtCore.QThread | None) -> None:
         if worker is None:
             return
         release_thread(self._page._retired_workers, worker, timeout_ms=0)
 
     def stop(self) -> None:
-        self._timer.stop()
         self._pending_refresh = None
         worker = self._worker
         if worker is not None:

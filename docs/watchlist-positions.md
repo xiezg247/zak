@@ -1,5 +1,6 @@
 # 自选页持仓区
 
+> **UI 架构**（`features/watchlist/`、Host 协议、持仓专注模式）见 [watchlist-ui.md](./watchlist-ui.md)。  
 > **定位**：投研**记账 + 规则退出参考**，非券商实盘同步。服务极致短线 **隔日卖点** 与 T+1 约束。策略 Profile 见 [策略配置方案](./strategy-profiles.md)。
 
 ---

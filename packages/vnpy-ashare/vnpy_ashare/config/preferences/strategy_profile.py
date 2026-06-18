@@ -18,7 +18,7 @@ from vnpy_common.domain.base import FrozenModel
 StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
 
 STRATEGY_PROFILE_KEY = "trading/strategy_profile"
-DEFAULT_STRATEGY_PROFILE: StrategyProfileId = "medium_watch"
+DEFAULT_STRATEGY_PROFILE: StrategyProfileId = "short_swing"
 
 
 class StrategyProfileSpec(FrozenModel):

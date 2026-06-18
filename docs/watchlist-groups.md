@@ -1,5 +1,6 @@
 # 自选分组
 
+> **UI 架构**（`features/watchlist/`、上下文条、工作流预设）见 [watchlist-ui.md](./watchlist-ui.md)。  
 > **交易风格**：服务 [盘中工作流](./intraday-workflow.md) 中「观察组 ≤5 只」；与自选池、信号区、持仓区分工不同。总纲见 [交易体系 §5、§3.5](./trading-system.md)。
 
 ---
