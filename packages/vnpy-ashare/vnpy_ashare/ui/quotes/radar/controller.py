@@ -473,6 +473,8 @@ class RadarController(QtCore.QObject):
         self.refresh_card(card_id)
 
     def _on_row_activated(self, vt_symbol: str) -> None:
+        if not vt_symbol or vt_symbol.startswith("__stat__:"):
+            return
         self._on_stock_analysis(vt_symbol)
 
     def _on_view_run(self, run_id: str, page_key: str) -> None:

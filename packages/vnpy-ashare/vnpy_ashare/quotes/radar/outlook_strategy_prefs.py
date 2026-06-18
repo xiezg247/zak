@@ -28,6 +28,7 @@ OUTLOOK_SIGNAL_CARD_IDS: frozenset[str] = frozenset(
     {
         "outlook_watch",
         "outlook_hold",
+        "outlook_avoid",
         "outlook_scenario",
     }
 )

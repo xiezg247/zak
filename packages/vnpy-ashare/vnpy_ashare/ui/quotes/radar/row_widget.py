@@ -6,6 +6,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_leader import leader_tier_label
 from vnpy_ashare.quotes.radar.radar_loaders import RadarRow
+from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
@@ -31,8 +32,12 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         self._resonance = resonance
         self._show_add_watchlist_action = show_add_watchlist_action
         self._vt_symbol = row.vt_symbol
+        self._is_stat_row = is_stat_row(row.vt_symbol)
         self.setObjectName("RadarStockRow")
-        self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        if self._is_stat_row:
+            self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.ArrowCursor))
+        else:
+            self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
 
         self._resonance_badge = QtWidgets.QLabel("★" if resonance >= 2 else "")
         self._resonance_badge.setObjectName("RadarResonanceBadge")
@@ -154,16 +159,18 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         self._name_label.setFont(font)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton and not self._is_stat_row:
             self.clicked.emit(self._vt_symbol)
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton and not self._is_stat_row:
             self.double_clicked.emit(self._vt_symbol)
         super().mouseDoubleClickEvent(event)
 
     def _show_context_menu(self, pos: QtCore.QPoint) -> None:
+        if self._is_stat_row:
+            return
         menu = QtWidgets.QMenu(self)
         analysis_action = menu.addAction("个股分析")
         add_action = None

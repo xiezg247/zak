@@ -11,7 +11,7 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
     compute_radar_resonance,
     load_discovery_moneyflow_intraday,
     load_discovery_volume_surge,
-    load_screen_latest,
+    load_screen_task,
 )
 
 
@@ -50,10 +50,10 @@ def _sample_card(
     )
 
 
-def test_load_screen_latest_empty(monkeypatch) -> None:
+def test_load_screen_task_latest_empty(monkeypatch) -> None:
     monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_loaders.get_latest_run", lambda: None)
-    spec = RADAR_CARD_BY_ID["screen_latest"]
-    data = load_screen_latest(spec)
+    spec = RADAR_CARD_BY_ID["screen_task"]
+    data = load_screen_task(spec, variant="latest")
     assert data.rows == ()
     assert "暂无选股记录" in data.empty_message
 
@@ -107,7 +107,7 @@ def test_build_radar_resonance_list() -> None:
 
 def test_build_radar_resonance_list_by_mode() -> None:
     payload = {
-        "screen_latest": _sample_card("screen_latest", "选股", rows=(_sample_row("600000.SSE", name="浦发"),)),
+        "screen_task": _sample_card("screen_task", "选股", rows=(_sample_row("600000.SSE", name="浦发"),)),
         "discovery_volume_surge": _sample_card(
             "discovery_volume_surge",
             "发现",

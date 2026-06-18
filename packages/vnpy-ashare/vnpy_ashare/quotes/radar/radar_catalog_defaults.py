@@ -7,7 +7,6 @@ RADAR_FULL_REFRESH_EVERY: dict[str, int] = {
     "discovery_volume_surge": 5,
     "discovery_moneyflow_intraday": 5,
     "discovery_limit_ladder": 5,
-    "discovery_first_board": 5,
     "watchlist_intraday": 5,
     "sector_theme": 3,
 }

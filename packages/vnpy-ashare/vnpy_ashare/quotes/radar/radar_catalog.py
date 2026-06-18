@@ -67,11 +67,13 @@ RADAR_SECTOR_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
 )
 
 CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
+    "market_emotion": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_volume_surge": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_moneyflow_intraday": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_limit_ladder": RADAR_DISCOVERY_REFRESH_OPTIONS,
-    "discovery_first_board": RADAR_DISCOVERY_REFRESH_OPTIONS,
+    "discovery_limit_break": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "watchlist_intraday": RADAR_WATCHLIST_REFRESH_OPTIONS,
+    "position_risk": RADAR_WATCHLIST_REFRESH_OPTIONS,
     "sector_theme": RADAR_SECTOR_REFRESH_OPTIONS,
 }
 
@@ -89,19 +91,19 @@ SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
 )
 
 RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
-    RadarCardSpec(id="screen_latest", title="选股结果·最新", category="screen"),
+    RadarCardSpec(id="market_emotion", title="盘面·环境", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="screen_task", title="选股结果·任务", category="screen", has_task_variants=True),
+    RadarCardSpec(id="leader_pick", title="选股·龙头", category="screen", top_n=12),
+    RadarCardSpec(id="discovery_limit_ladder", title="发现·连板梯队", category="discovery", has_task_variants=True, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
+    RadarCardSpec(id="discovery_limit_break", title="发现·炸板断板", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="discovery_volume_surge", title="发现·放量异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="discovery_moneyflow_intraday", title="发现·资金异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
-    RadarCardSpec(
-        id="discovery_limit_ladder", title="发现·连板梯队", category="discovery", has_task_variants=True, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS
-    ),
-    RadarCardSpec(id="discovery_first_board", title="发现·首板人气", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
-    RadarCardSpec(id="watchlist_intraday", title="自选·异动", category="watchlist", auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
     RadarCardSpec(id="sector_theme", title="板块·主线", category="sector", has_task_variants=True, auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS),
-    RadarCardSpec(id="leader_pick", title="选股·龙头", category="screen", top_n=12),
+    RadarCardSpec(id="watchlist_intraday", title="自选·异动", category="watchlist", auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
+    RadarCardSpec(id="position_risk", title="持仓·风控", category="watchlist", auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
     RadarCardSpec(id="outlook_watch", title="未来·关注", category="outlook", mode="predictive"),
     RadarCardSpec(id="outlook_hold", title="未来·可持", category="outlook", mode="predictive"),
+    RadarCardSpec(id="outlook_avoid", title="未来·回避", category="outlook", mode="predictive"),
     RadarCardSpec(id="outlook_scenario", title="未来·情景", category="outlook", mode="predictive", has_task_variants=True),
     RadarCardSpec(id="outlook_predict", title="未来·预测", category="outlook", mode="predictive", has_task_variants=True),
 )
@@ -116,13 +118,15 @@ DEFAULT_PREDICT_MODEL_VARIANT = "auto"
 DEFAULT_SCENARIO_VARIANT = "scenario_bull"
 
 SCREEN_TASK_VARIANTS: tuple[RadarVariant, ...] = (
+    RadarVariant(key="latest", label="最新结果"),
     RadarVariant(key="scheduled_intraday", label="盘中任务"),
     RadarVariant(key="scheduled_post_close", label="盘后任务"),
     RadarVariant(key="strategy", label="条件选股"),
 )
 
 SECTOR_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant(key="leaders_tiered", label="龙一分层"),
+    RadarVariant(key="leaders_tiered", label="行业龙一"),
+    RadarVariant(key="concept_leaders", label="概念龙一"),
     RadarVariant(key="breadth", label="广度扩散"),
 )
 
@@ -134,6 +138,7 @@ LEADER_PICK_VARIANTS: tuple[RadarVariant, ...] = (
 LIMIT_LADDER_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant(key="by_height", label="按高度"),
     RadarVariant(key="by_sector", label="按板块"),
+    RadarVariant(key="first_board", label="首板人气"),
 )
 
 DEFAULT_SCREEN_TASK_VARIANT = "scheduled_post_close"

@@ -25,3 +25,18 @@ def save_radar_board_mode(mode: RadarCardMode) -> None:
         return
     settings = get_settings()
     settings.setValue(_SETTINGS_PREFIX, mode)
+
+
+_RESONANCE_EXPANDED_PREFIX = "quotes/radar/resonance_expanded"
+
+
+def load_radar_resonance_expanded(*, default: bool = True) -> bool:
+    settings = get_settings()
+    raw = settings.value(_RESONANCE_EXPANDED_PREFIX, default)
+    if isinstance(raw, bool):
+        return raw
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def save_radar_resonance_expanded(expanded: bool) -> None:
+    get_settings().setValue(_RESONANCE_EXPANDED_PREFIX, expanded)

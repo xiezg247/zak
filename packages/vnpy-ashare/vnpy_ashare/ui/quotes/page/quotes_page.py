@@ -44,6 +44,7 @@ from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
 from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
 from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel, sync_chart_splitter_for_expansion
+from vnpy_ashare.ui.quotes.radar.resonance_panel import sync_radar_resonance_splitter_for_expansion
 from vnpy_ashare.ui.quotes.controllers.actions import ActionsController
 from vnpy_ashare.ui.quotes.controllers.batch_backtest import WatchlistBatchBacktestController
 from vnpy_ashare.ui.quotes.controllers.data_loader import DataLoaderController
@@ -211,6 +212,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self.radar_resonance_panel = None
         self._radar_controller = None
         self._radar_splitter = None
+        self._radar_resonance_splitter_saved_state: QtCore.QByteArray | None = None
         self._rank_splitter = None
         self._rank_splitter_filter = None
 
@@ -696,6 +698,9 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
     def _on_chart_section_expansion_changed(self, expanded: bool) -> None:
 
         sync_chart_splitter_for_expansion(self, expanded)
+
+    def _on_radar_resonance_expansion_changed(self, expanded: bool) -> None:
+        sync_radar_resonance_splitter_for_expansion(self, expanded)
 
     def _on_signal_panel_config_changed(self) -> None:
         self._watchlist_panels.on_signal_panel_config_changed()

@@ -720,6 +720,7 @@ class QuotesPageShell:
 
         page.radar_board = RadarBoard(page)
         page.radar_resonance_panel = RadarResonancePanel(page)
+        page.radar_resonance_panel.expansion_changed.connect(page._on_radar_resonance_expansion_changed)
         theme_manager().bind_stylesheet(page.radar_board, extra=build_radar_stylesheet)
         theme_manager().bind_stylesheet(page.radar_resonance_panel, extra=build_radar_stylesheet)
         page._radar_controller = RadarController(
@@ -747,6 +748,10 @@ class QuotesPageShell:
         splitter.setStretchFactor(1, 0)
         splitter.setSizes([880, 280])
         page._radar_splitter = splitter
+        QtCore.QTimer.singleShot(
+            0,
+            lambda: page._on_radar_resonance_expansion_changed(page.radar_resonance_panel.is_expanded()),
+        )
 
         page.status_label = QtWidgets.QLabel("就绪")
         page.quote_source_label = QtWidgets.QLabel(

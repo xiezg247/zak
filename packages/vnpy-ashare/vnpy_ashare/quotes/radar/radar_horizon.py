@@ -28,6 +28,7 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enric
 OUTLOOK_CARD_VARIANTS: dict[str, str] = {
     "outlook_watch": "watch_next",
     "outlook_hold": "hold_next",
+    "outlook_avoid": "avoid_next",
 }
 
 OUTLOOK_FORCE_RECOMPUTE_CARD_IDS: frozenset[str] = frozenset(
@@ -48,7 +49,13 @@ def build_outlook_digest(rows: tuple[RadarRow, ...], *, variant: str) -> str:
         return "摘要：" + " · ".join(parts)
     buy = sum(1 for row in rows if row.metric_label == "买入")
     hold = sum(1 for row in rows if row.metric_label == "观望")
+    sell = sum(1 for row in rows if row.metric_label == "卖出")
     scenarios = sum(1 for row in rows if row.sub_label == "5日情景")
+    if variant == "avoid_next":
+        parts = [f"回避 {len(rows)} 只"]
+        if sell:
+            parts.append(f"卖出 {sell}")
+        return "摘要：" + " · ".join(parts)
     mode = "关注" if variant == "watch_next" else "可持"
     parts = [f"{mode} {len(rows)} 只"]
     if buy:
@@ -91,7 +98,13 @@ def load_outlook_horizon(
     recent_days = outlook_signal_recent_days(config.class_name)
     scenario_mode = resolved_variant in SCENARIO_VARIANTS
     idle_subtitle = (
-        f"约 {recent_days} 日统计情景 · 策略 {strategy_label} · 非目标价" if scenario_mode else f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 非价格预测"
+        f"约 {recent_days} 日统计情景 · 策略 {strategy_label} · 非目标价"
+        if scenario_mode
+        else (
+            f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 回避信号"
+            if resolved_variant == "avoid_next"
+            else f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 非价格预测"
+        )
     )
 
     if not force_recompute:
@@ -213,12 +226,20 @@ def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, card_id: str) 
             lines.append(f"- {row.name}({row.symbol}) {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}")
         return "\n".join(lines)
     variant = OUTLOOK_CARD_VARIANTS.get(card_id, "watch_next")
-    mode = "未来几日关注" if variant == "watch_next" else "未来几日可持仓"
+    if variant == "avoid_next":
+        mode = "未来几日回避"
+        action_hint = "给出不宜关注/不宜介入的情形"
+    elif variant == "watch_next":
+        mode = "未来几日关注"
+        action_hint = "给出不宜关注/不宜持有的情形"
+    else:
+        mode = "未来几日可持仓"
+        action_hint = "给出不宜关注/不宜持有的情形"
     lines = [
         f"请基于以下雷达「{mode}」快照，给出关注理由与风险提示：",
         "1. 说明策略信号窗口含义（约 5 个交易日，非涨跌预测）",
         "2. 逐只解读信号、强度、距买点与 5 日统计情景",
-        "3. 给出不宜关注/不宜持有的情形",
+        f"3. {action_hint}",
         "4. 不得给出目标价或未在数据中的预测",
         "",
         data.subtitle,

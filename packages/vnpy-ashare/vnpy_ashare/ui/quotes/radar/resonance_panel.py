@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_loaders import RadarResonanceEntry
+from vnpy_ashare.ui.components.splitter_utils import set_splitter_sizes_quiet
 from vnpy_ashare.ui.quotes.radar.resonance_row_widget import RadarResonanceRowWidget
+from vnpy_ashare.ui.quotes.radar.section_prefs import (
+    load_radar_resonance_expanded,
+    save_radar_resonance_expanded,
+)
 from vnpy_common.ui.theme.manager import theme_manager
+
+if TYPE_CHECKING:
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 RadarResonanceTab = Literal["all", "statistical", "predictive"]
 
@@ -18,10 +26,24 @@ _RESONANCE_TABS: tuple[tuple[RadarResonanceTab, str], ...] = (
     ("predictive", "展望"),
 )
 
+RESONANCE_HANDLE_WIDTH = 24
+RESONANCE_COLLAPSED_WIDTH = RESONANCE_HANDLE_WIDTH
+RESONANCE_CONTENT_MIN_WIDTH = 220
+RESONANCE_CONTENT_MAX_WIDTH = 380
+RESONANCE_EXPANDED_MIN_WIDTH = RESONANCE_HANDLE_WIDTH + RESONANCE_CONTENT_MIN_WIDTH
+RESONANCE_EXPANDED_DEFAULT_WIDTH = 280
+COLLAPSE_BUTTON_SIZE = 20
 
-class RadarResonancePanel(QtWidgets.QFrame):
+
+def resonance_collapse_arrow(expanded: bool) -> QtCore.Qt.ArrowType:
+    """左缘按钮：展开时向左收起，折叠时向右展开。"""
+    return QtCore.Qt.ArrowType.LeftArrow if expanded else QtCore.Qt.ArrowType.RightArrow
+
+
+class RadarResonancePanel(QtWidgets.QWidget):
     """全局共振标的汇总侧栏（按统计 / 展望分 Tab）。"""
 
+    expansion_changed = QtCore.Signal(bool)
     row_activated = QtCore.Signal(str)
     row_selected = QtCore.Signal(str)
     add_watchlist_requested = QtCore.Signal(str)
@@ -36,10 +58,40 @@ class RadarResonancePanel(QtWidgets.QFrame):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setObjectName("RadarResonancePanel")
-        self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        self.setMinimumWidth(220)
-        self.setMaximumWidth(380)
+        self.setObjectName("RadarResonanceSection")
+        self._expanded = load_radar_resonance_expanded()
+
+        root = QtWidgets.QHBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        handle = QtWidgets.QWidget(self)
+        handle.setObjectName("RadarResonanceHandle")
+        handle.setFixedWidth(RESONANCE_HANDLE_WIDTH)
+        handle_layout = QtWidgets.QVBoxLayout(handle)
+        handle_layout.setContentsMargins(0, 0, 0, 0)
+        handle_layout.setSpacing(0)
+
+        self._collapse_button = QtWidgets.QToolButton(handle)
+        self._collapse_button.setObjectName("RadarResonanceCollapseButton")
+        self._collapse_button.setCheckable(True)
+        self._collapse_button.setAutoRaise(True)
+        self._collapse_button.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonIconOnly)
+        self._collapse_button.setFixedSize(COLLAPSE_BUTTON_SIZE, COLLAPSE_BUTTON_SIZE)
+        self._collapse_button.clicked.connect(self._on_collapse_toggled)
+
+        handle_layout.addStretch(1)
+        handle_layout.addWidget(
+            self._collapse_button,
+            alignment=QtCore.Qt.AlignmentFlag.AlignHCenter,
+        )
+        handle_layout.addStretch(1)
+
+        self._body = QtWidgets.QFrame(self)
+        self._body.setObjectName("RadarResonancePanel")
+        self._body.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        self._body.setMinimumWidth(RESONANCE_CONTENT_MIN_WIDTH)
+        self._body.setMaximumWidth(RESONANCE_CONTENT_MAX_WIDTH)
 
         header = QtWidgets.QVBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
@@ -141,17 +193,62 @@ class RadarResonancePanel(QtWidgets.QFrame):
         toolbar.addWidget(self._weights_button, 2, 1)
         toolbar.addWidget(self._plan_button, 3, 0, 1, 2)
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(10)
-        layout.addLayout(header)
-        layout.addWidget(self._tabs, stretch=1)
-        layout.addLayout(toolbar)
+        body_layout = QtWidgets.QVBoxLayout(self._body)
+        body_layout.setContentsMargins(12, 10, 12, 10)
+        body_layout.setSpacing(10)
+        body_layout.addLayout(header)
+        body_layout.addWidget(self._tabs, stretch=1)
+        body_layout.addLayout(toolbar)
+
+        root.addWidget(handle)
+        root.addWidget(self._body, stretch=1)
 
         self._entries_by_tab: dict[RadarResonanceTab, tuple[RadarResonanceEntry, ...]] = {key: () for key, _label in _RESONANCE_TABS}
         self._selected_symbol = ""
         self._set_actions_enabled(False)
         theme_manager().register_callback(lambda _tokens: self._refresh_list_colors())
+        self._apply_expanded(self._expanded, emit=False)
+
+    def is_expanded(self) -> bool:
+        return self._expanded
+
+    def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
+        if self._expanded == expanded:
+            return
+        self._expanded = expanded
+        save_radar_resonance_expanded(expanded)
+        self._apply_expanded(expanded, emit=emit)
+
+    def _on_collapse_toggled(self, expanded: bool) -> None:
+        self.set_expanded(expanded)
+
+    def _sync_collapse_button(self) -> None:
+        self._collapse_button.blockSignals(True)
+        self._collapse_button.setChecked(self._expanded)
+        self._collapse_button.setArrowType(resonance_collapse_arrow(self._expanded))
+        self._collapse_button.setToolTip("收起共振列表" if self._expanded else "展开共振列表")
+        self._collapse_button.blockSignals(False)
+
+    def _apply_expanded(self, expanded: bool, *, emit: bool) -> None:
+        self._sync_collapse_button()
+        self._body.setVisible(expanded)
+        if expanded:
+            self.setMinimumWidth(RESONANCE_EXPANDED_MIN_WIDTH)
+            self.setMaximumWidth(RESONANCE_HANDLE_WIDTH + RESONANCE_CONTENT_MAX_WIDTH)
+            self.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Preferred,
+                QtWidgets.QSizePolicy.Policy.Expanding,
+            )
+        else:
+            self.setMinimumWidth(RESONANCE_COLLAPSED_WIDTH)
+            self.setMaximumWidth(RESONANCE_COLLAPSED_WIDTH)
+            self.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Fixed,
+                QtWidgets.QSizePolicy.Policy.Expanding,
+            )
+        self.updateGeometry()
+        if emit:
+            self.expansion_changed.emit(expanded)
 
     @staticmethod
     def _empty_message(tab_key: RadarResonanceTab) -> str:
@@ -289,3 +386,32 @@ class RadarResonancePanel(QtWidgets.QFrame):
             self.stock_analysis_requested.emit(str(vt_symbol))
         elif chosen is action:
             self.add_watchlist_requested.emit(str(vt_symbol))
+
+
+def sync_radar_resonance_splitter_for_expansion(page: QuotesPage, expanded: bool) -> None:
+    """折叠时收窄 splitter 右侧整栏，仅保留左缘折叠钮。"""
+    panel = getattr(page, "radar_resonance_panel", None)
+    splitter = getattr(page, "_radar_splitter", None)
+    if panel is None or splitter is None or splitter.count() < 2:
+        return
+
+    if expanded:
+        panel.setMinimumWidth(RESONANCE_EXPANDED_MIN_WIDTH)
+        panel.setMaximumWidth(RESONANCE_HANDLE_WIDTH + RESONANCE_CONTENT_MAX_WIDTH)
+        saved = getattr(page, "_radar_resonance_splitter_saved_state", None)
+        if isinstance(saved, QtCore.QByteArray) and not saved.isEmpty():
+            splitter.restoreState(saved)
+        return
+
+    state = splitter.saveState()
+    if isinstance(state, QtCore.QByteArray) and not state.isEmpty():
+        page._radar_resonance_splitter_saved_state = state
+
+    panel.setMinimumWidth(RESONANCE_COLLAPSED_WIDTH)
+    panel.setMaximumWidth(RESONANCE_COLLAPSED_WIDTH)
+    sizes = splitter.sizes()
+    total = max(sum(sizes), splitter.width(), RESONANCE_EXPANDED_MIN_WIDTH + 200)
+    set_splitter_sizes_quiet(
+        splitter,
+        [total - RESONANCE_COLLAPSED_WIDTH, RESONANCE_COLLAPSED_WIDTH],
+    )

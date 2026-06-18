@@ -34,13 +34,12 @@ def test_weighted_resonance_prefers_discovery_cards() -> None:
     save_radar_resonance_weights(
         {
             "discovery_volume_surge": 2.0,
-            "screen_latest": 1.0,
             "screen_task": 1.0,
         }
     )
     payload = {
-        "screen_latest": RadarCardData(
-            card_id="screen_latest",
+        "screen_task": RadarCardData(
+            card_id="screen_task",
             title="选股",
             subtitle="",
             rows=(_sample_row("600000.SSE"),),

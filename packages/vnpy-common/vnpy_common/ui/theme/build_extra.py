@@ -1068,7 +1068,29 @@ QToolButton#RadarCardRefreshMenu:disabled {{
 }}
 QFrame#RadarResonancePanel {{
     background-color: {t.panel_bg};
+    border: none;
+}}
+QWidget#RadarResonanceSection {{
+    background-color: {t.panel_bg};
     border-left: 1px solid {t.panel_border};
+}}
+QWidget#RadarResonanceHandle {{
+    background-color: {t.panel_bg};
+}}
+QToolButton#RadarResonanceCollapseButton {{
+    color: {t.text_muted};
+    border: 1px solid {t.panel_border};
+    border-radius: 4px;
+    background-color: {t.index_ticker_bg};
+    padding: 0;
+}}
+QToolButton#RadarResonanceCollapseButton:hover {{
+    color: {t.text_primary};
+    border-color: {t.accent};
+}}
+QToolButton#RadarResonanceCollapseButton:checked {{
+    color: {t.accent};
+    border-color: {t.accent};
 }}
 QLabel#RadarResonanceTitle {{
     color: {t.text_primary};

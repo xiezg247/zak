@@ -17,6 +17,7 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import load_outlook_signal_
 from vnpy_ashare.quotes.radar.radar_horizon_cache import HorizonCacheEntry, put_horizon_cache
 from vnpy_ashare.quotes.radar.radar_horizon_rules import (
     build_outlook_rows,
+    filter_avoid_snapshots,
     filter_outlook_snapshots,
     outlook_sort_key,
 )
@@ -206,11 +207,15 @@ def scan_horizon_variant(
         name_map = name_map_for_symbols([item.snapshot.vt_symbol for item in matched_metrics[:top_n]])
         rows = build_scenario_rows(tuple(matched_metrics[:top_n]), variant=variant, name_map=name_map)
     else:
-        matched = filter_outlook_snapshots(refined, variant=variant)
-        if variant == "watch_next":
-            matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant), reverse=True)
-        else:
+        if variant == "avoid_next":
+            matched = filter_avoid_snapshots(refined)
             matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant))
+        else:
+            matched = filter_outlook_snapshots(refined, variant=variant)
+            if variant == "watch_next":
+                matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant), reverse=True)
+            else:
+                matched.sort(key=lambda snap: outlook_sort_key(snap, variant=variant))
         top_matched = matched[:top_n]
         name_map = name_map_for_symbols([snap.vt_symbol for snap in top_matched])
         metrics_list = scenario_metrics if scenario_metrics is not None else batch_build_scenario_metrics(prefilter, snapshots)

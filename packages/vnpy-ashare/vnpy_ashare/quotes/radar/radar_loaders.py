@@ -29,7 +29,9 @@ from vnpy_ashare.quotes.radar.radar_first_board import load_first_board
 from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt, load_outlook_horizon
 from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt, load_outlook_predict
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant, load_leader_pick
+from vnpy_ashare.quotes.radar.radar_limit_break import load_discovery_limit_break
 from vnpy_ashare.quotes.radar.radar_limit_ladder import LimitLadderVariant, load_limit_ladder
+from vnpy_ashare.quotes.radar.radar_market_emotion import load_market_emotion
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarCardData,
     RadarResonanceEntry,
@@ -38,6 +40,7 @@ from vnpy_ashare.quotes.radar.radar_models import (
     merge_row_quotes,
 )
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
+from vnpy_ashare.quotes.radar.radar_position_risk import load_position_risk
 from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
 from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
@@ -265,15 +268,13 @@ def _find_run_for_task_variant(variant: str):
     return None
 
 
-def load_screen_latest(spec: RadarCardSpec) -> RadarCardData:
-    return _card_from_run(
-        spec,
-        get_latest_run(),
-        empty_message="暂无选股记录，请前往「策略选股」或「自动选股」运行。",
-    )
-
-
 def load_screen_task(spec: RadarCardSpec, *, variant: str = DEFAULT_SCREEN_TASK_VARIANT) -> RadarCardData:
+    if variant == "latest":
+        return _card_from_run(
+            spec,
+            get_latest_run(),
+            empty_message="暂无选股记录，请前往「策略选股」或「自动选股」运行。",
+        )
     record = _find_run_for_task_variant(variant)
     label = {
         "scheduled_intraday": "盘中定时任务",
@@ -526,11 +527,13 @@ def load_radar_card(
 
 _RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
     {
+        "market_emotion",
         "discovery_volume_surge",
         "discovery_moneyflow_intraday",
         "discovery_limit_ladder",
-        "discovery_first_board",
+        "discovery_limit_break",
         "watchlist_intraday",
+        "position_risk",
         "sector_theme",
         "leader_pick",
     }
@@ -538,10 +541,10 @@ _RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
 
 _RADAR_QUOTE_CONTEXT_CARD_IDS = frozenset(
     {
-        "screen_latest",
         "screen_task",
         "outlook_watch",
         "outlook_hold",
+        "outlook_avoid",
         "outlook_scenario",
         "outlook_predict",
     }
@@ -563,27 +566,31 @@ def _load_radar_card_uncached(
     if spec is None:
         msg = f"未知雷达卡片：{card_id}"
         raise ValueError(msg)
-    if spec.id == "screen_latest":
-        return load_screen_latest(spec)
     if spec.id == "screen_task":
         return load_screen_task(spec, variant=screen_task_variant)
+    if spec.id == "market_emotion":
+        return load_market_emotion(spec)
     if spec.id == "discovery_volume_surge":
         return load_discovery_volume_surge(spec)
     if spec.id == "discovery_moneyflow_intraday":
         return load_discovery_moneyflow_intraday(spec)
     if spec.id == "discovery_limit_ladder":
+        if limit_ladder_variant == "first_board":
+            return load_first_board(spec)
         ladder_variant: LimitLadderVariant = "by_sector" if limit_ladder_variant == "by_sector" else "by_height"
         return load_limit_ladder(spec, variant=ladder_variant)
-    if spec.id == "discovery_first_board":
-        return load_first_board(spec)
+    if spec.id == "discovery_limit_break":
+        return load_discovery_limit_break(spec)
     if spec.id == "watchlist_intraday":
         return load_watchlist_intraday(spec)
+    if spec.id == "position_risk":
+        return load_position_risk(spec)
     if spec.id == "sector_theme":
         return load_sector_theme(spec, variant=sector_variant)
     if spec.id == "leader_pick":
         pick_variant: LeaderPickVariant = "mainline" if leader_pick_variant != "all_market" else "all_market"
         return load_leader_pick(spec, variant=pick_variant)
-    if spec.id in ("outlook_watch", "outlook_hold"):
+    if spec.id in ("outlook_watch", "outlook_hold", "outlook_avoid"):
         return load_outlook_horizon(spec, force_recompute=force_recompute)
     if spec.id == "outlook_scenario":
         return load_outlook_horizon(
@@ -776,7 +783,7 @@ def build_radar_card_ai_prompt(
         lines[0] = "请解读雷达「自选·异动」：关注自选池内波动、信号跃迁与 5 日统计情景（非价格预测）。"
     elif card_id == "sector_theme":
         lines[0] = "请解读雷达「板块·主线」：归纳今日行业轮动与龙头特征。"
-    elif card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
+    elif card_id in ("outlook_watch", "outlook_hold", "outlook_avoid", "outlook_scenario"):
         single = build_outlook_ai_prompt({card_id: data}, card_id=card_id)
         return single or "\n".join(lines).strip()
     elif card_id == "outlook_predict":
@@ -828,7 +835,7 @@ def build_radar_ai_prompt(
                 marker = "★ " if row.vt_symbol in resonance else ""
                 lines.append(f"- {marker}{_row_ai_summary(row)}")
         lines.append("")
-    for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
+    for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_avoid", "outlook_scenario"):
         outlook_prompt = build_outlook_ai_prompt(payload, card_id=outlook_card_id)
         if outlook_prompt:
             lines.append("---")

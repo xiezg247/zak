@@ -34,7 +34,6 @@ from vnpy_common.ui.theme.manager import theme_manager
 _OBSERVATION_GROUP_CARD_IDS = frozenset(
     {
         "leader_pick",
-        "discovery_first_board",
         "discovery_limit_ladder",
     }
 )
@@ -400,7 +399,7 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._view_run_button.show()
         else:
             self._view_run_button.hide()
-        if data.rows and self._show_add_watchlist_actions:
+        if data.rows and self._show_add_watchlist_actions and data.card_id != "market_emotion":
             self._add_all_button.show()
             if self._observation_group_button is not None:
                 self._observation_group_button.show()
