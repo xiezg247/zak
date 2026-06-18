@@ -10,7 +10,7 @@ from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.core.enrich import fill_missing_tushare_factors
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
-from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
+from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore, get_redis_quote_store
 from vnpy_ashare.quotes.core.screening_snapshot_router import load_screening_quote_snapshot
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.quotes.rank.rank_scope import (
@@ -101,7 +101,7 @@ def get_tickflow_provider() -> TickflowQuoteProvider:
 def get_redis_provider() -> RedisQuoteProvider:
     global _redis_provider
     if _redis_provider is None:
-        store = RedisQuoteStore()
+        store = get_redis_quote_store()
         try:
             store.ping()
         except Exception as ex:
@@ -113,8 +113,11 @@ def get_redis_provider() -> RedisQuoteProvider:
 def reset_quote_providers() -> None:
     """配置热重载后丢弃 Provider 单例，下次访问重建。"""
     global _tickflow_provider, _redis_provider
+    from vnpy_ashare.quotes.core.redis_store import reset_redis_quote_store
+
     _tickflow_provider = None
     _redis_provider = None
+    reset_redis_quote_store()
 
 
 def get_quote_provider(source: QuoteSource) -> QuoteProvider:
@@ -219,7 +222,7 @@ def _merge_richer_quote(base: QuoteSnapshot, incoming: QuoteSnapshot) -> QuoteSn
 def _fetch_live_quote(item: StockItem) -> QuoteSnapshot | None:
     tf_symbol = item.tickflow_symbol
     try:
-        quotes = RedisQuoteStore().get_quotes([tf_symbol])
+        quotes = get_redis_quote_store().get_quotes([tf_symbol])
         quote = quotes.get(tf_symbol)
         if quote is not None and quote.last_price > 0:
             return quote
@@ -281,7 +284,7 @@ def _resolve_quote_snapshot_impl(
             return quote
 
     try:
-        quotes = RedisQuoteStore().get_quotes([tf_symbol])
+        quotes = get_redis_quote_store().get_quotes([tf_symbol])
         quote = quotes.get(tf_symbol)
         if quote is not None and quote.last_price > 0:
             return quote

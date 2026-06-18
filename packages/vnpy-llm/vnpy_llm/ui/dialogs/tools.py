@@ -15,6 +15,7 @@ _STATE_LABELS: dict[ToolProviderState, str] = {
     "missing_env": "缺配置",
     "connect_failed": "连接失败",
     "disabled": "未启用",
+    "idle": "待连接",
 }
 
 

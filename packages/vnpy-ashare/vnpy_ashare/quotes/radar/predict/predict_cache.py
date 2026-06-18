@@ -13,7 +13,6 @@ from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarRow,
-    quotes_for_vt_symbols,
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
@@ -70,10 +69,11 @@ def get_predict_cache(variant: str) -> PredictCacheEntry | None:
         payload = json.loads(str(row["rows_json"] or "[]"))
     except (json.JSONDecodeError, TypeError):
         payload = []
-    vt_symbols = [str(item.get("vt_symbol") or "").strip() for item in payload if isinstance(item, dict)]
-    vt_symbols = [vt for vt in vt_symbols if vt]
-    quotes = quotes_for_vt_symbols(vt_symbols)
-    rows = tuple(radar_row_from_cache_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {})) for item in payload if isinstance(item, dict))
+    rows = tuple(
+        radar_row_from_cache_dict(item, enrich=False)
+        for item in payload
+        if isinstance(item, dict)
+    )
     stats = HorizonScanStats(
         scanned_total=int(row["scanned_total"] or 0),
         excluded_count=int(row["excluded_count"] or 0),

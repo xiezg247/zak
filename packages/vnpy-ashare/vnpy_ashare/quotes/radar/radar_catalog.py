@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from vnpy_ashare.domain.radar.catalog import (
     RadarCardMode,
     RadarCardSpec,
@@ -33,10 +35,17 @@ __all__ = [
     "RadarCardMode",
     "RadarCardSpec",
     "RadarCategory",
+    "RadarGroupKey",
     "RadarLayoutSection",
     "RadarRefreshOption",
     "RadarVariant",
+    "default_group_for_mode",
     "full_refresh_every_n_ticks",
+    "list_radar_cards",
+    "list_radar_cards_for_group",
+    "list_radar_cards_for_mode",
+    "list_radar_groups_for_mode",
+    "radar_card_group",
     "radar_card_resonance_weight",
     "refresh_options_for_card",
 ]
@@ -80,6 +89,64 @@ RADAR_LAYOUT_SECTIONS: tuple[RadarLayoutSection, ...] = (
     RadarLayoutSection(mode="statistical", title="盘面统计", hint="盘中异动与板块主线，描述当前盘面"),
     RadarLayoutSection(mode="predictive", title="前瞻展望", hint="策略信号与统计情景，非确定性预测"),
 )
+
+RadarGroupKey = Literal["leader", "discovery", "portfolio", "signals", "forecast"]
+
+_STATISTICAL_GROUPS: tuple[tuple[RadarGroupKey, str], ...] = (
+    ("leader", "龙头选股"),
+    ("discovery", "盘中发现"),
+    ("portfolio", "板块自选"),
+)
+
+_PREDICTIVE_GROUPS: tuple[tuple[RadarGroupKey, str], ...] = (
+    ("signals", "策略信号"),
+    ("forecast", "情景预测"),
+)
+
+_RADAR_GROUPS_BY_MODE: dict[RadarCardMode, tuple[tuple[RadarGroupKey, str], ...]] = {
+    "statistical": _STATISTICAL_GROUPS,
+    "predictive": _PREDICTIVE_GROUPS,
+}
+
+_DEFAULT_GROUP_BY_MODE: dict[RadarCardMode, RadarGroupKey] = {
+    "statistical": "leader",
+    "predictive": "signals",
+}
+
+RADAR_CARD_GROUP: dict[str, RadarGroupKey] = {
+    "leader_pick": "leader",
+    "discovery_limit_ladder": "discovery",
+    "discovery_volume_surge": "discovery",
+    "discovery_moneyflow_intraday": "discovery",
+    "sector_theme": "portfolio",
+    "watchlist_intraday": "portfolio",
+    "position_risk": "portfolio",
+    "outlook_watch": "signals",
+    "outlook_hold": "signals",
+    "outlook_avoid": "signals",
+    "outlook_scenario": "forecast",
+    "outlook_predict": "forecast",
+}
+
+
+def list_radar_groups_for_mode(mode: RadarCardMode) -> tuple[tuple[RadarGroupKey, str], ...]:
+    return _RADAR_GROUPS_BY_MODE.get(mode, ())
+
+
+def default_group_for_mode(mode: RadarCardMode) -> RadarGroupKey:
+    return _DEFAULT_GROUP_BY_MODE.get(mode, "leader")
+
+
+def radar_card_group(card_id: str) -> RadarGroupKey | None:
+    return RADAR_CARD_GROUP.get(card_id)
+
+
+def list_radar_cards_for_group(mode: RadarCardMode, group_key: RadarGroupKey) -> tuple[RadarCardSpec, ...]:
+    return tuple(
+        spec
+        for spec in RADAR_CARD_SPECS
+        if spec.mode == mode and RADAR_CARD_GROUP.get(spec.id) == group_key
+    )
 
 
 SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (

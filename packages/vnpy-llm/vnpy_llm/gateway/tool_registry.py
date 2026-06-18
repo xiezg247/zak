@@ -37,16 +37,25 @@ class ToolRegistry:
         self._enabled_skills = self.skill_engine.init_skills()
         self.mcp_engine = McpEngine()
         self.mcp_engine.load_all()
-        self._enabled_mcp = self.mcp_engine.init_providers()
+        self._enabled_mcp: list[str] = []
         self.rebind_analysis_mcp()
         if ashare_engine is not None and hasattr(ashare_engine, "backtest_service"):
             ashare_engine.backtest_service.get_last_summary()
+
+    def ensure_mcp(self) -> list[str]:
+        """按需连接 MCP Provider（启动时不联网，首次使用时触发）。"""
+        if self.mcp_engine.providers_initialized:
+            return list(self._enabled_mcp)
+        self._enabled_mcp = self.mcp_engine.ensure_providers()
+        self.rebind_analysis_mcp()
+        return list(self._enabled_mcp)
 
     def get_openai_tools(self) -> list[dict[str, Any]]:
         """仅暴露 Skill 工具；MCP 经 Skill/Service 内部调用。"""
         return cast(list[dict[str, Any]], self.skill_engine.get_openai_tools())
 
     def get_mcp_tool_names(self) -> frozenset[str]:
+        self.ensure_mcp()
         return frozenset(spec.name for spec in self.mcp_engine.get_tool_specs())
 
     def execute(self, name: str, arguments: dict[str, Any]) -> tuple[str, bool]:
@@ -86,9 +95,13 @@ class ToolRegistry:
         if ashare_engine is None or not hasattr(ashare_engine, "analysis_service"):
             return
         ashare_engine.analysis_service.bind_mcp(
-            self.mcp_engine.execute_tool,
+            self._execute_mcp_tool,
             [spec.name for spec in self.mcp_engine.get_tool_specs()],
         )
+
+    def _execute_mcp_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        self.ensure_mcp()
+        return self.mcp_engine.execute_tool(name, arguments)
 
     def get_enabled_skills(self) -> list[str]:
         return list(self._enabled_skills)

@@ -15,10 +15,13 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     RADAR_LAYOUT_SECTIONS,
     RadarCardMode,
     RadarCardSpec,
+    RadarGroupKey,
     default_refresh_ms_for_card,
     default_variant_for_card,
     full_refresh_options_for_card,
-    list_radar_cards_for_mode,
+    list_radar_cards_for_group,
+    list_radar_groups_for_mode,
+    radar_card_group,
     refresh_options_for_card,
     supports_auto_refresh,
     variants_for_card,
@@ -27,7 +30,12 @@ from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import load_radar_full_re
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow, compute_radar_resonance
 from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
-from vnpy_ashare.ui.quotes.radar.section_prefs import load_radar_board_mode, save_radar_board_mode
+from vnpy_ashare.ui.quotes.radar.section_prefs import (
+    load_radar_board_group,
+    load_radar_board_mode,
+    save_radar_board_group,
+    save_radar_board_mode,
+)
 from vnpy_common.ui.panel_widgets import configure_document_tab_widget
 from vnpy_common.ui.theme.manager import theme_manager
 
@@ -509,6 +517,7 @@ class RadarBoard(QtWidgets.QWidget):
     auto_refresh_changed = QtCore.Signal(str, int)
     full_refresh_interval_changed = QtCore.Signal(str, int)
     mode_changed = QtCore.Signal(str)
+    group_changed = QtCore.Signal(str, str)
     outlook_strategy_changed = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -517,6 +526,8 @@ class RadarBoard(QtWidgets.QWidget):
 
         self._cards: dict[str, RadarCardWidget] = {}
         self._mode_tab_index: dict[RadarCardMode, int] = {}
+        self._group_tabs: dict[RadarCardMode, QtWidgets.QTabWidget] = {}
+        self._group_index: dict[RadarCardMode, dict[int, RadarGroupKey]] = {}
         self._outlook_strategy_combo: QtWidgets.QComboBox | None = None
 
         self._tabs = configure_document_tab_widget(
@@ -553,31 +564,51 @@ class RadarBoard(QtWidgets.QWidget):
                 page_layout.addLayout(toolbar)
                 self._outlook_strategy_combo = strategy_combo
 
-            scroll = QtWidgets.QScrollArea()
-            scroll.setObjectName("RadarBoardScroll")
-            scroll.setWidgetResizable(True)
-            scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-            scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            group_tabs = configure_document_tab_widget(
+                QtWidgets.QTabWidget(),
+                object_name=f"RadarBoardGroupTabs{section.mode.title()}",
+            )
+            index_map: dict[int, RadarGroupKey] = {}
+            for group_index, (group_key, group_label) in enumerate(list_radar_groups_for_mode(section.mode)):
+                group_page = QtWidgets.QWidget()
+                group_layout = QtWidgets.QVBoxLayout(group_page)
+                group_layout.setContentsMargins(0, 4, 0, 0)
+                group_layout.setSpacing(0)
 
-            section_host = QtWidgets.QWidget()
-            section_host.setObjectName(f"RadarSectionGrid{section.mode.title()}")
-            grid = QtWidgets.QGridLayout(section_host)
-            grid.setContentsMargins(0, 0, 0, 0)
-            grid.setSpacing(10)
+                scroll = QtWidgets.QScrollArea()
+                scroll.setObjectName("RadarBoardScroll")
+                scroll.setWidgetResizable(True)
+                scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+                scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-            specs = list_radar_cards_for_mode(section.mode)
-            for index, spec in enumerate(specs):
-                card = self._wire_card(spec)
-                grid.addWidget(card, index // columns, index % columns)
+                section_host = QtWidgets.QWidget()
+                section_host.setObjectName(f"RadarSectionGrid{section.mode.title()}{group_key.title()}")
+                grid = QtWidgets.QGridLayout(section_host)
+                grid.setContentsMargins(0, 0, 0, 0)
+                grid.setSpacing(10)
 
-            row_count = max(1, (len(specs) + columns - 1) // columns)
-            for col in range(columns):
-                grid.setColumnStretch(col, 1)
-            for row in range(row_count):
-                grid.setRowStretch(row, 1)
+                specs = list_radar_cards_for_group(section.mode, group_key)
+                for index, spec in enumerate(specs):
+                    card = self._wire_card(spec)
+                    grid.addWidget(card, index // columns, index % columns)
 
-            scroll.setWidget(section_host)
-            page_layout.addWidget(scroll, stretch=1)
+                row_count = max(1, (len(specs) + columns - 1) // columns)
+                for col in range(columns):
+                    grid.setColumnStretch(col, 1)
+                for row in range(row_count):
+                    grid.setRowStretch(row, 1)
+
+                scroll.setWidget(section_host)
+                group_layout.addWidget(scroll, stretch=1)
+                group_tabs.addTab(group_page, group_label)
+                index_map[group_index] = group_key
+
+            self._group_tabs[section.mode] = group_tabs
+            self._group_index[section.mode] = index_map
+            group_tabs.currentChanged.connect(
+                lambda index, mode=section.mode: self._on_group_tab_changed(mode, index),
+            )
+            page_layout.addWidget(group_tabs, stretch=1)
 
             self._tabs.addTab(page, section.title)
             self._tabs.setTabToolTip(section_index, section.hint)
@@ -590,6 +621,8 @@ class RadarBoard(QtWidgets.QWidget):
         root.addWidget(self._tabs)
 
         self.set_mode(load_radar_board_mode(), persist=False)
+        for section in RADAR_LAYOUT_SECTIONS:
+            self.set_group(section.mode, load_radar_board_group(section.mode), persist=False)
         self.update_tab_badges()
 
     def current_mode(self) -> RadarCardMode:
@@ -607,6 +640,31 @@ class RadarBoard(QtWidgets.QWidget):
         self._tabs.blockSignals(False)
         if persist:
             save_radar_board_mode(mode)
+
+    def current_group(self, mode: RadarCardMode | None = None) -> RadarGroupKey:
+        active_mode = mode or self.current_mode()
+        tabs = self._group_tabs.get(active_mode)
+        index_map = self._group_index.get(active_mode, {})
+        if tabs is None:
+            from vnpy_ashare.quotes.radar.radar_catalog import default_group_for_mode
+
+            return default_group_for_mode(active_mode)
+        index = tabs.currentIndex()
+        return index_map.get(index, load_radar_board_group(active_mode))
+
+    def set_group(self, mode: RadarCardMode, group_key: RadarGroupKey, *, persist: bool = True) -> None:
+        tabs = self._group_tabs.get(mode)
+        index_map = self._group_index.get(mode, {})
+        if tabs is None:
+            return
+        target_index = next((idx for idx, key in index_map.items() if key == group_key), None)
+        if target_index is None:
+            return
+        tabs.blockSignals(True)
+        tabs.setCurrentIndex(target_index)
+        tabs.blockSignals(False)
+        if persist:
+            save_radar_board_group(mode, group_key)
 
     def update_tab_badges(self) -> None:
         for section_index, section in enumerate(RADAR_LAYOUT_SECTIONS):
@@ -643,6 +701,13 @@ class RadarBoard(QtWidgets.QWidget):
         save_radar_board_mode(mode)
         self.mode_changed.emit(mode)
 
+    def _on_group_tab_changed(self, mode: RadarCardMode, index: int) -> None:
+        group_key = self._group_index.get(mode, {}).get(index)
+        if group_key is None:
+            return
+        save_radar_board_group(mode, group_key)
+        self.group_changed.emit(mode, group_key)
+
     def _wire_card(self, spec: RadarCardSpec) -> RadarCardWidget:
         card = RadarCardWidget(spec, self)
         card.variant_changed.connect(lambda key, card_id=spec.id: self.variant_changed.emit(card_id, key))
@@ -670,8 +735,11 @@ class RadarBoard(QtWidgets.QWidget):
         widget = self._cards.get(card_id)
         if widget is None:
             return False
-        if widget._spec.mode != "predictive":
-            self.set_mode("statistical", persist=False)
+        mode = widget._spec.mode
+        group_key = radar_card_group(card_id)
+        self.set_mode(mode, persist=False)
+        if group_key is not None:
+            self.set_group(mode, group_key, persist=False)
 
         def _scroll() -> None:
             parent = widget.parentWidget()

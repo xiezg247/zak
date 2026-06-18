@@ -183,3 +183,19 @@ class RedisQuoteStore:
     def get_updated_at(self) -> str | None:
         value = self._client.get(META_UPDATED_AT_KEY)
         return str(value) if value else None
+
+
+_shared_redis_store: RedisQuoteStore | None = None
+
+
+def get_redis_quote_store() -> RedisQuoteStore:
+    """进程内共享 RedisQuoteStore，避免重复建连。"""
+    global _shared_redis_store
+    if _shared_redis_store is None:
+        _shared_redis_store = RedisQuoteStore()
+    return _shared_redis_store
+
+
+def reset_redis_quote_store() -> None:
+    global _shared_redis_store
+    _shared_redis_store = None

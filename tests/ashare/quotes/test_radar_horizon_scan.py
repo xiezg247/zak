@@ -40,6 +40,39 @@ def test_horizon_empty_message_no_local_k() -> None:
     assert "本地暂无日 K" in message
 
 
+def test_collect_daily_k_ready_vt_symbols_uses_ttl_cache(monkeypatch) -> None:
+    from vnpy_ashare.quotes.radar.radar_horizon_scan import (
+        clear_daily_k_ready_cache,
+        collect_daily_k_ready_vt_symbols,
+    )
+
+    clear_daily_k_ready_cache()
+    calls = {"count": 0}
+
+    def _fake_overviews(*, scope: str):
+        calls["count"] += 1
+        assert scope == "daily"
+        from types import SimpleNamespace
+
+        yield SimpleNamespace(symbol="600000", exchange="SSE", count=30)
+
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.radar_horizon_scan.iter_bar_overviews",
+        _fake_overviews,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.radar_horizon_scan.horizon_min_signal_bars",
+        lambda _config=None: 25,
+    )
+
+    first = collect_daily_k_ready_vt_symbols()
+    second = collect_daily_k_ready_vt_symbols()
+    assert first == {"600000.SSE"}
+    assert second == first
+    assert calls["count"] == 1
+    clear_daily_k_ready_cache()
+
+
 def test_horizon_empty_message_no_match() -> None:
     stats = HorizonScanStats(
         scanned_total=5000,

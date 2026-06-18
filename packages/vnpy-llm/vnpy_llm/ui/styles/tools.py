@@ -45,7 +45,8 @@ QFrame#AiToolsCard_connect_failed {
     border: 1px solid #6a3030;
     border-radius: 6px;
 }
-QFrame#AiToolsCard_disabled {
+QFrame#AiToolsCard_disabled,
+QFrame#AiToolsCard_idle {
     background-color: #1e1e24;
     border: 1px solid #333;
     border-radius: 6px;
@@ -71,7 +72,8 @@ QLabel#AiToolsBadge_connect_failed {
     color: #ff8a8a;
     font-size: 11px;
 }
-QLabel#AiToolsBadge_disabled {
+QLabel#AiToolsBadge_disabled,
+QLabel#AiToolsBadge_idle {
     color: #6a6a72;
     font-size: 11px;
 }

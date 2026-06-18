@@ -151,7 +151,7 @@ def evaluate_overnight_exit(
                 rule_id="stop_loss_near",
                 label="逼近止损",
                 status="near",
-                detail=f"浮盈 {pnl_pct:.1f}%",
+                detail=f"浮亏 {pnl_pct:.1f}%",
             )
         )
         warnings.append(f"接近 −{stop_pct * 100:.0f}% 止损线")

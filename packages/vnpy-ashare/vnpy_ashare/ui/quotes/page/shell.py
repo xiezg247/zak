@@ -689,8 +689,8 @@ class QuotesPageShell:
         root.addWidget(page._toast)
 
     def _build_radar_layout(self, page: QuotesPage) -> None:
-        page.refresh_radar_button = QtWidgets.QPushButton("刷新当前区", page)
-        page.refresh_radar_button.setToolTip("刷新当前分区内的全部卡片")
+        page.refresh_radar_button = QtWidgets.QPushButton("刷新当前页", page)
+        page.refresh_radar_button.setToolTip("刷新当前子 Tab 内的全部卡片")
         page.refresh_radar_all_button = QtWidgets.QPushButton("刷新全部", page)
         page.refresh_radar_all_button.setFlat(True)
         page.refresh_radar_all_button.setToolTip("刷新盘面统计与前瞻展望全部卡片")
@@ -728,7 +728,7 @@ class QuotesPageShell:
             page.radar_board,
             resonance_panel=page.radar_resonance_panel,
         )
-        page.refresh_radar_button.clicked.connect(page._radar_controller.refresh_current_mode)
+        page.refresh_radar_button.clicked.connect(page._radar_controller.refresh_current_group)
         page.refresh_radar_all_button.clicked.connect(page._radar_controller.refresh)
         page.radar_leader_button.clicked.connect(page._radar_controller.open_leader_shortcut)
         page.radar_ai_button.clicked.connect(page._radar_controller.request_ai_summary)

@@ -22,7 +22,9 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     auto_refresh_card_ids,
     full_refresh_every_n_ticks,
     list_radar_cards,
+    list_radar_cards_for_group,
     list_radar_cards_for_mode,
+    radar_card_group,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
@@ -100,6 +102,7 @@ class RadarController(QtCore.QObject):
         board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
         board.full_refresh_interval_changed.connect(self._on_full_refresh_interval_changed)
         board.mode_changed.connect(self._on_board_mode_changed)
+        board.group_changed.connect(self._on_board_group_changed)
         board.outlook_strategy_changed.connect(self._on_outlook_strategy_changed)
 
         panel = self._resonance_panel
@@ -179,7 +182,7 @@ class RadarController(QtCore.QObject):
         self._sync_resonance_tab_from_board()
         self._page._refresh_emotion_cycle_chip()
         self._page._refresh_risk_gate_chip()
-        self.refresh_current_mode()
+        self.refresh_current_group()
         self._start_auto_refresh()
         self._session_timer.start()
 
@@ -211,13 +214,21 @@ class RadarController(QtCore.QObject):
             timer.stop()
         self._page._update_refresh_hint_label()
 
+    def _card_is_visible(self, card_id: str) -> bool:
+        spec = RADAR_CARD_BY_ID.get(card_id)
+        if spec is None:
+            return False
+        if spec.mode != self._board.current_mode():
+            return False
+        group_key = radar_card_group(card_id)
+        return group_key is not None and group_key == self._board.current_group()
+
     def _apply_card_auto_refresh(self, card_id: str) -> None:
         timer = self._auto_refresh_timers.get(card_id)
         widget = self._board.card(card_id)
         if timer is None or widget is None:
             return
-        spec = RADAR_CARD_BY_ID.get(card_id)
-        if spec is not None and spec.mode != self._board.current_mode():
+        if not self._card_is_visible(card_id):
             timer.stop()
             return
         ms = widget.auto_refresh_ms()
@@ -252,8 +263,15 @@ class RadarController(QtCore.QObject):
         for spec in list_radar_cards():
             self.refresh_card(spec.id)
 
+    def refresh_current_group(self) -> None:
+        """刷新当前分区下子 Tab 内的全部卡片。"""
+        mode = self._board.current_mode()
+        group_key = self._board.current_group(mode)
+        for spec in list_radar_cards_for_group(mode, group_key):
+            self.refresh_card(spec.id)
+
     def refresh_current_mode(self) -> None:
-        """刷新当前主区 Tab 内的全部卡片。"""
+        """刷新当前分区内的全部卡片（含各子 Tab）。"""
         for spec in list_radar_cards_for_mode(self._board.current_mode()):
             self.refresh_card(spec.id)
 
@@ -262,12 +280,18 @@ class RadarController(QtCore.QObject):
             return
         save_outlook_strategy_class(class_name)
         for card_id in OUTLOOK_SIGNAL_CARD_IDS:
-            self.refresh_card(card_id, force_recompute=False)
+            self.refresh_card(card_id, force_recompute=True)
 
     def _on_board_mode_changed(self, mode: str) -> None:
         self._sync_resonance_tab_from_board(mode)
         self._start_auto_refresh()
-        self.refresh_current_mode()
+        self.refresh_current_group()
+
+    def _on_board_group_changed(self, mode: str, _group_key: str) -> None:
+        if mode != self._board.current_mode():
+            return
+        self._start_auto_refresh()
+        self.refresh_current_group()
 
     def _sync_resonance_tab_from_board(self, mode: str | None = None) -> None:
         panel = self._resonance_panel

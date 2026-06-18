@@ -208,6 +208,32 @@ class McpEngineTests(unittest.TestCase):
             enabled = engine.init_providers()
         self.assertEqual(set(enabled), {"tdx", "data"})
 
+    @patch("vnpy_mcp.app.engine.list_remote_tools")
+    def test_ensure_providers_lazy_connect(self, mock_list: unittest.mock.MagicMock) -> None:
+        mock_list.return_value = [McpToolInfo(name="stock_quotes", description="个股报价")]
+        with _mcp_dir(
+            (
+                "mcp.json",
+                {
+                    "mcpServers": {
+                        "tdx": {
+                            "url": DEFAULT_TDX_MCP_URL,
+                            "headers": {"tdx-api-key": "test-key"},
+                        }
+                    }
+                },
+            )
+        ):
+            engine = McpEngine()
+            engine.load_all()
+            self.assertFalse(engine.providers_initialized)
+            enabled = engine.ensure_providers()
+            self.assertTrue(engine.providers_initialized)
+            self.assertIn("tdx", enabled)
+            mock_list.assert_called_once()
+            engine.ensure_providers()
+            mock_list.assert_called_once()
+
     def test_skip_unconfigured(self) -> None:
         with _empty_mcp_dir():
             engine = McpEngine()
@@ -243,6 +269,31 @@ class ToolsStatusTests(unittest.TestCase):
 
         self.assertTrue(any(item.name == "tdx" for item in snapshot.mcps))
         self.assertIn("MCP", snapshot.compact_summary())
+
+    def test_build_snapshot_idle_before_connect(self) -> None:
+        with _mcp_dir(
+            (
+                "mcp.json",
+                {
+                    "mcpServers": {
+                        "tdx": {
+                            "url": DEFAULT_TDX_MCP_URL,
+                            "headers": {"tdx-api-key": "test-key"},
+                        }
+                    }
+                },
+            )
+        ):
+            skill_engine = SkillEngine()
+            skill_engine.load_all()
+            skill_engine.init_skills()
+            mcp_engine = McpEngine()
+            mcp_engine.load_all()
+            snapshot = build_tools_status(skill_engine, mcp_engine)
+
+        tdx = next(item for item in snapshot.mcps if item.name == "tdx")
+        self.assertEqual(tdx.state, "idle")
+        self.assertNotIn("待配置", snapshot.compact_summary())
 
 
 class RegistryTests(unittest.TestCase):

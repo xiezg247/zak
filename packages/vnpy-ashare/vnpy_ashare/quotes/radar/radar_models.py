@@ -11,8 +11,12 @@ from vnpy_ashare.domain.radar.card import RadarCardData, RadarResonanceEntry, Ra
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
-from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
-from vnpy_ashare.quotes.radar.radar_relative_strength import enrich_radar_row_relative_strength
+from vnpy_ashare.quotes.core.redis_store import get_redis_quote_store
+from vnpy_ashare.quotes.radar.radar_relative_strength import (
+    RelativeStrengthContext,
+    build_relative_strength_context,
+    enrich_radar_row_relative_strength,
+)
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
@@ -116,7 +120,7 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
 
     if missing_tf:
         try:
-            quotes = RedisQuoteStore().get_quotes(missing_tf)
+            quotes = get_redis_quote_store().get_quotes(missing_tf)
             for tf_symbol, quote in quotes.items():
                 item = parse_tickflow_symbol(tf_symbol, quote.name)
                 if item is None:
@@ -157,6 +161,7 @@ def enrich_radar_row(
     quote: dict[str, Any],
     *,
     snapshot_rows: QuoteRowsLike | None = None,
+    rs_context: RelativeStrengthContext | None = None,
 ) -> RadarRow:
     """用全市场行情补全 RadarRow 的现价、涨幅与相对强度副标题。"""
 
@@ -172,7 +177,12 @@ def enrich_radar_row(
     updated = row
     if price != row.price or change_pct != row.change_pct:
         updated = row.model_copy(update={"price": price, "change_pct": change_pct})
-    return enrich_radar_row_relative_strength(updated, merged, snapshot_rows=snapshot_rows)
+    return enrich_radar_row_relative_strength(
+        updated,
+        merged,
+        snapshot_rows=snapshot_rows,
+        rs_context=rs_context,
+    )
 
 
 def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:
@@ -185,11 +195,13 @@ def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:
         snapshot_rows = load_screening_quote_snapshot().rows
     except MarketQuotesLoadError:
         snapshot_rows = None
+    rs_context = build_relative_strength_context(snapshot_rows)
     return tuple(
         enrich_radar_row(
             row,
             quotes.get(row.vt_symbol, {"vt_symbol": row.vt_symbol}),
             snapshot_rows=snapshot_rows,
+            rs_context=rs_context,
         )
         for row in rows
     )
@@ -213,10 +225,14 @@ def radar_row_to_cache_dict(row: RadarRow) -> dict[str, Any]:
     return payload
 
 
-def radar_row_from_cache_dict(raw: dict[str, Any], *, quote: dict[str, Any] | None = None) -> RadarRow:
+def radar_row_from_cache_dict(
+    raw: dict[str, Any],
+    *,
+    quote: dict[str, Any] | None = None,
+    enrich: bool = True,
+) -> RadarRow:
     """SQLite 缓存 JSON 条目 → RadarRow（可选合并实时行情）。"""
     vt_symbol = str(raw.get("vt_symbol") or "").strip()
-    base = quote if quote is not None else {"vt_symbol": vt_symbol}
     row = RadarRow(
         vt_symbol=vt_symbol,
         name=str(raw.get("name") or ""),
@@ -228,4 +244,7 @@ def radar_row_from_cache_dict(raw: dict[str, Any], *, quote: dict[str, Any] | No
         sub_label=str(raw.get("sub_label") or ""),
         sub_value=str(raw.get("sub_value") or ""),
     )
+    if not enrich:
+        return row
+    base = quote if quote is not None else {"vt_symbol": vt_symbol}
     return enrich_radar_row(row, base)

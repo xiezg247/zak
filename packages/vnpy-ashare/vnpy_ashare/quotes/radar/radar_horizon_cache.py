@@ -12,7 +12,6 @@ from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarRow,
-    quotes_for_vt_symbols,
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
@@ -70,10 +69,11 @@ def _entry_from_row(row: sqlite3.Row, *, logical_variant: str) -> HorizonCacheEn
         payload = json.loads(str(row["rows_json"] or "[]"))
     except (json.JSONDecodeError, TypeError):
         payload = []
-    vt_symbols = [str(item.get("vt_symbol") or "").strip() for item in payload if isinstance(item, dict)]
-    vt_symbols = [vt for vt in vt_symbols if vt]
-    quotes = quotes_for_vt_symbols(vt_symbols)
-    rows = tuple(radar_row_from_cache_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {})) for item in payload if isinstance(item, dict))
+    rows = tuple(
+        radar_row_from_cache_dict(item, enrich=False)
+        for item in payload
+        if isinstance(item, dict)
+    )
     return HorizonCacheEntry(
         variant=logical_variant,
         rows=rows,
@@ -92,23 +92,16 @@ def get_horizon_cache(variant: str, *, strategy_key: str = "") -> HorizonCacheEn
     if not text:
         return None
     key = str(strategy_key or "").strip()
-    storage_keys: list[str] = []
-    if key:
-        storage_keys.append(horizon_cache_storage_key(text, key))
-    storage_keys.append(text)
+    storage_key = horizon_cache_storage_key(text, key) if key else text
     with _connect() as conn:
-        row = None
-        for storage_key in storage_keys:
-            row = conn.execute(
-                "SELECT * FROM radar_horizon_cache WHERE variant = ?",
-                (storage_key,),
-            ).fetchone()
-            if row is not None:
-                break
+        row = conn.execute(
+            "SELECT * FROM radar_horizon_cache WHERE variant = ?",
+            (storage_key,),
+        ).fetchone()
     if row is None:
         return None
     cached_key = str(row["strategy_key"] or "").strip()
-    if key and cached_key and cached_key != key:
+    if cached_key != key:
         return None
     return _entry_from_row(row, logical_variant=text)
 

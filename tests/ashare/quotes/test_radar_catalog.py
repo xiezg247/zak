@@ -6,7 +6,9 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     RADAR_GRID_COLUMNS,
     RADAR_LAYOUT_SECTIONS,
     list_radar_cards,
+    list_radar_cards_for_group,
     list_radar_cards_for_mode,
+    list_radar_groups_for_mode,
     radar_card_mode,
     variants_for_card,
 )
@@ -43,6 +45,24 @@ def test_radar_layout_sections_and_modes() -> None:
 def test_radar_card_ids_unique() -> None:
     ids = [spec.id for spec in RADAR_CARD_SPECS]
     assert len(ids) == len(set(ids))
+
+
+def test_radar_card_groups_cover_all_cards() -> None:
+    from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_GROUP, list_radar_cards_for_group
+
+    assert set(RADAR_CARD_GROUP) == {spec.id for spec in RADAR_CARD_SPECS}
+    statistical_ids = {spec.id for spec in list_radar_cards_for_mode("statistical")}
+    predictive_ids = {spec.id for spec in list_radar_cards_for_mode("predictive")}
+    assert statistical_ids == {
+        spec.id
+        for group_key, _label in list_radar_groups_for_mode("statistical")
+        for spec in list_radar_cards_for_group("statistical", group_key)
+    }
+    assert predictive_ids == {
+        spec.id
+        for group_key, _label in list_radar_groups_for_mode("predictive")
+        for spec in list_radar_cards_for_group("predictive", group_key)
+    }
 
 
 def test_card_variants_registry() -> None:

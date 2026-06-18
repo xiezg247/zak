@@ -26,10 +26,18 @@ class McpEngine:
         self.providers: dict[str, McpProvider] = {}
         self._tool_index: dict[str, str] = {}
         self._connect_errors: dict[str, str] = {}
+        self._providers_initialized = False
+
+    @property
+    def providers_initialized(self) -> bool:
+        return self._providers_initialized
 
     def load_all(self) -> None:
         load_dotenv(ENV_FILE, override=False)
         self.providers.clear()
+        self._tool_index.clear()
+        self._connect_errors.clear()
+        self._providers_initialized = False
         for _name, config in load_all_mcp_servers().items():
             provider = RemoteMcpProvider(config)
             provider.on_init()
@@ -60,7 +68,14 @@ class McpEngine:
                 self._connect_errors[name] = msg
                 logger.warning("MCP Provider %s 连接失败:\n%s", name, msg)
 
+        self._providers_initialized = True
         return enabled
+
+    def ensure_providers(self) -> list[str]:
+        """按需连接：已初始化则直接返回，否则执行 init_providers。"""
+        if self._providers_initialized:
+            return [name for name, provider in self.providers.items() if provider.connected]
+        return self.init_providers()
 
     def reload_providers(self) -> list[str]:
         self.load_all()

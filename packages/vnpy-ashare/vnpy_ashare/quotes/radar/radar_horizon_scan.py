@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
@@ -37,6 +38,14 @@ from vnpy_ashare.screener.hard_filters import apply_screening_filters
 from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 
 HORIZON_PREFILTER_TOP = 600
+_DAILY_K_READY_TTL_SEC = 60.0
+_daily_k_ready_cache: tuple[int, float, set[str]] | None = None
+
+
+def clear_daily_k_ready_cache() -> None:
+    """测试或本地日 K 批量更新后清空 overview 缓存。"""
+    global _daily_k_ready_cache
+    _daily_k_ready_cache = None
 
 
 def horizon_min_signal_bars(config: WatchlistSignalConfig | None = None) -> int:
@@ -50,12 +59,19 @@ def collect_daily_k_ready_vt_symbols(
     config: WatchlistSignalConfig | None = None,
 ) -> set[str]:
     """本地日 K 条数达信号计算下限的 vt_symbol 集合（用 overview 粗判，避免全量 load）。"""
+    global _daily_k_ready_cache
     required = int(min_bars or horizon_min_signal_bars(config))
+    now = time.monotonic()
+    if _daily_k_ready_cache is not None:
+        cached_required, cached_at, cached_ready = _daily_k_ready_cache
+        if cached_required == required and now - cached_at < _DAILY_K_READY_TTL_SEC:
+            return set(cached_ready)
 
     ready: set[str] = set()
     for row in iter_bar_overviews(scope="daily"):
         if int(row.count or 0) >= required:
             ready.add(StockItem(symbol=row.symbol, exchange=row.exchange).vt_symbol)
+    _daily_k_ready_cache = (required, now, ready)
     return ready
 
 

@@ -177,6 +177,33 @@ class UltraShortSignalsTest(unittest.TestCase):
         self.assertEqual(result.signal, "sell")
         self.assertTrue(any(hit.rule_id == "stop_loss_pct" for hit in result.rules))
 
+    def test_overnight_exit_stop_loss_near_uses_loss_wording(self) -> None:
+        record = PositionRecord(
+            symbol="600519",
+            exchange="SSE",
+            name="茅台",
+            cost_price=10.0,
+            volume=100,
+            buy_date="2026-06-15",
+        )
+        quote = QuoteSnapshot(
+            symbol="600519",
+            name="茅台",
+            last_price=9.6,
+            prev_close=9.5,
+            open_price=9.5,
+            high_price=9.7,
+            low_price=9.5,
+            change_amount=0.1,
+            change_pct=1.05,
+            turnover_rate=1.0,
+            volume=1000.0,
+        )
+        result = evaluate_overnight_exit(record, quote=quote, stop_loss_pct=0.05)
+        near = next(hit for hit in result.rules if hit.rule_id == "stop_loss_near")
+        self.assertIn("浮亏", near.detail)
+        self.assertNotIn("浮盈", near.detail)
+
 
 if __name__ == "__main__":
     unittest.main()

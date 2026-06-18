@@ -184,14 +184,27 @@ def evaluate_limit_board_intraday(
     )
 
 
+_MINUTE_BARS_CACHE: dict[tuple[str, date], list] = {}
+
+
+def clear_local_minute_bars_cache() -> None:
+    """测试或换日时清空进程内分 K 缓存。"""
+    _MINUTE_BARS_CACHE.clear()
+
+
 def load_local_minute_bars_for_date(vt_symbol: str, trade_date: date) -> list:
     """读取本地库指定交易日的 1 分 K；无数据返回空列表。"""
+    cache_key = (str(vt_symbol or "").strip(), trade_date)
+    if cache_key in _MINUTE_BARS_CACHE:
+        return _MINUTE_BARS_CACHE[cache_key]
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return []
     start = datetime.combine(trade_date, time(9, 0), tzinfo=CHINA_TZ)
     end = datetime.combine(trade_date, time(15, 30), tzinfo=CHINA_TZ)
-    return load_period_bars(item.symbol, item.exchange, "1m", start, end)
+    bars = load_period_bars(item.symbol, item.exchange, "1m", start, end)
+    _MINUTE_BARS_CACHE[cache_key] = bars
+    return bars
 
 
 def resolve_prev_close_for_date(vt_symbol: str, trade_date: date) -> float:

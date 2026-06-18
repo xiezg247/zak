@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Literal, cast
 
 from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.quotes.radar.radar_catalog import RADAR_LAYOUT_SECTIONS, RadarCardMode
+from vnpy_ashare.quotes.radar.radar_catalog import (
+    RADAR_LAYOUT_SECTIONS,
+    default_group_for_mode,
+    list_radar_groups_for_mode,
+    RadarCardMode,
+    RadarGroupKey,
+)
 
 _SETTINGS_PREFIX = "quotes/radar/active_mode"
 _DEFAULT_MODE: RadarCardMode = "statistical"
@@ -40,3 +46,24 @@ def load_radar_resonance_expanded(*, default: bool = True) -> bool:
 
 def save_radar_resonance_expanded(expanded: bool) -> None:
     get_settings().setValue(_RESONANCE_EXPANDED_PREFIX, expanded)
+
+
+def _group_settings_key(mode: RadarCardMode) -> str:
+    return f"quotes/radar/active_group/{mode}"
+
+
+def load_radar_board_group(mode: RadarCardMode) -> RadarGroupKey:
+    valid = {key for key, _label in list_radar_groups_for_mode(mode)}
+    default = default_group_for_mode(mode)
+    settings = get_settings()
+    raw = str(settings.value(_group_settings_key(mode), default) or default).strip()
+    if raw in valid:
+        return cast(RadarGroupKey, raw)
+    return default
+
+
+def save_radar_board_group(mode: RadarCardMode, group_key: RadarGroupKey) -> None:
+    valid = {key for key, _label in list_radar_groups_for_mode(mode)}
+    if group_key not in valid:
+        return
+    get_settings().setValue(_group_settings_key(mode), group_key)

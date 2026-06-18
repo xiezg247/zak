@@ -12,7 +12,7 @@ from vnpy_common.domain.base import FrozenModel
 from vnpy_mcp.app.engine import McpEngine
 from vnpy_skills.app.engine import SkillEngine
 
-ToolProviderState = Literal["ready", "missing_env", "connect_failed", "disabled"]
+ToolProviderState = Literal["ready", "missing_env", "connect_failed", "disabled", "idle"]
 
 
 class ToolProviderStatus(FrozenModel):
@@ -55,7 +55,9 @@ class ToolsStatusSnapshot(FrozenModel):
         ready_mcps = [m.title for m in self.mcps if m.state == "ready"]
         if ready_mcps:
             parts.append("MCP: " + " · ".join(ready_mcps))
-        issues = [s for s in self.skills if s.state != "ready"] + [m for m in self.mcps if m.state != "ready"]
+        issues = [s for s in self.skills if s.state != "ready"] + [
+            m for m in self.mcps if m.state not in ("ready", "idle")
+        ]
         if issues and not parts:
             parts.append(f"{len(issues)} 项待配置")
         elif issues:
@@ -163,6 +165,19 @@ def build_tools_status(
                     tool_count=0,
                     missing_env=tuple(missing),
                     summary=summary,
+                )
+            )
+            continue
+
+        if not mcp_engine.providers_initialized:
+            mcps.append(
+                ToolProviderStatus(
+                    kind="mcp",
+                    name=name,
+                    title=title,
+                    state="idle",
+                    tool_count=0,
+                    summary=f"{summary}（首次使用时连接）",
                 )
             )
             continue

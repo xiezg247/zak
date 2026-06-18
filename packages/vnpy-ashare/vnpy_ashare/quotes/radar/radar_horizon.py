@@ -11,6 +11,7 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 from vnpy_ashare.quotes.radar.radar_ai_cache import resolve_ai_hint, rows_fingerprint
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_hint, build_outlook_cross_ref_suffix
+from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
 from vnpy_ashare.quotes.radar.radar_horizon_cache import (
     build_horizon_subtitle,
     get_horizon_cache,
@@ -67,6 +68,74 @@ def build_outlook_digest(rows: tuple[RadarRow, ...], *, variant: str) -> str:
     return "摘要：" + " · ".join(parts)
 
 
+def _horizon_subtitle_prefix(
+    entry: HorizonCacheEntry,
+    *,
+    recent_days: int,
+    strategy_label: str,
+    scenario_mode: bool,
+) -> str:
+    subtitle = build_horizon_subtitle(
+        entry,
+        signal_recent_days=recent_days,
+        strategy_label=strategy_label,
+    )
+    if scenario_mode:
+        subtitle = f"{subtitle} · 统计情景非目标价"
+    return subtitle
+
+
+def _stats_from_cache(entry: HorizonCacheEntry) -> HorizonScanStats:
+    return HorizonScanStats(
+        scanned_total=entry.scanned_total,
+        excluded_count=entry.excluded_count,
+        prefilter_total=entry.prefilter_total,
+        refined_total=entry.refined_total,
+        kline_missing=entry.kline_missing,
+    )
+
+
+def _build_horizon_card(
+    spec: RadarCardSpec,
+    *,
+    resolved_variant: str,
+    scenario_mode: bool,
+    raw_rows: tuple[RadarRow, ...],
+    subtitle_prefix: str,
+    stats: HorizonScanStats,
+    updated_at: str,
+) -> RadarCardData:
+    rows = enrich_radar_rows(raw_rows)
+    subtitle = subtitle_prefix
+    cross_suffix = build_outlook_cross_ref_suffix(rows)
+    if cross_suffix:
+        subtitle = f"{subtitle} · {cross_suffix}"
+    cross_hint = build_outlook_cross_ref_hint(rows)
+    if not rows:
+        return _empty_horizon_card(
+            spec,
+            subtitle=subtitle,
+            empty_message=horizon_empty_message(stats, card_title=spec.title),
+            scanned_total=stats.scanned_total,
+        )
+    return RadarCardData(
+        card_id=spec.id,
+        title=spec.title,
+        subtitle=subtitle,
+        rows=rows,
+        empty_message="",
+        updated_at=updated_at,
+        total_count=len(rows),
+        ai_hint=resolve_ai_hint(
+            spec.id,
+            variant=resolved_variant if scenario_mode else "",
+            fingerprint=rows_fingerprint(rows),
+            digest=build_outlook_digest(rows, variant=resolved_variant),
+        )
+        + (f" · {cross_hint}" if cross_hint else ""),
+    )
+
+
 def _empty_horizon_card(
     spec: RadarCardSpec,
     *,
@@ -110,47 +179,19 @@ def load_outlook_horizon(
     if not force_recompute:
         cached = get_horizon_cache(resolved_variant, strategy_key=strategy_key)
         if cached is not None:
-            subtitle = build_horizon_subtitle(
-                cached,
-                signal_recent_days=recent_days,
-                strategy_label=strategy_label,
-            )
-            if scenario_mode:
-                subtitle = f"{subtitle} · 统计情景非目标价"
-            rows = enrich_radar_rows(cached.rows)
-            cross_suffix = build_outlook_cross_ref_suffix(rows)
-            if cross_suffix:
-                subtitle = f"{subtitle} · {cross_suffix}"
-            cross_hint = build_outlook_cross_ref_hint(rows)
-            if not rows:
-                stats = HorizonScanStats(
-                    scanned_total=cached.scanned_total,
-                    excluded_count=cached.excluded_count,
-                    prefilter_total=cached.prefilter_total,
-                    refined_total=cached.refined_total,
-                    kline_missing=cached.kline_missing,
-                )
-                return _empty_horizon_card(
-                    spec,
-                    subtitle=subtitle,
-                    empty_message=horizon_empty_message(stats, card_title=spec.title),
-                    scanned_total=cached.scanned_total,
-                )
-            return RadarCardData(
-                card_id=spec.id,
-                title=spec.title,
-                subtitle=subtitle,
-                rows=rows,
-                empty_message="",
+            return _build_horizon_card(
+                spec,
+                resolved_variant=resolved_variant,
+                scenario_mode=scenario_mode,
+                raw_rows=cached.rows,
+                subtitle_prefix=_horizon_subtitle_prefix(
+                    cached,
+                    recent_days=recent_days,
+                    strategy_label=strategy_label,
+                    scenario_mode=scenario_mode,
+                ),
+                stats=_stats_from_cache(cached),
                 updated_at=cached.computed_at,
-                total_count=len(rows),
-                ai_hint=resolve_ai_hint(
-                    spec.id,
-                    variant=resolved_variant if scenario_mode else "",
-                    fingerprint=rows_fingerprint(rows),
-                    digest=build_outlook_digest(rows, variant=resolved_variant),
-                )
-                + (f" · {cross_hint}" if cross_hint else ""),
             )
         return _empty_horizon_card(
             spec,
@@ -163,45 +204,21 @@ def load_outlook_horizon(
         )
 
     scan_result = scan_horizon_variant(resolved_variant, top_n=spec.top_n, config=config)
-
     cached_after = get_horizon_cache(resolved_variant, strategy_key=strategy_key)
-    subtitle = build_horizon_subtitle(
-        cached_after or cache_entry_from_scan(scan_result),
-        signal_recent_days=recent_days,
-        strategy_label=strategy_label,
-    )
-    if scenario_mode:
-        subtitle = f"{subtitle} · 统计情景非目标价"
-    rows = enrich_radar_rows(scan_result.rows)
-    cross_suffix = build_outlook_cross_ref_suffix(rows)
-    if cross_suffix:
-        subtitle = f"{subtitle} · {cross_suffix}"
-    cross_hint = build_outlook_cross_ref_hint(rows)
-    stats = scan_result.stats
-
-    if not rows:
-        return _empty_horizon_card(
-            spec,
-            subtitle=subtitle,
-            empty_message=horizon_empty_message(stats, card_title=spec.title),
-            scanned_total=stats.scanned_total,
-        )
-
-    return RadarCardData(
-        card_id=spec.id,
-        title=spec.title,
-        subtitle=subtitle,
-        rows=rows,
-        empty_message="",
+    subtitle_source = cached_after or cache_entry_from_scan(scan_result)
+    return _build_horizon_card(
+        spec,
+        resolved_variant=resolved_variant,
+        scenario_mode=scenario_mode,
+        raw_rows=scan_result.rows,
+        subtitle_prefix=_horizon_subtitle_prefix(
+            subtitle_source,
+            recent_days=recent_days,
+            strategy_label=strategy_label,
+            scenario_mode=scenario_mode,
+        ),
+        stats=scan_result.stats,
         updated_at=scan_result.computed_at,
-        total_count=len(rows),
-        ai_hint=resolve_ai_hint(
-            spec.id,
-            variant=resolved_variant if scenario_mode else "",
-            fingerprint=rows_fingerprint(rows),
-            digest=build_outlook_digest(rows, variant=resolved_variant),
-        )
-        + (f" · {cross_hint}" if cross_hint else ""),
     )
 
 

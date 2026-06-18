@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -23,6 +24,33 @@ from vnpy_ashare.screener.sector.sector_summary import attach_industry
 _MIN_INDUSTRY_POOL = 20
 
 
+@dataclass(frozen=True)
+class RelativeStrengthContext:
+    """批量 enrich 时预计算的相对强度上下文。"""
+
+    pool: QuoteRowsLike
+    industry_map: dict[str, str]
+    market_benchmark: float
+    industry_avg: dict[str, float]
+
+
+def build_relative_strength_context(
+    snapshot_rows: QuoteRowsLike | None = None,
+) -> RelativeStrengthContext | None:
+    pool = _market_rows_for_relative_strength(snapshot_rows)
+    if not pool:
+        return None
+    industry_map = get_stock_industry_map()
+    enriched = attach_industry(pool, industry_map=industry_map)
+    effective = enriched or pool
+    return RelativeStrengthContext(
+        pool=effective,
+        industry_map=industry_map,
+        market_benchmark=market_benchmark_change_pct(effective),
+        industry_avg=industry_avg_change_map(enriched),
+    )
+
+
 def _market_rows_for_relative_strength(snapshot_rows: QuoteRowsLike | None) -> QuoteRowsLike:
     """行业均值须基于足够大的样本池；单票或过小 pool 会退化为 +0.00%。"""
     if snapshot_rows is not None and len(snapshot_rows) >= _MIN_INDUSTRY_POOL:
@@ -37,6 +65,7 @@ def build_relative_strength_subline(
     row: QuoteRowLike,
     *,
     snapshot_rows: QuoteRowsLike | None = None,
+    rs_context: RelativeStrengthContext | None = None,
 ) -> tuple[str, str] | None:
     """返回 (sub_label, sub_value)，无有效涨幅时返回 None。"""
     change = row.get("change_pct") if row.get("change_pct") not in (None, "") else row.get("pct_chg")
@@ -47,13 +76,19 @@ def build_relative_strength_subline(
     except (TypeError, ValueError):
         return None
 
-    pool = _market_rows_for_relative_strength(snapshot_rows)
-    if not pool:
-        pool = [row]
-    industry_map = get_stock_industry_map()
-    enriched = attach_industry(pool, industry_map=industry_map)
-    market_benchmark = market_benchmark_change_pct(enriched or pool)
-    industry_avg = industry_avg_change_map(enriched)
+    if rs_context is not None:
+        pool = rs_context.pool
+        industry_map = rs_context.industry_map
+        market_benchmark = rs_context.market_benchmark
+        industry_avg = rs_context.industry_avg
+    else:
+        pool = _market_rows_for_relative_strength(snapshot_rows)
+        if not pool:
+            pool = [row]
+        industry_map = get_stock_industry_map()
+        enriched = attach_industry(pool, industry_map=industry_map)
+        market_benchmark = market_benchmark_change_pct(enriched or pool)
+        industry_avg = industry_avg_change_map(enriched)
 
     merged: QuoteRowLike = row
     if industry_map and not merged.get("industry"):
@@ -79,9 +114,14 @@ def enrich_radar_row_relative_strength(
     quote_row: dict[str, Any],
     *,
     snapshot_rows: QuoteRowsLike | None = None,
+    rs_context: RelativeStrengthContext | None = None,
 ) -> RadarRow:
     """为雷达行补全相对强度副标题。"""
-    sub = build_relative_strength_subline(quote_row, snapshot_rows=snapshot_rows)
+    sub = build_relative_strength_subline(
+        quote_row,
+        snapshot_rows=snapshot_rows,
+        rs_context=rs_context,
+    )
     if sub is None:
         return row
 
