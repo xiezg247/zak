@@ -14,7 +14,7 @@ from vnpy_ashare.app.events import (
     FillScreenerRequest,
     OrbAttentionRequest,
 )
-from vnpy_ashare.domain.ai_actions import (
+from vnpy_ashare.domain.ai.actions import (
     AI_ACTION_ASK_AI,
     AI_ACTION_FILL_SCREENER,
     AI_ACTION_ORB_ATTENTION,

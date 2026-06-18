@@ -9,6 +9,7 @@ from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.tools.labels import tool_display_name
 from vnpy_llm.trace.persistence import TracePersistence
 from vnpy_llm.trace.trace import TraceStep, TraceStore, TurnTrace, preview_text
+from vnpy_common.domain.serialize import dump_json
 
 TraceChanged = Callable[[], None]
 
@@ -97,9 +98,9 @@ class TraceCoordinator:
             "market_reasoning": route_ctx.analysis.market.reasoning,
         }
         if route_ctx.analysis.screening is not None:
-            detail["screening"] = route_ctx.analysis.screening.model_dump()
+            detail["screening"] = dump_json(route_ctx.analysis.screening)
         if route_ctx.analysis.backtest is not None:
-            detail["backtest"] = route_ctx.analysis.backtest.model_dump()
+            detail["backtest"] = dump_json(route_ctx.analysis.backtest)
         step = self._store.add_step(
             kind="routing",
             name="intent_route",

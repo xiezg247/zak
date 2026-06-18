@@ -56,6 +56,7 @@ from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID,
 from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
 from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_refresh import refresh_emotion_cycle_chip
+from vnpy_ashare.ui.quotes.market_overview.risk_gate_refresh import refresh_risk_gate_chip
 from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
     MARKET_SCROLL_DEBOUNCE_MS,
@@ -75,6 +76,7 @@ from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
 from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
+from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
 from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes, restore_center_splitter
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
@@ -343,6 +345,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         if self.config.show_watchlist_multiview:
             self._multiview.restore_view_mode()
         self._refresh_emotion_cycle_chip()
+        self._refresh_risk_gate_chip()
 
     def _refresh_emotion_cycle_chip(self) -> None:
         chip = getattr(self, "emotion_cycle_chip", None)
@@ -350,6 +353,17 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             return
 
         refresh_emotion_cycle_chip(chip)
+
+    def _refresh_risk_gate_chip(self) -> None:
+        chip = getattr(self, "risk_gate_chip", None)
+        if chip is None:
+            return
+        refresh_risk_gate_chip(chip, page=self)
+
+    def _open_risk_settings(self) -> None:
+        dialog = RiskSettingsDialog(parent=self)
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+            self._refresh_risk_gate_chip()
 
     def deactivate(self) -> None:
         if self.config.use_radar_cards:

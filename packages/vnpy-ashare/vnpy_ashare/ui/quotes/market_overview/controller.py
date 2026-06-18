@@ -112,7 +112,7 @@ class MarketOverviewController(QtCore.QObject):
             ladder_counts = peek_limit_ladder_counts()
         if ladder_counts is not None:
             self._panel.apply_limit_ladder(ladder_counts)
-        sync_market_overview_partial(breadth=breadth, sectors=sectors or None)
+        sync_market_overview_partial(breadth=breadth, sectors=sectors or None, limit_ladder=ladder_counts)
         self._publish_ai_context()
 
     def _apply_overview(self, data: MarketOverviewData) -> None:

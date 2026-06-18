@@ -164,7 +164,7 @@ def fetch_limit_list_d(*, trade_date: str | None = None, limit_type: str | None 
     pro = get_tushare_pro()
     params: dict[str, Any] = {
         "trade_date": trade_date,
-        "fields": "ts_code,trade_date,name,limit,limit_times,first_time,last_time",
+        "fields": "ts_code,trade_date,name,limit,limit_times,first_time,last_time,fd_amount,open_times,strth",
     }
     if limit_type:
         params["limit_type"] = limit_type
@@ -183,6 +183,17 @@ def fetch_limit_list_d(*, trade_date: str | None = None, limit_type: str | None 
         vt_symbol = ts_code_to_vt_symbol(ts_code)
         limit_times_raw = record.get("limit_times")
         limit_times = safe_float(limit_times_raw) if limit_times_raw not in (None, "") else 0.0
+        fd_amount_raw = record.get("fd_amount")
+        fd_amount = safe_float(fd_amount_raw) if fd_amount_raw not in (None, "") else None
+        open_times_raw = record.get("open_times")
+        open_times: int | None = None
+        if open_times_raw not in (None, ""):
+            try:
+                open_times = int(float(open_times_raw))
+            except (TypeError, ValueError):
+                open_times = None
+        strth_raw = record.get("strth")
+        strth = safe_float(strth_raw) if strth_raw not in (None, "") else None
         rows.append(
             {
                 "ts_code": ts_code,
@@ -192,6 +203,9 @@ def fetch_limit_list_d(*, trade_date: str | None = None, limit_type: str | None 
                 "limit_times": limit_times,
                 "first_time": str(record.get("first_time", "") or "").strip(),
                 "last_time": str(record.get("last_time", "") or "").strip(),
+                "fd_amount": fd_amount,
+                "open_times": open_times,
+                "strth": strth,
                 "vt_symbol": vt_symbol or "",
             }
         )

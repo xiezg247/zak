@@ -71,10 +71,11 @@ config.apply.apply_runtime_settings(changed, context)
 ### 核心类型
 
 ```python
+# config/apply.py
+
 ApplyTier = "instant" | "soft_reload" | "restart_required"
 
-@dataclass
-class ApplyResult:
+class ApplyResult(MutableModel):
     key: str
     label: str
     tier: ApplyTier

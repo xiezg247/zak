@@ -18,8 +18,8 @@
 |------|----------|
 | 逆势抄底 | `emotion_cycle` 退潮/冰点 + 新开持仓 |
 | 扛单死等 | 浮亏 ≤ −5% 且无卖出动作（流水无 sell 记录） |
-| 亏损补仓 | 同标的二次登记且成本下调（**待建**） |
-| 计划外买票 | 不在 TradingPlan.watchlist（**待建**） |
+| 亏损补仓 | 同标的二次登记且成本下调（**已有**，`add_loss` 标签） |
+| 计划外买票 | 不在 TradingPlan.watchlist（**已有**，`off_plan` 标签） |
 
 ---
 
@@ -41,23 +41,24 @@
                     └──────────┘
 ```
 
-### 2.1 RiskGateSnapshot（规划）
+### 2.1 RiskGateSnapshot
 
 ```python
-@dataclass(frozen=True)
-class RiskGateSnapshot:
-    state: Literal["normal", "caution", "halt"]
+# domain/trading/risk.py
+
+class RiskGateSnapshot(FrozenModel):
+    state: RiskGateState            # normal | caution | halt
     state_label: str
     allow_new_positions: bool
-    daily_pnl_pct: float | None      # 当日已实现 + 浮亏合计
+    daily_pnl_pct: float | None     # 当日盈亏占比（%）
+    avg_float_pnl_pct: float | None
     weekly_drawdown_pct: float | None
-    peak_equity: float
-    current_equity: float
+    total_drawdown_pct: float | None
+    halt_until: str | None
     warnings: tuple[str, ...]
-    updated_at: str
 ```
 
-模块路径（规划）：`packages/vnpy-ashare/vnpy_ashare/trading/risk/`  
+模块路径：`packages/vnpy-ashare/vnpy_ashare/domain/trading/risk.py`（计算逻辑在 `trading/risk/`）  
 配置 QSettings：`trading/risk/total_capital`、`trading/risk/*_threshold`。
 
 ---
@@ -86,7 +87,7 @@ UI：`PositionEditDialog` 底部展示「按 2% 风控建议 ≤ N 股」。
 | 组成 | 计算 |
 |------|------|
 | 浮盈 | Σ 持仓 `unrealized_pnl` |
-| 已实现 | Σ `trade_journal.realized_pnl`（**待建**） |
+| 已实现 | Σ `trade_journal.realized_pnl`（**已有**） |
 | 当日合计 | 已实现（当日） + 浮盈变动（可选近似：当前浮盈 − 昨收快照） |
 
 **Phase 1 简化**：仅浮亏 + 手动标记「今日已实现」；Phase 2 接 trade_journal。
@@ -134,7 +135,7 @@ Prompt：halt/caution 时必须引用具体回撤数字，禁止编造。
 | [emotion-cycle](./emotion-cycle.md) | **市场环境**：退潮不做 |
 | **risk-gate** | **账户状态**：亏了太多不做 |
 
-两者同时 `allow_new_positions=false` 时，UI 合并展示「环境退潮 + 账户熔断」。
+两者同时 `allow_new_positions=false` 时，UI 合并展示「环境退潮 + 账户熔断」。自选 / 雷达顶栏 **`EmotionCycleChip` + `RiskGateChip`**（点击风控芯片打开设置）。
 
 ---
 

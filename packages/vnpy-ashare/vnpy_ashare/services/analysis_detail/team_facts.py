@@ -11,6 +11,7 @@ from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallbac
 from vnpy_ashare.services.analysis_detail.market_context import build_team_market_context
 from vnpy_ashare.services.stock.context import DiagnoseMetrics, extract_diagnose_metrics
 from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow, list_snapshots
+from vnpy_common.domain.serialize import dump_python
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
@@ -101,7 +102,7 @@ def _resolve_vt_symbol(symbol: str) -> str | None:
 
 
 def _metrics_to_dict(metrics: DiagnoseMetrics) -> dict[str, Any]:
-    data = metrics.model_dump()
+    data = dump_python(metrics)
     return {key: value for key, value in data.items() if value is not None and value != ""}
 
 

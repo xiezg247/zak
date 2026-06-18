@@ -13,7 +13,7 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
-from vnpy_ashare.trading.signals.intraday_seal_time import build_first_time_map
+from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 from vnpy_ashare.trading.signals.seal_time import format_seal_time_label
 
 
@@ -32,10 +32,9 @@ def run_first_board(pool_size: int, *, weight: float) -> tuple[list[DimensionHit
     if not candidates:
         return [], snapshot.total
 
-    first_time_map = build_first_time_map(candidates)
+    attach_first_time_fields(candidates)
     ranked = rank_first_board_pool(
         candidates,
-        first_time_map=first_time_map,
         top_n=pool_size,
     )
 
@@ -67,4 +66,11 @@ def _first_board_reason(row: dict[str, Any], seal_label: str) -> str:
     change = float(row.get("change_pct") or 0)
     seal = seal_label or format_seal_time_label(str(row.get("first_time") or "")) or "封板时间待补"
     score = float(row.get("first_board_score") or 0)
-    return f"首板：{industry} {seal}，人气 {score:.0f}，涨幅 {change:+.2f}%"
+    strength_raw = row.get("seal_strength_score")
+    strength_hint = ""
+    if strength_raw not in (None, ""):
+        try:
+            strength_hint = f"，封单强度 {float(strength_raw) * 100:.0f}"
+        except (TypeError, ValueError):
+            strength_hint = ""
+    return f"首板：{industry} {seal}{strength_hint}，人气 {score:.0f}，涨幅 {change:+.2f}%"

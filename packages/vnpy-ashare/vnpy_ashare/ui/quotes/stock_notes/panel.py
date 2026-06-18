@@ -87,6 +87,7 @@ class StockNotePanel(QtWidgets.QWidget):
         self._memo_tab.ai_expand_requested.connect(self._on_ai_expand_memo)
         self._journal_tab.entry_submitted.connect(self._on_entry_submitted)
         self._journal_tab.entry_delete_requested.connect(self._on_entry_delete_requested)
+        self._journal_tab.entry_import_requested.connect(self._on_entry_import_requested)
         self._journal_tab.ai_polish_requested.connect(self._on_ai_polish_journal)
 
         active_tab = load_stock_note_active_tab()
@@ -325,6 +326,15 @@ class StockNotePanel(QtWidgets.QWidget):
             return
         self._journal_tab.remove_entry_id(entry_id)
         self.notes_changed.emit()
+
+    def _on_entry_import_requested(self, entry_id: int) -> None:
+        from vnpy_ashare.trading.journal.import_from_note import import_stock_note_by_id
+
+        journal_id = import_stock_note_by_id(entry_id)
+        if journal_id is None:
+            page_notify(self, "导入失败，请检查笔记内容", level="warning")
+            return
+        page_notify(self, f"已导入交易流水 #{journal_id}", level="success")
 
     def _on_clear_clicked(self) -> None:
         if self._bound_symbol is None or self._bound_exchange is None:

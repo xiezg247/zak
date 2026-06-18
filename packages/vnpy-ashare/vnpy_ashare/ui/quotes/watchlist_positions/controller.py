@@ -176,6 +176,7 @@ class WatchlistPositionController:
 
         engine = get_ashare_engine(self._page._get_main_engine())
         scan_and_record_float_loss_holds(self._page.position_cache, notify_engine=engine)
+        self._page._refresh_risk_gate_chip()
 
     def refresh_quotes_only(self, tickflow_symbols: set[str] | None = None) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:
@@ -395,6 +396,7 @@ class WatchlistPositionController:
         groups = getattr(self._page, "_watchlist_groups", None)
         if groups is not None:
             groups.refresh_groups()
+        self._page._refresh_risk_gate_chip()
 
     def on_panel_enabled_changed(self, enabled: bool) -> None:
         if enabled:

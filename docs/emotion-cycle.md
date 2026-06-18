@@ -67,11 +67,10 @@ market_breadth + limit_ladder + index_ma5
 ## 3. 输出模型
 
 ```python
-# quotes/market/emotion_cycle.py（规划）
+# domain/market/emotion.py
 
-@dataclass(frozen=True)
-class EmotionCycleSnapshot:
-    stage: Literal["ice", "startup", "climax", "divergence", "recession"]
+class EmotionCycleSnapshot(FrozenModel):
+    stage: EmotionStage           # ice | startup | climax | divergence | recession
     stage_label: str              # 冰点 / 启动 / …
     position_pct_min: float       # 建议仓位下限
     position_pct_max: float       # 建议仓位上限

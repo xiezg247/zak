@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import Field, ValidationError
 
 from vnpy_common.domain.base import FrozenModel
+from vnpy_common.domain.serialize import dump_python
 
 TEAM_SCORE_JSON_EXAMPLE = """```json
 {
@@ -39,7 +40,7 @@ class TeamAgentScore(FrozenModel):
 
 def _coerce_team_agent_score(data: dict[str, Any]) -> dict[str, Any] | None:
     try:
-        return TeamAgentScore.model_validate(data).model_dump(exclude_defaults=True)
+        return dump_python(TeamAgentScore.model_validate(data), exclude_defaults=True)
     except ValidationError:
         return None
 

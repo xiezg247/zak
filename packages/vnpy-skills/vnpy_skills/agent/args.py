@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator
+
+from vnpy_common.domain.base import FrozenModel
 
 
-class ReadSkillFileArgs(BaseModel):
+class ReadSkillFileArgs(FrozenModel):
     model_config = ConfigDict(extra="ignore")
 
     skill: str = Field(min_length=1, description="skill 名称")
@@ -17,7 +19,7 @@ class ReadSkillFileArgs(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
-class ListSkillFilesArgs(BaseModel):
+class ListSkillFilesArgs(FrozenModel):
     model_config = ConfigDict(extra="ignore")
 
     skill: str = Field(min_length=1, description="skill 名称")
@@ -29,7 +31,7 @@ class ListSkillFilesArgs(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
-class RunPythonArgs(BaseModel):
+class RunPythonArgs(FrozenModel):
     model_config = ConfigDict(extra="ignore")
 
     skill: str = Field(min_length=1, description="skill 名称")

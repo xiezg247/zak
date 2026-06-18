@@ -6,6 +6,7 @@ from typing import Any
 
 from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.data.pattern_bars import load_daily_bars_tail
 from vnpy_ashare.domain.stock.overview import (
     DataReadinessItem,
     OverviewAlert,
@@ -20,6 +21,7 @@ from vnpy_ashare.services.stock.context import (
 )
 from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 from vnpy_ashare.services.stock.profile import build_valuation_profile
+from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation
 from vnpy_ashare.storage.repositories.valuation import list_valuation_history
 
 
@@ -192,6 +194,26 @@ def _moneyflow_alerts(vt_symbol: str) -> list[OverviewAlert]:
     return [alert] if alert is not None else []
 
 
+def _regulatory_alerts(vt_symbol: str) -> list[OverviewAlert]:
+    item = parse_stock_symbol(vt_symbol)
+    if item is None:
+        return []
+    bars = load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=45)
+    if len(bars) < 11:
+        return []
+    snapshot = assess_regulatory_deviation(bars)
+    if snapshot.risk_level == "none":
+        return []
+    severity = "warn" if snapshot.risk_level == "high" else "info"
+    return [
+        OverviewAlert(
+            text=f"监管异动：{snapshot.summary}",
+            severity=severity,
+            jump_target="chart",
+        )
+    ]
+
+
 def build_overview_dashboard(
     engine: Any,
     vt_symbol: str,
@@ -211,6 +233,7 @@ def build_overview_dashboard(
 
     alerts: list[OverviewAlert] = []
     for builder in (
+        lambda: _regulatory_alerts(vt_symbol),
         lambda: _disclosure_alerts(ts_code),
         lambda: _financial_alerts(engine, vt_symbol),
         lambda: _valuation_alerts(vt_symbol),

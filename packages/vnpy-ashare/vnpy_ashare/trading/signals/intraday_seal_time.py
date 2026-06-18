@@ -11,7 +11,8 @@ from vnpy_ashare.domain.market.quote_row import QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
-from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_first_time_map
+from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_first_time_map, load_limit_list_seal_map
+from vnpy_ashare.trading.signals.seal_strength import seal_strength_score
 from vnpy_ashare.trading.signals.seal_time import parse_clock_minutes, seal_time_score
 
 
@@ -136,13 +137,22 @@ def attach_first_time_fields(
     *,
     max_intraday_fetch: int = 0,
 ) -> None:
-    """为行写入 first_time / seal_time_score（就地修改）。"""
+    """为行写入 first_time / seal_time_score / 封单强度（就地修改）。"""
     if not rows:
         return
     time_map = build_first_time_map(rows, max_intraday_fetch=max_intraday_fetch)
+    seal_map = load_limit_list_seal_map()
     for row in rows:
         vt = str(row.get("vt_symbol") or "")
         first_time = time_map.get(vt, "")
         if first_time:
             row["first_time"] = first_time
             row["seal_time_score"] = seal_time_score(first_time)
+        seal_fields = seal_map.get(vt)
+        if seal_fields:
+            row.update(seal_fields)
+            row["seal_strength_score"] = seal_strength_score(
+                fd_amount=seal_fields.get("fd_amount"),
+                open_times=seal_fields.get("open_times"),
+                strth=seal_fields.get("strth"),
+            )

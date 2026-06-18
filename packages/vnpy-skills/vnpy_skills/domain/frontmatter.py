@@ -7,12 +7,15 @@ import re
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+
+from vnpy_common.domain.base import FrozenModel
+from vnpy_common.domain.serialize import dump_json
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 
-class SkillCredential(BaseModel):
+class SkillCredential(FrozenModel):
     """SKILL.md credentials 条目。"""
 
     model_config = ConfigDict(extra="allow")
@@ -22,7 +25,7 @@ class SkillCredential(BaseModel):
     how_to_get: str = ""
 
 
-class SkillEnvVar(BaseModel):
+class SkillEnvVar(FrozenModel):
     """requirements.environment_variables 条目。"""
 
     model_config = ConfigDict(extra="allow")
@@ -32,7 +35,7 @@ class SkillEnvVar(BaseModel):
     sensitive: bool = False
 
 
-class SkillRequirements(BaseModel):
+class SkillRequirements(FrozenModel):
     """SKILL.md requirements 块。"""
 
     model_config = ConfigDict(extra="allow")
@@ -42,7 +45,7 @@ class SkillRequirements(BaseModel):
     network_access: bool = False
 
 
-class SkillFrontmatter(BaseModel):
+class SkillFrontmatter(FrozenModel):
     """SKILL.md YAML frontmatter。"""
 
     model_config = ConfigDict(extra="allow")
@@ -85,7 +88,7 @@ class SkillFrontmatter(BaseModel):
 
         if any(name == "TUSHARE_TOKEN" for name, _ in required):
             pass
-        elif "TUSHARE_TOKEN" in json.dumps(self.model_dump(mode="json"), ensure_ascii=False):
+        elif "TUSHARE_TOKEN" in json.dumps(dump_json(self), ensure_ascii=False):
             required.append(("TUSHARE_TOKEN", False))
 
         seen: set[str] = set()

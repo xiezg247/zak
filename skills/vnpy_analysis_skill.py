@@ -186,6 +186,20 @@ class VnpyAnalysisSkill(SkillTemplate):
                     "required": ["symbol"],
                 },
             ),
+            ToolSpec(
+                name="assess_regulatory_deviation",
+                description=(
+                    "评估监管异动距离：近 10 日涨停次数、10/30 日累计涨幅是否接近严重异动线。"
+                    "用户问「会不会进监管」「异动距离」「10 日 4 涨停」时调用。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "股票代码，如 600519.SSE"},
+                    },
+                    "required": ["symbol"],
+                },
+            ),
         ]
 
     def _get_analysis_service(self):
@@ -277,4 +291,9 @@ class VnpyAnalysisSkill(SkillTemplate):
     def evaluate_entry_mode(self, symbol: str) -> str:
         svc = self._get_analysis_service()
         result = svc.evaluate_entry_mode(symbol)
+        return json.dumps(result, ensure_ascii=False)
+
+    def assess_regulatory_deviation(self, symbol: str) -> str:
+        svc = self._get_analysis_service()
+        result = svc.assess_regulatory_deviation(symbol)
         return json.dumps(result, ensure_ascii=False)

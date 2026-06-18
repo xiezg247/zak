@@ -16,7 +16,7 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
-from vnpy_ashare.trading.signals.intraday_seal_time import build_first_time_map
+from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 from vnpy_ashare.trading.signals.seal_time import format_seal_time_label, seal_time_score
 
 _STRONG_INDUSTRY_TOP = 5
@@ -97,7 +97,7 @@ def rank_first_board_pool(
     for row in candidates:
         vt = str(row.get("vt_symbol") or "")
         industry = str(row.get("industry") or "").strip()
-        first_time = time_map.get(vt, "")
+        first_time = str(row.get("first_time") or time_map.get(vt, ""))
         seal_score = seal_time_score(first_time)
         popularity = compute_first_board_score(
             row,
@@ -153,7 +153,7 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
     enriched = attach_industry(snapshot.rows)
     limit_map = get_cached_limit_times_map()
     candidates = build_first_board_candidates(enriched, limit_times_map=limit_map)
-    first_time_map = build_first_time_map(candidates)
+    attach_first_time_fields(candidates)
 
     if not candidates:
         return RadarCardData(
@@ -168,7 +168,6 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
 
     ranked = rank_first_board_pool(
         candidates,
-        first_time_map=first_time_map,
         top_n=spec.top_n,
     )
     rows: list[RadarRow] = []

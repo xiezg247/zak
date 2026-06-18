@@ -459,13 +459,13 @@ REDIS_DB=0
 | `ScreenerResultRow` | `vnpy_ashare/domain/screener/result_row.py` | 选股结果结构化行（`quote` + `scores` + `tags`）；`ScreenerRunResult` / `ScreeningResultContext` / 落库 `rows` 均为此类型 |
 | `DepthSnapshot` | `vnpy_ashare/domain/market/depth_snapshot.py` | 五档盘口快照（bid/ask 各 5 档） |
 | `SignalSnapshot` | `vnpy_ashare/domain/trading/signal_snapshot.py` | 策略信号快照（含强度、锚价、理由） |
-| `PeriodBarOverview` | `vnpy_ashare/data/bar_store.py` | 单标的 K 线概况（symbol, period, start, end, count） |
-| `BarMeta` / `BarGapResult` | `vnpy_ashare/data/bar_health.py` | K 线元信息与断层检测 |
-| `ChatMessage` | `vnpy_llm/store.py` | 聊天消息（仍为 dataclass） |
-| `AiContextData` | `vnpy_common/ai/protocol.py` | 当前页 / 选中标的 / K 线摘要等 AI 上下文（仍为 dataclass） |
+| `PeriodBarOverview` | `vnpy_ashare/domain/data/bar.py` | 单标的 K 线概况（symbol, period, start, end, count） |
+| `BarMeta` / `BarGapResult` | `vnpy_ashare/domain/data/bar_health.py` | K 线元信息与断层检测 |
+| `ChatMessage` | `vnpy_llm/domain/chat.py` | 聊天消息 |
+| `AiContextData` | `vnpy_common/ai/protocol.py` | 当前页 / 选中标的 / K 线摘要等 AI 上下文 |
 | `BacktestSummary` 等 | `vnpy_ashare/ai/context/store.py` | 终端内存缓存（回测摘要、选股结果；线程安全） |
 
-**约定**：跨模块复用的领域类型优先放入 `domain/`；仅模块内使用的 DTO 可留在原路径但须继承基类；序列化统一用 `model_dump(mode="json")`。
+**约定**：跨模块复用的领域类型优先放入 `domain/`；仅模块内使用的 DTO 可留在原路径但须继承基类；序列化优先用 `vnpy_common/domain/serialize.py` 的 `dump_python` / `dump_json`（读侧 `Model.model_validate`）；复合扁平行（如 `ScreenerResultRow.to_dict()`）可保留专用方法。
 
 ---
 

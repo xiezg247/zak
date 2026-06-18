@@ -25,6 +25,7 @@ from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
     sync_rank_splitter_for_expansion,
 )
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
+from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
 from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
@@ -357,6 +358,9 @@ class QuotesPageShell:
         if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
             page.emotion_cycle_chip = EmotionCycleChip(page)
             toolbar.addWidget(page.emotion_cycle_chip)
+            page.risk_gate_chip = RiskGateChip(page)
+            toolbar.addWidget(page.risk_gate_chip)
+            page.risk_gate_chip.clicked.connect(page._open_risk_settings)
         if page.config.show_stock_notes:
             toolbar.addWidget(page.quick_note_button)
             toolbar.addWidget(page.notes_center_button)
@@ -699,6 +703,9 @@ class QuotesPageShell:
         toolbar.addWidget(page.radar_ai_button)
         page.emotion_cycle_chip = EmotionCycleChip(page)
         toolbar.addWidget(page.emotion_cycle_chip)
+        page.risk_gate_chip = RiskGateChip(page)
+        toolbar.addWidget(page.risk_gate_chip)
+        page.risk_gate_chip.clicked.connect(page._open_risk_settings)
         toolbar.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget()

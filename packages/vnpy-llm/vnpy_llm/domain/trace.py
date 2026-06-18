@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from vnpy_common.domain.base import MutableModel
+from vnpy_common.domain.serialize import dump_json
 
 TraceKind = Literal["routing", "tool", "reply", "error", "handoff", "team"]
 TraceStatus = Literal["running", "ok", "error"]
@@ -28,7 +29,7 @@ class TraceStep(MutableModel):
 
     def persist_dict(self) -> dict[str, Any]:
         """SQLite 持久化 dict（不含运行时 started_at）。"""
-        return self.model_dump(mode="json", exclude={"started_at"})
+        return dump_json(self, exclude={"started_at"})
 
 
 class TurnTrace(MutableModel):

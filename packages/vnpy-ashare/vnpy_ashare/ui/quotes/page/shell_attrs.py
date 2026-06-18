@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         MarketRankSplitterResizeFilter,
     )
     from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
+    from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
     from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
     from vnpy_ashare.ui.quotes.radar.card import RadarBoard
     from vnpy_ashare.ui.quotes.radar.controller import RadarController
@@ -83,6 +84,7 @@ class QuotesPageShellAttrs:
     quote_source_label: QtWidgets.QLabel
     refresh_hint_label: QtWidgets.QLabel
     emotion_cycle_chip: EmotionCycleChip | None
+    risk_gate_chip: RiskGateChip | None
     _toast: PageToastHost
 
     chart_panel: ChartPanel | None

@@ -6,22 +6,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import Field
 
 from vnpy_ashare.config.constants.trading import ENV_TRADING_BOARDS
 from vnpy_ashare.domain.core.env import env_str
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.screener.hard_filter_prefs import MARKET_BOARD_FILTER_OPTIONS, parse_allowed_market_boards
+from vnpy_common.domain.base import FrozenModel
 
 MARKET_BOARD_ALL_LABEL = "全部"
 
 
-@dataclass(frozen=True, slots=True)
-class MarketBoardFilter:
+class MarketBoardFilter(FrozenModel):
     """市场板块过滤解析结果。"""
 
-    active: bool
-    boards: frozenset[str]
+    active: bool = Field(description="是否启用板块过滤")
+    boards: frozenset[str] = Field(description="有效板块集合")
 
 
 def get_trading_allowed_boards() -> frozenset[str]:

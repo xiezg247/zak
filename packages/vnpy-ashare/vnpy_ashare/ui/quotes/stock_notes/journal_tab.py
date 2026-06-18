@@ -13,6 +13,7 @@ _ENTRY_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 class StockNoteJournalTab(QtWidgets.QWidget):
     entry_submitted = QtCore.Signal(str)
     entry_delete_requested = QtCore.Signal(int)
+    entry_import_requested = QtCore.Signal(int)
     ai_polish_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -115,8 +116,10 @@ class StockNoteJournalTab(QtWidgets.QWidget):
         if entry_id is None:
             return
         menu = QtWidgets.QMenu(self)
-        action = menu.addAction("删除此条")
-        action.triggered.connect(lambda: self.entry_delete_requested.emit(int(entry_id)))
+        import_action = menu.addAction("导入交易流水")
+        import_action.triggered.connect(lambda: self.entry_import_requested.emit(int(entry_id)))
+        delete_action = menu.addAction("删除此条")
+        delete_action.triggered.connect(lambda: self.entry_delete_requested.emit(int(entry_id)))
         menu.popup(self._list.viewport().mapToGlobal(pos))
 
 

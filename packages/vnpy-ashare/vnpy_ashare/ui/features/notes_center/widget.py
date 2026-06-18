@@ -14,6 +14,7 @@ from vnpy_ashare.app.engine_access import get_note_service
 from vnpy_ashare.domain.models.stock_note import StockNoteIndexRow
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.features.notes_center.memo_view import NotesCenterMemoView
+from vnpy_ashare.ui.features.notes_center.plans_view import NotesCenterPlansView
 from vnpy_ashare.ui.features.notes_center.reports_view import NotesCenterReportsView
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
@@ -40,6 +41,7 @@ _FILTER_ALL = "all"
 _FILTER_MEMO = "memo"
 _FILTER_JOURNAL = "journal"
 _FILTER_REPORT = "report"
+_TAB_PLANS = 3
 
 _SYMBOL_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 _EXCHANGE_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -94,13 +96,17 @@ class NotesCenterWidget(QtWidgets.QWidget):
         self._memo_view = NotesCenterMemoView(self)
         self._journal_view = StockNoteJournalTab(self)
         self._reports_view = NotesCenterReportsView(self)
+        self._plans_view = NotesCenterPlansView(self)
 
         self._tabs = QtWidgets.QTabWidget(self)
         self._tabs.setObjectName("NotesCenterTabs")
         self._tabs.addTab(self._memo_view, "备忘")
         self._tabs.addTab(self._journal_view, "流水")
         self._tabs.addTab(self._reports_view, "分析报告")
+        self._tabs.addTab(self._plans_view, "计划")
         self._tabs.currentChanged.connect(self._on_tab_changed)
+
+        self._left_panel = left_panel
 
         right_panel = QtWidgets.QWidget(self)
         right_layout = QtWidgets.QVBoxLayout(right_panel)
@@ -111,7 +117,7 @@ class NotesCenterWidget(QtWidgets.QWidget):
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal, self)
         splitter.setObjectName("NotesCenterSplitter")
-        splitter.addWidget(left_panel)
+        splitter.addWidget(self._left_panel)
         splitter.addWidget(right_panel)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
@@ -152,14 +158,16 @@ class NotesCenterWidget(QtWidgets.QWidget):
         self._memo_view.ai_expand_requested.connect(self._on_ai_expand_memo)
         self._journal_view.entry_submitted.connect(self._on_entry_submitted)
         self._journal_view.entry_delete_requested.connect(self._on_entry_delete)
+        self._journal_view.entry_import_requested.connect(self._on_entry_import)
         self._journal_view.ai_polish_requested.connect(self._on_ai_polish_journal)
         self._reports_view.report_delete_requested.connect(self._on_report_delete)
+        self._plans_view.open_plan_in_watchlist_requested.connect(self._open_plan_symbol_in_watchlist)
 
         theme_manager().bind_stylesheet(self)
         self._set_detail_enabled(False)
 
     def focus_tab(self, tab: str) -> None:
-        mapping = {"memo": 0, "journal": 1, "reports": 2}
+        mapping = {"memo": 0, "journal": 1, "reports": 2, "plan": 3, "plans": 3}
         index = mapping.get(tab.strip().lower(), 0)
         self._tabs.setCurrentIndex(index)
 
@@ -305,6 +313,21 @@ class NotesCenterWidget(QtWidgets.QWidget):
     def _on_tab_changed(self, index: int) -> None:
         if index != 0:
             self._memo_view.flush_if_dirty()
+        on_plans = index == _TAB_PLANS
+        self._left_panel.setVisible(not on_plans)
+        self._detail_title.setVisible(not on_plans)
+        self._watchlist_button.setEnabled(not on_plans and self._current_row is not None)
+        self._analysis_button.setEnabled(not on_plans and self._current_row is not None)
+        self._export_button.setEnabled(not on_plans and self._current_row is not None)
+        if on_plans:
+            self._detail_title.setText("交易计划历史")
+            self._plans_view.reload()
+            self._status_label.setText("交易计划 · 盘后制定、盘前执行")
+        elif self._current_row is not None:
+            title = self._current_row.name or self._current_row.symbol
+            self._detail_title.setText(f"{title}  {self._current_row.vt_symbol}")
+        else:
+            self._detail_title.setText("选择左侧标的查看笔记")
 
     def _stock_item_from_row(self, row: StockNoteIndexRow) -> StockItem | None:
         try:
@@ -482,6 +505,15 @@ class NotesCenterWidget(QtWidgets.QWidget):
         if row is not None:
             self._refresh_row_preview(row.symbol, row.exchange)
 
+    def _on_entry_import(self, entry_id: int) -> None:
+        from vnpy_ashare.trading.journal.import_from_note import import_stock_note_by_id
+
+        journal_id = import_stock_note_by_id(entry_id)
+        if journal_id is None:
+            page_notify(self, "导入失败，请检查笔记内容", level="warning")
+            return
+        page_notify(self, f"已导入交易流水 #{journal_id}", level="success")
+
     def _on_report_delete(self, report_id: int) -> None:
         service = self._note_service()
         if service is None:
@@ -523,6 +555,12 @@ class NotesCenterWidget(QtWidgets.QWidget):
         if row is None or self._focus_watchlist is None:
             return
         self._focus_watchlist(row.symbol, row.exchange)
+
+    def _open_plan_symbol_in_watchlist(self, vt_symbol: str) -> None:
+        parts = vt_symbol.strip().split(".", 1)
+        if len(parts) != 2 or self._focus_watchlist is None:
+            return
+        self._focus_watchlist(parts[0], parts[1])
 
     def _open_stock_analysis(self) -> None:
         row = self._current_row

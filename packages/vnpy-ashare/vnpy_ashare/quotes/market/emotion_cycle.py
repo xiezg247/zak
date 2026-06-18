@@ -18,6 +18,7 @@ from vnpy_ashare.quotes.market.emotion_cycle_cache import (
 )
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
+from vnpy_common.domain.serialize import dump_python
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 
 __all__ = [
@@ -132,7 +133,7 @@ def classify_emotion_cycle(inputs: EmotionCycleInputs) -> EmotionCycleSnapshot:
         allowed_modes=tuple(modes),
         allow_new_positions=stage not in {"recession", "ice"},
         warnings=tuple(warnings),
-        inputs=inputs.model_dump(),
+        inputs=dump_python(inputs),
         updated_at=updated_at,
     )
 

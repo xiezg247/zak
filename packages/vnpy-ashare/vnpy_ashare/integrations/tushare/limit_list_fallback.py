@@ -37,3 +37,23 @@ def load_limit_list_first_time_map() -> dict[str, str]:
         if first_time:
             result[vt_symbol] = first_time
     return result
+
+
+def load_limit_list_seal_map() -> dict[str, dict[str, Any]]:
+    """vt_symbol → 封单字段（fd_amount / open_times / strth）。"""
+    rows, _ = fetch_limit_list_with_fallback(limit_type="U")
+    result: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        vt_symbol = str(row.get("vt_symbol") or "").strip()
+        if not vt_symbol:
+            continue
+        payload: dict[str, Any] = {}
+        if row.get("fd_amount") is not None:
+            payload["fd_amount"] = row["fd_amount"]
+        if row.get("open_times") is not None:
+            payload["open_times"] = row["open_times"]
+        if row.get("strth") is not None:
+            payload["strth"] = row["strth"]
+        if payload:
+            result[vt_symbol] = payload
+    return result

@@ -101,6 +101,24 @@ def delete_entry(entry_id: int) -> bool:
     return bool(cursor.rowcount > 0)
 
 
+def get_entry(entry_id: int) -> dict[str, str | int] | None:
+    init_app_db()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT id, symbol, exchange, body, created_at FROM stock_note_entries WHERE id = ?",
+            (int(entry_id),),
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "id": int(row["id"]),
+        "symbol": row["symbol"],
+        "exchange": row["exchange"],
+        "body": row["body"],
+        "created_at": row["created_at"],
+    }
+
+
 def clear_notes_for_symbol(symbol: str, exchange: Exchange) -> dict[str, int]:
     init_app_db()
     with connect() as conn:
