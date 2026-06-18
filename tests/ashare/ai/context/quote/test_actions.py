@@ -10,13 +10,8 @@ from tests.ashare.ai.context.factories import (
     POSITION_CONTAINS,
     maotai_binding,
 )
-from vnpy_ashare.ai.context.quote import (
-    build_assistant_screening_menus,
-    build_bound_stock_menus,
-    build_floating_stock_quick_actions,
-    build_reference_peer_menu,
-    build_team_analysis_ai_prompt,
-)
+from vnpy_ashare.ai.context.quote.assembly import build_assistant_screening_menus, build_bound_stock_menus, build_floating_stock_quick_actions, build_reference_peer_menu
+from vnpy_ashare.ai.context.quote.prompts import build_team_analysis_ai_prompt
 
 
 class TestQuoteActions(unittest.TestCase):

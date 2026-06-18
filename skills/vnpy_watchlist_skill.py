@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import json
 
-from vnpy_ashare.ai.context import parse_stock_symbol
-from vnpy_skills.domain import SkillTemplate, ToolSpec
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_skills.domain.template import SkillTemplate, ToolSpec
 
 WATCHLIST_LIMIT = 80
 

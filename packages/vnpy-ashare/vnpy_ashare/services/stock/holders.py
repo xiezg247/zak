@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.stock.holders import HolderProfile
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.corporate import fetch_top10_holders

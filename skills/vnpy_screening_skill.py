@@ -17,7 +17,7 @@ from vnpy_ashare.screener.preset.presets import get_preset
 from vnpy_ashare.screener.recipe.recipe import list_recipe_catalog
 from vnpy_ashare.screener.recipe.recipe_nl_mapper import ProposeRecipeInput, validate_and_build_recipe
 from vnpy_ashare.screener.run.runner import ScreenerRequest, list_all_preset_names, run_screener
-from vnpy_skills.domain import SkillTemplate, ToolSpec
+from vnpy_skills.domain.template import SkillTemplate, ToolSpec
 
 
 class VnpyScreeningSkill(SkillTemplate):

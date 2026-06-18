@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_loaders import RadarResonanceEntry
 from vnpy_ashare.ui.quotes.radar.resonance_row_widget import RadarResonanceRowWidget
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 RadarResonanceTab = Literal["all", "statistical", "predictive"]
 

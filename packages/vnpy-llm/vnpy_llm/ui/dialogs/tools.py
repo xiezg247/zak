@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.tools.status import ToolProviderState, ToolProviderStatus, ToolsStatusSnapshot
 from vnpy_llm.ui.dialogs.tool_audit import show_ai_tool_audit_dialog

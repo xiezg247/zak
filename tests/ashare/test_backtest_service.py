@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.ai.context import clear_all, get_backtest_summary_dict
+from vnpy_ashare.ai.context.store import clear_all, get_backtest_summary_dict
 from vnpy_ashare.services.backtest import BacktestService
 
 

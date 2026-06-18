@@ -7,7 +7,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowHistoryPoint, SectorFlowRow
 from vnpy_ashare.ui.sector_flow.mini_bar import SectorFlowMiniBar
 from vnpy_common.ui.loading_overlay import ContentLoadingOverlay
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _HEADERS = ("名称", "涨幅%", "主力(万)")

@@ -13,7 +13,7 @@ from vnpy_common.ui.theme.tokens import ThemeTokens
 def render_markdown(text: str, *, tokens: ThemeTokens | None = None) -> str:
     """将 Markdown 文本转换为 HTML，CSS 随当前主题 tokens 生成。"""
     if tokens is None:
-        from vnpy_common.ui.theme import theme_manager
+        from vnpy_common.ui.theme.manager import theme_manager
 
         tokens = theme_manager().tokens()
     md = _md_lib.Markdown(

@@ -29,7 +29,7 @@ from vnpy_ashare.ui.quotes.stock_notes.journal_tab import StockNoteJournalTab
 from vnpy_ashare.ui.quotes.stock_notes.memo_tab import StockNoteMemoTab
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

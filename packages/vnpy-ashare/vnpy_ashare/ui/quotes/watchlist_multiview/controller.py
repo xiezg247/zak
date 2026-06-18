@@ -7,14 +7,12 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
-from vnpy_ashare.quotes.watchlist_multiview import (
-    build_multiview_board_summary,
-    build_watchlist_multiview_board_from_page,
-    enrich_multiview_rows,
-)
+from vnpy_ashare.quotes.watchlist_multiview.enrich import enrich_multiview_rows
+from vnpy_ashare.quotes.watchlist_multiview.loader import build_watchlist_multiview_board_from_page
+from vnpy_ashare.quotes.watchlist_multiview.summary import build_multiview_board_summary
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiSortKey
 from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import SparklineKind, SparklineMode
-from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
+from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.watchlist_multiview.settings import (
     ViewMode,

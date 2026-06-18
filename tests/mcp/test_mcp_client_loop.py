@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-from vnpy_mcp.remote import client
+import vnpy_mcp.remote.client as client
 
 
 class McpClientLoopTests(unittest.TestCase):

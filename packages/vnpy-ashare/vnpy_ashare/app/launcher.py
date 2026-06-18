@@ -11,17 +11,17 @@ from vnpy.trader.setting import SETTINGS
 from vnpy.trader.ui import create_qapp
 from vnpy.trader.ui.qt import QtCore
 
-from vnpy_ashare import AshareApp
+from vnpy_ashare.app.plugin import AshareApp
 from vnpy_ashare.app.bootstrap import install_shared_bridges
 from vnpy_ashare.app.branding import QAPP_NAME
 from vnpy_ashare.app.deferred_apps import register_deferred_apps
-from vnpy_ashare.config import ensure_runtime_config
+from vnpy_ashare.config.runtime import ensure_runtime_config
 from vnpy_ashare.config.fonts import resolve_font_family
 from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_vnpy_settings
 from vnpy_ashare.integrations.tickflow.stream import shutdown_all_tickflow_streams
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_common.paths import PROJECT_ROOT
-from vnpy_llm import LlmApp
+from vnpy_llm.app.plugin import LlmApp
 
 _DEFERRED_APP_DELAY_MS = 0
 

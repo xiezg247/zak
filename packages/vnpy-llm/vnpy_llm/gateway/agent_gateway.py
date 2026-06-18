@@ -26,8 +26,8 @@ from vnpy_llm.routing.router import RouteContext, normalize_team_command
 from vnpy_llm.tools.audit import log_tool_call
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TraceStep, TurnTrace
-from vnpy_mcp import McpEngine
-from vnpy_skills import SkillEngine
+from vnpy_mcp.app.engine import McpEngine
+from vnpy_skills.app.engine import SkillEngine
 
 EventListener = Callable[[AgentEvent], None]
 

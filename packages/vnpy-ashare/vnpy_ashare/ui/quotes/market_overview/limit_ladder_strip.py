@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.quotes.radar.radar_limit_ladder import LADDER_BUCKET_LABELS
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 

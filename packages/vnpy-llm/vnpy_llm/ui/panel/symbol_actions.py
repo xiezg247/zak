@@ -47,7 +47,7 @@ class AssistantSymbolActions:
         if not vt_symbol:
             return False
         try:
-            from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
+            from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
         except ImportError:
             page_notify(self._panel, "笔记中心需要 vnpy-ashare 插件", level="warning")
             return False
@@ -88,7 +88,8 @@ class AssistantSymbolActions:
             page_notify(self._panel, f"无法解析标的：{vt_symbol}", level="warning")
             return
         try:
-            from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, show_stock_analysis_vt_symbol
+            from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
+            from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
         except ImportError:
             page_notify(self._panel, "个股分析需要 vnpy-ashare 插件", level="warning")
             return
@@ -166,7 +167,7 @@ class AssistantSymbolActions:
             return
         try:
             from vnpy_ashare.app.engine_access import get_watchlist_service
-            from vnpy_ashare.ui.screener import show_reference_peer_dialog
+            from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
         except ImportError:
             page_notify(self._panel, "找同类需要 vnpy-ashare 插件", level="warning")
             return
@@ -261,7 +262,7 @@ class AssistantSymbolActions:
             disabled = menu.addAction("需要 vnpy-ashare 插件")
             disabled.setEnabled(False)
             return
-        from vnpy_ashare.config import exchange_to_cn
+        from vnpy_ashare.config.runtime import exchange_to_cn
 
         for entry in build_stock_completion_items(
             item.symbol,

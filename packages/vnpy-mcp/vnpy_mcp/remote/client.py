@@ -14,6 +14,34 @@ class McpClientError(Exception):
     pass
 
 
+def _root_exception(exc: BaseException) -> BaseException:
+    if isinstance(exc, BaseExceptionGroup):
+        for sub in exc.exceptions:
+            return _root_exception(sub)
+    if isinstance(exc, ExceptionGroup):  # noqa: UP038 — py310 compat
+        for sub in exc.exceptions:
+            return _root_exception(sub)
+    cause = exc.__cause__
+    if cause is not None and cause is not exc:
+        return _root_exception(cause)
+    return exc
+
+
+def _friendly_client_error(exc: BaseException) -> str:
+    root = _root_exception(exc)
+    if isinstance(root, McpClientError):
+        return str(root)
+    type_name = type(root).__name__
+    if type_name in {"ConnectError", "ConnectTimeout", "ReadTimeout", "WriteTimeout", "TimeoutException"}:
+        return "无法连接 MCP 服务（网络或 TLS 失败），请检查网络与 mcp/mcp.json 中的 URL/API Key"
+    if type_name in {"BrokenResourceError", "ClosedResourceError"}:
+        return "MCP 连接已中断（远端未响应或 TLS 握手失败）"
+    message = str(root).strip()
+    if message:
+        return message[:240]
+    return type_name
+
+
 _mcp_import_lock = threading.Lock()
 _mcp_sdk: tuple[Any, Any] | None = None
 
@@ -72,7 +100,10 @@ def _run_async(coro: Any) -> Any:
     """在同步上下文中执行 async MCP 调用（提交到常驻 loop）。"""
     loop = _ensure_event_loop()
     future = asyncio.run_coroutine_threadsafe(coro, loop)
-    return future.result()
+    try:
+        return future.result()
+    except Exception as ex:
+        raise McpClientError(_friendly_client_error(ex)) from ex
 
 
 async def _list_tools_async(

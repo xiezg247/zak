@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.services.analysis_detail.technical.base import _TechnicalAnalyzerBase
 

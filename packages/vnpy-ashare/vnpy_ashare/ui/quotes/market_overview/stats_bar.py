@@ -9,7 +9,7 @@ from vnpy_ashare.quotes.format import format_amount
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 # 两市成交额低于 1 万亿时短线赚钱效应偏弱（单位：元）

@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from vnpy_ashare.config import fonts
+import vnpy_ashare.config.fonts as fonts
 
 
 class FontSelectionTest(unittest.TestCase):

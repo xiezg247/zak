@@ -10,7 +10,7 @@ from vnpy.trader.ui import QtGui, QtWidgets
 
 from vnpy_ashare.ui.features.notes_center.widget import NotesCenterWidget
 from vnpy_common.ui.dialog_shell import setup_responsive_dialog
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 class NotesCenterDialog(QtWidgets.QDialog):

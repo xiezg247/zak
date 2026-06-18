@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.config.preferences import WatchlistSignalConfig, save_watchlist_signal_config
+from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, save_watchlist_signal_config
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale

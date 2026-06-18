@@ -11,7 +11,7 @@ from vnpy_ashare.screener.batch.batch_actions import (
     stock_items_to_batch_rows,
     watchlist_items_to_rows,
 )
-from vnpy_ashare.ui.backtest import BatchBacktestFlow
+from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log, begin_run_log, complete_run_log, fail_run_log
 
 if TYPE_CHECKING:

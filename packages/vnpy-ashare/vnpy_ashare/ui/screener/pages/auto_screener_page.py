@@ -36,8 +36,9 @@ from vnpy_ashare.services.watchlist_short_term import (
     add_screener_rows_to_short_term_observation_group,
 )
 from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
-from vnpy_ashare.ui.features.stock_analysis import StockAnalysisHost, wire_stock_analysis_context_menu
-from vnpy_ashare.ui.screener import show_reference_peer_dialog
+from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
+from vnpy_ashare.ui.features.stock_analysis.open import wire_stock_analysis_context_menu
+from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.screener.widgets.screener_config_section import ScreenerConfigSection
 from vnpy_ashare.ui.screener.widgets.screener_hard_filter_panel import ScreenerHardFilterPanel
 from vnpy_ashare.ui.screener.widgets.screener_insights import (
@@ -63,12 +64,7 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
-from vnpy_ashare.ui.screener.workers import (
-    LeaderScreenRunWorker,
-    RadarResonanceRunWorker,
-    ScreenerBatchDownloadWorker,
-    ScreenerRecipeRunWorker,
-)
+from vnpy_ashare.ui.screener.workers.screener_workers import LeaderScreenRunWorker, RadarResonanceRunWorker, ScreenerBatchDownloadWorker, ScreenerRecipeRunWorker
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread
 

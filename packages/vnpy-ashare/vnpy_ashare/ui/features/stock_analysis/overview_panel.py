@@ -14,7 +14,7 @@ from vnpy_ashare.services.stock.overview_dashboard import (
 )
 from vnpy_common.ui.panel_widgets import MetricTile, content_card, hint_label, section_title, tile_grid
 from vnpy_common.ui.scroll_area import frameless_scroll_area
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _STATUS_LABELS: dict[ReadinessStatus, str] = {

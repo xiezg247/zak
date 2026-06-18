@@ -23,7 +23,9 @@ vnpy_tickflow/
 ## 共享 API（供 vnpy_ashare 等调用）
 
 ```python
-from vnpy_tickflow import get_tickflow_client, fetch_klines_paged, to_tf_symbol
+from vnpy_tickflow.client import get_tickflow_client
+from vnpy_tickflow.klines import fetch_klines_paged
+from vnpy_tickflow.mapping import to_tf_symbol
 
 client = get_tickflow_client()
 df = fetch_klines_paged(client, "600519.SH", "1m", start_ms, end_ms)

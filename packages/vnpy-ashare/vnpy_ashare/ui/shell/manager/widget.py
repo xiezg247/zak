@@ -11,7 +11,7 @@ from vnpy_datamanager.ui.widget import DataCell, DateRangeDialog
 from vnpy_datamanager.ui.widget import ManagerWidget as VnpyManagerWidget
 
 from vnpy_ashare.ai.context.data_manager import sync_data_manager_context
-from vnpy_ashare.config import EXCHANGE_CN_NAMES
+from vnpy_ashare.config.runtime import EXCHANGE_CN_NAMES
 from vnpy_ashare.ui.shell.manager.workers import (
     DeleteBarsWorker,
     ExportCsvWorker,
@@ -20,7 +20,7 @@ from vnpy_ashare.ui.shell.manager.workers import (
     TreeRefreshWorker,
     _overview_group_key,
 )
-from vnpy_ashare.ui.styles import apply_vnpy_page_style, style_vnpy_push_buttons
+from vnpy_ashare.ui.styles.vnpy_page import apply_vnpy_page_style, style_vnpy_push_buttons
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action, page_notify
 
 _VALUE_TO_CN = {ex.value: name for ex, name in EXCHANGE_CN_NAMES.items()}

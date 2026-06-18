@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 
 from tests.ashare.ai.context.factories import sample_quote
-from vnpy_ashare.ai.context import format_quote_summary
+from vnpy_ashare.ai.context.quote.format import format_quote_summary
 
 
 class TestFormatQuoteSummary(unittest.TestCase):

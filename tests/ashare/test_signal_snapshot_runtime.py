@@ -18,17 +18,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import (
     signal_is_strong,
     signal_snapshot_to_dict,
 )
-from vnpy_ashare.services.signals import (
-    build_intraday_cross_hints,
-    build_price_field_explanations,
-    build_runtime_signal_hints,
-    format_signal_context_extra,
-    format_signal_label_display,
-    format_strength_breakdown,
-    resolve_display_anchor_prices,
-    resolve_list_ref_prices,
-    signal_cell_text,
-)
+from vnpy_ashare.services.signals.runtime import build_intraday_cross_hints, build_price_field_explanations, build_runtime_signal_hints, format_signal_context_extra, format_signal_label_display, format_strength_breakdown, resolve_display_anchor_prices, resolve_list_ref_prices, signal_cell_text
 
 _ROOT = Path(__file__).resolve().parents[2]
 _PKG = _ROOT / "packages" / "vnpy-ashare"
@@ -487,7 +477,7 @@ class RuntimeSignalHintTests(unittest.TestCase):
 
 class SignalPanelColumnTests(unittest.TestCase):
     def test_normalize_and_resolve_columns(self) -> None:
-        from vnpy_ashare.config.preferences import signal_panel_columns as columns_mod  # noqa: PLC0415
+        import vnpy_ashare.config.preferences.signal_panel_columns as columns_mod  # noqa: PLC0415
 
         keys = columns_mod.normalize_visible_optional_keys(["signal_strength", "signal", "signal", "unknown"])
         self.assertEqual(keys[0], "signal")

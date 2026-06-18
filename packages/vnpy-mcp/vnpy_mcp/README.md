@@ -5,7 +5,7 @@ VeighNa **远端 MCP 工具引擎**：从 `mcp/mcp.json` 加载 Streamable HTTP 
 ## 使用
 
 ```python
-from vnpy_mcp import McpEngine
+from vnpy_mcp.app.engine import McpEngine
 
 engine = McpEngine()
 engine.load_all()

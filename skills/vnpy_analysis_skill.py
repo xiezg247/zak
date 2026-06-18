@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from vnpy_skills.domain import SkillTemplate, ToolSpec
+from vnpy_skills.domain.template import SkillTemplate, ToolSpec
 
 
 class VnpyAnalysisSkill(SkillTemplate):

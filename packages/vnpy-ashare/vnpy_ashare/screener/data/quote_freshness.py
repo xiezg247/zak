@@ -10,7 +10,7 @@ from vnpy_ashare.config.constants.recipe import (
 )
 from vnpy_ashare.domain.core.env import env_str
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
-from vnpy_ashare.jobs.quotes import collect_market_quotes
+from vnpy_ashare.jobs.quotes.collect import collect_market_quotes
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
 DEFAULT_MAX_AGE_SECONDS = DEFAULT_MAX_QUOTE_AGE_SECONDS

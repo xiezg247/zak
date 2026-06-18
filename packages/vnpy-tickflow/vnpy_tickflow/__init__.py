@@ -1,34 +1,22 @@
-"""vnpy_tickflow：TickFlow 数据源与共享客户端。"""
+"""vnpy_tickflow：TickFlow 数据源与共享客户端。
 
-from vnpy_tickflow.client import get_tickflow_client, is_free_mode, resolve_tickflow_api_key
-from vnpy_tickflow.datafeed import TickflowDatafeed
-from vnpy_tickflow.klines import MAX_BARS_PER_REQUEST, dataframe_to_bars, fetch_klines_paged
-from vnpy_tickflow.types import TickflowKlineRow
-from vnpy_tickflow.mapping import (
-    ASHARE_EXCHANGES,
-    CHINA_TZ,
-    FREE_PERIODS,
-    interval_to_period,
-    parse_datetime,
-    to_tf_symbol,
-)
+VeighNa ``get_datafeed()`` 约定：``vnpy_tickflow.Datafeed``（见 ``datafeed.TickflowDatafeed``）。
+"""
 
-Datafeed = TickflowDatafeed
+from __future__ import annotations
 
-__all__ = [
-    "ASHARE_EXCHANGES",
-    "CHINA_TZ",
-    "Datafeed",
-    "FREE_PERIODS",
-    "MAX_BARS_PER_REQUEST",
-    "TickflowDatafeed",
-    "TickflowKlineRow",
-    "dataframe_to_bars",
-    "fetch_klines_paged",
-    "get_tickflow_client",
-    "interval_to_period",
-    "is_free_mode",
-    "parse_datetime",
-    "resolve_tickflow_api_key",
-    "to_tf_symbol",
-]
+from typing import TYPE_CHECKING, Any
+
+__all__ = ["Datafeed"]
+
+if TYPE_CHECKING:
+    from vnpy_tickflow.datafeed import TickflowDatafeed as Datafeed
+
+
+def __getattr__(name: str) -> Any:
+    if name == "Datafeed":
+        from vnpy_tickflow.datafeed import TickflowDatafeed
+
+        return TickflowDatafeed
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)

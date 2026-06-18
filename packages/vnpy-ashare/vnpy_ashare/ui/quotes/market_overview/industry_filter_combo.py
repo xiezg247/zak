@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
-from vnpy_ashare.ui.styles import apply_toolbar_combo_style
+from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
 
 
 def resolve_industry_name(text: str, industries: frozenset[str]) -> str | None:

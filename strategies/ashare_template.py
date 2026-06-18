@@ -3,7 +3,7 @@ from datetime import date
 from vnpy.trader.constant import Direction, Interval, Offset
 from vnpy_ctastrategy import ArrayManager, CtaTemplate, TradeData
 
-from vnpy_ashare.config import normalize_volume
+from vnpy_ashare.config.runtime import normalize_volume
 
 
 class AShareTemplate(CtaTemplate):

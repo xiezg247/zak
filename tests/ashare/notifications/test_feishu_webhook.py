@@ -27,7 +27,7 @@ class FeishuWebhookChannelTest(unittest.TestCase):
 
     @patch("vnpy_ashare.notifications.channels.feishu_webhook.requests.post")
     def test_send_interactive_success(self, mock_post: MagicMock) -> None:
-        from vnpy_ashare.notifications.models import NotifyOutboundMessage
+        from vnpy_ashare.notifications.core.models import NotifyOutboundMessage
 
         mock_post.return_value = MagicMock(status_code=200, json=lambda: {"StatusCode": 0})
         channel = FeishuWebhookChannel("https://open.feishu.cn/open-apis/bot/v2/hook/test")

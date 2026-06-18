@@ -33,7 +33,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     ensure_columns_from_template,
     ensure_industry_board_columns,
 )
-from vnpy_ashare.ui.quotes.table import QuoteTableModel
+from vnpy_ashare.ui.quotes.table.model import QuoteTableModel
 from vnpy_ashare.ui.quotes.table.columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
@@ -42,7 +42,7 @@ from vnpy_ashare.ui.quotes.table.columns import (
 )
 from vnpy_ashare.ui.quotes.table.display import slice_market_display, sort_market_items
 from vnpy_ashare.ui.quotes.table.model import QuoteCell
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import MarketColors, market_colors
 from vnpy_common.ui.theme.tokens import ThemeTokens
 

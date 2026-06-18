@@ -7,16 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from vnpy_ashare.config import (
-    ASHARE_BACKTEST_DEFAULTS,
-    EFFECTIVE_RATE,
-    LOT_SIZE,
-    PRICE_TICK,
-    _looks_like_futures_config,
-    ensure_runtime_config,
-    format_decimal_field,
-    write_backtest_defaults,
-)
+from vnpy_ashare.config.runtime import ASHARE_BACKTEST_DEFAULTS, EFFECTIVE_RATE, LOT_SIZE, PRICE_TICK, _looks_like_futures_config, ensure_runtime_config, format_decimal_field, write_backtest_defaults
 
 
 class AshareBacktestConfigTest(unittest.TestCase):
@@ -90,7 +81,7 @@ class BacktestChartDataTest(unittest.TestCase):
 
 class AshareTemplateTest(unittest.TestCase):
     def test_normalize_volume(self) -> None:
-        from vnpy_ashare.config import normalize_volume
+        from vnpy_ashare.config.runtime import normalize_volume
 
         self.assertEqual(normalize_volume(50), LOT_SIZE)
         self.assertEqual(normalize_volume(150), 100)

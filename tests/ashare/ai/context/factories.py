@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.ai.context import StockBinding
+from vnpy_ashare.ai.context.quote.assembly import StockBinding
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 

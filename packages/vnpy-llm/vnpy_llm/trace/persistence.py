@@ -9,7 +9,7 @@ from datetime import datetime
 
 from pydantic import ValidationError
 
-from vnpy_llm.chat import store
+import vnpy_llm.chat.store as store
 from vnpy_llm.trace.trace import TurnTrace, turn_from_dict, turn_to_dict
 
 MAX_TURNS_PER_SESSION = 50

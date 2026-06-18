@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 def _format_trade_date_short(trade_date: str) -> str:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.ai.context import get_diagnose_result, set_diagnose_result
+from vnpy_ashare.ai.context.store import get_diagnose_result, set_diagnose_result
 from vnpy_ashare.services.analysis_detail.mcp_binding import McpBinding
 from vnpy_ashare.services.analysis_detail.tdx_diagnose import run_tdx_diagnose
 

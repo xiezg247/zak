@@ -9,8 +9,8 @@ from vnpy.trader.engine import MainEngine
 
 from vnpy_llm.tools.result import enrich_tool_result
 from vnpy_llm.tools.status import ToolsStatusSnapshot, build_tools_status
-from vnpy_mcp import McpEngine
-from vnpy_skills import SkillEngine
+from vnpy_mcp.app.engine import McpEngine
+from vnpy_skills.app.engine import SkillEngine
 
 
 class ToolRegistry:

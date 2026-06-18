@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.financial.bundle import FinancialBundle, FinancialSyncResult
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.financial import (

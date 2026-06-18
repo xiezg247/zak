@@ -6,13 +6,13 @@ import os
 import unittest
 from unittest.mock import patch
 
-from vnpy_ashare.notifications.delivery import build_notify_outbound, interactive_cards_enabled
-from vnpy_ashare.notifications.events import (
+from vnpy_ashare.notifications.content.delivery import build_notify_outbound, interactive_cards_enabled
+from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
 )
-from vnpy_ashare.notifications.feishu_card import build_feishu_interactive_card, notify_open_url
+from vnpy_ashare.notifications.content.feishu_card import build_feishu_interactive_card, notify_open_url
 
 
 class FeishuCardTest(unittest.TestCase):

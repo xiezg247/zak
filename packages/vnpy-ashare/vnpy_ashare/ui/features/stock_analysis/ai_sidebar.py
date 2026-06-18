@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 from vnpy_common.ui.feedback import page_notify
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_llm.ui.panel.chat import AiChatPanel
 from vnpy_llm.ui.themed_styles import bind_ai_panel_style
 

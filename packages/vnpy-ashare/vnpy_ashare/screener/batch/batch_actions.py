@@ -22,7 +22,7 @@ from vnpy_ashare.backtest.batch_runner import (
     task_from_params,
 )
 from vnpy_ashare.backtest.run_store import save_backtest_run
-from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
+from vnpy_ashare.config.runtime import ASHARE_BACKTEST_DEFAULTS, BACKTESTER_SETTING_FILE
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow

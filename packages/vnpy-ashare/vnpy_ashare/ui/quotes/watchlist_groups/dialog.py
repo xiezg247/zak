@@ -8,7 +8,7 @@ from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.panel_widgets import center_dialog_on_parent
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_watchlist_group_dialog_stylesheet
 
 

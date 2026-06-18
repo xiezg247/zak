@@ -17,7 +17,7 @@ from vnpy_ashare.screener.run.run_store import (
 )
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import confirm_action
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine

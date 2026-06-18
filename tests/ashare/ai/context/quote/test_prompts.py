@@ -4,12 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.ai.context import (
-    build_positions_ai_prompt,
-    build_signal_panel_ai_prompt,
-    build_signals_ai_prompt,
-    build_trend_scenario_ai_prompt,
-)
+from vnpy_ashare.ai.context.quote.prompts import build_positions_ai_prompt, build_signal_panel_ai_prompt, build_signals_ai_prompt, build_trend_scenario_ai_prompt
 
 
 class TestPrompts(unittest.TestCase):

@@ -11,7 +11,7 @@ from vnpy_ashare.ui.quotes.chart.section_settings import (
     load_chart_section_expanded,
     save_chart_section_expanded,
 )
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

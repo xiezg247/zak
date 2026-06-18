@@ -6,7 +6,7 @@ import pyqtgraph as pg
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ui.components.chart_style import apply_sparkline_plot_theme
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 class DailySparkline(QtWidgets.QWidget):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 

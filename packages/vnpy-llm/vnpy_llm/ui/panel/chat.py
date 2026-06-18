@@ -12,7 +12,7 @@ from vnpy_common.ai.protocol import QuickAction
 from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished, thread_is_active
 from vnpy_common.ui.scroll_area import AI_MESSAGE_SCROLL_AREA, AI_MESSAGE_SCROLL_BAR, style_scroll_area
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.tools.labels import tool_display_name
 from vnpy_llm.tools.status import ToolsStatusSnapshot

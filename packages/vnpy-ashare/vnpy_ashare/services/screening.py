@@ -14,19 +14,15 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from vnpy_ashare.ai.context import (
-    AiContextData,
+from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
+from vnpy_ashare.ai.context.store import (
     ScreeningResultContext,
-    enrich_context_with_actions,
-    get_market_quotes_cache,
-    set_ai_context,
-)
-from vnpy_ashare.ai.context import (
     get_screening_results as _get_screening_results,
-)
-from vnpy_ashare.ai.context import (
+    set_ai_context,
     set_screening_results as _set_screening_results,
 )
+from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_common.ai.protocol import AiContextData
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.screener.run_result import ScreenerRunResult

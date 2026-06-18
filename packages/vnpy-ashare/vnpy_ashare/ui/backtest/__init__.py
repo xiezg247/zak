@@ -6,8 +6,3 @@
 - ``chart/``：回测图表
 - ``table/``：批量对比表
 """
-
-from vnpy_ashare.ui.backtest.flow import BatchBacktestFlow
-from vnpy_ashare.ui.backtest.pages import BacktesterWidget, BatchBacktestPageWidget
-
-__all__ = ["BacktesterWidget", "BatchBacktestFlow", "BatchBacktestPageWidget"]

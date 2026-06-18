@@ -6,8 +6,8 @@ import os
 import unittest
 from unittest.mock import patch
 
-from vnpy_ashare.notifications.events import NOTIFY_EVENT_SCREENER_INTRADAY_DONE
-from vnpy_ashare.notifications.rules import NotifyRulesEngine
+from vnpy_ashare.notifications.core.events import NOTIFY_EVENT_SCREENER_INTRADAY_DONE
+from vnpy_ashare.notifications.rules.engine import NotifyRulesEngine
 
 
 class NotifyRulesEngineTest(unittest.TestCase):
@@ -30,7 +30,7 @@ class NotifyRulesEngineTest(unittest.TestCase):
             clear=False,
         ):
             with patch(
-                "vnpy_ashare.notifications.rules.load_notify_prefs",
+                "vnpy_ashare.notifications.rules.engine.load_notify_prefs",
                 return_value=type("P", (), {"event_subscriptions": {NOTIFY_EVENT_SCREENER_INTRADAY_DONE: True}})(),
             ):
                 engine = NotifyRulesEngine(clock=now)

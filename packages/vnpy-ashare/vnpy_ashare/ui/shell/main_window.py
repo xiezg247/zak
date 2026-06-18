@@ -12,7 +12,7 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import MainWindow
 from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.ui import AiPageWidget
+from vnpy_ashare.ai.ui.page import AiPageWidget
 from vnpy_ashare.app.branding import window_title as build_window_title
 from vnpy_ashare.app.deferred_apps import register_deferred_apps
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
@@ -41,11 +41,11 @@ from vnpy_ashare.domain.ai.actions import (
     normalize_ai_action,
 )
 from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
-from vnpy_ashare.ui.backtest import BatchBacktestPageWidget
-from vnpy_ashare.ui.features.notes_center import show_notes_center_dialog
+from vnpy_ashare.ui.backtest.pages.batch_backtest_page import BatchBacktestPageWidget
+from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
-from vnpy_ashare.ui.screener import ScreenerHubPageWidget
-from vnpy_ashare.ui.sector_flow import SectorFlowPageWidget
+from vnpy_ashare.ui.screener.pages.screener_hub_page import ScreenerHubPageWidget
+from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.nav import (
@@ -61,7 +61,7 @@ from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_llm.app.engine import APP_NAME as LLM_APP_NAME
 from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.ui.dialogs.tool_audit import show_ai_tool_audit_dialog
@@ -144,22 +144,17 @@ class AshareMainWindow(MainWindow):
         self.load_window_setting("custom")
 
     def init_menu(self) -> None:
-        super().init_menu()
+        """构建菜单栏（不调用 vnpy MainWindow.init_menu，避免依赖 ui 包级 Widget 导出）。"""
         bar = self.menuBar()
-        _HIDDEN_MENU_LABELS = frozenset(
-            {
-                "功能",
-                "Func",
-                "微信",
-                "WeChat",
-                "帮助",
-                "Help",
-            }
-        )
-        for action in bar.actions():
-            text = action.text().replace("&", "")
-            if text in _HIDDEN_MENU_LABELS:
-                bar.removeAction(action)
+        bar.setNativeMenuBar(False)
+
+        sys_menu = bar.addMenu("系统")
+        exit_action = sys_menu.addAction("退出")
+        exit_action.triggered.connect(self.close)
+
+        setting_action = QtGui.QAction("配置", self)
+        setting_action.triggered.connect(self.edit_global_setting)
+        bar.addAction(setting_action)
 
         backstage_menu = bar.addMenu("后台")
         for entry in BACKSTAGE_ENTRIES:

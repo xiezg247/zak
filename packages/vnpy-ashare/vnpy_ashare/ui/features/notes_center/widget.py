@@ -31,7 +31,7 @@ from vnpy_common.ui.dialog_shell import build_panel_footer
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.panel_widgets import panel_status_label, section_title
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.note import NoteService

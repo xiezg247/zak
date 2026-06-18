@@ -17,8 +17,8 @@ from vnpy_llm.gateway.trace_coordinator import TraceCoordinator
 from vnpy_llm.gateway.types import AgentEvent, AgentEventType, SendRequest
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TraceStep, TurnTrace
-from vnpy_mcp import McpEngine
-from vnpy_skills import SkillEngine
+from vnpy_mcp.app.engine import McpEngine
+from vnpy_skills.app.engine import SkillEngine
 
 APP_NAME = "Llm"
 

@@ -17,7 +17,7 @@ from vnpy_ashare.config.vt_settings import reload_vnpy_settings
 from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 from vnpy_common.paths import ENV_FILE
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 ApplyTier = Literal["instant", "soft_reload", "restart_required"]
 

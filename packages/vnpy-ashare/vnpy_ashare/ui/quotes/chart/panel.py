@@ -30,15 +30,9 @@ from vnpy_ashare.ui.quotes.chart.minute_bars import (
 )
 from vnpy_ashare.ui.quotes.chart.reference_line_legend import ReferenceLineLegendBar
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.quotes.workers import (
-    BarsLoadWorker,
-    IntradayBarsWorker,
-    LoadedBars,
-    LoadedPeriodBars,
-    MinuteBarsWorker,
-)
+from vnpy_ashare.ui.quotes.workers.quotes_workers import BarsLoadWorker, IntradayBarsWorker, LoadedBars, LoadedPeriodBars, MinuteBarsWorker
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 LIVE_INTRADAY_HINT = "分时来自 TickFlow 实时接口，不写入本地"
 INTRADAY_EMPTY_HINT = "暂无分时数据（可能为非交易时段、标的无分钟线或 TickFlow 未返回当日数据）"

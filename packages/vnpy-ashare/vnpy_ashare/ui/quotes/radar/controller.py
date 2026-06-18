@@ -41,7 +41,7 @@ from vnpy_ashare.services.watchlist_short_term import (
     add_rows_to_short_term_observation_group,
     collect_dragon_1_rows,
 )
-from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
+from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker

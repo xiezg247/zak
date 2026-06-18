@@ -7,7 +7,7 @@ from vnpy_ashare.ai.context.enrichment import (
     build_page_quick_actions,
     build_screening_quick_actions,
 )
-from vnpy_ashare.ai.context.quote import build_floating_stock_quick_actions
+from vnpy_ashare.ai.context.quote.assembly import build_floating_stock_quick_actions
 from vnpy_common.ai.protocol import AiContextData, QuickAction
 
 

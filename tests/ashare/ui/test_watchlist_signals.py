@@ -6,16 +6,7 @@ import unittest
 
 import tests._bootstrap  # noqa: F401
 from strategies.registry import list_signal_strategy_metas
-from vnpy_ashare.config.preferences import (
-    DEFAULT_CLASS,
-    WatchlistSignalConfig,
-    load_signal_panel_enabled,
-    load_signal_panel_expanded,
-    load_signal_panel_symbols,
-    save_signal_panel_enabled,
-    save_signal_panel_expanded,
-    save_signal_panel_symbols,
-)
+from vnpy_ashare.config.preferences.watchlist_signal import DEFAULT_CLASS, WatchlistSignalConfig, load_signal_panel_enabled, load_signal_panel_expanded, load_signal_panel_symbols, save_signal_panel_enabled, save_signal_panel_expanded, save_signal_panel_symbols
 
 
 class WatchlistSignalConfigTests(unittest.TestCase):
@@ -63,10 +54,7 @@ class SignalPanelSettingsTests(unittest.TestCase):
         self.assertEqual(load_signal_panel_symbols(), ["600000.SSE", "000001.SZSE"])
 
     def test_panel_symbols_respects_max(self) -> None:
-        from vnpy_ashare.config.preferences import (
-            SIGNAL_PANEL_MAX_SYMBOLS,
-            normalize_signal_panel_symbols,
-        )
+        from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS, normalize_signal_panel_symbols
 
         symbols = [f"60000{i}.SSE" for i in range(15)]
         self.assertEqual(len(normalize_signal_panel_symbols(symbols)), SIGNAL_PANEL_MAX_SYMBOLS)
@@ -370,10 +358,7 @@ class CenterSplitterSizeTests(unittest.TestCase):
         self.assertEqual(sizes["table"], 628)
 
     def test_center_splitter_sizes_roundtrip(self) -> None:
-        from vnpy_ashare.config.preferences import (
-            load_center_splitter_sizes,
-            save_center_splitter_sizes,
-        )
+        from vnpy_ashare.config.preferences.watchlist_signal import load_center_splitter_sizes, save_center_splitter_sizes
 
         save_center_splitter_sizes([620, 240, 32])
         self.assertEqual(load_center_splitter_sizes(), [620, 240, 32])

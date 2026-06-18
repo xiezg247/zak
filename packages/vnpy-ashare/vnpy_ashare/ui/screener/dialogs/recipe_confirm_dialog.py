@@ -12,7 +12,7 @@ from vnpy_ashare.domain.ai.actions import AI_ACTION_FILL_RECIPE, put_ai_action
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_ashare.screener.recipe.recipe_draft_store import RecipeDraft, cancel_recipe_draft, consume_recipe_draft, get_recipe_draft
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
-from vnpy_ashare.ui.screener.workers import ScreenerRecipeRunWorker
+from vnpy_ashare.ui.screener.workers.screener_workers import ScreenerRecipeRunWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_llm.app.engine import LlmEngine
 

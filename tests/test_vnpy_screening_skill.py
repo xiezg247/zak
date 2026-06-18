@@ -16,7 +16,7 @@ def _make_skill(screening_svc: MagicMock) -> VnpyScreeningSkill:
 
 def _set_cache(rows: list[dict]) -> None:
     """向 context_store 注入缓存行情（替代实际行情页数据源）。"""
-    from vnpy_ashare.ai.context import set_market_quotes_cache
+    from vnpy_ashare.quotes.core.quote_rows import set_market_quotes_cache
 
     set_market_quotes_cache(rows, {})
 

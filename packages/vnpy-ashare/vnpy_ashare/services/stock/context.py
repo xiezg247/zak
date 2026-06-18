@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.stock.context import DiagnoseMetrics, MoneyflowDayRow, MoneyflowProfile
 from vnpy_ashare.domain.time.china import china_now, format_china_date_compact
 from vnpy_ashare.domain.trading.signal_benchmark import resolve_benchmark_return_pct

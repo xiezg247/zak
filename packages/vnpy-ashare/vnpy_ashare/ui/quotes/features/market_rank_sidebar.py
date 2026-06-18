@@ -12,7 +12,7 @@ from vnpy_ashare.ui.components.splitter_utils import (
     set_splitter_sizes_quiet,
     splitter_total_width,
 )
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

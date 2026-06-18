@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_common.ui.dialog_shell import apply_standard_dialog_layout, setup_responsive_dialog
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 class SaveAnalysisReportDialog(QtWidgets.QDialog):

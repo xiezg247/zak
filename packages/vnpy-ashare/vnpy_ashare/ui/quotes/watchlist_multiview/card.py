@@ -7,7 +7,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiRow
 from vnpy_ashare.ui.quotes.watchlist_multiview.sparkline import DailySparkline
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _ANOMALY_BADGE_THRESHOLD = 12.0

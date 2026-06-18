@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.models.stock_note import StockAnalysisReport
 from vnpy_ashare.ui.markdown_render import render_markdown_html
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 _REPORT_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole
 

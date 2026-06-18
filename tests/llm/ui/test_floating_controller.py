@@ -136,7 +136,7 @@ class FloatingAiControllerTests(unittest.TestCase):
         )
 
     def test_scene_from_context(self) -> None:
-        from vnpy_ashare.ai.context import AiContextData
+        from vnpy_common.ai.protocol import AiContextData
 
         controller = self._make_controller()
         with patch(

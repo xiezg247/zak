@@ -25,16 +25,16 @@ def bootstrap_runtime() -> None:
 bootstrap_runtime()
 
 
-from vnpy_ashare.commands import data as data_commands
-from vnpy_ashare.commands import diagnose as diagnose_commands
-from vnpy_ashare.commands import jobs as jobs_commands
-from vnpy_ashare.commands import meta as meta_commands
-from vnpy_ashare.commands import notes as notes_commands
-from vnpy_ashare.commands import quotes as quotes_commands
-from vnpy_ashare.commands import recipe as recipe_commands
-from vnpy_ashare.commands import screener as screener_commands
-from vnpy_ashare.commands import skills as skills_commands
-from vnpy_ashare.commands import tools as tools_commands
+import vnpy_ashare.commands.data as data_commands
+import vnpy_ashare.commands.diagnose as diagnose_commands
+import vnpy_ashare.commands.jobs as jobs_commands
+import vnpy_ashare.commands.meta as meta_commands
+import vnpy_ashare.commands.notes as notes_commands
+import vnpy_ashare.commands.quotes as quotes_commands
+import vnpy_ashare.commands.recipe as recipe_commands
+import vnpy_ashare.commands.screener as screener_commands
+import vnpy_ashare.commands.skills as skills_commands
+import vnpy_ashare.commands.tools as tools_commands
 
 
 def _build_parser() -> argparse.ArgumentParser:

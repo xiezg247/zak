@@ -27,7 +27,7 @@ from vnpy_ashare.ai.context.quote.prompts import (
     resolve_signal_prompt_params,
 )
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE, exchange_to_cn
+from vnpy_ashare.config.runtime import _CN_NAME_TO_EXCHANGE, exchange_to_cn
 from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot

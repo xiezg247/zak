@@ -7,7 +7,7 @@ from typing import Literal
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.config import PRICE_TICK, normalize_volume
+from vnpy_ashare.config.runtime import PRICE_TICK, normalize_volume
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.services.base import BaseService

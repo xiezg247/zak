@@ -26,15 +26,9 @@ from vnpy_ashare.ui.quotes.chart.panel import (
     should_apply_minute_bars,
 )
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
-from vnpy_ashare.ui.quotes.workers import (
-    BarsLoadWorker,
-    IntradayBarsWorker,
-    LoadedBars,
-    LoadedPeriodBars,
-    MinuteBarsWorker,
-)
+from vnpy_ashare.ui.quotes.workers.quotes_workers import BarsLoadWorker, IntradayBarsWorker, LoadedBars, LoadedPeriodBars, MinuteBarsWorker
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 _DAILY_MISSING_HINT = "暂无本地日 K，请在数据管理页或右键菜单下载后再查看"
 

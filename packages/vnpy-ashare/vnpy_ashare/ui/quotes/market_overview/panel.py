@@ -18,7 +18,7 @@ from vnpy_ashare.ui.quotes.market_overview.limit_ladder_strip import LimitLadder
 from vnpy_ashare.ui.quotes.market_overview.sector_card import SectorCardWidget
 from vnpy_ashare.ui.quotes.market_overview.stats_bar import MarketStatsBar
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 _TAB_INDEX = 0
 _TAB_SECTOR = 1

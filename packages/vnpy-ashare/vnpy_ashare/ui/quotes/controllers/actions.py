@@ -7,17 +7,9 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context import (
-    build_diagnose_ai_prompt,
-    build_historical_ai_prompt,
-    build_positions_ai_prompt,
-    build_signal_panel_ai_prompt,
-    build_signal_panel_batch_ai_prompt,
-    build_team_analysis_ai_prompt,
-    build_technical_ai_prompt,
-)
+from vnpy_ashare.ai.context.quote.prompts import build_diagnose_ai_prompt, build_historical_ai_prompt, build_positions_ai_prompt, build_signal_panel_ai_prompt, build_signal_panel_batch_ai_prompt, build_team_analysis_ai_prompt, build_technical_ai_prompt
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
-from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
@@ -26,13 +18,13 @@ from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.quotes.format import format_volume
 from vnpy_ashare.services.signals.runtime import format_signal_context_extra
 from vnpy_ashare.trading.journal.discipline_context import format_trading_discipline_extra
-from vnpy_ashare.ui.features.stock_analysis import show_stock_analysis_from_quotes_page
+from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
-from vnpy_ashare.ui.quotes.workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
-from vnpy_ashare.ui.screener import show_reference_peer_dialog
-from vnpy_ashare.ui.styles import NAV_MUTED_COLOR
-from vnpy_common.ui.theme import theme_manager
+from vnpy_ashare.ui.quotes.workers.quotes_workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
+from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
+from vnpy_ashare.ui.styles.colors import NAV_MUTED_COLOR
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, quote_change_color
 
 if TYPE_CHECKING:

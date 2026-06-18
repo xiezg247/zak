@@ -20,7 +20,7 @@ from vnpy_ashare.ui.screener.widgets.screener_config_section import (
 from vnpy_ashare.ui.screener.widgets.sector_distribution_panel import SectorDistributionPanel
 from vnpy_ashare.ui.screener.workers.screener_workers import QuoteRefreshWorker
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 _RESULT_INSIGHTS_SECTION_ID = "result_insights"
 

@@ -16,7 +16,7 @@ from pathlib import Path
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 
-from vnpy_ashare.config import is_ashare_exchange
+from vnpy_ashare.config.runtime import is_ashare_exchange
 from vnpy_ashare.data.bar_store import invalidate_bar_overview_cache, iter_bar_overviews
 from vnpy_ashare.data.minute_periods import (
     DEFAULT_MINUTE_DOWNLOAD_MONTHS,

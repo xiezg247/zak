@@ -20,7 +20,7 @@ from vnpy_ashare.notifications.core.events import (
 )
 from vnpy_ashare.notifications.core.models import NotifyDeliveryResult
 from vnpy_ashare.notifications.pipeline.dispatcher import NotifyDispatcher
-from vnpy_ashare.notifications.rules import NotifyRulesEngine
+from vnpy_ashare.notifications.rules.engine import NotifyRulesEngine
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot

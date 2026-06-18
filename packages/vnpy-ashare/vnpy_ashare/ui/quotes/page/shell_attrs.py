@@ -7,9 +7,12 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel
-from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
-from vnpy_ashare.ui.quotes.table import QuoteTableModel
+from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
+from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel
+from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
+from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
+from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
+from vnpy_ashare.ui.quotes.table.model import QuoteTableModel
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.chart.daily import AshareChartWidget
@@ -19,12 +22,14 @@ if TYPE_CHECKING:
     )
     from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
     from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
-    from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
-    from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
+    from vnpy_ashare.ui.quotes.radar.card import RadarBoard
+    from vnpy_ashare.ui.quotes.radar.controller import RadarController
+    from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
+    from vnpy_ashare.ui.quotes.stock_notes.panel import StockNotePanel
     from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
-    from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
-    from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
-    from vnpy_ashare.ui.quotes.watchlist_signals import WatchlistSignalPanel
+    from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
+    from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
+    from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
     from vnpy_common.ui.feedback import PageToastHost
 
 

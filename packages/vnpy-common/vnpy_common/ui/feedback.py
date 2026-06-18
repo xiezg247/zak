@@ -6,7 +6,7 @@ from collections.abc import Callable, Sequence
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 DEFAULT_TOAST_MS = 4000
 

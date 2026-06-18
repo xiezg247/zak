@@ -15,7 +15,7 @@ from strategies.signals import (
     summarize_swing_ma_state,
     summarize_trend_ma_state,
 )
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
 from vnpy_ashare.domain.trading.signal_benchmark import compute_relative_index_excess, resolve_benchmark_return_pct

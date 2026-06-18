@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.screener.recipe import recipe_store
+import vnpy_ashare.screener.recipe.recipe_store as recipe_store
 from vnpy_ashare.screener.recipe.recipe import (
     list_recipe_catalog,
     normalize_recipe_config,

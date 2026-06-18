@@ -6,7 +6,7 @@ import argparse
 import sys
 from typing import Any
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.screener.batch.batch_actions import batch_download_daily_bars
 from vnpy_ashare.screener.preset.scheme_store import list_schemes
 from vnpy_ashare.screener.run.export import export_rows_to_csv

@@ -7,10 +7,10 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
-from vnpy_ashare.scheduler import TaskSchedulerManager
+from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 from vnpy_ashare.ui.scheduler.scheduler_jobs_widget import SchedulerJobsWidget
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import format_scheduler_empty_html, format_scheduler_run_log_html
 from vnpy_common.ui.theme.tokens import ThemeTokens
 

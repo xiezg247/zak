@@ -6,13 +6,13 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from vnpy_ashare.notifications.events import (
+from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_POSITION_ALERT,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
 )
-from vnpy_ashare.notifications.formatters import format_notify_text
-from vnpy_ashare.notifications.prefs import NotifyPrefs
+from vnpy_ashare.notifications.content.formatters import format_notify_text
+from vnpy_ashare.notifications.prefs.store import NotifyPrefs
 from vnpy_ashare.notifications.service import NotificationService
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleTracker
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
@@ -93,7 +93,7 @@ class Phase2NotificationTest(unittest.TestCase):
     )
     @patch("vnpy_ashare.notifications.service.append_notify_delivery_log")
     @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
-    @patch("vnpy_ashare.notifications.rules.load_notify_prefs")
+    @patch("vnpy_ashare.notifications.rules.engine.load_notify_prefs")
     def test_on_market_breadth_stage_change(
         self,
         mock_prefs: MagicMock,
@@ -133,7 +133,7 @@ class Phase2NotificationTest(unittest.TestCase):
     )
     @patch("vnpy_ashare.notifications.service.append_notify_delivery_log")
     @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
-    @patch("vnpy_ashare.notifications.rules.load_notify_prefs")
+    @patch("vnpy_ashare.notifications.rules.engine.load_notify_prefs")
     @patch("vnpy_ashare.trading.risk.gate.load_trading_risk_prefs")
     def test_evaluate_risk_gate_change(
         self,

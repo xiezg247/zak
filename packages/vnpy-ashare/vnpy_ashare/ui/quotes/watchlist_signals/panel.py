@@ -8,21 +8,8 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from strategies.registry import list_signal_strategy_metas
 from strategies.signals import STRATEGY_SIGNAL_DEFAULTS
-from vnpy_ashare.config.preferences import (
-    DEFAULT_CLASS,
-    SIGNAL_PANEL_MAX_SYMBOLS,
-    WatchlistSignalConfig,
-    load_signal_panel_columns,
-    load_signal_panel_enabled,
-    load_signal_panel_expanded,
-    load_signal_panel_symbols,
-    normalize_signal_panel_symbols,
-    normalize_visible_optional_keys,
-    save_signal_panel_columns,
-    save_signal_panel_enabled,
-    save_signal_panel_expanded,
-    save_signal_panel_symbols,
-)
+from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
+from vnpy_ashare.config.preferences.watchlist_signal import DEFAULT_CLASS, SIGNAL_PANEL_MAX_SYMBOLS, WatchlistSignalConfig, load_signal_panel_columns, load_signal_panel_enabled, load_signal_panel_expanded, load_signal_panel_symbols, normalize_signal_panel_symbols, save_signal_panel_columns, save_signal_panel_enabled, save_signal_panel_expanded, save_signal_panel_symbols
 from vnpy_ashare.config.preferences.signal_panel_columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,
     resolve_signal_panel_columns,
@@ -54,7 +41,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     SIGNAL_PANEL_COLLAPSED_HEIGHT,
     SIGNAL_PANEL_DEFAULT_HEIGHT,
 )
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
 if TYPE_CHECKING:

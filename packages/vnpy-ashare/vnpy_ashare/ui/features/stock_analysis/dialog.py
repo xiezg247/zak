@@ -7,7 +7,8 @@ from typing import Any
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.context import build_diagnose_ai_prompt, parse_stock_symbol
+from vnpy_ashare.ai.context.quote.prompts import build_diagnose_ai_prompt
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.ai.llm_bridge import get_llm_engine
 from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
@@ -41,7 +42,7 @@ from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.loading_overlay import LoadingContentHost
 from vnpy_common.ui.panel_widgets import MetricTile, configure_document_tab_widget, content_card, panel_status_label, section_title, tab_page
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_panel import build_stock_analysis_stylesheet
 from vnpy_common.ui.theme.market_colors import pct_change_color
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from vnpy_ashare.notifications.events import NOTIFY_EVENT_JOURNAL_VIOLATION
-from vnpy_ashare.notifications.formatters import format_notify_text
+from vnpy_ashare.notifications.core.events import NOTIFY_EVENT_JOURNAL_VIOLATION
+from vnpy_ashare.notifications.content.formatters import format_notify_text
 from vnpy_ashare.trading.journal.violation_notify import format_violation_tags, publish_journal_violation
 
 

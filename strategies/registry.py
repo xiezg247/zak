@@ -180,7 +180,7 @@ def get_strategy_meta(class_name: str) -> StrategyMeta | None:
 
 def format_strategy_guide(meta: StrategyMeta, *, tokens=None) -> str:
     """渲染策略说明（HTML，供 QLabel RichText 使用）。"""
-    from vnpy_common.ui.theme import theme_manager
+    from vnpy_common.ui.theme.manager import theme_manager
     from vnpy_common.ui.theme.html_palette import html_palette
 
     colors = html_palette(tokens or theme_manager().tokens())
@@ -205,7 +205,7 @@ def format_strategy_guide(meta: StrategyMeta, *, tokens=None) -> str:
 
 
 def format_missing_strategy_guide(class_name: str, *, tokens=None) -> str:
-    from vnpy_common.ui.theme import theme_manager
+    from vnpy_common.ui.theme.manager import theme_manager
     from vnpy_common.ui.theme.html_palette import html_palette
 
     colors = html_palette(tokens or theme_manager().tokens())

@@ -10,7 +10,7 @@ from pydantic import Field
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 
-from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,

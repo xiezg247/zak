@@ -7,7 +7,7 @@ import re
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-from vnpy_ashare.config import _CN_NAME_TO_EXCHANGE
+from vnpy_ashare.config.runtime import _CN_NAME_TO_EXCHANGE
 
 _SYMBOL_PATTERN = re.compile(r"(\d{6}(?:\.(?:SSE|SZSE|BSE|SH|SZ|BJ))?)", re.IGNORECASE)
 

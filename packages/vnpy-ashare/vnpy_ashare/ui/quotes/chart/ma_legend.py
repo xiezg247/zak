@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.quotes.chart.ma_line_item import MA_LINE_SPECS
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.tokens import ThemeTokens
 
 MA_COLOR_NAMES: tuple[str, ...] = ("黄色", "蓝色", "紫色")

@@ -13,15 +13,10 @@ from unittest.mock import patch
 import tests._bootstrap  # noqa: F401
 from vnpy_llm.tools.status import build_tools_status
 from vnpy_mcp.app.engine import McpEngine
-from vnpy_mcp.config import (
-    BUILTIN_MCP_PROVIDERS,
-    DEFAULT_TDX_MCP_URL,
-    McpServerConfig,
-    load_all_mcp_servers,
-    load_mcp_dir,
-)
-from vnpy_mcp.domain import McpToolInfo
-from vnpy_mcp.remote import RemoteMcpProvider
+from vnpy_mcp.config.registry import BUILTIN_MCP_PROVIDERS
+from vnpy_mcp.config.settings import DEFAULT_TDX_MCP_URL, McpServerConfig, load_all_mcp_servers, load_mcp_dir
+from vnpy_mcp.domain.provider import McpToolInfo
+from vnpy_mcp.remote.provider import RemoteMcpProvider
 from vnpy_skills.app.engine import SkillEngine
 
 

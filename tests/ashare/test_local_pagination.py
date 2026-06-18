@@ -41,7 +41,7 @@ class TestLocalPagination(unittest.TestCase):
         self.assertEqual(controller.page_count(), 1)
 
     def test_load_downloaded_stocks_page_slice(self) -> None:
-        from vnpy_ashare.data import bars as bars_module
+        import vnpy_ashare.data.bars as bars_module
 
         rows = [MagicMock(symbol=f"{idx:06d}", exchange=Exchange.SSE, period="daily", start=None, end=None, count=10) for idx in range(1, 6)]
         with patch("vnpy_ashare.data.bars.iter_bar_overviews", return_value=rows):
@@ -53,7 +53,7 @@ class TestLocalPagination(unittest.TestCase):
         self.assertEqual(total, 5)
 
     def test_search_downloaded_stocks_page(self) -> None:
-        from vnpy_ashare.data import bars as bars_module
+        import vnpy_ashare.data.bars as bars_module
 
         rows = [MagicMock(symbol=f"{idx:06d}", exchange=Exchange.SSE) for idx in range(1, 6)]
         name_map = {
@@ -75,7 +75,7 @@ class TestLocalPagination(unittest.TestCase):
         self.assertEqual([item.symbol for item in items], ["000002", "000003"])
 
     def test_search_downloaded_stocks_paginates(self) -> None:
-        from vnpy_ashare.data import bars as bars_module
+        import vnpy_ashare.data.bars as bars_module
 
         rows = [MagicMock(symbol=f"{idx:06d}", exchange=Exchange.SSE) for idx in range(1, 11)]
         with patch("vnpy_ashare.data.bars.iter_bar_overviews", return_value=rows):

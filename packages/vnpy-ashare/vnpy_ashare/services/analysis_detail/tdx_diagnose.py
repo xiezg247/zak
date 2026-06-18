@@ -10,7 +10,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.time.china import format_china_datetime
 
 _MCPExecute = Callable[[str, dict[str, Any]], str]

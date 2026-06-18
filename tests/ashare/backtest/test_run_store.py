@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import date
 
-from vnpy_ashare.backtest import run_store
+import vnpy_ashare.backtest.run_store as run_store
 
 
 def test_save_and_list_backtest_runs(tmp_path, monkeypatch):

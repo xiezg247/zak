@@ -60,7 +60,7 @@ def format_pending_html(
     *,
     spinner: str = SPINNER_FRAMES[0],
 ) -> str:
-    from vnpy_common.ui.theme import theme_manager
+    from vnpy_common.ui.theme.manager import theme_manager
     from vnpy_common.ui.theme.html_palette import html_palette
 
     sub_html = ""

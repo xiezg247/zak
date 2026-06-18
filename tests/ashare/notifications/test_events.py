@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.notifications.events import (
+from vnpy_ashare.notifications.core.events import (
     DEFAULT_EVENT_SUBSCRIPTIONS,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,

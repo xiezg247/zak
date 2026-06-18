@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import Field
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.domain.financial.bundle import FinancialBundle, FinancialSyncResult

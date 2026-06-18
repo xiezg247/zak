@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.ai.context.quote import build_team_analysis_ai_prompt
+from vnpy_ashare.ai.context.quote.prompts import build_team_analysis_ai_prompt
 from vnpy_llm.routing.router import _keyword_fallback, normalize_team_command
 
 

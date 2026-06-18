@@ -10,7 +10,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.quotes.market.moneyflow_kind import flow_kind_label
 from vnpy_common.ui.scroll_area import style_market_table_scroll_bars
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 ScreeningTableRow = ScreenerResultRow

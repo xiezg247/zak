@@ -5,11 +5,11 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.services.analysis_detail.mcp_binding import McpBinding
 from vnpy_ashare.services.analysis_detail.tdx_diagnose import _call_wenda, _pick_wenda_tool, _to_float
-from vnpy_ashare.services.analysis_detail.technical import TechnicalAnalyzer
+from vnpy_ashare.services.analysis_detail.technical.analyzer import TechnicalAnalyzer
 
 _DISCLAIMER = "以上均为历史区间统计或问小达返回的历史参考数据，不代表对未来走势的判断或预测。"
 _MCP_SKIP_FIELDS = frozenset(

@@ -5,11 +5,7 @@ from __future__ import annotations
 import re
 
 from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions, format_market_overview_extra
-from vnpy_ashare.ai.context.quote import (
-    build_assistant_quick_actions,
-    build_assistant_screening_menus,
-    build_floating_stock_quick_actions,
-)
+from vnpy_ashare.ai.context.quote.assembly import build_assistant_quick_actions, build_assistant_screening_menus, build_floating_stock_quick_actions
 from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_common.ai.protocol import AiContextData, QuickAction
 

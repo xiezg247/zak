@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_mcp.config import McpServerConfig, get_mcp_server
+from vnpy_mcp.config.settings import McpServerConfig, get_mcp_server
 from vnpy_mcp.domain.provider import McpProvider
 
 

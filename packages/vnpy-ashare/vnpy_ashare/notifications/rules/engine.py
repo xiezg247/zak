@@ -7,7 +7,7 @@ import time
 from collections.abc import Callable
 
 from vnpy_ashare.notifications.core.events import DEFAULT_EVENT_SUBSCRIPTIONS, NOTIFY_EVENT_MANUAL_TEST
-from vnpy_ashare.notifications.prefs import load_notify_prefs
+from vnpy_ashare.notifications.prefs.store import load_notify_prefs
 
 _DEDUPE_WINDOW_SEC = 300.0
 _DEFAULT_MIN_INTERVAL_SEC = 30

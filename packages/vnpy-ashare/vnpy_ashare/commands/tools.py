@@ -7,8 +7,8 @@ import argparse
 from vnpy.trader.database import get_database
 from vnpy.trader.setting import SETTINGS
 
-from vnpy_mcp.config import load_all_mcp_servers
-from vnpy_mcp.remote import McpClientError, list_remote_tools
+from vnpy_mcp.config.settings import load_all_mcp_servers
+from vnpy_mcp.remote.client import McpClientError, list_remote_tools
 
 
 def _cmd_mcp_list(_args: argparse.Namespace) -> int:

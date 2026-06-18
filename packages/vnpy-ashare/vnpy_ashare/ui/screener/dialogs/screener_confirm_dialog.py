@@ -14,7 +14,7 @@ from vnpy_ashare.domain.ai.actions import AI_ACTION_FILL_SCREENER, put_ai_action
 from vnpy_ashare.screener.data.data_source import resolve_result_source_tag
 from vnpy_ashare.screener.draft.draft_store import ScreenerDraft, cancel_draft, consume_draft, get_draft
 from vnpy_ashare.screener.run.runner import ScreenerRunResult
-from vnpy_ashare.ui.screener.workers import ScreenerRunWorker
+from vnpy_ashare.ui.screener.workers.screener_workers import ScreenerRunWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_llm.app.engine import LlmEngine
 

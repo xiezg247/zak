@@ -9,7 +9,7 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from strategies.registry import STRATEGY_REGISTRY
-from vnpy_ashare.ai.context import sync_batch_compare_context
+from vnpy_ashare.ai.context.backtest import sync_batch_compare_context
 from vnpy_ashare.backtest.run_store import (
     BatchBacktestSession,
     delete_batch,

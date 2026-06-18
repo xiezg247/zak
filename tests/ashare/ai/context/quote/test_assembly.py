@@ -8,7 +8,7 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange
 
 from tests.ashare.ai.context.factories import WATCHLIST_ROWS, maotai_item, pudong_item
-from vnpy_ashare.ai.context import build_quote_context, resolve_assistant_stock_binding
+from vnpy_ashare.ai.context.quote.assembly import build_quote_context, resolve_assistant_stock_binding
 
 
 class TestQuoteAssembly(unittest.TestCase):

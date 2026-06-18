@@ -27,27 +27,18 @@ from strategies.registry import (
     format_strategy_guide,
     get_strategy_meta,
 )
-from vnpy_ashare.ai.context import (
-    BacktestSummary,
-    build_backtest_ai_prompt,
-    format_backtest_summary_text,
-    get_backtest_summary_dict,
-    sync_backtest_page_context,
-)
+from vnpy_ashare.ai.context.backtest import build_backtest_ai_prompt, format_backtest_summary_text, sync_backtest_page_context
+from vnpy_ashare.ai.context.store import BacktestSummary, get_backtest_summary_dict
 from vnpy_ashare.app.engine_access import get_backtest_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
-from vnpy_ashare.config import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
+from vnpy_ashare.config.runtime import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest.chart.backtest_chart import AshareBacktesterChart, AshareStatisticsMonitor
 from vnpy_ashare.ui.backtest.pages.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.backtest.strategy_combo import StrategyClassCombo
-from vnpy_ashare.ui.styles import (
-    apply_toolbar_combo_style,
-    apply_vnpy_page_style,
-    style_vnpy_form_inputs,
-)
+from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style, apply_vnpy_page_style, style_vnpy_form_inputs
 from vnpy_common.ui.feedback import TaskGuard, page_notify
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 from vnpy_common.ui.theme.html_palette import html_palette
 

@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
+import logging
 import traceback
 from typing import Any
 
 from dotenv import load_dotenv
 
 from vnpy_common.paths import ENV_FILE
-from vnpy_mcp.config import load_all_mcp_servers
+from vnpy_mcp.config.settings import load_all_mcp_servers
 from vnpy_mcp.domain.provider import McpProvider
 from vnpy_mcp.remote.client import McpClientError, call_remote_tool, list_remote_tools
 from vnpy_mcp.remote.provider import RemoteMcpProvider
-from vnpy_skills.domain import ToolSpec
+from vnpy_skills.domain.template import ToolSpec
 
 APP_NAME = "MCP"
+logger = logging.getLogger(__name__)
 
 
 class McpEngine:
@@ -51,12 +53,12 @@ class McpEngine:
             except McpClientError as ex:
                 provider.mark_disconnected()
                 self._connect_errors[name] = str(ex)
-                print(f"MCP Provider {name} 连接失败: {ex}")
+                logger.warning("MCP Provider %s 连接失败: %s", name, ex)
             except Exception:
                 provider.mark_disconnected()
                 msg = traceback.format_exc()
                 self._connect_errors[name] = msg
-                print(f"MCP Provider {name} 连接失败:\n{msg}")
+                logger.warning("MCP Provider %s 连接失败:\n%s", name, msg)
 
         return enabled
 

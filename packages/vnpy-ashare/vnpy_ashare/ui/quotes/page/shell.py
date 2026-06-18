@@ -10,7 +10,9 @@ from vnpy_ashare.data.minute_periods import LOCAL_SCOPE_OPTIONS
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.ui.components.chart_style import build_chart_frame_stylesheet
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-from vnpy_ashare.ui.quotes.chart import ChartPanel, ChartSectionPanel, create_daily_chart
+from vnpy_ashare.ui.quotes.chart.daily import create_daily_chart
+from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
+from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel
 from vnpy_ashare.ui.quotes.chart.ma_legend import MaLegendBar
 from vnpy_ashare.ui.quotes.chart.section import (
     chart_side_expanded_min_width,
@@ -33,22 +35,23 @@ from vnpy_ashare.ui.quotes.page.run_log import (
     load_run_output_expanded,
     on_run_output_expansion_changed,
 )
-from vnpy_ashare.ui.quotes.panels import DepthPanel, DiagnosePanel, MarketTableHost
-from vnpy_ashare.ui.quotes.radar import RadarBoard, RadarController, RadarResonancePanel
-from vnpy_ashare.ui.quotes.stock_notes import StockNotePanel
-from vnpy_ashare.ui.quotes.table import LOCAL_TABLE_HEADERS, QuoteTableModel
+from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
+from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
+from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
+from vnpy_ashare.ui.quotes.radar.card import RadarBoard
+from vnpy_ashare.ui.quotes.radar.controller import RadarController
+from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
+from vnpy_ashare.ui.quotes.stock_notes.panel import StockNotePanel
+from vnpy_ashare.ui.quotes.table.columns import LOCAL_TABLE_HEADERS
+from vnpy_ashare.ui.quotes.table.model import QuoteTableModel
 from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
-from vnpy_ashare.ui.quotes.watchlist_multiview import WatchlistMultiViewBoard
-from vnpy_ashare.ui.quotes.watchlist_positions import WatchlistPositionPanel
-from vnpy_ashare.ui.quotes.watchlist_signals import (
-    WatchlistSignalPanel,
-    bind_center_splitter_persistence,
-    configure_center_splitter,
-    restore_center_splitter,
-)
-from vnpy_ashare.ui.styles import apply_toolbar_combo_style
+from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
+from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
+from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
+from vnpy_ashare.ui.quotes.watchlist_signals.splitter import bind_center_splitter_persistence, configure_center_splitter, restore_center_splitter
+from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
 from vnpy_common.ui.feedback import PageToastHost
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_radar_stylesheet
 
 if TYPE_CHECKING:

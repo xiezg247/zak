@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from vnpy_ashare.config.preferences import load_signal_panel_symbols
+from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
 from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
 
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
 
-from vnpy_ashare.ai.context.quote import format_quote_summary
+from vnpy_ashare.ai.context.quote.format import format_quote_summary
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import (
     SignalSnapshot,
@@ -32,7 +32,7 @@ from vnpy_ashare.services.analysis_detail.risk_metrics import (
     fetch_market_sentiment,
 )
 from vnpy_ashare.services.analysis_detail.team_facts import build_financial_extras, prefetch_team_facts
-from vnpy_ashare.services.analysis_detail.technical import TechnicalAnalyzer
+from vnpy_ashare.services.analysis_detail.technical.analyzer import TechnicalAnalyzer
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.signals.runtime import format_signal_context_extra
 

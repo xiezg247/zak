@@ -25,7 +25,7 @@ from vnpy_ashare.ui.quotes.page.config import load_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.row_widget import RadarStockRowWidget
 from vnpy_ashare.ui.quotes.radar.section_prefs import load_radar_board_mode, save_radar_board_mode
 from vnpy_common.ui.panel_widgets import configure_document_tab_widget
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 _OBSERVATION_GROUP_CARD_IDS = frozenset(
     {

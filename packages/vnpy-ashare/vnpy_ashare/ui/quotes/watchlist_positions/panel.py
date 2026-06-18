@@ -8,16 +8,8 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from strategies.registry import get_strategy_meta
-from vnpy_ashare.config.preferences import (
-    POSITION_PANEL_COLLAPSED_HEIGHT,
-    POSITION_PANEL_DEFAULT_HEIGHT,
-    WatchlistPositionConfig,
-    WatchlistSignalConfig,
-    load_position_panel_enabled,
-    load_position_panel_expanded,
-    save_position_panel_enabled,
-    save_position_panel_expanded,
-)
+from vnpy_ashare.config.preferences.watchlist_position import POSITION_PANEL_COLLAPSED_HEIGHT, POSITION_PANEL_DEFAULT_HEIGHT, WatchlistPositionConfig, load_position_panel_enabled, load_position_panel_expanded, save_position_panel_enabled, save_position_panel_expanded
+from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.config.preferences.strategy_profile import list_strategy_profiles, load_strategy_profile_id
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord, position_row_sort_key, position_t1_locked
@@ -49,7 +41,7 @@ from vnpy_ashare.ui.quotes.watchlist_positions.journal_report_dialog import Jour
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.sell_dialog import PositionSellDialog
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
 if TYPE_CHECKING:

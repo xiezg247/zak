@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.ai.context import get_screening_results
+from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.run.run_diff import compute_run_diff
 from vnpy_ashare.screener.run.run_store import find_previous_run_by_recipe, get_run

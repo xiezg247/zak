@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context import QuickAction, get_ai_context
+from vnpy_ashare.ai.context.store import get_ai_context
+from vnpy_common.ai.protocol import QuickAction
 from vnpy_ashare.ai.ui.floating_actions import scene_label_from_context
 from vnpy_ashare.app.events import AskAiRequest
 from vnpy_common.paths import QSETTINGS_ORG

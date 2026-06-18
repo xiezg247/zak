@@ -4,6 +4,6 @@
 运行时主题切换见 ``vnpy_common.ui.theme``。
 """
 
-from vnpy_common.ui.theme import stylesheet_for
+from vnpy_common.ui.theme.build import stylesheet_for
 
 TERMINAL_STYLESHEET = stylesheet_for("dark")

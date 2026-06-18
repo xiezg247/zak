@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.ai.context import get_screening_results, parse_stock_symbol
+from vnpy_ashare.ai.context.store import get_screening_results
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.stock.overview import (
     AlertSeverity,
     DataReadinessItem,

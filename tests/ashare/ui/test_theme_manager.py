@@ -7,15 +7,12 @@ import unittest
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_common.paths import QSETTINGS_ORG
-from vnpy_common.ui.theme import (
-    ThemeManager,
-    build_ai_panel_stylesheet,
-    build_chart_panel_stylesheet,
-    build_settings_stylesheet,
-    get_tokens,
-    stylesheet_for,
-    theme_manager,
-)
+from vnpy_common.ui.theme.build import stylesheet_for
+from vnpy_common.ui.theme.build_ai import build_ai_panel_stylesheet
+from vnpy_common.ui.theme.build_chart import build_chart_panel_stylesheet
+from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
+from vnpy_common.ui.theme.manager import ThemeManager, theme_manager
+from vnpy_common.ui.theme.tokens import get_tokens
 from vnpy_common.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS
 
 
@@ -54,7 +51,7 @@ class ThemeManagerTests(unittest.TestCase):
         self.assertNotIn(LIGHT_TOKENS.panel_bg, light_ai.split("AiBubbleAssistant")[1].split("}")[0])
 
     def test_scheduler_log_html_uses_semantic_colors(self) -> None:
-        from vnpy_ashare.scheduler import JobRunRecord
+        from vnpy_ashare.scheduler.manager import JobRunRecord
         from vnpy_common.ui.theme.build_extra import format_scheduler_run_log_html
 
         record = JobRunRecord(

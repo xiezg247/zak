@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import quote_change_color
 
 _SINGLE_CLICK_MS = 280

@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.notifications.prefs import NotifyPrefs
+from vnpy_ashare.notifications.prefs.store import NotifyPrefs
 from vnpy_ashare.notifications.service import NotificationService
 
 
@@ -30,7 +30,7 @@ class NotificationServiceTest(unittest.TestCase):
     )
     @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
     @patch(
-        "vnpy_ashare.notifications.rules.load_notify_prefs",
+        "vnpy_ashare.notifications.rules.engine.load_notify_prefs",
         return_value=type(
             "P",
             (),
@@ -67,7 +67,7 @@ class NotificationServiceTest(unittest.TestCase):
     )
     @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
     @patch(
-        "vnpy_ashare.notifications.rules.load_notify_prefs",
+        "vnpy_ashare.notifications.rules.engine.load_notify_prefs",
         return_value=type(
             "P",
             (),

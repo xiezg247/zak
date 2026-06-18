@@ -8,7 +8,7 @@ from vnpy.trader.ui import QtGui, QtWidgets
 
 from vnpy_ashare.ui.scheduler.scheduler_page import SchedulerPageWidget
 from vnpy_common.ui.dialog_shell import setup_responsive_dialog
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_scheduler_page_stylesheet
 
 

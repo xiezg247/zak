@@ -8,7 +8,7 @@ from collections.abc import Callable
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context import parse_stock_symbol
+from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.reference.reference_peer import (
@@ -29,7 +29,7 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 from vnpy_ashare.ui.screener.workers.reference_peer_worker import ReferencePeerWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 _RESULT_COLUMNS: list[tuple[str, str]] = [
     ("symbol", "代码"),

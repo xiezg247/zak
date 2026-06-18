@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from vnpy_ashare.ai.context import clear_all
+from vnpy_ashare.ai.context.store import clear_all
 
 
 @pytest.fixture(autouse=True)

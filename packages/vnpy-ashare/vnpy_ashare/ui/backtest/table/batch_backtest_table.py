@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.backtest.run_store import BacktestRunRecord
 from vnpy_ashare.screener.batch.batch_actions import BatchBacktestRow
 from vnpy_common.ui.scroll_area import style_market_table_scroll_bars
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _BATCH_COMPARE_ROW_HEIGHT = 30

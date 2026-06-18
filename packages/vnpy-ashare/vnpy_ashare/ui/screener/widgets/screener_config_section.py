@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_common.paths import QSETTINGS_ORG
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 _SETTINGS_ORG = QSETTINGS_ORG
 _SETTINGS_APP = "screener_ui"

@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.config.preferences import save_watchlist_position_config
+from vnpy_ashare.config.preferences.watchlist_position import save_watchlist_position_config
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
-from vnpy_ashare.ui.quotes.watchlist_signals import (
-    SIGNAL_PANEL_MAX_SYMBOLS,
-    apply_center_splitter_sizes,
-)
+from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS
+from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

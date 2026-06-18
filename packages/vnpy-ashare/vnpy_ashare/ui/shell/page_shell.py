@@ -7,13 +7,15 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ui.quotes.features.market_rank_sidebar import sync_rank_splitter_for_expansion
-from vnpy_ashare.ui.quotes.market_discovery import MarketDiscoveryController, MarketDiscoveryStrip
-from vnpy_ashare.ui.quotes.market_overview import MarketOverviewController, MarketOverviewPanel
+from vnpy_ashare.ui.quotes.market_discovery.controller import MarketDiscoveryController
+from vnpy_ashare.ui.quotes.market_discovery.panel import MarketDiscoveryStrip
+from vnpy_ashare.ui.quotes.market_overview.controller import MarketOverviewController
+from vnpy_ashare.ui.quotes.market_overview.panel import MarketOverviewPanel
 from vnpy_ashare.ui.quotes.market_overview.header import MarketHeaderPanel
 from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
-from vnpy_ashare.ui.quotes.watchlist_signals import restore_center_splitter
+from vnpy_ashare.ui.quotes.watchlist_signals.splitter import restore_center_splitter
 from vnpy_common.ui.qt_helpers import thread_is_active
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_market_page_stylesheet
 
 

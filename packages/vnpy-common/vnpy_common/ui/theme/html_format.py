@@ -14,7 +14,7 @@ def format_status_html(
     tokens: ThemeTokens | None = None,
 ) -> str:
     """tone: loading | info | error | warning"""
-    from vnpy_common.ui.theme import theme_manager
+    from vnpy_common.ui.theme.manager import theme_manager
 
     colors = html_palette(tokens or theme_manager().tokens())
     color_map = {

@@ -16,7 +16,7 @@ from vnpy_common.ui.qt_helpers import (
     frame_intersects_any_screen,
     restore_child_position,
 )
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.orb_palette import OrbPalette, orb_palette
 from vnpy_common.ui.theme.tokens import ThemeTokens
 from vnpy_llm.app.engine import LlmEngine

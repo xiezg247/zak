@@ -7,7 +7,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.screener.batch.batch_actions import BatchBacktestRow
 from vnpy_ashare.screener.run.export import export_rows_to_csv
 from vnpy_common.ui.feedback import page_notify
-from vnpy_common.ui.theme import theme_manager
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 class ScreenerBatchBacktestDialog(QtWidgets.QDialog):

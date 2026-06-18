@@ -18,7 +18,7 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
 )
-from vnpy_ashare.notifications.prefs import load_notify_prefs, save_event_subscription, save_use_interactive_card
+from vnpy_ashare.notifications.prefs.store import load_notify_prefs, save_event_subscription, save_use_interactive_card
 from vnpy_ashare.ui.shell.settings.snapshot import resolve_env_config
 from vnpy_common.ui.feedback import page_notify
 

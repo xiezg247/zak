@@ -6,13 +6,10 @@ import unittest
 from unittest.mock import patch
 
 from tests.ashare.ai.context.factories import IS_IN_WATCHLIST, POSITION_CONTAINS, maotai_item, maotai_quote
-from vnpy_ashare.ai.context import (
-    AiContextData,
-    build_quote_context,
-    clear_all,
-    enrich_context_with_actions,
-    set_screening_results,
-)
+from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
+from vnpy_ashare.ai.context.quote.assembly import build_quote_context
+from vnpy_ashare.ai.context.store import clear_all, set_screening_results
+from vnpy_common.ai.protocol import AiContextData
 
 
 class TestEnrichment(unittest.TestCase):

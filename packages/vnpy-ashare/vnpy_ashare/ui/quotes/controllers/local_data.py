@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.config import format_vt_symbol_cn
+from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.data.bar_access import delete_scope_bars, get_scope_overview, iter_bar_overviews
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
@@ -40,17 +40,7 @@ from vnpy_ashare.ui.quotes.page.run_log import (
     complete_run_log,
     fail_run_log,
 )
-from vnpy_ashare.ui.quotes.workers import (
-    BarGapCheckWorker,
-    BarsLoadWorker,
-    BatchFillWorker,
-    BatchGapFillWorker,
-    DownloadWorker,
-    InvalidBarCleanupWorker,
-    LoadedBars,
-    MinuteDownloadWorker,
-    ScopeBarsLoadWorker,
-)
+from vnpy_ashare.ui.quotes.workers.quotes_workers import BarGapCheckWorker, BarsLoadWorker, BatchFillWorker, BatchGapFillWorker, DownloadWorker, InvalidBarCleanupWorker, LoadedBars, MinuteDownloadWorker, ScopeBarsLoadWorker
 from vnpy_common.ui.feedback import confirm_action
 
 if TYPE_CHECKING:
