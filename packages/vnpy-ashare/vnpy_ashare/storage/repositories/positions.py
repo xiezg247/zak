@@ -153,7 +153,7 @@ def _rewrite_position_order(conn, rows) -> None:
                 row["buy_date"],
                 row["notes"],
                 row["source"],
-                row.get("plan_pct"),
+                row["plan_pct"],
                 index,
                 row["created_at"],
                 row["updated_at"],

@@ -21,6 +21,7 @@ AgentName = Literal["market", "research", "screening", "backtest", "data", "gene
 CATEGORY_TO_AGENT: dict[IntentCategory, AgentName] = {
     "quote": "market",
     "technical": "market",
+    "market": "market",
     "diagnosis": "research",
     "screening": "screening",
     "backtest": "backtest",
@@ -32,7 +33,7 @@ CATEGORY_TO_AGENT: dict[IntentCategory, AgentName] = {
 
 # 各 Agent 可合并的 TOOL_GROUPS 类别（general 无工具）
 AGENT_TOOL_CATEGORIES: dict[AgentName, frozenset[IntentCategory]] = {
-    "market": frozenset({"quote", "technical", "watchlist"}),
+    "market": frozenset({"quote", "technical", "watchlist", "market"}),
     "research": frozenset({"diagnosis"}),
     "screening": frozenset({"screening"}),
     "backtest": frozenset({"backtest"}),
@@ -89,3 +90,4 @@ class GraphStreamContext(MutableModel):
     strategy_prompt: str = ""
     team_prefetch: dict[str, Any] | None = None
     team_scores: dict[str, Any] | None = None
+    market_prefetch: dict[str, Any] | None = None

@@ -27,7 +27,7 @@ from vnpy_ashare.ai.context.store import (
 )
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
-from vnpy_ashare.domain.screener.run_result import ScreenerRunResult
+from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
@@ -278,6 +278,21 @@ class ScreeningService(BaseService):
             config=config or None,
         )
         self.publish_page_context()
+        effective_trigger = trigger or str(config.get("trigger") or "")
+        if effective_trigger == "radar_leader":
+            notify = getattr(self.engine, "notification_service", None)
+            if notify is not None:
+                notify.publish_radar_leader_ready(
+                    build_screener_run_result(
+                        rows=rows,
+                        condition=result.condition,
+                        updated_at=result.updated_at,
+                        total_scanned=result.total_scanned,
+                        source=result.source,
+                        columns=result.columns,
+                    ),
+                    config,
+                )
 
     def publish_page_context(self) -> None:
         """选股页激活或结果变更后，刷新 AI 侧栏上下文。"""

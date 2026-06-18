@@ -22,7 +22,7 @@ from vnpy_llm.gateway.tool_registry import ToolRegistry
 from vnpy_llm.gateway.trace_coordinator import TraceCoordinator
 from vnpy_llm.gateway.types import AgentEvent, AgentEventType, SendRequest
 from vnpy_llm.graph.state import GraphStreamContext
-from vnpy_llm.routing.router import RouteContext, normalize_team_command
+from vnpy_llm.routing.router import RouteContext, normalize_market_command, normalize_team_command
 from vnpy_llm.tools.audit import log_tool_call
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TraceStep, TurnTrace
@@ -393,7 +393,7 @@ class AgentGateway:
 
         session_id = request.session_id
         user_text = request.user_text
-        expanded = normalize_team_command(user_text)
+        expanded = normalize_team_command(user_text) or normalize_market_command(user_text)
         effective_text = expanded if expanded else user_text
         if request.surface is not None:
             self.switch_surface(request.surface)

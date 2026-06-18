@@ -7,6 +7,7 @@ from typing import Any
 
 from vnpy_llm.chat.client import stream_chat_completion
 from vnpy_llm.config.settings import LlmConfig
+from vnpy_llm.graph.market_orchestrator import stream_market_analysis
 from vnpy_llm.graph.orchestrator import stream_team_analysis
 from vnpy_llm.graph.runner import stream_with_tools
 from vnpy_llm.graph.state import GraphStreamContext
@@ -45,6 +46,20 @@ class AgentRuntime:
                 all_tools=all_tools,
                 prefetch_provider=prefetch_provider,
                 on_team_trace=on_team_trace,
+            )
+            return
+
+        if graph_ctx is not None and graph_ctx.analysis.route.category == "market":
+            yield from stream_market_analysis(
+                config,
+                conversation_messages,
+                route_ctx.tools if route_ctx else [],
+                tool_executor,
+                should_cancel=should_cancel,
+                graph_ctx=graph_ctx,
+                all_tools=all_tools,
+                mcp_tool_names=mcp_tool_names,
+                on_handoff=on_handoff,
             )
             return
 

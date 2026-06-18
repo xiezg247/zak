@@ -11,6 +11,7 @@ from vnpy_ashare.domain.trading.signal_benchmark import (
 )
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
 from vnpy_ashare.services.analysis_detail.risk_metrics import fetch_market_sentiment
 
@@ -144,6 +145,12 @@ def build_team_market_context(
             overview = overview or {"source": "market_page_cache"}
             overview.setdefault("environment_line", env_line)
 
+    emotion_snapshot = None
+    try:
+        emotion_snapshot = load_emotion_cycle_snapshot(fetch_if_missing=True)
+    except Exception:
+        emotion_snapshot = None
+
     industry = _resolve_industry(item, diagnose)
     sectors = _load_sector_ranks()
     sector_snapshot = _sector_snapshot(industry, sectors)
@@ -165,7 +172,23 @@ def build_team_market_context(
         "sector": sector_snapshot,
         "overview": overview,
     }
+    if emotion_snapshot is not None:
+        payload["emotion_cycle"] = emotion_snapshot.to_dict()
     payload["summary_lines"] = _build_summary_lines(payload)
+    if emotion_snapshot is not None:
+        pos_max = int(emotion_snapshot.position_pct_max * 100)
+        pos_min = int(emotion_snapshot.position_pct_min * 100)
+        if pos_max <= 0:
+            pos_text = "建议空仓"
+        elif pos_min == pos_max:
+            pos_text = f"建议总仓位 {pos_max}%"
+        else:
+            pos_text = f"建议总仓位 {pos_min}–{pos_max}%"
+        allow = "允许新开" if emotion_snapshot.allow_new_positions else "不建议新开"
+        payload["summary_lines"].insert(
+            0,
+            f"情绪周期 {emotion_snapshot.stage_label} · {pos_text} · {allow}",
+        )
     if not payload["summary_lines"]:
         payload["note"] = "市场环境数据有限；Chief 可结合终端行情上下文解读大势"
     return payload

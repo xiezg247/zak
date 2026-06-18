@@ -184,7 +184,7 @@
 
 | 模式 | 默认策略插件（规划） | 依赖数据 |
 |------|---------------------|----------|
-| 打板 | `AshareLimitBoardStrategy` | **已有** | 日 K 涨停代理；完整分 K Phase 5 |
+| 打板 | `AshareLimitBoardStrategy` | **已有** | 日 K 回测；信号/选股优先本地 1m；分 K 回测见 `AshareLimitBoardMinuteStrategy` |
 | 半路 | `AshareIntradayBreakoutStrategy` | **已有** | 日 K 涨幅 3–7% 代理 |
 | 低吸 | `AsharePullbackStrategy` | **已有** | 日 K MA5 缩量回踩 |
 | 隔日卖点 | `AshareOvernightExitStrategy` | **已有** | 持仓 overlay；行情字段 MVP |
@@ -380,9 +380,9 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | Agent | 短线增强 |
 |-------|----------|
 | **strategy**（已有） | 增加：连板地位、封板质量、隔日卖点规则核对 |
-| **market**（**部分已有**） | `build_market_ai_prompt`、`get_emotion_cycle`；独立 market Agent 编排仍待扩展 |
+| **market**（**已有**） | `build_market_ai_prompt`、`get_emotion_cycle`；`market` 意图 + 预取编排（`stream_market_analysis`） |
 | **risk**（已有） | 增加：异动监管、单笔/单日风控 |
-| **chief** | 汇总须声明短线环境；退潮期默认「不建议操作」 |
+| **chief** | 汇总须声明极致短线环境；退潮/冰点默认「不宜短线新开仓」 |
 
 ### 9.4 页面级 AI 入口
 
@@ -491,11 +491,12 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 
 ### Phase 5 — 中线辅线 & 回测验证
 
-| 项 | 交付 |
-|----|------|
+| 项 | 交付 | 状态 |
+|----|------|------|
 | 短线策略回测模板 | backtest `batch_templates.py` | **已有** |
+| 分 K 打板评估 + 回测策略 | `limit_board_intraday.py` / `AshareLimitBoardMinuteStrategy` | **部分**（打板；半路/低吸待扩展） |
 | 团队分析短线评分维度 | team-agent `ultra_short` | **已有** |
-| 模式内胜率 / 盈亏比统计报表 | |
+| 模式内胜率 / 盈亏比统计报表 | | 待建 |
 
 ---
 

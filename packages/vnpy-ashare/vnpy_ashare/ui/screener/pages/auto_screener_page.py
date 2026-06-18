@@ -98,6 +98,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         self._retired_workers: list[QtCore.QThread] = []
         self._results: list[ScreenerResultRow] = []
         self._result_columns: list[tuple[str, str]] = []
+        self._last_run_config: dict[str, Any] = {}
         self._loaded_run_id: str | None = None
         self._watchlist_service = get_watchlist_service(main_engine)
         self._active = False
@@ -621,6 +622,8 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
     ) -> str:
         service = self._screening_service()
         self._results = list(rows if rows is not None else result.rows)
+        if config is not None:
+            self._last_run_config = dict(config)
         self._result_columns = result.columns or (service.resolve_export_columns(self._results) if service else [])
         apply_screener_results_view(
             self.result_table,
@@ -905,12 +908,19 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         backtest_service = get_backtest_service(self.main_engine)
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
+        trigger = str(self._last_run_config.get("trigger") or "")
+        recipe_id = (
+            str(self._last_run_config.get("recipe_id") or "").strip()
+            or self.recipe_panel.current_recipe_id()
+            or None
+        )
         flow.start(
             selected,
             source_page="多因子配方",
-            batch_source="batch_auto_screener",
+            batch_source="batch_radar_leader" if trigger == "radar_leader" else "batch_auto_screener",
             list_strategies=lambda: class_names,
-            recipe_id=self.recipe_panel.current_recipe_id(),
+            recipe_id=recipe_id,
+            trigger=trigger or None,
             on_running=lambda running: self.batch_backtest_btn.setDisabled(running),
         )
 

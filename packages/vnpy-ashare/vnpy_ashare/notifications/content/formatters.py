@@ -10,6 +10,7 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_JOURNAL_VIOLATION,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_POSITION_ALERT,
+    NOTIFY_EVENT_RADAR_LEADER_READY,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
@@ -108,6 +109,9 @@ def format_notify_text(event_id: str, payload: dict[str, Any]) -> str:
         lines.append(f"时间 {now}")
         return "\n".join(lines)
 
+    if event_id == NOTIFY_EVENT_RADAR_LEADER_READY:
+        return _format_radar_leader_ready(payload, now)
+
     msg = f"unknown event: {event_id}"
     raise ValueError(msg)
 
@@ -125,4 +129,30 @@ def _format_screener_done(title: str, payload: dict[str, Any], now: str) -> str:
         lines.append(message)
     lines.append(f"时间 {now}")
     lines.append("打开客户端查看选股 Hub 运行历史")
+    return "\n".join(lines)
+
+
+def _format_radar_leader_ready(payload: dict[str, Any], now: str) -> str:
+    condition = str(payload.get("condition") or "雷达龙头").strip()
+    hit_count = payload.get("hit_count")
+    top_name = str(payload.get("top_name") or "").strip()
+    top_symbol = str(payload.get("top_symbol") or "").strip()
+    top_score = payload.get("top_score")
+    tier_label = str(payload.get("top_tier_label") or "").strip()
+    sector = str(payload.get("sector_name") or "").strip()
+    variant = str(payload.get("variant") or "").strip()
+    lines = ["【zak】龙头池更新", condition]
+    if variant:
+        lines.append(f"模式 {variant}")
+    if hit_count is not None:
+        lines.append(f"命中 {hit_count} 条")
+    leader_line = " · ".join(part for part in (top_name, top_symbol, tier_label) if part)
+    if leader_line:
+        lines.append(f"龙一 {leader_line}")
+    if top_score is not None:
+        lines.append(f"评分 {float(top_score):.0f}")
+    if sector:
+        lines.append(f"主线 {sector}")
+    lines.append(f"时间 {now}")
+    lines.append("打开选股 Hub 查看龙头列表")
     return "\n".join(lines)

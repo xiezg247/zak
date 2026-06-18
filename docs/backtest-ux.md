@@ -48,7 +48,18 @@ A 股策略回测的交互与数据约定。引擎：vnpy `CtaBacktesterApp` + `
 
 ```bash
 uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
+# 分 K 打板回测（单票示例）
+uv run python cli.py data download --symbol 600519 --exchange SSE --period 1m --start 2025-01-01 --end 2026-06-01
 ```
+
+**分 K 回测（Phase 5）**：
+
+| 策略 | 周期 | 数据要求 |
+|------|------|----------|
+| `AshareLimitBoardStrategy` | 日 K | 本地日 K（默认） |
+| `AshareLimitBoardMinuteStrategy` | 1m | 本地 1 分 K（Tushare `stk_mins` 或 TickFlow Pro） |
+
+批量回测模板 `ultra_short_limit_board_minute`（近 90 日）可通过 `apply_batch_backtest_template(..., template_id="ultra_short_limit_board_minute")` 套用。信号侧若存在本地 1m，打板 payload 自动走分 K 评估而非日 K 代理。
 
 ## 相关文件
 

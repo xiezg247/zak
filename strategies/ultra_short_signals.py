@@ -111,6 +111,30 @@ def build_limit_board_signal_payload(
         one_word = amplitude >= 0 and amplitude < 0.5
 
     resolved_first_time = (first_time or "").strip()
+    intraday_snapshot = None
+    if limit_up_today or not resolved_first_time:
+        from datetime import datetime as dt
+
+        from vnpy_ashare.trading.signals.limit_board_intraday import evaluate_limit_board_from_local_minutes
+
+        end_d = dates[last_index]
+        trade_date = end_d.date() if isinstance(end_d, dt) else end_d
+        intraday_snapshot = evaluate_limit_board_from_local_minutes(
+            vt_symbol,
+            trade_date,
+            reject_one_word=reject_one_word,
+        )
+
+    if intraday_snapshot is not None:
+        if intraday_snapshot.first_time:
+            resolved_first_time = intraday_snapshot.first_time
+        if intraday_snapshot.eligible:
+            limit_up_today = True
+            one_word = intraday_snapshot.one_word
+        elif intraday_snapshot.first_time and reject_one_word and intraday_snapshot.one_word:
+            limit_up_today = False
+            one_word = True
+
     if not resolved_first_time and limit_up_today:
         from vnpy_ashare.trading.signals.intraday_seal_time import resolve_first_time
 
@@ -148,7 +172,10 @@ def build_limit_board_signal_payload(
     change_pct = (last_close - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
 
     reasons: list[str] = []
-    if one_word:
+    if intraday_snapshot is not None and intraday_snapshot.first_time:
+        reasons.extend(intraday_snapshot.reasons)
+        reasons.append(f"涨停价参考 {limit_price:.2f}")
+    elif one_word:
         reasons.append("近似一字板，打板回避")
     elif limit_up_today:
         reasons.append(f"涨停封板代理：涨幅 {change_pct:.1f}%（阈值 {threshold:.1f}%）")
@@ -162,26 +189,32 @@ def build_limit_board_signal_payload(
 
     if seal_score <= 0 and limit_up_today and not one_word:
         warnings.append("封板时间缺失，封板质量降权")
-    warnings.append("日 K 代理规则；完整分 K 打板须结合 TickFlow")
+    if intraday_snapshot is not None:
+        warnings.extend(intraday_snapshot.warnings)
+    else:
+        warnings.append("日 K 代理规则；完整分 K 打板须结合 TickFlow 或本地 1m")
 
     base_strength = 85.0 if limit_up_today and not one_word else 45.0 if days_since is not None and days_since <= recent_days else 30.0
     strength = round(min(100.0, base_strength + seal_score * 10.0), 1)
 
-    ref_buy = limit_price if limit_up_today or (days_since is not None and days_since <= recent_days) else None
-    ref_sell = last_close if signal == "buy" else None
-    action_buy = limit_price if limit_up_today else ref_buy
+    fast_ma = _sma(closes, 5)
+    slow_ma = _sma(closes, 10)
+    recent_limit = limit_up_today or (days_since is not None and days_since <= recent_days)
+    struct_buy = limit_price if recent_limit else slow_ma
+    struct_sell = last_close if signal == "buy" else (fast_ma if fast_ma is not None else last_close)
+    action_buy = limit_price if limit_up_today else (struct_buy if struct_buy is not None else last_close)
     action_sell = last_close
 
-    return {
+    payload = {
         "vt_symbol": vt_symbol,
         "strategy_id": strategy_id,
         "as_of": as_of,
         "signal": signal,
         "signal_label": labels[signal],
-        "signal_date": signal_date if signal == "buy" else None,
-        "ref_buy_price": ref_buy,
-        "ref_sell_price": ref_sell,
-        "action_ref_buy_price": action_buy,
+        "signal_date": signal_date,
+        "ref_buy_price": round(struct_buy, 2) if struct_buy is not None else None,
+        "ref_sell_price": round(struct_sell, 2) if struct_sell is not None else None,
+        "action_ref_buy_price": round(action_buy, 2) if action_buy is not None else None,
         "action_ref_sell_price": action_sell,
         "strength": strength,
         "reason_summary": "涨停" if limit_up_today else "打板观望",
@@ -193,7 +226,10 @@ def build_limit_board_signal_payload(
         "first_time": resolved_first_time or None,
         "seal_time_label": seal_label or None,
         "seal_time_score": seal_score,
+        "fast_ma": round(fast_ma, 2) if fast_ma is not None else None,
+        "slow_ma": round(slow_ma, 2) if slow_ma is not None else None,
     }
+    return _append_technical_fields(payload, closes, volumes)
 
 
 def _sma(values: list[float], window: int) -> float | None:
@@ -212,6 +248,38 @@ def _volume_ratio_at(volumes: list[float], end_index: int, window: int = 5) -> f
     if avg_base <= 0:
         return None
     return avg_recent / avg_base
+
+
+def _append_technical_fields(
+    payload: dict[str, Any],
+    closes: list[float],
+    volumes: list[float] | None,
+    *,
+    fast_window: int = 5,
+    slow_window: int = 10,
+) -> dict[str, Any]:
+    """补全信号区通用列：量比、快慢均线、快慢距。"""
+    if not closes:
+        return payload
+    last_index = len(closes) - 1
+    fast_ma = _sma(closes, fast_window)
+    slow_ma = _sma(closes, slow_window)
+    vol_ratio = _volume_ratio_at(volumes, last_index) if volumes else None
+    gap: float | None = None
+    if fast_ma is not None and slow_ma is not None and slow_ma > 0:
+        gap = round((fast_ma - slow_ma) / slow_ma * 100, 2)
+    merged = dict(payload)
+    if merged.get("fast_ma") is None and fast_ma is not None:
+        merged["fast_ma"] = round(fast_ma, 2)
+    if merged.get("slow_ma") is None and slow_ma is not None:
+        merged["slow_ma"] = round(slow_ma, 2)
+    if merged.get("volume_ratio_5d") is None and vol_ratio is not None:
+        merged["volume_ratio_5d"] = round(vol_ratio, 2)
+    if merged.get("ma_gap_pct") is None and gap is not None:
+        merged["ma_gap_pct"] = gap
+    if merged.get("strength_volume") is None and vol_ratio is not None:
+        merged["strength_volume"] = round(min(100.0, max(0.0, vol_ratio * 50.0)), 1)
+    return merged
 
 
 def classify_intraday_breakout_bar(
@@ -314,7 +382,10 @@ def build_intraday_breakout_signal_payload(
 
     labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
     breakout_level = max(high_series[max(0, last_index - 5) : last_index]) if last_index > 0 else last_close
-    ref_buy = round(breakout_level, 2) if signal == "buy" else None
+    slow_ma = _sma(closes, 10)
+    ref_buy = round(breakout_level, 2) if signal == "buy" else (round(slow_ma, 2) if slow_ma is not None else None)
+    fast_ma = _sma(closes, 5)
+    struct_sell = round(fast_ma, 2) if fast_ma is not None else last_close
 
     reasons = [
         f"涨幅 {change_pct:.1f}%（半路区间 {min_change_pct:.0f}–{max_change_pct:.0f}%）",
@@ -323,7 +394,7 @@ def build_intraday_breakout_signal_payload(
         reasons.append(f"量比 {vol_ratio:.1f}")
     strength = 75.0 if signal == "buy" else 35.0
 
-    return {
+    payload = {
         "vt_symbol": vt_symbol,
         "strategy_id": strategy_id,
         "as_of": as_of,
@@ -331,7 +402,7 @@ def build_intraday_breakout_signal_payload(
         "signal_label": labels[signal],
         "signal_date": as_of if signal == "buy" else None,
         "ref_buy_price": ref_buy,
-        "ref_sell_price": last_close,
+        "ref_sell_price": struct_sell,
         "action_ref_buy_price": ref_buy or last_close,
         "action_ref_sell_price": last_close,
         "strength": strength,
@@ -340,7 +411,9 @@ def build_intraday_breakout_signal_payload(
         "warnings": tuple(warn_list),
         "last_close": last_close,
         "change_pct": round(change_pct, 2),
+        "volume_ratio_5d": round(vol_ratio, 2) if vol_ratio is not None else None,
     }
+    return _append_technical_fields(payload, closes, vol_series or None)
 
 
 def build_pullback_signal_payload(
@@ -388,15 +461,15 @@ def build_pullback_signal_payload(
     ]
     strength = 70.0 if signal == "buy" else 30.0
 
-    return {
+    payload = {
         "vt_symbol": vt_symbol,
         "strategy_id": strategy_id,
         "as_of": as_of,
         "signal": signal,
         "signal_label": labels[signal],
         "signal_date": as_of if signal == "buy" else None,
-        "ref_buy_price": ref_buy,
-        "ref_sell_price": last_close,
+        "ref_buy_price": ref_buy if ref_buy is not None else round(ma5, 2),
+        "ref_sell_price": round(ma10, 2) if ma10 is not None else last_close,
         "action_ref_buy_price": ref_buy or last_close,
         "action_ref_sell_price": last_close,
         "strength": strength,
@@ -407,6 +480,7 @@ def build_pullback_signal_payload(
         "fast_ma": round(ma5, 2),
         "slow_ma": round(ma10, 2) if ma10 is not None else None,
     }
+    return _append_technical_fields(payload, closes, vol_series or None, fast_window=ma_window, slow_window=10)
 
 
 def _empty_payload(vt_symbol: str, strategy_id: str, *, warnings: tuple[str, ...]) -> dict[str, Any]:

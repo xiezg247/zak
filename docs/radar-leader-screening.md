@@ -509,7 +509,7 @@ ui/screener/workers/              # LeaderScreenWorker
 - [x] 概念 + 行业双主线统一池（`rank_unified_sector_leaders`）  
 - [x] 炸板回封检测（`seal_reopen` + `open_times`）  
 - [x] 异动监管距离（概览 Tab + `assess_regulatory_deviation`；龙头列表 `regulatory_hint` 列）  
-- [ ] 龙头选股回测 batch 入口  
+- [x] 龙头选股回测 batch 入口（Hub「批量回测」+ `trigger=radar_leader` → 极致短线打板模板）  
 
 ---
 

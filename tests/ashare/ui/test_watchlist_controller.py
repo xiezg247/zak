@@ -57,6 +57,7 @@ class WatchlistControllerTests(unittest.TestCase):
         self.page.move_watchlist_down_button = MagicMock()
         self.page.status_label = MagicMock()
         self.page.status_label.setText = MagicMock()
+        self.page._update_action_buttons = MagicMock()
         self.service = MagicMock()
         self.service.get_items.return_value = [
             {"symbol": "600519", "exchange": "SSE", "name": "贵州茅台"},
@@ -84,6 +85,25 @@ class WatchlistControllerTests(unittest.TestCase):
 
         self.service.add.assert_called_once_with("600519", Exchange.SSE, "贵州茅台")
         self.page.status_label.setText.assert_called()
+
+    def test_remove_selected_updates_pool_without_full_reload(self) -> None:
+        item = StockItem(symbol="600519", exchange=Exchange.SSE, name="贵州茅台")
+        self.page.current_item = item
+        self.page.depth_panel = None
+        self.page._get_position_service.return_value = None
+        self.page._watchlist_groups = None
+        self.service.remove.return_value = True
+        self.service.get_items.return_value = []
+        self.page.load_stock_list = MagicMock()
+        self.page.apply_filter = MagicMock()
+
+        self.controller.remove_selected()
+
+        self.service.remove.assert_called_once_with("600519", Exchange.SSE)
+        self.page.load_stock_list.assert_not_called()
+        self.assertEqual(self.page.all_stocks, [])
+        self.page.apply_filter.assert_called_once()
+        self.page._update_action_buttons.assert_called()
 
 
 if __name__ == "__main__":

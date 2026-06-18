@@ -13,6 +13,7 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_JOURNAL_VIOLATION,
     NOTIFY_EVENT_POSITION_ALERT,
+    NOTIFY_EVENT_RADAR_LEADER_READY,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
@@ -33,7 +34,18 @@ _EVENT_LABELS: dict[str, str] = {
     NOTIFY_EVENT_RISK_GATE_CHANGE: "风控状态变更",
     NOTIFY_EVENT_POSITION_ALERT: "持仓异动提醒",
     NOTIFY_EVENT_JOURNAL_VIOLATION: "流水违规提醒",
+    NOTIFY_EVENT_RADAR_LEADER_READY: "龙头池更新",
 }
+
+_CONNECTION_KEYS = frozenset(
+    {
+        "NOTIFY_ENABLED",
+        "FEISHU_WEBHOOK_URL",
+        "FEISHU_WEBHOOK_SECRET",
+        "NOTIFY_MIN_INTERVAL_SEC",
+    },
+)
+_CARD_ENV_KEYS = frozenset({"NOTIFY_FEISHU_INTERACTIVE", "NOTIFY_OPEN_URL"})
 
 
 class NotifySettingsSection(QtWidgets.QWidget):
@@ -50,50 +62,35 @@ class NotifySettingsSection(QtWidgets.QWidget):
         self.refresh()
 
     def _build_ui(self) -> None:
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
+        outer = QtWidgets.QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        scroll = QtWidgets.QScrollArea()
+        scroll.setObjectName("SettingsScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        body = QtWidgets.QWidget()
+        body.setObjectName("SettingsScrollBody")
+        root = QtWidgets.QVBoxLayout(body)
+        root.setContentsMargins(4, 8, 4, 8)
         root.setSpacing(12)
 
-        hint = QtWidgets.QLabel("通过飞书群自定义机器人 Webhook 推送任务提醒（不含买卖建议）。Webhook URL 仅存于本机 .env，请勿分享或提交版本库。")
+        hint = QtWidgets.QLabel(
+            "通过飞书群自定义机器人 Webhook 推送任务提醒（不含买卖建议）。"
+            "Webhook URL 仅存于本机 .env，请勿分享或提交版本库。"
+        )
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
         root.addWidget(hint)
 
-        env_group = QtWidgets.QGroupBox("连接")
-        env_group.setObjectName("SettingsGroup")
-        env_form = QtWidgets.QFormLayout(env_group)
-        env_form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
-        env_form.setHorizontalSpacing(12)
-        env_form.setVerticalSpacing(10)
-        for spec in ENV_NOTIFY_SPECS:
-            widget = self._create_widget(spec)
-            self._dialog._env_widgets[spec.key] = widget
-            label = QtWidgets.QLabel(spec.label)
-            label.setObjectName("SettingsFormLabel")
-            if spec.description:
-                label.setToolTip(spec.description)
-            env_form.addRow(label, widget)
-        root.addWidget(env_group)
-
-        events_group = QtWidgets.QGroupBox("事件订阅")
-        events_group.setObjectName("SettingsGroup")
-        events_layout = QtWidgets.QVBoxLayout(events_group)
-        for event_id, default in DEFAULT_EVENT_SUBSCRIPTIONS.items():
-            check = QtWidgets.QCheckBox(_EVENT_LABELS.get(event_id, event_id))
-            check.setObjectName("SettingsCheck")
-            check.setChecked(default)
-            self._event_checks[event_id] = check
-            events_layout.addWidget(check)
-        root.addWidget(events_group)
-
-        card_group = QtWidgets.QGroupBox("飞书卡片")
-        card_group.setObjectName("SettingsGroup")
-        card_layout = QtWidgets.QVBoxLayout(card_group)
-        self._interactive_check = QtWidgets.QCheckBox("使用 interactive 卡片（替代纯文本）")
-        self._interactive_check.setObjectName("SettingsCheck")
-        self._interactive_check.setToolTip("配置 NOTIFY_OPEN_URL 后卡片底部显示「打开 zak」按钮")
-        card_layout.addWidget(self._interactive_check)
-        root.addWidget(card_group)
+        connection_specs = [spec for spec in ENV_NOTIFY_SPECS if spec.key in _CONNECTION_KEYS]
+        card_env_specs = [spec for spec in ENV_NOTIFY_SPECS if spec.key in _CARD_ENV_KEYS]
+        root.addWidget(self._build_env_form_group("连接", connection_specs))
+        root.addWidget(self._build_events_group())
+        root.addWidget(self._build_card_group(card_env_specs))
 
         test_row = QtWidgets.QHBoxLayout()
         test_button = QtWidgets.QPushButton("发送飞书测试消息")
@@ -104,6 +101,81 @@ class NotifySettingsSection(QtWidgets.QWidget):
         root.addLayout(test_row)
         root.addWidget(self._last_error_label)
         root.addStretch()
+
+        scroll.setWidget(body)
+        outer.addWidget(scroll)
+
+    def _build_env_form_group(self, title: str, specs: list[ConfigFieldSpec]) -> QtWidgets.QGroupBox:
+        group = QtWidgets.QGroupBox(title)
+        group.setObjectName("SettingsGroup")
+        outer = QtWidgets.QVBoxLayout(group)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        host = QtWidgets.QWidget()
+        form = QtWidgets.QFormLayout(host)
+        form.setContentsMargins(0, 0, 0, 0)
+        form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+        form.setFormAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
+        form.setHorizontalSpacing(12)
+        form.setVerticalSpacing(10)
+        form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+
+        for spec in specs:
+            widget = self._create_widget(spec)
+            self._dialog._env_widgets[spec.key] = widget
+            label = QtWidgets.QLabel(spec.label)
+            label.setObjectName("SettingsFormLabel")
+            if spec.description:
+                label.setToolTip(spec.description)
+            form.addRow(label, widget)
+
+        outer.addWidget(host)
+        return group
+
+    def _build_events_group(self) -> QtWidgets.QGroupBox:
+        events_group = QtWidgets.QGroupBox("事件订阅")
+        events_group.setObjectName("SettingsGroup")
+        events_layout = QtWidgets.QVBoxLayout(events_group)
+        events_layout.setSpacing(6)
+        for event_id, default in DEFAULT_EVENT_SUBSCRIPTIONS.items():
+            check = QtWidgets.QCheckBox(_EVENT_LABELS.get(event_id, event_id))
+            check.setObjectName("SettingsCheck")
+            check.setChecked(default)
+            self._event_checks[event_id] = check
+            events_layout.addWidget(check)
+        return events_group
+
+    def _build_card_group(self, env_specs: list[ConfigFieldSpec]) -> QtWidgets.QGroupBox:
+        card_group = QtWidgets.QGroupBox("飞书卡片")
+        card_group.setObjectName("SettingsGroup")
+        card_layout = QtWidgets.QVBoxLayout(card_group)
+        card_layout.setSpacing(10)
+
+        if env_specs:
+            host = QtWidgets.QWidget()
+            form = QtWidgets.QFormLayout(host)
+            form.setContentsMargins(0, 0, 0, 0)
+            form.setLabelAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
+            form.setFormAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
+            form.setHorizontalSpacing(12)
+            form.setVerticalSpacing(10)
+            form.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
+            for spec in env_specs:
+                widget = self._create_widget(spec)
+                self._dialog._env_widgets[spec.key] = widget
+                label = QtWidgets.QLabel(spec.label)
+                label.setObjectName("SettingsFormLabel")
+                if spec.description:
+                    label.setToolTip(spec.description)
+                form.addRow(label, widget)
+            card_layout.addWidget(host)
+
+        self._interactive_check = QtWidgets.QCheckBox("使用 interactive 卡片（替代纯文本）")
+        self._interactive_check.setObjectName("SettingsCheck")
+        self._interactive_check.setToolTip("配置 NOTIFY_OPEN_URL 后卡片底部显示「打开 zak」按钮")
+        card_layout.addWidget(self._interactive_check)
+        return card_group
 
     def _create_widget(self, spec: ConfigFieldSpec) -> QtWidgets.QWidget:
         if spec.kind == "bool":

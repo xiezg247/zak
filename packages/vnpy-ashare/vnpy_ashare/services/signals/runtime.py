@@ -128,6 +128,17 @@ def estimate_adjusted_ma_anchor(
     return round(ma_anchor + (last_price - bar_close) / window, 2)
 
 
+def _structural_anchor_prices(snapshot: SignalSnapshot) -> tuple[float | None, float | None]:
+    """结构锚点：优先 ref_*，极致短线等策略回退到均线/动作位。"""
+    buy = snapshot.ref_buy_price
+    sell = snapshot.ref_sell_price
+    if buy is None:
+        buy = snapshot.slow_ma or snapshot.action_ref_buy_price
+    if sell is None:
+        sell = snapshot.fast_ma or snapshot.action_ref_sell_price or snapshot.last_close
+    return buy, sell
+
+
 def resolve_display_anchor_prices(
     snapshot: SignalSnapshot,
     *,
@@ -136,29 +147,30 @@ def resolve_display_anchor_prices(
     fast_window: int = 10,
 ) -> tuple[float | None, float | None, bool]:
     """列表/图表展示用支撑/阻力锚点；有行情时用现价估算盘中均线。"""
+    struct_buy, struct_sell = _structural_anchor_prices(snapshot)
     last_price = quote.last_price if quote and quote.last_price > 0 else None
     bar_close = snapshot.last_close
     if last_price is None or bar_close is None:
-        return snapshot.ref_buy_price, snapshot.ref_sell_price, False
+        return struct_buy, struct_sell, False
 
     buy = estimate_adjusted_ma_anchor(
-        snapshot.ref_buy_price,
+        struct_buy,
         bar_close,
         last_price,
         slow_window,
     )
     sell = estimate_adjusted_ma_anchor(
-        snapshot.ref_sell_price,
+        struct_sell,
         bar_close,
         last_price,
         fast_window,
     )
-    display_buy = buy if buy is not None else snapshot.ref_buy_price
-    display_sell = sell if sell is not None else snapshot.ref_sell_price
+    display_buy = buy if buy is not None else struct_buy
+    display_sell = sell if sell is not None else struct_sell
     adjusted = False
-    if display_buy is not None and snapshot.ref_buy_price is not None and abs(display_buy - snapshot.ref_buy_price) >= INTRADAY_ANCHOR_MIN_DELTA:
+    if display_buy is not None and struct_buy is not None and abs(display_buy - struct_buy) >= INTRADAY_ANCHOR_MIN_DELTA:
         adjusted = True
-    if display_sell is not None and snapshot.ref_sell_price is not None and abs(display_sell - snapshot.ref_sell_price) >= INTRADAY_ANCHOR_MIN_DELTA:
+    if display_sell is not None and struct_sell is not None and abs(display_sell - struct_sell) >= INTRADAY_ANCHOR_MIN_DELTA:
         adjusted = True
     return display_buy, display_sell, adjusted
 
@@ -221,10 +233,11 @@ def _fallback_action_ref_prices(snapshot: SignalSnapshot) -> tuple[float | None,
     """旧快照无动作参考价时回退到结构锚点。"""
     buy = snapshot.action_ref_buy_price
     sell = snapshot.action_ref_sell_price
+    struct_buy, struct_sell = _structural_anchor_prices(snapshot)
     if buy is None:
-        buy = snapshot.ref_buy_price
+        buy = struct_buy
     if sell is None:
-        sell = snapshot.ref_sell_price
+        sell = struct_sell
     return buy, sell
 
 
@@ -430,7 +443,7 @@ def signal_cell_text(
         )
         return text, signal_sort_key(snapshot.signal)
     if column_key == "signal_age":
-        if snapshot.signal not in ("buy", "sell"):
+        if snapshot.signal not in ("buy", "sell", "hold") or not snapshot.signal_date:
             return "—", float("-inf")
         age = signal_age_days(snapshot)
         if age is None:

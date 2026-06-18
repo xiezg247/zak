@@ -12,6 +12,7 @@ IntentCategory = Literal[
     "general",
     "quote",
     "technical",
+    "market",
     "diagnosis",
     "screening",
     "backtest",

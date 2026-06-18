@@ -101,6 +101,7 @@ class ScreenerBatchBacktestConfigDialog(QtWidgets.QDialog):
         default_start: str,
         default_end: str,
         count: int,
+        template_note: str = "",
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -112,6 +113,11 @@ class ScreenerBatchBacktestConfigDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(QtWidgets.QLabel(f"将对勾选的 {count} 只股票逐只回测（不自动开始单页回测）。"))
+        if template_note.strip():
+            hint = QtWidgets.QLabel(f"模板：{template_note.strip()}")
+            hint.setObjectName("SecondaryLabel")
+            hint.setWordWrap(True)
+            layout.addWidget(hint)
 
         form = QtWidgets.QFormLayout()
         self.class_combo = QtWidgets.QComboBox()

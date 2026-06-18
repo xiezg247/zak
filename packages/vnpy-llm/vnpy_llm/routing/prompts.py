@@ -36,6 +36,23 @@ QUOTES_PAGE_PROMPT = """【看盘页】
 问「走势预测」「5日情景」「方向倾向」「支撑压力」时优先 trend_scenario_summary，一次调用后通常即可作答。
 问策略信号 / 双均线状态时调用 list_strategy_signals，不得给出具体买卖价位。"""
 
+RADAR_PAGE_PROMPT = """【雷达页】
+用户正在雷达页浏览盘面统计与共振侧栏。
+问短线环境、情绪周期、能不能做、连板结构、龙头/主线时走 Market Agent 择时工具链。
+可结合 get_emotion_cycle、check_risk_gate、run_leader_screen、get_short_term_watchlist。
+「生成次日计划」场景用 propose_trading_plan（草案，须用户激活）。"""
+
+
+def _market_page_prompt(page: str) -> str:
+    """市场/雷达页注入 ashare 动态摘要（懒加载避免循环依赖）。"""
+    del page
+    try:
+        from vnpy_ashare.ai.context.market_overview import build_market_ai_prompt
+
+        return build_market_ai_prompt(focus="intraday")
+    except Exception:
+        return ""
+
 
 def build_page_prompt(page: str) -> str:
     if page == "策略回测":
@@ -44,7 +61,19 @@ def build_page_prompt(page: str) -> str:
         return BATCH_BACKTEST_PAGE_PROMPT
     if page == "选股":
         return SCREENING_PAGE_PROMPT
+    if page == "雷达":
+        injected = _market_page_prompt(page)
+        parts = [RADAR_PAGE_PROMPT]
+        if injected:
+            parts.append(injected)
+        return "\n\n".join(parts)
     if page in ("自选", "市场", "本地"):
+        if page == "市场":
+            injected = _market_page_prompt(page)
+            parts = [QUOTES_PAGE_PROMPT.replace("【看盘页】", "【市场页】")]
+            if injected:
+                parts.append(injected)
+            return "\n\n".join(parts)
         return QUOTES_PAGE_PROMPT
     return ""
 

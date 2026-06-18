@@ -227,6 +227,12 @@ def _build_team_context_for_chief(
         summary = market_context.get("summary_lines") or []
         if summary:
             parts.append("\n【市场环境（预取）】\n" + "；".join(str(line) for line in summary))
+        emotion = market_context.get("emotion_cycle")
+        if emotion:
+            parts.append(
+                "\n【A股情绪周期（预取，Chief 须在「极致短线环境」引用）】\n"
+                + json.dumps(emotion, ensure_ascii=False)
+            )
         parts.append("\n【市场环境明细（预取 JSON）】\n" + json.dumps(market_context, ensure_ascii=False))
 
     if context_text.strip():
@@ -235,6 +241,7 @@ def _build_team_context_for_chief(
     parts.append(
         "\n请综合子分析师结论、规则评分与市场环境预取，生成综合研判。"
         "综合加权：财务 35% + 风险 25% + 策略 20% + 行情 20%（行情维优先参考【市场环境（预取）】与【行情上下文】）。"
+        "必须单独输出「极致短线环境」段落：引用 emotion_cycle 阶段、仓位建议、是否允许新开；退潮/冰点须明确不宜短线新开仓。"
         "禁止编造未出现的数据。"
     )
     return "\n".join(parts)

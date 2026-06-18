@@ -6,6 +6,7 @@ from datetime import timedelta
 from typing import Any
 
 from pydantic import Field
+from vnpy.trader.constant import Interval
 
 from vnpy_ashare.screener.batch.batch_actions import BatchBacktestParams
 from vnpy_ashare.screener.recipe.recipe import (
@@ -23,6 +24,7 @@ class BatchBacktestTemplate(FrozenModel):
     lookback_days: int = Field(description="回测区间天数")
     strategy_setting: dict[str, Any] = Field(description="策略参数字典")
     note: str = Field(default="", description="补充说明")
+    interval: Interval = Field(default=Interval.DAILY, description="K 线周期")
 
 
 _TEMPLATES: dict[str, BatchBacktestTemplate] = {
@@ -40,6 +42,22 @@ _TEMPLATES: dict[str, BatchBacktestTemplate] = {
             "one_word_amplitude_max": 0.5,
         },
         note="日 K 涨停代理；信号侧封板时间来自 limit_list_d",
+    ),
+    "ultra_short_limit_board_minute": BatchBacktestTemplate(
+        template_id="ultra_short_limit_board_minute",
+        title="极致短线·打板（分 K）",
+        class_name="AshareLimitBoardMinuteStrategy",
+        lookback_days=90,
+        strategy_setting={
+            "max_hold_days": 2,
+            "stop_loss_pct": 0.05,
+            "reject_one_word": True,
+            "one_word_amplitude_max": 0.5,
+            "seal_cutoff_minutes": 630,
+            "reject_broken": True,
+        },
+        note="1 分 K 触板规则；须本地 1m 数据，回测周期建议 ≤90 日",
+        interval=Interval.MINUTE,
     ),
     "ultra_short_breakout": BatchBacktestTemplate(
         template_id="ultra_short_breakout",
@@ -107,12 +125,20 @@ _PROFILE_TEMPLATE: dict[str, str] = {
     "trend": "trend",
 }
 
+_TRIGGER_TEMPLATE: dict[str, str] = {
+    "radar_leader": "ultra_short_limit_board",
+}
+
 
 def resolve_batch_backtest_template_id(
     *,
     profile_id: str | None = None,
     recipe_id: str | None = None,
+    trigger: str | None = None,
 ) -> str | None:
+    trig = (trigger or "").strip()
+    if trig and trig in _TRIGGER_TEMPLATE:
+        return _TRIGGER_TEMPLATE[trig]
     rid = (recipe_id or "").strip()
     if rid and rid in _RECIPE_TEMPLATE:
         return _RECIPE_TEMPLATE[rid]
@@ -131,15 +157,21 @@ def apply_batch_backtest_template(
     *,
     profile_id: str | None = None,
     recipe_id: str | None = None,
+    trigger: str | None = None,
+    template_id: str | None = None,
     override_class_name: bool = True,
     override_dates: bool = True,
     override_setting: bool = True,
 ) -> BatchBacktestParams:
-    """按 Profile / Recipe 合并批量回测默认参数。"""
-    template_id = resolve_batch_backtest_template_id(profile_id=profile_id, recipe_id=recipe_id)
-    if not template_id:
+    """按 Profile / Recipe / 选股 trigger / 模板 ID 合并批量回测默认参数。"""
+    resolved_id = (template_id or "").strip() or resolve_batch_backtest_template_id(
+        profile_id=profile_id,
+        recipe_id=recipe_id,
+        trigger=trigger,
+    )
+    if not resolved_id:
         return params
-    template = _TEMPLATES.get(template_id)
+    template = _TEMPLATES.get(resolved_id)
     if template is None:
         return params
 
@@ -163,6 +195,7 @@ def apply_batch_backtest_template(
             "start": start,
             "end": end,
             "strategy_setting": setting,
+            "interval": template.interval,
         },
     )
 
@@ -171,8 +204,13 @@ def batch_backtest_template_note(
     *,
     profile_id: str | None = None,
     recipe_id: str | None = None,
+    trigger: str | None = None,
 ) -> str:
-    template_id = resolve_batch_backtest_template_id(profile_id=profile_id, recipe_id=recipe_id)
+    template_id = resolve_batch_backtest_template_id(
+        profile_id=profile_id,
+        recipe_id=recipe_id,
+        trigger=trigger,
+    )
     if not template_id:
         return ""
     template = _TEMPLATES.get(template_id)

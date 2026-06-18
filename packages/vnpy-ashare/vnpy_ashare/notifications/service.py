@@ -17,6 +17,7 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
+    NOTIFY_EVENT_RADAR_LEADER_READY,
 )
 from vnpy_ashare.notifications.core.models import NotifyDeliveryResult
 from vnpy_ashare.notifications.pipeline.dispatcher import NotifyDispatcher
@@ -26,7 +27,9 @@ from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, b
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.storage.repositories.notify_delivery_log import append_notify_delivery_log
+from vnpy_ashare.notifications.triggers.radar_leader_ready import build_radar_leader_ready_payload
 from vnpy_ashare.trading.risk.gate import RiskGateSnapshot
+from vnpy_ashare.domain.screener.run_result import ScreenerRunResult
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +124,22 @@ class NotificationService(BaseService):
         if changed is None:
             return
         self._notify_risk_gate_change(changed)
+
+    def publish_radar_leader_ready(
+        self,
+        result: ScreenerRunResult,
+        config: dict[str, Any] | None = None,
+    ) -> None:
+        payload = build_radar_leader_ready_payload(result, config)
+        if payload is None:
+            return
+        trade_date = str(result.updated_at or "")[:10] or "unknown"
+        variant = str(payload.get("variant") or "mainline")
+        self.notify(
+            NOTIFY_EVENT_RADAR_LEADER_READY,
+            dedupe_key=f"{trade_date}:{variant}",
+            payload=payload,
+        )
 
     def test_send(self) -> NotifyDeliveryResult:
         ok, reason = self._rules.should_send(NOTIFY_EVENT_MANUAL_TEST, "manual_test")

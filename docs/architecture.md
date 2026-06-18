@@ -195,6 +195,23 @@ TeamOrchestrator.stream_team_analysis
 
 与 `diagnose_stock`（单 Agent 快速问小达诊断）互补。设计细节见 [team-agent.md](./team-agent.md)。
 
+### 市场择时（MarketOrchestrator）
+
+`market` 意图走独立预取路径（`graph/market_orchestrator.py`），与 team 并行路径并列：
+
+```
+用户输入（/market、市场页快捷动作、「今天能不能做短线」）
+        ↓
+IntentCategory == market
+        ↓
+MarketOrchestrator.stream_market_analysis
+├── prefetch：get_emotion_cycle + check_risk_gate + get_ashare_fear_greed_index
+├── 注入 GraphStreamContext.market_prefetch / 终端上下文
+└── 单 Market Agent ReAct（`stream_with_tools`，target=market）
+```
+
+市场/雷达页 `build_page_prompt` 额外注入 `build_market_ai_prompt` 摘要。`/market` 与 `/market environment` 命令见 `routing/router.normalize_market_command`。
+
 ### 悬浮球
 
 协调层：`ui/floating_controller.py`（`FloatingAiController`）。

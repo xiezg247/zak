@@ -62,6 +62,31 @@ class WatchlistController:
             page.move_watchlist_up_button.setEnabled(can_move and index is not None and index > 0)
             page.move_watchlist_down_button.setEnabled(can_move and index is not None and index + 1 < total)
 
+    def _pool_from_service(self) -> list[StockItem]:
+        service = self._service()
+        if service is None:
+            return []
+        return [
+            StockItem(
+                symbol=row["symbol"],
+                exchange=Exchange(row["exchange"]),
+                name=row["name"],
+            )
+            for row in service.get_items()
+        ]
+
+    def _apply_pool(self, pool: list[StockItem]) -> None:
+        """从 service 结果刷新自选列表 UI（避免 load_stock_list 全量重载）。"""
+        page = self._page
+        page.watchlist_pool_stocks = pool
+        if page._watchlist_groups is not None:
+            page._watchlist_groups.on_stock_list_loaded(pool)
+        else:
+            page.all_stocks = pool
+            page.apply_filter()
+        self.refresh_keys()
+        page._update_action_buttons()
+
     def add_selected(self) -> None:
         if not self._page.current_item:
             return
@@ -120,7 +145,9 @@ class WatchlistController:
         if self._page.depth_panel is not None:
             self._page.depth_panel.clear()
         self._page.status_label.setText(f"已移出自选：{format_vt_symbol_cn(item.symbol, item.exchange)}")
-        self._page.load_stock_list()
+        self._apply_pool(self._pool_from_service())
+        if self._page.config.show_watchlist_signals:
+            self._page._signals.on_symbols_changed()
 
     def move_selected(self, direction: Literal["up", "down"]) -> None:
         if not self._page.current_item:
@@ -134,20 +161,8 @@ class WatchlistController:
         key = (item.symbol, item.exchange)
         if not service.move(item.symbol, item.exchange, direction=direction):
             return
-        pool = [
-            StockItem(
-                symbol=row["symbol"],
-                exchange=Exchange(row["exchange"]),
-                name=row["name"],
-            )
-            for row in service.get_items()
-        ]
-        self._page.watchlist_pool_stocks = pool
-        if self._page._watchlist_groups is not None:
-            self._page._watchlist_groups.on_stock_list_loaded(pool)
-        else:
-            self._page.all_stocks = pool
-            self._page.apply_filter()
+        key = (item.symbol, item.exchange)
+        self._apply_pool(self._pool_from_service())
         self._page._select_stock_key(key)
         label = "上移" if direction == "up" else "下移"
         self._page.status_label.setText(f"{format_vt_symbol_cn(item.symbol, item.exchange)} 已{label}")

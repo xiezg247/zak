@@ -124,6 +124,19 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
         param_hints=(("seal_time_cutoff", "封板时间上限，默认 10:30"),),
         supports_signals=True,
     ),
+    "AshareLimitBoardMinuteStrategy": StrategyMeta(
+        class_name="AshareLimitBoardMinuteStrategy",
+        title="A 股极致短线·打板（分 K）",
+        summary=("1 分 K 首次触板 + 10:30 前 + 一字过滤；回测须本地 1m 数据（Tushare / TickFlow Pro）。"),
+        tags=("极致短线", "打板", "分 K"),
+        scenarios=("验证打板规则精度", "本地已下载 1m", "龙头 batch 分 K 回测"),
+        anti_scenarios=("无 1m 数据", "退潮 / 冰点"),
+        param_hints=(
+            ("seal_cutoff_minutes", "触板截止分钟，默认 630（10:30）"),
+            ("reject_broken", "收盘炸板未回封不买"),
+        ),
+        supports_signals=False,
+    ),
     "AshareIntradayBreakoutStrategy": StrategyMeta(
         class_name="AshareIntradayBreakoutStrategy",
         title="A 股极致短线·半路",

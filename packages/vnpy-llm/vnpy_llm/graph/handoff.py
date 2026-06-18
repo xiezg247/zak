@@ -38,12 +38,18 @@ _BACKTEST_MARKET_KEYWORDS = (
     "形态",
 )
 
-# 选股 + 技术面扫描 → 追加 market
+# 选股 + 择时/环境 → 追加 market
 _SCREENING_MARKET_KEYWORDS = (
     "技术面",
     "技术扫描",
     "技术面对比",
     "均线情况",
+    "今天能不能做",
+    "能不能做短线",
+    "短线环境",
+    "情绪周期",
+    "择时",
+    "市场环境",
 )
 
 _HANDOFF_RULES: tuple[tuple[IntentCategory, tuple[str, ...], AgentName, str], ...] = (

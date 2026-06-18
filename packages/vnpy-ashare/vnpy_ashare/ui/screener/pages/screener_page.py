@@ -104,6 +104,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._retired_workers: list[QtCore.QThread] = []
         self._results: list[ScreenerResultRow] = []
         self._result_columns: list[tuple[str, str]] = []
+        self._last_run_config: dict[str, Any] = {}
         self._loaded_run_id: str | None = None
         self._watchlist_service = get_watchlist_service(main_engine)
 
@@ -884,6 +885,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
     ) -> None:
         config: dict[str, Any] = dict(extra_config or {})
         config["trigger"] = trigger
+        self._last_run_config = dict(config)
         self._results = list(result.rows)
         if trigger in ("radar", "radar_leader", "industry", "pattern"):
             self._results = enrich_condition_run(
@@ -1219,12 +1221,16 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         backtest_service = get_backtest_service(self.main_engine)
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
+        trigger = str(self._last_run_config.get("trigger") or "")
+        recipe_id = str(self._last_run_config.get("recipe_id") or "").strip() or None
         flow.start(
             selected,
             source_page="选股",
-            batch_source="batch_screener",
+            batch_source="batch_radar_leader" if trigger == "radar_leader" else "batch_screener",
             list_strategies=lambda: class_names,
             on_running=lambda running: self.batch_backtest_btn.setDisabled(running),
+            trigger=trigger or None,
+            recipe_id=recipe_id,
         )
 
     def _save_scheme(self) -> None:

@@ -142,7 +142,7 @@ QTableWidget#SettingsEnvTable QHeaderView::section {{
 QLabel#SettingsFormLabel {{
     color: {t.text_secondary};
     font-size: 12px;
-    min-width: 108px;
+    min-width: 140px;
 }}
 QSpinBox#SettingsInput {{
     background-color: {t.input_bg};
@@ -215,6 +215,33 @@ QPushButton#SettingsSecondaryButton {{
 }}
 QPushButton#SettingsSecondaryButton:hover {{
     background-color: {t.secondary_btn_hover_bg};
+    color: {t.text_primary};
+}}
+QTabWidget#SettingsTabs::pane {{
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+    background-color: transparent;
+    top: -1px;
+    padding: 4px;
+}}
+QTabWidget#SettingsTabs > QTabBar::tab {{
+    background-color: {t.input_bg};
+    border: 1px solid {t.input_border};
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 8px 18px;
+    margin-right: 4px;
+    color: {t.text_secondary};
+    font-size: 12px;
+}}
+QTabWidget#SettingsTabs > QTabBar::tab:selected {{
+    background-color: {t.panel_bg};
+    color: {t.text_primary};
+    font-weight: bold;
+}}
+QTabWidget#SettingsTabs > QTabBar::tab:hover:!selected {{
+    background-color: {t.btn_hover_bg};
     color: {t.text_primary};
 }}
 """

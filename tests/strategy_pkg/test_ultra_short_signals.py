@@ -61,6 +61,28 @@ class UltraShortSignalsTest(unittest.TestCase):
         self.assertEqual(payload["signal"], "hold")
         self.assertIn("一字板", " ".join(payload["reasons"]))
 
+    def test_limit_board_hold_populates_technical_fields(self) -> None:
+        closes = [10.0 + i * 0.1 for i in range(15)]
+        highs = list(closes)
+        lows = [c - 0.2 for c in closes]
+        volumes = [1000.0 + i * 10 for i in range(15)]
+        dates = [date(2026, 6, 1 + i) for i in range(15)]
+        payload = build_limit_board_signal_payload(
+            closes,
+            dates,
+            vt_symbol="600519.SSE",
+            highs=highs,
+            lows=lows,
+            volumes=volumes,
+        )
+        self.assertEqual(payload["signal"], "hold")
+        self.assertIsNotNone(payload.get("slow_ma"))
+        self.assertIsNotNone(payload.get("fast_ma"))
+        self.assertIsNotNone(payload.get("volume_ratio_5d"))
+        self.assertIsNotNone(payload.get("ma_gap_pct"))
+        self.assertIsNotNone(payload.get("ref_buy_price"))
+        self.assertIsNotNone(payload.get("ref_sell_price"))
+
     def test_seal_time_boosts_strength(self) -> None:
         closes = [9.0, 9.5, 10.45]
         highs = [9.2, 9.6, 10.45]

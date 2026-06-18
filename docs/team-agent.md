@@ -51,7 +51,7 @@
 | financial | 盈利、成长、估值、偿债 | `analyze_financial`, `get_quote_context` |
 | risk | 波动、回撤、Beta、流动性、情绪 | `analyze_risk`, `get_bars_summary`, `get_ashare_fear_greed_index` |
 | strategy | 均线、指标、策略信号、形态 | `technical_snapshot`, `list_strategy_signals`, `get_bars_summary` |
-| chief | 分歧 / 共识、加权综合研判 | 无工具；行情从 context 注入 |
+| chief | 分歧 / 共识、加权综合研判；**须含「极致短线环境」**（引用 emotion_cycle 预取） | 无工具；行情从 context 注入 |
 
 预取 `strategy` 维度含 **`ultra_short`** 块：情绪阶段、打板/突破信号；规则评分见 `graph/team_scoring.py`。
 

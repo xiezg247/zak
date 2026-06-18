@@ -9,7 +9,7 @@ AI 助手各类问题对应的数据来源与工具。运行 `uv run python cli.
 对话编排经 `vnpy_llm.gateway.AgentGateway.send` 统一入口：
 
 1. **RoutingPlane**（`gateway/routing_plane.py`）→ 合并 `routing/router` 意图分类与 `graph/supervisor` 委派，产出 `RoutingDecision`
-2. **AgentRuntime**（`gateway/agent_runtime.py`）→ `team_analysis` 走 `graph/orchestrator.stream_team_analysis`；其余有工具走 `graph/runner.stream_with_tools`，无工具走 `chat/client.stream_chat_completion`
+2. **AgentRuntime**（`gateway/agent_runtime.py`）→ `team_analysis` 走 `graph/orchestrator.stream_team_analysis`；`market` 走 `graph/market_orchestrator.stream_market_analysis`（预取情绪/风控/恐贪后单 Agent）；其余有工具走 `graph/runner.stream_with_tools`，无工具走 `chat/client.stream_chat_completion`
 3. **ReAct loop**（`langchain.agents.create_agent`）→ `ToolRegistry` 执行 Skill / MCP
 4. **Handoff**（`graph/handoff.py`）→ 诊断/回测/选股若涉及大盘或技术面，串行追加 market Agent；段间以 `**市场环境**` 等标题分隔（`team_analysis` 不走 handoff）
 5. **选股执行** → `propose_screening` / `propose_recipe` 解析后由 Skill 直接执行（无弹窗确认）

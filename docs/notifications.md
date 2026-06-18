@@ -163,6 +163,7 @@ packages/vnpy-ashare/vnpy_ashare/notifications/
 | 同 event + 同 dedupe_key | 5 分钟内只发 1 条 |
 | `position_alert` | dedupe_key = vt_symbol + reason |
 | `emotion_stage_change` | dedupe_key = stage |
+| `radar_leader_ready` | dedupe_key = 交易日 + leader_variant；命中数 ≥ `NOTIFY_RADAR_LEADER_MIN_HITS`（默认 3）且龙一评分 ≥ `NOTIFY_RADAR_LEADER_MIN_SCORE`（默认 65）；退潮/不宜新开时不发 |
 | 队列合并 | Worker 每 10s 批量合并同类型（Phase 2） |
 
 ### 4.2 静默时段
@@ -214,6 +215,19 @@ packages/vnpy-ashare/vnpy_ashare/notifications/
 【zak】持仓提醒
 贵州茅台 600519 · 浮盈 -5.2% · 标签：浮亏
 退出信号：卖出 · T+1：可卖
+```
+
+**龙头池更新**（`radar_leader_ready`，默认关）
+
+```text
+【zak】龙头池更新
+雷达龙头 · 主线
+命中 4 条
+龙一 测试龙头 · 600001 · 龙一
+评分 72
+主线 人工智能
+时间 2026-06-18 10:15:00
+打开选股 Hub 查看龙头列表
 ```
 
 ### 5.2 Phase 2 卡片（可选）
@@ -322,7 +336,7 @@ Worker 内 HTTP 失败：重试 2 次（指数退避）；仍失败写 `last_err
 
 - [ ] 飞书 interactive 卡片
 - [ ] 可选 `VnpyWechatChannel` / Email
-- [ ] `radar_leader_ready`（高阈值）
+- [x] `radar_leader_ready`（高阈值，默认关；`NOTIFY_RADAR_LEADER_MIN_HITS` / `NOTIFY_RADAR_LEADER_MIN_SCORE`）
 
 ---
 

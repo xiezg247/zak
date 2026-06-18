@@ -11,6 +11,7 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_JOURNAL_VIOLATION,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_POSITION_ALERT,
+    NOTIFY_EVENT_RADAR_LEADER_READY,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
@@ -149,6 +150,27 @@ def _card_content(
             lines.append(reason)
         lines.append("请复盘计划与纪律")
         return "交易纪律提醒", "red", lines, "打开自选持仓"
+
+    if event_id == NOTIFY_EVENT_RADAR_LEADER_READY:
+        condition = str(payload.get("condition") or "雷达龙头")
+        hit_count = payload.get("hit_count")
+        top_name = str(payload.get("top_name") or "")
+        top_symbol = str(payload.get("top_symbol") or "")
+        top_score = payload.get("top_score")
+        tier_label = str(payload.get("top_tier_label") or "")
+        sector = str(payload.get("sector_name") or "")
+        lines = [f"**{condition}**"]
+        if hit_count is not None:
+            lines.append(f"**命中** {hit_count} 条")
+        leader = " · ".join(part for part in (top_name, top_symbol, tier_label) if part)
+        if leader:
+            lines.append(f"**龙一** {leader}")
+        if top_score is not None:
+            lines.append(f"评分 {float(top_score):.0f}")
+        if sector:
+            lines.append(f"主线 {sector}")
+        lines.append("打开选股 Hub 查看龙头列表")
+        return "龙头池更新", "green", lines, "查看选股 Hub"
 
     fallback = format_notify_text(event_id, payload).replace("【zak】", "").strip()
     return "zak 提醒", "blue", [fallback], "打开 zak"

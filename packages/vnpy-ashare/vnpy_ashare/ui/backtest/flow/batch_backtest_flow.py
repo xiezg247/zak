@@ -11,7 +11,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_service
 from vnpy_ashare.app.events import EVENT_OPEN_BATCH_BACKTEST, BatchBacktestViewRequest
-from vnpy_ashare.backtest.batch_templates import apply_batch_backtest_template
+from vnpy_ashare.backtest.batch_templates import apply_batch_backtest_template, batch_backtest_template_note
 from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     load_batch_backtest_defaults,
@@ -72,6 +72,7 @@ class BatchBacktestFlow:
         default_strategy_setting: dict[str, Any] | None = None,
         profile_id: str | None = None,
         recipe_id: str | None = None,
+        trigger: str | None = None,
     ) -> None:
         if self.is_running():
             return
@@ -93,18 +94,25 @@ class BatchBacktestFlow:
             defaults,
             profile_id=profile_id,
             recipe_id=recipe_id,
+            trigger=trigger,
             override_class_name=not has_class_override,
             override_dates=True,
             override_setting=not has_setting_override,
         )
         class_default = (default_class_name or defaults.class_name).strip() or defaults.class_name
         merged_setting = default_strategy_setting if has_setting_override else defaults.strategy_setting
+        template_note = batch_backtest_template_note(
+            profile_id=profile_id,
+            recipe_id=recipe_id,
+            trigger=trigger,
+        )
         dialog = ScreenerBatchBacktestConfigDialog(
             class_names=strategies,
             default_class=class_default,
             default_start=defaults.start.strftime("%Y-%m-%d"),
             default_end=defaults.end.strftime("%Y-%m-%d"),
             count=len(rows),
+            template_note=template_note,
             parent=self.parent,
         )
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
@@ -128,6 +136,8 @@ class BatchBacktestFlow:
 
         self._last_params = params
         self._batch_source = batch_source
+        if trigger == "radar_leader":
+            self._batch_source = "batch_radar_leader"
         self._source_page = source_page
         if on_running is not None:
             on_running(True)
