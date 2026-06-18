@@ -219,18 +219,20 @@ class QuotesPageShell:
         page.move_watchlist_up_button = QtWidgets.QPushButton("上移", page)
         page.move_watchlist_up_button.clicked.connect(lambda: page._watchlist.move_selected("up"))
         page.move_watchlist_up_button.setEnabled(False)
-        page.move_watchlist_up_button.setVisible(page.config.show_watchlist_move_buttons)
+        show_move_in_toolbar = page.config.show_watchlist_move_buttons and watchlist_feature is None
+        page.move_watchlist_up_button.setVisible(show_move_in_toolbar)
 
         page.move_watchlist_down_button = QtWidgets.QPushButton("下移", page)
         page.move_watchlist_down_button.clicked.connect(lambda: page._watchlist.move_selected("down"))
         page.move_watchlist_down_button.setEnabled(False)
-        page.move_watchlist_down_button.setVisible(page.config.show_watchlist_move_buttons)
+        page.move_watchlist_down_button.setVisible(show_move_in_toolbar)
 
         page.backtest_button = QtWidgets.QPushButton("策略回测", page)
         page.backtest_button.setObjectName("SecondaryButton")
         page.backtest_button.clicked.connect(page._actions.open_backtest_for_selected)
         page.backtest_button.setEnabled(False)
-        page.backtest_button.setVisible(page.config.show_backtest_button)
+        show_backtest_in_toolbar = page.config.show_backtest_button and watchlist_feature is None
+        page.backtest_button.setVisible(show_backtest_in_toolbar)
 
         page.batch_backtest_button = QtWidgets.QPushButton("批量回测", page)
         page.batch_backtest_button.setObjectName("SecondaryButton")
@@ -267,7 +269,9 @@ class QuotesPageShell:
         page.diagnose_button = QtWidgets.QPushButton("诊断", page)
         page.diagnose_button.clicked.connect(page._actions.run_diagnose_for_selected)
         page.diagnose_button.setEnabled(False)
-        page.diagnose_button.setVisible(page.config.show_diagnose_button)
+        # 无独立诊断面板时与右键「AI 分析 ▸ 综合诊断」重复，仅保留右键入口
+        show_diagnose_in_toolbar = page.config.show_diagnose_button and page.config.show_diagnose_panel
+        page.diagnose_button.setVisible(show_diagnose_in_toolbar)
 
         page.refresh_quotes_button = QtWidgets.QPushButton("刷新行情", page)
         page.refresh_quotes_button.setObjectName("SecondaryButton")
@@ -315,11 +319,11 @@ class QuotesPageShell:
         # ── 分隔线 ──
         group3_visible = (
             page.config.show_add_watchlist_button
-            or page.config.show_download_button
-            or page.config.show_backtest_button
+            or (page.config.show_download_button and watchlist_feature is None)
+            or show_backtest_in_toolbar
             or page.config.show_batch_backtest_button
             or page.config.show_fill_button
-            or page.config.show_watchlist_move_buttons
+            or show_move_in_toolbar
         )
         if group2_visible and group3_visible:
             toolbar.addWidget(_toolbar_separator())
@@ -333,18 +337,15 @@ class QuotesPageShell:
                 more_actions.append(("移出自选", page.remove_watchlist_button))
             else:
                 toolbar.addWidget(page.remove_watchlist_button)
-        if page.config.show_watchlist_move_buttons:
+        if show_move_in_toolbar:
             more_actions.extend(
                 [
                     ("上移", page.move_watchlist_up_button),
                     ("下移", page.move_watchlist_down_button),
                 ]
             )
-        # 自选页：下载入口仅在右键菜单；市场页保留工具栏按钮
-        if page.config.show_download_button and not page.config.use_local_table:
-            if not page.config.show_watchlist_move_buttons:
-                toolbar.addWidget(page.download_button)
-        elif page.config.show_download_button:
+        # 自选页：下载 / 单只回测 / 排序仅在右键；批量回测仍在「更多」
+        if page.config.show_download_button and watchlist_feature is None:
             toolbar.addWidget(page.download_button)
         if page.config.show_fill_button:
             more_actions.append(("补全到最新", page.fill_button))
@@ -357,7 +358,7 @@ class QuotesPageShell:
         if page.config.show_batch_gap_fill_button:
             more_actions.append(("修复断层", page.gap_fill_button))
             more_actions.append(("批量修复断层", page.batch_gap_fill_button))
-        if page.config.show_backtest_button:
+        if show_backtest_in_toolbar:
             toolbar.addWidget(page.backtest_button)
         if page.config.show_batch_backtest_button:
             more_actions.append(("批量回测", page.batch_backtest_button))
@@ -374,7 +375,7 @@ class QuotesPageShell:
         if page.config.show_stock_notes:
             toolbar.addWidget(page.quick_note_button)
             toolbar.addWidget(page.notes_center_button)
-        if page.config.show_diagnose_button:
+        if show_diagnose_in_toolbar:
             toolbar.addWidget(page.diagnose_button)
         if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
             toolbar.addWidget(page.refresh_quotes_button)
