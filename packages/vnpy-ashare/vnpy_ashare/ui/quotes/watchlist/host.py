@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
+
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
 
@@ -21,7 +23,6 @@ if TYPE_CHECKING:
     from vnpy_ashare.services.position import PositionService
     from vnpy_ashare.services.watchlist import WatchlistService
     from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
-    from vnpy_ashare.ui.quotes.page.config import PageConfig
     from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
     from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
     from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
@@ -32,31 +33,21 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
-class WatchlistHost(Protocol):
-    """QuotesPage 在自选页场景下对子 controller 暴露的最小能力集。"""
+class WatchlistHost(WatchlistPoolHost, Protocol):
+    """QuotesPage 在自选页场景下对子 controller 暴露的能力集（扩展 WatchlistPoolHost）。"""
 
-    page_name: str
-    config: PageConfig
-    all_stocks: list[StockItem]
-    quote_map: dict[str, QuoteSnapshot]
     bar_meta: dict[tuple[str, Exchange], BarMeta]
     signal_cache: dict[str, SignalSnapshot]
-    position_cache: dict[str, PositionSnapshot]
     signal_config: WatchlistSignalConfig
     position_config: WatchlistPositionConfig
-    current_item: StockItem | None
     chart_panel: ChartPanel | None
     signal_panel: WatchlistSignalPanel | None
-    position_panel: WatchlistPositionPanel | None
-    status_label: Any
     _active: bool
     _signal_cache_config: WatchlistSignalConfig | None
     _position_cache_config: WatchlistSignalConfig | None
     _retired_workers: list[QtCore.QThread]
-    _signals: WatchlistSignalController
     _positions: WatchlistPositionController
     _multiview: WatchlistMultiViewController
-    _watchlist_groups: WatchlistGroupController | None
     _toast: PageToastHost
     display_stocks: list[StockItem]
     multiview_board: Any
@@ -66,28 +57,14 @@ class WatchlistHost(Protocol):
     view_multiview_button: Any
     _stats_label: Any
     _actions: Any
-    watchlist_pool_stocks: list[StockItem]
     watchlist_group_tab_bar: Any
     watchlist_pool_context_bar: Any
-    move_watchlist_up_button: Any
-    move_watchlist_down_button: Any
-    _watchlist_feature: Any
     _center_splitter: Any
     run_output_panel: Any
 
     def find_stock_item(self, vt_symbol: str) -> StockItem | None: ...
 
-    def _select_stock_key(self, key: tuple[str, Exchange]) -> None: ...
-
-    def apply_filter(self) -> None: ...
-
-    def _update_action_buttons(self) -> None: ...
-
     def _get_analysis_service(self) -> AnalysisService | None: ...
-
-    def _get_position_service(self) -> PositionService | None: ...
-
-    def _get_watchlist_service(self) -> WatchlistService | None: ...
 
     def _get_main_engine(self) -> MainEngine | None: ...
 

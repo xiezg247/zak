@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtWidgets
@@ -10,15 +10,13 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS, WatchlistService
-
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 
 
 class WatchlistController:
     """封装自选 CRUD 与按钮状态，供 QuotesPage 调用。"""
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistPoolHost) -> None:
         self._page = page
         self.keys: set[tuple[str, Exchange]] = set()
 
