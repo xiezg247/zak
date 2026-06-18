@@ -49,13 +49,7 @@ def build_outlook_digest(rows: tuple[RadarRow, ...], *, variant: str) -> str:
         return "摘要：" + " · ".join(parts)
     buy = sum(1 for row in rows if row.metric_label == "买入")
     hold = sum(1 for row in rows if row.metric_label == "观望")
-    sell = sum(1 for row in rows if row.metric_label == "卖出")
     scenarios = sum(1 for row in rows if row.sub_label == "5日情景")
-    if variant == "avoid_next":
-        parts = [f"回避 {len(rows)} 只"]
-        if sell:
-            parts.append(f"卖出 {sell}")
-        return "摘要：" + " · ".join(parts)
     mode = "关注" if variant == "watch_next" else "可持"
     parts = [f"{mode} {len(rows)} 只"]
     if buy:

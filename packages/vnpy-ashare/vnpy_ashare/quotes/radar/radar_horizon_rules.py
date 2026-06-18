@@ -106,8 +106,6 @@ def hold_sort_key(snapshot: SignalSnapshot) -> tuple[float, int, str]:
 def outlook_sort_key(snapshot: SignalSnapshot, *, variant: str) -> tuple:
     if variant == "hold_next":
         return hold_sort_key(snapshot)
-    if variant == "avoid_next":
-        return avoid_sort_key(snapshot)
     return watch_sort_key(snapshot)
 
 
@@ -131,40 +129,6 @@ def outlook_judgment_subline(
         if text:
             return "判断", text[:24]
     return "判断", "—"
-
-
-def matches_avoid(snapshot: SignalSnapshot, *, last_price: float | None) -> bool:
-    if signal_missing_kline(snapshot):
-        return False
-    if _has_near_unlock(snapshot.vt_symbol):
-        return True
-    if snapshot.signal == "sell" and signal_is_fresh(snapshot):
-        return True
-    if snapshot.signal == "sell":
-        strength = snapshot.strength if snapshot.strength is not None else 0.0
-        if strength >= SIGNAL_STRENGTH_STRONG * 0.5:
-            return True
-    if snapshot.fast_ma is not None and snapshot.slow_ma is not None:
-        if snapshot.fast_ma < snapshot.slow_ma and snapshot.signal != "buy" and signal_is_fresh(snapshot):
-            return True
-    return False
-
-
-def avoid_sort_key(snapshot: SignalSnapshot) -> tuple[int, float, str]:
-    strength = snapshot.strength if snapshot.strength is not None else float("-inf")
-    signal_rank = 0 if snapshot.signal == "sell" else 1
-    return (signal_rank, -strength, snapshot.vt_symbol)
-
-
-def filter_avoid_snapshots(
-    snapshots: list[SignalSnapshot],
-) -> list[SignalSnapshot]:
-    matched: list[SignalSnapshot] = []
-    for snapshot in snapshots:
-        last_price = last_price_for_snapshot(snapshot.vt_symbol, snapshot)
-        if matches_avoid(snapshot, last_price=last_price):
-            matched.append(snapshot)
-    return matched
 
 
 def filter_outlook_snapshots(
