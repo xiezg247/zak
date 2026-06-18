@@ -9,7 +9,7 @@ from vnpy_ashare.ui.quotes.features.watchlist.context_bar import (
     SHORT_TERM_OBSERVATION_MAX,
     format_pool_context_summary,
 )
-from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import _PRESET_PANEL_STATE
+from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import PRESET_PANEL_STATE, PRESET_SPECS
 
 
 class WatchlistContextBarTests(unittest.TestCase):
@@ -28,14 +28,31 @@ class WatchlistContextBarTests(unittest.TestCase):
 
 class WatchlistLayoutPresetTests(unittest.TestCase):
     def test_intraday_collapses_position_panel(self) -> None:
-        signal_expanded, position_expanded = _PRESET_PANEL_STATE["intraday"]
+        signal_expanded, position_expanded = PRESET_PANEL_STATE["intraday"]
         self.assertTrue(signal_expanded)
         self.assertFalse(position_expanded)
 
     def test_review_expands_position_only(self) -> None:
-        signal_expanded, position_expanded = _PRESET_PANEL_STATE["review"]
+        signal_expanded, position_expanded = PRESET_PANEL_STATE["review"]
         self.assertFalse(signal_expanded)
         self.assertTrue(position_expanded)
+
+    def test_intraday_monitor_mode(self) -> None:
+        spec = PRESET_SPECS["intraday"]
+        self.assertTrue(spec.select_observation_group)
+        self.assertTrue(spec.force_table_view)
+        self.assertFalse(spec.show_register_toolbar)
+        self.assertTrue(spec.show_add_signal_toolbar)
+
+    def test_register_mode(self) -> None:
+        spec = PRESET_SPECS["register"]
+        self.assertTrue(spec.position_expanded)
+        self.assertTrue(spec.show_register_toolbar)
+
+    def test_review_hides_add_signal_toolbar(self) -> None:
+        spec = PRESET_SPECS["review"]
+        self.assertFalse(spec.show_add_signal_toolbar)
+        self.assertTrue(spec.show_register_toolbar)
 
 
 if __name__ == "__main__":

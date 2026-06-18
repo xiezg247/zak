@@ -374,11 +374,17 @@ class QuotesPageShell:
             page.risk_gate_chip.clicked.connect(page._open_risk_settings)
         if page.config.show_stock_notes:
             toolbar.addWidget(page.quick_note_button)
-            toolbar.addWidget(page.notes_center_button)
+            if watchlist_feature is not None:
+                more_actions.append(("笔记中心", page.notes_center_button))
+            else:
+                toolbar.addWidget(page.notes_center_button)
         if show_diagnose_in_toolbar:
             toolbar.addWidget(page.diagnose_button)
         if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
-            toolbar.addWidget(page.refresh_quotes_button)
+            if watchlist_feature is not None:
+                more_actions.append(("刷新行情", page.refresh_quotes_button))
+            else:
+                toolbar.addWidget(page.refresh_quotes_button)
         if page.config.column_configurable:
             page.column_button = QtWidgets.QPushButton("列 ▾")
             page.column_button.setObjectName("SecondaryButton")

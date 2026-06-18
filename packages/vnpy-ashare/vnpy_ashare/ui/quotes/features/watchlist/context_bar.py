@@ -49,7 +49,10 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         self._label.setObjectName("WatchlistPoolContextLabel")
         self._label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         self._label.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self._label.setToolTip("点击各段可展开对应区域（观察组段切换至「短线观察」分组）")
+        self._label.setToolTip(
+            "四层池：自选（总名单）→ 观察组（计划候选）→ 信号（当日监控）→ 持仓（已登记）。"
+            "点击各段可切换视图；右键表行可回测、排序、下载与 AI 分析。"
+        )
         layout.addWidget(self._label, stretch=1)
 
         self._segments: list[tuple[str, str]] = []
@@ -109,6 +112,7 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
 
     def _focus_segment(self, key: str) -> None:
         page = self._page
+        feature = getattr(page, "_watchlist_feature", None)
         if key == "pool":
             groups = page._watchlist_groups
             if groups is not None:
@@ -120,13 +124,19 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
                 groups.select_observation_group_tab()
             return
         if key == "signal":
-            panel = getattr(page, "signal_panel", None)
-            if panel is not None:
-                panel.set_expanded(True)
-                apply_center_splitter_sizes(page)
+            if feature is not None:
+                feature.apply_layout_preset("intraday")
+            else:
+                panel = getattr(page, "signal_panel", None)
+                if panel is not None:
+                    panel.set_expanded(True)
+                    apply_center_splitter_sizes(page)
             return
         if key == "position":
-            panel = getattr(page, "position_panel", None)
-            if panel is not None:
-                panel.set_expanded(True)
-                apply_center_splitter_sizes(page)
+            if feature is not None:
+                feature.apply_layout_preset("register")
+            else:
+                panel = getattr(page, "position_panel", None)
+                if panel is not None:
+                    panel.set_expanded(True)
+                    apply_center_splitter_sizes(page)
