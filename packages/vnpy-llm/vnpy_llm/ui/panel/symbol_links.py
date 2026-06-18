@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import cast
 from urllib.parse import quote, unquote
 
 _SYMBOL_SCHEME = "zak://symbol/"
@@ -41,11 +40,11 @@ def normalize_vt_symbol(raw: str) -> str | None:
     if not text:
         return None
     try:
-        from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+        from vnpy_common.ai.symbol_navigation import get_symbol_navigation
 
-        item = parse_stock_symbol(text)
-        if item is not None:
-            return cast(str, item.vt_symbol)
+        nav = get_symbol_navigation()
+        if nav is not None:
+            return nav.normalize_vt_symbol(text)
     except ImportError:
         pass
     return _normalize_vt_symbol_fallback(text)

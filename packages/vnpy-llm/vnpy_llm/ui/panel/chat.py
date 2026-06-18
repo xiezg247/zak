@@ -8,7 +8,8 @@ from collections.abc import Iterator
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.ai.access import build_quick_actions_for_panel, build_stock_completion_items, get_ai_context
-from vnpy_common.ai.protocol import QuickAction
+from vnpy_common.ai.protocol import QuickAction, SymbolRef
+from vnpy_common.ai.symbol_navigation import get_symbol_navigation
 from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished, thread_is_active
 from vnpy_common.ui.scroll_area import AI_MESSAGE_SCROLL_AREA, AI_MESSAGE_SCROLL_BAR, style_scroll_area
@@ -789,13 +790,11 @@ class AiChatPanel(QtWidgets.QWidget):
         row_layout.addStretch(1)
         self.message_layout.insertWidget(index, row)
 
-    def _resolve_note_stock(self):
-        try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import resolve_context_stock
-
-            return resolve_context_stock()
-        except ImportError:
+    def _resolve_note_stock(self) -> SymbolRef | None:
+        nav = get_symbol_navigation()
+        if nav is None:
             return None
+        return nav.resolve_context_symbol()
 
     def _pack_assistant_bubble_with_note_actions(
         self,
@@ -857,7 +856,7 @@ class AiChatPanel(QtWidgets.QWidget):
         self,
         menu: QtWidgets.QMenu,
         *,
-        stock,
+        stock: SymbolRef,
         full_body: str,
         selection: str,
     ) -> None:
@@ -906,13 +905,12 @@ class AiChatPanel(QtWidgets.QWidget):
         if not selection and not full_body:
             page_notify(self, "消息内容为空", level="info")
             return
-        try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import resolve_context_stock
-        except ImportError:
+        nav = get_symbol_navigation()
+        if nav is None:
             page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
             return
 
-        stock = resolve_context_stock()
+        stock = nav.resolve_context_symbol()
         menu = QtWidgets.QMenu(self)
         if stock is None:
             disabled = menu.addAction("需先在看盘页选中标的")
@@ -927,25 +925,21 @@ class AiChatPanel(QtWidgets.QWidget):
         menu.popup(bubble.mapToGlobal(pos))
 
     def _save_recent_turns_as_report(self, turn_count: int) -> None:
-        try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import (
-                resolve_context_stock,
-                save_recent_turns_as_report,
-            )
-        except ImportError:
+        nav = get_symbol_navigation()
+        if nav is None:
             page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
             return
-        stock = resolve_context_stock()
+        stock = nav.resolve_context_symbol()
         if stock is None:
             page_notify(self, "需先在看盘页选中标的", level="warning")
             return
         messages = self.engine.get_messages()
-        if save_recent_turns_as_report(
-            self.engine.main_engine,
-            messages,
+        if nav.save_recent_turns_as_report(
+            main_engine=self.engine.main_engine,
+            messages=messages,
             turn_count=turn_count,
             parent=self,
-            stock=stock,
+            item=stock,
         ):
             label = "本轮" if turn_count <= 1 else f"最近 {turn_count} 轮"
             page_notify(self, f"已保存{label}为分析报告（{stock.vt_symbol}）", level="success")
@@ -953,39 +947,39 @@ class AiChatPanel(QtWidgets.QWidget):
             page_notify(self, "没有可保存的对话内容", level="warning")
 
     def _save_recent_turns_as_journal(self, turn_count: int) -> None:
-        try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import (
-                resolve_context_stock,
-                save_recent_turns_as_journal,
-            )
-        except ImportError:
+        nav = get_symbol_navigation()
+        if nav is None:
             page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
             return
-        stock = resolve_context_stock()
+        stock = nav.resolve_context_symbol()
         if stock is None:
             page_notify(self, "需先在看盘页选中标的", level="warning")
             return
         messages = self.engine.get_messages()
-        if save_recent_turns_as_journal(
-            self.engine.main_engine,
-            messages,
+        if nav.save_recent_turns_as_journal(
+            main_engine=self.engine.main_engine,
+            messages=messages,
             turn_count=turn_count,
-            stock=stock,
+            item=stock,
         ):
             page_notify(self, f"已保存本轮到流水（{stock.vt_symbol}）", level="success")
         else:
             page_notify(self, "没有可保存的对话内容", level="warning")
 
-    def _save_assistant_as_report(self, body: str, stock) -> None:
-        from vnpy_ashare.ui.features.notes_center.save_from_ai import save_message_as_report
-
-        if save_message_as_report(self.engine.main_engine, body, parent=self, stock=stock):
+    def _save_assistant_as_report(self, body: str, stock: SymbolRef) -> None:
+        nav = get_symbol_navigation()
+        if nav is None:
+            page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
+            return
+        if nav.save_report(main_engine=self.engine.main_engine, text=body, item=stock, parent=self):
             page_notify(self, f"已保存分析报告（{stock.vt_symbol}）", level="success")
 
-    def _save_assistant_as_journal(self, body: str, stock) -> None:
-        from vnpy_ashare.ui.features.notes_center.save_from_ai import save_message_as_journal
-
-        if save_message_as_journal(self.engine.main_engine, body, stock=stock):
+    def _save_assistant_as_journal(self, body: str, stock: SymbolRef) -> None:
+        nav = get_symbol_navigation()
+        if nav is None:
+            page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
+            return
+        if nav.save_journal(main_engine=self.engine.main_engine, text=body, item=stock):
             page_notify(self, f"已追加流水（{stock.vt_symbol}）", level="success")
         else:
             page_notify(self, "保存失败或内容被截断为空", level="warning")

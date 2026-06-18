@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
-from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_common.ai.protocol import SymbolRef
+from vnpy_common.ai.symbol_navigation import get_symbol_navigation
 from vnpy_common.ui.feedback import page_notify
 from vnpy_llm.ui.panel.symbol_links import normalize_vt_symbol, parse_symbol_href
 
@@ -46,16 +47,14 @@ class AssistantSymbolActions:
             return False
         if not vt_symbol:
             return False
-        try:
-            from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
-        except ImportError:
-            page_notify(self._panel, "笔记中心需要 vnpy-ashare 插件", level="warning")
+        nav = self._navigation("笔记中心")
+        if nav is None:
             return False
-        show_notes_center_dialog(
-            self._engine.main_engine,
-            self._engine.event_engine,
-            initial_vt_symbol=vt_symbol,
-            initial_tab="reports",
+        nav.open_team_report(
+            report_id=report_id,
+            vt_symbol=vt_symbol,
+            main_engine=self._engine.main_engine,
+            event_engine=self._engine.event_engine,
             parent=self._panel.window(),
         )
         page_notify(self._panel, f"已在笔记中心打开 {vt_symbol} 分析报告（#{report_id}）", level="success")
@@ -75,7 +74,7 @@ class AssistantSymbolActions:
         *,
         body: str = "",
     ) -> None:
-        item = self._parse_item(vt_symbol)
+        item = self._parse_ref(vt_symbol)
         if item is None:
             page_notify(parent, f"无法解析标的：{vt_symbol}", level="warning")
             return
@@ -83,105 +82,60 @@ class AssistantSymbolActions:
         menu.exec(parent.mapToGlobal(pos))
 
     def open_analysis(self, vt_symbol: str, *, name: str = "") -> None:
-        item = self._parse_item(vt_symbol, name=name)
+        item = self._parse_ref(vt_symbol, name=name)
         if item is None:
             page_notify(self._panel, f"无法解析标的：{vt_symbol}", level="warning")
             return
-        try:
-            from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
-            from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
-        except ImportError:
-            page_notify(self._panel, "个股分析需要 vnpy-ashare 插件", level="warning")
+        nav = self._navigation("个股分析")
+        if nav is None:
             return
-        host = StockAnalysisHost.from_main_engine(
-            self._engine.main_engine,
+        nav.open_analysis(
+            item,
+            main_engine=self._engine.main_engine,
             event_engine=self._engine.event_engine,
-            source_page="AI 助手",
-        )
-        show_stock_analysis_vt_symbol(
-            item.vt_symbol,
-            host,
-            name=item.name,
             parent=self._panel.window(),
-            modality=QtCore.Qt.WindowModality.NonModal,
         )
         QtCore.QTimer.singleShot(0, self._panel._sync_all_bubble_widths)
 
     def focus_watchlist(self, vt_symbol: str) -> None:
-        item = self._parse_item(vt_symbol)
+        item = self._parse_ref(vt_symbol)
         if item is None:
             return
-        host = self._panel.window()
-        if host is not None and hasattr(host, "focus_watchlist_symbol"):
-            host.focus_watchlist_symbol(item.symbol, item.exchange.name)
+        nav = self._navigation("自选")
+        if nav is None:
+            return
+        if nav.focus_watchlist(item, host=self._panel.window()):
             return
         page_notify(self._panel, "无法跳转到自选页", level="warning")
 
     def open_backtest(self, vt_symbol: str, *, name: str = "") -> None:
-        item = self._parse_item(vt_symbol, name=name)
+        item = self._parse_ref(vt_symbol, name=name)
         if item is None:
             return
-        try:
-            from vnpy_ashare.app.events import EVENT_OPEN_BACKTEST, BacktestRequest
-        except ImportError:
-            page_notify(self._panel, "回测功能需要 vnpy-ashare 插件", level="warning")
+        nav = self._navigation("回测")
+        if nav is None:
             return
-        self._engine.event_engine.put(
-            Event(
-                EVENT_OPEN_BACKTEST,
-                BacktestRequest(vt_symbol=item.vt_symbol, source_page="AI 助手", name=item.name),
-            ),
-        )
+        nav.open_backtest(item, event_engine=self._engine.event_engine)
 
     def toggle_watchlist(self, vt_symbol: str, *, name: str = "") -> None:
-        item = self._parse_item(vt_symbol, name=name)
+        item = self._parse_ref(vt_symbol, name=name)
         if item is None:
             return
-        try:
-            from vnpy_ashare.app.engine_access import get_watchlist_service
-            from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
-        except ImportError:
-            page_notify(self._panel, "自选功能需要 vnpy-ashare 插件", level="warning")
+        nav = self._navigation("自选")
+        if nav is None:
             return
-        service = get_watchlist_service(self._engine.main_engine)
-        if service is None:
-            page_notify(self._panel, "自选服务未就绪", level="warning")
-            return
-        if watchlist_contains(item.symbol, item.exchange):
-            if service.remove(item.symbol, item.exchange):
-                page_notify(self._panel, f"已移出自选：{item.vt_symbol}", level="success")
-            return
-        reason = service.add_failure_reason(item.symbol, item.exchange)
-        if reason == "duplicate":
-            page_notify(self._panel, f"已在自选中：{item.vt_symbol}", level="info")
-            return
-        if reason == "full":
-            page_notify(self._panel, "自选池已满", level="warning")
-            return
-        if service.add(item.symbol, item.exchange, item.name):
-            page_notify(self._panel, f"已加入自选：{item.vt_symbol}", level="success")
+        self._notify_result(nav.toggle_watchlist(item, main_engine=self._engine.main_engine))
 
     def open_reference_peer(self, vt_symbol: str, *, name: str = "") -> None:
-        item = self._parse_item(vt_symbol, name=name)
+        item = self._parse_ref(vt_symbol, name=name)
         if item is None:
             return
-        try:
-            from vnpy_ashare.app.engine_access import get_watchlist_service
-            from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
-        except ImportError:
-            page_notify(self._panel, "找同类需要 vnpy-ashare 插件", level="warning")
+        nav = self._navigation("找同类")
+        if nav is None:
             return
-        service = get_watchlist_service(self._engine.main_engine)
-
-        def watchlist_add(symbol: str, exchange, stock_name: str = "") -> bool:
-            if service is None:
-                return False
-            return cast(bool, service.add(symbol, exchange, stock_name))
-
-        show_reference_peer_dialog(
-            vt_symbol=item.vt_symbol,
-            reference_name=item.name,
-            watchlist_add=watchlist_add if service is not None else None,
+        nav.open_reference_peer(
+            item,
+            main_engine=self._engine.main_engine,
             parent=self._panel.window(),
         )
 
@@ -193,24 +147,30 @@ class AssistantSymbolActions:
     def fill_ai_prompt(self, prompt: str) -> None:
         self._panel.set_input_text(prompt)
 
-    def _parse_item(self, vt_symbol: str, *, name: str = ""):
-        try:
-            from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-            from vnpy_ashare.domain.symbols.stock import StockItem
-        except ImportError:
-            return None
-        normalized = normalize_vt_symbol(vt_symbol) or vt_symbol
-        item = parse_stock_symbol(normalized)
-        if item is None:
-            return None
-        if name and not item.name:
-            return StockItem(symbol=item.symbol, exchange=item.exchange, name=name)
-        return item
+    def _navigation(self, feature: str):
+        nav = get_symbol_navigation()
+        if nav is None:
+            page_notify(self._panel, f"{feature}需要 vnpy-ashare 插件", level="warning")
+        return nav
 
-    def _build_menu(self, item, *, body: str = "") -> QtWidgets.QMenu:
+    def _parse_ref(self, vt_symbol: str, *, name: str = "") -> SymbolRef | None:
+        nav = get_symbol_navigation()
+        if nav is None:
+            return None
+        return nav.parse(vt_symbol, name=name)
+
+    def _notify_result(self, result: str) -> None:
+        if ":" not in result:
+            page_notify(self._panel, result, level="warning")
+            return
+        level, message = result.split(":", 1)
+        page_notify(self._panel, message, level=level)
+
+    def _build_menu(self, item: SymbolRef, *, body: str = "") -> QtWidgets.QMenu:
         menu = QtWidgets.QMenu(self._panel)
         vt = item.vt_symbol
         title = item.name or vt
+        nav = get_symbol_navigation()
 
         analyze = menu.addAction("个股分析")
         analyze.triggered.connect(lambda: self.open_analysis(vt, name=item.name))
@@ -220,12 +180,7 @@ class AssistantSymbolActions:
 
         menu.addSeparator()
 
-        try:
-            from vnpy_ashare.storage.repositories.watchlist import watchlist_contains as _watchlist_contains
-        except ImportError:
-            _watchlist_contains = None
-
-        if _watchlist_contains is not None and _watchlist_contains(item.symbol, item.exchange):
+        if nav is not None and nav.watchlist_contains(item):
             watchlist_action = menu.addAction("移出自选")
         else:
             watchlist_action = menu.addAction("加入自选")
@@ -255,65 +210,54 @@ class AssistantSymbolActions:
 
         return menu
 
-    def _populate_ai_submenu(self, menu: QtWidgets.QMenu, item) -> None:
-        try:
-            from vnpy_ashare.ai.context.quote.assembly import build_stock_completion_items
-        except ImportError:
+    def _populate_ai_submenu(self, menu: QtWidgets.QMenu, item: SymbolRef) -> None:
+        nav = get_symbol_navigation()
+        if nav is None:
             disabled = menu.addAction("需要 vnpy-ashare 插件")
             disabled.setEnabled(False)
             return
-        from vnpy_ashare.config.runtime import exchange_to_cn
-
-        for entry in build_stock_completion_items(
-            item.symbol,
-            exchange_cn=exchange_to_cn(item.exchange),
-            name=item.name,
-        ):
+        entries = nav.build_completion_items(item)
+        if not entries:
+            disabled = menu.addAction("无法解析标的")
+            disabled.setEnabled(False)
+            return
+        for entry in entries:
             action = menu.addAction(entry.label)
             action.triggered.connect(lambda _checked=False, prompt=entry.prompt: self.fill_ai_prompt(prompt))
 
-    def _context_stock(self, vt_symbol: str, name: str = ""):
-        try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import ContextStock
-        except ImportError:
-            return None
-        item = self._parse_item(vt_symbol, name=name)
-        if item is None:
-            return None
-        return ContextStock(symbol=item.symbol, exchange=item.exchange.value, name=item.name)
-
     def _save_report(self, vt_symbol: str, name: str, *, body: str) -> None:
-        stock = self._context_stock(vt_symbol, name)
-        if stock is None:
+        item = self._parse_ref(vt_symbol, name=name)
+        if item is None:
             page_notify(self._panel, "无法解析标的", level="warning")
             return
         text = body.strip()
         if not text:
             page_notify(self._panel, "消息内容为空", level="info")
             return
-        try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import save_message_as_report
-        except ImportError:
-            page_notify(self._panel, "笔记功能需要 vnpy-ashare 插件", level="warning")
+        nav = self._navigation("笔记")
+        if nav is None:
             return
-        if save_message_as_report(self._engine.main_engine, text, parent=self._panel, stock=stock):
-            page_notify(self._panel, f"已保存分析报告（{stock.vt_symbol}）", level="success")
+        if nav.save_report(
+            main_engine=self._engine.main_engine,
+            text=text,
+            item=item,
+            parent=self._panel,
+        ):
+            page_notify(self._panel, f"已保存分析报告（{item.vt_symbol}）", level="success")
 
     def _save_journal(self, vt_symbol: str, name: str, *, body: str) -> None:
-        stock = self._context_stock(vt_symbol, name)
-        if stock is None:
+        item = self._parse_ref(vt_symbol, name=name)
+        if item is None:
             page_notify(self._panel, "无法解析标的", level="warning")
             return
         text = body.strip()
         if not text:
             page_notify(self._panel, "消息内容为空", level="info")
             return
-        try:
-            from vnpy_ashare.ui.features.notes_center.save_from_ai import save_message_as_journal
-        except ImportError:
-            page_notify(self._panel, "笔记功能需要 vnpy-ashare 插件", level="warning")
+        nav = self._navigation("笔记")
+        if nav is None:
             return
-        if save_message_as_journal(self._engine.main_engine, text, stock=stock):
-            page_notify(self._panel, f"已追加流水（{stock.vt_symbol}）", level="success")
+        if nav.save_journal(main_engine=self._engine.main_engine, text=text, item=item):
+            page_notify(self._panel, f"已追加流水（{item.vt_symbol}）", level="success")
         else:
             page_notify(self._panel, "保存失败或内容被截断为空", level="warning")

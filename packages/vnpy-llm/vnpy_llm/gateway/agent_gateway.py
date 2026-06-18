@@ -8,7 +8,12 @@ from typing import Any, cast
 
 from vnpy.trader.engine import MainEngine
 
-from vnpy_common.ai.access import get_ai_context, register_context_listener
+from vnpy_common.ai.access import (
+    get_ai_context,
+    persist_team_analysis_report,
+    register_context_listener,
+    team_report_href,
+)
 from vnpy_common.ai.protocol import AiContextData
 from vnpy_llm.chat.client import LlmClientError, StreamCancelled
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
@@ -265,10 +270,6 @@ class AgentGateway:
         if "综合研判" not in content:
             return content
         try:
-            from vnpy_ashare.services.analysis_detail.team_report import (
-                persist_team_analysis_report,
-                team_report_href,
-            )
             from vnpy_llm.graph.team_symbol import resolve_team_symbol
 
             ctx = get_ai_context()

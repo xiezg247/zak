@@ -55,3 +55,12 @@ class StockCompletionItem(FrozenModel):
 
     label: str = Field(description="展示标签")
     prompt: str = Field(description="完整提示词")
+
+
+class SymbolRef(FrozenModel):
+    """跨包传递的标的引用（供 LLM 助手跳转 ashare UI）。"""
+
+    symbol: str = Field(description="证券代码")
+    exchange: str = Field(description="交易所枚举名，如 SSE")
+    name: str = Field(default="", description="证券名称")
+    vt_symbol: str = Field(description="VeighNa 合约代码")

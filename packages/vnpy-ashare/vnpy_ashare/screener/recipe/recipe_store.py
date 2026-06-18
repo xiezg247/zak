@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 import uuid
-from contextlib import contextmanager
 from typing import Any, Literal
 
 from pydantic import Field
 
 from vnpy_ashare.domain.time.china import format_china_datetime
+from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
 from vnpy_common.domain.base import MutableModel
 from vnpy_common.paths import get_app_db_path
 
@@ -39,21 +38,8 @@ class SavedRecipe(MutableModel):
     updated_at: str = Field(description="更新时间")
 
 
-@contextmanager
 def _connect():
-    path = get_app_db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    try:
-        conn.executescript(_SCHEMA)
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    return sqlite_cache_session(get_app_db_path(), _SCHEMA)
 
 
 def _now() -> str:

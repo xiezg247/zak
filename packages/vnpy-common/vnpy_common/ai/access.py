@@ -69,3 +69,47 @@ def build_stock_completion_items(*args: Any, **kwargs: Any) -> list[Any]:
     if _stock_completion_builder is None:
         return []
     return _stock_completion_builder(*args, **kwargs)
+
+
+_market_prompt_builder: Callable[..., str] | None = None
+_persist_team_report: Callable[..., dict[str, Any] | None] | None = None
+_team_report_href: Callable[[int, str], str] | None = None
+
+
+def register_market_prompt_builder(builder: Callable[..., str]) -> None:
+    global _market_prompt_builder
+    _market_prompt_builder = builder
+
+
+def build_market_ai_prompt(*, focus: str = "intraday") -> str:
+    if _market_prompt_builder is None:
+        return ""
+    return _market_prompt_builder(focus=focus)
+
+
+def register_team_report_bridge(
+    *,
+    persist_team_analysis_report: Callable[..., dict[str, Any] | None],
+    team_report_href: Callable[[int, str], str],
+) -> None:
+    global _persist_team_report, _team_report_href
+    _persist_team_report = persist_team_analysis_report
+    _team_report_href = team_report_href
+
+
+def persist_team_analysis_report(
+    symbol: str,
+    body: str,
+    *,
+    name: str = "",
+    team_scores: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    if _persist_team_report is None:
+        return None
+    return _persist_team_report(symbol, body, name=name, team_scores=team_scores)
+
+
+def team_report_href(report_id: int, vt_symbol: str) -> str:
+    if _team_report_href is None:
+        return ""
+    return _team_report_href(report_id, vt_symbol)

@@ -1,8 +1,7 @@
 """系统提示词与页面 prompt。"""
 
-from typing import cast
-
 from strategies.registry import STRATEGY_REGISTRY
+from vnpy_common.ai.access import build_market_ai_prompt
 from vnpy_llm.routing.base_prompt import BASE_PROMPT
 
 # 无工具纯文本对话（stream_chat_completion）使用的轻量补充
@@ -46,12 +45,10 @@ RADAR_PAGE_PROMPT = """【雷达页】
 
 
 def _market_page_prompt(page: str) -> str:
-    """市场/雷达页注入 ashare 动态摘要（懒加载避免循环依赖）。"""
+    """市场/雷达页注入 ashare 动态摘要（经 vnpy_common 桥接）。"""
     del page
     try:
-        from vnpy_ashare.ai.context.market_overview import build_market_ai_prompt
-
-        return cast(str, build_market_ai_prompt(focus="intraday"))
+        return build_market_ai_prompt(focus="intraday")
     except Exception:
         return ""
 

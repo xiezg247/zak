@@ -190,7 +190,9 @@
 | 隔日卖点 | `AshareOvernightExitStrategy` | **已有** | 持仓 overlay；分 K 回测见 `AshareOvernightExitMinuteStrategy` |
 | 短线波段（已有） | `AshareShortBreakoutStrategy` | 日 K 突破 + 量比 |
 
-> **现状**：自选信号区默认 `AshareDoubleMaStrategy`（中线倾向）。`AshareShortBreakoutStrategy` 等四套策略**均已实现**（见 [策略配置方案](./strategy-profiles.md)），通过 Profile 下拉切换；`ultra_short` Profile 已绑定隔日退出 overlay + `evaluate_overnight_exit` AI 工具。
+> **现状**：自选信号区默认 `AshareDoubleMaStrategy`（中线倾向）。`AshareShortBreakoutStrategy` 等四套策略**均已实现**（见 [策略配置方案](./strategy-profiles.md)），通过 Profile 下拉切换；`ultra_short` Profile 已绑定隔日退出 overlay + `evaluate_overnight_exit` AI 工具。隔日规则引擎由 `overnight_exit_rules` 统一 quote/分 K 路径；持仓区展示 `exit_rules` 列（触发/临近/未触发）。雷达「未来·展望」按策略 key 隔离缓存，切换策略会强制重算。
+
+**工程（2026-06）**：自选/持仓信号磁盘缓存与雷达展望缓存迁至 `storage/cache/`；app_db 与各 store 复用 `sqlite_cache_session`；`vnpy_llm` 在 launcher / 主窗口懒加载；策略 whitelist 与分 K 模式映射收敛至 `strategies/registry.py`。
 
 ### 4.2 隔日卖点铁则（规则引擎）
 
