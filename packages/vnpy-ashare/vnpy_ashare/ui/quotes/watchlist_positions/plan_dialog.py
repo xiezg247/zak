@@ -30,11 +30,15 @@ class TradingPlanDialog(QtWidgets.QDialog):
         *,
         page,
         parent: QtWidgets.QWidget | None = None,
+        trade_date: str | None = None,
+        auto_draft: bool = False,
     ) -> None:
         super().__init__(parent or page)
         self._page = page
         self._plan_id: str | None = None
-        self.setWindowTitle("今日交易计划")
+        self._initial_trade_date = trade_date
+        self._auto_draft = auto_draft
+        self.setWindowTitle("次日交易计划" if trade_date else "今日交易计划")
         self.setMinimumWidth(420)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -43,7 +47,14 @@ class TradingPlanDialog(QtWidgets.QDialog):
         self._date_edit.setCalendarPopup(True)
         self._date_edit.setDisplayFormat("yyyy-MM-dd")
         today = datetime.now(CHINA_TZ).date()
-        self._date_edit.setDate(QtCore.QDate(today.year, today.month, today.day))
+        if trade_date:
+            try:
+                parsed = datetime.strptime(trade_date[:10], "%Y-%m-%d").date()
+            except ValueError:
+                parsed = today
+        else:
+            parsed = today
+        self._date_edit.setDate(QtCore.QDate(parsed.year, parsed.month, parsed.day))
         form.addRow("计划日", self._date_edit)
 
         self._max_pct_spin = QtWidgets.QDoubleSpinBox(self)
@@ -91,6 +102,8 @@ class TradingPlanDialog(QtWidgets.QDialog):
         close_box.rejected.connect(self.reject)
 
         self._load_active_plan()
+        if self._auto_draft:
+            self._on_generate_draft()
 
     def _trade_date(self) -> str:
         qdate = self._date_edit.date()

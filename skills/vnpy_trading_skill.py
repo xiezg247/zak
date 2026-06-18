@@ -116,6 +116,24 @@ class VnpyTradingSkill(SkillTemplate):
                     },
                 },
             ),
+            ToolSpec(
+                name="evaluate_overnight_exit",
+                description=(
+                    "评估极致短线隔日退出规则（止损、开盘 30 分钟止损、低开走弱、炸板、冲高量能不足等）。"
+                    "须标的已在自选页登记持仓；不传 symbol 时扫描全部持仓。"
+                    "返回 signal（sell/hold）、规则触发状态与参考卖价；T+1 锁定日 signal 为 hold。"
+                    "须引用返回的 rules/warnings，禁止编造价位。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "symbol": {
+                            "type": "string",
+                            "description": "股票代码或 vt_symbol，如 600519 或 600519.SSE；省略则扫描全部持仓",
+                        },
+                    },
+                },
+            ),
         ]
 
     def check_risk_gate(self) -> str:
@@ -260,4 +278,17 @@ class VnpyTradingSkill(SkillTemplate):
                 vt_symbol=vt_symbol.strip(),
                 trade_date=trade_date,
             )
+        return json.dumps(payload, ensure_ascii=False)
+
+    def evaluate_overnight_exit(self, symbol: str | None = None) -> str:
+        from vnpy_ashare.trading.exit.for_symbol import (
+            evaluate_all_overnight_exits,
+            evaluate_overnight_exit_for_symbol,
+        )
+
+        text = (symbol or "").strip()
+        if not text:
+            payload = evaluate_all_overnight_exits()
+        else:
+            payload = evaluate_overnight_exit_for_symbol(text)
         return json.dumps(payload, ensure_ascii=False)

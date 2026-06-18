@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowsLike, quote_row_copy
 from vnpy_ashare.domain.screener.predict import BaselinePredictHit
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.radar.predict import PredictScanResult
 from vnpy_ashare.domain.screener.predict import BaselinePredictHit, PredictHit

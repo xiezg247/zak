@@ -9,6 +9,7 @@ from vnpy_ashare.config.preferences.trading_risk import (
     load_trading_risk_prefs,
     save_trading_risk_prefs,
 )
+from vnpy_ashare.trading.risk.drawdown import clear_timed_halt, reset_peak_equity
 from vnpy_ashare.trading.risk.realized_pnl import (
     format_realized_pnl_hint,
     resolve_realized_pnl_today,
@@ -105,6 +106,23 @@ class RiskSettingsDialog(QtWidgets.QDialog):
         self._manual_halt.setChecked(prefs.manual_halt)
         layout.addRow("", self._manual_halt)
 
+        self._peak_label = QtWidgets.QLabel(self._format_peak_hint(prefs), self)
+        self._peak_label.setObjectName("SettingsHint")
+        self._peak_label.setWordWrap(True)
+        layout.addRow("权益峰值", self._peak_label)
+
+        peak_row = QtWidgets.QHBoxLayout()
+        self._reset_peak_button = QtWidgets.QPushButton("重置峰值", self)
+        self._reset_peak_button.setToolTip("以当前总资金重置峰值权益，并清除定时熔断")
+        self._reset_peak_button.clicked.connect(self._on_reset_peak)
+        self._clear_halt_button = QtWidgets.QPushButton("解除定时熔断", self)
+        self._clear_halt_button.setToolTip("清除单周/总回撤触发的停手期限")
+        self._clear_halt_button.clicked.connect(self._on_clear_halt)
+        peak_row.addWidget(self._reset_peak_button)
+        peak_row.addWidget(self._clear_halt_button)
+        peak_row.addStretch(1)
+        layout.addRow("", peak_row)
+
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -112,6 +130,27 @@ class RiskSettingsDialog(QtWidgets.QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addRow(buttons)
+
+    @staticmethod
+    def _format_peak_hint(prefs: TradingRiskPrefs) -> str:
+        parts: list[str] = []
+        if prefs.peak_equity is not None:
+            parts.append(f"峰值 {prefs.peak_equity:,.0f} 元")
+        if prefs.halt_until:
+            reason = "总回撤" if prefs.halt_reason == "total_drawdown" else "单周回撤"
+            parts.append(f"{reason}停手至 {prefs.halt_until}")
+        return " · ".join(parts) if parts else "未追踪（需设置总资金）"
+
+    def _on_reset_peak(self) -> None:
+        capital = self._capital_spin.value()
+        reset_peak_equity(total_capital=None if capital <= 0 else capital)
+        prefs = load_trading_risk_prefs()
+        self._peak_label.setText(self._format_peak_hint(prefs))
+
+    def _on_clear_halt(self) -> None:
+        clear_timed_halt()
+        prefs = load_trading_risk_prefs()
+        self._peak_label.setText(self._format_peak_hint(prefs))
 
     def read_prefs(self) -> TradingRiskPrefs:
         capital = self._capital_spin.value()
@@ -124,16 +163,19 @@ class RiskSettingsDialog(QtWidgets.QDialog):
                 daily_pnl = None
         realized_val = self._realized_spin.value()
         realized = realized_val if realized_val != 0.0 else None
-        return TradingRiskPrefs(
-            total_capital=None if capital <= 0 else capital,
-            per_trade_risk_pct=self._per_trade_spin.value() / 100.0,
-            stop_loss_pct=self._stop_loss_spin.value() / 100.0,
-            daily_pnl_pct=daily_pnl,
-            realized_pnl_today=realized,
-            caution_daily_pct=self._caution_daily_spin.value(),
-            halt_daily_pct=self._halt_daily_spin.value(),
-            caution_float_pct=self._caution_float_spin.value(),
-            manual_halt=self._manual_halt.isChecked(),
+        existing = load_trading_risk_prefs()
+        return existing.model_copy(
+            update={
+                "total_capital": None if capital <= 0 else capital,
+                "per_trade_risk_pct": self._per_trade_spin.value() / 100.0,
+                "stop_loss_pct": self._stop_loss_spin.value() / 100.0,
+                "daily_pnl_pct": daily_pnl,
+                "realized_pnl_today": realized,
+                "caution_daily_pct": self._caution_daily_spin.value(),
+                "halt_daily_pct": self._halt_daily_spin.value(),
+                "caution_float_pct": self._caution_float_spin.value(),
+                "manual_halt": self._manual_halt.isChecked(),
+            },
         ).normalized()
 
     @staticmethod

@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import vt_symbol_to_symbol
 
 _McpExecutor = Callable[[str, dict[str, Any]], str]

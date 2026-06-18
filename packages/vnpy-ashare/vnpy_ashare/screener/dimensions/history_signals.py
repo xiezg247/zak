@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
 from typing import Any
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.screener.data.screening_context_registry import get_screening_context
 

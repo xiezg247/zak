@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
 from vnpy_ashare.domain.radar.card import RadarCardData, RadarResonanceEntry, RadarRow
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, parse_tickflow_symbol

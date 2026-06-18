@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from typing import Any
 
 from vnpy_ashare.domain.market.breadth import (
@@ -12,7 +11,7 @@ from vnpy_ashare.domain.market.breadth import (
     LimitSource,
     MarketBreadthSnapshot,
 )
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.integrations.tushare.factors import fetch_limit_list_d
 
 __all__ = [

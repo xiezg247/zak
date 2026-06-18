@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot

@@ -8,7 +8,6 @@ from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
-    QuoteRowLike,
     QuoteRowsLike,
     coerce_quote_rows,
     quote_row_from_stock_and_snapshot,

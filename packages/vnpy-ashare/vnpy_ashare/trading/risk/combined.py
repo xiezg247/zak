@@ -56,7 +56,10 @@ def load_combined_risk_gate_snapshot(
     avg_float_pnl_pct: float | None = None,
     position_cache: Mapping[str, PositionSnapshot] | None = None,
 ) -> CombinedRiskGateSnapshot:
-    account = build_risk_gate_snapshot(avg_float_pnl_pct=avg_float_pnl_pct)
+    account = build_risk_gate_snapshot(
+        avg_float_pnl_pct=avg_float_pnl_pct,
+        position_cache=position_cache,
+    )
     emotion = load_emotion_cycle_snapshot()  # 默认不拉全市场，仅缓存
     total_capital = read_total_capital()
     actual = compute_actual_position_pct(

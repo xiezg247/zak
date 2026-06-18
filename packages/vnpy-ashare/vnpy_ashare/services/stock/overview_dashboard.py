@@ -10,7 +10,6 @@ from vnpy_ashare.domain.stock.overview import (
     DataReadinessItem,
     OverviewAlert,
     OverviewDashboard,
-    ReadinessStatus,
     ScreeningHit,
 )
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro

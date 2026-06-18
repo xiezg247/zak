@@ -25,7 +25,7 @@ from vnpy_ashare.ai.context.store import (
 from vnpy_ashare.ai.context.store import (
     set_screening_results as _set_screening_results,
 )
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.screener.run_result import ScreenerRunResult
 from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp

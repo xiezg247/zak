@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike, quote_row_copy
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningFilterRow, screening_row_to_dict
 from vnpy_ashare.domain.symbols.stock import vt_symbol_to_ts_code
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map

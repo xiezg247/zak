@@ -6,11 +6,11 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.domain.stock.overview import ReadinessStatus
 from vnpy_ashare.services.stock.overview_dashboard import (
     DataReadinessItem,
     OverviewAlert,
     OverviewDashboard,
-    ReadinessStatus,
 )
 from vnpy_common.ui.panel_widgets import MetricTile, content_card, hint_label, section_title, tile_grid
 from vnpy_common.ui.scroll_area import frameless_scroll_area

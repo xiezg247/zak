@@ -14,6 +14,8 @@ DEFAULT_STOP_LOSS_PCT = 0.05
 DEFAULT_CAUTION_DAILY_PCT = -3.0
 DEFAULT_HALT_DAILY_PCT = -5.0
 DEFAULT_CAUTION_FLOAT_PCT = -5.0
+DEFAULT_CAUTION_WEEKLY_DRAWDOWN_PCT = -5.0
+DEFAULT_HALT_TOTAL_DRAWDOWN_PCT = -10.0
 
 
 def _coerce_float(value: object, *, default: float | None = None) -> float | None:
@@ -35,6 +37,11 @@ class TradingRiskPrefs(FrozenModel):
     halt_daily_pct: float = Field(description="日亏熔断比例")
     caution_float_pct: float = Field(description="浮亏警戒比例")
     manual_halt: bool = Field(description="是否手动熔断")
+    peak_equity: float | None = Field(default=None, description="权益峰值")
+    week_peak_equity: float | None = Field(default=None, description="本周权益峰值")
+    week_peak_key: str = Field(default="", description="本周 ISO 周标识")
+    halt_until: str | None = Field(default=None, description="定时熔断截止日期")
+    halt_reason: str = Field(default="", description="定时熔断原因")
 
     def normalized(self) -> TradingRiskPrefs:
         per_trade = self.per_trade_risk_pct
@@ -56,6 +63,11 @@ class TradingRiskPrefs(FrozenModel):
             halt_daily_pct=self.halt_daily_pct,
             caution_float_pct=self.caution_float_pct,
             manual_halt=self.manual_halt,
+            peak_equity=self.peak_equity,
+            week_peak_equity=self.week_peak_equity,
+            week_peak_key=self.week_peak_key,
+            halt_until=self.halt_until,
+            halt_reason=self.halt_reason,
         )
 
 
@@ -91,6 +103,11 @@ def load_trading_risk_prefs() -> TradingRiskPrefs:
         )
         or DEFAULT_CAUTION_FLOAT_PCT,
         manual_halt=coerce_settings_bool(settings.value(f"{PREFIX}/manual_halt"), default=False),
+        peak_equity=_coerce_float(settings.value(f"{PREFIX}/peak_equity")),
+        week_peak_equity=_coerce_float(settings.value(f"{PREFIX}/week_peak_equity")),
+        week_peak_key=str(settings.value(f"{PREFIX}/week_peak_key") or ""),
+        halt_until=str(settings.value(f"{PREFIX}/halt_until") or "") or None,
+        halt_reason=str(settings.value(f"{PREFIX}/halt_reason") or ""),
     ).normalized()
 
 
@@ -115,3 +132,23 @@ def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
     settings.setValue(f"{PREFIX}/halt_daily_pct", item.halt_daily_pct)
     settings.setValue(f"{PREFIX}/caution_float_pct", item.caution_float_pct)
     settings.setValue(f"{PREFIX}/manual_halt", int(item.manual_halt))
+    if item.peak_equity is None:
+        settings.remove(f"{PREFIX}/peak_equity")
+    else:
+        settings.setValue(f"{PREFIX}/peak_equity", item.peak_equity)
+    if item.week_peak_equity is None:
+        settings.remove(f"{PREFIX}/week_peak_equity")
+    else:
+        settings.setValue(f"{PREFIX}/week_peak_equity", item.week_peak_equity)
+    if item.week_peak_key:
+        settings.setValue(f"{PREFIX}/week_peak_key", item.week_peak_key)
+    else:
+        settings.remove(f"{PREFIX}/week_peak_key")
+    if item.halt_until:
+        settings.setValue(f"{PREFIX}/halt_until", item.halt_until)
+    else:
+        settings.remove(f"{PREFIX}/halt_until")
+    if item.halt_reason:
+        settings.setValue(f"{PREFIX}/halt_reason", item.halt_reason)
+    else:
+        settings.remove(f"{PREFIX}/halt_reason")

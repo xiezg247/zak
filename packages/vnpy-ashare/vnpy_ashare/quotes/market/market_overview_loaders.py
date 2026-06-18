@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Any
 
 from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
 from vnpy_ashare.domain.market.overview import MarketOverviewData, SectorRankItem
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts

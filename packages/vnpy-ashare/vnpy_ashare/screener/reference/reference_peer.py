@@ -13,7 +13,7 @@ from typing import Any
 from dotenv import load_dotenv
 from pydantic import Field
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError

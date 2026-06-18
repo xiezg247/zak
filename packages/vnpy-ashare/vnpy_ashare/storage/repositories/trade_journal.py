@@ -174,6 +174,18 @@ def sum_realized_pnl_for_date(trade_date: str) -> float:
     return round(float(row[0]), 2) if row else 0.0
 
 
+def sum_realized_pnl_all() -> float:
+    init_app_db()
+    with connect() as conn:
+        row = conn.execute(
+            """
+            SELECT COALESCE(SUM(pnl), 0) FROM trade_journal
+            WHERE side = 'sell' AND pnl IS NOT NULL
+            """,
+        ).fetchone()
+    return round(float(row[0]), 2) if row else 0.0
+
+
 def has_sell_journal_since(
     symbol: str,
     exchange: str,

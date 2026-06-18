@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
 from vnpy_ashare.domain.screener.result_row import screening_row_to_dict
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.format import format_pct

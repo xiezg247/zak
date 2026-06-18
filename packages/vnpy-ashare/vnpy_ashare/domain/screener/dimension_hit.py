@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import Field, field_validator
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_common.domain.base import MutableModel
 

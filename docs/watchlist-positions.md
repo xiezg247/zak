@@ -179,7 +179,7 @@ CREATE TABLE watchlist_positions (
 | 入口 | prompt |
 |------|--------|
 | 问 AI（持仓） | `build_positions_ai_prompt` — 含成本、浮盈、T+1、退出信号 |
-| 隔日卖点检查 | `evaluate_overnight_exit`（**待建**） |
+| 隔日卖点检查 | `evaluate_overnight_exit` ✅ | 登记持仓 + 实时行情 |
 
 ---
 

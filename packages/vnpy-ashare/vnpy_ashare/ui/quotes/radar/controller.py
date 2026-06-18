@@ -41,10 +41,12 @@ from vnpy_ashare.services.watchlist_short_term import (
     add_rows_to_short_term_observation_group,
     collect_dragon_1_rows,
 )
+from vnpy_ashare.trading.journal.propose import _next_trade_date
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
 from vnpy_ashare.ui.quotes.radar.worker import RadarCardLoadWorker
+from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 
@@ -109,6 +111,7 @@ class RadarController(QtCore.QObject):
             panel.add_dragon_observation_group_requested.connect(self._on_resonance_dragon_observation_group)
             panel.stock_analysis_requested.connect(self._on_stock_analysis)
             panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
+            panel.propose_trading_plan_requested.connect(self._on_propose_trading_plan)
             panel.open_screener_requested.connect(self._on_open_screener_resonance)
             panel.open_leader_screener_requested.connect(self._on_open_screener_leader)
             panel.resonance_weights_requested.connect(self._on_resonance_weights_requested)
@@ -119,6 +122,15 @@ class RadarController(QtCore.QObject):
             page_notify(self._page, "无法打开选股页", level="warning")
             return
         host.open_screener_radar_resonance()
+
+    def _on_propose_trading_plan(self) -> None:
+        dialog = TradingPlanDialog(
+            page=self._page,
+            parent=self._page,
+            trade_date=_next_trade_date(),
+            auto_draft=True,
+        )
+        dialog.exec()
 
     def _on_open_screener_leader(self) -> None:
         host = self._find_main_window()

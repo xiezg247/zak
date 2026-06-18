@@ -25,3 +25,24 @@ class OvernightExitEvaluation(FrozenModel):
     rules: tuple[ExitRuleHit, ...] = Field(description="规则列表")
     warnings: tuple[str, ...] = Field(description="风险提示列表")
     reasons: tuple[str, ...] = Field(description="理由")
+
+    def to_dict(self) -> dict[str, object]:
+        signal_labels = {"sell": "卖出", "hold": "持有", "buy": "买入", "na": "不适用"}
+        status_labels = {"triggered": "已触发", "near": "临近", "clear": "未触发"}
+        return {
+            "signal": self.signal,
+            "signal_label": signal_labels.get(self.signal, self.signal),
+            "ref_sell_price": self.ref_sell_price,
+            "rules": [
+                {
+                    "rule_id": hit.rule_id,
+                    "label": hit.label,
+                    "status": hit.status,
+                    "status_label": status_labels.get(hit.status, hit.status),
+                    "detail": hit.detail,
+                }
+                for hit in self.rules
+            ],
+            "warnings": list(self.warnings),
+            "reasons": list(self.reasons),
+        }

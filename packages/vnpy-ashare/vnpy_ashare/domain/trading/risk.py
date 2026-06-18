@@ -18,6 +18,9 @@ class RiskGateSnapshot(FrozenModel):
     allow_new_positions: bool = Field(description="是否允许新开仓")
     daily_pnl_pct: float | None = Field(description="当日盈亏占比（%）")
     avg_float_pnl_pct: float | None = Field(description="持仓平均浮盈占比（%）")
+    weekly_drawdown_pct: float | None = Field(default=None, description="单周回撤（%）")
+    total_drawdown_pct: float | None = Field(default=None, description="总回撤（%）")
+    halt_until: str | None = Field(default=None, description="定时熔断截止日")
     warnings: tuple[str, ...] = Field(description="风险提示列表")
 
 
@@ -40,6 +43,9 @@ class CombinedRiskGateSnapshot(FrozenModel):
                 "allow_new_positions": self.account.allow_new_positions,
                 "daily_pnl_pct": self.account.daily_pnl_pct,
                 "avg_float_pnl_pct": self.account.avg_float_pnl_pct,
+                "weekly_drawdown_pct": self.account.weekly_drawdown_pct,
+                "total_drawdown_pct": self.account.total_drawdown_pct,
+                "halt_until": self.account.halt_until,
                 "warnings": list(self.account.warnings),
             },
             "warnings": list(self.warnings),
