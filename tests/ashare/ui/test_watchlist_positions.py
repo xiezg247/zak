@@ -166,7 +166,7 @@ class PositionDiskCacheTests(unittest.TestCase):
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self.db_path = Path(self._tmp.name)
         self._patcher = patch(
-            "vnpy_ashare.ui.quotes.watchlist_positions.cache._cache_db_path",
+            "vnpy_ashare.storage.cache.watchlist_position_cache._cache_db_path",
             return_value=self.db_path,
         )
         self._patcher.start()

@@ -28,7 +28,7 @@ from vnpy_ashare.ui.quotes.chart.minute_bars import (
     MinuteBarSession,
     compute_minute_bar_change,
 )
-from vnpy_ashare.ui.quotes.chart.mode_reference import (
+from vnpy_ashare.trading.signals.mode_reference import (
     build_intraday_mode_reference_lines,
     mode_reference_window_hint,
     resolve_intraday_mode_kind,

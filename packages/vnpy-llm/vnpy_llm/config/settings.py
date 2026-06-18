@@ -8,10 +8,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import Field
 
+from vnpy_common.config.llm_defaults import DEFAULT_BASE_URL, DEFAULT_MODEL
 from vnpy_common.domain.base import FrozenModel
-
-DEFAULT_MODEL = "deepseek-v4-pro"
-DEFAULT_BASE_URL = "https://api.deepseek.com/v1"
 
 
 class LlmConfig(FrozenModel):

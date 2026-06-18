@@ -8,7 +8,7 @@ from pydantic import Field
 
 from vnpy_ashare.config.fonts import default_font_family
 from vnpy_common.domain.base import FrozenModel
-from vnpy_llm.config.settings import DEFAULT_BASE_URL, DEFAULT_MODEL
+from vnpy_common.config.llm_defaults import DEFAULT_BASE_URL, DEFAULT_MODEL
 
 ValueKind = Literal["text", "secret", "bool", "int", "choice"]
 ConfigSource = Literal["env", "default", "vt_file"]

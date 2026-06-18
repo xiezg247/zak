@@ -21,13 +21,14 @@ from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_v
 from vnpy_ashare.integrations.tickflow.stream import shutdown_all_tickflow_streams
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_common.paths import PROJECT_ROOT
-from vnpy_llm.app.plugin import LlmApp
 
 _DEFERRED_APP_DELAY_MS = 0
 
 
 def _optional_llm_app():
     try:
+        from vnpy_llm.app.plugin import LlmApp
+
         return LlmApp
     except ImportError:
         return None

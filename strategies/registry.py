@@ -212,6 +212,30 @@ ULTRA_SHORT_STRATEGY_CLASS_NAMES: tuple[str, ...] = (
     "AshareOvernightExitStrategy",
 )
 
+OUTLOOK_STRATEGY_CLASS_NAMES: tuple[str, ...] = (
+    "AshareLimitBoardStrategy",
+    "AshareShortBreakoutStrategy",
+    "AsharePullbackStrategy",
+    "AshareDoubleMaStrategy",
+    "AshareSwingMaStrategy",
+    "AshareTrendMaStrategy",
+)
+
+_INTRADAY_MODE_BY_CLASS: dict[str, str] = {
+    "AshareLimitBoardStrategy": "limit_board",
+    "AshareLimitBoardMinuteStrategy": "limit_board",
+    "AshareIntradayBreakoutStrategy": "halfway",
+    "AshareIntradayBreakoutMinuteStrategy": "halfway",
+    "AsharePullbackStrategy": "pullback",
+    "AsharePullbackMinuteStrategy": "pullback",
+}
+
+
+def resolve_intraday_mode_kind(strategy_id: str | None) -> str:
+    """策略类名 → 分 K 参考线模式（limit_board / halfway / pullback / none）。"""
+    sid = (strategy_id or "").strip()
+    return _INTRADAY_MODE_BY_CLASS.get(sid, "none")
+
 
 def list_signal_strategy_metas() -> list[StrategyMeta]:
     """返回支持自选信号计算的已注册策略元数据。"""

@@ -9,7 +9,7 @@ from vnpy_ashare.ui.quotes.chart.daily import (
     REF_LAST_PRICE_LINE_COLOR,
     REF_SELL_LINE_COLOR,
 )
-from vnpy_ashare.ui.quotes.chart.mode_reference import ModeReferenceLine
+from vnpy_ashare.trading.signals.mode_reference import ModeReferenceLine
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.tokens import ThemeTokens
 

@@ -8,7 +8,11 @@ from unittest import mock
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.trading.exit import ExitRuleHit
 from vnpy_ashare.domain.trading.position import PositionRecord, PositionSnapshot
-from vnpy_ashare.trading.exit.exit_display import format_exit_rules_summary, format_exit_rules_tooltip
+from vnpy_ashare.trading.exit.exit_display import (
+    exit_rule_cell_color,
+    format_exit_rules_summary,
+    format_exit_rules_tooltip,
+)
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 
 
@@ -49,6 +53,23 @@ class ExitDisplayTest(unittest.TestCase):
         tip = format_exit_rules_tooltip(rules)
         self.assertIn("触发", tip)
         self.assertIn("浮亏 -6%", tip)
+
+
+class ExitRuleCellColorTest(unittest.TestCase):
+    def test_triggered_uses_fall_color(self) -> None:
+        colors = type("Colors", (), {"fall": "#ff0000"})()
+        rules = (ExitRuleHit(rule_id="a", label="止损", status="triggered", detail="浮亏 -6%"),)
+        self.assertEqual(exit_rule_cell_color(rules, colors=colors, warning_color="#ffaa00"), "#ff0000")
+
+    def test_near_uses_warning_color(self) -> None:
+        colors = type("Colors", (), {"fall": "#ff0000"})()
+        rules = (ExitRuleHit(rule_id="b", label="逼近止损", status="near", detail="接近线"),)
+        self.assertEqual(exit_rule_cell_color(rules, colors=colors, warning_color="#ffaa00"), "#ffaa00")
+
+    def test_clear_returns_none(self) -> None:
+        colors = type("Colors", (), {"fall": "#ff0000"})()
+        rules = (ExitRuleHit(rule_id="c", label="封板", status="clear", detail="持有"),)
+        self.assertIsNone(exit_rule_cell_color(rules, colors=colors, warning_color="#ffaa00"))
 
 
 class OvernightExitOverlayRulesTest(unittest.TestCase):

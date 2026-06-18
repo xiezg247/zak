@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from importlib import import_module
 from types import ModuleType
+from typing import TYPE_CHECKING
 
 from vnpy.event import Event, EventEngine
 from vnpy.trader.constant import Exchange
@@ -62,12 +63,11 @@ from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_common.ui.theme.manager import theme_manager
-from vnpy_llm.app.engine import APP_NAME as LLM_APP_NAME
-from vnpy_llm.app.engine import LlmEngine
-from vnpy_llm.ui.dialogs.tool_audit import show_ai_tool_audit_dialog
-from vnpy_llm.ui.dialogs.tools import show_ai_tools_dialog
 
-_QuotesPageFactory = Callable[[MainEngine, EventEngine], QtWidgets.QWidget]
+if TYPE_CHECKING:
+    from vnpy_llm.app.engine import LlmEngine
+
+_QUotesPageFactory = Callable[[MainEngine, EventEngine], QtWidgets.QWidget]
 
 _QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "market": MarketPageWidget,
@@ -80,6 +80,24 @@ _QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
 _DEFERRED_PAGE_KEYS = frozenset({"cta_backtest", "batch_backtest"})
 
 _AI_NOT_LOADED_MSG = "AI 助手未加载，请确认已安装并启用 vnpy_llm"
+
+
+def _import_llm_module(module_path: str) -> ModuleType | None:
+    try:
+        return import_module(module_path)
+    except ImportError:
+        return None
+
+
+def _get_llm_engine_impl(main_engine: MainEngine) -> LlmEngine | None:
+    llm_mod = _import_llm_module("vnpy_llm.app.engine")
+    if llm_mod is None:
+        return None
+    engine = main_engine.get_engine(llm_mod.APP_NAME)
+    if isinstance(engine, llm_mod.LlmEngine):
+        return engine
+    return None
+
 
 _VNPY_WIDGETS: dict[str, tuple[str, str]] = {
     "cta_backtest": ("vnpy_ashare.ui.backtest.pages.backtest_widget", "BacktesterWidget"),
@@ -368,24 +386,29 @@ class AshareMainWindow(MainWindow):
             self._floating_controller.on_window_resize()
 
     def _get_llm_engine(self) -> LlmEngine | None:
-        engine = self.main_engine.get_engine(LLM_APP_NAME)
-        if isinstance(engine, LlmEngine):
-            return engine
-        return None
+        return _get_llm_engine_impl(self.main_engine)
 
     def _open_ai_tools_dialog(self) -> None:
         llm_engine = self._get_llm_engine()
         if llm_engine is None:
             page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
             return
-        show_ai_tools_dialog(llm_engine, self)
+        tools_mod = _import_llm_module("vnpy_llm.ui.dialogs.tools")
+        if tools_mod is None:
+            page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
+            return
+        tools_mod.show_ai_tools_dialog(llm_engine, self)
 
     def _open_ai_tool_audit_dialog(self) -> None:
         llm_engine = self._get_llm_engine()
         if llm_engine is None:
             page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
             return
-        show_ai_tool_audit_dialog(llm_engine, self)
+        audit_mod = _import_llm_module("vnpy_llm.ui.dialogs.tool_audit")
+        if audit_mod is None:
+            page_notify(self, _AI_NOT_LOADED_MSG, level="warning")
+            return
+        audit_mod.show_ai_tool_audit_dialog(llm_engine, self)
 
     def _init_floating_ai(self, shell: QtWidgets.QWidget | None = None) -> bool:
         """创建悬浮球协调层。"""

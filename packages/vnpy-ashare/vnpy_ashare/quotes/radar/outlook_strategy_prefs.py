@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from strategies.registry import get_strategy_meta
+from strategies.registry import OUTLOOK_STRATEGY_CLASS_NAMES, get_strategy_meta
 from strategies.signals import STRATEGY_SIGNAL_DEFAULTS, STRATEGY_SIGNAL_RECENT_DAYS
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.watchlist_signal import (
@@ -15,14 +15,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
 
 _SETTINGS_KEY = "quotes/radar/outlook_strategy_class"
 
-OUTLOOK_STRATEGY_WHITELIST: tuple[str, ...] = (
-    "AshareLimitBoardStrategy",
-    "AshareShortBreakoutStrategy",
-    "AsharePullbackStrategy",
-    "AshareDoubleMaStrategy",
-    "AshareSwingMaStrategy",
-    "AshareTrendMaStrategy",
-)
+OUTLOOK_STRATEGY_WHITELIST: tuple[str, ...] = OUTLOOK_STRATEGY_CLASS_NAMES
 
 OUTLOOK_SIGNAL_CARD_IDS: frozenset[str] = frozenset(
     {

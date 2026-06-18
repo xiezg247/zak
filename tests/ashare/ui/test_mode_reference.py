@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.ui.quotes.chart.mode_reference import (
+from vnpy_ashare.trading.signals.mode_reference import (
     build_intraday_mode_reference_lines,
     resolve_intraday_mode_kind,
 )

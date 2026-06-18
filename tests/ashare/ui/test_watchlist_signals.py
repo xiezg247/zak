@@ -216,7 +216,7 @@ class SignalDiskCacheTests(unittest.TestCase):
         self._tmp = Path(tempfile.mkdtemp())
         self._db_path = self._tmp / "watchlist_signal_cache.db"
         self._patcher = patch(
-            "vnpy_ashare.ui.quotes.watchlist_signals.cache._cache_db_path",
+            "vnpy_ashare.storage.cache.watchlist_signal_cache._cache_db_path",
             return_value=self._db_path,
         )
         self._patcher.start()

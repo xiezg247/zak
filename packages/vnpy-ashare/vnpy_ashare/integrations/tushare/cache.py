@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
-import sqlite3
-from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Any
 
+from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_common.paths import get_app_db_path
 
@@ -29,20 +28,8 @@ DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)
 
 
-@contextmanager
 def _connect():
-    init_app_db()
-    path = get_app_db_path()
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    return sqlite_cache_session(get_app_db_path(), "", prepare=init_app_db)
 
 
 def _parse_fetched_at(value: str) -> datetime | None:

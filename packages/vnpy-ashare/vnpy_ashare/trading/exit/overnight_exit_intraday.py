@@ -7,12 +7,21 @@ from datetime import date
 from typing import Literal
 
 from strategies.ultra_short_signals import calc_limit_price
-from vnpy_ashare.config.preferences.trading_risk import DEFAULT_STOP_LOSS_PCT, load_trading_risk_prefs
 from vnpy_ashare.domain.trading.exit import ExitRuleHit, ExitSignal
-from vnpy_ashare.domain.trading.position import PositionRecord, position_t1_locked
+from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.exit.opening_stop import OPENING_STOP_MINUTES
 from vnpy_ashare.trading.exit.opening_stop_intraday import detect_opening_stop_from_minute_bars
+from vnpy_ashare.trading.exit.overnight_exit_rules import (
+    T1_LOCKED_WARNING,
+    append_limit_break_rule,
+    append_limit_hold_rule,
+    apply_stop_loss_near_rule,
+    apply_stop_loss_pct_rule,
+    compute_pnl_pct,
+    is_t1_locked,
+    resolve_stop_loss_pct,
+)
 from vnpy_ashare.trading.signals.limit_board_intraday import load_local_minute_bars_for_date
 from vnpy_ashare.trading.signals.pullback_intraday import resolve_daily_mas_for_date
 from vnpy_ashare.trading.signals.seal_reopen import detect_seal_reopen_from_minute_bars
@@ -48,18 +57,16 @@ def evaluate_overnight_exit_intraday(
     phase: SessionPhase = "partial",
 ) -> OvernightExitIntradaySnapshot:
     """分 K 隔日退出评估（T+1 可卖日）。"""
-    if position_t1_locked(record.buy_date):
+    if is_t1_locked(record.buy_date):
         return OvernightExitIntradaySnapshot(
             signal="hold",
             ref_sell_price=None,
             rules=(),
             reasons=(),
-            warnings=("T+1 锁定，当日不可卖",),
+            warnings=T1_LOCKED_WARNING,
         )
 
-    prefs = load_trading_risk_prefs()
-    stop_pct = stop_loss_pct if stop_loss_pct is not None else prefs.stop_loss_pct
-    stop_pct = stop_pct if stop_pct > 0 else DEFAULT_STOP_LOSS_PCT
+    stop_pct = resolve_stop_loss_pct(stop_loss_pct)
 
     if not bars:
         return OvernightExitIntradaySnapshot(
@@ -77,21 +84,15 @@ def evaluate_overnight_exit_intraday(
     warnings: list[str] = []
     signal: ExitSignal = "hold"
 
-    pnl_pct: float | None = None
-    if record.cost_price > 0:
-        pnl_pct = round((last_close - record.cost_price) / record.cost_price * 100, 2)
+    pnl_pct = compute_pnl_pct(record.cost_price, last_close)
 
-    if pnl_pct is not None and pnl_pct <= -stop_pct * 100:
-        rules.append(
-            ExitRuleHit(
-                rule_id="stop_loss_pct",
-                label="止损",
-                status="triggered",
-                detail=f"浮亏 {pnl_pct:.1f}% ≤ −{stop_pct * 100:.0f}%",
-            )
-        )
-        reasons.append(rules[-1].detail)
-        signal = "sell"
+    signal = apply_stop_loss_pct_rule(
+        rules,
+        reasons,
+        pnl_pct=pnl_pct,
+        stop_pct=stop_pct,
+        signal=signal,
+    )
 
     if prev_close > 0:
         opening_hit, opening_detail = detect_opening_stop_from_minute_bars(
@@ -117,37 +118,22 @@ def evaluate_overnight_exit_intraday(
         reopen_kind, _ = detect_seal_reopen_from_minute_bars(bars, limit_price=limit_price)
         row = {"symbol": symbol, "change_pct": (last_close - prev_close) / prev_close * 100 if prev_close else 0}
         if is_at_limit_board(row) and reopen_kind == "broken":
-            rules.append(
-                ExitRuleHit(
-                    rule_id="limit_break",
-                    label="炸板",
-                    status="triggered",
-                    detail="涨停打开且未能回封（分 K）",
-                )
+            signal = append_limit_break_rule(
+                rules,
+                reasons,
+                detail="涨停打开且未能回封（分 K）",
+                signal=signal,
             )
-            if signal != "sell":
-                reasons.append(rules[-1].detail)
-            signal = "sell"
         elif is_at_limit_board(row) and reopen_kind in {"solid", "resealed"}:
-            rules.append(
-                ExitRuleHit(
-                    rule_id="limit_hold",
-                    label="封板",
-                    status="clear",
-                    detail="涨停封板，隔日规则建议持有",
-                )
-            )
+            append_limit_hold_rule(rules)
 
-    if signal == "hold" and pnl_pct is not None and pnl_pct <= -(stop_pct * 100 * 0.8):
-        rules.append(
-            ExitRuleHit(
-                rule_id="stop_loss_near",
-                label="逼近止损",
-                status="near",
-                detail=f"浮盈 {pnl_pct:.1f}%",
-            )
-        )
-        warnings.append(f"接近 −{stop_pct * 100:.0f}% 止损线")
+    apply_stop_loss_near_rule(
+        rules,
+        warnings,
+        pnl_pct=pnl_pct,
+        stop_pct=stop_pct,
+        signal=signal,
+    )
 
     if phase == "partial" and signal == "hold":
         warnings.append("分 K 盘中评估（隔日退出）")

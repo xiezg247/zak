@@ -12,11 +12,12 @@ from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.position import PositionRecord, build_position_snapshot
 from vnpy_ashare.domain.trading.signal_snapshot import signal_as_of_stale
-from vnpy_ashare.notifications.triggers.position_alerts import scan_watchlist_position_alerts
+from vnpy_ashare.notifications.core.position_alert_scan import PositionAlertRow, PositionAlertScanInput
+from vnpy_ashare.notifications.triggers.position_alerts import scan_position_alerts
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
-from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
+from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
 from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
 from vnpy_common.ui.qt_helpers import release_thread
 
@@ -216,7 +217,29 @@ class WatchlistPositionController:
         if service is None:
             return
 
-        scan_watchlist_position_alerts(self._page, service)
+        scan_position_alerts(self._build_position_alert_scan_input(), service)
+
+    def _build_position_alert_scan_input(self) -> PositionAlertScanInput:
+        page = self._page
+        if not page.config.show_watchlist_positions or not page.position_cache:
+            return PositionAlertScanInput(enabled=False)
+
+        rows: list[PositionAlertRow] = []
+        for vt_symbol, snap in page.position_cache.items():
+            item = page.find_stock_item(vt_symbol)
+            quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
+            name = item.name if item is not None else vt_symbol
+            symbol = item.symbol if item is not None else vt_symbol.split(".", 1)[0]
+            rows.append(
+                PositionAlertRow(
+                    vt_symbol=vt_symbol,
+                    name=name,
+                    symbol=symbol,
+                    snap=snap,
+                    quote=quote,
+                )
+            )
+        return PositionAlertScanInput(enabled=True, rows=tuple(rows))
 
     def hydrate_from_disk(self) -> bool:
         """从磁盘恢复策略信号到内存并渲染（冷启动快速展示）。"""
