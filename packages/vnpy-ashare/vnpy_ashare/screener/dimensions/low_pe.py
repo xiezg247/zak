@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, rank_score
@@ -14,7 +14,7 @@ from vnpy_ashare.screener.preset.rules import apply_low_pe
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
-def _industry_pe_median(rows: Sequence[QuoteRow]) -> dict[str, float]:
+def _industry_pe_median(rows: QuoteRowsLike) -> dict[str, float]:
     buckets: dict[str, list[float]] = defaultdict(list)
     for row in rows:
         pe = float(row.get("pe_ttm") or 0)

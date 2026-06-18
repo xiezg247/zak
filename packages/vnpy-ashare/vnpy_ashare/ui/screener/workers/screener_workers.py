@@ -5,6 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.app.engine_access import get_screening_service
+from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.screener.batch.batch_actions import batch_download_daily_bars, run_batch_backtests
 from vnpy_ashare.screener.data.screening_status import (
     prepare_quotes_for_screening,
@@ -156,7 +157,7 @@ class ScreenerBatchDownloadWorker(QtCore.QThread):
                 self.failed.emit("已取消")
                 return
             result = batch_download_daily_bars(
-                self.rows,
+                coerce_screener_result_rows(self.rows),
                 should_cancel=lambda: self._cancel_requested,
             )
             if self._cancel_requested or "已取消" in result.message:
@@ -190,7 +191,11 @@ class ScreenerBatchBacktestWorker(QtCore.QThread):
 
     def run(self) -> None:
         try:
-            results = run_batch_backtests(self.main_engine, self.rows, self.params)
+            results = run_batch_backtests(
+                self.main_engine,
+                coerce_screener_result_rows(self.rows),
+                self.params,
+            )
             self.finished.emit(results)
         except Exception as ex:
             self.failed.emit(str(ex))

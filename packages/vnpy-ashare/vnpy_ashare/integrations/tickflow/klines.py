@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
 
 from vnpy.trader.constant import Interval
 from vnpy.trader.object import BarData
@@ -22,11 +23,14 @@ PERIOD_TO_INTERVAL: dict[str, Interval] = {
 def fetch_intraday_bars(item: StockItem, *, period: str = "1m") -> list[BarData]:
     client = get_tickflow_client()
     df = client.klines.intraday(item.tickflow_symbol, period=period, as_dataframe=True)
-    return dataframe_to_bars(
-        df,
-        symbol=item.symbol,
-        exchange=item.exchange,
-        interval=Interval.MINUTE,
+    return cast(
+        list[BarData],
+        dataframe_to_bars(
+            df,
+            symbol=item.symbol,
+            exchange=item.exchange,
+            interval=Interval.MINUTE,
+        ),
     )
 
 
@@ -39,11 +43,14 @@ def fetch_minute_bars(item: StockItem, *, period: str = "1m", count: int = 240) 
         as_dataframe=True,
     )
     interval = PERIOD_TO_INTERVAL.get(period, Interval.MINUTE)
-    return dataframe_to_bars(
-        df,
-        symbol=item.symbol,
-        exchange=item.exchange,
-        interval=interval,
+    return cast(
+        list[BarData],
+        dataframe_to_bars(
+            df,
+            symbol=item.symbol,
+            exchange=item.exchange,
+            interval=interval,
+        ),
     )
 
 
@@ -60,9 +67,12 @@ def fetch_history_bars(
     end_ms = int(end.replace(tzinfo=CHINA_TZ).timestamp() * 1000)
     client = get_tickflow_client()
     df = fetch_klines_paged(client, item.tickflow_symbol, period, start_ms, end_ms)
-    return dataframe_to_bars(
-        df,
-        symbol=item.symbol,
-        exchange=item.exchange,
-        interval=bar_interval(period),
+    return cast(
+        list[BarData],
+        dataframe_to_bars(
+            df,
+            symbol=item.symbol,
+            exchange=item.exchange,
+            interval=bar_interval(period),
+        ),
     )

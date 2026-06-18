@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, score_market_leaders
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
@@ -88,7 +88,7 @@ def build_leader_candidate_pool(
 
 
 def rank_leader_pool(
-    candidates: Sequence[QuoteRow],
+    candidates: QuoteRowsLike,
     *,
     top_n: int = 12,
     filter_followers: bool = False,

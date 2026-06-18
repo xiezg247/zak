@@ -8,6 +8,8 @@ from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
+    QuoteRowLike,
+    QuoteRowsLike,
     coerce_quote_rows,
     quote_row_from_stock_and_snapshot,
     quote_rows_by_vt,
@@ -20,7 +22,7 @@ _lock = threading.Lock()
 _rows: list[QuoteRow] = []
 
 
-def set_market_quote_rows_cache(rows: Sequence[QuoteRow | Mapping[str, Any]]) -> None:
+def set_market_quote_rows_cache(rows: QuoteRowsLike) -> None:
     global _rows
     with _lock:
         _rows = coerce_quote_rows(rows)
@@ -74,7 +76,7 @@ def set_market_quotes_cache(items: Sequence[StockItem | Any], quotes: Mapping[st
     set_market_quote_rows_cache(rows)
 
 
-def quote_rows_by_vt_symbol(rows: Sequence[QuoteRow | Mapping[str, Any]] | None = None) -> dict[str, QuoteRow]:
+def quote_rows_by_vt_symbol(rows: QuoteRowsLike | None = None) -> dict[str, QuoteRow]:
     if rows is None:
         with _lock:
             source = list(_rows)

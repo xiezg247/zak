@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
@@ -96,7 +96,7 @@ def run_intraday_breakout(pool_size: int, *, weight: float) -> tuple[list[Dimens
     return hits, snapshot.total
 
 
-def _row_volume_ratio(row: QuoteRow, ratio_map: dict[str, float]) -> float | None:
+def _row_volume_ratio(row: QuoteRowLike, ratio_map: dict[str, float]) -> float | None:
     ratio = float(row.get("volume_ratio") or 0)
     if ratio > 0:
         return ratio
@@ -107,7 +107,7 @@ def _row_volume_ratio(row: QuoteRow, ratio_map: dict[str, float]) -> float | Non
     return None
 
 
-def _quote_breakout_strength(row: QuoteRow, ratio_map: dict[str, float]) -> float | None:
+def _quote_breakout_strength(row: QuoteRowLike, ratio_map: dict[str, float]) -> float | None:
     prev = float(row.get("prev_close") or 0)
     high = float(row.get("high_price") or 0)
     last = float(row.get("last_price") or 0)
@@ -196,7 +196,7 @@ def _apply_minute_confirm(
     return candidates[:pool_size]
 
 
-def _minute_bar_confirms_breakout(row: QuoteRow) -> bool:
+def _minute_bar_confirms_breakout(row: QuoteRowLike) -> bool:
     vt_symbol = str(row.get("vt_symbol") or "")
     item = parse_tickflow_symbol(vt_symbol, str(row.get("name") or ""))
     if item is None:

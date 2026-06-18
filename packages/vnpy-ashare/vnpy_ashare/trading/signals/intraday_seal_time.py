@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from strategies.ultra_short_signals import calc_limit_price
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
@@ -20,7 +20,7 @@ class _MinuteBar(Protocol):
     high_price: float
 
 
-def infer_prev_close_from_row(row: QuoteRow | Mapping[str, Any]) -> float | None:
+def infer_prev_close_from_row(row: QuoteRowLike | Mapping[str, Any]) -> float | None:
     """由现价与涨跌幅反推昨收。"""
     last_raw = row.get("last_price") if row.get("last_price") is not None else row.get("close")
     change_raw = row.get("change_pct")
@@ -105,7 +105,7 @@ def resolve_first_time(
 
 
 def build_first_time_map(
-    rows: Sequence[QuoteRow | Mapping[str, Any]],
+    rows: QuoteRowsLike,
     *,
     max_intraday_fetch: int = 0,
 ) -> dict[str, str]:
@@ -132,7 +132,7 @@ def build_first_time_map(
 
 
 def attach_first_time_fields(
-    rows: Sequence[QuoteRow | dict[str, Any]],
+    rows: QuoteRowsLike,
     *,
     max_intraday_fetch: int = 0,
 ) -> None:

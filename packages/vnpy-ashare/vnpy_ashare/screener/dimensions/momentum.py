@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.screener.data.data_source import fetch_fundamental_screening_rows, load_screening_quote_snapshot
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
@@ -146,7 +146,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
         return hits, len(raw_rows)
 
 
-def _momentum_reason(row: QuoteRow, rank: int) -> str:
+def _momentum_reason(row: QuoteRowLike, rank: int) -> str:
     change = float(row.get("change_pct") or row.get("pct_chg") or 0)
     rs = float(row.get("relative_strength") or 0)
     basis = str(row.get("strength_basis") or "大盘")

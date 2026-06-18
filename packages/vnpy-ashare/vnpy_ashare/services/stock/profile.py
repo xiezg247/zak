@@ -174,15 +174,15 @@ def build_sector_profile(vt_symbol: str, *, name: str = "") -> SectorProfile:
         except Exception:
             pct_map = {}
 
-    enriched: list[dict[str, Any]] = []
+    raw_rows: list[dict[str, Any]] = []
     for row in fund_rows:
         code = str(row.get("ts_code") or "")
         pct = pct_map.get(code)
         merged = dict(row)
         if pct is not None:
             merged["change_pct"] = pct
-        enriched.append(merged)
-    enriched = attach_industry(enriched, industry_map)
+        raw_rows.append(merged)
+    enriched = attach_industry(raw_rows, industry_map)
 
     sector_stats = compute_sector_distribution(enriched, top_n=200, min_stocks=2)
     sector_avg: float | None = None
@@ -200,16 +200,16 @@ def build_sector_profile(vt_symbol: str, *, name: str = "") -> SectorProfile:
             key=lambda row: float(row.get("total_mv") or 0),
             reverse=True,
         )
-        for row in same_industry[:_PEER_TOP_N]:
-            mv = row.get("total_mv")
+        for peer_row in same_industry[:_PEER_TOP_N]:
+            mv = peer_row.get("total_mv")
             peers.append(
                 {
-                    "vt_symbol": row.get("vt_symbol", ""),
-                    "name": row.get("name", ""),
-                    "pe_ttm": row.get("pe_ttm"),
-                    "pb": row.get("pb"),
+                    "vt_symbol": peer_row.get("vt_symbol", ""),
+                    "name": peer_row.get("name", ""),
+                    "pe_ttm": peer_row.get("pe_ttm"),
+                    "pb": peer_row.get("pb"),
                     "total_mv_yi": round(float(mv) / 10000, 1) if mv else None,
-                    "change_pct": row.get("change_pct"),
+                    "change_pct": peer_row.get("change_pct"),
                 }
             )
 

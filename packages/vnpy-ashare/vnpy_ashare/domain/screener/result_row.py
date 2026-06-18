@@ -9,6 +9,7 @@ from pydantic import ConfigDict, Field
 
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
+    QuoteRowLike,
     coerce_quote_row,
     quote_row_payload,
 )
@@ -119,12 +120,12 @@ class ScreenerResultRow(FrozenModel):
         return cls(quote=coerce_quote_row(quote_payload), scores=scores, tags=tags)
 
     @classmethod
-    def from_quote_row(cls, row: QuoteRow) -> ScreenerResultRow:
-        return cls.from_mapping(row.to_dict())
+    def from_quote_row(cls, row: QuoteRowLike) -> ScreenerResultRow:
+        return cls.from_mapping(coerce_quote_row(row).to_dict())
 
 
 # 硬过滤等共用：行情行或选股结果行（均支持 .get）
-ScreeningFilterRow = QuoteRow | ScreenerResultRow
+ScreeningFilterRow = QuoteRowLike | ScreenerResultRow | Mapping[str, Any]
 
 
 def screener_rows_from_mappings(rows: Sequence[Mapping[str, Any]]) -> list[ScreenerResultRow]:

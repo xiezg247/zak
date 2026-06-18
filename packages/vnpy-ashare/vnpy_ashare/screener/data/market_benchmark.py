@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 
 _HS300_LABEL = "沪深300"
 _HS300_SYMBOL = "000300.SH"
 
 
-def market_benchmark_change_pct(rows: Sequence[QuoteRow]) -> float:
+def market_benchmark_change_pct(rows: QuoteRowsLike) -> float:
     """优先沪深300涨幅；不可用则退回全市场涨幅均值。"""
     try:
         for label, quote in fetch_index_ticker():
@@ -27,7 +27,7 @@ def market_benchmark_change_pct(rows: Sequence[QuoteRow]) -> float:
     return sum(changes) / len(changes)
 
 
-def industry_avg_change_map(rows: Sequence[QuoteRow]) -> dict[str, float]:
+def industry_avg_change_map(rows: QuoteRowsLike) -> dict[str, float]:
     """行业平均涨幅（需行内已有 industry）。"""
     buckets: dict[str, list[float]] = defaultdict(list)
     for row in rows:
@@ -38,13 +38,13 @@ def industry_avg_change_map(rows: Sequence[QuoteRow]) -> dict[str, float]:
     return {industry: sum(values) / len(values) for industry, values in buckets.items() if values}
 
 
-def relative_strength_pct(row: QuoteRow, benchmark_change_pct: float) -> float:
+def relative_strength_pct(row: QuoteRowLike, benchmark_change_pct: float) -> float:
     change = float(row.get("change_pct") or row.get("pct_chg") or 0)
     return round(change - benchmark_change_pct, 2)
 
 
 def resolve_relative_strength(
-    row: QuoteRow,
+    row: QuoteRowLike,
     *,
     market_benchmark: float,
     industry_avg_map: dict[str, float],

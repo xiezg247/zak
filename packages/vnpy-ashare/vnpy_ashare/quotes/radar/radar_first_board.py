@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
@@ -24,7 +22,7 @@ from vnpy_ashare.trading.signals.seal_time import format_seal_time_label, seal_t
 _STRONG_INDUSTRY_TOP = 5
 
 
-def _amount_rank_map(rows: Sequence[QuoteRow]) -> dict[str, float]:
+def _amount_rank_map(rows: QuoteRowsLike) -> dict[str, float]:
     amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
     amounts = [(vt, amt) for vt, amt in amounts if vt]
     if not amounts:
@@ -54,7 +52,7 @@ def _strong_industries() -> set[str]:
 
 
 def build_first_board_candidates(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     limit_times_map: dict[str, float] | None = None,
 ) -> list[QuoteRow]:
@@ -64,7 +62,7 @@ def build_first_board_candidates(
 
 
 def compute_first_board_score(
-    row: QuoteRow,
+    row: QuoteRowLike,
     *,
     amount_rank: float,
     sector_bonus: float,
@@ -85,17 +83,17 @@ def compute_first_board_score(
 
 
 def rank_first_board_pool(
-    candidates: Sequence[QuoteRow],
+    candidates: QuoteRowsLike,
     *,
     first_time_map: dict[str, str] | None = None,
     top_n: int = 8,
-) -> list[tuple[QuoteRow, float, str]]:
+) -> list[tuple[QuoteRowLike, float, str]]:
     if not candidates:
         return []
     time_map = first_time_map or {}
     amount_ranks = _amount_rank_map(candidates)
     strong = _strong_industries()
-    scored: list[tuple[QuoteRow, float, str]] = []
+    scored: list[tuple[QuoteRowLike, float, str]] = []
     for row in candidates:
         vt = str(row.get("vt_symbol") or "")
         industry = str(row.get("industry") or "").strip()
@@ -112,7 +110,7 @@ def rank_first_board_pool(
     return scored[:top_n]
 
 
-def _row_to_radar(row: QuoteRow, *, popularity: float, seal_label: str) -> RadarRow | None:
+def _row_to_radar(row: QuoteRowLike, *, popularity: float, seal_label: str) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None

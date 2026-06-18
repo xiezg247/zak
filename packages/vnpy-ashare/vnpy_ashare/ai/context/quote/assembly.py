@@ -153,24 +153,24 @@ def build_stock_completion_items(
     class_name, fast_window, slow_window = resolve_signal_prompt_params()
     return [
         StockCompletionItem(
-            f"诊断 {display}({symbol})",
-            build_diagnose_ai_prompt(vt, name),
+            label=f"诊断 {display}({symbol})",
+            prompt=build_diagnose_ai_prompt(vt, name),
         ),
         StockCompletionItem(
-            f"{display}({symbol}) 技术面",
-            build_technical_ai_prompt(vt, name),
+            label=f"{display}({symbol}) 技术面",
+            prompt=build_technical_ai_prompt(vt, name),
         ),
         StockCompletionItem(
-            f"{display}({symbol}) 双均线",
-            build_signals_ai_prompt(vt, name),
+            label=f"{display}({symbol}) 双均线",
+            prompt=build_signals_ai_prompt(vt, name),
         ),
         StockCompletionItem(
-            f"{display}({symbol}) 近期走势",
-            build_trend_ai_prompt(vt, name),
+            label=f"{display}({symbol}) 近期走势",
+            prompt=build_trend_ai_prompt(vt, name),
         ),
         StockCompletionItem(
-            f"{display}({symbol}) 5日情景",
-            build_trend_scenario_ai_prompt(
+            label=f"{display}({symbol}) 5日情景",
+            prompt=build_trend_scenario_ai_prompt(
                 vt,
                 name,
                 focus="5d",
@@ -180,8 +180,8 @@ def build_stock_completion_items(
             ),
         ),
         StockCompletionItem(
-            f"{display}({symbol}) 支撑压力",
-            build_trend_scenario_ai_prompt(
+            label=f"{display}({symbol}) 支撑压力",
+            prompt=build_trend_scenario_ai_prompt(
                 vt,
                 name,
                 focus="support",

@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.radar.card import RadarCardData, RadarResonanceEntry, RadarRow
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, parse_tickflow_symbol
@@ -31,7 +31,7 @@ def quote_map() -> dict[str, QuoteRow]:
     return quote_rows_by_vt_symbol()
 
 
-def merge_row_quotes(row: QuoteRow | ScreenerResultRow | Mapping[str, Any]) -> dict[str, Any]:
+def merge_row_quotes(row: QuoteRowLike | ScreenerResultRow | Mapping[str, Any]) -> dict[str, Any]:
     """合并行情缓存，补全 volume / amount / 现价等字段。"""
     if isinstance(row, ScreenerResultRow):
         payload = row.to_dict()
@@ -65,7 +65,7 @@ def merge_row_quotes(row: QuoteRow | ScreenerResultRow | Mapping[str, Any]) -> d
 
 
 def _ingest_quote_row(
-    row: QuoteRow | Mapping[str, Any],
+    row: QuoteRowLike | Mapping[str, Any],
     *,
     by_vt: dict[str, dict[str, Any]],
     by_symbol: dict[str, dict[str, Any]],

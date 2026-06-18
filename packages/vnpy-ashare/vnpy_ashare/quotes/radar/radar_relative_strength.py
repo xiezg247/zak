@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from vnpy_ashare.quotes.radar.radar_models import RadarRow
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
@@ -21,9 +20,9 @@ from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
 def build_relative_strength_subline(
-    row: QuoteRow,
+    row: QuoteRowLike,
     *,
-    snapshot_rows: Sequence[QuoteRow] | None = None,
+    snapshot_rows: QuoteRowsLike | None = None,
 ) -> tuple[str, str] | None:
     """返回 (sub_label, sub_value)，无有效涨幅时返回 None。"""
     change = row.get("change_pct") if row.get("change_pct") not in (None, "") else row.get("pct_chg")
@@ -40,7 +39,7 @@ def build_relative_strength_subline(
     market_benchmark = market_benchmark_change_pct(enriched or pool)
     industry_avg = industry_avg_change_map(enriched)
 
-    merged: QuoteRow = row
+    merged: QuoteRowLike = row
     if industry_map and not merged.get("industry"):
         enriched_one = attach_industry([merged], industry_map=industry_map)
         if enriched_one:

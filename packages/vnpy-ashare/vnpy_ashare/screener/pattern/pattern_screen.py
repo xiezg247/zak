@@ -14,7 +14,7 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.data.bars import load_downloaded_stocks
 from vnpy_ashare.data.pattern_bars import PATTERN_MIN_BARS, load_daily_bars_batch
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_screener_result_rows
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime
@@ -111,7 +111,7 @@ def run_pattern_screen(
     *,
     top_n: int = 20,
     load_bars: Callable[[str, Exchange], list[BarData]] | None = None,
-    quote_rows: Sequence[QuoteRow] | None = None,
+    quote_rows: QuoteRowsLike | None = None,
     max_scan: int = MAX_PATTERN_SCAN,
 ) -> ScreenerRunResult:
     """扫描本地日 K（或行情快照）执行形态选股。

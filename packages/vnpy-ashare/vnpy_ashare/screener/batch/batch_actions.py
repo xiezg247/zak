@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from pydantic import Field
@@ -68,6 +70,29 @@ class BatchBacktestRow(MutableModel):
             "total_trade_count": self.total_trade_count,
             "error": self.error,
         }
+
+
+_BATCH_BACKTEST_COLUMNS = [
+    ("vt_symbol", "代码"),
+    ("name", "名称"),
+    ("total_return", "总收益"),
+    ("max_drawdown", "最大回撤"),
+    ("sharpe_ratio", "夏普"),
+    ("total_trade_count", "交易次数"),
+    ("error", "备注"),
+]
+
+
+def export_batch_backtest_rows_to_csv(rows: Sequence[BatchBacktestRow], path: str | Path) -> Path:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow([label for _, label in _BATCH_BACKTEST_COLUMNS])
+        for row in rows:
+            payload = row.to_dict()
+            writer.writerow([payload.get(key, "") for key, _ in _BATCH_BACKTEST_COLUMNS])
+    return target
 
 
 ScreeningRow = ScreenerResultRow

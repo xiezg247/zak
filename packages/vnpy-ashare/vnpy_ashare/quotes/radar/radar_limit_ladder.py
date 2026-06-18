@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
 from typing import Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
@@ -44,7 +43,7 @@ def board_display_text(boards: int) -> str:
     return "—"
 
 
-def _tickflow_key(row: QuoteRow) -> str:
+def _tickflow_key(row: QuoteRowLike) -> str:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     item = parse_stock_symbol(vt_symbol)
     if item is not None:
@@ -52,7 +51,7 @@ def _tickflow_key(row: QuoteRow) -> str:
     return vt_symbol.split(".")[0]
 
 
-def resolve_limit_times(row: QuoteRow, *, limit_times_map: dict[str, float] | None = None) -> int:
+def resolve_limit_times(row: QuoteRowLike, *, limit_times_map: dict[str, float] | None = None) -> int:
     merged = merge_row_quotes(row)
     boards = int(float(merged.get("limit_times") or 0))
     if boards >= 1:
@@ -66,7 +65,7 @@ def resolve_limit_times(row: QuoteRow, *, limit_times_map: dict[str, float] | No
     return 0
 
 
-def enrich_limit_times(row: QuoteRow, *, limit_times_map: dict[str, float] | None = None) -> QuoteRow:
+def enrich_limit_times(row: QuoteRowLike, *, limit_times_map: dict[str, float] | None = None) -> QuoteRow:
     merged = merge_row_quotes(row)
     boards = resolve_limit_times(merged, limit_times_map=limit_times_map)
     if boards >= 1:
@@ -75,7 +74,7 @@ def enrich_limit_times(row: QuoteRow, *, limit_times_map: dict[str, float] | Non
 
 
 def build_limit_ladder_candidates(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     limit_times_map: dict[str, float] | None = None,
 ) -> list[QuoteRow]:
@@ -85,7 +84,7 @@ def build_limit_ladder_candidates(
     return [coerce_quote_row(row) for row in apply_screening_filters(limit_up)]
 
 
-def count_ladder_buckets(candidates: Sequence[QuoteRow]) -> dict[str, int]:
+def count_ladder_buckets(candidates: QuoteRowsLike) -> dict[str, int]:
     counts: dict[str, int] = {label: 0 for label in _LADDER_BUCKET_ORDER}
     for row in candidates:
         label = ladder_bucket_label(resolve_limit_times(row))
@@ -104,24 +103,24 @@ def build_ladder_subtitle(*, counts: dict[str, int], total_scanned: int, variant
     return subtitle
 
 
-def _sort_key(row: QuoteRow) -> tuple[int, float, float]:
+def _sort_key(row: QuoteRowLike) -> tuple[int, float, float]:
     boards = resolve_limit_times(row)
     amount = float(row.get("amount") or 0)
     change = float(row.get("change_pct") or 0)
     return boards, amount, change
 
 
-def select_by_height(candidates: Sequence[QuoteRow], *, top_n: int) -> list[QuoteRow]:
+def select_by_height(candidates: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     ranked = sorted(candidates, key=_sort_key, reverse=True)
     return [coerce_quote_row(row) for row in ranked[:top_n]]
 
 
-def select_by_sector(candidates: Sequence[QuoteRow], *, top_n: int) -> list[QuoteRow]:
+def select_by_sector(candidates: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     """每行业取连板最高的一只，再按高度与成交额排序。"""
     by_industry: dict[str, list[QuoteRow]] = defaultdict(list)
     for row in candidates:
         industry = str(row.get("industry") or "").strip() or "—"
-        by_industry[industry].append(row)
+        by_industry[industry].append(coerce_quote_row(row))
 
     picked: list[QuoteRow] = []
     for industry_rows in by_industry.values():
@@ -131,7 +130,7 @@ def select_by_sector(candidates: Sequence[QuoteRow], *, top_n: int) -> list[Quot
     return [coerce_quote_row(row) for row in ranked[:top_n]]
 
 
-def _row_to_radar(row: QuoteRow) -> RadarRow | None:
+def _row_to_radar(row: QuoteRowLike) -> RadarRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None

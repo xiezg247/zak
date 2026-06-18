@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.hard_filters import apply_screening_filters
@@ -26,7 +26,7 @@ MIN_TOTAL_MV_50YI = 500_000.0
 STRONG_UP_MIN_CHANGE_PCT = 5.0
 
 
-def _quote_liquidity_key(row: QuoteRow) -> float:
+def _quote_liquidity_key(row: QuoteRowLike) -> float:
     """成交量优先；缺失时用成交额或总市值排序（盘后 daily_basic 常无 amount）。"""
     volume = float(row.get("volume") or 0)
     if volume > 0:
@@ -42,7 +42,7 @@ def _quote_liquidity_key(row: QuoteRow) -> float:
 
 def apply_quote_preset(
     preset: str,
-    quotes: Sequence[QuoteRow],
+    quotes: QuoteRowsLike,
     *,
     top_n: int = 20,
     min_change_pct: float | None = None,
@@ -82,7 +82,7 @@ def apply_quote_preset(
     return [_quote_row(q) for q in sorted_quotes[:top_n]]
 
 
-def apply_low_pe(rows: Sequence[QuoteRow], *, top_n: int, max_pe_ttm: float = 15.0) -> list[QuoteRow]:
+def apply_low_pe(rows: QuoteRowsLike, *, top_n: int, max_pe_ttm: float = 15.0) -> list[QuoteRow]:
     """PE(TTM) 在 (0, max_pe_ttm) 内升序取 top_n。"""
     rows = apply_screening_filters(rows)
     filtered = [row for row in rows if row.get("pe_ttm", 0) > 0 and row.get("pe_ttm", 0) < max_pe_ttm]
@@ -91,7 +91,7 @@ def apply_low_pe(rows: Sequence[QuoteRow], *, top_n: int, max_pe_ttm: float = 15
 
 
 def apply_large_cap(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     top_n: int,
     min_total_mv: float = MIN_TOTAL_MV_50YI,
@@ -103,14 +103,14 @@ def apply_large_cap(
     return [_fundamental_row(r) for r in filtered[:top_n]]
 
 
-def apply_limit_up(rows: Sequence[QuoteRow], *, top_n: int) -> list[QuoteRow]:
+def apply_limit_up(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     """涨停列表按连板次数降序取 top_n。"""
     rows = apply_screening_filters(rows)
     sorted_rows = sorted(rows, key=lambda r: float(r.get("limit_times") or 0), reverse=True)
     return [_limit_up_row(r) for r in sorted_rows[:top_n]]
 
 
-def _sort_by_volume_ratio(quotes: Sequence[QuoteRow]) -> list[QuoteRow]:
+def _sort_by_volume_ratio(quotes: QuoteRowsLike) -> list[QuoteRow]:
     ratio_map = get_volume_ratio_map()
     enriched: list[QuoteRow] = []
     for row in quotes:
@@ -123,7 +123,7 @@ def _sort_by_volume_ratio(quotes: Sequence[QuoteRow]) -> list[QuoteRow]:
     return enriched
 
 
-def apply_moneyflow_in(rows: Sequence[QuoteRow], *, top_n: int) -> list[QuoteRow]:
+def apply_moneyflow_in(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     """主力净流入 > 0 降序取 top_n。"""
     rows = apply_screening_filters(rows)
     filtered = [row for row in rows if row.get("net_mf_amount", 0) > 0]
@@ -134,7 +134,7 @@ def apply_moneyflow_in(rows: Sequence[QuoteRow], *, top_n: int) -> list[QuoteRow
 _DISPLAY_FUNDAMENTAL_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")
 
 
-def _quote_row(row: QuoteRow) -> QuoteRow:
+def _quote_row(row: QuoteRowLike) -> QuoteRow:
     last_price = row.get("last_price") or row.get("close") or 0
     close = row.get("close") or last_price or 0
     updates: dict[str, Any] = {
@@ -161,7 +161,7 @@ def _quote_row(row: QuoteRow) -> QuoteRow:
     return quote_row_copy(row, **updates)
 
 
-def _limit_up_row(row: QuoteRow) -> QuoteRow:
+def _limit_up_row(row: QuoteRowLike) -> QuoteRow:
     vt_symbol = str(row.get("vt_symbol") or "")
     symbol = vt_symbol.split(".")[0] if vt_symbol else ""
     return quote_row_copy(
@@ -176,7 +176,7 @@ def _limit_up_row(row: QuoteRow) -> QuoteRow:
     )
 
 
-def _fundamental_row(row: QuoteRow) -> QuoteRow:
+def _fundamental_row(row: QuoteRowLike) -> QuoteRow:
     return quote_row_copy(
         row,
         symbol=str(row.get("symbol") or ""),
@@ -193,7 +193,7 @@ def _fundamental_row(row: QuoteRow) -> QuoteRow:
     )
 
 
-def _moneyflow_row(row: QuoteRow) -> QuoteRow:
+def _moneyflow_row(row: QuoteRowLike) -> QuoteRow:
     payload: dict[str, Any] = {
         "symbol": row.get("symbol", ""),
         "name": row.get("name", ""),

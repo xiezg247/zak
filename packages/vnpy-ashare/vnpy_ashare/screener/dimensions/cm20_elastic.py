@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from vnpy_ashare.domain.market.board import matches_board
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
@@ -17,14 +17,14 @@ _CM20_SWEET_MV_YI = (20.0, 80.0)
 _CM20_MAX_MV_YI = 150.0
 
 
-def is_cm20_row(row: QuoteRow) -> bool:
+def is_cm20_row(row: QuoteRowLike) -> bool:
     symbol = row_symbol(row)
     if not symbol:
         return False
     return matches_board(symbol, "创业板") or matches_board(symbol, "科创板")
 
 
-def cm20_elastic_score(row: QuoteRow, *, amount_rank: float = 0.5) -> float:
+def cm20_elastic_score(row: QuoteRowLike, *, amount_rank: float = 0.5) -> float:
     change = float(row.get("change_pct") or 0)
     change_score = min(1.0, max(0.0, change / 20.0))
     mv_wan = float(row.get("total_mv") or row.get("circ_mv") or 0)
@@ -43,7 +43,7 @@ def cm20_elastic_score(row: QuoteRow, *, amount_rank: float = 0.5) -> float:
     return round(max(0.0, min(100.0, raw * 100.0)), 1)
 
 
-def _amount_rank_map(rows: Sequence[QuoteRow]) -> dict[str, float]:
+def _amount_rank_map(rows: QuoteRowsLike) -> dict[str, float]:
     amounts = [(str(row.get("vt_symbol") or ""), float(row.get("amount") or 0)) for row in rows]
     amounts = [(vt, amt) for vt, amt in amounts if vt]
     if not amounts:
@@ -114,7 +114,7 @@ def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
     return hits, snapshot.total
 
 
-def _cm20_reason(row: QuoteRow, score: float) -> str:
+def _cm20_reason(row: QuoteRowLike, score: float) -> str:
     symbol = row_symbol(row)
     board = "创" if symbol.startswith("300") else "科"
     change = float(row.get("change_pct") or 0)

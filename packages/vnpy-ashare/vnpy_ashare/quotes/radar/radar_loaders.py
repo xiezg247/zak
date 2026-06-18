@@ -8,7 +8,7 @@ from typing import Any
 
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, screening_row_to_dict
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.format import format_amount, format_pct, format_volume
@@ -62,7 +62,7 @@ from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
 
 
-def _radar_source_payload(row: QuoteRow | ScreenerResultRow) -> dict[str, Any]:
+def _radar_source_payload(row: QuoteRowLike | ScreenerResultRow) -> dict[str, Any]:
     """选股结果行 / 行情行 → plain dict（供 merge_row_quotes / RadarRow 构建）。"""
     return screening_row_to_dict(row)
 
@@ -161,7 +161,7 @@ def _resolve_row_display_name(
     return vt_symbol.split(".")[0]
 
 
-def _row_from_dict(row: QuoteRow | ScreenerResultRow, *, name_map: dict[str, str] | None = None) -> RadarRow | None:
+def _row_from_dict(row: QuoteRowLike | ScreenerResultRow, *, name_map: dict[str, str] | None = None) -> RadarRow | None:
     payload = _radar_source_payload(row)
     vt_symbol = str(payload.get("vt_symbol") or "").strip()
     if not vt_symbol:

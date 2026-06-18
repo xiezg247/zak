@@ -40,14 +40,14 @@ def run_first_board(pool_size: int, *, weight: float) -> tuple[list[DimensionHit
     )
 
     hits: list[DimensionHit] = []
-    for row, popularity, seal_label in ranked:
-        vt_symbol = str(row.get("vt_symbol") or "")
+    for source_row, popularity, seal_label in ranked:
+        vt_symbol = str(source_row.get("vt_symbol") or "")
         if not vt_symbol:
             continue
-        row = dict(row)
-        row["first_board_score"] = popularity
+        payload = dict(source_row)
+        payload["first_board_score"] = popularity
         if seal_label:
-            row["seal_time_label"] = seal_label
+            payload["seal_time_label"] = seal_label
         hits.append(
             DimensionHit(
                 vt_symbol=vt_symbol,
@@ -55,8 +55,8 @@ def run_first_board(pool_size: int, *, weight: float) -> tuple[list[DimensionHit
                 label="首板",
                 weight=weight,
                 score=popularity,
-                reason=_first_board_reason(row, seal_label),
-                row=dimension_hit_row(row),
+                reason=_first_board_reason(payload, seal_label),
+                row=dimension_hit_row(source_row),
             )
         )
     return hits, snapshot.total

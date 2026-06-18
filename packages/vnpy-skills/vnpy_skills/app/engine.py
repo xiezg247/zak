@@ -186,6 +186,7 @@ class SkillEngine:
         return self.instances[owner].call_tool(name, arguments)
 
     def _execute_agent_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        args: ReadSkillFileArgs | ListSkillFilesArgs | RunPythonArgs
         try:
             if name == "read_skill_file":
                 args = ReadSkillFileArgs.model_validate(arguments)

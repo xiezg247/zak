@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping, Sequence
-from typing import Any
+from typing import Any, TypeAlias
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -95,6 +95,10 @@ class QuoteRow(MutableModel):
         return set(self.to_dict().keys())
 
 
+QuoteRowLike: TypeAlias = QuoteRow | Mapping[str, Any]
+QuoteRowsLike: TypeAlias = Sequence[QuoteRowLike]
+
+
 def quote_row_from_stock_and_snapshot(item: StockItem, quote: QuoteSnapshot) -> QuoteRow:
     """由 StockItem + QuoteSnapshot 构建行情行。"""
     return QuoteRow(
@@ -126,17 +130,17 @@ def quote_row_from_mapping(data: Mapping[str, Any]) -> QuoteRow:
     return QuoteRow.model_validate(dict(data))
 
 
-def coerce_quote_row(row: QuoteRow | Mapping[str, Any]) -> QuoteRow:
+def coerce_quote_row(row: QuoteRowLike | Mapping[str, Any]) -> QuoteRow:
     if isinstance(row, QuoteRow):
         return row
     return quote_row_from_mapping(row)
 
 
-def coerce_quote_rows(rows: Sequence[QuoteRow | Mapping[str, Any]]) -> list[QuoteRow]:
+def coerce_quote_rows(rows: QuoteRowsLike) -> list[QuoteRow]:
     return [coerce_quote_row(row) for row in rows]
 
 
-def quote_row_copy(row: QuoteRow | Mapping[str, Any], **updates: Any) -> QuoteRow:
+def quote_row_copy(row: QuoteRowLike | Mapping[str, Any], **updates: Any) -> QuoteRow:
     """复制行情行并写入扩展字段（行业/概念/维度评分等）。"""
     item = coerce_quote_row(row).model_copy(deep=True)
     for key, value in updates.items():
@@ -144,16 +148,16 @@ def quote_row_copy(row: QuoteRow | Mapping[str, Any], **updates: Any) -> QuoteRo
     return item
 
 
-def quote_row_payload(row: QuoteRow) -> dict[str, Any]:
+def quote_row_payload(row: QuoteRowLike) -> dict[str, Any]:
     """配方/enrich 管道用的瘦身行情 dict（排除声明字段默认值）。"""
-    return dump_python(row, exclude_defaults=True)
+    return dump_python(coerce_quote_row(row), exclude_defaults=True)
 
 
-def quote_row_to_dict(row: QuoteRow) -> dict[str, Any]:
+def quote_row_to_dict(row: QuoteRowLike) -> dict[str, Any]:
     """序列化边界：完整 plain dict（含 extra 与默认值）。"""
-    return row.to_dict()
+    return coerce_quote_row(row).to_dict()
 
 
-def quote_rows_by_vt(rows: Sequence[QuoteRow] | None = None) -> dict[str, QuoteRow]:
+def quote_rows_by_vt(rows: QuoteRowsLike | None = None) -> dict[str, QuoteRow]:
     source = coerce_quote_rows(rows) if rows is not None else []
     return {row.vt_symbol.strip(): row for row in source if row.vt_symbol.strip()}

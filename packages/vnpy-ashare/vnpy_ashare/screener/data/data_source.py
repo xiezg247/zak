@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from datetime import date, timedelta
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_rows
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_rows, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, screener_rows_from_mappings
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
@@ -51,7 +51,7 @@ __all__ = [
 
 def merge_quotes_into_fundamentals(
     fund_rows: list[dict[str, Any]],
-    quote_rows: Sequence[QuoteRow],
+    quote_rows: QuoteRowsLike,
 ) -> list[dict[str, Any]]:
     """用 Redis 实时价/换手覆盖 daily_basic 同标的字段。"""
     quote_map = quote_rows_by_vt_symbol(quote_rows)
@@ -224,7 +224,7 @@ def _missing_display_value(value: Any) -> bool:
     return value is None or value == ""
 
 
-def enrich_recipe_rows(rows: Sequence[Mapping[str, Any]]) -> list[ScreenerResultRow]:
+def enrich_recipe_rows(rows: QuoteRowsLike) -> list[ScreenerResultRow]:
     """补全配方结果展示字段（各维度 row 通常只含单维度指标）。"""
     if not rows:
         return []

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowRow
 from vnpy_ashare.integrations.tushare.concept_board import (
     fetch_ths_concept_index_map,
@@ -13,7 +11,7 @@ from vnpy_ashare.integrations.tushare.concept_board import (
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
-def _row_to_constituent(row: QuoteRow) -> SectorConstituentRow | None:
+def _row_to_constituent(row: QuoteRowLike) -> SectorConstituentRow | None:
     vt_symbol = str(row.get("vt_symbol") or "").strip()
     if not vt_symbol:
         return None
@@ -40,11 +38,11 @@ def _resolve_concept_vt_symbols(sector: SectorFlowRow) -> set[str]:
 
 
 def _filter_industry_rows(
-    quote_rows: Sequence[QuoteRow],
+    quote_rows: QuoteRowsLike,
     industry: str,
     *,
     industry_map: dict[str, str] | None,
-) -> list[QuoteRow]:
+) -> list[QuoteRowLike]:
     enriched = attach_industry(quote_rows, industry_map=industry_map)
     return [row for row in enriched if str(row.get("industry") or "").strip() == industry]
 
@@ -55,7 +53,7 @@ def resolve_concept_vt_symbols(sector: SectorFlowRow) -> set[str]:
 
 def load_sector_leaders(
     sector: SectorFlowRow,
-    quote_rows: Sequence[QuoteRow],
+    quote_rows: QuoteRowsLike,
     *,
     industry_map: dict[str, str] | None = None,
     limit: int = 5,

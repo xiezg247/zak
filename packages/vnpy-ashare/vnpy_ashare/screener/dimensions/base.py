@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.screener.dimension_hit import DimensionHit, dimension_hit_row
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.dimensions.scoring import blended_score, rank_score
@@ -20,7 +20,7 @@ __all__ = [
 
 
 def quote_hits(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     dimension_id: str,
     label: str,
@@ -74,7 +74,7 @@ def merge_rows(rows: Sequence[ScreenerResultRow | dict[str, Any]]) -> dict[str, 
     return merged
 
 
-def fundamental_base_row(row: QuoteRow) -> QuoteRow:
+def fundamental_base_row(row: QuoteRowLike) -> QuoteRow:
     pct = row.get("pct_chg", row.get("change_pct", 0))
     result = quote_row_copy(
         row,

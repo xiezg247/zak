@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.radar.predict import PredictScanResult
 from vnpy_ashare.domain.screener.predict import BaselinePredictHit, PredictHit
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
@@ -47,7 +47,7 @@ def _baseline_to_hit(hit: BaselinePredictHit) -> PredictHit:
 
 
 def rank_predict_hits(
-    quote_rows: Sequence[QuoteRow],
+    quote_rows: QuoteRowsLike,
     *,
     top_n: int,
     mode: PredictModelMode | None = None,
@@ -59,7 +59,7 @@ def rank_predict_hits(
     return baseline_hits, PREDICT_VARIANT_BASELINE, "统计基线"
 
 
-def _hit_to_row(hit: PredictHit, *, name_map: dict[str, str], quote_row: QuoteRow) -> RadarRow:
+def _hit_to_row(hit: PredictHit, *, name_map: dict[str, str], quote_row: QuoteRowLike) -> RadarRow:
     item = parse_stock_symbol(hit.vt_symbol)
     symbol = item.symbol if item is not None else hit.vt_symbol.split(".")[0]
     name = name_map.get(hit.vt_symbol) or str(quote_row.get("name") or symbol)

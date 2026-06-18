@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy
+from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_copy, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningFilterRow, screening_row_to_dict
 from vnpy_ashare.domain.symbols.stock import vt_symbol_to_ts_code
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
@@ -32,7 +32,7 @@ def attach_industry(
 
 
 def attach_concept(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     vt_to_concept: dict[str, str] | None = None,
 ) -> list[QuoteRow]:
     """为行情行附加 ``concept`` 字段（主概念名）。"""
@@ -52,7 +52,7 @@ def attach_concept(
 
 
 def attach_sector_fields(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     industry_map: dict[str, str] | None = None,
     vt_to_concept: dict[str, str] | None = None,
@@ -83,7 +83,7 @@ def attach_sector_fields(
 
 
 def compute_sector_distribution(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     top_n: int = 8,
     min_stocks: int = 2,
@@ -127,7 +127,7 @@ def compute_sector_distribution(
 
 
 def top_industries_by_momentum(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     top_industry_count: int = 5,
     min_stocks_per_industry: int = 3,
@@ -142,7 +142,7 @@ def top_industries_by_momentum(
 
 
 def top_industries_by_breadth(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     top_industry_count: int = 5,
     min_stocks_per_industry: int = 3,
@@ -166,7 +166,7 @@ def top_industries_by_breadth(
 
 
 def breadth_leader_candidates(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     pool_size: int,
     min_stocks_per_industry: int = 3,

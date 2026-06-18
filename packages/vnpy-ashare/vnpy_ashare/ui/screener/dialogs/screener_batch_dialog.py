@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.screener.batch.batch_actions import BatchBacktestRow
-from vnpy_ashare.screener.run.export import export_rows_to_csv
+from vnpy_ashare.screener.batch.batch_actions import BatchBacktestRow, export_batch_backtest_rows_to_csv
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.theme.manager import theme_manager
 
@@ -87,7 +86,7 @@ class ScreenerBatchBacktestDialog(QtWidgets.QDialog):
             return
         if not path.lower().endswith(".csv"):
             path += ".csv"
-        export_rows_to_csv([row.to_dict() for row in self._rows], path)
+        export_batch_backtest_rows_to_csv(self._rows, path)
         page_notify(self, f"已导出：{path}", level="success")
 
 

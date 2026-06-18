@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import Field, field_validator
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_common.domain.base import MutableModel
 
@@ -29,7 +29,7 @@ class DimensionHit(MutableModel):
         return dimension_hit_row(value)
 
 
-def dimension_hit_row(row: QuoteRow | ScreenerResultRow | Mapping[str, Any]) -> ScreenerResultRow:
+def dimension_hit_row(row: QuoteRowLike | ScreenerResultRow | Mapping[str, Any]) -> ScreenerResultRow:
     """维度命中行归一化为 ``ScreenerResultRow``。"""
     if isinstance(row, ScreenerResultRow):
         return row

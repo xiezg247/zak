@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.quotes.core.cache_ttl import TtlCache
 
 _CACHE_TTL_SEC = 300.0
@@ -28,7 +28,7 @@ def invalidate_limit_ladder_cache() -> None:
 
 
 def resolve_limit_ladder_counts(
-    rows: Sequence[QuoteRow],
+    rows: QuoteRowsLike,
     *,
     compute: Any,
 ) -> dict[str, int]:

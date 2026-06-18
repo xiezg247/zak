@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any, Literal
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningFilterRow
 
 FlowKind = Literal["main", "active", "proxy"]
@@ -79,7 +79,7 @@ def classify_moneyflow_row(row: ScreeningFilterRow) -> FlowKind:
     return "proxy"
 
 
-def enrich_moneyflow_row_with_kind(row: QuoteRow | Mapping[str, Any]) -> dict[str, Any]:
+def enrich_moneyflow_row_with_kind(row: QuoteRowLike | Mapping[str, Any]) -> dict[str, Any]:
     quote = coerce_quote_row(row)
     kind = classify_moneyflow_row(quote)
     payload = quote.to_dict()
@@ -110,7 +110,7 @@ def moneyflow_dimension_score_factor(
     return flow_kind_score_factor(row_flow_kind(row))
 
 
-def row_has_moneyflow_fields(row: ScreenerResultRow) -> bool:
+def row_has_moneyflow_fields(row: ScreeningFilterRow) -> bool:
     if row.get("moneyflow_proxy"):
         return True
     if float(row.get("net_mf_amount") or 0) != 0:

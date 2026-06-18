@@ -99,8 +99,8 @@ class SkillFrontmatter(BaseModel):
 
 def _extract_env_from_metadata(metadata: Any) -> list[str]:
     if isinstance(metadata, str):
-        names = re.findall(r'"([A-Z_]+)"', metadata)
-        return [name for name in names if name.endswith("_KEY") or name.endswith("_TOKEN")]
+        key_names = re.findall(r'"([A-Z_]+)"', metadata)
+        return [name for name in key_names if name.endswith("_KEY") or name.endswith("_TOKEN")]
 
     if not isinstance(metadata, dict):
         return []

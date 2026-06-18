@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
-from vnpy_ashare.domain.market.quote_row import QuoteRow
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
@@ -32,7 +32,7 @@ SIGNAL_TRANSITION_BOOST = 35.0
 
 
 def _ingest_quote_row(
-    row: QuoteRow,
+    row: QuoteRowLike,
     *,
     by_vt: dict[str, dict[str, Any]],
     by_symbol: dict[str, dict[str, Any]],
@@ -119,7 +119,7 @@ def _quotes_for_candidates(candidates: list[str]) -> dict[str, dict[str, Any]]:
 
 
 def _intraday_score(
-    row: QuoteRow,
+    row: QuoteRowLike,
     *,
     transition: str | None = None,
     pool_median_change: float | None = None,
@@ -146,7 +146,7 @@ def _intraday_score(
 
 
 def _watchlist_metric(
-    row: QuoteRow,
+    row: QuoteRowLike,
     *,
     transition: str | None = None,
 ) -> tuple[str, str, str, str]:
@@ -200,7 +200,7 @@ def _compute_scenario_hints(
 
 def _row_from_quote(
     vt_symbol: str,
-    row: QuoteRow,
+    row: QuoteRowLike,
     *,
     name_map: dict[str, str],
     transition: str | None = None,
@@ -232,7 +232,7 @@ def _row_from_quote(
     )
 
 
-def _has_quote_data(row: QuoteRow) -> bool:
+def _has_quote_data(row: QuoteRowLike) -> bool:
     merged = merge_row_quotes(row)
     return bool(
         merged.get("change_pct") not in (None, "") or float(merged.get("last_price") or merged.get("close") or 0) > 0 or float(merged.get("amount") or 0) > 0
