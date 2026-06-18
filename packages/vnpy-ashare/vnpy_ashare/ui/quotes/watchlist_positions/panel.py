@@ -1,84 +1,34 @@
-"""自选页持仓策略区域。"""
+"""自选页持仓策略区域（薄壳：组合 header + table_view）。"""
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
-from strategies.registry import get_strategy_meta
-from vnpy_ashare.config.preferences.strategy_profile import list_strategy_profiles, load_strategy_profile_id
 from vnpy_ashare.config.preferences.watchlist_position import (
     POSITION_PANEL_COLLAPSED_HEIGHT,
-    POSITION_PANEL_DEFAULT_HEIGHT,
     WatchlistPositionConfig,
-    load_position_panel_enabled,
-    load_position_panel_expanded,
-    save_position_panel_enabled,
-    save_position_panel_expanded,
 )
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
-from vnpy_ashare.domain.trading.position import PositionRecord, position_row_sort_key, position_t1_locked
-from vnpy_ashare.domain.trading.signal_snapshot import signal_missing_kline
-from vnpy_ashare.quotes.misc.position_anomaly import (
-    format_anomaly_tags,
-    is_position_anomaly,
-    position_anomaly_reasons,
-    position_anomaly_score,
-)
-from vnpy_ashare.services.signals.runtime import signal_cell_color
-from vnpy_ashare.services.watchlist_short_term import load_short_term_observation_vt_symbols
+from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
-from vnpy_ashare.trading.exit.exit_display import (
-    exit_rule_cell_color,
-    format_exit_rules_summary,
-    format_exit_rules_tooltip,
-)
 from vnpy_ashare.trading.journal.plan_check import check_buy_against_plan
-from vnpy_ashare.trading.journal.report import format_journal_report_hint, load_journal_report
-from vnpy_ashare.trading.risk.book_pnl import format_book_pnl_hint, summarize_book_pnl
 from vnpy_ashare.trading.risk.combined import (
     compute_avg_float_pnl_pct,
-    format_emotion_position_hint,
     load_combined_risk_gate_snapshot,
 )
-from vnpy_ashare.trading.risk.plan_position import (
-    compute_position_actual_pct,
-    format_plan_position_hint,
-    format_plan_vs_actual_cell,
-    sum_plan_pct,
-)
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
+from vnpy_ashare.ui.quotes.watchlist_positions.header import PositionPanelHeader
 from vnpy_ashare.ui.quotes.watchlist_positions.journal_report_dialog import JournalReportDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.sell_dialog import PositionSellDialog
+from vnpy_ashare.ui.quotes.watchlist_positions.table_view import PositionPanelTableView
 from vnpy_common.ui.theme.manager import theme_manager
-from vnpy_common.ui.theme.market_colors import market_colors
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
-
-_PANEL_COLUMNS = (
-    ("symbol", "代码"),
-    ("name", "名称"),
-    ("cost_price", "成本价"),
-    ("volume", "持仓量(股)"),
-    ("buy_date", "买入日"),
-    ("last_price", "现价"),
-    ("pnl", "浮盈(元)"),
-    ("pnl_pct", "浮盈%"),
-    ("plan_pct", "计划/实际%"),
-    ("t1_status", "T+1"),
-    ("exit_signal", "退出信号"),
-    ("exit_rules", "隔日规则"),
-    ("ref_sell_price", "参考卖价"),
-)
-
-_EMPTY_TEXT = f"暂无持仓。请在上方自选表选中标的后点击「登记持仓」（最多 {POSITION_MAX_ITEMS} 只）。"
-_FILTER_EMPTY_TEXT = "当前筛选无匹配标的，再次点击统计项可取消筛选。"
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class WatchlistPositionPanel(QtWidgets.QWidget):
@@ -90,15 +40,9 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
     row_selected = QtCore.Signal(str)
     expansion_changed = QtCore.Signal(bool)
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         super().__init__(page)
         self._page = page
-        self._updated_at = ""
-        self._building = False
-        self._expanded = load_position_panel_expanded()
-        self._filter: str | None = None
-        self._rendered_symbols: list[str] = []
-        self._suppress_selection_signal = False
 
         self.setObjectName("WatchlistPositionPanel")
         theme_manager().bind_stylesheet(self)
@@ -107,176 +51,112 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         root.setContentsMargins(8, 6, 8, 6)
         root.setSpacing(6)
 
-        header = QtWidgets.QHBoxLayout()
-        header.setSpacing(8)
+        self._header = PositionPanelHeader(page, self)
+        self._table_view = PositionPanelTableView(page, self)
 
-        self._toggle = QtWidgets.QCheckBox("启用持仓", self)
-        self._toggle.setChecked(load_position_panel_enabled())
-        self._toggle.toggled.connect(self._on_enabled_toggled)
+        root.addWidget(self._header)
+        root.addWidget(self._table_view, stretch=1)
 
-        position_cfg = page.position_config.normalized()
-        self._follow_check = QtWidgets.QCheckBox("跟随信号区", self)
-        self._follow_check.setChecked(position_cfg.follow_signal)
-        self._follow_check.toggled.connect(self._on_follow_toggled)
-
-        self._profile_combo = QtWidgets.QComboBox(self)
-        self._profile_combo.setObjectName("StrategyProfileCombo")
-        self._profile_combo.setMinimumWidth(96)
-        self._profile_combo.setToolTip("策略 Profile（与信号区同步）")
-        for spec in list_strategy_profiles():
-            self._profile_combo.addItem(spec.title, spec.profile_id)
-        self._profile_combo.currentIndexChanged.connect(self._on_profile_changed)
-        self.sync_strategy_profile_combo(load_strategy_profile_id())
-
-        self._strategy_label = QtWidgets.QLabel("", self)
-        self._strategy_label.setObjectName("SectionLabel")
-
-        self._fast_spin = QtWidgets.QSpinBox(self)
-        self._fast_spin.setRange(2, 60)
-        self._fast_spin.setPrefix("快 ")
-        self._fast_spin.setValue(position_cfg.fast_window)
-
-        self._slow_spin = QtWidgets.QSpinBox(self)
-        self._slow_spin.setRange(3, 120)
-        self._slow_spin.setPrefix("慢 ")
-        self._slow_spin.setValue(position_cfg.slow_window)
-
-        self._edit_button = QtWidgets.QPushButton("编辑", self)
-        self._edit_button.setObjectName("SecondaryButton")
-        self._edit_button.clicked.connect(self._on_edit_clicked)
-
-        self._remove_button = QtWidgets.QPushButton("移出", self)
-        self._remove_button.setObjectName("SecondaryButton")
-        self._remove_button.clicked.connect(self._on_remove_clicked)
-
-        self._clear_button = QtWidgets.QPushButton("清空", self)
-        self._clear_button.setObjectName("SecondaryButton")
-        self._clear_button.clicked.connect(self._on_clear_clicked)
-
-        self._refresh_button = QtWidgets.QPushButton("刷新", self)
-        self._refresh_button.setObjectName("SecondaryButton")
-        self._refresh_button.clicked.connect(self.refresh_requested.emit)
-
-        self._plan_button = QtWidgets.QPushButton("今日计划", self)
-        self._plan_button.setObjectName("SecondaryButton")
-        self._plan_button.setToolTip("查看/编辑当日交易计划（计划外登记将标记 off_plan）")
-        self._plan_button.clicked.connect(self._on_plan_clicked)
-
-        self._journal_button = QtWidgets.QPushButton("复盘", self)
-        self._journal_button.setObjectName("SecondaryButton")
-        self._journal_button.setToolTip("近 7 日流水胜率、盈亏比与违规统计")
-        self._journal_button.clicked.connect(self._on_journal_clicked)
-
-        self._risk_button = QtWidgets.QPushButton("风控设置", self)
-        self._risk_button.setObjectName("SecondaryButton")
-        self._risk_button.setToolTip("总资金、单笔风险与风控闸阈值")
-        self._risk_button.clicked.connect(self._on_risk_settings_clicked)
-
-        self._collapse_button = QtWidgets.QToolButton(self)
-        self._collapse_button.setCheckable(True)
-        self._collapse_button.setChecked(self._expanded)
-        self._collapse_button.setArrowType(QtCore.Qt.ArrowType.DownArrow if self._expanded else QtCore.Qt.ArrowType.RightArrow)
-        self._collapse_button.clicked.connect(self._on_collapse_toggled)
-
-        header.addWidget(self._collapse_button)
-        header.addWidget(QtWidgets.QLabel("持仓策略", self))
-        header.addWidget(self._toggle)
-        header.addStretch()
-        header.addWidget(self._profile_combo)
-        header.addWidget(self._follow_check)
-        header.addWidget(self._strategy_label)
-        header.addWidget(self._fast_spin)
-        header.addWidget(self._slow_spin)
-        header.addWidget(self._edit_button)
-        header.addWidget(self._remove_button)
-        header.addWidget(self._clear_button)
-        header.addWidget(self._refresh_button)
-        header.addWidget(self._plan_button)
-        header.addWidget(self._journal_button)
-        header.addWidget(self._risk_button)
-        root.addLayout(header)
-
-        self._stats_label = QtWidgets.QLabel("", self)
-        self._stats_label.setObjectName("StatsLabel")
-        self._stats_label.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        self._stats_label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextBrowserInteraction)
-        self._stats_label.setOpenExternalLinks(False)
-        self._stats_label.linkActivated.connect(self._on_stats_filter_link)
-        root.addWidget(self._stats_label)
-
-        self._table = QtWidgets.QTableWidget(self)
-        self._table.setObjectName("WatchlistPositionTable")
-        self._table.setColumnCount(len(_PANEL_COLUMNS))
-        self._table.setHorizontalHeaderLabels([label for _, label in _PANEL_COLUMNS])
-        self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self._table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        self._table.verticalHeader().setVisible(False)
-        self._table.setAlternatingRowColors(True)
-        self._table.itemSelectionChanged.connect(self._on_selection_changed)
-        self._table.cellDoubleClicked.connect(self._on_cell_double_clicked)
-        root.addWidget(self._table, stretch=1)
-
-        self._fast_spin.valueChanged.connect(self._emit_config_changed)
-        self._slow_spin.valueChanged.connect(self._emit_config_changed)
-        self._sync_strategy_controls(signal_config=page.signal_config)
-        self._sync_expansion_ui()
+        self._wire()
+        self._header.apply_config(page.position_config.normalized())
+        expanded = self._header.is_expanded()
+        self._table_view.setVisible(expanded)
+        self._sync_panel_geometry(expanded)
         self.render_panel()
+
+    # ── 属性 / 配置代理 ─────────────────────────────────────
 
     @property
     def enabled(self) -> bool:
-        return self._toggle.isChecked()
+        return self._header.enabled
 
     def is_expanded(self) -> bool:
-        return self._expanded
+        return self._header.is_expanded()
 
     def minimumHeight(self) -> int:
-        return POSITION_PANEL_DEFAULT_HEIGHT if self._expanded else POSITION_PANEL_COLLAPSED_HEIGHT
-
-    def set_updated_at(self, text: str) -> None:
-        self._updated_at = text
+        return self._header.minimum_panel_height()
 
     def read_config(self) -> WatchlistPositionConfig:
-        fast = int(self._fast_spin.value())
-        slow = int(self._slow_spin.value())
-        if slow <= fast:
-            slow = fast + 1
-            self._slow_spin.blockSignals(True)
-            self._slow_spin.setValue(slow)
-            self._slow_spin.blockSignals(False)
-        return WatchlistPositionConfig(
-            follow_signal=self._follow_check.isChecked(),
-            class_name=self._page.position_config.class_name,
-            fast_window=fast,
-            slow_window=slow,
-        ).normalized()
+        return self._header.read_config()
+
+    def apply_config(self, config: WatchlistPositionConfig) -> None:
+        self._header.apply_config(config)
 
     def sync_strategy_profile_combo(self, profile_id: str) -> None:
-        self._profile_combo.blockSignals(True)
-        index = self._profile_combo.findData(profile_id)
-        if index >= 0:
-            self._profile_combo.setCurrentIndex(index)
-        self._profile_combo.blockSignals(False)
+        self._header.sync_strategy_profile_combo(profile_id)
 
-    def _on_profile_changed(self, _index: int) -> None:
-        profile_id = str(self._profile_combo.currentData() or "")
-        if not profile_id:
-            return
-        self._page.apply_strategy_profile(profile_id)
+    def sync_follow_display(self, signal_config: WatchlistSignalConfig) -> None:
+        self._header.sync_follow_display(signal_config)
 
-    def _on_risk_settings_clicked(self) -> None:
+    def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
+        self._header.set_expanded(expanded, emit=emit)
 
-        if RiskSettingsDialog.open_and_save(self):
-            self._page.status_label.setText("已保存交易风控设置")
-            self.render_panel()
+    def set_updated_at(self, text: str) -> None:
+        self._table_view.set_updated_at(text)
 
-    def _on_plan_clicked(self) -> None:
-        dialog = TradingPlanDialog(page=self._page, parent=self)
-        dialog.exec()
+    def highlight_symbol(self, vt_symbol: str) -> None:
+        self._table_view.highlight_symbol(vt_symbol)
 
-    def _on_journal_clicked(self) -> None:
-        dialog = JournalReportDialog(parent=self)
-        dialog.exec()
+    def render_panel(self) -> None:
+        self._table_view.render()
+
+    def update_rows_for_tickflow_symbols(self, tickflow_symbols: set[str]) -> None:
+        self._table_view.update_rows_for_tickflow_symbols(
+            tickflow_symbols,
+            enabled=self.enabled,
+            expanded=self.is_expanded(),
+        )
+
+    # ── 登记 / 编辑 / 移出 ───────────────────────────────────
+
+    def register_symbol(self, vt_symbol: str) -> bool:
+        service = self._page._get_position_service()
+        if service is None:
+            self._page.status_label.setText("持仓服务未就绪")
+            return False
+        item = self._page.find_stock_item(vt_symbol)
+        if item is None:
+            return False
+        if service.contains(item.symbol, item.exchange):
+            self._page._toast.warning("该标的已登记持仓，请使用编辑")
+            return False
+        combined = load_combined_risk_gate_snapshot(
+            avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
+            position_cache=self._page.position_cache,
+        )
+        if combined.account.state == "halt":
+            hint = "；".join(combined.account.warnings) or "账户熔断"
+            self._page._toast.warning(f"{hint}：不建议新开仓（登记不阻断，仅记账）")
+        elif combined.account.state == "caution":
+            hint = "；".join(combined.account.warnings) or "账户警戒"
+            answer = QtWidgets.QMessageBox.question(
+                self,
+                "风控警戒",
+                f"{hint}\n仍要登记持仓？",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
+                return False
+        elif not combined.allow_new_positions:
+            hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
+            self._page._toast.warning(f"{hint}（登记仅作记账参考）")
+
+        today = datetime.now(CHINA_TZ).date().isoformat()
+        if not self._confirm_plan_violations(item, buy_date=today):
+            return False
+        title = f"登记持仓 · {item.symbol}"
+        dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, parent=self)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return False
+        self._save_form(vt_symbol, dialog.read_form(), existing=False)
+        return True
+
+    def _records(self) -> list[PositionRecord]:
+        service = self._page._get_position_service()
+        if service is None:
+            return []
+        return service.get_items()
 
     def _confirm_plan_violations(self, item, *, buy_date: str) -> bool:
         check = check_buy_against_plan(item.symbol, item.exchange, trade_date=buy_date)
@@ -293,209 +173,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             QtWidgets.QMessageBox.StandardButton.No,
         )
         return answer == QtWidgets.QMessageBox.StandardButton.Yes
-
-    def apply_config(self, config: WatchlistPositionConfig) -> None:
-        item = config.normalized()
-        self._follow_check.blockSignals(True)
-        self._fast_spin.blockSignals(True)
-        self._slow_spin.blockSignals(True)
-        self._follow_check.setChecked(item.follow_signal)
-        self._fast_spin.setValue(item.fast_window)
-        self._slow_spin.setValue(item.slow_window)
-        self._follow_check.blockSignals(False)
-        self._fast_spin.blockSignals(False)
-        self._slow_spin.blockSignals(False)
-        self._sync_strategy_controls(
-            signal_config=self._page.signal_config if item.follow_signal else None,
-        )
-
-    def set_expanded(self, expanded: bool, *, emit: bool = True) -> None:
-        if self._expanded == expanded:
-            return
-        self._expanded = expanded
-        save_position_panel_expanded(expanded)
-        self._sync_expansion_ui()
-        if emit:
-            self.expansion_changed.emit(expanded)
-
-    def highlight_symbol(self, vt_symbol: str) -> None:
-        if not vt_symbol:
-            return
-        for row in range(self._table.rowCount()):
-            item = self._table.item(row, 0)
-            if item is not None and item.data(QtCore.Qt.ItemDataRole.UserRole) == vt_symbol:
-                self._suppress_selection_signal = True
-                self._table.selectRow(row)
-                self._suppress_selection_signal = False
-                return
-
-    def _records(self) -> list[PositionRecord]:
-        service = self._page._get_position_service()
-        if service is None:
-            return []
-        return service.get_items()
-
-    def _quote_for_record(self, record: PositionRecord):
-        item = self._page.find_stock_item(record.vt_symbol)
-        if item is None:
-            return None
-        return self._page.quote_map.get(item.tickflow_symbol)
-
-    def _anomaly_context(self, record: PositionRecord):
-        snap = self._page.position_cache.get(record.vt_symbol)
-        quote = self._quote_for_record(record)
-        reasons = position_anomaly_reasons(snap=snap, quote=quote)
-        return snap, quote, reasons
-
-    def _observation_vt_symbols(self) -> frozenset[str]:
-        service = self._page._get_watchlist_service()
-        if service is None:
-            return frozenset()
-        return load_short_term_observation_vt_symbols(service)
-
-    def _filtered_records(self) -> list[PositionRecord]:
-        records = self._records()
-        if not self._filter:
-            return records
-        if self._filter == "anomaly":
-            matched = [record for record in records if is_position_anomaly(**self._anomaly_kwargs(record))]
-            return sorted(
-                matched,
-                key=lambda record: (
-                    -position_anomaly_score(self._anomaly_context(record)[2]),
-                    position_row_sort_key(self._page.position_cache[record.vt_symbol])
-                    if record.vt_symbol in self._page.position_cache
-                    else (9, 0.0, record.vt_symbol),
-                ),
-            )
-        filtered: list[PositionRecord] = []
-        for record in records:
-            snap = self._page.position_cache.get(record.vt_symbol)
-            if self._filter == "observation":
-                if record.vt_symbol in self._observation_vt_symbols():
-                    filtered.append(record)
-            elif self._filter == "missing":
-                if snap is None or signal_missing_kline(snap.signal_snapshot):
-                    filtered.append(record)
-            elif self._filter == "t1":
-                if snap is not None and snap.t1_locked:
-                    filtered.append(record)
-            elif snap is not None and snap.exit_signal == self._filter:
-                filtered.append(record)
-        return filtered
-
-    def _anomaly_kwargs(self, record: PositionRecord) -> dict:
-        snap, quote, _ = self._anomaly_context(record)
-        return {"snap": snap, "quote": quote}
-
-    def _sync_expansion_ui(self) -> None:
-        expanded = self._expanded
-        self._collapse_button.setChecked(expanded)
-        self._collapse_button.setArrowType(QtCore.Qt.ArrowType.DownArrow if expanded else QtCore.Qt.ArrowType.RightArrow)
-        self._table.setVisible(expanded)
-        self._stats_label.setVisible(expanded)
-        for widget in (
-            self._toggle,
-            self._follow_check,
-            self._strategy_label,
-            self._fast_spin,
-            self._slow_spin,
-            self._edit_button,
-            self._remove_button,
-            self._clear_button,
-            self._refresh_button,
-        ):
-            widget.setVisible(expanded)
-        self.setMinimumHeight(self.minimumHeight())
-        self.setMaximumHeight(16777215 if expanded else POSITION_PANEL_COLLAPSED_HEIGHT)
-
-    def _strategy_title(self, class_name: str) -> str:
-        meta = get_strategy_meta(class_name)
-        return meta.title if meta is not None else class_name
-
-    def _sync_strategy_controls(self, signal_config: WatchlistSignalConfig | None = None) -> None:
-        follow = self._follow_check.isChecked()
-        if follow:
-            cfg = (signal_config or self._page.signal_config).normalized()
-            self._strategy_label.setText(f"跟随·{self._strategy_title(cfg.class_name)}")
-            self._strategy_label.setVisible(True)
-            self._fast_spin.setVisible(False)
-            self._slow_spin.setVisible(False)
-            return
-        item = self._page.position_config.normalized()
-        self._strategy_label.setText(self._strategy_title(item.class_name))
-        self._strategy_label.setVisible(True)
-        self._fast_spin.setVisible(True)
-        self._slow_spin.setVisible(True)
-        self._fast_spin.setEnabled(True)
-        self._slow_spin.setEnabled(True)
-
-    def sync_follow_display(self, signal_config: WatchlistSignalConfig) -> None:
-        """跟随信号区时，同步展示当前策略名称。"""
-        if not self._follow_check.isChecked():
-            return
-        self._sync_strategy_controls(signal_config=signal_config)
-
-    def _on_follow_toggled(self, _checked: bool) -> None:
-        self._sync_strategy_controls(signal_config=self._page.signal_config)
-        self._emit_config_changed()
-
-    def _emit_config_changed(self) -> None:
-        if self._building:
-            return
-        self.config_changed.emit()
-
-    def _on_enabled_toggled(self, checked: bool) -> None:
-        save_position_panel_enabled(checked)
-        self.enabled_changed.emit(checked)
-
-    def _on_collapse_toggled(self, checked: bool) -> None:
-        self.set_expanded(checked)
-
-    def _on_selection_changed(self) -> None:
-        if self._suppress_selection_signal:
-            return
-        vt_symbol = self._selected_vt_symbol()
-        if vt_symbol:
-            self.row_selected.emit(vt_symbol)
-
-    def _on_cell_double_clicked(self, row: int, _col: int) -> None:
-        item = self._table.item(row, 0)
-        if item is None:
-            return
-        vt_symbol = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
-        if vt_symbol:
-            self.row_activated.emit(vt_symbol)
-            self._on_edit_clicked()
-
-    def _selected_vt_symbol(self) -> str:
-        row = self._table.currentRow()
-        if row < 0:
-            return ""
-        item = self._table.item(row, 0)
-        if item is None:
-            return ""
-        return str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "").strip()
-
-    def _on_edit_clicked(self) -> None:
-        vt_symbol = self._selected_vt_symbol()
-        if not vt_symbol:
-            main_item = self._page.current_item
-            if main_item is not None:
-                vt_symbol = main_item.vt_symbol
-        if not vt_symbol:
-            self._page._toast.warning("请先选择要编辑的持仓")
-            return
-        record = next((row for row in self._records() if row.vt_symbol == vt_symbol), None)
-        if record is None:
-            self._page._toast.warning("该标的尚未登记持仓")
-            return
-        item = self._page.find_stock_item(vt_symbol)
-        title = f"编辑持仓 · {item.symbol if item else vt_symbol}"
-        dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, record=record, parent=self)
-        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-            return
-        self._save_form(vt_symbol, dialog.read_form(), existing=True)
 
     def _save_form(self, vt_symbol: str, form, *, existing: bool) -> None:
         service = self._page._get_position_service()
@@ -552,51 +229,65 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._page.status_label.setText(f"已保存持仓：{vt_symbol}")
         self.rows_changed.emit()
 
-    def register_symbol(self, vt_symbol: str) -> bool:
-        service = self._page._get_position_service()
-        if service is None:
-            self._page.status_label.setText("持仓服务未就绪")
-            return False
-        item = self._page.find_stock_item(vt_symbol)
-        if item is None:
-            return False
-        if service.contains(item.symbol, item.exchange):
-            self._page._toast.warning("该标的已登记持仓，请使用编辑")
-            return False
-        combined = load_combined_risk_gate_snapshot(
-            avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
-            position_cache=self._page.position_cache,
-        )
-        if combined.account.state == "halt":
-            hint = "；".join(combined.account.warnings) or "账户熔断"
-            self._page._toast.warning(f"{hint}：不建议新开仓（登记不阻断，仅记账）")
-        elif combined.account.state == "caution":
-            hint = "；".join(combined.account.warnings) or "账户警戒"
-            answer = QtWidgets.QMessageBox.question(
-                self,
-                "风控警戒",
-                f"{hint}\n仍要登记持仓？",
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
-                return False
-        elif not combined.allow_new_positions:
-            hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
-            self._page._toast.warning(f"{hint}（登记仅作记账参考）")
+    # ── 内部连线 ────────────────────────────────────────────
 
-        today = datetime.now(CHINA_TZ).date().isoformat()
-        if not self._confirm_plan_violations(item, buy_date=today):
-            return False
-        title = f"登记持仓 · {item.symbol}"
-        dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, parent=self)
+    def _wire(self) -> None:
+        h = self._header
+        t = self._table_view
+
+        h.config_changed.connect(self.config_changed.emit)
+        h.enabled_changed.connect(self.enabled_changed.emit)
+        h.refresh_requested.connect(self.refresh_requested.emit)
+        h.expansion_changed.connect(self._on_header_expansion_changed)
+        h.edit_requested.connect(self._on_edit_clicked)
+        h.remove_requested.connect(self._on_remove_clicked)
+        h.clear_requested.connect(self._on_clear_clicked)
+        h.plan_requested.connect(self._on_plan_clicked)
+        h.journal_requested.connect(self._on_journal_clicked)
+        h.risk_requested.connect(self._on_risk_settings_clicked)
+
+        t.row_activated.connect(self._on_row_activated)
+        t.row_selected.connect(self.row_selected.emit)
+
+    def _on_header_expansion_changed(self, expanded: bool) -> None:
+        self._table_view.setVisible(expanded)
+        self._sync_panel_geometry(expanded)
+        self.expansion_changed.emit(expanded)
+
+    def _sync_panel_geometry(self, expanded: bool) -> None:
+        if expanded:
+            self.setMinimumHeight(self._header.minimum_panel_height())
+            self.setMaximumHeight(16777215)
+        else:
+            self.setMinimumHeight(POSITION_PANEL_COLLAPSED_HEIGHT)
+            self.setMaximumHeight(POSITION_PANEL_COLLAPSED_HEIGHT + 4)
+
+    def _on_row_activated(self, vt_symbol: str) -> None:
+        self.row_activated.emit(vt_symbol)
+        self._on_edit_clicked()
+
+    def _on_edit_clicked(self) -> None:
+        vt_symbol = self._table_view.selected_vt_symbol()
+        if not vt_symbol:
+            main_item = self._page.current_item
+            if main_item is not None:
+                vt_symbol = main_item.vt_symbol
+        if not vt_symbol:
+            self._page._toast.warning("请先选择要编辑的持仓")
+            return
+        record = next((row for row in self._records() if row.vt_symbol == vt_symbol), None)
+        if record is None:
+            self._page._toast.warning("该标的尚未登记持仓")
+            return
+        item = self._page.find_stock_item(vt_symbol)
+        title = f"编辑持仓 · {item.symbol if item else vt_symbol}"
+        dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, record=record, parent=self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-            return False
-        self._save_form(vt_symbol, dialog.read_form(), existing=False)
-        return True
+            return
+        self._save_form(vt_symbol, dialog.read_form(), existing=True)
 
     def _on_remove_clicked(self) -> None:
-        vt_symbol = self._selected_vt_symbol()
+        vt_symbol = self._table_view.selected_vt_symbol()
         if not vt_symbol:
             item = self._page.current_item
             if item is not None:
@@ -665,325 +356,15 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._page.status_label.setText("已清空全部持仓")
         self.rows_changed.emit()
 
-    def _on_stats_filter_link(self, href: str) -> None:
-        key = href.strip()
-        if self._filter == key:
-            self._filter = None
-        else:
-            self._filter = key
-        self.render_panel()
-
-    def _stats_link(self, key: str, label: str, color: str) -> str:
-        active = self._filter == key
-        style = f"color:{color};text-decoration:{'underline' if active else 'none'}"
-        return f'<a href="{key}" style="{style}">{label}</a>'
-
-    def _refresh_stats(self) -> None:
-        colors = market_colors(theme_manager().tokens())
-        warning_color = theme_manager().tokens().semantic_warning
-        records = self._records()
-        sell_count = t1_count = missing_count = anomaly_count = observation_count = 0
-        observation_symbols = self._observation_vt_symbols()
-        total_pnl = 0.0
-        has_pnl = False
-        for record in records:
-            if record.vt_symbol in observation_symbols:
-                observation_count += 1
-            snap = self._page.position_cache.get(record.vt_symbol)
-            quote = self._quote_for_record(record)
-            if is_position_anomaly(snap=snap, quote=quote):
-                anomaly_count += 1
-            if snap is None:
-                missing_count += 1
-                continue
-            if signal_missing_kline(snap.signal_snapshot):
-                missing_count += 1
-            if snap.exit_signal == "sell":
-                sell_count += 1
-            if snap.t1_locked:
-                t1_count += 1
-            if snap.unrealized_pnl is not None:
-                total_pnl += snap.unrealized_pnl
-                has_pnl = True
-        pnl_text = f"{total_pnl:+.2f}" if has_pnl else "—"
-        updated = f" · 更新 {self._updated_at}" if self._updated_at else ""
-        combined = load_combined_risk_gate_snapshot(
-            avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
-            position_cache=self._page.position_cache,
-        )
-        book_hint = format_book_pnl_hint(summarize_book_pnl(self._page.position_cache))
-        parts = [
-            f"持仓 {len(records)}",
-            f"总浮盈 {pnl_text}",
-        ]
-        if book_hint:
-            parts.append(book_hint)
-        parts.append(f"风控 {combined.account.state_label}")
-        emotion_hint = format_emotion_position_hint(
-            position_pct_min=combined.emotion_position_pct_min,
-            position_pct_max=combined.emotion_position_pct_max,
-        )
-        if emotion_hint:
-            parts.append(emotion_hint)
-        if combined.actual_position_pct is not None:
-            parts.append(f"实际 {int(combined.actual_position_pct * 100)}%")
-        plan_hint = format_plan_position_hint(
-            actual_pct=combined.actual_position_pct,
-            plan_pct_sum=sum_plan_pct(records),
-        )
-        if plan_hint:
-            parts.append(plan_hint)
-
-        end_day = datetime.now(CHINA_TZ).date()
-        start_day = end_day - timedelta(days=6)
-        journal_hint = format_journal_report_hint(load_journal_report(start_date=start_day.isoformat(), end_date=end_day.isoformat()))
-        if journal_hint:
-            parts.append(journal_hint)
-        parts.extend(
-            [
-                self._stats_link("observation", f"观察组 {observation_count}", colors.rise),
-                self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),
-                self._stats_link("sell", f"卖出信号 {sell_count}", colors.fall),
-                self._stats_link("t1", f"T+1 {t1_count}", colors.flat),
-                self._stats_link("missing", f"缺日K {missing_count}", warning_color),
-            ]
-        )
-        self._stats_label.setText(" · ".join(parts) + updated)
-
-    def _row_values(self, record: PositionRecord, *, total_capital: float | None):
-        snap = self._page.position_cache.get(record.vt_symbol)
-        item = self._page.find_stock_item(record.vt_symbol)
-        quote = self._page.quote_map.get(item.tickflow_symbol) if item is not None else None
-        last_price = None
-        if snap is not None and snap.last_price is not None:
-            last_price = snap.last_price
-        elif quote is not None and quote.last_price > 0:
-            last_price = quote.last_price
-        buy_date = (record.buy_date or "")[:10] or "—"
-        values = {
-            "symbol": record.symbol,
-            "name": record.name or (item.name if item else "—"),
-            "cost_price": f"{record.cost_price:.2f}",
-            "volume": str(record.volume),
-            "buy_date": buy_date,
-            "last_price": f"{last_price:.2f}" if last_price is not None else "—",
-        }
-        locked = position_t1_locked(buy_date) if buy_date != "—" else False
-        values["t1_status"] = "T+1 锁定" if locked else "可卖"
-        market_value = None
-        if snap is not None and snap.market_value is not None:
-            market_value = snap.market_value
-        elif last_price is not None and record.volume > 0:
-            market_value = last_price * record.volume
-        actual_pct = compute_position_actual_pct(
-            market_value=market_value,
-            total_capital=total_capital,
-        )
-        plan_cell, plan_tooltip = format_plan_vs_actual_cell(
-            plan_pct=record.plan_pct,
-            actual_pct=actual_pct,
-        )
-        values["plan_pct"] = plan_cell
-        if snap is None:
-            values["pnl"] = "—"
-            values["pnl_pct"] = "—"
-            values["exit_signal"] = "待计算"
-            values["exit_rules"] = "—"
-            values["ref_sell_price"] = "—"
-            return values, snap, quote, plan_tooltip
-        pnl = snap.unrealized_pnl
-        values["pnl"] = f"{pnl:+.2f}" if pnl is not None else "—"
-        pnl_pct = snap.unrealized_pnl_pct
-        values["pnl_pct"] = f"{pnl_pct:+.2f}%" if pnl_pct is not None else "—"
-        values["t1_status"] = snap.t1_status_label
-        values["exit_signal"] = snap.exit_signal_label
-        values["exit_rules"] = format_exit_rules_summary(snap.exit_rules)
-        ref_sell = snap.exit_ref_price
-        values["ref_sell_price"] = f"{ref_sell:.2f}" if ref_sell is not None else "—"
-        return values, snap, quote, plan_tooltip
-
-    def _sorted_display_records(self) -> list[PositionRecord]:
-        records = self._filtered_records()
-        if self._filter == "anomaly":
-            return records
-        return sorted(
-            records,
-            key=lambda record: (
-                position_row_sort_key(self._page.position_cache[record.vt_symbol])
-                if record.vt_symbol in self._page.position_cache
-                else (9, 0.0, record.vt_symbol)
-            ),
-        )
-
-    def _fill_row(
-        self,
-        row: int,
-        record: PositionRecord,
-        *,
-        total_capital: float | None,
-        colors,
-        warning_color: str,
-        highlight_bg: QtGui.QColor,
-    ) -> None:
-        values, snap, quote, plan_tooltip = self._row_values(record, total_capital=total_capital)
-        _, _, anomaly_reasons = self._anomaly_context(record)
-        row_anomaly = bool(anomaly_reasons)
-        anomaly_tip = format_anomaly_tags(anomaly_reasons)
-        buy_date = values.get("buy_date", "—")
-        t1_locked = snap.t1_locked if snap is not None else (position_t1_locked(buy_date) if buy_date != "—" else False)
-        config = self._page.position_config.normalized().effective_signal_config(self._page.signal_config)
-        for col, (key, _label) in enumerate(_PANEL_COLUMNS):
-            text = values.get(key, "—")
-            item_cell: QtWidgets.QTableWidgetItem | None = self._table.item(row, col)
-            if item_cell is None:
-                item_cell = QtWidgets.QTableWidgetItem(text)
-                self._table.setItem(row, col, item_cell)
-            elif item_cell.text() != text:
-                item_cell.setText(text)
-            item_cell.setData(QtCore.Qt.ItemDataRole.UserRole, record.vt_symbol)
-            fg = None
-            if key == "pnl" and snap is not None and snap.unrealized_pnl is not None:
-                fg = colors.rise if snap.unrealized_pnl >= 0 else colors.fall
-            elif key == "pnl_pct" and snap is not None and snap.unrealized_pnl_pct is not None:
-                fg = colors.rise if snap.unrealized_pnl_pct >= 0 else colors.fall
-            elif key == "t1_status":
-                if t1_locked:
-                    fg = warning_color
-                elif snap is not None:
-                    fg = colors.flat
-            elif key == "exit_signal" and snap is not None and snap.signal_snapshot is not None:
-                fg = signal_cell_color(
-                    "signal",
-                    snap.signal_snapshot,
-                    colors=colors,
-                    quote=quote,
-                    warning_color=warning_color,
-                    slow_window=config.slow_window,
-                    fast_window=config.fast_window,
-                )
-            elif key == "exit_rules" and snap is not None:
-                fg = exit_rule_cell_color(snap.exit_rules, colors=colors, warning_color=warning_color)
-            if key == "t1_status":
-                if snap is not None:
-                    item_cell.setToolTip(snap.t1_status_tooltip)
-                elif buy_date != "—":
-                    tip = f"买入日 {buy_date}：当日买入不可卖（A 股 T+1）" if t1_locked else f"买入日 {buy_date}：已过 T+1，可按策略卖出"
-                    item_cell.setToolTip(tip)
-            elif key == "exit_signal" and snap is not None:
-                item_cell.setToolTip(snap.exit_signal_tooltip)
-            elif key == "exit_rules" and snap is not None and snap.exit_rules:
-                item_cell.setToolTip(format_exit_rules_tooltip(snap.exit_rules))
-            elif key == "plan_pct" and plan_tooltip:
-                item_cell.setToolTip(plan_tooltip)
-            if fg:
-                item_cell.setForeground(QtGui.QColor(fg))
-            else:
-                item_cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
-            if row_anomaly and self._filter != "anomaly":
-                item_cell.setBackground(highlight_bg)
-            elif self._filter != "anomaly":
-                item_cell.setData(QtCore.Qt.ItemDataRole.BackgroundRole, None)
-        if snap is not None and snap.signal_snapshot is not None:
-            symbol_cell = self._table.item(row, 0)
-            if symbol_cell is not None:
-                tip = snap.signal_snapshot.tooltip
-                if anomaly_tip:
-                    tip = f"{tip}\n异动：{anomaly_tip}" if tip else f"异动：{anomaly_tip}"
-                symbol_cell.setToolTip(tip)
-        elif anomaly_tip:
-            symbol_cell = self._table.item(row, 0)
-            if symbol_cell is not None:
-                symbol_cell.setToolTip(f"异动：{anomaly_tip}")
-
-    def update_rows_for_tickflow_symbols(self, tickflow_symbols: set[str]) -> None:
-        """行情推送时仅刷新受影响行（不重建表格、不重排）。"""
-        if not tickflow_symbols or not self.enabled or not self._expanded:
-            return
-        if not self._table.isVisible() or self._building:
-            return
-        if not self._records() or not self._rendered_symbols:
-            return
-
-        records = self._sorted_display_records()
-        if len(records) != len(self._rendered_symbols):
+    def _on_risk_settings_clicked(self) -> None:
+        if RiskSettingsDialog.open_and_save(self):
+            self._page.status_label.setText("已保存交易风控设置")
             self.render_panel()
-            return
-        for record, rendered_vt in zip(records, self._rendered_symbols, strict=True):
-            if record.vt_symbol != rendered_vt:
-                self.render_panel()
-                return
 
-        combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
-        colors = market_colors(theme_manager().tokens())
-        warning_color = theme_manager().tokens().semantic_warning
-        highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
-        self._building = True
-        try:
-            for row, record in enumerate(records):
-                item = self._page.find_stock_item(record.vt_symbol)
-                if item is None or item.tickflow_symbol not in tickflow_symbols:
-                    continue
-                self._fill_row(
-                    row,
-                    record,
-                    total_capital=combined.total_capital,
-                    colors=colors,
-                    warning_color=warning_color,
-                    highlight_bg=highlight_bg,
-                )
-        finally:
-            self._building = False
+    def _on_plan_clicked(self) -> None:
+        dialog = TradingPlanDialog(page=self._page, parent=self)
+        dialog.exec()
 
-    def render_panel(self) -> None:
-        if self._building:
-            return
-        self._building = True
-        try:
-            records = self._sorted_display_records()
-            colors = market_colors(theme_manager().tokens())
-            warning_color = theme_manager().tokens().semantic_warning
-
-            if not self._records():
-                self._table.setRowCount(1)
-                cell = QtWidgets.QTableWidgetItem(_EMPTY_TEXT)
-                cell.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled)
-                self._table.setItem(0, 0, cell)
-                self._table.setSpan(0, 0, 1, len(_PANEL_COLUMNS))
-                self._stats_label.setText("")
-                self._rendered_symbols = []
-                return
-
-            if not records:
-                self._table.setRowCount(1)
-                cell = QtWidgets.QTableWidgetItem(_FILTER_EMPTY_TEXT)
-                cell.setFlags(QtCore.Qt.ItemFlag.ItemIsEnabled)
-                self._table.setItem(0, 0, cell)
-                self._table.setSpan(0, 0, 1, len(_PANEL_COLUMNS))
-                self._refresh_stats()
-                self._rendered_symbols = []
-                return
-
-            self._table.clearSpans()
-            if len(records) != self._table.rowCount():
-                self._table.setRowCount(len(records))
-
-            combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
-            total_capital = combined.total_capital
-
-            rendered: list[str] = []
-            highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
-            for row, record in enumerate(records):
-                rendered.append(record.vt_symbol)
-                self._fill_row(
-                    row,
-                    record,
-                    total_capital=total_capital,
-                    colors=colors,
-                    warning_color=warning_color,
-                    highlight_bg=highlight_bg,
-                )
-
-            self._rendered_symbols = rendered
-            self._refresh_stats()
-        finally:
-            self._building = False
+    def _on_journal_clicked(self) -> None:
+        dialog = JournalReportDialog(parent=self)
+        dialog.exec()

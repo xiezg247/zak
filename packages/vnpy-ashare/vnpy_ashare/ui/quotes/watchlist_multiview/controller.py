@@ -14,6 +14,7 @@ from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import SparklineKind,
 from vnpy_ashare.quotes.watchlist_multiview.summary import build_multiview_board_summary
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_multiview.settings import (
     ViewMode,
     load_grid_columns,
@@ -27,7 +28,7 @@ from vnpy_ashare.ui.quotes.watchlist_multiview.worker import WatchlistMultiSpark
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
     from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 
 _SPARKLINE_REFRESH_MS = 60_000
@@ -53,7 +54,7 @@ def _to_global_point(pos: object) -> QtCore.QPoint | None:
 class WatchlistMultiViewController:
     """编排自选多维看盘刷新与选中联动。"""
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self._sort_key: WatchlistMultiSortKey = load_sort_key()
         self._view_mode: ViewMode = load_view_mode()

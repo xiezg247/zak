@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS
@@ -15,8 +13,7 @@ from vnpy_ashare.services.watchlist_short_term import (
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS, position_item_count
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 SHORT_TERM_OBSERVATION_MAX = 5
 
@@ -39,7 +36,7 @@ def format_pool_context_summary(
 class WatchlistPoolContextBar(QtWidgets.QWidget):
     """主表上方一行：四层池子用量摘要，点击可聚焦对应区域。"""
 
-    def __init__(self, page: QuotesPage, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, page: WatchlistHost, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._page = page
         self.setObjectName("WatchlistPoolContextBar")

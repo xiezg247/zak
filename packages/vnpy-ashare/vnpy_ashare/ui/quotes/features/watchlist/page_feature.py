@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.quotes.features.watchlist.center_layout import build_watchlist_center_layout
@@ -13,14 +11,13 @@ from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo, create_view_mode_buttons
 from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class WatchlistPageFeature:
     """封装自选页 toolbar / 中部布局 / 生命周期。"""
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self.layout_preset_combo: QtWidgets.QComboBox | None = None
         self.pool_context_bar: WatchlistPoolContextBar | None = None

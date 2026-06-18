@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
@@ -18,8 +16,7 @@ from vnpy_ashare.ui.quotes.watchlist_groups.prefs import (
 )
 from vnpy_common.ui.feedback import page_notify
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class WatchlistGroupController(QtCore.QObject):
@@ -27,7 +24,7 @@ class WatchlistGroupController(QtCore.QObject):
 
     groups_changed = QtCore.Signal()
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         super().__init__(page)
         self._page = page
         self._groups: list[WatchlistGroupRecord] = []
@@ -267,7 +264,7 @@ class WatchlistGroupController(QtCore.QObject):
         page.apply_filter()
         if page.config.show_watchlist_multiview:
             page._multiview.on_stock_list_loaded()
-        page._watchlist.update_action_buttons(page.current_item)
+        page._update_action_buttons()
 
     def on_stock_list_loaded(self, stocks: list[StockItem]) -> None:
         self._page.watchlist_pool_stocks = list(stocks)
@@ -286,7 +283,7 @@ class WatchlistGroupController(QtCore.QObject):
         service = self._service()
         if service is None:
             return
-        targets = [item for item in items if self._page._watchlist.contains(item)]
+        targets = list(items)
         if not targets:
             return
         title = "加入分组" if len(targets) == 1 else f"加入分组（{len(targets)} 只）"
@@ -388,4 +385,4 @@ class WatchlistGroupController(QtCore.QObject):
         tip = "筛选分组时请在「自选」下调整顺序" if self.is_filtering() else "调整自选池排序"
         page.move_watchlist_up_button.setToolTip(tip)
         page.move_watchlist_down_button.setToolTip(tip)
-        page._watchlist.update_action_buttons(page.current_item)
+        page._update_action_buttons()

@@ -18,19 +18,19 @@ from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.services.position import PositionService
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 class WatchlistPositionController:
     """自选页持仓策略：记账 + 退出信号。"""
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self._worker: QtCore.QThread | None = None
         self._pending_refresh: tuple[bool, list[str] | None] | None = None

@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import layout_preset_options
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import load_watchlist_layout_preset
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
-def create_layout_preset_combo(page: QuotesPage) -> QtWidgets.QComboBox:
+def create_layout_preset_combo(page: WatchlistHost) -> QtWidgets.QComboBox:
     combo = QtWidgets.QComboBox(page)
     combo.setObjectName("WatchlistLayoutPresetCombo")
     apply_toolbar_combo_style(combo)
@@ -30,7 +27,7 @@ def create_layout_preset_combo(page: QuotesPage) -> QtWidgets.QComboBox:
     return combo
 
 
-def create_view_mode_buttons(page: QuotesPage) -> tuple[QtWidgets.QPushButton, QtWidgets.QPushButton]:
+def create_view_mode_buttons(page: WatchlistHost) -> tuple[QtWidgets.QPushButton, QtWidgets.QPushButton]:
     table_button = QtWidgets.QPushButton("表格", page)
     table_button.setObjectName("SecondaryButton")
     table_button.setCheckable(True)

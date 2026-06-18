@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config.preferences.signal_panel_columns import (
@@ -35,8 +33,7 @@ from vnpy_ashare.services.signals.runtime import (
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 _DETAIL_COLUMN_KEYS = ("signal_date", "signal_reason")
 
@@ -50,7 +47,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
     row_activated = QtCore.Signal(str)
     row_selected = QtCore.Signal(str)
 
-    def __init__(self, page: QuotesPage, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, page: WatchlistHost, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._page = page
         self._building = False

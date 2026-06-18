@@ -175,7 +175,7 @@ class WatchlistMultiViewLoaderTests(unittest.TestCase):
                 return_value=quotes,
             ),
             patch(
-                "vnpy_ashare.quotes.radar.radar_moneyflow.enrich_quotes_with_moneyflow",
+                "vnpy_ashare.quotes.watchlist_multiview.loader.enrich_quotes_with_moneyflow",
                 side_effect=lambda payload: payload,
             ),
         ):

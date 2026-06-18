@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from strategies.registry import list_signal_strategy_metas
@@ -33,8 +31,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     SIGNAL_PANEL_DEFAULT_HEIGHT,
 )
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class SignalPanelHeader(QtWidgets.QWidget):
@@ -50,7 +47,7 @@ class SignalPanelHeader(QtWidgets.QWidget):
     enabled_changed = QtCore.Signal(bool)
     expansion_changed = QtCore.Signal(bool)
 
-    def __init__(self, page: QuotesPage, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, page: WatchlistHost, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._page = page
         self._building = False

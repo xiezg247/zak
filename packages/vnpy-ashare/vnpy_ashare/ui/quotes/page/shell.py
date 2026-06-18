@@ -329,7 +329,10 @@ class QuotesPageShell:
         if page.config.show_add_watchlist_button:
             toolbar.addWidget(page.add_watchlist_button)
         if page.config.show_remove_watchlist_button:
-            toolbar.addWidget(page.remove_watchlist_button)
+            if watchlist_feature is not None:
+                more_actions.append(("移出自选", page.remove_watchlist_button))
+            else:
+                toolbar.addWidget(page.remove_watchlist_button)
         if page.config.show_watchlist_move_buttons:
             more_actions.extend(
                 [

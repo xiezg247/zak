@@ -13,19 +13,19 @@ from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_si
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 
 class WatchlistSignalController:
     """自选池策略信号：仅监控信号区名单。"""
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self._worker: WatchlistSignalWorker | None = None
         self._pending_refresh: tuple[bool, list[str] | None] | None = None

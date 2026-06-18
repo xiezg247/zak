@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.watchlist_signal import (
@@ -17,8 +15,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.header import SignalPanelHeader
 from vnpy_ashare.ui.quotes.watchlist_signals.table_view import SignalPanelTableView
 from vnpy_common.ui.theme.manager import theme_manager
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class WatchlistSignalPanel(QtWidgets.QWidget):
@@ -35,7 +32,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     ai_scan_requested = QtCore.Signal()
     expansion_changed = QtCore.Signal(bool)
 
-    def __init__(self, page: QuotesPage) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         super().__init__(page)
         self._page = page
         self._symbols: list[str] = load_signal_panel_symbols()

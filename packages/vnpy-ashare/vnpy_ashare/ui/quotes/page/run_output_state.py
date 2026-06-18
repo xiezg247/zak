@@ -10,12 +10,12 @@ from vnpy_ashare.config.preferences._settings import get_settings
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 _RUN_OUTPUT_EXPANDED_KEY = "quotes/run_output/{page_name}/expanded"
 
 
-def run_output_panel(page: QuotesPage) -> TaskRunOutputPanel | None:
+def run_output_panel(page: WatchlistHost) -> TaskRunOutputPanel | None:
     if not page.config.show_run_output_panel:
         return None
     panel = getattr(page, "run_output_panel", None)

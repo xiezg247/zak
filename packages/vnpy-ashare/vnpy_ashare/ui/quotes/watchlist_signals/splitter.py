@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from pydantic import Field
 from vnpy.trader.ui import QtCore, QtWidgets
 
@@ -21,8 +19,7 @@ from vnpy_ashare.ui.quotes.page.run_log import sync_run_output_expansion
 from vnpy_ashare.ui.quotes.page.run_output_state import load_run_output_expanded, run_output_panel
 from vnpy_common.domain.base import FrozenModel
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 SIGNAL_PANEL_DEFAULT_HEIGHT = 240
@@ -54,19 +51,19 @@ def _panel_is_expanded(panel: QtWidgets.QWidget) -> bool:
     return True
 
 
-def center_splitter(page: QuotesPage) -> QtWidgets.QSplitter | None:
+def center_splitter(page: WatchlistHost) -> QtWidgets.QSplitter | None:
     splitter = page._center_splitter
     if isinstance(splitter, QtWidgets.QSplitter):
         return splitter
     return None
 
 
-def _run_output_panel(page: QuotesPage) -> QtWidgets.QWidget | None:
+def _run_output_panel(page: WatchlistHost) -> QtWidgets.QWidget | None:
 
     return run_output_panel(page)
 
 
-def _center_panel_widgets(page: QuotesPage) -> dict[str, QtWidgets.QWidget | None]:
+def _center_panel_widgets(page: WatchlistHost) -> dict[str, QtWidgets.QWidget | None]:
     return {
         "table": page._market_table_host,
         "signal": page.signal_panel,
@@ -75,7 +72,7 @@ def _center_panel_widgets(page: QuotesPage) -> dict[str, QtWidgets.QWidget | Non
     }
 
 
-def _center_panel_by_widget(page: QuotesPage) -> dict[QtWidgets.QWidget, _CenterPanelSpec]:
+def _center_panel_by_widget(page: WatchlistHost) -> dict[QtWidgets.QWidget, _CenterPanelSpec]:
     widgets = _center_panel_widgets(page)
     mapping: dict[QtWidgets.QWidget, _CenterPanelSpec] = {}
     for spec in _CENTER_PANEL_SPECS:
@@ -126,7 +123,7 @@ def configure_center_splitter(splitter: QtWidgets.QSplitter) -> None:
         splitter.setStretchFactor(index, 1 if index == 0 else 0)
 
 
-def _normalize_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, saved: list[int]) -> list[int]:
+def _normalize_saved_sizes(page: WatchlistHost, splitter: QtWidgets.QSplitter, saved: list[int]) -> list[int]:
     """按各面板展开状态校正保存高度，避免展开态却只有折叠像素导致内容被裁切。"""
     if len(saved) != splitter.count():
         return []
@@ -156,7 +153,7 @@ def _normalize_saved_sizes(page: QuotesPage, splitter: QtWidgets.QSplitter, save
     return clamp_primary_sizes(result, total=total, primary_min=TABLE_MIN_HEIGHT)
 
 
-def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
+def apply_center_splitter_sizes(page: WatchlistHost, *, _retry: int = 0) -> None:
     splitter = center_splitter(page)
     if splitter is None:
         return
@@ -209,7 +206,7 @@ def apply_center_splitter_sizes(page: QuotesPage, *, _retry: int = 0) -> None:
     set_splitter_sizes_quiet(splitter, new_sizes)
 
 
-def restore_center_splitter(page: QuotesPage) -> None:
+def restore_center_splitter(page: WatchlistHost) -> None:
 
     signal_panel = page.signal_panel
     if signal_panel is not None:
@@ -249,7 +246,7 @@ def restore_center_splitter(page: QuotesPage) -> None:
         position_panel.render_panel()
 
 
-def bind_center_splitter_persistence(page: QuotesPage) -> None:
+def bind_center_splitter_persistence(page: WatchlistHost) -> None:
     """用户拖动分隔条时保存尺寸。"""
     splitter = center_splitter(page)
     if splitter is None:
