@@ -6,7 +6,16 @@ import unittest
 
 import tests._bootstrap  # noqa: F401
 from strategies.registry import list_signal_strategy_metas
-from vnpy_ashare.config.preferences.watchlist_signal import DEFAULT_CLASS, WatchlistSignalConfig, load_signal_panel_enabled, load_signal_panel_expanded, load_signal_panel_symbols, save_signal_panel_enabled, save_signal_panel_expanded, save_signal_panel_symbols
+from vnpy_ashare.config.preferences.watchlist_signal import (
+    DEFAULT_CLASS,
+    WatchlistSignalConfig,
+    load_signal_panel_enabled,
+    load_signal_panel_expanded,
+    load_signal_panel_symbols,
+    save_signal_panel_enabled,
+    save_signal_panel_expanded,
+    save_signal_panel_symbols,
+)
 
 
 class WatchlistSignalConfigTests(unittest.TestCase):

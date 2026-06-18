@@ -38,14 +38,13 @@ from vnpy_ashare.data.bars import (
     search_downloaded_stocks_page,
 )
 from vnpy_ashare.data.minute_periods import period_step
-from vnpy_common.domain.base import FrozenModel, MutableModel
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tickflow.depth import DepthPermissionError, fetch_depth_from_tickflow
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars, fetch_minute_bars
-from vnpy_ashare.jobs.bars.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
+from vnpy_ashare.jobs.bars.local_fill import batch_fill_gap_daily_bars, batch_fill_stale_daily_bars
 from vnpy_ashare.quotes.core.provider import QuoteSource, fetch_quotes, get_redis_provider
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.quotes.rank.rank_scope import (
@@ -55,6 +54,7 @@ from vnpy_ashare.quotes.rank.rank_scope import (
 )
 from vnpy_ashare.storage.universe import load_universe, sync_universe
 from vnpy_ashare.ui.quotes.chart.minute_bars import LIVE_MINUTE_TAIL_COUNT
+from vnpy_common.domain.base import FrozenModel, MutableModel
 
 # 读 K 线 / universe 列表 → bar_access；下载与同步 → bars / universe（写路径）
 

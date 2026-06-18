@@ -8,20 +8,20 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.data.bar_health import (
     BarHealthStatus,
     format_meta_datetime,
     list_status,
     status_label,
 )
-from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.domain.market.board import matches_board
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.time.quote_time import format_batch_updated_at
 from vnpy_ashare.domain.trading.signal_snapshot import SIGNAL_COLUMN_KEYS
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map, fetch_stock_market_board_map
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
 from vnpy_ashare.ui.quotes.page.config import (
     ALL_TAIL_COLUMNS,
@@ -33,7 +33,6 @@ from vnpy_ashare.ui.quotes.page.config import (
     ensure_columns_from_template,
     ensure_industry_board_columns,
 )
-from vnpy_ashare.ui.quotes.table.model import QuoteTableModel
 from vnpy_ashare.ui.quotes.table.columns import (
     QUOTE_TABLE_COLUMNS,
     build_local_data_row,
@@ -41,7 +40,7 @@ from vnpy_ashare.ui.quotes.table.columns import (
     quote_column_index,
 )
 from vnpy_ashare.ui.quotes.table.display import slice_market_display, sort_market_items
-from vnpy_ashare.ui.quotes.table.model import QuoteCell
+from vnpy_ashare.ui.quotes.table.model import QuoteCell, QuoteTableModel
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import MarketColors, market_colors
 from vnpy_common.ui.theme.tokens import ThemeTokens

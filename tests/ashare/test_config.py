@@ -7,7 +7,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from vnpy_ashare.config.runtime import ASHARE_BACKTEST_DEFAULTS, EFFECTIVE_RATE, LOT_SIZE, PRICE_TICK, _looks_like_futures_config, ensure_runtime_config, format_decimal_field, write_backtest_defaults
+from vnpy_ashare.config.runtime import (
+    ASHARE_BACKTEST_DEFAULTS,
+    EFFECTIVE_RATE,
+    LOT_SIZE,
+    PRICE_TICK,
+    _looks_like_futures_config,
+    ensure_runtime_config,
+    format_decimal_field,
+    write_backtest_defaults,
+)
 
 
 class AshareBacktestConfigTest(unittest.TestCase):

@@ -7,8 +7,8 @@ import uuid
 from pydantic import Field
 from vnpy.trader.constant import Exchange
 
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_common.domain.base import FrozenModel
 
 WATCHLIST_MAX_GROUPS = 10
 

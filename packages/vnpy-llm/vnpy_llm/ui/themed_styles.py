@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_ai import (
     build_ai_floating_stylesheet,
     build_ai_panel_stylesheet,
     build_ai_tools_stylesheet,
     build_ai_trace_stylesheet,
 )
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 def bind_ai_panel_style(widget: QtWidgets.QWidget) -> None:

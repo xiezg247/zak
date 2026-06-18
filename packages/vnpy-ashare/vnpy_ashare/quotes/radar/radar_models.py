@@ -23,7 +23,6 @@ __all__ = [
     "enrich_radar_rows",
     "merge_row_quotes",
     "quote_map",
-    "resolve_radar_rows",
 ]
 
 

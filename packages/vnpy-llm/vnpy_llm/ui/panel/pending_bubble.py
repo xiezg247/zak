@@ -60,8 +60,8 @@ def format_pending_html(
     *,
     spinner: str = SPINNER_FRAMES[0],
 ) -> str:
-    from vnpy_common.ui.theme.manager import theme_manager
     from vnpy_common.ui.theme.html_palette import html_palette
+    from vnpy_common.ui.theme.manager import theme_manager
 
     sub_html = ""
     if sub.strip():

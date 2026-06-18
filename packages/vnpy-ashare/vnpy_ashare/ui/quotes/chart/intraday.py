@@ -26,8 +26,8 @@ from vnpy_ashare.ui.components.chart_style import (
     style_intraday_price_plot,
     style_intraday_volume_plot,
 )
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.html_palette import html_palette
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, market_rgb, price_change_color
 from vnpy_common.ui.theme.tokens import ThemeTokens
 

@@ -7,8 +7,8 @@ from typing import Any
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_common.ui.scroll_area import frameless_scroll_area
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.html_palette import html_palette
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 from vnpy_common.ui.theme.tokens import ThemeTokens
 

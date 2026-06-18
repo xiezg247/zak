@@ -8,7 +8,6 @@ from __future__ import annotations
 import csv
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
 
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 
@@ -90,11 +89,7 @@ def resolve_export_columns(rows: Sequence[ScreenerResultRow]) -> list[tuple[str,
     sample = rows[0]
     if sample.get("hit_reason") or sample.get("composite_score"):
         optional = {"diff_status", "industry", "volume_ratio", "pe_ttm", "net_mf_amount", "flow_kind"}
-        columns = [
-            col
-            for col in _RECIPE_COLUMNS
-            if col[0] not in optional or any(_field_in_row(row, col[0]) for row in rows[: min(5, len(rows))])
-        ]
+        columns = [col for col in _RECIPE_COLUMNS if col[0] not in optional or any(_field_in_row(row, col[0]) for row in rows[: min(5, len(rows))])]
         return columns or _RECIPE_COLUMNS
     if _is_moneyflow_primary_rows(rows):
         return _MONEYFLOW_COLUMNS

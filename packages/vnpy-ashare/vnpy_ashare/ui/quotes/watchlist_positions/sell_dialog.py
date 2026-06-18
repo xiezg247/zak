@@ -8,9 +8,9 @@ from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config.runtime import format_decimal_field
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import compute_unrealized_pnl
+from vnpy_common.domain.base import FrozenModel
 
 
 class PositionSellFormData(FrozenModel):

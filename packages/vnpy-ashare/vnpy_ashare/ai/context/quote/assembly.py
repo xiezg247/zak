@@ -28,12 +28,12 @@ from vnpy_ashare.ai.context.quote.prompts import (
 )
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config.runtime import _CN_NAME_TO_EXCHANGE, exchange_to_cn
-from vnpy_common.domain.base import FrozenModel
-from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.storage.repositories.positions import position_contains
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
 from vnpy_common.ai.protocol import AiContextData, QuickAction, StockCompletionItem
+from vnpy_common.domain.base import FrozenModel
 
 
 def build_quote_context(

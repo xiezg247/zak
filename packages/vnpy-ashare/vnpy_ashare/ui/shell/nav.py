@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.ui.styles.colors import ACCENT_COLOR, NAV_MUTED_COLOR
+from vnpy_common.domain.base import FrozenModel
 from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:

@@ -14,8 +14,8 @@ from vnpy_ashare.config.datafeed_reload import reload_datafeed_stack
 from vnpy_ashare.config.fonts import apply_app_font, resolve_font_family
 from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, VT_CONFIG_SPECS
 from vnpy_ashare.config.vt_settings import reload_vnpy_settings
-from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.scheduler.manager import TaskSchedulerManager
+from vnpy_common.domain.base import MutableModel
 from vnpy_common.paths import ENV_FILE
 from vnpy_common.ui.theme.manager import theme_manager
 

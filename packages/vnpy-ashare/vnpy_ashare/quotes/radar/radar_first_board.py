@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol

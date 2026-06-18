@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Any, Literal
 from pydantic import Field
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-from vnpy_common.domain.base import MutableModel
-from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.domain.financial.bundle import FinancialBundle, FinancialSyncResult
 from vnpy_ashare.domain.stock.concept import ConceptProfile
 from vnpy_ashare.domain.stock.context import MoneyflowProfile
@@ -16,6 +14,7 @@ from vnpy_ashare.domain.stock.events import EventsProfile
 from vnpy_ashare.domain.stock.holders import HolderProfile
 from vnpy_ashare.domain.stock.overview import OverviewDashboard
 from vnpy_ashare.domain.stock.profile import SectorProfile, ValuationProfile
+from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.stock.concept import build_concept_profile
 from vnpy_ashare.services.stock.context import build_moneyflow_profile, compute_relative_returns
 from vnpy_ashare.services.stock.events import build_events_profile
@@ -28,6 +27,7 @@ from vnpy_ashare.services.stock.profile import (
     sync_valuation_history,
 )
 from vnpy_ashare.storage.repositories.valuation import ValuationRow, list_valuation_history
+from vnpy_common.domain.base import MutableModel
 
 if TYPE_CHECKING:
     pass

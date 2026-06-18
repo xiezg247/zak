@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from collections.abc import Sequence
 from typing import Any
-
-from vnpy_ashare.domain.market.quote_row import QuoteRow
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row, quote_row_copy
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session

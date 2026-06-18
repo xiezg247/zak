@@ -9,8 +9,8 @@ from unittest.mock import patch
 
 from vnpy.trader.constant import Exchange
 
-from vnpy_ashare.domain.symbols.stock import symbol_exchange_to_ts_code
 import vnpy_llm.tools.audit as tool_audit
+from vnpy_ashare.domain.symbols.stock import symbol_exchange_to_ts_code
 
 
 class SymbolExchangeTests(unittest.TestCase):

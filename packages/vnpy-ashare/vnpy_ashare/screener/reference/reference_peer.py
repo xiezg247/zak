@@ -193,10 +193,7 @@ def run_reference_peer_screen(
     rows = scored[: clamp_reference_peer_top_n(top_n)]
     progress(f"完成，命中 {len(rows)} 条同类标的")
     now = format_china_datetime()
-    rows = [
-        item.model_copy(update={"tags": {**item.tags, "updated_at": now}})
-        for item in rows
-    ]
+    rows = [item.model_copy(update={"tags": {**item.tags, "updated_at": now}}) for item in rows]
 
     return ReferencePeerRunResult(
         reference_vt_symbol=vt_symbol,

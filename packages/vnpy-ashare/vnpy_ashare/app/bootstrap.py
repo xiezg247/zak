@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.ai.context.quote.assembly import build_stock_completion_items
 import vnpy_ashare.ai.context.store as context_store
+import vnpy_common.ai.access as access
+from vnpy_ashare.ai.context.quote.assembly import build_stock_completion_items
 from vnpy_ashare.ai.ui.floating_actions import build_quick_actions_for_panel
 from vnpy_ashare.config.vt_settings import load_runtime_settings
 from vnpy_ashare.ui.components.chart_style import refresh_charts_for_theme
-import vnpy_common.ai.access as access
 from vnpy_common.paths import register_settings_loader
 from vnpy_common.ui.theme.manager import theme_manager
 

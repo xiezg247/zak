@@ -7,7 +7,6 @@ from typing import Any
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_symbol_map
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
 from vnpy_ashare.screener.preset.rules import _quote_row

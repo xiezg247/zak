@@ -38,9 +38,9 @@ from vnpy_ashare.ui.backtest.pages.backtest_page_shell import BacktestPageShell
 from vnpy_ashare.ui.backtest.strategy_combo import StrategyClassCombo
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style, apply_vnpy_page_style, style_vnpy_form_inputs
 from vnpy_common.ui.feedback import TaskGuard, page_notify
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 from vnpy_common.ui.theme.html_palette import html_palette
+from vnpy_common.ui.theme.manager import theme_manager
 
 _LOG_MAP: dict[str, str] = {
     "初始化CTA回测引擎": "初始化策略回测引擎",

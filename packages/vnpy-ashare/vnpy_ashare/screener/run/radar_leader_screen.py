@@ -41,9 +41,7 @@ def leader_scored_to_result_row(scored: LeaderScoredRow) -> ScreenerResultRow:
         limit_times=boards if boards >= 1 else row.limit_times,
         sector_name=sector_name,
         sector_axis=scored.sector_axis or axis_label,
-        hit_reason=(
-            f"龙头 {tier_label} · {axis_label}{sector_name} · 评分 {scored.leader_score:.0f} · 连板 {board_text}"
-        ),
+        hit_reason=(f"龙头 {tier_label} · {axis_label}{sector_name} · 评分 {scored.leader_score:.0f} · 连板 {board_text}"),
         source="radar_leader",
     )
     return ScreenerResultRow.from_mapping(enriched.to_dict())

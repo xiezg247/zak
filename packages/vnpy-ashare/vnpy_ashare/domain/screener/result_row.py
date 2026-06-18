@@ -7,12 +7,12 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.market.quote_row import (
     QuoteRow,
     coerce_quote_row,
     quote_row_payload,
 )
+from vnpy_common.domain.base import FrozenModel
 
 _SCORE_KEYS = frozenset(
     {
@@ -63,6 +63,7 @@ _TAG_KEYS = frozenset(
         "emotion_note",
     }
 )
+
 
 class ScreenerResultRow(FrozenModel):
     """结构化选股结果：核心行情 + 配方评分 + 展示标签。"""

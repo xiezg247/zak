@@ -17,7 +17,6 @@ from vnpy_ashare.quotes.market.emotion_cycle_cache import (
     store_emotion_cycle_snapshot,
 )
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
-from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
 from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 

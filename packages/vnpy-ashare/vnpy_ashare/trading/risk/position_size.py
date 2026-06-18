@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from vnpy_ashare.config.preferences.trading_risk import (
     DEFAULT_PER_TRADE_RISK_PCT,
     DEFAULT_STOP_LOSS_PCT,
@@ -11,7 +9,7 @@ from vnpy_ashare.config.preferences.trading_risk import (
 )
 from vnpy_ashare.domain.trading.risk import PositionSizeResult
 
-__all__ = ["PositionSizeResult", "compute_position_size", "evaluate_position_size"]
+__all__ = ["PositionSizeResult", "compute_position_size", "compute_position_size_from_prefs"]
 
 
 def compute_position_size(

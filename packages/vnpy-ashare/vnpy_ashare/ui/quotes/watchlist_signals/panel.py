@@ -8,10 +8,9 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from strategies.registry import list_signal_strategy_metas
 from strategies.signals import STRATEGY_SIGNAL_DEFAULTS
-from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
-from vnpy_ashare.config.preferences.watchlist_signal import DEFAULT_CLASS, SIGNAL_PANEL_MAX_SYMBOLS, WatchlistSignalConfig, load_signal_panel_columns, load_signal_panel_enabled, load_signal_panel_expanded, load_signal_panel_symbols, normalize_signal_panel_symbols, save_signal_panel_columns, save_signal_panel_enabled, save_signal_panel_expanded, save_signal_panel_symbols
 from vnpy_ashare.config.preferences.signal_panel_columns import (
     SIGNAL_PANEL_OPTIONAL_COLUMNS,
+    normalize_visible_optional_keys,
     resolve_signal_panel_columns,
 )
 from vnpy_ashare.config.preferences.strategy_profile import (
@@ -19,6 +18,20 @@ from vnpy_ashare.config.preferences.strategy_profile import (
     load_strategy_profile_id,
     match_strategy_profile,
     save_strategy_profile_id,
+)
+from vnpy_ashare.config.preferences.watchlist_signal import (
+    DEFAULT_CLASS,
+    SIGNAL_PANEL_MAX_SYMBOLS,
+    WatchlistSignalConfig,
+    load_signal_panel_columns,
+    load_signal_panel_enabled,
+    load_signal_panel_expanded,
+    load_signal_panel_symbols,
+    normalize_signal_panel_symbols,
+    save_signal_panel_columns,
+    save_signal_panel_enabled,
+    save_signal_panel_expanded,
+    save_signal_panel_symbols,
 )
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.trading.signal_snapshot import (

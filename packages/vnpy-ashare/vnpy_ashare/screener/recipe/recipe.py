@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from vnpy_ashare.domain.screener.recipe import (
     RECIPE_CM20_ELASTIC,

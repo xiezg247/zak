@@ -64,7 +64,12 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
-from vnpy_ashare.ui.screener.workers.screener_workers import LeaderScreenRunWorker, RadarResonanceRunWorker, ScreenerBatchDownloadWorker, ScreenerRecipeRunWorker
+from vnpy_ashare.ui.screener.workers.screener_workers import (
+    LeaderScreenRunWorker,
+    RadarResonanceRunWorker,
+    ScreenerBatchDownloadWorker,
+    ScreenerRecipeRunWorker,
+)
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread
 

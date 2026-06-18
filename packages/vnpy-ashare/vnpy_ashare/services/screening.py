@@ -17,16 +17,19 @@ from typing import Any
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.store import (
     ScreeningResultContext,
-    get_screening_results as _get_screening_results,
     set_ai_context,
+)
+from vnpy_ashare.ai.context.store import (
+    get_screening_results as _get_screening_results,
+)
+from vnpy_ashare.ai.context.store import (
     set_screening_results as _set_screening_results,
 )
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
-from vnpy_common.ai.protocol import AiContextData
 from vnpy_ashare.domain.market.quote_row import QuoteRow
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.screener.run_result import ScreenerRunResult
 from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
+from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows, resolve_result_source_tag
 from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
@@ -69,6 +72,7 @@ from vnpy_ashare.screener.run.runner import (
     run_screener,
 )
 from vnpy_ashare.services.base import BaseService
+from vnpy_common.ai.protocol import AiContextData
 
 AVAILABLE_SCREENERS = list_builtin_preset_names()
 

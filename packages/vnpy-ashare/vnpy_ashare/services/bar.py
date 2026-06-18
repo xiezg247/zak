@@ -10,7 +10,6 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.store import set_ai_context
-from vnpy_common.ai.protocol import AiContextData
 from vnpy_ashare.data.bar_access import (
     PeriodBarOverview,
     build_symbol_name_map,
@@ -20,6 +19,7 @@ from vnpy_ashare.data.bar_access import (
     universe_exists,
 )
 from vnpy_ashare.services.base import BaseService
+from vnpy_common.ai.protocol import AiContextData
 
 LOOKBACK_MAX = 250
 

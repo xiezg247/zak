@@ -58,11 +58,7 @@ def _assemble_multiview_board(
         return WatchlistMultiBoardData(rows=(), empty_message=empty_message, total_count=0)
 
     name_map = name_map_for_symbols(candidates)
-    changes = [
-        float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0)
-        for vt in candidates
-        if quotes_by_vt.get(vt)
-    ]
+    changes = [float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0) for vt in candidates if quotes_by_vt.get(vt)]
     pool_median = sorted(changes)[len(changes) // 2] if changes else 0.0
 
     rows: list[WatchlistMultiRow] = []
@@ -120,10 +116,7 @@ def build_watchlist_multiview_board_from_page(
 
     candidates = [item.vt_symbol for item in stocks]
     sort_orders = {item.vt_symbol: index for index, item in enumerate(stocks)}
-    quotes_by_vt = {
-        item.vt_symbol: _quote_row_from_snapshot(item, quote_map.get(item.tickflow_symbol))
-        for item in stocks
-    }
+    quotes_by_vt = {item.vt_symbol: _quote_row_from_snapshot(item, quote_map.get(item.tickflow_symbol)) for item in stocks}
     if refresh_moneyflow:
         try:
             quotes_by_vt = enrich_quotes_with_moneyflow(quotes_by_vt)

@@ -7,13 +7,13 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.screener.batch.batch_actions import BatchBacktestParams
 from vnpy_ashare.screener.recipe.recipe import (
     RECIPE_CM20_ELASTIC,
     RECIPE_ULTRA_SHORT_FIRST_BOARD,
     RECIPE_ULTRA_SHORT_LIMIT,
 )
+from vnpy_common.domain.base import FrozenModel
 
 
 class BatchBacktestTemplate(FrozenModel):

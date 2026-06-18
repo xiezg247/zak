@@ -49,8 +49,8 @@ from vnpy_ashare.ui.shell.settings.snapshot import (
 from vnpy_ashare.ui.styles.vnpy_page import apply_settings_combo_style
 from vnpy_common.paths import ENV_FILE
 from vnpy_common.ui.feedback import confirm_action, page_notify
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 class SettingsDialog(QtWidgets.QDialog):

@@ -23,8 +23,8 @@ from vnpy_ashare.data.bar_health import (
 from vnpy_ashare.data.bar_store import get_scope_overview
 from vnpy_ashare.data.bars import download_bars
 from vnpy_ashare.data.download_concurrency import download_max_workers, run_parallel_map
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_common.domain.base import FrozenModel
 
 
 class BatchFillProgress(FrozenModel):

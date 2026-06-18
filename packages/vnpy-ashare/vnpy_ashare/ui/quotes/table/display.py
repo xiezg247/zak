@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
 
 
 def sort_market_items(

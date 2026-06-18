@@ -122,8 +122,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         layout.addLayout(form)
 
         hint = QtWidgets.QLabel(
-            "未勾选市场板块表示不限（若已配置 ASHARE_TRADING_BOARDS 则退回账户可交易范围）；"
-            "0 表示不限制；环境变量 RECIPE_* 仍可覆盖上述设置。"
+            "未勾选市场板块表示不限（若已配置 ASHARE_TRADING_BOARDS 则退回账户可交易范围）；0 表示不限制；环境变量 RECIPE_* 仍可覆盖上述设置。"
         )
         hint.setObjectName("ScreenerHint")
         hint.setWordWrap(True)

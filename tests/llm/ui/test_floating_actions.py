@@ -10,8 +10,8 @@ from vnpy.trader.constant import Exchange
 from tests.ashare.ai.context.factories import IS_IN_WATCHLIST, WATCHLIST_ROWS
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.store import clear_all, set_screening_results
-from vnpy_common.ai.protocol import AiContextData
 from vnpy_ashare.ai.ui.floating_actions import build_quick_actions_for_panel, scene_label_from_context
+from vnpy_common.ai.protocol import AiContextData
 
 
 class FloatingPanelTests(unittest.TestCase):

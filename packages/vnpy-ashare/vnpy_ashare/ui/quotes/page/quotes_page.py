@@ -17,9 +17,10 @@ from vnpy_ashare.app.engine_access import (
     get_quote_service,
     get_watchlist_service,
 )
-from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_watchlist_position_config
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId, apply_strategy_profile
+from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_watchlist_position_config
+from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
@@ -27,12 +28,12 @@ from vnpy_ashare.data.bar_health import (
     BarMeta,
 )
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
 from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.services.analysis import AnalysisService
@@ -42,8 +43,7 @@ from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
 from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
-from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel
-from vnpy_ashare.ui.quotes.chart.section import sync_chart_splitter_for_expansion
+from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel, sync_chart_splitter_for_expansion
 from vnpy_ashare.ui.quotes.controllers.actions import ActionsController
 from vnpy_ashare.ui.quotes.controllers.batch_backtest import WatchlistBatchBacktestController
 from vnpy_ashare.ui.quotes.controllers.data_loader import DataLoaderController
@@ -52,10 +52,9 @@ from vnpy_ashare.ui.quotes.controllers.pagination import MarketPaginationControl
 from vnpy_ashare.ui.quotes.controllers.quote_stream import QuoteStreamController
 from vnpy_ashare.ui.quotes.controllers.table import TableController
 from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
-from vnpy_ashare.ui.quotes.features.market_rank import MarketRankFeature
+from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID, MarketRankFeature
 from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
 from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
-from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_refresh import refresh_emotion_cycle_chip
 from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
@@ -76,10 +75,21 @@ from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
 from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
 from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
-from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes, restore_center_splitter
-from vnpy_ashare.ui.quotes.workers.quotes_workers import BarGapCheckWorker, BarsLoadWorker, BatchFillWorker, BatchGapFillWorker, DepthRefreshWorker, DiagnoseWorker, DownloadWorker, InvalidBarCleanupWorker, MinuteDownloadWorker, QuotesRefreshWorker, ScopeBarsLoadWorker
+from vnpy_ashare.ui.quotes.workers.quotes_workers import (
+    BarGapCheckWorker,
+    BarsLoadWorker,
+    BatchFillWorker,
+    BatchGapFillWorker,
+    DepthRefreshWorker,
+    DiagnoseWorker,
+    DownloadWorker,
+    InvalidBarCleanupWorker,
+    MinuteDownloadWorker,
+    QuotesRefreshWorker,
+    ScopeBarsLoadWorker,
+)
 from vnpy_common.ui.feedback import TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme.manager import theme_manager

@@ -9,7 +9,6 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.watchlist_position import load_position_panel_expanded
 from vnpy_ashare.config.preferences.watchlist_signal import load_center_splitter_sizes, load_signal_panel_expanded, save_center_splitter_sizes
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.ui.components.splitter_utils import (
     bind_splitter_persistence,
     clamp_primary_sizes,
@@ -20,6 +19,7 @@ from vnpy_ashare.ui.components.splitter_utils import (
 )
 from vnpy_ashare.ui.quotes.page.run_log import sync_run_output_expansion
 from vnpy_ashare.ui.quotes.page.run_output_state import load_run_output_expanded, run_output_panel
+from vnpy_common.domain.base import FrozenModel
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

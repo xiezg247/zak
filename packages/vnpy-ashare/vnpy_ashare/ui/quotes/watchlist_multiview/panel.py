@@ -7,8 +7,8 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardData, WatchlistMultiRow, WatchlistMultiSortKey
 from vnpy_ashare.ui.quotes.watchlist_multiview.card import WatchlistMultiCard
 from vnpy_ashare.ui.quotes.watchlist_multiview.settings import load_grid_columns, load_sort_key
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_watchlist_multiview_stylesheet
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 class WatchlistMultiViewBoard(QtWidgets.QWidget):

@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 import unittest
 
-import tests._bootstrap  # noqa: F401
 from pydantic import ValidationError
+
+import tests._bootstrap  # noqa: F401
 from vnpy_skills.agent.args import ReadSkillFileArgs, RunPythonArgs
 from vnpy_skills.domain.frontmatter import SkillFrontmatter, parse_skill_document
 

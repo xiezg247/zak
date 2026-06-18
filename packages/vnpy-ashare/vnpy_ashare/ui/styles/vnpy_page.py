@@ -2,8 +2,8 @@
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_vnpy_page_stylesheet
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.tokens import DARK_TOKENS
 
 VNPY_PAGE_STYLESHEET = build_vnpy_page_stylesheet(DARK_TOKENS)

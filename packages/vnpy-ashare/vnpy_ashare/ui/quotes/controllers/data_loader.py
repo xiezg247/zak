@@ -9,7 +9,15 @@ from vnpy_ashare.app.engine_access import get_bar_service
 from vnpy_ashare.data.bar_access import count_universe, universe_exists
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.ui.quotes.page.config import MARKET_SCROLL_LOAD_COOLDOWN_MS
-from vnpy_ashare.ui.quotes.workers.quotes_workers import MarketFullLoadWorker, MarketFullResult, MarketPageLoadWorker, MarketPageResult, UniverseLoadResult, UniverseLoadWorker, UniverseSyncWorker
+from vnpy_ashare.ui.quotes.workers.quotes_workers import (
+    MarketFullLoadWorker,
+    MarketFullResult,
+    MarketPageLoadWorker,
+    MarketPageResult,
+    UniverseLoadResult,
+    UniverseLoadWorker,
+    UniverseSyncWorker,
+)
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

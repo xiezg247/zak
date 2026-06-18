@@ -40,7 +40,17 @@ from vnpy_ashare.ui.quotes.page.run_log import (
     complete_run_log,
     fail_run_log,
 )
-from vnpy_ashare.ui.quotes.workers.quotes_workers import BarGapCheckWorker, BarsLoadWorker, BatchFillWorker, BatchGapFillWorker, DownloadWorker, InvalidBarCleanupWorker, LoadedBars, MinuteDownloadWorker, ScopeBarsLoadWorker
+from vnpy_ashare.ui.quotes.workers.quotes_workers import (
+    BarGapCheckWorker,
+    BarsLoadWorker,
+    BatchFillWorker,
+    BatchGapFillWorker,
+    DownloadWorker,
+    InvalidBarCleanupWorker,
+    LoadedBars,
+    MinuteDownloadWorker,
+    ScopeBarsLoadWorker,
+)
 from vnpy_common.ui.feedback import confirm_action
 
 if TYPE_CHECKING:

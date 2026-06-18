@@ -8,7 +8,6 @@ from __future__ import annotations
 import math
 import time
 from datetime import date, datetime, timedelta
-from typing import Any
 
 from vnpy_ashare.domain.sentiment.fear_greed import FearGreedComponent, FearGreedSnapshot
 from vnpy_ashare.domain.time.calendar import last_trading_day

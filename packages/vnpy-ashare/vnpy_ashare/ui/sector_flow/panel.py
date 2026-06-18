@@ -8,8 +8,8 @@ from vnpy_ashare.domain.market.sector_flow import SectorFlowRow, SectorFlowSnaps
 from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
 from vnpy_ashare.ui.sector_flow.table import SectorFlowTable
 from vnpy_common.ui.loading_overlay import LoadingContentHost
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_extra import build_sector_flow_stylesheet
+from vnpy_common.ui.theme.manager import theme_manager
 
 _TAB_INFLOW = 0
 _TAB_OUTFLOW = 1

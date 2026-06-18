@@ -5,13 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
+from vnpy_ashare.ai.context.market_overview import merge_market_overview_extra
 from vnpy_ashare.ai.context.quote.assembly import build_quote_context
 from vnpy_ashare.ai.context.store import get_ai_context, set_ai_context
-from vnpy_common.ai.protocol import AiContextData
-from vnpy_ashare.ai.context.market_overview import merge_market_overview_extra
 from vnpy_ashare.domain.market.quote_row import QuoteRow
-from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.core.quote_rows import (
     get_market_quotes_cache as read_market_quotes_cache,
 )
@@ -19,6 +18,7 @@ from vnpy_ashare.quotes.core.quote_rows import (
     set_market_quotes_cache as write_market_quotes_cache,
 )
 from vnpy_ashare.services.base import BaseService
+from vnpy_common.ai.protocol import AiContextData
 
 
 class QuoteService(BaseService):

@@ -74,11 +74,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
                     relative_strength=float(item.get("relative_strength") or 0),
                     strength_basis=str(item.get("strength_basis") or "大盘"),
                     market_relative_strength=float(item.get("market_relative_strength") or 0),
-                    **(
-                        {"industry_relative_strength": float(item["industry_relative_strength"])}
-                        if item.get("industry_relative_strength") is not None
-                        else {}
-                    ),
+                    **({"industry_relative_strength": float(item["industry_relative_strength"])} if item.get("industry_relative_strength") is not None else {}),
                     **({"industry": item["industry"]} if item.get("industry") else {}),
                 )
             )

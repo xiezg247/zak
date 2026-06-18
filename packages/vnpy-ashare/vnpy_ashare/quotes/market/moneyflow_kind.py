@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, coerce_quote_row
-from vnpy_ashare.domain.screener.result_row import ScreeningFilterRow, ScreenerResultRow
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, ScreeningFilterRow
 
 FlowKind = Literal["main", "active", "proxy"]
 

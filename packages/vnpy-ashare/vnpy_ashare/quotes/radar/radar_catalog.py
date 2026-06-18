@@ -36,8 +36,6 @@ __all__ = [
     "RadarLayoutSection",
     "RadarRefreshOption",
     "RadarVariant",
-    "card_spec",
-    "default_auto_refresh_ms",
     "full_refresh_every_n_ticks",
     "radar_card_resonance_weight",
     "refresh_options_for_card",

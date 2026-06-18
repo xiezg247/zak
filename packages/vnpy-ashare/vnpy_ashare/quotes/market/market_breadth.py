@@ -24,6 +24,7 @@ __all__ = [
     "merge_official_limit_counts",
 ]
 
+
 def _coerce_change_pct(row: QuoteRow) -> float | None:
     raw = row.get("change_pct")
     if raw is None:

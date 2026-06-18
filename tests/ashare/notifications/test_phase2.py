@@ -6,12 +6,12 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
+from vnpy_ashare.notifications.content.formatters import format_notify_text
 from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_POSITION_ALERT,
     NOTIFY_EVENT_RISK_GATE_CHANGE,
 )
-from vnpy_ashare.notifications.content.formatters import format_notify_text
 from vnpy_ashare.notifications.prefs.store import NotifyPrefs
 from vnpy_ashare.notifications.service import NotificationService
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleTracker

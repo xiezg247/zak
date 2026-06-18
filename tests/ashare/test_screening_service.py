@@ -55,9 +55,7 @@ class ScreeningServiceTests(unittest.TestCase):
             ) as mock_apply,
             patch(
                 "vnpy_ashare.services.screening.enrich_recipe_rows",
-                side_effect=lambda enriched: [
-                    ScreenerResultRow.from_mapping(row) for row in enriched
-                ],
+                side_effect=lambda enriched: [ScreenerResultRow.from_mapping(row) for row in enriched],
             ),
         ):
             result = self.service.screen_quote_preset("涨幅榜", top_n=3)

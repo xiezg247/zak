@@ -15,11 +15,9 @@ class McpClientError(Exception):
 
 
 def _root_exception(exc: BaseException) -> BaseException:
-    if isinstance(exc, BaseExceptionGroup):
-        for sub in exc.exceptions:
-            return _root_exception(sub)
-    if isinstance(exc, ExceptionGroup):  # noqa: UP038 — py310 compat
-        for sub in exc.exceptions:
+    nested = getattr(exc, "exceptions", None)
+    if nested:
+        for sub in nested:
             return _root_exception(sub)
     cause = exc.__cause__
     if cause is not None and cause is not exc:

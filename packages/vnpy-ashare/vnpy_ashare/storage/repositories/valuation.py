@@ -7,9 +7,9 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.core.numbers import coerce_float
 from vnpy_ashare.storage.connection import connect
+from vnpy_common.domain.base import FrozenModel
 
 
 class ValuationRow(FrozenModel):

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import unittest
 
+from vnpy_ashare.notifications.content.formatters import format_notify_text
 from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
 )
-from vnpy_ashare.notifications.content.formatters import format_notify_text
 
 
 class NotifyFormattersTest(unittest.TestCase):

@@ -16,7 +16,6 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from pydantic import ConfigDict, Field
 
-from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
@@ -46,6 +45,7 @@ from vnpy_ashare.scheduler.config import (
 )
 from vnpy_ashare.scheduler.job_meta import load_job_run_meta, save_job_run_meta
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
+from vnpy_common.domain.base import MutableModel
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5

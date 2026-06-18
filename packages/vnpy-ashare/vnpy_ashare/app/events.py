@@ -6,8 +6,8 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.screener.run.runner import ScreenerRequest
+from vnpy_common.domain.base import MutableModel
 
 EVENT_OPEN_BACKTEST = "eOpenBacktest"
 EVENT_OPEN_BATCH_BACKTEST = "eOpenBatchBacktest"

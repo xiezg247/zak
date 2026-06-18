@@ -8,7 +8,6 @@ from pydantic import Field
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config.runtime import format_decimal_field
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.trading.risk.plan_position import normalize_plan_pct
@@ -16,6 +15,7 @@ from vnpy_ashare.trading.risk.position_size import (
     compute_position_size_from_prefs,
     format_position_size_hint,
 )
+from vnpy_common.domain.base import FrozenModel
 
 _COST_PRICE_PLACES = 4
 

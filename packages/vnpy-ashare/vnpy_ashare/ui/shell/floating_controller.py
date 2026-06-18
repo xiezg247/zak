@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.context.store import get_ai_context
-from vnpy_common.ai.protocol import QuickAction
 from vnpy_ashare.ai.ui.floating_actions import scene_label_from_context
 from vnpy_ashare.app.events import AskAiRequest
+from vnpy_common.ai.protocol import QuickAction
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import clamp_point_in_parent, default_child_bottom_right_in_anchor

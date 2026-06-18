@@ -7,7 +7,6 @@ from typing import Protocol, cast
 import pyqtgraph as pg
 from vnpy.chart import ChartWidget
 
-from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.build_chart import (
     AVG_LINE_COLOR,
     AXIS_COLOR,
@@ -31,6 +30,7 @@ from vnpy_common.ui.theme.build_chart import (
     build_intraday_info_stylesheet,
     chart_palette,
 )
+from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import hex_to_rgb, market_rgb
 from vnpy_common.ui.theme.tokens import DARK_TOKENS, ThemeTokens
 

@@ -59,7 +59,5 @@ class TurnTrace(MutableModel):
         payload = dict(data)
         if "status" not in payload:
             payload["status"] = "ok"
-        payload["steps"] = [
-            TraceStep.model_validate(item) for item in (payload.get("steps") or [])
-        ]
+        payload["steps"] = [TraceStep.model_validate(item) for item in (payload.get("steps") or [])]
         return cls.model_validate(payload)

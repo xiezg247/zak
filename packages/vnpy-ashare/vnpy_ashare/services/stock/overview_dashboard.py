@@ -7,12 +7,9 @@ from typing import Any
 from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.stock.overview import (
-    AlertSeverity,
     DataReadinessItem,
     OverviewAlert,
     OverviewDashboard,
-    OverviewJumpTarget,
-    ReadinessStatus,
     ScreeningHit,
 )
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro

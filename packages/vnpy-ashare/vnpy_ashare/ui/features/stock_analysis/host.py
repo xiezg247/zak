@@ -9,10 +9,10 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore
 
-from vnpy_common.domain.base import MutableModel
-from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
+from vnpy_common.domain.base import MutableModel
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage

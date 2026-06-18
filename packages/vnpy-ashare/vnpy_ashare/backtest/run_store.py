@@ -11,8 +11,8 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.domain.time.china import format_china_datetime
+from vnpy_common.domain.base import MutableModel
 from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """

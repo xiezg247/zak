@@ -7,7 +7,15 @@ from typing import TYPE_CHECKING
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.ai.context.quote.prompts import build_diagnose_ai_prompt, build_historical_ai_prompt, build_positions_ai_prompt, build_signal_panel_ai_prompt, build_signal_panel_batch_ai_prompt, build_team_analysis_ai_prompt, build_technical_ai_prompt
+from vnpy_ashare.ai.context.quote.prompts import (
+    build_diagnose_ai_prompt,
+    build_historical_ai_prompt,
+    build_positions_ai_prompt,
+    build_signal_panel_ai_prompt,
+    build_signal_panel_batch_ai_prompt,
+    build_team_analysis_ai_prompt,
+    build_technical_ai_prompt,
+)
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.data.bar_health import BarHealthStatus, list_status

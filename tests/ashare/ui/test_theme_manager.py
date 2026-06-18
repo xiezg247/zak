@@ -12,8 +12,7 @@ from vnpy_common.ui.theme.build_ai import build_ai_panel_stylesheet
 from vnpy_common.ui.theme.build_chart import build_chart_panel_stylesheet
 from vnpy_common.ui.theme.build_extra import build_settings_stylesheet
 from vnpy_common.ui.theme.manager import ThemeManager, theme_manager
-from vnpy_common.ui.theme.tokens import get_tokens
-from vnpy_common.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS
+from vnpy_common.ui.theme.tokens import DARK_TOKENS, LIGHT_TOKENS, get_tokens
 
 
 class ThemeManagerTests(unittest.TestCase):

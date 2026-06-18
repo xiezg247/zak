@@ -64,11 +64,7 @@ def load_sector_leaders(
     if sector.sector_kind == "concept":
         vt_symbols = _resolve_concept_vt_symbols(sector)
         if vt_symbols:
-            matched = [
-                row
-                for row in quote_rows
-                if str(row.get("vt_symbol") or "") in vt_symbols
-            ]
+            matched = [row for row in quote_rows if str(row.get("vt_symbol") or "") in vt_symbols]
         else:
             matched = []
     else:

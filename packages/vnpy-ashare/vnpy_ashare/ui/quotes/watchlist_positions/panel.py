@@ -8,9 +8,17 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from strategies.registry import get_strategy_meta
-from vnpy_ashare.config.preferences.watchlist_position import POSITION_PANEL_COLLAPSED_HEIGHT, POSITION_PANEL_DEFAULT_HEIGHT, WatchlistPositionConfig, load_position_panel_enabled, load_position_panel_expanded, save_position_panel_enabled, save_position_panel_expanded
-from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.config.preferences.strategy_profile import list_strategy_profiles, load_strategy_profile_id
+from vnpy_ashare.config.preferences.watchlist_position import (
+    POSITION_PANEL_COLLAPSED_HEIGHT,
+    POSITION_PANEL_DEFAULT_HEIGHT,
+    WatchlistPositionConfig,
+    load_position_panel_enabled,
+    load_position_panel_expanded,
+    save_position_panel_enabled,
+    save_position_panel_expanded,
+)
+from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.trading.signal_snapshot import signal_missing_kline

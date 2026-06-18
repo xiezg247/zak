@@ -9,8 +9,8 @@ from typing import Any
 
 from pydantic import Field
 
-from vnpy_common.domain.base import MutableModel
 from vnpy_ashare.storage.connection import connect
+from vnpy_common.domain.base import MutableModel
 
 REPORT_TYPES: tuple[str, ...] = (
     "income",

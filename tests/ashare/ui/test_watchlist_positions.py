@@ -8,7 +8,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
-from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_position_panel_enabled, load_position_panel_expanded, load_watchlist_position_config, save_position_panel_enabled, save_position_panel_expanded, save_watchlist_position_config
+from vnpy_ashare.config.preferences.watchlist_position import (
+    WatchlistPositionConfig,
+    load_position_panel_enabled,
+    load_position_panel_expanded,
+    load_watchlist_position_config,
+    save_position_panel_enabled,
+    save_position_panel_expanded,
+    save_watchlist_position_config,
+)
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache

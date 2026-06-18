@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import unittest
-from unittest.mock import patch
 
 from vnpy_ashare.config.constants.trading import ENV_TRADING_BOARDS
 from vnpy_ashare.config.trading_universe import (

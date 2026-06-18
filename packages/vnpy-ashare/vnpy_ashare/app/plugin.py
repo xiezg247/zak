@@ -6,7 +6,7 @@ from pathlib import Path
 
 from vnpy.trader.app import BaseApp
 
-from vnpy_ashare.app.engine import APP_NAME, AshareEngine
+from vnpy_ashare.app.engine import AshareEngine
 
 __all__ = ["AshareApp"]
 

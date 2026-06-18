@@ -6,8 +6,8 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from vnpy_common.domain.base import FrozenModel
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_DOWN_PCT, LIMIT_UP_PCT
+from vnpy_common.domain.base import FrozenModel
 
 NEAR_LIMIT_UP_MIN = 7.0
 
