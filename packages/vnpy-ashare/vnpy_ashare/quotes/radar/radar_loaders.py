@@ -539,7 +539,6 @@ _RADAR_QUOTE_CONTEXT_CARD_IDS = frozenset(
     {
         "outlook_watch",
         "outlook_hold",
-        "outlook_avoid",
         "outlook_scenario",
         "outlook_predict",
     }
@@ -579,7 +578,7 @@ def _load_radar_card_uncached(
     if spec.id == "leader_pick":
         pick_variant: LeaderPickVariant = "mainline" if leader_pick_variant != "all_market" else "all_market"
         return load_leader_pick(spec, variant=pick_variant)
-    if spec.id in ("outlook_watch", "outlook_hold", "outlook_avoid"):
+    if spec.id in ("outlook_watch", "outlook_hold"):
         return load_outlook_horizon(spec, force_recompute=force_recompute)
     if spec.id == "outlook_scenario":
         return load_outlook_horizon(
@@ -772,7 +771,7 @@ def build_radar_card_ai_prompt(
         lines[0] = "请解读雷达「自选·异动」：关注自选池内波动、信号跃迁与 5 日统计情景（非价格预测）。"
     elif card_id == "sector_theme":
         lines[0] = "请解读雷达「板块·主线」：归纳今日行业轮动与龙头特征。"
-    elif card_id in ("outlook_watch", "outlook_hold", "outlook_avoid", "outlook_scenario"):
+    elif card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
         single = build_outlook_ai_prompt({card_id: data}, card_id=card_id)
         return single or "\n".join(lines).strip()
     elif card_id == "outlook_predict":
@@ -824,7 +823,7 @@ def build_radar_ai_prompt(
                 marker = "★ " if row.vt_symbol in resonance else ""
                 lines.append(f"- {marker}{_row_ai_summary(row)}")
         lines.append("")
-    for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_avoid", "outlook_scenario"):
+    for outlook_card_id in ("outlook_watch", "outlook_hold", "outlook_scenario"):
         outlook_prompt = build_outlook_ai_prompt(payload, card_id=outlook_card_id)
         if outlook_prompt:
             lines.append("---")

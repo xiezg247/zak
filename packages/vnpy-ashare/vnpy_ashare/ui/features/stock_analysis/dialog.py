@@ -179,7 +179,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         theme_manager().bind_stylesheet(self, extra=build_stock_analysis_stylesheet)
         self._refresh_live_quote()
         self._init_idle_tabs()
-        self._ensure_tab_data(_TAB_OVERVIEW)
+        self._ensure_tab_data(_TAB_OVERVIEW, sync_financials=True)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
@@ -382,11 +382,11 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._chart_loaded = True
         self._chart_tab.load(self._item, quote=self._quote)
 
-    def _ensure_tab_data(self, index: int) -> None:
+    def _ensure_tab_data(self, index: int, *, sync_financials: bool = False) -> None:
         scope = _TAB_SCOPES.get(index)
         if scope is None or scope in self._loaded_scopes:
             return
-        self._start_load(scope=scope, sync_financials=False)
+        self._start_load(scope=scope, sync_financials=sync_financials)
 
     def _refresh_current_tab(self) -> None:
         self._refresh_live_quote()
@@ -513,7 +513,10 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             return
 
         self._loading_scope = scope
-        status = _SCOPE_STATUS.get(scope, "正在加载…")
+        if scope == "overview" and sync_financials:
+            status = "正在加载概览并同步财报…"
+        else:
+            status = _SCOPE_STATUS.get(scope, "正在加载…")
         self._status_label.setText(status)
         set_panel_status_loading(self._status_label, True)
         self._refresh_btn.setEnabled(False)
@@ -547,6 +550,10 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             base.technical = partial.technical
             base.relative_returns = partial.relative_returns
             base.overview_dashboard = partial.overview_dashboard
+            if partial.financial_bundle is not None:
+                base.financial_bundle = partial.financial_bundle
+            if partial.financial_sync is not None:
+                base.financial_sync = partial.financial_sync
         elif scope == "sector":
             base.sector = partial.sector
             base.valuation = partial.valuation
@@ -619,7 +626,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
         warnings = [item for item in partial.warnings if item]
         status = "加载完成"
-        if partial.scope == "financial" and partial.financial_sync is not None:
+        if partial.financial_sync is not None:
             status = partial.financial_sync.message or status
         if warnings:
             status += f" · {'；'.join(warnings[:2])}"

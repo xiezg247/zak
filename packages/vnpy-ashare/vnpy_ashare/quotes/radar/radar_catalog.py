@@ -123,7 +123,6 @@ RADAR_CARD_GROUP: dict[str, RadarGroupKey] = {
     "position_risk": "portfolio",
     "outlook_watch": "signals",
     "outlook_hold": "signals",
-    "outlook_avoid": "signals",
     "outlook_scenario": "forecast",
     "outlook_predict": "forecast",
 }
@@ -165,7 +164,6 @@ RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
     RadarCardSpec(id="position_risk", title="持仓·风控", category="watchlist", auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
     RadarCardSpec(id="outlook_watch", title="未来·关注", category="outlook", mode="predictive"),
     RadarCardSpec(id="outlook_hold", title="未来·可持", category="outlook", mode="predictive"),
-    RadarCardSpec(id="outlook_avoid", title="未来·回避", category="outlook", mode="predictive"),
     RadarCardSpec(id="outlook_scenario", title="未来·情景", category="outlook", mode="predictive", has_task_variants=True),
     RadarCardSpec(id="outlook_predict", title="未来·预测", category="outlook", mode="predictive", has_task_variants=True),
 )

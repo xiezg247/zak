@@ -29,7 +29,6 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enric
 OUTLOOK_CARD_VARIANTS: dict[str, str] = {
     "outlook_watch": "watch_next",
     "outlook_hold": "hold_next",
-    "outlook_avoid": "avoid_next",
 }
 
 OUTLOOK_FORCE_RECOMPUTE_CARD_IDS: frozenset[str] = frozenset(
@@ -169,11 +168,7 @@ def load_outlook_horizon(
     idle_subtitle = (
         f"约 {recent_days} 日统计情景 · 策略 {strategy_label} · 非目标价"
         if scenario_mode
-        else (
-            f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 回避信号"
-            if resolved_variant == "avoid_next"
-            else f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 非价格预测"
-        )
+        else f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 非价格预测"
     )
 
     if not force_recompute:
@@ -243,10 +238,7 @@ def build_outlook_ai_prompt(payload: dict[str, RadarCardData], *, card_id: str) 
             lines.append(f"- {row.name}({row.symbol}) {row.metric_label} {row.metric_value} · {row.sub_label} {row.sub_value}")
         return "\n".join(lines)
     variant = OUTLOOK_CARD_VARIANTS.get(card_id, "watch_next")
-    if variant == "avoid_next":
-        mode = "未来几日回避"
-        action_hint = "给出不宜关注/不宜介入的情形"
-    elif variant == "watch_next":
+    if variant == "watch_next":
         mode = "未来几日关注"
         action_hint = "给出不宜关注/不宜持有的情形"
     else:

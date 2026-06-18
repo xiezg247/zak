@@ -34,7 +34,6 @@ def test_radar_layout_sections_and_modes() -> None:
     assert {spec.id for spec in predictive} == {
         "outlook_watch",
         "outlook_hold",
-        "outlook_avoid",
         "outlook_scenario",
         "outlook_predict",
     }

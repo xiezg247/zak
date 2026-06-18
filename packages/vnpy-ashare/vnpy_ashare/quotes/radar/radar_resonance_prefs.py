@@ -17,7 +17,6 @@ DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
     "leader_pick": 2.5,
     "outlook_watch": 0.75,
     "outlook_hold": 0.75,
-    "outlook_avoid": 0.5,
     "outlook_scenario": 0.75,
     "outlook_predict": 1.0,
 }
@@ -32,7 +31,6 @@ _WEIGHT_LABELS: dict[str, str] = {
     "leader_pick": "选股·龙头",
     "outlook_watch": "未来·关注",
     "outlook_hold": "未来·可持",
-    "outlook_avoid": "未来·回避",
     "outlook_scenario": "未来·情景",
     "outlook_predict": "未来·预测",
 }

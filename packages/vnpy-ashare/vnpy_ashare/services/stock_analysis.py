@@ -73,7 +73,7 @@ class StockAnalysisService(BaseService):
             quote_summary=quote_summary or {},
         )
         if scope == "overview":
-            self._load_overview(payload)
+            self._load_overview(payload, sync_financials=sync_financials)
         elif scope == "sector":
             self._load_sector(payload, stock_name=stock_name)
         elif scope == "concept":
@@ -96,10 +96,13 @@ class StockAnalysisService(BaseService):
             raise ValueError(f"未知 scope: {scope}")
         return payload
 
-    def _load_overview(self, payload: StockAnalysisPayload) -> None:
+    def _load_overview(self, payload: StockAnalysisPayload, *, sync_financials: bool = False) -> None:
         analysis = self.engine.analysis_service
         payload.technical = analysis.technical_snapshot(payload.vt_symbol)
         payload.relative_returns = compute_relative_returns(self.engine, payload.vt_symbol)
+        # 在仪表盘构建前同步财报，确保数据就绪检查能看到最新数据
+        if sync_financials:
+            self._load_financial(payload, sync_financials=True)
         payload.overview_dashboard = build_overview_dashboard(
             self.engine,
             payload.vt_symbol,
