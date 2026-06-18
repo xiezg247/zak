@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_common.ai.protocol import SymbolRef
+from vnpy_common.ai.protocol import SymbolRef, WatchlistToggleResult
 from vnpy_common.ai.symbol_navigation import get_symbol_navigation
 from vnpy_common.ui.feedback import page_notify
 from vnpy_llm.ui.panel.symbol_links import normalize_vt_symbol, parse_symbol_href
@@ -159,12 +159,8 @@ class AssistantSymbolActions:
             return None
         return nav.parse(vt_symbol, name=name)
 
-    def _notify_result(self, result: str) -> None:
-        if ":" not in result:
-            page_notify(self._panel, result, level="warning")
-            return
-        level, message = result.split(":", 1)
-        page_notify(self._panel, message, level=level)
+    def _notify_result(self, result: WatchlistToggleResult) -> None:
+        page_notify(self._panel, result.message, level=result.level)
 
     def _build_menu(self, item: SymbolRef, *, body: str = "") -> QtWidgets.QMenu:
         menu = QtWidgets.QMenu(self._panel)

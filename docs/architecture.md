@@ -149,6 +149,45 @@ Service 写入 `context_store`（线程安全内存）：
 
 UI / Worker 经 Service 写上下文；Skills / LLM 只读。Agent Skill（`SKILL.md`）在 System Prompt 中仅注入名称与简介，详细说明通过 `read_skill_file` 按需加载。
 
+### LLM ↔ ashare 桥接
+
+`vnpy_llm` **不直接 import** `vnpy_ashare`；跨包能力经 `vnpy_common` 只读端口接入，ashare 侧在终端启动时注册实现（`vnpy_ashare.app.bootstrap.install_shared_bridges()`，由 `launcher.py` 调用）。
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ vnpy_ashare（实现层）                                            │
+│  context/store · market_overview · save_from_ai · team_report   │
+│  symbol_navigation · floating_actions · chart_style refresh      │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │ register @ bootstrap
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ vnpy_common（协议 + 端口）                                       │
+│  ai/protocol.py      AiContextData · SymbolRef · QuickAction …   │
+│  ai/access.py        get_ai_context · build_market_ai_prompt …   │
+│  ai/symbol_navigation.py   SymbolNavigationPort · get/register   │
+└───────────────────────────────┬─────────────────────────────────┘
+                                │ 只读调用
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│ vnpy_llm（消费层）                                               │
+│  gateway/ · routing/prompts · ui/panel/chat · symbol_actions   │
+│  graph/team_symbol · symbol_links                                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| 端口 | 注册 API（ashare → common） | 典型读侧（llm） |
+|------|----------------------------|-----------------|
+| 上下文 | `register_context_store` | `get_ai_context`、`register_context_listener` |
+| 选股摘要 | `register_screening_accessor` | Skill / 悬浮球解读 |
+| 输入补全 | `register_stock_completion_builder` | `build_stock_completion_items` |
+| 快捷动作 | `register_panel_actions_builder` | `build_quick_actions_for_panel` |
+| 市场 Prompt | `register_market_prompt_builder` | `build_page_prompt` → `build_market_ai_prompt` |
+| 团队研报 | `register_team_report_bridge` | `_finalize_team_report` 落库 + `zak://team-report` |
+| 标的跳转 | `register_symbol_navigation` | 链接点击、右键菜单、笔记保存、团队 symbol 解析 |
+
+`LlmEngine` 初始化时会调用 `warn_missing_ai_bridges()`：桥未注册时打 `warning`，功能降级为「需要 vnpy-ashare 插件」，不阻断启动。业务说明见 [trading-system.md §9](./trading-system.md#9-ai-能力深化)。
+
 ### AgentGateway 控制面
 
 编排入口为 `vnpy_llm.gateway.AgentGateway`；`LlmEngine` 仅作 VeighNa 插件壳与 Qt 信号桥接。

@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, cast
 
-from vnpy.trader.constant import Exchange
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.ai.context.context_stock import context_stock_from_ai
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.ai.context.team_symbol import normalize_symbol_code, resolve_team_symbol
 from vnpy_ashare.app.engine_access import get_watchlist_service
@@ -28,7 +28,7 @@ from vnpy_common.ai.access import get_ai_context
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
 from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
-from vnpy_common.ai.protocol import StockCompletionItem, SymbolRef
+from vnpy_common.ai.protocol import StockCompletionItem, SymbolRef, WatchlistToggleResult
 from vnpy_common.ai.symbol_navigation import SymbolNavigationPort
 
 
@@ -77,18 +77,15 @@ class AshareSymbolNavigation:
         )
 
     def resolve_context_symbol(self) -> SymbolRef | None:
-        data = get_ai_context()
-        symbol = str(data.symbol or "").strip()
-        exchange = str(data.exchange or "").strip()
-        if not symbol or not exchange:
+        resolved = context_stock_from_ai(get_ai_context())
+        if resolved is None:
             return None
-        if exchange not in Exchange.__members__:
-            return None
+        symbol, exchange, name = resolved
         return SymbolRef(
             symbol=symbol,
-            exchange=exchange,
-            name=str(data.name or "").strip(),
-            vt_symbol=f"{symbol}.{exchange}",
+            exchange=exchange.name,
+            name=name,
+            vt_symbol=f"{symbol}.{exchange.name}",
         )
 
     def watchlist_contains(self, item: SymbolRef) -> bool:
@@ -132,26 +129,25 @@ class AshareSymbolNavigation:
             ),
         )
 
-    def toggle_watchlist(self, item: SymbolRef, *, main_engine: Any) -> str:
-        """返回 notify level：success / info / warning / error。"""
+    def toggle_watchlist(self, item: SymbolRef, *, main_engine: Any) -> WatchlistToggleResult:
         service = get_watchlist_service(main_engine)
         if service is None:
-            return "error:自选服务未就绪"
+            return WatchlistToggleResult(level="error", message="自选服务未就绪")
         stock = parse_stock_symbol(item.vt_symbol)
         if stock is None:
-            return "error:无法解析标的"
+            return WatchlistToggleResult(level="error", message="无法解析标的")
         if watchlist_contains(stock.symbol, stock.exchange):
             if service.remove(stock.symbol, stock.exchange):
-                return f"success:已移出自选：{item.vt_symbol}"
-            return "warning:移出自选失败"
+                return WatchlistToggleResult(level="success", message=f"已移出自选：{item.vt_symbol}")
+            return WatchlistToggleResult(level="warning", message="移出自选失败")
         reason = service.add_failure_reason(stock.symbol, stock.exchange)
         if reason == "duplicate":
-            return f"info:已在自选中：{item.vt_symbol}"
+            return WatchlistToggleResult(level="info", message=f"已在自选中：{item.vt_symbol}")
         if reason == "full":
-            return "warning:自选池已满"
+            return WatchlistToggleResult(level="warning", message="自选池已满")
         if service.add(stock.symbol, stock.exchange, stock.name):
-            return f"success:已加入自选：{item.vt_symbol}"
-        return "warning:加入自选失败"
+            return WatchlistToggleResult(level="success", message=f"已加入自选：{item.vt_symbol}")
+        return WatchlistToggleResult(level="warning", message="加入自选失败")
 
     def open_reference_peer(self, item: SymbolRef, *, main_engine: Any, parent: Any) -> None:
         service = get_watchlist_service(main_engine)

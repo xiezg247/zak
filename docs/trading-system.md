@@ -192,7 +192,7 @@
 
 > **现状**：自选信号区默认 `AshareDoubleMaStrategy`（中线倾向）。`AshareShortBreakoutStrategy` 等四套策略**均已实现**（见 [策略配置方案](./strategy-profiles.md)），通过 Profile 下拉切换；`ultra_short` Profile 已绑定隔日退出 overlay + `evaluate_overnight_exit` AI 工具。隔日规则引擎由 `overnight_exit_rules` 统一 quote/分 K 路径；持仓区展示 `exit_rules` 列（触发/临近/未触发）。雷达「未来·展望」按策略 key 隔离缓存，切换策略会强制重算。
 
-**工程（2026-06）**：自选/持仓信号磁盘缓存与雷达展望缓存迁至 `storage/cache/`；app_db 与各 store 复用 `sqlite_cache_session`；`vnpy_llm` 在 launcher / 主窗口懒加载；策略 whitelist 与分 K 模式映射收敛至 `strategies/registry.py`。
+**工程（2026-06）**：自选/持仓信号磁盘缓存与雷达展望缓存迁至 `storage/cache/`；app_db 与各 store 复用 `sqlite_cache_session`；`vnpy_llm` 在 launcher / 主窗口懒加载，业务跳转经 `vnpy_common` LLM 桥接（见 §9）；策略 whitelist 与分 K 模式映射收敛至 `strategies/registry.py`。
 
 ### 4.2 隔日卖点铁则（规则引擎）
 
@@ -352,6 +352,8 @@ TradingPlan (date)
 ## 9. AI 能力深化
 
 AI 不编造价格；须走 Skill / MCP 与 `context_store`。
+
+**LLM 桥接**：`vnpy_llm` 不直接依赖 `vnpy_ashare`，经 `vnpy_common` 只读端口接入——`ai/access.py`（上下文、市场页 prompt、投研研报落库）与 `ai/symbol_navigation.py`（标的跳转、笔记保存、团队 symbol 解析）；`vnpy_ashare.app.bootstrap.install_shared_bridges()` 在终端启动时注册 ashare 侧实现。
 
 ### 9.1 意图路由扩展
 

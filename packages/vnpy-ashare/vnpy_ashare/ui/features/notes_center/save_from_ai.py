@@ -10,6 +10,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.ai.context.context_stock import context_stock_from_ai
 from vnpy_ashare.app.engine_access import get_note_service
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.services.note import build_report_context_json
@@ -29,14 +30,11 @@ class ContextStock(FrozenModel):
 
 
 def resolve_context_stock() -> ContextStock | None:
-    data = get_ai_context()
-    symbol = str(data.symbol or "").strip()
-    exchange = str(data.exchange or "").strip()
-    if not symbol or not exchange:
+    resolved = context_stock_from_ai(get_ai_context())
+    if resolved is None:
         return None
-    if exchange not in Exchange.__members__:
-        return None
-    return ContextStock(symbol=symbol, exchange=exchange, name=str(data.name or "").strip())
+    symbol, exchange, name = resolved
+    return ContextStock(symbol=symbol, exchange=exchange.name, name=name)
 
 
 def default_ai_report_title(stock: ContextStock, *, turn_count: int = 1) -> str:

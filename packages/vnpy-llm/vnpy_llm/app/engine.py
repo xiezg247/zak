@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Iterator
 
 from vnpy.event import EventEngine
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
+
+from vnpy_common.ai.access import warn_missing_ai_bridges
 
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.chat.store import ChatMessage, ChatSession, ChatStore
@@ -21,6 +24,8 @@ from vnpy_mcp.app.engine import McpEngine
 from vnpy_skills.app.engine import SkillEngine
 
 APP_NAME = "Llm"
+
+_logger = logging.getLogger(__name__)
 
 
 class LlmSignals(QtCore.QObject):
@@ -48,6 +53,7 @@ class LlmEngine(BaseEngine):
         self.signals = LlmSignals()
         self._gateway = AgentGateway(main_engine)
         self._gateway.subscribe(self._on_gateway_event)
+        warn_missing_ai_bridges(_logger)
         self.register_event()
 
     @property

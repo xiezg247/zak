@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable, Iterator
 from typing import Any, cast
 
@@ -35,6 +36,8 @@ from vnpy_mcp.app.engine import McpEngine
 from vnpy_skills.app.engine import SkillEngine
 
 EventListener = Callable[[AgentEvent], None]
+
+_logger = logging.getLogger(__name__)
 
 
 class AgentGateway:
@@ -294,8 +297,9 @@ class AgentGateway:
                 vt = str(prefetch.get("symbol") or symbol)
                 href = team_report_href(report_id, vt)
                 return f"{content}\n\n📁 [打开投研研报 #{report_id}]({href})"
+            _logger.warning("团队研报落库未成功：symbol=%s", symbol)
         except Exception:
-            pass
+            _logger.warning("团队研报落库失败", exc_info=True)
         return content
 
     def _team_prefetch_provider(self, symbol: str) -> dict[str, Any]:

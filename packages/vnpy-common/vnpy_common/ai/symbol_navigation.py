@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Protocol, runtime_checkable
 
-from vnpy_common.ai.protocol import StockCompletionItem, SymbolRef
+from vnpy_common.ai.protocol import StockCompletionItem, SymbolRef, WatchlistToggleResult
 
 
 @runtime_checkable
@@ -39,7 +39,7 @@ class SymbolNavigationPort(Protocol):
 
     def open_backtest(self, item: SymbolRef, *, event_engine: Any) -> None: ...
 
-    def toggle_watchlist(self, item: SymbolRef, *, main_engine: Any) -> str: ...
+    def toggle_watchlist(self, item: SymbolRef, *, main_engine: Any) -> WatchlistToggleResult: ...
 
     def open_reference_peer(self, item: SymbolRef, *, main_engine: Any, parent: Any) -> None: ...
 

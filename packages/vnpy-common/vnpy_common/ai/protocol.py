@@ -64,3 +64,10 @@ class SymbolRef(FrozenModel):
     exchange: str = Field(description="交易所枚举名，如 SSE")
     name: str = Field(default="", description="证券名称")
     vt_symbol: str = Field(description="VeighNa 合约代码")
+
+
+class WatchlistToggleResult(FrozenModel):
+    """自选 toggle 操作结果（供 UI notify）。"""
+
+    level: str = Field(description="success / info / warning / error")
+    message: str = Field(description="用户可见文案")

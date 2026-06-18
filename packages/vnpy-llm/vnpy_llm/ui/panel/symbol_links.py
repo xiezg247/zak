@@ -113,6 +113,10 @@ def _replace_bare_code(match: re.Match[str]) -> str:
 def _normalize_vt_symbol_fallback(text: str) -> str | None:
     upper = text.upper()
     if "." not in upper:
+        if len(upper) == 6 and upper.isdigit():
+            exchange = _infer_exchange_from_bare_code(upper)
+            if exchange is not None:
+                return f"{upper}.{exchange}"
         return None
     code, suffix = upper.rsplit(".", 1)
     if len(code) != 6 or not code.isdigit():
@@ -129,3 +133,16 @@ def _normalize_vt_symbol_fallback(text: str) -> str | None:
     if exchange is None:
         return None
     return f"{code}.{exchange}"
+
+
+def _infer_exchange_from_bare_code(code: str) -> str | None:
+    """与 domain.symbols.parse_stock_symbol 首位规则对齐。"""
+    if len(code) != 6 or not code.isdigit():
+        return None
+    if code.startswith(("5", "6", "9")):
+        return "SSE"
+    if code.startswith(("0", "3")):
+        return "SZSE"
+    if code.startswith(("4", "8")):
+        return "BSE"
+    return None

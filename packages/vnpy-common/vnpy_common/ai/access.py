@@ -113,3 +113,30 @@ def team_report_href(report_id: int, vt_symbol: str) -> str:
     if _team_report_href is None:
         return ""
     return _team_report_href(report_id, vt_symbol)
+
+
+def missing_ai_bridges() -> list[str]:
+    """返回未注册的 ashare 桥接名称（空列表表示就绪）。"""
+    from vnpy_common.ai.symbol_navigation import get_symbol_navigation
+
+    missing: list[str] = []
+    if _get_ai_context is None:
+        missing.append("context_store")
+    if _stock_completion_builder is None:
+        missing.append("stock_completion")
+    if _panel_actions_builder is None:
+        missing.append("panel_actions")
+    if _market_prompt_builder is None:
+        missing.append("market_prompt")
+    if _persist_team_report is None:
+        missing.append("team_report")
+    if get_symbol_navigation() is None:
+        missing.append("symbol_navigation")
+    return missing
+
+
+def warn_missing_ai_bridges(logger: Any) -> None:
+    """开发态提示：ashare 桥未注册时 LLM 部分能力降级。"""
+    missing = missing_ai_bridges()
+    if missing:
+        logger.warning("vnpy-ashare 桥接未注册，部分 AI 能力将降级：%s", ", ".join(missing))

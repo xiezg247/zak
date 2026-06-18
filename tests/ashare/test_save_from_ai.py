@@ -52,6 +52,16 @@ class SaveFromAiTests(unittest.TestCase):
         assert stock is not None
         self.assertEqual(stock.vt_symbol, "600519.SSE")
 
+    def test_resolve_context_stock_cn_exchange(self) -> None:
+        with patch(
+            "vnpy_ashare.ui.features.notes_center.save_from_ai.get_ai_context",
+            return_value=AiContextData(page="自选", symbol="600519", exchange="上交所", name="茅台"),
+        ):
+            stock = resolve_context_stock()
+        self.assertIsNotNone(stock)
+        assert stock is not None
+        self.assertEqual(stock.vt_symbol, "600519.SSE")
+
     def test_save_journal(self) -> None:
         stock = ContextStock(symbol="600519", exchange="SSE", name="茅台")
         with patch(
