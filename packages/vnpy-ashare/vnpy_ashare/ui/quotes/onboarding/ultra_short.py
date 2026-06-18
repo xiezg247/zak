@@ -89,6 +89,9 @@ def maybe_show_ultra_short_onboarding(page: QuotesPage) -> None:
             parts.append(f"已创建分组：{'、'.join(created)}")
         page.status_label.setText(" · ".join(parts))
         page_notify(page, parts[0], level="success")
+        feature = getattr(page, "_watchlist_feature", None)
+        if feature is not None:
+            feature.apply_layout_preset("intraday")
 
     QtCore.QTimer.singleShot(600, _show)
 

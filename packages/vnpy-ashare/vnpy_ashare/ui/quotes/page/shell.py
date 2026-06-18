@@ -130,7 +130,12 @@ class QuotesPageShell:
 
         page.view_table_button = None
         page.view_multiview_button = None
-        if page.config.show_watchlist_multiview:
+        watchlist_feature = getattr(page, "_watchlist_feature", None)
+        if watchlist_feature is not None:
+            view_buttons = watchlist_feature.create_view_mode_buttons()
+            if view_buttons is not None:
+                page.view_table_button, page.view_multiview_button = view_buttons
+        elif page.config.show_watchlist_multiview:
             page.view_table_button = QtWidgets.QPushButton("表格", page)
             page.view_table_button.setObjectName("SecondaryButton")
             page.view_table_button.setCheckable(True)
@@ -284,6 +289,8 @@ class QuotesPageShell:
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.setSpacing(8)
+        if watchlist_feature is not None:
+            watchlist_feature.prepend_toolbar_widgets(toolbar)
         toolbar.addWidget(page.search_edit)
         if page.config.show_watchlist_multiview and page.view_table_button is not None:
             toolbar.addWidget(page.view_table_button)
@@ -540,63 +547,66 @@ class QuotesPageShell:
             center_layout.addWidget(toolbar_host)
             if page._stats_label is not None:
                 center_layout.addWidget(page._stats_label)
-            page.watchlist_group_tab_bar = None
-            if page.config.show_watchlist_groups:
-                page.watchlist_group_tab_bar = WatchlistGroupTabBar(center_widget)
-                center_layout.addWidget(page.watchlist_group_tab_bar)
-            page._market_table_host = MarketTableHost(
-                page.market_table,
-                external_scrollbar=False,
-            )
-            center_primary: QtWidgets.QWidget = page._market_table_host
-            page._center_view_stack = None
-            page.multiview_board = None
-            if page.config.show_watchlist_multiview:
-                page.multiview_board = WatchlistMultiViewBoard(page)
-                page._center_view_stack = QtWidgets.QStackedWidget()
-                page._center_view_stack.setObjectName("WatchlistCenterViewStack")
-                page._center_view_stack.addWidget(page._market_table_host)
-                page._center_view_stack.addWidget(page.multiview_board)
-                center_primary = page._center_view_stack
-            use_center_split = page.config.show_watchlist_signals or page.config.show_watchlist_positions or page.config.show_run_output_panel
-            if use_center_split:
-                center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
-                configure_center_splitter(center_split)
-                center_split.addWidget(center_primary)
-                split_index = 1
-                if page.config.show_watchlist_signals:
-                    page.signal_panel = WatchlistSignalPanel(page)
-                    center_split.addWidget(page.signal_panel)
-                    split_index += 1
-                if page.config.show_watchlist_positions:
-                    page.position_panel = WatchlistPositionPanel(page)
-                    center_split.addWidget(page.position_panel)
-                    split_index += 1
-                if page.config.show_run_output_panel:
-                    run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
-                    page.run_output_panel = TaskRunOutputPanel(
-                        title="运行输出",
-                        log_placeholder="暂无执行日志",
-                        object_name=f"{run_prefix}RunOutputPanel",
-                        section_label_object_name=f"{run_prefix}SectionLabel",
-                        summary_object_name=f"{run_prefix}RunSummary",
-                        log_view_object_name=f"{run_prefix}RunLogView",
-                        expanded=load_run_output_expanded(page.page_name),
-                    )
-                    page.run_output_panel.expansion_changed.connect(lambda expanded: on_run_output_expansion_changed(page, expanded))
-                    center_split.addWidget(page.run_output_panel)
-                page._center_splitter = center_split
-                center_layout.addWidget(center_split, stretch=1)
-                bind_center_splitter_persistence(page)
-                QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
+            if watchlist_feature is not None:
+                watchlist_feature.build_center_layout(center_layout)
             else:
-                center_layout.addWidget(center_primary, stretch=1)
-            if page.config.show_watchlist_multiview:
-                page._wire_multiview()
-            if page.config.show_watchlist_signals:
-                page._wire_signal_panel()
-            if page.config.show_watchlist_positions:
-                page._wire_position_panel()
+                page.watchlist_group_tab_bar = None
+                if page.config.show_watchlist_groups:
+                    page.watchlist_group_tab_bar = WatchlistGroupTabBar(center_widget)
+                    center_layout.addWidget(page.watchlist_group_tab_bar)
+                page._market_table_host = MarketTableHost(
+                    page.market_table,
+                    external_scrollbar=False,
+                )
+                center_primary: QtWidgets.QWidget = page._market_table_host
+                page._center_view_stack = None
+                page.multiview_board = None
+                if page.config.show_watchlist_multiview:
+                    page.multiview_board = WatchlistMultiViewBoard(page)
+                    page._center_view_stack = QtWidgets.QStackedWidget()
+                    page._center_view_stack.setObjectName("WatchlistCenterViewStack")
+                    page._center_view_stack.addWidget(page._market_table_host)
+                    page._center_view_stack.addWidget(page.multiview_board)
+                    center_primary = page._center_view_stack
+                use_center_split = page.config.show_watchlist_signals or page.config.show_watchlist_positions or page.config.show_run_output_panel
+                if use_center_split:
+                    center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+                    configure_center_splitter(center_split)
+                    center_split.addWidget(center_primary)
+                    split_index = 1
+                    if page.config.show_watchlist_signals:
+                        page.signal_panel = WatchlistSignalPanel(page)
+                        center_split.addWidget(page.signal_panel)
+                        split_index += 1
+                    if page.config.show_watchlist_positions:
+                        page.position_panel = WatchlistPositionPanel(page)
+                        center_split.addWidget(page.position_panel)
+                        split_index += 1
+                    if page.config.show_run_output_panel:
+                        run_prefix = "Watchlist" if page.page_name == "自选" else "Local"
+                        page.run_output_panel = TaskRunOutputPanel(
+                            title="运行输出",
+                            log_placeholder="暂无执行日志",
+                            object_name=f"{run_prefix}RunOutputPanel",
+                            section_label_object_name=f"{run_prefix}SectionLabel",
+                            summary_object_name=f"{run_prefix}RunSummary",
+                            log_view_object_name=f"{run_prefix}RunLogView",
+                            expanded=load_run_output_expanded(page.page_name),
+                        )
+                        page.run_output_panel.expansion_changed.connect(lambda expanded: on_run_output_expansion_changed(page, expanded))
+                        center_split.addWidget(page.run_output_panel)
+                    page._center_splitter = center_split
+                    center_layout.addWidget(center_split, stretch=1)
+                    bind_center_splitter_persistence(page)
+                    QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
+                else:
+                    center_layout.addWidget(center_primary, stretch=1)
+                if page.config.show_watchlist_multiview:
+                    page._wire_multiview()
+                if page.config.show_watchlist_signals:
+                    page._wire_signal_panel()
+                if page.config.show_watchlist_positions:
+                    page._wire_position_panel()
             if page.config.show_stock_notes:
                 page._wire_stock_note_panel()
             splitter.addWidget(center_widget)

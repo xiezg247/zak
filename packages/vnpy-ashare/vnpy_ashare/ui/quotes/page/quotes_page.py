@@ -55,6 +55,7 @@ from vnpy_ashare.ui.quotes.controllers.table import TableController
 from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
 from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID, MarketRankFeature
 from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
+from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
 from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_refresh import refresh_emotion_cycle_chip
 from vnpy_ashare.ui.quotes.market_overview.risk_gate_refresh import refresh_risk_gate_chip
@@ -190,6 +191,9 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._market_industry_filter_listener = None
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
+        self._watchlist_feature: WatchlistPageFeature | None = (
+            WatchlistPageFeature(self) if page_name == "自选" else None
+        )
         self._stock_notes = StockNotesFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
         self._market_sort_column: str | None = None
@@ -297,10 +301,13 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
 
     def _init_ui(self) -> None:
         self.watchlist_group_tab_bar = None
+        self.watchlist_pool_context_bar = None
         QuotesPageShell(self).build()
         if self.config.show_watchlist_groups:
             self._watchlist_groups = WatchlistGroupController(self)
             self._watchlist_groups.wire()
+        if self._watchlist_feature is not None:
+            self._watchlist_feature.wire()
 
     def activate(self) -> None:
         self._active = True
@@ -348,7 +355,9 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self._multiview.restore_view_mode()
         self._refresh_emotion_cycle_chip()
         self._refresh_risk_gate_chip()
-        if self.page_name == "自选":
+        if self._watchlist_feature is not None:
+            self._watchlist_feature.on_activate()
+        elif self.page_name == "自选":
             from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
 
             maybe_show_ultra_short_onboarding(self)

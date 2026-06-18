@@ -86,6 +86,9 @@ class WatchlistController:
             page.apply_filter()
         self.refresh_keys()
         page._update_action_buttons()
+        feature = getattr(page, "_watchlist_feature", None)
+        if feature is not None:
+            feature.refresh_context_bar()
 
     def add_selected(self) -> None:
         if not self._page.current_item:

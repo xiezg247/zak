@@ -8,7 +8,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.symbols.stock import StockItem
-from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord, load_watchlist_group_member_keys
+from vnpy_ashare.services.watchlist_short_term import find_short_term_observation_group_id
 from vnpy_ashare.trading.risk.gate import read_total_capital
 from vnpy_ashare.trading.risk.plan_position import format_group_position_tab_label, summarize_group_position
 from vnpy_ashare.ui.quotes.watchlist_groups.prefs import (
@@ -357,11 +357,28 @@ class WatchlistGroupController(QtCore.QObject):
         self._reload_member_keys()
         self.apply_display_stocks()
         self._page.status_label.setText(status)
+        feature = getattr(self._page, "_watchlist_feature", None)
+        if feature is not None:
+            feature.refresh_context_bar()
 
     def filtered_vt_symbols(self) -> tuple[str, ...] | None:
         if not self._active_group_id:
             return None
         return tuple(f"{symbol}.{exchange}" for symbol, exchange in sorted(self._member_keys))
+
+    def select_group_tab(self, group_id: str | None) -> None:
+        self._on_tab_selected(group_id or "")
+
+    def select_all_tab(self) -> None:
+        self.select_group_tab(None)
+
+    def select_observation_group_tab(self) -> None:
+        service = self._service()
+        if service is None:
+            return
+        group_id = find_short_term_observation_group_id(service)
+        if group_id is not None:
+            self.select_group_tab(group_id)
 
     def _sync_move_buttons(self) -> None:
         page = self._page
