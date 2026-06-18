@@ -17,7 +17,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
-    DEFAULT_SCREEN_TASK_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
     auto_refresh_card_ids,
@@ -71,10 +70,8 @@ class RadarController(QtCore.QObject):
         self._resonance_panel = resonance_panel
         self._card_workers: dict[str, RadarCardLoadWorker] = {}
         self._retired_workers: list[QtCore.QThread] = []
-        self._screen_task_variant = DEFAULT_SCREEN_TASK_VARIANT
         self._sector_variant = DEFAULT_SECTOR_VARIANT
         self._card_variants: dict[str, str] = {
-            "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
             "sector_theme": DEFAULT_SECTOR_VARIANT,
             "leader_pick": DEFAULT_LEADER_PICK_VARIANT,
             "discovery_limit_ladder": DEFAULT_LIMIT_LADDER_VARIANT,
@@ -182,7 +179,7 @@ class RadarController(QtCore.QObject):
         self._sync_resonance_tab_from_board()
         self._page._refresh_emotion_cycle_chip()
         self._page._refresh_risk_gate_chip()
-        self.refresh()
+        self.refresh_current_mode()
         self._start_auto_refresh()
         self._session_timer.start()
 
@@ -218,6 +215,10 @@ class RadarController(QtCore.QObject):
         timer = self._auto_refresh_timers.get(card_id)
         widget = self._board.card(card_id)
         if timer is None or widget is None:
+            return
+        spec = RADAR_CARD_BY_ID.get(card_id)
+        if spec is not None and spec.mode != self._board.current_mode():
+            timer.stop()
             return
         ms = widget.auto_refresh_ms()
         if ms <= 0 or not is_ashare_trading_session():
@@ -265,6 +266,8 @@ class RadarController(QtCore.QObject):
 
     def _on_board_mode_changed(self, mode: str) -> None:
         self._sync_resonance_tab_from_board(mode)
+        self._start_auto_refresh()
+        self.refresh_current_mode()
 
     def _sync_resonance_tab_from_board(self, mode: str | None = None) -> None:
         panel = self._resonance_panel
@@ -296,7 +299,6 @@ class RadarController(QtCore.QObject):
         self._cancel_card_worker(card_id)
         worker = RadarCardLoadWorker(
             card_id=card_id,
-            screen_task_variant=self._card_variants.get("screen_task", DEFAULT_SCREEN_TASK_VARIANT),
             sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
             leader_pick_variant=self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT),
             limit_ladder_variant=self._card_variants.get("discovery_limit_ladder", DEFAULT_LIMIT_LADDER_VARIANT),
@@ -462,9 +464,7 @@ class RadarController(QtCore.QObject):
         if not variant_key or card_id not in self._card_variants:
             return
         self._card_variants[card_id] = variant_key
-        if card_id == "screen_task":
-            self._screen_task_variant = variant_key
-        elif card_id == "sector_theme":
+        if card_id == "sector_theme":
             self._sector_variant = variant_key
         elif card_id == "outlook_scenario":
             pass

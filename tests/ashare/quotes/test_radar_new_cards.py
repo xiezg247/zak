@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
+from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID, RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_horizon_rules import filter_avoid_snapshots, matches_avoid
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row, load_market_emotion
 from vnpy_ashare.quotes.radar.radar_position_risk import load_position_risk
@@ -15,7 +15,7 @@ def test_is_stat_row() -> None:
 
 
 def test_load_market_emotion_without_snapshot() -> None:
-    spec = RADAR_CARD_BY_ID["market_emotion"]
+    spec = RadarCardSpec(id="market_emotion", title="盘面·环境", category="discovery")
     with patch(
         "vnpy_ashare.quotes.radar.radar_market_emotion.load_emotion_cycle_snapshot",
         return_value=None,

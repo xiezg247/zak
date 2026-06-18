@@ -51,8 +51,11 @@ def _sample_card(
 
 
 def test_load_screen_task_latest_empty(monkeypatch) -> None:
+    from vnpy_ashare.domain.radar.catalog import RadarCardSpec
+    from vnpy_ashare.quotes.radar.radar_loaders import load_screen_task
+
     monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_loaders.get_latest_run", lambda: None)
-    spec = RADAR_CARD_BY_ID["screen_task"]
+    spec = RadarCardSpec(id="screen_task", title="选股结果·任务", category="screen")
     data = load_screen_task(spec, variant="latest")
     assert data.rows == ()
     assert "暂无选股记录" in data.empty_message
@@ -107,7 +110,7 @@ def test_build_radar_resonance_list() -> None:
 
 def test_build_radar_resonance_list_by_mode() -> None:
     payload = {
-        "screen_task": _sample_card("screen_task", "选股", rows=(_sample_row("600000.SSE", name="浦发"),)),
+        "leader_pick": _sample_card("leader_pick", "选股", rows=(_sample_row("600000.SSE", name="浦发"),)),
         "discovery_volume_surge": _sample_card(
             "discovery_volume_surge",
             "发现",

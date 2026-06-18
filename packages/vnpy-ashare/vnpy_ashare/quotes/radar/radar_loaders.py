@@ -29,9 +29,7 @@ from vnpy_ashare.quotes.radar.radar_first_board import load_first_board
 from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt, load_outlook_horizon
 from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt, load_outlook_predict
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant, load_leader_pick
-from vnpy_ashare.quotes.radar.radar_limit_break import load_discovery_limit_break
 from vnpy_ashare.quotes.radar.radar_limit_ladder import LimitLadderVariant, load_limit_ladder
-from vnpy_ashare.quotes.radar.radar_market_emotion import load_market_emotion
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarCardData,
     RadarResonanceEntry,
@@ -527,11 +525,9 @@ def load_radar_card(
 
 _RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
     {
-        "market_emotion",
         "discovery_volume_surge",
         "discovery_moneyflow_intraday",
         "discovery_limit_ladder",
-        "discovery_limit_break",
         "watchlist_intraday",
         "position_risk",
         "sector_theme",
@@ -541,7 +537,6 @@ _RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
 
 _RADAR_QUOTE_CONTEXT_CARD_IDS = frozenset(
     {
-        "screen_task",
         "outlook_watch",
         "outlook_hold",
         "outlook_avoid",
@@ -566,10 +561,6 @@ def _load_radar_card_uncached(
     if spec is None:
         msg = f"未知雷达卡片：{card_id}"
         raise ValueError(msg)
-    if spec.id == "screen_task":
-        return load_screen_task(spec, variant=screen_task_variant)
-    if spec.id == "market_emotion":
-        return load_market_emotion(spec)
     if spec.id == "discovery_volume_surge":
         return load_discovery_volume_surge(spec)
     if spec.id == "discovery_moneyflow_intraday":
@@ -579,8 +570,6 @@ def _load_radar_card_uncached(
             return load_first_board(spec)
         ladder_variant: LimitLadderVariant = "by_sector" if limit_ladder_variant == "by_sector" else "by_height"
         return load_limit_ladder(spec, variant=ladder_variant)
-    if spec.id == "discovery_limit_break":
-        return load_discovery_limit_break(spec)
     if spec.id == "watchlist_intraday":
         return load_watchlist_intraday(spec)
     if spec.id == "position_risk":

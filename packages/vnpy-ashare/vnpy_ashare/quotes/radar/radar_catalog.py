@@ -67,11 +67,9 @@ RADAR_SECTOR_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
 )
 
 CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
-    "market_emotion": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_volume_surge": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_moneyflow_intraday": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_limit_ladder": RADAR_DISCOVERY_REFRESH_OPTIONS,
-    "discovery_limit_break": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "watchlist_intraday": RADAR_WATCHLIST_REFRESH_OPTIONS,
     "position_risk": RADAR_WATCHLIST_REFRESH_OPTIONS,
     "sector_theme": RADAR_SECTOR_REFRESH_OPTIONS,
@@ -79,7 +77,7 @@ CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
 
 
 RADAR_LAYOUT_SECTIONS: tuple[RadarLayoutSection, ...] = (
-    RadarLayoutSection(mode="statistical", title="盘面统计", hint="选股结果、盘中异动与板块主线，描述当前盘面"),
+    RadarLayoutSection(mode="statistical", title="盘面统计", hint="盘中异动与板块主线，描述当前盘面"),
     RadarLayoutSection(mode="predictive", title="前瞻展望", hint="策略信号与统计情景，非确定性预测"),
 )
 
@@ -91,11 +89,8 @@ SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
 )
 
 RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
-    RadarCardSpec(id="market_emotion", title="盘面·环境", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
-    RadarCardSpec(id="screen_task", title="选股结果·任务", category="screen", has_task_variants=True),
     RadarCardSpec(id="leader_pick", title="选股·龙头", category="screen", top_n=12),
     RadarCardSpec(id="discovery_limit_ladder", title="发现·连板梯队", category="discovery", has_task_variants=True, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
-    RadarCardSpec(id="discovery_limit_break", title="发现·炸板断板", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="discovery_volume_surge", title="发现·放量异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="discovery_moneyflow_intraday", title="发现·资金异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="sector_theme", title="板块·主线", category="sector", has_task_variants=True, auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS),
@@ -116,13 +111,6 @@ PREDICT_MODEL_VARIANTS: tuple[RadarVariant, ...] = (
 DEFAULT_PREDICT_MODEL_VARIANT = "auto"
 
 DEFAULT_SCENARIO_VARIANT = "scenario_bull"
-
-SCREEN_TASK_VARIANTS: tuple[RadarVariant, ...] = (
-    RadarVariant(key="latest", label="最新结果"),
-    RadarVariant(key="scheduled_intraday", label="盘中任务"),
-    RadarVariant(key="scheduled_post_close", label="盘后任务"),
-    RadarVariant(key="strategy", label="条件选股"),
-)
 
 SECTOR_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant(key="leaders_tiered", label="行业龙一"),
@@ -147,7 +135,6 @@ DEFAULT_LEADER_PICK_VARIANT = "mainline"
 DEFAULT_LIMIT_LADDER_VARIANT = "by_height"
 
 CARD_VARIANTS: dict[str, tuple[RadarVariant, ...]] = {
-    "screen_task": SCREEN_TASK_VARIANTS,
     "sector_theme": SECTOR_VARIANTS,
     "leader_pick": LEADER_PICK_VARIANTS,
     "discovery_limit_ladder": LIMIT_LADDER_VARIANTS,
@@ -180,7 +167,6 @@ def variants_for_card(card_id: str) -> tuple[RadarVariant, ...]:
 
 def default_variant_for_card(card_id: str) -> str:
     defaults = {
-        "screen_task": DEFAULT_SCREEN_TASK_VARIANT,
         "sector_theme": DEFAULT_SECTOR_VARIANT,
         "leader_pick": DEFAULT_LEADER_PICK_VARIANT,
         "discovery_limit_ladder": DEFAULT_LIMIT_LADDER_VARIANT,

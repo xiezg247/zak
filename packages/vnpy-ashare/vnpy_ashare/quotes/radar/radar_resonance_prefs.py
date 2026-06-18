@@ -8,16 +8,13 @@ _SETTINGS = get_settings()
 _KEY_PREFIX = "quotes/radar/resonance_weight/"
 
 DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
-    "market_emotion": 0.0,
     "discovery_volume_surge": 2.0,
     "discovery_moneyflow_intraday": 2.0,
     "discovery_limit_ladder": 2.0,
-    "discovery_limit_break": 0.5,
     "watchlist_intraday": 1.5,
     "position_risk": 1.0,
     "sector_theme": 1.5,
     "leader_pick": 2.5,
-    "screen_task": 1.0,
     "outlook_watch": 0.75,
     "outlook_hold": 0.75,
     "outlook_avoid": 0.5,
@@ -26,16 +23,13 @@ DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
 }
 
 _WEIGHT_LABELS: dict[str, str] = {
-    "market_emotion": "盘面·环境",
     "discovery_volume_surge": "发现·放量异动",
     "discovery_moneyflow_intraday": "发现·资金异动",
     "discovery_limit_ladder": "发现·连板梯队",
-    "discovery_limit_break": "发现·炸板断板",
     "watchlist_intraday": "自选·异动",
     "position_risk": "持仓·风控",
     "sector_theme": "板块·主线",
     "leader_pick": "选股·龙头",
-    "screen_task": "选股结果·任务",
     "outlook_watch": "未来·关注",
     "outlook_hold": "未来·可持",
     "outlook_avoid": "未来·回避",
@@ -80,7 +74,6 @@ SHORT_TERM_RADAR_RESONANCE_WEIGHTS: dict[str, float] = {
     "watchlist_intraday": 1.25,
     "sector_theme": 1.5,
     "leader_pick": 3.0,
-    "screen_task": 0.75,
     "outlook_watch": 0.5,
     "outlook_hold": 0.5,
     "outlook_scenario": 0.5,

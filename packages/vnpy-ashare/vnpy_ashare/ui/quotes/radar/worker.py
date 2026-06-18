@@ -17,7 +17,6 @@ class RadarCardLoadWorker(QtCore.QThread):
         self,
         *,
         card_id: str,
-        screen_task_variant: str,
         sector_variant: str,
         leader_pick_variant: str,
         limit_ladder_variant: str,
@@ -29,7 +28,6 @@ class RadarCardLoadWorker(QtCore.QThread):
     ) -> None:
         super().__init__(parent)
         self._card_id = card_id
-        self._screen_task_variant = screen_task_variant
         self._sector_variant = sector_variant
         self._leader_pick_variant = leader_pick_variant
         self._limit_ladder_variant = limit_ladder_variant
@@ -55,7 +53,6 @@ class RadarCardLoadWorker(QtCore.QThread):
             else:
                 data = load_radar_card(
                     self._card_id,
-                    screen_task_variant=self._screen_task_variant,
                     sector_variant=self._sector_variant,
                     leader_pick_variant=self._leader_pick_variant,
                     limit_ladder_variant=self._limit_ladder_variant,

@@ -5,7 +5,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     RADAR_CARD_SPECS,
     RADAR_GRID_COLUMNS,
     RADAR_LAYOUT_SECTIONS,
-    SCREEN_TASK_VARIANTS,
     list_radar_cards,
     list_radar_cards_for_mode,
     radar_card_mode,
@@ -15,7 +14,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
 
 def test_radar_cards_count_and_categories() -> None:
     cards = list_radar_cards()
-    assert len(cards) == 15
+    assert len(cards) == 12
     categories = {card.category for card in cards}
     assert categories == {"screen", "discovery", "watchlist", "sector", "outlook"}
     assert RADAR_GRID_COLUMNS == 3
@@ -26,7 +25,7 @@ def test_radar_layout_sections_and_modes() -> None:
     assert [section.mode for section in RADAR_LAYOUT_SECTIONS] == ["statistical", "predictive"]
     statistical = list_radar_cards_for_mode("statistical")
     predictive = list_radar_cards_for_mode("predictive")
-    assert len(statistical) == 10
+    assert len(statistical) == 7
     assert len(predictive) == 5
     assert all(spec.mode == "statistical" for spec in statistical)
     assert all(spec.mode == "predictive" for spec in predictive)
@@ -44,11 +43,6 @@ def test_radar_layout_sections_and_modes() -> None:
 def test_radar_card_ids_unique() -> None:
     ids = [spec.id for spec in RADAR_CARD_SPECS]
     assert len(ids) == len(set(ids))
-
-
-def test_screen_task_variants_defined() -> None:
-    keys = {variant.key for variant in SCREEN_TASK_VARIANTS}
-    assert keys == {"latest", "scheduled_intraday", "scheduled_post_close", "strategy"}
 
 
 def test_card_variants_registry() -> None:
@@ -147,7 +141,7 @@ def test_auto_refresh_intervals() -> None:
     manual_ids = manual_only_card_ids()
     assert "outlook_watch" in manual_ids
     assert "outlook_scenario" in manual_ids
-    assert "screen_task" in manual_ids
+    assert "leader_pick" in manual_ids
     assert RADAR_CARD_BY_ID["discovery_volume_surge"].auto_refresh_ms == RADAR_DISCOVERY_AUTO_REFRESH_MS
     assert RADAR_CARD_BY_ID["watchlist_intraday"].auto_refresh_ms == RADAR_WATCHLIST_AUTO_REFRESH_MS
     assert RADAR_CARD_BY_ID["sector_theme"].auto_refresh_ms == RADAR_SECTOR_AUTO_REFRESH_MS
@@ -166,7 +160,7 @@ def test_refresh_options_and_supports() -> None:
     assert supports_auto_refresh("discovery_volume_surge")
     assert supports_auto_refresh("sector_theme")
     assert not supports_auto_refresh("outlook_watch")
-    assert not supports_auto_refresh("screen_task")
+    assert not supports_auto_refresh("leader_pick")
     assert refresh_options_for_card("discovery_volume_surge") == RADAR_DISCOVERY_REFRESH_OPTIONS
     assert refresh_options_for_card("sector_theme") == RADAR_SECTOR_REFRESH_OPTIONS
     assert refresh_options_for_card("outlook_watch") == ()

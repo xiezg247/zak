@@ -16,12 +16,12 @@ def test_save_and_load_resonance_weights() -> None:
     save_radar_resonance_weights(
         {
             "discovery_volume_surge": 3.0,
-            "screen_task": 0.5,
+            "leader_pick": 0.5,
         }
     )
     weights = load_radar_resonance_weights()
     assert weights["discovery_volume_surge"] == 3.0
-    assert weights["screen_task"] == 0.5
+    assert weights["leader_pick"] == 0.5
     assert radar_card_resonance_weight("discovery_volume_surge") == 3.0
 
 
