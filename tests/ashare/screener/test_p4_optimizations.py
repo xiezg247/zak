@@ -42,6 +42,35 @@ def test_breakout_rejects_large_pullback_from_high() -> None:
     assert _quote_breakout_strength(row, {}) is None
 
 
+def test_relative_strength_subline_single_row_uses_market_pool() -> None:
+    pool = [
+        {"vt_symbol": "600000.SSE", "change_pct": 1.0, "industry": "银行"},
+        {"vt_symbol": "601398.SSE", "change_pct": 3.0, "industry": "银行"},
+        {"vt_symbol": "000001.SZSE", "change_pct": -1.0, "industry": "银行"},
+    ]
+    with (
+        patch(
+            "vnpy_ashare.quotes.radar.radar_relative_strength.get_stock_industry_map",
+            return_value={"600000.SH": "银行", "601398.SH": "银行", "000001.SZ": "银行"},
+        ),
+        patch(
+            "vnpy_ashare.quotes.radar.radar_relative_strength.attach_industry",
+            side_effect=lambda rows, industry_map=None: [{**row, "industry": "银行"} for row in rows],
+        ),
+        patch(
+            "vnpy_ashare.quotes.radar.radar_relative_strength.market_benchmark_change_pct",
+            return_value=1.0,
+        ),
+        patch(
+            "vnpy_ashare.quotes.radar.radar_relative_strength._market_rows_for_relative_strength",
+            return_value=pool,
+        ),
+    ):
+        sub = build_relative_strength_subline({"vt_symbol": "600000.SSE", "change_pct": 5.0, "industry": "银行"})
+    assert sub is not None
+    assert "行业+4.00%" in sub[1]
+
+
 def test_relative_strength_subline_with_industry() -> None:
     with (
         patch(

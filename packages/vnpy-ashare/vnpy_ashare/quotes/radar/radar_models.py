@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from vnpy_ashare.domain.core.numbers import float_or_none
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row
 from vnpy_ashare.domain.radar.card import RadarCardData, RadarResonanceEntry, RadarRow
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, parse_tickflow_symbol
@@ -152,7 +152,12 @@ def quotes_for_vt_symbols(vt_symbols: list[str]) -> dict[str, dict[str, Any]]:
     return result
 
 
-def enrich_radar_row(row: RadarRow, quote: dict[str, Any]) -> RadarRow:
+def enrich_radar_row(
+    row: RadarRow,
+    quote: dict[str, Any],
+    *,
+    snapshot_rows: QuoteRowsLike | None = None,
+) -> RadarRow:
     """用全市场行情补全 RadarRow 的现价、涨幅与相对强度副标题。"""
 
     merged = merge_row_quotes(quote)
@@ -167,7 +172,7 @@ def enrich_radar_row(row: RadarRow, quote: dict[str, Any]) -> RadarRow:
     updated = row
     if price != row.price or change_pct != row.change_pct:
         updated = row.model_copy(update={"price": price, "change_pct": change_pct})
-    return enrich_radar_row_relative_strength(updated, merged)
+    return enrich_radar_row_relative_strength(updated, merged, snapshot_rows=snapshot_rows)
 
 
 def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:
@@ -175,7 +180,19 @@ def enrich_radar_rows(rows: tuple[RadarRow, ...]) -> tuple[RadarRow, ...]:
     if not rows:
         return rows
     quotes = quotes_for_vt_symbols([row.vt_symbol for row in rows])
-    return tuple(enrich_radar_row(row, quotes.get(row.vt_symbol, {"vt_symbol": row.vt_symbol})) for row in rows)
+    snapshot_rows: QuoteRowsLike | None = None
+    try:
+        snapshot_rows = load_screening_quote_snapshot().rows
+    except MarketQuotesLoadError:
+        snapshot_rows = None
+    return tuple(
+        enrich_radar_row(
+            row,
+            quotes.get(row.vt_symbol, {"vt_symbol": row.vt_symbol}),
+            snapshot_rows=snapshot_rows,
+        )
+        for row in rows
+    )
 
 
 def radar_row_to_cache_dict(row: RadarRow) -> dict[str, Any]:

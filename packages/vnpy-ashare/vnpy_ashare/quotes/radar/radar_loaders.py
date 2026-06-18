@@ -241,7 +241,7 @@ def _card_from_run(
         card_id=spec.id,
         title=spec.title,
         subtitle=_run_subtitle(record),
-        rows=_rows_from_screener(record.rows, top_n=spec.top_n),
+        rows=enrich_radar_rows(_rows_from_screener(record.rows, top_n=spec.top_n)),
         empty_message="",
         updated_at=record.created_at,
         run_id=record.id,

@@ -15,8 +15,23 @@ from vnpy_ashare.screener.data.market_benchmark import (
     relative_strength_pct,
     resolve_relative_strength,
 )
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
+
+_MIN_INDUSTRY_POOL = 20
+
+
+def _market_rows_for_relative_strength(snapshot_rows: QuoteRowsLike | None) -> QuoteRowsLike:
+    """行业均值须基于足够大的样本池；单票或过小 pool 会退化为 +0.00%。"""
+    if snapshot_rows is not None and len(snapshot_rows) >= _MIN_INDUSTRY_POOL:
+        return snapshot_rows
+    try:
+        from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
+
+        return load_screening_quote_snapshot().rows
+    except MarketQuotesLoadError:
+        return snapshot_rows or []
 
 
 def build_relative_strength_subline(
@@ -33,7 +48,9 @@ def build_relative_strength_subline(
     except (TypeError, ValueError):
         return None
 
-    pool = snapshot_rows or [row]
+    pool = _market_rows_for_relative_strength(snapshot_rows)
+    if not pool:
+        pool = [row]
     industry_map = get_stock_industry_map()
     enriched = attach_industry(pool, industry_map=industry_map)
     market_benchmark = market_benchmark_change_pct(enriched or pool)
@@ -58,11 +75,14 @@ def build_relative_strength_subline(
     return "相对大盘", format_pct(market_rs)
 
 
-def enrich_radar_row_relative_strength(row: RadarRow, quote_row: dict[str, Any]) -> RadarRow:
-    """为雷达行补全相对强度副标题（若尚无有效副标题）。"""
-    if row.sub_label in ("相对强度", "相对大盘") and row.sub_value and row.sub_value != "—":
-        return row
-    sub = build_relative_strength_subline(quote_row)
+def enrich_radar_row_relative_strength(
+    row: RadarRow,
+    quote_row: dict[str, Any],
+    *,
+    snapshot_rows: QuoteRowsLike | None = None,
+) -> RadarRow:
+    """为雷达行补全相对强度副标题。"""
+    sub = build_relative_strength_subline(quote_row, snapshot_rows=snapshot_rows)
     if sub is None:
         return row
 
