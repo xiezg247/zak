@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_to_dict
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
-from vnpy_ashare.trading.signals.seal_time import seal_time_score
 from vnpy_ashare.trading.signals.seal_reopen import seal_reopen_from_row
 from vnpy_ashare.trading.signals.seal_strength import seal_strength_from_row
+from vnpy_ashare.trading.signals.seal_time import seal_time_score
 
 __all__ = [
     "LeaderScoredRow",
@@ -56,7 +56,7 @@ def _norm_limit_times(limit_times: float) -> float:
 
 def _seal_quality_proxy(row: QuoteRowLike) -> float:
     """封板质量：封单强度 + 炸板回封，否则成交额代理。"""
-    strength = seal_strength_from_row(row)
+    strength = seal_strength_from_row(quote_row_to_dict(row))
     _kind, _label, reopen_score, _times = seal_reopen_from_row(row)
 
     parts: list[float] = []

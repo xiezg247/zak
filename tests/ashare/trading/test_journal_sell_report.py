@@ -85,6 +85,48 @@ class JournalSellReportTests(unittest.TestCase):
         self.assertAlmostEqual(report.win_rate_pct or 0, 50.0)
         self.assertAlmostEqual(report.profit_loss_ratio or 0, 10.0)
 
+    def test_journal_report_in_mode_stats(self) -> None:
+        journal_repo.insert_trade_journal_entry(
+            symbol="600519",
+            exchange="SSE",
+            side="sell",
+            trade_date="2026-06-17",
+            price=110.0,
+            volume=100,
+            pnl=1000.0,
+            on_plan=True,
+        )
+        journal_repo.insert_trade_journal_entry(
+            symbol="600000",
+            exchange="SSE",
+            side="sell",
+            trade_date="2026-06-17",
+            price=9.0,
+            volume=100,
+            pnl=-100.0,
+            on_plan=True,
+            violation_tags=("off_plan",),
+        )
+        journal_repo.insert_trade_journal_entry(
+            symbol="600001",
+            exchange="SSE",
+            side="sell",
+            trade_date="2026-06-17",
+            price=8.0,
+            volume=100,
+            pnl=-50.0,
+            on_plan=True,
+            mode="ultra_short",
+        )
+        entries = journal_repo.query_trade_journal(start_date="2026-06-17", end_date="2026-06-17")
+        report = build_journal_report(entries)
+        self.assertEqual(report.in_mode_sell_count, 2)
+        self.assertEqual(report.in_mode_win_count, 1)
+        self.assertEqual(report.in_mode_loss_count, 1)
+        self.assertAlmostEqual(report.in_mode_win_rate_pct or 0, 50.0)
+        self.assertAlmostEqual(report.in_mode_profit_loss_ratio or 0, 20.0)
+        self.assertTrue(any(item.mode == "ultra_short" for item in report.mode_breakdown))
+
     def test_should_tag_add_loss(self) -> None:
         record = PositionRecord(
             symbol="600519",

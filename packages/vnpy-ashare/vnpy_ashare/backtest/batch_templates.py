@@ -75,6 +75,56 @@ _TEMPLATES: dict[str, BatchBacktestTemplate] = {
         },
         note="日 K 涨幅 3–7% + 量比半路代理",
     ),
+    "ultra_short_breakout_minute": BatchBacktestTemplate(
+        template_id="ultra_short_breakout_minute",
+        title="极致短线·半路（分 K）",
+        class_name="AshareIntradayBreakoutMinuteStrategy",
+        lookback_days=90,
+        strategy_setting={
+            "min_change_pct": 3.0,
+            "max_change_pct": 7.0,
+            "volume_ratio_min": 1.2,
+            "window_start_minutes": 580,
+            "window_end_minutes": 630,
+            "max_hold_days": 2,
+            "stop_loss_pct": 0.03,
+            "take_profit_pct": 0.08,
+        },
+        note="1 分 K 9:40–10:30 半路；须本地 1m 数据，回测周期建议 ≤90 日",
+        interval=Interval.MINUTE,
+    ),
+    "ultra_short_pullback_minute": BatchBacktestTemplate(
+        template_id="ultra_short_pullback_minute",
+        title="极致短线·低吸（分 K）",
+        class_name="AsharePullbackMinuteStrategy",
+        lookback_days=90,
+        strategy_setting={
+            "ma_window": 5,
+            "pullback_band_pct": 2.0,
+            "min_dip_pct": -5.0,
+            "max_dip_pct": -3.0,
+            "window_start_minutes": 870,
+            "window_end_minutes": 900,
+            "max_hold_days": 3,
+            "stop_loss_pct": 0.05,
+        },
+        note="1 分 K 14:30 后承接；须本地 1m + 日 K，回测周期建议 ≤90 日",
+        interval=Interval.MINUTE,
+    ),
+    "ultra_short_overnight_exit_minute": BatchBacktestTemplate(
+        template_id="ultra_short_overnight_exit_minute",
+        title="极致短线·隔日退出（分 K）",
+        class_name="AshareOvernightExitMinuteStrategy",
+        lookback_days=90,
+        strategy_setting={
+            "stop_loss_pct": 0.05,
+            "stop_minutes": 30,
+            "max_hold_days": 2,
+            "entry_at_session_close": True,
+        },
+        note="日末建仓 + 次日分 K 隔日规则；须本地 1m",
+        interval=Interval.MINUTE,
+    ),
     "short_swing": BatchBacktestTemplate(
         template_id="short_swing",
         title="短线波段·突破",
@@ -128,6 +178,54 @@ _PROFILE_TEMPLATE: dict[str, str] = {
 _TRIGGER_TEMPLATE: dict[str, str] = {
     "radar_leader": "ultra_short_limit_board",
 }
+
+# UI 下拉顺序：日 K 模板 → 分 K 模板
+_UI_TEMPLATE_ORDER: tuple[str, ...] = (
+    "ultra_short_limit_board",
+    "ultra_short_breakout",
+    "short_swing",
+    "medium_watch",
+    "trend",
+    "ultra_short_limit_board_minute",
+    "ultra_short_breakout_minute",
+    "ultra_short_pullback_minute",
+    "ultra_short_overnight_exit_minute",
+)
+
+
+def list_batch_backtest_template_choices() -> list[tuple[str, str]]:
+    """批量回测模板下拉项：(template_id, label)。空 id 表示跟随来源自动推断。"""
+    items: list[tuple[str, str]] = [("", "自动（跟随来源）")]
+    daily: list[tuple[str, str]] = []
+    minute: list[tuple[str, str]] = []
+    for template_id in _UI_TEMPLATE_ORDER:
+        template = _TEMPLATES.get(template_id)
+        if template is None:
+            continue
+        label = f"{template.title}（近 {template.lookback_days} 日）"
+        if template.interval == Interval.MINUTE:
+            minute.append((template_id, f"分 K · {label}"))
+        else:
+            daily.append((template_id, f"日 K · {label}"))
+    items.extend(daily)
+    items.extend(minute)
+    return items
+
+
+def format_batch_backtest_template_note(template_id: str) -> str:
+    """按模板 ID 生成对话框说明文案。"""
+    tid = (template_id or "").strip()
+    if not tid:
+        return ""
+    template = _TEMPLATES.get(tid)
+    if template is None:
+        return ""
+    parts = [template.title, f"近 {template.lookback_days} 日"]
+    if template.interval == Interval.MINUTE:
+        parts.insert(0, "分 K")
+    if template.note:
+        parts.append(template.note)
+    return " · ".join(parts)
 
 
 def resolve_batch_backtest_template_id(
@@ -205,18 +303,13 @@ def batch_backtest_template_note(
     profile_id: str | None = None,
     recipe_id: str | None = None,
     trigger: str | None = None,
+    template_id: str | None = None,
 ) -> str:
-    template_id = resolve_batch_backtest_template_id(
+    resolved = (template_id or "").strip() or resolve_batch_backtest_template_id(
         profile_id=profile_id,
         recipe_id=recipe_id,
         trigger=trigger,
     )
-    if not template_id:
+    if not resolved:
         return ""
-    template = _TEMPLATES.get(template_id)
-    if template is None:
-        return ""
-    parts = [template.title, f"近 {template.lookback_days} 日"]
-    if template.note:
-        parts.append(template.note)
-    return " · ".join(parts)
+    return format_batch_backtest_template_note(resolved)

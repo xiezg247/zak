@@ -70,7 +70,7 @@ def _first_board_reason(row: dict[str, Any], seal_label: str) -> str:
     strength_hint = ""
     if strength_raw not in (None, ""):
         try:
-            strength_hint = f"，封单强度 {float(strength_raw) * 100:.0f}"
+            strength_hint = f"，封单强度 {float(str(strength_raw)) * 100:.0f}"
         except (TypeError, ValueError):
             strength_hint = ""
     reopen_label = str(row.get("seal_reopen_label") or "").strip()

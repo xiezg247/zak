@@ -25,8 +25,8 @@ from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
     sync_rank_splitter_for_expansion,
 )
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
+from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
 from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,

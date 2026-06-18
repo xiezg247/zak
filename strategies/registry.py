@@ -147,6 +147,19 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
         param_hints=(("min_change_pct", "最低涨幅，默认 3"), ("max_change_pct", "最高涨幅，默认 7")),
         supports_signals=True,
     ),
+    "AshareIntradayBreakoutMinuteStrategy": StrategyMeta(
+        class_name="AshareIntradayBreakoutMinuteStrategy",
+        title="A 股极致短线·半路（分 K）",
+        summary=("1 分 K 9:40–10:30 窗口 + 涨幅 3–7% + 突破日内前高 + 放量；须本地 1m。"),
+        tags=("极致短线", "半路", "分 K"),
+        scenarios=("验证半路规则精度", "本地已下载 1m", "题材发酵时段回测"),
+        anti_scenarios=("无 1m 数据", "尾盘偷袭"),
+        param_hints=(
+            ("window_start_minutes", "窗口起始，默认 580（9:40）"),
+            ("window_end_minutes", "窗口结束，默认 630（10:30）"),
+        ),
+        supports_signals=False,
+    ),
     "AsharePullbackStrategy": StrategyMeta(
         class_name="AsharePullbackStrategy",
         title="A 股极致短线·低吸",
@@ -157,6 +170,19 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
         param_hints=(("ma_window", "回踩均线，默认 5"),),
         supports_signals=True,
     ),
+    "AsharePullbackMinuteStrategy": StrategyMeta(
+        class_name="AsharePullbackMinuteStrategy",
+        title="A 股极致短线·低吸（分 K）",
+        summary=("1 分 K 14:30 后承接；日 K MA5 贴线或日内 −3%~−5% + 午后缩量。"),
+        tags=("极致短线", "低吸", "分 K"),
+        scenarios=("分歧期核心票", "本地 1m 回测", "尾盘承接验证"),
+        anti_scenarios=("无 1m 数据", "退潮期抄底"),
+        param_hints=(
+            ("window_start_minutes", "窗口起始，默认 870（14:30）"),
+            ("min_dip_pct", "最大回调，默认 −5%"),
+        ),
+        supports_signals=False,
+    ),
     "AshareOvernightExitStrategy": StrategyMeta(
         class_name="AshareOvernightExitStrategy",
         title="A 股隔日退出规则集",
@@ -165,6 +191,16 @@ STRATEGY_REGISTRY: dict[str, StrategyMeta] = {
         scenarios=("持仓区绑定", "隔日计划执行"),
         anti_scenarios=("中线趋势持仓", "无分 K 数据时仅提示"),
         param_hints=(("stop_minutes", "开盘止损观察分钟，默认 30"),),
+        supports_signals=False,
+    ),
+    "AshareOvernightExitMinuteStrategy": StrategyMeta(
+        class_name="AshareOvernightExitMinuteStrategy",
+        title="A 股隔日退出（分 K 回测）",
+        summary=("日末建仓 + 次日起分 K 隔日规则验证；含开盘 30 分钟止损与炸板检测。"),
+        tags=("极致短线", "退出", "分 K"),
+        scenarios=("验证 OvernightExit 规则", "本地 1m 回测"),
+        anti_scenarios=("非独立实盘策略", "无 1m 数据"),
+        param_hints=(("stop_minutes", "开盘止损窗口，默认 30"),),
         supports_signals=False,
     ),
 }

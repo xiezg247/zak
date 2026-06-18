@@ -54,6 +54,10 @@ def build_journal_prompt(
         lines.append(f"- 胜率：{report.win_rate_pct:.1f}%")
     if report.profit_loss_ratio is not None:
         lines.append(f"- 盈亏比：{report.profit_loss_ratio:.2f}")
+    if report.in_mode_win_rate_pct is not None:
+        lines.append(f"- 模式内胜率：{report.in_mode_win_rate_pct:.1f}%（{report.in_mode_sell_count} 笔卖出）")
+    if report.in_mode_profit_loss_ratio is not None:
+        lines.append(f"- 模式内盈亏比：{report.in_mode_profit_loss_ratio:.2f}")
     lines.append(f"- 违规笔数：{report.violation_count}（off_plan {report.off_plan_count}）")
     if effective is not None:
         lines.append(f"- 已实现：{effective:+.2f} 元（登记卖出 {journal_total:+.2f}）")

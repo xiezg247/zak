@@ -58,8 +58,11 @@ uv run python cli.py data download --symbol 600519 --exchange SSE --period 1m --
 |------|------|----------|
 | `AshareLimitBoardStrategy` | 日 K | 本地日 K（默认） |
 | `AshareLimitBoardMinuteStrategy` | 1m | 本地 1 分 K（Tushare `stk_mins` 或 TickFlow Pro） |
+| `AshareIntradayBreakoutMinuteStrategy` | 1m | 9:40–10:30 半路窗口 + 本地 1m |
+| `AsharePullbackMinuteStrategy` | 1m | 14:30 后承接 + 本地 1m + 日 K |
+| `AshareOvernightExitMinuteStrategy` | 1m | 隔日退出规则验证（日末建仓） |
 
-批量回测模板 `ultra_short_limit_board_minute`（近 90 日）可通过 `apply_batch_backtest_template(..., template_id="ultra_short_limit_board_minute")` 套用。信号侧若存在本地 1m，打板 payload 自动走分 K 评估而非日 K 代理。
+批量回测模板 `ultra_short_*_minute` / `ultra_short_overnight_exit_minute` 可通过 `apply_batch_backtest_template(..., template_id=...)` 套用。
 
 ## 相关文件
 

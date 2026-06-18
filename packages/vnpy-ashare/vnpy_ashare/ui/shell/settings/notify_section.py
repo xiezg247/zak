@@ -78,10 +78,7 @@ class NotifySettingsSection(QtWidgets.QWidget):
         root.setContentsMargins(4, 8, 4, 8)
         root.setSpacing(12)
 
-        hint = QtWidgets.QLabel(
-            "通过飞书群自定义机器人 Webhook 推送任务提醒（不含买卖建议）。"
-            "Webhook URL 仅存于本机 .env，请勿分享或提交版本库。"
-        )
+        hint = QtWidgets.QLabel("通过飞书群自定义机器人 Webhook 推送任务提醒（不含买卖建议）。Webhook URL 仅存于本机 .env，请勿分享或提交版本库。")
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
         root.addWidget(hint)

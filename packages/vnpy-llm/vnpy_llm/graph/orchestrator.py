@@ -229,10 +229,7 @@ def _build_team_context_for_chief(
             parts.append("\n【市场环境（预取）】\n" + "；".join(str(line) for line in summary))
         emotion = market_context.get("emotion_cycle")
         if emotion:
-            parts.append(
-                "\n【A股情绪周期（预取，Chief 须在「极致短线环境」引用）】\n"
-                + json.dumps(emotion, ensure_ascii=False)
-            )
+            parts.append("\n【A股情绪周期（预取，Chief 须在「极致短线环境」引用）】\n" + json.dumps(emotion, ensure_ascii=False))
         parts.append("\n【市场环境明细（预取 JSON）】\n" + json.dumps(market_context, ensure_ascii=False))
 
     if context_text.strip():

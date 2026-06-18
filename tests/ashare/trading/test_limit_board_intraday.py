@@ -5,10 +5,10 @@ from __future__ import annotations
 import unittest
 from datetime import datetime
 
-import tests._bootstrap  # noqa: F401
-from vnpy.trader.object import BarData
 from vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.object import BarData
 
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.trading.signals.limit_board_intraday import evaluate_limit_board_intraday
 

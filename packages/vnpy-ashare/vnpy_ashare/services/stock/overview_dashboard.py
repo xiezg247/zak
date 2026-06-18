@@ -8,6 +8,7 @@ from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.data.pattern_bars import load_daily_bars_tail
 from vnpy_ashare.domain.stock.overview import (
+    AlertSeverity,
     DataReadinessItem,
     OverviewAlert,
     OverviewDashboard,
@@ -204,7 +205,7 @@ def _regulatory_alerts(vt_symbol: str) -> list[OverviewAlert]:
     snapshot = assess_regulatory_deviation(bars)
     if snapshot.risk_level == "none":
         return []
-    severity = "warn" if snapshot.risk_level == "high" else "info"
+    severity: AlertSeverity = "warn" if snapshot.risk_level == "high" else "info"
     return [
         OverviewAlert(
             text=f"监管异动：{snapshot.summary}",

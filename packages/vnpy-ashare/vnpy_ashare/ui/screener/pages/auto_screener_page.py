@@ -909,11 +909,7 @@ class AutoScreenerPageWidget(QtWidgets.QWidget):
         strategies = backtest_service.list_strategies() if backtest_service else []
         class_names = [item["class_name"] for item in strategies if item.get("class_name")]
         trigger = str(self._last_run_config.get("trigger") or "")
-        recipe_id = (
-            str(self._last_run_config.get("recipe_id") or "").strip()
-            or self.recipe_panel.current_recipe_id()
-            or None
-        )
+        recipe_id = str(self._last_run_config.get("recipe_id") or "").strip() or self.recipe_panel.current_recipe_id() or None
         flow.start(
             selected,
             source_page="多因子配方",

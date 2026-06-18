@@ -14,6 +14,7 @@ from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
 from vnpy_ashare.services.analysis_detail.risk_metrics import fetch_market_sentiment
+from vnpy_common.domain.serialize import dump_python
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.symbols.stock import StockItem
@@ -173,7 +174,7 @@ def build_team_market_context(
         "overview": overview,
     }
     if emotion_snapshot is not None:
-        payload["emotion_cycle"] = emotion_snapshot.to_dict()
+        payload["emotion_cycle"] = dump_python(emotion_snapshot)
     payload["summary_lines"] = _build_summary_lines(payload)
     if emotion_snapshot is not None:
         pos_max = int(emotion_snapshot.position_pct_max * 100)

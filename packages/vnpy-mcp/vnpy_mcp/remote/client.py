@@ -14,9 +14,7 @@ class McpClientError(Exception):
     pass
 
 
-_NETWORK_ERROR_NAMES = frozenset(
-    {"ConnectError", "ConnectTimeout", "ReadTimeout", "WriteTimeout", "TimeoutException"}
-)
+_NETWORK_ERROR_NAMES = frozenset({"ConnectError", "ConnectTimeout", "ReadTimeout", "WriteTimeout", "TimeoutException"})
 _STREAM_ERROR_NAMES = frozenset({"BrokenResourceError", "ClosedResourceError"})
 
 
@@ -178,7 +176,7 @@ async def _list_tools_async(
                     )
                 return tools
 
-    return await _with_retry(_once)
+    return cast(list[McpToolInfo], await _with_retry(_once))
 
 
 async def _call_tool_async(

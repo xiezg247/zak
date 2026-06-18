@@ -6,12 +6,12 @@ from vnpy_ashare.ai.context.market_overview import build_intraday_environment_pr
 from vnpy_llm.graph.market_orchestrator import format_market_prefetch_block, prefetch_market_facts
 from vnpy_llm.graph.supervisor import resolve_target_agent
 from vnpy_llm.routing.intent import IntentAnalysis, IntentRoute
+from vnpy_llm.routing.prompts import build_page_prompt
 from vnpy_llm.routing.router import (
     _keyword_fallback,
     filter_tools_by_route,
     normalize_market_command,
 )
-from vnpy_llm.routing.prompts import build_page_prompt
 
 
 def _tool(name: str) -> dict:

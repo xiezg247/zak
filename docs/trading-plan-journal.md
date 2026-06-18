@@ -157,6 +157,8 @@ TradeJournalEntry
 |------|------|
 | 胜率 | wins / (wins + losses) |
 | 盈亏比 | avg_win / abs(avg_loss) |
+| **模式内胜率** | 计划内且无违规的卖出 wins / losses |
+| **模式内盈亏比** | 模式内 avg_win / abs(avg_loss) |
 | 模式内占比 | on_plan trades / total |
 | 违规率 | violation trades / total |
 

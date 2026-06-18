@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.config.preferences.trading_risk import DEFAULT_STOP_LOSS_PCT, load_trading_risk_prefs
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.exit import ExitRuleHit, ExitSignal, OvernightExitEvaluation, RuleStatus
 from vnpy_ashare.domain.trading.position import PositionRecord, position_t1_locked
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
+from vnpy_ashare.trading.exit.opening_stop_intraday import detect_opening_stop_from_minute_bars
+from vnpy_ashare.trading.signals.limit_board_intraday import load_local_minute_bars_for_date
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
@@ -84,7 +88,19 @@ def evaluate_overnight_exit(
         signal = "sell"
 
     if quote is not None and prev_close is not None and open_price is not None and last is not None:
-        opening_hit, opening_detail = detect_opening_stop_loss(quote)
+        opening_hit = False
+        opening_detail = ""
+        trade_date = datetime.now(CHINA_TZ).date()
+        minute_bars = load_local_minute_bars_for_date(record.vt_symbol, trade_date)
+        if minute_bars:
+            opening_hit, opening_detail = detect_opening_stop_from_minute_bars(
+                minute_bars,
+                prev_close=prev_close,
+                open_price=open_price,
+                phase="partial",
+            )
+        if not opening_hit:
+            opening_hit, opening_detail = detect_opening_stop_loss(quote)
         if opening_hit:
             rules.append(
                 ExitRuleHit(

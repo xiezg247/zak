@@ -1,5 +1,7 @@
 """系统提示词与页面 prompt。"""
 
+from typing import cast
+
 from strategies.registry import STRATEGY_REGISTRY
 from vnpy_llm.routing.base_prompt import BASE_PROMPT
 
@@ -49,7 +51,7 @@ def _market_page_prompt(page: str) -> str:
     try:
         from vnpy_ashare.ai.context.market_overview import build_market_ai_prompt
 
-        return build_market_ai_prompt(focus="intraday")
+        return cast(str, build_market_ai_prompt(focus="intraday"))
     except Exception:
         return ""
 

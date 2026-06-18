@@ -1,4 +1,4 @@
-"""A 股极致短线·打板（1 分 K + 触板规则，T+1）。"""
+"""A 股极致短线·低吸（1 分 K + 14:30 后承接，T+1）。"""
 
 from __future__ import annotations
 
@@ -13,39 +13,41 @@ from vnpy_ctastrategy import (
     TickData,
 )
 
-from strategies.ultra_short_signals import classify_limit_board_signal
-from vnpy_ashare.trading.signals.limit_board_intraday import evaluate_limit_board_intraday
+from vnpy_ashare.trading.signals.pullback_intraday import (
+    evaluate_pullback_intraday,
+    resolve_daily_mas_for_date,
+)
 
 from .ashare_template import AShareTemplate
 
 
-class AshareLimitBoardMinuteStrategy(AShareTemplate):
-    """分 K 首次触板买入；隔日或止损/持仓天数到期卖出。"""
+class AsharePullbackMinuteStrategy(AShareTemplate):
+    """午后缩量回踩/承接买入；止损/跌破慢线/持仓到期卖出。"""
 
     author = "zak"
 
-    fast_window: int = 5
-    slow_window: int = 10
-    max_hold_days: int = 2
+    ma_window: int = 5
+    pullback_band_pct: float = 2.0
+    min_dip_pct: float = -5.0
+    max_dip_pct: float = -3.0
+    window_start_minutes: int = 870
+    window_end_minutes: int = 900
     stop_loss_pct: float = 0.05
-    reject_one_word: bool = True
-    one_word_amplitude_max: float = 0.5
-    seal_cutoff_minutes: int = 630
-    reject_broken: bool = True
+    max_hold_days: int = 5
     trade_volume: int = 100
 
     entry_price: float = 0.0
     bars_held: int = 0
 
     parameters = [
-        "fast_window",
-        "slow_window",
-        "max_hold_days",
+        "ma_window",
+        "pullback_band_pct",
+        "min_dip_pct",
+        "max_dip_pct",
+        "window_start_minutes",
+        "window_end_minutes",
         "stop_loss_pct",
-        "reject_one_word",
-        "one_word_amplitude_max",
-        "seal_cutoff_minutes",
-        "reject_broken",
+        "max_hold_days",
         "trade_volume",
     ]
     variables = ["entry_price", "bars_held"]
@@ -55,14 +57,15 @@ class AshareLimitBoardMinuteStrategy(AShareTemplate):
         self._session_date: date | None = None
         self._session_bars: list[BarData] = []
         self._prev_close: float = 0.0
+        self._daily_ma5: float = 0.0
+        self._daily_ma10: float | None = None
         self._entry_attempted: bool = False
-        self._symbol_code: str = vt_symbol.split(".", 1)[0]
 
     def indicator_warmup_bars(self) -> int:
         return 240
 
     def on_init(self) -> None:
-        self.write_log("A股极致短线·打板（分 K）策略初始化")
+        self.write_log("A股极致短线·低吸（分 K）策略初始化")
         self.bg = BarGenerator(self.on_bar)
         self.load_indicator_bars(interval=Interval.MINUTE)
 
@@ -81,35 +84,24 @@ class AshareLimitBoardMinuteStrategy(AShareTemplate):
         self._session_date = trading_day
         self._session_bars = []
         self._entry_attempted = False
+        ma5, ma10, prev_close = resolve_daily_mas_for_date(
+            self.vt_symbol,
+            trading_day,
+            ma_window=self.ma_window,
+        )
+        self._daily_ma5 = ma5 or 0.0
+        self._daily_ma10 = ma10
+        if prev_close > 0:
+            self._prev_close = prev_close
 
     def _on_session_close(self, trading_day: date) -> None:
-        if self.pos <= 0:
+        if self.pos <= 0 or not self._session_bars:
             return
-        limit_up = False
-        if self._session_bars and self._prev_close > 0:
-            snapshot = evaluate_limit_board_intraday(
-                self._session_bars,
-                prev_close=self._prev_close,
-                symbol=self._symbol_code,
-                reject_one_word=self.reject_one_word,
-                one_word_amplitude_max=self.one_word_amplitude_max,
-                cutoff_minutes=self.seal_cutoff_minutes,
-                reject_broken=False,
-                phase="closed",
-            )
-            limit_up = snapshot.seal_reopen_kind != "broken" and bool(snapshot.first_time)
-        signal = classify_limit_board_signal(
-            limit_up_today=limit_up,
-            recent_days=1,
-            days_since_event=0 if limit_up else 1,
-        )
-        stop_hit = False
-        if self._session_bars and self.entry_price > 0:
-            last_close = float(self._session_bars[-1].close_price)
-            stop_hit = last_close <= self.entry_price * (1 - self.stop_loss_pct)
+        last_bar = self._session_bars[-1]
+        stop_hit = self.entry_price > 0 and last_bar.close_price <= self.entry_price * (1 - self.stop_loss_pct)
+        below_ma = self._daily_ma10 is not None and last_bar.close_price < self._daily_ma10
         time_exit = self.bars_held >= self.max_hold_days
-        if stop_hit or time_exit or signal != "buy":
-            last_bar = self._session_bars[-1]
+        if stop_hit or time_exit or below_ma:
             self.sell_stock(last_bar.close_price, abs(self.pos) or self.trade_volume, trading_day)
             self.entry_price = 0.0
             self.bars_held = 0
@@ -124,8 +116,6 @@ class AshareLimitBoardMinuteStrategy(AShareTemplate):
                 self._on_session_close(self._session_date)
                 if self.pos > 0:
                     self.bars_held += 1
-                if self._session_bars:
-                    self._prev_close = float(self._session_bars[-1].close_price)
             self._reset_session(trading_day)
 
         self._session_bars.append(bar)
@@ -137,17 +127,19 @@ class AshareLimitBoardMinuteStrategy(AShareTemplate):
                 self.bars_held = 0
             return
 
-        if self._entry_attempted or self._prev_close <= 0:
+        if self._entry_attempted or self._prev_close <= 0 or self._daily_ma5 <= 0:
             return
 
-        snapshot = evaluate_limit_board_intraday(
+        snapshot = evaluate_pullback_intraday(
             self._session_bars,
             prev_close=self._prev_close,
-            symbol=self._symbol_code,
-            reject_one_word=self.reject_one_word,
-            one_word_amplitude_max=self.one_word_amplitude_max,
-            cutoff_minutes=self.seal_cutoff_minutes,
-            reject_broken=self.reject_broken,
+            daily_ma5=self._daily_ma5,
+            daily_ma10=self._daily_ma10,
+            pullback_band_pct=self.pullback_band_pct,
+            min_dip_pct=self.min_dip_pct,
+            max_dip_pct=self.max_dip_pct,
+            window_start_minutes=self.window_start_minutes,
+            window_end_minutes=self.window_end_minutes,
             phase="partial",
         )
         if not snapshot.eligible:

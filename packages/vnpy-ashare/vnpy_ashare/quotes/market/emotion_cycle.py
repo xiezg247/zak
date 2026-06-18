@@ -18,8 +18,8 @@ from vnpy_ashare.quotes.market.emotion_cycle_cache import (
 )
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
-from vnpy_common.domain.serialize import dump_python
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_common.domain.serialize import dump_python
 
 __all__ = [
     "EmotionCycleInputs",

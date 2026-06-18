@@ -185,9 +185,9 @@
 | 模式 | 默认策略插件（规划） | 依赖数据 |
 |------|---------------------|----------|
 | 打板 | `AshareLimitBoardStrategy` | **已有** | 日 K 回测；信号/选股优先本地 1m；分 K 回测见 `AshareLimitBoardMinuteStrategy` |
-| 半路 | `AshareIntradayBreakoutStrategy` | **已有** | 日 K 涨幅 3–7% 代理 |
-| 低吸 | `AsharePullbackStrategy` | **已有** | 日 K MA5 缩量回踩 |
-| 隔日卖点 | `AshareOvernightExitStrategy` | **已有** | 持仓 overlay；行情字段 MVP |
+| 半路 | `AshareIntradayBreakoutStrategy` | **已有** | 日 K 代理；分 K 见 `AshareIntradayBreakoutMinuteStrategy` |
+| 低吸 | `AsharePullbackStrategy` | **已有** | 日 K MA5 回踩；分 K 见 `AsharePullbackMinuteStrategy` |
+| 隔日卖点 | `AshareOvernightExitStrategy` | **已有** | 持仓 overlay；分 K 回测见 `AshareOvernightExitMinuteStrategy` |
 | 短线波段（已有） | `AshareShortBreakoutStrategy` | 日 K 突破 + 量比 |
 
 > **现状**：自选信号区默认 `AshareDoubleMaStrategy`（中线倾向）。`AshareShortBreakoutStrategy` 等四套策略**均已实现**（见 [策略配置方案](./strategy-profiles.md)），通过 Profile 下拉切换；`ultra_short` Profile 已绑定隔日退出 overlay + `evaluate_overnight_exit` AI 工具。
@@ -494,9 +494,9 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | 项 | 交付 | 状态 |
 |----|------|------|
 | 短线策略回测模板 | backtest `batch_templates.py` | **已有** |
-| 分 K 打板评估 + 回测策略 | `limit_board_intraday.py` / `AshareLimitBoardMinuteStrategy` | **部分**（打板；半路/低吸待扩展） |
+| 分 K 三类买点 + 隔日退出 | `*MinuteStrategy` / `overnight_exit_intraday` | **已有** |
 | 团队分析短线评分维度 | team-agent `ultra_short` | **已有** |
-| 模式内胜率 / 盈亏比统计报表 | | 待建 |
+| 模式内胜率 / 盈亏比统计报表 | J-05 `JournalReport` + 复盘对话框 | **已有** |
 
 ---
 

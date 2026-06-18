@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from typing import Literal
 
 from strategies.ultra_short_signals import calc_limit_price
+from vnpy_ashare.data.bar_store import load_period_bars, load_scope_bars
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.trading.signals.intraday_seal_time import detect_seal_time_from_minute_bars
@@ -188,8 +189,6 @@ def load_local_minute_bars_for_date(vt_symbol: str, trade_date: date) -> list:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return []
-    from vnpy_ashare.data.bar_store import load_period_bars
-
     start = datetime.combine(trade_date, time(9, 0), tzinfo=CHINA_TZ)
     end = datetime.combine(trade_date, time(15, 30), tzinfo=CHINA_TZ)
     return load_period_bars(item.symbol, item.exchange, "1m", start, end)
@@ -200,12 +199,6 @@ def resolve_prev_close_for_date(vt_symbol: str, trade_date: date) -> float:
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return 0.0
-    from datetime import timedelta
-
-    from vnpy.trader.constant import Interval
-
-    from vnpy_ashare.data.bar_store import load_scope_bars
-
     start = datetime.combine(trade_date - timedelta(days=20), time(0, 0), tzinfo=CHINA_TZ)
     end = datetime.combine(trade_date, time(0, 0), tzinfo=CHINA_TZ)
     daily = load_scope_bars(item.symbol, item.exchange, "daily", start, end)

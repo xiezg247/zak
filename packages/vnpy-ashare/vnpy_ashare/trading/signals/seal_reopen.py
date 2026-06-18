@@ -15,6 +15,7 @@ class _MinuteBar(Protocol):
     high_price: float
     close_price: float
 
+
 SealReopenKind = Literal["unknown", "solid", "resealed", "weak", "broken"]
 
 _KIND_LABELS: dict[SealReopenKind, str] = {

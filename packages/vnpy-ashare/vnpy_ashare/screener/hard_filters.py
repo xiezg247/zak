@@ -340,9 +340,11 @@ def passes_liquidity_filter(row: ScreeningFilterRow) -> bool:
 
     amount_raw = row.get("amount")
     if amount_raw not in (None, ""):
-        if min_amount <= 0:
-            return True
-        return float(amount_raw or 0) >= min_amount
+        amount_val = float(amount_raw or 0)
+        if amount_val > 0:
+            if min_amount <= 0:
+                return True
+            return amount_val >= min_amount
 
     total_mv = float(row.get("total_mv") or row.get("circ_mv") or 0)
     if total_mv > 0:

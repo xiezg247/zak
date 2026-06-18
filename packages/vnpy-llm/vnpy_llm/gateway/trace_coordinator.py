@@ -5,11 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Literal
 
+from vnpy_common.domain.serialize import dump_json
 from vnpy_llm.graph.supervisor import build_supervisor_decision
 from vnpy_llm.tools.labels import tool_display_name
 from vnpy_llm.trace.persistence import TracePersistence
 from vnpy_llm.trace.trace import TraceStep, TraceStore, TurnTrace, preview_text
-from vnpy_common.domain.serialize import dump_json
 
 TraceChanged = Callable[[], None]
 

@@ -189,8 +189,7 @@ class VnpyAnalysisSkill(SkillTemplate):
             ToolSpec(
                 name="assess_regulatory_deviation",
                 description=(
-                    "评估监管异动距离：近 10 日涨停次数、10/30 日累计涨幅是否接近严重异动线。"
-                    "用户问「会不会进监管」「异动距离」「10 日 4 涨停」时调用。"
+                    "评估监管异动距离：近 10 日涨停次数、10/30 日累计涨幅是否接近严重异动线。用户问「会不会进监管」「异动距离」「10 日 4 涨停」时调用。"
                 ),
                 parameters={
                     "type": "object",

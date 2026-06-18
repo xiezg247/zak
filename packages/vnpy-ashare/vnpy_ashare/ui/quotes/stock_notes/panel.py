@@ -17,6 +17,7 @@ from vnpy_ashare.config.preferences.stock_notes import (
     save_stock_note_panel_expanded,
 )
 from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.trading.journal.import_from_note import import_stock_note_by_id
 from vnpy_ashare.ui.quotes.stock_notes.ai_assist import (
     NoteAiWorker,
     apply_expanded_memo,
@@ -328,8 +329,6 @@ class StockNotePanel(QtWidgets.QWidget):
         self.notes_changed.emit()
 
     def _on_entry_import_requested(self, entry_id: int) -> None:
-        from vnpy_ashare.trading.journal.import_from_note import import_stock_note_by_id
-
         journal_id = import_stock_note_by_id(entry_id)
         if journal_id is None:
             page_notify(self, "导入失败，请检查笔记内容", level="warning")

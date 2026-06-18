@@ -72,7 +72,7 @@ def horizon_empty_message(stats: HorizonScanStats, *, card_title: str) -> str:
     if stats.prefilter_total == 0:
         if not collect_daily_k_ready_vt_symbols():
             return "本地暂无日 K 数据，请先运行「全市场日 K」或「补全本地日 K」。"
-        return "粗筛池为空（可能标的均在排除清单中），请稍后重试。"
+        return "粗筛池为空（行情硬过滤后无候选，或标的均在排除清单中），请稍后重试。"
     if local_daily_k_insufficient(stats):
         return f"本地日 K 覆盖不足，请先运行「全市场日 K」或「补全本地日 K」（粗筛 {stats.prefilter_total} 只，可算信号 0 只）。"
     return f"当前无符合「{card_title}」条件的标的（已扫描 {stats.scanned_total} 只）。"

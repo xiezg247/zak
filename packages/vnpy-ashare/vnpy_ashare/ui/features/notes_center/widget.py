@@ -13,6 +13,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.app.engine_access import get_note_service
 from vnpy_ashare.domain.models.stock_note import StockNoteIndexRow
 from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.trading.journal.import_from_note import import_stock_note_by_id
 from vnpy_ashare.ui.features.notes_center.memo_view import NotesCenterMemoView
 from vnpy_ashare.ui.features.notes_center.plans_view import NotesCenterPlansView
 from vnpy_ashare.ui.features.notes_center.reports_view import NotesCenterReportsView
@@ -506,8 +507,6 @@ class NotesCenterWidget(QtWidgets.QWidget):
             self._refresh_row_preview(row.symbol, row.exchange)
 
     def _on_entry_import(self, entry_id: int) -> None:
-        from vnpy_ashare.trading.journal.import_from_note import import_stock_note_by_id
-
         journal_id = import_stock_note_by_id(entry_id)
         if journal_id is None:
             page_notify(self, "导入失败，请检查笔记内容", level="warning")

@@ -354,7 +354,7 @@ def build_intraday_breakout_signal_payload(
     symbol = vt_symbol.split(".", 1)[0]
     high_series = highs if highs is not None else closes
     vol_series = volumes or []
-    warn_list = ["日 K 代理，非分 K 半路；完整规则 Phase 5"]
+    warn_list: list[str] = []
     if len(closes) < 3:
         return _empty_payload(vt_symbol, strategy_id, warnings=("K 线数量不足",))
 
@@ -364,6 +364,21 @@ def build_intraday_breakout_signal_payload(
     prev_close = closes[last_index - 1]
     change_pct = (last_close - prev_close) / prev_close * 100 if prev_close > 0 else 0.0
     vol_ratio = _volume_ratio_at(vol_series, last_index) if vol_series else None
+
+    intraday_snapshot = None
+    from datetime import datetime as dt
+
+    from vnpy_ashare.trading.signals.intraday_breakout_intraday import evaluate_intraday_breakout_from_local_minutes
+
+    end_d = dates[last_index]
+    trade_date = end_d.date() if isinstance(end_d, dt) else end_d
+    intraday_snapshot = evaluate_intraday_breakout_from_local_minutes(
+        vt_symbol,
+        trade_date,
+        min_change_pct=min_change_pct,
+        max_change_pct=max_change_pct,
+        volume_ratio_min=volume_ratio_min,
+    )
 
     signal, change_pct = classify_intraday_breakout_bar(
         closes,
@@ -375,24 +390,41 @@ def build_intraday_breakout_signal_payload(
         max_change_pct=max_change_pct,
         volume_ratio_min=volume_ratio_min,
     )
+    if intraday_snapshot is not None:
+        signal = "buy" if intraday_snapshot.eligible else "hold"
+        change_pct = intraday_snapshot.change_pct
+        if intraday_snapshot.volume_ratio is not None:
+            vol_ratio = intraday_snapshot.volume_ratio
     row = {"symbol": symbol, "change_pct": change_pct}
     at_limit = is_at_limit_board(row)
-    if change_pct > max_change_pct and not at_limit:
+    if change_pct > max_change_pct and not at_limit and intraday_snapshot is None:
         warn_list.append("涨幅已超半路上限，更宜打板或观望")
 
     labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
-    breakout_level = max(high_series[max(0, last_index - 5) : last_index]) if last_index > 0 else last_close
+    if intraday_snapshot is not None and intraday_snapshot.breakout_level > 0:
+        breakout_level = intraday_snapshot.breakout_level
+    else:
+        breakout_level = max(high_series[max(0, last_index - 5) : last_index]) if last_index > 0 else last_close
     slow_ma = _sma(closes, 10)
     ref_buy = round(breakout_level, 2) if signal == "buy" else (round(slow_ma, 2) if slow_ma is not None else None)
     fast_ma = _sma(closes, 5)
     struct_sell = round(fast_ma, 2) if fast_ma is not None else last_close
 
-    reasons = [
-        f"涨幅 {change_pct:.1f}%（半路区间 {min_change_pct:.0f}–{max_change_pct:.0f}%）",
-    ]
-    if vol_ratio is not None:
-        reasons.append(f"量比 {vol_ratio:.1f}")
+    reasons: list[str] = []
+    if intraday_snapshot is not None and intraday_snapshot.reasons:
+        reasons.extend(intraday_snapshot.reasons)
+    else:
+        reasons.append(f"涨幅 {change_pct:.1f}%（半路区间 {min_change_pct:.0f}–{max_change_pct:.0f}%）")
+        if vol_ratio is not None:
+            reasons.append(f"量比 {vol_ratio:.1f}")
     strength = 75.0 if signal == "buy" else 35.0
+
+    if intraday_snapshot is not None:
+        warn_list = list(intraday_snapshot.warnings)
+    else:
+        warn_list = ["日 K 代理，非分 K 半路；完整规则须本地 1m 或 TickFlow"]
+    if change_pct > max_change_pct and not at_limit:
+        warn_list.append("涨幅已超半路上限，更宜打板或观望")
 
     payload = {
         "vt_symbol": vt_symbol,
@@ -430,7 +462,7 @@ def build_pullback_signal_payload(
 ) -> dict[str, Any]:
     """低吸信号（日 K 代理：回踩 MA5 + 缩量）。"""
     vol_series = volumes or []
-    warnings = ["日 K 代理，非分时承接；须结合情绪分歧期"]
+    warn_list: list[str] = []
     if len(closes) < ma_window + 2:
         return _empty_payload(vt_symbol, strategy_id, warnings=("K 线数量不足",))
 
@@ -442,6 +474,20 @@ def build_pullback_signal_payload(
     if ma5 is None:
         return _empty_payload(vt_symbol, strategy_id, warnings=("均线不足",))
 
+    intraday_snapshot = None
+    from datetime import datetime as dt
+
+    from vnpy_ashare.trading.signals.pullback_intraday import evaluate_pullback_from_local_minutes
+
+    end_d = dates[last_index]
+    trade_date = end_d.date() if isinstance(end_d, dt) else end_d
+    intraday_snapshot = evaluate_pullback_from_local_minutes(
+        vt_symbol,
+        trade_date,
+        ma_window=ma_window,
+        pullback_band_pct=pullback_band_pct,
+    )
+
     signal = classify_pullback_bar(
         closes,
         vol_series,
@@ -449,17 +495,32 @@ def build_pullback_signal_payload(
         ma_window=ma_window,
         pullback_band_pct=pullback_band_pct,
     )
+    if intraday_snapshot is not None:
+        signal = "buy" if intraday_snapshot.eligible else "hold"
+        if intraday_snapshot.daily_ma5 > 0:
+            ma5 = intraday_snapshot.daily_ma5
     vol_shrink = True
     if vol_series and last_index >= 5:
         base = sum(vol_series[last_index - 5 : last_index]) / 5
         vol_shrink = vol_series[last_index] <= base if base > 0 else True
+    if intraday_snapshot is not None:
+        vol_shrink = intraday_snapshot.volume_shrink
     labels = {"buy": "买入", "sell": "卖出", "hold": "观望", "na": "—"}
     ref_buy = round(ma5, 2) if signal == "buy" else None
-    reasons = [
-        f"MA{ma_window}={ma5:.2f}，现价 {last_close:.2f}",
-        "缩量回踩" if vol_shrink else "量能未缩",
-    ]
+    reasons: list[str] = []
+    if intraday_snapshot is not None and intraday_snapshot.reasons:
+        reasons.extend(intraday_snapshot.reasons)
+    else:
+        reasons = [
+            f"MA{ma_window}={ma5:.2f}，现价 {last_close:.2f}",
+            "缩量回踩" if vol_shrink else "量能未缩",
+        ]
     strength = 70.0 if signal == "buy" else 30.0
+
+    if intraday_snapshot is not None:
+        warn_list = list(intraday_snapshot.warnings)
+    else:
+        warn_list = ["日 K 代理，非分时承接；完整规则须本地 1m 或 TickFlow"]
 
     payload = {
         "vt_symbol": vt_symbol,
@@ -475,7 +536,7 @@ def build_pullback_signal_payload(
         "strength": strength,
         "reason_summary": "低吸" if signal == "buy" else "低吸观望",
         "reasons": tuple(reasons),
-        "warnings": tuple(warnings),
+        "warnings": tuple(warn_list),
         "last_close": last_close,
         "fast_ma": round(ma5, 2),
         "slow_ma": round(ma10, 2) if ma10 is not None else None,

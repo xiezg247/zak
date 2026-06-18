@@ -74,6 +74,9 @@ class JournalReportDialog(QtWidgets.QDialog):
             return
         win_rate = f"{report.win_rate_pct:.1f}%" if report.win_rate_pct is not None else "—"
         pl_ratio = f"{report.profit_loss_ratio:.2f}" if report.profit_loss_ratio is not None else "—"
+        in_mode_win_rate = f"{report.in_mode_win_rate_pct:.1f}%" if report.in_mode_win_rate_pct is not None else "—"
+        in_mode_pl = f"{report.in_mode_profit_loss_ratio:.2f}" if report.in_mode_profit_loss_ratio is not None else "—"
+        in_mode_pnl = f"{report.in_mode_realized_pnl_total:+.2f}"
         on_plan = f"{report.on_plan_ratio_pct:.1f}%" if report.on_plan_ratio_pct is not None else "—"
         violation = f"{report.violation_ratio_pct:.1f}%" if report.violation_ratio_pct is not None else "—"
         self._summary.setText(f"{start.isoformat()} ~ {end.isoformat()} · 已实现合计 {report.realized_pnl_total:+.2f} 元")
@@ -82,6 +85,9 @@ class JournalReportDialog(QtWidgets.QDialog):
             ("买入 / 卖出", f"{report.buy_count} / {report.sell_count}"),
             ("胜率（已平仓）", win_rate),
             ("盈亏比", pl_ratio),
+            ("模式内胜率", in_mode_win_rate),
+            ("模式内盈亏比", in_mode_pl),
+            ("模式内已实现", in_mode_pnl),
             ("平均盈利", f"{report.avg_win:+.2f}" if report.avg_win is not None else "—"),
             ("平均亏损", f"{report.avg_loss:+.2f}" if report.avg_loss is not None else "—"),
             ("计划内占比", on_plan),
@@ -90,6 +96,10 @@ class JournalReportDialog(QtWidgets.QDialog):
             ("add_loss", str(report.add_loss_count)),
             ("float_loss_hold", str(report.float_loss_hold_count)),
         ]
+        for item in report.mode_breakdown:
+            label = f"mode·{item.mode}"
+            value = f"卖 {item.sell_count} · 胜率 {item.win_rate_pct or 0:.0f}% · 盈亏比 {item.profit_loss_ratio or 0:.1f}"
+            rows.append((label, value))
         self._table.setRowCount(len(rows))
         for index, (label, value) in enumerate(rows):
             self._table.setItem(index, 0, QtWidgets.QTableWidgetItem(label))

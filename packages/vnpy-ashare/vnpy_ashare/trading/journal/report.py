@@ -3,10 +3,54 @@
 from __future__ import annotations
 
 from vnpy_ashare.domain.trading.journal import TradeJournalEntry
-from vnpy_ashare.domain.trading.journal_report import JournalReport
+from vnpy_ashare.domain.trading.journal_report import JournalModeStats, JournalReport
 from vnpy_ashare.storage.repositories.trade_journal import query_trade_journal
 
 __all__ = ["JournalReport", "build_journal_report", "load_journal_report"]
+
+
+def _is_in_mode_trade(entry: TradeJournalEntry) -> bool:
+    return entry.on_plan and not entry.violation_tags
+
+
+def _sell_stats(sells: list[TradeJournalEntry]) -> tuple[int, int, float | None, float | None, float]:
+    pnls = [item.pnl for item in sells if item.pnl is not None]
+    wins = [value for value in pnls if value > 0]
+    losses = [value for value in pnls if value < 0]
+    win_count = len(wins)
+    loss_count = len(losses)
+    closed = win_count + loss_count
+    win_rate = round(win_count / closed * 100, 2) if closed else None
+    avg_win = round(sum(wins) / len(wins), 2) if wins else None
+    avg_loss = round(sum(losses) / len(losses), 2) if losses else None
+    pl_ratio = None
+    if avg_win is not None and avg_loss is not None and avg_loss < 0:
+        pl_ratio = round(avg_win / abs(avg_loss), 2)
+    realized = round(sum(pnls), 2) if pnls else 0.0
+    return win_count, loss_count, win_rate, pl_ratio, realized
+
+
+def _build_mode_breakdown(entries: list[TradeJournalEntry]) -> tuple[JournalModeStats, ...]:
+    sells = [item for item in entries if item.side == "sell"]
+    modes: dict[str, list[TradeJournalEntry]] = {}
+    for item in sells:
+        key = (item.mode or "unspecified").strip() or "unspecified"
+        modes.setdefault(key, []).append(item)
+    stats: list[JournalModeStats] = []
+    for mode, mode_sells in sorted(modes.items()):
+        win_count, loss_count, win_rate, pl_ratio, realized = _sell_stats(mode_sells)
+        stats.append(
+            JournalModeStats(
+                mode=mode,
+                sell_count=len(mode_sells),
+                win_count=win_count,
+                loss_count=loss_count,
+                win_rate_pct=win_rate,
+                profit_loss_ratio=pl_ratio,
+                realized_pnl_total=realized,
+            )
+        )
+    return tuple(stats)
 
 
 def build_journal_report(
@@ -37,6 +81,9 @@ def build_journal_report(
     violation_ratio = round(violation_count / total * 100, 2) if total else None
     realized_total = round(sum(sell_pnls), 2) if sell_pnls else 0.0
 
+    in_mode_sells = [item for item in entries if item.side == "sell" and _is_in_mode_trade(item)]
+    in_mode_win, in_mode_loss, in_mode_win_rate, in_mode_pl, in_mode_realized = _sell_stats(in_mode_sells)
+
     return JournalReport(
         total_entries=total,
         buy_count=buy_count,
@@ -55,6 +102,13 @@ def build_journal_report(
         realized_pnl_total=realized_total,
         avg_win=avg_win,
         avg_loss=avg_loss,
+        in_mode_sell_count=len(in_mode_sells),
+        in_mode_win_count=in_mode_win,
+        in_mode_loss_count=in_mode_loss,
+        in_mode_win_rate_pct=in_mode_win_rate,
+        in_mode_profit_loss_ratio=in_mode_pl,
+        in_mode_realized_pnl_total=in_mode_realized,
+        mode_breakdown=_build_mode_breakdown(entries),
     )
 
 
@@ -101,6 +155,10 @@ def format_journal_report_hint(report: JournalReport) -> str | None:
         parts.append(f"胜率 {report.win_rate_pct:.0f}%")
     if report.profit_loss_ratio is not None:
         parts.append(f"盈亏比 {report.profit_loss_ratio:.1f}")
+    if report.in_mode_win_rate_pct is not None:
+        parts.append(f"模式内胜率 {report.in_mode_win_rate_pct:.0f}%")
+    if report.in_mode_profit_loss_ratio is not None:
+        parts.append(f"模式内盈亏比 {report.in_mode_profit_loss_ratio:.1f}")
     if report.violation_count:
         parts.append(f"违规 {report.violation_count}")
     if report.realized_pnl_total:

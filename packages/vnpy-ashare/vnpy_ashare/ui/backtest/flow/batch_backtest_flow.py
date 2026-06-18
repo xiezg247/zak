@@ -11,7 +11,11 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_service
 from vnpy_ashare.app.events import EVENT_OPEN_BATCH_BACKTEST, BatchBacktestViewRequest
-from vnpy_ashare.backtest.batch_templates import apply_batch_backtest_template, batch_backtest_template_note
+from vnpy_ashare.backtest.batch_templates import (
+    apply_batch_backtest_template,
+    batch_backtest_template_note,
+    resolve_batch_backtest_template_id,
+)
 from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     load_batch_backtest_defaults,
@@ -101,6 +105,11 @@ class BatchBacktestFlow:
         )
         class_default = (default_class_name or defaults.class_name).strip() or defaults.class_name
         merged_setting = default_strategy_setting if has_setting_override else defaults.strategy_setting
+        auto_template_id = resolve_batch_backtest_template_id(
+            profile_id=profile_id,
+            recipe_id=recipe_id,
+            trigger=trigger,
+        )
         template_note = batch_backtest_template_note(
             profile_id=profile_id,
             recipe_id=recipe_id,
@@ -113,26 +122,52 @@ class BatchBacktestFlow:
             default_end=defaults.end.strftime("%Y-%m-%d"),
             count=len(rows),
             template_note=template_note,
+            auto_template_id=auto_template_id,
             parent=self.parent,
         )
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
 
         try:
-            params = BatchBacktestParams(
-                class_name=dialog.class_name,
-                start=datetime.strptime(dialog.start_text[:10], "%Y-%m-%d"),
-                end=datetime.strptime(dialog.end_text[:10], "%Y-%m-%d"),
-                rate=defaults.rate,
-                slippage=defaults.slippage,
-                size=defaults.size,
-                pricetick=defaults.pricetick,
-                capital=defaults.capital,
-                strategy_setting=merged_setting,
-            )
+            start = datetime.strptime(dialog.start_text[:10], "%Y-%m-%d")
+            end = datetime.strptime(dialog.end_text[:10], "%Y-%m-%d")
         except ValueError:
             page_notify(self.parent, "日期格式应为 YYYY-MM-DD", level="warning")
             return
+
+        base = BatchBacktestParams(
+            class_name=dialog.class_name,
+            start=start,
+            end=end,
+            rate=defaults.rate,
+            slippage=defaults.slippage,
+            size=defaults.size,
+            pricetick=defaults.pricetick,
+            capital=defaults.capital,
+            strategy_setting=merged_setting,
+            interval=defaults.interval,
+        )
+        selected_template_id = (dialog.template_id or "").strip() or None
+        if selected_template_id:
+            params = apply_batch_backtest_template(
+                base,
+                template_id=selected_template_id,
+                override_class_name=False,
+                override_dates=False,
+                override_setting=True,
+            )
+        else:
+            params = apply_batch_backtest_template(
+                base,
+                profile_id=profile_id,
+                recipe_id=recipe_id,
+                trigger=trigger,
+                override_class_name=False,
+                override_dates=False,
+                override_setting=not has_setting_override,
+            )
+            if has_setting_override:
+                params = params.model_copy(update={"strategy_setting": merged_setting})
 
         self._last_params = params
         self._batch_source = batch_source
