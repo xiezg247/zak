@@ -156,6 +156,15 @@ class SchedulerConfig(MutableModel):
         ),
         description="批量补全过期日 K 配置",
     )
+    fill_focus_pool_minute: JobConfig = Field(
+        default_factory=lambda: JobConfig(
+            enabled=True,
+            cron_hour=17,
+            cron_minute=5,
+            cron_day_of_week="mon-fri",
+        ),
+        description="关注池 1m K 补全配置",
+    )
     screen_intraday: AutoScreenJobConfig = Field(
         default_factory=lambda: AutoScreenJobConfig(
             enabled=False,
@@ -222,6 +231,7 @@ class SchedulerConfig(MutableModel):
             "sync_watchlist_financials": dump_job(self.sync_watchlist_financials),
             "sync_disclosure_calendar": dump_job(self.sync_disclosure_calendar),
             "batch_fill_stale": dump_job(self.batch_fill_stale),
+            "fill_focus_pool_minute": dump_job(self.fill_focus_pool_minute),
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
             "scan_horizon_outlook": dump_job(self.scan_horizon_outlook),
@@ -269,6 +279,7 @@ class SchedulerConfig(MutableModel):
             sync_watchlist_financials=load_job("sync_watchlist_financials", defaults.sync_watchlist_financials),
             sync_disclosure_calendar=load_job("sync_disclosure_calendar", defaults.sync_disclosure_calendar),
             batch_fill_stale=load_job("batch_fill_stale", defaults.batch_fill_stale),
+            fill_focus_pool_minute=load_job("fill_focus_pool_minute", defaults.fill_focus_pool_minute),
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
             scan_horizon_outlook=load_job("scan_horizon_outlook", defaults.scan_horizon_outlook),

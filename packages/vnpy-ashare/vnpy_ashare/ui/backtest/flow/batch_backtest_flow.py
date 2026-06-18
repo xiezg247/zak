@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from vnpy.event import Event
+from vnpy.trader.constant import Interval
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_service
@@ -16,11 +17,13 @@ from vnpy_ashare.backtest.batch_templates import (
     batch_backtest_template_note,
     resolve_batch_backtest_template_id,
 )
+from vnpy_ashare.jobs.bars.focus_pool_minute import summarize_minute_gaps_for_vt_symbols
 from vnpy_ashare.screener.batch.batch_actions import (
     BatchBacktestParams,
     load_batch_backtest_defaults,
     persist_batch_backtest_results,
 )
+from vnpy_ashare.ui.backtest.workers.focus_pool_minute_worker import FocusPoolMinuteFillWorker
 from vnpy_ashare.ui.screener.dialogs.screener_batch_dialog import ScreenerBatchBacktestConfigDialog
 from vnpy_ashare.ui.screener.workers.screener_workers import ScreenerBatchBacktestWorker
 from vnpy_common.ui.feedback import page_notify
@@ -43,13 +46,17 @@ class BatchBacktestFlow:
         self.parent = parent
         self._on_status = on_status or (lambda _msg: None)
         self._worker: ScreenerBatchBacktestWorker | None = None
+        self._minute_worker: FocusPoolMinuteFillWorker | None = None
         self._retired_workers: list[QtCore.QThread] = []
         self._last_params: BatchBacktestParams | None = None
         self._batch_source = "batch_screener"
         self._source_page = ""
 
     def is_running(self) -> bool:
-        return self._worker is not None and self._worker.isRunning()
+        if self._worker is not None and self._worker.isRunning():
+            return True
+        minute = self._minute_worker
+        return minute is not None and minute.isRunning()
 
     def release_worker(
         self,
@@ -60,6 +67,9 @@ class BatchBacktestFlow:
         worker = self._worker
         self._worker = None
         release_thread(retired, worker, timeout_ms=timeout_ms)
+        minute = self._minute_worker
+        self._minute_worker = None
+        release_thread(retired, minute, timeout_ms=0)
         for pending in list(self._retired_workers):
             release_thread(retired, pending, timeout_ms=0)
         self._retired_workers.clear()
@@ -176,6 +186,82 @@ class BatchBacktestFlow:
         self._source_page = source_page
         if on_running is not None:
             on_running(True)
+        self._maybe_start_with_minute_precheck(rows, params, on_running)
+
+    def _maybe_start_with_minute_precheck(
+        self,
+        rows: list[dict[str, Any]],
+        params: BatchBacktestParams,
+        on_running: Callable[[bool], None] | None,
+    ) -> None:
+        if params.interval != Interval.MINUTE:
+            self._launch_batch_worker(rows, params, on_running)
+            return
+
+        vt_symbols = [str(row.get("vt_symbol") or "").strip() for row in rows]
+        vt_symbols = [symbol for symbol in vt_symbols if symbol]
+        summary = summarize_minute_gaps_for_vt_symbols(vt_symbols)
+        if summary.needs_fill == 0:
+            self._launch_batch_worker(rows, params, on_running)
+            return
+
+        reply = QtWidgets.QMessageBox.question(
+            self.parent,
+            "分 K 数据预检",
+            f"{summary.needs_fill}/{summary.total} 只缺少或未更新本地 1 分钟 K 线。\n"
+            "是否先自动补全再回测？（需 Tushare，耗时视数量而定）",
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+            | QtWidgets.QMessageBox.StandardButton.Cancel,
+            QtWidgets.QMessageBox.StandardButton.Yes,
+        )
+        if reply == QtWidgets.QMessageBox.StandardButton.Cancel:
+            if on_running is not None:
+                on_running(False)
+            return
+        if reply == QtWidgets.QMessageBox.StandardButton.No:
+            self._launch_batch_worker(rows, params, on_running)
+            return
+
+        self._on_status(f"补全 1m K（{summary.needs_fill} 只）…")
+        minute_worker = FocusPoolMinuteFillWorker(vt_symbols)
+        self._minute_worker = minute_worker
+        minute_worker.log.connect(self._on_status)
+        minute_worker.finished.connect(lambda _result: self._launch_batch_worker(rows, params, on_running))
+        minute_worker.failed.connect(
+            lambda message: self._on_minute_fill_failed(message, rows, params, on_running),
+        )
+        minute_worker.start()
+
+    def _on_minute_fill_failed(
+        self,
+        message: str,
+        rows: list[dict[str, Any]],
+        params: BatchBacktestParams,
+        on_running: Callable[[bool], None] | None,
+    ) -> None:
+        self._minute_worker = None
+        reply = QtWidgets.QMessageBox.question(
+            self.parent,
+            "1m K 补全失败",
+            f"{message}\n是否仍继续批量回测？",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            if on_running is not None:
+                on_running(False)
+            self._on_status("已取消批量回测")
+            return
+        self._launch_batch_worker(rows, params, on_running)
+
+    def _launch_batch_worker(
+        self,
+        rows: list[dict[str, Any]],
+        params: BatchBacktestParams,
+        on_running: Callable[[bool], None] | None,
+    ) -> None:
+        self._minute_worker = None
         self._on_status(f"批量回测中（{len(rows)} 只）…")
 
         worker = ScreenerBatchBacktestWorker(

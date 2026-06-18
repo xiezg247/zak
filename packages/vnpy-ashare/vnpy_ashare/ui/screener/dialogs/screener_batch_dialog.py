@@ -246,7 +246,7 @@ class ScreenerBatchBacktestConfigDialog(QtWidgets.QDialog):
             reply = QtWidgets.QMessageBox.question(
                 self,
                 "分 K 回测",
-                "分 K 模板需要本地 1 分钟 K 线数据；缺失时单只结果会标记错误。\n是否继续？",
+                "分 K 模板需要本地 1 分钟 K 线；启动后将预检缺口并可自动补全。\n是否继续？",
                 QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
                 QtWidgets.QMessageBox.StandardButton.Yes,
             )

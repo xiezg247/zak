@@ -20,6 +20,7 @@ from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
+from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
 from vnpy_ashare.jobs.core.progress import bind_job_log
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
@@ -307,6 +308,19 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在全市场日 K 与补全之后）",
+            ),
+            "fill_focus_pool_minute": _JobMeta(
+                job_id="fill_focus_pool_minute",
+                name="关注池 1m K 补全",
+                description="为「短线观察」分组成员与持仓记账标的补全/增量 1 分钟 K 线",
+                runner=batch_fill_focus_pool_minute_job,
+                config_attr="fill_focus_pool_minute",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在日 K 补全之后）",
             ),
             "screen_intraday": _JobMeta(
                 job_id="screen_intraday",

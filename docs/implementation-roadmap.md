@@ -235,6 +235,6 @@ Phase 5 ✅
 | P1 | 选股 Hub「过滤至短线主池」 | **已有** | 结果条「短线主池」+ `ultra_short_pool_filter` |
 | P1 | 盘后 AI「龙头结构 + 明日观察」 | **已有** | 雷达共振侧栏「盘后解读」+ `build_eod_leader_prompt` |
 | P1 | 持仓「仅观察组」筛选 | **已有** | 持仓统计条「观察组 N」可点筛选 |
-| P1 | 观察组+持仓 1m K 自动补全 | **待建** | 定时 Job / 批量回测预检 |
+| P1 | 观察组+持仓 1m K 自动补全 | **已有** | Job `fill_focus_pool_minute` + 分 K 回测预检 |
 | P2 | 微信 / 邮件通知 | **待建** | [notifications §1.3](./notifications.md#13-与-vnpy-内置通道关系) |
 | P2 | 券商持仓 `source=gateway` | **待建** | `PositionRecord.source` 已预留 |
