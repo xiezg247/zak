@@ -5,6 +5,10 @@ from __future__ import annotations
 from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
 from vnpy_ashare.domain.market.emotion import EmotionCycleInputs
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
+from vnpy_ashare.quotes.market.emotion_ladder_continuity import (
+    compute_ladder_continuity,
+    maybe_persist_ladder_snapshot,
+)
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
 __all__ = ["EmotionCycleInputs", "build_emotion_cycle_inputs", "compute_limit_ladder_stats"]
@@ -35,6 +39,8 @@ def build_emotion_cycle_inputs(
     else:
         limit_map = limit_times_map
     max_limit_times, ladder_depth = compute_limit_ladder_stats(limit_map)
+    maybe_persist_ladder_snapshot(limit_map)
+    break_rate, prev_leader_down, prev_max_boards = compute_ladder_continuity(limit_times_map=limit_map)
 
     fg = fear_greed_index
     if include_auxiliary and fg is None:
@@ -52,4 +58,7 @@ def build_emotion_cycle_inputs(
         index_above_ma5=index_above_ma5,
         fear_greed_index=fg,
         updated_at=breadth.updated_at,
+        limit_break_rate=break_rate,
+        prev_leader_limit_down=prev_leader_down,
+        prev_max_limit_times=prev_max_boards,
     )

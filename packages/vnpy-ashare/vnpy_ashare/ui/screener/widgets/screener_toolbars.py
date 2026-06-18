@@ -56,6 +56,13 @@ class ScreenerResultActionBar(QtWidgets.QWidget):
         self.reference_peer_btn.setToolTip("以勾选的单只标的为标杆，筛选相似股票")
         layout.addWidget(self.reference_peer_btn)
 
+        layout.addWidget(screener_toolbar_separator())
+
+        self.filter_ultra_short_btn = QtWidgets.QPushButton("短线主池")
+        self.filter_ultra_short_btn.setObjectName("SecondaryButton")
+        self.filter_ultra_short_btn.setToolTip("按激进硬过滤 + 连板/涨幅/龙头评分收窄当前结果")
+        layout.addWidget(self.filter_ultra_short_btn)
+
         layout.addStretch()
         self.hide()
 

@@ -348,6 +348,10 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             self._multiview.restore_view_mode()
         self._refresh_emotion_cycle_chip()
         self._refresh_risk_gate_chip()
+        if self.page_name == "自选":
+            from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
+
+            maybe_show_ultra_short_onboarding(self)
 
     def _refresh_emotion_cycle_chip(self) -> None:
         chip = getattr(self, "emotion_cycle_chip", None)

@@ -276,6 +276,14 @@ CREATE TABLE IF NOT EXISTS trade_journal (
 
 CREATE INDEX IF NOT EXISTS idx_trade_journal_trade_date
     ON trade_journal(trade_date DESC, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS emotion_limit_ladder_daily (
+    trade_date TEXT PRIMARY KEY,
+    max_limit_times INTEGER NOT NULL DEFAULT 0,
+    max_board_vt_symbol TEXT NOT NULL DEFAULT '',
+    linked_board_vt_symbols TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL
+);
 """
 
 

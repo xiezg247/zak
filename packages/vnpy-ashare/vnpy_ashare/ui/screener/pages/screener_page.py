@@ -30,6 +30,7 @@ from vnpy_ashare.screener.pattern.pattern_screen import list_pattern_screeners
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.run.run_diff import enrich_condition_run
 from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult, build_industry_scheme_config
+from vnpy_ashare.screener.run.ultra_short_pool_filter import filter_ultra_short_main_pool
 from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
 from vnpy_ashare.services.screening import ScreeningService
 from vnpy_ashare.services.watchlist_short_term import (
@@ -197,6 +198,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.backtest_btn = self.result_action_bar.backtest_btn
         self.batch_backtest_btn = self.result_action_bar.batch_backtest_btn
         self.reference_peer_btn = self.result_action_bar.reference_peer_btn
+        self.filter_ultra_short_btn = self.result_action_bar.filter_ultra_short_btn
         self.select_all_btn.clicked.connect(self._select_all)
         self.add_watchlist_btn.clicked.connect(self._add_selected_to_watchlist)
         self.add_observation_group_btn.clicked.connect(self._add_selected_to_observation_group)
@@ -204,6 +206,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.backtest_btn.clicked.connect(self._open_backtest_for_selection)
         self.batch_backtest_btn.clicked.connect(self._run_batch_backtest)
         self.reference_peer_btn.clicked.connect(self._open_reference_peer)
+        self.filter_ultra_short_btn.clicked.connect(self._filter_ultra_short_pool)
 
         # ── 内容区域（Splitter） ──────────────────────────
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -1001,6 +1004,29 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.result_insights.apply(self._results, record.config)
         self.run_output_panel.load_history(summary=summary)
         sync_screener_page_context(self.main_engine)
+
+    def _filter_ultra_short_pool(self) -> None:
+        if not self._results:
+            self._toast.info("暂无结果可筛选")
+            return
+        before = len(self._results)
+        filtered = filter_ultra_short_main_pool(self._results)
+        if not filtered:
+            self._toast.warning("短线主池过滤后无命中（需连板/涨幅/龙头分 + 激进硬过滤）")
+            return
+        self._results = filtered
+        apply_screener_results_view(
+            self.result_table,
+            self._results,
+            self._result_columns,
+            empty_label=self._empty_result_label,
+            select_all_btn=self.select_all_btn,
+            result_action_bar=self.result_action_bar,
+            export_btn=self.export_btn,
+        )
+        self.result_insights.apply(self._results, self._last_run_config or None)
+        sync_screener_page_context(self.main_engine)
+        self._toast.success(f"已收窄至短线主池：{before} → {len(filtered)} 条")
 
     def _clear_loaded_run_view(self) -> None:
         self._loaded_run_id = None

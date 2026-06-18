@@ -21,9 +21,10 @@ def _row(symbol: str = "600000") -> ScreenerResultRow:
     )
 
 
-@patch("vnpy_ashare.screener.enrich.regulatory.assess_regulatory_deviation")
+@patch("vnpy_ashare.screener.enrich.regulatory.assess_regulatory_deviation_for_vt_symbol")
+@patch("vnpy_ashare.screener.enrich.regulatory.load_exchange_regulatory_index", return_value={})
 @patch("vnpy_ashare.screener.enrich.regulatory.load_daily_bars_batch")
-def test_enrich_regulatory_tags_writes_hint(mock_bars, mock_assess):
+def test_enrich_regulatory_tags_writes_hint(mock_bars, _index, mock_assess):
     mock_bars.return_value = {("600000", Exchange.SSE): [object()] * 20}
     snapshot = MagicMock(risk_level="watch", summary="10日3次涨停")
     mock_assess.return_value = snapshot
@@ -33,7 +34,8 @@ def test_enrich_regulatory_tags_writes_hint(mock_bars, mock_assess):
     assert rows[0].tags.get("regulatory_risk") == "watch"
 
 
+@patch("vnpy_ashare.screener.enrich.regulatory.load_exchange_regulatory_index", return_value={})
 @patch("vnpy_ashare.screener.enrich.regulatory.load_daily_bars_batch", return_value={})
-def test_enrich_regulatory_tags_skips_short_history(_bars):
+def test_enrich_regulatory_tags_skips_short_history(_bars, _index):
     rows = enrich_regulatory_tags([_row()])
     assert "regulatory_hint" not in rows[0].tags

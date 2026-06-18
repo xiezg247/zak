@@ -59,6 +59,8 @@
 | **分歧** | 龙头炸板；涨跌停接近；跟风掉队 | 减仓；仅核心低吸 | ≤ 30% |
 | **退潮** | 龙头跌停；连板批量断板；亏钱效应扩散 | **无条件空仓** | 0% |
 
+> **读表说明**：表中「龙头 / 连板 / 梯队」指**全市场短线情绪代理指标**，用于回答「今天做不做、总仓位上限、允许哪种模式」；**不**等同于个股推荐，也不要求个人必须跟随某一板块龙一。具体标的筛选见 [§3 选股体系](#3-选股体系只做有辨识度的人气股)。
+
 > **实现注记**：连板高度、涨停/跌停家数可从 `market_breadth`、Tushare `limit_list_d`、市场页 `limit_up` 排行聚合；连板梯队需新增 `limit_times` 分布统计（市场页表格列已有 `连板` 字段）。
 
 ### 2.2 辅助验证指标
@@ -118,16 +120,18 @@
 
 ### 3.2 与现有选股能力映射
 
-| 极致短线需求 | 现有模块 | 差距 |
-|--------------|----------|------|
-| 涨停 / 连板池 | 市场页 `limit_up` 排行；preset `limit_up` | 缺「连板梯队」视图与首板/二板分类 |
-| 题材龙头 | 雷达 `sector_theme`；板块资金页 | 缺「板块内龙一/龙二」排序 |
-| 人气 / 辨识度 | 雷达共振；`intraday_multi` 配方；首板维度 | 封板时间 **已有**；封单强度 **已有**（limit_list_d） |
-| 硬过滤 | `ScreenerHardFilterPanel` | 默认值偏均衡；需 **短线激进模板** 预设 |
-| 20cm 弹性池 | 条件选股 `change_pct` + 板块白名单 | 缺专用 Recipe `cm20_momentum` |
-| 异动监管回避 | 概览 Tab + `assess_regulatory_deviation` | **已有**（本地日 K 近似） |
+> **状态（2026-06）**：G-/D-/R- 主能力 **已有**；下表「剩余优化」为 Post-Phase backlog，见 [implementation-roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
 
-### 3.3 新增 Recipe / Preset（规划）
+| 极致短线需求 | 现有模块 | 状态 | 剩余优化 |
+|--------------|----------|------|----------|
+| 涨停 / 连板池 | 市场页 `limit_up` + 梯队条；雷达 D-01 `discovery_limit_ladder` | **已有** | 市场页按 `limit_times` 分层筛选（可选） |
+| 题材龙头 | 雷达 `leader_pick` + `leader_score`；`run_leader_screen` | **已有** | 板块资金侧栏与雷达闭环仍独立入口 |
+| 人气 / 辨识度 | 雷达共振；R-01/R-02；封板时间 + 封单（`limit_list_d`） | **已有** | — |
+| 硬过滤 | `ScreenerHardFilterPanel` 保守/均衡/**激进** | **已有** | 新用户可选 onboarding 切极致短线 |
+| 20cm 弹性池 | Recipe R-03 `cm20_elastic` | **已有** | — |
+| 异动监管回避 | 概览 Tab + `assess_regulatory_deviation` | **已有** | Tushare `stk_shock` 与本地日 K 合并 |
+
+### 3.3 Recipe / Preset（R-01–R-04，**已有**）
 
 | ID | 名称 | trigger | 核心维度 | 用途 |
 |----|------|---------|----------|------|
@@ -395,7 +399,7 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | 自选 | 问 AI（信号）、问 AI（持仓）、问 AI（整板多维摘要） |
 | 雷达 | 雷达洞察（已有）；「生成次日计划」（**已有**） |
 | 市场 | 「今日短线环境评估」（**已有**，`build_market_ai_prompt`） |
-| 选股 | 解读结果（已有）；增加「过滤至短线主池」 |
+| 选股 | 解读结果（**已有**）；「短线主池」结果条（**已有**） |
 | 持仓 | 「隔日卖点检查」（**已有**，`evaluate_overnight_exit`） |
 
 ---
@@ -408,7 +412,7 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | Redis 全市场快照 | 行情 Job | 选股、广度 |
 | 涨跌停 / 连板 | Tushare `limit_list_d` | 情绪周期、梯队 |
 | 龙虎榜 | Tushare | 参考 |
-| 异动 / 偏离度 | Tushare（待接） | 监管回避 |
+| 异动 / 偏离度 | Tushare `stk_shock`/`stk_high_shock` + 本地日 K（**已有**） | 监管回避 |
 | 板块 / 概念 | Tushare + 本地映射 | 龙头识别 |
 | 本地日 K | bar_store | MA5 低吸、策略信号 |
 
@@ -521,7 +525,7 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | 文档 | 关联 |
 |------|------|
 | [产品说明](./product-plan.md) | 模块导航总览 |
-| [实施路线图](./implementation-roadmap.md) | 全需求 ID 状态与分期 |
+| [实施路线图](./implementation-roadmap.md) | 全需求 ID 状态、Phase 归档与 **Post-Phase backlog §14** |
 | [盘中工作流](./intraday-workflow.md) | 七大模块日路径 |
 | [情绪周期引擎](./emotion-cycle.md) | 择时 T-03 |
 | [策略配置方案](./strategy-profiles.md) | Profile 与现有策略 |

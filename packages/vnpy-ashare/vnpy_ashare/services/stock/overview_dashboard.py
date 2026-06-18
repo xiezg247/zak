@@ -22,7 +22,7 @@ from vnpy_ashare.services.stock.context import (
 )
 from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 from vnpy_ashare.services.stock.profile import build_valuation_profile
-from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation
+from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation_for_vt_symbol
 from vnpy_ashare.storage.repositories.valuation import list_valuation_history
 
 
@@ -196,14 +196,8 @@ def _moneyflow_alerts(vt_symbol: str) -> list[OverviewAlert]:
 
 
 def _regulatory_alerts(vt_symbol: str) -> list[OverviewAlert]:
-    item = parse_stock_symbol(vt_symbol)
-    if item is None:
-        return []
-    bars = load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=45)
-    if len(bars) < 11:
-        return []
-    snapshot = assess_regulatory_deviation(bars)
-    if snapshot.risk_level == "none":
+    snapshot = assess_regulatory_deviation_for_vt_symbol(vt_symbol)
+    if snapshot is None or snapshot.risk_level == "none":
         return []
     severity: AlertSeverity = "warn" if snapshot.risk_level == "high" else "info"
     return [

@@ -10,6 +10,11 @@ from vnpy_ashare.integrations.tushare.factors import (
     fetch_moneyflow_hsgt_window,
     fetch_stock_basic_snapshot,
 )
+from vnpy_ashare.integrations.tushare.stk_shock import (
+    fetch_stk_high_shock_daily,
+    fetch_stk_shock_daily,
+)
+from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.jobs.core.progress import job_log
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback
@@ -53,6 +58,13 @@ def prefetch_tushare_factors() -> JobResult:
         job_log("拉取 moneyflow_hsgt …")
         hsgt_rows, hsgt_date = fetch_moneyflow_hsgt_window(trade_date=anchor_date)
         parts.append(f"moneyflow_hsgt {len(hsgt_rows)} 条 @ {hsgt_date or '-'}")
+        job_log(parts[-1])
+
+        shock_date = anchor_date or last_trading_day().strftime("%Y%m%d")
+        job_log("拉取 stk_shock / stk_high_shock …")
+        shock_rows = fetch_stk_shock_daily(shock_date)
+        high_shock_rows = fetch_stk_high_shock_daily(shock_date)
+        parts.append(f"stk_shock {len(shock_rows)} + high {len(high_shock_rows)} @ {shock_date}")
         job_log(parts[-1])
 
     job_log("拉取 stock_basic …")

@@ -1,4 +1,4 @@
-"""监管异动距离评估（10 日涨停次数 / 区间涨幅）。"""
+"""监管异动距离评估（Tushare 交易所披露 + 本地日 K 近似）。"""
 
 from __future__ import annotations
 
@@ -10,10 +10,17 @@ from vnpy.trader.object import BarData
 from vnpy_ashare.data.pattern_bars import load_daily_bars_tail
 from vnpy_ashare.domain.market.breadth import LIMIT_UP_PCT
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
+from vnpy_ashare.integrations.tushare.stk_shock import (
+    ExchangeRegulatoryRecord,
+    load_recent_exchange_regulatory_for_vt_symbol,
+    parse_deviation_pct_from_reason,
+    summarize_exchange_records,
+)
 from vnpy_common.domain.base import FrozenModel
 from vnpy_common.domain.serialize import dump_json
 
 RiskLevel = Literal["none", "watch", "high"]
+DataSource = Literal["local", "tushare", "hybrid"]
 
 # A 股严重异动常见阈值（简化，未区分 ST / 20% 板）
 LIMIT_UP_COUNT_10D_THRESHOLD = 4
@@ -30,6 +37,11 @@ class RegulatoryDeviationSnapshot(FrozenModel):
     return_30d_pct: float | None = Field(default=None, description="近 30 交易日累计涨幅 %")
     risk_level: RiskLevel = Field(default="none", description="风险等级")
     summary: str = Field(default="", description="一行摘要")
+    data_source: DataSource = Field(default="local", description="数据来源")
+    exchange_shock_reason: str | None = Field(default=None, description="交易所披露说明")
+    exchange_shock_date: str | None = Field(default=None, description="交易所披露日期 YYYYMMDD")
+    exchange_deviation_pct: float | None = Field(default=None, description="从披露文案解析的偏离值 %")
+    exchange_high_shock: bool = Field(default=False, description="是否严重异常波动")
 
 
 def _bar_change_pct(bars: list[BarData], index: int) -> float | None:
@@ -122,6 +134,53 @@ def _build_summary(
     return "接近监管异动阈值，注意节奏"
 
 
+def _exchange_risk_level(records: tuple[ExchangeRegulatoryRecord, ...]) -> RiskLevel:
+    if not records:
+        return "none"
+    if any(item.shock_type == "high_shock" for item in records):
+        return "high"
+    return "watch"
+
+
+def merge_with_exchange_records(
+    local: RegulatoryDeviationSnapshot,
+    records: tuple[ExchangeRegulatoryRecord, ...],
+) -> RegulatoryDeviationSnapshot:
+    if not records:
+        return local
+
+    latest = records[0]
+    exchange_risk = _exchange_risk_level(records)
+    risk_rank = {"none": 0, "watch": 1, "high": 2}
+    merged_risk: RiskLevel = local.risk_level
+    if risk_rank[exchange_risk] > risk_rank[local.risk_level]:
+        merged_risk = exchange_risk
+
+    exchange_summary = summarize_exchange_records(records)
+    if exchange_risk == "high":
+        summary = exchange_summary
+    elif local.risk_level == "none":
+        summary = exchange_summary
+    else:
+        summary = f"{exchange_summary}；{local.summary}" if local.summary else exchange_summary
+
+    data_source: DataSource = "hybrid" if local.data_source == "local" and local.summary != "暂无异动预警" else "tushare"
+    if local.risk_level != "none" and records:
+        data_source = "hybrid"
+
+    return local.model_copy(
+        update={
+            "risk_level": merged_risk,
+            "summary": summary,
+            "data_source": data_source,
+            "exchange_shock_reason": latest.reason or None,
+            "exchange_shock_date": latest.trade_date or None,
+            "exchange_deviation_pct": parse_deviation_pct_from_reason(latest.reason),
+            "exchange_high_shock": latest.shock_type == "high_shock",
+        }
+    )
+
+
 def assess_regulatory_deviation(bars: list[BarData]) -> RegulatoryDeviationSnapshot:
     """基于本地日 K 评估监管异动距离。"""
     limit_up_count_10d = _limit_up_count(bars, 10)
@@ -147,14 +206,42 @@ def assess_regulatory_deviation(bars: list[BarData]) -> RegulatoryDeviationSnaps
     )
 
 
+def assess_regulatory_deviation_for_vt_symbol(
+    vt_symbol: str,
+    bars: list[BarData] | None = None,
+    *,
+    exchange_records: tuple[ExchangeRegulatoryRecord, ...] | None = None,
+) -> RegulatoryDeviationSnapshot | None:
+    """合并交易所披露与本地日 K；bars 不足时仍可返回 Tushare 披露。"""
+    if exchange_records is None:
+        exchange_records = load_recent_exchange_regulatory_for_vt_symbol(vt_symbol)
+
+    local: RegulatoryDeviationSnapshot | None = None
+    if bars is not None and len(bars) >= 11:
+        local = assess_regulatory_deviation(bars)
+    elif bars is None:
+        item = parse_stock_symbol(vt_symbol)
+        if item is not None:
+            loaded = load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=45)
+            if len(loaded) >= 11:
+                local = assess_regulatory_deviation(loaded)
+
+    if local is None:
+        if not exchange_records:
+            return None
+        empty = RegulatoryDeviationSnapshot(summary="暂无异动预警")
+        return merge_with_exchange_records(empty, exchange_records)
+
+    return merge_with_exchange_records(local, exchange_records)
+
+
 def assess_regulatory_deviation_for_symbol(vt_symbol: str) -> dict[str, Any]:
     """按 vt_symbol 加载日 K 并返回监管异动评估（供 AI 工具）。"""
     item = parse_stock_symbol(vt_symbol)
     if item is None:
         return {"error": f"无法解析代码: {vt_symbol}"}
 
-    bars = load_daily_bars_tail(item.symbol, item.exchange, lookback_bars=45)
-    if len(bars) < 11:
-        return {"error": "本地日 K 不足，请先同步行情数据", "vt_symbol": vt_symbol}
-    snapshot = assess_regulatory_deviation(bars)
+    snapshot = assess_regulatory_deviation_for_vt_symbol(vt_symbol)
+    if snapshot is None:
+        return {"error": "本地日 K 不足且暂无交易所披露", "vt_symbol": vt_symbol}
     return dump_json(snapshot)

@@ -37,11 +37,12 @@
 |------|------|
 | 全选 | 勾选全部结果行 |
 | 加入自选 | 批量写入自选池（上限 50） |
-| 加入观察组（规划 D-04） | 写入「短线观察」分组 Tab |
+| 加入观察组（D-04 **已有**） | 写入「短线观察」分组 Tab |
 | 下载日 K | 为选中标的补本地 K 线 |
 | 策略回测 | 单只带入回测页 |
 | 批量回测 | 多只 → 回测对比页 |
 | 找同类 | 以单只为标杆做同业对标 |
+| **短线主池** | 对当前结果按激进硬过滤 + 连板/涨幅/龙头分收窄（**已有**） |
 
 主工具栏 **导出 CSV**：按结果类型自动选列（行情 / 基本面 / 资金流 / 配方综合分）。
 
@@ -74,10 +75,10 @@
 | 涨幅榜 / 低 PE | `screen_by_condition` |
 | 老鸭头 / W 底 | `screen_by_pattern` |
 | 解读这次结果 | `get_screening_context` |
-| 今天能不能做短线 | `get_emotion_cycle`（规划；未建则恐贪 + 文案说明） |
-| 龙头池 / 连板 | `run_leader_screen`（规划） |
+| 今天能不能做短线 | `get_emotion_cycle`（**已有**） |
+| 龙头池 / 连板 | `run_leader_screen`（**已有**）；Hub 工具栏「运行雷达龙头」 |
 
-路由表见 [AI 数据路由](./ai-data-routing.md#择时与短线工具规划)。
+路由表见 [AI 数据路由](./ai-data-routing.md)。Post-Phase：结果区「过滤至短线主池」见 [roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
 
 ## 常见问题
 

@@ -138,17 +138,19 @@ quotes/market/
 | 退潮样本 | `allow_new_positions is False` |
 | 高潮样本 | `position_factor >= 0.6` |
 | 成交额不足 | factor 下调 |
-| 边界 | 涨停 49 vs 50 不抖动（ hysteresis 可选 Phase 2） |
+| 边界 | 涨停 49 vs 50 不抖动（`emotion_cycle_hysteresis`，系统配置可关） |
 
 ---
 
 ## 9. 实施分期
 
-| Phase | 交付 |
-|-------|------|
-| 1 | 引擎 + 市场页芯片 + `get_emotion_cycle` ✅ |
-| 2 | 雷达/选股 gate + 阈值设置 UI |
-| 3 | 连板断板率、昨最高板跌停（需日切缓存） |
+| Phase | 交付 | 状态 |
+|-------|------|------|
+| 1 | 引擎 + 市场页芯片 + `get_emotion_cycle` | **已有** |
+| 2 | 雷达/选股 gate（**已有**）+ 阈值设置 UI | **已有** | 系统配置 →「情绪周期」Tab |
+| 3 | 连板断板率、昨最高板跌停（需日切缓存） | **已有** |
+
+gate 已接入：`run_leader_screen`、选股批量入自选、Recipe R-04、持仓登记 warning。详见 [roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
 
 ---
 

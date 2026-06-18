@@ -25,4 +25,7 @@ def store_emotion_cycle_snapshot(snapshot: EmotionCycleSnapshot | None) -> None:
 
 def invalidate_emotion_cycle_cache() -> None:
     """行情缓存更新时丢弃情绪快照，避免与旧广度不一致。"""
+    from vnpy_ashare.quotes.market.emotion_cycle_hysteresis import reset_emotion_stage_hysteresis
+
     _emotion_cache.invalidate()
+    reset_emotion_stage_hysteresis()

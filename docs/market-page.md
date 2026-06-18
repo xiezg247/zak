@@ -59,20 +59,20 @@ Redis 全市场快照 + Tushare 补充
 
 - 上涨 / 下跌家数
 - 涨停 / 跌停家数（含 ST 可选过滤）
-- 两市成交额（规划：与 1 万亿阈值对比着色）
+- 两市成交额（**已有**：`< 1 万亿` 橙色提示，见 `stats_bar.py`）
 
-**Phase 1**：广度数据 feed 给 T-03，不在本页重复展示复杂梯队（梯队优先雷达 D-01）。
+复杂连板梯队优先雷达 D-01；本页提供 stats_bar 下方 **连板梯队条**（**已有**）。
 
 ---
 
-## 5. AI 入口（规划）
+## 5. AI 入口（**已有**）
 
 | 动作 | 工具 / 上下文 |
 |------|---------------|
-| 「今日短线环境评估」 | T-01 + T-02 + T-03 + 成交额 |
+| 「今日短线环境评估」 | `build_market_ai_prompt`（T-01 + T-02 + T-03 + 成交额） |
 | 选中标的问 AI | `get_quote_context` + 市场广度摘要 |
 
-路由见 [AI 数据路由 §择时扩展](./ai-data-routing.md#择时与短线工具规划)。
+路由见 [AI 数据路由](./ai-data-routing.md)。
 
 ---
 
@@ -94,7 +94,7 @@ Redis 全市场快照 + Tushare 补充
 | 实时行情 | Redis（`QUOTE_COLLECT_INTERVAL` 调度） |
 | 恐贪 | `vnpy-sentiment` / Tushare |
 | 北向 | Tushare |
-| 连板次数 | 行情 enrich 或 Tushare `limit_list_d`（规划统一） |
+| 连板次数 | Redis `limit_times` 缓存 + Tushare `limit_list_d` 补充（**已有**） |
 
 离线 / Redis 空：顶栏数据状态条提示；AI 与选股引导打开市场页或运行行情采集 Job。
 

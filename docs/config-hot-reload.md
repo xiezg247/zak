@@ -46,6 +46,7 @@
 | `trading/total_capital` 等 | 风控参数 | [risk-gate.md](./risk-gate.md) |
 | `notify/events` | 飞书事件订阅多选 | [notifications.md](./notifications.md) |
 | `screener_ui/hard_filter_*` | 硬过滤模板与阈值 | [intraday-screening.md](./intraday-screening.md) |
+| `trading/emotion/*` | 情绪周期判定阈值 | [emotion-cycle.md](./emotion-cycle.md) |
 | `watchlist_groups/*` | 分组 Tab 状态 | [watchlist-groups.md](./watchlist-groups.md) |
 
 > 交易 / 风控 / 通知模块实现前，配置页可先占位；保存行为与上表档位一致。

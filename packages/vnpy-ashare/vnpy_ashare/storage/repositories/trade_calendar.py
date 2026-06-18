@@ -137,18 +137,6 @@ def ensure_calendar_covers(day: date) -> bool:
         return count > 0
 
 
-def lookup_trading_day(day: date) -> bool | None:
-    """查询缓存；未命中返回 None。"""
-    with connect() as conn:
-        row = conn.execute(
-            "SELECT is_open FROM trade_calendar WHERE cal_date = ?",
-            (_format_date(day),),
-        ).fetchone()
-    if row is None:
-        return None
-    return bool(row[0])
-
-
 def load_open_trading_days(start: date, end: date) -> list[date]:
     """一次性读取 [start, end] 内开市日（升序）；无缓存时降级为周一至周五。"""
     if start > end:
@@ -177,6 +165,34 @@ def load_open_trading_days(start: date, end: date) -> list[date]:
             days.append(current)
         current += timedelta(days=1)
     return days
+
+
+def lookup_trading_day(day: date) -> bool | None:
+    """查询缓存；未命中返回 None。"""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT is_open FROM trade_calendar WHERE cal_date = ?",
+            (_format_date(day),),
+        ).fetchone()
+    if row is None:
+        return None
+    return bool(row[0])
+
+
+def previous_open_trading_day(day: date, *, max_lookback: int = 15) -> date | None:
+    """返回 day 之前最近一个开市日；无日历缓存时降级为跳过周末。"""
+    current = day - timedelta(days=1)
+    for _ in range(max_lookback):
+        if current.weekday() >= 5:
+            current -= timedelta(days=1)
+            continue
+        flag = lookup_trading_day(current)
+        if flag is True:
+            return current
+        if flag is None and current.weekday() < 5:
+            return current
+        current -= timedelta(days=1)
+    return None
 
 
 def clear_trade_calendar_cache() -> None:

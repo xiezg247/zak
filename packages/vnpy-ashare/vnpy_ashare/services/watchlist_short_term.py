@@ -15,6 +15,7 @@ from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_common.domain.base import FrozenModel
 
 SHORT_TERM_OBSERVATION_GROUP_NAME = "短线观察"
+LEADER_TRACKING_GROUP_NAME = "龙头跟踪"
 
 
 def find_short_term_observation_group_id(service: WatchlistService) -> str | None:
@@ -24,6 +25,14 @@ def find_short_term_observation_group_id(service: WatchlistService) -> str | Non
     return None
 
 
+def load_short_term_observation_vt_symbols(service: WatchlistService) -> frozenset[str]:
+    """「短线观察」分组成员 vt_symbol 集合；无分组时为空。"""
+    group_id = find_short_term_observation_group_id(service)
+    if group_id is None:
+        return frozenset()
+    return frozenset(f"{symbol}.{exchange}" for symbol, exchange in service.group_member_keys(group_id))
+
+
 def ensure_short_term_observation_group(service: WatchlistService) -> tuple[str | None, bool]:
     """返回 (group_id, 是否新建分组)。"""
     existing = find_short_term_observation_group_id(service)
@@ -31,6 +40,26 @@ def ensure_short_term_observation_group(service: WatchlistService) -> tuple[str 
         return existing, False
     created = service.create_group(SHORT_TERM_OBSERVATION_GROUP_NAME)
     return created, created is not None
+
+
+def ensure_leader_tracking_group(service: WatchlistService) -> tuple[str | None, bool]:
+    for group in service.list_groups():
+        if group.name == LEADER_TRACKING_GROUP_NAME:
+            return group.id, False
+    created = service.create_group(LEADER_TRACKING_GROUP_NAME)
+    return created, created is not None
+
+
+def ensure_onboarding_watchlist_groups(service: WatchlistService) -> list[str]:
+    """创建 onboarding 建议分组，返回新建的分组名。"""
+    created_names: list[str] = []
+    _, obs_created = ensure_short_term_observation_group(service)
+    if obs_created:
+        created_names.append(SHORT_TERM_OBSERVATION_GROUP_NAME)
+    _, leader_created = ensure_leader_tracking_group(service)
+    if leader_created:
+        created_names.append(LEADER_TRACKING_GROUP_NAME)
+    return created_names
 
 
 class ShortTermObservationBatchResult(FrozenModel):

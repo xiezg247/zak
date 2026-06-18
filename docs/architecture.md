@@ -35,8 +35,8 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/storage/` | app_db、universe、交易日历 |
 | `packages/vnpy-ashare/vnpy_ashare/backtest/` | CTA App/Engine、run_store |
 | `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
-| `packages/vnpy-ashare/vnpy_ashare/trading/`（规划） | `risk/` 风控闸、仓位计算器；`plans/` 交易计划 |
-| `packages/vnpy-ashare/vnpy_ashare/notifications/`（规划） | `NotificationService`、飞书 Webhook、出站队列 |
+| `packages/vnpy-ashare/vnpy_ashare/trading/` | `risk/` 风控闸、仓位计算器；`plans/` 交易计划；`journal/` 流水 |
+| `packages/vnpy-ashare/vnpy_ashare/notifications/` | `NotificationService`、飞书 Webhook、出站队列 |
 | `packages/vnpy-ashare/vnpy_ashare/quotes/` | 行情领域：快照、Provider、排行、市场概览、雷达数据加载（见下节） |
 | `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方（`run/`、`recipe/`、`preset/`、`sector/`、`data/`、`dimensions/`） |
 | `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
@@ -77,7 +77,7 @@ quotes/
 |------|------|
 | `core/` | `QuoteSnapshot`、TickFlow/Redis Provider、Redis 缓存、盘口深度、行情 enrich |
 | `rank/` | 涨幅/成交额等排行定义与取值 |
-| `market/` | 市场宽度、北向/环境快照、概览 loader；`emotion_cycle.py`（T-03，规划） |
+| `market/` | 市场宽度、北向/环境快照、概览 loader；`emotion_cycle.py`（T-03 **已有**） |
 | `misc/` | 持仓异动、涨速基线等辅助指标 |
 | `radar/` | 雷达卡片 catalog、数据加载、共振、horizon 扫描 |
 

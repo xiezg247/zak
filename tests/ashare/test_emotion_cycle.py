@@ -67,14 +67,14 @@ class EmotionCycleEngineTest(unittest.TestCase):
 
     def test_to_dict_includes_inputs(self) -> None:
         snap = classify_emotion_cycle(_inputs())
-        payload = snap.to_dict()
+        payload = snap.model_dump()
         self.assertIn("inputs", payload)
         self.assertIn("limit_up_count", payload["inputs"])
 
     def test_load_without_fetch_skips_network_when_no_cache(self) -> None:
         invalidate_emotion_cycle_cache()
         with (
-            patch("vnpy_ashare.ai.context.store.get_market_quotes_cache", return_value=[]),
+            patch("vnpy_ashare.quotes.core.quote_rows.get_market_quotes_cache", return_value=[]),
             patch(
                 "vnpy_ashare.screener.data.quotes_loader.load_market_quote_rows",
                 side_effect=AssertionError("should not fetch"),

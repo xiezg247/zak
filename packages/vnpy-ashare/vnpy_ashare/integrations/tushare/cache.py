@@ -23,6 +23,8 @@ DATASET_THS_DAILY = "ths_daily"
 DATASET_THS_MEMBER = "ths_member"
 DATASET_MONEYFLOW_IND_DC = "moneyflow_ind_dc"
 DATASET_MONEYFLOW_CNT_THS = "moneyflow_cnt_ths"
+DATASET_STK_SHOCK = "stk_shock"
+DATASET_STK_HIGH_SHOCK = "stk_high_shock"
 
 DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)

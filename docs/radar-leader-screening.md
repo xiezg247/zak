@@ -36,7 +36,9 @@
 
 ---
 
-## 2. 现状与差距
+## 2. 现状与实现
+
+> **状态（2026-06）**：§2.3 差距项 G-01–G-08 **均已实现**（见 [implementation-roadmap §4](./implementation-roadmap.md#4-雷达d--g-)）。下列 §2.1–2.2 保留为设计前基线说明；§2.3 表仅作 ID 索引。
 
 ### 2.1 雷达页已有能力
 
@@ -85,18 +87,18 @@
 
 市场页已有 `limit_up`、`limit_times` 排行（`quotes/rank/rank_catalog.py`），但雷达页**未消费连板字段**。
 
-### 2.3 需求差距汇总
+### 2.3 需求 ID 索引（均已实现）
 
-| ID | 差距 | 优先级 |
-|----|------|--------|
-| G-01 | 无连板梯队视图 | P0 |
-| G-02 | 无板块内龙一 / 龙二 / 跟风分层 | P0 |
-| G-03 | 无首板人气（封板早晚、封单代理） | P1 |
-| G-04 | 无统一龙头评分 `leader_score` | P0 |
-| G-05 | 无「龙头选股」运行入口（仅共振选股） | P0 |
-| G-06 | `RadarRow` 无连板 / 板块地位 / 龙头标签字段 | P0 |
-| G-07 | 概念板块龙头未与行业龙头统一 scoring | P1 |
-| G-08 | 情绪周期未 gate 龙头选股 | P1 |
+| ID | 能力 | 状态 | 落点 |
+|----|------|------|------|
+| G-01 | 连板梯队视图 | **已有** | D-01 `discovery_limit_ladder` |
+| G-02 | 龙一 / 龙二 / 跟风分层 | **已有** | `leader_pick` + `leader_tier` |
+| G-03 | 首板人气 | **已有** | D-02 `discovery_first_board` |
+| G-04 | `leader_score` | **已有** | `quotes/radar/radar_leader.py` |
+| G-05 | 龙头选股 Hub 入口 | **已有** | `run_leader_screen` |
+| G-06 | `RadarRow` 扩展字段 | **已有** | tier 角标 + metric/sub |
+| G-07 | 概念 + 行业统一 scoring | **已有** | Phase 4 交付 |
+| G-08 | 情绪 gate 龙头选股 | **已有** | 退潮/冰点空池 |
 
 ---
 

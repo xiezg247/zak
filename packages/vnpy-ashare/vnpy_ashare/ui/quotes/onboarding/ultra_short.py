@@ -1,0 +1,97 @@
+"""新用户极致短线 onboarding 引导。"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from vnpy.trader.ui import QtCore, QtWidgets
+
+from vnpy_ashare.config.preferences.onboarding import (
+    load_ultra_short_onboarding_done,
+    save_ultra_short_onboarding_done,
+)
+from vnpy_ashare.config.preferences.strategy_profile import (
+    StrategyProfileId,
+    apply_strategy_profile,
+    load_strategy_profile_id,
+)
+from vnpy_ashare.services.watchlist_short_term import ensure_onboarding_watchlist_groups
+from vnpy_common.ui.feedback import page_notify
+
+if TYPE_CHECKING:
+    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+
+_prompted_pages: set[int] = set()
+
+
+class UltraShortOnboardingDialog(QtWidgets.QDialog):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("极致短线工作流")
+        self.setModal(True)
+        self.resize(460, 260)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        title = QtWidgets.QLabel("是否切换到「极致短线」工作流？")
+        title.setWordWrap(True)
+        layout.addWidget(title)
+
+        body = QtWidgets.QLabel(
+            "将自动：\n"
+            "· 信号策略切换为打板（AshareLimitBoardStrategy）\n"
+            "· 创建自选分组「短线观察」「龙头跟踪」（若尚未存在）\n\n"
+            "之后可在信号区 Profile 下拉中随时改回其他风格。"
+        )
+        body.setWordWrap(True)
+        layout.addWidget(body)
+
+        buttons = QtWidgets.QDialogButtonBox()
+        accept_btn = buttons.addButton("一键切换", QtWidgets.QDialogButtonBox.ButtonRole.AcceptRole)
+        later_btn = buttons.addButton("稍后再说", QtWidgets.QDialogButtonBox.ButtonRole.RejectRole)
+        accept_btn.clicked.connect(self.accept)
+        later_btn.clicked.connect(self.reject)
+        layout.addWidget(buttons)
+
+
+def maybe_show_ultra_short_onboarding(page: QuotesPage) -> None:
+    """自选页首次激活时提示切换极致短线 Profile（仅一次）。"""
+    if page.page_name != "自选":
+        return
+    if not page.config.show_watchlist_signals:
+        return
+    if load_ultra_short_onboarding_done():
+        return
+    page_id = id(page)
+    if page_id in _prompted_pages:
+        return
+    _prompted_pages.add(page_id)
+
+    def _show() -> None:
+        if load_ultra_short_onboarding_done():
+            return
+        dialog = UltraShortOnboardingDialog(page)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            save_ultra_short_onboarding_done(True)
+            return
+
+        profile_id: StrategyProfileId = "ultra_short"
+        page.apply_strategy_profile(profile_id)
+        service = page._get_watchlist_service()
+        created: list[str] = []
+        if service is not None:
+            created = ensure_onboarding_watchlist_groups(service)
+            groups = page._watchlist_groups
+            if groups is not None:
+                groups.refresh_groups()
+        save_ultra_short_onboarding_done(True)
+        parts = ["已切换为极致短线 Profile"]
+        if created:
+            parts.append(f"已创建分组：{'、'.join(created)}")
+        page.status_label.setText(" · ".join(parts))
+        page_notify(page, parts[0], level="success")
+
+    QtCore.QTimer.singleShot(600, _show)
+
+
+def should_offer_ultra_short_onboarding() -> bool:
+    return not load_ultra_short_onboarding_done() and load_strategy_profile_id() == "medium_watch"

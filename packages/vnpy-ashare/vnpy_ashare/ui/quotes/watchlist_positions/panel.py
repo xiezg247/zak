@@ -29,6 +29,7 @@ from vnpy_ashare.quotes.misc.position_anomaly import (
     position_anomaly_score,
 )
 from vnpy_ashare.services.signals.runtime import signal_cell_color
+from vnpy_ashare.services.watchlist_short_term import load_short_term_observation_vt_symbols
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 from vnpy_ashare.trading.exit.exit_display import (
     exit_rule_cell_color,
@@ -346,6 +347,12 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         reasons = position_anomaly_reasons(snap=snap, quote=quote)
         return snap, quote, reasons
 
+    def _observation_vt_symbols(self) -> frozenset[str]:
+        service = self._page._get_watchlist_service()
+        if service is None:
+            return frozenset()
+        return load_short_term_observation_vt_symbols(service)
+
     def _filtered_records(self) -> list[PositionRecord]:
         records = self._records()
         if not self._filter:
@@ -364,7 +371,10 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         filtered: list[PositionRecord] = []
         for record in records:
             snap = self._page.position_cache.get(record.vt_symbol)
-            if self._filter == "missing":
+            if self._filter == "observation":
+                if record.vt_symbol in self._observation_vt_symbols():
+                    filtered.append(record)
+            elif self._filter == "missing":
                 if snap is None or signal_missing_kline(snap.signal_snapshot):
                     filtered.append(record)
             elif self._filter == "t1":
@@ -672,10 +682,13 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         colors = market_colors(theme_manager().tokens())
         warning_color = theme_manager().tokens().semantic_warning
         records = self._records()
-        sell_count = t1_count = missing_count = anomaly_count = 0
+        sell_count = t1_count = missing_count = anomaly_count = observation_count = 0
+        observation_symbols = self._observation_vt_symbols()
         total_pnl = 0.0
         has_pnl = False
         for record in records:
+            if record.vt_symbol in observation_symbols:
+                observation_count += 1
             snap = self._page.position_cache.get(record.vt_symbol)
             quote = self._quote_for_record(record)
             if is_position_anomaly(snap=snap, quote=quote):
@@ -728,6 +741,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             parts.append(journal_hint)
         parts.extend(
             [
+                self._stats_link("observation", f"观察组 {observation_count}", colors.rise),
                 self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),
                 self._stats_link("sell", f"卖出信号 {sell_count}", colors.fall),
                 self._stats_link("t1", f"T+1 {t1_count}", colors.flat),

@@ -22,6 +22,9 @@ class EmotionCycleInputs(FrozenModel):
     index_above_ma5: bool | None = Field(default=None, description="大盘是否在5日均线上方")
     fear_greed_index: float | None = Field(default=None, description="恐贪指数")
     updated_at: str | None = Field(default=None, description="数据更新时间")
+    limit_break_rate: float | None = Field(default=None, description="连板断板率（0–1）")
+    prev_leader_limit_down: bool = Field(default=False, description="昨最高板今日跌停")
+    prev_max_limit_times: int | None = Field(default=None, description="昨最高连板数")
 
 
 class EmotionCycleSnapshot(FrozenModel):

@@ -30,6 +30,7 @@ from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_re
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
+    build_eod_leader_prompt,
     build_radar_ai_prompt,
     build_radar_card_ai_prompt,
     build_radar_resonance_ai_prompt,
@@ -114,6 +115,7 @@ class RadarController(QtCore.QObject):
             panel.stock_analysis_requested.connect(self._on_stock_analysis)
             panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
             panel.propose_trading_plan_requested.connect(self._on_propose_trading_plan)
+            panel.eod_leader_ai_requested.connect(self.request_eod_leader_ai)
             panel.open_screener_requested.connect(self._on_open_screener_resonance)
             panel.open_leader_screener_requested.connect(self._on_open_screener_leader)
             panel.resonance_weights_requested.connect(self._on_resonance_weights_requested)
@@ -385,6 +387,26 @@ class RadarController(QtCore.QObject):
         )
         if hasattr(self._page, "status_label"):
             self._page.status_label.setText(f"已发送「{data.title}」AI 解读")
+
+    def request_eod_leader_ai(self) -> None:
+        if not self._last_payload:
+            page_notify(self._page, "请先刷新雷达数据", level="warning")
+            return
+        prompt = build_eod_leader_prompt(self._last_payload)
+        if not prompt:
+            page_notify(self._page, "缺少龙头/梯队卡片数据，请先刷新相关卡片", level="warning")
+            return
+        if self._page.event_engine is None:
+            page_notify(self._page, "AI 服务未就绪", level="warning")
+            return
+        self._page.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(prompt=prompt, source_page="雷达"),
+            )
+        )
+        if hasattr(self._page, "status_label"):
+            self._page.status_label.setText("已发送盘后龙头解读请求")
 
     def request_resonance_ai_summary(self) -> None:
         if not self._last_payload:

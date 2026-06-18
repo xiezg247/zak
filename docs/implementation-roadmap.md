@@ -155,35 +155,35 @@
 
 ---
 
-## 11. 推荐实施顺序
+## 11. 历史实施顺序（Phase 1–5 已完成）
 
-与 [trading-system.md §12](./trading-system.md#12-实施分期) 对齐；可并行项用 `‖` 标注。
+与 [trading-system.md §12](./trading-system.md#12-实施分期) 对齐；**Phase 1–5 已全部交付**（上表 §2–§10 状态均为 **已有**）。下列为归档用实施顺序，可并行项用 `‖` 标注。
 
 ```text
-Phase 1（当前）
-├── N-01 ‖ N-02          飞书 MVP（独立、见效快）
+Phase 1 ✅
+├── N-01 ‖ N-02          飞书 MVP
 ├── T-03 → T-04 → T-05   情绪周期链
 ├── G-04 → G-02 → G-05   龙头评分 + Hub 入口
 ├── R-01 + 激进硬过滤
 ├── SP-01 → SP-02        Profile 基础
-├── P-06（已有）          观察组 Tab
+├── P-06                  观察组 Tab
 └── A-01, A-07           AI 择时 + 龙头
 
-Phase 2
+Phase 2 ✅
 ├── S-01, SP-05          短线策略插件
 ├── D-01, D-02           发现卡
 ├── R-02, R-03
 └── N-03, N-04
 
-Phase 3
+Phase 3 ✅
 ├── K-01 ~ K-04, P-04, P-05
 └── J-02（流水）
 
-Phase 4
+Phase 4 ✅
 ├── J-01, J-03, J-04, K-05
 └── 复盘 UI
 
-Phase 5
+Phase 5 ✅
 ├── 中线辅线回测验证
 └── J-05 报表
 ```
@@ -216,3 +216,25 @@ Phase 5
 1. 新增需求须分配 **唯一 ID**（上表前缀 + 序号），并在对应域文档写细节。
 2. 实现合并后更新本表 **状态** 列；Phase 变更须同步 [trading-system.md §12](./trading-system.md#12-实施分期)。
 3. 跨 ID 依赖在 PR / 任务描述中引用（如 `T-03 blocks G-08`）。
+4. Post-Phase 项写入 **§14**，不占用 T-/G- 等正式 ID。
+
+---
+
+## 14. Post-Phase backlog
+
+> **用途**：Phase 1–5 交付后的精度、体验与文档债；合并 PR 时在此表增删行即可。
+
+| 优先级 | 项 | 状态 | 落点 / 说明 |
+|--------|-----|------|-------------|
+| P0 | 情绪周期阈值 QSettings + 设置 UI | **已有** | 系统配置 →「情绪周期」Tab |
+| P0 | 退潮判定：断板率、昨最高板跌停 | **已有** | `emotion_ladder_continuity` + 日切表 |
+| P0 | 阶段边界 hysteresis | **已有** | `emotion_cycle_hysteresis` + 设置「阶段迟滞」 |
+| P0 | 监管异动 Tushare 官方偏离度 | **已有** | `stk_shock` / `stk_high_shock` + 本地合并 |
+| P0 | 子文档与 roadmap 状态对齐 | **已有** | 2026-06 首轮同步完成 |
+| P1 | 新用户 ultra_short onboarding | **已有** | 自选页首次引导 + 观察/龙头分组 |
+| P1 | 选股 Hub「过滤至短线主池」 | **已有** | 结果条「短线主池」+ `ultra_short_pool_filter` |
+| P1 | 盘后 AI「龙头结构 + 明日观察」 | **已有** | 雷达共振侧栏「盘后解读」+ `build_eod_leader_prompt` |
+| P1 | 持仓「仅观察组」筛选 | **已有** | 持仓统计条「观察组 N」可点筛选 |
+| P1 | 观察组+持仓 1m K 自动补全 | **待建** | 定时 Job / 批量回测预检 |
+| P2 | 微信 / 邮件通知 | **待建** | [notifications §1.3](./notifications.md#13-与-vnpy-内置通道关系) |
+| P2 | 券商持仓 `source=gateway` | **待建** | `PositionRecord.source` 已预留 |

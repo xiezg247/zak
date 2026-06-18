@@ -836,3 +836,79 @@ def build_radar_ai_prompt(
             lines.append("---")
             lines.append(predict_prompt)
     return "\n".join(lines).strip()
+
+
+_EOD_LEADER_CARD_IDS = ("leader_pick", "discovery_limit_ladder", "sector_theme")
+
+
+def build_eod_leader_prompt(payload: dict[str, RadarCardData]) -> str:
+    """盘后专用：今日龙头结构 + 明日观察（P1-3）。"""
+    from vnpy_ashare.quotes.market.emotion_cycle import format_mode_label, load_emotion_cycle_snapshot
+
+    lines = [
+        "请基于以下盘后雷达快照，完成「今日龙头结构 + 明日观察」复盘：",
+        "1. 归纳今日龙头梯队：龙一/龙二/跟风、连板高度与板块主线",
+        "2. 结合当前情绪阶段，给出明日总仓位区间与允许的买点模式（打板/半路/低吸）",
+        "3. 列出 3～5 只明日观察标的及预设买卖条件（仅规则描述，不给具体买卖价）",
+        "4. 退潮/冰点须明确不宜短线新开仓",
+        "5. 不要编造未出现在数据中的价格或指标",
+        "",
+    ]
+    cycle = load_emotion_cycle_snapshot(fetch_if_missing=True)
+    if cycle is not None:
+        pos_lo = int(round(cycle.position_pct_min * 100))
+        pos_hi = int(round(cycle.position_pct_max * 100))
+        lines.append(
+            f"情绪周期：{cycle.stage_label} · 建议仓位 {pos_lo}–{pos_hi}% · 系数 {cycle.position_factor:.2f}"
+        )
+        if cycle.allowed_modes:
+            mode_text = "、".join(format_mode_label(mode) for mode in cycle.allowed_modes)
+            lines.append(f"允许模式：{mode_text}")
+        if cycle.warnings:
+            lines.append(f"环境提示：{'；'.join(cycle.warnings)}")
+        lines.append(
+            f"盘面输入：涨停 {cycle.limit_up_count} · 跌停 {cycle.limit_down_count} · "
+            f"最高连板 {cycle.inputs.get('max_limit_times', 0)}"
+        )
+        lines.append("")
+
+    resonance = compute_radar_resonance(payload)
+    resonance_scores = compute_radar_resonance_scores(payload)
+    if resonance:
+        parts: list[str] = []
+        for vt_symbol, count in sorted(
+            resonance_scores.items(),
+            key=lambda item: (-item[1], -resonance.get(item[0], 0), item[0]),
+        )[:8]:
+            item = parse_stock_symbol(vt_symbol)
+            label = item.name if item and item.name else vt_symbol
+            score = resonance_scores.get(vt_symbol, 0.0)
+            parts.append(f"{label}({count}卡·{score:.1f}分)")
+        lines.append(f"共振前列：{', '.join(parts)}")
+        lines.append("")
+
+    for card_id in _EOD_LEADER_CARD_IDS:
+        data = payload.get(card_id)
+        if data is None:
+            continue
+        lines.append(f"## {data.title}")
+        if data.subtitle:
+            lines.append(data.subtitle)
+        if data.updated_at:
+            lines.append(f"更新：{data.updated_at}")
+        if not data.rows:
+            lines.append(data.empty_message or "（暂无数据）")
+        else:
+            for row in data.rows[:15]:
+                marker = "★ " if row.vt_symbol in resonance else ""
+                tier = f" [{row.leader_tier}]" if row.leader_tier else ""
+                lines.append(f"- {marker}{_row_ai_summary(row)}{tier}")
+        lines.append("")
+
+    has_focus_data = any(
+        (data := payload.get(card_id)) is not None and bool(data.rows)
+        for card_id in _EOD_LEADER_CARD_IDS
+    )
+    if not has_focus_data and not resonance:
+        return ""
+    return "\n".join(lines).strip()

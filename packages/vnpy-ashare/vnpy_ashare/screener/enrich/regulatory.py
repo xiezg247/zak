@@ -5,7 +5,11 @@ from __future__ import annotations
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, update_screening_row
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
-from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation
+from vnpy_ashare.integrations.tushare.stk_shock import load_exchange_regulatory_index
+from vnpy_ashare.services.stock.regulatory_deviation import (
+    assess_regulatory_deviation,
+    assess_regulatory_deviation_for_vt_symbol,
+)
 
 
 def enrich_regulatory_tags(rows: list[ScreenerResultRow]) -> list[ScreenerResultRow]:
@@ -26,6 +30,7 @@ def enrich_regulatory_tags(rows: list[ScreenerResultRow]) -> list[ScreenerResult
         return rows
 
     bars_map = load_daily_bars_batch(items, lookback_bars=45)
+    exchange_index = load_exchange_regulatory_index()
     enriched: list[ScreenerResultRow] = []
     for row in rows:
         vt = str(row.get("vt_symbol") or "").strip()
@@ -34,11 +39,12 @@ def enrich_regulatory_tags(rows: list[ScreenerResultRow]) -> list[ScreenerResult
             enriched.append(row)
             continue
         bars = bars_map.get((item.symbol, item.exchange), [])
-        if len(bars) < 11:
+        records = exchange_index.get(vt, ())
+        if len(bars) < 11 and not records:
             enriched.append(row)
             continue
-        snapshot = assess_regulatory_deviation(bars)
-        if snapshot.risk_level == "none":
+        snapshot = assess_regulatory_deviation_for_vt_symbol(vt, bars if len(bars) >= 11 else None, exchange_records=records)
+        if snapshot is None or snapshot.risk_level == "none":
             enriched.append(row)
             continue
         enriched.append(

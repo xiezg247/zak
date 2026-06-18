@@ -33,3 +33,16 @@ def coerce_settings_int(value: object, *, default: int) -> int:
     if isinstance(value, float):
         return int(value)
     return default
+
+
+def coerce_settings_float(value: object, *, default: float) -> float:
+    if value is None:
+        return default
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return default
+    return default
