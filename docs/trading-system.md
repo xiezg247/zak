@@ -515,7 +515,7 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | 定位 | 个人投研终端，**不提供**实盘下单、不提供具体买卖价位指令 |
 | 信号 | 均为规则计算结果 + `SIGNAL_DISCLAIMER` |
 | AI | 不编造行情；退潮期须明确风险提示 |
-| 持仓 | `PositionRecord` 为记账，非券商同步（`source=gateway` 预留） |
+| 持仓 | `PositionRecord` 为手工记账，非券商同步（`source=gateway` 预留字段，**不做**网关同步） |
 | 盈亏承诺 | 文档与 UI 均不得暗示 guaranteed returns |
 
 ---

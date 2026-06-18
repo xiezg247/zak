@@ -12,6 +12,7 @@
 | **已有** | 代码可用，文档与实现一致 |
 | **部分** | 核心能力存在，短线扩展未完成 |
 | **待建** | 仅 spec，无实现 |
+| **不做** | 产品明确排除，不实现 |
 | **规划** | Phase 4+ 或可选增强 |
 
 ---
@@ -236,5 +237,7 @@ Phase 5 ✅
 | P1 | 盘后 AI「龙头结构 + 明日观察」 | **已有** | 雷达共振侧栏「盘后解读」+ `build_eod_leader_prompt` |
 | P1 | 持仓「仅观察组」筛选 | **已有** | 持仓统计条「观察组 N」可点筛选 |
 | P1 | 观察组+持仓 1m K 自动补全 | **已有** | Job `fill_focus_pool_minute` + 分 K 回测预检 |
-| P2 | 微信 / 邮件通知 | **待建** | [notifications §1.3](./notifications.md#13-与-vnpy-内置通道关系) |
-| P2 | 券商持仓 `source=gateway` | **待建** | `PositionRecord.source` 已预留 |
+| P2 | 微信 / 邮件通知 | **不做** | 产品范围外；飞书已覆盖主通道，见 [notifications §1.3](./notifications.md#13-与-vnpy-内置通道关系) |
+| P2 | 券商持仓 `source=gateway` | **不做** | 维持手工记账；`PositionRecord.source` 字段保留兼容 |
+
+> **Post-Phase 结论（2026-06）**：P0/P1 已全部交付；P2 两项经产品确认**不做**，backlog 关闭。

@@ -27,8 +27,8 @@
 | 渠道 | vnpy 支持 | zak 优先级 |
 |------|-----------|------------|
 | **飞书 Webhook** | 无 | **P0**（新建） |
-| 微信 iLink | `WechatEngine`（`MainEngine` 已注册） | P2 可选 |
-| 邮件 | `EmailEngine` | P3 可选 |
+| 微信 iLink | `WechatEngine`（`MainEngine` 已注册） | **不做**（Post-Phase 已明确排除） |
+| 邮件 | `EmailEngine` | **不做**（Post-Phase 已明确排除） |
 
 zak 菜单曾**隐藏** vnpy「微信」入口；飞书走独立 `NotificationService`，不依赖 CTA/网关。
 
@@ -280,7 +280,7 @@ Worker 内 HTTP 失败：重试 2 次（指数退避）；仍失败写 `last_err
 | 最小发送间隔 | 秒，默认 30（低于 vnpy 微信 60s） |
 | 事件订阅 | 多选 checklist（§4 表） |
 | 静默时段 | 可选 |
-| 次要渠道 | 微信/邮件（折叠，P2） |
+| 次要渠道 | 微信/邮件（**不做**，设置页不展示） |
 
 保存：`FEISHU_*` 写 `.env`；订阅写 QSettings；Webhook 变更后自动 `test_send`。
 
