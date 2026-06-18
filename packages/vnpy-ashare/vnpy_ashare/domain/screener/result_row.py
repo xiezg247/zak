@@ -62,6 +62,9 @@ _TAG_KEYS = frozenset(
         "moneyflow_proxy",
         "sentiment_note",
         "emotion_note",
+        "regulatory_hint",
+        "regulatory_risk",
+        "seal_reopen_label",
     }
 )
 

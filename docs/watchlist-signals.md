@@ -1,6 +1,6 @@
 # 自选页策略信号区
 
-> **交易风格**：默认 `AshareDoubleMaStrategy`（中线观察 Profile）。极致短线 / 短线波段切换见 [策略配置方案](./strategy-profiles.md)；Profile UI 待建（SP-02）。
+> **交易风格**：默认 `AshareDoubleMaStrategy`（中线观察 Profile）。极致短线 / 短线波段切换见 [策略配置方案](./strategy-profiles.md)；Profile 下拉（SP-02）**已有**（信号区 + 持仓区）。
 
 ## 1. 功能概述
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.domain.market.quote_row import quote_row_copy
-from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
+from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, update_screening_row
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label
@@ -12,9 +12,11 @@ from vnpy_ashare.quotes.radar.radar_leader_pick import (
     build_leader_candidate_pool,
     rank_leader_pool,
 )
+from vnpy_ashare.screener.enrich.regulatory import enrich_regulatory_tags
 from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields, compute_sector_distribution
+from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
 
 _VARIANT_LABELS: dict[str, str] = {
     "mainline": "主线龙头",
@@ -91,14 +93,21 @@ def run_leader_screen(
     strong_concepts = {str(item["concept"]) for item in concept_distribution[:5]} | set(hot_concepts)
 
     filter_followers = cycle is not None and cycle.stage == "divergence"
+    pool_rows = [dict(row) for row in pool]
+    attach_first_time_fields(pool_rows)
     ranked = rank_leader_pool(
-        pool,
+        pool_rows,
         top_n=top_n,
         filter_followers=filter_followers,
         strong_industries=strong_industries,
         strong_concepts=strong_concepts,
     )
     rows = [leader_scored_to_result_row(item) for item in ranked]
+    for index, item in enumerate(ranked):
+        label = str(item.row.get("seal_reopen_label") or "").strip()
+        if label:
+            rows[index] = update_screening_row(rows[index], seal_reopen_label=label)
+    rows = enrich_regulatory_tags(rows)
 
     condition = f"雷达龙头 · {variant_label}"
     if cycle is not None:

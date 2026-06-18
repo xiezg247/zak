@@ -186,7 +186,7 @@ leader_score =
 |------|------|------|
 | 换手 5%–25% 且涨停 | 高 | `turnover_rate` + 涨停判定 |
 | 一字板（开盘即涨停且振幅极小） | **低（打板回避）** | 分 K / 振幅 |
-| 炸板后回封 | 中 | 需分 K 状态机（Phase 2） |
+| 炸板后回封 | 中–高 | `limit_list_d.open_times` + 分 K 状态机（**已有**） |
 | 非涨停强势 | 按涨幅线性 | 半路模式 |
 
 Phase 1 可简化为：**涨停 + 非近似一字 + 成交额分位**。
@@ -410,7 +410,7 @@ ui/screener/workers/              # LeaderScreenWorker
 
 ## 8. 情绪周期与硬过滤
 
-联动 [交易体系 §2](./trading-system.md#二择时体系情绪周期决定做不做)（`emotion_cycle` 待建）：
+联动 [交易体系 §2](./trading-system.md#二择时体系情绪周期决定做不做)（`emotion_cycle` **已有**）：
 
 | 情绪阶段 | 龙头选股行为 |
 |----------|--------------|
@@ -495,20 +495,20 @@ ui/screener/workers/              # LeaderScreenWorker
 - [x] `discovery_limit_ladder`  
 - [x] `discovery_first_board`  
 - [x] `sector_theme` → `leaders_tiered`  
-- [ ] 封板时间 / 一字板过滤（分 K 或 Tushare）  
+- [x] 封板时间 / 封单强度（`limit_list_d` + 首板维度）  
 
 ### Phase 3 — 联动与 gate
 
-- [ ] 情绪周期 gate  
-- [ ] watchlist_groups「短线观察」一键写入  
-- [ ] AI prompt + Skill 工具  
-- [ ] 顶栏「选龙头」快捷导航  
+- [x] 情绪周期 gate（`sentiment_gate` / `emotion_modulation`）  
+- [x] watchlist_groups「短线观察」一键写入  
+- [x] AI prompt + Skill 工具（`run_leader_screen` 等）  
+- [x] 顶栏「选龙头」快捷导航（`radar_leader_button` → `focus_card` + Hub）  
 
 ### Phase 4 — 深化
 
-- [ ] 概念 + 行业双主线统一池  
-- [ ] 炸板回封检测  
-- [ ] 异动监管距离列  
+- [x] 概念 + 行业双主线统一池（`rank_unified_sector_leaders`）  
+- [x] 炸板回封检测（`seal_reopen` + `open_times`）  
+- [x] 异动监管距离（概览 Tab + `assess_regulatory_deviation`；龙头列表 `regulatory_hint` 列）  
 - [ ] 龙头选股回测 batch 入口  
 
 ---

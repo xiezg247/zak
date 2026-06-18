@@ -695,11 +695,14 @@ class QuotesPageShell:
         page.refresh_radar_all_button.setFlat(True)
         page.refresh_radar_all_button.setToolTip("刷新盘面统计与前瞻展望全部卡片")
         page.radar_ai_button = QtWidgets.QPushButton("AI 洞察", page)
+        page.radar_leader_button = QtWidgets.QPushButton("选龙头", page)
+        page.radar_leader_button.setToolTip("定位「选股·龙头」卡片并打开龙头选股 Hub")
 
         toolbar = QtWidgets.QHBoxLayout()
         toolbar.setSpacing(8)
         toolbar.addWidget(page.refresh_radar_button)
         toolbar.addWidget(page.refresh_radar_all_button)
+        toolbar.addWidget(page.radar_leader_button)
         toolbar.addWidget(page.radar_ai_button)
         page.emotion_cycle_chip = EmotionCycleChip(page)
         toolbar.addWidget(page.emotion_cycle_chip)
@@ -726,6 +729,7 @@ class QuotesPageShell:
         )
         page.refresh_radar_button.clicked.connect(page._radar_controller.refresh_current_mode)
         page.refresh_radar_all_button.clicked.connect(page._radar_controller.refresh)
+        page.radar_leader_button.clicked.connect(page._radar_controller.open_leader_shortcut)
         page.radar_ai_button.clicked.connect(page._radar_controller.request_ai_summary)
 
         center = QtWidgets.QWidget()

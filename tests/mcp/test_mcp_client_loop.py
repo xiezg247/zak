@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -27,6 +30,28 @@ class McpClientLoopTests(unittest.TestCase):
         client.list_remote_tools("https://example.com/mcp")
         self.assertTrue(loop.is_running())
         self.assertEqual(list_mock.call_count, 2)
+
+    @patch("vnpy_mcp.remote.client._list_tools_async")
+    def test_concurrent_calls_are_serialized(self, list_mock) -> None:
+        active = 0
+        peak = 0
+        gate = threading.Lock()
+
+        async def _fake_list(*_args, **_kwargs):
+            nonlocal active, peak
+            with gate:
+                active += 1
+                peak = max(peak, active)
+            await asyncio.sleep(0.03)
+            with gate:
+                active -= 1
+            return []
+
+        list_mock.side_effect = _fake_list
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda _: client.list_remote_tools("https://example.com/mcp"), range(12)))
+        self.assertEqual(peak, 1)
+        self.assertEqual(list_mock.call_count, 12)
 
 
 if __name__ == "__main__":

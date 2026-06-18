@@ -53,10 +53,12 @@ def test_run_leader_screen_blocks_recession(mock_cycle):
     assert "不宜新开" in result.condition
 
 
+@patch("vnpy_ashare.screener.run.radar_leader_screen.enrich_regulatory_tags", side_effect=lambda rows: rows)
+@patch("vnpy_ashare.screener.run.radar_leader_screen.attach_first_time_fields")
 @patch("vnpy_ashare.screener.run.radar_leader_screen.apply_recipe_filters", side_effect=lambda rows: rows)
 @patch("vnpy_ashare.screener.run.radar_leader_screen.build_leader_candidate_pool")
 @patch("vnpy_ashare.screener.run.radar_leader_screen.load_emotion_cycle_snapshot", return_value=None)
-def test_run_leader_screen_returns_ranked_rows(mock_cycle, mock_pool, _filters):
+def test_run_leader_screen_returns_ranked_rows(mock_cycle, mock_pool, _filters, mock_attach, _enrich):
     mock_pool.return_value = ([_candidate("AAA"), _candidate("BBB", limit_times=2)], 5000)
     result = run_leader_screen(top_n=1, variant="mainline")
     assert result.source == "radar_leader"
@@ -64,6 +66,7 @@ def test_run_leader_screen_returns_ranked_rows(mock_cycle, mock_pool, _filters):
     assert result.rows[0]["symbol"] == "AAA"
     assert result.total_scanned == 5000
     assert "主线龙头" in result.condition
+    mock_attach.assert_called_once()
 
 
 @patch("vnpy_ashare.screener.run.radar_leader_screen.load_emotion_cycle_snapshot", return_value=None)
@@ -73,11 +76,13 @@ def test_run_leader_screen_requires_quotes(_pool, _cycle):
         run_leader_screen()
 
 
+@patch("vnpy_ashare.screener.run.radar_leader_screen.enrich_regulatory_tags", side_effect=lambda rows: rows)
+@patch("vnpy_ashare.screener.run.radar_leader_screen.attach_first_time_fields")
 @patch("vnpy_ashare.screener.run.radar_leader_screen.rank_leader_pool", return_value=[])
 @patch("vnpy_ashare.screener.run.radar_leader_screen.apply_recipe_filters", side_effect=lambda rows: rows)
 @patch("vnpy_ashare.screener.run.radar_leader_screen.build_leader_candidate_pool")
 @patch("vnpy_ashare.screener.run.radar_leader_screen.load_emotion_cycle_snapshot")
-def test_run_leader_screen_divergence_filters_followers(mock_cycle, mock_pool, _filters, mock_rank):
+def test_run_leader_screen_divergence_filters_followers(mock_cycle, mock_pool, _filters, mock_rank, _attach, _enrich):
     mock_cycle.return_value = MagicMock(stage="divergence", stage_label="分歧")
     mock_pool.return_value = ([_candidate("A")], 4000)
     run_leader_screen(top_n=10, variant="mainline")

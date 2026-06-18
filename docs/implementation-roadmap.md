@@ -134,7 +134,7 @@
 | N-01 | 飞书 Webhook MVP | **已有** | 1 | [notifications.md](./notifications.md) |
 | N-02 | 事件白名单 + 限频 | **已有** | 1 | 同上 |
 | N-03 | 定时任务 screener 完成推送 | **已有** | 1 | 同上 |
-| N-04 | 情绪 / 风控状态变更推送 | **已有** | 2 | MVP 联动；完整 T-03/K-04 仍待建 |
+| N-04 | 情绪 / 风控状态变更推送 | **已有** | 2 | 联动 `emotion_cycle` + `risk_gate_engine` |
 | N-05 | `notify_delivery_log` | **已有** | 2 | [data-design.md](./data-design.md) |
 | N-06 | interactive 卡片 | **已有** | 3 | [notifications.md](./notifications.md) |
 

@@ -8,9 +8,11 @@ from pydantic import Field
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.market.board import matches_board
+from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_seal_map
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label, load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes, quotes_for_vt_symbols
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
+from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields, seal_reopen_from_row
 from vnpy_common.domain.base import FrozenModel
 
 EntryMode = Literal["limit_board", "halfway", "pullback"]
@@ -165,6 +167,20 @@ def evaluate_entry_mode(
             limit_score += 10.0
             limit_reasons.append(f"连板 {int(boards)}")
 
+    if at_limit:
+        reopen_kind, reopen_label, _reopen_score, open_times = seal_reopen_from_row(row)
+        if reopen_kind == "solid":
+            limit_score += 5.0
+            limit_reasons.append("首封未开")
+        elif reopen_kind == "resealed":
+            limit_score += 8.0
+            limit_reasons.append(reopen_label or "炸板回封")
+        elif reopen_kind == "weak":
+            limit_score -= 12.0
+            label = reopen_label or (f"多次打开({open_times})" if open_times else "多次打开")
+            limit_reasons.append(label)
+            warnings.append("封板多次打开，打板质量偏弱")
+
     if stage == "divergence":
         pullback_score += 25.0
         pullback_reasons.append("分歧期优先核心低吸")
@@ -218,6 +234,10 @@ def evaluate_entry_mode_for_symbol(symbol: str) -> dict[str, Any]:
 
     quotes = quotes_for_vt_symbols([item.vt_symbol])
     row = merge_row_quotes(quotes.get(item.vt_symbol, {"vt_symbol": item.vt_symbol, "symbol": item.symbol}))
+    seal_fields = load_limit_list_seal_map().get(item.vt_symbol)
+    if seal_fields:
+        row.update(seal_fields)
+    attach_seal_reopen_fields(row)
     result = evaluate_entry_mode(row)
     if result is None:
         return {"error": f"无法评估: {symbol}"}

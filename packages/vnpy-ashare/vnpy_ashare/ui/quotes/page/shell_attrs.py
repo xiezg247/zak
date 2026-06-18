@@ -105,6 +105,7 @@ class QuotesPageShellAttrs:
 
     refresh_radar_button: QtWidgets.QPushButton | None
     refresh_radar_all_button: QtWidgets.QPushButton | None
+    radar_leader_button: QtWidgets.QPushButton | None
     radar_ai_button: QtWidgets.QPushButton | None
     radar_board: RadarBoard | None
     radar_resonance_panel: RadarResonancePanel | None

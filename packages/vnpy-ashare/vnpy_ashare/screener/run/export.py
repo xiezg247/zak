@@ -61,6 +61,18 @@ _MONEYFLOW_COLUMNS = [
     ("trade_date", "交易日"),
 ]
 
+_LEADER_COLUMNS = [
+    ("symbol", "代码"),
+    ("name", "名称"),
+    ("leader_tier_label", "地位"),
+    ("leader_score", "龙头分"),
+    ("limit_times", "连板"),
+    ("seal_reopen_label", "封板"),
+    ("regulatory_hint", "异动距离"),
+    ("change_pct", "涨幅%"),
+    ("hit_reason", "入选原因"),
+]
+
 
 _FUNDAMENTAL_FIELD_KEYS = ("close", "pe_ttm", "pb", "total_mv", "circ_mv", "trade_date")
 
@@ -87,6 +99,10 @@ def resolve_export_columns(rows: Sequence[ScreenerResultRow]) -> list[tuple[str,
     if not rows:
         return _QUOTE_COLUMNS
     sample = rows[0]
+    if sample.get("source") == "radar_leader" or sample.get("leader_score") is not None:
+        optional = {"seal_reopen_label", "regulatory_hint", "regulatory_risk"}
+        columns = [col for col in _LEADER_COLUMNS if col[0] not in optional or any(_field_in_row(row, col[0]) for row in rows[: min(8, len(rows))])]
+        return columns or _LEADER_COLUMNS
     if sample.get("hit_reason") or sample.get("composite_score"):
         optional = {"diff_status", "industry", "volume_ratio", "pe_ttm", "net_mf_amount", "flow_kind"}
         columns = [col for col in _RECIPE_COLUMNS if col[0] not in optional or any(_field_in_row(row, col[0]) for row in rows[: min(5, len(rows))])]

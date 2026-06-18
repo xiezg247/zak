@@ -105,7 +105,7 @@ CREATE TABLE watchlist_positions (
 
 `follow_signal=true` 时，退出信号与信号区 `WatchlistSignalConfig` 一致；否则用持仓区独立 class_name / 快慢线。
 
-**极致短线目标**：Profile=`ultra_short` 时绑定 `AshareOvernightExitStrategy` 规则集（**待建**）；当前仍回落到双均线或 ShortBreakout。
+**极致短线**：Profile=`ultra_short` 时持仓 overlay 绑定 `AshareOvernightExitStrategy` 规则集（**已有**）；AI 工具 `evaluate_overnight_exit`。
 
 ---
 
@@ -164,13 +164,13 @@ CREATE TABLE watchlist_positions (
 雷达龙头 → 观察组 → 信号区监控 → 登记持仓
                               │
                               ▼
-                    T+1 锁定 + 隔日 exit 规则（待建）
+                    T+1 锁定 + 隔日 exit 规则（**已有**，overlay + AI）
                               │
                               ▼
-                    笔记流水复盘 + trade_journal（待建）
+                    笔记流水复盘 + trade_journal（**已有**；笔记可导入流水）
 ```
 
-登记时 **规划**：`emotion_cycle` 退潮期 toast 警告；`risk_gate` 单笔 2% 计算器（见 [risk-gate.md](./risk-gate.md)）。
+登记时：`emotion_cycle` 退潮期 toast 警告（**已有**）；`risk_gate` 单笔 2% 计算器 + 顶栏芯片（**已有**，见 [risk-gate.md](./risk-gate.md)）。
 
 ---
 

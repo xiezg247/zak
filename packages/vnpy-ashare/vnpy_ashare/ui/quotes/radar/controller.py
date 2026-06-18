@@ -132,13 +132,21 @@ class RadarController(QtCore.QObject):
         )
         dialog.exec()
 
-    def _on_open_screener_leader(self) -> None:
+    def _on_open_screener_leader(self, *, focus: bool = True) -> None:
+        if focus:
+            self._board.focus_card("leader_pick")
         host = self._find_main_window()
         if host is None or not hasattr(host, "open_screener_leader_screen"):
             page_notify(self._page, "无法打开选股页", level="warning")
             return
         variant = self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT)
         host.open_screener_leader_screen(variant=variant)
+
+    def open_leader_shortcut(self) -> None:
+        """顶栏「选龙头」：定位龙头卡并打开选股 Hub 执行。"""
+        self._board.focus_card("leader_pick")
+        self.refresh_card("leader_pick")
+        self._on_open_screener_leader(focus=False)
 
     def _on_resonance_weights_requested(self) -> None:
         dialog = RadarResonanceWeightDialog(self._page)

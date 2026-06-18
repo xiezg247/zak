@@ -616,6 +616,24 @@ class RadarBoard(QtWidgets.QWidget):
     def card(self, card_id: str) -> RadarCardWidget | None:
         return self._cards.get(card_id)
 
+    def focus_card(self, card_id: str) -> bool:
+        """切换分区并滚动到指定卡片。"""
+        widget = self._cards.get(card_id)
+        if widget is None:
+            return False
+        if widget._spec.mode != "predictive":
+            self.set_mode("statistical", persist=False)
+
+        def _scroll() -> None:
+            parent = widget.parentWidget()
+            while parent is not None and not isinstance(parent, QtWidgets.QScrollArea):
+                parent = parent.parentWidget()
+            if parent is not None:
+                parent.ensureWidgetVisible(widget, 0, 64)
+
+        QtCore.QTimer.singleShot(0, _scroll)
+        return True
+
     def sync_mode_badges(self) -> None:
         for widget in self._cards.values():
             widget.update_mode_badge()

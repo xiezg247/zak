@@ -7,6 +7,7 @@ from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
 from vnpy_ashare.trading.signals.seal_time import seal_time_score
+from vnpy_ashare.trading.signals.seal_reopen import seal_reopen_from_row
 from vnpy_ashare.trading.signals.seal_strength import seal_strength_from_row
 
 __all__ = [
@@ -54,10 +55,17 @@ def _norm_limit_times(limit_times: float) -> float:
 
 
 def _seal_quality_proxy(row: QuoteRowLike) -> float:
-    """封板质量：优先 limit_list_d 封单强度，否则成交额代理。"""
+    """封板质量：封单强度 + 炸板回封，否则成交额代理。"""
     strength = seal_strength_from_row(row)
+    _kind, _label, reopen_score, _times = seal_reopen_from_row(row)
+
+    parts: list[float] = []
     if strength > 0:
-        return strength
+        parts.append(strength)
+    if reopen_score > 0:
+        parts.append(reopen_score)
+    if parts:
+        return round(sum(parts) / len(parts), 4)
 
     change = float(row.get("change_pct") or 0)
     if not is_at_limit_board(row):

@@ -12,6 +12,7 @@ from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session
 from vnpy_ashare.integrations.tickflow.klines import fetch_intraday_bars
 from vnpy_ashare.integrations.tushare.limit_list_fallback import load_limit_list_first_time_map, load_limit_list_seal_map
+from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields
 from vnpy_ashare.trading.signals.seal_strength import seal_strength_score
 from vnpy_ashare.trading.signals.seal_time import parse_clock_minutes, seal_time_score
 
@@ -156,3 +157,4 @@ def attach_first_time_fields(
                 open_times=seal_fields.get("open_times"),
                 strth=seal_fields.get("strth"),
             )
+        attach_seal_reopen_fields(row)

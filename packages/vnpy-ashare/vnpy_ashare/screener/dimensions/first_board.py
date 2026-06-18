@@ -73,4 +73,6 @@ def _first_board_reason(row: dict[str, Any], seal_label: str) -> str:
             strength_hint = f"，封单强度 {float(strength_raw) * 100:.0f}"
         except (TypeError, ValueError):
             strength_hint = ""
-    return f"首板：{industry} {seal}{strength_hint}，人气 {score:.0f}，涨幅 {change:+.2f}%"
+    reopen_label = str(row.get("seal_reopen_label") or "").strip()
+    reopen_hint = f"，{reopen_label}" if reopen_label else ""
+    return f"首板：{industry} {seal}{strength_hint}{reopen_hint}，人气 {score:.0f}，涨幅 {change:+.2f}%"

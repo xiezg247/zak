@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 ### 1.11 交易计划与流水（规划）
 
-> **状态**：表结构为框架期 spec，代码待建（J-01、J-02）。详见 [交易计划与流水](./trading-plan-journal.md)。
+> **状态**：**已有**（J-01、J-02 已落库）。详见 [交易计划与流水](./trading-plan-journal.md)。
 
 #### `trading_plans`
 
