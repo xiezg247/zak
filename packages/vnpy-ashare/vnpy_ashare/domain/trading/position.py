@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import Field
 
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
+from vnpy_ashare.domain.trading.exit import ExitRuleHit
 from vnpy_ashare.domain.trading.signal_snapshot import SignalKind, SignalSnapshot
 from vnpy_common.domain.base import FrozenModel
 
@@ -53,6 +54,7 @@ class PositionSnapshot(FrozenModel):
     exit_ref_price: float | None = Field(description="退出参考价")
     dist_exit_pct: float | None = Field(description="现价距退出参考价（%）")
     warnings: tuple[str, ...] = Field(description="信号警告列表")
+    exit_rules: tuple[ExitRuleHit, ...] = Field(default_factory=tuple, description="隔日退出规则快照")
 
     @property
     def t1_status_label(self) -> str:
@@ -145,6 +147,7 @@ def build_position_snapshot(
         exit_ref_price=exit_ref,
         dist_exit_pct=dist_exit_pct(exit_ref, last_price),
         warnings=warnings,
+        exit_rules=(),
     )
 
 

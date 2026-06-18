@@ -6,6 +6,10 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase, ashare_market_phase_label
 from vnpy_ashare.quotes.market.emotion_cycle_subtitle import append_emotion_cycle_to_subtitle
+from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
+    load_outlook_strategy_class,
+    outlook_strategy_options,
+)
 from vnpy_ashare.quotes.radar.radar_catalog import (
     RADAR_GRID_COLUMNS,
     RADAR_LAYOUT_SECTIONS,
@@ -506,6 +510,7 @@ class RadarBoard(QtWidgets.QWidget):
     auto_refresh_changed = QtCore.Signal(str, int)
     full_refresh_interval_changed = QtCore.Signal(str, int)
     mode_changed = QtCore.Signal(str)
+    outlook_strategy_changed = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -513,6 +518,7 @@ class RadarBoard(QtWidgets.QWidget):
 
         self._cards: dict[str, RadarCardWidget] = {}
         self._mode_tab_index: dict[RadarCardMode, int] = {}
+        self._outlook_strategy_combo: QtWidgets.QComboBox | None = None
 
         self._tabs = configure_document_tab_widget(
             QtWidgets.QTabWidget(),
@@ -525,7 +531,28 @@ class RadarBoard(QtWidgets.QWidget):
             page.setObjectName(f"RadarBoardTab{section.mode.title()}")
             page_layout = QtWidgets.QVBoxLayout(page)
             page_layout.setContentsMargins(8, 8, 8, 8)
-            page_layout.setSpacing(0)
+            page_layout.setSpacing(8)
+
+            if section.mode == "predictive":
+                toolbar = QtWidgets.QHBoxLayout()
+                toolbar.setSpacing(8)
+                toolbar_label = QtWidgets.QLabel("展望策略")
+                toolbar_label.setObjectName("RadarOutlookStrategyLabel")
+                toolbar.addWidget(toolbar_label)
+                strategy_combo = QtWidgets.QComboBox()
+                strategy_combo.setObjectName("RadarOutlookStrategyCombo")
+                strategy_combo.setToolTip("前瞻展望区全市场扫描使用的信号策略（与自选信号区独立）")
+                for option in outlook_strategy_options():
+                    strategy_combo.addItem(option.label, option.class_name)
+                default_class = load_outlook_strategy_class()
+                default_index = strategy_combo.findData(default_class)
+                if default_index >= 0:
+                    strategy_combo.setCurrentIndex(default_index)
+                strategy_combo.currentIndexChanged.connect(self._emit_outlook_strategy_changed)
+                toolbar.addWidget(strategy_combo)
+                toolbar.addStretch(1)
+                page_layout.addLayout(toolbar)
+                self._outlook_strategy_combo = strategy_combo
 
             scroll = QtWidgets.QScrollArea()
             scroll.setObjectName("RadarBoardScroll")
@@ -586,6 +613,29 @@ class RadarBoard(QtWidgets.QWidget):
         for section_index, section in enumerate(RADAR_LAYOUT_SECTIONS):
             self._tabs.setTabText(section_index, section.title)
             self._tabs.setTabToolTip(section_index, section.hint)
+
+    def outlook_strategy_class(self) -> str:
+        combo = self._outlook_strategy_combo
+        if combo is None:
+            return load_outlook_strategy_class()
+        value = combo.currentData()
+        return str(value or load_outlook_strategy_class())
+
+    def set_outlook_strategy_class(self, class_name: str) -> None:
+        combo = self._outlook_strategy_combo
+        if combo is None:
+            return
+        index = combo.findData(class_name)
+        if index < 0:
+            return
+        combo.blockSignals(True)
+        combo.setCurrentIndex(index)
+        combo.blockSignals(False)
+
+    def _emit_outlook_strategy_changed(self, _index: int) -> None:
+        class_name = self.outlook_strategy_class()
+        if class_name:
+            self.outlook_strategy_changed.emit(class_name)
 
     def _on_tab_changed(self, index: int) -> None:
         if index < 0 or index >= len(RADAR_LAYOUT_SECTIONS):

@@ -79,6 +79,29 @@ class OpeningStopTest(unittest.TestCase):
         reasons = position_anomaly_reasons(snap=_snap(), quote=quote)
         self.assertIn("开盘止损", reasons)
 
+    def test_position_anomaly_opening_stop_prefers_minute_bars(self) -> None:
+        quote = QuoteSnapshot(
+            symbol="600000",
+            name="测试",
+            last_price=9.7,
+            prev_close=10.0,
+            open_price=9.8,
+            high_price=9.9,
+            low_price=9.6,
+            change_amount=-0.3,
+            change_pct=-3.0,
+            turnover_rate=1.0,
+            volume=1000.0,
+            trade_time="2026-06-17 09:50:00",
+        )
+        with patch(
+            "vnpy_ashare.quotes.misc.position_anomaly.resolve_opening_stop_for_quote",
+            return_value=(True, "低开 -2.0%，30 分钟内未翻红（分 K）"),
+        ) as mock_resolve:
+            reasons = position_anomaly_reasons(snap=_snap(), quote=quote)
+        mock_resolve.assert_called_once()
+        self.assertIn("开盘止损", reasons)
+
 
 class BookPnlTest(unittest.TestCase):
     def test_summarize_book_pnl(self) -> None:

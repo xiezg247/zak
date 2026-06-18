@@ -78,7 +78,7 @@
 | T-02 | 恐贪 + 北向环境快照 | **已有** | `market_environment` |
 | T-03 | **情绪周期引擎**：输入广度/连板/梯队 → 输出阶段标签 + 仓位系数 | **已有** | `quotes/market/emotion_cycle.py` |
 | T-04 | 择时闸 UI：顶栏芯片「冰点/启动/…」+ 建议仓位 | **已有** | 市场 stats_bar + 自选/雷达顶栏 `EmotionCycleChip` |
-| T-05 | 择时注入选股：`sentiment_gate` 扩展为周期系数 | **部分** | `screener/dimensions/sentiment_gate` |
+| T-05 | 择时注入选股：`sentiment_gate` 扩展为周期系数 | **已有** | `screener/sentiment/emotion_gate` |
 | T-06 | 退潮期强制提示：阻止「一键入自选批量」软拦截 | **已有** | 选股结果操作条 |
 
 ### 2.4 AI 择时
@@ -222,8 +222,8 @@
 |----|------|------|
 | S-01 | 策略注册表扩展短线策略族 | **已有** |
 | S-02 | 信号区策略 Profile 切换 | **已有** |
-| S-03 | 持仓区绑定退出规则集 | **部分**（现仅双均线 exit_signal） |
-| S-04 | 分 K 图表标注买点/卖点参考线 | **已有** |
+| S-03 | 持仓区绑定退出规则集 | **已有**（`ultra_short` Profile 隔日规则列 + overlay） |
+| S-04 | 分 K 图表标注买点/卖点参考线 | **已有**（分 K 模式线：涨停价 / 半路带 / 低吸带 + 日 K 锚点） |
 | S-05 | 开盘 30 分钟止损提醒（持仓异动扩展） | **已有** |
 | K-03 | 当日已实现 + 浮亏汇总 | **已有** | 风控设置 + 持仓 stats |
 
@@ -459,7 +459,7 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | 项 | 交付 | 状态 |
 |----|------|------|
 | 情绪周期引擎 T-03 + 顶栏展示 T-04 | 可手动校准阈值 | **已有** |
-| 短线 Recipe R-01 + 激进硬过滤模板 | 选股 Hub | **部分** |
+| 短线 Recipe R-01 + 激进硬过滤模板 | 选股 Hub | **已有** |
 | watchlist_groups 观察组 + Tab | 自选页 | **已有** |
 | 策略 Profile 配置（信号/持仓切换） | QSettings + 信号区下拉 | **已有** |
 | AI：`get_emotion_cycle` + 雷达 prompt 注入 | vnpy-sentiment | **已有** |
@@ -470,8 +470,8 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 |----|------|------|
 | 短线策略插件 3 类买点 + 隔日卖点 | strategies/ | **已有**（日 K 代理） |
 | 持仓 `ExitRuleSnapshot` 展示 | watchlist_positions | **已有** |
-| 分 K 参考线 | chart/ | **部分** |
-| position_anomaly 扩展开盘止损 | quotes/misc/ | **部分** |
+| 分 K 参考线 | chart/ | **已有**（打板涨停价、半路 3–7% 带、低吸 MA5/−3~−5% 带） |
+| position_anomaly 扩展开盘止损 | quotes/misc/ | **已有**（优先本地 1m，回退日 K 代理） |
 
 ### Phase 3 — 仓位与风控
 

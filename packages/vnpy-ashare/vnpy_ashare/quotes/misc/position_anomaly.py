@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
-from vnpy_ashare.trading.exit.opening_stop import detect_opening_stop_loss
+from vnpy_ashare.trading.exit.opening_stop_intraday import resolve_opening_stop_for_quote
 from vnpy_ashare.trading.journal.float_loss_hold import is_float_loss_hold
 
 if TYPE_CHECKING:
@@ -40,7 +40,11 @@ def position_anomaly_reasons(
         reasons.append("卖出信号")
 
     if quote is not None and quote.last_price > 0:
-        opening_hit, _detail = detect_opening_stop_loss(quote)
+        vt_symbol = snap.vt_symbol if snap is not None else ""
+        if vt_symbol:
+            opening_hit, _detail = resolve_opening_stop_for_quote(vt_symbol, quote, phase="partial")
+        else:
+            opening_hit = False
         if opening_hit:
             reasons.append("开盘止损")
         change_pct = float(quote.change_pct or 0)

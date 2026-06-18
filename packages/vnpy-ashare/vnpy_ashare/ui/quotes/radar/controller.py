@@ -11,6 +11,7 @@ from vnpy_ashare.app.engine_access import get_watchlist_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
+from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_IDS, save_outlook_strategy_class
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
@@ -102,6 +103,7 @@ class RadarController(QtCore.QObject):
         board.auto_refresh_changed.connect(self._on_auto_refresh_changed)
         board.full_refresh_interval_changed.connect(self._on_full_refresh_interval_changed)
         board.mode_changed.connect(self._on_board_mode_changed)
+        board.outlook_strategy_changed.connect(self._on_outlook_strategy_changed)
 
         panel = self._resonance_panel
         if panel is not None:
@@ -253,6 +255,13 @@ class RadarController(QtCore.QObject):
         """刷新当前主区 Tab 内的全部卡片。"""
         for spec in list_radar_cards_for_mode(self._board.current_mode()):
             self.refresh_card(spec.id)
+
+    def _on_outlook_strategy_changed(self, class_name: str) -> None:
+        if not class_name:
+            return
+        save_outlook_strategy_class(class_name)
+        for card_id in OUTLOOK_SIGNAL_CARD_IDS:
+            self.refresh_card(card_id, force_recompute=False)
 
     def _on_board_mode_changed(self, mode: str) -> None:
         self._sync_resonance_tab_from_board(mode)

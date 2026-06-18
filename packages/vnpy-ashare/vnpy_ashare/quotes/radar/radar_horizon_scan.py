@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
+from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.data.bar_access import iter_bar_overviews
 from vnpy_ashare.data.download_concurrency import run_parallel_map
 from vnpy_ashare.data.pattern_bars import pattern_load_max_workers
@@ -13,6 +13,7 @@ from vnpy_ashare.domain.radar.horizon import HorizonScanResult
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_missing_kline
+from vnpy_ashare.quotes.radar.outlook_strategy_prefs import load_outlook_signal_config
 from vnpy_ashare.quotes.radar.radar_horizon_cache import HorizonCacheEntry, put_horizon_cache
 from vnpy_ashare.quotes.radar.radar_horizon_rules import (
     build_outlook_rows,
@@ -38,7 +39,7 @@ HORIZON_PREFILTER_TOP = 600
 
 
 def horizon_min_signal_bars(config: WatchlistSignalConfig | None = None) -> int:
-    cfg = (config or load_watchlist_signal_config()).normalized()
+    cfg = (config or load_outlook_signal_config()).normalized()
     return cfg.slow_window + 5
 
 
@@ -141,7 +142,7 @@ def batch_build_signal_snapshots(
 
     if not vt_symbols:
         return {}
-    cfg = (config or load_watchlist_signal_config()).normalized()
+    cfg = (config or load_outlook_signal_config()).normalized()
 
     def worker(vt_symbol: str) -> tuple[str, SignalSnapshot] | None:
         snapshot = build_signal_snapshot(vt_symbol, config=cfg)
@@ -172,7 +173,7 @@ def scan_horizon_variant(
     scenario_metrics: list | None = None,
 ) -> HorizonScanResult:
     """扫描单一展望变体（关注/可持/情景）。"""
-    cfg = (config or load_watchlist_signal_config()).normalized()
+    cfg = (config or load_outlook_signal_config()).normalized()
     excluded = exclusion if exclusion is not None else collect_outlook_exclusion_vt_symbols()
 
     if prefilter is None or base_stats is None:
@@ -269,7 +270,7 @@ def run_horizon_outlook_scan(
     """一次粗筛 + 批量算信号，产出关注/可持/情景榜。"""
     exclusion = collect_outlook_exclusion_vt_symbols()
     prefilter, base_stats = prefilter_horizon_universe(exclusion)
-    cfg = load_watchlist_signal_config().normalized()
+    cfg = load_outlook_signal_config().normalized()
     snapshots = batch_build_signal_snapshots(prefilter, config=cfg)
     scenario_metrics = batch_build_scenario_metrics(prefilter, snapshots)
 

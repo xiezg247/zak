@@ -28,6 +28,11 @@ from vnpy_ashare.ui.quotes.chart.minute_bars import (
     MinuteBarSession,
     compute_minute_bar_change,
 )
+from vnpy_ashare.ui.quotes.chart.mode_reference import (
+    build_intraday_mode_reference_lines,
+    mode_reference_window_hint,
+    resolve_intraday_mode_kind,
+)
 from vnpy_ashare.ui.quotes.chart.reference_line_legend import ReferenceLineLegendBar
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.workers.quotes_workers import BarsLoadWorker, IntradayBarsWorker, LoadedBars, LoadedPeriodBars, MinuteBarsWorker
@@ -256,6 +261,15 @@ class ChartPanel(QtWidgets.QWidget):
             slow_window=slow_window,
             fast_window=fast_window,
         )
+        mode = resolve_intraday_mode_kind(snapshot.strategy_id)
+        minute_bars = self._minute_session.bars if self._minute_session.bar_count() > 0 else None
+        vt_symbol = self._item.vt_symbol if self._item is not None else snapshot.vt_symbol
+        mode_lines = build_intraday_mode_reference_lines(
+            vt_symbol,
+            quote,
+            mode=mode,
+            minute_bars=minute_bars,
+        )
         self.daily_chart.set_reference_lines(
             ref_buy=ref_buy,
             ref_sell=ref_sell,
@@ -263,18 +277,26 @@ class ChartPanel(QtWidgets.QWidget):
             action_buy=action_buy,
             action_sell=action_sell,
         )
-        self.minute_chart.set_reference_lines(
-            ref_buy=ref_buy,
-            ref_sell=ref_sell,
-            last_price=last_price,
-            action_buy=action_buy,
-            action_sell=action_sell,
-        )
-        self.ref_legend.set_reference_lines(
-            ref_buy=ref_buy,
-            ref_sell=ref_sell,
-            last_price=last_price,
-        )
+        if mode_lines:
+            self.minute_chart.set_mode_reference_lines(mode_lines, last_price=last_price)
+            self.ref_legend.set_mode_reference_lines(
+                mode_lines,
+                last_price=last_price,
+                hint=mode_reference_window_hint(mode),
+            )
+        else:
+            self.minute_chart.set_reference_lines(
+                ref_buy=ref_buy,
+                ref_sell=ref_sell,
+                last_price=last_price,
+                action_buy=action_buy,
+                action_sell=action_sell,
+            )
+            self.ref_legend.set_reference_lines(
+                ref_buy=ref_buy,
+                ref_sell=ref_sell,
+                last_price=last_price,
+            )
         self._update_ref_legend_visibility()
 
     def _update_ref_legend_visibility(self) -> None:

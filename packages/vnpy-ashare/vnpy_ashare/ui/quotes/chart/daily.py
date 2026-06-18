@@ -13,6 +13,7 @@ from vnpy_ashare.ui.components.chart_style import apply_ashare_chart_theme, appl
 from vnpy_ashare.ui.quotes.chart.ma_line_item import register_ma_items
 from vnpy_ashare.ui.quotes.chart.macd_item import register_macd_items
 from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarChange, MinuteBarDiff, prepare_chart_bars
+from vnpy_ashare.ui.quotes.chart.mode_reference import ModeReferenceLine
 
 MINUTE_BAR_COUNT = 80
 DAILY_BAR_COUNT = 120
@@ -162,6 +163,7 @@ class AshareChartWidget(ChartWidget):
         self._ref_last_price_line: pg.InfiniteLine | None = None
         self._action_buy_line: pg.InfiniteLine | None = None
         self._action_sell_line: pg.InfiniteLine | None = None
+        self._mode_lines: list[pg.InfiniteLine] = []
 
     def clear_reference_lines(self) -> None:
         plot = self._plots.get("candle")
@@ -178,6 +180,9 @@ class AshareChartWidget(ChartWidget):
             if line is not None:
                 plot.removeItem(line)
                 setattr(self, attr, None)
+        for line in self._mode_lines:
+            plot.removeItem(line)
+        self._mode_lines.clear()
 
     def set_reference_lines(
         self,
@@ -223,6 +228,35 @@ class AshareChartWidget(ChartWidget):
                 pen=pg.mkPen(ACTION_SELL_LINE_COLOR, width=1, style=dot),
             )
             plot.addItem(self._action_sell_line)
+        if last_price is not None and last_price > 0:
+            self._ref_last_price_line = pg.InfiniteLine(
+                angle=0,
+                pos=last_price,
+                pen=pg.mkPen(REF_LAST_PRICE_LINE_COLOR, width=1, style=dash),
+            )
+            plot.addItem(self._ref_last_price_line)
+
+    def set_mode_reference_lines(
+        self,
+        lines: tuple[ModeReferenceLine, ...],
+        *,
+        last_price: float | None = None,
+    ) -> None:
+        """分 K 模式化参考线（打板 / 半路 / 低吸）。"""
+        plot = self._plots.get("candle")
+        if plot is None:
+            return
+        self.clear_reference_lines()
+        dash = QtCore.Qt.PenStyle.DashLine
+        dot = QtCore.Qt.PenStyle.DotLine
+        for spec in lines:
+            price = spec.price
+            if price <= 0:
+                continue
+            pen_style = dot if spec.style == "dot" else dash
+            line = pg.InfiniteLine(angle=0, pos=price, pen=pg.mkPen(spec.color, width=1, style=pen_style))
+            plot.addItem(line)
+            self._mode_lines.append(line)
         if last_price is not None and last_price > 0:
             self._ref_last_price_line = pg.InfiniteLine(
                 angle=0,

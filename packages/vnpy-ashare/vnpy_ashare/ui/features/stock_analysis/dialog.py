@@ -14,6 +14,7 @@ from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.quotes.format import EMPTY_DISPLAY, format_amount, format_volume
 from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
 from vnpy_ashare.ui.features.notes_center.report_launcher import open_notes_reports_center
 from vnpy_ashare.ui.features.stock_analysis.ai_sidebar import StockAnalysisAiSidebar
@@ -176,12 +177,13 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         )
 
         theme_manager().bind_stylesheet(self, extra=build_stock_analysis_stylesheet)
-        self._render_quote_metrics()
+        self._refresh_live_quote()
         self._init_idle_tabs()
         self._ensure_tab_data(_TAB_OVERVIEW)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
+        self._refresh_live_quote()
         main = self._find_ashare_main_window()
         if main is not None:
             main.register_floating_overlay(self)
@@ -387,6 +389,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._start_load(scope=scope, sync_financials=False)
 
     def _refresh_current_tab(self) -> None:
+        self._refresh_live_quote()
         index = self._tabs.currentIndex()
         if index == _TAB_CHART:
             self._chart_loaded = False
@@ -430,6 +433,13 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             "trade_time": quote.trade_time,
         }
 
+    def _refresh_live_quote(self) -> None:
+        quote = self._host.quote_for_item(self._item)
+        if quote is None:
+            return
+        self._quote = quote
+        self._render_quote_metrics()
+
     def _render_quote_metrics(self) -> None:
         quote = self._quote
         tiles = self._quote_tiles
@@ -446,15 +456,18 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             subtitle=f"{quote.change_pct:+.2f}%",
             color=change_color,
         )
+        open_text = f"{quote.open_price:.2f}" if quote.open_price > 0 else EMPTY_DISPLAY
+        high_text = f"{quote.high_price:.2f}" if quote.high_price > 0 else EMPTY_DISPLAY
+        low_text = f"{quote.low_price:.2f}" if quote.low_price > 0 else EMPTY_DISPLAY
         tiles["ohlc"].set_value(
-            f"{quote.open_price:.2f}",
-            subtitle=f"高 {quote.high_price:.2f} · 低 {quote.low_price:.2f}",
+            open_text,
+            subtitle=f"高 {high_text} · 低 {low_text}",
         )
-        tiles["volume"].set_value(f"{quote.volume:,.0f}")
-        tiles["amount"].set_value(f"{quote.amount:,.0f}")
-        tiles["turnover"].set_value(f"{quote.turnover_rate:.2f}%")
-        tiles["amplitude"].set_value(f"{quote.amplitude:.2f}%")
-        tiles["time"].set_value(quote.trade_time or "—")
+        tiles["volume"].set_value(format_volume(quote.volume) if quote.volume > 0 else EMPTY_DISPLAY)
+        tiles["amount"].set_value(format_amount(quote.amount) if quote.amount > 0 else EMPTY_DISPLAY)
+        tiles["turnover"].set_value(f"{quote.turnover_rate:.2f}%" if quote.turnover_rate > 0 else EMPTY_DISPLAY)
+        tiles["amplitude"].set_value(f"{quote.amplitude:.2f}%" if quote.amplitude > 0 else EMPTY_DISPLAY)
+        tiles["time"].set_value(quote.trade_time or EMPTY_DISPLAY)
 
     def _show_scope_loading(self, scope: StockAnalysisScope) -> None:
         if scope == "overview":

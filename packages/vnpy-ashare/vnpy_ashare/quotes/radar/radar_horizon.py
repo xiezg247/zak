@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signal_config
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
-from vnpy_ashare.domain.trading.signal_snapshot import SIGNAL_RECENT_DAYS
+from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
+    load_outlook_signal_config,
+    outlook_signal_recent_days,
+    outlook_strategy_label,
+)
 from vnpy_ashare.quotes.radar.radar_ai_cache import resolve_ai_hint, rows_fingerprint
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_hint, build_outlook_cross_ref_suffix
@@ -82,21 +85,21 @@ def load_outlook_horizon(
     force_recompute: bool = False,
 ) -> RadarCardData:
     resolved_variant = variant or OUTLOOK_CARD_VARIANTS.get(spec.id, "watch_next")
-    config = load_watchlist_signal_config()
-    strategy_label = config.class_name
+    config = load_outlook_signal_config()
+    strategy_key = config.cache_key()
+    strategy_label = outlook_strategy_label(config.class_name)
+    recent_days = outlook_signal_recent_days(config.class_name)
     scenario_mode = resolved_variant in SCENARIO_VARIANTS
     idle_subtitle = (
-        f"约 {SIGNAL_RECENT_DAYS} 日统计情景 · 策略 {strategy_label} · 非目标价"
-        if scenario_mode
-        else f"约 {SIGNAL_RECENT_DAYS} 日窗口 · 策略 {strategy_label} · 非价格预测"
+        f"约 {recent_days} 日统计情景 · 策略 {strategy_label} · 非目标价" if scenario_mode else f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 非价格预测"
     )
 
     if not force_recompute:
-        cached = get_horizon_cache(resolved_variant)
+        cached = get_horizon_cache(resolved_variant, strategy_key=strategy_key)
         if cached is not None:
             subtitle = build_horizon_subtitle(
                 cached,
-                signal_recent_days=SIGNAL_RECENT_DAYS,
+                signal_recent_days=recent_days,
                 strategy_label=strategy_label,
             )
             if scenario_mode:
@@ -148,10 +151,10 @@ def load_outlook_horizon(
 
     scan_result = scan_horizon_variant(resolved_variant, top_n=spec.top_n, config=config)
 
-    cached_after = get_horizon_cache(resolved_variant)
+    cached_after = get_horizon_cache(resolved_variant, strategy_key=strategy_key)
     subtitle = build_horizon_subtitle(
         cached_after or cache_entry_from_scan(scan_result),
-        signal_recent_days=SIGNAL_RECENT_DAYS,
+        signal_recent_days=recent_days,
         strategy_label=strategy_label,
     )
     if scenario_mode:

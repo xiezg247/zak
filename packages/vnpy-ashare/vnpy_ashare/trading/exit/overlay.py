@@ -25,6 +25,7 @@ def apply_overnight_exit_overlay(
     evaluation = evaluate_overnight_exit(record, quote=quote)
     merged_warnings = tuple(dict.fromkeys((*snapshot.warnings, *evaluation.warnings)))
     exit_signal = evaluation.signal if evaluation.signal != "na" else snapshot.exit_signal
+    exit_rules = evaluation.rules
 
     base_signal = snapshot.signal_snapshot
     if evaluation.signal == "sell" and base_signal is not None:
@@ -59,6 +60,11 @@ def apply_overnight_exit_overlay(
         exit_signal = "sell"
     elif evaluation.warnings and base_signal is not None:
         base_signal = base_signal.model_copy(update={"warnings": merged_warnings})
+    elif evaluation.rules and base_signal is not None and evaluation.signal == "hold":
+        rule_lines = [f"{hit.label}：{hit.detail}" for hit in evaluation.rules if hit.status in ("triggered", "near")]
+        if rule_lines:
+            reasons = tuple(dict.fromkeys((*base_signal.reasons, *rule_lines)))
+            base_signal = base_signal.model_copy(update={"reasons": reasons})
 
     return PositionSnapshot(
         vt_symbol=snapshot.vt_symbol,
@@ -77,4 +83,5 @@ def apply_overnight_exit_overlay(
         exit_ref_price=evaluation.ref_sell_price or snapshot.exit_ref_price,
         dist_exit_pct=snapshot.dist_exit_pct,
         warnings=merged_warnings,
+        exit_rules=exit_rules,
     )

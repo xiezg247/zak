@@ -490,7 +490,7 @@ def test_load_outlook_watch_no_cache(monkeypatch) -> None:
 
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.radar_horizon.get_horizon_cache",
-        lambda _variant: None,
+        lambda _variant, strategy_key="": None,
     )
     spec = RADAR_CARD_BY_ID["outlook_watch"]
     data = load_outlook_horizon(spec, force_recompute=False)
@@ -554,7 +554,7 @@ def test_load_outlook_watch_enriches_cached_rows(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.radar_horizon.get_horizon_cache",
-        lambda _variant: HorizonCacheEntry(
+        lambda _variant, strategy_key="": HorizonCacheEntry(
             variant="watch_next",
             rows=(cached_row,),
             scanned_total=5512,

@@ -27,6 +27,16 @@ A 股策略回测的交互与数据约定。引擎：vnpy `CtaBacktesterApp` + `
 
 **批量回测**：`ui/backtest/flow/batch_backtest_flow.py` 后台逐只回测 → 落库 `batch_id` → 跳转回测对比页。需本地已有日 K。
 
+**批量回测模板（选股 / 自选）**：确认对话框提供「回测模板」下拉：
+
+| 选项 | 说明 |
+|------|------|
+| 自动（跟随来源） | 龙头 → 日 K 打板；Recipe / Profile 推断 |
+| 日 K · 极致短线打板/半路 等 | `batch_templates.py` 日 K 模板 |
+| 分 K · 打板/半路/低吸/隔日退出 | 须本地 1m；确认时会提示 |
+
+选中分 K 模板后，`BatchBacktestParams.interval` 为 `MINUTE`，缺 1m 的单只结果在对比表「备注」列标记错误。
+
 **摘要与 AI**：回测完成后写入 `~/.vntrader/zak.db`，同步 `context_store` 供 Skill 与「问 AI」读取。
 
 ## 数据约定

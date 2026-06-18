@@ -54,17 +54,18 @@ def _connect():
         conn.close()
 
 
-def get_horizon_cache(variant: str) -> HorizonCacheEntry | None:
+def horizon_cache_storage_key(variant: str, strategy_key: str) -> str:
+    """缓存主键：变体 + 策略配置键（支持同变体多策略并存）。"""
     text = str(variant or "").strip()
+    key = str(strategy_key or "").strip()
     if not text:
-        return None
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM radar_horizon_cache WHERE variant = ?",
-            (text,),
-        ).fetchone()
-    if row is None:
-        return None
+        return ""
+    if not key:
+        return text
+    return f"{text}|{key}"
+
+
+def _entry_from_row(row: sqlite3.Row, *, logical_variant: str) -> HorizonCacheEntry:
     try:
         payload = json.loads(str(row["rows_json"] or "[]"))
     except (json.JSONDecodeError, TypeError):
@@ -74,7 +75,7 @@ def get_horizon_cache(variant: str) -> HorizonCacheEntry | None:
     quotes = quotes_for_vt_symbols(vt_symbols)
     rows = tuple(radar_row_from_cache_dict(item, quote=quotes.get(str(item.get("vt_symbol") or "").strip(), {})) for item in payload if isinstance(item, dict))
     return HorizonCacheEntry(
-        variant=text,
+        variant=logical_variant,
         rows=rows,
         scanned_total=int(row["scanned_total"] or 0),
         excluded_count=int(row["excluded_count"] or 0),
@@ -84,6 +85,32 @@ def get_horizon_cache(variant: str) -> HorizonCacheEntry | None:
         strategy_key=str(row["strategy_key"] or ""),
         computed_at=str(row["computed_at"] or ""),
     )
+
+
+def get_horizon_cache(variant: str, *, strategy_key: str = "") -> HorizonCacheEntry | None:
+    text = str(variant or "").strip()
+    if not text:
+        return None
+    key = str(strategy_key or "").strip()
+    storage_keys: list[str] = []
+    if key:
+        storage_keys.append(horizon_cache_storage_key(text, key))
+    storage_keys.append(text)
+    with _connect() as conn:
+        row = None
+        for storage_key in storage_keys:
+            row = conn.execute(
+                "SELECT * FROM radar_horizon_cache WHERE variant = ?",
+                (storage_key,),
+            ).fetchone()
+            if row is not None:
+                break
+    if row is None:
+        return None
+    cached_key = str(row["strategy_key"] or "").strip()
+    if key and cached_key and cached_key != key:
+        return None
+    return _entry_from_row(row, logical_variant=text)
 
 
 def put_horizon_cache(
@@ -100,6 +127,9 @@ def put_horizon_cache(
 ) -> None:
     text = str(variant or "").strip()
     if not text:
+        return
+    storage_key = horizon_cache_storage_key(text, strategy_key)
+    if not storage_key:
         return
     stamp = computed_at or format_china_datetime_minute()
     payload = json.dumps([radar_row_to_cache_dict(row) for row in rows], ensure_ascii=False)
@@ -122,7 +152,7 @@ def put_horizon_cache(
                 computed_at = excluded.computed_at
             """,
             (
-                text,
+                storage_key,
                 payload,
                 int(scanned_total),
                 int(excluded_count),

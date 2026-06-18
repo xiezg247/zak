@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 from vnpy_ashare.domain.market.quote_row import QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.quotes.format import format_pct
+from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.market_benchmark import (
     industry_avg_change_map,
     market_benchmark_change_pct,
@@ -27,8 +28,6 @@ def _market_rows_for_relative_strength(snapshot_rows: QuoteRowsLike | None) -> Q
     if snapshot_rows is not None and len(snapshot_rows) >= _MIN_INDUSTRY_POOL:
         return snapshot_rows
     try:
-        from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-
         return load_screening_quote_snapshot().rows
     except MarketQuotesLoadError:
         return snapshot_rows or []

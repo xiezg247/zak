@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from datetime import datetime, time
 
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, MORNING_OPEN
-from vnpy_ashare.trading.exit.opening_stop import OPENING_STOP_MINUTES
+from vnpy_ashare.trading.exit.opening_stop import OPENING_STOP_MINUTES, detect_opening_stop_loss
+from vnpy_ashare.trading.signals.limit_board_intraday import load_local_minute_bars_for_date
 
 __all__ = [
     "detect_opening_stop_from_minute_bars",
     "never_recovered_prev_close_in_opening_window",
+    "resolve_opening_stop_for_quote",
 ]
 
 
@@ -128,3 +131,26 @@ def detect_opening_stop_from_minute_bars(
 
     gap_pct = (day_open - prev_close) / prev_close * 100
     return True, f"低开 {gap_pct:.1f}%，30 分钟内未翻红（分 K）"
+
+
+def resolve_opening_stop_for_quote(
+    vt_symbol: str,
+    quote: QuoteSnapshot,
+    *,
+    phase: str = "partial",
+) -> tuple[bool, str]:
+    """优先本地 1m 分 K 检测开盘止损，无数据时回退日 K 代理。"""
+    if quote.last_price <= 0 or quote.prev_close <= 0 or quote.open_price <= 0:
+        return False, ""
+    trade_date = datetime.now(CHINA_TZ).date()
+    minute_bars = load_local_minute_bars_for_date(vt_symbol, trade_date)
+    if minute_bars:
+        hit, detail = detect_opening_stop_from_minute_bars(
+            minute_bars,
+            prev_close=quote.prev_close,
+            open_price=quote.open_price,
+            phase=phase,
+        )
+        if hit:
+            return hit, detail
+    return detect_opening_stop_loss(quote)

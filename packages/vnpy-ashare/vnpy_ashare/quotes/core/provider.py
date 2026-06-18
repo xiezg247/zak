@@ -180,7 +180,71 @@ def quote_snapshot_from_row(row: dict[str, Any], *, tickflow_symbol: str = "") -
     )
 
 
-def resolve_quote_snapshot(
+def _quote_is_sparse(quote: QuoteSnapshot) -> bool:
+    """日 K / 选股行常仅有现价与涨跌幅，缺 OHLC 与量能。"""
+    return quote.volume <= 0 and quote.amount <= 0
+
+
+def _pick_richer_field(base: float, incoming: float) -> float:
+    if base > 0:
+        return base
+    return incoming
+
+
+def _merge_richer_quote(base: QuoteSnapshot, incoming: QuoteSnapshot) -> QuoteSnapshot:
+    """用实时快照补全稀疏行情，保留 base 已有价格字段。"""
+    return base.model_copy(
+        update={
+            "name": incoming.name or base.name,
+            "last_price": base.last_price if base.last_price > 0 else incoming.last_price,
+            "prev_close": _pick_richer_field(base.prev_close, incoming.prev_close),
+            "open_price": _pick_richer_field(base.open_price, incoming.open_price),
+            "high_price": _pick_richer_field(base.high_price, incoming.high_price),
+            "low_price": _pick_richer_field(base.low_price, incoming.low_price),
+            "change_amount": base.change_amount if base.change_amount != 0 else incoming.change_amount,
+            "change_pct": base.change_pct if base.change_pct != 0 else incoming.change_pct,
+            "turnover_rate": _pick_richer_field(base.turnover_rate, incoming.turnover_rate),
+            "volume": _pick_richer_field(base.volume, incoming.volume),
+            "amount": _pick_richer_field(base.amount, incoming.amount),
+            "amplitude": _pick_richer_field(base.amplitude, incoming.amplitude),
+            "volume_ratio": _pick_richer_field(base.volume_ratio, incoming.volume_ratio),
+            "net_mf_amount": incoming.net_mf_amount if incoming.net_mf_amount != 0 else base.net_mf_amount,
+            "change_speed_5m": incoming.change_speed_5m if incoming.change_speed_5m != 0 else base.change_speed_5m,
+            "limit_times": incoming.limit_times if incoming.limit_times >= 1 else base.limit_times,
+            "trade_time": incoming.trade_time or base.trade_time,
+        }
+    )
+
+
+def _fetch_live_quote(item: StockItem) -> QuoteSnapshot | None:
+    tf_symbol = item.tickflow_symbol
+    try:
+        quotes = RedisQuoteStore().get_quotes([tf_symbol])
+        quote = quotes.get(tf_symbol)
+        if quote is not None and quote.last_price > 0:
+            return quote
+    except Exception:
+        pass
+    try:
+        quotes = fetch_quotes_from_tickflow([item])
+        quote = quotes.get(tf_symbol)
+        if quote is not None and quote.last_price > 0:
+            return quote
+    except Exception:
+        return None
+    return None
+
+
+def _enrich_sparse_quote(item: StockItem, quote: QuoteSnapshot) -> QuoteSnapshot:
+    if not _quote_is_sparse(quote):
+        return quote
+    live = _fetch_live_quote(item)
+    if live is None:
+        return quote
+    return _merge_richer_quote(quote, live)
+
+
+def _resolve_quote_snapshot_impl(
     item: StockItem,
     *,
     quote_map: dict[str, QuoteSnapshot] | None = None,
@@ -272,6 +336,19 @@ def resolve_quote_snapshot(
     except Exception:
         return None
     return None
+
+
+def resolve_quote_snapshot(
+    item: StockItem,
+    *,
+    quote_map: dict[str, QuoteSnapshot] | None = None,
+    row_hint: dict[str, Any] | None = None,
+) -> QuoteSnapshot | None:
+    """解析单标的行情：宿主 map → 行 hint → Redis → 全市场快照 → TickFlow；稀疏结果再补实时字段。"""
+    quote = _resolve_quote_snapshot_impl(item, quote_map=quote_map, row_hint=row_hint)
+    if quote is None:
+        return None
+    return _enrich_sparse_quote(item, quote)
 
 
 def is_gateway_quote_active() -> bool:

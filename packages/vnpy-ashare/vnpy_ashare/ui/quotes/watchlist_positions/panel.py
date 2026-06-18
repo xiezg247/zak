@@ -30,6 +30,11 @@ from vnpy_ashare.quotes.misc.position_anomaly import (
 )
 from vnpy_ashare.services.signals.runtime import signal_cell_color
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
+from vnpy_ashare.trading.exit.exit_display import (
+    exit_rule_cell_color,
+    format_exit_rules_summary,
+    format_exit_rules_tooltip,
+)
 from vnpy_ashare.trading.journal.plan_check import check_buy_against_plan
 from vnpy_ashare.trading.journal.report import format_journal_report_hint, load_journal_report
 from vnpy_ashare.trading.risk.book_pnl import format_book_pnl_hint, summarize_book_pnl
@@ -67,6 +72,7 @@ _PANEL_COLUMNS = (
     ("plan_pct", "计划/实际%"),
     ("t1_status", "T+1"),
     ("exit_signal", "退出信号"),
+    ("exit_rules", "隔日规则"),
     ("ref_sell_price", "参考卖价"),
 )
 
@@ -768,6 +774,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             values["pnl"] = "—"
             values["pnl_pct"] = "—"
             values["exit_signal"] = "待计算"
+            values["exit_rules"] = "—"
             values["ref_sell_price"] = "—"
             return values, snap, quote, plan_tooltip
         pnl = snap.unrealized_pnl
@@ -776,6 +783,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         values["pnl_pct"] = f"{pnl_pct:+.2f}%" if pnl_pct is not None else "—"
         values["t1_status"] = snap.t1_status_label
         values["exit_signal"] = snap.exit_signal_label
+        values["exit_rules"] = format_exit_rules_summary(snap.exit_rules)
         ref_sell = snap.exit_ref_price
         values["ref_sell_price"] = f"{ref_sell:.2f}" if ref_sell is not None else "—"
         return values, snap, quote, plan_tooltip
@@ -839,6 +847,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                     slow_window=config.slow_window,
                     fast_window=config.fast_window,
                 )
+            elif key == "exit_rules" and snap is not None:
+                fg = exit_rule_cell_color(snap.exit_rules, colors=colors, warning_color=warning_color)
             if key == "t1_status":
                 if snap is not None:
                     item_cell.setToolTip(snap.t1_status_tooltip)
@@ -847,6 +857,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                     item_cell.setToolTip(tip)
             elif key == "exit_signal" and snap is not None:
                 item_cell.setToolTip(snap.exit_signal_tooltip)
+            elif key == "exit_rules" and snap is not None and snap.exit_rules:
+                item_cell.setToolTip(format_exit_rules_tooltip(snap.exit_rules))
             elif key == "plan_pct" and plan_tooltip:
                 item_cell.setToolTip(plan_tooltip)
             if fg:
