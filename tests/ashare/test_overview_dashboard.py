@@ -58,11 +58,11 @@ class OverviewDashboardTests(unittest.TestCase):
         }
         dashboard = build_overview_dashboard(engine, "600000.SSE", technical=technical)
         labels = [item.label for item in dashboard.readiness]
-        self.assertEqual(labels, ["日K", "财报", "估值", "资金流", "股东"])
+        self.assertEqual(labels, ["日K", "短线", "财报", "估值", "资金流", "股东"])
         daily = dashboard.readiness[0]
         self.assertEqual(daily.status, "ready")
-        self.assertEqual(dashboard.readiness[2].status, "ready")
-        self.assertEqual(dashboard.readiness[3].status, "unconfigured")
+        self.assertEqual(dashboard.readiness[3].status, "ready")
+        self.assertEqual(dashboard.readiness[4].status, "unconfigured")
 
 
 if __name__ == "__main__":

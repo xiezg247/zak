@@ -27,13 +27,21 @@ class MarketOverviewLoaderTests(unittest.TestCase):
             "000002.SZ": "白酒",
             "000858.SZ": "白酒",
         }
-        with patch(
-            "vnpy_ashare.screener.sector.sector_summary.fetch_stock_industry_map",
-            return_value=mapping,
+        l2_to_l1 = {"银行": "金融", "白酒": "食品饮料"}
+        with (
+            patch(
+                "vnpy_ashare.screener.sector.sector_summary.fetch_stock_industry_map",
+                return_value=mapping,
+            ),
+            patch(
+                "vnpy_ashare.quotes.market.market_overview_loaders.fetch_industry_l2_to_l1_map",
+                return_value=l2_to_l1,
+            ),
         ):
             sectors = load_sector_ranks(rows, top_n=2)
         self.assertEqual(len(sectors), 2)
         self.assertEqual(sectors[0].industry, "银行")
+        self.assertEqual(sectors[0].industry_l1, "金融")
         self.assertEqual(sectors[0].avg_change_pct, 3.0)
 
     def test_merge_official_limit_counts(self) -> None:

@@ -46,7 +46,7 @@ class MarketOverviewContextTests(unittest.TestCase):
         data = MarketOverviewData(
             indices=[("上证指数", _quote("000001.SH", 0.8))],
             breadth=MarketBreadthSnapshot(100, 80, 5, 3, 1, 1e10, 185, updated_at="12:00"),
-            sectors=[SectorRankItem("银行", 12, 2.5)],
+            sectors=[SectorRankItem(industry="银行", count=12, avg_change_pct=2.5)],
             environment=MarketEnvironmentSnapshot(52.0, "中性", 1234.0, "20250612"),
         )
         sync_market_overview_context(data)

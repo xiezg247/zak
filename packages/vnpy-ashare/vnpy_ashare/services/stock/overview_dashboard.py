@@ -15,6 +15,7 @@ from vnpy_ashare.domain.stock.overview import (
     ScreeningHit,
 )
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
+from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.services.stock.context import (
     MoneyflowDayRow,
     build_financial_quality_hints,
@@ -24,6 +25,12 @@ from vnpy_ashare.services.stock.events import build_disclosure_upcoming_hints
 from vnpy_ashare.services.stock.profile import build_valuation_profile
 from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation_for_vt_symbol
 from vnpy_ashare.storage.repositories.valuation import list_valuation_history
+
+
+def _board_label(boards: int) -> str:
+    if boards <= 0:
+        return "—"
+    return f"{boards}板" if boards > 1 else "首板"
 
 
 def find_screening_hit(vt_symbol: str) -> ScreeningHit | None:
@@ -104,6 +111,36 @@ def _readiness_holders() -> DataReadinessItem:
     if not _tushare_configured():
         return DataReadinessItem(key="holders", label="股东", status="unconfigured", detail="需 TUSHARE_TOKEN", jump_target="holders")
     return DataReadinessItem(key="holders", label="股东", status="partial", detail="切换 Tab 加载", jump_target="holders")
+
+
+def _readiness_short_term(vt_symbol: str) -> DataReadinessItem:
+    if not _tushare_configured():
+        return DataReadinessItem(
+            key="short_term",
+            label="短线",
+            status="unconfigured",
+            detail="需 TUSHARE_TOKEN",
+            jump_target="short_term",
+        )
+    item = parse_stock_symbol(vt_symbol)
+    if item is not None:
+        limit_map = get_cached_limit_times_map()
+        boards = limit_map.get(item.tickflow_symbol, 0)
+        if boards >= 1:
+            return DataReadinessItem(
+                key="short_term",
+                label="短线",
+                status="ready",
+                detail=_board_label(int(boards)),
+                jump_target="short_term",
+            )
+    return DataReadinessItem(
+        key="short_term",
+        label="短线",
+        status="partial",
+        detail="切换 Tab 加载",
+        jump_target="short_term",
+    )
 
 
 def _disclosure_alerts(ts_code: str) -> list[OverviewAlert]:
@@ -204,7 +241,23 @@ def _regulatory_alerts(vt_symbol: str) -> list[OverviewAlert]:
         OverviewAlert(
             text=f"监管异动：{snapshot.summary}",
             severity=severity,
-            jump_target="chart",
+            jump_target="short_term",
+        )
+    ]
+
+
+def _limit_board_alerts(vt_symbol: str) -> list[OverviewAlert]:
+    item = parse_stock_symbol(vt_symbol)
+    if item is None:
+        return []
+    boards = get_cached_limit_times_map().get(item.tickflow_symbol, 0)
+    if boards < 1:
+        return []
+    return [
+        OverviewAlert(
+            text=f"涨停 {_board_label(int(boards))}，查看短线档案",
+            severity="info",
+            jump_target="short_term",
         )
     ]
 
@@ -220,6 +273,7 @@ def build_overview_dashboard(
 
     readiness = [
         _readiness_daily_bars(technical),
+        _readiness_short_term(vt_symbol),
         _readiness_financial(engine, vt_symbol),
         _readiness_valuation(ts_code),
         _readiness_moneyflow(vt_symbol),
@@ -228,6 +282,7 @@ def build_overview_dashboard(
 
     alerts: list[OverviewAlert] = []
     for builder in (
+        lambda: _limit_board_alerts(vt_symbol),
         lambda: _regulatory_alerts(vt_symbol),
         lambda: _disclosure_alerts(ts_code),
         lambda: _financial_alerts(engine, vt_symbol),

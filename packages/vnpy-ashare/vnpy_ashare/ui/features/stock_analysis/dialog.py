@@ -27,6 +27,7 @@ from vnpy_ashare.ui.features.stock_analysis.holders_tab import HoldersAnalysisTa
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.features.stock_analysis.overview_panel import OverviewAnalysisPanel
 from vnpy_ashare.ui.features.stock_analysis.sector_tab import SectorAnalysisTab
+from vnpy_ashare.ui.features.stock_analysis.short_term_tab import ShortTermAnalysisTab
 from vnpy_ashare.ui.features.stock_analysis.worker import (
     StockAnalysisPayload,
     StockAnalysisScope,
@@ -48,16 +49,18 @@ from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 _TAB_OVERVIEW = 0
-_TAB_CHART = 1
-_TAB_SECTOR = 2
-_TAB_CONCEPT = 3
-_TAB_CAPITAL = 4
-_TAB_EVENTS = 5
-_TAB_HOLDERS = 6
-_TAB_FINANCIAL = 7
+_TAB_SHORT_TERM = 1
+_TAB_CHART = 2
+_TAB_SECTOR = 3
+_TAB_CONCEPT = 4
+_TAB_CAPITAL = 5
+_TAB_EVENTS = 6
+_TAB_HOLDERS = 7
+_TAB_FINANCIAL = 8
 
 _TAB_SCOPES: dict[int, StockAnalysisScope] = {
     _TAB_OVERVIEW: "overview",
+    _TAB_SHORT_TERM: "short_term",
     _TAB_SECTOR: "sector",
     _TAB_CONCEPT: "concept",
     _TAB_CAPITAL: "capital",
@@ -68,6 +71,7 @@ _TAB_SCOPES: dict[int, StockAnalysisScope] = {
 
 _JUMP_TAB_INDEX: dict[str, int] = {
     "chart": _TAB_CHART,
+    "short_term": _TAB_SHORT_TERM,
     "sector": _TAB_SECTOR,
     "concept": _TAB_CONCEPT,
     "capital": _TAB_CAPITAL,
@@ -78,6 +82,7 @@ _JUMP_TAB_INDEX: dict[str, int] = {
 
 _SCOPE_STATUS: dict[StockAnalysisScope, str] = {
     "overview": "正在加载本地概览…",
+    "short_term": "正在加载短线档案…",
     "sector": "正在加载板块与估值…",
     "concept": "正在加载概念题材…",
     "capital": "正在加载资金流…",
@@ -206,6 +211,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         return find_ashare_main_window(self)
 
     def _init_idle_tabs(self) -> None:
+        self._short_term_tab.show_idle()
         self._sector_tab.show_idle()
         self._concept_tab.show_idle()
         self._capital_tab.show_idle()
@@ -263,6 +269,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
         self._chart_tab = StockAnalysisChartTab()
         self._chart_tab.set_retired_workers(self._host.retired_workers)
+        self._short_term_tab = ShortTermAnalysisTab()
+        self._short_term_tab.peer_activated.connect(self._open_peer_analysis)
         self._sector_tab = SectorAnalysisTab()
         self._sector_tab.peer_activated.connect(self._open_peer_analysis)
         self._concept_tab = ConceptAnalysisTab()
@@ -273,6 +281,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
         tabs = configure_document_tab_widget(QtWidgets.QTabWidget())
         tabs.addTab(overview_page, "概览")
+        tabs.addTab(self._short_term_tab, "短线")
         tabs.addTab(tab_page(self._chart_tab, margins=(0, 4, 0, 0)), "图表")
         tabs.addTab(self._sector_tab, "板块")
         tabs.addTab(self._concept_tab, "概念")
@@ -472,6 +481,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
     def _show_scope_loading(self, scope: StockAnalysisScope) -> None:
         if scope == "overview":
             self._overview_panel.show_loading()
+        elif scope == "short_term":
+            self._short_term_tab.show_loading()
         elif scope == "sector":
             self._sector_tab.show_loading()
         elif scope == "concept":
@@ -554,6 +565,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 base.financial_bundle = partial.financial_bundle
             if partial.financial_sync is not None:
                 base.financial_sync = partial.financial_sync
+        elif scope == "short_term":
+            base.short_term = partial.short_term
         elif scope == "sector":
             base.sector = partial.sector
             base.valuation = partial.valuation
@@ -586,6 +599,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 relative_returns=payload.relative_returns,
                 dashboard=payload.overview_dashboard,
             )
+        elif scope == "short_term":
+            self._short_term_tab.show_profile(payload.short_term)
         elif scope == "sector":
             self._sector_tab.show_profiles(
                 payload.sector,

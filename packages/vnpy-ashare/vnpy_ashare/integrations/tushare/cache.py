@@ -121,19 +121,44 @@ def _industry_map_from_rows(rows: list[dict[str, Any]]) -> dict[str, str]:
     return result
 
 
-def get_cached_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
-    sw_mapping = get_cached_sw_industry_map(max_age=max_age)
-    if sw_mapping:
-        return sw_mapping
+def merge_industry_maps(primary: dict[str, str], fallback: dict[str, str]) -> dict[str, str]:
+    """合并行业映射：primary（申万 L2）优先，fallback（stock_basic）补未覆盖标的。"""
+    merged = {
+        str(ts_code).strip(): str(industry).strip()
+        for ts_code, industry in fallback.items()
+        if str(ts_code).strip() and str(industry or "").strip()
+    }
+    for ts_code, industry in primary.items():
+        cleaned = str(industry or "").strip()
+        key = str(ts_code).strip()
+        if key and cleaned:
+            merged[key] = cleaned
+    return merged
+
+
+def get_cached_stock_basic_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
     basic_rows = get_cached_rows(DATASET_STOCK_BASIC, "", max_age=max_age)
     if basic_rows is not None:
         mapping = _industry_map_from_rows(basic_rows)
-        return mapping or None
+        if mapping:
+            return mapping
     rows = get_cached_rows(DATASET_STOCK_INDUSTRY, "", max_age=max_age)
     if rows is None:
         return None
     mapping = _industry_map_from_rows(rows)
     return mapping or None
+
+
+def get_cached_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
+    sw_mapping = get_cached_sw_industry_map(max_age=max_age)
+    basic_mapping = get_cached_stock_basic_industry_map(max_age=max_age)
+    if sw_mapping and basic_mapping:
+        return merge_industry_maps(sw_mapping, basic_mapping)
+    if sw_mapping:
+        return sw_mapping
+    if basic_mapping:
+        return basic_mapping
+    return None
 
 
 def get_cached_sw_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:

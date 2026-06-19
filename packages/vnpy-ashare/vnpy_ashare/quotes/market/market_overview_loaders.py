@@ -8,6 +8,7 @@ from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
 from vnpy_ashare.domain.market.overview import MarketOverviewData, SectorRankItem
 from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
+from vnpy_ashare.integrations.tushare.factors import fetch_industry_l2_to_l1_map
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.limit_ladder_summary import compute_limit_ladder_counts
 from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
@@ -40,16 +41,22 @@ def _quote_rows_for_overview() -> tuple[QuoteRowsLike, str | None]:
 
 
 def load_sector_ranks(rows: QuoteRowsLike, *, top_n: int = SECTOR_TOP_N) -> list[SectorRankItem]:
-    """按行业平均涨幅排序，返回 Top N。"""
+    """按申万 L2 行业平均涨幅排序，返回 Top N。"""
     if not rows:
         return []
     enriched = attach_industry(rows)
     if not enriched:
         return []
     stats = compute_sector_distribution(enriched, top_n=top_n, min_stocks=SECTOR_MIN_STOCKS)
+    l2_to_l1: dict[str, str] = {}
+    try:
+        l2_to_l1 = fetch_industry_l2_to_l1_map()
+    except Exception:
+        l2_to_l1 = {}
     return [
         SectorRankItem(
             industry=str(item["industry"]),
+            industry_l1=(l2_to_l1.get(str(item["industry"])) or None),
             count=int(item["count"]),
             avg_change_pct=float(item["avg_change_pct"]),
         )

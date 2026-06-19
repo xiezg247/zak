@@ -11,7 +11,8 @@ from vnpy_common.domain.base import FrozenModel
 
 
 class SectorRankItem(FrozenModel):
-    industry: str = Field(description="所属行业")
+    industry: str = Field(description="所属行业（申万 L2）")
+    industry_l1: str | None = Field(default=None, description="申万 L1 一级行业")
     count: int = Field(description="数量")
     avg_change_pct: float = Field(description="平均涨跌幅（%）")
 

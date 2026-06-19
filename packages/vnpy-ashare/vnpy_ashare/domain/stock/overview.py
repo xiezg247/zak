@@ -9,7 +9,7 @@ from pydantic import Field
 from vnpy_common.domain.base import FrozenModel, MutableModel
 
 ReadinessStatus = Literal["ready", "partial", "missing", "unconfigured"]
-OverviewJumpTarget = Literal["chart", "sector", "capital", "events", "holders", "financial"]
+OverviewJumpTarget = Literal["chart", "short_term", "sector", "capital", "events", "holders", "financial"]
 AlertSeverity = Literal["info", "warn"]
 
 

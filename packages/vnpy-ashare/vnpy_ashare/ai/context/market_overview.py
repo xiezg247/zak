@@ -9,6 +9,7 @@ from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
+from vnpy_ashare.integrations.tushare.sw_industry import format_industry_filter_label
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
 from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
 from vnpy_ashare.quotes.radar.radar_limit_ladder import LADDER_BUCKET_LABELS
@@ -127,7 +128,8 @@ def _index_lines(indices: list[tuple[str, QuoteSnapshot]], *, limit: int = 5) ->
 def _sector_lines(sectors: list[SectorRankItem], *, limit: int = 5) -> list[str]:
     lines: list[str] = []
     for item in sectors[:limit]:
-        lines.append(f"{item.industry} 均涨 {item.avg_change_pct:+.2f}%（{item.count} 只）")
+        label = format_industry_filter_label(item.industry, item.industry_l1)
+        lines.append(f"{label} 均涨 {item.avg_change_pct:+.2f}%（{item.count} 只）")
     return lines
 
 

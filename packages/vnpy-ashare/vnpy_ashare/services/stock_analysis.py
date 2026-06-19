@@ -14,6 +14,7 @@ from vnpy_ashare.domain.stock.events import EventsProfile
 from vnpy_ashare.domain.stock.holders import HolderProfile
 from vnpy_ashare.domain.stock.overview import OverviewDashboard
 from vnpy_ashare.domain.stock.profile import SectorProfile, ValuationProfile
+from vnpy_ashare.domain.stock.short_term import ShortTermProfile
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.stock.concept import build_concept_profile
 from vnpy_ashare.services.stock.context import build_moneyflow_profile, compute_relative_returns
@@ -26,13 +27,23 @@ from vnpy_ashare.services.stock.profile import (
     sync_disclosure_calendar,
     sync_valuation_history,
 )
+from vnpy_ashare.services.stock.short_term import build_short_term_profile
 from vnpy_ashare.storage.repositories.valuation import ValuationRow, list_valuation_history
 from vnpy_common.domain.base import MutableModel
 
 if TYPE_CHECKING:
     pass
 
-StockAnalysisScope = Literal["overview", "sector", "concept", "capital", "events", "holders", "financial"]
+StockAnalysisScope = Literal[
+    "overview",
+    "short_term",
+    "sector",
+    "concept",
+    "capital",
+    "events",
+    "holders",
+    "financial",
+]
 
 
 class StockAnalysisPayload(MutableModel):
@@ -48,6 +59,7 @@ class StockAnalysisPayload(MutableModel):
     concept: ConceptProfile | None = Field(default=None, description="概念题材画像")
     events: EventsProfile | None = Field(default=None, description="事件日历画像")
     holders: HolderProfile | None = Field(default=None, description="股东结构画像")
+    short_term: ShortTermProfile | None = Field(default=None, description="短线打板画像")
     valuation_history: list[ValuationRow] = Field(default_factory=list, description="估值历史序列")
     relative_returns: dict[str, float | None] = Field(default_factory=dict, description="相对收益")
     overview_dashboard: OverviewDashboard | None = Field(default=None, description="概览仪表盘")
@@ -74,6 +86,13 @@ class StockAnalysisService(BaseService):
         )
         if scope == "overview":
             self._load_overview(payload, sync_financials=sync_financials)
+        elif scope == "short_term":
+            payload.short_term = build_short_term_profile(
+                vt_symbol,
+                quote_summary=payload.quote_summary,
+            )
+            if payload.short_term.message and "无法解析" in payload.short_term.message:
+                payload.warnings.append(payload.short_term.message)
         elif scope == "sector":
             self._load_sector(payload, stock_name=stock_name)
         elif scope == "concept":

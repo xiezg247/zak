@@ -24,7 +24,9 @@ from vnpy_ashare.integrations.tushare.cache import (
     get_cached_industry_map,
     get_cached_pct_map,
     get_cached_rows,
+    get_cached_stock_basic_industry_map,
     get_cached_sw_industry_map,
+    merge_industry_maps,
     set_cached_industry_map,
     set_cached_pct_map,
     set_cached_rows,
@@ -115,17 +117,34 @@ def fetch_stock_basic_snapshot(*, force: bool = False) -> tuple[list[dict[str, A
     return rows, len(rows)
 
 
+def _load_stock_basic_industry_map() -> dict[str, str]:
+    basic = get_cached_stock_basic_industry_map()
+    if basic:
+        return basic
+    rows, _ = fetch_stock_basic_snapshot()
+    if not rows:
+        return {}
+    return {str(item["ts_code"]): str(item["industry"]) for item in rows if item.get("industry")}
+
+
+def _merge_with_stock_basic_industry(sw_mapping: dict[str, str]) -> dict[str, str]:
+    basic = _load_stock_basic_industry_map()
+    if basic:
+        return merge_industry_maps(sw_mapping, basic)
+    return sw_mapping
+
+
 def fetch_stock_industry_map() -> dict[str, str]:
-    """ts_code → 行业名称（优先申万 2021 L2，回退 stock_basic.industry）。"""
-    cached = get_cached_sw_industry_map()
-    if cached:
-        return cached
+    """ts_code → 行业名称（优先申万 2021 L2，缺口回退 stock_basic.industry）。"""
+    sw_mapping = get_cached_sw_industry_map()
+    if sw_mapping:
+        return _merge_with_stock_basic_industry(sw_mapping)
 
     from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_industry_map
 
-    mapping = fetch_sw_industry_map(force=False)
-    if mapping:
-        return mapping
+    sw_mapping = fetch_sw_industry_map(force=False)
+    if sw_mapping:
+        return _merge_with_stock_basic_industry(sw_mapping)
 
     cached = get_cached_industry_map()
     if cached:

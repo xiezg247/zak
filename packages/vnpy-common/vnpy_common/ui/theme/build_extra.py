@@ -606,6 +606,10 @@ QFrame#SectorCard {{
 QFrame#SectorCard:hover {{
     border-color: {t.accent};
 }}
+QLabel#SectorCardL1 {{
+    color: {t.text_muted};
+    font-size: 9px;
+}}
 QLabel#SectorCardName {{
     color: {t.text_secondary};
     font-size: 11px;

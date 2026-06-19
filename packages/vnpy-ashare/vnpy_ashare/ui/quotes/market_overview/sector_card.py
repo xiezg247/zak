@@ -4,13 +4,19 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.integrations.tushare.sw_industry import format_industry_filter_label
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 
 
+def _sector_card_tooltip(item: SectorRankItem) -> str:
+    title = format_industry_filter_label(item.industry, item.industry_l1)
+    return f"{title}：{item.count} 只，平均涨幅 {item.avg_change_pct:+.2f}%（双击按 L2 筛选）"
+
+
 class SectorCardWidget(QtWidgets.QFrame):
-    """单张行业榜卡片（双击选中行业）。"""
+    """单张行业榜卡片（双击选中申万 L2 行业）。"""
 
     activated = QtCore.Signal(str)
 
@@ -26,11 +32,16 @@ class SectorCardWidget(QtWidgets.QFrame):
         self.setObjectName("SectorCard")
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self.setToolTip(f"{item.industry}：{item.count} 只，平均涨幅 {item.avg_change_pct:+.2f}%（双击筛选）")
+        self.setToolTip(_sector_card_tooltip(item))
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(2)
+
+        self._l1_label = QtWidgets.QLabel(item.industry_l1 or "")
+        self._l1_label.setObjectName("SectorCardL1")
+        layout.addWidget(self._l1_label)
+        self._sync_l1_visibility()
 
         self._name_label = QtWidgets.QLabel(item.industry)
         self._name_label.setObjectName("SectorCardName")
@@ -52,6 +63,12 @@ class SectorCardWidget(QtWidgets.QFrame):
             self.activated.emit(self._item.industry)
         super().mouseDoubleClickEvent(event)
 
+    def _sync_l1_visibility(self) -> None:
+        visible = bool(str(self._item.industry_l1 or "").strip())
+        self._l1_label.setVisible(visible)
+        if visible:
+            self._l1_label.setText(str(self._item.industry_l1))
+
     def _apply_colors(self) -> None:
         tokens = theme_manager().tokens()
         color = pct_change_color(self._item.avg_change_pct, tokens)
@@ -62,7 +79,8 @@ class SectorCardWidget(QtWidgets.QFrame):
         self._name_label.setText(item.industry)
         self._pct_label.setText(f"{item.avg_change_pct:+.2f}%")
         self._count_label.setText(f"{item.count} 只")
-        self.setToolTip(f"{item.industry}：{item.count} 只，平均涨幅 {item.avg_change_pct:+.2f}%（双击筛选）")
+        self._sync_l1_visibility()
+        self.setToolTip(_sector_card_tooltip(item))
         self._apply_colors()
 
     def set_selected(self, selected: bool) -> None:
