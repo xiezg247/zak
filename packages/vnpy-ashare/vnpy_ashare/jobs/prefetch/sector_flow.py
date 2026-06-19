@@ -12,6 +12,7 @@ from vnpy_ashare.integrations.tushare.sector_moneyflow import (
 from vnpy_ashare.jobs.core.progress import job_log
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.screener.data.data_source import iter_trade_date_strs
+from vnpy_ashare.services.industry_sector import build_sw_industry_rows_from_dc
 from vnpy_ashare.services.sector_flow import rows_from_dc_moneyflow, rows_from_ths_concept_moneyflow
 from vnpy_ashare.storage.repositories.sector_flow_history import upsert_sector_flow_day
 
@@ -40,14 +41,10 @@ def sync_sector_flow_daily_job() -> JobResult:
 
         dc_industry, _ = fetch_moneyflow_ind_dc(trade_date=trade_date, content_type="行业")
         if dc_industry:
-            industry_rows = rows_from_dc_moneyflow(
-                dc_industry,
-                sector_kind="industry",
-                flow_source="dc_industry",
-                top_each_side=None,
-            )
-            upsert_sector_flow_day(trade_date, "industry", industry_rows)
-            day_parts.append(f"行业{len(industry_rows)}")
+            industry_rows = build_sw_industry_rows_from_dc(dc_industry, top_each_side=None)
+            if industry_rows:
+                upsert_sector_flow_day(trade_date, "industry", industry_rows)
+                day_parts.append(f"行业{len(industry_rows)}")
 
         ths_rows, _ = fetch_moneyflow_cnt_ths(trade_date=trade_date)
         if ths_rows:

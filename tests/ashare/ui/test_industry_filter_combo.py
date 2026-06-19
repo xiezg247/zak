@@ -31,6 +31,10 @@ class ResolveIndustryNameTests(unittest.TestCase):
     def test_unknown_returns_none(self) -> None:
         self.assertIsNone(resolve_industry_name("不存在", self.industries))
 
+    def test_grouped_label_resolves_l2(self) -> None:
+        self.assertEqual(resolve_industry_name("食品饮料 / 白酒", frozenset({"白酒"})), "白酒")
+        self.assertEqual(resolve_industry_name("有色金属 / 工业金属", frozenset({"工业金属"})), "工业金属")
+
 
 if __name__ == "__main__":
     unittest.main()

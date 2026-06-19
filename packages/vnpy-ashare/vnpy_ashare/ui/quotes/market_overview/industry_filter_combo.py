@@ -5,7 +5,14 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
-from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
+from vnpy_ashare.integrations.tushare.factors import (
+    fetch_industry_l2_to_l1_map,
+    fetch_stock_industry_map,
+)
+from vnpy_ashare.integrations.tushare.sw_industry import (
+    build_grouped_l2_industries,
+    format_industry_filter_label,
+)
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
 
 
@@ -16,6 +23,11 @@ def resolve_industry_name(text: str, industries: frozenset[str]) -> str | None:
         return None
     if cleaned in industries:
         return cleaned
+    if " / " in cleaned:
+        tail = cleaned.rsplit(" / ", 1)[-1].strip()
+        if tail in industries:
+            return tail
+        cleaned = tail
     exact_ci = [name for name in industries if name.lower() == cleaned.lower()]
     if len(exact_ci) == 1:
         return exact_ci[0]
@@ -37,6 +49,8 @@ class IndustryFilterCombo(QtWidgets.QWidget):
         self.setObjectName("MarketIndustryFilter")
         self._industries: list[str] = []
         self._industry_set: frozenset[str] = frozenset()
+        self._l2_to_l1: dict[str, str] = {}
+        self._display_labels: list[str] = []
         self._active_industry: str | None = None
         self._syncing = False
 
@@ -54,7 +68,7 @@ class IndustryFilterCombo(QtWidgets.QWidget):
         self._combo.setObjectName("MarketIndustryCombo")
         line_edit = self._combo.lineEdit()
         if line_edit is not None:
-            line_edit.setPlaceholderText("筛选行业，如 银行")
+            line_edit.setPlaceholderText("筛选行业，如 工业金属")
             line_edit.setClearButtonEnabled(True)
             line_edit.returnPressed.connect(self._on_commit)
             line_edit.textChanged.connect(self._on_text_changed)
@@ -71,21 +85,37 @@ class IndustryFilterCombo(QtWidgets.QWidget):
 
         self._combo.activated.connect(self._on_activated)
 
+    def _display_for_l2(self, l2: str) -> str:
+        return format_industry_filter_label(l2, self._l2_to_l1.get(l2))
+
     def ensure_options_loaded(self) -> None:
         if self._industries:
             return
 
         mapping = get_cached_industry_map() or fetch_stock_industry_map()
         industries = sorted({str(name).strip() for name in mapping.values() if str(name).strip()})
+        try:
+            l2_to_l1 = fetch_industry_l2_to_l1_map()
+        except Exception:
+            l2_to_l1 = {}
         self._industries = industries
         self._industry_set = frozenset(industries)
+        self._l2_to_l1 = l2_to_l1
+        self._display_labels = [self._display_for_l2(l2) for l2 in industries]
 
         self._combo.blockSignals(True)
         self._combo.clear()
-        self._combo.addItems(industries)
+        grouped = build_grouped_l2_industries(industries, l2_to_l1)
+        first_group = True
+        for _l1, l2_list in grouped:
+            if not first_group:
+                self._combo.insertSeparator(self._combo.count())
+            first_group = False
+            for l2 in l2_list:
+                self._combo.addItem(self._display_for_l2(l2), l2)
         self._combo.blockSignals(False)
 
-        completer = QtWidgets.QCompleter(industries, self._combo)
+        completer = QtWidgets.QCompleter(self._display_labels, self._combo)
         completer.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
         completer.setFilterMode(QtCore.Qt.MatchFlag.MatchContains)
         completer.setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
@@ -96,7 +126,7 @@ class IndustryFilterCombo(QtWidgets.QWidget):
         try:
             self._active_industry = str(industry).strip() if industry else None
             if self._active_industry:
-                self._combo.setCurrentText(self._active_industry)
+                self._combo.setCurrentText(self._display_for_l2(self._active_industry))
                 self._clear_btn.show()
             else:
                 self._combo.setCurrentIndex(-1)
@@ -116,7 +146,7 @@ class IndustryFilterCombo(QtWidgets.QWidget):
     def _on_activated(self, index: int) -> None:
         if self._syncing or index < 0:
             return
-        industry = self._combo.itemText(index).strip()
+        industry = str(self._combo.itemData(index) or self._combo.itemText(index)).strip()
         if not industry:
             return
         if industry == self._active_industry:
@@ -143,7 +173,7 @@ class IndustryFilterCombo(QtWidgets.QWidget):
         if resolved == self._active_industry:
             return
         self._active_industry = resolved
-        self._combo.setCurrentText(resolved)
+        self._combo.setCurrentText(self._display_for_l2(resolved))
         self._clear_btn.show()
         self.industry_selected.emit(resolved)
 

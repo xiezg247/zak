@@ -58,11 +58,15 @@ class SectorFlowSyncJobTests(unittest.TestCase):
                 "vnpy_ashare.jobs.prefetch.sector_flow.fetch_moneyflow_cnt_ths",
                 return_value=([], "20240927"),
             ),
+            mock.patch(
+                "vnpy_ashare.services.industry_sector.fetch_sw_l2_index_map",
+                return_value={"互联网服务": "801750.SI"},
+            ),
         ):
             result = sync_sector_flow_daily_job()
 
         self.assertTrue(result.success)
-        history = load_sector_flow_history(sector_id="BK001", sector_kind="industry", limit=5)
+        history = load_sector_flow_history(sector_id="801750.SI", sector_kind="industry", limit=5)
         self.assertEqual(len(history), 1)
         self.assertAlmostEqual(history[0].net_flow_yi, 10.0)
 

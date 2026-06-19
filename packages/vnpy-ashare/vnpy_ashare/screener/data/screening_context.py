@@ -13,7 +13,11 @@ from vnpy.trader.object import BarData
 from vnpy_ashare.data.pattern_bars import load_daily_bars_batch
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
-from vnpy_ashare.integrations.tushare.factors import fetch_daily_basic, fetch_stock_industry_map
+from vnpy_ashare.integrations.tushare.factors import (
+    fetch_daily_basic,
+    fetch_stock_industry_l1_map,
+    fetch_stock_industry_map,
+)
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
 from vnpy_ashare.screener.data.quote_snapshot_cache import register_cached_quote_snapshot_reader
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, MarketQuotesSnapshot
@@ -52,6 +56,8 @@ class ScreeningContext(MutableModel):
     _avg_turnover_loaded: bool = PrivateAttr(default=False)
     _industry_map: dict[str, str] | None = PrivateAttr(default=None)
     _industry_map_loaded: bool = PrivateAttr(default=False)
+    _industry_l1_map: dict[str, str] | None = PrivateAttr(default=None)
+    _industry_l1_map_loaded: bool = PrivateAttr(default=False)
     _history_bars_map: dict[tuple[str, Exchange], list[BarData]] = PrivateAttr(default_factory=dict)
 
     def load_history_bars_for_symbols(
@@ -126,6 +132,7 @@ class ScreeningContext(MutableModel):
         return self._avg_turnover_map or {}
 
     def preload_industry_map(self) -> dict[str, str]:
+        self.get_industry_l1_map()
         return self.get_industry_map()
 
     def get_industry_map(self) -> dict[str, str]:
@@ -139,6 +146,18 @@ class ScreeningContext(MutableModel):
                     self._industry_map = {}
                 self._industry_map_loaded = True
         return self._industry_map or {}
+
+    def get_industry_l1_map(self) -> dict[str, str]:
+        if self._industry_l1_map_loaded:
+            return self._industry_l1_map or {}
+        with self._lock:
+            if not self._industry_l1_map_loaded:
+                try:
+                    self._industry_l1_map = fetch_stock_industry_l1_map()
+                except Exception:
+                    self._industry_l1_map = {}
+                self._industry_l1_map_loaded = True
+        return self._industry_l1_map or {}
 
 
 def get_cached_quote_snapshot() -> MarketQuotesSnapshot | None:
@@ -203,6 +222,16 @@ def get_stock_industry_map() -> dict[str, str]:
         return ctx.get_industry_map()
     try:
         return fetch_stock_industry_map()
+    except Exception:
+        return {}
+
+
+def get_stock_industry_l1_map() -> dict[str, str]:
+    ctx = get_screening_context()
+    if ctx is not None:
+        return ctx.get_industry_l1_map()
+    try:
+        return fetch_stock_industry_l1_map()
     except Exception:
         return {}
 

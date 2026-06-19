@@ -65,9 +65,15 @@ class SectorFlowAggregatorTests(unittest.TestCase):
         ]
         # attach_industry will skip if no tushare map - rows already have industry
 
-        with mock.patch(
-            "vnpy_ashare.services.sector_flow.attach_industry",
-            side_effect=lambda r, industry_map=None: r,
+        with (
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.attach_industry",
+                side_effect=lambda r, industry_map=None: r,
+            ),
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.fetch_sw_l2_index_map",
+                return_value={"银行": "801780.SI", "白酒": "801120.SI"},
+            ),
         ):
             result = aggregate_sector_rows(rows)
         self.assertEqual(len(result), 2)
@@ -84,9 +90,15 @@ class SectorFlowAggregatorTests(unittest.TestCase):
             {"vt_symbol": "e.SSE", "change_pct": -1, "amount": 1e9, "net_mf_amount": -10000, "industry": "B"},
             {"vt_symbol": "f.SSE", "change_pct": -0.5, "amount": 1e9, "net_mf_amount": -5000, "industry": "B"},
         ]
-        with mock.patch(
-            "vnpy_ashare.services.sector_flow.attach_industry",
-            side_effect=lambda r, industry_map=None: r,
+        with (
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.attach_industry",
+                side_effect=lambda r, industry_map=None: r,
+            ),
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.fetch_sw_l2_index_map",
+                return_value={"A": "801001.SI", "B": "801002.SI"},
+            ),
         ):
             snap = build_sector_snapshot(rows, updated_at="12:00")
         self.assertEqual(snap.top_inflow_name, "A")
@@ -141,18 +153,30 @@ class SectorFlowEmptyHintTests(unittest.TestCase):
             {"vt_symbol": "a.SSE", "industry": "X", "change_pct": 1},
             {"vt_symbol": "b.SSE", "industry": "X", "change_pct": 2},
         ]
-        with mock.patch(
-            "vnpy_ashare.services.sector_flow.attach_industry",
-            side_effect=lambda r, industry_map=None: r,
+        with (
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.attach_industry",
+                side_effect=lambda r, industry_map=None: r,
+            ),
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.fetch_sw_l2_index_map",
+                return_value={"X": "801999.SI"},
+            ),
         ):
             hint = diagnose_sector_flow_empty(rows, raw_total=2)
         self.assertIn("3", hint)
 
     def test_snapshot_empty_hint(self) -> None:
         rows = [{"vt_symbol": "a.SSE", "industry": "X", "change_pct": 1}]
-        with mock.patch(
-            "vnpy_ashare.services.sector_flow.attach_industry",
-            side_effect=lambda r, industry_map=None: r,
+        with (
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.attach_industry",
+                side_effect=lambda r, industry_map=None: r,
+            ),
+            mock.patch(
+                "vnpy_ashare.services.sector_flow.fetch_sw_l2_index_map",
+                return_value={"X": "801999.SI"},
+            ),
         ):
             snap = build_sector_snapshot(rows, updated_at="12:00")
         self.assertEqual(snap.rows, ())

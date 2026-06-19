@@ -9,7 +9,7 @@ from vnpy_ashare.domain.trading.signal_benchmark import (
     compute_relative_index_excess,
     resolve_benchmark_return_pct,
 )
-from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
+from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_l1_map, fetch_stock_industry_map
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
@@ -44,6 +44,14 @@ def _resolve_industry(item: StockItem, diagnose: dict[str, Any] | None) -> str |
     return _industry_from_diagnose(diagnose) or _lookup_industry(item.ts_code)
 
 
+def _lookup_industry_l1(ts_code: str) -> str | None:
+    try:
+        value = (fetch_stock_industry_l1_map().get(ts_code) or "").strip()
+        return value or None
+    except Exception:
+        return None
+
+
 def _load_sector_ranks() -> list[SectorRankItem]:
     cached = get_market_quotes_cache()
     if cached:
@@ -51,22 +59,30 @@ def _load_sector_ranks() -> list[SectorRankItem]:
     return []
 
 
-def _sector_snapshot(industry: str | None, sectors: list[SectorRankItem]) -> dict[str, Any] | None:
+def _sector_snapshot(
+    industry: str | None,
+    sectors: list[SectorRankItem],
+    *,
+    industry_l1: str | None = None,
+) -> dict[str, Any] | None:
     if not industry:
         return None
+    base: dict[str, Any] = {"industry": industry}
+    if industry_l1:
+        base["industry_l1"] = industry_l1
     if not sectors:
-        return {"industry": industry, "note": "暂无行业榜数据（需市场页行情缓存）"}
+        return {**base, "note": "暂无行业榜数据（需市场页行情缓存）"}
     for rank, item in enumerate(sectors, start=1):
         if item.industry != industry:
             continue
         return {
-            "industry": industry,
+            **base,
             "rank": rank,
             "total_sectors": len(sectors),
             "avg_change_pct": item.avg_change_pct,
             "stock_count": item.count,
         }
-    return {"industry": industry, "note": "当日行业榜中未找到该行业（样本不足或未收录）"}
+    return {**base, "note": "当日行业榜中未找到该行业（样本不足或未收录）"}
 
 
 def _build_summary_lines(payload: dict[str, Any]) -> list[str]:
@@ -153,8 +169,9 @@ def build_team_market_context(
         emotion_snapshot = None
 
     industry = _resolve_industry(item, diagnose)
+    industry_l1 = _lookup_industry_l1(item.ts_code)
     sectors = _load_sector_ranks()
-    sector_snapshot = _sector_snapshot(industry, sectors)
+    sector_snapshot = _sector_snapshot(industry, sectors, industry_l1=industry_l1)
 
     payload: dict[str, Any] = {
         "provider": "zak-market-context-v1",

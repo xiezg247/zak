@@ -10,7 +10,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem, load_sector_ranks
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiRow
-from vnpy_ashare.screener.data.screening_context import get_stock_industry_map
+from vnpy_ashare.screener.data.screening_context import get_stock_industry_l1_map, get_stock_industry_map
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -27,6 +27,7 @@ def enrich_multiview_rows(
     signal_cache: Mapping[str, SignalSnapshot] | None = None,
     position_cache: Mapping[str, PositionSnapshot] | None = None,
     industry_map: dict[str, str] | None = None,
+    industry_l1_map: dict[str, str] | None = None,
     sparklines: Mapping[str, tuple[float, ...]] | None = None,
     sparkline_kind: Literal["daily", "intraday", "minute", "none"] = "none",
 ) -> tuple[WatchlistMultiRow, ...]:
@@ -45,11 +46,19 @@ def enrich_multiview_rows(
         except Exception:
             industries = {}
 
+    industries_l1 = industry_l1_map
+    if industries_l1 is None:
+        try:
+            industries_l1 = get_stock_industry_l1_map()
+        except Exception:
+            industries_l1 = {}
+
     enriched: list[WatchlistMultiRow] = []
     for row in rows:
         item = parse_stock_symbol(row.vt_symbol)
         ts_code = item.ts_code if item is not None else ""
         industry = (industries.get(ts_code) or "").strip() or None
+        industry_l1 = (industries_l1.get(ts_code) or "").strip() or None
         sector_rank: int | None = None
         sector_avg: float | None = None
         if industry and industry in sector_lookup:
@@ -77,6 +86,7 @@ def enrich_multiview_rows(
                     "has_position": has_position,
                     "position_pnl_pct": position_pnl_pct,
                     "industry": industry,
+                    "industry_l1": industry_l1,
                     "sector_rank": sector_rank,
                     "sector_avg_change": sector_avg,
                     "sparkline_points": points,

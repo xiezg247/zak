@@ -5,7 +5,9 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.trading_universe import get_trading_allowed_boards, trading_boards_hint
-from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
+from vnpy_ashare.integrations.tushare.factors import fetch_industry_l2_to_l1_map, fetch_stock_industry_map
+from vnpy_ashare.integrations.tushare.sw_industry import build_grouped_l2_industries, format_industry_filter_label
+from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_name
 from vnpy_ashare.screener.hard_filter_prefs import (
     MARKET_BOARD_FILTER_OPTIONS,
     PRESET_AGGRESSIVE,
@@ -31,6 +33,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         super().__init__("硬过滤", parent)
         self.setObjectName("ScreenerFormBox")
         self._industry_names: list[str] = []
+        self._l2_to_l1: dict[str, str] = {}
         self._market_board_checks: dict[str, QtWidgets.QCheckBox] = {}
         self._board_hint = QtWidgets.QLabel("")
         self._board_hint.setObjectName("ScreenerHint")
@@ -113,7 +116,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self.allowed_industries_combo.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
         line_edit = self.allowed_industries_combo.lineEdit()
         if line_edit is not None:
-            line_edit.setPlaceholderText("输入关键词搜索；选中后追加，可多选逗号分隔")
+            line_edit.setPlaceholderText("输入关键词搜索，如 工业金属；选中后追加，可多选逗号分隔")
             line_edit.setClearButtonEnabled(True)
             line_edit.editingFinished.connect(self._on_industry_text_edited)
         self.allowed_industries_combo.activated.connect(self._on_industry_selected)
@@ -138,23 +141,47 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
 
     def _load_industry_combo_items(self) -> None:
         try:
-            self._industry_names = sorted({name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()})
+            self._industry_names = sorted(
+                {name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()}
+            )
+            self._l2_to_l1 = fetch_industry_l2_to_l1_map()
         except Exception:
             self._industry_names = []
+            self._l2_to_l1 = {}
+
+        display_labels = [
+            format_industry_filter_label(l2, self._l2_to_l1.get(l2)) for l2 in self._industry_names
+        ]
 
         self.allowed_industries_combo.blockSignals(True)
         self.allowed_industries_combo.clear()
-        for name in self._industry_names:
-            self.allowed_industries_combo.addItem(name)
+        grouped = build_grouped_l2_industries(self._industry_names, self._l2_to_l1)
+        first_group = True
+        for _l1, l2_list in grouped:
+            if not first_group:
+                self.allowed_industries_combo.insertSeparator(self.allowed_industries_combo.count())
+            first_group = False
+            for l2 in l2_list:
+                self.allowed_industries_combo.addItem(
+                    format_industry_filter_label(l2, self._l2_to_l1.get(l2)),
+                    l2,
+                )
         self.allowed_industries_combo.blockSignals(False)
 
         if not self._industry_names:
             return
-        completer = QtWidgets.QCompleter(self._industry_names, self.allowed_industries_combo)
+        completer = QtWidgets.QCompleter(display_labels, self.allowed_industries_combo)
         completer.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
         completer.setFilterMode(QtCore.Qt.MatchFlag.MatchContains)
         completer.setCompletionMode(QtWidgets.QCompleter.CompletionMode.PopupCompletion)
         self.allowed_industries_combo.setCompleter(completer)
+
+    def _resolve_industry_token(self, token: str) -> str:
+        cleaned = str(token or "").strip()
+        if not cleaned:
+            return ""
+        resolved = resolve_industry_name(cleaned, frozenset(self._industry_names))
+        return resolved or cleaned
 
     def reload(self) -> None:
         prefs = load_hard_filter_prefs()
@@ -261,7 +288,9 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
     def _on_industry_selected(self, index: int) -> None:
         if index < 0:
             return
-        picked = self.allowed_industries_combo.itemText(index).strip()
+        picked = str(self.allowed_industries_combo.itemData(index) or "").strip()
+        if not picked:
+            picked = self._resolve_industry_token(self.allowed_industries_combo.itemText(index))
         if not picked:
             return
         line_edit = self.allowed_industries_combo.lineEdit()
@@ -277,7 +306,10 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         line_edit = self.allowed_industries_combo.lineEdit()
         if line_edit is None:
             return
-        normalized = normalize_allowed_industries_text(line_edit.text())
+        raw = line_edit.text()
+        parts = [part.strip() for part in raw.replace("，", ",").split(",") if part.strip()]
+        resolved_parts = [self._resolve_industry_token(part) for part in parts]
+        normalized = normalize_allowed_industries_text(",".join(resolved_parts))
         if line_edit.text() != normalized:
             line_edit.setText(normalized)
         self._on_changed()

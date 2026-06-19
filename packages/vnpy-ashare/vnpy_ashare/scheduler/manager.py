@@ -156,7 +156,7 @@ class TaskSchedulerManager:
             "sync_stock_industry": _JobMeta(
                 job_id="sync_stock_industry",
                 name="同步行业映射",
-                description="从 Tushare stock_basic 拉取申万行业分类，供市场页行业榜与行业筛选",
+                description="从 Tushare 申万 2021 L2 拉取行业分类，失败时回退 stock_basic",
                 runner=sync_stock_industry_job,
                 config_attr="sync_stock_industry",
                 schedule_builder=lambda cfg: CronTrigger(

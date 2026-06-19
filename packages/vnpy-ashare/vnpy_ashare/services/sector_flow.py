@@ -10,6 +10,7 @@ from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, Sector
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
+from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_l2_index_map
 from vnpy_ashare.integrations.tushare.sector_moneyflow import (
     fetch_moneyflow_cnt_ths_with_fallback,
     fetch_moneyflow_ind_dc_with_fallback,
@@ -18,6 +19,7 @@ from vnpy_ashare.integrations.tushare.sector_moneyflow import (
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
+from vnpy_ashare.services.industry_sector import build_sw_industry_rows_from_dc, overlay_dc_moneyflow_on_sw_rows
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.sector_constituents import compute_divergence_rows, load_sector_leaders, resolve_concept_vt_symbols
 from vnpy_ashare.storage.repositories.sector_flow_history import (
@@ -98,17 +100,23 @@ def aggregate_sector_rows(
     rows: QuoteRowsLike,
     *,
     industry_map: dict[str, str] | None = None,
+    l2_index_map: dict[str, str] | None = None,
 ) -> list[SectorFlowRow]:
-    """按 Tushare 行业聚合板块资金与强度。"""
+    """按申万 L2 行业聚合板块资金与强度（sector_id = 申万 index_code）。"""
     enriched = attach_industry(rows, industry_map=industry_map)
     if not enriched:
         return []
 
+    l2_index = l2_index_map if l2_index_map is not None else fetch_sw_l2_index_map()
+
     buckets: dict[str, list[QuoteRow]] = defaultdict(list)
     for row in enriched:
         industry = str(row.get("industry") or "").strip()
-        if industry:
-            buckets[industry].append(row)
+        if not industry:
+            continue
+        if l2_index and industry not in l2_index:
+            continue
+        buckets[industry].append(row)
 
     result: list[SectorFlowRow] = []
     for industry, items in buckets.items():
@@ -121,10 +129,11 @@ def aggregate_sector_rows(
         strength = round(up_ratio * 100 + avg_change, 2)
         net_yi = sum(_proxy_flow_yi(item) for item in items)
         source = _flow_source_for_rows(items)
+        sector_id = l2_index.get(industry, industry) if l2_index else industry
 
         result.append(
             SectorFlowRow(
-                sector_id=industry,
+                sector_id=sector_id,
                 name=industry,
                 strength=strength,
                 change_pct=round(avg_change, 2),
@@ -262,7 +271,7 @@ def _snapshot_from_rows(
 
 
 def _persist_official_history(snapshot: SectorFlowSnapshot) -> None:
-    if snapshot.data_mode not in {"official_dc", "official_ths"}:
+    if snapshot.data_mode not in {"official_dc", "official_ths", "official_sw"}:
         return
     if not snapshot.rows or not snapshot.trade_date:
         return
@@ -296,8 +305,10 @@ def build_sector_snapshot(
     *,
     updated_at: str | None,
     industry_map: dict[str, str] | None = None,
+    sector_rows: list[SectorFlowRow] | None = None,
 ) -> SectorFlowSnapshot:
-    sector_rows = aggregate_sector_rows(rows, industry_map=industry_map)
+    if sector_rows is None:
+        sector_rows = aggregate_sector_rows(rows, industry_map=industry_map)
     empty_hint = ""
     if not sector_rows and rows:
         empty_hint = diagnose_sector_flow_empty(rows, raw_total=len(rows), industry_map=industry_map)
@@ -419,16 +430,24 @@ class SectorFlowService(BaseService):
         if not is_ashare_trading_session():
             dc_rows, trade_date = fetch_moneyflow_ind_dc_with_fallback(content_type="行业")
             if dc_rows:
-                sector_rows = rows_from_dc_moneyflow(dc_rows, sector_kind="industry", flow_source="dc_industry")
+                sector_rows = build_sw_industry_rows_from_dc(dc_rows)
                 if sector_rows:
                     return finalize_official_snapshot(
                         build_official_snapshot(
                             sector_rows,
                             trade_date=trade_date,
                             sector_kind="industry",
-                            data_mode="official_dc",
+                            data_mode="official_sw",
                         )
                     )
+            if rows:
+                snapshot = build_sector_snapshot(
+                    rows,
+                    updated_at=None,
+                    industry_map=industry_map,
+                )
+                if snapshot.rows:
+                    return snapshot
         return self._load_intraday_industry_snapshot()
 
     def _load_intraday_industry_snapshot(self) -> SectorFlowSnapshot:
@@ -440,10 +459,16 @@ class SectorFlowService(BaseService):
 
         industry_map = fetch_stock_industry_map()
         self._cache_quote_context(rows, industry_map)
+        sector_rows = aggregate_sector_rows(rows, industry_map=industry_map)
+        if is_ashare_trading_session():
+            dc_rows, _trade_date = fetch_moneyflow_ind_dc_with_fallback(content_type="行业")
+            if dc_rows:
+                sector_rows = overlay_dc_moneyflow_on_sw_rows(sector_rows, dc_rows)
         snapshot = build_sector_snapshot(
             rows,
             updated_at=updated_at,
             industry_map=industry_map,
+            sector_rows=sector_rows,
         )
         if not snapshot.rows and not snapshot.empty_hint:
             hint = diagnose_sector_flow_empty(rows, raw_total=total, industry_map=industry_map)

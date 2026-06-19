@@ -37,6 +37,8 @@ _SOURCE_LABELS = {
     "dc_industry": "东财",
     "dc_concept": "东财",
     "ths_concept": "同花顺",
+    "sw_dc": "申万+东财",
+    "sw": "申万",
 }
 
 

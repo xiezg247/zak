@@ -16,18 +16,34 @@ from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
 def attach_industry(
     rows: Sequence[ScreeningFilterRow | Mapping[str, Any]],
     industry_map: dict[str, str] | None = None,
+    industry_l1_map: dict[str, str] | None = None,
 ) -> list[QuoteRow]:
-    """为行情行附加 ``industry`` 字段。"""
+    """为行情行附加 ``industry`` / ``industry_l1`` 字段。"""
     mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
+    l1_mapping = industry_l1_map
+    if l1_mapping is None and mapping:
+        from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_l1_map
+
+        try:
+            l1_mapping = fetch_stock_industry_l1_map()
+        except Exception:
+            l1_mapping = {}
+    l1_mapping = l1_mapping or {}
     enriched: list[QuoteRow] = []
     for row in rows:
         payload = screening_row_to_dict(row)
         ts_code = vt_symbol_to_ts_code(str(payload.get("vt_symbol") or ""))
         industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
-        if not industry:
+        industry_l1 = l1_mapping.get(ts_code or "", "").strip() if ts_code else ""
+        if not industry and not industry_l1:
             continue
         quote = row.quote if isinstance(row, ScreenerResultRow) else row
-        enriched.append(quote_row_copy(quote, industry=industry))
+        updates: dict[str, Any] = {}
+        if industry:
+            updates["industry"] = industry
+        if industry_l1:
+            updates["industry_l1"] = industry_l1
+        enriched.append(quote_row_copy(quote, **updates))
     return enriched
 
 
@@ -55,10 +71,20 @@ def attach_sector_fields(
     rows: QuoteRowsLike,
     *,
     industry_map: dict[str, str] | None = None,
+    industry_l1_map: dict[str, str] | None = None,
     vt_to_concept: dict[str, str] | None = None,
 ) -> tuple[list[QuoteRow], list[str]]:
     """附加行业 + 概念；至少有一轴则保留。返回 (rows, hot_concept_names)。"""
     mapping = industry_map if industry_map is not None else fetch_stock_industry_map()
+    l1_mapping = industry_l1_map
+    if l1_mapping is None and mapping:
+        from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_l1_map
+
+        try:
+            l1_mapping = fetch_stock_industry_l1_map()
+        except Exception:
+            l1_mapping = {}
+    l1_mapping = l1_mapping or {}
     if vt_to_concept is None:
         concept_map, hot_names = build_hot_concept_vt_symbol_map()
     else:
@@ -69,13 +95,16 @@ def attach_sector_fields(
     for row in rows:
         ts_code = vt_symbol_to_ts_code(str(row.get("vt_symbol") or ""))
         industry = mapping.get(ts_code or "", "").strip() if ts_code else ""
+        industry_l1 = l1_mapping.get(ts_code or "", "").strip() if ts_code else ""
         vt_symbol = str(row.get("vt_symbol") or "").strip()
         concept = concept_map.get(vt_symbol, "").strip()
-        if not industry and not concept:
+        if not industry and not industry_l1 and not concept:
             continue
         updates: dict[str, Any] = {}
         if industry:
             updates["industry"] = industry
+        if industry_l1:
+            updates["industry_l1"] = industry_l1
         if concept:
             updates["concept"] = concept
         enriched.append(quote_row_copy(row, **updates))

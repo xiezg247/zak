@@ -32,7 +32,7 @@ _COLLECT_QUOTES_INTERVAL_MIN = 5
 JOB_CATALOG: dict[str, tuple[str, str]] = {
     "collect_quotes": ("行情采集", "TickFlow 全市场快照写入 Redis"),
     "sync_universe": ("同步 A 股列表", "从 TickFlow 更新全市场标的到本地 SQLite"),
-    "sync_stock_industry": ("同步行业映射", "从 Tushare stock_basic 更新行业分类本地缓存"),
+    "sync_stock_industry": ("同步行业映射", "从 Tushare 申万 2021 L2 更新行业分类本地缓存（失败回退 stock_basic）"),
     "sync_trade_calendar": ("同步交易日历", "从 Tushare 更新 A 股交易日历到本地 SQLite"),
     "batch_download_universe": ("全市场日 K", "从 Tushare 为全 A 股下载/补全自 2020 年以来的日 K"),
     "prefetch_moneyflow": ("主力资金预拉", "收盘后拉取全市场 moneyflow 主力资金流向到本地缓存"),

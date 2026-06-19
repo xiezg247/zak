@@ -25,6 +25,11 @@ DATASET_MONEYFLOW_IND_DC = "moneyflow_ind_dc"
 DATASET_MONEYFLOW_CNT_THS = "moneyflow_cnt_ths"
 DATASET_STK_SHOCK = "stk_shock"
 DATASET_STK_HIGH_SHOCK = "stk_high_shock"
+DATASET_SW2021_CLASSIFY = "sw2021_classify"
+DATASET_SW2021_MEMBER = "sw2021_member"
+DATASET_SW2021_INDUSTRY_L2 = "sw2021_industry_l2"
+DATASET_SW2021_INDUSTRY_L1 = "sw2021_industry_l1"
+DATASET_SW2021_L2_TO_L1 = "sw2021_l2_to_l1"
 
 DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)
@@ -117,6 +122,9 @@ def _industry_map_from_rows(rows: list[dict[str, Any]]) -> dict[str, str]:
 
 
 def get_cached_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
+    sw_mapping = get_cached_sw_industry_map(max_age=max_age)
+    if sw_mapping:
+        return sw_mapping
     basic_rows = get_cached_rows(DATASET_STOCK_BASIC, "", max_age=max_age)
     if basic_rows is not None:
         mapping = _industry_map_from_rows(basic_rows)
@@ -126,6 +134,52 @@ def get_cached_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[st
         return None
     mapping = _industry_map_from_rows(rows)
     return mapping or None
+
+
+def get_cached_sw_industry_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
+    rows = get_cached_rows(DATASET_SW2021_INDUSTRY_L2, "", max_age=max_age)
+    if rows is None:
+        return None
+    mapping = _industry_map_from_rows(rows)
+    return mapping or None
+
+
+def set_cached_sw_industry_map(mapping: dict[str, str]) -> None:
+    rows = [{"ts_code": ts_code, "industry": industry} for ts_code, industry in mapping.items()]
+    set_cached_rows(DATASET_SW2021_INDUSTRY_L2, "", rows)
+
+
+def get_cached_sw_industry_l1_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
+    rows = get_cached_rows(DATASET_SW2021_INDUSTRY_L1, "", max_age=max_age)
+    if rows is None:
+        return None
+    mapping = _industry_map_from_rows(rows)
+    return mapping or None
+
+
+def set_cached_sw_industry_l1_map(mapping: dict[str, str]) -> None:
+    rows = [{"ts_code": ts_code, "industry": industry} for ts_code, industry in mapping.items()]
+    set_cached_rows(DATASET_SW2021_INDUSTRY_L1, "", rows)
+
+
+def get_cached_l2_to_l1_map(*, max_age: timedelta = INDUSTRY_MAX_AGE) -> dict[str, str] | None:
+    rows = get_cached_rows(DATASET_SW2021_L2_TO_L1, "", max_age=max_age)
+    if rows is None:
+        return None
+    result: dict[str, str] = {}
+    for item in rows:
+        if not isinstance(item, dict):
+            continue
+        l2 = str(item.get("l2") or "").strip()
+        l1 = str(item.get("l1") or "").strip()
+        if l2 and l1:
+            result[l2] = l1
+    return result or None
+
+
+def set_cached_l2_to_l1_map(mapping: dict[str, str]) -> None:
+    rows = [{"l2": l2, "l1": l1} for l2, l1 in sorted(mapping.items())]
+    set_cached_rows(DATASET_SW2021_L2_TO_L1, "", rows)
 
 
 def set_cached_industry_map(mapping: dict[str, str]) -> None:

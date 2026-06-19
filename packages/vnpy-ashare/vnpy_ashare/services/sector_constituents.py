@@ -8,6 +8,7 @@ from vnpy_ashare.integrations.tushare.concept_board import (
     fetch_ths_concept_index_map,
     fetch_ths_member_vt_symbols,
 )
+from vnpy_ashare.integrations.tushare.sw_industry import member_rows_vt_symbols_for_l2
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 
@@ -66,7 +67,11 @@ def load_sector_leaders(
         else:
             matched = []
     else:
-        matched = _filter_industry_rows(quote_rows, sector.name, industry_map=industry_map)
+        vt_symbols = member_rows_vt_symbols_for_l2(sector.name)
+        if vt_symbols:
+            matched = [row for row in quote_rows if str(row.get("vt_symbol") or "") in vt_symbols]
+        else:
+            matched = _filter_industry_rows(quote_rows, sector.name, industry_map=industry_map)
 
     leaders: list[SectorConstituentRow] = []
     ranked = sorted(

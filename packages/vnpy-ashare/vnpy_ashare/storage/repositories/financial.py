@@ -19,6 +19,8 @@ REPORT_TYPES: tuple[str, ...] = (
     "fina_indicator",
     "express",
     "forecast",
+    "mainbz_p",
+    "mainbz_d",
 )
 
 

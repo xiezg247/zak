@@ -19,10 +19,12 @@ from vnpy_ashare.integrations.tushare.cache import (
     DATASET_MONEYFLOW,
     DATASET_MONEYFLOW_HSGT,
     DATASET_STOCK_BASIC,
+    DATASET_STOCK_INDUSTRY,
     INDUSTRY_MAX_AGE,
     get_cached_industry_map,
     get_cached_pct_map,
     get_cached_rows,
+    get_cached_sw_industry_map,
     set_cached_industry_map,
     set_cached_pct_map,
     set_cached_rows,
@@ -114,9 +116,19 @@ def fetch_stock_basic_snapshot(*, force: bool = False) -> tuple[list[dict[str, A
 
 
 def fetch_stock_industry_map() -> dict[str, str]:
-    """ts_code → 行业名称。"""
+    """ts_code → 行业名称（优先申万 2021 L2，回退 stock_basic.industry）。"""
+    cached = get_cached_sw_industry_map()
+    if cached:
+        return cached
+
+    from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_industry_map
+
+    mapping = fetch_sw_industry_map(force=False)
+    if mapping:
+        return mapping
+
     cached = get_cached_industry_map()
-    if cached is not None:
+    if cached:
         return cached
 
     rows, _ = fetch_stock_basic_snapshot()
@@ -143,6 +155,31 @@ def fetch_stock_industry_map() -> dict[str, str]:
     if mapping:
         set_cached_industry_map(mapping)
     return mapping
+
+
+def fetch_stock_industry_l1_map() -> dict[str, str]:
+    """ts_code → 申万 2021 L1 行业名（无缓存时尝试从成分缓存推导）。"""
+    from vnpy_ashare.integrations.tushare.cache import get_cached_sw_industry_l1_map
+    from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_industry_l1_map
+
+    cached = get_cached_sw_industry_l1_map()
+    if cached:
+        return cached
+    return fetch_sw_industry_l1_map(force=False)
+
+
+def fetch_industry_l2_to_l1_map() -> dict[str, str]:
+    """申万 L2 名 → L1 名（供行业筛选分组）。"""
+    from vnpy_ashare.integrations.tushare.sw_industry import fetch_l2_to_l1_map
+
+    return fetch_l2_to_l1_map(force=False)
+
+
+def fetch_sw_l2_index_map() -> dict[str, str]:
+    """申万 L2 名 → index_code（行业板块唯一标识）。"""
+    from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_l2_index_map as _fetch
+
+    return _fetch(force=False)
 
 
 def fetch_stock_market_board_map() -> dict[str, str]:

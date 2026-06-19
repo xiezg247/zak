@@ -413,7 +413,7 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | 涨跌停 / 连板 | Tushare `limit_list_d` | 情绪周期、梯队 |
 | 龙虎榜 | Tushare | 参考 |
 | 异动 / 偏离度 | Tushare `stk_shock`/`stk_high_shock` + 本地日 K（**已有**） | 监管回避 |
-| 板块 / 概念 | Tushare + 本地映射 | 龙头识别 |
+| 板块 / 概念 | Tushare + 本地映射 | 龙头识别；**行业板块**统一申万 2021 L2（`sector_id`=指数代码，东财资金流按名 overlay），**概念**仍用 THS |
 | 本地日 K | bar_store | MA5 低吸、策略信号 |
 
 下载优先级：**P0** 观察组 + 持仓全部标的日 K / 分 K；**P1** 当日涨停池。

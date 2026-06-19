@@ -12,6 +12,8 @@ from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow
 from vnpy_common.ui.data_table import configure_data_table
 from vnpy_common.ui.panel_widgets import configure_document_tab_widget, content_card, hint_label, section_title, tab_page
 
+_MAINBZ_COLUMNS = ["业务来源", "主营业务收入", "主营业务利润", "主营业务成本", "收入占比"]
+
 _INCOME_ROWS: list[tuple[str, str]] = [
     ("total_revenue", "营业总收入"),
     ("revenue", "营业收入"),
@@ -73,6 +75,131 @@ def _format_pct(value: float | None) -> str:
     if value is None:
         return "—"
     return f"{value:+.2f}%"
+
+
+def _format_share_pct(value: float | None, total: float) -> str:
+    if value is None or total <= 0:
+        return "—"
+    return f"{value / total * 100:.1f}%"
+
+
+class _MainBusinessTable(QtWidgets.QWidget):
+    def __init__(
+        self,
+        *,
+        empty_hint: str = "",
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._empty_hint = empty_hint
+        self._period_combo = QtWidgets.QComboBox()
+        self._period_combo.setObjectName("MainBusinessPeriodCombo")
+        self._period_combo.currentIndexChanged.connect(self._render_current_period)
+
+        self._table = QtWidgets.QTableWidget(0, len(_MAINBZ_COLUMNS))
+        self._table.setHorizontalHeaderLabels(_MAINBZ_COLUMNS)
+        configure_data_table(self._table)
+
+        self._empty_label = hint_label()
+        self._empty_label.setVisible(False)
+        self._reports: list[dict[str, Any]] = []
+
+        period_row = QtWidgets.QHBoxLayout()
+        period_row.setContentsMargins(0, 0, 0, 0)
+        period_row.addWidget(hint_label("报告期"))
+        period_row.addWidget(self._period_combo, stretch=1)
+        period_wrap = QtWidgets.QWidget()
+        period_wrap.setLayout(period_row)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        layout.addWidget(period_wrap)
+        layout.addWidget(self._empty_label)
+        layout.addWidget(self._table)
+
+    def render_reports(self, reports: list[dict[str, Any]], *, show_empty_hint: bool = True) -> None:
+        self._reports = reports
+        self._period_combo.blockSignals(True)
+        self._period_combo.clear()
+        for report in reports:
+            end_date = str(report.get("end_date") or "")
+            period = str(report.get("period") or "")
+            label = f"{end_date} ({period})" if period else end_date
+            self._period_combo.addItem(label, end_date)
+        self._period_combo.blockSignals(False)
+
+        if not reports:
+            self._table.setRowCount(0)
+            if self._empty_hint and show_empty_hint:
+                self._empty_label.setText(self._empty_hint)
+                self._empty_label.setVisible(True)
+            else:
+                self._empty_label.setVisible(False)
+            return
+
+        self._empty_label.setVisible(False)
+        self._render_current_period()
+
+    def _render_current_period(self, _index: int = 0) -> None:
+        end_date = str(self._period_combo.currentData() or "")
+        report = next((item for item in self._reports if str(item.get("end_date") or "") == end_date), None)
+        fields = (report or {}).get("fields") or {}
+        items = fields.get("items") if isinstance(fields, dict) else None
+        if not isinstance(items, list) or not items:
+            self._table.setRowCount(0)
+            return
+
+        total_sales = sum(
+            float(item.get("bz_sales"))
+            for item in items
+            if isinstance(item.get("bz_sales"), (int, float))
+        )
+        self._table.setRowCount(len(items))
+        for row_index, item in enumerate(items):
+            sales = item.get("bz_sales")
+            sales_value = float(sales) if isinstance(sales, (int, float)) else None
+            values = [
+                str(item.get("bz_item") or "—"),
+                _format_amount(sales_value),
+                _format_amount(item.get("bz_profit")),
+                _format_amount(item.get("bz_cost")),
+                _format_share_pct(sales_value, total_sales),
+            ]
+            for col_index, text in enumerate(values):
+                cell = QtWidgets.QTableWidgetItem(text)
+                if col_index > 0:
+                    cell.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+                self._table.setItem(row_index, col_index, cell)
+        self._table.resizeColumnsToContents()
+
+
+class _MainBusinessPanel(QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._tabs = configure_document_tab_widget(QtWidgets.QTabWidget())
+        self._by_product = _MainBusinessTable(
+            empty_hint="暂无按产品划分的主营业务构成；同步财报后刷新，或确认 Tushare 积分权限。",
+        )
+        self._by_region = _MainBusinessTable(
+            empty_hint="暂无按地区划分的主营业务构成；同步财报后刷新，或确认 Tushare 积分权限。",
+        )
+        self._tabs.addTab(self._by_product, "按产品")
+        self._tabs.addTab(self._by_region, "按地区")
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._tabs)
+
+    def render_reports(
+        self,
+        *,
+        product_reports: list[dict[str, Any]],
+        region_reports: list[dict[str, Any]],
+        show_empty_hint: bool = True,
+    ) -> None:
+        self._by_product.render_reports(product_reports, show_empty_hint=show_empty_hint)
+        self._by_region.render_reports(region_reports, show_empty_hint=show_empty_hint)
 
 
 class _StatementTable(QtWidgets.QWidget):
@@ -154,11 +281,13 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
             _FORECAST_ROWS,
             empty_hint="暂无业绩预告；若公司已发布预告，可点击弹窗底部「刷新」重新拉取。",
         )
+        self._main_business = _MainBusinessPanel()
         self._statement_tabs.addTab(self._income, "利润表")
         self._statement_tabs.addTab(self._balance, "资产负债表")
         self._statement_tabs.addTab(self._cashflow, "现金流量表")
         self._statement_tabs.addTab(self._express, "业绩快报")
         self._statement_tabs.addTab(self._forecast, "业绩预告")
+        self._statement_tabs.addTab(self._main_business, "主营业务构成")
 
         statement_card = content_card(self._statement_tabs, margins=(4, 4, 4, 4))
         page = tab_page(
@@ -207,6 +336,7 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         self._cashflow.render_reports([], show_empty_hint=False)
         self._express.render_reports([], show_empty_hint=False)
         self._forecast.render_reports([], show_empty_hint=False)
+        self._main_business.render_reports(product_reports=[], region_reports=[], show_empty_hint=False)
 
     def show_loading(self, message: str = "正在同步财报…") -> None:
         self._status.setText(message)
@@ -217,6 +347,7 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         self._cashflow.render_reports([], show_empty_hint=False)
         self._express.render_reports([], show_empty_hint=False)
         self._forecast.render_reports([], show_empty_hint=False)
+        self._main_business.render_reports(product_reports=[], region_reports=[], show_empty_hint=False)
 
     def show_bundle(self, bundle: FinancialBundle | None, *, sync_message: str = "") -> None:
         if bundle is None:
@@ -228,6 +359,7 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
             self._cashflow.render_reports([])
             self._express.render_reports([])
             self._forecast.render_reports([])
+            self._main_business.render_reports(product_reports=[], region_reports=[])
             return
 
         meta = bundle.sync_meta
@@ -250,3 +382,7 @@ class FinancialAnalysisTab(QtWidgets.QWidget):
         self._cashflow.render_reports(reports.get("cashflow") or [])
         self._express.render_reports(reports.get("express") or [])
         self._forecast.render_reports(reports.get("forecast") or [])
+        self._main_business.render_reports(
+            product_reports=reports.get("mainbz_p") or [],
+            region_reports=reports.get("mainbz_d") or [],
+        )
