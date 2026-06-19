@@ -8,6 +8,8 @@ from typing import Any
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowHistoryPoint,
+    SectorFlowOutlookBundle,
+    SectorFlowOutlookSnapshot,
     SectorFlowRotationSnapshot,
     SectorFlowRow,
     SectorFlowSnapshot,
@@ -28,6 +30,9 @@ from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.industry_sector import build_sw_industry_rows_from_dc, overlay_dc_moneyflow_on_sw_rows
 from vnpy_ashare.services.sector_constituents import compute_divergence_rows, load_sector_leaders, resolve_concept_vt_symbols
 from vnpy_ashare.services.sector_flow_rotation import build_rotation_snapshot
+from vnpy_ashare.services.sector_flow_outlook import build_continuation_outlook_snapshot
+from vnpy_ashare.services.sector_flow_outlook_compare import build_outlook_compare_rows
+from vnpy_ashare.services.sector_flow_outlook_strategy import build_strategy_outlook
 from vnpy_ashare.storage.repositories.sector_flow_history import (
     _HISTORY_LIMIT,
     load_sector_flow_history,
@@ -407,6 +412,48 @@ class SectorFlowService(BaseService):
         if base is None or base.sector_kind != sector_kind:
             base = self.load_snapshot(sector_kind=sector_kind)
         return build_rotation_snapshot(base)
+
+    def load_continuation_outlook(
+        self,
+        snapshot: SectorFlowSnapshot | None = None,
+        *,
+        sector_kind: str = "industry",
+    ) -> SectorFlowOutlookSnapshot:
+        base = snapshot
+        if base is None or base.sector_kind != sector_kind:
+            base = self.load_snapshot(sector_kind=sector_kind)
+        return build_continuation_outlook_snapshot(base)
+
+    def load_strategy_outlook(
+        self,
+        snapshot: SectorFlowSnapshot | None = None,
+        *,
+        sector_kind: str = "industry",
+        strategy_class: str | None = None,
+    ) -> SectorFlowOutlookSnapshot:
+        base = snapshot
+        if base is None or base.sector_kind != sector_kind:
+            base = self.load_snapshot(sector_kind=sector_kind)
+        return build_strategy_outlook(base, strategy_class=strategy_class)
+
+    def load_outlook_bundle(
+        self,
+        snapshot: SectorFlowSnapshot | None = None,
+        *,
+        sector_kind: str = "industry",
+        strategy_class: str | None = None,
+    ) -> SectorFlowOutlookBundle:
+        base = snapshot
+        if base is None or base.sector_kind != sector_kind:
+            base = self.load_snapshot(sector_kind=sector_kind)
+        continuation = build_continuation_outlook_snapshot(base)
+        strategy = build_strategy_outlook(base, strategy_class=strategy_class)
+        compare_rows = build_outlook_compare_rows(continuation, strategy)
+        return SectorFlowOutlookBundle(
+            continuation=continuation,
+            strategy=strategy,
+            compare_rows=compare_rows,
+        )
 
     def resolve_concept_vt_symbols(self, sector: SectorFlowRow) -> list[str]:
 

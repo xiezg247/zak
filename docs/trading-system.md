@@ -124,7 +124,7 @@
 
 | 极致短线需求 | 现有模块 | 状态 | 剩余优化 |
 |--------------|----------|------|----------|
-| 涨停 / 连板池 | 市场页 `limit_up` + 梯队条；雷达 D-01 `discovery_limit_ladder` | **已有** | 市场页按 `limit_times` 分层筛选（可选） |
+| 涨停 / 连板池 | 市场页 `limit_up`（连板列）；雷达 D-01 `discovery_limit_ladder` | **已有** | 市场页按 `limit_times` 分层筛选（可选） |
 | 题材龙头 | 雷达 `leader_pick` + `leader_score`；`run_leader_screen` | **已有** | 板块资金侧栏与雷达闭环仍独立入口 |
 | 人气 / 辨识度 | 雷达共振；R-01/R-02；封板时间 + 封单（`limit_list_d`） | **已有** | — |
 | 硬过滤 | `ScreenerHardFilterPanel` 保守/均衡/**激进** | **已有** | Profile 切换默认联动模板（**已有**）；onboarding 切极致短线（**已有**） |

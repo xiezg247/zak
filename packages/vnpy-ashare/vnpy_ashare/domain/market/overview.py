@@ -22,4 +22,3 @@ class MarketOverviewData(FrozenModel):
     breadth: MarketBreadthSnapshot | None = Field(description="市场广度")
     sectors: list[SectorRankItem] = Field(description="行业榜")
     environment: MarketEnvironmentSnapshot | None = Field(default=None, description="大盘环境指标")
-    limit_ladder_counts: dict[str, int] | None = Field(default=None, description="涨跌停梯队统计")

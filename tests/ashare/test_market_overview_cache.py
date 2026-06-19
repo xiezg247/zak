@@ -60,7 +60,6 @@ class MarketOverviewCacheTests(unittest.TestCase):
                 updated_at="15:00",
             ),
             sectors=[],
-            limit_ladder_counts={"2板": 3},
         )
         store_market_overview_data(cached)
         with (
@@ -80,7 +79,6 @@ class MarketOverviewCacheTests(unittest.TestCase):
         load_rows.assert_not_called()
         self.assertEqual(result.indices[0][1].change_pct, 1.2)
         self.assertEqual(result.breadth, cached.breadth)
-        self.assertEqual(result.limit_ladder_counts, {"2板": 3})
 
     def test_build_overview_from_market_rows_off_session_skips_merge_and_sectors(self) -> None:
         rows = [{"change_pct": 1.0, "amount": 0, "vt_symbol": "600000.SSE"}]
@@ -99,12 +97,11 @@ class MarketOverviewCacheTests(unittest.TestCase):
                 "vnpy_ashare.quotes.market.market_overview_loaders.load_sector_ranks",
             ) as load_sectors,
         ):
-            breadth, sectors, ladder = build_overview_from_market_rows(rows, intraday=False)
+            breadth, sectors = build_overview_from_market_rows(rows, intraday=False)
         merge_official.assert_not_called()
         load_sectors.assert_not_called()
         self.assertIsNotNone(breadth)
         self.assertEqual(sectors, [])
-        self.assertIsNone(ladder)
 
 
 if __name__ == "__main__":

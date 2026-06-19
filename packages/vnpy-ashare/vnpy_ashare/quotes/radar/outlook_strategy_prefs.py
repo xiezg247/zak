@@ -85,3 +85,27 @@ def load_outlook_signal_config() -> WatchlistSignalConfig:
 def outlook_signal_recent_days(class_name: str | None = None) -> int:
     resolved = _normalize_class_name(class_name or load_outlook_strategy_class())
     return int(STRATEGY_SIGNAL_RECENT_DAYS.get(resolved, STRATEGY_SIGNAL_RECENT_DAYS[DEFAULT_CLASS]))
+
+
+_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY = "quotes/sector_flow/outlook_strategy_class"
+
+
+def load_sector_flow_outlook_strategy_class() -> str:
+    """板块资金「策略 B」展望策略；未单独配置时回退雷达展望策略。"""
+    settings = get_settings()
+    raw = settings.value(_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY, "")
+    if not raw:
+        return load_outlook_strategy_class()
+    return _normalize_class_name(str(raw))
+
+
+def save_sector_flow_outlook_strategy_class(class_name: str) -> None:
+    normalized = _normalize_class_name(class_name)
+    settings = get_settings()
+    settings.setValue(_SECTOR_FLOW_OUTLOOK_SETTINGS_KEY, normalized)
+
+
+def load_sector_flow_outlook_signal_config() -> WatchlistSignalConfig:
+    class_name = load_sector_flow_outlook_strategy_class()
+    fast, slow = STRATEGY_SIGNAL_DEFAULTS.get(class_name, STRATEGY_SIGNAL_DEFAULTS[DEFAULT_CLASS])
+    return WatchlistSignalConfig(class_name=class_name, fast_window=fast, slow_window=slow).normalized()

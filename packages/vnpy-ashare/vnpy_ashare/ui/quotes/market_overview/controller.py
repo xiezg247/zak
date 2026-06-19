@@ -18,7 +18,6 @@ from vnpy_ashare.quotes.market.emotion_cycle_cache import peek_emotion_cycle_sna
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_cache import peek_market_overview_data
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
-from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
 from vnpy_ashare.ui.quotes.market_overview.worker import MarketOverviewLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -147,7 +146,7 @@ class MarketOverviewController(QtCore.QObject):
 
     def apply_market_snapshot(self, rows: list[dict[str, Any]], *, updated_at: str | None = None) -> None:
         intraday = is_ashare_trading_session()
-        breadth, sectors, ladder_counts = build_overview_from_market_rows(rows, updated_at=updated_at)
+        breadth, sectors = build_overview_from_market_rows(rows, updated_at=updated_at)
         session_note = f"{ashare_market_phase_label()} · " if not intraday and breadth is not None else ""
         if breadth is not None:
             self._panel.apply_breadth(breadth, session_note=session_note)
@@ -155,11 +154,7 @@ class MarketOverviewController(QtCore.QObject):
                 self._apply_emotion_cycle(breadth)
         if sectors:
             self._panel.apply_sectors(sectors)
-        if ladder_counts is None:
-            ladder_counts = peek_limit_ladder_counts()
-        if ladder_counts is not None:
-            self._panel.apply_limit_ladder(ladder_counts)
-        sync_market_overview_partial(breadth=breadth, sectors=sectors or None, limit_ladder=ladder_counts)
+        sync_market_overview_partial(breadth=breadth, sectors=sectors or None)
         self._publish_ai_context()
 
     def _apply_overview(

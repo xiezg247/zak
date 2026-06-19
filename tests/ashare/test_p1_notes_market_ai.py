@@ -4,21 +4,12 @@ from __future__ import annotations
 
 import unittest
 
-from vnpy_ashare.ai.context.market_overview import (
-    build_market_ai_prompt,
-    format_limit_ladder_line,
-)
+from vnpy_ashare.ai.context.market_overview import build_market_ai_prompt
 from vnpy_ashare.domain.trading.plan import TradingPlanRecord, TradingPlanSymbolRecord
 from vnpy_ashare.ui.features.notes_center.plans_view import _format_plan_detail, _format_plan_item
 
 
 class MarketAiPromptTest(unittest.TestCase):
-    def test_format_limit_ladder_line(self) -> None:
-        line = format_limit_ladder_line({"首板": 12, "2板": 3, "3板": 1})
-        self.assertIn("连板梯队", line)
-        self.assertIn("首板×12", line)
-        self.assertIn("最高 3 板", line)
-
     def test_build_market_ai_prompt_contains_sections(self) -> None:
         prompt = build_market_ai_prompt(focus="intraday")
         self.assertIn("极致短线", prompt)

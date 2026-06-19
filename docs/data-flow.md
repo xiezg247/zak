@@ -29,20 +29,20 @@
 prefetch_moneyflow (16:31)
   → prefetch_tushare (16:32)        # 结束后轻量预热情绪
   → prefetch_concept_board (16:33)
-  → warm_market_summary (16:34)     # 含连板梯队（慢，仅盘后）
+  → warm_market_summary (16:34)     # 情绪周期预热（盘后补全因子）
   → sync_suspend / sync_sector_flow …
   → screen_post_close → scan_horizon_outlook
 ```
 
 | job_id | 说明 |
 |--------|------|
-| `collect_quotes` | 交易时段 TickFlow → Redis；**成功后自动轻量预热情绪**（不含连板） |
+| `collect_quotes` | 交易时段 TickFlow → Redis；**成功后自动轻量预热情绪** |
 | `prefetch_concept_board` | 同花顺概念指数与成分映射 |
-| `warm_market_summary` | 情绪周期 + 连板梯队 → 内存缓存 |
+| `warm_market_summary` | 情绪周期 → 内存缓存 |
 | `prefetch_tushare` | daily_basic、涨跌停等；**成功后轻量预热情绪** |
 | 其余 | 见定时任务页描述 |
 
-盘中：`collect_quotes` + 轻量 `warm_market_summary(include_ladder=False)`，不跑连板全量硬过滤。
+盘中：`collect_quotes` + 轻量 `warm_market_summary(enrich_factors=False)`。
 
 ## 页面内定时（仅 Tab 激活时）
 
@@ -60,7 +60,6 @@ prefetch_moneyflow (16:31)
 |------|------|------|
 | 行情行 | `set_market_quote_rows_cache` / QuoteService | `load_emotion_cycle_snapshot(fetch_if_missing=False)` |
 | 情绪周期 | `store_emotion_cycle_snapshot` | 持仓风控、雷达 subtitle、工具栏芯片 |
-| 连板梯队 | `store_limit_ladder_counts` | 市场页 `load_market_overview` |
 
 UI 与 `load_combined_risk_gate_snapshot` **默认不拉全市场**；显式分析/流水仍可用 `fetch_if_missing=True`。
 

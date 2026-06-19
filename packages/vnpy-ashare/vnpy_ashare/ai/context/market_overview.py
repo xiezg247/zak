@@ -11,8 +11,6 @@ from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
-from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
-from vnpy_ashare.quotes.radar.radar_limit_ladder import LADDER_BUCKET_LABELS
 from vnpy_common.ai.protocol import QuickAction
 
 
@@ -35,9 +33,8 @@ def build_intraday_environment_prompt() -> str:
 
 
 def build_market_ai_prompt(*, focus: str = "intraday") -> str:
-    """市场页 AI 预填：广度 + 连板梯队 + 情绪周期摘要。"""
+    """市场页 AI 预填：广度 + 情绪周期摘要。"""
     ctx = get_market_overview_context() or {}
-    ladder = peek_limit_ladder_counts()
     if focus == "environment":
         intro = (
             "请解读当前 A 股市场环境（大盘强弱、涨跌广度、涨跌停、成交额、恐贪指数、北向资金）。"
@@ -56,36 +53,9 @@ def build_market_ai_prompt(*, focus: str = "intraday") -> str:
     overview = format_market_overview_extra(ctx)
     if overview:
         lines.append(overview)
-    ladder_line = format_limit_ladder_line(ladder)
-    if ladder_line:
-        lines.append(ladder_line)
     if len(lines) <= 3:
         lines.append("（摘要暂无，请先刷新市场页后再问 AI）")
     return "\n".join(lines).strip()
-
-
-def format_limit_ladder_line(counts: dict[str, int] | None) -> str:
-    if not counts:
-        return ""
-    parts = [f"{label}×{int(counts.get(label, 0))}" for label in LADDER_BUCKET_LABELS if int(counts.get(label, 0)) > 0]
-    if not parts:
-        return "连板梯队：暂无涨停池"
-    total = sum(int(counts.get(label, 0)) for label in LADDER_BUCKET_LABELS)
-    max_boards = 0
-    for label in LADDER_BUCKET_LABELS:
-        if int(counts.get(label, 0)) > 0:
-            if label == "5板+":
-                max_boards = max(max_boards, 5)
-            elif label == "首板":
-                max_boards = max(max_boards, 1)
-            else:
-                try:
-                    max_boards = max(max_boards, int(label.replace("板", "")))
-                except ValueError:
-                    pass
-    height = f"最高 {max_boards} 板" if max_boards else ""
-    suffix = f"（{height}，共 {total} 只）" if height else f"（共 {total} 只）"
-    return f"连板梯队：{' · '.join(parts)}{suffix}"
 
 
 def build_industry_momentum_prompt() -> str:
@@ -210,9 +180,6 @@ def format_market_overview_extra(payload: dict[str, Any] | None = None) -> str:
     sector_lines = ctx.get("sector_lines") or []
     if sector_lines:
         lines.append("行业 Top：" + "；".join(str(item) for item in sector_lines))
-    ladder_line = str(ctx.get("limit_ladder_line") or "").strip()
-    if ladder_line:
-        lines.append(ladder_line)
     if len(lines) <= 1:
         return ""
     lines.append("解读大盘时可结合 get_ashare_fear_greed_index 与 get_emotion_cycle；勿编造未在摘要中的数据。")
@@ -227,9 +194,6 @@ def sync_market_overview_context(
     """写入市场页大盘概览上下文（供 AI 与悬浮球读取）。"""
     env = environment if environment is not None else data.environment
     payload = build_market_overview_payload(data, environment=env)
-    ladder = peek_limit_ladder_counts()
-    if ladder:
-        payload["limit_ladder_line"] = format_limit_ladder_line(ladder)
     has_content = bool(payload.get("index_lines") or payload.get("sector_lines"))
     has_content |= "涨" in str(payload.get("breadth_line", ""))
     if env is not None and (env.fear_greed_index is not None or env.north_money is not None):
@@ -252,7 +216,6 @@ def sync_market_overview_partial(
     *,
     breadth: MarketBreadthSnapshot | None = None,
     sectors: list[SectorRankItem] | None = None,
-    limit_ladder: dict[str, int] | None = None,
 ) -> None:
     """增量更新已发布的大盘概览（catalog 刷新时）。"""
     payload = dict(get_market_overview_context() or {})
@@ -260,9 +223,6 @@ def sync_market_overview_partial(
         payload["breadth_line"] = _breadth_line(breadth)
     if sectors:
         payload["sector_lines"] = _sector_lines(sectors)
-    ladder = limit_ladder if limit_ladder is not None else peek_limit_ladder_counts()
-    if ladder:
-        payload["limit_ladder_line"] = format_limit_ladder_line(ladder)
     if not payload:
         return
     set_market_overview_context(payload)

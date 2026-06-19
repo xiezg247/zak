@@ -12,6 +12,9 @@ from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.market.sector_flow import (
     SectorConstituentRow,
     SectorFlowHistoryPoint,
+    SectorFlowOutlookBundle,
+    SectorFlowOutlookCompareRow,
+    SectorFlowOutlookRow,
     SectorFlowRotationRow,
     SectorFlowRotationSnapshot,
     SectorFlowRow,
@@ -19,9 +22,16 @@ from vnpy_ashare.domain.market.sector_flow import (
 )
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_ashare_trading_session
 from vnpy_ashare.services.sector_flow import SectorFlowService, format_sector_net_flow_yi
+from vnpy_ashare.services.sector_flow_outlook_compare import format_compare_ai_lines
 from vnpy_ashare.services.sector_flow_rotation import format_rotation_ai_lines
+from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
+    load_sector_flow_outlook_strategy_class,
+    save_sector_flow_outlook_strategy_class,
+)
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_for_drilldown
 from vnpy_ashare.ui.sector_flow.leaders_worker import SectorLeadersLoadWorker
+from vnpy_ashare.ui.sector_flow.outlook_detail_dialog import SectorFlowOutlookDetailDialog
+from vnpy_ashare.ui.sector_flow.outlook_worker import SectorFlowOutlookLoadWorker
 from vnpy_ashare.ui.sector_flow.rotation_detail_dialog import SectorFlowRotationDetailDialog
 from vnpy_ashare.ui.sector_flow.rotation_worker import SectorFlowRotationLoadWorker
 from vnpy_ashare.ui.sector_flow.worker import SectorFlowLoadWorker
@@ -39,6 +49,7 @@ _TAB_INFLOW = 0
 _TAB_OUTFLOW = 1
 _TAB_DIVERGENCE = 2
 _TAB_ROTATION = 3
+_TAB_OUTLOOK = 4
 
 
 class SectorFlowController(QtCore.QObject):
@@ -50,10 +61,13 @@ class SectorFlowController(QtCore.QObject):
         self._panel = page.panel
         self._worker: SectorFlowLoadWorker | None = None
         self._rotation_worker: SectorFlowRotationLoadWorker | None = None
+        self._outlook_worker: SectorFlowOutlookLoadWorker | None = None
         self._leaders_worker: SectorLeadersLoadWorker | None = None
         self._retired: list[QtCore.QThread] = []
         self._last_snapshot: SectorFlowSnapshot | None = None
         self._last_rotation: SectorFlowRotationSnapshot | None = None
+        self._last_outlook: SectorFlowOutlookBundle | None = None
+        self._outlook_strategy_class = load_sector_flow_outlook_strategy_class()
         self._pending_focus: set[str] = set()
         self._pending_view_tab: int | None = None
         self._sector_kind = "industry"
@@ -75,6 +89,11 @@ class SectorFlowController(QtCore.QObject):
         panel.rotation_table.sector_activated.connect(self._on_sector_activated)
         panel.rotation_table.sector_selected.connect(self._on_sector_selected)
         panel.rotation_table.detail_requested.connect(self._on_rotation_detail_requested)
+        panel.outlook_table.sector_activated.connect(self._on_sector_activated)
+        panel.outlook_table.sector_selected.connect(self._on_sector_selected)
+        panel.outlook_table.detail_requested.connect(self._on_outlook_detail_requested)
+        panel.outlook_strategy_changed.connect(self._on_outlook_strategy_changed)
+        panel.outlook_strategy_scan_requested.connect(self._on_outlook_strategy_scan_requested)
         panel.detail.market_drilldown_requested.connect(self._on_detail_market_drilldown)
         panel.detail.screener_requested.connect(self._on_detail_screener)
 
@@ -106,6 +125,9 @@ class SectorFlowController(QtCore.QObject):
         if self._rotation_worker is not None:
             release_thread(self._retired, self._rotation_worker, timeout_ms=0)
             self._rotation_worker = None
+        if self._outlook_worker is not None:
+            release_thread(self._retired, self._outlook_worker, timeout_ms=0)
+            self._outlook_worker = None
 
     def refresh(self) -> None:
         service = self._get_service()
@@ -140,6 +162,7 @@ class SectorFlowController(QtCore.QObject):
             return
         self._last_snapshot = snapshot
         self._last_rotation = None
+        self._last_outlook = None
         self._panel.apply_snapshot(snapshot)
         if self._pending_view_tab is not None:
             tab_id = self._pending_view_tab
@@ -154,6 +177,9 @@ class SectorFlowController(QtCore.QObject):
         if self._panel.active_tab == _TAB_ROTATION:
             self._load_rotation(snapshot)
             return
+        if self._panel.active_tab == _TAB_OUTLOOK:
+            self._load_outlook(snapshot)
+            return
         first_row = self._panel.table.selected_sector_row()
         if first_row is None and snapshot.inflow_rows:
             self._panel.table.selectRow(0)
@@ -162,7 +188,7 @@ class SectorFlowController(QtCore.QObject):
             self._load_sector_leaders(first_row)
 
     def _on_sector_selected(self, sector: SectorFlowRow) -> None:
-        if self._panel.active_tab == _TAB_ROTATION:
+        if self._panel.active_tab in {_TAB_ROTATION, _TAB_OUTLOOK}:
             return
         self._load_sector_leaders(sector)
 
@@ -170,6 +196,13 @@ class SectorFlowController(QtCore.QObject):
         if not isinstance(rotation_row, SectorFlowRotationRow):
             return
         dialog = SectorFlowRotationDetailDialog(rotation_row, parent=self._page)
+        dialog.market_drilldown_requested.connect(self._on_detail_market_drilldown)
+        dialog.exec()
+
+    def _on_outlook_detail_requested(self, payload: object) -> None:
+        if not isinstance(payload, (SectorFlowOutlookRow, SectorFlowOutlookCompareRow)):
+            return
+        dialog = SectorFlowOutlookDetailDialog(payload, parent=self._page)
         dialog.market_drilldown_requested.connect(self._on_detail_market_drilldown)
         dialog.exec()
 
@@ -265,21 +298,27 @@ class SectorFlowController(QtCore.QObject):
         self._sector_kind = sector_kind
         self._last_snapshot = None
         self._last_rotation = None
+        self._last_outlook = None
         self.refresh()
 
     def _on_view_tab_changed(self, tab_id: int) -> None:
-        if tab_id != _TAB_ROTATION:
-            return
-        if self._last_rotation is not None and self._last_rotation.sector_kind == self._sector_kind:
-            self._panel.apply_rotation_snapshot(self._last_rotation)
-            first_row = self._panel.rotation_table.selected_sector_row()
-            if first_row is None and self._last_rotation.rows:
-                self._panel.rotation_table.selectRow(0)
+        if tab_id == _TAB_ROTATION:
+            if self._last_rotation is not None and self._last_rotation.sector_kind == self._sector_kind:
+                self._panel.apply_rotation_snapshot(self._last_rotation)
                 first_row = self._panel.rotation_table.selected_sector_row()
-            if first_row is not None:
-                self._load_sector_leaders(first_row)
+                if first_row is None and self._last_rotation.rows:
+                    self._panel.rotation_table.selectRow(0)
+                return
+            self._load_rotation(self._last_snapshot)
             return
-        self._load_rotation(self._last_snapshot)
+        if tab_id == _TAB_OUTLOOK:
+            if self._last_outlook is not None and self._last_outlook.continuation.sector_kind == self._sector_kind:
+                self._panel.apply_outlook_bundle(self._last_outlook)
+                if self._last_outlook.compare_rows:
+                    self._panel.outlook_table.selectRow(0)
+                return
+            self._load_outlook(self._last_snapshot)
+            return
 
     def _load_rotation(self, snapshot: SectorFlowSnapshot | None = None) -> None:
         service = self._get_service()
@@ -324,6 +363,94 @@ class SectorFlowController(QtCore.QObject):
         elif rotation.empty_hint:
             self._page.set_status(rotation.empty_hint)
 
+    def _load_outlook(
+        self,
+        snapshot: SectorFlowSnapshot | None = None,
+        *,
+        scan_strategy: bool = False,
+        scan_if_missing: bool = False,
+        loading_message: str | None = None,
+    ) -> None:
+        service = self._get_service()
+        if service is None:
+            return
+        if thread_is_active(self._outlook_worker):
+            return
+        if loading_message is None:
+            if scan_strategy or scan_if_missing:
+                loading_message = f"正在扫描「{self._panel.outlook_strategy_class()}」策略展望…"
+            else:
+                loading_message = "正在加载未来3日板块展望…"
+        self._panel.set_loading(True, message=loading_message)
+        worker = SectorFlowOutlookLoadWorker(
+            service,
+            snapshot=snapshot,
+            sector_kind=self._sector_kind,
+            strategy_class=self._outlook_strategy_class,
+            scan_strategy=scan_strategy,
+            scan_if_missing=scan_if_missing,
+            parent=self._page,
+        )
+        self._outlook_worker = worker
+        worker.finished.connect(self._on_outlook_loaded)
+        worker.failed.connect(self._on_outlook_failed)
+        worker.finished.connect(lambda _bundle, w=worker: self._release_outlook_worker(w))
+        worker.failed.connect(lambda _msg, w=worker: self._release_outlook_worker(w))
+        worker.start()
+
+    def _release_outlook_worker(self, worker: SectorFlowOutlookLoadWorker) -> None:
+        if self._outlook_worker is worker:
+            self._outlook_worker = None
+        release_thread(self._retired, worker)
+
+    def _on_outlook_loaded(self, bundle: object) -> None:
+        self._panel.set_loading(False)
+        if not isinstance(bundle, SectorFlowOutlookBundle):
+            return
+        self._last_outlook = bundle
+        self._panel.apply_outlook_bundle(bundle)
+        self._update_status_label()
+        self._publish_ai_context(self._last_snapshot)
+        if self._pending_focus:
+            self._panel.focus_sectors(self._pending_focus)
+            self._pending_focus.clear()
+            return
+        if bundle.compare_rows:
+            self._panel.outlook_table.selectRow(0)
+        elif bundle.continuation.rows:
+            self._update_status_label()
+        elif bundle.strategy.empty_hint:
+            self._page.set_status(bundle.strategy.empty_hint)
+        elif bundle.continuation.empty_hint:
+            self._page.set_status(bundle.continuation.empty_hint)
+
+    def _on_outlook_failed(self, message: str) -> None:
+        self._panel.set_loading(False)
+        page_notify(self._page, f"板块展望加载失败：{message}", level="warning")
+        self._page.set_status(message)
+
+    def _on_outlook_strategy_changed(self, class_name: str) -> None:
+        normalized = str(class_name or "").strip()
+        if not normalized or normalized == self._outlook_strategy_class:
+            return
+        save_sector_flow_outlook_strategy_class(normalized)
+        self._outlook_strategy_class = normalized
+        self._last_outlook = None
+        if self._panel.active_tab != _TAB_OUTLOOK:
+            return
+        from vnpy_ashare.services.sector_flow_outlook_strategy import strategy_outlook_cache_ready
+
+        self._load_outlook(
+            self._last_snapshot,
+            scan_if_missing=not strategy_outlook_cache_ready(normalized),
+        )
+
+    def _on_outlook_strategy_scan_requested(self) -> None:
+        if self._panel.active_tab != _TAB_OUTLOOK:
+            return
+        self._last_outlook = None
+        self._load_outlook(self._last_snapshot, scan_strategy=True)
+
     def _on_rotation_failed(self, message: str) -> None:
         self._panel.set_loading(False)
         page_notify(self._page, f"板块轮动加载失败：{message}", level="warning")
@@ -343,6 +470,7 @@ class SectorFlowController(QtCore.QObject):
             "outflow": _TAB_OUTFLOW,
             "divergence": _TAB_DIVERGENCE,
             "rotation": _TAB_ROTATION,
+            "outlook": _TAB_OUTLOOK,
         }
         pending_tab = tab_map.get(tab, tab_map["default"])
         if pending_tab is not None:
@@ -350,7 +478,7 @@ class SectorFlowController(QtCore.QObject):
         if sector_kind in {"industry", "concept"}:
             self._sector_kind = sector_kind
             self._panel.select_sector_kind(sector_kind, emit=False)
-        elif tab != "rotation":
+        elif tab not in {"rotation", "outlook"}:
             self._sector_kind = "industry"
             self._panel.select_sector_kind("industry", emit=False)
         if cleaned:
@@ -366,6 +494,8 @@ class SectorFlowController(QtCore.QObject):
     def _on_sector_activated(self, industry: str) -> None:
         if self._panel.active_tab == _TAB_ROTATION:
             sector = self._panel.rotation_table.selected_sector_row()
+        elif self._panel.active_tab == _TAB_OUTLOOK:
+            sector = self._panel.outlook_table.selected_sector_row()
         else:
             sector = self._panel.table.selected_sector_row()
         if sector is not None and sector.sector_kind == "concept":
@@ -412,6 +542,16 @@ class SectorFlowController(QtCore.QObject):
             rotation = self._last_rotation
             if rotation and rotation.rows:
                 extra_lines.extend(format_rotation_ai_lines(rotation, limit=5))
+            outlook = self._last_outlook
+            if outlook and outlook.compare_rows:
+                extra_lines.extend(
+                    format_compare_ai_lines(
+                        outlook.continuation,
+                        outlook.strategy,
+                        outlook.compare_rows,
+                        limit=5,
+                    )
+                )
             for row in snap.rows[:8]:
                 leader = f" 龙头{row.leader_stock}" if row.leader_stock else ""
                 extra_lines.append(f"{row.name} 强度{row.strength:.1f} 涨幅{row.change_pct:+.2f}% 主力{row.net_flow_yi:+.2f}亿({row.flow_source}){leader}")
@@ -441,6 +581,17 @@ class SectorFlowController(QtCore.QObject):
         if rotation and rotation.rows and rotation.sector_kind == snap.sector_kind:
             lines.append("近15日资金轮动：")
             lines.extend(format_rotation_ai_lines(rotation, limit=10))
+        outlook = self._last_outlook
+        if outlook and outlook.compare_rows and outlook.continuation.sector_kind == snap.sector_kind:
+            lines.append("未来3日资金展望（统计情景，非预测）：")
+            lines.extend(
+                format_compare_ai_lines(
+                    outlook.continuation,
+                    outlook.strategy,
+                    outlook.compare_rows,
+                    limit=10,
+                )
+            )
         lines.append("当日板块快照：")
         for row in snap.rows[:12]:
             leader = f"，龙头 {row.leader_stock}" if row.leader_stock else ""

@@ -63,6 +63,58 @@ class SectorFlowRotationSnapshot(FrozenModel):
     data_mode: str = Field(default="official_dc", description="数据模式")
 
 
+OUTLOOK_HORIZON_DAYS = 3
+OUTLOOK_DISCLAIMER = "统计情景，非资金预测"
+
+
+class SectorFlowOutlookDay(FrozenModel):
+    """未来单日资金展望标签。"""
+
+    trade_date: str = Field(description="交易日 YYYYMMDD")
+    bias: str = Field(description="偏多/偏空/震荡")
+    strength: float = Field(description="延续强度 0~1")
+
+
+class SectorFlowOutlookRow(FrozenModel):
+    """单板块未来 N 日展望行。"""
+
+    sector: SectorFlowRow = Field(description="板块当日快照元数据")
+    days: tuple[SectorFlowOutlookDay, ...] = Field(description="按 T+1~T+N 升序")
+    headline_pattern: str = Field(description="延续模式或策略摘要")
+    rationale: str = Field(description="规则说明")
+    source: str = Field(description="continuation 或 strategy")
+
+
+class SectorFlowOutlookSnapshot(FrozenModel):
+    """板块未来 N 日展望快照。"""
+
+    forward_dates: tuple[str, ...] = Field(description="T+1~T+N 列头")
+    rows: tuple[SectorFlowOutlookRow, ...] = Field(description="展望行")
+    sector_kind: str = Field(default="industry", description="行业或概念")
+    source: str = Field(description="continuation 或 strategy")
+    updated_at: str = Field(default="", description="更新时间文案")
+    empty_hint: str = Field(default="", description="无数据提示")
+    disclaimer: str = Field(default=OUTLOOK_DISCLAIMER, description="口径声明")
+    data_mode: str = Field(default="official_dc", description="数据模式")
+
+
+class SectorFlowOutlookCompareRow(FrozenModel):
+    """A/B 对照行。"""
+
+    sector: SectorFlowRow = Field(description="板块元数据")
+    continuation: SectorFlowOutlookRow | None = Field(default=None, description="延续口径")
+    strategy: SectorFlowOutlookRow | None = Field(default=None, description="策略口径")
+    agreement: str = Field(description="一致/分歧/仅延续/仅策略")
+
+
+class SectorFlowOutlookBundle(FrozenModel):
+    """延续 + 策略 + 对照打包结果。"""
+
+    continuation: SectorFlowOutlookSnapshot = Field(description="A 延续展望")
+    strategy: SectorFlowOutlookSnapshot = Field(description="B 策略展望")
+    compare_rows: tuple[SectorFlowOutlookCompareRow, ...] = Field(description="对照行")
+
+
 class SectorFlowSnapshot(FrozenModel):
     rows: tuple[SectorFlowRow, ...] = Field(description="全量板块行")
     inflow_rows: tuple[SectorFlowRow, ...] = Field(default=(), description="净流入 Top 板块")

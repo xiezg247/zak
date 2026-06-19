@@ -15,7 +15,6 @@
 | 涨停榜 `limit_up` | **已有** | 10cm 主池来源 |
 | 恐贪 + 北向环境 | **已有** T-02 | sentiment_gate、AI 择时 |
 | 情绪周期芯片 | **已有** T-04 | 顶栏阶段 + 建议仓位 |
-| 连板梯队条 | **已有** | stats_bar 下方 5板+…首板计数 |
 
 ---
 
@@ -26,7 +25,7 @@ Redis 全市场快照 + Tushare 补充
         │
         ├─► market_breadth ──► stats_bar（涨跌停、涨跌比）
         ├─► market_environment ──► 恐贪、北向
-        └─► limit_up 排行 ──► 涨停池 + `limit_ladder_strip` 梯队条（**已有**）
+        └─► limit_up 排行 ──► 涨停池（含连板列）
                 │
                 ▼
         emotion_cycle（T-03）
@@ -61,7 +60,7 @@ Redis 全市场快照 + Tushare 补充
 - 涨停 / 跌停家数（含 ST 可选过滤）
 - 两市成交额（**已有**：`< 1 万亿` 橙色提示，见 `stats_bar.py`）
 
-复杂连板梯队优先雷达 D-01；本页提供 stats_bar 下方 **连板梯队条**（**已有**）。
+连板梯队分析见雷达 D-01「发现·连板梯队」；本页涨停榜提供 `limit_times` 连板列。
 
 ---
 

@@ -260,15 +260,15 @@ class TaskSchedulerManager:
             "warm_market_summary": _JobMeta(
                 job_id="warm_market_summary",
                 name="市场摘要预热",
-                description="收盘后计算情绪周期与连板梯队并写入内存缓存，供 UI / 风控只读（避免启动阻塞）",
-                runner=lambda: warm_market_summary(include_ladder=True),
+                description="收盘后计算情绪周期并写入内存缓存，供 UI / 风控只读（避免启动阻塞）",
+                runner=lambda: warm_market_summary(enrich_factors=True),
                 config_attr="warm_market_summary",
                 schedule_builder=lambda cfg: CronTrigger(
                     day_of_week=cfg.cron_day_of_week,
                     hour=cfg.cron_hour,
                     minute=cfg.cron_minute,
                 ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在概念预拉之后；含连板统计）",
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在概念预拉之后）",
             ),
             "sync_watchlist_financials": _JobMeta(
                 job_id="sync_watchlist_financials",
@@ -380,7 +380,7 @@ class TaskSchedulerManager:
 
         result = collect_market_quotes()
         if result.success and not result.skipped:
-            warm = warm_market_summary(include_ladder=False)
+            warm = warm_market_summary(enrich_factors=False)
             if warm.message:
                 result = JobResult(
                     success=result.success,
@@ -399,7 +399,7 @@ class TaskSchedulerManager:
         result = prefetch_tushare_factors()
         if not result.success or result.skipped:
             return result
-        warm = warm_market_summary(include_ladder=False)
+        warm = warm_market_summary(enrich_factors=False)
         if warm.message:
             return JobResult(success=result.success, message=f"{result.message} · {warm.message}")
         return result

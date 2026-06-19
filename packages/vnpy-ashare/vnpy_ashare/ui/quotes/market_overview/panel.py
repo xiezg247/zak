@@ -14,7 +14,6 @@ from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData
 from vnpy_ashare.ui.quotes.market_overview.index_amount_popup import IndexAmountPopup
 from vnpy_ashare.ui.quotes.market_overview.index_amount_worker import IndexAmountLoadWorker
 from vnpy_ashare.ui.quotes.market_overview.index_card import IndexCardWidget
-from vnpy_ashare.ui.quotes.market_overview.limit_ladder_strip import LimitLadderStrip
 from vnpy_ashare.ui.quotes.market_overview.sector_card import SectorCardWidget
 from vnpy_ashare.ui.quotes.market_overview.stats_bar import MarketStatsBar
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -44,9 +43,6 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._stats_bar = MarketStatsBar(self)
         self._stats_bar.set_loading()
         root.addWidget(self._stats_bar)
-
-        self._limit_ladder_strip = LimitLadderStrip(self)
-        root.addWidget(self._limit_ladder_strip)
 
         toolbar_host = QtWidgets.QWidget(self)
         toolbar_host.setObjectName("MarketOverviewToolbar")
@@ -160,10 +156,6 @@ class MarketOverviewPanel(QtWidgets.QWidget):
             self._stats_bar.render_breadth(data.breadth, session_note=session_note)
         elif not hasattr(self, "_last_breadth"):
             self._stats_bar.set_empty()
-        self.apply_limit_ladder(data.limit_ladder_counts)
-
-    def apply_limit_ladder(self, counts: dict[str, int] | None) -> None:
-        self._limit_ladder_strip.apply_counts(counts)
 
     def apply_breadth(self, breadth: MarketBreadthSnapshot, *, session_note: str = "") -> None:
         self._last_breadth = breadth
