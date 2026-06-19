@@ -10,7 +10,7 @@ from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, Sector
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
-from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_l2_index_map
+from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_l2_index_map, fetch_sw_l2_member_count_map
 from vnpy_ashare.integrations.tushare.sector_moneyflow import (
     fetch_moneyflow_cnt_ths_with_fallback,
     fetch_moneyflow_ind_dc_with_fallback,
@@ -164,6 +164,9 @@ def rows_from_dc_moneyflow(
     top_each_side: int | None = _TOP_EACH_SIDE,
 ) -> list[SectorFlowRow]:
     """东财板块 API 行 → SectorFlowRow。"""
+    member_counts: dict[str, int] = {}
+    if sector_kind == "industry":
+        member_counts = fetch_sw_l2_member_count_map()
     result: list[SectorFlowRow] = []
     for row in rows:
         name = str(row.get("name") or "").strip()
@@ -173,6 +176,7 @@ def rows_from_dc_moneyflow(
         net_rate = float(row.get("net_amount_rate") or 0)
         net_yi = float(row.get("net_amount") or 0) / 1e8
         sector_id = str(row.get("ts_code") or name).strip()
+        stock_count = member_counts.get(name, 0) if sector_kind == "industry" else 0
         result.append(
             SectorFlowRow(
                 sector_id=sector_id,
@@ -180,7 +184,7 @@ def rows_from_dc_moneyflow(
                 strength=round(change_pct + net_rate, 2),
                 change_pct=round(change_pct, 2),
                 net_flow_yi=round(net_yi, 2),
-                stock_count=0,
+                stock_count=stock_count,
                 up_ratio=0.0,
                 flow_source=flow_source,
                 sector_kind=sector_kind,

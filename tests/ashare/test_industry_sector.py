@@ -88,14 +88,21 @@ class IndustrySectorUnifiedTests(unittest.TestCase):
                 "leader_stock": "江西铜业",
             }
         ]
-        with patch(
-            "vnpy_ashare.services.industry_sector.fetch_sw_l2_index_map",
-            return_value={"工业金属": "801050.SI"},
+        with (
+            patch(
+                "vnpy_ashare.services.industry_sector.fetch_sw_l2_index_map",
+                return_value={"工业金属": "801050.SI"},
+            ),
+            patch(
+                "vnpy_ashare.services.sector_flow.fetch_sw_l2_member_count_map",
+                return_value={"工业金属": 42},
+            ),
         ):
             result = build_sw_industry_rows_from_dc(dc_rows)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].sector_id, "801050.SI")
         self.assertEqual(result[0].leader_stock, "江西铜业")
+        self.assertEqual(result[0].stock_count, 42)
 
     def test_aggregate_uses_sw_index_code(self) -> None:
         rows = [

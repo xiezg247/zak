@@ -210,6 +210,24 @@ class SectorFlowOfficialRowsTests(unittest.TestCase):
         self.assertEqual(leader.leader_stock, "三六五网")
         self.assertEqual(leader.flow_source, "dc_industry")
 
+    def test_rows_from_dc_moneyflow_industry_member_count(self) -> None:
+        rows = [
+            {
+                "ts_code": "BK001",
+                "name": "工业金属",
+                "pct_change": 1.0,
+                "net_amount": 1_000_000_000.0,
+                "net_amount_rate": 1.0,
+                "leader_stock": "江西铜业",
+            }
+        ]
+        with mock.patch(
+            "vnpy_ashare.services.sector_flow.fetch_sw_l2_member_count_map",
+            return_value={"工业金属": 35},
+        ):
+            result = rows_from_dc_moneyflow(rows, sector_kind="industry", flow_source="dc_industry")
+        self.assertEqual(result[0].stock_count, 35)
+
     def test_rows_from_ths_concept_moneyflow(self) -> None:
         rows = [
             {

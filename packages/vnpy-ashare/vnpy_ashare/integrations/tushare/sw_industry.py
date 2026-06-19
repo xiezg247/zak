@@ -186,6 +186,22 @@ def build_sw_l2_board_definitions(
     return sorted(boards, key=lambda item: str(item["name"]))
 
 
+def fetch_sw_l2_member_count_map(*, force: bool = False) -> dict[str, int]:
+    """申万 L2 名 → 当前有效成分股数量。"""
+    members = get_sw_member_rows()
+    if not members:
+        sync_sw_industry_snapshot(force=force)
+        members = get_sw_member_rows() or []
+    counts: dict[str, int] = defaultdict(int)
+    for row in members:
+        if not _is_active_member(row):
+            continue
+        l2 = str(row.get("l2_name") or "").strip()
+        if l2:
+            counts[l2] += 1
+    return dict(counts)
+
+
 def fetch_sw_l2_index_map(*, force: bool = False) -> dict[str, str]:
     """申万 L2 名 → index_code。"""
     if not force:
