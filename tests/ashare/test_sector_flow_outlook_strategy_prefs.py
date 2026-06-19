@@ -37,6 +37,7 @@ class SectorFlowOutlookStrategyPrefsTests(unittest.TestCase):
 
     def test_fallback_to_radar_when_unset(self) -> None:
         with mock.patch("vnpy_ashare.quotes.radar.outlook_strategy_prefs.get_settings") as get_settings:
+
             class _Settings:
                 def value(self, _key: str, default: str = "") -> str:
                     return default

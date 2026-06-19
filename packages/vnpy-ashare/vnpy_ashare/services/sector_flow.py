@@ -31,11 +31,11 @@ from vnpy_ashare.screener.sector.sector_summary import attach_industry
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.industry_sector import build_sw_industry_rows_from_dc, overlay_dc_moneyflow_on_sw_rows
 from vnpy_ashare.services.sector_constituents import compute_divergence_rows, load_sector_leaders, resolve_concept_vt_symbols
-from vnpy_ashare.services.sector_flow_rotation import build_rotation_snapshot
 from vnpy_ashare.services.sector_flow_outlook import build_continuation_outlook_snapshot
 from vnpy_ashare.services.sector_flow_outlook_compare import build_outlook_compare_rows
 from vnpy_ashare.services.sector_flow_outlook_llm import attach_llm_outlook
 from vnpy_ashare.services.sector_flow_outlook_strategy import build_strategy_outlook
+from vnpy_ashare.services.sector_flow_rotation import build_rotation_snapshot
 from vnpy_ashare.storage.repositories.sector_flow_history import (
     _HISTORY_LIMIT,
     load_sector_flow_history,

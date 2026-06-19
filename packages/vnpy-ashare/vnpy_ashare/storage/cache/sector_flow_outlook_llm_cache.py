@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from pathlib import Path
 from typing import Any, cast
 
@@ -53,10 +52,7 @@ def _row_to_dict(row: SectorFlowOutlookRow) -> dict[str, Any]:
         "sector_name": sector.name,
         "headline_pattern": row.headline_pattern,
         "rationale": row.rationale,
-        "days": [
-            {"trade_date": day.trade_date, "bias": day.bias, "strength": day.strength}
-            for day in row.days
-        ],
+        "days": [{"trade_date": day.trade_date, "bias": day.bias, "strength": day.strength} for day in row.days],
     }
 
 

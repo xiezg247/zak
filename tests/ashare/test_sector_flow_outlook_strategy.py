@@ -98,7 +98,6 @@ class SectorFlowStrategyOutlookTests(unittest.TestCase):
         self.assertIn("扫描策略B", outlook.empty_hint)
         self.assertEqual(len(outlook.rows), 0)
 
-
     def test_strategy_outlook_cache_fresh_and_expired(self) -> None:
         from datetime import timedelta
 

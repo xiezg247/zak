@@ -44,9 +44,10 @@ def build_outlook_compare_rows(
     for sector_id in sector_ids:
         cont_row = cont_map.get(sector_id)
         strat_row = strat_map.get(sector_id)
-        sector = (cont_row or strat_row).sector if (cont_row or strat_row) else None
-        if sector is None:
+        ref_row = cont_row or strat_row
+        if ref_row is None:
             continue
+        sector = ref_row.sector
         rows.append(
             SectorFlowOutlookCompareRow(
                 sector=sector,

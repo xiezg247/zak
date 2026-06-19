@@ -13,7 +13,6 @@ from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookRow,
     SectorFlowOutlookSnapshot,
     SectorFlowRow,
-    SectorFlowSnapshot,
 )
 from vnpy_ashare.services.sector_flow_outlook_llm import (
     outlook_bundle_fingerprint,

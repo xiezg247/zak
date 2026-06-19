@@ -6,6 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookBundle,
+    SectorFlowOutlookRow,
     SectorFlowRotationSnapshot,
     SectorFlowRow,
     SectorFlowSnapshot,
@@ -219,7 +220,9 @@ class SectorFlowPanel(QtWidgets.QWidget):
         filter_row.setSpacing(8)
         filter_row.addLayout(_tab_group_layout(self._tab_industry_btn, self._tab_concept_btn))
         filter_row.addWidget(_toolbar_separator(toolbar_host))
-        filter_row.addLayout(_tab_group_layout(self._tab_inflow_btn, self._tab_outflow_btn, self._tab_divergence_btn, self._tab_rotation_btn, self._tab_outlook_btn))
+        filter_row.addLayout(
+            _tab_group_layout(self._tab_inflow_btn, self._tab_outflow_btn, self._tab_divergence_btn, self._tab_rotation_btn, self._tab_outlook_btn)
+        )
         filter_row.addStretch(1)
 
         toolbar = QtWidgets.QVBoxLayout(toolbar_host)
@@ -471,7 +474,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
                 parts.append(stamp)
         self._summary.setText(" · ".join(dict.fromkeys(parts)))
 
-    def _sector_scan_map(self, bundle: SectorFlowOutlookBundle) -> dict[str, object]:
+    def _sector_scan_map(self, bundle: SectorFlowOutlookBundle) -> dict[str, SectorFlowOutlookRow]:
         return {row.sector.sector_id: row for row in bundle.sector_scans}
 
     def _apply_outlook_filter(self) -> None:

@@ -305,15 +305,15 @@ def build_strategy_outlook(
     hold_symbols = {row.vt_symbol for row in hold_entry.rows} if hold_entry else set()
     label_by_symbol: dict[str, str] = {}
     if watch_entry:
-        for row in watch_entry.rows:
-            label_by_symbol[row.vt_symbol] = row.metric_label
+        for cache_row in watch_entry.rows:
+            label_by_symbol[cache_row.vt_symbol] = cache_row.metric_label
     if hold_entry:
-        for row in hold_entry.rows:
-            label_by_symbol.setdefault(row.vt_symbol, row.metric_label)
+        for cache_row in hold_entry.rows:
+            label_by_symbol.setdefault(cache_row.vt_symbol, cache_row.metric_label)
 
     sectors: dict[str, SectorFlowRow] = {}
-    for row in (*snapshot.inflow_rows, *snapshot.outflow_rows):
-        sectors[row.sector_id] = row
+    for sector_row in (*snapshot.inflow_rows, *snapshot.outflow_rows):
+        sectors[sector_row.sector_id] = sector_row
 
     outlook_rows: list[SectorFlowOutlookRow] = []
     if not cache_missing:

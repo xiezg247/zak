@@ -75,10 +75,7 @@ def _continuation_rationale(rotation_row: SectorFlowRotationRow) -> str:
     if rotation_row.rank_delta:
         direction = "升" if rotation_row.rank_delta > 0 else "降"
         rank_note = f"，15日排名{direction}{abs(rotation_row.rank_delta)}位"
-    return (
-        f"{pattern}，动量Δ{rotation_row.momentum_delta:+.1f}亿，"
-        f"15日累计{rotation_row.cumulative_net_yi:+.1f}亿{rank_note}"
-    )
+    return f"{pattern}，动量Δ{rotation_row.momentum_delta:+.1f}亿，15日累计{rotation_row.cumulative_net_yi:+.1f}亿{rank_note}"
 
 
 def build_continuation_outlook(

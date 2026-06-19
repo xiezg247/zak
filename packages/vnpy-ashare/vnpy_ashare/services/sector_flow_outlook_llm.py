@@ -118,9 +118,7 @@ def outlook_bundle_fingerprint(bundle: SectorFlowOutlookBundle, *, strategy_clas
         strat_bias = strat.days[0].bias if strat and strat.days else ""
         cont_strength = cont.days[0].strength if cont and cont.days else 0.0
         strat_strength = strat.days[0].strength if strat and strat.days else 0.0
-        parts.append(
-            f"{item.sector.sector_id}:{cont_bias}:{cont_strength:.2f}:{strat_bias}:{strat_strength:.2f}"
-        )
+        parts.append(f"{item.sector.sector_id}:{cont_bias}:{cont_strength:.2f}:{strat_bias}:{strat_strength:.2f}")
     digest = hashlib.sha256("|".join(parts).encode()).hexdigest()
     return digest[:24]
 
@@ -199,11 +197,7 @@ def build_llm_outlook_prompt(
         cont_summary = _day_summary(item.continuation, forward_dates)
         strat_summary = _day_summary(item.strategy, forward_dates)
         agreement = item.agreement or "—"
-        lines.append(
-            f"- {item.sector.name}（id={item.sector.sector_id}，对照={agreement}）"
-            f"\n  A延续：{cont_summary}"
-            f"\n  B策略：{strat_summary}"
-        )
+        lines.append(f"- {item.sector.name}（id={item.sector.sector_id}，对照={agreement}）\n  A延续：{cont_summary}\n  B策略：{strat_summary}")
 
     user_content = "\n".join(lines)
     system_content = (
@@ -223,11 +217,7 @@ def build_llm_outlook_prompt(
         {"role": "system", "content": system_content},
         {
             "role": "user",
-            "content": (
-                f"{user_content}\n\n"
-                f"forward_dates={json.dumps(list(forward_dates), ensure_ascii=False)}\n"
-                "请为上述全部行业输出 sectors 数组。"
-            ),
+            "content": (f"{user_content}\n\nforward_dates={json.dumps(list(forward_dates), ensure_ascii=False)}\n请为上述全部行业输出 sectors 数组。"),
         },
     ]
 

@@ -18,9 +18,7 @@ class FetchStockConceptsTests(unittest.TestCase):
         pro = MagicMock()
         mock_get_pro.return_value = pro
         mock_index_map.return_value = {"885800.TI": "消费电子概念"}
-        pro.ths_member.return_value = pd.DataFrame(
-            [{"ts_code": "885800.TI", "con_code": "600519.SH"}]
-        )
+        pro.ths_member.return_value = pd.DataFrame([{"ts_code": "885800.TI", "con_code": "600519.SH"}])
 
         rows = fetch_stock_concepts("600519.SH")
         self.assertEqual(len(rows), 1)
@@ -35,9 +33,7 @@ class FetchStockConceptsTests(unittest.TestCase):
         mock_get_pro.return_value = pro
         mock_index_map.return_value = {}
         pro.ths_member.return_value = pd.DataFrame()
-        pro.concept_detail.return_value = pd.DataFrame(
-            [{"id": "TS2", "concept_name": "5G", "ts_code": "600519.SH", "name": "贵州茅台"}]
-        )
+        pro.concept_detail.return_value = pd.DataFrame([{"id": "TS2", "concept_name": "5G", "ts_code": "600519.SH", "name": "贵州茅台"}])
 
         rows = fetch_stock_concepts("600519.SH")
         self.assertEqual(len(rows), 1)

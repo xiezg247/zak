@@ -537,16 +537,12 @@ class SectorFlowController(QtCore.QObject):
             f"策略口径：{strategy_label}（成分股直扫，非雷达全球展望池）。",
         ]
         if continuation is not None:
-            day_tags = " / ".join(
-                f"T+{index + 1}{day.bias}({day.strength:.2f})" for index, day in enumerate(continuation.days)
-            )
+            day_tags = " / ".join(f"T+{index + 1}{day.bias}({day.strength:.2f})" for index, day in enumerate(continuation.days))
             lines.append(f"资金延续：{continuation.headline_pattern} {day_tags} — {continuation.rationale}")
         else:
             lines.append("资金延续：暂无加载数据")
         if scan_row is not None:
-            day_tags = " / ".join(
-                f"T+{index + 1}{day.bias}({day.strength:.2f})" for index, day in enumerate(scan_row.days)
-            )
+            day_tags = " / ".join(f"T+{index + 1}{day.bias}({day.strength:.2f})" for index, day in enumerate(scan_row.days))
             resonance = classify_sector_resonance(continuation, scan_row)
             lines.append(f"成分策略：{scan_row.headline_pattern} {day_tags} — {scan_row.rationale}")
             lines.append(f"延续与策略 T+1 共振：{resonance}")
