@@ -22,7 +22,7 @@
 |------|------|
 | [策略回测](./backtest-ux.md) | 联动、批量回测、摘要落库 |
 | [自选策略信号区](./watchlist-signals.md) | 独立信号面板、缓存、联动与限额 |
-| [自选分组](./watchlist-groups.md) | Tab 分组、观察组、与自选池关系 |
+| [自选分组](./watchlist-groups.md) | Tab 分组、与自选池/信号区关系 |
 | [自选持仓区](./watchlist-positions.md) | 记账、T+1、退出信号、异动 |
 | [自选多维看盘](./watchlist-multiview.md) | 表格/多维切换、卡片网格、迷你图与 AI 摘要 |
 | [雷达选龙头](./radar-leader-screening.md) | 连板梯队、龙头评分、龙头选股 |

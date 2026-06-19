@@ -104,12 +104,11 @@ WatchlistHost              # 自选页：信号/持仓/多维 controller 与 pan
 
 ## 5. 上下文条交互
 
-`WatchlistPoolContextBar` 展示：`自选 · 观察组 · 信号 · 持仓` 用量。
+`WatchlistPoolContextBar` 展示：`自选 · 信号 · 持仓` 用量。
 
 | 点击段 | 行为 |
 |--------|------|
 | 自选 | 分组 Tab → 全量 |
-| 观察组 | 分组 Tab → 短线观察组 |
 | 信号 | 预设 → 盘中 |
 | 持仓 | **持仓专注**（主表最小化） |
 

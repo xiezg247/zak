@@ -32,11 +32,6 @@ class ScreenerResultActionBar(QtWidgets.QWidget):
         self.add_watchlist_btn.setObjectName("SecondaryButton")
         layout.addWidget(self.add_watchlist_btn)
 
-        self.add_observation_group_btn = QtWidgets.QPushButton("加入观察组")
-        self.add_observation_group_btn.setObjectName("SecondaryButton")
-        self.add_observation_group_btn.setToolTip("加入自选并写入「短线观察」分组")
-        layout.addWidget(self.add_observation_group_btn)
-
         self.download_btn = QtWidgets.QPushButton("下载日K")
         self.download_btn.setObjectName("SecondaryButton")
         layout.addWidget(self.download_btn)

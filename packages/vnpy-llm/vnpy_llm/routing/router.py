@@ -402,7 +402,7 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
         lines.append("- 优先引用终端已注入摘要与 Market 预取块（情绪周期 / 风控闸 / 恐贪）")
         lines.append("- 预取缺失时须调用 get_emotion_cycle、check_risk_gate、get_ashare_fear_greed_index")
         lines.append("- 退潮/冰点/熔断时明确不建议短线新开仓；引用 inputs 涨跌停数，禁止编造")
-        lines.append("- 龙头/主线环境可辅以 run_leader_screen；观察组用 get_short_term_watchlist")
+        lines.append("- 龙头/主线环境可辅以 run_leader_screen；盘中上下文用 get_short_term_watchlist")
         lines.append("- 次日计划草案用 propose_trading_plan（不自动激活）")
 
     if analysis.screening and route.category == "screening":

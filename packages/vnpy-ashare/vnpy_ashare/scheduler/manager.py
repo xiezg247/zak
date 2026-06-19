@@ -312,7 +312,7 @@ class TaskSchedulerManager:
             "fill_focus_pool_minute": _JobMeta(
                 job_id="fill_focus_pool_minute",
                 name="关注池 1m K 补全",
-                description="为「短线观察」分组成员与持仓记账标的补全/增量 1 分钟 K 线",
+                description="为信号区与持仓记账标的补全/增量 1 分钟 K 线",
                 runner=batch_fill_focus_pool_minute_job,
                 config_attr="fill_focus_pool_minute",
                 schedule_builder=lambda cfg: CronTrigger(

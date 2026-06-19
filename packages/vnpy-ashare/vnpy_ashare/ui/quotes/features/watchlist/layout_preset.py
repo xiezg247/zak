@@ -23,9 +23,7 @@ def _apply_group_tab(page: WatchlistHost, preset_id: LayoutPresetId) -> None:
     groups = page._watchlist_groups
     if groups is None:
         return
-    if spec.select_observation_group:
-        groups.select_observation_group_tab()
-    elif spec.select_all_group:
+    if spec.select_all_group:
         groups.select_all_tab()
 
 

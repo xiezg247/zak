@@ -5,7 +5,7 @@ from __future__ import annotations
 _TOOL_LABELS: dict[str, str] = {
     "get_quote_context": "读取当前上下文",
     "get_watchlist": "查询自选池",
-    "get_short_term_watchlist": "查询短线观察组与共振",
+    "get_short_term_watchlist": "查询信号区与共振",
     "get_bars_summary": "查询K线概览",
     "get_bars_data": "加载K线数据",
     "diagnose_stock": "综合诊断",

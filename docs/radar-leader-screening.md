@@ -16,7 +16,7 @@
 |------|------|
 | **识别** | 在全市场 / 主线板块内，按可量化规则给出龙一、龙二、跟风梯队 |
 | **展示** | 独立卡片 + 板块内分层列表；行内展示连板、封板质量、板块地位 |
-| **选股** | 一键运行「龙头选股」、写入选股历史、跳转选股 Hub、批量入观察组 |
+| **选股** | 一键运行「龙头选股」、写入选股历史、跳转选股 Hub、批量加自选 |
 | **联动** | 与共振、板块资金、市场涨停榜、情绪周期共用同一套龙头评分 |
 
 ### 1.2 用户场景
@@ -301,7 +301,7 @@ RadarCardSpec("leader_pick", "选股·龙头", "screen", top_n=12)
 | 卡片 | 新增按钮 | 行为 |
 |------|----------|------|
 | `leader_pick` | **龙头选股** | 当前卡 Top N → `ScreenerRunResult` |
-| `leader_pick` | **加观察组** | 写入 watchlist_groups「短线观察」 |
+| `leader_pick` | **全部加自选** | 卡片行批量写入自选池 |
 | `discovery_limit_ladder` | 按层加自选 | 选中 Tab 内全部 |
 | `sector_theme` | 板块资金 | 已有；预选当前卡 `sector_names` |
 
@@ -310,7 +310,7 @@ RadarCardSpec("leader_pick", "选股·龙头", "screen", top_n=12)
 | 现有 | 新增 |
 |------|------|
 | 条件选股（雷达共振） | **龙头选股**按钮 |
-| 全部加自选 | **龙一加观察组**（仅 `leader_tier=dragon_1`） |
+| 全部加自选 | **龙一加自选**（仅 `leader_tier=dragon_1`） |
 | 权重配置 | 预设「短线龙头」：提高 `leader_pick`、`discovery_limit_ladder` 权重 |
 
 **共振加权**（`radar_resonance_prefs.py`）新增项：
@@ -502,7 +502,7 @@ ui/screener/workers/              # LeaderScreenWorker
 ### Phase 3 — 联动与 gate
 
 - [x] 情绪周期 gate（`sentiment_gate` / `emotion_modulation`）  
-- [x] watchlist_groups「短线观察」一键写入  
+- [x] 雷达/共振「加自选」一键写入自选池（D-04）  
 - [x] AI prompt + Skill 工具（`run_leader_screen` 等）  
 - [x] 顶栏「选龙头」快捷导航（`radar_leader_button` → `focus_card` + Hub）  
 

@@ -15,7 +15,6 @@ class LayoutPresetSpec:
 
     signal_expanded: bool
     position_expanded: bool
-    select_observation_group: bool
     select_all_group: bool
     force_table_view: bool
     show_register_toolbar: bool
@@ -28,8 +27,7 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
     "intraday": LayoutPresetSpec(
         signal_expanded=True,
         position_expanded=False,
-        select_observation_group=True,
-        select_all_group=False,
+        select_all_group=True,
         force_table_view=True,
         show_register_toolbar=False,
         show_add_signal_toolbar=True,
@@ -37,7 +35,6 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
     "register": LayoutPresetSpec(
         signal_expanded=True,
         position_expanded=True,
-        select_observation_group=False,
         select_all_group=False,
         force_table_view=False,
         show_register_toolbar=True,
@@ -46,7 +43,6 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
     "review": LayoutPresetSpec(
         signal_expanded=False,
         position_expanded=True,
-        select_observation_group=False,
         select_all_group=False,
         force_table_view=False,
         show_register_toolbar=True,

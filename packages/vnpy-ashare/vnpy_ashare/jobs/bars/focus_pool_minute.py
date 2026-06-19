@@ -254,7 +254,7 @@ def batch_fill_focus_pool_minute_job(
     *,
     vt_symbols: tuple[str, ...] | None = None,
 ) -> JobResult:
-    """定时/CLI：为短线观察组 + 持仓补全 1m K。"""
+    """定时/CLI：为信号区 + 持仓补全 1m K。"""
     try:
         get_tushare_pro()
     except TushareNotConfiguredError as ex:

@@ -5,22 +5,18 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.storage.repositories.positions import position_item_count
-from vnpy_ashare.ui.quotes.features.watchlist.pool_context_summary import (
-    SHORT_TERM_OBSERVATION_MAX,
-    format_pool_context_summary,
-)
+from vnpy_ashare.ui.quotes.features.watchlist.pool_context_summary import format_pool_context_summary
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 __all__ = [
-    "SHORT_TERM_OBSERVATION_MAX",
     "WatchlistPoolContextBar",
     "format_pool_context_summary",
 ]
 
 
 class WatchlistPoolContextBar(QtWidgets.QWidget):
-    """主表上方一行：四层池子用量摘要，点击可聚焦对应区域。"""
+    """主表上方一行：三层池用量摘要，点击可聚焦对应区域。"""
 
     def __init__(self, page: WatchlistHost, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -36,8 +32,8 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         self._label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         self._label.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         self._label.setToolTip(
-            "四层池：自选（总名单）→ 观察组（计划候选）→ 信号（当日监控）→ 持仓（已登记）。"
-            "点击各段可切换视图：持仓段进入持仓专注（主表最小化）；右键表行可回测、排序、下载与 AI 分析。"
+            "三层池：自选（总名单）→ 信号（当日监控）→ 持仓（已登记）。"
+            "点击各段可切换视图；右键表行可回测、排序、下载与 AI 分析。"
         )
         layout.addWidget(self._label, stretch=1)
 
@@ -47,13 +43,11 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
     def refresh(self) -> None:
         page = self._page
         pool_count = len(page.watchlist_pool_stocks or page.all_stocks)
-        observation_count = self._observation_count()
         signal_panel = getattr(page, "signal_panel", None)
         signal_count = len(signal_panel.symbols) if signal_panel is not None else 0
         position_count = position_item_count()
         text = format_pool_context_summary(
             pool_count=pool_count,
-            observation_count=observation_count,
             signal_count=signal_count,
             position_count=position_count,
         )
@@ -64,21 +58,10 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         self._segments = self._build_segments(text)
         self._label.setText(text)
 
-    def _observation_count(self) -> int:
-        from vnpy_ashare.services.watchlist_short_term import find_short_term_observation_group_id
-
-        service = self._page._get_watchlist_service()
-        if service is None:
-            return 0
-        group_id = find_short_term_observation_group_id(service)
-        if group_id is None:
-            return 0
-        return len(service.group_member_keys(group_id))
-
     @staticmethod
     def _build_segments(text: str) -> list[tuple[str, str]]:
         parts = [part.strip() for part in text.split("·")]
-        keys = ("pool", "observation", "signal", "position")
+        keys = ("pool", "signal", "position")
         return list(zip(keys, parts, strict=True))
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:  # noqa: N802
@@ -109,11 +92,6 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
             groups = page._watchlist_groups
             if groups is not None:
                 groups.select_all_tab()
-            return
-        if key == "observation":
-            groups = page._watchlist_groups
-            if groups is not None:
-                groups.select_observation_group_tab()
             return
         if key == "signal":
             if feature is not None:

@@ -44,7 +44,7 @@ JOB_CATALOG: dict[str, tuple[str, str]] = {
     "sync_watchlist_financials": ("同步自选财报", "增量拉取自选池三表与财务指标到本地"),
     "sync_disclosure_calendar": ("同步披露计划", "拉取自选池财报预约披露日期"),
     "batch_fill_stale": ("补全本地日 K", "为本地已下载列表中过期的日 K 增量补全"),
-    "fill_focus_pool_minute": ("关注池 1m K 补全", "为短线观察组 + 持仓补全/增量 1 分钟 K 线"),
+    "fill_focus_pool_minute": ("关注池 1m K 补全", "为信号区 + 持仓补全/增量 1 分钟 K 线"),
     "screen_intraday": ("盘中自动选股", "交易时段多维度选股，结果写入选股历史"),
     "screen_post_close": ("盘后自动选股", "收盘后多维度选股，结果写入选股历史"),
     "scan_horizon_outlook": ("雷达展望扫描", "全市场扫描未来·关注/可持并写入本地缓存"),

@@ -1,14 +1,13 @@
-"""短线观察组 + 持仓：关注池标的集合。"""
+"""信号区 + 持仓：关注池标的集合。"""
 
 from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
-from vnpy_ashare.services.watchlist_short_term import SHORT_TERM_OBSERVATION_GROUP_NAME
 from vnpy_ashare.storage.repositories.positions import load_position_rows
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
-from vnpy_ashare.storage.repositories.watchlist_groups import load_watchlist_group_member_keys, load_watchlist_groups
 
 __all__ = [
     "load_focus_pool_stock_items",
@@ -32,21 +31,20 @@ def _item_from_key(symbol: str, exchange_name: str, *, names: dict[tuple[str, st
 
 
 def load_focus_pool_stock_items() -> list[StockItem]:
-    """「短线观察」分组成员 ∪ 持仓记账标的（去重，保序）。"""
+    """信号区名单 ∪ 持仓记账标的（去重，保序）。"""
     names = _watchlist_name_map()
     ordered_keys: list[tuple[str, str]] = []
     seen: set[tuple[str, str]] = set()
 
-    for group in load_watchlist_groups():
-        if group.name != SHORT_TERM_OBSERVATION_GROUP_NAME:
+    for vt_symbol in load_signal_panel_symbols():
+        parsed = parse_stock_symbol(vt_symbol)
+        if parsed is None:
             continue
-        for symbol, exchange_name in sorted(load_watchlist_group_member_keys(group.id)):
-            key = (symbol, exchange_name)
-            if key in seen:
-                continue
-            seen.add(key)
-            ordered_keys.append(key)
-        break
+        key = (parsed.symbol, parsed.exchange.name)
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered_keys.append(key)
 
     for row in load_position_rows():
         symbol = str(row.get("symbol") or "").strip()

@@ -40,8 +40,7 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.services.watchlist_short_term import (
-    SHORT_TERM_OBSERVATION_GROUP_NAME,
-    add_rows_to_short_term_observation_group,
+    add_rows_to_watchlist_pool,
     collect_dragon_1_rows,
 )
 from vnpy_ashare.trading.journal.propose import _next_trade_date
@@ -93,7 +92,6 @@ class RadarController(QtCore.QObject):
         board.row_activated.connect(self._on_row_activated)
         board.add_watchlist_requested.connect(self._on_add_watchlist)
         board.batch_add_watchlist_requested.connect(self._on_batch_add_watchlist)
-        board.add_observation_group_requested.connect(self._on_add_observation_group)
         board.stock_analysis_requested.connect(self._on_stock_analysis)
         board.view_run_requested.connect(self._on_view_run)
         board.sector_flow_requested.connect(self._on_sector_flow)
@@ -112,7 +110,7 @@ class RadarController(QtCore.QObject):
             panel.row_activated.connect(self._on_row_activated)
             panel.add_watchlist_requested.connect(self._on_add_watchlist)
             panel.batch_add_watchlist_requested.connect(self._on_resonance_batch_add_watchlist)
-            panel.add_dragon_observation_group_requested.connect(self._on_resonance_dragon_observation_group)
+            panel.add_dragon_watchlist_requested.connect(self._on_resonance_dragon_watchlist)
             panel.stock_analysis_requested.connect(self._on_stock_analysis)
             panel.ai_resonance_requested.connect(self.request_resonance_ai_summary)
             panel.propose_trading_plan_requested.connect(self._on_propose_trading_plan)
@@ -614,35 +612,19 @@ class RadarController(QtCore.QObject):
             message += f"，跳过 {skipped} 只"
         page_notify(self._page, message)
 
-    def _notify_observation_group_result(self, result) -> None:
-        if result.group_added == 0 and result.watchlist_added == 0:
+    def _notify_watchlist_pool_result(self, result) -> None:
+        if result.watchlist_added == 0:
             if result.skipped:
-                page_notify(self._page, f"标的已在「{SHORT_TERM_OBSERVATION_GROUP_NAME}」或无法加入")
+                page_notify(self._page, "标的已在自选池或无法加入")
             else:
-                page_notify(self._page, "暂无可加入观察组的标的", level="warning")
+                page_notify(self._page, "暂无可加入自选的标的", level="warning")
             return
-        parts = [f"已写入「{SHORT_TERM_OBSERVATION_GROUP_NAME}」{result.group_added} 只"]
-        if result.watchlist_added:
-            parts.append(f"新入自选 {result.watchlist_added} 只")
-        if result.group_created:
-            parts.append("已创建分组")
+        parts = [f"已加入自选 {result.watchlist_added} 只"]
         if result.skipped:
             parts.append(f"跳过 {result.skipped} 只")
         page_notify(self._page, " · ".join(parts))
 
-    def _on_add_observation_group(self, card_id: str) -> None:
-        service = get_watchlist_service(self._page._get_main_engine())
-        if service is None:
-            page_notify(self._page, "自选服务未就绪", level="warning")
-            return
-        data = self._last_payload.get(card_id)
-        if data is None or not data.rows:
-            page_notify(self._page, "该卡片暂无可加入标的", level="warning")
-            return
-        result = add_rows_to_short_term_observation_group(service, data.rows)
-        self._notify_observation_group_result(result)
-
-    def _on_resonance_dragon_observation_group(self) -> None:
+    def _on_resonance_dragon_watchlist(self) -> None:
         service = get_watchlist_service(self._page._get_main_engine())
         if service is None:
             page_notify(self._page, "自选服务未就绪", level="warning")
@@ -651,8 +633,8 @@ class RadarController(QtCore.QObject):
         if not rows:
             page_notify(self._page, "暂无龙一标的", level="warning")
             return
-        result = add_rows_to_short_term_observation_group(service, rows)
-        self._notify_observation_group_result(result)
+        result = add_rows_to_watchlist_pool(service, rows)
+        self._notify_watchlist_pool_result(result)
 
     def _on_resonance_batch_add_watchlist(self) -> None:
         panel = self._resonance_panel

@@ -1,4 +1,4 @@
-"""短线观察分组写入测试。"""
+"""短线工作流：自选池批量写入与 AI 快照测试。"""
 
 from __future__ import annotations
 
@@ -11,14 +11,12 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
 from vnpy_ashare.services.watchlist_short_term import (
-    SHORT_TERM_OBSERVATION_GROUP_NAME,
-    add_rows_to_short_term_observation_group,
+    add_rows_to_watchlist_pool,
+    add_screener_rows_to_watchlist_pool,
     collect_dragon_1_rows,
-    ensure_short_term_observation_group,
 )
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
-from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
 
 
 def _row(vt_symbol: str, *, tier: str = "") -> RadarRow:
@@ -39,25 +37,19 @@ def _row(vt_symbol: str, *, tier: str = "") -> RadarRow:
 
 class _WatchlistServiceStub:
     def get_items(self):
-        return [{"symbol": symbol, "exchange": exchange.value, "name": name} for symbol, exchange, name in watchlist_repo.load_watchlist_rows()]
+        return [
+            {"symbol": symbol, "exchange": exchange.value, "name": name}
+            for symbol, exchange, name in watchlist_repo.load_watchlist_rows()
+        ]
 
     def list_groups(self):
-        return groups_repo.load_watchlist_groups()
-
-    def create_group(self, name: str):
-        return groups_repo.create_watchlist_group(name)
+        return []
 
     def add(self, symbol: str, exchange: Exchange, name: str = "") -> bool:
         return watchlist_repo.add_watchlist_item(symbol, exchange, name)
 
     def add_failure_reason(self, symbol: str, exchange: Exchange):
         return watchlist_repo.watchlist_add_failure_reason(symbol, exchange)
-
-    def add_to_group(self, group_id: str, symbol: str, exchange: Exchange) -> bool:
-        return groups_repo.add_watchlist_group_member(group_id, symbol, exchange)
-
-    def group_member_keys(self, group_id: str):
-        return groups_repo.load_watchlist_group_member_keys(group_id)
 
 
 class TestShortTermWatchlist(unittest.TestCase):
@@ -73,27 +65,18 @@ class TestShortTermWatchlist(unittest.TestCase):
         self._patcher.stop()
         self.db_path.unlink(missing_ok=True)
 
-    def test_ensure_creates_observation_group(self) -> None:
-        group_id, created = ensure_short_term_observation_group(self.service)
-        self.assertIsNotNone(group_id)
-        self.assertTrue(created)
-        names = [group.name for group in self.service.list_groups()]
-        self.assertIn(SHORT_TERM_OBSERVATION_GROUP_NAME, names)
-
-        group_id_again, created_again = ensure_short_term_observation_group(self.service)
-        self.assertEqual(group_id, group_id_again)
-        self.assertFalse(created_again)
-
-    def test_add_rows_to_observation_group(self) -> None:
+    def test_add_rows_to_watchlist_pool(self) -> None:
         rows = (_row("600519.SSE"), _row("000001.SZSE"))
-        result = add_rows_to_short_term_observation_group(self.service, rows)
+        result = add_rows_to_watchlist_pool(self.service, rows)
         self.assertEqual(result.watchlist_added, 2)
-        self.assertEqual(result.group_added, 2)
-        self.assertTrue(result.group_created)
+        self.assertEqual(result.skipped, 0)
         self.assertTrue(watchlist_repo.watchlist_contains("600519", Exchange.SSE))
 
-        group_id = groups_repo.load_watchlist_groups()[0].id
-        self.assertIn(("600519", Exchange.SSE.name), groups_repo.load_watchlist_group_member_keys(group_id))
+    def test_add_screener_rows_to_watchlist_pool(self) -> None:
+        rows = [{"vt_symbol": "600519.SSE", "name": "贵州茅台"}]
+        result = add_screener_rows_to_watchlist_pool(self.service, rows)
+        self.assertEqual(result.watchlist_added, 1)
+        self.assertTrue(watchlist_repo.watchlist_contains("600519", Exchange.SSE))
 
     def test_collect_dragon_1_rows(self) -> None:
         payload = {
@@ -114,13 +97,13 @@ class TestShortTermWatchlist(unittest.TestCase):
         self.assertEqual(dragons[0].vt_symbol, "600519.SSE")
 
     def test_build_short_term_watchlist_snapshot(self) -> None:
+        from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_symbols
         from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
         from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
         from vnpy_ashare.services.watchlist_short_term import build_short_term_watchlist_snapshot
 
         watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台")
-        result = add_rows_to_short_term_observation_group(self.service, (_row("600519.SSE"),))
-        self.assertEqual(result.group_added, 1)
+        save_signal_panel_symbols(["600519.SSE"])
 
         set_radar_resonance_entries(
             (
@@ -137,6 +120,6 @@ class TestShortTermWatchlist(unittest.TestCase):
             )
         )
         snapshot = build_short_term_watchlist_snapshot(self.service, resonance_top_n=3)
-        self.assertEqual(snapshot["observation_count"], 1)
+        self.assertEqual(snapshot["signal_panel_count"], 1)
         self.assertEqual(len(snapshot["resonance_symbols"]), 1)
         self.assertEqual(snapshot["resonance_symbols"][0]["vt_symbol"], "000001.SZSE")

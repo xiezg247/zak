@@ -20,7 +20,7 @@ from vnpy_ashare.storage.repositories.trading_plans import (
 from vnpy_ashare.trading.journal.propose import (
     _next_trade_date,
     build_trading_plan_draft,
-    sync_plan_to_observation_group,
+    sync_plan_to_watchlist_pool,
 )
 
 
@@ -85,7 +85,7 @@ class TradingPlanDialog(QtWidgets.QDialog):
         self._draft_button = QtWidgets.QPushButton("生成草案", self)
         self._save_button = QtWidgets.QPushButton("保存", self)
         self._activate_button = QtWidgets.QPushButton("激活", self)
-        self._sync_button = QtWidgets.QPushButton("同步观察组", self)
+        self._sync_button = QtWidgets.QPushButton("同步自选", self)
         close_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Close, parent=self)
         buttons.addWidget(self._draft_button)
         buttons.addWidget(self._save_button)
@@ -190,9 +190,9 @@ class TradingPlanDialog(QtWidgets.QDialog):
             service = self._page._get_watchlist_service()
             added = 0
             if service is not None:
-                added = sync_plan_to_observation_group(self._plan_id, service)
+                added = sync_plan_to_watchlist_pool(self._plan_id, service)
             if added:
-                self._status_label.setText(f"已激活并同步观察组（新增 {added} 只）")
+                self._status_label.setText(f"已激活并同步自选（新增 {added} 只）")
             else:
                 self._status_label.setText("已激活（登记时将校验计划内）")
             groups = getattr(self._page, "_watchlist_groups", None)
@@ -206,5 +206,5 @@ class TradingPlanDialog(QtWidgets.QDialog):
         service = self._page._get_watchlist_service()
         if service is None:
             return
-        added = sync_plan_to_observation_group(self._plan_id, service)
-        self._status_label.setText(f"已同步观察组（新增 {added} 只）")
+        added = sync_plan_to_watchlist_pool(self._plan_id, service)
+        self._status_label.setText(f"已同步自选（新增 {added} 只）")

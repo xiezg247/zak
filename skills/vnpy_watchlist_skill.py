@@ -57,7 +57,7 @@ class VnpyWatchlistSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="get_short_term_watchlist",
-                description="获取短线观察组成员与雷达共振 Top N（次日计划 / 盘中短线上下文）",
+                description="获取信号区名单、激活交易计划与雷达共振 Top N（次日计划 / 盘中短线上下文）",
                 parameters={
                     "type": "object",
                     "properties": {

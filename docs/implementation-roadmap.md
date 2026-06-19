@@ -53,7 +53,7 @@
 | D-01 | `discovery_limit_ladder` 连板梯队 | **已有** | 2 | [radar-page.md](./radar-page.md) |
 | D-02 | `discovery_first_board` 首板人气 | **已有** | 2 | 同上 |
 | D-03 | 共振权重「短线模式」 | **已有** | 1 | [radar-leader-screening.md](./radar-leader-screening.md) |
-| D-04 | 共振 → 短线观察组 | **已有** | 1 | [watchlist-groups.md](./watchlist-groups.md) |
+| D-04 | 共振 → 自选池 | **已有** | 1 | [watchlist-groups.md](./watchlist-groups.md) |
 | — | 现有 10 卡 + 共振总览 | **已有** | 0 | [radar-page.md](./radar-page.md) |
 
 ### 4.2 龙头专项（G-）
@@ -167,7 +167,7 @@ Phase 1 ✅
 ├── G-04 → G-02 → G-05   龙头评分 + Hub 入口
 ├── R-01 + 激进硬过滤
 ├── SP-01 → SP-02        Profile 基础
-├── P-06                  观察组 Tab
+├── P-06                  自选分组 Tab
 └── A-01, A-07           AI 择时 + 龙头
 
 Phase 2 ✅
@@ -232,11 +232,10 @@ Phase 5 ✅
 | P0 | 阶段边界 hysteresis | **已有** | `emotion_cycle_hysteresis` + 设置「阶段迟滞」 |
 | P0 | 监管异动 Tushare 官方偏离度 | **已有** | `stk_shock` / `stk_high_shock` + 本地合并 |
 | P0 | 子文档与 roadmap 状态对齐 | **已有** | 2026-06 首轮同步完成 |
-| P1 | 新用户 ultra_short onboarding | **已有** | 自选页首次引导 + 观察/龙头分组 |
+| P1 | 新用户 ultra_short onboarding | **已有** | 自选页首次引导 + 盘中布局预设 |
 | P1 | 选股 Hub「过滤至短线主池」 | **已有** | 结果条「短线主池」+ `ultra_short_pool_filter` |
 | P1 | 盘后 AI「龙头结构 + 明日观察」 | **已有** | 雷达共振侧栏「盘后解读」+ `build_eod_leader_prompt` |
-| P1 | 持仓「仅观察组」筛选 | **已有** | 持仓统计条「观察组 N」可点筛选 |
-| P1 | 观察组+持仓 1m K 自动补全 | **已有** | Job `fill_focus_pool_minute` + 分 K 回测预检 |
+| P1 | 信号区+持仓 1m K 自动补全 | **已有** | Job `fill_focus_pool_minute`（关注池 = 信号区 ∪ 持仓）+ 分 K 回测预检 |
 | P2 | 微信 / 邮件通知 | **不做** | 产品范围外；飞书已覆盖主通道，见 [notifications §1.3](./notifications.md#13-与-vnpy-内置通道关系) |
 | P2 | 券商持仓 `source=gateway` | **不做** | 维持手工记账；`PositionRecord.source` 字段保留兼容 |
 | — | Profile 切换同步硬过滤模板 | **已有** | `apply_strategy_profile` → 保守/均衡/激进 |

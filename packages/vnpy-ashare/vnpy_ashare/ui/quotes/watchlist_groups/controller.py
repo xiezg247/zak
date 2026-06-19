@@ -6,7 +6,7 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.symbols.stock import StockItem
-from vnpy_ashare.services.watchlist_short_term import find_short_term_observation_group_id
+from vnpy_ashare.services.watchlist import WatchlistService
 from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord, load_watchlist_group_member_keys
 from vnpy_ashare.trading.risk.gate import read_total_capital
 from vnpy_ashare.trading.risk.plan_position import format_group_position_tab_label, summarize_group_position
@@ -369,14 +369,6 @@ class WatchlistGroupController(QtCore.QObject):
 
     def select_all_tab(self) -> None:
         self.select_group_tab(None)
-
-    def select_observation_group_tab(self) -> None:
-        service = self._service()
-        if service is None:
-            return
-        group_id = find_short_term_observation_group_id(service)
-        if group_id is not None:
-            self.select_group_tab(group_id)
 
     def _sync_move_buttons(self) -> None:
         page = self._page

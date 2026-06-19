@@ -10,18 +10,13 @@ from vnpy.trader.constant import Exchange
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
-from vnpy_ashare.services.watchlist_short_term import (
-    SHORT_TERM_OBSERVATION_GROUP_NAME,
-    build_short_term_watchlist_snapshot,
-    ensure_short_term_observation_group,
-)
+from vnpy_ashare.services.watchlist_short_term import build_short_term_watchlist_snapshot
 from vnpy_ashare.storage.repositories.trading_plans import (
     activate_trading_plan,
     create_trading_plan,
     load_trading_plan,
     replace_trading_plan_symbols,
 )
-from vnpy_ashare.storage.repositories.watchlist_groups import load_watchlist_groups
 
 
 def _next_trade_date(from_day: date | None = None) -> str:
@@ -34,7 +29,7 @@ def build_trading_plan_draft(
     watchlist_service=None,
     trade_date: str | None = None,
 ) -> dict[str, Any]:
-    """基于情绪周期 + 短线观察组生成计划草案（不写入 DB）。"""
+    """基于情绪周期 + 信号区/共振生成计划草案（不写入 DB）。"""
     emotion = load_emotion_cycle_snapshot(fetch_if_missing=True)
     target_date = trade_date or _next_trade_date()
     max_position_pct = 0.0
@@ -46,7 +41,7 @@ def build_trading_plan_draft(
     symbols: list[dict[str, str]] = []
     if watchlist_service is not None:
         snapshot = build_short_term_watchlist_snapshot(watchlist_service, resonance_top_n=5)
-        for item in snapshot.get("observation_symbols", []):
+        for item in snapshot.get("signal_panel_symbols", []):
             if isinstance(item, dict):
                 symbols.append(
                     {
@@ -79,20 +74,12 @@ def build_trading_plan_draft(
             if len(symbols) >= 5:
                 break
 
-    groups = load_watchlist_groups()
-    observation_group_id = next(
-        (group.id for group in groups if group.name == SHORT_TERM_OBSERVATION_GROUP_NAME),
-        None,
-    )
-
     return {
         "trade_date": target_date,
         "emotion_expected": emotion_expected,
         "emotion_stage_label": emotion.stage_label if emotion is not None else "",
         "max_position_pct": max_position_pct,
         "watchlist": symbols[:5],
-        "observation_group_name": SHORT_TERM_OBSERVATION_GROUP_NAME,
-        "observation_group_id": observation_group_id,
         "notes": "AI/系统草案：请确认后再激活",
         "status": "draft",
     }
@@ -139,12 +126,9 @@ def persist_trading_plan_draft(
     return plan_id
 
 
-def sync_plan_to_observation_group(plan_id: str, watchlist_service) -> int:
+def sync_plan_to_watchlist_pool(plan_id: str, watchlist_service) -> int:
     plan = load_trading_plan(plan_id)
     if plan is None or watchlist_service is None:
-        return 0
-    group_id, _ = ensure_short_term_observation_group(watchlist_service)
-    if group_id is None:
         return 0
     added = 0
     for item in plan.symbols:
@@ -153,7 +137,5 @@ def sync_plan_to_observation_group(plan_id: str, watchlist_service) -> int:
         except ValueError:
             continue
         if watchlist_service.add(item.symbol, exchange, item.symbol):
-            pass
-        if watchlist_service.add_to_group(group_id, item.symbol, exchange):
             added += 1
     return added

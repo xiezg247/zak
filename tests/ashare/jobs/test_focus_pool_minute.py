@@ -20,23 +20,19 @@ from vnpy_ashare.services.focus_pool import load_focus_pool_stock_items
 
 class FocusPoolSymbolsTest(unittest.TestCase):
     @patch("vnpy_ashare.services.focus_pool.load_position_rows")
-    @patch("vnpy_ashare.services.focus_pool.load_watchlist_group_member_keys")
-    @patch("vnpy_ashare.services.focus_pool.load_watchlist_groups")
+    @patch("vnpy_ashare.services.focus_pool.load_signal_panel_symbols")
     @patch("vnpy_ashare.services.focus_pool.load_watchlist_rows")
-    def test_load_focus_pool_merges_observation_and_positions(
+    def test_load_focus_pool_merges_signal_panel_and_positions(
         self,
         mock_watchlist_rows,
-        mock_groups,
-        mock_member_keys,
+        mock_signal_symbols,
         mock_positions,
     ) -> None:
-        from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord
-
-        mock_watchlist_rows.return_value = [("600000", Exchange.SSE, "浦发银行")]
-        mock_groups.return_value = [
-            WatchlistGroupRecord(id="g1", name="短线观察", sort_order=0, position_cap_pct=None),
+        mock_watchlist_rows.return_value = [
+            ("600000", Exchange.SSE, "浦发银行"),
+            ("600519", Exchange.SSE, "贵州茅台"),
         ]
-        mock_member_keys.return_value = {("600000", "SSE"), ("000001", "SZSE")}
+        mock_signal_symbols.return_value = ["600000.SSE", "000001.SZSE"]
         mock_positions.return_value = [
             {"symbol": "000001", "exchange": "SZSE"},
             {"symbol": "600519", "exchange": "SSE"},
@@ -44,7 +40,7 @@ class FocusPoolSymbolsTest(unittest.TestCase):
 
         items = load_focus_pool_stock_items()
         symbols = [item.vt_symbol for item in items]
-        self.assertEqual(symbols, ["000001.SZSE", "600000.SSE", "600519.SSE"])
+        self.assertEqual(symbols, ["600000.SSE", "000001.SZSE", "600519.SSE"])
 
 
 class MinuteGapTest(unittest.TestCase):

@@ -61,7 +61,7 @@ class VnpyTradingSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="propose_trading_plan",
-                description=("生成次日/指定日交易计划草案（情绪仓位 + 短线观察组 + 雷达共振），不自动写入；用户确认后由终端「今日计划」激活。"),
+                description=("生成次日/指定日交易计划草案（情绪仓位 + 信号区 + 雷达共振），不自动写入；用户确认后由终端「今日计划」激活。"),
                 parameters={
                     "type": "object",
                     "properties": {

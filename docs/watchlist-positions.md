@@ -162,7 +162,7 @@ CREATE TABLE watchlist_positions (
 ## 9. 与短线工作流
 
 ```text
-雷达龙头 → 观察组 → 信号区监控 → 登记持仓
+雷达龙头 → 自选池 → 信号区监控 → 登记持仓
                               │
                               ▼
                     T+1 锁定 + 隔日 exit 规则（**已有**，overlay + AI）

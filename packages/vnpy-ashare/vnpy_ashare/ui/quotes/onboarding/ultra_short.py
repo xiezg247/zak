@@ -12,7 +12,6 @@ from vnpy_ashare.config.preferences.strategy_profile import (
     StrategyProfileId,
     load_strategy_profile_id,
 )
-from vnpy_ashare.services.watchlist_short_term import ensure_onboarding_watchlist_groups
 from vnpy_common.ui.feedback import page_notify
 
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
@@ -36,7 +35,7 @@ class UltraShortOnboardingDialog(QtWidgets.QDialog):
         body = QtWidgets.QLabel(
             "将自动：\n"
             "· 信号策略切换为打板（AshareLimitBoardStrategy）\n"
-            "· 创建自选分组「短线观察」「龙头跟踪」（若尚未存在）\n\n"
+            "· 应用盘中布局预设（信号区展开、分组 Tab 显示全部自选）\n\n"
             "之后可在信号区 Profile 下拉中随时改回其他风格。"
         )
         body.setWordWrap(True)
@@ -76,17 +75,8 @@ def maybe_show_ultra_short_onboarding(page: WatchlistHost) -> None:
 
         profile_id: StrategyProfileId = "ultra_short"
         page.apply_strategy_profile(profile_id)
-        service = page._get_watchlist_service()
-        created: list[str] = []
-        if service is not None:
-            created = ensure_onboarding_watchlist_groups(service)
-            groups = page._watchlist_groups
-            if groups is not None:
-                groups.refresh_groups()
         save_ultra_short_onboarding_done(True)
         parts = ["已切换为极致短线 Profile"]
-        if created:
-            parts.append(f"已创建分组：{'、'.join(created)}")
         page.status_label.setText(" · ".join(parts))
         page_notify(as_qwidget(page), parts[0], level="success")
         feature = getattr(page, "_watchlist_feature", None)

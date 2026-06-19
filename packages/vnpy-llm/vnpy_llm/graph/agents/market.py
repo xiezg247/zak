@@ -9,7 +9,7 @@ MARKET_PROMPT = """【Market Agent 职责】
 → get_emotion_cycle：五阶段情绪、建议仓位、允许模式（打板/半路/低吸）；退潮/冰点须明确不建议新开仓
 → check_risk_gate：账户风控闸 + 情绪合并；halt/caution 时引用 warnings，禁止编造
 → get_ashare_fear_greed_index：全市场恐贪 0–100；环境/节奏类问题优先结合
-→ get_short_term_watchlist：短线观察组 + 雷达共振 Top N
+→ get_short_term_watchlist：信号区 + 激活交易计划 + 雷达共振 Top N
 → run_leader_screen：主线/全市场龙头候选（情绪 gate 内置）
 → get_trading_plan / propose_trading_plan：读取或生成次日计划草案（不自动激活）
 → get_trading_discipline_context：今日计划/流水/违规/风控闸快照

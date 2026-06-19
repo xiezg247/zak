@@ -11,34 +11,28 @@ from unittest.mock import patch
 from vnpy.trader.constant import Exchange
 
 from skills.vnpy_watchlist_skill import VnpyWatchlistSkill
+from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_symbols
 from vnpy_ashare.quotes.radar.radar_models import RadarResonanceEntry
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
 from vnpy_ashare.storage.connection import init_app_db
 from vnpy_ashare.storage.repositories import watchlist as watchlist_repo
-from vnpy_ashare.storage.repositories import watchlist_groups as groups_repo
 
 
 class _WatchlistServiceStub:
     def get_items(self):
-        return [{"symbol": symbol, "exchange": exchange.value, "name": name} for symbol, exchange, name in watchlist_repo.load_watchlist_rows()]
+        return [
+            {"symbol": symbol, "exchange": exchange.value, "name": name}
+            for symbol, exchange, name in watchlist_repo.load_watchlist_rows()
+        ]
 
     def list_groups(self):
-        return groups_repo.load_watchlist_groups()
-
-    def create_group(self, name: str):
-        return groups_repo.create_watchlist_group(name)
+        return []
 
     def add(self, symbol: str, exchange: Exchange, name: str = "") -> bool:
         return watchlist_repo.add_watchlist_item(symbol, exchange, name)
 
     def add_failure_reason(self, symbol: str, exchange: Exchange):
         return watchlist_repo.watchlist_add_failure_reason(symbol, exchange)
-
-    def add_to_group(self, group_id: str, symbol: str, exchange: Exchange) -> bool:
-        return groups_repo.add_watchlist_group_member(group_id, symbol, exchange)
-
-    def group_member_keys(self, group_id: str):
-        return groups_repo.load_watchlist_group_member_keys(group_id)
 
 
 class TestGetShortTermWatchlistSkill(unittest.TestCase):
@@ -49,9 +43,7 @@ class TestGetShortTermWatchlistSkill(unittest.TestCase):
         self._patcher.start()
         init_app_db()
         watchlist_repo.add_watchlist_item("600519", Exchange.SSE, "贵州茅台")
-        group_id = groups_repo.create_watchlist_group("短线观察")
-        assert group_id
-        groups_repo.add_watchlist_group_member(group_id, "600519", Exchange.SSE)
+        save_signal_panel_symbols(["600519.SSE"])
         set_radar_resonance_entries(
             (
                 RadarResonanceEntry(
@@ -76,6 +68,6 @@ class TestGetShortTermWatchlistSkill(unittest.TestCase):
     def test_get_short_term_watchlist(self) -> None:
         raw = self.skill.get_short_term_watchlist(resonance_top_n=5)
         payload = json.loads(raw)
-        self.assertEqual(payload["observation_count"], 1)
-        self.assertEqual(payload["observation_symbols"][0]["symbol"], "600519")
+        self.assertEqual(payload["signal_panel_count"], 1)
+        self.assertEqual(payload["signal_panel_symbols"][0]["symbol"], "600519")
         self.assertEqual(payload["resonance_symbols"][0]["vt_symbol"], "600519.SSE")

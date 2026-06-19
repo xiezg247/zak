@@ -48,10 +48,10 @@ TradingPlan
 propose_trading_plan → 用户确认
       │
       ▼
-写入 trading_plans + 同步 watchlist_groups「短线观察」
+写入 trading_plans + 同步自选池（计划标的 ensure 在 watchlist）
       │
       ▼
-盘前打开计划页 / 自选观察组 Tab
+盘前打开计划页 / 自选上下文条
       │
       ▼
 盘中仅对 plan 内标的执行信号监控
@@ -134,7 +134,7 @@ TradeJournalEntry
 | 1 市场 | 涨跌停、连板、情绪阶段 | 市场页 + emotion_cycle |
 | 2 计划执行 | 计划内几笔 / 违规几笔 | trading_plans + journal |
 | 3 单笔 | 理由、模式、盈亏 | 笔记 + journal |
-| 4 次日 | 更新观察组 + 新 plan | propose_trading_plan |
+| 4 次日 | 更新信号区/计划 + 新 plan | propose_trading_plan |
 
 ---
 
@@ -218,8 +218,8 @@ CREATE TABLE trade_journal (
 
 | Phase | 交付 |
 |-------|------|
-| 1 | 笔记 + 观察组手动计划（无表） |
-| 2 | `trading_plans` + 观察组同步 + 简单 UI |
+| 1 | 笔记 + 手动计划（无表） |
+| 2 | `trading_plans` + 同步自选 + 简单 UI |
 | 3 | `trade_journal` + 登记联动 + off_plan 标记 |
 | 4 | AI propose/get + 周度报表 |
 

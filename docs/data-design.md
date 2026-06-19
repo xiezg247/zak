@@ -168,12 +168,12 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `id` | TEXT PK | UUID |
-| `name` | TEXT | 分组名（如「短线观察」） |
+| `name` | TEXT | 分组名（用户自定义，如「龙头」「题材」） |
 | `sort_order` | INTEGER | Tab 顺序 |
 
 关联表 `watchlist_group_members`：`(group_id, symbol, exchange)` PK，标的可属于多组；删除分组 CASCADE 成员。
 
-**用途：** 自选页 Tab 切换（P-06 **已有**）；规划 D-04 雷达共振一键写入观察组。详见 [自选分组](./watchlist-groups.md)。
+**用途：** 自选页 Tab 切换（P-06 **已有**）；雷达/选股「加自选」写入自选池，分组仅作用户视图。详见 [自选分组](./watchlist-groups.md)。
 
 ### 1.11 交易计划与流水（规划）
 
