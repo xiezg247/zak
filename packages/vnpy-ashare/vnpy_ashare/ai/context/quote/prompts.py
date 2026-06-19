@@ -36,6 +36,18 @@ def build_team_analysis_ai_prompt(vt_symbol: str, name: str = "") -> str:
     return f"请对 {title} 启动投研团队全面分析。默认快速模式（规则速览 + 综合研判）；若需三分析师 LLM 并行深度解读，请先勾选 AI 面板「深度投研团队」。基于本地预取与工具返回解读，禁止编造未出现的指标。"
 
 
+def build_team_analysis_short_prompt(vt_symbol: str, name: str = "") -> str:
+    """投研团队分析预填文案（极致短线 / 打板 / 龙头侧重）。"""
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    return (
+        f"请对 {title} 启动投研团队全面分析，"
+        "重点从极致短线、打板与龙头视角研判：连板高度与封板质量、板块龙头地位、"
+        "情绪周期与买点模式适配、监管异动与龙虎榜资金。"
+        "strategy 维度须覆盖 ultra_short。"
+        "默认快速模式；深度解读请勾选「深度投研团队」。基于本地预取与工具返回，禁止编造。"
+    )
+
+
 def build_technical_ai_prompt(vt_symbol: str, name: str = "") -> str:
     """生成技术形态分析预填文案。"""
     title = f"{name}（{vt_symbol}）" if name else vt_symbol

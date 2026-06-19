@@ -297,6 +297,26 @@ def build_analysis_ai_context(payload: Any) -> str:
         if name and isinstance(ratio, (int, float)):
             parts.append(f"第一大股东 {name} {ratio:.2f}%")
 
+    short_term = getattr(payload, "short_term", None)
+    if short_term is not None:
+        short_parts: list[str] = []
+        if short_term.limit_times is not None and short_term.limit_times >= 1:
+            short_parts.append(f"连板 {int(short_term.limit_times)}")
+        if short_term.leader_tier_label:
+            short_parts.append(short_term.leader_tier_label)
+        if short_term.seal_strength_label and short_term.seal_strength_label != "—":
+            short_parts.append(f"封板{short_term.seal_strength_label}")
+        entry = short_term.entry_mode or {}
+        if entry.get("recommended_label"):
+            short_parts.append(f"推荐{entry['recommended_label']}")
+        if entry.get("emotion_stage_label"):
+            short_parts.append(f"情绪{entry['emotion_stage_label']}")
+        regulatory = str(short_term.regulatory_summary or "").strip()
+        if regulatory and regulatory != "暂无异动预警":
+            short_parts.append(f"监管{regulatory[:36]}")
+        if short_parts:
+            parts.append("短线：" + "；".join(short_parts))
+
     return "；".join(parts)
 
 

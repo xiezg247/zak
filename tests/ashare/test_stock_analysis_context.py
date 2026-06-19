@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import unittest
 
+from vnpy_ashare.domain.stock.short_term import ShortTermProfile
 from vnpy_ashare.services.stock.context import (
+    build_analysis_ai_context,
     build_financial_quality_hints,
     extract_diagnose_metrics,
     format_technical_summary,
@@ -67,6 +69,28 @@ class StockAnalysisContextTests(unittest.TestCase):
         hints = build_financial_quality_hints(snapshots)
         self.assertTrue(any("现金含量偏低" in item for item in hints))
         self.assertTrue(any("杠杆偏高" in item for item in hints))
+
+    def test_build_analysis_ai_context_short_term(self) -> None:
+        payload = type(
+            "Payload",
+            (),
+            {
+                "technical": {},
+                "short_term": ShortTermProfile(
+                    ts_code="600519.SH",
+                    vt_symbol="600519.SSE",
+                    limit_times=3,
+                    leader_tier_label="龙一",
+                    seal_strength_label="强",
+                    entry_mode={"recommended_label": "打板", "emotion_stage_label": "启动"},
+                ),
+            },
+        )()
+        text = build_analysis_ai_context(payload)
+        self.assertIn("短线：", text)
+        self.assertIn("连板 3", text)
+        self.assertIn("龙一", text)
+        self.assertIn("打板", text)
 
 
 if __name__ == "__main__":

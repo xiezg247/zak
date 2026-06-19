@@ -78,3 +78,10 @@ def test_attach_first_time_fields_on_quote_row() -> None:
     rows = [row]
     attach_first_time_fields(rows, max_intraday_fetch=0)
     assert rows[0].get("first_time") in (None, "")
+
+
+def test_quote_row_update_merges_extra_fields() -> None:
+    row = QuoteRow(symbol="600000", vt_symbol="600000.SSE")
+    row.update({"fd_amount": 1.5e8, "open_times": 2})
+    assert row.get("fd_amount") == 1.5e8
+    assert row.get("open_times") == 2

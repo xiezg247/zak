@@ -7,12 +7,13 @@ from typing import Any
 from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.context.quote.prompts import build_diagnose_ai_prompt
+from vnpy_ashare.ai.context.quote.prompts import build_diagnose_ai_prompt, build_team_analysis_short_prompt
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.ai.llm_bridge import get_llm_engine
 from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.format import EMPTY_DISPLAY, format_amount, format_volume
 from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
@@ -33,6 +34,7 @@ from vnpy_ashare.ui.features.stock_analysis.worker import (
     StockAnalysisScope,
     StockAnalysisWorker,
 )
+from vnpy_ashare.ui.quotes.page.config import MARKET_QUOTE_REFRESH_MS
 from vnpy_ashare.ui.shell.main_window_lookup import find_ashare_main_window
 from vnpy_common.ui.dialog_shell import (
     apply_standard_dialog_layout,
@@ -143,6 +145,10 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._loading_scope: StockAnalysisScope | None = None
         self._pending_scopes: list[StockAnalysisScope] = []
 
+        self._quote_refresh_timer = QtCore.QTimer(self)
+        self._quote_refresh_timer.setInterval(MARKET_QUOTE_REFRESH_MS)
+        self._quote_refresh_timer.timeout.connect(self._on_quote_refresh_tick)
+
         meta = _quote_header_meta(quote, item)
         self.setWindowTitle(f"个股分析 · {meta['name']}")
         setup_responsive_dialog(
@@ -198,6 +204,11 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             self._ai_sidebar.bind_engine(llm_engine)
         elif self._host.source_page == "AI 助手":
             self._ai_btn.setToolTip("在 AI 助手全屏页解读（避免与当前页重复挂载对话面板）")
+        self._start_quote_auto_refresh()
+
+    def hideEvent(self, event: QtGui.QHideEvent) -> None:
+        self._stop_quote_auto_refresh()
+        super().hideEvent(event)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
@@ -255,6 +266,8 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
         row.addLayout(left, stretch=1)
         row.addLayout(right)
+        self._header_price_label = price_label
+        self._header_change_label = change_label
         return header
 
     def _build_tabs(self) -> QtWidgets.QTabWidget:
@@ -353,6 +366,10 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         self._ai_btn.setObjectName("ActionButton")
         self._ai_btn.setToolTip("在右侧 AI 侧栏解读；完成后可存为分析报告或追加流水")
         self._ai_btn.clicked.connect(self._ask_ai)
+        self._team_btn = QtWidgets.QPushButton("团队分析")
+        self._team_btn.setObjectName("SecondaryButton")
+        self._team_btn.setToolTip("投研团队全面分析（极致短线 / 打板 / 龙头侧重）")
+        self._team_btn.clicked.connect(self._ask_team_ai)
         self._reports_btn = QtWidgets.QPushButton("历史报告")
         self._reports_btn.setObjectName("SecondaryButton")
         self._reports_btn.clicked.connect(self._open_reports_center)
@@ -363,12 +380,14 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             self._status_label,
             self._refresh_btn,
             self._reports_btn,
+            (self._team_btn, 96),
             self._ai_btn,
             close_btn,
         )
 
     def closeEvent(self, event) -> None:
         self._closing = True
+        self._stop_quote_auto_refresh()
         self._ai_sidebar.deactivate()
         main = self._find_ashare_main_window()
         if main is not None:
@@ -447,7 +466,45 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         if quote is None:
             return
         self._quote = quote
+        self._render_header_quote()
         self._render_quote_metrics()
+
+    def _render_header_quote(self) -> None:
+        meta = _quote_header_meta(self._quote, self._item)
+        self._header_price_label.setText(meta["price"])
+        color = meta["change_color"]
+        self._header_price_label.setStyleSheet(f"color: {color};" if color else "")
+        if meta["change"]:
+            self._header_change_label.setText(meta["change"])
+            self._header_change_label.setVisible(True)
+            if color:
+                self._header_change_label.setStyleSheet(
+                    f"color: {color}; background-color: {meta['change_bg']};"
+                )
+            else:
+                self._header_change_label.setStyleSheet("")
+        else:
+            self._header_change_label.clear()
+            self._header_change_label.setVisible(False)
+
+    def _start_quote_auto_refresh(self) -> None:
+        if self._closing or not is_ashare_trading_session():
+            self._quote_refresh_timer.stop()
+            return
+        self._quote_refresh_timer.start()
+
+    def _stop_quote_auto_refresh(self) -> None:
+        self._quote_refresh_timer.stop()
+
+    def _on_quote_refresh_tick(self) -> None:
+        if self._closing:
+            self._stop_quote_auto_refresh()
+            return
+        if not is_ashare_trading_session():
+            self._stop_quote_auto_refresh()
+            return
+        self._refresh_live_quote()
+        self._publish_ai_context()
 
     def _render_quote_metrics(self) -> None:
         quote = self._quote
@@ -702,11 +759,19 @@ class StockAnalysisDialog(QtWidgets.QDialog):
                 base = f"{base}\n\n已知本地摘要：{context}"
         return base
 
-    def _ask_ai(self) -> None:
-        prompt = self._build_ai_prompt()
+    def _build_team_ai_prompt(self) -> str:
+        name = self._quote.name if self._quote and self._quote.name else self._item.name
+        base = build_team_analysis_short_prompt(self._item.vt_symbol, name)
+        if self._payload is not None:
+            context = build_analysis_ai_context(self._payload)
+            if context:
+                base = f"{base}\n\n已知本地摘要：{context}"
+        return base
+
+    def _dispatch_ai_prompt(self, prompt: str, *, status_ok: str) -> None:
         scene = f"个股分析·{self._host.source_page or self._item.vt_symbol}"
         if self._ai_sidebar.show_and_ask(prompt, scene=scene):
-            self._status_label.setText("已在右侧 AI 侧栏预填解读请求")
+            self._status_label.setText(status_ok)
             return
         if self._host.event_engine is None:
             page_notify(self, "AI 服务未就绪", level="warning")
@@ -722,6 +787,12 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             )
         )
         self._status_label.setText("已在 AI 助手页打开解读")
+
+    def _ask_ai(self) -> None:
+        self._dispatch_ai_prompt(self._build_ai_prompt(), status_ok="已在右侧 AI 侧栏预填解读请求")
+
+    def _ask_team_ai(self) -> None:
+        self._dispatch_ai_prompt(self._build_team_ai_prompt(), status_ok="已在右侧 AI 侧栏预填团队分析")
 
     def _open_reports_center(self) -> None:
 

@@ -94,6 +94,11 @@ class QuoteRow(MutableModel):
     def keys(self) -> set[str]:
         return set(self.to_dict().keys())
 
+    def update(self, values: Mapping[str, Any]) -> None:
+        """就地合并字段（兼容 dict 式 enrich 管道）。"""
+        for key, value in values.items():
+            self[key] = value
+
 
 QuoteRowLike: TypeAlias = QuoteRow | Mapping[str, Any]
 QuoteRowsLike: TypeAlias = Sequence[QuoteRowLike]
