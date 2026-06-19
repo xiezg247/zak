@@ -7,8 +7,10 @@ from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
 from vnpy_ashare.domain.market.sector_flow import (
+    OUTLOOK_DISCLAIMER,
     SectorFlowHistoryPoint,
     SectorFlowOutlookBundle,
+    SectorFlowOutlookRow,
     SectorFlowOutlookSnapshot,
     SectorFlowRotationSnapshot,
     SectorFlowRow,
@@ -32,6 +34,7 @@ from vnpy_ashare.services.sector_constituents import compute_divergence_rows, lo
 from vnpy_ashare.services.sector_flow_rotation import build_rotation_snapshot
 from vnpy_ashare.services.sector_flow_outlook import build_continuation_outlook_snapshot
 from vnpy_ashare.services.sector_flow_outlook_compare import build_outlook_compare_rows
+from vnpy_ashare.services.sector_flow_outlook_llm import attach_llm_outlook
 from vnpy_ashare.services.sector_flow_outlook_strategy import build_strategy_outlook
 from vnpy_ashare.storage.repositories.sector_flow_history import (
     _HISTORY_LIMIT,
@@ -436,7 +439,39 @@ class SectorFlowService(BaseService):
             base = self.load_snapshot(sector_kind=sector_kind)
         return build_strategy_outlook(base, strategy_class=strategy_class)
 
-    def load_outlook_bundle(
+    @staticmethod
+    def empty_strategy_outlook(
+        continuation: SectorFlowOutlookSnapshot,
+        *,
+        empty_hint: str = "请选择策略并扫描以加载策略B",
+    ) -> SectorFlowOutlookSnapshot:
+        return SectorFlowOutlookSnapshot(
+            forward_dates=continuation.forward_dates,
+            rows=(),
+            sector_kind=continuation.sector_kind,
+            source="strategy",
+            updated_at="",
+            empty_hint=empty_hint,
+            disclaimer=OUTLOOK_DISCLAIMER,
+            data_mode=continuation.data_mode,
+        )
+
+    def load_continuation_bundle(
+        self,
+        snapshot: SectorFlowSnapshot | None = None,
+        *,
+        sector_kind: str = "industry",
+    ) -> SectorFlowOutlookBundle:
+        continuation = self.load_continuation_outlook(snapshot, sector_kind=sector_kind)
+        return SectorFlowOutlookBundle(
+            continuation=continuation,
+            strategy=self.empty_strategy_outlook(continuation),
+            compare_rows=(),
+            llm=None,
+            sector_scans=(),
+        )
+
+    def load_strategy_bundle(
         self,
         snapshot: SectorFlowSnapshot | None = None,
         *,
@@ -448,12 +483,51 @@ class SectorFlowService(BaseService):
             base = self.load_snapshot(sector_kind=sector_kind)
         continuation = build_continuation_outlook_snapshot(base)
         strategy = build_strategy_outlook(base, strategy_class=strategy_class)
-        compare_rows = build_outlook_compare_rows(continuation, strategy)
         return SectorFlowOutlookBundle(
             continuation=continuation,
             strategy=strategy,
-            compare_rows=compare_rows,
+            compare_rows=(),
+            llm=None,
+            sector_scans=(),
         )
+
+    @staticmethod
+    def merge_sector_scan(
+        bundle: SectorFlowOutlookBundle,
+        scan_row: SectorFlowOutlookRow,
+    ) -> SectorFlowOutlookBundle:
+        scans = {row.sector.sector_id: row for row in bundle.sector_scans}
+        scans[scan_row.sector.sector_id] = scan_row
+        return bundle.model_copy(update={"sector_scans": tuple(scans.values())})
+
+    @staticmethod
+    def clear_sector_scans(bundle: SectorFlowOutlookBundle) -> SectorFlowOutlookBundle:
+        if not bundle.sector_scans:
+            return bundle
+        return bundle.model_copy(update={"sector_scans": ()})
+
+    @staticmethod
+    def build_compare_bundle(bundle: SectorFlowOutlookBundle) -> SectorFlowOutlookBundle:
+        compare_rows = build_outlook_compare_rows(bundle.continuation, bundle.strategy)
+        return bundle.model_copy(update={"compare_rows": compare_rows, "llm": None})
+
+    def load_outlook_bundle(
+        self,
+        snapshot: SectorFlowSnapshot | None = None,
+        *,
+        sector_kind: str = "industry",
+        strategy_class: str | None = None,
+        attach_llm: bool = False,
+    ) -> SectorFlowOutlookBundle:
+        bundle = self.load_strategy_bundle(
+            snapshot,
+            sector_kind=sector_kind,
+            strategy_class=strategy_class,
+        )
+        bundle = self.build_compare_bundle(bundle)
+        if attach_llm:
+            return attach_llm_outlook(bundle, strategy_class=strategy_class)
+        return bundle
 
     def resolve_concept_vt_symbols(self, sector: SectorFlowRow) -> list[str]:
 

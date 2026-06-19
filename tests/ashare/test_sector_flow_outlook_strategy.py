@@ -99,5 +99,52 @@ class SectorFlowStrategyOutlookTests(unittest.TestCase):
         self.assertEqual(len(outlook.rows), 0)
 
 
+    def test_strategy_outlook_cache_fresh_and_expired(self) -> None:
+        from datetime import timedelta
+
+        from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
+        from vnpy_ashare.domain.time.china import china_now, format_china_datetime_minute
+        from vnpy_ashare.services.sector_flow_outlook_strategy import (
+            strategy_outlook_cache_expired,
+            strategy_outlook_cache_fresh,
+            strategy_outlook_cache_ready,
+        )
+
+        fresh_at = format_china_datetime_minute(china_now())
+        stale_at = format_china_datetime_minute(china_now() - timedelta(hours=30))
+        entry = HorizonCacheEntry(
+            variant="watch_next",
+            rows=(),
+            scanned_total=1,
+            excluded_count=0,
+            prefilter_total=1,
+            refined_total=0,
+            kline_missing=0,
+            strategy_key="test_key",
+            computed_at=fresh_at,
+        )
+        config = mock.MagicMock()
+        config.cache_key.return_value = "test_key"
+        with mock.patch(
+            "vnpy_ashare.services.sector_flow_outlook_strategy.resolve_strategy_signal_config",
+            return_value=config,
+        ):
+            with mock.patch(
+                "vnpy_ashare.services.sector_flow_outlook_strategy._strategy_horizon_cache_entries",
+                return_value=(entry, None),
+            ):
+                self.assertTrue(strategy_outlook_cache_ready("AshareDoubleMaStrategy"))
+                self.assertTrue(strategy_outlook_cache_fresh("AshareDoubleMaStrategy"))
+                self.assertFalse(strategy_outlook_cache_expired("AshareDoubleMaStrategy"))
+            stale_entry = entry.model_copy(update={"computed_at": stale_at})
+            with mock.patch(
+                "vnpy_ashare.services.sector_flow_outlook_strategy._strategy_horizon_cache_entries",
+                return_value=(stale_entry, None),
+            ):
+                self.assertTrue(strategy_outlook_cache_ready("AshareDoubleMaStrategy"))
+                self.assertFalse(strategy_outlook_cache_fresh("AshareDoubleMaStrategy"))
+                self.assertTrue(strategy_outlook_cache_expired("AshareDoubleMaStrategy"))
+
+
 if __name__ == "__main__":
     unittest.main()

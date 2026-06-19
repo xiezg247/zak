@@ -65,6 +65,7 @@ class SectorFlowRotationSnapshot(FrozenModel):
 
 OUTLOOK_HORIZON_DAYS = 3
 OUTLOOK_DISCLAIMER = "统计情景，非资金预测"
+LLM_OUTLOOK_DISCLAIMER = "AI情景参考，非资金预测"
 
 
 class SectorFlowOutlookDay(FrozenModel):
@@ -82,7 +83,7 @@ class SectorFlowOutlookRow(FrozenModel):
     days: tuple[SectorFlowOutlookDay, ...] = Field(description="按 T+1~T+N 升序")
     headline_pattern: str = Field(description="延续模式或策略摘要")
     rationale: str = Field(description="规则说明")
-    source: str = Field(description="continuation 或 strategy")
+    source: str = Field(description="continuation / strategy / llm")
 
 
 class SectorFlowOutlookSnapshot(FrozenModel):
@@ -91,7 +92,7 @@ class SectorFlowOutlookSnapshot(FrozenModel):
     forward_dates: tuple[str, ...] = Field(description="T+1~T+N 列头")
     rows: tuple[SectorFlowOutlookRow, ...] = Field(description="展望行")
     sector_kind: str = Field(default="industry", description="行业或概念")
-    source: str = Field(description="continuation 或 strategy")
+    source: str = Field(description="continuation / strategy / llm")
     updated_at: str = Field(default="", description="更新时间文案")
     empty_hint: str = Field(default="", description="无数据提示")
     disclaimer: str = Field(default=OUTLOOK_DISCLAIMER, description="口径声明")
@@ -108,11 +109,16 @@ class SectorFlowOutlookCompareRow(FrozenModel):
 
 
 class SectorFlowOutlookBundle(FrozenModel):
-    """延续 + 策略 + 对照打包结果。"""
+    """延续展望 + 按板块扫描的策略结果。"""
 
-    continuation: SectorFlowOutlookSnapshot = Field(description="A 延续展望")
-    strategy: SectorFlowOutlookSnapshot = Field(description="B 策略展望")
-    compare_rows: tuple[SectorFlowOutlookCompareRow, ...] = Field(description="对照行")
+    continuation: SectorFlowOutlookSnapshot = Field(description="延续展望")
+    strategy: SectorFlowOutlookSnapshot = Field(description="遗留占位，板块页不再全量加载")
+    compare_rows: tuple[SectorFlowOutlookCompareRow, ...] = Field(default=(), description="遗留对照行")
+    llm: SectorFlowOutlookSnapshot | None = Field(default=None, description="遗留 LLM 展望")
+    sector_scans: tuple[SectorFlowOutlookRow, ...] = Field(
+        default=(),
+        description="右键按板块扫描的策略展望（仅已扫描板块）",
+    )
 
 
 class SectorFlowSnapshot(FrozenModel):

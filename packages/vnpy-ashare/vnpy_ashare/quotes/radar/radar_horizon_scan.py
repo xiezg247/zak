@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from typing import Any
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
@@ -153,6 +154,7 @@ def batch_build_signal_snapshots(
     vt_symbols: list[str],
     *,
     config: WatchlistSignalConfig | None = None,
+    on_complete: Callable[[int, str, tuple[str, SignalSnapshot] | None], None] | None = None,
 ) -> dict[str, SignalSnapshot]:
     from vnpy_ashare.quotes.radar.radar_signals import build_signal_snapshot
 
@@ -167,7 +169,7 @@ def batch_build_signal_snapshots(
         return vt_symbol, snapshot
 
     workers = pattern_load_max_workers(item_count=len(vt_symbols))
-    pairs = run_parallel_map(vt_symbols, worker, max_workers=workers)
+    pairs = run_parallel_map(vt_symbols, worker, max_workers=workers, on_complete=on_complete)
     result: dict[str, SignalSnapshot] = {}
     for item in pairs:
         if item is None:

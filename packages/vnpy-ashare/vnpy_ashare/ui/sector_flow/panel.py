@@ -16,8 +16,6 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 )
 from vnpy_ashare.services.sector_flow import format_sector_net_flow_yi
 from vnpy_ashare.services.sector_flow_outlook import OUTLOOK_BIAS_LABELS, filter_outlook_rows
-from vnpy_ashare.services.sector_flow_outlook_strategy import strategy_outlook_cache_ready
-from vnpy_ashare.services.sector_flow_outlook_compare import filter_compare_rows
 from vnpy_ashare.services.sector_flow_rotation import FLOW_PATTERN_LABELS, filter_rotation_rows
 from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
 from vnpy_ashare.ui.sector_flow.outlook_table import SectorFlowOutlookTable
@@ -34,10 +32,6 @@ _TAB_ROTATION = 3
 _TAB_OUTLOOK = 4
 _TAB_INDUSTRY = 0
 _TAB_CONCEPT = 1
-_OUTLOOK_MODE_COMPARE = "compare"
-_OUTLOOK_MODE_CONTINUATION = "continuation"
-_OUTLOOK_MODE_STRATEGY = "strategy"
-_COMPARE_FILTER_LABELS = ("全部", "一致", "分歧")
 _DETAIL_WIDTH = 280
 
 
@@ -65,7 +59,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
     sector_kind_changed = QtCore.Signal(str)
     view_tab_changed = QtCore.Signal(int)
     outlook_strategy_changed = QtCore.Signal(str)
-    outlook_strategy_scan_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -87,7 +80,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._rotation_snapshot: SectorFlowRotationSnapshot | None = None
         self._outlook_bundle: SectorFlowOutlookBundle | None = None
         self._rotation_pattern = ""
-        self._outlook_mode = _OUTLOOK_MODE_COMPARE
         self._outlook_filter = ""
 
         self._summary = QtWidgets.QLabel("")
@@ -134,7 +126,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._tab_outlook_btn = QtWidgets.QPushButton("未来3日展望")
         self._tab_outlook_btn.setObjectName("OverviewTabButton")
         self._tab_outlook_btn.setCheckable(True)
-        self._tab_outlook_btn.setToolTip("未来3个交易日行业资金统计延续与策略聚合对照（非预测）")
+        self._tab_outlook_btn.setToolTip("未来3日资金延续（默认）；选策略后可生成对照与 AI 解读（非预测）")
 
         self._tab_group = QtWidgets.QButtonGroup(self)
         self._tab_group.setExclusive(True)
@@ -173,22 +165,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._outlook_filter_host = QtWidgets.QWidget(self)
         self._outlook_filter_host.setObjectName("SectorFlowOutlookFilters")
         self._outlook_filter_host.hide()
-        self._outlook_compare_btn = QtWidgets.QPushButton("对照")
-        self._outlook_compare_btn.setObjectName("OverviewTabButton")
-        self._outlook_compare_btn.setCheckable(True)
-        self._outlook_compare_btn.setChecked(True)
-        self._outlook_continuation_btn = QtWidgets.QPushButton("延续A")
-        self._outlook_continuation_btn.setObjectName("OverviewTabButton")
-        self._outlook_continuation_btn.setCheckable(True)
-        self._outlook_strategy_btn = QtWidgets.QPushButton("策略B")
-        self._outlook_strategy_btn.setObjectName("OverviewTabButton")
-        self._outlook_strategy_btn.setCheckable(True)
-        self._outlook_mode_group = QtWidgets.QButtonGroup(self)
-        self._outlook_mode_group.setExclusive(True)
-        self._outlook_mode_group.addButton(self._outlook_compare_btn, 0)
-        self._outlook_mode_group.addButton(self._outlook_continuation_btn, 1)
-        self._outlook_mode_group.addButton(self._outlook_strategy_btn, 2)
-        self._outlook_mode_group.idClicked.connect(self._switch_outlook_mode)
 
         self._outlook_filter_all_btn = QtWidgets.QPushButton("全部")
         self._outlook_filter_all_btn.setObjectName("OverviewTabButton")
@@ -202,11 +178,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         outlook_filter_row = QtWidgets.QHBoxLayout(self._outlook_filter_host)
         outlook_filter_row.setContentsMargins(0, 0, 0, 0)
         outlook_filter_row.setSpacing(4)
-        outlook_filter_row.addWidget(QtWidgets.QLabel("口径"))
-        outlook_filter_row.addLayout(
-            _tab_group_layout(self._outlook_compare_btn, self._outlook_continuation_btn, self._outlook_strategy_btn)
-        )
-        outlook_filter_row.addSpacing(8)
         outlook_filter_row.addWidget(QtWidgets.QLabel("筛选"))
         outlook_filter_row.addWidget(self._outlook_filter_all_btn)
         self._outlook_dynamic_filter_layout = QtWidgets.QHBoxLayout()
@@ -216,7 +187,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
 
         self._outlook_strategy_combo = QtWidgets.QComboBox(self._outlook_filter_host)
         self._outlook_strategy_combo.setObjectName("SectorFlowOutlookStrategyCombo")
-        self._outlook_strategy_combo.setToolTip("策略 B 聚合使用的信号策略（与雷达未来卡独立配置，共用展望缓存）")
+        self._outlook_strategy_combo.setToolTip("右键「按策略扫描本板块」时使用的信号策略（成分股直扫，非全市场池）")
         for option in outlook_strategy_options():
             self._outlook_strategy_combo.addItem(option.label, option.class_name)
         default_class = load_sector_flow_outlook_strategy_class()
@@ -229,11 +200,9 @@ class SectorFlowPanel(QtWidgets.QWidget):
         strategy_label.setObjectName("SectorFlowOutlookStrategyLabel")
         outlook_filter_row.addWidget(strategy_label)
         outlook_filter_row.addWidget(self._outlook_strategy_combo)
-        self._scan_strategy_btn = QtWidgets.QPushButton("扫描策略B")
-        self._scan_strategy_btn.setObjectName("SecondaryButton")
-        self._scan_strategy_btn.setToolTip("为当前所选策略扫描全市场关注/可持并写入本地缓存（约1–2分钟）")
-        self._scan_strategy_btn.clicked.connect(self.outlook_strategy_scan_requested.emit)
-        outlook_filter_row.addWidget(self._scan_strategy_btn)
+        outlook_hint = QtWidgets.QLabel("右键板块行可扫描策略")
+        outlook_hint.setObjectName("SectorFlowOutlookHint")
+        outlook_filter_row.addWidget(outlook_hint)
         outlook_filter_row.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget(self)
@@ -340,9 +309,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         for button in self._pattern_buttons:
             button.setEnabled(enabled)
         self._pattern_all_btn.setEnabled(enabled)
-        self._outlook_compare_btn.setEnabled(enabled)
-        self._outlook_continuation_btn.setEnabled(enabled)
-        self._outlook_strategy_btn.setEnabled(enabled)
         self._outlook_filter_all_btn.setEnabled(enabled)
         combo = self._outlook_strategy_combo
         if combo is not None:
@@ -352,12 +318,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
                 pass
         for button in self._outlook_filter_buttons:
             button.setEnabled(enabled)
-        scan_btn = getattr(self, "_scan_strategy_btn", None)
-        if scan_btn is not None:
-            try:
-                scan_btn.setEnabled(enabled)
-            except RuntimeError:
-                pass
 
     def select_view_tab(self, tab_id: int, *, emit: bool = True) -> None:
         if tab_id == _TAB_INFLOW:
@@ -404,34 +364,13 @@ class SectorFlowPanel(QtWidgets.QWidget):
         if class_name:
             self.outlook_strategy_changed.emit(class_name)
 
-    def _sync_outlook_strategy_combo_visible(self) -> None:
-        show_strategy = self._outlook_mode in {_OUTLOOK_MODE_COMPARE, _OUTLOOK_MODE_STRATEGY}
-        combo = self._outlook_strategy_combo
-        if combo is not None:
-            try:
-                combo.setVisible(show_strategy)
-            except RuntimeError:
-                pass
-        label = self._outlook_filter_host.findChild(QtWidgets.QLabel, "SectorFlowOutlookStrategyLabel")
-        if label is not None:
-            label.setVisible(show_strategy)
-        scan_btn = getattr(self, "_scan_strategy_btn", None)
-        if scan_btn is not None:
-            try:
-                scan_btn.setVisible(show_strategy)
-            except RuntimeError:
-                pass
-        self._sync_scan_strategy_button_state()
-
-    def _sync_scan_strategy_button_state(self) -> None:
-        scan_btn = getattr(self, "_scan_strategy_btn", None)
-        if scan_btn is None:
+    def clear_outlook_sector_scans(self) -> None:
+        bundle = self._outlook_bundle
+        if bundle is None or not bundle.sector_scans:
             return
-        try:
-            ready = strategy_outlook_cache_ready(self.outlook_strategy_class())
-            scan_btn.setText("刷新策略B" if ready else "扫描策略B")
-        except RuntimeError:
-            pass
+        self._outlook_bundle = bundle.model_copy(update={"sector_scans": ()})
+        self._apply_outlook_filter()
+        self._update_outlook_summary(self._outlook_bundle)
 
     def _rebuild_outlook_filter_buttons(self) -> None:
         for button in self._outlook_filter_buttons:
@@ -446,7 +385,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
             if widget is not None:
                 widget.deleteLater()
 
-        labels = list(_COMPARE_FILTER_LABELS) if self._outlook_mode == _OUTLOOK_MODE_COMPARE else ["全部", *OUTLOOK_BIAS_LABELS]
+        labels = ["全部", *OUTLOOK_BIAS_LABELS]
         self._outlook_filter_all_btn.setChecked(not self._outlook_filter or self._outlook_filter == "全部")
         for index, label in enumerate(labels[1:], start=1):
             button = QtWidgets.QPushButton(label)
@@ -466,7 +405,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._outlook_filter_host.setVisible(show_outlook_filters)
         if show_outlook_filters:
             self._rebuild_outlook_filter_buttons()
-            self._sync_outlook_strategy_combo_visible()
         self._detail.set_history_visible(self._active_tab not in {_TAB_ROTATION, _TAB_OUTLOOK})
         if self._active_tab == _TAB_ROTATION:
             self._table_stack.setCurrentWidget(self._rotation_table)
@@ -520,83 +458,37 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._update_outlook_summary(bundle)
 
     def _update_outlook_summary(self, bundle: SectorFlowOutlookBundle) -> None:
-        parts: list[str] = ["统计情景，非资金预测"]
+        parts: list[str] = ["统计情景，非资金预测 · 右键板块可扫策略"]
         cont_rows = len(bundle.continuation.rows)
-        strat_rows = len(bundle.strategy.rows)
-        strategy_hint = str(bundle.strategy.empty_hint or "").strip()
-
+        scan_rows = len(bundle.sector_scans)
         if cont_rows:
-            parts.append(f"延续A {cont_rows} 个行业")
-        if strat_rows:
-            parts.append(f"策略B {strat_rows} 个行业")
-        elif strategy_hint:
-            parts.append(strategy_hint)
-        elif self._outlook_mode in {_OUTLOOK_MODE_COMPARE, _OUTLOOK_MODE_STRATEGY}:
-            parts.append("策略B 暂无数据")
-
-        if bundle.compare_rows and self._outlook_mode == _OUTLOOK_MODE_COMPARE:
-            agreed = sum(1 for row in bundle.compare_rows if row.agreement == "一致")
-            diverged = sum(1 for row in bundle.compare_rows if row.agreement == "分歧")
-            only_cont = sum(1 for row in bundle.compare_rows if row.agreement == "仅延续")
-            if agreed or diverged:
-                parts.append(f"对照 一致{agreed} 分歧{diverged}")
-            elif only_cont and strategy_hint:
-                parts.append(f"对照 仅延续A {only_cont}")
-
+            parts.append(f"延续 {cont_rows} 个板块")
+        if scan_rows:
+            parts.append(f"已扫策略 {scan_rows} 个")
         if bundle.continuation.updated_at:
             stamp = bundle.continuation.updated_at.replace(" · 未来3日延续", "")
-            if stamp and stamp not in parts:
+            if stamp:
                 parts.append(stamp)
         self._summary.setText(" · ".join(dict.fromkeys(parts)))
-        self._sync_scan_strategy_button_state()
 
-    def _compare_empty_hint(self, bundle: SectorFlowOutlookBundle, rows: list) -> str:
-        if rows:
-            return ""
-        strategy_hint = str(bundle.strategy.empty_hint or "").strip()
-        if bundle.continuation.rows and strategy_hint:
-            return f"{strategy_hint}；延续A 仍有 {len(bundle.continuation.rows)} 个行业可查看"
-        return strategy_hint or bundle.continuation.empty_hint or "暂无未来3日展望对照数据"
+    def _sector_scan_map(self, bundle: SectorFlowOutlookBundle) -> dict[str, object]:
+        return {row.sector.sector_id: row for row in bundle.sector_scans}
 
     def _apply_outlook_filter(self) -> None:
         bundle = self._outlook_bundle
         if bundle is None:
             self._outlook_table.set_empty_hint("暂无未来3日展望数据")
             return
-        if self._outlook_mode == _OUTLOOK_MODE_COMPARE:
-            rows = list(filter_compare_rows(bundle.compare_rows, self._outlook_filter))
-            empty_hint = self._compare_empty_hint(bundle, rows)
-            self._outlook_table.set_compare_data(bundle.continuation.forward_dates, rows, empty_hint=empty_hint)
-            return
-        if self._outlook_mode == _OUTLOOK_MODE_CONTINUATION:
-            rows = list(filter_outlook_rows(bundle.continuation.rows, self._outlook_filter))
-            self._outlook_table.set_continuation_data(bundle.continuation, rows=rows)
-            return
-        rows = list(filter_outlook_rows(bundle.strategy.rows, self._outlook_filter))
-        self._outlook_table.set_strategy_data(bundle.strategy, rows=rows)
-
-    def _switch_outlook_mode(self, button_id: int) -> None:
-        mode_map = {
-            0: _OUTLOOK_MODE_COMPARE,
-            1: _OUTLOOK_MODE_CONTINUATION,
-            2: _OUTLOOK_MODE_STRATEGY,
-        }
-        self._outlook_mode = mode_map.get(button_id, _OUTLOOK_MODE_COMPARE)
-        self._outlook_filter = ""
-        self._outlook_filter_all_btn.setChecked(True)
-        self._rebuild_outlook_filter_buttons()
-        self._sync_outlook_strategy_combo_visible()
-        self._apply_outlook_filter()
-        bundle = self._outlook_bundle
-        if bundle is not None:
-            self._update_outlook_summary(bundle)
+        rows = list(filter_outlook_rows(bundle.continuation.rows, self._outlook_filter))
+        self._outlook_table.set_continuation_data(
+            bundle.continuation,
+            rows=rows,
+            sector_scans=self._sector_scan_map(bundle),
+        )
 
     def _switch_outlook_filter(self, button_id: int) -> None:
         if button_id == 0:
             self._outlook_filter = ""
-        elif self._outlook_mode == _OUTLOOK_MODE_COMPARE:
-            labels = list(_COMPARE_FILTER_LABELS)
-            self._outlook_filter = labels[button_id] if 0 < button_id < len(labels) else ""
         else:
             labels = ["全部", *OUTLOOK_BIAS_LABELS]
             self._outlook_filter = labels[button_id] if 0 < button_id < len(labels) else ""

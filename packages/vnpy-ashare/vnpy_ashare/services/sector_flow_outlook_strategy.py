@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import datetime, timedelta
+
 from vnpy_ashare.domain.market.sector_flow import (
     OUTLOOK_DISCLAIMER,
     OUTLOOK_HORIZON_DAYS,
@@ -13,6 +16,7 @@ from vnpy_ashare.domain.market.sector_flow import (
 )
 from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
 from vnpy_ashare.domain.time.trade_dates import iter_forward_trade_date_strs
+from vnpy_ashare.domain.trading.signal_snapshot import signal_missing_kline
 from vnpy_ashare.integrations.tushare.sw_industry import member_rows_vt_symbols_for_l2
 from vnpy_ashare.services.sector_constituents import resolve_concept_vt_symbols
 
@@ -21,6 +25,8 @@ _SCORE_BULLISH = 0.55
 _SCORE_BEARISH = 0.20
 _MIN_MEMBERS_FOR_CONFIDENCE = 3
 _SECTOR_STRATEGY_SCAN_TOP_N = 48
+_SECTOR_STRATEGY_PREFILTER_TOP = 300
+_SECTOR_STRATEGY_CACHE_TTL_HOURS = 24
 
 
 def _sector_member_symbols(sector: SectorFlowRow) -> set[str]:
@@ -123,18 +129,79 @@ def resolve_strategy_signal_config(strategy_class: str | None = None):
     return WatchlistSignalConfig(class_name=class_name, fast_window=fast, slow_window=slow).normalized()
 
 
-def strategy_outlook_cache_ready(strategy_class: str | None = None) -> bool:
+def _strategy_horizon_cache_entries(strategy_class: str | None = None) -> tuple[HorizonCacheEntry | None, HorizonCacheEntry | None]:
     from vnpy_ashare.quotes.radar.radar_horizon_cache import get_horizon_cache
 
     config = resolve_strategy_signal_config(strategy_class)
     key = config.cache_key()
-    if get_horizon_cache("watch_next", strategy_key=key) is not None:
+    return (
+        get_horizon_cache("watch_next", strategy_key=key),
+        get_horizon_cache("hold_next", strategy_key=key),
+    )
+
+
+def _parse_horizon_computed_at(value: str) -> datetime | None:
+    from vnpy_ashare.domain.time.china import CHINA_TZ, DATETIME_MINUTE_FMT
+
+    cleaned = str(value or "").strip()
+    if not cleaned:
+        return None
+    for fmt in (DATETIME_MINUTE_FMT, "%Y-%m-%d %H:%M:%S"):
+        try:
+            parsed = datetime.strptime(cleaned, fmt)
+            return parsed.replace(tzinfo=CHINA_TZ)
+        except ValueError:
+            continue
+    return None
+
+
+def strategy_outlook_cache_computed_at(strategy_class: str | None = None) -> datetime | None:
+    """返回 watch/hold 缓存中较早的 computed_at（用于过期判断）。"""
+    watch_entry, hold_entry = _strategy_horizon_cache_entries(strategy_class)
+    stamps: list[datetime] = []
+    for entry in (watch_entry, hold_entry):
+        if entry is None:
+            continue
+        parsed = _parse_horizon_computed_at(entry.computed_at)
+        if parsed is not None:
+            stamps.append(parsed)
+    if not stamps:
+        return None
+    return min(stamps)
+
+
+def strategy_outlook_cache_ready(strategy_class: str | None = None) -> bool:
+    watch_entry, hold_entry = _strategy_horizon_cache_entries(strategy_class)
+    return watch_entry is not None or hold_entry is not None
+
+
+def strategy_outlook_cache_expired(
+    strategy_class: str | None = None,
+    *,
+    ttl_hours: int = _SECTOR_STRATEGY_CACHE_TTL_HOURS,
+) -> bool:
+    if not strategy_outlook_cache_ready(strategy_class):
         return True
-    return get_horizon_cache("hold_next", strategy_key=key) is not None
+    computed_at = strategy_outlook_cache_computed_at(strategy_class)
+    if computed_at is None:
+        return True
+    from vnpy_ashare.domain.time.china import china_now
+
+    return china_now() - computed_at >= timedelta(hours=max(1, int(ttl_hours)))
 
 
-def scan_strategy_outlook_cache(strategy_class: str, *, top_n: int = _SECTOR_STRATEGY_SCAN_TOP_N) -> str:
-    """为指定策略扫描关注/可持并写入本地缓存（供板块资金策略 B）。"""
+def strategy_outlook_cache_fresh(strategy_class: str | None = None) -> bool:
+    return strategy_outlook_cache_ready(strategy_class) and not strategy_outlook_cache_expired(strategy_class)
+
+
+def scan_strategy_outlook_cache(
+    strategy_class: str,
+    *,
+    top_n: int = _SECTOR_STRATEGY_SCAN_TOP_N,
+    max_prefilter: int = _SECTOR_STRATEGY_PREFILTER_TOP,
+    on_progress: Callable[[str], None] | None = None,
+) -> str:
+    """为指定策略扫描关注/可持并写入本地缓存（供板块资金策略 B，轻量粗筛池）。"""
     from vnpy_ashare.quotes.radar.outlook_strategy_prefs import outlook_strategy_label
     from vnpy_ashare.quotes.radar.radar_horizon_scan import (
         batch_build_signal_snapshots,
@@ -143,10 +210,34 @@ def scan_strategy_outlook_cache(strategy_class: str, *, top_n: int = _SECTOR_STR
         scan_horizon_variant,
     )
 
+    def report(message: str) -> None:
+        if on_progress is not None:
+            on_progress(message)
+
     config = resolve_strategy_signal_config(strategy_class)
     exclusion = collect_outlook_exclusion_vt_symbols()
-    prefilter, base_stats = prefilter_horizon_universe(exclusion, config=config)
-    snapshots = batch_build_signal_snapshots(prefilter, config=config)
+    report("粗筛流动性池…")
+    prefilter, base_stats = prefilter_horizon_universe(
+        exclusion,
+        config=config,
+        max_items=max_prefilter,
+    )
+    total = len(prefilter)
+    report(f"计算信号 0/{total}…")
+
+    def _on_signal_complete(index: int, _item: str, _result: object) -> None:
+        if total <= 0:
+            return
+        step = max(1, total // 10)
+        if index == 0 or index + 1 == total or (index + 1) % step == 0:
+            report(f"计算信号 {index + 1}/{total}…")
+
+    snapshots = batch_build_signal_snapshots(
+        prefilter,
+        config=config,
+        on_complete=_on_signal_complete,
+    )
+    report("筛选关注/可持…")
     watch = scan_horizon_variant(
         "watch_next",
         top_n=top_n,
@@ -166,7 +257,7 @@ def scan_strategy_outlook_cache(strategy_class: str, *, top_n: int = _SECTOR_STR
         base_stats=base_stats,
     )
     label = outlook_strategy_label(config.class_name)
-    return f"「{label}」策略扫描完成：关注 {len(watch.rows)} / 可持 {len(hold.rows)}"
+    return f"「{label}」策略扫描完成：关注 {len(watch.rows)} / 可持 {len(hold.rows)}（粗筛 {total} 只）"
 
 
 def build_strategy_outlook(
@@ -285,6 +376,89 @@ def build_strategy_outlook(
     )
 
 
+def build_sector_strategy_outlook_row(
+    sector: SectorFlowRow,
+    *,
+    strategy_class: str | None = None,
+    forward_dates: tuple[str, ...] | None = None,
+    horizon_days: int = OUTLOOK_HORIZON_DAYS,
+) -> SectorFlowOutlookRow:
+    """对单板块成分股跑策略信号并聚合为板块级展望（非全市场扫描）。"""
+    from vnpy_ashare.quotes.radar.radar_horizon_rules import last_price_for_snapshot, matches_hold, matches_watch
+    from vnpy_ashare.quotes.radar.radar_horizon_scan import batch_build_signal_snapshots
+
+    config = resolve_strategy_signal_config(strategy_class)
+    members = sorted(_sector_member_symbols(sector))
+    if not members:
+        raise ValueError(f"未找到板块「{sector.name}」成分股映射")
+
+    dates = forward_dates or iter_forward_trade_date_strs(count=horizon_days)
+    snapshots = batch_build_signal_snapshots(members, config=config)
+
+    watch_symbols: set[str] = set()
+    hold_symbols: set[str] = set()
+    label_by_symbol: dict[str, str] = {}
+    valid_symbols: list[str] = []
+
+    for vt_symbol, snapshot in snapshots.items():
+        if signal_missing_kline(snapshot):
+            continue
+        valid_symbols.append(vt_symbol)
+        label_by_symbol[vt_symbol] = str(snapshot.signal_label or "").strip()
+        last_price = last_price_for_snapshot(vt_symbol, snapshot)
+        if matches_hold(snapshot, last_price=last_price):
+            hold_symbols.add(vt_symbol)
+        elif matches_watch(snapshot, last_price=last_price):
+            watch_symbols.add(vt_symbol)
+
+    member_set = set(members)
+    hits = member_set & set(valid_symbols)
+    buy_count = sum(1 for symbol in hits if label_by_symbol.get(symbol) == "买入")
+    hold_count = sum(1 for symbol in hits if label_by_symbol.get(symbol) == "观望")
+    watch_count = len((watch_symbols & hits) - hold_symbols)
+
+    hit_scores: dict[str, float] = {}
+    for symbol in hits:
+        pool = "hold_next" if symbol in hold_symbols else "watch_next" if symbol in watch_symbols else ""
+        hit_scores[symbol] = _stock_hit_score(label_by_symbol.get(symbol, ""), pool=pool)
+
+    raw_score = sum(hit_scores.values()) / max(len(members), 1) / 2.5
+    sample_limited = len(members) < _MIN_MEMBERS_FOR_CONFIDENCE
+    days = _strategy_day_rows(raw_score, dates, sample_limited=sample_limited)
+    headline = f"买入{buy_count}/观望{hold_count}/关注{watch_count}"
+    rationale = _strategy_rationale(
+        buy_count=buy_count,
+        hold_count=hold_count,
+        watch_count=watch_count,
+        member_count=len(members),
+        sample_limited=sample_limited,
+    )
+    if len(valid_symbols) < len(members):
+        missing = len(members) - len(valid_symbols)
+        rationale = f"{rationale}，{missing}只成分K线不足未计入"
+
+    return SectorFlowOutlookRow(
+        sector=sector,
+        days=days,
+        headline_pattern=headline,
+        rationale=rationale,
+        source="strategy",
+    )
+
+
+def classify_sector_resonance(
+    continuation: SectorFlowOutlookRow | None,
+    strategy: SectorFlowOutlookRow | None,
+) -> str:
+    if continuation is None or strategy is None or not continuation.days or not strategy.days:
+        return "—"
+    cont_bias = continuation.days[0].bias
+    strat_bias = strategy.days[0].bias
+    if cont_bias == strat_bias:
+        return "同向"
+    return "背离"
+
+
 def format_strategy_ai_lines(
     outlook: SectorFlowOutlookSnapshot,
     *,
@@ -301,9 +475,14 @@ def format_strategy_ai_lines(
 
 
 __all__ = [
+    "build_sector_strategy_outlook_row",
     "build_strategy_outlook",
+    "classify_sector_resonance",
     "format_strategy_ai_lines",
     "resolve_strategy_signal_config",
     "scan_strategy_outlook_cache",
+    "strategy_outlook_cache_computed_at",
+    "strategy_outlook_cache_expired",
+    "strategy_outlook_cache_fresh",
     "strategy_outlook_cache_ready",
 ]

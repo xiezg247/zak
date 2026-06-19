@@ -30,7 +30,7 @@ def build_concept_profile(vt_symbol: str) -> ConceptProfile:
 
     message = ""
     if not concepts:
-        message = "暂无概念数据（Tushare concept_detail 未返回）"
+        message = "暂无概念数据（同花顺 ths_member / Tushare concept_detail 均未返回）"
     return ConceptProfile(
         ts_code=item.ts_code,
         vt_symbol=item.vt_symbol,

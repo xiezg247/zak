@@ -83,6 +83,7 @@ class SectorFlowRotationTable(QtWidgets.QTableWidget):
     sector_activated = QtCore.Signal(str)
     sector_selected = QtCore.Signal(object)
     detail_requested = QtCore.Signal(object)
+    sector_strategy_scan_requested = QtCore.Signal(object)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -236,10 +237,13 @@ class SectorFlowRotationTable(QtWidgets.QTableWidget):
             return
         self.selectRow(item.row())
         menu = QtWidgets.QMenu(self)
+        scan_action = menu.addAction("按策略扫描本板块")
         detail_action = menu.addAction("查看资金明细")
         market_action = menu.addAction("市场成分")
         chosen = menu.exec(self.viewport().mapToGlobal(pos))
-        if chosen is detail_action:
+        if chosen == scan_action:
+            self.sector_strategy_scan_requested.emit(rotation_row.sector)
+        elif chosen is detail_action:
             self.detail_requested.emit(rotation_row)
         elif chosen is market_action:
             self.sector_activated.emit(rotation_row.sector.name)

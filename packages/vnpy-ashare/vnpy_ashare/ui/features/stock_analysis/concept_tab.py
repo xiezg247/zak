@@ -13,7 +13,7 @@ class ConceptAnalysisTab(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self._status = hint_label("")
-        self._count_tile = MetricTile("所属概念", subtitle="Tushare")
+        self._count_tile = MetricTile("所属概念", subtitle="同花顺")
 
         self._table = QtWidgets.QTableWidget(0, 2)
         self._table.setHorizontalHeaderLabels(["概念名称", "概念 ID"])
