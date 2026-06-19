@@ -182,7 +182,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
 
         self._risk_button = QtWidgets.QPushButton("风控设置", self)
         self._risk_button.setObjectName("SecondaryButton")
-        self._risk_button.setToolTip("总资金、单笔风险与风控闸阈值")
+        self._risk_button.setToolTip("总资金、单笔风险；高级页可调整风控闸阈值")
         self._risk_button.clicked.connect(self.risk_requested.emit)
 
         layout.addWidget(self._collapse_button)

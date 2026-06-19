@@ -129,15 +129,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             self._page._toast.warning(f"{hint}：不建议新开仓（登记不阻断，仅记账）")
         elif combined.account.state == "caution":
             hint = "；".join(combined.account.warnings) or "账户警戒"
-            answer = QtWidgets.QMessageBox.question(
-                self,
-                "风控警戒",
-                f"{hint}\n仍要登记持仓？",
-                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-                QtWidgets.QMessageBox.StandardButton.No,
-            )
-            if answer != QtWidgets.QMessageBox.StandardButton.Yes:
-                return False
+            self._page._toast.warning(f"{hint}：建议减频新开仓（登记不阻断，仅记账）")
         elif not combined.allow_new_positions:
             hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
             self._page._toast.warning(f"{hint}（登记仅作记账参考）")

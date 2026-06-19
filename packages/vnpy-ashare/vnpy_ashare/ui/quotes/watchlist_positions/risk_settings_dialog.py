@@ -24,9 +24,26 @@ class RiskSettingsDialog(QtWidgets.QDialog):
         self.setMinimumWidth(400)
 
         prefs = load_trading_risk_prefs()
-        layout = QtWidgets.QFormLayout(self)
+        root = QtWidgets.QVBoxLayout(self)
 
-        self._capital_spin = QtWidgets.QDoubleSpinBox(self)
+        tabs = QtWidgets.QTabWidget(self)
+        tabs.addTab(self._build_basic_tab(prefs), "基础")
+        tabs.addTab(self._build_advanced_tab(prefs), "高级")
+        root.addWidget(tabs)
+
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            parent=self,
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        root.addWidget(buttons)
+
+    def _build_basic_tab(self, prefs: TradingRiskPrefs) -> QtWidgets.QWidget:
+        page = QtWidgets.QWidget(self)
+        layout = QtWidgets.QFormLayout(page)
+
+        self._capital_spin = QtWidgets.QDoubleSpinBox(page)
         self._capital_spin.setRange(0.0, 999_999_999.0)
         self._capital_spin.setDecimals(0)
         self._capital_spin.setSingleStep(10_000.0)
@@ -37,7 +54,7 @@ class RiskSettingsDialog(QtWidgets.QDialog):
             self._capital_spin.setValue(prefs.total_capital)
         layout.addRow("总资金", self._capital_spin)
 
-        self._per_trade_spin = QtWidgets.QDoubleSpinBox(self)
+        self._per_trade_spin = QtWidgets.QDoubleSpinBox(page)
         self._per_trade_spin.setRange(0.5, 20.0)
         self._per_trade_spin.setDecimals(1)
         self._per_trade_spin.setSuffix(" %")
@@ -45,7 +62,7 @@ class RiskSettingsDialog(QtWidgets.QDialog):
         self._per_trade_spin.setToolTip("单笔最大亏损占总投资的比例，默认 2%")
         layout.addRow("单笔风险上限", self._per_trade_spin)
 
-        self._stop_loss_spin = QtWidgets.QDoubleSpinBox(self)
+        self._stop_loss_spin = QtWidgets.QDoubleSpinBox(page)
         self._stop_loss_spin.setRange(1.0, 30.0)
         self._stop_loss_spin.setDecimals(1)
         self._stop_loss_spin.setSuffix(" %")
@@ -53,12 +70,30 @@ class RiskSettingsDialog(QtWidgets.QDialog):
         self._stop_loss_spin.setToolTip("登记持仓时默认止损比例；极致短线常用 5%")
         layout.addRow("默认止损", self._stop_loss_spin)
 
-        self._daily_pnl_edit = QtWidgets.QLineEdit(self)
-        self._daily_pnl_edit.setPlaceholderText("留空表示未填写")
-        self._daily_pnl_edit.setToolTip("当日已实现+浮亏合计（MVP 手动填写，供风控闸评估）")
+        hint = QtWidgets.QLabel(
+            "总资金与单笔风险用于登记时的建议股数；风控闸状态见顶栏芯片，仅作提示不阻断记账。",
+            page,
+        )
+        hint.setObjectName("SettingsHint")
+        hint.setWordWrap(True)
+        layout.addRow(hint)
+        return page
+
+    def _build_advanced_tab(self, prefs: TradingRiskPrefs) -> QtWidgets.QWidget:
+        page = QtWidgets.QWidget(self)
+        layout = QtWidgets.QFormLayout(page)
+
+        self._daily_pnl_spin = QtWidgets.QDoubleSpinBox(page)
+        self._daily_pnl_spin.setRange(-999.0, 50.0)
+        self._daily_pnl_spin.setDecimals(1)
+        self._daily_pnl_spin.setSuffix(" %")
+        self._daily_pnl_spin.setSpecialValueText("未填写")
+        self._daily_pnl_spin.setToolTip("当日已实现+浮亏合计，占资金比例（手动填写，供风控闸评估）")
         if prefs.daily_pnl_pct is not None:
-            self._daily_pnl_edit.setText(f"{prefs.daily_pnl_pct:.1f}")
-        layout.addRow("当日盈亏", self._daily_pnl_edit)
+            self._daily_pnl_spin.setValue(prefs.daily_pnl_pct)
+        else:
+            self._daily_pnl_spin.setValue(-999.0)
+        layout.addRow("当日盈亏", self._daily_pnl_spin)
 
         effective, journal_total, manual = resolve_realized_pnl_today(today_trade_date())
         journal_hint = format_realized_pnl_hint(
@@ -66,12 +101,12 @@ class RiskSettingsDialog(QtWidgets.QDialog):
             manual=manual,
             effective=effective,
         )
-        self._journal_label = QtWidgets.QLabel(journal_hint or "今日暂无登记卖出", self)
+        self._journal_label = QtWidgets.QLabel(journal_hint or "今日暂无登记卖出", page)
         self._journal_label.setObjectName("SettingsHint")
         self._journal_label.setWordWrap(True)
         layout.addRow("登记卖出汇总", self._journal_label)
 
-        self._realized_spin = QtWidgets.QDoubleSpinBox(self)
+        self._realized_spin = QtWidgets.QDoubleSpinBox(page)
         self._realized_spin.setRange(-9_999_999.0, 9_999_999.0)
         self._realized_spin.setDecimals(0)
         self._realized_spin.setSuffix(" 元")
@@ -81,55 +116,48 @@ class RiskSettingsDialog(QtWidgets.QDialog):
             self._realized_spin.setValue(prefs.realized_pnl_today)
         layout.addRow("额外已实现", self._realized_spin)
 
-        self._caution_daily_spin = QtWidgets.QDoubleSpinBox(self)
+        self._caution_daily_spin = QtWidgets.QDoubleSpinBox(page)
         self._caution_daily_spin.setRange(-50.0, 0.0)
         self._caution_daily_spin.setDecimals(1)
         self._caution_daily_spin.setSuffix(" %")
         self._caution_daily_spin.setValue(prefs.caution_daily_pct)
         layout.addRow("警戒阈值（日）", self._caution_daily_spin)
 
-        self._halt_daily_spin = QtWidgets.QDoubleSpinBox(self)
+        self._halt_daily_spin = QtWidgets.QDoubleSpinBox(page)
         self._halt_daily_spin.setRange(-50.0, 0.0)
         self._halt_daily_spin.setDecimals(1)
         self._halt_daily_spin.setSuffix(" %")
         self._halt_daily_spin.setValue(prefs.halt_daily_pct)
         layout.addRow("熔断阈值（日）", self._halt_daily_spin)
 
-        self._caution_float_spin = QtWidgets.QDoubleSpinBox(self)
+        self._caution_float_spin = QtWidgets.QDoubleSpinBox(page)
         self._caution_float_spin.setRange(-50.0, 0.0)
         self._caution_float_spin.setDecimals(1)
         self._caution_float_spin.setSuffix(" %")
         self._caution_float_spin.setValue(prefs.caution_float_pct)
         layout.addRow("警戒阈值（持仓均浮盈）", self._caution_float_spin)
 
-        self._manual_halt = QtWidgets.QCheckBox("手动熔断（禁止新开仓提示）", self)
+        self._manual_halt = QtWidgets.QCheckBox("手动熔断（不建议新开仓提示）", page)
         self._manual_halt.setChecked(prefs.manual_halt)
         layout.addRow("", self._manual_halt)
 
-        self._peak_label = QtWidgets.QLabel(self._format_peak_hint(prefs), self)
+        self._peak_label = QtWidgets.QLabel(self._format_peak_hint(prefs), page)
         self._peak_label.setObjectName("SettingsHint")
         self._peak_label.setWordWrap(True)
         layout.addRow("权益峰值", self._peak_label)
 
         peak_row = QtWidgets.QHBoxLayout()
-        self._reset_peak_button = QtWidgets.QPushButton("重置峰值", self)
+        self._reset_peak_button = QtWidgets.QPushButton("重置峰值", page)
         self._reset_peak_button.setToolTip("以当前总资金重置峰值权益，并清除定时熔断")
         self._reset_peak_button.clicked.connect(self._on_reset_peak)
-        self._clear_halt_button = QtWidgets.QPushButton("解除定时熔断", self)
+        self._clear_halt_button = QtWidgets.QPushButton("解除定时熔断", page)
         self._clear_halt_button.setToolTip("清除单周/总回撤触发的停手期限")
         self._clear_halt_button.clicked.connect(self._on_clear_halt)
         peak_row.addWidget(self._reset_peak_button)
         peak_row.addWidget(self._clear_halt_button)
         peak_row.addStretch(1)
         layout.addRow("", peak_row)
-
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
-            parent=self,
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addRow(buttons)
+        return page
 
     @staticmethod
     def _format_peak_hint(prefs: TradingRiskPrefs) -> str:
@@ -154,13 +182,8 @@ class RiskSettingsDialog(QtWidgets.QDialog):
 
     def read_prefs(self) -> TradingRiskPrefs:
         capital = self._capital_spin.value()
-        daily_text = self._daily_pnl_edit.text().strip()
-        daily_pnl: float | None = None
-        if daily_text:
-            try:
-                daily_pnl = float(daily_text)
-            except ValueError:
-                daily_pnl = None
+        daily_val = self._daily_pnl_spin.value()
+        daily_pnl: float | None = None if daily_val <= -998.9 else daily_val
         realized_val = self._realized_spin.value()
         realized = realized_val if realized_val != 0.0 else None
         existing = load_trading_risk_prefs()
