@@ -151,13 +151,13 @@ class MarketOverviewPanel(QtWidgets.QWidget):
     def _on_theme_changed(self, _tokens) -> None:
         self._stats_bar.refresh_theme()
 
-    def apply_data(self, data: MarketOverviewData) -> None:
+    def apply_data(self, data: MarketOverviewData, *, session_note: str = "") -> None:
         self._sync_index_cards(data.indices)
         self.apply_sectors(data.sectors)
         self.apply_environment(data.environment)
         if data.breadth is not None:
             self._last_breadth = data.breadth
-            self._stats_bar.render_breadth(data.breadth)
+            self._stats_bar.render_breadth(data.breadth, session_note=session_note)
         elif not hasattr(self, "_last_breadth"):
             self._stats_bar.set_empty()
         self.apply_limit_ladder(data.limit_ladder_counts)
@@ -165,9 +165,9 @@ class MarketOverviewPanel(QtWidgets.QWidget):
     def apply_limit_ladder(self, counts: dict[str, int] | None) -> None:
         self._limit_ladder_strip.apply_counts(counts)
 
-    def apply_breadth(self, breadth: MarketBreadthSnapshot) -> None:
+    def apply_breadth(self, breadth: MarketBreadthSnapshot, *, session_note: str = "") -> None:
         self._last_breadth = breadth
-        self._stats_bar.render_breadth(breadth)
+        self._stats_bar.render_breadth(breadth, session_note=session_note)
 
     def apply_emotion_cycle(self, snapshot: EmotionCycleSnapshot | None) -> None:
         self._stats_bar.render_emotion_cycle(snapshot)

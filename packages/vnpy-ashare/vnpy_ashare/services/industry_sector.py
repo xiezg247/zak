@@ -42,20 +42,25 @@ def build_sw_industry_rows_from_dc(
     *,
     sector_kind: str = "industry",
     flow_source: str = "sw_dc",
-    top_each_side: int | None = None,
+    limit_each_side: int | None = 24,
 ) -> list[SectorFlowRow]:
-    """东财行业 API 行 → 申万 L2 板块（仅保留申万名录内的行业）。"""
-    from vnpy_ashare.services.sector_flow import rows_from_dc_moneyflow
+    """东财行业 API 行 → 申万 L2 板块（仅保留申万名录内的行业）。
+
+    limit_each_side=None 返回全量申万行业（用于摘要极值）；默认各侧 Top 24。
+    """
+    from vnpy_ashare.services.sector_flow import rows_from_dc_moneyflow, split_sector_display_rows
 
     raw = rows_from_dc_moneyflow(
         dc_rows,
         sector_kind=sector_kind,
         flow_source="dc_industry",
-        top_each_side=top_each_side,
+        top_each_side=None,
     )
-    return normalize_sw_industry_sector_rows(
-        [row.model_copy(update={"flow_source": flow_source}) for row in raw]
-    )
+    normalized = normalize_sw_industry_sector_rows([row.model_copy(update={"flow_source": flow_source}) for row in raw])
+    if limit_each_side is None:
+        return normalized
+    inflow, outflow = split_sector_display_rows(normalized)
+    return inflow[:limit_each_side] + outflow[:limit_each_side]
 
 
 def overlay_dc_moneyflow_on_sw_rows(
@@ -63,7 +68,7 @@ def overlay_dc_moneyflow_on_sw_rows(
     dc_rows: list[dict[str, Any]],
 ) -> list[SectorFlowRow]:
     """盘中申万聚合榜叠加东财官方主力净额（按 L2 名匹配）。"""
-    dc_by_name = {row.name: row for row in build_sw_industry_rows_from_dc(dc_rows, top_each_side=None)}
+    dc_by_name = {row.name: row for row in build_sw_industry_rows_from_dc(dc_rows, limit_each_side=None)}
     if not dc_by_name:
         return sw_rows
 

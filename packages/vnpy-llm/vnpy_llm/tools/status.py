@@ -55,9 +55,7 @@ class ToolsStatusSnapshot(FrozenModel):
         ready_mcps = [m.title for m in self.mcps if m.state == "ready"]
         if ready_mcps:
             parts.append("MCP: " + " · ".join(ready_mcps))
-        issues = [s for s in self.skills if s.state != "ready"] + [
-            m for m in self.mcps if m.state not in ("ready", "idle")
-        ]
+        issues = [s for s in self.skills if s.state != "ready"] + [m for m in self.mcps if m.state not in ("ready", "idle")]
         if issues and not parts:
             parts.append(f"{len(issues)} 项待配置")
         elif issues:

@@ -67,7 +67,7 @@ from vnpy_common.ui.theme.manager import theme_manager
 if TYPE_CHECKING:
     from vnpy_llm.app.engine import LlmEngine
 
-_QUotesPageFactory = Callable[[MainEngine, EventEngine], QtWidgets.QWidget]
+_QuotesPageFactory = Callable[[MainEngine, EventEngine], QtWidgets.QWidget]
 
 _QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "market": MarketPageWidget,
@@ -678,17 +678,27 @@ class AshareMainWindow(MainWindow):
         if widget is not None and hasattr(widget, "run_leader_screen"):
             widget.run_leader_screen(variant=variant)
 
-    def open_sector_flow(self, sector_ids: list[str] | None = None) -> None:
-        """跳转到板块资金页，并可选预选行业。"""
+    def open_sector_flow(
+        self,
+        sector_ids: list[str] | None = None,
+        *,
+        tab: str = "default",
+        sector_kind: str | None = None,
+    ) -> None:
+        """跳转到板块资金页，并可选预选行业/概念与视图 Tab。"""
         nav_index = self._nav_index_for_key("sector_flow")
         if nav_index is None:
             return
         self._show_page_by_key("sector_flow", nav_index=nav_index)
-        if not sector_ids:
-            return
         widget = self._page_widgets.get("sector_flow")
-        if widget is not None and hasattr(widget, "focus_sectors"):
-            widget.focus_sectors(sector_ids)
+        if widget is None or not hasattr(widget, "focus_sectors"):
+            return
+        if tab != "default" or sector_ids or sector_kind:
+            widget.focus_sectors(
+                list(sector_ids or []),
+                tab=tab,
+                sector_kind=sector_kind,
+            )
 
     def open_market_industry_filter(self, industry: str) -> None:
         """跳转到市场页：主力净流入榜 + 行业成分筛选。"""

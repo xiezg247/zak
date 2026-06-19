@@ -17,15 +17,22 @@ class AiBridgeCheckTests(unittest.TestCase):
         self.assertEqual(missing_ai_bridges(), [])
 
     def test_warn_missing_ai_bridges_logs_when_unregistered(self) -> None:
-        with patch("vnpy_common.ai.access._get_ai_context", None), patch(
-            "vnpy_common.ai.access._stock_completion_builder",
-            None,
-        ), patch("vnpy_common.ai.access._panel_actions_builder", None), patch(
-            "vnpy_common.ai.access._market_prompt_builder",
-            None,
-        ), patch("vnpy_common.ai.access._persist_team_report", None), patch(
-            "vnpy_common.ai.symbol_navigation.get_symbol_navigation",
-            return_value=None,
+        with (
+            patch("vnpy_common.ai.access._get_ai_context", None),
+            patch(
+                "vnpy_common.ai.access._stock_completion_builder",
+                None,
+            ),
+            patch("vnpy_common.ai.access._panel_actions_builder", None),
+            patch(
+                "vnpy_common.ai.access._market_prompt_builder",
+                None,
+            ),
+            patch("vnpy_common.ai.access._persist_team_report", None),
+            patch(
+                "vnpy_common.ai.symbol_navigation.get_symbol_navigation",
+                return_value=None,
+            ),
         ):
             missing = missing_ai_bridges()
             self.assertIn("context_store", missing)

@@ -6,10 +6,10 @@ from typing import Any
 
 from vnpy_ashare.ai.context.store import get_market_overview_context, set_market_overview_context
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.integrations.tushare.sw_industry import format_industry_filter_label
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot, format_mode_label
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot, format_north_money_hsgt
-from vnpy_ashare.integrations.tushare.sw_industry import format_industry_filter_label
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
 from vnpy_ashare.quotes.market.market_summary_cache import peek_limit_ladder_counts
 from vnpy_ashare.quotes.radar.radar_limit_ladder import LADDER_BUCKET_LABELS

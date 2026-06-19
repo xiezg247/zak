@@ -18,23 +18,22 @@ def _format_trade_date_short(trade_date: str) -> str:
 
 
 class SectorFlowMiniBar(QtWidgets.QWidget):
-    """近 5 日主力净流入柱状图（万元→亿元刻度）。"""
+    """侧栏紧凑主力净流入柱（默认近 5 日）。"""
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, parent: QtWidgets.QWidget | None = None, *, max_points: int = 5) -> None:
         super().__init__(parent)
         self.setObjectName("SectorFlowMiniBar")
-        self.setMinimumHeight(72)
+        self._max_points = max(1, max_points)
+        self.setMinimumHeight(64)
         self._points: list[SectorFlowHistoryPoint] = []
-        self._caption = QtWidgets.QLabel("近5日主力（亿）")
-        self._caption.setObjectName("SectorFlowSummary")
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
-        layout.addWidget(self._caption)
+        layout.setSpacing(0)
         theme_manager().register_callback(lambda _t: self.update())
 
     def render_points(self, points: list[SectorFlowHistoryPoint]) -> None:
-        self._points = list(points)
+        trimmed = list(points)[-self._max_points :]
+        self._points = trimmed
         self.update()
 
     def clear(self) -> None:
@@ -49,8 +48,8 @@ class SectorFlowMiniBar(QtWidgets.QWidget):
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
 
-        top = self._caption.height() + 8
-        bottom = self.height() - 18
+        top = 6
+        bottom = self.height() - 16
         chart_height = max(bottom - top, 12)
         left = 8
         right = self.width() - 8

@@ -83,8 +83,8 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         quote_col.addWidget(self._change_chip, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(8)
+        layout.setContentsMargins(4, 3, 4, 3)
+        layout.setSpacing(6)
         layout.addLayout(name_col, stretch=3)
         layout.addLayout(metric_col, stretch=2)
         layout.addLayout(quote_col, stretch=2)

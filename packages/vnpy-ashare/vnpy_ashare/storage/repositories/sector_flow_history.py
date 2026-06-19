@@ -5,7 +5,8 @@ from __future__ import annotations
 from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, SectorFlowRow
 from vnpy_ashare.storage.connection import connect, init_app_db
 
-_HISTORY_LIMIT = 5
+_HISTORY_LIMIT = 15
+_ROTATION_DAYS = 15
 
 
 def upsert_sector_flow_day(
@@ -79,6 +80,43 @@ def load_sector_flow_history(
     ]
     points.reverse()
     return points
+
+
+def load_sector_flow_matrix(
+    *,
+    sector_kind: str,
+    trade_dates: list[str],
+    sector_ids: list[str] | None = None,
+) -> dict[str, dict[str, float]]:
+    """批量读取板块日终主力净流入，返回 sector_id → trade_date → net_flow_yi。"""
+    kind = str(sector_kind or "industry").strip().lower()
+    dates = [str(item or "").strip() for item in trade_dates if str(item or "").strip()]
+    if not dates:
+        return {}
+    ids = [str(item or "").strip() for item in (sector_ids or []) if str(item or "").strip()]
+    init_app_db()
+    placeholders = ",".join("?" * len(dates))
+    params: list[object] = [kind, *dates]
+    sql = f"""
+        SELECT sector_id, trade_date, net_flow_yi
+        FROM sector_flow_daily
+        WHERE sector_kind = ? AND trade_date IN ({placeholders})
+    """
+    if ids:
+        id_placeholders = ",".join("?" * len(ids))
+        sql += f" AND sector_id IN ({id_placeholders})"
+        params.extend(ids)
+    with connect() as conn:
+        cursor = conn.execute(sql, params)
+        rows = list(cursor.fetchall())
+    matrix: dict[str, dict[str, float]] = {}
+    for row in rows:
+        sector_id = str(row["sector_id"] or "").strip()
+        trade_date = str(row["trade_date"] or "").strip()
+        if not sector_id or not trade_date:
+            continue
+        matrix.setdefault(sector_id, {})[trade_date] = float(row["net_flow_yi"] or 0)
+    return matrix
 
 
 def merge_sector_flow_history(

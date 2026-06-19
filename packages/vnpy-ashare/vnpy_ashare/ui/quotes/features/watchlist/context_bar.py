@@ -9,9 +9,8 @@ from vnpy_ashare.ui.quotes.features.watchlist.pool_context_summary import (
     SHORT_TERM_OBSERVATION_MAX,
     format_pool_context_summary,
 )
-from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
-
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
+from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 __all__ = [
     "SHORT_TERM_OBSERVATION_MAX",

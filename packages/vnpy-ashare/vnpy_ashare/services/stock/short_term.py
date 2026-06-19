@@ -31,8 +31,8 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields
 from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation_for_vt_symbol
-from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields, seal_reopen_from_row
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
+from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields, seal_reopen_from_row
 from vnpy_ashare.trading.signals.seal_strength import seal_strength_from_row
 
 _LIMIT_HISTORY_DAYS = 20
@@ -218,9 +218,7 @@ def _resolve_sector_leaders(
                 leader_tier=scored.leader_tier,
                 leader_tier_label=leader_tier_label(scored.leader_tier),
                 limit_times=scored.limit_times,
-                change_pct=float(row.get("change_pct"))
-                if isinstance(row.get("change_pct"), (int, float))
-                else None,
+                change_pct=float(row.get("change_pct")) if isinstance(row.get("change_pct"), (int, float)) else None,
             )
         )
     return industry, leader_tier, sector_rank, peer_models

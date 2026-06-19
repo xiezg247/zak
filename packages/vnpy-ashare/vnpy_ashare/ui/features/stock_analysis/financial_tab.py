@@ -150,11 +150,7 @@ class _MainBusinessTable(QtWidgets.QWidget):
             self._table.setRowCount(0)
             return
 
-        total_sales = sum(
-            float(item.get("bz_sales"))
-            for item in items
-            if isinstance(item.get("bz_sales"), (int, float))
-        )
+        total_sales = sum(float(item.get("bz_sales")) for item in items if isinstance(item.get("bz_sales"), (int, float)))
         self._table.setRowCount(len(items))
         for row_index, item in enumerate(items):
             sales = item.get("bz_sales")

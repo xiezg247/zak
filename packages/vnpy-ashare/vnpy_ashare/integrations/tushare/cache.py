@@ -123,11 +123,7 @@ def _industry_map_from_rows(rows: list[dict[str, Any]]) -> dict[str, str]:
 
 def merge_industry_maps(primary: dict[str, str], fallback: dict[str, str]) -> dict[str, str]:
     """合并行业映射：primary（申万 L2）优先，fallback（stock_basic）补未覆盖标的。"""
-    merged = {
-        str(ts_code).strip(): str(industry).strip()
-        for ts_code, industry in fallback.items()
-        if str(ts_code).strip() and str(industry or "").strip()
-    }
+    merged = {str(ts_code).strip(): str(industry).strip() for ts_code, industry in fallback.items() if str(ts_code).strip() and str(industry or "").strip()}
     for ts_code, industry in primary.items():
         cleaned = str(industry or "").strip()
         key = str(ts_code).strip()

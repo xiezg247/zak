@@ -151,6 +151,14 @@ class MarketDiscoveryStrip(QtWidgets.QWidget):
         self._apply_group(self._volume_group, volume)
         self._apply_group(self._moneyflow_group, moneyflow)
 
+    def apply_off_session_idle(self) -> None:
+        self._loading = False
+        message = "盘后暂停刷新"
+        for group in (self._volume_group, self._moneyflow_group):
+            group._empty.setText(message)
+            group._empty.show()
+            group._scroll.hide()
+
     def _apply_group(self, group: _DiscoveryGroup, data: RadarCardData | None) -> None:
         chip_layout: QtWidgets.QHBoxLayout = group._chip_layout
         empty: QtWidgets.QLabel = group._empty

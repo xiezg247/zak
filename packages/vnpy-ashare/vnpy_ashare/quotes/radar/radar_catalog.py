@@ -141,11 +141,7 @@ def radar_card_group(card_id: str) -> RadarGroupKey | None:
 
 
 def list_radar_cards_for_group(mode: RadarCardMode, group_key: RadarGroupKey) -> tuple[RadarCardSpec, ...]:
-    return tuple(
-        spec
-        for spec in RADAR_CARD_SPECS
-        if spec.mode == mode and RADAR_CARD_GROUP.get(spec.id) == group_key
-    )
+    return tuple(spec for spec in RADAR_CARD_SPECS if spec.mode == mode and RADAR_CARD_GROUP.get(spec.id) == group_key)
 
 
 SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
@@ -156,7 +152,9 @@ SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
 
 RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
     RadarCardSpec(id="leader_pick", title="选股·龙头", category="screen", top_n=12),
-    RadarCardSpec(id="discovery_limit_ladder", title="发现·连板梯队", category="discovery", has_task_variants=True, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
+    RadarCardSpec(
+        id="discovery_limit_ladder", title="发现·连板梯队", category="discovery", has_task_variants=True, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS
+    ),
     RadarCardSpec(id="discovery_volume_surge", title="发现·放量异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="discovery_moneyflow_intraday", title="发现·资金异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="sector_theme", title="板块·主线", category="sector", has_task_variants=True, auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS),

@@ -6,23 +6,30 @@ from collections import defaultdict
 from typing import Any
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
-from vnpy_ashare.domain.market.sector_flow import SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
+from vnpy_ashare.domain.market.sector_flow import (
+    SectorFlowHistoryPoint,
+    SectorFlowRotationSnapshot,
+    SectorFlowRow,
+    SectorFlowSnapshot,
+)
 from vnpy_ashare.domain.time.china import format_china_date
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map
-from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_l2_index_map, fetch_sw_l2_member_count_map
 from vnpy_ashare.integrations.tushare.sector_moneyflow import (
     fetch_moneyflow_cnt_ths_with_fallback,
     fetch_moneyflow_ind_dc_with_fallback,
     fetch_sector_flow_history_from_tushare,
 )
+from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_l2_index_map, fetch_sw_l2_member_count_map
 from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
-from vnpy_ashare.services.industry_sector import build_sw_industry_rows_from_dc, overlay_dc_moneyflow_on_sw_rows
 from vnpy_ashare.services.base import BaseService
+from vnpy_ashare.services.industry_sector import build_sw_industry_rows_from_dc, overlay_dc_moneyflow_on_sw_rows
 from vnpy_ashare.services.sector_constituents import compute_divergence_rows, load_sector_leaders, resolve_concept_vt_symbols
+from vnpy_ashare.services.sector_flow_rotation import build_rotation_snapshot
 from vnpy_ashare.storage.repositories.sector_flow_history import (
+    _HISTORY_LIMIT,
     load_sector_flow_history,
     merge_sector_flow_history,
     upsert_sector_flow_day,
@@ -48,6 +55,31 @@ def split_sector_display_rows(
         key=lambda item: item.net_flow_yi,
     )[:_TOP_EACH_SIDE]
     return inflow, outflow
+
+
+def format_sector_net_flow_yi(value: float) -> str:
+    """板块主力净额（亿元）展示文案；小额保留两位避免 -0.0。"""
+    if value == 0:
+        return "0.0亿"
+    if abs(value) < 0.1:
+        return f"{value:+.2f}亿"
+    return f"{value:+.1f}亿"
+
+
+def _pick_top_flow_extremes(rows: list[SectorFlowRow]) -> tuple[str, float, str, float]:
+    positives = [row for row in rows if row.net_flow_yi > 0]
+    negatives = [row for row in rows if row.net_flow_yi < 0]
+    top_in_name = top_out_name = ""
+    top_in_yi = top_out_yi = 0.0
+    if positives:
+        top_in = max(positives, key=lambda item: item.net_flow_yi)
+        top_in_name = top_in.name
+        top_in_yi = top_in.net_flow_yi
+    if negatives:
+        top_out = min(negatives, key=lambda item: item.net_flow_yi)
+        top_out_name = top_out.name
+        top_out_yi = top_out.net_flow_yi
+    return top_in_name, top_in_yi, top_out_name, top_out_yi
 
 
 def _today_trade_date() -> str:
@@ -242,21 +274,20 @@ def _snapshot_from_rows(
     sector_kind: str,
     data_mode: str,
     empty_hint: str = "",
+    top_source_rows: list[SectorFlowRow] | None = None,
 ) -> SectorFlowSnapshot:
-    inflow_rows = [row for row in sector_rows if row.net_flow_yi > 0]
-    outflow_rows = [row for row in sector_rows if row.net_flow_yi < 0]
+    inflow_rows = sorted(
+        [row for row in sector_rows if row.net_flow_yi > 0],
+        key=lambda item: item.net_flow_yi,
+        reverse=True,
+    )
+    outflow_rows = sorted(
+        [row for row in sector_rows if row.net_flow_yi < 0],
+        key=lambda item: item.net_flow_yi,
+    )
     divergence_rows = tuple(compute_divergence_rows(sector_rows))
-    top_in_name = top_out_name = ""
-    top_in_yi = 0.0
-    top_out_yi = 0.0
-    if inflow_rows:
-        top_in = inflow_rows[0]
-        top_in_name = top_in.name
-        top_in_yi = top_in.net_flow_yi
-    if outflow_rows:
-        top_out = outflow_rows[0]
-        top_out_name = top_out.name
-        top_out_yi = top_out.net_flow_yi
+    rank_rows = top_source_rows if top_source_rows is not None else sector_rows
+    top_in_name, top_in_yi, top_out_name, top_out_yi = _pick_top_flow_extremes(rank_rows)
     return SectorFlowSnapshot(
         rows=tuple(sector_rows),
         inflow_rows=tuple(inflow_rows),
@@ -288,6 +319,7 @@ def build_official_snapshot(
     trade_date: str,
     sector_kind: str,
     data_mode: str,
+    top_source_rows: list[SectorFlowRow] | None = None,
 ) -> SectorFlowSnapshot:
     label = _format_trade_date_label(trade_date)
     return _snapshot_from_rows(
@@ -296,6 +328,7 @@ def build_official_snapshot(
         trade_date=trade_date,
         sector_kind=sector_kind,
         data_mode=data_mode,
+        top_source_rows=top_source_rows,
     )
 
 
@@ -310,6 +343,7 @@ def build_sector_snapshot(
     updated_at: str | None,
     industry_map: dict[str, str] | None = None,
     sector_rows: list[SectorFlowRow] | None = None,
+    top_source_rows: list[SectorFlowRow] | None = None,
 ) -> SectorFlowSnapshot:
     if sector_rows is None:
         sector_rows = aggregate_sector_rows(rows, industry_map=industry_map)
@@ -323,6 +357,7 @@ def build_sector_snapshot(
         sector_kind="industry",
         data_mode="intraday",
         empty_hint=empty_hint,
+        top_source_rows=top_source_rows,
     )
 
 
@@ -350,7 +385,7 @@ class SectorFlowService(BaseService):
             limit=limit,
         )
 
-    def load_sector_history(self, sector: SectorFlowRow, *, limit: int = 5) -> list[SectorFlowHistoryPoint]:
+    def load_sector_history(self, sector: SectorFlowRow, *, limit: int = _HISTORY_LIMIT) -> list[SectorFlowHistoryPoint]:
         local = load_sector_flow_history(
             sector_id=sector.sector_id,
             sector_kind=sector.sector_kind,
@@ -366,6 +401,12 @@ class SectorFlowService(BaseService):
         if backfill:
             upsert_sector_history_points(sector, backfill)
         return merge_sector_flow_history(local, remote, limit=limit)
+
+    def load_rotation_snapshot(self, snapshot: SectorFlowSnapshot | None = None, *, sector_kind: str = "industry") -> SectorFlowRotationSnapshot:
+        base = snapshot
+        if base is None or base.sector_kind != sector_kind:
+            base = self.load_snapshot(sector_kind=sector_kind)
+        return build_rotation_snapshot(base)
 
     def resolve_concept_vt_symbols(self, sector: SectorFlowRow) -> list[str]:
 
@@ -434,14 +475,17 @@ class SectorFlowService(BaseService):
         if not is_ashare_trading_session():
             dc_rows, trade_date = fetch_moneyflow_ind_dc_with_fallback(content_type="行业")
             if dc_rows:
-                sector_rows = build_sw_industry_rows_from_dc(dc_rows)
-                if sector_rows:
+                full_rows = build_sw_industry_rows_from_dc(dc_rows, limit_each_side=None)
+                if full_rows:
+                    inflow, outflow = split_sector_display_rows(full_rows)
+                    display_rows = inflow + outflow
                     return finalize_official_snapshot(
                         build_official_snapshot(
-                            sector_rows,
+                            display_rows,
                             trade_date=trade_date,
                             sector_kind="industry",
                             data_mode="official_sw",
+                            top_source_rows=full_rows,
                         )
                     )
             if rows:
@@ -464,15 +508,20 @@ class SectorFlowService(BaseService):
         industry_map = fetch_stock_industry_map()
         self._cache_quote_context(rows, industry_map)
         sector_rows = aggregate_sector_rows(rows, industry_map=industry_map)
+        rank_rows = sector_rows
         if is_ashare_trading_session():
             dc_rows, _trade_date = fetch_moneyflow_ind_dc_with_fallback(content_type="行业")
             if dc_rows:
                 sector_rows = overlay_dc_moneyflow_on_sw_rows(sector_rows, dc_rows)
+                rank_rows = sector_rows
+                inflow, outflow = split_sector_display_rows(sector_rows)
+                sector_rows = inflow + outflow
         snapshot = build_sector_snapshot(
             rows,
             updated_at=updated_at,
             industry_map=industry_map,
             sector_rows=sector_rows,
+            top_source_rows=rank_rows,
         )
         if not snapshot.rows and not snapshot.empty_hint:
             hint = diagnose_sector_flow_empty(rows, raw_total=total, industry_map=industry_map)

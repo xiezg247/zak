@@ -7,7 +7,6 @@ from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, update_scr
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.integrations.tushare.stk_shock import load_exchange_regulatory_index
 from vnpy_ashare.services.stock.regulatory_deviation import (
-    assess_regulatory_deviation,
     assess_regulatory_deviation_for_vt_symbol,
 )
 

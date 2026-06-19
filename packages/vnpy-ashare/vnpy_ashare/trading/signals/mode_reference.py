@@ -7,9 +7,9 @@ from datetime import date, datetime
 from typing import Literal, cast
 
 from pydantic import Field
+
 from strategies.registry import resolve_intraday_mode_kind as _resolve_intraday_mode_kind
 from strategies.ultra_short_signals import calc_limit_price
-
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.trading.signals.intraday_breakout_intraday import (

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
     load_outlook_signal_config,
@@ -11,7 +12,6 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 from vnpy_ashare.quotes.radar.radar_ai_cache import resolve_ai_hint, rows_fingerprint
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_cross_refs import build_outlook_cross_ref_hint, build_outlook_cross_ref_suffix
-from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
 from vnpy_ashare.quotes.radar.radar_horizon_cache import (
     build_horizon_subtitle,
     get_horizon_cache,
@@ -160,9 +160,7 @@ def load_outlook_horizon(
     recent_days = outlook_signal_recent_days(config.class_name)
     scenario_mode = resolved_variant in SCENARIO_VARIANTS
     idle_subtitle = (
-        f"约 {recent_days} 日统计情景 · 策略 {strategy_label} · 非目标价"
-        if scenario_mode
-        else f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 非价格预测"
+        f"约 {recent_days} 日统计情景 · 策略 {strategy_label} · 非目标价" if scenario_mode else f"约 {recent_days} 日窗口 · 策略 {strategy_label} · 非价格预测"
     )
 
     if not force_recompute:

@@ -47,20 +47,16 @@ def test_radar_card_ids_unique() -> None:
 
 
 def test_radar_card_groups_cover_all_cards() -> None:
-    from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_GROUP, list_radar_cards_for_group
+    from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_GROUP
 
     assert set(RADAR_CARD_GROUP) == {spec.id for spec in RADAR_CARD_SPECS}
     statistical_ids = {spec.id for spec in list_radar_cards_for_mode("statistical")}
     predictive_ids = {spec.id for spec in list_radar_cards_for_mode("predictive")}
     assert statistical_ids == {
-        spec.id
-        for group_key, _label in list_radar_groups_for_mode("statistical")
-        for spec in list_radar_cards_for_group("statistical", group_key)
+        spec.id for group_key, _label in list_radar_groups_for_mode("statistical") for spec in list_radar_cards_for_group("statistical", group_key)
     }
     assert predictive_ids == {
-        spec.id
-        for group_key, _label in list_radar_groups_for_mode("predictive")
-        for spec in list_radar_cards_for_group("predictive", group_key)
+        spec.id for group_key, _label in list_radar_groups_for_mode("predictive") for spec in list_radar_cards_for_group("predictive", group_key)
     }
 
 

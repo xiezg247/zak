@@ -24,10 +24,10 @@ from vnpy_ashare.ui.features.notes_center.save_from_ai import (
     save_recent_turns_as_journal,
     save_recent_turns_as_report,
 )
-from vnpy_common.ai.access import get_ai_context
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
 from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
+from vnpy_common.ai.access import get_ai_context
 from vnpy_common.ai.protocol import StockCompletionItem, SymbolRef, WatchlistToggleResult
 from vnpy_common.ai.symbol_navigation import SymbolNavigationPort
 

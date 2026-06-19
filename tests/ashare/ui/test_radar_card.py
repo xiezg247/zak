@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import unittest
 
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.ui import QtWidgets
 
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.radar.card import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID
-from vnpy_ashare.ui.quotes.radar.card import RadarCardWidget, _BODY_PAGE_EMPTY, _BODY_PAGE_ROWS
+from vnpy_ashare.ui.quotes.radar.card import _BODY_PAGE_EMPTY, _BODY_PAGE_ROWS, RadarCardWidget
 
 
 class RadarCardWidgetTests(unittest.TestCase):
@@ -70,6 +70,39 @@ class RadarCardWidgetTests(unittest.TestCase):
 
         self.assertEqual(card._body_stack.currentIndex(), _BODY_PAGE_ROWS)
         self.assertEqual(len(card._row_widgets), 1)
+
+    def test_rows_fill_body_without_inner_scroll(self) -> None:
+        card = self._card()
+        card.resize(360, 600)
+        rows = tuple(
+            RadarRow(
+                vt_symbol=f"{i:06d}.SZSE",
+                name=f"测试{i}",
+                symbol=f"{i:06d}",
+                price=10.0 + i,
+                change_pct=1.0,
+                metric_label="涨幅",
+                metric_value="+1.0%",
+                sub_label="",
+                sub_value="",
+            )
+            for i in range(8)
+        )
+        card.apply_data(
+            RadarCardData(
+                card_id="sector_theme",
+                title="板块·主线",
+                subtitle="",
+                rows=rows,
+                empty_message="",
+                updated_at="12:00",
+            ),
+        )
+        QtWidgets.QApplication.processEvents()
+        self.assertEqual(len(card._row_widgets), 8)
+        body_height = card._body_stack.height()
+        rows_height = sum(widget.height() for widget in card._row_widgets)
+        self.assertGreaterEqual(body_height, rows_height)
 
 
 if __name__ == "__main__":

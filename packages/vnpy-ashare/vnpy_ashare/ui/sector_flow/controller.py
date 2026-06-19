@@ -9,10 +9,21 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.app.engine_access import get_quote_service, get_sector_flow_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
-from vnpy_ashare.domain.market.sector_flow import SectorConstituentRow, SectorFlowHistoryPoint, SectorFlowRow, SectorFlowSnapshot
+from vnpy_ashare.domain.market.sector_flow import (
+    SectorConstituentRow,
+    SectorFlowHistoryPoint,
+    SectorFlowRotationRow,
+    SectorFlowRotationSnapshot,
+    SectorFlowRow,
+    SectorFlowSnapshot,
+)
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_ashare_trading_session
-from vnpy_ashare.services.sector_flow import SectorFlowService
+from vnpy_ashare.services.sector_flow import SectorFlowService, format_sector_net_flow_yi
+from vnpy_ashare.services.sector_flow_rotation import format_rotation_ai_lines
+from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_for_drilldown
 from vnpy_ashare.ui.sector_flow.leaders_worker import SectorLeadersLoadWorker
+from vnpy_ashare.ui.sector_flow.rotation_detail_dialog import SectorFlowRotationDetailDialog
+from vnpy_ashare.ui.sector_flow.rotation_worker import SectorFlowRotationLoadWorker
 from vnpy_ashare.ui.sector_flow.worker import SectorFlowLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -24,6 +35,10 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
 
 _DEFAULT_REFRESH_MS = 30_000
+_TAB_INFLOW = 0
+_TAB_OUTFLOW = 1
+_TAB_DIVERGENCE = 2
+_TAB_ROTATION = 3
 
 
 class SectorFlowController(QtCore.QObject):
@@ -34,10 +49,13 @@ class SectorFlowController(QtCore.QObject):
         self._event_engine = event_engine
         self._panel = page.panel
         self._worker: SectorFlowLoadWorker | None = None
+        self._rotation_worker: SectorFlowRotationLoadWorker | None = None
         self._leaders_worker: SectorLeadersLoadWorker | None = None
         self._retired: list[QtCore.QThread] = []
         self._last_snapshot: SectorFlowSnapshot | None = None
+        self._last_rotation: SectorFlowRotationSnapshot | None = None
         self._pending_focus: set[str] = set()
+        self._pending_view_tab: int | None = None
         self._sector_kind = "industry"
         self._service: SectorFlowService | None = None
 
@@ -51,8 +69,12 @@ class SectorFlowController(QtCore.QObject):
         panel.refresh_requested.connect(self.refresh)
         panel.ai_requested.connect(self._request_ai)
         panel.sector_kind_changed.connect(self._on_sector_kind_changed)
+        panel.view_tab_changed.connect(self._on_view_tab_changed)
         panel.table.sector_activated.connect(self._on_sector_activated)
         panel.table.sector_selected.connect(self._on_sector_selected)
+        panel.rotation_table.sector_activated.connect(self._on_sector_activated)
+        panel.rotation_table.sector_selected.connect(self._on_sector_selected)
+        panel.rotation_table.detail_requested.connect(self._on_rotation_detail_requested)
         panel.detail.market_drilldown_requested.connect(self._on_detail_market_drilldown)
         panel.detail.screener_requested.connect(self._on_detail_screener)
 
@@ -81,6 +103,9 @@ class SectorFlowController(QtCore.QObject):
         if self._leaders_worker is not None:
             release_thread(self._retired, self._leaders_worker, timeout_ms=0)
             self._leaders_worker = None
+        if self._rotation_worker is not None:
+            release_thread(self._retired, self._rotation_worker, timeout_ms=0)
+            self._rotation_worker = None
 
     def refresh(self) -> None:
         service = self._get_service()
@@ -114,12 +139,21 @@ class SectorFlowController(QtCore.QObject):
             self._page.set_status(status)
             return
         self._last_snapshot = snapshot
+        self._last_rotation = None
         self._panel.apply_snapshot(snapshot)
+        if self._pending_view_tab is not None:
+            tab_id = self._pending_view_tab
+            self._pending_view_tab = None
+            self._panel.select_view_tab(tab_id, emit=True)
+            return
         if self._pending_focus:
             self._panel.focus_sectors(self._pending_focus)
             self._pending_focus.clear()
         self._update_status_label()
         self._publish_ai_context(snapshot)
+        if self._panel.active_tab == _TAB_ROTATION:
+            self._load_rotation(snapshot)
+            return
         first_row = self._panel.table.selected_sector_row()
         if first_row is None and snapshot.inflow_rows:
             self._panel.table.selectRow(0)
@@ -128,7 +162,16 @@ class SectorFlowController(QtCore.QObject):
             self._load_sector_leaders(first_row)
 
     def _on_sector_selected(self, sector: SectorFlowRow) -> None:
+        if self._panel.active_tab == _TAB_ROTATION:
+            return
         self._load_sector_leaders(sector)
+
+    def _on_rotation_detail_requested(self, rotation_row: object) -> None:
+        if not isinstance(rotation_row, SectorFlowRotationRow):
+            return
+        dialog = SectorFlowRotationDetailDialog(rotation_row, parent=self._page)
+        dialog.market_drilldown_requested.connect(self._on_detail_market_drilldown)
+        dialog.exec()
 
     def _load_sector_leaders(self, sector: SectorFlowRow) -> None:
         service = self._get_service()
@@ -177,7 +220,17 @@ class SectorFlowController(QtCore.QObject):
             host.open_market_concept_drilldown(sector.name, vt_symbols)
             return
         if hasattr(host, "open_market_industry_filter"):
-            host.open_market_industry_filter(sector.name)
+            industry = (
+                resolve_industry_for_drilldown(
+                    sector.name,
+                    sector_id=sector.sector_id,
+                )
+                or str(sector.name or "").strip()
+            )
+            if not industry:
+                page_notify(self._page, f"未找到行业「{sector.name}」映射", level="warning")
+                return
+            host.open_market_industry_filter(industry)
             return
         page_notify(self._page, "无法打开市场页行业筛选", level="warning")
 
@@ -211,22 +264,110 @@ class SectorFlowController(QtCore.QObject):
     def _on_sector_kind_changed(self, sector_kind: str) -> None:
         self._sector_kind = sector_kind
         self._last_snapshot = None
+        self._last_rotation = None
         self.refresh()
 
-    def focus_sectors(self, sector_ids: list[str]) -> None:
-        cleaned = {name.strip() for name in sector_ids if name and name.strip()}
-        if not cleaned:
+    def _on_view_tab_changed(self, tab_id: int) -> None:
+        if tab_id != _TAB_ROTATION:
             return
-        self._sector_kind = "industry"
-        self._panel.select_sector_kind("industry")
-        if self._last_snapshot and self._last_snapshot.rows and self._last_snapshot.sector_kind == "industry":
-            self._panel.focus_sectors(cleaned)
-        else:
+        if self._last_rotation is not None and self._last_rotation.sector_kind == self._sector_kind:
+            self._panel.apply_rotation_snapshot(self._last_rotation)
+            first_row = self._panel.rotation_table.selected_sector_row()
+            if first_row is None and self._last_rotation.rows:
+                self._panel.rotation_table.selectRow(0)
+                first_row = self._panel.rotation_table.selected_sector_row()
+            if first_row is not None:
+                self._load_sector_leaders(first_row)
+            return
+        self._load_rotation(self._last_snapshot)
+
+    def _load_rotation(self, snapshot: SectorFlowSnapshot | None = None) -> None:
+        service = self._get_service()
+        if service is None:
+            return
+        if thread_is_active(self._rotation_worker):
+            return
+        self._panel.set_loading(True, message="正在加载近15日板块轮动…")
+        worker = SectorFlowRotationLoadWorker(
+            service,
+            snapshot=snapshot,
+            sector_kind=self._sector_kind,
+            parent=self._page,
+        )
+        self._rotation_worker = worker
+        worker.finished.connect(self._on_rotation_loaded)
+        worker.failed.connect(self._on_rotation_failed)
+        worker.finished.connect(lambda _snap, w=worker: self._release_rotation_worker(w))
+        worker.failed.connect(lambda _msg, w=worker: self._release_rotation_worker(w))
+        worker.start()
+
+    def _release_rotation_worker(self, worker: SectorFlowRotationLoadWorker) -> None:
+        if self._rotation_worker is worker:
+            self._rotation_worker = None
+        release_thread(self._retired, worker)
+
+    def _on_rotation_loaded(self, rotation: object) -> None:
+        self._panel.set_loading(False)
+        if not isinstance(rotation, SectorFlowRotationSnapshot):
+            return
+        self._last_rotation = rotation
+        self._panel.apply_rotation_snapshot(rotation)
+        self._update_status_label()
+        self._publish_ai_context(self._last_snapshot)
+        if self._pending_focus:
+            self._panel.focus_sectors(self._pending_focus)
+            self._pending_focus.clear()
+            return
+        first_row = self._panel.rotation_table.selected_rotation_row()
+        if first_row is None and rotation.rows:
+            self._panel.rotation_table.selectRow(0)
+        elif rotation.empty_hint:
+            self._page.set_status(rotation.empty_hint)
+
+    def _on_rotation_failed(self, message: str) -> None:
+        self._panel.set_loading(False)
+        page_notify(self._page, f"板块轮动加载失败：{message}", level="warning")
+        self._page.set_status(message)
+
+    def focus_sectors(
+        self,
+        sector_ids: list[str],
+        *,
+        tab: str = "default",
+        sector_kind: str | None = None,
+    ) -> None:
+        cleaned = {name.strip() for name in sector_ids if name and name.strip()}
+        tab_map = {
+            "default": None,
+            "inflow": _TAB_INFLOW,
+            "outflow": _TAB_OUTFLOW,
+            "divergence": _TAB_DIVERGENCE,
+            "rotation": _TAB_ROTATION,
+        }
+        pending_tab = tab_map.get(tab, tab_map["default"])
+        if pending_tab is not None:
+            self._pending_view_tab = pending_tab
+        if sector_kind in {"industry", "concept"}:
+            self._sector_kind = sector_kind
+            self._panel.select_sector_kind(sector_kind, emit=False)
+        elif tab != "rotation":
+            self._sector_kind = "industry"
+            self._panel.select_sector_kind("industry", emit=False)
+        if cleaned:
             self._pending_focus = cleaned
-            self.refresh()
+        if self._last_snapshot and self._last_snapshot.rows and self._last_snapshot.sector_kind == self._sector_kind:
+            if pending_tab is not None:
+                self._panel.select_view_tab(pending_tab, emit=True)
+            elif cleaned:
+                self._panel.focus_sectors(cleaned)
+            return
+        self.refresh()
 
     def _on_sector_activated(self, industry: str) -> None:
-        sector = self._panel.table.selected_sector_row()
+        if self._panel.active_tab == _TAB_ROTATION:
+            sector = self._panel.rotation_table.selected_sector_row()
+        else:
+            sector = self._panel.table.selected_sector_row()
         if sector is not None and sector.sector_kind == "concept":
             self._on_detail_market_drilldown(sector)
             return
@@ -237,7 +378,14 @@ class SectorFlowController(QtCore.QObject):
         if host is None or not hasattr(host, "open_market_industry_filter"):
             page_notify(self._page, "无法打开市场页行业筛选", level="warning")
             return
-        host.open_market_industry_filter(industry)
+        if sector is not None and sector.sector_kind == "industry":
+            label = resolve_industry_for_drilldown(sector.name, sector_id=sector.sector_id) or sector.name
+        else:
+            label = resolve_industry_for_drilldown(industry) or industry
+        if not label:
+            page_notify(self._page, f"未找到行业「{industry}」映射", level="warning")
+            return
+        host.open_market_industry_filter(label)
 
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page
@@ -255,9 +403,15 @@ class SectorFlowController(QtCore.QObject):
         snap = snapshot or self._last_snapshot
         if snap and snap.rows:
             kind_label = "概念" if snap.sector_kind == "concept" else "行业"
-            mode_labels = {"intraday": "盘中估算", "official_dc": "日终东财", "official_ths": "日终同花顺"}
+            mode_labels = {"intraday": "盘中估算", "official_dc": "日终东财", "official_ths": "日终同花顺", "official_sw": "日终申万"}
             extra_lines.append(f"{kind_label}·{mode_labels.get(snap.data_mode, snap.data_mode)}")
-            extra_lines.append(f"净流入 {snap.top_inflow_name} {snap.top_inflow_yi:+.1f}亿；净流出 {snap.top_outflow_name} {snap.top_outflow_yi:+.1f}亿")
+            extra_lines.append(
+                f"净流入 {snap.top_inflow_name} {format_sector_net_flow_yi(snap.top_inflow_yi)}；"
+                f"净流出 {snap.top_outflow_name} {format_sector_net_flow_yi(snap.top_outflow_yi)}"
+            )
+            rotation = self._last_rotation
+            if rotation and rotation.rows:
+                extra_lines.extend(format_rotation_ai_lines(rotation, limit=5))
             for row in snap.rows[:8]:
                 leader = f" 龙头{row.leader_stock}" if row.leader_stock else ""
                 extra_lines.append(f"{row.name} 强度{row.strength:.1f} 涨幅{row.change_pct:+.2f}% 主力{row.net_flow_yi:+.2f}亿({row.flow_source}){leader}")
@@ -283,6 +437,11 @@ class SectorFlowController(QtCore.QObject):
             f"请解读当前{kind_label}板块资金结构：哪些板块资金净流入/流出突出，与涨幅是否一致，短线需关注什么。",
             f"数据口径：{mode_note}，请说明不确定性。",
         ]
+        rotation = self._last_rotation
+        if rotation and rotation.rows and rotation.sector_kind == snap.sector_kind:
+            lines.append("近15日资金轮动：")
+            lines.extend(format_rotation_ai_lines(rotation, limit=10))
+        lines.append("当日板块快照：")
         for row in snap.rows[:12]:
             leader = f"，龙头 {row.leader_stock}" if row.leader_stock else ""
             lines.append(f"- {row.name}：强度{row.strength:.1f}，涨幅{row.change_pct:+.2f}%，主力净额{row.net_flow_yi:+.2f}亿（{row.flow_source}）{leader}")

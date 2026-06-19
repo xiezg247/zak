@@ -105,11 +105,16 @@ class MarketRankFeature:
         if target == page._market_rank_id:
             page._market_page = 0
             page._market_page_cache.clear()
-            page._market_catalog_loaded = False
             page._market_board_base = None
             page._market_board_base_key = None
             page._market_loading_more = False
             page._market_last_load_more_at = 0.0
+            if page._market_catalog_loaded and page.config.market_full_list:
+                if page._apply_pending_market_drilldown():
+                    page._table.filter_market_display()
+                    page._pagination.update_controls()
+                return
+            page._market_catalog_loaded = False
             page.load_stock_list()
             return
         row = rank_definition_row(target)

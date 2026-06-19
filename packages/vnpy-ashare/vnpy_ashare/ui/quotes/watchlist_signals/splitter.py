@@ -17,10 +17,8 @@ from vnpy_ashare.ui.components.splitter_utils import (
 )
 from vnpy_ashare.ui.quotes.page.run_log import sync_run_output_expansion
 from vnpy_ashare.ui.quotes.page.run_output_state import load_run_output_expanded, run_output_panel
-from vnpy_common.domain.base import FrozenModel
-
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-
+from vnpy_common.domain.base import FrozenModel
 
 SIGNAL_PANEL_DEFAULT_HEIGHT = 240
 SIGNAL_PANEL_COLLAPSED_HEIGHT = 32

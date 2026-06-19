@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import PRESET_SPECS
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId
+from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import PRESET_SPECS
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 _EMOTION_MORE_LABEL = "情绪周期"

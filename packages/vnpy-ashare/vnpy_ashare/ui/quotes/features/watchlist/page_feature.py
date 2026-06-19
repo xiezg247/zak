@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.ui.quotes.features.watchlist.center_layout import build_watchlist_center_layout
 from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
@@ -10,7 +10,6 @@ from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_layout_
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_watchlist_layout_preset
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo, create_view_mode_buttons
 from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
-
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 

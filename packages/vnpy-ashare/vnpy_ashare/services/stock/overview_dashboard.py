@@ -6,7 +6,6 @@ from typing import Any
 
 from vnpy_ashare.ai.context.store import get_screening_results
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-from vnpy_ashare.data.pattern_bars import load_daily_bars_tail
 from vnpy_ashare.domain.stock.overview import (
     AlertSeverity,
     DataReadinessItem,

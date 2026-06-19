@@ -208,11 +208,8 @@ class BatchBacktestFlow:
         reply = QtWidgets.QMessageBox.question(
             self.parent,
             "分 K 数据预检",
-            f"{summary.needs_fill}/{summary.total} 只缺少或未更新本地 1 分钟 K 线。\n"
-            "是否先自动补全再回测？（需 Tushare，耗时视数量而定）",
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-            | QtWidgets.QMessageBox.StandardButton.Cancel,
+            f"{summary.needs_fill}/{summary.total} 只缺少或未更新本地 1 分钟 K 线。\n是否先自动补全再回测？（需 Tushare，耗时视数量而定）",
+            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No | QtWidgets.QMessageBox.StandardButton.Cancel,
             QtWidgets.QMessageBox.StandardButton.Yes,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.Cancel:

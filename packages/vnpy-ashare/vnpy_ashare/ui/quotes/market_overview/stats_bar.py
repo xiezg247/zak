@@ -236,7 +236,7 @@ class MarketStatsBar(QtWidgets.QWidget):
         self.set_loading()
         self._updated_label.setText("暂无全市场行情")
 
-    def render_breadth(self, breadth: MarketBreadthSnapshot) -> None:
+    def render_breadth(self, breadth: MarketBreadthSnapshot, *, session_note: str = "") -> None:
         self._last_breadth = breadth
         tokens = theme_manager().tokens()
         up_color = pct_change_color(1.0, tokens)
@@ -265,7 +265,8 @@ class MarketStatsBar(QtWidgets.QWidget):
         )
         self._amount_chip.setToolTip(self._amount_tooltip(breadth.total_amount))
         self._ratio_bar.set_counts(breadth.up, breadth.down, breadth.flat)
-        self._updated_label.setText(_format_updated_at(breadth.updated_at))
+        updated = _format_updated_at(breadth.updated_at)
+        self._updated_label.setText(f"{session_note}{updated}" if session_note else updated)
         self._render_environment(self._last_environment)
 
     def _amount_trillion(self, amount: float) -> float:

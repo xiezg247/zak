@@ -10,7 +10,6 @@ from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.ui import QtCore
 
 from vnpy_common.ai.access import warn_missing_ai_bridges
-
 from vnpy_llm.chat.session_surface import SessionSurfaceStore, Surface
 from vnpy_llm.chat.store import ChatMessage, ChatSession, ChatStore
 from vnpy_llm.config.settings import LlmConfig

@@ -52,7 +52,6 @@ def _sample_card(
 
 def test_load_screen_task_latest_empty(monkeypatch) -> None:
     from vnpy_ashare.domain.radar.catalog import RadarCardSpec
-    from vnpy_ashare.quotes.radar.radar_loaders import load_screen_task
 
     monkeypatch.setattr("vnpy_ashare.quotes.radar.radar_loaders.get_latest_run", lambda: None)
     spec = RadarCardSpec(id="screen_task", title="选股结果·任务", category="screen")

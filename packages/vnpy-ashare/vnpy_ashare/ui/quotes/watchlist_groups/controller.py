@@ -6,17 +6,16 @@ from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.symbols.stock import StockItem
-from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord, load_watchlist_group_member_keys
 from vnpy_ashare.services.watchlist_short_term import find_short_term_observation_group_id
+from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord, load_watchlist_group_member_keys
 from vnpy_ashare.trading.risk.gate import read_total_capital
 from vnpy_ashare.trading.risk.plan_position import format_group_position_tab_label, summarize_group_position
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_groups.prefs import (
     load_active_watchlist_group_id,
     save_active_watchlist_group_id,
 )
 from vnpy_common.ui.feedback import page_notify
-
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class WatchlistGroupController(QtCore.QObject):

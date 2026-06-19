@@ -22,7 +22,6 @@ from vnpy_ashare.quotes.market.emotion_cycle_cache import (
 )
 from vnpy_ashare.quotes.market.emotion_cycle_hysteresis import (
     apply_stage_hysteresis,
-    reset_emotion_stage_hysteresis,
 )
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth

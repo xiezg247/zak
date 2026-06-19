@@ -19,6 +19,7 @@ from vnpy_ashare.trading.risk.combined import (
     compute_avg_float_pnl_pct,
     load_combined_risk_gate_snapshot,
 )
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.header import PositionPanelHeader
 from vnpy_ashare.ui.quotes.watchlist_positions.journal_report_dialog import JournalReportDialog
@@ -27,8 +28,6 @@ from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskS
 from vnpy_ashare.ui.quotes.watchlist_positions.sell_dialog import PositionSellDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.table_view import PositionPanelTableView
 from vnpy_common.ui.theme.manager import theme_manager
-
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class WatchlistPositionPanel(QtWidgets.QWidget):

@@ -14,9 +14,9 @@ from vnpy_ashare.domain.trading.position import PositionRecord, build_position_s
 from vnpy_ashare.domain.trading.signal_snapshot import signal_as_of_stale
 from vnpy_ashare.notifications.core.position_alert_scan import PositionAlertRow, PositionAlertScanInput
 from vnpy_ashare.notifications.triggers.position_alerts import scan_position_alerts
+from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
-from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
 from vnpy_common.ui.qt_helpers import release_thread

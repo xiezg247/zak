@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
+from vnpy_ashare.quotes.market.market_discovery_cache import peek_discovery_cards, store_discovery_cards
 from vnpy_ashare.ui.quotes.market_discovery.worker import MarketDiscoveryLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -35,7 +36,11 @@ class MarketDiscoveryController(QtCore.QObject):
         strip.row_activated.connect(self._on_row_activated)
 
     def activate(self) -> None:
-        QtCore.QTimer.singleShot(800, self.refresh)
+        intraday = is_ashare_trading_session()
+        if intraday:
+            QtCore.QTimer.singleShot(800, self.refresh)
+        else:
+            self._apply_off_session_discovery()
         self._schedule_timer()
         self._session_timer.start()
 
@@ -60,6 +65,9 @@ class MarketDiscoveryController(QtCore.QObject):
     def refresh(self) -> None:
         if thread_is_active(self._worker):
             return
+        if not is_ashare_trading_session():
+            self._apply_off_session_discovery()
+            return
         worker = MarketDiscoveryLoadWorker(parent=self._page)
         self._worker = worker
         self._strip.set_loading(True)
@@ -68,6 +76,7 @@ class MarketDiscoveryController(QtCore.QObject):
             if self._worker is worker:
                 self._worker = None
             release_thread(self._retired_workers, worker)
+            store_discovery_cards(volume, moneyflow)
             self._strip.apply_cards(volume, moneyflow)
 
         def on_failed(message: str) -> None:
@@ -80,6 +89,14 @@ class MarketDiscoveryController(QtCore.QObject):
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
         worker.start()
+
+    def _apply_off_session_discovery(self) -> None:
+        peeked = peek_discovery_cards(intraday=False)
+        if peeked is not None:
+            volume, moneyflow = peeked
+            self._strip.apply_cards(volume, moneyflow)
+        else:
+            self._strip.apply_off_session_idle()
 
     def _on_row_activated(self, vt_symbol: str) -> None:
         if self._page._table.focus_market_symbol(vt_symbol):

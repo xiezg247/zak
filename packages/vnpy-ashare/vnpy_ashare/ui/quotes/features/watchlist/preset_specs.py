@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId
 
-
 POSITION_FOCUS_TABLE_RATIO = 0.25
 
 
@@ -64,6 +63,5 @@ PRESET_LABELS: tuple[tuple[LayoutPresetId, str], ...] = (
 )
 
 PRESET_PANEL_STATE: dict[LayoutPresetId, tuple[bool, bool]] = {
-    preset_id: (spec.signal_expanded, spec.position_expanded)
-    for preset_id, spec in PRESET_SPECS.items()
+    preset_id: (spec.signal_expanded, spec.position_expanded) for preset_id, spec in PRESET_SPECS.items()
 }

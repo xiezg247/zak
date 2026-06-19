@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import cast
 
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.quotes.radar.radar_catalog import (
     RADAR_LAYOUT_SECTIONS,
-    default_group_for_mode,
-    list_radar_groups_for_mode,
     RadarCardMode,
     RadarGroupKey,
+    default_group_for_mode,
+    list_radar_groups_for_mode,
 )
 
 _SETTINGS_PREFIX = "quotes/radar/active_mode"

@@ -57,11 +57,7 @@ def _entry_from_row(row: sqlite3.Row, *, logical_variant: str) -> HorizonCacheEn
         payload = json.loads(str(row["rows_json"] or "[]"))
     except (json.JSONDecodeError, TypeError):
         payload = []
-    rows = tuple(
-        radar_row_from_cache_dict(item, enrich=False)
-        for item in payload
-        if isinstance(item, dict)
-    )
+    rows = tuple(radar_row_from_cache_dict(item, enrich=False) for item in payload if isinstance(item, dict))
     return HorizonCacheEntry(
         variant=logical_variant,
         rows=rows,

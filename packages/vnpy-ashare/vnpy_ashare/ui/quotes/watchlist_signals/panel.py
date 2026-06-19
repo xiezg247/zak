@@ -11,11 +11,10 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     normalize_signal_panel_symbols,
     save_signal_panel_symbols,
 )
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.header import SignalPanelHeader
 from vnpy_ashare.ui.quotes.watchlist_signals.table_view import SignalPanelTableView
 from vnpy_common.ui.theme.manager import theme_manager
-
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class WatchlistSignalPanel(QtWidgets.QWidget):

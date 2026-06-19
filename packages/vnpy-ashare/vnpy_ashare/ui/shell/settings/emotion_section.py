@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.emotion_cycle import (
-    DEFAULT_EMOTION_CYCLE_THRESHOLDS,
     EmotionCycleThresholds,
     load_emotion_cycle_thresholds,
     reset_emotion_cycle_thresholds,
@@ -48,9 +47,7 @@ class EmotionSettingsSection(QtWidgets.QWidget):
         root.setContentsMargins(4, 8, 4, 8)
         root.setSpacing(12)
 
-        hint = QtWidgets.QLabel(
-            "调整情绪周期引擎的阶段判定阈值。保存后立即重算缓存；顶栏芯片与选股 gate 共用同一套规则。"
-        )
+        hint = QtWidgets.QLabel("调整情绪周期引擎的阶段判定阈值。保存后立即重算缓存；顶栏芯片与选股 gate 共用同一套规则。")
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
         root.addWidget(hint)

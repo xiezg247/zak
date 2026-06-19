@@ -14,7 +14,7 @@ _HEADERS = ("名称", "涨幅%", "主力(万)")
 
 
 class SectorFlowDetailPanel(QtWidgets.QFrame):
-    """选中板块的摘要、近 5 日资金与成分龙头。"""
+    """选中板块的摘要、侧栏近5日趋势与成分龙头。"""
 
     market_drilldown_requested = QtCore.Signal(object)
     screener_requested = QtCore.Signal(str)
@@ -24,6 +24,8 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         self.setObjectName("SectorFlowDetailPanel")
         self.setMinimumWidth(240)
         self._current_sector: SectorFlowRow | None = None
+        self._history_enabled = True
+        self._last_history: list[SectorFlowHistoryPoint] = []
 
         self._title = QtWidgets.QLabel("板块详情")
         self._title.setObjectName("SectionLabel")
@@ -31,7 +33,9 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         self._summary.setObjectName("SectorFlowSummary")
         self._summary.setWordWrap(True)
 
-        self._mini_bar = SectorFlowMiniBar(self)
+        self._history_label = QtWidgets.QLabel("近5日主力（亿）")
+        self._history_label.setObjectName("SectionLabel")
+        self._mini_bar = SectorFlowMiniBar(self, max_points=5)
 
         self._market_btn = QtWidgets.QPushButton("市场成分")
         self._market_btn.setObjectName("ActionButton")
@@ -68,7 +72,10 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         layout.setSpacing(8)
         layout.addWidget(self._title)
         layout.addWidget(self._summary)
+        layout.addWidget(self._history_label)
         layout.addWidget(self._mini_bar)
+        self._history_label.hide()
+        self._mini_bar.hide()
         layout.addLayout(action_row)
         layout.addWidget(leaders_label)
         layout.addWidget(self._table, stretch=1)
@@ -88,6 +95,9 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         self._current_sector = None
         self._title.setText("板块详情")
         self._summary.setText("选中左侧板块查看成分龙头")
+        self._last_history = []
+        self._history_label.hide()
+        self._mini_bar.hide()
         self._mini_bar.clear()
         self._table.setRowCount(0)
         self._sync_action_buttons()
@@ -95,6 +105,9 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
     def set_loading(self, sector_name: str) -> None:
         self._title.setText(sector_name)
         self._summary.setText("加载成分龙头…")
+        self._last_history = []
+        self._history_label.hide()
+        self._mini_bar.hide()
         self._mini_bar.clear()
         self._table.setRowCount(0)
         self._market_btn.setEnabled(False)
@@ -123,11 +136,8 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
             parts.append(f"龙头 {sector.leader_stock}")
         self._summary.setText(" · ".join(parts))
         self._sync_action_buttons()
-
-        if history:
-            self._mini_bar.render_points(history)
-        else:
-            self._mini_bar.clear()
+        self._last_history = list(history or [])
+        self._render_history()
 
         if not leaders:
             self._table.setRowCount(1)
@@ -157,6 +167,21 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         industry_mode = enabled and sector is not None and sector.sector_kind == "industry"
         self._screener_btn.setEnabled(industry_mode)
         self._screener_btn.setVisible(industry_mode or not enabled)
+
+    def set_history_visible(self, visible: bool) -> None:
+        """轮动 Tab 下隐藏侧栏历史图（左侧矩阵已展示近15日）。"""
+        self._history_enabled = visible
+        self._render_history()
+
+    def _render_history(self) -> None:
+        if self._history_enabled and self._last_history:
+            self._history_label.show()
+            self._mini_bar.show()
+            self._mini_bar.render_points(self._last_history)
+            return
+        self._history_label.hide()
+        self._mini_bar.hide()
+        self._mini_bar.clear()
 
     def _emit_market_drilldown(self) -> None:
         if self._current_sector is not None:

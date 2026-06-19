@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 from vnpy_ashare.integrations.tushare.factors import (
     fetch_daily_pct_map,
@@ -14,7 +15,6 @@ from vnpy_ashare.integrations.tushare.stk_shock import (
     fetch_stk_high_shock_daily,
     fetch_stk_shock_daily,
 )
-from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.jobs.core.progress import job_log
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback

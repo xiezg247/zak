@@ -44,7 +44,6 @@ from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
 from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
 from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
 from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel, sync_chart_splitter_for_expansion
-from vnpy_ashare.ui.quotes.radar.resonance_panel import sync_radar_resonance_splitter_for_expansion
 from vnpy_ashare.ui.quotes.controllers.actions import ActionsController
 from vnpy_ashare.ui.quotes.controllers.batch_backtest import WatchlistBatchBacktestController
 from vnpy_ashare.ui.quotes.controllers.data_loader import DataLoaderController
@@ -75,11 +74,12 @@ from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
 from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
 from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
+from vnpy_ashare.ui.quotes.radar.resonance_panel import sync_radar_resonance_splitter_for_expansion
+from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
 from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
 from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
-from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
 from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes, restore_center_splitter
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
@@ -193,9 +193,7 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._market_industry_filter_listener = None
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
-        self._watchlist_feature: WatchlistPageFeature | None = (
-            WatchlistPageFeature(self) if page_name == "自选" else None
-        )
+        self._watchlist_feature: WatchlistPageFeature | None = WatchlistPageFeature(self) if page_name == "自选" else None
         self._stock_notes = StockNotesFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
         self._market_sort_column: str | None = None
@@ -620,10 +618,38 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
             listener(None)
         self._table.filter_market_display()
 
+    def _apply_pending_market_drilldown(self) -> bool:
+        """将 open_industry/concept_drilldown 的 pending 筛选落盘。返回是否处理了 pending。"""
+        pending_concept = self._pending_concept_drilldown
+        pending_industry = self._pending_industry_drilldown
+        if not pending_concept and not pending_industry:
+            return False
+        self._pending_concept_drilldown = None
+        self._pending_industry_drilldown = None
+        if pending_concept:
+            self._market_vt_whitelist = pending_concept
+            self._market_industry_filter = None
+            listener = self._market_industry_filter_listener
+            if listener is not None:
+                listener(None)
+        else:
+            self._market_vt_whitelist = None
+            self._market_drilldown_label = None
+            self._market_industry_filter = pending_industry
+            listener = self._market_industry_filter_listener
+            if listener is not None:
+                listener(pending_industry)
+        self._industry_map_cache = None
+        self._market_board_base = None
+        self._market_board_base_key = None
+        return True
+
     def open_industry_drilldown(self, industry: str, *, rank_id: str = "net_mf_in") -> None:
         """从板块资金等入口下钻：主力净流入榜 + 行业成分筛选。"""
 
-        cleaned = str(industry or "").strip()
+        from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_for_drilldown
+
+        cleaned = resolve_industry_for_drilldown(industry) or str(industry or "").strip()
         if not cleaned:
             return
         self._pending_concept_drilldown = None

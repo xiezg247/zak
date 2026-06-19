@@ -19,7 +19,6 @@ from vnpy_ashare.integrations.tushare.cache import (
     DATASET_MONEYFLOW,
     DATASET_MONEYFLOW_HSGT,
     DATASET_STOCK_BASIC,
-    DATASET_STOCK_INDUSTRY,
     INDUSTRY_MAX_AGE,
     get_cached_industry_map,
     get_cached_pct_map,

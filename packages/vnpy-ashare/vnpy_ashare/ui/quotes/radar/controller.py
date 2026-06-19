@@ -97,6 +97,7 @@ class RadarController(QtCore.QObject):
         board.stock_analysis_requested.connect(self._on_stock_analysis)
         board.view_run_requested.connect(self._on_view_run)
         board.sector_flow_requested.connect(self._on_sector_flow)
+        board.sector_rotation_requested.connect(self._on_sector_rotation)
         board.refresh_requested.connect(self._on_card_refresh_requested)
         board.quote_refresh_requested.connect(self._on_card_quote_refresh_requested)
         board.ai_requested.connect(self.request_card_ai)
@@ -538,6 +539,19 @@ class RadarController(QtCore.QObject):
         card = self._board.card(card_id)
         sector_ids = card.sector_names() if card is not None else []
         host.open_sector_flow(sector_ids if sector_ids else None)
+
+    def _on_sector_rotation(self, card_id: str) -> None:
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_sector_flow"):
+            page_notify(self._page, "无法打开板块资金页", level="warning")
+            return
+        card = self._board.card(card_id)
+        sector_ids = card.sector_names() if card is not None else []
+        host.open_sector_flow(
+            sector_ids if sector_ids else None,
+            tab="rotation",
+            sector_kind="industry",
+        )
 
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page

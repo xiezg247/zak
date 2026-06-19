@@ -16,7 +16,6 @@ from vnpy_ashare.config.preferences.watchlist_position import (
     save_position_panel_expanded,
 )
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
-
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 

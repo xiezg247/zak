@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import vnpy_ashare.ai.context.store as context_store
 import vnpy_common.ai.access as access
-from vnpy_ashare.ai.context.quote.assembly import build_stock_completion_items
 from vnpy_ashare.ai.context.market_overview import build_market_ai_prompt
+from vnpy_ashare.ai.context.quote.assembly import build_stock_completion_items
 from vnpy_ashare.ai.ui.floating_actions import build_quick_actions_for_panel
 from vnpy_ashare.ai.ui.symbol_navigation import build_ashare_symbol_navigation
 from vnpy_ashare.config.vt_settings import load_runtime_settings

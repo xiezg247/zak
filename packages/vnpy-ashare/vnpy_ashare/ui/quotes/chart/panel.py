@@ -13,6 +13,11 @@ from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.services.signals.runtime import resolve_display_anchor_prices, resolve_list_ref_prices
+from vnpy_ashare.trading.signals.mode_reference import (
+    build_intraday_mode_reference_lines,
+    mode_reference_window_hint,
+    resolve_intraday_mode_kind,
+)
 from vnpy_ashare.ui.components.chart_style import build_chart_panel_stylesheet
 from vnpy_ashare.ui.quotes.chart.daily import (
     WATCHLIST_DAILY_BAR_PRESETS,
@@ -27,11 +32,6 @@ from vnpy_ashare.ui.quotes.chart.minute_bars import (
     MinuteBarDiff,
     MinuteBarSession,
     compute_minute_bar_change,
-)
-from vnpy_ashare.trading.signals.mode_reference import (
-    build_intraday_mode_reference_lines,
-    mode_reference_window_hint,
-    resolve_intraday_mode_kind,
 )
 from vnpy_ashare.ui.quotes.chart.reference_line_legend import ReferenceLineLegendBar
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX

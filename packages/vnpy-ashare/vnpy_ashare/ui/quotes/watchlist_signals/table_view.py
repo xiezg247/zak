@@ -5,9 +5,8 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.config.preferences.signal_panel_columns import (
-    SIGNAL_PANEL_OPTIONAL_COLUMNS,
-    resolve_signal_panel_columns,
     normalize_visible_optional_keys,
+    resolve_signal_panel_columns,
 )
 from vnpy_ashare.config.preferences.watchlist_signal import (
     SIGNAL_PANEL_MAX_SYMBOLS,
@@ -30,10 +29,9 @@ from vnpy_ashare.services.signals.runtime import (
     signal_cell_color,
     signal_cell_text,
 )
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
-
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 _DETAIL_COLUMN_KEYS = ("signal_date", "signal_reason")
 

@@ -37,7 +37,7 @@ def _apply_view_mode(page: WatchlistHost, preset_id: LayoutPresetId) -> None:
 
 
 def apply_layout_preset(page: WatchlistHost, preset_id: LayoutPresetId, *, persist: bool = True) -> None:
-    setattr(page, "_watchlist_table_ratio_override", None)
+    page._watchlist_table_ratio_override = None
     spec = PRESET_SPECS[preset_id]
     signal_panel = getattr(page, "signal_panel", None)
     if signal_panel is not None:
@@ -57,7 +57,7 @@ def apply_layout_preset(page: WatchlistHost, preset_id: LayoutPresetId, *, persi
 
 def apply_position_focus(page: WatchlistHost) -> None:
     """持仓专注：折叠信号区、展开持仓区，主表缩至最小比例（不切换登记预设）。"""
-    setattr(page, "_watchlist_table_ratio_override", POSITION_FOCUS_TABLE_RATIO)
+    page._watchlist_table_ratio_override = POSITION_FOCUS_TABLE_RATIO
     signal_panel = getattr(page, "signal_panel", None)
     if signal_panel is not None:
         signal_panel.set_expanded(False, emit=True)

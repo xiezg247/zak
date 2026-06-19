@@ -30,14 +30,10 @@ def _hold_stage(stage: EmotionStage, inputs: EmotionCycleInputs, thresholds: Emo
     ladder = inputs.limit_ladder_depth
 
     if stage == "startup":
-        return (
-            limit_up >= thresholds.startup_limit_up - _HOLD_STARTUP_LIMIT_UP_DELTA
-            or max_boards >= thresholds.startup_max_boards
-        )
+        return limit_up >= thresholds.startup_limit_up - _HOLD_STARTUP_LIMIT_UP_DELTA or max_boards >= thresholds.startup_max_boards
     if stage == "climax":
-        return (
-            limit_up >= thresholds.climax_limit_up - _HOLD_CLIMAX_LIMIT_UP_DELTA
-            and ladder >= max(0, thresholds.climax_ladder_depth - _HOLD_CLIMAX_LADDER_DELTA)
+        return limit_up >= thresholds.climax_limit_up - _HOLD_CLIMAX_LIMIT_UP_DELTA and ladder >= max(
+            0, thresholds.climax_ladder_depth - _HOLD_CLIMAX_LADDER_DELTA
         )
     if stage == "divergence":
         return limit_up >= thresholds.divergence_limit_up_min - _HOLD_DIVERGENCE_LIMIT_UP_DELTA

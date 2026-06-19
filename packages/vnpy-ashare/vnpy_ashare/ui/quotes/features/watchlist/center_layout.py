@@ -50,11 +50,7 @@ def build_watchlist_center_layout(page: WatchlistHost, center_layout: QtWidgets.
         page._center_view_stack.addWidget(page.multiview_board)
         center_primary = page._center_view_stack
 
-    use_center_split = (
-        page.config.show_watchlist_signals
-        or page.config.show_watchlist_positions
-        or page.config.show_run_output_panel
-    )
+    use_center_split = page.config.show_watchlist_signals or page.config.show_watchlist_positions or page.config.show_run_output_panel
     if use_center_split:
         center_split = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
         configure_center_splitter(center_split)

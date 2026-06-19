@@ -12,7 +12,6 @@ from vnpy_ashare.config.preferences.onboarding import (
 )
 from vnpy_ashare.config.preferences.strategy_profile import (
     StrategyProfileId,
-    apply_strategy_profile,
     load_strategy_profile_id,
 )
 from vnpy_ashare.services.watchlist_short_term import ensure_onboarding_watchlist_groups

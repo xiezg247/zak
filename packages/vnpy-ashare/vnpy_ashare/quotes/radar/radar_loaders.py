@@ -857,18 +857,13 @@ def build_eod_leader_prompt(payload: dict[str, RadarCardData]) -> str:
     if cycle is not None:
         pos_lo = int(round(cycle.position_pct_min * 100))
         pos_hi = int(round(cycle.position_pct_max * 100))
-        lines.append(
-            f"情绪周期：{cycle.stage_label} · 建议仓位 {pos_lo}–{pos_hi}% · 系数 {cycle.position_factor:.2f}"
-        )
+        lines.append(f"情绪周期：{cycle.stage_label} · 建议仓位 {pos_lo}–{pos_hi}% · 系数 {cycle.position_factor:.2f}")
         if cycle.allowed_modes:
             mode_text = "、".join(format_mode_label(mode) for mode in cycle.allowed_modes)
             lines.append(f"允许模式：{mode_text}")
         if cycle.warnings:
             lines.append(f"环境提示：{'；'.join(cycle.warnings)}")
-        lines.append(
-            f"盘面输入：涨停 {cycle.limit_up_count} · 跌停 {cycle.limit_down_count} · "
-            f"最高连板 {cycle.inputs.get('max_limit_times', 0)}"
-        )
+        lines.append(f"盘面输入：涨停 {cycle.limit_up_count} · 跌停 {cycle.limit_down_count} · 最高连板 {cycle.inputs.get('max_limit_times', 0)}")
         lines.append("")
 
     resonance = compute_radar_resonance(payload)
@@ -904,10 +899,7 @@ def build_eod_leader_prompt(payload: dict[str, RadarCardData]) -> str:
                 lines.append(f"- {marker}{_row_ai_summary(row)}{tier}")
         lines.append("")
 
-    has_focus_data = any(
-        (data := payload.get(card_id)) is not None and bool(data.rows)
-        for card_id in _EOD_LEADER_CARD_IDS
-    )
+    has_focus_data = any((data := payload.get(card_id)) is not None and bool(data.rows) for card_id in _EOD_LEADER_CARD_IDS)
     if not has_focus_data and not resonance:
         return ""
     return "\n".join(lines).strip()

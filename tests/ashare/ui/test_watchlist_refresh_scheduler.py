@@ -5,8 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.ui import QtWidgets
+
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.ui.quotes.page.config import WATCHLIST_SIGNAL_REFRESH_MS
 from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
 

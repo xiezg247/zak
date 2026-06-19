@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import unittest
-from datetime import date
 
 from vnpy_ashare.config.preferences.emotion_cycle import DEFAULT_EMOTION_CYCLE_THRESHOLDS
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle

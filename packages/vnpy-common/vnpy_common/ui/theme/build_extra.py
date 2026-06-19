@@ -928,6 +928,9 @@ QScrollArea#RadarCardScroll {{
     background: transparent;
     border: none;
 }}
+QWidget#RadarCardRowsPage {{
+    background: transparent;
+}}
 QStackedWidget#RadarCardBodyStack,
 QWidget#RadarCardEmptyPage {{
     background: transparent;
@@ -939,6 +942,7 @@ QFrame#RadarStockRow {{
     background-color: {t.index_ticker_bg};
     border: 1px solid {t.panel_border};
     border-radius: 6px;
+    min-height: 30px;
 }}
 QFrame#RadarStockRow:hover {{
     border-color: {t.accent};
@@ -1000,6 +1004,7 @@ QPushButton#RadarCardAi,
 QPushButton#RadarCardViewRun,
 QPushButton#RadarCardAddAll,
 QPushButton#RadarCardSectorFlow,
+QPushButton#RadarCardSectorRotation,
 QPushButton#RadarCardTrainModel {{
     color: {t.text_secondary};
     background-color: transparent;
@@ -1011,6 +1016,7 @@ QPushButton#RadarCardAi:hover,
 QPushButton#RadarCardViewRun:hover,
 QPushButton#RadarCardAddAll:hover,
 QPushButton#RadarCardSectorFlow:hover,
+QPushButton#RadarCardSectorRotation:hover,
 QPushButton#RadarCardTrainModel:hover {{
     color: {t.accent};
 }}
@@ -1309,11 +1315,32 @@ QLabel#SectorFlowSummary {{
     color: {t.text_secondary};
     font-size: 12px;
 }}
+QTableWidget#SectorFlowRotationTable {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    gridline-color: {t.table_grid};
+    font-size: 11px;
+}}
+QTableWidget#SectorFlowRotationTable::item {{
+    padding: 1px 2px;
+}}
+QTableWidget#SectorFlowRotationTable QHeaderView::section {{
+    background-color: {t.header_bg};
+    color: {t.header_text};
+    border: none;
+    border-right: 1px solid {t.header_border};
+    border-bottom: 1px solid {t.header_border};
+    padding: 4px 2px;
+    font-size: 11px;
+}}
 QTableWidget#SectorFlowTable,
 QTableWidget#SectorFlowLeaderTable {{
     background-color: {t.panel_bg};
     border: 1px solid {t.panel_border};
     gridline-color: {t.panel_border};
+}}
+QWidget#SectorFlowRotationFilters {{
+    background-color: transparent;
 }}
 QFrame#SectorFlowDetailPanel {{
     background-color: {t.panel_bg};

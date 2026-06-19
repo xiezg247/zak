@@ -6,6 +6,7 @@ UI 经 ScreeningService 访问，禁止页面直连。``config`` 含 trigger / r
 from __future__ import annotations
 
 import json
+import sqlite3
 import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any

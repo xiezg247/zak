@@ -9,11 +9,11 @@ from vnpy.chart.manager import BarManager
 from vnpy.trader.object import BarData
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
+from vnpy_ashare.trading.signals.mode_reference import ModeReferenceLine
 from vnpy_ashare.ui.components.chart_style import apply_ashare_chart_theme, apply_candle_colors
 from vnpy_ashare.ui.quotes.chart.ma_line_item import register_ma_items
 from vnpy_ashare.ui.quotes.chart.macd_item import register_macd_items
 from vnpy_ashare.ui.quotes.chart.minute_bars import MinuteBarChange, MinuteBarDiff, prepare_chart_bars
-from vnpy_ashare.trading.signals.mode_reference import ModeReferenceLine
 
 MINUTE_BAR_COUNT = 80
 DAILY_BAR_COUNT = 120

@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import re
 from datetime import timedelta
-
-from vnpy_ashare.domain.time.calendar import last_trading_day
 from typing import Any, Literal
 
 from pydantic import Field
 
 from vnpy_ashare.domain.symbols.stock import ts_code_to_vt_symbol, vt_symbol_to_ts_code
+from vnpy_ashare.domain.time.calendar import last_trading_day
 from vnpy_ashare.integrations.tushare.cache import (
     DATASET_STK_HIGH_SHOCK,
     DATASET_STK_SHOCK,
@@ -150,10 +149,7 @@ def load_exchange_regulatory_index(
             if item is not None:
                 grouped.setdefault(item.vt_symbol, []).append(item)
 
-    return {
-        vt_symbol: tuple(sorted(items, key=lambda item: (item.trade_date, item.shock_type), reverse=True))
-        for vt_symbol, items in grouped.items()
-    }
+    return {vt_symbol: tuple(sorted(items, key=lambda item: (item.trade_date, item.shock_type), reverse=True)) for vt_symbol, items in grouped.items()}
 
 
 def parse_deviation_pct_from_reason(reason: str) -> float | None:

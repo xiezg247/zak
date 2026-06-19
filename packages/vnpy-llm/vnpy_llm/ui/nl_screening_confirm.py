@@ -23,9 +23,7 @@ class NlScreeningConfirmBridge(QtCore.QObject):
         box.setIcon(QtWidgets.QMessageBox.Icon.Question)
         box.setWindowTitle(title)
         box.setText(summary)
-        box.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
-        )
+        box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No)
         box.setDefaultButton(QtWidgets.QMessageBox.StandardButton.No)
         return box.exec() == QtWidgets.QMessageBox.StandardButton.Yes
 

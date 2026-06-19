@@ -11,25 +11,18 @@ from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
+    from vnpy.trader.ui import QtWidgets
 
     from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
     from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
     from vnpy_ashare.domain.data.bar_health import BarMeta
     from vnpy_ashare.domain.symbols.stock import StockItem
-    from vnpy_ashare.domain.trading.position_snapshot import PositionSnapshot
     from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-    from vnpy_ashare.quotes.core.models import QuoteSnapshot
     from vnpy_ashare.services.analysis import AnalysisService
-    from vnpy_ashare.services.position import PositionService
-    from vnpy_ashare.services.watchlist import WatchlistService
     from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
-    from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
     from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
     from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
-    from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
-    from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
     from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
-    from vnpy.trader.ui import QtWidgets
     from vnpy_common.ui.feedback import PageToastHost
 
 

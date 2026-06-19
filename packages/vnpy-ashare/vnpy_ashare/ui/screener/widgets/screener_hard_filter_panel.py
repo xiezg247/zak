@@ -7,7 +7,6 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.config.trading_universe import get_trading_allowed_boards, trading_boards_hint
 from vnpy_ashare.integrations.tushare.factors import fetch_industry_l2_to_l1_map, fetch_stock_industry_map
 from vnpy_ashare.integrations.tushare.sw_industry import build_grouped_l2_industries, format_industry_filter_label
-from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_name
 from vnpy_ashare.screener.hard_filter_prefs import (
     MARKET_BOARD_FILTER_OPTIONS,
     PRESET_AGGRESSIVE,
@@ -22,6 +21,7 @@ from vnpy_ashare.screener.hard_filter_prefs import (
     parse_allowed_market_boards,
     save_hard_filter_prefs,
 )
+from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_name
 
 
 class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
@@ -141,17 +141,13 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
 
     def _load_industry_combo_items(self) -> None:
         try:
-            self._industry_names = sorted(
-                {name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()}
-            )
+            self._industry_names = sorted({name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()})
             self._l2_to_l1 = fetch_industry_l2_to_l1_map()
         except Exception:
             self._industry_names = []
             self._l2_to_l1 = {}
 
-        display_labels = [
-            format_industry_filter_label(l2, self._l2_to_l1.get(l2)) for l2 in self._industry_names
-        ]
+        display_labels = [format_industry_filter_label(l2, self._l2_to_l1.get(l2)) for l2 in self._industry_names]
 
         self.allowed_industries_combo.blockSignals(True)
         self.allowed_industries_combo.clear()

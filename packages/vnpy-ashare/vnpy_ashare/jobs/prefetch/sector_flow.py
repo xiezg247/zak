@@ -18,11 +18,11 @@ from vnpy_ashare.storage.repositories.sector_flow_history import upsert_sector_f
 
 
 def _sync_lookback_days() -> int:
-    raw = os.getenv("SECTOR_FLOW_SYNC_DAYS", "5").strip()
+    raw = os.getenv("SECTOR_FLOW_SYNC_DAYS", "15").strip()
     try:
-        return max(1, min(int(raw), 10))
+        return max(1, min(int(raw), 20))
     except ValueError:
-        return 5
+        return 15
 
 
 def sync_sector_flow_daily_job() -> JobResult:

@@ -7,11 +7,11 @@ from collections.abc import Sequence
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, hard_filter_preset
 from vnpy_ashare.screener.hard_filters import (
+    _suspended_keys_for_screening,
     is_row_suspended,
     is_st_stock,
     limit_board_threshold_pct,
     row_amount_yuan,
-    _suspended_keys_for_screening,
 )
 
 __all__ = ["filter_ultra_short_main_pool", "is_ultra_short_popularity_row"]

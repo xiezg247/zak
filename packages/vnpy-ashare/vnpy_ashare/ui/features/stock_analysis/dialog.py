@@ -13,8 +13,8 @@ from vnpy_ashare.ai.llm_bridge import get_llm_engine
 from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.format import EMPTY_DISPLAY, format_amount, format_volume
 from vnpy_ashare.services.stock.context import build_analysis_ai_context, format_technical_summary
 from vnpy_ashare.ui.features.notes_center.report_launcher import open_notes_reports_center
@@ -478,9 +478,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
             self._header_change_label.setText(meta["change"])
             self._header_change_label.setVisible(True)
             if color:
-                self._header_change_label.setStyleSheet(
-                    f"color: {color}; background-color: {meta['change_bg']};"
-                )
+                self._header_change_label.setStyleSheet(f"color: {color}; background-color: {meta['change_bg']};")
             else:
                 self._header_change_label.setStyleSheet("")
         else:

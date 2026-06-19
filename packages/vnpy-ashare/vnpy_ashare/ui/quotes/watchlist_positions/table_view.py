@@ -36,10 +36,9 @@ from vnpy_ashare.trading.risk.plan_position import (
     format_plan_vs_actual_cell,
     sum_plan_pct,
 )
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors
-
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 PANEL_COLUMNS = (
     ("symbol", "代码"),

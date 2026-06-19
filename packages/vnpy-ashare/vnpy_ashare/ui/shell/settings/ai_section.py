@@ -24,8 +24,7 @@ class AiSettingsSection(QtWidgets.QWidget):
         self._nl_screening_confirm = QtWidgets.QCheckBox("NL 选股执行前确认")
         self._nl_screening_confirm.setObjectName("SettingsCheck")
         self._nl_screening_confirm.setToolTip(
-            "开启（默认）：AI 调用 propose_screening / propose_recipe 解析选股前弹出确认框。\n"
-            "关闭：解析通过后直接执行，不再弹窗。"
+            "开启（默认）：AI 调用 propose_screening / propose_recipe 解析选股前弹出确认框。\n关闭：解析通过后直接执行，不再弹窗。"
         )
         self._build_ui()
         self.refresh()
@@ -44,9 +43,7 @@ class AiSettingsSection(QtWidgets.QWidget):
         root.setContentsMargins(4, 8, 4, 8)
         root.setSpacing(12)
 
-        hint = QtWidgets.QLabel(
-            "控制 AI 助手在终端内的交互行为。保存后立即生效；大模型 API 密钥仍在「常规」Tab 的 .env 中配置。"
-        )
+        hint = QtWidgets.QLabel("控制 AI 助手在终端内的交互行为。保存后立即生效；大模型 API 密钥仍在「常规」Tab 的 .env 中配置。")
         hint.setObjectName("SettingsHint")
         hint.setWordWrap(True)
         root.addWidget(hint)
@@ -55,9 +52,7 @@ class AiSettingsSection(QtWidgets.QWidget):
         screening_group.setObjectName("SettingsGroup")
         screening_layout = QtWidgets.QVBoxLayout(screening_group)
         screening_layout.addWidget(self._nl_screening_confirm)
-        screening_hint = QtWidgets.QLabel(
-            "仅影响 propose_screening / propose_recipe；run_recipe、screen_by_condition 等明确工具不受影响。"
-        )
+        screening_hint = QtWidgets.QLabel("仅影响 propose_screening / propose_recipe；run_recipe、screen_by_condition 等明确工具不受影响。")
         screening_hint.setObjectName("SettingsMeta")
         screening_hint.setWordWrap(True)
         screening_layout.addWidget(screening_hint)

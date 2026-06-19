@@ -7,10 +7,12 @@ from unittest import mock
 
 from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
 from vnpy_ashare.services.sector_flow import (
+    _snapshot_from_rows,
     aggregate_sector_rows,
     build_official_snapshot,
     build_sector_snapshot,
     diagnose_sector_flow_empty,
+    format_sector_net_flow_yi,
     rows_from_dc_moneyflow,
     rows_from_ths_concept_moneyflow,
     split_sector_display_rows,
@@ -135,6 +137,61 @@ class SectorFlowAggregatorTests(unittest.TestCase):
         self.assertEqual(len(inflow), 24)
         self.assertEqual(len(outflow), 1)
         self.assertEqual(outflow[0].name, "OUT1")
+
+    def test_top_flow_from_full_source_not_display_order(self) -> None:
+        display = [
+            SectorFlowRow(
+                sector_id="801001.SI",
+                name="小流出",
+                strength=0.0,
+                change_pct=-0.1,
+                net_flow_yi=-0.04,
+                stock_count=3,
+                up_ratio=0.0,
+                flow_source="sw_dc",
+                sector_kind="industry",
+            ),
+            SectorFlowRow(
+                sector_id="801002.SI",
+                name="大流入",
+                strength=5.0,
+                change_pct=3.0,
+                net_flow_yi=71.5,
+                stock_count=3,
+                up_ratio=0.0,
+                flow_source="sw_dc",
+                sector_kind="industry",
+            ),
+        ]
+        full = display + [
+            SectorFlowRow(
+                sector_id="801003.SI",
+                name="大流出",
+                strength=-5.0,
+                change_pct=-2.0,
+                net_flow_yi=-12.3,
+                stock_count=3,
+                up_ratio=0.0,
+                flow_source="sw_dc",
+                sector_kind="industry",
+            ),
+        ]
+        snap = _snapshot_from_rows(
+            display,
+            updated_at="日终 2026-06-18",
+            trade_date="20260618",
+            sector_kind="industry",
+            data_mode="official_sw",
+            top_source_rows=full,
+        )
+        self.assertEqual(snap.top_inflow_name, "大流入")
+        self.assertAlmostEqual(snap.top_inflow_yi, 71.5)
+        self.assertEqual(snap.top_outflow_name, "大流出")
+        self.assertAlmostEqual(snap.top_outflow_yi, -12.3)
+
+    def test_format_sector_net_flow_yi_small_negative(self) -> None:
+        self.assertEqual(format_sector_net_flow_yi(-0.04), "-0.04亿")
+        self.assertEqual(format_sector_net_flow_yi(71.5), "+71.5亿")
 
 
 class SectorFlowEmptyHintTests(unittest.TestCase):

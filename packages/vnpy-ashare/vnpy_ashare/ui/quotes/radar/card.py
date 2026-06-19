@@ -49,6 +49,17 @@ _OBSERVATION_GROUP_CARD_IDS = frozenset(
 _BODY_PAGE_ROWS = 0
 _BODY_PAGE_EMPTY = 1
 
+_RADAR_ROW_LAYOUT_HEIGHT = 34
+_RADAR_ROW_SPACING = 3
+_RADAR_CARD_CHROME_HEIGHT = 108
+
+
+def _estimate_card_min_height(top_n: int) -> int:
+    """按展示条数估算卡片最小高度，避免列表区被压扁。"""
+    rows = max(1, int(top_n))
+    body = rows * _RADAR_ROW_LAYOUT_HEIGHT + max(0, rows - 1) * _RADAR_ROW_SPACING
+    return _RADAR_CARD_CHROME_HEIGHT + body
+
 
 class RadarCardWidget(QtWidgets.QFrame):
     """单张雷达卡片。"""
@@ -62,6 +73,7 @@ class RadarCardWidget(QtWidgets.QFrame):
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
     sector_flow_requested = QtCore.Signal(str)
+    sector_rotation_requested = QtCore.Signal(str)
     refresh_requested = QtCore.Signal(str)
     quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
@@ -82,8 +94,9 @@ class RadarCardWidget(QtWidgets.QFrame):
         self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
-            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
         )
+        self.setMinimumHeight(_estimate_card_min_height(spec.top_n))
 
         header = QtWidgets.QHBoxLayout()
         header.setSpacing(8)
@@ -201,7 +214,8 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._subtitle = QtWidgets.QLabel("")
         self._subtitle.setObjectName("RadarCardSubtitle")
         self._subtitle.setWordWrap(True)
-        self._subtitle.setMinimumHeight(15)
+        self._subtitle.setMaximumHeight(30)
+        self._subtitle.setMinimumHeight(0)
 
         self._ai_hint = QtWidgets.QLabel("")
         self._ai_hint.setObjectName("RadarCardAiHint")
@@ -212,15 +226,14 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._rows_host.setObjectName("RadarCardRowsHost")
         self._rows_layout = QtWidgets.QVBoxLayout(self._rows_host)
         self._rows_layout.setContentsMargins(0, 0, 0, 0)
-        self._rows_layout.setSpacing(4)
-        self._rows_layout.addStretch(1)
+        self._rows_layout.setSpacing(_RADAR_ROW_SPACING)
 
-        self._scroll = QtWidgets.QScrollArea()
-        self._scroll.setObjectName("RadarCardScroll")
-        self._scroll.setWidgetResizable(True)
-        self._scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self._scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll.setWidget(self._rows_host)
+        self._rows_page = QtWidgets.QWidget()
+        self._rows_page.setObjectName("RadarCardRowsPage")
+        rows_page_layout = QtWidgets.QVBoxLayout(self._rows_page)
+        rows_page_layout.setContentsMargins(0, 0, 0, 0)
+        rows_page_layout.setSpacing(0)
+        rows_page_layout.addWidget(self._rows_host)
 
         self._empty_label = QtWidgets.QLabel("")
         self._empty_label.setObjectName("RadarCardEmpty")
@@ -237,9 +250,13 @@ class RadarCardWidget(QtWidgets.QFrame):
 
         self._body_stack = QtWidgets.QStackedWidget()
         self._body_stack.setObjectName("RadarCardBodyStack")
-        self._body_stack.addWidget(self._scroll)
+        self._body_stack.addWidget(self._rows_page)
         self._body_stack.addWidget(self._empty_page)
         self._body_stack.setCurrentIndex(_BODY_PAGE_ROWS)
+        self._body_stack.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
 
         footer = QtWidgets.QHBoxLayout()
         footer.setSpacing(8)
@@ -259,6 +276,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         self._view_run_button.clicked.connect(self._on_view_run_clicked)
         footer.addWidget(self._view_run_button)
         self._sector_flow_button: QtWidgets.QPushButton | None = None
+        self._sector_rotation_button: QtWidgets.QPushButton | None = None
         if spec.id == "sector_theme":
             self._sector_flow_button = QtWidgets.QPushButton("板块资金")
             self._sector_flow_button.setObjectName("RadarCardSectorFlow")
@@ -266,8 +284,15 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._sector_flow_button.setToolTip("打开板块资金监控页并预选主线行业")
             self._sector_flow_button.clicked.connect(lambda: self.sector_flow_requested.emit(self.card_id))
             footer.addWidget(self._sector_flow_button)
+            self._sector_rotation_button = QtWidgets.QPushButton("近15日轮动")
+            self._sector_rotation_button.setObjectName("RadarCardSectorRotation")
+            self._sector_rotation_button.setFlat(True)
+            self._sector_rotation_button.setToolTip("打开板块资金页近15日轮动矩阵并预选主线行业")
+            self._sector_rotation_button.clicked.connect(lambda: self.sector_rotation_requested.emit(self.card_id))
+            footer.addWidget(self._sector_rotation_button)
         else:
             self._sector_flow_button = None
+            self._sector_rotation_button = None
         self._observation_group_button: QtWidgets.QPushButton | None = None
         if spec.id in _OBSERVATION_GROUP_CARD_IDS:
             self._observation_group_button = QtWidgets.QPushButton("加观察组")
@@ -286,12 +311,12 @@ class RadarCardWidget(QtWidgets.QFrame):
         footer.addWidget(self._add_all_button)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(6)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(4)
         layout.addLayout(header)
         layout.addWidget(self._subtitle)
         layout.addWidget(self._ai_hint)
-        layout.addWidget(self._body_stack, stretch=1)
+        layout.addWidget(self._body_stack)
         layout.addLayout(footer)
 
         self._run_id = ""
@@ -396,7 +421,7 @@ class RadarCardWidget(QtWidgets.QFrame):
             self._meta_label.setText("")
 
     def _clear_row_widgets(self) -> None:
-        while self._rows_layout.count() > 1:
+        while self._rows_layout.count():
             item = self._rows_layout.takeAt(0)
             if item is None:
                 break
@@ -451,7 +476,7 @@ class RadarCardWidget(QtWidgets.QFrame):
                 widget.double_clicked.connect(self.row_activated.emit)
                 widget.add_watchlist_requested.connect(self.add_watchlist_requested.emit)
                 widget.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
-                self._rows_layout.insertWidget(self._rows_layout.count() - 1, widget)
+                self._rows_layout.addWidget(widget)
                 self._row_widgets.append(widget)
             return
         self._empty_label.setText(data.empty_message or "暂无数据")
@@ -529,6 +554,7 @@ class RadarBoard(QtWidgets.QWidget):
     stock_analysis_requested = QtCore.Signal(str)
     view_run_requested = QtCore.Signal(str, str)
     sector_flow_requested = QtCore.Signal(str)
+    sector_rotation_requested = QtCore.Signal(str)
     refresh_requested = QtCore.Signal(str)
     quote_refresh_requested = QtCore.Signal(str)
     ai_requested = QtCore.Signal(str)
@@ -615,11 +641,8 @@ class RadarBoard(QtWidgets.QWidget):
                         QtCore.Qt.AlignmentFlag.AlignTop,
                     )
 
-                row_count = max(1, (len(specs) + columns - 1) // columns)
                 for col in range(columns):
                     grid.setColumnStretch(col, 1)
-                for row in range(row_count):
-                    grid.setRowStretch(row, 1)
 
                 scroll.setWidget(section_host)
                 group_layout.addWidget(scroll, stretch=1)
@@ -733,6 +756,7 @@ class RadarBoard(QtWidgets.QWidget):
 
     def _wire_card(self, spec: RadarCardSpec) -> RadarCardWidget:
         card = RadarCardWidget(spec, self)
+        card.setMinimumHeight(_estimate_card_min_height(spec.top_n))
         card.variant_changed.connect(lambda key, card_id=spec.id: self.variant_changed.emit(card_id, key))
         card.row_activated.connect(self.row_activated.emit)
         card.row_selected.connect(self.row_selected.emit)
@@ -742,6 +766,7 @@ class RadarBoard(QtWidgets.QWidget):
         card.stock_analysis_requested.connect(self.stock_analysis_requested.emit)
         card.view_run_requested.connect(self.view_run_requested.emit)
         card.sector_flow_requested.connect(self.sector_flow_requested.emit)
+        card.sector_rotation_requested.connect(self.sector_rotation_requested.emit)
         card.refresh_requested.connect(self.refresh_requested.emit)
         card.quote_refresh_requested.connect(self.quote_refresh_requested.emit)
         card.ai_requested.connect(self.ai_requested.emit)

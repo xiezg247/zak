@@ -11,6 +11,7 @@ from vnpy_ashare.integrations.tushare.factors import (
 )
 from vnpy_ashare.integrations.tushare.sw_industry import (
     build_grouped_l2_industries,
+    fetch_sw_l2_index_map,
     format_industry_filter_label,
 )
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
@@ -35,6 +36,25 @@ def resolve_industry_name(text: str, industries: frozenset[str]) -> str | None:
     if len(contains) == 1:
         return contains[0]
     return None
+
+
+def resolve_industry_for_drilldown(
+    industry: str,
+    *,
+    sector_id: str | None = None,
+) -> str | None:
+    """板块资金等下钻：解析为市场页申万 L2 行业筛选名。"""
+    name = str(industry or "").strip()
+    index_code = str(sector_id or "").strip()
+    if index_code:
+        for l2_name, code in fetch_sw_l2_index_map().items():
+            if code == index_code:
+                name = l2_name
+                break
+
+    mapping = get_cached_industry_map() or fetch_stock_industry_map()
+    industries = frozenset({str(v).strip() for v in mapping.values() if str(v).strip()})
+    return resolve_industry_name(name, industries)
 
 
 class IndustryFilterCombo(QtWidgets.QWidget):

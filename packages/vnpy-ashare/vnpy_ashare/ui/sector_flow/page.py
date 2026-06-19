@@ -45,8 +45,14 @@ class SectorFlowPageWidget(QtWidgets.QWidget):
     def deactivate(self) -> None:
         self._controller.deactivate()
 
-    def focus_sectors(self, sector_ids: list[str]) -> None:
-        self._controller.focus_sectors(sector_ids)
+    def focus_sectors(
+        self,
+        sector_ids: list[str],
+        *,
+        tab: str = "default",
+        sector_kind: str | None = None,
+    ) -> None:
+        self._controller.focus_sectors(sector_ids, tab=tab, sector_kind=sector_kind)
 
     def closeEvent(self, event) -> None:
         self.deactivate()

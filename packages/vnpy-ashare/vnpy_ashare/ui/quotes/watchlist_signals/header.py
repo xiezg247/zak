@@ -26,12 +26,10 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     save_signal_panel_enabled,
     save_signal_panel_expanded,
 )
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     SIGNAL_PANEL_COLLAPSED_HEIGHT,
-    SIGNAL_PANEL_DEFAULT_HEIGHT,
 )
-
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class SignalPanelHeader(QtWidgets.QWidget):
