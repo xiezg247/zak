@@ -5,14 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from vnpy.trader.constant import Exchange
-from vnpy.trader.ui import QtCore
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
-    from vnpy.trader.ui import QtWidgets
-
     from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
     from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
     from vnpy_ashare.domain.data.bar_health import BarMeta
@@ -20,6 +18,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
     from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
+    from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
     from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
     from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
     from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
@@ -44,6 +43,8 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     _positions: WatchlistPositionController
     _multiview: WatchlistMultiViewController
     _toast: PageToastHost
+    _watchlist_feature: WatchlistPageFeature | None
+    _watchlist_table_ratio_override: float | None
     display_stocks: list[StockItem]
     multiview_board: Any
     _center_view_stack: Any
@@ -56,6 +57,10 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     watchlist_pool_context_bar: Any
     _center_splitter: Any
     run_output_panel: Any
+    _watchlist_groups: Any
+    event_engine: Any
+    emotion_cycle_more_button: QtWidgets.QPushButton | None
+    risk_gate_more_button: QtWidgets.QPushButton | None
 
     def find_stock_item(self, vt_symbol: str) -> StockItem | None: ...
 
@@ -75,4 +80,3 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
 
     def _wire_position_panel(self) -> None: ...
 
-    def _open_risk_settings(self) -> None: ...

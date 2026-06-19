@@ -10,6 +10,7 @@ from vnpy_ashare.services.watchlist_short_term import find_short_term_observatio
 from vnpy_ashare.storage.repositories.watchlist_groups import WatchlistGroupRecord, load_watchlist_group_member_keys
 from vnpy_ashare.trading.risk.gate import read_total_capital
 from vnpy_ashare.trading.risk.plan_position import format_group_position_tab_label, summarize_group_position
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_groups.prefs import (
     load_active_watchlist_group_id,
@@ -24,7 +25,7 @@ class WatchlistGroupController(QtCore.QObject):
     groups_changed = QtCore.Signal()
 
     def __init__(self, page: WatchlistHost) -> None:
-        super().__init__(page)
+        super().__init__(as_qwidget(page))
         self._page = page
         self._groups: list[WatchlistGroupRecord] = []
         self._active_group_id: str | None = load_active_watchlist_group_id()
@@ -133,7 +134,7 @@ class WatchlistGroupController(QtCore.QObject):
         self._sync_move_buttons()
 
     def _prompt_name(self, *, title: str, label: str, initial: str = "") -> str | None:
-        text, ok = QtWidgets.QInputDialog.getText(self._page, title, label, text=initial)
+        text, ok = QtWidgets.QInputDialog.getText(as_qwidget(self._page), title, label, text=initial)
         if not ok:
             return None
         normalized = str(text or "").strip()
@@ -150,7 +151,7 @@ class WatchlistGroupController(QtCore.QObject):
         group_id = service.create_group(name)
         if group_id is None:
             page_notify(
-                self._page,
+                as_qwidget(self._page),
                 "无法创建分组（名称重复或已达上限）",
                 level="warning",
             )
@@ -173,7 +174,7 @@ class WatchlistGroupController(QtCore.QObject):
         if name is None:
             return
         if not service.rename_group(group_id, name):
-            page_notify(self._page, "重命名失败（名称可能重复）", level="warning")
+            page_notify(as_qwidget(self._page), "重命名失败（名称可能重复）", level="warning")
             return
         self.refresh_groups()
         self.groups_changed.emit()
@@ -187,7 +188,7 @@ class WatchlistGroupController(QtCore.QObject):
         if group is None:
             return
         answer = QtWidgets.QMessageBox.question(
-            self._page,
+            as_qwidget(self._page),
             "删除分组",
             f"确定删除分组「{group.name}」？\n标的仍保留在自选池与其它分组中。",
             QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
@@ -196,7 +197,7 @@ class WatchlistGroupController(QtCore.QObject):
         if answer != QtWidgets.QMessageBox.StandardButton.Yes:
             return
         if not service.delete_group(group_id):
-            page_notify(self._page, "删除分组失败", level="warning")
+            page_notify(as_qwidget(self._page), "删除分组失败", level="warning")
             return
         if self._active_group_id == group_id:
             self._active_group_id = None
@@ -217,7 +218,7 @@ class WatchlistGroupController(QtCore.QObject):
         if group.position_cap_pct is not None:
             initial = str(int(round(group.position_cap_pct * 100)))
         text, ok = QtWidgets.QInputDialog.getText(
-            self._page,
+            as_qwidget(self._page),
             "设置仓位上限",
             f"分组「{group.name}」计划总仓位上限（%，留空清除）：",
             text=initial,
@@ -230,14 +231,14 @@ class WatchlistGroupController(QtCore.QObject):
             try:
                 pct_value = float(normalized)
             except ValueError:
-                page_notify(self._page, "请输入有效数字", level="warning")
+                page_notify(as_qwidget(self._page), "请输入有效数字", level="warning")
                 return
             if pct_value <= 0 or pct_value > 100:
-                page_notify(self._page, "上限须在 1–100% 之间", level="warning")
+                page_notify(as_qwidget(self._page), "上限须在 1–100% 之间", level="warning")
                 return
             cap_pct = pct_value / 100.0
         if not service.set_group_position_cap(group_id, cap_pct):
-            page_notify(self._page, "保存仓位上限失败", level="warning")
+            page_notify(as_qwidget(self._page), "保存仓位上限失败", level="warning")
             return
         self.refresh_groups()
         self.groups_changed.emit()

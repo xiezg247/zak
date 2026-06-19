@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
-from vnpy_ashare.domain.trading.exit import RuleStatus
+from vnpy_ashare.domain.trading.exit import OvernightExitEvaluation, RuleStatus
 from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.quotes.core.provider import quote_snapshot_from_row
 from vnpy_ashare.quotes.format import format_pct
@@ -37,12 +37,12 @@ def _row_int(value: str | float | int | None) -> int:
 def _worst_rule_status(rules) -> RuleStatus:
     if not rules:
         return "clear"
-    best = "clear"
+    best: RuleStatus = "clear"
     for rule in rules:
-        status = str(rule.status)
-        if status in _STATUS_RANK and _STATUS_RANK[status] < _STATUS_RANK.get(best, 99):
-            best = status  # type: ignore[assignment]
-    return best  # type: ignore[return-value]
+        status = rule.status
+        if status in _STATUS_RANK and _STATUS_RANK[status] < _STATUS_RANK[best]:
+            best = status
+    return best
 
 
 def _evaluation_rank(evaluation) -> tuple[int, int]:
@@ -64,7 +64,7 @@ def load_position_risk(spec: RadarCardSpec) -> RadarCardData:
         )
 
     name_map = build_symbol_name_map()
-    evaluated: list[tuple[PositionRecord, object, tuple[int, int]]] = []
+    evaluated: list[tuple[PositionRecord, OvernightExitEvaluation, tuple[int, int]]] = []
     for row in rows_db:
         exchange = Exchange(str(row["exchange"]))
         symbol = str(row["symbol"])

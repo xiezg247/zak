@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId
 from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import PRESET_SPECS
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 _EMOTION_MORE_LABEL = "情绪周期"
@@ -37,21 +39,21 @@ def create_emotion_risk_more_buttons(page: WatchlistHost) -> list[tuple[str, QtW
     if not (page.config.show_watchlist_signals or page.config.show_watchlist_positions):
         return []
 
-    emotion_btn = QtWidgets.QPushButton(page)
+    emotion_btn = QtWidgets.QPushButton(as_qwidget(page))
     emotion_btn.hide()
 
     def _show_emotion_status() -> None:
         chip = getattr(page, "emotion_cycle_chip", None)
         text = chip.toolTip() if chip is not None else ""
         QtWidgets.QMessageBox.information(
-            page,
+            as_qwidget(page),
             _EMOTION_MORE_LABEL,
             text or "暂无市场广度数据",
         )
 
     emotion_btn.clicked.connect(_show_emotion_status)
 
-    risk_btn = QtWidgets.QPushButton(page)
+    risk_btn = QtWidgets.QPushButton(as_qwidget(page))
     risk_btn.hide()
     risk_btn.clicked.connect(page._open_risk_settings)
     page.emotion_cycle_more_button = emotion_btn

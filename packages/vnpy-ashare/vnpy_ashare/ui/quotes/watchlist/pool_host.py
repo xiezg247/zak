@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from vnpy.trader.constant import Exchange
+from vnpy.trader.ui import QtWidgets
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.symbols.stock import StockItem
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
     from vnpy_ashare.quotes.core.models import QuoteSnapshot
     from vnpy_ashare.services.position import PositionService
     from vnpy_ashare.services.watchlist import WatchlistService
+    from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
+    from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
     from vnpy_ashare.ui.quotes.page.config import PageConfig
     from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
     from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
@@ -31,10 +34,21 @@ class WatchlistPoolHost(Protocol):
     status_label: Any
     depth_panel: Any
     position_panel: Any
-    add_watchlist_button: Any
-    remove_watchlist_button: Any
-    move_watchlist_up_button: Any
-    move_watchlist_down_button: Any
+    add_watchlist_button: QtWidgets.QPushButton
+    remove_watchlist_button: QtWidgets.QPushButton
+    move_watchlist_up_button: QtWidgets.QPushButton
+    move_watchlist_down_button: QtWidgets.QPushButton
+    download_button: QtWidgets.QPushButton
+    backtest_button: QtWidgets.QPushButton
+    batch_backtest_button: QtWidgets.QPushButton
+    add_signal_panel_button: QtWidgets.QPushButton
+    register_position_button: QtWidgets.QPushButton
+    quick_note_button: QtWidgets.QPushButton
+    notes_center_button: QtWidgets.QPushButton
+    diagnose_button: QtWidgets.QPushButton
+    refresh_quotes_button: QtWidgets.QPushButton
+    emotion_cycle_chip: EmotionCycleChip | None
+    risk_gate_chip: RiskGateChip | None
     _watchlist_groups: WatchlistGroupController | None
     _watchlist_feature: Any
     _signals: WatchlistSignalController
@@ -48,3 +62,5 @@ class WatchlistPoolHost(Protocol):
     def _update_action_buttons(self) -> None: ...
 
     def _select_stock_key(self, key: tuple[str, Exchange]) -> None: ...
+
+    def _open_risk_settings(self) -> None: ...

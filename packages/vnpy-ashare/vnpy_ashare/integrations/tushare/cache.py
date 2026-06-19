@@ -35,8 +35,12 @@ DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)
 
 
+def _prepare_app_db() -> None:
+    init_app_db()
+
+
 def _connect():
-    return sqlite_cache_session(get_app_db_path(), "", prepare=init_app_db)
+    return sqlite_cache_session(get_app_db_path(), "", prepare=_prepare_app_db)
 
 
 def _parse_fetched_at(value: str) -> datetime | None:

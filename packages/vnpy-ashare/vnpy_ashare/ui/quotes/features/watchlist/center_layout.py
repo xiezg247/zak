@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
@@ -14,15 +12,13 @@ from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
 from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     bind_center_splitter_persistence,
     configure_center_splitter,
     restore_center_splitter,
 )
-
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-
 
 def build_watchlist_center_layout(page: WatchlistHost, center_layout: QtWidgets.QVBoxLayout) -> None:
     """组装自选页中部区域并挂载到 center_layout。"""
@@ -43,7 +39,7 @@ def build_watchlist_center_layout(page: WatchlistHost, center_layout: QtWidgets.
     page._center_view_stack = None
     page.multiview_board = None
     if page.config.show_watchlist_multiview:
-        page.multiview_board = WatchlistMultiViewBoard(page)
+        page.multiview_board = WatchlistMultiViewBoard(as_qwidget(page))
         page._center_view_stack = QtWidgets.QStackedWidget()
         page._center_view_stack.setObjectName("WatchlistCenterViewStack")
         page._center_view_stack.addWidget(page._market_table_host)

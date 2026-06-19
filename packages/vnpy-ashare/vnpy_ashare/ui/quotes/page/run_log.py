@@ -25,10 +25,10 @@ __all__ = [
 ]
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
-def _apply_splitter_sizes(page: QuotesPage, *, expanded: bool) -> None:
+def _apply_splitter_sizes(page: WatchlistHost, *, expanded: bool) -> None:
     del expanded
     from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
@@ -36,7 +36,7 @@ def _apply_splitter_sizes(page: QuotesPage, *, expanded: bool) -> None:
 
 
 def sync_run_output_expansion(
-    page: QuotesPage,
+    page: WatchlistHost,
     expanded: bool,
     *,
     persist: bool = False,
@@ -52,19 +52,19 @@ def sync_run_output_expansion(
         save_run_output_expanded(page.page_name, expanded)
 
 
-def collapse_run_output(page: QuotesPage) -> None:
+def collapse_run_output(page: WatchlistHost) -> None:
     sync_run_output_expansion(page, False, adjust_splitter=True)
 
 
-def expand_run_output(page: QuotesPage) -> None:
+def expand_run_output(page: WatchlistHost) -> None:
     sync_run_output_expansion(page, True, adjust_splitter=True)
 
 
-def on_run_output_expansion_changed(page: QuotesPage, expanded: bool) -> None:
+def on_run_output_expansion_changed(page: WatchlistHost, expanded: bool) -> None:
     sync_run_output_expansion(page, expanded, persist=True, adjust_splitter=True)
 
 
-def append_run_log(page: QuotesPage, message: str) -> None:
+def append_run_log(page: WatchlistHost, message: str) -> None:
     panel = run_output_panel(page)
     if panel is not None:
         if not panel.is_expanded():
@@ -72,20 +72,20 @@ def append_run_log(page: QuotesPage, message: str) -> None:
         panel.append_log(message)
 
 
-def begin_run_log(page: QuotesPage, title: str) -> None:
+def begin_run_log(page: WatchlistHost, title: str) -> None:
     panel = run_output_panel(page)
     if panel is not None:
         expand_run_output(page)
         panel.begin_task(title)
 
 
-def complete_run_log(page: QuotesPage, summary: str, *, detail: str | None = None) -> None:
+def complete_run_log(page: WatchlistHost, summary: str, *, detail: str | None = None) -> None:
     panel = run_output_panel(page)
     if panel is not None:
         panel.complete_task(summary=summary, detail=detail)
 
 
-def fail_run_log(page: QuotesPage, message: str) -> None:
+def fail_run_log(page: WatchlistHost, message: str) -> None:
     panel = run_output_panel(page)
     if panel is not None:
         panel.fail_task(message)

@@ -752,10 +752,12 @@ class QuotesPageShell:
         splitter.setStretchFactor(1, 0)
         splitter.setSizes([880, 280])
         page._radar_splitter = splitter
-        QtCore.QTimer.singleShot(
-            0,
-            lambda: page._on_radar_resonance_expansion_changed(page.radar_resonance_panel.is_expanded()),
-        )
+        resonance_panel = page.radar_resonance_panel
+        if resonance_panel is not None:
+            QtCore.QTimer.singleShot(
+                0,
+                lambda: page._on_radar_resonance_expansion_changed(resonance_panel.is_expanded()),
+            )
 
         page.status_label = QtWidgets.QLabel("就绪")
         page.quote_source_label = QtWidgets.QLabel(

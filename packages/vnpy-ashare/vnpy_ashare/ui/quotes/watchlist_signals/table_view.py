@@ -76,7 +76,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         self._visible_column_keys = normalize_visible_optional_keys(keys)
         save_signal_panel_columns(self._visible_column_keys)
         self._sync_table_columns(reset_rows=True)
-        self.render()
+        self.render_table()
 
     def set_symbols(self, symbols: list[str]) -> None:
         self._symbols = list(symbols)
@@ -105,7 +105,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
 
     # ── 渲染 ─────────────────────────────────────────────────
 
-    def render(self) -> None:
+    def render_table(self) -> None:
         has_symbols = bool(self._symbols)
         display_symbols = self._sorted_display_symbols()
         if not has_symbols:
@@ -479,7 +479,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             self._signal_filter = None
         else:
             self._signal_filter = key
-        self.render()
+        self.render_table()
 
     # ── 内部：选择 ───────────────────────────────────────────
 

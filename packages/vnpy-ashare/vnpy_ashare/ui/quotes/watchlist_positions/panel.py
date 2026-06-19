@@ -19,6 +19,7 @@ from vnpy_ashare.trading.risk.combined import (
     compute_avg_float_pnl_pct,
     load_combined_risk_gate_snapshot,
 )
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.header import PositionPanelHeader
@@ -40,7 +41,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
     expansion_changed = QtCore.Signal(bool)
 
     def __init__(self, page: WatchlistHost) -> None:
-        super().__init__(page)
+        super().__init__(as_qwidget(page))
         self._page = page
 
         self.setObjectName("WatchlistPositionPanel")
@@ -97,7 +98,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._table_view.highlight_symbol(vt_symbol)
 
     def render_panel(self) -> None:
-        self._table_view.render()
+        self._table_view.render_table()
 
     def update_rows_for_tickflow_symbols(self, tickflow_symbols: set[str]) -> None:
         self._table_view.update_rows_for_tickflow_symbols(

@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.radar.controller import RadarController
     from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
     from vnpy_ashare.ui.quotes.stock_notes.panel import StockNotePanel
+    from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
     from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
     from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
     from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
@@ -97,6 +98,7 @@ class QuotesPageShellAttrs:
     position_panel: WatchlistPositionPanel | None
     multiview_board: WatchlistMultiViewBoard | None
     watchlist_group_tab_bar: WatchlistGroupTabBar | None
+    watchlist_pool_context_bar: WatchlistPoolContextBar | None
     view_table_button: QtWidgets.QPushButton | None
     view_multiview_button: QtWidgets.QPushButton | None
     run_output_panel: TaskRunOutputPanel | None

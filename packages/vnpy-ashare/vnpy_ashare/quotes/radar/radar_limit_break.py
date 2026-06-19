@@ -50,25 +50,32 @@ def _collect_limit_break_candidates(snapshot_rows: list) -> list[tuple[dict, str
         ts_code = str(item.get("ts_code") or "").strip()
         vt = str(item.get("vt_symbol") or "").strip()
         if not vt and ts_code:
-            vt = ts_code_to_vt_symbol(ts_code)
+            resolved = ts_code_to_vt_symbol(ts_code)
+            if resolved:
+                vt = resolved
         if not vt:
             continue
         raw = item.get("open_times")
         try:
-            open_times_by_vt[vt] = int(float(raw)) if raw not in (None, "") else None
+            open_times_by_vt[vt] = (
+                int(float(raw)) if raw not in (None, "") and isinstance(raw, (int, float, str)) else None
+            )
         except (TypeError, ValueError):
             open_times_by_vt[vt] = None
 
     for vt, row in by_vt.items():
         if _is_limit_down(row):
-            results.append((row, "limit_down", "跌停", format_pct(float(row.get("change_pct") or 0))))
+            change_raw = row.get("change_pct")
+            change = float(change_raw) if isinstance(change_raw, (int, float)) else 0.0
+            results.append((row, "limit_down", "跌停", format_pct(change)))
             seen.add(vt)
 
     for vt, row in by_vt.items():
         if vt in seen:
             continue
         boards = resolve_limit_times(row)
-        change = float(row.get("change_pct") or 0)
+        change_raw = row.get("change_pct")
+        change = float(change_raw) if isinstance(change_raw, (int, float)) else 0.0
         if boards >= 2 and change <= -3.0 and not is_at_limit_board(row):
             results.append((row, "broken_board", "断板", board_display_text(boards)))
             seen.add(vt)

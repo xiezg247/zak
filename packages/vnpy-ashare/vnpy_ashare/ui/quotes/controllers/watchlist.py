@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtWidgets
@@ -10,13 +10,14 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS, WatchlistService
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 
 
 class WatchlistController:
     """封装自选 CRUD 与按钮状态，供 QuotesPage 调用。"""
 
-    def __init__(self, page: WatchlistPoolHost) -> None:
+    def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self.keys: set[tuple[str, Exchange]] = set()
 
@@ -127,7 +128,7 @@ class WatchlistController:
         position_service = self._page._get_position_service()
         if position_service is not None and position_service.contains(item.symbol, item.exchange):
             answer = QtWidgets.QMessageBox.question(
-                self._page,
+                cast(QtWidgets.QWidget, self._page),
                 "移出自选",
                 f"{format_vt_symbol_cn(item.symbol, item.exchange)} 仍有持仓记录，是否一并移出？",
                 QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,

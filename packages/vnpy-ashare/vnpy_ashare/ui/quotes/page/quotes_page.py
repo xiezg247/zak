@@ -70,6 +70,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     save_market_auto_refresh_pref,
 )
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
+from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
 from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
@@ -100,7 +101,7 @@ from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme.manager import theme_manager
 
 
-class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
+class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWidget):
     """单页行情：列表 + 报价头 + 日 K。"""
 
     _thread_active = staticmethod(thread_is_active)
@@ -199,6 +200,9 @@ class QuotesPage(QuotesPageShellAttrs, QtWidgets.QWidget):
         self._market_sort_column: str | None = None
         self._market_sort_ascending = True
         self._center_splitter_bound = False
+        self.emotion_cycle_more_button: QtWidgets.QPushButton | None = None
+        self.risk_gate_more_button: QtWidgets.QPushButton | None = None
+        self._watchlist_table_ratio_override: float | None = None
         self.column_button = None
         self.rank_sidebar = None
         self.rank_list = None

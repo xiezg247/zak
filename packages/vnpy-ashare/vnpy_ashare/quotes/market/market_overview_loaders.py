@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.market.overview import MarketOverviewData, SectorRankItem
 from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
@@ -42,7 +43,7 @@ def _quote_rows_for_overview(*, allow_network: bool = True) -> tuple[QuoteRowsLi
     return snapshot.rows, snapshot.updated_at
 
 
-def _fetch_sorted_indices() -> list[tuple[str, object]]:
+def _fetch_sorted_indices() -> list[tuple[str, QuoteSnapshot]]:
     indices = fetch_index_ticker()
     indices.sort(key=lambda item: item[1].change_pct, reverse=True)
     return indices

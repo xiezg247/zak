@@ -151,18 +151,18 @@ class EmotionSettingsSection(QtWidgets.QWidget):
 
     def refresh(self) -> None:
         thresholds = load_emotion_cycle_thresholds()
-        for field, spin in self._spinners.items():
-            spin.setValue(int(getattr(thresholds, field)))
-        for field, spin in self._doubles.items():
-            spin.setValue(float(getattr(thresholds, field)))
+        for field, int_spin in self._spinners.items():
+            int_spin.setValue(int(getattr(thresholds, field)))
+        for field, double_spin in self._doubles.items():
+            double_spin.setValue(float(getattr(thresholds, field)))
         self._hysteresis_check.setChecked(thresholds.hysteresis_enabled)
 
     def collect_thresholds(self) -> EmotionCycleThresholds:
         payload: dict[str, float | int | bool] = {}
-        for field, spin in self._spinners.items():
-            payload[field] = spin.value()
-        for field, spin in self._doubles.items():
-            payload[field] = spin.value()
+        for field, int_spin in self._spinners.items():
+            payload[field] = int_spin.value()
+        for field, double_spin in self._doubles.items():
+            payload[field] = double_spin.value()
         payload["hysteresis_enabled"] = self._hysteresis_check.isChecked()
         return EmotionCycleThresholds.model_validate(payload)
 

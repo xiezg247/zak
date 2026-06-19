@@ -240,7 +240,7 @@ def sync_sw_industry_snapshot(*, force: bool = False) -> tuple[dict[str, str], i
             return cached, len(cached)
 
     for level in ("L1", "L2", "L3"):
-        classify_rows = fetch_sw_classify(level=level)  # type: ignore[arg-type]
+        classify_rows = fetch_sw_classify(level=level)
         if classify_rows:
             set_cached_rows(f"{DATASET_SW2021_CLASSIFY}_{level}", "", classify_rows)
 

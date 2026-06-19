@@ -11,6 +11,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     normalize_signal_panel_symbols,
     save_signal_panel_symbols,
 )
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.header import SignalPanelHeader
 from vnpy_ashare.ui.quotes.watchlist_signals.table_view import SignalPanelTableView
@@ -32,7 +33,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     expansion_changed = QtCore.Signal(bool)
 
     def __init__(self, page: WatchlistHost) -> None:
-        super().__init__(page)
+        super().__init__(as_qwidget(page))
         self._page = page
         self._symbols: list[str] = load_signal_panel_symbols()
         self._updated_at = ""
@@ -53,7 +54,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._wire()
         self._header.apply_config(page.signal_config.normalized())
         self._table_view.set_symbols(self._symbols)
-        self._table_view.render()
+        self._table_view.render_table()
 
     # ── 属性 ────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         if not self._symbols:
             self._table_view.signal_filter = None
         self._table_view.set_symbols(self._symbols)
-        self._table_view.render()
+        self._table_view.render_table()
 
     def add_symbols(self, vt_symbols: list[str]) -> tuple[int, int]:
         added = 0
@@ -114,7 +115,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         if added:
             save_signal_panel_symbols(self._symbols)
             self._table_view.set_symbols(self._symbols)
-            self._table_view.render()
+            self._table_view.render_table()
             self.symbols_changed.emit()
         return added, skipped
 
@@ -130,7 +131,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             if not self._symbols:
                 self._table_view.signal_filter = None
             self._table_view.set_symbols(self._symbols)
-            self._table_view.render()
+            self._table_view.render_table()
             self.symbols_changed.emit()
         return removed
 
@@ -154,7 +155,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
 
     def render_panel(self) -> None:
         self._table_view.set_symbols(self._symbols)
-        self._table_view.render()
+        self._table_view.render_table()
         self._table_view.sync_highlight_from_page()
 
     def highlight_symbol(self, vt_symbol: str | None) -> None:

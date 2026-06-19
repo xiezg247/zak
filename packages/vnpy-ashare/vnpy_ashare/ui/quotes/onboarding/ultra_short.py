@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.onboarding import (
@@ -17,8 +15,8 @@ from vnpy_ashare.config.preferences.strategy_profile import (
 from vnpy_ashare.services.watchlist_short_term import ensure_onboarding_watchlist_groups
 from vnpy_common.ui.feedback import page_notify
 
-if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 _prompted_pages: set[int] = set()
 
@@ -52,7 +50,7 @@ class UltraShortOnboardingDialog(QtWidgets.QDialog):
         layout.addWidget(buttons)
 
 
-def maybe_show_ultra_short_onboarding(page: QuotesPage) -> None:
+def maybe_show_ultra_short_onboarding(page: WatchlistHost) -> None:
     """自选页首次激活时提示切换极致短线 Profile（仅一次）。"""
     if page.page_name != "自选":
         return
@@ -71,7 +69,7 @@ def maybe_show_ultra_short_onboarding(page: QuotesPage) -> None:
     def _show() -> None:
         if load_ultra_short_onboarding_done():
             return
-        dialog = UltraShortOnboardingDialog(page)
+        dialog = UltraShortOnboardingDialog(as_qwidget(page))
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             save_ultra_short_onboarding_done(True)
             return
@@ -90,7 +88,7 @@ def maybe_show_ultra_short_onboarding(page: QuotesPage) -> None:
         if created:
             parts.append(f"已创建分组：{'、'.join(created)}")
         page.status_label.setText(" · ".join(parts))
-        page_notify(page, parts[0], level="success")
+        page_notify(as_qwidget(page), parts[0], level="success")
         feature = getattr(page, "_watchlist_feature", None)
         if feature is not None:
             feature.apply_layout_preset("intraday")

@@ -62,7 +62,7 @@ def _build_limit_history(ts_code: str, vt_symbol: str) -> tuple[list[LimitHistor
     for row in raw_rows:
         open_raw = row.get("open_times")
         open_times: int | None = None
-        if open_raw not in (None, ""):
+        if open_raw not in (None, "") and isinstance(open_raw, (int, float, str)):
             try:
                 open_times = int(float(open_raw))
             except (TypeError, ValueError):

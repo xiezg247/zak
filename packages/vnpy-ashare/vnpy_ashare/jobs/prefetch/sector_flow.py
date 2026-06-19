@@ -41,7 +41,7 @@ def sync_sector_flow_daily_job() -> JobResult:
 
         dc_industry, _ = fetch_moneyflow_ind_dc(trade_date=trade_date, content_type="行业")
         if dc_industry:
-            industry_rows = build_sw_industry_rows_from_dc(dc_industry, top_each_side=None)
+            industry_rows = build_sw_industry_rows_from_dc(dc_industry, limit_each_side=None)
             if industry_rows:
                 upsert_sector_flow_day(trade_date, "industry", industry_rows)
                 day_parts.append(f"行业{len(industry_rows)}")

@@ -15,6 +15,7 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import create_emotion_risk_more_buttons
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
@@ -59,7 +60,7 @@ def append_watchlist_pool_toolbar_actions(
 
 
 def append_watchlist_strategy_toolbar_actions(
-    page: WatchlistPoolHost,
+    page: WatchlistHost,
     toolbar: QtWidgets.QHBoxLayout,
     more_actions: list[tuple[str, QtWidgets.QPushButton]],
     *,
@@ -77,9 +78,10 @@ def append_watchlist_strategy_toolbar_actions(
     if page.config.show_watchlist_positions:
         toolbar.addWidget(page.register_position_button)
     if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
-        page.emotion_cycle_chip = EmotionCycleChip(page)
+        parent = as_qwidget(page)
+        page.emotion_cycle_chip = EmotionCycleChip(parent)
         toolbar.addWidget(page.emotion_cycle_chip)
-        page.risk_gate_chip = RiskGateChip(page)
+        page.risk_gate_chip = RiskGateChip(parent)
         toolbar.addWidget(page.risk_gate_chip)
         page.risk_gate_chip.clicked.connect(page._open_risk_settings)
         if policy is not None:
@@ -100,7 +102,7 @@ def append_watchlist_strategy_toolbar_actions(
 
 
 def create_layout_preset_combo(page: WatchlistHost) -> QtWidgets.QComboBox:
-    combo = QtWidgets.QComboBox(page)
+    combo = QtWidgets.QComboBox(as_qwidget(page))
     combo.setObjectName("WatchlistLayoutPresetCombo")
     apply_toolbar_combo_style(combo)
     for preset_id, label in layout_preset_options():
@@ -116,12 +118,13 @@ def create_layout_preset_combo(page: WatchlistHost) -> QtWidgets.QComboBox:
 
 
 def create_view_mode_buttons(page: WatchlistHost) -> tuple[QtWidgets.QPushButton, QtWidgets.QPushButton]:
-    table_button = QtWidgets.QPushButton("表格", page)
+    parent = as_qwidget(page)
+    table_button = QtWidgets.QPushButton("表格", parent)
     table_button.setObjectName("SecondaryButton")
     table_button.setCheckable(True)
     table_button.setChecked(True)
 
-    multiview_button = QtWidgets.QPushButton("多维", page)
+    multiview_button = QtWidgets.QPushButton("多维", parent)
     multiview_button.setObjectName("SecondaryButton")
     multiview_button.setCheckable(True)
     return table_button, multiview_button

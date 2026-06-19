@@ -143,17 +143,17 @@ def compute_center_splitter_sizes(
                 slots["table"] = max(TABLE_MIN_HEIGHT, slots["table"] - overflow)
         return slots
 
-    slots: dict[str, int] = {}
+    layout_slots: dict[str, int] = {}
     for spec, (present, expanded, min_h, _key) in zip(_CENTER_PANEL_SPECS, panel_flags, strict=True):
-        slots[spec.key] = panel_slot_height(
+        layout_slots[spec.key] = panel_slot_height(
             present,
             expanded,
             spec.default_height,
             spec.collapsed_height,
             min_h,
         )
-    table_h = max(total - sum(slots.values()), TABLE_MIN_HEIGHT)
-    return {"table": table_h, **slots}
+    table_h = max(total - sum(layout_slots.values()), TABLE_MIN_HEIGHT)
+    return {"table": table_h, **layout_slots}
 
 
 def _splitter_table_ratio_for_page(page: WatchlistHost) -> float | None:

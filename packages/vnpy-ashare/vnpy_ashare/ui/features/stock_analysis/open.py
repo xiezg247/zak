@@ -10,9 +10,10 @@ from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 def show_stock_analysis_dialog(
@@ -55,7 +56,7 @@ def show_stock_analysis_vt_symbol(
 
 def show_stock_analysis_from_quotes_page(
     item: StockItem,
-    page: QuotesPage,
+    page: WatchlistHost,
     *,
     quote: QuoteSnapshot | None = None,
     row_hint: dict[str, object] | None = None,
@@ -64,7 +65,7 @@ def show_stock_analysis_from_quotes_page(
     host = StockAnalysisHost.from_quotes_page(page)
     if quote is None or (quote.last_price or 0) <= 0:
         quote = host.quote_for_item(item, row_hint=row_hint)
-    show_stock_analysis_dialog(item=item, host=host, quote=quote, parent=parent or page)
+    show_stock_analysis_dialog(item=item, host=host, quote=quote, parent=parent or as_qwidget(page))
 
 
 def _row_vt_symbol(row: dict[str, object]) -> str:

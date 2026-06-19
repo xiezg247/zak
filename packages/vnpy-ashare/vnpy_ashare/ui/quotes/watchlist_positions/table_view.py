@@ -104,7 +104,7 @@ class PositionPanelTableView(QtWidgets.QWidget):
                 self._suppress_selection_signal = False
                 return
 
-    def render(self) -> None:
+    def render_table(self) -> None:
         if self._building:
             return
         self._building = True
@@ -168,11 +168,11 @@ class PositionPanelTableView(QtWidgets.QWidget):
 
         records = self._sorted_display_records()
         if len(records) != len(self._rendered_symbols):
-            self.render()
+            self.render_table()
             return
         for record, rendered_vt in zip(records, self._rendered_symbols, strict=True):
             if record.vt_symbol != rendered_vt:
-                self.render()
+                self.render_table()
                 return
 
         combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
@@ -489,7 +489,7 @@ class PositionPanelTableView(QtWidgets.QWidget):
             self._filter = None
         else:
             self._filter = key
-        self.render()
+        self.render_table()
 
     # ── 选择 ─────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@ from vnpy_ashare.quotes.core.provider import resolve_quote_snapshot
 from vnpy_common.domain.base import MutableModel
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
+    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
 class StockAnalysisHost(MutableModel):
@@ -28,7 +28,7 @@ class StockAnalysisHost(MutableModel):
     quote_map: dict[str, QuoteSnapshot] | None = Field(default=None, description="行情快照缓存")
 
     @classmethod
-    def from_quotes_page(cls, page: QuotesPage) -> StockAnalysisHost:
+    def from_quotes_page(cls, page: WatchlistHost) -> StockAnalysisHost:
         return cls(
             main_engine=page._get_main_engine(),
             event_engine=page.event_engine,

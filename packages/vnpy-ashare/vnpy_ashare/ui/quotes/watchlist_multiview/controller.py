@@ -14,6 +14,7 @@ from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import SparklineKind,
 from vnpy_ashare.quotes.watchlist_multiview.summary import build_multiview_board_summary
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_multiview.settings import (
     ViewMode,
@@ -28,7 +29,6 @@ from vnpy_ashare.ui.quotes.watchlist_multiview.worker import WatchlistMultiSpark
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 
 if TYPE_CHECKING:
-    from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
     from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 
 _SPARKLINE_REFRESH_MS = 60_000
@@ -66,10 +66,10 @@ class WatchlistMultiViewController:
         self._sparkline_worker: WatchlistMultiSparklineWorker | None = None
         self._last_board: WatchlistMultiBoardData | None = None
         self._board_summary = ""
-        self._sparkline_refresh_timer = QtCore.QTimer(page)
+        self._sparkline_refresh_timer = QtCore.QTimer(as_qwidget(page))
         self._sparkline_refresh_timer.setInterval(_SPARKLINE_REFRESH_MS)
         self._sparkline_refresh_timer.timeout.connect(self._on_sparkline_refresh_tick)
-        self._quote_refresh_timer = QtCore.QTimer(page)
+        self._quote_refresh_timer = QtCore.QTimer(as_qwidget(page))
         self._quote_refresh_timer.setSingleShot(True)
         self._quote_refresh_timer.setInterval(_MULTIVIEW_QUOTE_DEBOUNCE_MS)
         self._quote_refresh_timer.timeout.connect(self._flush_quote_refresh)
