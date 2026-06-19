@@ -530,6 +530,12 @@ class DataLoaderController:
                     page._pagination.update_controls()
                 if page.config.use_local_table:
                     page._local.on_stock_list_loaded()
+                elif page._watchlist_bootstrap is not None:
+                    page._watchlist_bootstrap.on_pool_ready(
+                        page,
+                        list(page.all_stocks),
+                        source="universe_load",
+                    )
                 elif page._watchlist_groups is not None:
                     page._watchlist_groups.on_stock_list_loaded(list(page.all_stocks))
                     page._watchlist.refresh_keys()

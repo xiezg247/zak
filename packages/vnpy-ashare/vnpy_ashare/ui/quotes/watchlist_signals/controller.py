@@ -4,19 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore
-
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, save_watchlist_signal_config
 from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
 from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
-from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
-from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
-from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
@@ -27,7 +22,6 @@ class WatchlistSignalController:
 
     def __init__(self, page: WatchlistHost) -> None:
         self._page = page
-        self._worker: WatchlistSignalWorker | None = None
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
         self._disk_cache = WatchlistSignalDiskCache()
 
@@ -68,22 +62,18 @@ class WatchlistSignalController:
     def _symbols_needing_refresh(self, symbols: list[str]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol)]
 
-    def _release_worker(self, worker: QtCore.QThread | None) -> None:
-        if worker is None:
-            return
-        release_thread(self._page._retired_workers, worker, timeout_ms=0)
+    def _strategy_batch(self):
+        return getattr(self._page, "_strategy_batch", None)
 
     def stop(self) -> None:
         self._pending_refresh = None
-        worker = self._worker
-        if worker is not None:
-            self._worker = None
-            for signal in (worker.finished, worker.failed):
-                try:
-                    signal.disconnect()
-                except (TypeError, RuntimeError):
-                    pass
-            self._release_worker(worker)
+
+    @property
+    def is_refreshing(self) -> bool:
+        batch = self._strategy_batch()
+        if batch is not None:
+            return batch.is_refreshing_zone("signal")
+        return False
 
     def apply_config(self, config: WatchlistSignalConfig, *, save: bool = True) -> None:
         normalized = config.normalized()
@@ -219,8 +209,9 @@ class WatchlistSignalController:
             if panel is not None:
                 panel.render_panel()
             return
-        if self._worker is not None and self._worker.isRunning():
-            self._pending_refresh = (force, symbols)
+        panel = getattr(self._page, "signal_panel", None)
+        if panel is not None and not panel.is_expanded() and not force:
+            panel.render_panel()
             return
 
         service = self._analysis_service()
@@ -272,19 +263,14 @@ class WatchlistSignalController:
             self._apply_refresh_result()
             return
 
-        worker = WatchlistSignalWorker(
-            service,
-            symbols=still_need,
-            class_name=config.class_name,
-            fast_window=config.fast_window,
-            slow_window=config.slow_window,
-            parent=as_qwidget(self._page),
-        )
-        self._worker = worker
+        self._submit_batch(still_need, config=config, config_key=config_key)
 
-        def on_finished(cache: dict) -> None:
-            if self._worker is worker:
-                self._worker = None
+    def _submit_batch(self, symbols: list[str], *, config: WatchlistSignalConfig, config_key: str) -> None:
+        batch = self._strategy_batch()
+        if batch is None:
+            return
+
+        def on_complete(cache: dict) -> None:
             pending = self._pending_refresh
             self._pending_refresh = None
             before = {vt: self._page.signal_cache.get(vt) for vt in cache}
@@ -297,21 +283,16 @@ class WatchlistSignalController:
                     config_key=config_key,
                     bar_as_of_for=self._bar_end_date,
                 )
-            active = self._page._active
-            if active:
+            if self._page._active:
                 self._notify_signal_transitions(before, cache)
                 self._apply_refresh_result()
-            self._release_worker(worker)
-            if pending is not None and active:
+            if pending is not None and self._page._active:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
 
         def on_failed(_msg: str) -> None:
-            if self._worker is worker:
-                self._worker = None
             pending = self._pending_refresh
             self._pending_refresh = None
-            self._release_worker(worker)
             if not self._page._active:
                 return
             panel = getattr(self._page, "signal_panel", None)
@@ -321,9 +302,13 @@ class WatchlistSignalController:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
 
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.start()
+        batch.submit(
+            zone="signal",
+            symbols=symbols,
+            config=config,
+            on_complete=on_complete,
+            on_failed=on_failed,
+        )
 
     def _cache_covers(self, symbols: list[str]) -> bool:
         return not self._symbols_needing_refresh(symbols)

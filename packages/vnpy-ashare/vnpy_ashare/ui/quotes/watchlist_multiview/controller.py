@@ -155,9 +155,10 @@ class WatchlistMultiViewController:
     def on_stock_list_loaded(self) -> None:
         self._sparklines.clear()
         self._sparkline_kind = "none"
-        if self.is_multiview_active():
-            self.refresh(force=True, refresh_moneyflow=True)
-            self._schedule_sparkline_load()
+        if not self.is_multiview_active():
+            return
+        self.refresh(force=True, refresh_moneyflow=True)
+        self._schedule_sparkline_load()
 
     def on_bars_updated(self, vt_symbols: list[str] | None = None) -> None:
         if self._sparkline_mode == "intraday":

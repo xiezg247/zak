@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy.trader.ui import QtCore
-
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.data.bar_health import format_meta_date
@@ -18,8 +16,6 @@ from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPosition
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-from vnpy_ashare.ui.quotes.watchlist_positions.worker import WatchlistPositionWorker
-from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
@@ -31,7 +27,6 @@ class WatchlistPositionController:
 
     def __init__(self, page: WatchlistHost) -> None:
         self._page = page
-        self._worker: QtCore.QThread | None = None
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
         self._disk_cache = WatchlistPositionDiskCache()
 
@@ -120,17 +115,18 @@ class WatchlistPositionController:
     def _symbols_needing_refresh(self, symbols: list[str], record_map: dict[str, PositionRecord]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol, record_map[symbol])]
 
-    def _release_worker(self, worker: QtCore.QThread | None) -> None:
-        if worker is None:
-            return
-        release_thread(self._page._retired_workers, worker, timeout_ms=0)
+    def _strategy_batch(self):
+        return getattr(self._page, "_strategy_batch", None)
 
     def stop(self) -> None:
         self._pending_refresh = None
-        worker = self._worker
-        if worker is not None:
-            self._worker = None
-            self._release_worker(worker)
+
+    @property
+    def is_refreshing(self) -> bool:
+        batch = self._strategy_batch()
+        if batch is not None:
+            return batch.is_refreshing_zone("position")
+        return False
 
     def _rebuild_cache_entry(self, record: PositionRecord, signal) -> None:
         item = self._page.find_stock_item(record.vt_symbol)
@@ -269,8 +265,9 @@ class WatchlistPositionController:
             if panel is not None:
                 panel.render_panel()
             return
-        if self._worker is not None and self._worker.isRunning():
-            self._pending_refresh = (force, symbols)
+        panel = getattr(self._page, "position_panel", None)
+        if panel is not None and not panel.is_expanded() and not force:
+            panel.render_panel()
             return
 
         service = self._analysis_service()
@@ -323,22 +320,24 @@ class WatchlistPositionController:
             self._apply_refresh_result()
             return
 
-        worker = WatchlistPositionWorker(
-            service,
-            symbols=still_need,
-            class_name=config.class_name,
-            fast_window=config.fast_window,
-            slow_window=config.slow_window,
-        )
-        self._worker = worker
+        self._submit_batch(still_need, config=config, config_key=config_key, record_map=record_map)
 
-        def on_finished(signal_cache: dict) -> None:
-            if self._worker is worker:
-                self._worker = None
+    def _submit_batch(
+        self,
+        symbols: list[str],
+        *,
+        config: WatchlistSignalConfig,
+        config_key: str,
+        record_map: dict[str, PositionRecord],
+    ) -> None:
+        batch = self._strategy_batch()
+        if batch is None:
+            return
+
+        def on_complete(signal_cache: dict) -> None:
             pending = self._pending_refresh
             self._pending_refresh = None
             if not self._page._active:
-                self._release_worker(worker)
                 return
             records = self._record_map()
             for vt_symbol, signal in signal_cache.items():
@@ -358,24 +357,24 @@ class WatchlistPositionController:
             for vt in stale:
                 self._page.position_cache.pop(vt, None)
             self._apply_refresh_result()
-            self._release_worker(worker)
             if pending is not None:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
 
         def on_failed(_msg: str) -> None:
-            if self._worker is worker:
-                self._worker = None
             pending = self._pending_refresh
             self._pending_refresh = None
-            self._release_worker(worker)
             if pending is not None and self._page._active:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
 
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.start()
+        batch.submit(
+            zone="position",
+            symbols=symbols,
+            config=config,
+            on_complete=on_complete,
+            on_failed=on_failed,
+        )
 
     def invalidate_cache(self) -> None:
         self._page.position_cache.clear()

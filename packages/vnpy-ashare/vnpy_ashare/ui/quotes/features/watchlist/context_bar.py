@@ -57,6 +57,10 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
             signal_count=signal_count,
             position_count=position_count,
         )
+        if getattr(page._signals, "is_refreshing", False):
+            text += " · 信号刷新中"
+        if getattr(page._positions, "is_refreshing", False):
+            text += " · 持仓刷新中"
         self._segments = self._build_segments(text)
         self._label.setText(text)
 

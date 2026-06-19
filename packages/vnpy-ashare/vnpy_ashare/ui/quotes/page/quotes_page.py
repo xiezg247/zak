@@ -76,7 +76,9 @@ from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
 from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
 from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
 from vnpy_ashare.ui.quotes.radar.resonance_panel import sync_radar_resonance_splitter_for_expansion
+from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
+from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
 from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
 from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
@@ -148,6 +150,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._positions = WatchlistPositionController(self)
         self._multiview = WatchlistMultiViewController(self)
         self._strategy_refresh = WatchlistStrategyRefreshScheduler(self, self._signals, self._positions)
+        self._strategy_batch = WatchlistStrategyBatchCoordinator(self) if page_name == "自选" else None
         self._watchlist_groups: WatchlistGroupController | None = None
         self._loader = DataLoaderController(self)
         self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
@@ -195,6 +198,9 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
         self._watchlist_feature: WatchlistPageFeature | None = WatchlistPageFeature(self) if page_name == "自选" else None
+        self._watchlist_bootstrap: WatchlistBootstrapCoordinator | None = (
+            WatchlistBootstrapCoordinator() if page_name == "自选" else None
+        )
         self._stock_notes = StockNotesFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
         self._market_sort_column: str | None = None
@@ -339,7 +345,10 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         if self.current_item is not None and self.chart_panel is not None:
             quote = self.quote_map.get(self.current_item.tickflow_symbol)
             self.chart_panel.load_item(self.current_item, quote=quote)
-        self.load_stock_list()
+        if self._watchlist_bootstrap is not None:
+            self._watchlist_bootstrap.on_activate(self)
+        else:
+            self.load_stock_list()
         self._restore_splitter()
         chart_section = getattr(self, "chart_section", None)
         if chart_section is not None:
@@ -348,11 +357,6 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._update_quote_source_label()
         if self.config.show_watchlist_signals or self.config.show_watchlist_positions:
             self._strategy_refresh.start()
-        if self.config.show_watchlist_signals:
-            # 信号区名单来自 QSettings，不依赖自选表加载完成；避免列表加载取消后信号永不刷新。
-            self._signals.on_stock_list_loaded()
-        if self.config.show_watchlist_positions:
-            self._positions.on_stock_list_loaded()
         if self.config.show_stock_notes:
             self._stock_notes.on_selection_item()
         if self.config.show_watchlist_multiview:
@@ -403,6 +407,9 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._stream.stop()
         self._quote_timer.stop()
         self._strategy_refresh.stop()
+        batch = getattr(self, "_strategy_batch", None)
+        if batch is not None:
+            batch.stop()
         self._signals.stop()
         self._positions.stop()
         panel = getattr(self, "stock_note_panel", None)

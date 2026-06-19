@@ -22,7 +22,9 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
     from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
     from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
+    from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
     from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
+    from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
     from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
     from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
     from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
@@ -43,10 +45,12 @@ class QuotesPageControllerAttrs:
     _positions: WatchlistPositionController
     _multiview: WatchlistMultiViewController
     _strategy_refresh: WatchlistStrategyRefreshScheduler
+    _strategy_batch: WatchlistStrategyBatchCoordinator | None
     _loader: DataLoaderController
     _market_rank: MarketRankFeature
     _watchlist_panels: WatchlistPanelsFeature
     _watchlist_feature: WatchlistPageFeature | None
+    _watchlist_bootstrap: WatchlistBootstrapCoordinator | None
     _stock_notes: StockNotesFeature
     _watchlist_groups: WatchlistGroupController | None
     _task_guard: TaskGuard

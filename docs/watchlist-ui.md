@@ -65,6 +65,14 @@ WatchlistHost              # 自选页：信号/持仓/多维 controller 与 pan
 
 `ui/quotes/watchlist/refresh_scheduler.py`：`WatchlistStrategyRefreshScheduler` 用**单 QTimer** 驱动信号区与持仓区 `refresh(force=False)`，由 `QuotesPage` 在 activate/deactivate 时启停。
 
+`ui/quotes/watchlist/bootstrap.py`：`WatchlistBootstrapCoordinator` 作为自选页**加载编排入口**：
+
+- `on_activate`：自选池 fingerprint 未变时走增量同步（不触发 `UniverseLoadWorker`）
+- `on_pool_ready`：全量/增删自选后统一调度 groups → context_bar → 下游刷新
+- `schedule_downstream`：按布局预设（盘中/登记/复盘）决定信号/持仓/多维的加载优先级；折叠面板在 `force=False` 时不启策略 worker
+
+`ui/quotes/watchlist/strategy_batch.py`：`WatchlistStrategyBatchCoordinator` 合并信号区与持仓区**相同 `cache_key`** 的待算标的，单次 `batch_strategy_signals` 后分别写入两区缓存；持仓不跟随信号（独立 Profile）时仍分两次计算。
+
 ---
 
 ## 3. 工作流预设

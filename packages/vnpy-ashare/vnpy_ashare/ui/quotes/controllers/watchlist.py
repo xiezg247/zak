@@ -10,6 +10,7 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS, WatchlistService
+from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 
@@ -77,6 +78,10 @@ class WatchlistController:
     def _apply_pool(self, pool: list[StockItem]) -> None:
         """从 service 结果刷新自选列表 UI（避免 load_stock_list 全量重载）。"""
         page = self._page
+        bootstrap = getattr(page, "_watchlist_bootstrap", None)
+        if isinstance(bootstrap, WatchlistBootstrapCoordinator):
+            bootstrap.on_pool_ready(page, pool, source="pool_mutation")
+            return
         page.watchlist_pool_stocks = pool
         if page._watchlist_groups is not None:
             page._watchlist_groups.on_stock_list_loaded(pool)
@@ -125,6 +130,7 @@ class WatchlistController:
             return
 
         item = self._page.current_item
+        removed_vt = item.vt_symbol
         position_service = self._page._get_position_service()
         if position_service is not None and position_service.contains(item.symbol, item.exchange):
             answer = QtWidgets.QMessageBox.question(
@@ -148,6 +154,9 @@ class WatchlistController:
             self._page.depth_panel.clear()
         self._page.status_label.setText(f"已移出自选：{format_vt_symbol_cn(item.symbol, item.exchange)}")
         self._apply_pool(self._pool_from_service())
+        bootstrap = getattr(self._page, "_watchlist_bootstrap", None)
+        if isinstance(bootstrap, WatchlistBootstrapCoordinator) and removed_vt:
+            bootstrap.invalidate_symbols(self._page, [removed_vt])
         if self._page.config.show_watchlist_signals:
             self._page._signals.on_symbols_changed()
 
