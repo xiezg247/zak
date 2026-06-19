@@ -57,3 +57,34 @@ def load_limit_list_seal_map() -> dict[str, dict[str, Any]]:
         if payload:
             result[vt_symbol] = payload
     return result
+
+
+def fetch_symbol_limit_history(
+    *,
+    ts_code: str,
+    vt_symbol: str = "",
+    limit_type: str = "U",
+    max_days: int = 20,
+) -> list[dict[str, Any]]:
+    """近 N 个交易日单票涨跌停列表记录（倒序）。"""
+    ts_code = str(ts_code or "").strip()
+    vt_symbol = str(vt_symbol or "").strip()
+    if not ts_code and not vt_symbol:
+        return []
+
+    history: list[dict[str, Any]] = []
+    for trade_date in iter_trade_date_strs(max_lookback=max(1, max_days)):
+        rows, _ = fetch_limit_list_d(trade_date=trade_date, limit_type=limit_type)
+        matched = None
+        for row in rows:
+            row_ts = str(row.get("ts_code") or "").strip()
+            row_vt = str(row.get("vt_symbol") or "").strip()
+            if (ts_code and row_ts == ts_code) or (vt_symbol and row_vt == vt_symbol):
+                matched = dict(row)
+                break
+        if matched is not None:
+            matched["trade_date"] = str(matched.get("trade_date") or trade_date)
+            history.append(matched)
+
+    history.sort(key=lambda item: str(item.get("trade_date") or ""), reverse=True)
+    return history

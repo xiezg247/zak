@@ -18,12 +18,11 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
 
     market_drilldown_requested = QtCore.Signal(object)
     screener_requested = QtCore.Signal(str)
-    resonance_screener_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("SectorFlowDetailPanel")
-        self.setMinimumWidth(220)
+        self.setMinimumWidth(240)
         self._current_sector: SectorFlowRow | None = None
 
         self._title = QtWidgets.QLabel("板块详情")
@@ -34,23 +33,23 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
 
         self._mini_bar = SectorFlowMiniBar(self)
 
-        action_row = QtWidgets.QHBoxLayout()
-        action_row.setSpacing(6)
         self._market_btn = QtWidgets.QPushButton("市场成分")
-        self._market_btn.setObjectName("SecondaryButton")
-        self._market_btn.setToolTip("跳转市场页并按板块成分筛选")
+        self._market_btn.setObjectName("ActionButton")
+        self._market_btn.setToolTip("跳转市场页并按板块成分筛选（双击表格行亦可）")
         self._market_btn.clicked.connect(self._emit_market_drilldown)
         self._screener_btn = QtWidgets.QPushButton("成分选股")
         self._screener_btn.setObjectName("SecondaryButton")
         self._screener_btn.setToolTip("对行业成分执行选股")
         self._screener_btn.clicked.connect(self._emit_screener)
-        self._resonance_btn = QtWidgets.QPushButton("共振选股")
-        self._resonance_btn.setObjectName("SecondaryButton")
-        self._resonance_btn.setToolTip("跳转选股页执行雷达共振筛选")
-        self._resonance_btn.clicked.connect(self.resonance_screener_requested.emit)
+
+        action_row = QtWidgets.QVBoxLayout()
+        action_row.setContentsMargins(0, 0, 0, 0)
+        action_row.setSpacing(6)
         action_row.addWidget(self._market_btn)
         action_row.addWidget(self._screener_btn)
-        action_row.addWidget(self._resonance_btn)
+
+        leaders_label = QtWidgets.QLabel("成分龙头")
+        leaders_label.setObjectName("SectionLabel")
 
         self._table = QtWidgets.QTableWidget(self)
         self._table.setObjectName("SectorFlowLeaderTable")
@@ -62,15 +61,16 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         self._table.verticalHeader().setVisible(False)
         self._table.setAlternatingRowColors(True)
         self._table.horizontalHeader().setStretchLastSection(True)
-        self._table.setColumnWidth(0, 72)
+        self._table.setColumnWidth(0, 80)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
         layout.addWidget(self._title)
         layout.addWidget(self._summary)
         layout.addWidget(self._mini_bar)
         layout.addLayout(action_row)
+        layout.addWidget(leaders_label)
         layout.addWidget(self._table, stretch=1)
 
         self._overlay = ContentLoadingOverlay(self)
@@ -86,18 +86,19 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
     def clear(self) -> None:
         self._overlay.hide_loading()
         self._current_sector = None
+        self._title.setText("板块详情")
         self._summary.setText("选中左侧板块查看成分龙头")
         self._mini_bar.clear()
         self._table.setRowCount(0)
         self._sync_action_buttons()
 
     def set_loading(self, sector_name: str) -> None:
-        self._summary.setText(f"{sector_name} · 加载成分…")
+        self._title.setText(sector_name)
+        self._summary.setText("加载成分龙头…")
         self._mini_bar.clear()
         self._table.setRowCount(0)
         self._market_btn.setEnabled(False)
         self._screener_btn.setEnabled(False)
-        self._resonance_btn.setEnabled(False)
         self._overlay.show_loading("正在加载成分龙头", hint=sector_name)
         self._overlay.setGeometry(self.rect())
         self._overlay.raise_()
@@ -111,8 +112,8 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
     ) -> None:
         self._overlay.hide_loading()
         self._current_sector = sector
+        self._title.setText(sector.name)
         parts = [
-            sector.name,
             f"涨幅 {sector.change_pct:+.2f}%",
             f"主力 {sector.net_flow_yi:+.2f}亿",
         ]
@@ -153,9 +154,9 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         sector = self._current_sector
         enabled = sector is not None
         self._market_btn.setEnabled(enabled)
-        self._resonance_btn.setEnabled(enabled)
         industry_mode = enabled and sector is not None and sector.sector_kind == "industry"
         self._screener_btn.setEnabled(industry_mode)
+        self._screener_btn.setVisible(industry_mode or not enabled)
 
     def _emit_market_drilldown(self) -> None:
         if self._current_sector is not None:

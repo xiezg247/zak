@@ -16,13 +16,30 @@ _TAB_OUTFLOW = 1
 _TAB_DIVERGENCE = 2
 _TAB_INDUSTRY = 0
 _TAB_CONCEPT = 1
-_DETAIL_WIDTH = 260
+_DETAIL_WIDTH = 280
+
+
+def _tab_group_layout(*buttons: QtWidgets.QPushButton) -> QtWidgets.QHBoxLayout:
+    layout = QtWidgets.QHBoxLayout()
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(4)
+    for button in buttons:
+        layout.addWidget(button)
+    return layout
+
+
+def _toolbar_separator(parent: QtWidgets.QWidget) -> QtWidgets.QFrame:
+    line = QtWidgets.QFrame(parent)
+    line.setObjectName("SectorFlowToolbarSep")
+    line.setFrameShape(QtWidgets.QFrame.Shape.VLine)
+    line.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
+    line.setFixedWidth(1)
+    return line
 
 
 class SectorFlowPanel(QtWidgets.QWidget):
     refresh_requested = QtCore.Signal()
     ai_requested = QtCore.Signal()
-    screener_requested = QtCore.Signal()
     sector_kind_changed = QtCore.Signal(str)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -39,18 +56,12 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._summary = QtWidgets.QLabel("")
         self._summary.setObjectName("SectorFlowSummary")
 
-        toolbar = QtWidgets.QHBoxLayout()
-        toolbar.setSpacing(8)
         self._refresh_btn = QtWidgets.QPushButton("刷新")
         self._refresh_btn.setObjectName("SecondaryButton")
         self._refresh_btn.clicked.connect(self.refresh_requested.emit)
         self._ai_btn = QtWidgets.QPushButton("AI 解读")
         self._ai_btn.setObjectName("ActionButton")
         self._ai_btn.clicked.connect(self.ai_requested.emit)
-        self._screener_btn = QtWidgets.QPushButton("成分选股")
-        self._screener_btn.setObjectName("SecondaryButton")
-        self._screener_btn.setToolTip("对选中行业成分按涨幅筛选，跳转选股页")
-        self._screener_btn.clicked.connect(self.screener_requested.emit)
 
         self._tab_industry_btn = QtWidgets.QPushButton("行业")
         self._tab_industry_btn.setObjectName("OverviewTabButton")
@@ -87,20 +98,33 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._tab_group.addButton(self._tab_divergence_btn, _TAB_DIVERGENCE)
         self._tab_group.idClicked.connect(self._switch_tab)
 
-        toolbar.addWidget(self._summary, stretch=1)
-        toolbar.addWidget(self._tab_industry_btn)
-        toolbar.addWidget(self._tab_concept_btn)
-        toolbar.addWidget(self._tab_inflow_btn)
-        toolbar.addWidget(self._tab_outflow_btn)
-        toolbar.addWidget(self._tab_divergence_btn)
-        toolbar.addWidget(self._refresh_btn)
-        toolbar.addWidget(self._screener_btn)
-        toolbar.addWidget(self._ai_btn)
+        toolbar_host = QtWidgets.QWidget(self)
+        toolbar_host.setObjectName("SectorFlowToolbar")
+        header_row = QtWidgets.QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 0)
+        header_row.setSpacing(8)
+        header_row.addWidget(self._summary, stretch=1)
+        header_row.addWidget(self._refresh_btn)
+        header_row.addWidget(self._ai_btn)
+
+        filter_row = QtWidgets.QHBoxLayout()
+        filter_row.setContentsMargins(0, 0, 0, 0)
+        filter_row.setSpacing(8)
+        filter_row.addLayout(_tab_group_layout(self._tab_industry_btn, self._tab_concept_btn))
+        filter_row.addWidget(_toolbar_separator(toolbar_host))
+        filter_row.addLayout(_tab_group_layout(self._tab_inflow_btn, self._tab_outflow_btn, self._tab_divergence_btn))
+        filter_row.addStretch(1)
+
+        toolbar = QtWidgets.QVBoxLayout(toolbar_host)
+        toolbar.setContentsMargins(0, 0, 0, 0)
+        toolbar.setSpacing(6)
+        toolbar.addLayout(header_row)
+        toolbar.addLayout(filter_row)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
-        layout.addLayout(toolbar)
+        layout.addWidget(toolbar_host)
 
         self._detail = SectorFlowDetailPanel(self)
         self._splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
@@ -135,7 +159,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
             self._tab_concept_btn.setChecked(True)
         else:
             self._tab_industry_btn.setChecked(True)
-        self._screener_btn.setEnabled(normalized == "industry")
         if emit:
             self.sector_kind_changed.emit(normalized)
 
@@ -153,7 +176,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
     def _set_toolbar_enabled(self, enabled: bool) -> None:
         self._refresh_btn.setEnabled(enabled)
         self._ai_btn.setEnabled(enabled)
-        self._screener_btn.setEnabled(enabled and self._sector_kind == "industry")
         self._tab_industry_btn.setEnabled(enabled)
         self._tab_concept_btn.setEnabled(enabled)
         self._tab_inflow_btn.setEnabled(enabled)
@@ -167,7 +189,6 @@ class SectorFlowPanel(QtWidgets.QWidget):
         else:
             self._sector_kind = "industry"
             self._tab_industry_btn.setChecked(True)
-        self._screener_btn.setEnabled(self._sector_kind == "industry")
         self._table.set_official_mode(snapshot.data_mode != "intraday")
 
         if not snapshot.rows:
@@ -210,15 +231,18 @@ class SectorFlowPanel(QtWidgets.QWidget):
         if kind == self._sector_kind:
             return
         self._sector_kind = kind
-        self._screener_btn.setEnabled(kind == "industry")
         self.sector_kind_changed.emit(kind)
 
     def _switch_tab(self, tab_id: int) -> None:
         self._active_tab = tab_id
         self._render_active_tab()
 
+    def _sector_label(self) -> str:
+        return "概念" if self._sector_kind == "concept" else "行业"
+
     def _render_active_tab(self) -> None:
         self._table.set_divergence_mode(self._active_tab == _TAB_DIVERGENCE)
+        sector_label = self._sector_label()
         if self._active_tab == _TAB_DIVERGENCE:
             rows = self._divergence_rows
             if not rows:
@@ -230,13 +254,13 @@ class SectorFlowPanel(QtWidgets.QWidget):
         if self._active_tab == _TAB_OUTFLOW:
             rows = self._outflow_rows
             if not rows:
-                self._table.set_empty_hint("暂无净流出行业（当前各行业主力净额均为正或零）")
+                self._table.set_empty_hint(f"暂无净流出{sector_label}（当前各板块主力净额均为正或零）")
                 return
             self._table.set_rows(rows)
             return
         rows = self._inflow_rows
         if not rows:
-            self._table.set_empty_hint("暂无净流入行业（当前各行业主力净额均为负或零）")
+            self._table.set_empty_hint(f"暂无净流入{sector_label}（当前各板块主力净额均为负或零）")
             return
         self._table.set_rows(rows)
 

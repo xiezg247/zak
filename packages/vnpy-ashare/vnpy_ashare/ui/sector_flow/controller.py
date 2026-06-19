@@ -55,8 +55,6 @@ class SectorFlowController(QtCore.QObject):
         panel.table.sector_selected.connect(self._on_sector_selected)
         panel.detail.market_drilldown_requested.connect(self._on_detail_market_drilldown)
         panel.detail.screener_requested.connect(self._on_detail_screener)
-        panel.detail.resonance_screener_requested.connect(self._on_detail_resonance_screener)
-        panel.screener_requested.connect(self._on_screener_requested)
 
     def _get_service(self) -> SectorFlowService | None:
         if self._service is not None:
@@ -190,13 +188,6 @@ class SectorFlowController(QtCore.QObject):
             return
         host.open_screener_industry(industry)
 
-    def _on_detail_resonance_screener(self) -> None:
-        host = self._find_main_window()
-        if host is None or not hasattr(host, "open_screener_radar_resonance"):
-            page_notify(self._page, "无法打开共振选股", level="warning")
-            return
-        host.open_screener_radar_resonance()
-
     def _update_status_label(self) -> None:
         phase = ashare_market_phase_label()
         hint = "盘中约30秒刷新" if is_ashare_trading_session() else "非交易时段，已暂停自动刷新"
@@ -247,20 +238,6 @@ class SectorFlowController(QtCore.QObject):
             page_notify(self._page, "无法打开市场页行业筛选", level="warning")
             return
         host.open_market_industry_filter(industry)
-
-    def _on_screener_requested(self) -> None:
-        if self._sector_kind != "industry":
-            page_notify(self._page, "成分选股仅支持行业板块", level="warning")
-            return
-        industry = self._panel.table.selected_industry()
-        if not industry:
-            page_notify(self._page, "请先在表格中选中一个行业", level="warning")
-            return
-        host = self._find_main_window()
-        if host is None or not hasattr(host, "open_screener_industry"):
-            page_notify(self._page, "无法打开选股页", level="warning")
-            return
-        host.open_screener_industry(industry)
 
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page

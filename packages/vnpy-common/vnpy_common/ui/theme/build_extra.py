@@ -1295,6 +1295,16 @@ def build_sector_flow_stylesheet(t: ThemeTokens) -> str:
 QWidget#SectorFlowPanel {{
     background-color: {t.app_bg};
 }}
+QWidget#SectorFlowToolbar {{
+    background-color: transparent;
+}}
+QFrame#SectorFlowToolbarSep {{
+    color: {t.panel_border};
+    background-color: {t.panel_border};
+    max-width: 1px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}}
 QLabel#SectorFlowSummary {{
     color: {t.text_secondary};
     font-size: 12px;
@@ -1315,7 +1325,8 @@ QWidget#SectorFlowMiniBar {{
 }}
 QSplitter#SectorFlowSplitter::handle {{
     background-color: {t.panel_border};
-    width: 1px;
+    width: 4px;
+    margin: 0 2px;
 }}
 """
 

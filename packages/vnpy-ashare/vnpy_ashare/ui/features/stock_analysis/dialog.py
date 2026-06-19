@@ -82,7 +82,7 @@ _JUMP_TAB_INDEX: dict[str, int] = {
 
 _SCOPE_STATUS: dict[StockAnalysisScope, str] = {
     "overview": "正在加载本地概览…",
-    "short_term": "正在加载短线档案…",
+    "short_term": "正在加载短线档案（含涨停史与龙虎榜）…",
     "sector": "正在加载板块与估值…",
     "concept": "正在加载概念题材…",
     "capital": "正在加载资金流…",

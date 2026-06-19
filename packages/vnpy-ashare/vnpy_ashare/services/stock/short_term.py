@@ -5,8 +5,22 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-from vnpy_ashare.domain.stock.short_term import ShortTermPeer, ShortTermProfile
-from vnpy_ashare.integrations.tushare.limit_list_fallback import fetch_limit_list_with_fallback
+from vnpy_ashare.domain.stock.short_term import (
+    LimitHistoryRow,
+    LimitStats,
+    ShortTermPeer,
+    ShortTermProfile,
+    TopInstRow,
+    TopListRow,
+)
+from vnpy_ashare.integrations.tushare.limit_list_fallback import (
+    fetch_limit_list_with_fallback,
+    fetch_symbol_limit_history,
+)
+from vnpy_ashare.integrations.tushare.top_list import (
+    fetch_top_inst_for_date,
+    fetch_top_list_history,
+)
 from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode
 from vnpy_ashare.quotes.core.limit_times_cache import get_cached_limit_times_map
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
@@ -17,8 +31,114 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.sector.sector_summary import attach_sector_fields
 from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation_for_vt_symbol
-from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields
+from vnpy_ashare.trading.signals.seal_reopen import attach_seal_reopen_fields, seal_reopen_from_row
 from vnpy_ashare.trading.signals.intraday_seal_time import attach_first_time_fields
+from vnpy_ashare.trading.signals.seal_strength import seal_strength_from_row
+
+_LIMIT_HISTORY_DAYS = 20
+_TOP_LIST_LOOKBACK_DAYS = 60
+
+
+def _seal_strength_label(score: float | None) -> str:
+    if score is None or score <= 0:
+        return "—"
+    if score >= 0.8:
+        return "强"
+    if score >= 0.55:
+        return "中"
+    return "弱"
+
+
+def _build_limit_history(ts_code: str, vt_symbol: str) -> tuple[list[LimitHistoryRow], LimitStats]:
+    raw_rows = fetch_symbol_limit_history(
+        ts_code=ts_code,
+        vt_symbol=vt_symbol,
+        limit_type="U",
+        max_days=_LIMIT_HISTORY_DAYS,
+    )
+    history: list[LimitHistoryRow] = []
+    open_board_days = 0
+    solid_seal_days = 0
+    for row in raw_rows:
+        open_raw = row.get("open_times")
+        open_times: int | None = None
+        if open_raw not in (None, ""):
+            try:
+                open_times = int(float(open_raw))
+            except (TypeError, ValueError):
+                open_times = None
+        if open_times is not None and open_times > 0:
+            open_board_days += 1
+        elif open_times == 0:
+            solid_seal_days += 1
+
+        limit_times_raw = row.get("limit_times")
+        limit_times = float(limit_times_raw) if isinstance(limit_times_raw, (int, float)) else None
+        fd_raw = row.get("fd_amount")
+        fd_amount = float(fd_raw) if isinstance(fd_raw, (int, float)) else None
+        strth_raw = row.get("strth")
+        strth = float(strth_raw) if isinstance(strth_raw, (int, float)) else None
+        history.append(
+            LimitHistoryRow(
+                trade_date=str(row.get("trade_date") or ""),
+                limit_times=limit_times,
+                first_time=str(row.get("first_time") or ""),
+                last_time=str(row.get("last_time") or ""),
+                fd_amount=fd_amount,
+                open_times=open_times,
+                strth=strth,
+            )
+        )
+
+    stats = LimitStats(
+        lookback_days=_LIMIT_HISTORY_DAYS,
+        limit_up_days=len(history),
+        open_board_days=open_board_days,
+        solid_seal_days=solid_seal_days,
+    )
+    return history, stats
+
+
+def _build_top_list(ts_code: str) -> tuple[list[TopListRow], list[TopInstRow], list[TopInstRow], str]:
+    raw_rows = fetch_top_list_history(ts_code, max_days=_TOP_LIST_LOOKBACK_DAYS, limit=8)
+    top_rows: list[TopListRow] = []
+    for row in raw_rows:
+        top_rows.append(
+            TopListRow(
+                trade_date=str(row.get("trade_date") or ""),
+                close=row.get("close"),
+                pct_change=row.get("pct_change"),
+                turnover_rate=row.get("turnover_rate"),
+                net_amount=row.get("net_amount"),
+                net_rate=row.get("net_rate"),
+                reason=str(row.get("reason") or ""),
+            )
+        )
+
+    inst_date = top_rows[0].trade_date if top_rows else ""
+    buys: list[TopInstRow] = []
+    sells: list[TopInstRow] = []
+    if inst_date:
+        raw_buys, raw_sells = fetch_top_inst_for_date(trade_date=inst_date, ts_code=ts_code)
+        buys = [
+            TopInstRow(
+                exalter=str(item.get("exalter") or ""),
+                buy=item.get("buy"),
+                sell=item.get("sell"),
+                net_buy=item.get("net_buy"),
+            )
+            for item in raw_buys
+        ]
+        sells = [
+            TopInstRow(
+                exalter=str(item.get("exalter") or ""),
+                buy=item.get("buy"),
+                sell=item.get("sell"),
+                net_buy=item.get("net_buy"),
+            )
+            for item in raw_sells
+        ]
+    return top_rows, buys, sells, inst_date
 
 
 def _merge_quote_row(vt_symbol: str, *, quote_summary: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -134,6 +254,8 @@ def build_short_term_profile(
         row["limit_times"] = boards
 
     attach_seal_reopen_fields(row)
+    seal_score = seal_strength_from_row(row)
+    _reopen_kind, reopen_label, _reopen_score, _open_times = seal_reopen_from_row(row)
     industry = str(row.get("industry") or "").strip()
     sector_name, leader_tier, sector_rank, sector_peers = _resolve_sector_leaders(
         vt_symbol,
@@ -158,6 +280,9 @@ def build_short_term_profile(
         regulatory_summary = regulatory.summary
         regulatory_risk = regulatory.risk_level
 
+    limit_history, limit_stats = _build_limit_history(item.ts_code, item.vt_symbol)
+    top_list, top_inst_buy, top_inst_sell, top_inst_date = _build_top_list(item.ts_code)
+
     name = str(row.get("name") or item.name or item.symbol)
     message = ""
     if not limit_today and boards < 1:
@@ -170,12 +295,21 @@ def build_short_term_profile(
         trade_date=trade_date,
         limit_today=limit_today,
         limit_times=boards if boards >= 1 else None,
+        seal_strength=seal_score if seal_score > 0 else None,
+        seal_strength_label=_seal_strength_label(seal_score if seal_score > 0 else None),
+        seal_reopen_label=str(reopen_label or row.get("seal_reopen_label") or ""),
+        limit_history=limit_history,
+        limit_stats=limit_stats,
         leader_tier=leader_tier,
         leader_tier_label=leader_tier_label(leader_tier),
         sector_name=sector_name,
         sector_rank=sector_rank,
         sector_peers=sector_peers,
         entry_mode=entry_dict,
+        top_list=top_list,
+        top_inst_buy=top_inst_buy,
+        top_inst_sell=top_inst_sell,
+        top_inst_date=top_inst_date,
         regulatory_summary=regulatory_summary,
         regulatory_risk_level=regulatory_risk,
         message=message,
