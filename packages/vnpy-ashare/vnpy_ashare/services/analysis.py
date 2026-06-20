@@ -8,6 +8,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_sy
 from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
 from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation_for_symbol
+from vnpy_ashare.services.stock.news import get_stock_news_for_symbol
 
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
@@ -429,3 +430,6 @@ class AnalysisService(BaseService):
 
     def assess_regulatory_deviation(self, symbol: str) -> dict[str, Any]:
         return assess_regulatory_deviation_for_symbol(symbol)
+
+    def get_stock_news(self, symbol: str, *, limit: int = 20) -> dict[str, Any]:
+        return get_stock_news_for_symbol(symbol, limit=limit)

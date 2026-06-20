@@ -8,11 +8,9 @@ from typing import Any
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.stock.events import EventsProfile
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
-from vnpy_ashare.integrations.tushare.corporate import (
-    fetch_announcements,
-    fetch_dividends,
-    fetch_share_float,
-)
+from vnpy_ashare.integrations.events.announcements import AnnouncementFetchError, fetch_announcements
+from vnpy_ashare.integrations.events.news import NewsFetchError, fetch_stock_news
+from vnpy_ashare.integrations.tushare.corporate import fetch_dividends, fetch_share_float
 from vnpy_ashare.integrations.tushare.disclosure import fetch_disclosure_dates
 from vnpy_ashare.services.stock.profile import sync_disclosure_calendar
 from vnpy_ashare.storage.repositories.disclosure import list_disclosure_calendar, upsert_disclosure_rows
@@ -119,15 +117,29 @@ def build_events_profile(vt_symbol: str, *, sync_disclosure: bool = True) -> Eve
     dividends: list[dict[str, Any]] = []
     share_float: list[dict[str, Any]] = []
     announcements: list[dict[str, Any]] = []
+    news: list[dict[str, Any]] = []
+    extra_messages: list[str] = []
     try:
         dividends = fetch_dividends(ts_code)
         share_float = fetch_share_float(ts_code)
-        announcements = fetch_announcements(ts_code)
     except TushareNotConfiguredError as ex:
-        if not message:
-            message = str(ex)
+        extra_messages.append(str(ex))
     except Exception as ex:
-        message = str(ex)
+        extra_messages.append(str(ex))
+
+    try:
+        announcements = fetch_announcements(ts_code)
+    except AnnouncementFetchError as ex:
+        extra_messages.append(str(ex))
+
+    try:
+        news = fetch_stock_news(ts_code)
+    except NewsFetchError as ex:
+        extra_messages.append(str(ex))
+
+    if extra_messages:
+        joined = "；".join(extra_messages)
+        message = f"{message}；{joined}" if message else joined
 
     profile = EventsProfile(
         ts_code=ts_code,
@@ -136,9 +148,10 @@ def build_events_profile(vt_symbol: str, *, sync_disclosure: bool = True) -> Eve
         dividends=dividends,
         share_float=share_float,
         announcements=announcements,
+        news=news,
         message=message,
     )
     profile.upcoming_hints = _build_upcoming_hints(profile)
-    if not message and not (profile.disclosure or profile.dividends or profile.share_float or profile.announcements):
+    if not message and not (profile.disclosure or profile.dividends or profile.share_float or profile.announcements or profile.news):
         profile.message = "暂无事件数据"
     return profile

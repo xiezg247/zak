@@ -24,11 +24,13 @@ dependencies = [
     "apscheduler>=3.10.0",
     "psycopg2-binary>=2.9.12",
     "vnpy_postgresql>=1.0.0",
+    "akshare>=1.18.0",
 ]
 
 [project.optional-dependencies]
 llm = ["vnpy-llm"]
 full = ["vnpy-llm"]
+events = ["akshare>=1.18.0"]
 
 [project.scripts]
 zak = "vnpy_ashare.cli:main"

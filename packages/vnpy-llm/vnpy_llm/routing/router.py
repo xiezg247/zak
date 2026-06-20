@@ -41,6 +41,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "get_stock_notes",
             "list_stock_analysis_reports",
             "get_stock_analysis_report",
+            "get_stock_news",
         }
     ),
     "technical": frozenset(
@@ -80,6 +81,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "get_stock_notes",
             "list_stock_analysis_reports",
             "get_stock_analysis_report",
+            "get_stock_news",
         }
     ),
     "screening": frozenset(
@@ -120,6 +122,7 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
             "clear_stock_notes",
             "list_stock_analysis_reports",
             "get_stock_analysis_report",
+            "get_stock_news",
         }
     ),
     "data": frozenset(

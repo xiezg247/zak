@@ -13,6 +13,7 @@ from vnpy_ashare.ai.context.quote.prompts import (
     build_positions_ai_prompt,
     build_signal_panel_ai_prompt,
     build_signal_panel_batch_ai_prompt,
+    build_stock_news_ai_prompt,
     build_team_analysis_ai_prompt,
     build_technical_ai_prompt,
 )
@@ -487,6 +488,14 @@ class ActionsController:
         name = quote.name if quote and quote.name else item.name
         self._ask_ai(build_technical_ai_prompt(item.vt_symbol, name))
 
+    def ask_ai_for_stock_news(self) -> None:
+        item = self._p.current_item
+        if item is None or self._p.event_engine is None:
+            return
+        quote = self._p.quote_map.get(item.tickflow_symbol)
+        name = quote.name if quote and quote.name else item.name
+        self._ask_ai(build_stock_news_ai_prompt(item.vt_symbol, name))
+
     def ask_ai_for_positions(self) -> None:
         page = self._p
         item = page.current_item
@@ -694,6 +703,7 @@ class ActionsController:
         ai_menu.addAction("综合诊断", self.ask_ai_for_diagnose)
         ai_menu.addAction("团队全面分析", self.ask_ai_for_team_analysis)
         ai_menu.addAction("技术形态", self.ask_ai_for_technical)
+        ai_menu.addAction("近期新闻", self.ask_ai_for_stock_news)
         ai_menu.addAction("双均线信号", self.ask_ai_for_signals)
         if page.page_name == "自选" and page.config.show_watchlist_positions:
             position_service = page._get_position_service()

@@ -54,6 +54,16 @@ def build_technical_ai_prompt(vt_symbol: str, name: str = "") -> str:
     return f"请分析 {title} 的近期技术形态。涵盖均线排列、量比、区间涨跌等，基于实际数据做解读，不要编造。"
 
 
+def build_stock_news_ai_prompt(vt_symbol: str, name: str = "") -> str:
+    """生成近期新闻解读预填文案。"""
+    title = f"{name}（{vt_symbol}）" if name else vt_symbol
+    return (
+        f"请查询 {title} 的近期新闻（调用 get_stock_news），"
+        "梳理媒体报道要点与潜在风险/催化，并说明与法定公告的差异；"
+        "禁止编造未出现在工具结果中的新闻标题。"
+    )
+
+
 def build_signals_ai_prompt(
     vt_symbol: str,
     name: str = "",

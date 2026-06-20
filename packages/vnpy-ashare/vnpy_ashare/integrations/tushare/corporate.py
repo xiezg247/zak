@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import Any, cast
 
 from vnpy_ashare.domain.core.numbers import safe_float
-from vnpy_ashare.domain.time.china import china_now, format_china_date_compact
+from vnpy_ashare.integrations.events.announcements import fetch_announcements
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 
 
@@ -116,39 +115,3 @@ def fetch_share_float(ts_code: str, *, limit: int = 8) -> list[dict[str, Any]]:
         )
     return result
 
-
-def fetch_announcements(ts_code: str, *, days: int = 180, limit: int = 20) -> list[dict[str, Any]]:
-    ts_code = str(ts_code or "").strip()
-    if not ts_code:
-        return []
-    now = china_now()
-    end = format_china_date_compact(now)
-    start = format_china_date_compact(now - timedelta(days=max(days, 30)))
-    try:
-        pro = get_tushare_pro()
-        frame = pro.anns(
-            ts_code=ts_code,
-            start_date=start,
-            end_date=end,
-            fields="ts_code,ann_date,name,title,url",
-        )
-    except TushareNotConfiguredError:
-        raise
-    except Exception:
-        return []
-
-    rows = _records(frame)
-    rows.sort(key=lambda row: str(row.get("ann_date") or ""), reverse=True)
-    result: list[dict[str, Any]] = []
-    for row in rows[:limit]:
-        title = str(row.get("title") or row.get("name") or "").strip()
-        if not title:
-            continue
-        result.append(
-            {
-                "ann_date": str(row.get("ann_date") or ""),
-                "title": title,
-                "url": str(row.get("url") or ""),
-            }
-        )
-    return result

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.services.stock.events import EventsProfile
 from vnpy_common.ui.data_table import configure_data_table
@@ -46,6 +46,28 @@ class _SimpleTable(QtWidgets.QWidget):
         self._table.resizeColumnsToContents()
 
 
+class _LinkTable(_SimpleTable):
+    """支持双击打开链接的表格。"""
+
+    def __init__(self, headers: list[str], parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(headers, parent)
+        self._urls: list[str] = []
+        self._table.doubleClicked.connect(self._on_double_clicked)
+
+    def fill_rows(self, rows: list[list[str]], *, urls: list[str]) -> None:
+        self._urls = urls
+        self.fill(rows)
+
+    def _on_double_clicked(self, index: QtCore.QModelIndex) -> None:
+        row = index.row()
+        if row < 0 or row >= len(self._urls):
+            return
+        url = self._urls[row].strip()
+        if not url:
+            return
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(url))
+
+
 class EventsAnalysisTab(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -55,13 +77,15 @@ class EventsAnalysisTab(QtWidgets.QWidget):
         self._disclosure = _SimpleTable(["报告期", "预约披露", "公告披露", "实际披露"])
         self._dividend = _SimpleTable(["报告期", "方案", "送股", "派息", "除权日", "派息日"])
         self._float = _SimpleTable(["解禁日", "占比", "解禁股数", "股东", "类型"])
-        self._ann = _SimpleTable(["日期", "标题"])
+        self._ann = _LinkTable(["日期", "标题"])
+        self._news = _LinkTable(["日期", "标题", "来源"])
 
         inner = configure_document_tab_widget(QtWidgets.QTabWidget())
         inner.addTab(self._disclosure, "披露")
         inner.addTab(self._dividend, "分红")
         inner.addTab(self._float, "解禁")
         inner.addTab(self._ann, "公告")
+        inner.addTab(self._news, "新闻")
 
         page = tab_page(
             self._status,
@@ -76,14 +100,20 @@ class EventsAnalysisTab(QtWidgets.QWidget):
     def show_idle(self, message: str = "切换到本 Tab 时加载事件日历") -> None:
         self._status.setText(message)
         self._upcoming.setText("")
-        for table in (self._disclosure, self._dividend, self._float, self._ann):
-            table.fill([])
+        for table in (self._disclosure, self._dividend, self._float, self._ann, self._news):
+            if isinstance(table, _LinkTable):
+                table.fill_rows([], urls=[])
+            else:
+                table.fill([])
 
     def show_loading(self, message: str = "正在加载事件日历…") -> None:
         self._status.setText(message)
         self._upcoming.setText("")
-        for table in (self._disclosure, self._dividend, self._float, self._ann):
-            table.fill([])
+        for table in (self._disclosure, self._dividend, self._float, self._ann, self._news):
+            if isinstance(table, _LinkTable):
+                table.fill_rows([], urls=[])
+            else:
+                table.fill([])
 
     def show_profile(self, profile: EventsProfile | None) -> None:
         if profile is None:
@@ -95,7 +125,16 @@ class EventsAnalysisTab(QtWidgets.QWidget):
         else:
             self._upcoming.setText("")
 
-        if profile.message and not any((profile.disclosure, profile.dividends, profile.share_float, profile.announcements)):
+        has_data = any(
+            (
+                profile.disclosure,
+                profile.dividends,
+                profile.share_float,
+                profile.announcements,
+                profile.news,
+            )
+        )
+        if profile.message and not has_data:
             self._status.setText(profile.message)
         else:
             parts = [
@@ -103,6 +142,7 @@ class EventsAnalysisTab(QtWidgets.QWidget):
                 f"分红 {len(profile.dividends)}",
                 f"解禁 {len(profile.share_float)}",
                 f"公告 {len(profile.announcements)}",
+                f"新闻 {len(profile.news)}",
             ]
             status = " · ".join(parts)
             if profile.message:
@@ -145,4 +185,22 @@ class EventsAnalysisTab(QtWidgets.QWidget):
                 for row in profile.share_float
             ]
         )
-        self._ann.fill([[row.get("ann_date") or "—", row.get("title") or "—"] for row in profile.announcements])
+        ann_rows: list[list[str]] = []
+        ann_urls: list[str] = []
+        for row in profile.announcements:
+            ann_rows.append([row.get("ann_date") or "—", row.get("title") or "—"])
+            ann_urls.append(str(row.get("url") or ""))
+        self._ann.fill_rows(ann_rows, urls=ann_urls)
+
+        news_rows: list[list[str]] = []
+        news_urls: list[str] = []
+        for row in profile.news:
+            news_rows.append(
+                [
+                    row.get("pub_time") or "—",
+                    row.get("title") or "—",
+                    row.get("source") or "—",
+                ]
+            )
+            news_urls.append(str(row.get("url") or ""))
+        self._news.fill_rows(news_rows, urls=news_urls)

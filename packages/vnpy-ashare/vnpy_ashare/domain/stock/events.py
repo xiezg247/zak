@@ -16,5 +16,6 @@ class EventsProfile(MutableModel):
     dividends: list[dict[str, Any]] = Field(default_factory=list, description="分红记录")
     share_float: list[dict[str, Any]] = Field(default_factory=list, description="限售解禁")
     announcements: list[dict[str, Any]] = Field(default_factory=list, description="公司公告")
+    news: list[dict[str, Any]] = Field(default_factory=list, description="近期新闻")
     upcoming_hints: list[str] = Field(default_factory=list, description="近期事件提示")
     message: str = Field(default="", description="说明信息")

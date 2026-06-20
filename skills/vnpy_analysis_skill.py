@@ -199,6 +199,24 @@ class VnpyAnalysisSkill(SkillTemplate):
                     "required": ["symbol"],
                 },
             ),
+            ToolSpec(
+                name="get_stock_news",
+                description=(
+                    "查询个股近期新闻（媒体报道，非法定公告）。用户问「最近有什么新闻」「新闻面怎么样」「有没有负面消息」时调用；"
+                    "重大事项须结合公告核对，禁止编造未出现在工具结果中的新闻。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "股票代码，如 600519.SSE"},
+                        "limit": {
+                            "type": "integer",
+                            "description": "返回条数，默认 20，最大 50",
+                        },
+                    },
+                    "required": ["symbol"],
+                },
+            ),
         ]
 
     def _get_analysis_service(self):
@@ -295,4 +313,9 @@ class VnpyAnalysisSkill(SkillTemplate):
     def assess_regulatory_deviation(self, symbol: str) -> str:
         svc = self._get_analysis_service()
         result = svc.assess_regulatory_deviation(symbol)
+        return json.dumps(result, ensure_ascii=False)
+
+    def get_stock_news(self, symbol: str, limit: int = 20) -> str:
+        svc = self._get_analysis_service()
+        result = svc.get_stock_news(symbol, limit=int(limit or 20))
         return json.dumps(result, ensure_ascii=False)

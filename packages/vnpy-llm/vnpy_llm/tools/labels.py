@@ -16,6 +16,7 @@ _TOOL_LABELS: dict[str, str] = {
     "trend_scenario_summary": "走势情景摘要",
     "evaluate_entry_mode": "评估打板/半路/低吸",
     "assess_regulatory_deviation": "监管异动距离",
+    "get_stock_news": "查询个股新闻",
     "evaluate_overnight_exit": "隔日卖点检查",
     "check_risk_gate": "查询风控闸状态",
     "compute_position_size": "计算单笔建议股数",
