@@ -15,6 +15,7 @@ from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
+    from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
 
 
 class WatchlistSignalController:
@@ -62,7 +63,7 @@ class WatchlistSignalController:
     def _symbols_needing_refresh(self, symbols: list[str]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol)]
 
-    def _strategy_batch(self):
+    def _strategy_batch(self) -> WatchlistStrategyBatchCoordinator | None:
         return getattr(self._page, "_strategy_batch", None)
 
     def stop(self) -> None:

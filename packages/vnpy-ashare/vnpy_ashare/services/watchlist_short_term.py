@@ -67,12 +67,12 @@ def build_short_term_watchlist_snapshot(
         if parsed is None:
             continue
         key = (parsed.symbol, parsed.exchange.name)
-        item = items_by_key.get(key, {})
+        pool_item = items_by_key.get(key, {})
         signal_symbols.append(
             {
                 "vt_symbol": vt_symbol,
                 "symbol": parsed.symbol,
-                "name": str(item.get("name") or parsed.name),
+                "name": str(pool_item.get("name") or parsed.name),
                 "exchange": parsed.exchange.name,
             }
         )
@@ -80,14 +80,14 @@ def build_short_term_watchlist_snapshot(
     plan_symbols: list[dict[str, str]] = []
     plan = load_active_trading_plan(today_trade_date())
     if plan is not None:
-        for item in plan.symbols:
-            vt = item.vt_symbol
+        for plan_symbol in plan.symbols:
+            vt = plan_symbol.vt_symbol
             plan_symbols.append(
                 {
                     "vt_symbol": vt,
-                    "symbol": item.symbol,
-                    "name": item.symbol,
-                    "exchange": item.exchange,
+                    "symbol": plan_symbol.symbol,
+                    "name": plan_symbol.symbol,
+                    "exchange": plan_symbol.exchange,
                 }
             )
 

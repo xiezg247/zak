@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_to_dict
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
@@ -170,14 +170,17 @@ def compute_leader_score(
     max_net_mf: float = 0.0,
     weights: dict[str, float] | None = None,
 ) -> float:
-    return compute_leader_score_breakdown(
-        row,
-        amount_rank=amount_rank,
-        sector_strength_bonus=sector_strength_bonus,
-        resonance_bonus=resonance_bonus,
-        max_net_mf=max_net_mf,
-        weights=weights,
-    )["leader_score"]
+    return cast(
+        float,
+        compute_leader_score_breakdown(
+            row,
+            amount_rank=amount_rank,
+            sector_strength_bonus=sector_strength_bonus,
+            resonance_bonus=resonance_bonus,
+            max_net_mf=max_net_mf,
+            weights=weights,
+        )["leader_score"],
+    )
 
 
 def compute_leader_score_breakdown(

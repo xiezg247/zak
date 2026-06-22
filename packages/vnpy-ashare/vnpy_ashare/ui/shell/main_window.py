@@ -741,7 +741,7 @@ class AshareMainWindow(MainWindow):
             return
         self._show_page_by_key("radar", nav_index=nav_index)
         widget = self._page_widgets.get("radar")
-        if widget is None:
+        if widget is None or not hasattr(widget, "page"):
             return
         controller = getattr(widget.page, "_radar_controller", None)
         if controller is None or not hasattr(controller, "open_external_card"):

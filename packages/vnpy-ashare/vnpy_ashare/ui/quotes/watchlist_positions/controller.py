@@ -20,6 +20,7 @@ from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.services.position import PositionService
+    from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
 
 
 class WatchlistPositionController:
@@ -115,7 +116,7 @@ class WatchlistPositionController:
     def _symbols_needing_refresh(self, symbols: list[str], record_map: dict[str, PositionRecord]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol, record_map[symbol])]
 
-    def _strategy_batch(self):
+    def _strategy_batch(self) -> WatchlistStrategyBatchCoordinator | None:
         return getattr(self._page, "_strategy_batch", None)
 
     def stop(self) -> None:

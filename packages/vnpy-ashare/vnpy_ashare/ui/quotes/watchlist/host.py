@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
     from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
+    from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
     from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
     from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
     from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
@@ -45,6 +46,7 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     _multiview: WatchlistMultiViewController
     _toast: PageToastHost
     _watchlist_feature: WatchlistPageFeature | None
+    _watchlist: WatchlistController
     _watchlist_table_ratio_override: float | None
     display_stocks: list[StockItem]
     multiview_board: Any
@@ -80,3 +82,5 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     def _wire_signal_panel(self) -> None: ...
 
     def _wire_position_panel(self) -> None: ...
+
+    def load_stock_list(self) -> None: ...
