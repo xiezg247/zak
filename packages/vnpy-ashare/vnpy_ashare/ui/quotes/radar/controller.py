@@ -17,6 +17,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
+    DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
     auto_refresh_card_ids,
@@ -36,6 +37,7 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
     build_radar_card_ai_prompt,
     build_radar_resonance_ai_prompt,
     build_radar_resonance_list,
+    collect_radar_risk_vt_symbols,
     compute_radar_resonance,
 )
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
@@ -354,6 +356,7 @@ class RadarController(QtCore.QObject):
         worker = RadarCardLoadWorker(
             card_id=card_id,
             sector_variant=self._card_variants.get("sector_theme", DEFAULT_SECTOR_VARIANT),
+            sector_flow_hot_variant=self._card_variants.get("sector_flow_hot", DEFAULT_SECTOR_FLOW_HOT_VARIANT),
             leader_pick_variant=self._card_variants.get("leader_pick", DEFAULT_LEADER_PICK_VARIANT),
             limit_ladder_variant=self._card_variants.get("discovery_limit_ladder", DEFAULT_LIMIT_LADDER_VARIANT),
             scenario_variant=self._card_variants.get("outlook_scenario", DEFAULT_SCENARIO_VARIANT),
@@ -560,6 +563,7 @@ class RadarController(QtCore.QObject):
             row_lookup=row_lookup_from_payload(self._last_payload),
             resonance_count=snapshot.resonance_count,
             dragon_1_count=snapshot.dragon_1_count,
+            risk_vt_symbols=collect_radar_risk_vt_symbols(self._last_payload),
         )
         self._publish_radar_ai_context()
 
@@ -605,6 +609,8 @@ class RadarController(QtCore.QObject):
         self._card_variants[card_id] = variant_key
         if card_id == "sector_theme":
             self._sector_variant = variant_key
+        elif card_id == "sector_flow_hot":
+            pass
         elif card_id == "outlook_scenario":
             pass
         elif card_id == "outlook_predict":

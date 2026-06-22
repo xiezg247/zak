@@ -76,10 +76,14 @@ RADAR_SECTOR_REFRESH_OPTIONS: tuple[RadarRefreshOption, ...] = (
 )
 
 CARD_REFRESH_OPTIONS: dict[str, tuple[RadarRefreshOption, ...]] = {
+    "market_emotion": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_volume_surge": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_moneyflow_intraday": RADAR_DISCOVERY_REFRESH_OPTIONS,
     "discovery_limit_ladder": RADAR_DISCOVERY_REFRESH_OPTIONS,
+    "discovery_limit_break": RADAR_DISCOVERY_REFRESH_OPTIONS,
+    "sector_flow_hot": RADAR_SECTOR_REFRESH_OPTIONS,
     "watchlist_intraday": RADAR_WATCHLIST_REFRESH_OPTIONS,
+    "watchlist_short_term": RADAR_WATCHLIST_REFRESH_OPTIONS,
     "position_risk": RADAR_WATCHLIST_REFRESH_OPTIONS,
     "sector_theme": RADAR_SECTOR_REFRESH_OPTIONS,
 }
@@ -114,10 +118,14 @@ _DEFAULT_GROUP_BY_MODE: dict[RadarCardMode, RadarGroupKey] = {
 }
 
 RADAR_CARD_GROUP: dict[str, RadarGroupKey] = {
+    "market_emotion": "leader",
     "leader_pick": "leader",
+    "watchlist_short_term": "leader",
     "discovery_limit_ladder": "discovery",
+    "discovery_limit_break": "discovery",
     "discovery_volume_surge": "discovery",
     "discovery_moneyflow_intraday": "discovery",
+    "sector_flow_hot": "discovery",
     "sector_theme": "portfolio",
     "watchlist_intraday": "portfolio",
     "position_risk": "portfolio",
@@ -151,12 +159,18 @@ SCENARIO_VARIANTS: tuple[RadarVariant, ...] = (
 )
 
 RADAR_CARD_SPECS: tuple[RadarCardSpec, ...] = (
+    RadarCardSpec(id="market_emotion", title="盘面·环境", category="discovery", top_n=6, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="leader_pick", title="选股·龙头", category="screen", top_n=12),
+    RadarCardSpec(id="watchlist_short_term", title="自选·短线关注", category="watchlist", top_n=10, auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
     RadarCardSpec(
         id="discovery_limit_ladder", title="发现·连板梯队", category="discovery", has_task_variants=True, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS
     ),
+    RadarCardSpec(id="discovery_limit_break", title="发现·炸板断板", category="discovery", top_n=10, auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="discovery_volume_surge", title="发现·放量异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
     RadarCardSpec(id="discovery_moneyflow_intraday", title="发现·资金异动", category="discovery", auto_refresh_ms=RADAR_DISCOVERY_AUTO_REFRESH_MS),
+    RadarCardSpec(
+        id="sector_flow_hot", title="板块·资金热度", category="sector", has_task_variants=True, top_n=8, auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS
+    ),
     RadarCardSpec(id="sector_theme", title="板块·主线", category="sector", has_task_variants=True, auto_refresh_ms=RADAR_SECTOR_AUTO_REFRESH_MS),
     RadarCardSpec(id="watchlist_intraday", title="自选·异动", category="watchlist", auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
     RadarCardSpec(id="position_risk", title="持仓·风控", category="watchlist", auto_refresh_ms=RADAR_WATCHLIST_AUTO_REFRESH_MS),
@@ -192,13 +206,20 @@ LIMIT_LADDER_VARIANTS: tuple[RadarVariant, ...] = (
     RadarVariant(key="first_board", label="首板人气"),
 )
 
+SECTOR_FLOW_HOT_VARIANTS: tuple[RadarVariant, ...] = (
+    RadarVariant(key="industry", label="行业"),
+    RadarVariant(key="concept", label="概念"),
+)
+
 DEFAULT_SCREEN_TASK_VARIANT = "scheduled_post_close"
 DEFAULT_SECTOR_VARIANT = "leaders_tiered"
 DEFAULT_LEADER_PICK_VARIANT = "mainline"
 DEFAULT_LIMIT_LADDER_VARIANT = "by_height"
+DEFAULT_SECTOR_FLOW_HOT_VARIANT = "industry"
 
 CARD_VARIANTS: dict[str, tuple[RadarVariant, ...]] = {
     "sector_theme": SECTOR_VARIANTS,
+    "sector_flow_hot": SECTOR_FLOW_HOT_VARIANTS,
     "leader_pick": LEADER_PICK_VARIANTS,
     "discovery_limit_ladder": LIMIT_LADDER_VARIANTS,
     "outlook_scenario": SCENARIO_VARIANTS,
@@ -231,6 +252,7 @@ def variants_for_card(card_id: str) -> tuple[RadarVariant, ...]:
 def default_variant_for_card(card_id: str) -> str:
     defaults = {
         "sector_theme": DEFAULT_SECTOR_VARIANT,
+        "sector_flow_hot": DEFAULT_SECTOR_FLOW_HOT_VARIANT,
         "leader_pick": DEFAULT_LEADER_PICK_VARIANT,
         "discovery_limit_ladder": DEFAULT_LIMIT_LADDER_VARIANT,
         "outlook_scenario": DEFAULT_SCENARIO_VARIANT,

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.config.constants.watchlist import SHORT_TERM_FOCUS_GROUP_NAME
 from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.storage.repositories.positions import load_position_rows
 from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.storage.repositories.watchlist import load_watchlist_rows
+from vnpy_ashare.storage.repositories.watchlist_groups import load_watchlist_group_member_keys, load_watchlist_groups
 
 PERSONAL_POOL_MAX = 50
 
@@ -45,6 +47,27 @@ def collect_personal_vt_symbols(*, max_items: int = PERSONAL_POOL_MAX) -> list[s
     for row in load_position_rows():
         add_vt(_vt_from_parts(str(row["symbol"]), str(row["exchange"])))
 
+    return ordered[: max(1, int(max_items))]
+
+
+def collect_short_term_focus_vt_symbols(*, max_items: int = 30) -> list[str]:
+    """「短线关注」分组成分（无分组时返回空）。"""
+    group_id: str | None = None
+    for group in load_watchlist_groups():
+        if group.name == SHORT_TERM_FOCUS_GROUP_NAME:
+            group_id = group.id
+            break
+    if not group_id:
+        return []
+
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for symbol, exchange in load_watchlist_group_member_keys(group_id):
+        vt_symbol = _vt_from_parts(symbol, exchange)
+        if vt_symbol in seen or parse_stock_symbol(vt_symbol) is None:
+            continue
+        seen.add(vt_symbol)
+        ordered.append(vt_symbol)
     return ordered[: max(1, int(max_items))]
 
 

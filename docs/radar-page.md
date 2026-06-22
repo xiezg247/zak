@@ -20,20 +20,27 @@
 
 ---
 
-## 2. 现有十卡（Phase 0）
+## 2. 现有卡片（Phase A+B）
 
-| card_id | 标题 | 类别 | 模式 | 自动刷新 | variant |
-|---------|------|------|------|----------|---------|
-| `screen_latest` | 选股结果·最新 | screen | 统计 | 手动 | — |
-| `screen_task` | 选股结果·任务 | screen | 统计 | 手动 | 盘中 / 盘后 / 条件选股 |
+| card_id | 标题 | 类别 | 模式 | 自动刷新 | variant / 备注 |
+|---------|------|------|------|----------|----------------|
+| `market_emotion` | 盘面·环境 | discovery | 统计 | 60s | stat 行，不参与共振 |
+| `leader_pick` | 选股·龙头 | screen | 统计 | 手动 | mainline / all_market |
+| `watchlist_short_term` | 自选·短线关注 | watchlist | 统计 | 60s | 「短线关注」分组 |
+| `discovery_limit_ladder` | 发现·连板梯队 | discovery | 统计 | 60s | by_height / by_sector / first_board |
+| `discovery_limit_break` | 发现·炸板断板 | discovery | 统计 | 60s | 风险条，不参与共振 |
 | `discovery_volume_surge` | 发现·放量异动 | discovery | 统计 | 60s | — |
 | `discovery_moneyflow_intraday` | 发现·资金异动 | discovery | 统计 | 60s | — |
-| `watchlist_intraday` | 自选·异动 | watchlist | 统计 | 60s | — |
+| `sector_flow_hot` | 板块·资金热度 | sector | 统计 | 180s | industry / concept |
 | `sector_theme` | 板块·主线 | sector | 统计 | 180s | 板块龙头 / 广度扩散 |
+| `watchlist_intraday` | 自选·异动 | watchlist | 统计 | 60s | — |
+| `position_risk` | 持仓·风控 | watchlist | 统计 | 60s | — |
 | `outlook_watch` | 未来·关注 | outlook | 前瞻 | 手动 | — |
 | `outlook_hold` | 未来·可持 | outlook | 前瞻 | 手动 | — |
 | `outlook_scenario` | 未来·情景 | outlook | 前瞻 | 手动 | 偏多 / 高波动 / 偏空 |
-| `outlook_predict` | 未来·预测 | outlook | 前瞻 | 手动 | auto / baseline（统计基线） |
+| `outlook_predict` | 未来·预测 | outlook | 前瞻 | 手动 | auto / baseline |
+
+**历史说明**：`screen_latest` / `screen_task` 已移除；`discovery_first_board` 为连板梯队 variant。
 
 **loader 入口**：`load_radar_board()` → 各 `load_*`（`radar_loaders.py`）。
 

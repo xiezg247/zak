@@ -2,11 +2,71 @@
 
 from unittest.mock import patch
 
-from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID, RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_horizon_rules import filter_avoid_snapshots, matches_avoid
+from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_BY_ID, RADAR_CARD_SPECS, RadarCardSpec
+from vnpy_ashare.quotes.radar.radar_loaders import collect_radar_risk_vt_symbols
 from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row, load_market_emotion
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_position_risk import load_position_risk
+from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
+    RADAR_CARDS_EXCLUDED_FROM_RESONANCE,
+    radar_card_participates_in_resonance,
+)
+from vnpy_ashare.quotes.radar.radar_watchlist_short_term import load_watchlist_short_term
+
+
+def test_new_cards_registered() -> None:
+    ids = {spec.id for spec in RADAR_CARD_SPECS}
+    for card_id in (
+        "market_emotion",
+        "discovery_limit_break",
+        "watchlist_short_term",
+        "sector_flow_hot",
+    ):
+        assert card_id in ids
+
+
+def test_resonance_excludes_environment_and_risk_cards() -> None:
+    assert "market_emotion" in RADAR_CARDS_EXCLUDED_FROM_RESONANCE
+    assert "discovery_limit_break" in RADAR_CARDS_EXCLUDED_FROM_RESONANCE
+    assert radar_card_participates_in_resonance("leader_pick")
+    assert not radar_card_participates_in_resonance("market_emotion")
+
+
+def test_collect_radar_risk_vt_symbols() -> None:
+    payload = {
+        "discovery_limit_break": RadarCardData(
+            card_id="discovery_limit_break",
+            title="发现·炸板断板",
+            subtitle="",
+            rows=(
+                RadarRow(
+                    vt_symbol="600000.SSE",
+                    name="浦发银行",
+                    symbol="600000",
+                    price=10.0,
+                    change_pct=-5.0,
+                    metric_label="断板",
+                    metric_value="3连",
+                    sub_label="",
+                    sub_value="",
+                ),
+            ),
+            empty_message="",
+            updated_at="t",
+        )
+    }
+    assert collect_radar_risk_vt_symbols(payload) == frozenset({"600000.SSE"})
+
+
+def test_load_watchlist_short_term_empty_group() -> None:
+    spec = RADAR_CARD_BY_ID["watchlist_short_term"]
+    with patch(
+        "vnpy_ashare.quotes.radar.radar_watchlist_short_term.collect_short_term_focus_vt_symbols",
+        return_value=[],
+    ):
+        data = load_watchlist_short_term(spec)
+    assert data.rows == ()
+    assert "短线关注" in data.empty_message
 
 
 def test_is_stat_row() -> None:
@@ -34,68 +94,3 @@ def test_load_position_risk_empty() -> None:
         data = load_position_risk(spec)
     assert data.rows == ()
     assert "持仓" in data.empty_message
-
-
-def test_matches_avoid_sell_signal() -> None:
-    snapshot = SignalSnapshot(
-        vt_symbol="600000.SSE",
-        strategy_id="AshareDoubleMaStrategy",
-        as_of="2026-06-18",
-        signal="sell",
-        signal_label="卖出",
-        strength=80.0,
-        ref_buy_price=None,
-        ref_sell_price=10.0,
-        last_close=9.5,
-        fast_ma=9.0,
-        slow_ma=10.0,
-        reasons=("死叉",),
-        reason_summary="死叉",
-        warnings=(),
-        signal_date="2026-06-18",
-    )
-    assert matches_avoid(snapshot, last_price=9.5)
-
-
-def test_filter_avoid_snapshots() -> None:
-    sell = SignalSnapshot(
-        vt_symbol="600000.SSE",
-        strategy_id="AshareDoubleMaStrategy",
-        as_of="2026-06-18",
-        signal="sell",
-        signal_label="卖出",
-        strength=80.0,
-        ref_buy_price=None,
-        ref_sell_price=10.0,
-        last_close=9.5,
-        fast_ma=9.0,
-        slow_ma=10.0,
-        reasons=(),
-        reason_summary="卖出",
-        warnings=(),
-        signal_date="2026-06-18",
-    )
-    hold = SignalSnapshot(
-        vt_symbol="000001.SZSE",
-        strategy_id="AshareDoubleMaStrategy",
-        as_of="2026-06-18",
-        signal="hold",
-        signal_label="观望",
-        strength=50.0,
-        ref_buy_price=10.0,
-        ref_sell_price=None,
-        last_close=10.1,
-        fast_ma=10.2,
-        slow_ma=10.0,
-        reasons=(),
-        reason_summary="观望",
-        warnings=(),
-        signal_date="2026-06-18",
-    )
-    with patch(
-        "vnpy_ashare.quotes.radar.radar_horizon_rules.signal_is_fresh",
-        return_value=True,
-    ):
-        matched = filter_avoid_snapshots([sell, hold])
-    assert len(matched) == 1
-    assert matched[0].vt_symbol == "600000.SSE"

@@ -55,7 +55,11 @@
 | D-02 | `discovery_first_board` 首板人气 | **已有** | 2 | 同上 |
 | D-03 | 共振权重「短线模式」 | **已有** | 1 | [radar-leader-screening.md](./radar-leader-screening.md) |
 | D-04 | 共振 → 自选池 | **已有** | 1 | [watchlist-groups.md](./watchlist-groups.md) |
-| — | 现有 10 卡 + 共振总览 | **已有** | 0 | [radar-page.md](./radar-page.md) |
+| D-05 | `market_emotion` 盘面·环境 | **已有** | A+B | [radar-page.md](./radar-page.md) |
+| D-06 | `discovery_limit_break` 炸板断板 | **已有** | A+B | 同上 |
+| D-07 | `watchlist_short_term` 短线关注 | **已有** | A+B | 同上 |
+| D-08 | `sector_flow_hot` 板块资金热度 | **已有** | A+B | 同上 |
+| — | 现有卡片 + 共振总览 | **已有** | 0 | [radar-page.md](./radar-page.md) |
 
 ### 4.2 龙头专项（G-）
 

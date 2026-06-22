@@ -118,6 +118,12 @@ class RadarResonancePanel(QtWidgets.QWidget):
         self._gate_banner.hide()
         header.addWidget(self._gate_banner)
 
+        self._risk_banner = QtWidgets.QLabel("")
+        self._risk_banner.setObjectName("RadarResonanceRiskBanner")
+        self._risk_banner.setWordWrap(True)
+        self._risk_banner.hide()
+        header.addWidget(self._risk_banner)
+
         self._stats_label = QtWidgets.QLabel("")
         self._stats_label.setObjectName("RadarResonanceStats")
         header.addWidget(self._stats_label)
@@ -243,6 +249,7 @@ class RadarResonancePanel(QtWidgets.QWidget):
         self._row_lookup: dict[str, object] = {}
         self._filter_mode: ResonanceFilterMode = "all"
         self._emotion_gate_blocked = False
+        self._risk_vt_symbols: frozenset[str] = frozenset()
         self._resonance_total = 0
         self._dragon_1_total = 0
         self._ultra_short_count = 0
@@ -311,6 +318,7 @@ class RadarResonancePanel(QtWidgets.QWidget):
         row_lookup: dict | None = None,
         resonance_count: int = 0,
         dragon_1_count: int = 0,
+        risk_vt_symbols: frozenset[str] | None = None,
     ) -> None:
         self._row_lookup = dict(row_lookup or {})
         self._raw_entries_by_tab = {
@@ -319,6 +327,7 @@ class RadarResonancePanel(QtWidgets.QWidget):
             "predictive": predictive if predictive is not None else (),
         }
         self._emotion_gate_blocked = not allow_new_positions
+        self._risk_vt_symbols = risk_vt_symbols or frozenset()
         self._resonance_total = resonance_count
         self._dragon_1_total = dragon_1_count
         if self._emotion_gate_blocked and emotion_stage_label:
@@ -326,6 +335,11 @@ class RadarResonancePanel(QtWidgets.QWidget):
             self._gate_banner.show()
         else:
             self._gate_banner.hide()
+        if self._risk_vt_symbols:
+            self._risk_banner.setText(f"炸板断板风险 {len(self._risk_vt_symbols)} 只（主池过滤已剔除）")
+            self._risk_banner.show()
+        else:
+            self._risk_banner.hide()
         self._apply_filter_to_tabs()
         self._update_gate_actions()
 
@@ -346,19 +360,31 @@ class RadarResonancePanel(QtWidgets.QWidget):
             )
         }
         self._ultra_short_count = len(
-            filter_resonance_entries(
-                self._raw_entries_by_tab.get("all", ()),
-                mode="ultra_short",
-                row_lookup=lookup,
-            )
+            [
+                entry
+                for entry in filter_resonance_entries(
+                    self._raw_entries_by_tab.get("all", ()),
+                    mode="ultra_short",
+                    row_lookup=lookup,
+                )
+                if entry.vt_symbol not in self._risk_vt_symbols
+            ]
         )
+        risk = self._risk_vt_symbols
+
+        def _filter_entries(raw: tuple[RadarResonanceEntry, ...]) -> tuple[RadarResonanceEntry, ...]:
+            filtered = tuple(
+                filter_resonance_entries(raw, mode=self._filter_mode, row_lookup=lookup)
+            )
+            if self._filter_mode == "ultra_short" and risk:
+                filtered = tuple(entry for entry in filtered if entry.vt_symbol not in risk)
+            return filtered
+
         self._stats_label.setText(
             f"共振 {self._resonance_total} · 龙一 {self._dragon_1_total} · 主池 {self._ultra_short_count}"
         )
         for tab_key, raw in self._raw_entries_by_tab.items():
-            self._entries_by_tab[tab_key] = tuple(
-                filter_resonance_entries(raw, mode=self._filter_mode, row_lookup=lookup)
-            )
+            self._entries_by_tab[tab_key] = _filter_entries(raw)
         self._render_current_tab()
         for tab_key in self._entries_by_tab:
             if tab_key != self._current_tab_key():

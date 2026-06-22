@@ -269,7 +269,7 @@ class RadarCardWidget(QtWidgets.QFrame):
         footer.addWidget(self._view_run_button)
         self._sector_flow_button: QtWidgets.QPushButton | None = None
         self._sector_rotation_button: QtWidgets.QPushButton | None = None
-        if spec.id == "sector_theme":
+        if spec.id in ("sector_theme", "sector_flow_hot"):
             self._sector_flow_button = QtWidgets.QPushButton("板块资金")
             self._sector_flow_button.setObjectName("RadarCardSectorFlow")
             self._sector_flow_button.setFlat(True)

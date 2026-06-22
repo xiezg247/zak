@@ -18,6 +18,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LIMIT_LADDER_VARIANT,
     DEFAULT_SCENARIO_VARIANT,
     DEFAULT_SCREEN_TASK_VARIANT,
+    DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     DEFAULT_SECTOR_VARIANT,
     RADAR_CARD_BY_ID,
     RADAR_CARD_SPECS,
@@ -29,7 +30,9 @@ from vnpy_ashare.quotes.radar.radar_first_board import load_first_board
 from vnpy_ashare.quotes.radar.radar_horizon import build_outlook_ai_prompt, load_outlook_horizon
 from vnpy_ashare.quotes.radar.radar_horizon_predict import build_predict_ai_prompt, load_outlook_predict
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant, load_leader_pick
+from vnpy_ashare.quotes.radar.radar_limit_break import load_discovery_limit_break
 from vnpy_ashare.quotes.radar.radar_limit_ladder import LimitLadderVariant, load_limit_ladder
+from vnpy_ashare.quotes.radar.radar_market_emotion import is_stat_row, load_market_emotion
 from vnpy_ashare.quotes.radar.radar_models import (
     RadarCardData,
     RadarResonanceEntry,
@@ -41,7 +44,10 @@ from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_position_risk import load_position_risk
 from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
+from vnpy_ashare.quotes.radar.radar_sector_flow_hot import SectorFlowHotVariant, load_sector_flow_hot
 from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
+from vnpy_ashare.quotes.radar.radar_watchlist_short_term import load_watchlist_short_term
+from vnpy_ashare.quotes.radar.radar_resonance_prefs import radar_card_participates_in_resonance
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import (
@@ -481,6 +487,7 @@ def load_radar_card(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    sector_flow_hot_variant: str = DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
     limit_ladder_variant: str = DEFAULT_LIMIT_LADDER_VARIANT,
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
@@ -495,6 +502,7 @@ def load_radar_card(
                 card_id,
                 screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
+                sector_flow_hot_variant=sector_flow_hot_variant,
                 leader_pick_variant=leader_pick_variant,
                 limit_ladder_variant=limit_ladder_variant,
                 scenario_variant=scenario_variant,
@@ -507,6 +515,7 @@ def load_radar_card(
                 card_id,
                 screen_task_variant=screen_task_variant,
                 sector_variant=sector_variant,
+                sector_flow_hot_variant=sector_flow_hot_variant,
                 leader_pick_variant=leader_pick_variant,
                 limit_ladder_variant=limit_ladder_variant,
                 scenario_variant=scenario_variant,
@@ -516,6 +525,7 @@ def load_radar_card(
         card_id,
         screen_task_variant=screen_task_variant,
         sector_variant=sector_variant,
+        sector_flow_hot_variant=sector_flow_hot_variant,
         leader_pick_variant=leader_pick_variant,
         limit_ladder_variant=limit_ladder_variant,
         scenario_variant=scenario_variant,
@@ -528,9 +538,12 @@ _RADAR_FULL_CONTEXT_CARD_IDS = frozenset(
         "discovery_volume_surge",
         "discovery_moneyflow_intraday",
         "discovery_limit_ladder",
+        "discovery_limit_break",
         "watchlist_intraday",
+        "watchlist_short_term",
         "position_risk",
         "sector_theme",
+        "sector_flow_hot",
         "leader_pick",
     }
 )
@@ -550,6 +563,7 @@ def _load_radar_card_uncached(
     *,
     screen_task_variant: str = DEFAULT_SCREEN_TASK_VARIANT,
     sector_variant: str = DEFAULT_SECTOR_VARIANT,
+    sector_flow_hot_variant: str = DEFAULT_SECTOR_FLOW_HOT_VARIANT,
     leader_pick_variant: str = DEFAULT_LEADER_PICK_VARIANT,
     limit_ladder_variant: str = DEFAULT_LIMIT_LADDER_VARIANT,
     scenario_variant: str = DEFAULT_SCENARIO_VARIANT,
@@ -560,6 +574,8 @@ def _load_radar_card_uncached(
     if spec is None:
         msg = f"未知雷达卡片：{card_id}"
         raise ValueError(msg)
+    if spec.id == "market_emotion":
+        return load_market_emotion(spec)
     if spec.id == "discovery_volume_surge":
         return load_discovery_volume_surge(spec)
     if spec.id == "discovery_moneyflow_intraday":
@@ -569,10 +585,17 @@ def _load_radar_card_uncached(
             return load_first_board(spec)
         ladder_variant: LimitLadderVariant = "by_sector" if limit_ladder_variant == "by_sector" else "by_height"
         return load_limit_ladder(spec, variant=ladder_variant)
+    if spec.id == "discovery_limit_break":
+        return load_discovery_limit_break(spec)
     if spec.id == "watchlist_intraday":
         return load_watchlist_intraday(spec)
+    if spec.id == "watchlist_short_term":
+        return load_watchlist_short_term(spec)
     if spec.id == "position_risk":
         return load_position_risk(spec)
+    if spec.id == "sector_flow_hot":
+        hot_variant: SectorFlowHotVariant = "concept" if sector_flow_hot_variant == "concept" else "industry"
+        return load_sector_flow_hot(spec, variant=hot_variant)
     if spec.id == "sector_theme":
         return load_sector_theme(spec, variant=sector_variant)
     if spec.id == "leader_pick":
@@ -628,9 +651,15 @@ def _accumulate_radar_resonance(
 ) -> dict[str, dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
     for data in payload.values():
+        if not radar_card_participates_in_resonance(data.card_id):
+            continue
         card_weight = radar_card_resonance_weight(data.card_id)
+        if card_weight <= 0:
+            continue
         seen_in_card: set[str] = set()
         for row in data.rows:
+            if is_stat_row(row.vt_symbol):
+                continue
             if row.vt_symbol in seen_in_card:
                 continue
             seen_in_card.add(row.vt_symbol)
@@ -733,6 +762,18 @@ def compute_radar_resonance_scores(
         for vt_symbol, bucket in grouped.items()
         if int(bucket.get("card_count") or 0) >= min_cards
     }
+
+
+def collect_radar_risk_vt_symbols(payload: dict[str, RadarCardData]) -> frozenset[str]:
+    """炸板断板风险卡中的标的（供共振侧栏提示）。"""
+    data = payload.get("discovery_limit_break")
+    if data is None:
+        return frozenset()
+    return frozenset(
+        str(row.vt_symbol).strip()
+        for row in data.rows
+        if str(row.vt_symbol or "").strip() and not is_stat_row(row.vt_symbol)
+    )
 
 
 def _row_ai_summary(row: RadarRow) -> str:

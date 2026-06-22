@@ -18,6 +18,7 @@ class RadarCardLoadWorker(QtCore.QThread):
         *,
         card_id: str,
         sector_variant: str,
+        sector_flow_hot_variant: str,
         leader_pick_variant: str,
         limit_ladder_variant: str,
         scenario_variant: str,
@@ -29,6 +30,7 @@ class RadarCardLoadWorker(QtCore.QThread):
         super().__init__(parent)
         self._card_id = card_id
         self._sector_variant = sector_variant
+        self._sector_flow_hot_variant = sector_flow_hot_variant
         self._leader_pick_variant = leader_pick_variant
         self._limit_ladder_variant = limit_ladder_variant
         self._scenario_variant = scenario_variant
@@ -54,6 +56,7 @@ class RadarCardLoadWorker(QtCore.QThread):
                 data = load_radar_card(
                     self._card_id,
                     sector_variant=self._sector_variant,
+                    sector_flow_hot_variant=self._sector_flow_hot_variant,
                     leader_pick_variant=self._leader_pick_variant,
                     limit_ladder_variant=self._limit_ladder_variant,
                     scenario_variant=self._scenario_variant,
