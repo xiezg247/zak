@@ -9,7 +9,7 @@
 | 轨道 | 形态 | 状态 | 用途 |
 |------|------|------|------|
 | **笔记流水** | `stock_note_entries` 自由文本 | **已有** | 快速记录、AI 可读 |
-| **交易流水** | `trade_journal` 结构化 | **已有** | 胜率、盈亏比、违规统计 |
+| **交易流水** | `trade_journal` 结构化 | **已有** | 胜率、盈亏比、违规统计；**可查看 / 编辑 / 删除** |
 | **次日计划** | `trading_plans` | **已有** | 盘前 3–5 只 + 仓位 + 条件 |
 
 与 [stock-notes.md](./stock-notes.md) 关系：笔记偏定性；本模块偏**可聚合字段**。
@@ -107,6 +107,31 @@ TradeJournalEntry
 
 `watchlist_positions` 仍是**当前头寸**；`trade_journal` 是**历史事件**。
 
+### 3.3 UI 入口（查看 / 编辑 / 删除）
+
+| 入口 | 路径 | 说明 | 状态 |
+|------|------|------|------|
+| **复盘 · 流水明细** | 自选持仓区 **「复盘」** → Tab「流水明细」 | 与统计同区间；双击编辑、右键删除；改后刷新风控闸 | **已有** |
+| **笔记中心 · 交易流水** | `Ctrl+Shift+N` → Tab **「交易流水」** | 跨标的结构化流水；默认近 30 天；左侧选标的可过滤 | **已有** |
+| **风控 · 登记卖出** | 顶栏风控芯片 / 持仓 **「风控设置」** → 高级 **「查看…」** | 今日 `side=sell` 流水；汇总行随编辑自动更新 | **已有** |
+
+落点：
+
+- 明细表：`ui/quotes/watchlist_positions/trade_journal_manage_view.py`
+- 编辑：`trade_journal_edit_dialog.py`
+- 独立打开：`trade_journal_open.py`（`show_today_sell_journal` 等）
+- 维护逻辑：`trading/journal/maintain.py`（更新时卖出单按最近 buy 流水重算 `pnl` / `pnl_pct`）
+
+### 3.4 编辑与删除约定
+
+| 操作 | 行为 | 下游影响 |
+|------|------|----------|
+| **编辑卖出** | 可改成交日、价格、数量、理由、模式、计划内、违规标签 | `pnl` 按最近买入流水成本重算 |
+| **删除** | 二次确认 | `sum_realized_pnl_for_date`、风控闸当日盈亏、扛单检测（`has_sell_journal_since`） |
+| **笔记流水** | 仍只追加；右键「导入交易流水」写入 `trade_journal` | 与明细管理互补，不替代 |
+
+> **未做**：不经删持仓的「手动补录卖出」、AI `get_trade_journal` 的写操作。
+
 ---
 
 ## 4. 模式内亏损 vs 违规
@@ -133,7 +158,7 @@ TradeJournalEntry
 |------|------|------|
 | 1 市场 | 涨跌停、连板、情绪阶段 | 市场页 + emotion_cycle |
 | 2 计划执行 | 计划内几笔 / 违规几笔 | trading_plans + journal |
-| 3 单笔 | 理由、模式、盈亏 | 笔记 + journal |
+| 3 单笔 | 理由、模式、盈亏 | 笔记 + journal；误记可在 **流水明细** 修正 |
 | 4 次日 | 更新信号区/计划 + 新 plan | propose_trading_plan |
 
 ---
@@ -224,6 +249,7 @@ CREATE TABLE trade_journal (
 | 2 | `trading_plans` + 同步自选 + 简单 UI | **已有** |
 | 3 | `trade_journal` + 登记联动 + off_plan 标记 | **已有** |
 | 4 | AI propose/get + 周度报表（J-05） | **已有** |
+| 5 | 流水明细 CRUD UI（复盘 / 笔记中心 / 风控） | **已有** |
 
 ---
 

@@ -129,6 +129,7 @@
 | J-03 | `propose_trading_plan` AI | **已有** | 4 | — | [ai-data-routing.md](./ai-data-routing.md) |
 | J-04 | 计划内 / 计划外校验 | **已有** | 4 | J-01, P-01 | 同上 |
 | J-05 | 复盘报表（胜率 / 盈亏比） | **已有** | 5 | J-02 | 同上 |
+| J-06 | 流水明细 CRUD UI | **已有** | 5 | J-02 | 复盘 Tab / 笔记中心「交易流水」/ 风控查看 |
 | — | 笔记流水 `stock_note_entries` | **已有** | 0 | App DB | [stock-notes.md](./stock-notes.md) |
 
 ---

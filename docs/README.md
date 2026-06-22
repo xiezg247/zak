@@ -29,7 +29,7 @@
 | [雷达页](./radar-page.md) | 十卡布局、共振、与 Hub/板块分工 |
 | [市场页](./market-page.md) | 广度、排行、涨停池与择时输入 |
 | [风控体系](./risk-gate.md) | 三层风控、状态机、单笔计算器 |
-| [交易计划与流水](./trading-plan-journal.md) | 次日计划、trade_journal、纪律标记 |
+| [交易计划与流水](./trading-plan-journal.md) | 次日计划、trade_journal、流水明细 CRUD、纪律标记 |
 | [消息通知（飞书）](./notifications.md) | Webhook、事件白名单、与定时任务/风控联动 |
 | [看盘页个股笔记](./stock-notes.md) | 备忘 + 流水双形态、NoteService、AI 上下文 |
 | [盘中选股](./intraday-screening.md) | Recipe 多因子维度、硬过滤、AI 工具与结果洞察 |

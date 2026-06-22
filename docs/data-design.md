@@ -205,19 +205,20 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `id` | TEXT PK | UUID |
+| `id` | INTEGER PK | 自增主键 |
 | `symbol` / `exchange` | TEXT | 标的 |
 | `trade_date` | TEXT | 交易日 |
-| `side` | TEXT | `buy` / `sell` |
+| `side` | TEXT | `buy` / `sell` / `hold` |
 | `mode` | TEXT | `limit_board` / `halfway` / `pullback` 等 |
 | `price` / `volume` | REAL / INTEGER | 成交价、数量 |
-| `pnl_pct` | REAL | 盈亏 %（卖出行） |
-| `off_plan` | INTEGER | 是否计划外（0/1） |
+| `on_plan` | INTEGER | 是否计划内（0/1） |
+| `violation_tags` | TEXT | 逗号分隔违规标签 |
+| `pnl` / `pnl_pct` | REAL | 已实现盈亏（卖出行） |
 | `plan_id` | TEXT | 关联计划（可空） |
-| `notes` | TEXT | 备注 |
+| `reason` / `emotion_stage` | TEXT | 理由 / 登记时情绪阶段 |
 | `created_at` | TEXT | 写入时间 |
 
-**用途：** K-05 违规统计、J-05 复盘报表；与 `stock_note_entries` 并存（笔记偏定性，流水偏聚合）。
+**用途：** K-05 违规统计、J-05 复盘报表、J-06 明细 CRUD；与 `stock_note_entries` 并存（笔记偏定性，流水偏聚合）。Repository：`get` / `update` / `delete` + 区间与 `side` 筛选。
 
 ### 1.12 `notify_delivery_log`（**已有**，N-05）
 
