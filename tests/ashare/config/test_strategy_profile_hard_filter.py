@@ -34,5 +34,5 @@ def test_apply_strategy_profile_syncs_hard_filter_prefs() -> None:
     assert trend == hard_filter_preset(PRESET_CONSERVATIVE)
 
     apply_strategy_profile(DEFAULT_STRATEGY_PROFILE)
-    medium = load_hard_filter_prefs()
-    assert medium == hard_filter_preset(PRESET_BALANCED)
+    default_prefs = load_hard_filter_prefs()
+    assert default_prefs == hard_filter_preset(PRESET_BALANCED)

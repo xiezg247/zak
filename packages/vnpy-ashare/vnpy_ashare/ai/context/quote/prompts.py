@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.config.preferences.watchlist_signal import load_watchlist_signal_config
+from vnpy_ashare.config.preferences.watchlist_signal import (
+    DEFAULT_CLASS,
+    DEFAULT_FAST,
+    DEFAULT_SLOW,
+    load_watchlist_signal_config,
+)
 
 _TREND_SCENARIO_OUTPUT = (
     "按乐观/基准/悲观三情景输出（概率表述 + 触发/失效条件）。"
@@ -17,7 +22,7 @@ def resolve_signal_prompt_params() -> tuple[str, int, int]:
         cfg = load_watchlist_signal_config()
         return cfg.class_name, cfg.fast_window, cfg.slow_window
     except Exception:
-        return "AshareDoubleMaStrategy", 10, 20
+        return DEFAULT_CLASS, DEFAULT_FAST, DEFAULT_SLOW
 
 
 def build_diagnose_ai_prompt(vt_symbol: str, name: str = "") -> str:

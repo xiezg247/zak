@@ -11,14 +11,14 @@
 
 | 策略 | 周期定位 | 产品层级 | 建议 |
 |------|----------|----------|------|
-| `AshareShortBreakoutStrategy` | 1–5 日放量突破 | **短线波段（辅）** | **保留**；极致短线 Profile 的**日 K 信号**首选 |
+| `AshareShortBreakoutStrategy` | 1–5 日放量突破 | **短线波段（默认）** | **保留**；全局默认 Profile `short_swing` 信号 |
 | `AshareDoubleMaStrategy` | 10/20 日双均线 | **中线观察（辅）** | **保留**；稳健默认、回测验证 |
 | `AshareSwingMaStrategy` | 1–4 周回踩 | 波段 | **保留**；分歧期「低吸」语义最接近 |
 | `AshareTrendMaStrategy` | 1–6 月 ADX 趋势 | 中线 | **保留**；团队分析 / 趋势票验证 |
 
 **不删除、不合并**现有策略。已通过 Profile 切换与极致短线规则层（打板/半路/隔日卖）与上述日 K CTA **并存**：
 
-1. **默认 Profile**：全局默认 `medium_watch`；新用户经 onboarding 可引导「极致短线」（**已有**）
+1. **默认 Profile**：全局默认 `short_swing`（`AshareShortBreakoutStrategy` 短线放量突破）；首次打开自选页可选其他风格（**已有**）
 2. **信号区 / 持仓区 Profile 切换**（**已有**）：QSettings `trading/strategy_profile` + header 下拉
 3. **硬过滤联动**（**已有**）：Profile 切换同步保守 / 均衡 / 激进模板
 
@@ -53,11 +53,11 @@
 | Profile ID | 名称 | 信号策略 | 退出/持仓 | 典型环境 |
 |------------|------|----------|-----------|----------|
 | `ultra_short` | 极致短线 | `AshareLimitBoardStrategy`（打板）；`Pullback` / `IntradayBreakout` 可切换 | OvernightExit overlay（**已有**） | 启动–高潮 |
-| `short_swing` | 短线波段 | `AshareShortBreakoutStrategy` | 同策略内止损止盈 | 分歧–发酵 |
-| `medium_watch` | 中线观察 | `AshareDoubleMaStrategy` | 双均线死叉 | 自选默认（**当前**） |
+| `short_swing` | 短线波段 | `AshareShortBreakoutStrategy` | 同策略内止损止盈 | **全局默认** |
+| `medium_watch` | 中线观察 | `AshareDoubleMaStrategy` | 双均线死叉 | 波段 / 观察 |
 | `trend` | 趋势中线 | `AshareTrendMaStrategy` | ADX + 追踪止损 | 回测、团队分析 |
 
-**过渡说明（已 supersede）**：`ultra_short` Profile 已默认绑定 `AshareLimitBoardStrategy`；波段代理可手动切 `AshareShortBreakoutStrategy`。
+**Profile 与信号**：全局默认 `short_swing` → `AshareShortBreakoutStrategy`；切换 Profile 时同步信号区 class_name 与硬过滤模板。`ultra_short` Profile 绑定 `AshareLimitBoardStrategy` 打板策略。
 
 ---
 
@@ -107,7 +107,7 @@
 **自选页 header**：
 
 ```text
-策略 Profile [极致短线▾]  →  同步信号区 class_name + 硬过滤模板 + 持仓 effective_config
+策略 Profile [短线波段▾]  →  同步信号区 class_name + 硬过滤模板 + 持仓 effective_config
 ```
 
 ---
@@ -131,6 +131,7 @@
 
 | Profile | `list_strategy_signals` 默认 | prompt |
 |---------|------------------------------|--------|
+| short_swing | ShortBreakout（全局默认） | 放量突破 / 短线波段 |
 | ultra_short | LimitBoard（可切 Pullback / IntradayBreakout） | 须带 emotion_cycle + 龙头上下文 |
 | medium_watch | DoubleMA | 现有 `build_signals_ai_prompt` |
 
@@ -145,7 +146,7 @@
 | SP-01 | Profile 枚举 + QSettings | 已有 |
 | SP-02 | 信号区 Profile 下拉 | 已有 |
 | SP-03 | 持仓区 header 展示 Profile | 已有 |
-| SP-04 | 新用户默认 Profile + ultra_short onboarding 引导 | 已有 |
+| SP-04 | 新用户默认 Profile + 首次风格选择 onboarding | 已有 | 默认 `short_swing`（短线放量） |
 | SP-05 | LimitBoard / OvernightExit 策略与 registry | **已有** |
 | SP-06 | Profile 切换同步硬过滤模板 | **已有** | ultra_short→激进；trend→保守；其余→均衡 |
 

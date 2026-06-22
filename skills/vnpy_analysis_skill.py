@@ -73,15 +73,15 @@ class VnpyAnalysisSkill(SkillTemplate):
                     "properties": {
                         "class_name": {
                             "type": "string",
-                            "description": "策略类名，默认 AshareDoubleMaStrategy",
+                            "description": "策略类名，默认 AshareShortBreakoutStrategy（短线放量）",
                         },
                         "fast_window": {
                             "type": "integer",
-                            "description": "快线周期，默认 10",
+                            "description": "快线周期，默认 5",
                         },
                         "slow_window": {
                             "type": "integer",
-                            "description": "慢线周期，默认 20",
+                            "description": "慢线周期，默认 10",
                         },
                         "include_live_quote": {
                             "type": "boolean",
@@ -101,7 +101,7 @@ class VnpyAnalysisSkill(SkillTemplate):
                         "symbol": {"type": "string", "description": "股票代码"},
                         "class_name": {
                             "type": "string",
-                            "description": "策略类名，默认 AshareDoubleMaStrategy",
+                            "description": "策略类名，默认 AshareShortBreakoutStrategy（短线放量）",
                         },
                         "lookback": {
                             "type": "integer",
@@ -109,11 +109,11 @@ class VnpyAnalysisSkill(SkillTemplate):
                         },
                         "fast_window": {
                             "type": "integer",
-                            "description": "快线周期，默认 10",
+                            "description": "快线周期，默认 5",
                         },
                         "slow_window": {
                             "type": "integer",
-                            "description": "慢线周期，默认 20",
+                            "description": "慢线周期，默认 10",
                         },
                     },
                     "required": ["symbol"],
@@ -159,15 +159,15 @@ class VnpyAnalysisSkill(SkillTemplate):
                         },
                         "class_name": {
                             "type": "string",
-                            "description": "策略类名（结构锚点），默认 AshareDoubleMaStrategy",
+                            "description": "策略类名（结构锚点），默认 AshareShortBreakoutStrategy",
                         },
                         "fast_window": {
                             "type": "integer",
-                            "description": "快线周期，默认 10",
+                            "description": "快线周期，默认 5",
                         },
                         "slow_window": {
                             "type": "integer",
-                            "description": "慢线周期，默认 20",
+                            "description": "慢线周期，默认 10",
                         },
                     },
                     "required": ["symbol"],
@@ -262,16 +262,16 @@ class VnpyAnalysisSkill(SkillTemplate):
 
     def list_watchlist_signal_panel(
         self,
-        class_name: str = "AshareDoubleMaStrategy",
-        fast_window: int = 10,
-        slow_window: int = 20,
+        class_name: str = "AshareShortBreakoutStrategy",
+        fast_window: int = 5,
+        slow_window: int = 10,
         include_live_quote: bool = False,
     ) -> str:
         svc = self._get_analysis_service()
         result = svc.list_watchlist_signal_panel(
-            class_name=class_name or "AshareDoubleMaStrategy",
-            fast_window=int(fast_window or 10),
-            slow_window=int(slow_window or 20),
+            class_name=class_name or "AshareShortBreakoutStrategy",
+            fast_window=int(fast_window or 5),
+            slow_window=int(slow_window or 10),
             include_live_quote=bool(include_live_quote),
         )
         return json.dumps(result, ensure_ascii=False)
@@ -279,18 +279,18 @@ class VnpyAnalysisSkill(SkillTemplate):
     def list_strategy_signals(
         self,
         symbol: str,
-        class_name: str = "AshareDoubleMaStrategy",
+        class_name: str = "AshareShortBreakoutStrategy",
         lookback: int = 120,
-        fast_window: int = 10,
-        slow_window: int = 20,
+        fast_window: int = 5,
+        slow_window: int = 10,
     ) -> str:
         svc = self._get_analysis_service()
         result = svc.strategy_signals(
             symbol,
-            class_name=class_name or "AshareDoubleMaStrategy",
+            class_name=class_name or "AshareShortBreakoutStrategy",
             lookback=int(lookback or 120),
-            fast_window=int(fast_window or 10),
-            slow_window=int(slow_window or 20),
+            fast_window=int(fast_window or 5),
+            slow_window=int(slow_window or 10),
         )
         return json.dumps(result, ensure_ascii=False)
 
@@ -304,18 +304,18 @@ class VnpyAnalysisSkill(SkillTemplate):
         symbol: str,
         horizon_days: int = 5,
         lookback: int = 60,
-        class_name: str = "AshareDoubleMaStrategy",
-        fast_window: int = 10,
-        slow_window: int = 20,
+        class_name: str = "AshareShortBreakoutStrategy",
+        fast_window: int = 5,
+        slow_window: int = 10,
     ) -> str:
         svc = self._get_analysis_service()
         result = svc.trend_scenario_summary(
             symbol,
             horizon_days=int(horizon_days or 5),
             lookback=int(lookback or 60),
-            class_name=class_name or "AshareDoubleMaStrategy",
-            fast_window=int(fast_window or 10),
-            slow_window=int(slow_window or 20),
+            class_name=class_name or "AshareShortBreakoutStrategy",
+            fast_window=int(fast_window or 5),
+            slow_window=int(slow_window or 10),
         )
         return json.dumps(result, ensure_ascii=False)
 

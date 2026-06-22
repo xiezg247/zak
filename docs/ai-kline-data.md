@@ -56,7 +56,7 @@ flowchart TB
 | 当前行情 | `get_quote_context` | **无** | Redis / 看盘页实时快照 |
 | K 线查询 | `get_bars_summary`、`get_bars_data` | **强** | 提示下载日 K |
 | 技术面快照 | `technical_snapshot` | **强** | 返回 warning（至少 2 根 K 线） |
-| 策略信号 | `list_strategy_signals` | **强** | 无法计算（默认双均线约需 25 根） |
+| 策略信号 | `list_strategy_signals` | **强** | 无法计算（默认 ShortBreakout 约需足够日 K；双均线约 25 根） |
 | 历史走势统计 | `historical_pattern_summary` | **优先** | 本地不足 → 问小达 MCP |
 | 走势情景分析 | `trend_scenario_summary` | **优先** | 本地不足 → MCP；仍无则提示下载 |
 | 综合诊断 | `diagnose_stock` | **无** | 问小达 MCP |

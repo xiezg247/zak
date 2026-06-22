@@ -238,7 +238,7 @@ Phase 5 ✅
 | P0 | 阶段边界 hysteresis | **已有** | `emotion_cycle_hysteresis` + 设置「阶段迟滞」 |
 | P0 | 监管异动 Tushare 官方偏离度 | **已有** | `stk_shock` / `stk_high_shock` + 本地合并 |
 | P0 | 子文档与 roadmap 状态对齐 | **已有** | 2026-06 首轮同步完成 |
-| P1 | 新用户 ultra_short onboarding | **已有** | 自选页首次引导 + 盘中布局预设 |
+| P1 | 新用户 Profile onboarding | **已有** | 默认 `short_swing`（AshareShortBreakoutStrategy 短线放量）+ 自选页首次风格选择 |
 | P1 | 选股 Hub「过滤至短线主池」 | **已有** | 结果条「短线主池」+ `ultra_short_pool_filter` |
 | P1 | 盘后 AI「龙头结构 + 明日观察」 | **已有** | 雷达共振侧栏「盘后解读」+ `build_eod_leader_prompt` |
 | P1 | 信号区+持仓 1m K 自动补全 | **已有** | Job `fill_focus_pool_minute`（关注池 = 信号区 ∪ 持仓）+ 分 K 回测预检 |

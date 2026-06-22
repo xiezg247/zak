@@ -1,17 +1,17 @@
 # 自选页策略信号区
 
 > **UI 架构**（`features/watchlist/`、Host 协议、工作流预设）见 [watchlist-ui.md](./watchlist-ui.md)。  
-> **交易风格**：默认短线波段 Profile（`AshareShortBreakoutStrategy`）。极致短线 / 中线观察切换见 [策略配置方案](./strategy-profiles.md)；Profile 下拉（SP-02）**已有**（信号区 + 持仓区）。
+> **交易风格**：默认短线波段 Profile（`AshareShortBreakoutStrategy`，短线放量突破）。其他风格切换见 [策略配置方案](./strategy-profiles.md)；Profile 下拉（SP-02）**已有**（信号区 + 持仓区）。
 
 ## 1. 功能概述
 
-自选页中部提供**独立策略信号区**：用户手动维护监控名单，基于双均线（可配快/慢线）展示买入/卖出/观望与参考价；与主表、图表、AI 联动；分层缓存与增量刷新。
+自选页中部提供**独立策略信号区**：用户手动维护监控名单，基于当前 Profile 策略（默认 `AshareShortBreakoutStrategy` 短线放量突破）展示买入/卖出/观望与参考价；与主表、图表、AI 联动；分层缓存与增量刷新。
 
 | 项 | 约定 |
 |----|------|
 | 页面范围 | 仅自选页（`page_name == "自选"`，`show_watchlist_signals=True`） |
 | 监控范围 | 信号区名单，**非**全自选池 |
-| 策略 | 默认 `AshareDoubleMaStrategy`，快 10 / 慢 20；可选 `AshareShortBreakoutStrategy` 等（`strategies/registry.py`） |
+| 策略 | 默认 `AshareShortBreakoutStrategy`（短线放量，快 5 / 慢 10）；Profile 切换见 [策略配置方案](./strategy-profiles.md) |
 | 合规 | `SIGNAL_DISCLAIMER`：规则计算结果，仅供研究，不构成买卖建议 |
 | 自选池上限 | 50 只（`WATCHLIST_MAX_ITEMS`） |
 | 信号区上限 | 10 只（`SIGNAL_PANEL_MAX_SYMBOLS`） |

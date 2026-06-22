@@ -8,6 +8,7 @@ from pydantic import Field
 
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.watchlist_signal import (
+    SIGNAL_STRATEGY_KEY,
     WatchlistSignalConfig,
     load_watchlist_signal_config,
     save_watchlist_signal_config,
@@ -45,6 +46,7 @@ STRATEGY_PROFILES: tuple[StrategyProfileSpec, ...] = (
         signal_class_name="AshareShortBreakoutStrategy",
         fast_window=5,
         slow_window=10,
+        transition_hint="短线放量突破（全局默认）",
     ),
     StrategyProfileSpec(
         profile_id="medium_watch",
@@ -111,3 +113,28 @@ def match_strategy_profile(config: WatchlistSignalConfig | None = None) -> Strat
         if probe.class_name == item.class_name and probe.fast_window == item.fast_window and probe.slow_window == item.slow_window:
             return spec.profile_id
     return load_strategy_profile_id()
+
+
+def bootstrap_strategy_profile() -> WatchlistSignalConfig:
+    """启动时保证 Profile / 信号区 / 硬过滤一致；全局默认 short_swing（短线放量）。"""
+    settings = get_settings()
+    has_profile = settings.contains(STRATEGY_PROFILE_KEY)
+    has_signal = settings.contains(SIGNAL_STRATEGY_KEY)
+    profile_id = load_strategy_profile_id()
+    current = load_watchlist_signal_config().normalized()
+
+    if not has_profile and not has_signal:
+        return apply_strategy_profile(DEFAULT_STRATEGY_PROFILE)
+
+    if not has_profile:
+        matched = match_strategy_profile(current)
+        save_strategy_profile_id(matched)
+        sync_hard_filter_for_strategy_profile(matched)
+        return current
+
+    expected = profile_signal_config(profile_id).normalized()
+    if profile_id == DEFAULT_STRATEGY_PROFILE and current.class_name != expected.class_name:
+        return apply_strategy_profile(profile_id)
+
+    sync_hard_filter_for_strategy_profile(profile_id)
+    return current

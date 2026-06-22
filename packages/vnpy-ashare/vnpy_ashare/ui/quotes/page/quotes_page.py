@@ -18,7 +18,7 @@ from vnpy_ashare.app.engine_access import (
     get_watchlist_service,
 )
 from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId, apply_strategy_profile
+from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId, apply_strategy_profile, bootstrap_strategy_profile
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_watchlist_position_config
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
 from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
@@ -153,7 +153,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._strategy_batch = WatchlistStrategyBatchCoordinator(self) if page_name == "自选" else None
         self._watchlist_groups: WatchlistGroupController | None = None
         self._loader = DataLoaderController(self)
-        self.signal_config: WatchlistSignalConfig = load_watchlist_signal_config()
+        self.signal_config: WatchlistSignalConfig = bootstrap_strategy_profile()
         self.position_config: WatchlistPositionConfig = load_watchlist_position_config()
         self.signal_cache: dict[str, SignalSnapshot] = {}
         self._signal_cache_config: WatchlistSignalConfig | None = None
