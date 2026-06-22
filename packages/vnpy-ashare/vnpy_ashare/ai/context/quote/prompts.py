@@ -93,6 +93,7 @@ def build_signal_panel_batch_ai_prompt(
     count = max(0, int(symbol_count or 0))
     return (
         f"请扫描自选页策略信号区共 {count} 只监控标的的双均线（MA{fast}/MA{slow}）信号。"
+        "请先调用 list_watchlist_signal_panel 获取各标的策略快照、个股延续（价量/资金/未来3日）与板块环境；"
         "汇总买入/卖出/观望分布，标出需关注的标的并说明理由；"
         "结合实时行情与信号快照解读，禁止给出具体买卖价或仓位建议。"
     )
@@ -117,7 +118,7 @@ def build_signal_panel_ai_prompt(
     )
     snapshot_text = (context_extra or "").strip()
     if not snapshot_text:
-        return f"{base}结合当前行情与信号区展示字段（参考价、距买价%）做研究解读，禁止给出具体买卖价或仓位建议。"
+        return f"{base}结合当前行情与信号区展示字段（参考价、距买价%、延续模式）做研究解读，禁止给出具体买卖价或仓位建议。"
     return (
         f"已知信号区快照（规则计算，非买卖建议）：\n{snapshot_text}\n\n{base}结合上述快照与工具返回核对解读；盘中提示仅供参考，禁止给出具体买卖价或仓位建议。"
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.domain.market.flow_pattern import classify_flow_pattern_values
 from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowHistoryPoint,
     SectorFlowRotationRow,
@@ -69,24 +70,7 @@ def rotation_trade_dates(*, days: int = _ROTATION_DAYS) -> tuple[str, ...]:
 def classify_flow_pattern(points: tuple[SectorFlowHistoryPoint, ...]) -> str:
     if not points:
         return "—"
-    values = [point.net_flow_yi for point in points]
-    positive_days = sum(1 for value in values if value > 0)
-    cumulative = sum(values)
-    first_7 = sum(values[:7])
-    second_8 = sum(values[7:])
-    last_5 = sum(values[-5:])
-    first_10 = sum(values[:10]) if len(values) >= 10 else sum(values[:-5]) if len(values) > 5 else 0.0
-    momentum_delta = last_5 - first_10
-
-    if positive_days >= 10 and momentum_delta > 0:
-        return "持续流入"
-    if positive_days <= 5 and cumulative < 0:
-        return "持续流出"
-    if first_7 < 0 and second_8 > 0:
-        return "先出后入"
-    if first_7 > 0 and second_8 < 0:
-        return "先入后出"
-    return "震荡"
+    return classify_flow_pattern_values(point.net_flow_yi for point in points)
 
 
 def _align_history_points(

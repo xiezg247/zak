@@ -21,6 +21,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import (
     signal_missing_kline,
     signal_snapshot_to_dict,
 )
+from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
 from vnpy_ashare.services.analysis_detail.diagnose import DiagnoseAnalyzer
 from vnpy_ashare.services.analysis_detail.historical_mcp import (
     enrich_local_historical_with_mcp,
@@ -37,7 +38,12 @@ from vnpy_ashare.services.analysis_detail.risk_metrics import (
 from vnpy_ashare.services.analysis_detail.team_facts import build_financial_extras, prefetch_team_facts
 from vnpy_ashare.services.analysis_detail.technical.analyzer import TechnicalAnalyzer
 from vnpy_ashare.services.base import BaseService
-from vnpy_ashare.services.signals.runtime import format_signal_context_extra
+from vnpy_ashare.services.signals.stock_continuation import (
+    build_continuation_batch,
+    continuation_snapshot_to_dict,
+    format_continuation_context_extra,
+    format_signal_panel_context_extra,
+)
 
 
 class AnalysisService(BaseService):
@@ -277,6 +283,16 @@ class AnalysisService(BaseService):
         """补算缺失的 relative_index_pct（磁盘旧快照或基准源切换后）。"""
         return self._technical.enrich_relative_index_batch(snapshots)
 
+    def enrich_continuation_batch(
+        self,
+        vt_symbols: list[str],
+        signal_cache: dict[str, SignalSnapshot],
+        *,
+        main_engine=None,
+    ) -> dict[str, StockContinuationSnapshot]:
+        """信号区：批量构建个股延续快照（价量 + 可选资金/板块环境）。"""
+        return build_continuation_batch(vt_symbols, signal_cache, main_engine=main_engine)
+
     def list_watchlist_signal_panel(
         self,
         *,
@@ -306,6 +322,7 @@ class AnalysisService(BaseService):
             fast_window=fast,
             slow_window=slow,
         )
+        continuations = build_continuation_batch(symbols, snaps, main_engine=self.main_engine)
 
         quote_map: dict[str, Any] = {}
         stock_items = []
@@ -334,14 +351,19 @@ class AnalysisService(BaseService):
                 "vt_symbol": vt_symbol,
                 "snapshot": signal_snapshot_to_dict(snap),
             }
+            continuation = continuations.get(vt_symbol)
+            if continuation is not None:
+                entry["continuation"] = continuation_snapshot_to_dict(continuation)
+                entry["continuation_context"] = format_continuation_context_extra(continuation)
             item = parse_stock_symbol(vt_symbol)
             if item is not None:
                 entry["name"] = item.name
                 quote = quote_map.get(item.tickflow_symbol)
                 if include_live_quote and quote is not None and quote.last_price > 0:
                     entry["quote_summary"] = format_quote_summary(quote)
-                    entry["live_context"] = format_signal_context_extra(
+                    entry["live_context"] = format_signal_panel_context_extra(
                         snap,
+                        continuation,
                         quote=quote,
                         fast_window=fast,
                         slow_window=slow,

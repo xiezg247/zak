@@ -9,7 +9,9 @@ from vnpy_ashare.services.sector_flow_outlook_strategy import build_sector_strat
 
 
 class SectorFlowSectorStrategyWorker(QtCore.QThread):
-    finished = QtCore.Signal(object)
+    """单板块策略扫描线程（勿用 finished 命名，避免与 QThread.finished 冲突）。"""
+
+    scan_finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
     def __init__(
@@ -54,7 +56,7 @@ class SectorFlowSectorStrategyWorker(QtCore.QThread):
         if not isinstance(row, SectorFlowOutlookRow):
             self.failed.emit("策略扫描结果无效")
             return
-        self.finished.emit(row)
+        self.scan_finished.emit(row)
 
 
 __all__ = ["SectorFlowSectorStrategyWorker"]

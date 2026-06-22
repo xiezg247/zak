@@ -17,11 +17,18 @@ SIGNAL_PANEL_OPTIONAL_COLUMNS: tuple[tuple[str, str], ...] = (
     ("dist_sell_pct", "距卖价%"),
     ("signal_strength", "强度"),
     ("relative_index_pct", "相对300%"),
+    ("continuation_pattern", "延续模式"),
+    ("outlook_compact", "未来3日"),
 )
 
-SIGNAL_PANEL_OPTIONAL_KEYS: frozenset[str] = frozenset(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS)
+_CONTINUATION_COLUMN_KEYS: frozenset[str] = frozenset({"continuation_pattern", "outlook_compact"})
 
-DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS)
+DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(
+    key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS if key not in _CONTINUATION_COLUMN_KEYS
+)
+
+
+SIGNAL_PANEL_OPTIONAL_KEYS: frozenset[str] = frozenset(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS)
 
 
 def normalize_visible_optional_keys(keys: list[str] | None) -> list[str]:

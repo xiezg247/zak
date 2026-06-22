@@ -25,7 +25,7 @@ from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.quotes.format import format_volume
-from vnpy_ashare.services.signals.runtime import format_signal_context_extra
+from vnpy_ashare.services.signals.stock_continuation import format_signal_panel_context_extra
 from vnpy_ashare.trading.journal.discipline_context import format_trading_discipline_extra
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
@@ -205,8 +205,10 @@ class ActionsController:
             return ""
         quote = page.quote_map.get(item.tickflow_symbol)
         cfg = page.signal_config.normalized()
-        return format_signal_context_extra(
+        continuation = page.continuation_cache.get(item.vt_symbol)
+        return format_signal_panel_context_extra(
             snap,
+            continuation,
             quote=quote,
             fast_window=cfg.fast_window,
             slow_window=cfg.slow_window,
@@ -602,9 +604,11 @@ class ActionsController:
             slow_window = cfg.slow_window
             class_name = cfg.class_name
             snap = page.signal_cache.get(vt_symbol)
+            continuation = page.continuation_cache.get(vt_symbol)
             if snap is not None:
-                context_extra = format_signal_context_extra(
+                context_extra = format_signal_panel_context_extra(
                     snap,
+                    continuation,
                     quote=quote,
                     fast_window=fast_window,
                     slow_window=slow_window,

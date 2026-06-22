@@ -19,6 +19,7 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 from vnpy_ashare.services.sector_flow import format_sector_net_flow_yi
 from vnpy_ashare.services.sector_flow_outlook import OUTLOOK_BIAS_LABELS, filter_outlook_rows
 from vnpy_ashare.services.sector_flow_rotation import FLOW_PATTERN_LABELS, filter_rotation_rows
+from vnpy_ashare.ui.sector_flow.outlook_batch import OUTLOOK_BATCH_SCAN_MAX, prepare_batch_sector_scans
 from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
 from vnpy_ashare.ui.sector_flow.outlook_table import SectorFlowOutlookTable
 from vnpy_ashare.ui.sector_flow.overview_panel import SectorFlowOverviewPanel
@@ -63,7 +64,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
     sector_kind_changed = QtCore.Signal(str)
     view_tab_changed = QtCore.Signal(int)
     outlook_strategy_changed = QtCore.Signal(str)
-    outlook_batch_strategy_scan_requested = QtCore.Signal(list)
+    outlook_batch_strategy_scan_requested = QtCore.Signal(object)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -216,7 +217,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._outlook_scan_selected_btn = QtWidgets.QPushButton("扫描选中", self._outlook_filter_host)
         self._outlook_scan_selected_btn.setObjectName("SecondaryButton")
         self._outlook_scan_selected_btn.setEnabled(False)
-        self._outlook_scan_selected_btn.setToolTip("对选中的板块串行跑当前策略（最多 5 个）")
+        self._outlook_scan_selected_btn.setToolTip(f"对选中的板块串行跑当前策略（最多 {OUTLOOK_BATCH_SCAN_MAX} 个）")
         self._outlook_scan_selected_btn.clicked.connect(self._emit_outlook_batch_strategy_scan)
         outlook_filter_row.addWidget(self._outlook_scan_selected_btn)
         outlook_hint = QtWidgets.QLabel("可多选板块 · 右键单板块")
@@ -371,14 +372,22 @@ class SectorFlowPanel(QtWidgets.QWidget):
         button = getattr(self, "_outlook_scan_selected_btn", None)
         if button is None:
             return
-        count = len(self._outlook_table.selected_sector_rows())
-        button.setEnabled(count > 0)
-        button.setText(f"扫描选中 ({count})" if count else "扫描选中")
+        selected = self._outlook_table.selected_sector_rows()
+        count = len(selected)
+        queue, _hint = prepare_batch_sector_scans(selected)
+        scan_count = len(queue)
+        button.setEnabled(scan_count > 0)
+        if count > OUTLOOK_BATCH_SCAN_MAX:
+            button.setText(f"扫描选中 ({OUTLOOK_BATCH_SCAN_MAX}/{count})")
+        elif count:
+            button.setText(f"扫描选中 ({count})")
+        else:
+            button.setText("扫描选中")
 
     def _emit_outlook_batch_strategy_scan(self) -> None:
-        sectors = self._outlook_table.selected_sector_rows()
-        if sectors:
-            self.outlook_batch_strategy_scan_requested.emit(sectors)
+        selected = self._outlook_table.selected_sector_rows()
+        if selected:
+            self.outlook_batch_strategy_scan_requested.emit(selected)
 
     def select_view_tab(self, tab_id: int, *, emit: bool = True) -> None:
         if tab_id == _TAB_OVERVIEW:

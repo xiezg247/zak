@@ -7,6 +7,7 @@ import unittest
 from vnpy_ashare.ai.context.quote.prompts import (
     build_positions_ai_prompt,
     build_signal_panel_ai_prompt,
+    build_signal_panel_batch_ai_prompt,
     build_signals_ai_prompt,
     build_trend_scenario_ai_prompt,
 )
@@ -22,6 +23,11 @@ class TestPrompts(unittest.TestCase):
         )
         self.assertIn("MA8/MA21", prompt)
         self.assertNotIn("list_strategy_signals", prompt)
+
+    def test_build_signal_panel_batch_ai_prompt_mentions_continuation(self) -> None:
+        prompt = build_signal_panel_batch_ai_prompt(symbol_count=5)
+        self.assertIn("list_watchlist_signal_panel", prompt)
+        self.assertIn("个股延续", prompt)
 
     def test_build_signal_panel_ai_prompt_includes_snapshot(self) -> None:
         prompt = build_signal_panel_ai_prompt(

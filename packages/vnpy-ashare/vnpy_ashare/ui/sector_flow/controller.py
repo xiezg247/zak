@@ -32,6 +32,7 @@ from vnpy_ashare.services.sector_flow_rotation import format_rotation_ai_lines
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_for_drilldown
 from vnpy_ashare.ui.sector_flow.leaders_worker import SectorLeadersLoadWorker
 from vnpy_ashare.ui.sector_flow.outlook_batch import (
+    coerce_sector_flow_rows,
     format_batch_scan_summary,
     prepare_batch_sector_scans,
 )
@@ -544,19 +545,17 @@ class SectorFlowController(QtCore.QObject):
         self._on_outlook_batch_strategy_scan_requested([sector])
 
     def _on_outlook_batch_strategy_scan_requested(self, sectors: object) -> None:
-        if not isinstance(sectors, list):
-            return
         if thread_is_active(self._sector_strategy_worker) or self._sector_strategy_queue:
             page_notify(self._page, "正在扫描板块，请稍候", level="info")
             return
-        candidates = [item for item in sectors if isinstance(item, SectorFlowRow)]
+        candidates = coerce_sector_flow_rows(sectors)
         queue, hint = prepare_batch_sector_scans(candidates)
         if not queue:
             page_notify(self._page, hint or "请先选择板块", level="info")
             return
         if hint:
             page_notify(self._page, hint, level="info")
-        self._sector_strategy_queue = queue
+        self._sector_strategy_queue = list(queue)
         self._sector_strategy_batch_total = len(queue)
         self._sector_strategy_batch_succeeded = 0
         self._sector_strategy_batch_failed = 0
@@ -566,6 +565,10 @@ class SectorFlowController(QtCore.QObject):
         self._start_next_sector_strategy_scan()
 
     def _start_next_sector_strategy_scan(self) -> None:
+        processed = self._sector_strategy_batch_succeeded + self._sector_strategy_batch_failed
+        if processed >= self._sector_strategy_batch_total > 0:
+            self._finish_sector_strategy_batch()
+            return
         if not self._sector_strategy_queue:
             self._finish_sector_strategy_batch()
             return
@@ -587,9 +590,9 @@ class SectorFlowController(QtCore.QObject):
             parent=self._page,
         )
         self._sector_strategy_worker = worker
-        worker.finished.connect(self._on_sector_strategy_scanned)
+        worker.scan_finished.connect(self._on_sector_strategy_scanned)
         worker.failed.connect(self._on_sector_strategy_failed)
-        worker.finished.connect(lambda _row, w=worker: self._release_sector_strategy_worker(w))
+        worker.scan_finished.connect(lambda _row, w=worker: self._release_sector_strategy_worker(w))
         worker.failed.connect(lambda _msg, w=worker: self._release_sector_strategy_worker(w))
         worker.start()
 
@@ -625,10 +628,6 @@ class SectorFlowController(QtCore.QObject):
 
     def _on_sector_strategy_scanned(self, row: object) -> None:
         if not isinstance(row, SectorFlowOutlookRow):
-            if self._sector_strategy_queue:
-                self._start_next_sector_strategy_scan()
-            else:
-                self._finish_sector_strategy_batch()
             return
         service = self._get_service()
         if service is None:

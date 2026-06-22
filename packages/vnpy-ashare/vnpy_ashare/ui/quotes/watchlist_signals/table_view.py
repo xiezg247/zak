@@ -21,6 +21,7 @@ from vnpy_ashare.domain.trading.signal_snapshot import (
     signal_missing_kline,
     signal_row_sort_key,
 )
+from vnpy_ashare.domain.trading.stock_continuation import format_outlook_compact
 from vnpy_ashare.services.signals.runtime import (
     build_price_field_explanations,
     build_runtime_signal_hints,
@@ -31,7 +32,7 @@ from vnpy_ashare.services.signals.runtime import (
 )
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_common.ui.theme.manager import theme_manager
-from vnpy_common.ui.theme.market_colors import market_colors
+from vnpy_common.ui.theme.market_colors import market_colors, pct_change_color
 
 _DETAIL_COLUMN_KEYS = ("signal_date", "signal_reason")
 
@@ -253,6 +254,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         snapshot = page.signal_cache.get(vt_symbol)
         missing_kline = signal_missing_kline(snapshot)
         bar_end_date = self._bar_end_date(vt_symbol)
+        continuation = page.continuation_cache.get(vt_symbol)
         values = _compute_row_values(
             item,
             snapshot,
@@ -260,6 +262,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             bar_end_date=bar_end_date,
             config=page.signal_config.normalized(),
             panel_columns=self._panel_columns(),
+            continuation=continuation,
         )
         tooltip = _compute_row_tooltip(
             snapshot,
@@ -268,6 +271,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             vt_symbol=vt_symbol,
             config=page.signal_config.normalized(),
             position_cache=page.position_cache,
+            continuation=continuation,
         )
         strength_tooltip = format_strength_breakdown(snapshot)
         colors = market_colors(theme_manager().tokens())
@@ -295,6 +299,15 @@ class SignalPanelTableView(QtWidgets.QWidget):
             )
             if missing_kline and key == "signal":
                 fg = warning_color
+            elif key in {"continuation_pattern", "outlook_compact"} and continuation is not None:
+                bias_value = 0.0
+                if continuation.outlook_days:
+                    bias = continuation.outlook_days[0].bias
+                    if bias == "偏多":
+                        bias_value = 1.0
+                    elif bias == "偏空":
+                        bias_value = -1.0
+                fg = pct_change_color(bias_value, theme_manager().tokens())
             if fg:
                 cell.setForeground(QtGui.QColor(fg))
             else:
@@ -348,6 +361,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         item = page.find_stock_item(vt_symbol)
         quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
         snapshot = page.signal_cache.get(vt_symbol)
+        continuation = page.continuation_cache.get(vt_symbol)
         values = _compute_row_values(
             item,
             snapshot,
@@ -355,6 +369,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             bar_end_date=self._bar_end_date(vt_symbol),
             config=page.signal_config.normalized(),
             panel_columns=self._panel_columns(),
+            continuation=continuation,
         )
         title_name = values.get("name") or vt_symbol
         detail = _compute_row_tooltip(
@@ -364,6 +379,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             vt_symbol=vt_symbol,
             config=page.signal_config.normalized(),
             position_cache=page.position_cache,
+            continuation=continuation,
         )
         if not detail.strip():
             detail = "暂无信号理由。"
@@ -380,6 +396,11 @@ class SignalPanelTableView(QtWidgets.QWidget):
         editor.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.WidgetWidth)
         layout.addWidget(editor, stretch=1)
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Close)
+        if continuation is not None and continuation.sector_id:
+            sector_btn = buttons.addButton("板块资金", QtWidgets.QDialogButtonBox.ButtonRole.ActionRole)
+            sector_btn.clicked.connect(
+                lambda _checked=False, sector_id=continuation.sector_id: self._open_sector_flow(sector_id)
+            )
         buttons.rejected.connect(dialog.reject)
         buttons.accepted.connect(dialog.accept)
         close_btn = buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Close)
@@ -387,6 +408,17 @@ class SignalPanelTableView(QtWidgets.QWidget):
             close_btn.clicked.connect(dialog.accept)
         layout.addWidget(buttons)
         dialog.exec()
+
+    def _open_sector_flow(self, sector_id: str) -> None:
+        cleaned = str(sector_id or "").strip()
+        if not cleaned:
+            return
+        widget = self._page
+        while widget is not None:
+            if hasattr(widget, "open_sector_flow"):
+                widget.open_sector_flow([cleaned], tab="outlook", sector_kind="industry")
+                return
+            widget = widget.parent()
 
     # ── 内部：筛选 ───────────────────────────────────────────
 
@@ -545,6 +577,7 @@ def _compute_row_values(
     bar_end_date: str | None = None,
     config,
     panel_columns: tuple[tuple[str, str], ...],
+    continuation=None,
 ) -> dict[str, str]:
     values: dict[str, str] = {
         "symbol": item.symbol if item is not None else "—",
@@ -568,6 +601,12 @@ def _compute_row_values(
     for key, _ in panel_columns:
         if key in {"symbol", "name"}:
             continue
+        if key == "continuation_pattern":
+            values[key] = continuation.headline_pattern if continuation else "—"
+            continue
+        if key == "outlook_compact":
+            values[key] = format_outlook_compact(continuation)
+            continue
         text, _ = signal_cell_text(key, snapshot, **cell_kwargs)
         values[key] = text
     for key in _DETAIL_COLUMN_KEYS:
@@ -586,6 +625,7 @@ def _compute_row_tooltip(
     vt_symbol: str = "",
     config,
     position_cache: dict,
+    continuation=None,
 ) -> str:
     lines: list[str] = []
     if snapshot is None:
@@ -650,6 +690,25 @@ def _compute_row_tooltip(
         lines.append("")
         lines.append("【强度分解】")
         lines.append(breakdown)
+    if continuation is not None and continuation.headline_pattern not in {"", "—"}:
+        lines.append("")
+        lines.append("【个股延续】")
+        if continuation.rationale:
+            lines.append(continuation.rationale)
+        if continuation.outlook_days:
+            tags = " / ".join(f"T+{index + 1}{day.bias}" for index, day in enumerate(continuation.outlook_days))
+            lines.append(f"未来3日：{tags}")
+        lines.append(continuation.disclaimer)
+    if continuation is not None and continuation.sector_name:
+        lines.append("")
+        lines.append("【板块环境】")
+        sector_line = continuation.sector_name
+        if continuation.sector_pattern:
+            sector_line += f"：{continuation.sector_pattern}"
+        if continuation.sector_outlook_compact and continuation.sector_outlook_compact != "—":
+            sector_line += f" {continuation.sector_outlook_compact}"
+        lines.append(sector_line)
+        lines.append("与个股延续独立，统计情景，非资金预测")
     if snapshot is not None:
         reason = values.get("signal_reason") or snapshot.reason_summary
         if reason and reason != "—":

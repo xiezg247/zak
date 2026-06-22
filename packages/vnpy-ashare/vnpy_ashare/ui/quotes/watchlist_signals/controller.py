@@ -99,6 +99,7 @@ class WatchlistSignalController:
             if subset:
                 enriched = self._enrich_relative_index(subset)
                 self._page.signal_cache.update(enriched)
+            self._enrich_continuation(symbols)
         panel = getattr(self._page, "signal_panel", None)
         if panel is not None:
             panel.set_updated_at(format_china_time_hm())
@@ -175,6 +176,22 @@ class WatchlistSignalController:
         cache.update(enriched)
         return cache
 
+    def _enrich_continuation(self, symbols: list[str]) -> None:
+        service = self._analysis_service()
+        if service is None or not symbols:
+            self._page.continuation_cache.clear()
+            return
+        built = service.enrich_continuation_batch(
+            symbols,
+            self._page.signal_cache,
+            main_engine=self._page._get_main_engine(),
+        )
+        kept = set(symbols)
+        stale = [vt for vt in list(self._page.continuation_cache) if vt not in kept]
+        for vt in stale:
+            self._page.continuation_cache.pop(vt, None)
+        self._page.continuation_cache.update(built)
+
     def hydrate_from_disk(self) -> bool:
         """从磁盘恢复上次快照到内存并渲染（重启后立即展示，后台再增量刷新）。"""
         symbols = self._panel_symbols()
@@ -190,6 +207,7 @@ class WatchlistSignalController:
             return False
         self._enrich_relative_index(hits)
         self._page.signal_cache.update(hits)
+        self._enrich_continuation(symbols)
         self._page._signal_cache_config = config
         self._apply_refresh_result()
         return True
@@ -231,6 +249,7 @@ class WatchlistSignalController:
 
         if not panel_symbols:
             self._page.signal_cache.clear()
+            self._page.continuation_cache.clear()
             self._page._signal_cache_config = None
             panel = getattr(self._page, "signal_panel", None)
             if panel is not None:
@@ -277,6 +296,7 @@ class WatchlistSignalController:
             before = {vt: self._page.signal_cache.get(vt) for vt in cache}
             self._enrich_relative_index(cache)
             self._page.signal_cache.update(cache)
+            self._enrich_continuation(list(cache))
             self._page._signal_cache_config = config
             if cache:
                 self._disk_cache.put_many(
@@ -316,6 +336,7 @@ class WatchlistSignalController:
 
     def invalidate_cache(self) -> None:
         self._page.signal_cache.clear()
+        self._page.continuation_cache.clear()
         self._page._signal_cache_config = None
         self._disk_cache.clear()
 
@@ -329,6 +350,7 @@ class WatchlistSignalController:
             return
         for vt in affected:
             self._page.signal_cache.pop(vt, None)
+            self._page.continuation_cache.pop(vt, None)
         self.refresh(symbols=affected)
 
     def on_symbols_changed(self) -> None:
@@ -344,6 +366,7 @@ class WatchlistSignalController:
         stale = [vt for vt in list(self._page.signal_cache) if vt not in kept]
         for vt in stale:
             self._page.signal_cache.pop(vt, None)
+            self._page.continuation_cache.pop(vt, None)
         panel.render_panel()
         missing = self._symbols_needing_refresh(kept)
         if missing:

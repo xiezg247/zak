@@ -10,6 +10,7 @@ from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowRow,
 )
 from vnpy_ashare.services.sector_flow_outlook_strategy import classify_sector_resonance
+from vnpy_ashare.ui.sector_flow.outlook_batch import OUTLOOK_BATCH_SCAN_MAX
 from vnpy_common.ui.data_table import configure_data_table
 from vnpy_common.ui.theme.manager import theme_manager
 
@@ -49,7 +50,7 @@ class SectorFlowOutlookTable(QtWidgets.QTableWidget):
     sector_selected = QtCore.Signal(object)
     detail_requested = QtCore.Signal(object)
     sector_strategy_scan_requested = QtCore.Signal(object)
-    batch_strategy_scan_requested = QtCore.Signal(list)
+    batch_strategy_scan_requested = QtCore.Signal(object)
     sector_ai_requested = QtCore.Signal(object)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -230,7 +231,10 @@ class SectorFlowOutlookTable(QtWidgets.QTableWidget):
             selected = [sector]
         menu = QtWidgets.QMenu(self)
         if len(selected) > 1:
-            scan_action = menu.addAction(f"扫描选中 {len(selected)} 个板块")
+            if len(selected) > OUTLOOK_BATCH_SCAN_MAX:
+                scan_action = menu.addAction(f"扫描选中 {OUTLOOK_BATCH_SCAN_MAX} 个板块（已截断）")
+            else:
+                scan_action = menu.addAction(f"扫描选中 {len(selected)} 个板块")
         else:
             scan_action = menu.addAction("按策略扫描本板块")
         ai_action = menu.addAction("AI 解读本板块")

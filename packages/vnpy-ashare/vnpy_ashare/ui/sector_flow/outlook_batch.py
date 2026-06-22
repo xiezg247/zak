@@ -2,13 +2,38 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
 
 OUTLOOK_BATCH_SCAN_MAX = 5
 
 
+def _sector_scan_key(sector: SectorFlowRow) -> str:
+    sector_id = str(sector.sector_id or "").strip()
+    if sector_id:
+        return f"id:{sector_id}"
+    name = str(sector.name or "").strip()
+    if name:
+        return f"name:{name}"
+    return ""
+
+
+def coerce_sector_flow_rows(value: object) -> list[SectorFlowRow]:
+    """从 Qt 信号 payload 解析板块行。"""
+    if isinstance(value, SectorFlowRow):
+        return [value]
+    if not isinstance(value, (list, tuple)):
+        return []
+    rows: list[SectorFlowRow] = []
+    for item in value:
+        if isinstance(item, SectorFlowRow):
+            rows.append(item)
+    return rows
+
+
 def prepare_batch_sector_scans(
-    sectors: list[SectorFlowRow],
+    sectors: Iterable[SectorFlowRow],
     *,
     max_count: int = OUTLOOK_BATCH_SCAN_MAX,
 ) -> tuple[list[SectorFlowRow], str | None]:
@@ -16,10 +41,10 @@ def prepare_batch_sector_scans(
     seen: set[str] = set()
     unique: list[SectorFlowRow] = []
     for sector in sectors:
-        sector_id = str(sector.sector_id or "").strip()
-        if not sector_id or sector_id in seen:
+        key = _sector_scan_key(sector)
+        if not key or key in seen:
             continue
-        seen.add(sector_id)
+        seen.add(key)
         unique.append(sector)
     if not unique:
         return [], "请先选择板块"

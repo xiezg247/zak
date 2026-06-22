@@ -8,6 +8,7 @@ import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
 from vnpy_ashare.ui.sector_flow.outlook_batch import (
     OUTLOOK_BATCH_SCAN_MAX,
+    coerce_sector_flow_rows,
     format_batch_scan_summary,
     prepare_batch_sector_scans,
 )
@@ -44,6 +45,26 @@ class OutlookBatchScanTests(unittest.TestCase):
         queue, hint = prepare_batch_sector_scans(sectors)
         self.assertEqual(len(queue), OUTLOOK_BATCH_SCAN_MAX)
         self.assertIn(str(OUTLOOK_BATCH_SCAN_MAX), hint or "")
+
+    def test_coerce_tuple_payload(self) -> None:
+        sector = _sector("a")
+        self.assertEqual(coerce_sector_flow_rows((sector,)), [sector])
+
+    def test_dedup_by_name_when_id_missing(self) -> None:
+        row = SectorFlowRow(
+            sector_id="",
+            name="半导体",
+            strength=1.0,
+            change_pct=1.0,
+            net_flow_yi=1.0,
+            stock_count=10,
+            up_ratio=0.5,
+            flow_source="dc_industry",
+            sector_kind="industry",
+        )
+        queue, hint = prepare_batch_sector_scans([row, row])
+        self.assertEqual(len(queue), 1)
+        self.assertIsNone(hint)
 
     def test_format_batch_summary(self) -> None:
         text = format_batch_scan_summary(
