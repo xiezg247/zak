@@ -51,6 +51,7 @@ class AshareEngine(BaseEngine):
         self.risk_gate_engine = RiskGateEngine()
         self.notification_service = NotificationService(self)
         self.scheduler.add_job_finished_hook(self.notification_service.on_job_finished)
+        self.scheduler.bind_engine(self)
 
     def close(self) -> None:
         self.notification_service.shutdown()

@@ -18,12 +18,16 @@ SIGNAL_PANEL_SYMBOLS_KEY = "watchlist/signal_panel/symbols"
 SIGNAL_PANEL_ENABLED_KEY = "watchlist/signal_panel/enabled"
 SIGNAL_PANEL_EXPANDED_KEY = "watchlist/signal_panel/expanded"
 SIGNAL_PANEL_COLUMNS_KEY = "watchlist/signal_panel/columns"
+SIGNAL_STALE_SWEEP_MINUTES_KEY = "watchlist/signal_stale_sweep_minutes"
 SIGNAL_CENTER_SPLITTER_SIZES_KEY = "watchlist/center_splitter/sizes"
 SIGNAL_PANEL_MAX_SYMBOLS = 10
 
 DEFAULT_CLASS = "AshareShortBreakoutStrategy"
 DEFAULT_FAST = 5
 DEFAULT_SLOW = 10
+DEFAULT_STALE_SWEEP_MINUTES = 30
+MIN_STALE_SWEEP_MINUTES = 5
+MAX_STALE_SWEEP_MINUTES = 120
 
 
 class WatchlistSignalConfig(FrozenModel):
@@ -165,3 +169,20 @@ def save_center_splitter_sizes(sizes: list[int]) -> None:
     settings = get_settings()
     cleaned = [max(0, int(value)) for value in sizes]
     settings.setValue(SIGNAL_CENTER_SPLITTER_SIZES_KEY, ",".join(str(value) for value in cleaned))
+
+
+def load_watchlist_strategy_stale_sweep_minutes() -> int:
+    settings = get_settings()
+    raw = settings.value(SIGNAL_STALE_SWEEP_MINUTES_KEY, DEFAULT_STALE_SWEEP_MINUTES)
+    minutes = coerce_settings_int(raw, default=DEFAULT_STALE_SWEEP_MINUTES)
+    return max(MIN_STALE_SWEEP_MINUTES, min(minutes, MAX_STALE_SWEEP_MINUTES))
+
+
+def load_watchlist_strategy_stale_sweep_ms() -> int:
+    return load_watchlist_strategy_stale_sweep_minutes() * 60 * 1000
+
+
+def save_watchlist_strategy_stale_sweep_minutes(minutes: int) -> None:
+    settings = get_settings()
+    value = max(MIN_STALE_SWEEP_MINUTES, min(int(minutes), MAX_STALE_SWEEP_MINUTES))
+    settings.setValue(SIGNAL_STALE_SWEEP_MINUTES_KEY, value)

@@ -25,6 +25,7 @@ class WatchlistSignalController:
         self._page = page
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
         self._disk_cache = WatchlistSignalDiskCache()
+        self._last_panel_symbols: set[str] = set()
 
     def _enabled(self) -> bool:
         if not self._page.config.show_watchlist_signals or self._page.page_name != "自选":
@@ -368,6 +369,13 @@ class WatchlistSignalController:
             self._page.signal_cache.pop(vt, None)
             self._page.continuation_cache.pop(vt, None)
         panel.render_panel()
+        previous = self._last_panel_symbols
+        current = set(kept)
+        added = current - previous
+        self._last_panel_symbols = current
+        if added and previous:
+            self.refresh(symbols=list(added), force=True)
+            return
         missing = self._symbols_needing_refresh(kept)
         if missing:
             self.refresh(symbols=missing)

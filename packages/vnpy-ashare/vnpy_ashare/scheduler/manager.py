@@ -7,7 +7,7 @@ import threading
 from collections import deque
 from collections.abc import Callable
 from datetime import datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from apscheduler.events import EVENT_JOB_MAX_INSTANCES
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -37,6 +37,7 @@ from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
 from vnpy_ashare.jobs.sync.suspend_sync import sync_suspend_daily_job
 from vnpy_ashare.jobs.sync.trade_calendar import sync_trade_calendar_job
 from vnpy_ashare.jobs.sync.universe import sync_universe_job
+from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
 from vnpy_ashare.scheduler.config import (
     AutoScreenJobConfig,
     JobConfig,
@@ -47,6 +48,9 @@ from vnpy_ashare.scheduler.config import (
 from vnpy_ashare.scheduler.job_meta import load_job_run_meta, save_job_run_meta
 from vnpy_ashare.screener.recipe.recipe import resolve_recipe
 from vnpy_common.domain.base import MutableModel
+
+if TYPE_CHECKING:
+    from vnpy_ashare.app.engine import AshareEngine
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5
@@ -129,6 +133,7 @@ class TaskSchedulerManager:
         self._listeners: list[Callable[[str], None]] = []
         self._job_finished_hooks: list[Callable[[str, JobResult], None]] = []
         self._run_log: deque[JobRunRecord] = deque(maxlen=_MAX_RUN_LOG)
+        self._engine: AshareEngine | None = None
 
         self._jobs: dict[str, _JobMeta] = {
             "collect_quotes": _JobMeta(
@@ -269,6 +274,19 @@ class TaskSchedulerManager:
                     minute=cfg.cron_minute,
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在概念预拉之后）",
+            ),
+            "warm_watchlist_strategy_cache": _JobMeta(
+                job_id="warm_watchlist_strategy_cache",
+                name="策略信号磁盘预热",
+                description="收盘后为信号区/持仓区名单重算策略快照并写入磁盘 cache，供 UI hydrate",
+                runner=lambda: warm_watchlist_strategy_cache_job(engine=self._engine),
+                config_attr="warm_watchlist_strategy_cache",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    hour=cfg.cron_hour,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在日 K 补全之后）",
             ),
             "sync_watchlist_financials": _JobMeta(
                 job_id="sync_watchlist_financials",
@@ -445,6 +463,9 @@ class TaskSchedulerManager:
 
     def add_listener(self, callback: Callable[[str], None]) -> None:
         self._listeners.append(callback)
+
+    def bind_engine(self, engine: AshareEngine) -> None:
+        self._engine = engine
 
     def remove_listener(self, callback: Callable[[str], None]) -> None:
         if callback in self._listeners:
@@ -675,6 +696,7 @@ class TaskSchedulerManager:
             "screen_intraday",
             "screen_post_close",
             "scan_horizon_outlook",
+            "warm_watchlist_strategy_cache",
         )
         self._scheduler.add_job(
             self._wrap_job,
@@ -708,6 +730,8 @@ class TaskSchedulerManager:
                 result = run_scheduled_auto_screen(job_id, force=force)
             elif job_id == "scan_horizon_outlook":
                 result = run_horizon_outlook_scan_job(force=force)
+            elif job_id == "warm_watchlist_strategy_cache":
+                result = warm_watchlist_strategy_cache_job(engine=self._engine, force=force)
             else:
                 result = meta.runner()
             message = result.message

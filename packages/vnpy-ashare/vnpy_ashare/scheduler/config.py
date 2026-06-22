@@ -129,6 +129,15 @@ class SchedulerConfig(MutableModel):
         ),
         description="预热市场摘要任务配置",
     )
+    warm_watchlist_strategy_cache: JobConfig = Field(
+        default_factory=lambda: JobConfig(
+            enabled=False,
+            cron_hour=16,
+            cron_minute=38,
+            cron_day_of_week="mon-fri",
+        ),
+        description="策略信号磁盘预热任务配置",
+    )
     sync_watchlist_financials: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=True,
@@ -228,6 +237,7 @@ class SchedulerConfig(MutableModel):
             "prefetch_tushare": dump_job(self.prefetch_tushare),
             "prefetch_concept_board": dump_job(self.prefetch_concept_board),
             "warm_market_summary": dump_job(self.warm_market_summary),
+            "warm_watchlist_strategy_cache": dump_job(self.warm_watchlist_strategy_cache),
             "sync_watchlist_financials": dump_job(self.sync_watchlist_financials),
             "sync_disclosure_calendar": dump_job(self.sync_disclosure_calendar),
             "batch_fill_stale": dump_job(self.batch_fill_stale),
@@ -276,6 +286,10 @@ class SchedulerConfig(MutableModel):
             prefetch_tushare=load_job("prefetch_tushare", defaults.prefetch_tushare),
             prefetch_concept_board=load_job("prefetch_concept_board", defaults.prefetch_concept_board),
             warm_market_summary=load_job("warm_market_summary", defaults.warm_market_summary),
+            warm_watchlist_strategy_cache=load_job(
+                "warm_watchlist_strategy_cache",
+                defaults.warm_watchlist_strategy_cache,
+            ),
             sync_watchlist_financials=load_job("sync_watchlist_financials", defaults.sync_watchlist_financials),
             sync_disclosure_calendar=load_job("sync_disclosure_calendar", defaults.sync_disclosure_calendar),
             batch_fill_stale=load_job("batch_fill_stale", defaults.batch_fill_stale),

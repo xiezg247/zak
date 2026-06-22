@@ -307,8 +307,6 @@ class TableController:
         table_rows = self._model().row_count()
         if not display_unchanged or table_rows != len(next_display) or page.config.use_local_table:
             self.render_table()
-        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
-            page._strategy_refresh.start()
         if page.config.auto_refresh_quotes:
             if is_ashare_trading_session():
                 page.refresh_quotes()

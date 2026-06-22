@@ -30,6 +30,7 @@ class WatchlistPositionController:
         self._page = page
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
         self._disk_cache = WatchlistPositionDiskCache()
+        self._last_position_symbols: set[str] = set()
 
     def _enabled(self) -> bool:
         if not self._page.config.show_watchlist_positions or self._page.page_name != "自选":
@@ -402,6 +403,13 @@ class WatchlistPositionController:
         panel = getattr(self._page, "position_panel", None)
         if panel is not None:
             panel.render_panel()
+        previous = self._last_position_symbols
+        current = set(record_map)
+        added = current - previous
+        self._last_position_symbols = current
+        if added and previous:
+            self.refresh(symbols=list(added), force=True)
+            return
         missing = self._symbols_needing_refresh(list(record_map), record_map)
         if missing:
             self.refresh(symbols=missing)

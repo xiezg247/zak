@@ -22,9 +22,11 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_signal_panel_columns,
     load_signal_panel_enabled,
     load_signal_panel_expanded,
+    load_watchlist_strategy_stale_sweep_minutes,
     save_signal_panel_columns,
     save_signal_panel_enabled,
     save_signal_panel_expanded,
+    save_watchlist_strategy_stale_sweep_minutes,
 )
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
@@ -186,6 +188,13 @@ class SignalPanelHeader(QtWidgets.QWidget):
         self._slow_spin.setPrefix("慢 ")
         self._slow_spin.setValue(self._page.signal_config.slow_window)
 
+        self._sweep_spin = QtWidgets.QSpinBox(self)
+        self._sweep_spin.setRange(5, 120)
+        self._sweep_spin.setPrefix("巡检 ")
+        self._sweep_spin.setSuffix(" 分")
+        self._sweep_spin.setToolTip("交易时段内策略 stale 巡检间隔（仅补算过期快照，与 3 秒行情刷新分离）")
+        self._sweep_spin.setValue(load_watchlist_strategy_stale_sweep_minutes())
+
         self._register_position_button = QtWidgets.QPushButton("→ 登记持仓", self)
         self._register_position_button.setObjectName("SecondaryButton")
         self._register_position_button.clicked.connect(self._on_register_position_clicked)
@@ -225,6 +234,7 @@ class SignalPanelHeader(QtWidgets.QWidget):
         layout.addWidget(self._strategy_combo)
         layout.addWidget(self._fast_spin)
         layout.addWidget(self._slow_spin)
+        layout.addWidget(self._sweep_spin)
         layout.addWidget(self._register_position_button)
         layout.addWidget(self._remove_button)
         layout.addWidget(self._clear_button)
@@ -235,11 +245,13 @@ class SignalPanelHeader(QtWidgets.QWidget):
 
         self._fast_spin.valueChanged.connect(self._emit_config_changed)
         self._slow_spin.valueChanged.connect(self._emit_config_changed)
+        self._sweep_spin.valueChanged.connect(self._on_sweep_interval_changed)
 
         self._body_widgets = [
             self._strategy_combo,
             self._fast_spin,
             self._slow_spin,
+            self._sweep_spin,
             self._register_position_button,
             self._remove_button,
             self._clear_button,
@@ -329,6 +341,12 @@ class SignalPanelHeader(QtWidgets.QWidget):
             self.setMaximumHeight(SIGNAL_PANEL_COLLAPSED_HEIGHT + 4)
         if emit:
             self.expansion_changed.emit(expanded)
+
+    def _on_sweep_interval_changed(self, value: int) -> None:
+        save_watchlist_strategy_stale_sweep_minutes(value)
+        sweep = getattr(self._page, "_strategy_refresh", None)
+        if sweep is not None:
+            sweep.reapply_interval()
 
     def _emit_config_changed(self) -> None:
         if self._building:

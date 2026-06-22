@@ -85,6 +85,7 @@ class TestSchedulerConfig(unittest.TestCase):
         self.assertIn("batch_fill_stale", job_ids)
         self.assertIn("prefetch_concept_board", job_ids)
         self.assertIn("warm_market_summary", job_ids)
+        self.assertIn("warm_watchlist_strategy_cache", job_ids)
         self.assertNotIn("batch_download", job_ids)
 
     def test_new_job_config_roundtrip(self) -> None:

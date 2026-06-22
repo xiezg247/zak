@@ -25,6 +25,7 @@ from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
 from vnpy_ashare.jobs.sync.suspend_sync import sync_suspend_daily_job
 from vnpy_ashare.jobs.sync.trade_calendar import sync_trade_calendar_job
 from vnpy_ashare.jobs.sync.universe import sync_universe_job
+from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
 from vnpy_ashare.scheduler.config import load_scheduler_config
 
 _COLLECT_QUOTES_INTERVAL_MIN = 5
@@ -39,6 +40,7 @@ JOB_CATALOG: dict[str, tuple[str, str]] = {
     "sync_sector_flow_daily": ("板块资金同步", "收盘后拉取东财行业/同花顺概念板块资金流近 N 日到本地"),
     "prefetch_concept_board": ("概念板块预拉", "预热同花顺概念指数、行情与强势概念成分映射"),
     "warm_market_summary": ("市场摘要预热", "计算情绪周期并写入内存缓存"),
+    "warm_watchlist_strategy_cache": ("策略信号磁盘预热", "为信号区/持仓区名单重算策略快照并写入磁盘 cache"),
     "sync_suspend_daily": ("停牌日同步", "收盘后增量拉取最近交易日全市场停牌记录"),
     "prefetch_tushare": ("Tushare 因子预拉", "收盘后拉取 daily_basic、涨跌停、指数、北向等写入本地缓存"),
     "sync_watchlist_financials": ("同步自选财报", "增量拉取自选池三表与财务指标到本地"),
@@ -117,6 +119,8 @@ def run_job(job_id: str, *, force: bool = False, download_start: str | None = No
         return run_scheduled_auto_screen(job_id, force=force)
     if job_id == "scan_horizon_outlook":
         return run_horizon_outlook_scan_job(force=force)
+    if job_id == "warm_watchlist_strategy_cache":
+        return warm_watchlist_strategy_cache_job(engine=None, force=force)
     if job_id == "batch_download_universe":
         start = download_start or load_scheduler_config().batch_download_universe.download_start
         return batch_download_universe_daily_bars(daily_start=start)
