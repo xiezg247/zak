@@ -28,6 +28,7 @@ from vnpy_ashare.ui.quotes.stock_notes.ai_assist import (
     get_llm_config,
 )
 from vnpy_ashare.ui.quotes.stock_notes.journal_tab import StockNoteJournalTab
+from vnpy_ashare.ui.quotes.watchlist_positions.trade_journal_manage_view import TradeJournalManageView
 from vnpy_common.paths import BACKUP_DIR
 from vnpy_common.ui.dialog_shell import build_panel_footer
 from vnpy_common.ui.feedback import page_notify
@@ -43,6 +44,7 @@ _FILTER_MEMO = "memo"
 _FILTER_JOURNAL = "journal"
 _FILTER_REPORT = "report"
 _TAB_PLANS = 3
+_TAB_TRADE_JOURNAL = 4
 
 _SYMBOL_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 _EXCHANGE_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -98,6 +100,7 @@ class NotesCenterWidget(QtWidgets.QWidget):
         self._journal_view = StockNoteJournalTab(self)
         self._reports_view = NotesCenterReportsView(self)
         self._plans_view = NotesCenterPlansView(self)
+        self._trade_journal_view = TradeJournalManageView(self, initial_days=30)
 
         self._tabs = QtWidgets.QTabWidget(self)
         self._tabs.setObjectName("NotesCenterTabs")
@@ -105,6 +108,7 @@ class NotesCenterWidget(QtWidgets.QWidget):
         self._tabs.addTab(self._journal_view, "流水")
         self._tabs.addTab(self._reports_view, "分析报告")
         self._tabs.addTab(self._plans_view, "计划")
+        self._tabs.addTab(self._trade_journal_view, "交易流水")
         self._tabs.currentChanged.connect(self._on_tab_changed)
 
         self._left_panel = left_panel
@@ -163,12 +167,21 @@ class NotesCenterWidget(QtWidgets.QWidget):
         self._journal_view.ai_polish_requested.connect(self._on_ai_polish_journal)
         self._reports_view.report_delete_requested.connect(self._on_report_delete)
         self._plans_view.open_plan_in_watchlist_requested.connect(self._open_plan_symbol_in_watchlist)
+        self._trade_journal_view.entries_changed.connect(self._on_trade_journal_changed)
 
         theme_manager().bind_stylesheet(self)
         self._set_detail_enabled(False)
 
     def focus_tab(self, tab: str) -> None:
-        mapping = {"memo": 0, "journal": 1, "reports": 2, "plan": 3, "plans": 3}
+        mapping = {
+            "memo": 0,
+            "journal": 1,
+            "reports": 2,
+            "plan": 3,
+            "plans": 3,
+            "trade_journal": _TAB_TRADE_JOURNAL,
+            "trade-journal": _TAB_TRADE_JOURNAL,
+        }
         index = mapping.get(tab.strip().lower(), 0)
         self._tabs.setCurrentIndex(index)
 
@@ -276,6 +289,11 @@ class NotesCenterWidget(QtWidgets.QWidget):
             return
         self._memo_view.flush_if_dirty()
         self._current_row = row
+        if self._tabs.currentIndex() == _TAB_TRADE_JOURNAL:
+            self._detail_title.setText(f"交易流水 · {row.vt_symbol}")
+            self._trade_journal_view.set_symbol_filter(symbol=row.symbol, exchange=row.exchange)
+            self._trade_journal_view.reload()
+            return
         self._load_detail(row)
 
     def _load_detail(self, row: StockNoteIndexRow) -> None:
@@ -306,7 +324,11 @@ class NotesCenterWidget(QtWidgets.QWidget):
         self._set_detail_enabled(False)
 
     def _set_detail_enabled(self, enabled: bool) -> None:
-        self._tabs.setEnabled(enabled)
+        self._tabs.setTabEnabled(0, enabled)
+        self._tabs.setTabEnabled(1, enabled)
+        self._tabs.setTabEnabled(2, enabled)
+        self._tabs.setTabEnabled(_TAB_PLANS, True)
+        self._tabs.setTabEnabled(_TAB_TRADE_JOURNAL, True)
         self._watchlist_button.setEnabled(enabled)
         self._analysis_button.setEnabled(enabled)
         self._export_button.setEnabled(enabled)
@@ -315,12 +337,25 @@ class NotesCenterWidget(QtWidgets.QWidget):
         if index != 0:
             self._memo_view.flush_if_dirty()
         on_plans = index == _TAB_PLANS
-        self._left_panel.setVisible(not on_plans)
+        on_trade_journal = index == _TAB_TRADE_JOURNAL
+        self._left_panel.setVisible(not on_plans and not on_trade_journal)
         self._detail_title.setVisible(not on_plans)
-        self._watchlist_button.setEnabled(not on_plans and self._current_row is not None)
-        self._analysis_button.setEnabled(not on_plans and self._current_row is not None)
-        self._export_button.setEnabled(not on_plans and self._current_row is not None)
-        if on_plans:
+        self._watchlist_button.setEnabled(not on_plans and not on_trade_journal and self._current_row is not None)
+        self._analysis_button.setEnabled(not on_plans and not on_trade_journal and self._current_row is not None)
+        self._export_button.setEnabled(not on_plans and not on_trade_journal and self._current_row is not None)
+        if on_trade_journal:
+            self._detail_title.setText("登记流水（结构化）")
+            self._detail_title.setVisible(True)
+            if self._current_row is not None:
+                self._trade_journal_view.set_symbol_filter(
+                    symbol=self._current_row.symbol,
+                    exchange=self._current_row.exchange,
+                )
+            else:
+                self._trade_journal_view.set_symbol_filter()
+            self._trade_journal_view.reload()
+            self._status_label.setText("交易流水 · 可查看 / 编辑 / 删除登记卖出")
+        elif on_plans:
             self._detail_title.setText("交易计划历史")
             self._plans_view.reload()
             self._status_label.setText("交易计划 · 盘后制定、盘前执行")
@@ -329,6 +364,9 @@ class NotesCenterWidget(QtWidgets.QWidget):
             self._detail_title.setText(f"{title}  {self._current_row.vt_symbol}")
         else:
             self._detail_title.setText("选择左侧标的查看笔记")
+
+    def _on_trade_journal_changed(self) -> None:
+        self._status_label.setText("交易流水已更新")
 
     def _stock_item_from_row(self, row: StockNoteIndexRow) -> StockItem | None:
         try:

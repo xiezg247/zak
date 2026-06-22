@@ -382,8 +382,13 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         refresh_risk_gate_chip(chip, page=self)
 
     def _open_risk_settings(self) -> None:
-        dialog = RiskSettingsDialog(parent=self)
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+        cache = getattr(self, "position_cache", None)
+        position_cache = cache if isinstance(cache, dict) else None
+        if RiskSettingsDialog.open_and_save(
+            self,
+            position_cache=position_cache,
+            on_prefs_changed=self._refresh_risk_gate_chip,
+        ):
             self._refresh_risk_gate_chip()
 
     def deactivate(self) -> None:

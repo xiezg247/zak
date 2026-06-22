@@ -349,7 +349,16 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self.rows_changed.emit()
 
     def _on_risk_settings_clicked(self) -> None:
-        if RiskSettingsDialog.open_and_save(self):
+        page = self._page
+        cache = getattr(page, "position_cache", None)
+        position_cache = cache if isinstance(cache, dict) else None
+        refresh = getattr(page, "_refresh_risk_gate_chip", None)
+        on_changed = refresh if callable(refresh) else None
+        if RiskSettingsDialog.open_and_save(
+            self,
+            position_cache=position_cache,
+            on_prefs_changed=on_changed,
+        ):
             self._page.status_label.setText("已保存交易风控设置")
             self.render_panel()
 
@@ -358,5 +367,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         dialog.exec()
 
     def _on_journal_clicked(self) -> None:
-        dialog = JournalReportDialog(parent=self)
+        page = self._page
+        refresh = getattr(page, "_refresh_risk_gate_chip", None)
+        on_changed = refresh if callable(refresh) else None
+        dialog = JournalReportDialog(parent=self, on_entries_changed=on_changed)
         dialog.exec()

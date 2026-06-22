@@ -157,7 +157,11 @@ def evaluate_drawdown(
     return updated, weekly_dd, total_dd, warnings
 
 
-def reset_peak_equity(*, total_capital: float | None = None) -> None:
+def reset_peak_equity(
+    *,
+    total_capital: float | None = None,
+    position_cache: Mapping[str, PositionSnapshot] | None = None,
+) -> None:
     """重置峰值权益（用户手动校准）。"""
     prefs = load_trading_risk_prefs()
     capital = total_capital if total_capital is not None and total_capital > 0 else prefs.total_capital
@@ -175,11 +179,13 @@ def reset_peak_equity(*, total_capital: float | None = None) -> None:
         )
         return
     today = _today()
+    current = compute_current_equity(total_capital=capital, position_cache=position_cache)
+    peak = current if current > 0 else capital
     save_trading_risk_prefs(
         prefs.model_copy(
             update={
-                "peak_equity": capital,
-                "week_peak_equity": capital,
+                "peak_equity": peak,
+                "week_peak_equity": peak,
                 "week_peak_key": _iso_week_key(today),
                 "halt_until": None,
                 "halt_reason": "",

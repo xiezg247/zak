@@ -100,6 +100,9 @@ def query_trade_journal(
     *,
     start_date: str | None = None,
     end_date: str | None = None,
+    side: str | None = None,
+    symbol: str | None = None,
+    exchange: str | None = None,
     limit: int = 100,
 ) -> list[TradeJournalEntry]:
     init_app_db()
@@ -111,6 +114,15 @@ def query_trade_journal(
     if end_date:
         clauses.append("trade_date <= ?")
         values.append(end_date[:10])
+    if side:
+        clauses.append("side = ?")
+        values.append(side.strip())
+    if symbol:
+        clauses.append("symbol = ?")
+        values.append(symbol.strip())
+    if exchange:
+        clauses.append("exchange = ?")
+        values.append(exchange.strip())
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     values.append(max(1, limit))
     with connect() as conn:
@@ -124,6 +136,74 @@ def query_trade_journal(
             tuple(values),
         ).fetchall()
     return [_row_to_entry(row) for row in rows]
+
+
+def get_trade_journal_entry(entry_id: int) -> TradeJournalEntry | None:
+    init_app_db()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM trade_journal WHERE id = ?",
+            (int(entry_id),),
+        ).fetchone()
+    return _row_to_entry(row) if row is not None else None
+
+
+def update_trade_journal_entry(
+    entry_id: int,
+    *,
+    trade_date: str | None = None,
+    price: float | None = None,
+    volume: int | None = None,
+    mode: str | None = None,
+    on_plan: bool | None = None,
+    violation_tags: tuple[str, ...] | list[str] | None = None,
+    pnl: float | None = None,
+    pnl_pct: float | None = None,
+    reason: str | None = None,
+) -> bool:
+    existing = get_trade_journal_entry(entry_id)
+    if existing is None:
+        return False
+    updates: dict[str, object] = {}
+    if trade_date is not None:
+        updates["trade_date"] = trade_date[:10]
+    if price is not None:
+        updates["price"] = price
+    if volume is not None:
+        updates["volume"] = volume
+    if mode is not None:
+        updates["mode"] = mode.strip()
+    if on_plan is not None:
+        updates["on_plan"] = 1 if on_plan else 0
+    if violation_tags is not None:
+        updates["violation_tags"] = _tags_to_text(violation_tags)
+    if pnl is not None:
+        updates["pnl"] = pnl
+    if pnl_pct is not None:
+        updates["pnl_pct"] = pnl_pct
+    if reason is not None:
+        updates["reason"] = reason.strip()
+    if not updates:
+        return True
+    assignments = ", ".join(f"{key} = ?" for key in updates)
+    values = list(updates.values()) + [int(entry_id)]
+    init_app_db()
+    with connect() as conn:
+        conn.execute(
+            f"UPDATE trade_journal SET {assignments} WHERE id = ?",
+            tuple(values),
+        )
+    return True
+
+
+def delete_trade_journal_entry(entry_id: int) -> bool:
+    init_app_db()
+    with connect() as conn:
+        cursor = conn.execute(
+            "DELETE FROM trade_journal WHERE id = ?",
+            (int(entry_id),),
+        )
+    return int(cursor.rowcount) > 0
 
 
 def summarize_trade_journal(

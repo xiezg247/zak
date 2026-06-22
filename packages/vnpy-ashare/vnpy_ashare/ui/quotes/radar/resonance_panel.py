@@ -254,7 +254,7 @@ class RadarResonancePanel(QtWidgets.QWidget):
         self._dragon_1_total = 0
         self._ultra_short_count = 0
         self._selected_symbol = ""
-        self._set_actions_enabled(False)
+        self._sync_action_buttons()
         theme_manager().register_callback(lambda _tokens: self._refresh_list_colors())
         self._apply_expanded(self._expanded, emit=False)
 
@@ -341,13 +341,14 @@ class RadarResonancePanel(QtWidgets.QWidget):
         else:
             self._risk_banner.hide()
         self._apply_filter_to_tabs()
-        self._update_gate_actions()
+        self._sync_action_buttons()
 
     def _on_filter_changed(self, _index: int) -> None:
         mode = self._filter_combo.currentData()
         if mode in ("all", "dragon_1", "ultra_short"):
             self._filter_mode = mode
         self._apply_filter_to_tabs()
+        self._sync_action_buttons()
 
     def _apply_filter_to_tabs(self) -> None:
         from vnpy_ashare.quotes.radar.radar_snapshot import resonance_entry_to_row_dict
@@ -384,11 +385,38 @@ class RadarResonancePanel(QtWidgets.QWidget):
             if tab_key != self._current_tab_key():
                 self._render_tab(tab_key)
 
-    def _update_gate_actions(self) -> None:
+    def _sync_action_buttons(self) -> None:
+        """同步侧栏操作按钮可用态与提示。"""
+        tab_key = self._current_tab_key()
+        current = self._entries_by_tab.get(tab_key, ())
+        raw_all = self._raw_entries_by_tab.get("all", ())
+        has_visible = bool(current)
+        has_any_resonance = bool(raw_all)
         blocked = self._emotion_gate_blocked
-        self._focus_button.setEnabled(not blocked and bool(self._entries_by_tab.get("all")))
-        self._leader_button.setEnabled(not blocked)
-        self._dragon_watchlist_button.setEnabled(not blocked and bool(self._entries_by_tab.get("all")))
+
+        self._add_all_button.setEnabled(has_visible)
+        self._dragon_watchlist_button.setEnabled(has_visible and not blocked)
+        # 短线关注为观察池，退潮期仍允许写入（与龙头选股 gate 区分）
+        self._focus_button.setEnabled(has_visible)
+        self._ai_button.setEnabled(has_visible)
+        self._screener_button.setEnabled(has_visible)
+        self._leader_button.setEnabled(has_visible and not blocked)
+        self._weights_button.setEnabled(True)
+        self._plan_button.setEnabled(True)
+        self._eod_button.setEnabled(True)
+
+        if not has_visible:
+            if has_any_resonance and self._filter_mode != "all":
+                self._focus_button.setToolTip("当前过滤下无标的：可切回「全部共振」或放宽过滤后再写入")
+            elif not has_any_resonance:
+                self._focus_button.setToolTip("暂无共振标的（需同时出现在 2 张及以上卡片）。请先刷新雷达卡片")
+            else:
+                self._focus_button.setToolTip("当前 Tab 下无共振标的")
+        else:
+            tip = "将当前列表写入自选池并加入「短线关注」分组（追加，不覆盖）"
+            if blocked:
+                tip += "。注：情绪退潮期仍可建观察池，不宜新开仓"
+            self._focus_button.setToolTip(tip)
 
     def entries(self) -> tuple[RadarResonanceEntry, ...]:
         return self._entries_by_tab.get("all", ())
@@ -421,7 +449,7 @@ class RadarResonancePanel(QtWidgets.QWidget):
         tab_key = self._current_tab_key()
         entries = self._entries_by_tab.get(tab_key, ())
         self._count_label.setText(str(len(entries)))
-        self._set_actions_enabled(bool(entries))
+        self._sync_action_buttons()
         self._render_tab(tab_key)
 
     def _render_tab(self, tab_key: RadarResonanceTab) -> None:
@@ -460,17 +488,6 @@ class RadarResonancePanel(QtWidgets.QWidget):
         self._selected_symbol = vt_symbol
         self._sync_row_selection(vt_symbol)
         self.row_selected.emit(vt_symbol)
-
-    def _set_actions_enabled(self, enabled: bool) -> None:
-        self._add_all_button.setEnabled(enabled)
-        self._dragon_watchlist_button.setEnabled(enabled and not self._emotion_gate_blocked)
-        self._focus_button.setEnabled(enabled and not self._emotion_gate_blocked)
-        self._ai_button.setEnabled(enabled)
-        self._screener_button.setEnabled(enabled)
-        self._leader_button.setEnabled(enabled and not self._emotion_gate_blocked)
-        self._weights_button.setEnabled(True)
-        self._plan_button.setEnabled(True)
-        self._eod_button.setEnabled(True)
 
     def _active_list(self) -> QtWidgets.QListWidget:
         return self._lists[self._current_tab_key()]
