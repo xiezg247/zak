@@ -63,6 +63,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
     sector_kind_changed = QtCore.Signal(str)
     view_tab_changed = QtCore.Signal(int)
     outlook_strategy_changed = QtCore.Signal(str)
+    outlook_batch_strategy_scan_requested = QtCore.Signal(list)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -199,7 +200,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
 
         self._outlook_strategy_combo = QtWidgets.QComboBox(self._outlook_filter_host)
         self._outlook_strategy_combo.setObjectName("SectorFlowOutlookStrategyCombo")
-        self._outlook_strategy_combo.setToolTip("右键「按策略扫描本板块」时使用的信号策略（成分股直扫，非全市场池）")
+        self._outlook_strategy_combo.setToolTip("扫描选中板块时使用的信号策略（成分股直扫，非全市场池）")
         for option in outlook_strategy_options():
             self._outlook_strategy_combo.addItem(option.label, option.class_name)
         default_class = load_sector_flow_outlook_strategy_class()
@@ -212,7 +213,13 @@ class SectorFlowPanel(QtWidgets.QWidget):
         strategy_label.setObjectName("SectorFlowOutlookStrategyLabel")
         outlook_filter_row.addWidget(strategy_label)
         outlook_filter_row.addWidget(self._outlook_strategy_combo)
-        outlook_hint = QtWidgets.QLabel("右键板块行可扫描策略")
+        self._outlook_scan_selected_btn = QtWidgets.QPushButton("扫描选中", self._outlook_filter_host)
+        self._outlook_scan_selected_btn.setObjectName("SecondaryButton")
+        self._outlook_scan_selected_btn.setEnabled(False)
+        self._outlook_scan_selected_btn.setToolTip("对选中的板块串行跑当前策略（最多 5 个）")
+        self._outlook_scan_selected_btn.clicked.connect(self._emit_outlook_batch_strategy_scan)
+        outlook_filter_row.addWidget(self._outlook_scan_selected_btn)
+        outlook_hint = QtWidgets.QLabel("可多选板块 · 右键单板块")
         outlook_hint.setObjectName("SectorFlowOutlookHint")
         outlook_filter_row.addWidget(outlook_hint)
         outlook_filter_row.addStretch(1)
@@ -271,6 +278,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
 
         theme_manager().bind_stylesheet(self, extra=build_sector_flow_stylesheet)
         self._overview_panel.sector_selected.connect(self._on_overview_sector_selected)
+        self._outlook_table.itemSelectionChanged.connect(self._sync_outlook_scan_selected_button)
         self._sync_view_tab_widgets()
 
     sector_overview_selected = QtCore.Signal(object)
@@ -352,6 +360,25 @@ class SectorFlowPanel(QtWidgets.QWidget):
                 pass
         for button in self._outlook_filter_buttons:
             button.setEnabled(enabled)
+        scan_btn = getattr(self, "_outlook_scan_selected_btn", None)
+        if scan_btn is not None:
+            if enabled:
+                self._sync_outlook_scan_selected_button()
+            else:
+                scan_btn.setEnabled(False)
+
+    def _sync_outlook_scan_selected_button(self) -> None:
+        button = getattr(self, "_outlook_scan_selected_btn", None)
+        if button is None:
+            return
+        count = len(self._outlook_table.selected_sector_rows())
+        button.setEnabled(count > 0)
+        button.setText(f"扫描选中 ({count})" if count else "扫描选中")
+
+    def _emit_outlook_batch_strategy_scan(self) -> None:
+        sectors = self._outlook_table.selected_sector_rows()
+        if sectors:
+            self.outlook_batch_strategy_scan_requested.emit(sectors)
 
     def select_view_tab(self, tab_id: int, *, emit: bool = True) -> None:
         if tab_id == _TAB_OVERVIEW:

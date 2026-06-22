@@ -49,6 +49,7 @@ class SectorFlowOutlookTable(QtWidgets.QTableWidget):
     sector_selected = QtCore.Signal(object)
     detail_requested = QtCore.Signal(object)
     sector_strategy_scan_requested = QtCore.Signal(object)
+    batch_strategy_scan_requested = QtCore.Signal(list)
     sector_ai_requested = QtCore.Signal(object)
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -58,7 +59,8 @@ class SectorFlowOutlookTable(QtWidgets.QTableWidget):
         self._continuation_rows: list[SectorFlowOutlookRow] = []
         self._sector_scans: dict[str, SectorFlowOutlookRow] = {}
         self._forward_dates: tuple[str, ...] = ()
-        self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.verticalHeader().setDefaultSectionSize(_ROW_HEIGHT)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.cellDoubleClicked.connect(self._on_cell_double_clicked)
@@ -89,11 +91,17 @@ class SectorFlowOutlookTable(QtWidgets.QTableWidget):
         hint.setFlags(QtCore.Qt.ItemFlag.NoItemFlags)
         self.setItem(0, 0, hint)
 
+    def selected_sector_rows(self) -> list[SectorFlowRow]:
+        row_indexes = sorted({index.row() for index in self.selectedIndexes()})
+        rows: list[SectorFlowRow] = []
+        for row_index in row_indexes:
+            if 0 <= row_index < len(self._continuation_rows):
+                rows.append(self._continuation_rows[row_index].sector)
+        return rows
+
     def selected_sector_row(self) -> SectorFlowRow | None:
-        row_index = self.currentRow()
-        if row_index < 0 or row_index >= len(self._continuation_rows):
-            return None
-        return self._continuation_rows[row_index].sector
+        selected = self.selected_sector_rows()
+        return selected[0] if selected else None
 
     def selected_outlook_row(self) -> SectorFlowOutlookRow | None:
         row_index = self.currentRow()
@@ -109,10 +117,20 @@ class SectorFlowOutlookTable(QtWidgets.QTableWidget):
     def focus_sectors(self, sector_ids: set[str]) -> None:
         if not sector_ids:
             return
+        model = self.selectionModel()
+        if model is None:
+            return
+        first = True
         for row_index, outlook_row in enumerate(self._continuation_rows):
-            if outlook_row.sector.sector_id in sector_ids:
-                self.selectRow(row_index)
-                return
+            if outlook_row.sector.sector_id not in sector_ids:
+                continue
+            index = self.model().index(row_index, 0)
+            flags = QtCore.QItemSelectionModel.SelectionFlag.Rows
+            if first:
+                model.select(index, flags | QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect)
+                first = False
+            else:
+                model.select(index, flags | QtCore.QItemSelectionModel.SelectionFlag.Select)
 
     def _render(self, *, empty_hint: str = "") -> None:
         rows = self._continuation_rows
@@ -207,14 +225,23 @@ class SectorFlowOutlookTable(QtWidgets.QTableWidget):
         sector = self.selected_sector_row_at(row_index)
         if sector is None:
             return
+        selected = self.selected_sector_rows()
+        if sector.sector_id not in {item.sector_id for item in selected}:
+            selected = [sector]
         menu = QtWidgets.QMenu(self)
-        scan_action = menu.addAction("按策略扫描本板块")
+        if len(selected) > 1:
+            scan_action = menu.addAction(f"扫描选中 {len(selected)} 个板块")
+        else:
+            scan_action = menu.addAction("按策略扫描本板块")
         ai_action = menu.addAction("AI 解读本板块")
         detail_action = menu.addAction("查看展望明细")
         drill_action = menu.addAction("市场成分")
         chosen = menu.exec(self.viewport().mapToGlobal(pos))
         if chosen == scan_action:
-            self.sector_strategy_scan_requested.emit(sector)
+            if len(selected) > 1:
+                self.batch_strategy_scan_requested.emit(selected)
+            else:
+                self.sector_strategy_scan_requested.emit(sector)
         elif chosen == ai_action:
             self.sector_ai_requested.emit(sector)
         elif chosen == detail_action:
