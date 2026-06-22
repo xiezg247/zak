@@ -142,8 +142,7 @@ resonance 加权（权重可配置；D-03「短线龙头」预设 **已有**）
 | 实时快照 | Redis（行情采集 Job） | discovery, watchlist, sector |
 | 选股 run | `screener_runs` | screen_* |
 | 日 K / 模型 | 本地 bar_store | outlook_* |
-| 连板 / 涨停 | Tushare `limit_list_d` + 雷达 D-01 / G-* | leader_*, D-01 |
-| 市场页连板筛选 | 市场页 `limit_up` 排行 | **可选增强**（按 `limit_times` 分层筛选尚未实现） |
+| 连板 / 涨停 | Tushare `limit_list_d` + 市场 **连板榜** / 雷达 D-01 | leader_*, D-01 |
 
 ---
 
