@@ -89,13 +89,7 @@ def build_radar_board_snapshot(payload: dict[str, RadarCardData]) -> RadarBoardS
     leader_data = payload.get("leader_pick")
     leader_rows = leader_data.rows if leader_data is not None else ()
     dragon_1_count = sum(1 for row in leader_rows if row.leader_tier == "dragon_1")
-    card_times = tuple(
-        sorted(
-            (card_id, str(data.updated_at or ""))
-            for card_id, data in payload.items()
-            if data.updated_at
-        )
-    )
+    card_times = tuple(sorted((card_id, str(data.updated_at or "")) for card_id, data in payload.items() if data.updated_at))
     return RadarBoardSnapshot(
         board_updated_at=format_china_datetime(),
         emotion_stage=cycle.stage if cycle is not None else "",

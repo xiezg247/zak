@@ -13,6 +13,7 @@ from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import OUTLOOK_SIGNAL_CARD_IDS, save_outlook_strategy_class
 from vnpy_ashare.quotes.radar.predict.predict_prefs import load_predict_model_mode, save_predict_model_mode
+from vnpy_ashare.quotes.radar.radar_board_store import set_radar_board_snapshot
 from vnpy_ashare.quotes.radar.radar_catalog import (
     DEFAULT_LEADER_PICK_VARIANT,
     DEFAULT_LIMIT_LADDER_VARIANT,
@@ -28,7 +29,6 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     radar_card_group,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
-from vnpy_ashare.quotes.radar.radar_board_store import set_radar_board_snapshot
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,

@@ -40,10 +40,7 @@ class VnpyRadarSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="run_leader_screen",
-                description=(
-                    "按 leader_score 执行雷达龙头选股（硬过滤 + 情绪周期 gate）。"
-                    "退潮/冰点返回空结果；variant 可选 mainline 或 all_market。"
-                ),
+                description=("按 leader_score 执行雷达龙头选股（硬过滤 + 情绪周期 gate）。退潮/冰点返回空结果；variant 可选 mainline 或 all_market。"),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -58,10 +55,7 @@ class VnpyRadarSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="run_short_term_screen",
-                description=(
-                    "极致短线编排：情绪 gate → 龙头池 → 可选共振交集 → 可选主池过滤 → 落库。"
-                    "适用于「抓龙头」「短线主池」「共振票」等意图。"
-                ),
+                description=("极致短线编排：情绪 gate → 龙头池 → 可选共振交集 → 可选主池过滤 → 落库。适用于「抓龙头」「短线主池」「共振票」等意图。"),
                 parameters={
                     "type": "object",
                     "properties": {

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_to_dict
 from vnpy_ashare.domain.market.emotion import EmotionStage
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_to_dict
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
@@ -79,6 +79,7 @@ def leader_score_weights_for_stage(stage: str | None) -> dict[str, float]:
     if total <= 0:
         return base
     return {key: round(value / total, 4) for key, value in adjusted.items()}
+
 
 _COMPONENT_LABELS: dict[str, str] = {
     "limit_times": "连板高度",

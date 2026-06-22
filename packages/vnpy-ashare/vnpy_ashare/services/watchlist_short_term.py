@@ -6,8 +6,6 @@ from dataclasses import dataclass
 
 from pydantic import Field
 
-from vnpy.trader.constant import Exchange
-
 from vnpy_ashare.config.constants.watchlist import SHORT_TERM_FOCUS_GROUP_NAME
 from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
 from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols

@@ -355,9 +355,7 @@ class RadarResonancePanel(QtWidgets.QWidget):
 
         lookup = {
             vt: resonance_entry_to_row_dict(entry, self._row_lookup)  # type: ignore[arg-type]
-            for vt, entry in (
-                (e.vt_symbol, e) for tab in self._raw_entries_by_tab.values() for e in tab
-            )
+            for vt, entry in ((e.vt_symbol, e) for tab in self._raw_entries_by_tab.values() for e in tab)
         }
         self._ultra_short_count = len(
             [
@@ -373,16 +371,12 @@ class RadarResonancePanel(QtWidgets.QWidget):
         risk = self._risk_vt_symbols
 
         def _filter_entries(raw: tuple[RadarResonanceEntry, ...]) -> tuple[RadarResonanceEntry, ...]:
-            filtered = tuple(
-                filter_resonance_entries(raw, mode=self._filter_mode, row_lookup=lookup)
-            )
+            filtered = tuple(filter_resonance_entries(raw, mode=self._filter_mode, row_lookup=lookup))
             if self._filter_mode == "ultra_short" and risk:
                 filtered = tuple(entry for entry in filtered if entry.vt_symbol not in risk)
             return filtered
 
-        self._stats_label.setText(
-            f"共振 {self._resonance_total} · 龙一 {self._dragon_1_total} · 主池 {self._ultra_short_count}"
-        )
+        self._stats_label.setText(f"共振 {self._resonance_total} · 龙一 {self._dragon_1_total} · 主池 {self._ultra_short_count}")
         for tab_key, raw in self._raw_entries_by_tab.items():
             self._entries_by_tab[tab_key] = _filter_entries(raw)
         self._render_current_tab()

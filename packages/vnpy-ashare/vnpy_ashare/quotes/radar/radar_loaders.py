@@ -43,11 +43,11 @@ from vnpy_ashare.quotes.radar.radar_models import (
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_position_risk import load_position_risk
 from vnpy_ashare.quotes.radar.radar_relative_strength import build_relative_strength_subline
+from vnpy_ashare.quotes.radar.radar_resonance_prefs import radar_card_participates_in_resonance
 from vnpy_ashare.quotes.radar.radar_sector import load_sector_theme
 from vnpy_ashare.quotes.radar.radar_sector_flow_hot import SectorFlowHotVariant, load_sector_flow_hot
 from vnpy_ashare.quotes.radar.radar_watchlist import load_watchlist_intraday
 from vnpy_ashare.quotes.radar.radar_watchlist_short_term import load_watchlist_short_term
-from vnpy_ashare.quotes.radar.radar_resonance_prefs import radar_card_participates_in_resonance
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import (
@@ -769,11 +769,7 @@ def collect_radar_risk_vt_symbols(payload: dict[str, RadarCardData]) -> frozense
     data = payload.get("discovery_limit_break")
     if data is None:
         return frozenset()
-    return frozenset(
-        str(row.vt_symbol).strip()
-        for row in data.rows
-        if str(row.vt_symbol or "").strip() and not is_stat_row(row.vt_symbol)
-    )
+    return frozenset(str(row.vt_symbol).strip() for row in data.rows if str(row.vt_symbol or "").strip() and not is_stat_row(row.vt_symbol))
 
 
 def _row_ai_summary(row: RadarRow) -> str:

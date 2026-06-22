@@ -44,11 +44,7 @@ def run_short_term_screen(
     rows = [coerce_screener_result_row(row) for row in recipe_result.rows]
 
     if require_resonance:
-        rows = [
-            row
-            for row in rows
-            if isinstance(row.get("dimensions"), dict) and "radar_resonance" in row.get("dimensions", {})
-        ]
+        rows = [row for row in rows if isinstance(row.get("dimensions"), dict) and "radar_resonance" in row.get("dimensions", {})]
 
     if ultra_short_only and rows:
         rows = filter_ultra_short_main_pool(rows)

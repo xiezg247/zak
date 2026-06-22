@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.domain.radar.card import RadarCardData, RadarResonanceEntry, RadarRow
+from vnpy_ashare.domain.radar.card import RadarCardData, RadarRow
 from vnpy_ashare.domain.radar.snapshot import RadarBoardSnapshot
 from vnpy_ashare.quotes.radar.radar_board_store import (
     clear_radar_board_snapshot,
