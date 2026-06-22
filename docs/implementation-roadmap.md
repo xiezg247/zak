@@ -239,6 +239,7 @@ Phase 5 ✅
 | P2 | 微信 / 邮件通知 | **不做** | 产品范围外；飞书已覆盖主通道，见 [notifications §1.3](./notifications.md#13-与-vnpy-内置通道关系) |
 | P2 | 券商持仓 `source=gateway` | **不做** | 维持手工记账；`PositionRecord.source` 字段保留兼容 |
 | P2 | 市场页涨停榜内连板分层筛选 | **不做** | 侧栏「连板榜」（`limit_times`）+ 雷达 D-01 已覆盖；见 [market-page.md](./market-page.md) §3 |
+| P2 | 板块资金 ↔ 雷达/龙头闭环 | **已有** | 详情侧栏「雷达·龙头 / 雷达·主线 / 龙头选股」；`main_window.open_radar_card` |
 | — | Profile 切换同步硬过滤模板 | **已有** | `apply_strategy_profile` → 保守/均衡/激进 |
 | — | NL 选股 `propose_*` 执行前确认 | **已有** | `AgentGateway` + Qt 确认；系统配置 → AI 助手 |
 | — | 子文档 Post-Phase 表述对齐 | **已有** | trading-system §3.2、watchlist-groups、ai-data-routing 等 |

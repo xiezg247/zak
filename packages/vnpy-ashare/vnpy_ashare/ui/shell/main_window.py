@@ -728,6 +728,32 @@ class AshareMainWindow(MainWindow):
             return
         widget.page.open_concept_drilldown(label, vt_symbols)
 
+    def open_radar_card(
+        self,
+        card_id: str,
+        *,
+        variant: str | None = None,
+        refresh: bool = True,
+    ) -> None:
+        """跳转到雷达页并定位指定卡片（板块资金页等入口）。"""
+        nav_index = self._nav_index_for_key("radar")
+        if nav_index is None:
+            return
+        self._show_page_by_key("radar", nav_index=nav_index)
+        widget = self._page_widgets.get("radar")
+        if widget is None:
+            return
+        controller = getattr(widget.page, "_radar_controller", None)
+        if controller is None or not hasattr(controller, "open_external_card"):
+            return
+        controller.open_external_card(card_id, variant=variant, refresh=refresh)
+
+    def open_radar_leader_loop(self, *, run_leader_screen: bool = False, leader_variant: str = "mainline") -> None:
+        """板块资金 → 雷达龙头卡；可选继续打开选股 Hub 执行龙头选股。"""
+        self.open_radar_card("leader_pick", refresh=True)
+        if run_leader_screen:
+            self.open_screener_leader_screen(variant=leader_variant)
+
     def _show_page_by_key(self, key: str, *, nav_index: int | None = None) -> None:
         widget = self._get_or_create_page(key)
         if widget is None:

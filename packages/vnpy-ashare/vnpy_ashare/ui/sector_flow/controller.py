@@ -101,6 +101,9 @@ class SectorFlowController(QtCore.QObject):
         panel.outlook_strategy_changed.connect(self._on_outlook_strategy_changed)
         panel.detail.market_drilldown_requested.connect(self._on_detail_market_drilldown)
         panel.detail.screener_requested.connect(self._on_detail_screener)
+        panel.detail.radar_leader_requested.connect(self._on_detail_radar_leader)
+        panel.detail.radar_sector_theme_requested.connect(self._on_detail_radar_sector_theme)
+        panel.detail.leader_screen_requested.connect(self._on_detail_leader_screen)
 
     def _get_service(self) -> SectorFlowService | None:
         if self._service is not None:
@@ -282,6 +285,39 @@ class SectorFlowController(QtCore.QObject):
             page_notify(self._page, "无法打开选股页", level="warning")
             return
         host.open_screener_industry(industry)
+
+    def _on_detail_radar_leader(self) -> None:
+        sector = self._panel.detail.current_sector()
+        if sector is None:
+            return
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_radar_card"):
+            page_notify(self._page, "无法打开雷达页", level="warning")
+            return
+        host.open_radar_card("leader_pick", refresh=True)
+        self._page.set_status(f"已打开雷达·龙头 · {sector.name}")
+
+    def _on_detail_radar_sector_theme(self) -> None:
+        sector = self._panel.detail.current_sector()
+        if sector is None or sector.sector_kind != "industry":
+            return
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_radar_card"):
+            page_notify(self._page, "无法打开雷达页", level="warning")
+            return
+        host.open_radar_card("sector_theme", variant="leaders_tiered", refresh=True)
+        self._page.set_status(f"已打开雷达·主线 · {sector.name}")
+
+    def _on_detail_leader_screen(self) -> None:
+        sector = self._panel.detail.current_sector()
+        if sector is None:
+            return
+        host = self._find_main_window()
+        if host is None or not hasattr(host, "open_radar_leader_loop"):
+            page_notify(self._page, "无法打开龙头选股", level="warning")
+            return
+        host.open_radar_leader_loop(run_leader_screen=True)
+        self._page.set_status(f"已打开龙头选股 · {sector.name}")
 
     def _update_status_label(self) -> None:
         phase = ashare_market_phase_label()
@@ -624,7 +660,7 @@ class SectorFlowController(QtCore.QObject):
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page
         while widget is not None:
-            if hasattr(widget, "open_market_industry_filter") or hasattr(widget, "open_market_concept_drilldown") or hasattr(widget, "open_screener_industry"):
+            if hasattr(widget, "open_market_industry_filter") or hasattr(widget, "open_market_concept_drilldown") or hasattr(widget, "open_screener_industry") or hasattr(widget, "open_radar_card"):
                 return widget
             widget = widget.parentWidget()
         return None

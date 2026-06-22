@@ -101,7 +101,7 @@ quotes/
 
 | 页 | 路径 | 职责 |
 |----|------|------|
-| 板块资金 | `ui/sector_flow/` | 行业/概念资金流向；`SectorFlowService` 聚合 Tushare 板块数据 |
+| 板块资金 | `ui/sector_flow/` | 行业/概念资金流向；详情侧栏可跳转雷达·龙头 / 主线、龙头选股 |
 | 雷达 | `ui/quotes/radar/` + `page_shell.RadarPageWidget` | 多卡片盘面扫描、共振列表；卡片可跳转板块资金 / 条件选股；详见 [radar-page.md](./radar-page.md) |
 | 市场 | `ui/quotes/` 市场视图 + `quotes/market/` | 广度条、排行、涨停榜；择时输入 T-01/T-02；详见 [market-page.md](./market-page.md) |
 

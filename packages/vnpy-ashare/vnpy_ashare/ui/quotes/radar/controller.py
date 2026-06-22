@@ -151,6 +151,26 @@ class RadarController(QtCore.QObject):
         self.refresh_card("leader_pick")
         self._on_open_screener_leader(focus=False)
 
+    def open_external_card(
+        self,
+        card_id: str,
+        *,
+        variant: str | None = None,
+        refresh: bool = True,
+    ) -> bool:
+        """外部入口（板块资金页等）定位卡片并可选刷新。"""
+        if variant and card_id in self._card_variants:
+            self._card_variants[card_id] = variant
+            if card_id == "sector_theme":
+                self._sector_variant = variant
+            card_widget = self._board.card(card_id)
+            if card_widget is not None:
+                card_widget.set_variant_key(variant)
+        focused = self._board.focus_card(card_id)
+        if refresh and focused:
+            self.refresh_card(card_id)
+        return focused
+
     def _on_resonance_weights_requested(self) -> None:
         dialog = RadarResonanceWeightDialog(self._page)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:

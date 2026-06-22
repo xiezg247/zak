@@ -131,7 +131,13 @@ resonance 加权（权重可配置；D-03「短线龙头」预设 **已有**）
 | **雷达** | 短线候选：动量、共振、连板地位 |
 | **板块资金** | 资金验证：主力净流入、行业排行 |
 
-双向跳转：雷达 footer → 带 `sector_names`；板块详情 → 定位 `sector_theme`。
+双向跳转（**已有**）：
+
+| 方向 | 入口 | 行为 |
+|------|------|------|
+| 雷达 → 板块资金 | 卡片 footer「板块资金」 | `open_sector_flow(sector_names)` |
+| 板块资金 → 雷达 | 详情侧栏「雷达·龙头 / 雷达·主线」 | `open_radar_card(leader_pick \| sector_theme)` |
+| 板块资金 → 选股 | 详情「龙头选股」 | `open_radar_leader_loop` → Hub `run_leader_screen` |
 
 ---
 

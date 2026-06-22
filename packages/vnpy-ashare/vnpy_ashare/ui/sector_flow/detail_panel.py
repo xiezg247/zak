@@ -18,6 +18,9 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
 
     market_drilldown_requested = QtCore.Signal(object)
     screener_requested = QtCore.Signal(str)
+    radar_leader_requested = QtCore.Signal()
+    radar_sector_theme_requested = QtCore.Signal()
+    leader_screen_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -46,11 +49,33 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         self._screener_btn.setToolTip("对行业成分执行选股")
         self._screener_btn.clicked.connect(self._emit_screener)
 
+        self._radar_leader_btn = QtWidgets.QPushButton("雷达·龙头")
+        self._radar_leader_btn.setObjectName("SecondaryButton")
+        self._radar_leader_btn.setToolTip("跳转雷达页「选股·龙头」卡片")
+        self._radar_leader_btn.clicked.connect(self.radar_leader_requested.emit)
+
+        self._radar_sector_btn = QtWidgets.QPushButton("雷达·主线")
+        self._radar_sector_btn.setObjectName("SecondaryButton")
+        self._radar_sector_btn.setToolTip("跳转雷达页「板块·主线」·行业龙一分层（仅行业板块）")
+        self._radar_sector_btn.clicked.connect(self.radar_sector_theme_requested.emit)
+
+        self._leader_screen_btn = QtWidgets.QPushButton("龙头选股")
+        self._leader_screen_btn.setObjectName("ActionButton")
+        self._leader_screen_btn.setToolTip("打开选股 Hub 执行雷达龙头选股（含情绪 gate）")
+        self._leader_screen_btn.clicked.connect(self.leader_screen_requested.emit)
+
         action_row = QtWidgets.QVBoxLayout()
         action_row.setContentsMargins(0, 0, 0, 0)
         action_row.setSpacing(6)
         action_row.addWidget(self._market_btn)
         action_row.addWidget(self._screener_btn)
+        radar_row = QtWidgets.QHBoxLayout()
+        radar_row.setContentsMargins(0, 0, 0, 0)
+        radar_row.setSpacing(6)
+        radar_row.addWidget(self._radar_leader_btn)
+        radar_row.addWidget(self._radar_sector_btn)
+        action_row.addLayout(radar_row)
+        action_row.addWidget(self._leader_screen_btn)
 
         leaders_label = QtWidgets.QLabel("成分龙头")
         leaders_label.setObjectName("SectionLabel")
@@ -112,6 +137,9 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         self._table.setRowCount(0)
         self._market_btn.setEnabled(False)
         self._screener_btn.setEnabled(False)
+        self._radar_leader_btn.setEnabled(False)
+        self._radar_sector_btn.setEnabled(False)
+        self._leader_screen_btn.setEnabled(False)
         self._overlay.show_loading("正在加载成分龙头", hint=sector_name)
         self._overlay.setGeometry(self.rect())
         self._overlay.raise_()
@@ -160,6 +188,9 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
                 flow_item.setForeground(QtGui.QColor(pct_change_color(leader.net_mf_wan, tokens)))
             self._table.setItem(row_index, 2, flow_item)
 
+    def current_sector(self) -> SectorFlowRow | None:
+        return self._current_sector
+
     def _sync_action_buttons(self) -> None:
         sector = self._current_sector
         enabled = sector is not None
@@ -167,6 +198,10 @@ class SectorFlowDetailPanel(QtWidgets.QFrame):
         industry_mode = enabled and sector is not None and sector.sector_kind == "industry"
         self._screener_btn.setEnabled(industry_mode)
         self._screener_btn.setVisible(industry_mode or not enabled)
+        self._radar_leader_btn.setEnabled(enabled)
+        self._leader_screen_btn.setEnabled(enabled)
+        self._radar_sector_btn.setEnabled(industry_mode)
+        self._radar_sector_btn.setVisible(industry_mode or not enabled)
 
     def set_history_visible(self, visible: bool) -> None:
         """轮动 Tab 下隐藏侧栏历史图（左侧矩阵已展示近15日）。"""
