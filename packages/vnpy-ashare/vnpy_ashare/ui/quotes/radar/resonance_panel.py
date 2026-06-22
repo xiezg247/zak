@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.page.quotes_page import QuotesPage
 
 RadarResonanceTab = Literal["all", "statistical", "predictive"]
+ResonanceFilterMode = Literal["all", "dragon_1", "ultra_short"]
 
 _RESONANCE_TABS: tuple[tuple[RadarResonanceTab, str], ...] = (
     ("all", "全部"),
@@ -56,6 +57,7 @@ class RadarResonancePanel(QtWidgets.QWidget):
     open_screener_requested = QtCore.Signal()
     open_leader_screener_requested = QtCore.Signal()
     resonance_weights_requested = QtCore.Signal()
+    add_short_term_focus_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -109,6 +111,28 @@ class RadarResonancePanel(QtWidgets.QWidget):
         hint = QtWidgets.QLabel("多卡同时出现的标的汇总")
         hint.setObjectName("RadarResonanceHint")
         header.addWidget(hint)
+
+        self._gate_banner = QtWidgets.QLabel("")
+        self._gate_banner.setObjectName("RadarResonanceGateBanner")
+        self._gate_banner.setWordWrap(True)
+        self._gate_banner.hide()
+        header.addWidget(self._gate_banner)
+
+        self._stats_label = QtWidgets.QLabel("")
+        self._stats_label.setObjectName("RadarResonanceStats")
+        header.addWidget(self._stats_label)
+
+        filter_row = QtWidgets.QHBoxLayout()
+        filter_row.setContentsMargins(0, 0, 0, 0)
+        filter_row.addWidget(QtWidgets.QLabel("过滤"))
+        self._filter_combo = QtWidgets.QComboBox()
+        self._filter_combo.setObjectName("RadarResonanceFilter")
+        self._filter_combo.addItem("全部共振", "all")
+        self._filter_combo.addItem("仅龙一", "dragon_1")
+        self._filter_combo.addItem("短线主池", "ultra_short")
+        self._filter_combo.currentIndexChanged.connect(self._on_filter_changed)
+        filter_row.addWidget(self._filter_combo, stretch=1)
+        header.addLayout(filter_row)
 
         self._tabs = QtWidgets.QTabWidget()
         self._tabs.setObjectName("RadarResonanceTabs")
@@ -164,10 +188,14 @@ class RadarResonancePanel(QtWidgets.QWidget):
         self._add_all_button = QtWidgets.QPushButton("全部加自选")
         self._add_all_button.setObjectName("RadarResonanceAddAll")
         self._add_all_button.clicked.connect(self.batch_add_watchlist_requested.emit)
-        self._dragon_watchlist_button = QtWidgets.QPushButton("龙一加自选")
+        self._dragon_watchlist_button = QtWidgets.QPushButton("龙一入自选")
         self._dragon_watchlist_button.setObjectName("RadarResonanceDragonWatchlist")
         self._dragon_watchlist_button.setToolTip("将 leader_pick 龙一加入自选池")
         self._dragon_watchlist_button.clicked.connect(self.add_dragon_watchlist_requested.emit)
+        self._focus_button = QtWidgets.QPushButton("写入短线关注")
+        self._focus_button.setObjectName("RadarResonanceShortTermFocus")
+        self._focus_button.setToolTip("写入自选池并加入「短线关注」分组")
+        self._focus_button.clicked.connect(self.add_short_term_focus_requested.emit)
         self._ai_button = QtWidgets.QPushButton("AI 解读")
         self._ai_button.setObjectName("RadarResonanceAi")
         self._ai_button.clicked.connect(self.ai_resonance_requested.emit)
@@ -192,12 +220,13 @@ class RadarResonancePanel(QtWidgets.QWidget):
         self._eod_button.clicked.connect(self.eod_leader_ai_requested.emit)
         toolbar.addWidget(self._add_all_button, 0, 0)
         toolbar.addWidget(self._dragon_watchlist_button, 0, 1)
-        toolbar.addWidget(self._ai_button, 1, 0)
-        toolbar.addWidget(self._screener_button, 1, 1)
-        toolbar.addWidget(self._leader_button, 2, 0)
-        toolbar.addWidget(self._weights_button, 2, 1)
-        toolbar.addWidget(self._plan_button, 3, 0)
-        toolbar.addWidget(self._eod_button, 3, 1)
+        toolbar.addWidget(self._focus_button, 1, 0, 1, 2)
+        toolbar.addWidget(self._ai_button, 2, 0)
+        toolbar.addWidget(self._screener_button, 2, 1)
+        toolbar.addWidget(self._leader_button, 3, 0)
+        toolbar.addWidget(self._weights_button, 3, 1)
+        toolbar.addWidget(self._plan_button, 4, 0)
+        toolbar.addWidget(self._eod_button, 4, 1)
 
         body_layout = QtWidgets.QVBoxLayout(self._body)
         body_layout.setContentsMargins(12, 10, 12, 10)
@@ -210,6 +239,13 @@ class RadarResonancePanel(QtWidgets.QWidget):
         root.addWidget(self._body, stretch=1)
 
         self._entries_by_tab: dict[RadarResonanceTab, tuple[RadarResonanceEntry, ...]] = {key: () for key, _label in _RESONANCE_TABS}
+        self._raw_entries_by_tab: dict[RadarResonanceTab, tuple[RadarResonanceEntry, ...]] = dict(self._entries_by_tab)
+        self._row_lookup: dict[str, object] = {}
+        self._filter_mode: ResonanceFilterMode = "all"
+        self._emotion_gate_blocked = False
+        self._resonance_total = 0
+        self._dragon_1_total = 0
+        self._ultra_short_count = 0
         self._selected_symbol = ""
         self._set_actions_enabled(False)
         theme_manager().register_callback(lambda _tokens: self._refresh_list_colors())
@@ -270,16 +306,69 @@ class RadarResonancePanel(QtWidgets.QWidget):
         *,
         statistical: tuple[RadarResonanceEntry, ...] | None = None,
         predictive: tuple[RadarResonanceEntry, ...] | None = None,
+        allow_new_positions: bool = True,
+        emotion_stage_label: str = "",
+        row_lookup: dict | None = None,
+        resonance_count: int = 0,
+        dragon_1_count: int = 0,
     ) -> None:
-        self._entries_by_tab = {
+        self._row_lookup = dict(row_lookup or {})
+        self._raw_entries_by_tab = {
             "all": entries,
             "statistical": statistical if statistical is not None else (),
             "predictive": predictive if predictive is not None else (),
         }
+        self._emotion_gate_blocked = not allow_new_positions
+        self._resonance_total = resonance_count
+        self._dragon_1_total = dragon_1_count
+        if self._emotion_gate_blocked and emotion_stage_label:
+            self._gate_banner.setText(f"{emotion_stage_label}：不宜短线新开仓")
+            self._gate_banner.show()
+        else:
+            self._gate_banner.hide()
+        self._apply_filter_to_tabs()
+        self._update_gate_actions()
+
+    def _on_filter_changed(self, _index: int) -> None:
+        mode = self._filter_combo.currentData()
+        if mode in ("all", "dragon_1", "ultra_short"):
+            self._filter_mode = mode
+        self._apply_filter_to_tabs()
+
+    def _apply_filter_to_tabs(self) -> None:
+        from vnpy_ashare.quotes.radar.radar_snapshot import resonance_entry_to_row_dict
+        from vnpy_ashare.screener.run.ultra_short_pool_filter import filter_resonance_entries
+
+        lookup = {
+            vt: resonance_entry_to_row_dict(entry, self._row_lookup)  # type: ignore[arg-type]
+            for vt, entry in (
+                (e.vt_symbol, e) for tab in self._raw_entries_by_tab.values() for e in tab
+            )
+        }
+        self._ultra_short_count = len(
+            filter_resonance_entries(
+                self._raw_entries_by_tab.get("all", ()),
+                mode="ultra_short",
+                row_lookup=lookup,
+            )
+        )
+        self._stats_label.setText(
+            f"共振 {self._resonance_total} · 龙一 {self._dragon_1_total} · 主池 {self._ultra_short_count}"
+        )
+        for tab_key, raw in self._raw_entries_by_tab.items():
+            self._entries_by_tab[tab_key] = tuple(
+                filter_resonance_entries(raw, mode=self._filter_mode, row_lookup=lookup)
+            )
         self._render_current_tab()
         for tab_key in self._entries_by_tab:
             if tab_key != self._current_tab_key():
                 self._render_tab(tab_key)
+
+    def _update_gate_actions(self) -> None:
+        blocked = self._emotion_gate_blocked
+        self._focus_button.setEnabled(not blocked and bool(self._entries_by_tab.get("all")))
+        self._leader_button.setEnabled(not blocked)
+        self._dragon_watchlist_button.setEnabled(not blocked and bool(self._entries_by_tab.get("all")))
 
     def entries(self) -> tuple[RadarResonanceEntry, ...]:
         return self._entries_by_tab.get("all", ())
@@ -354,9 +443,14 @@ class RadarResonancePanel(QtWidgets.QWidget):
 
     def _set_actions_enabled(self, enabled: bool) -> None:
         self._add_all_button.setEnabled(enabled)
-        self._dragon_watchlist_button.setEnabled(enabled)
+        self._dragon_watchlist_button.setEnabled(enabled and not self._emotion_gate_blocked)
+        self._focus_button.setEnabled(enabled and not self._emotion_gate_blocked)
         self._ai_button.setEnabled(enabled)
         self._screener_button.setEnabled(enabled)
+        self._leader_button.setEnabled(enabled and not self._emotion_gate_blocked)
+        self._weights_button.setEnabled(True)
+        self._plan_button.setEnabled(True)
+        self._eod_button.setEnabled(True)
 
     def _active_list(self) -> QtWidgets.QListWidget:
         return self._lists[self._current_tab_key()]

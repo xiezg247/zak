@@ -38,6 +38,7 @@
 | R-02 | `ultra_short_first_board` | **已有** | 2 | D-02, 封板代理 | 同上 |
 | R-03 | `cm20_elastic` | **已有** | 2 | 板块白名单 | 同上 |
 | R-04 | `emotion_gate_only` | **已有** | 1 | T-03 | [emotion-cycle.md](./emotion-cycle.md) |
+| — | `ultra_short_unified`（极致短线·雷达统一） | **已有** | 3 | D-03 leader_score、D-04 radar_resonance、R-01 | [intraday-screening.md](./intraday-screening.md) |
 | — | `intraday_multi`（默认盘中） | **已有** | 0 | Redis | [intraday-screening.md](./intraday-screening.md) |
 
 **硬过滤**：保守 / 均衡 / 激进三模板；激进模板 Phase 1 与 R-01 同批交付。

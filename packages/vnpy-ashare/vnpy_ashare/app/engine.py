@@ -17,6 +17,7 @@ from vnpy_ashare.services.financial import FinancialService
 from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.services.quote import QuoteService
+from vnpy_ashare.services.radar import RadarService
 from vnpy_ashare.services.screening import ScreeningService
 from vnpy_ashare.services.sector_flow import SectorFlowService
 from vnpy_ashare.services.sentiment import SentimentService
@@ -36,6 +37,7 @@ class AshareEngine(BaseEngine):
         self.quote_service = QuoteService(self)
         self.backtest_service = BacktestService(self)
         self.screening_service = ScreeningService(self)
+        self.radar_service = RadarService(self)
         self.watchlist_service = WatchlistService(self)
         self.position_service = PositionService(self)
         self.note_service = NoteService(self)

@@ -15,6 +15,7 @@ IntentCategory = Literal[
     "market",
     "diagnosis",
     "screening",
+    "radar",
     "backtest",
     "watchlist",
     "data",

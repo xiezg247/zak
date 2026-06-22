@@ -23,6 +23,7 @@ Agent 可调用的业务 Skill：Python 实现（`*.py`）+ 可选 `SKILL.md`（
 | `vnpy_data_skill.py` | vnpy-data | get_bars_summary, get_bars_data |
 | `vnpy_analysis_skill.py` | vnpy-analysis | technical_snapshot、evaluate_entry_mode、explain_screening_run、… |
 | `vnpy_screening_skill.py` | vnpy-screening | run_recipe, screen_by_condition, … |
+| `vnpy_radar_skill.py` | vnpy-radar | get_radar_snapshot, run_short_term_screen（ultra_short_unified）, run_leader_screen, … |
 | `vnpy_backtest_skill.py` | vnpy-backtest | get_backtest_result, … |
 | `vnpy_watchlist_skill.py` | vnpy-watchlist | get_watchlist、get_short_term_watchlist、add_to_watchlist、… |
 | `vnpy_notes_skill.py` | vnpy-notes | get_stock_notes, … |

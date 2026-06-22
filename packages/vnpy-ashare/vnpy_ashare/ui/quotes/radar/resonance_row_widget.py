@@ -116,6 +116,12 @@ class RadarResonanceRowWidget(QtWidgets.QFrame):
         count_text = f"{entry.card_count} 卡"
         if entry.resonance_score > 0:
             count_text = f"{count_text} · {entry.resonance_score:.1f}"
+        if entry.leader_tier == "dragon_1":
+            count_text = f"龙一 · {count_text}"
+        elif entry.leader_tier == "dragon_2":
+            count_text = f"龙二 · {count_text}"
+        if entry.limit_times is not None and entry.limit_times >= 1:
+            count_text = f"{count_text} · {int(entry.limit_times)}板"
         self._count_chip.setText(count_text)
         self._cards_label.setText(" · ".join(entry.card_titles))
 

@@ -27,6 +27,7 @@ from vnpy_llm.graph.agents import (  # noqa: F401
     research,
     risk,
     screening,
+    radar,
     strategy,
 )
 from vnpy_llm.graph.agents.base import build_agent_system_prompt  # noqa: F401 — 注册 agent prompts

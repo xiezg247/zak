@@ -27,6 +27,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import (
     radar_card_group,
 )
 from vnpy_ashare.quotes.radar.radar_full_refresh_prefs import save_radar_full_refresh_every
+from vnpy_ashare.quotes.radar.radar_board_store import set_radar_board_snapshot
 from vnpy_ashare.quotes.radar.radar_horizon import OUTLOOK_FORCE_RECOMPUTE_CARD_IDS
 from vnpy_ashare.quotes.radar.radar_loaders import (
     RadarCardData,
@@ -39,9 +40,16 @@ from vnpy_ashare.quotes.radar.radar_loaders import (
 )
 from vnpy_ashare.quotes.radar.radar_resonance_prefs import DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
 from vnpy_ashare.quotes.radar.radar_resonance_store import set_radar_resonance_entries
+from vnpy_ashare.quotes.radar.radar_snapshot import (
+    build_radar_board_snapshot,
+    enrich_resonance_entries,
+    row_lookup_from_payload,
+)
 from vnpy_ashare.services.watchlist_short_term import (
     add_rows_to_watchlist_pool,
+    add_short_term_focus,
     collect_dragon_1_rows,
+    resonance_entries_to_rows,
 )
 from vnpy_ashare.trading.journal.propose import _next_trade_date
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
@@ -118,6 +126,7 @@ class RadarController(QtCore.QObject):
             panel.open_screener_requested.connect(self._on_open_screener_resonance)
             panel.open_leader_screener_requested.connect(self._on_open_screener_leader)
             panel.resonance_weights_requested.connect(self._on_resonance_weights_requested)
+            panel.add_short_term_focus_requested.connect(self._on_resonance_short_term_focus)
 
     def _on_open_screener_resonance(self) -> None:
         host = self._find_main_window()
@@ -447,6 +456,54 @@ class RadarController(QtCore.QObject):
         if hasattr(self._page, "status_label"):
             self._page.status_label.setText("已发送共振 AI 解读请求")
 
+    def _publish_radar_ai_context(self) -> None:
+        from vnpy_ashare.ai.context.radar import format_radar_page_extra
+        from vnpy_ashare.quotes.radar.radar_board_store import get_radar_board_snapshot
+
+        quote_service = self._page._get_quote_service()
+        if quote_service is None:
+            return
+        item = self._page.current_item
+        quote = None
+        bar_count = 0
+        if item is not None:
+            quote = self._page.quote_map.get(item.tickflow_symbol)
+            key = (item.symbol, item.exchange)
+            meta = self._page.bar_meta.get(key)
+            bar_count = meta.count if meta else 0
+        snapshot = get_radar_board_snapshot()
+        extra = format_radar_page_extra(snapshot)
+        quote_service.publish_quote_context(
+            page="雷达",
+            item=item,
+            quote=quote,
+            bar_count=bar_count,
+            signal_extra=extra,
+        )
+
+    def _on_resonance_short_term_focus(self) -> None:
+        panel = self._resonance_panel
+        if panel is None:
+            return
+        entries = panel.current_tab_entries()
+        if not entries:
+            page_notify(self._page, "暂无共振标的", level="warning")
+            return
+        service = get_watchlist_service(self._page._get_main_engine())
+        if service is None:
+            page_notify(self._page, "自选服务未就绪", level="warning")
+            return
+        result = add_short_term_focus(service, resonance_entries_to_rows(entries))
+        if not result.group_id:
+            page_notify(self._page, "无法创建「短线关注」分组（分组数已满）", level="warning")
+            return
+        parts = [f"已写入「{result.group_name}」{result.group_added} 只"]
+        if result.watchlist_added:
+            parts.append(f"新增自选 {result.watchlist_added} 只")
+        if result.skipped:
+            parts.append(f"跳过 {result.skipped} 只")
+        page_notify(self._page, " · ".join(parts))
+
     def _cancel_card_worker(self, card_id: str) -> None:
         worker = self._card_workers.pop(card_id, None)
         if worker is None:
@@ -483,11 +540,28 @@ class RadarController(QtCore.QObject):
         panel = self._resonance_panel
         if panel is None:
             return
-        entries = build_radar_resonance_list(self._last_payload)
-        statistical = build_radar_resonance_list(self._last_payload, mode="statistical")
-        predictive = build_radar_resonance_list(self._last_payload, mode="predictive")
-        set_radar_resonance_entries(entries)
-        panel.apply_entries(entries, statistical=statistical, predictive=predictive)
+        snapshot = build_radar_board_snapshot(self._last_payload)
+        set_radar_board_snapshot(snapshot)
+        set_radar_resonance_entries(snapshot.resonance_entries)
+        statistical = enrich_resonance_entries(
+            build_radar_resonance_list(self._last_payload, mode="statistical"),
+            self._last_payload,
+        )
+        predictive = enrich_resonance_entries(
+            build_radar_resonance_list(self._last_payload, mode="predictive"),
+            self._last_payload,
+        )
+        panel.apply_entries(
+            snapshot.resonance_entries,
+            statistical=statistical,
+            predictive=predictive,
+            allow_new_positions=snapshot.allow_new_positions,
+            emotion_stage_label=snapshot.emotion_stage_label,
+            row_lookup=row_lookup_from_payload(self._last_payload),
+            resonance_count=snapshot.resonance_count,
+            dragon_1_count=snapshot.dragon_1_count,
+        )
+        self._publish_radar_ai_context()
 
     def _on_card_failed(self, card_id: str, message: str) -> None:
         widget = self._board.card(card_id)

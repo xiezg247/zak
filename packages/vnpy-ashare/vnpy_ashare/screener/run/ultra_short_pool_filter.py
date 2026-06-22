@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from vnpy_ashare.domain.radar.card import RadarResonanceEntry
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.hard_filter_prefs import PRESET_AGGRESSIVE, hard_filter_preset
 from vnpy_ashare.screener.hard_filters import (
@@ -14,7 +15,11 @@ from vnpy_ashare.screener.hard_filters import (
     row_amount_yuan,
 )
 
-__all__ = ["filter_ultra_short_main_pool", "is_ultra_short_popularity_row"]
+__all__ = [
+    "filter_resonance_entries",
+    "filter_ultra_short_main_pool",
+    "is_ultra_short_popularity_row",
+]
 
 _MAIN_BOARD_MAX_MV_WAN = 2_000_000.0  # 200 亿
 _CM20_MAX_MV_WAN = 1_500_000.0  # 150 亿
@@ -90,3 +95,30 @@ def filter_ultra_short_main_pool(rows: Sequence[ScreenerResultRow]) -> list[Scre
             continue
         result.append(row)
     return result
+
+
+def filter_resonance_entries(
+    entries: Sequence[RadarResonanceEntry],
+    *,
+    mode: str = "all",
+    row_lookup: dict[str, dict] | None = None,
+) -> list[RadarResonanceEntry]:
+    """共振侧栏过滤：all / dragon_1 / ultra_short。"""
+    items = list(entries)
+    if mode == "dragon_1":
+        return [entry for entry in items if entry.leader_tier == "dragon_1"]
+    if mode == "ultra_short":
+        lookup = row_lookup or {}
+        filtered: list[RadarResonanceEntry] = []
+        for entry in items:
+            payload = lookup.get(entry.vt_symbol) or {
+                "vt_symbol": entry.vt_symbol,
+                "change_pct": entry.change_pct,
+                "leader_score": entry.leader_score,
+                "limit_times": entry.limit_times,
+                "source": "radar_resonance",
+            }
+            if is_ultra_short_popularity_row(payload):
+                filtered.append(entry)
+        return filtered
+    return items

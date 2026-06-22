@@ -120,6 +120,22 @@ def run_dimension(spec: DimensionSpec, pool_size: int) -> tuple[list[DimensionHi
 | R-02 | `ultra_short_first_board` | intraday | 首板 + 封板时间代理 + 题材 | 启动期试错（**已有**） |
 | R-03 | `cm20_elastic` | intraday | 涨幅 + 小盘 + 概念强度 | 20cm 弹性（**已有**） |
 | R-04 | `emotion_gate_only` | intraday | sentiment_gate × 其它配方 | 退潮期空池或 Top3 观察（**已有**） |
+| — | `ultra_short_unified` | intraday | leader_score + radar_resonance + limit_board + 板块/概念/换手 + sentiment_gate | 极致短线·雷达统一（Hub 与 `run_short_term_screen` 同源内核，**已有**） |
+
+**`ultra_short_unified` 权重**：
+
+| 维度 | 权重 |
+|------|------|
+| leader_score 龙头 | 0.28 |
+| radar_resonance 共振 | 0.18 |
+| limit_board 连板 | 0.18 |
+| sector_strength 板块 | 0.14 |
+| concept_strength 概念 | 0.08 |
+| turnover 换手 | 0.08 |
+| sentiment_gate 环境 | 0.06 |
+
+- `min_dimensions`: **2**；`top_n`: 12；`pool_size`: 60
+- vnpy-radar `run_short_term_screen` 在此基础上叠加情绪退潮 gate、可选 `require_resonance` 交集与 `ultra_short_only` 主池过滤
 
 **R-04 行为**：当 T-03 阶段为 `retreat`（退潮）时，其它 intraday 配方前置 gate，返回空结果或仅观察名单；与 [emotion-cycle.md](./emotion-cycle.md) gate 一致。
 

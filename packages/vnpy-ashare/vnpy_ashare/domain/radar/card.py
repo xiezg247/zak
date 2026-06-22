@@ -45,3 +45,6 @@ class RadarResonanceEntry(FrozenModel):
     price: float | None = Field(description="最新价")
     change_pct: float | None = Field(description="涨跌幅（%）")
     resonance_score: float = Field(default=0.0, description="共振得分")
+    leader_tier: str = Field(default="", description="龙头分层")
+    leader_score: float | None = Field(default=None, description="龙头评分")
+    limit_times: float | None = Field(default=None, description="连板数")

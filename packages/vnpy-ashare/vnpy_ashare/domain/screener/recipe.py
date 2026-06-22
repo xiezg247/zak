@@ -12,6 +12,7 @@ TriggerKind = Literal["intraday", "post_close"]
 
 RECIPE_INTRADAY_MULTI = "intraday_multi"
 RECIPE_INTRADAY_AGGRESSIVE = "intraday_aggressive"
+RECIPE_ULTRA_SHORT_UNIFIED = "ultra_short_unified"
 RECIPE_ULTRA_SHORT_LIMIT = "ultra_short_limit"
 RECIPE_ULTRA_SHORT_FIRST_BOARD = "ultra_short_first_board"
 RECIPE_CM20_ELASTIC = "cm20_elastic"

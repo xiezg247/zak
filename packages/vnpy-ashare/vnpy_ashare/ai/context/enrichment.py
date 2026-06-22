@@ -6,7 +6,9 @@ import re
 
 from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions, format_market_overview_extra
 from vnpy_ashare.ai.context.quote.assembly import build_assistant_quick_actions, build_assistant_screening_menus, build_floating_stock_quick_actions
+from vnpy_ashare.ai.context.radar import build_radar_page_quick_actions
 from vnpy_ashare.ai.context.store import get_screening_results
+from vnpy_ashare.quotes.radar.radar_board_store import get_radar_board_snapshot
 from vnpy_common.ai.protocol import AiContextData, QuickAction
 
 
@@ -68,6 +70,8 @@ def build_page_quick_actions(data: AiContextData) -> list[QuickAction]:
 
 
 def _build_actions(data: AiContextData) -> list[QuickAction]:
+    if data.page == "雷达" and not data.symbol:
+        return build_radar_page_quick_actions()
     if data.page == "市场":
         actions = build_market_page_quick_actions()
         if data.symbol:
@@ -99,6 +103,10 @@ def _build_badge(data: AiContextData) -> str:
             return f"选股·{ctx.count}"
         return "选股"
     if data.page in ("自选", "市场", "雷达", "本地", "数据管理"):
+        if data.page == "雷达":
+            snapshot = get_radar_board_snapshot()
+            if snapshot is not None and snapshot.resonance_count > 0:
+                return f"雷达·{snapshot.resonance_count}"
         return data.page[:2] if data.page == "数据管理" else data.page
     if data.page:
         return data.page[:2]
@@ -126,6 +134,12 @@ def _build_chip_text(data: AiContextData) -> str:
             parts.append(f"命中 {ctx.count} 条")
         else:
             parts.append("暂无结果")
+    elif data.page == "雷达":
+        snapshot = get_radar_board_snapshot()
+        if snapshot is not None and snapshot.resonance_count > 0:
+            parts.append(f"共振 {snapshot.resonance_count} 只")
+        else:
+            parts.append("暂无共振")
     elif data.page == "数据管理" and data.extra:
         first_line = data.extra.splitlines()[1] if "\n" in data.extra else data.extra
         parts.append(first_line.replace("日线：", "").split("，")[0] if "日线" in first_line else "本地数据")

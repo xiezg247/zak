@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_to_dict
+from vnpy_ashare.domain.market.emotion import EmotionStage
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.screener.hard_filters import is_at_limit_board
@@ -18,6 +19,7 @@ __all__ = [
     "FOLLOWER_MIN_SCORE",
     "compute_leader_score",
     "compute_leader_score_breakdown",
+    "leader_score_weights_for_stage",
     "leader_tier_label",
     "rank_sector_group_full",
     "rank_sector_leaders",
@@ -44,6 +46,39 @@ _DEFAULT_WEIGHTS: dict[str, float] = {
 
 _FOLLOWER_MIN_SCORE = 35.0
 FOLLOWER_MIN_SCORE = _FOLLOWER_MIN_SCORE
+
+_STAGE_WEIGHT_MULTIPLIERS: dict[EmotionStage, dict[str, float]] = {
+    "startup": {
+        "seal_time": 1.35,
+        "sector_strength": 1.25,
+        "limit_times": 0.85,
+    },
+    "climax": {
+        "limit_times": 1.25,
+        "seal_quality": 1.15,
+        "amount_rank": 1.1,
+    },
+    "divergence": {
+        "seal_quality": 1.2,
+        "net_mf": 1.15,
+        "limit_times": 0.9,
+    },
+}
+
+
+def leader_score_weights_for_stage(stage: str | None) -> dict[str, float]:
+    """情绪阶段自适应权重（归一化后与默认维度键一致）。"""
+    base = dict(_DEFAULT_WEIGHTS)
+    if not stage:
+        return base
+    multipliers = _STAGE_WEIGHT_MULTIPLIERS.get(cast(EmotionStage, stage))
+    if not multipliers:
+        return base
+    adjusted = {key: base[key] * multipliers.get(key, 1.0) for key in base}
+    total = sum(adjusted.values())
+    if total <= 0:
+        return base
+    return {key: round(value / total, 4) for key, value in adjusted.items()}
 
 _COMPONENT_LABELS: dict[str, str] = {
     "limit_times": "连板高度",
@@ -169,6 +204,7 @@ def compute_leader_score(
     resonance_bonus: float = 0.0,
     max_net_mf: float = 0.0,
     weights: dict[str, float] | None = None,
+    emotion_stage: str | None = None,
 ) -> float:
     return cast(
         float,
@@ -179,6 +215,7 @@ def compute_leader_score(
             resonance_bonus=resonance_bonus,
             max_net_mf=max_net_mf,
             weights=weights,
+            emotion_stage=emotion_stage,
         )["leader_score"],
     )
 
@@ -191,9 +228,10 @@ def compute_leader_score_breakdown(
     resonance_bonus: float = 0.0,
     max_net_mf: float = 0.0,
     weights: dict[str, float] | None = None,
+    emotion_stage: str | None = None,
 ) -> dict[str, object]:
     """龙头分及加权分项（供 explain_leader_tier 等解读）。"""
-    w = dict(_DEFAULT_WEIGHTS)
+    w = leader_score_weights_for_stage(emotion_stage) if weights is None else dict(_DEFAULT_WEIGHTS)
     if weights:
         w.update(weights)
 
@@ -232,6 +270,7 @@ def rank_sector_group_full(
     max_per_sector: int = 8,
     strong_sectors: set[str] | None = None,
     include_breakdown: bool = False,
+    emotion_stage: str | None = None,
 ) -> list[dict[str, Any]]:
     """单板块候选全量排序；可选返回 score_breakdown（供 explain_leader_tier）。"""
     if not group_rows:
@@ -252,6 +291,7 @@ def rank_sector_group_full(
             amount_rank=amount_ranks.get(vt, 0.5),
             sector_strength_bonus=bonus,
             max_net_mf=max_mf,
+            emotion_stage=emotion_stage,
         )
         boards = float(coerced.get("limit_times") or 0)
         if boards < 1 and is_at_limit_board(coerced):
@@ -286,6 +326,7 @@ def rank_sector_group_full(
                 amount_rank=amount_ranks.get(vt, 0.5),
                 sector_strength_bonus=bonus,
                 max_net_mf=max_mf,
+                emotion_stage=emotion_stage,
             )
         results.append(entry)
     return results
@@ -297,6 +338,7 @@ def rank_sector_leaders(
     sector_key: str = "industry",
     max_per_sector: int = 5,
     strong_sectors: set[str] | None = None,
+    emotion_stage: str | None = None,
 ) -> list[LeaderScoredRow]:
     """同板块内降序；Top1=龙一，Top2=龙二，其余强势=跟风。"""
     if not candidates:
@@ -324,6 +366,7 @@ def rank_sector_leaders(
                 amount_rank=amount_ranks.get(vt, 0.5),
                 sector_strength_bonus=bonus,
                 max_net_mf=max_mf,
+                emotion_stage=emotion_stage,
             )
             boards = float(row.get("limit_times") or 0)
             if boards < 1 and is_at_limit_board(row):
@@ -377,6 +420,7 @@ def rank_unified_sector_leaders(
     max_per_sector: int = 5,
     strong_industries: set[str] | None = None,
     strong_concepts: set[str] | None = None,
+    emotion_stage: str | None = None,
 ) -> list[LeaderScoredRow]:
     """行业 + 概念双轴统一 scoring；每票取更强分层结果（G-07）。"""
     industry_rows = [row for row in candidates if str(row.get("industry") or "").strip()]
@@ -394,6 +438,7 @@ def rank_unified_sector_leaders(
             sector_key=axis,
             max_per_sector=max_per_sector,
             strong_sectors=strong,
+            emotion_stage=emotion_stage,
         ):
             vt = str(scored.row.get("vt_symbol") or "")
             if not vt:
@@ -422,11 +467,13 @@ def score_market_leaders(
     top_n: int = 12,
     strong_industries: set[str] | None = None,
     strong_concepts: set[str] | None = None,
+    emotion_stage: str | None = None,
 ) -> list[LeaderScoredRow]:
     """全市场候选 → 行业/概念双轴分层 → 按龙头分取 Top N。"""
     ranked = rank_unified_sector_leaders(
         candidates,
         strong_industries=strong_industries,
         strong_concepts=strong_concepts,
+        emotion_stage=emotion_stage,
     )
     return ranked[: max(1, top_n)]

@@ -101,6 +101,7 @@ def run_leader_screen(
         filter_followers=filter_followers,
         strong_industries=strong_industries,
         strong_concepts=strong_concepts,
+        emotion_stage=cycle.stage if cycle is not None else None,
     )
     rows = [leader_scored_to_result_row(item) for item in ranked]
     for index, item in enumerate(ranked):

@@ -15,7 +15,7 @@ from vnpy_llm.routing.intent import (
     ScreeningIntent,
 )
 
-AgentName = Literal["market", "research", "screening", "backtest", "data", "general", "financial", "risk", "strategy", "chief"]
+AgentName = Literal["market", "research", "screening", "radar", "backtest", "data", "general", "financial", "risk", "strategy", "chief"]
 
 # 意图类别 → 默认 Specialist（handoff 可再追加 market 等）
 CATEGORY_TO_AGENT: dict[IntentCategory, AgentName] = {
@@ -24,6 +24,7 @@ CATEGORY_TO_AGENT: dict[IntentCategory, AgentName] = {
     "market": "market",
     "diagnosis": "research",
     "screening": "screening",
+    "radar": "radar",
     "backtest": "backtest",
     "watchlist": "market",
     "data": "data",
@@ -36,6 +37,7 @@ AGENT_TOOL_CATEGORIES: dict[AgentName, frozenset[IntentCategory]] = {
     "market": frozenset({"quote", "technical", "watchlist", "market"}),
     "research": frozenset({"diagnosis"}),
     "screening": frozenset({"screening"}),
+    "radar": frozenset({"radar", "market"}),
     "backtest": frozenset({"backtest"}),
     "data": frozenset({"data"}),
     "general": frozenset(),
@@ -53,6 +55,7 @@ AGENT_STREAM_LABELS: dict[AgentName, str] = {
     "market": "市场环境",
     "research": "个股研究",
     "screening": "选股方案",
+    "radar": "雷达盘面",
     "backtest": "回测解读",
     "data": "数据查询",
     "general": "",

@@ -9,11 +9,13 @@ from vnpy_ashare.screener.dimensions.cm20_elastic import run_cm20_elastic
 from vnpy_ashare.screener.dimensions.concept_strength import run_concept_strength
 from vnpy_ashare.screener.dimensions.first_board import run_first_board
 from vnpy_ashare.screener.dimensions.intraday_breakout import run_intraday_breakout
+from vnpy_ashare.screener.dimensions.leader_score_dim import run_leader_score
 from vnpy_ashare.screener.dimensions.limit_board import run_limit_board
 from vnpy_ashare.screener.dimensions.low_pe import run_low_pe
 from vnpy_ashare.screener.dimensions.momentum import run_momentum
 from vnpy_ashare.screener.dimensions.moneyflow import run_moneyflow
 from vnpy_ashare.screener.dimensions.moneyflow_intraday import run_moneyflow_intraday
+from vnpy_ashare.screener.dimensions.radar_resonance import run_radar_resonance
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
 from vnpy_ashare.screener.dimensions.sentiment_gate_dim import run_sentiment_gate
 from vnpy_ashare.screener.dimensions.turnover import run_turnover
@@ -33,6 +35,8 @@ DIMENSION_RUNNERS: dict[str, DimensionRunner] = {
     "intraday_breakout": run_intraday_breakout,
     "limit_board": run_limit_board,
     "first_board": run_first_board,
+    "leader_score": run_leader_score,
+    "radar_resonance": run_radar_resonance,
     "cm20_elastic": run_cm20_elastic,
     "moneyflow_intraday": run_moneyflow_intraday,
     "sentiment_gate": run_sentiment_gate,

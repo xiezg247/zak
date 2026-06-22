@@ -13,7 +13,10 @@ SCREENING_PROMPT = """【Screening Agent 职责】
 → propose_screening：已保存方案名或复杂自定义条件（解析后需用户确认再执行）
 → screen_by_pattern：形态选股（老鸭头/均线多头/W底/热点活跃）
 → screen_reference_peer：标杆对标
+→ run_recipe(recipe_id=ultra_short_unified)：极致短线雷达统一配方（与 vnpy-radar run_short_term_screen 同源）
 → explain_screening_run / get_screening_context：选股结果解读
+
+雷达龙头/共振编排 → vnpy-radar（get_radar_snapshot、run_short_term_screen），非本 Agent。
 
 规则：
 - 意图足够明确时优先 run_recipe / screen_by_condition；需解析时用 propose_*（客户端弹窗确认后执行）

@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from pydantic import Field
 
+from vnpy.trader.constant import Exchange
+
+from vnpy_ashare.config.constants.watchlist import SHORT_TERM_FOCUS_GROUP_NAME
 from vnpy_ashare.config.preferences.watchlist_groups import load_active_watchlist_group_id
 from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
+from vnpy_ashare.domain.radar.card import RadarResonanceEntry
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, RadarRow
 from vnpy_ashare.quotes.radar.radar_resonance_store import (
@@ -21,6 +27,59 @@ from vnpy_common.domain.base import FrozenModel
 class WatchlistPoolBatchResult(FrozenModel):
     watchlist_added: int = Field(description="新增至自选数")
     skipped: int = Field(description="跳过数量")
+
+
+@dataclass(frozen=True)
+class ShortTermFocusResult:
+    group_id: str
+    group_name: str
+    watchlist_added: int
+    group_added: int
+    skipped: int
+
+
+def ensure_short_term_focus_group(service: WatchlistService) -> str | None:
+    """确保存在「短线关注」分组，返回 group_id。"""
+    for group in service.list_groups():
+        if group.name == SHORT_TERM_FOCUS_GROUP_NAME:
+            return group.id
+    return service.create_group(SHORT_TERM_FOCUS_GROUP_NAME)
+
+
+def add_short_term_focus(
+    service: WatchlistService,
+    rows: tuple[RadarRow, ...] | list[RadarRow],
+) -> ShortTermFocusResult:
+    """将标的写入自选池并加入「短线关注」分组（追加，不替换）。"""
+    group_id = ensure_short_term_focus_group(service)
+    if not group_id:
+        return ShortTermFocusResult(
+            group_id="",
+            group_name=SHORT_TERM_FOCUS_GROUP_NAME,
+            watchlist_added=0,
+            group_added=0,
+            skipped=len(rows),
+        )
+
+    pool_result = add_rows_to_watchlist_pool(service, rows)
+    group_added = skipped = 0
+    for row in rows:
+        item = parse_stock_symbol(row.vt_symbol)
+        if item is None:
+            skipped += 1
+            continue
+        if service.add_to_group(group_id, item.symbol, item.exchange):
+            group_added += 1
+        else:
+            skipped += 1
+
+    return ShortTermFocusResult(
+        group_id=group_id,
+        group_name=SHORT_TERM_FOCUS_GROUP_NAME,
+        watchlist_added=pool_result.watchlist_added,
+        group_added=group_added,
+        skipped=pool_result.skipped + skipped,
+    )
 
 
 def add_rows_to_watchlist_pool(
@@ -154,3 +213,27 @@ def add_screener_rows_to_watchlist_pool(
         if item is not None:
             parsed.append(item)
     return add_rows_to_watchlist_pool(service, parsed)
+
+
+def resonance_entries_to_rows(
+    entries: tuple[RadarResonanceEntry, ...] | list[RadarResonanceEntry],
+) -> list[RadarRow]:
+    rows: list[RadarRow] = []
+    for entry in entries:
+        rows.append(
+            RadarRow(
+                vt_symbol=entry.vt_symbol,
+                name=entry.name,
+                symbol=entry.symbol,
+                price=entry.price,
+                change_pct=entry.change_pct,
+                metric_label="",
+                metric_value="",
+                sub_label="",
+                sub_value="",
+                leader_score=entry.leader_score,
+                leader_tier=entry.leader_tier,
+                limit_times=entry.limit_times,
+            )
+        )
+    return rows

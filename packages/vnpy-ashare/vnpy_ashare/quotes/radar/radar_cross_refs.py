@@ -6,6 +6,13 @@ from vnpy_ashare.quotes.radar.radar_models import RadarRow
 from vnpy_ashare.quotes.radar.radar_resonance_store import get_radar_resonance_entries
 from vnpy_ashare.screener.run.run_store import get_latest_run
 
+__all__ = [
+    "build_outlook_cross_ref_hint",
+    "build_outlook_cross_ref_suffix",
+    "latest_recipe_vt_symbols",
+    "latest_resonance_vt_symbols",
+]
+
 
 def latest_recipe_vt_symbols(limit: int = 200) -> set[str]:
     record = get_latest_run()

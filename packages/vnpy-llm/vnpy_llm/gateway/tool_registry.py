@@ -26,6 +26,7 @@ class ToolRegistry:
                 "quote": ashare_engine.quote_service,
                 "backtest": ashare_engine.backtest_service,
                 "screening": ashare_engine.screening_service,
+                "radar": getattr(ashare_engine, "radar_service", None),
                 "watchlist": ashare_engine.watchlist_service,
                 "position": ashare_engine.position_service,
                 "note": ashare_engine.note_service,

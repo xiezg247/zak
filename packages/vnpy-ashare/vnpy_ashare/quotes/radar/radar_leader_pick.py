@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike, quote_row_copy
+from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, score_market_leaders
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
@@ -93,12 +94,14 @@ def rank_leader_pool(
     filter_followers: bool = False,
     strong_industries: set[str] | None = None,
     strong_concepts: set[str] | None = None,
+    emotion_stage: str | None = None,
 ) -> list[LeaderScoredRow]:
     ranked = score_market_leaders(
         candidates,
         top_n=max(top_n * 2, top_n),
         strong_industries=strong_industries,
         strong_concepts=strong_concepts,
+        emotion_stage=emotion_stage,
     )
     if filter_followers:
         ranked = [item for item in ranked if item.leader_tier in {"dragon_1", "dragon_2"}]
@@ -125,11 +128,15 @@ def load_leader_pick(spec: RadarCardSpec, *, variant: LeaderPickVariant = "mainl
     strong_industries = {str(item["industry"]) for item in industry_distribution[:5]}
     strong_concepts = {str(item["concept"]) for item in concept_distribution[:5]} | set(hot_concepts)
 
+    cycle = load_emotion_cycle_snapshot(fetch_if_missing=False)
+    emotion_stage = cycle.stage if cycle is not None else None
+
     ranked = rank_leader_pool(
         pool,
         top_n=spec.top_n,
         strong_industries=strong_industries,
         strong_concepts=strong_concepts,
+        emotion_stage=emotion_stage,
     )
     rows: list[RadarRow] = []
     sector_names: list[str] = []

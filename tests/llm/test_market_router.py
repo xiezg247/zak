@@ -23,6 +23,8 @@ ALL_TOOLS = [
     _tool("check_risk_gate"),
     _tool("get_ashare_fear_greed_index"),
     _tool("run_leader_screen"),
+    _tool("run_short_term_screen"),
+    _tool("get_radar_snapshot"),
     _tool("get_short_term_watchlist"),
     _tool("get_quote_context"),
     _tool("diagnose_stock"),
@@ -64,6 +66,14 @@ def test_filter_tools_by_route_market_subset():
     assert "get_emotion_cycle" in names
     assert "check_risk_gate" in names
     assert "diagnose_stock" not in names
+    assert "run_leader_screen" not in names
+
+
+def test_filter_tools_by_route_radar_includes_leader_tools():
+    filtered = filter_tools_by_route(ALL_TOOLS, "radar")
+    names = {t["function"]["name"] for t in filtered}
+    assert "run_leader_screen" in names
+    assert "get_radar_snapshot" in names or "run_short_term_screen" in names or "run_leader_screen" in names
 
 
 def test_build_page_prompt_market_includes_dynamic_block():

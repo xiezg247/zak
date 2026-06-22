@@ -179,38 +179,6 @@ class VnpyScreeningSkill(SkillTemplate):
                     "required": ["symbol"],
                 },
             ),
-            ToolSpec(
-                name="run_leader_screen",
-                description=(
-                    "按 leader_score 执行雷达龙头选股（硬过滤 + 情绪周期 gate）。退潮/冰点返回空结果；variant 可选 mainline（主线）或 all_market（全市场）。"
-                ),
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 12"},
-                        "variant": {
-                            "type": "string",
-                            "enum": ["mainline", "all_market"],
-                            "description": "主线龙头 mainline / 全市场龙头 all_market",
-                        },
-                    },
-                },
-            ),
-            ToolSpec(
-                name="get_leader_pick_snapshot",
-                description="读取雷达「选股·龙头」卡当前候选（不写入选股历史）",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "variant": {
-                            "type": "string",
-                            "enum": ["mainline", "all_market"],
-                            "description": "主线 mainline / 全市场 all_market，默认 mainline",
-                        },
-                        "top_n": {"type": "integer", "description": "返回前 N 条，默认 12"},
-                    },
-                },
-            ),
         ]
 
     def _get_screening_service(self):
@@ -231,7 +199,7 @@ class VnpyScreeningSkill(SkillTemplate):
                     "盘中/盘后多因子用 run_recipe；"
                     "内置 preset / 已保存方案 / 自定义筛选用 screen_by_condition；"
                     "形态用 screen_by_pattern；标杆对标用 screen_reference_peer；"
-                    "雷达龙头用 run_leader_screen。"
+                    "雷达龙头/共振/极致短线用 vnpy-radar（get_radar_snapshot、run_short_term_screen）。"
                 ),
                 "recipes": [
                     {
@@ -600,83 +568,6 @@ class VnpyScreeningSkill(SkillTemplate):
                         "momentum_5d": r.get("momentum_5d"),
                     }
                     for r in result.rows
-                ],
-            },
-            ensure_ascii=False,
-        )
-
-    def run_leader_screen(self, top_n: int = 12, variant: str = "mainline") -> str:
-        svc = self._get_screening_service()
-        variant_key = (variant or "mainline").strip().lower()
-        if variant_key not in ("mainline", "all_market"):
-            variant_key = "mainline"
-        try:
-            result = svc.run_leader_screen(top_n=int(top_n or 12), variant=variant_key)
-        except Exception as ex:
-            return json.dumps({"status": "error", "message": str(ex)}, ensure_ascii=False)
-
-        config = {"trigger": "radar_leader", "leader_variant": variant_key}
-        if result.rows:
-            svc.persist_run_result(result, trigger="radar_leader", extra_config=config)
-
-        return json.dumps(
-            {
-                "status": "ok",
-                "condition": result.condition,
-                "count": len(result.rows),
-                "source": result.source,
-                "updated_at": result.updated_at,
-                "total_scanned": result.total_scanned,
-                "variant": variant_key,
-                "results": [
-                    {
-                        "symbol": r.get("symbol", ""),
-                        "name": r.get("name", ""),
-                        "vt_symbol": r.get("vt_symbol", ""),
-                        "leader_score": r.get("leader_score"),
-                        "leader_tier": r.get("leader_tier"),
-                        "leader_tier_label": r.get("leader_tier_label"),
-                        "limit_times": r.get("limit_times"),
-                        "hit_reason": r.get("hit_reason"),
-                        "change_pct": r.get("change_pct"),
-                    }
-                    for r in result.rows
-                ],
-            },
-            ensure_ascii=False,
-        )
-
-    def get_leader_pick_snapshot(self, variant: str = "mainline", top_n: int = 12) -> str:
-        from vnpy_ashare.quotes.radar.radar_catalog import list_radar_cards
-        from vnpy_ashare.quotes.radar.radar_leader_pick import load_leader_pick
-
-        variant_key = (variant or "mainline").strip().lower()
-        if variant_key not in ("mainline", "all_market"):
-            variant_key = "mainline"
-        spec = next((item for item in list_radar_cards() if item.id == "leader_pick"), None)
-        if spec is None:
-            return json.dumps({"status": "error", "message": "leader_pick 卡片未注册"}, ensure_ascii=False)
-
-        card = load_leader_pick(spec, variant=variant_key)  # type: ignore[arg-type]
-        rows = list(card.rows)[: max(1, int(top_n or 12))]
-        return json.dumps(
-            {
-                "status": "ok",
-                "variant": variant_key,
-                "subtitle": card.subtitle,
-                "count": len(rows),
-                "total_count": card.total_count,
-                "results": [
-                    {
-                        "symbol": r.symbol,
-                        "name": r.name,
-                        "vt_symbol": r.vt_symbol,
-                        "leader_score": r.leader_score,
-                        "leader_tier": r.leader_tier,
-                        "limit_times": r.limit_times,
-                        "change_pct": r.change_pct,
-                    }
-                    for r in rows
                 ],
             },
             ensure_ascii=False,

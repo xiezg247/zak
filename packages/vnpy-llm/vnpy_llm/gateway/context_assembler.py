@@ -53,6 +53,8 @@ class ContextAssembler:
                 capabilities.append("策略回测")
             elif name.startswith("vnpy-screening"):
                 capabilities.append("选股筛选")
+            elif name.startswith("vnpy-radar"):
+                capabilities.append("雷达盘面/龙头选股")
             elif name.startswith("vnpy-analysis"):
                 capabilities.append("技术形态/策略信号")
             elif name.startswith("tdx-financial-analysis"):
