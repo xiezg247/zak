@@ -16,11 +16,11 @@
 | `AshareSwingMaStrategy` | 1–4 周回踩 | 波段 | **保留**；分歧期「低吸」语义最接近 |
 | `AshareTrendMaStrategy` | 1–6 月 ADX 趋势 | 中线 | **保留**；团队分析 / 趋势票验证 |
 
-**不删除、不合并**现有策略。调整的是：
+**不删除、不合并**现有策略。已通过 Profile 切换与极致短线规则层（打板/半路/隔日卖）与上述日 K CTA **并存**：
 
-1. **默认 Profile**（新用户导向短线时可改为「极致短线」）  
-2. **信号区/持仓区**显式 Profile 切换（当前默认写死双均线）  
-3. **新增**极致短线规则层（打板/半路/隔日卖），与上述日 K CTA **并存**
+1. **默认 Profile**：全局默认 `medium_watch`；新用户经 onboarding 可引导「极致短线」（**已有**）
+2. **信号区 / 持仓区 Profile 切换**（**已有**）：QSettings `trading/strategy_profile` + header 下拉
+3. **硬过滤联动**（**已有**）：Profile 切换同步保守 / 均衡 / 激进模板
 
 ---
 
@@ -35,14 +35,14 @@
 
 `AshareShortBreakoutStrategy` **不能替代**打板/半路/低吸：它不含涨停封板逻辑，也不含「高开低走 30 分钟止损」等隔日规则。
 
-**规划中的新插件**（[交易体系 §4](./trading-system.md#四策略与买卖点量化规则拒绝主观)）：
+**极致短线策略族**（[交易体系 §4](./trading-system.md#四策略与买卖点量化规则拒绝主观) **已有**）：
 
-| 新策略 | 层级 | 与现有关系 |
-|--------|------|------------|
-| `AshareLimitBoardStrategy` | 极致短线 · 打板 | **新增**，不动 ShortBreakout |
-| `AshareIntradayBreakoutStrategy` | 极致短线 · 半路 | 可与 ShortBreakout 共用部分突破逻辑 |
+| 策略 | 层级 | 与现有关系 |
+|------|------|------------|
+| `AshareLimitBoardStrategy` | 极致短线 · 打板 | 与 ShortBreakout 并存；`ultra_short` Profile 默认信号 |
+| `AshareIntradayBreakoutStrategy` | 极致短线 · 半路 | 与 ShortBreakout 共用部分突破逻辑 |
 | `AsharePullbackStrategy` | 极致短线 · 低吸 | 与 SwingMa 不同：Swing 是周级回踩 |
-| `AshareOvernightExitStrategy` | 退出规则集 | **非独立 CTA**，绑定持仓区 |
+| `AshareOvernightExitStrategy` | 退出规则集 | **非独立 CTA**，绑定持仓区 overlay |
 
 ---
 
@@ -57,7 +57,7 @@
 | `medium_watch` | 中线观察 | `AshareDoubleMaStrategy` | 双均线死叉 | 自选默认（**当前**） |
 | `trend` | 趋势中线 | `AshareTrendMaStrategy` | ADX + 追踪止损 | 回测、团队分析 |
 
-**过渡说明（已 supersede）**：`ultra_short` Profile 已默认绑定 `AshareLimitBoardStrategy`；若需波段代理可手动切 `AshareShortBreakoutStrategy`。
+**过渡说明（已 supersede）**：`ultra_short` Profile 已默认绑定 `AshareLimitBoardStrategy`；波段代理可手动切 `AshareShortBreakoutStrategy`。
 
 ---
 
@@ -131,7 +131,7 @@
 
 | Profile | `list_strategy_signals` 默认 | prompt |
 |---------|------------------------------|--------|
-| ultra_short | ShortBreakout（过渡） | 须带 emotion_cycle + 龙头上下文 |
+| ultra_short | LimitBoard（可切 Pullback / IntradayBreakout） | 须带 emotion_cycle + 龙头上下文 |
 | medium_watch | DoubleMA | 现有 `build_signals_ai_prompt` |
 
 切换 Profile 时 AI 上下文应附带 `strategy_profile` 字段。
@@ -145,7 +145,7 @@
 | SP-01 | Profile 枚举 + QSettings | 已有 |
 | SP-02 | 信号区 Profile 下拉 | 已有 |
 | SP-03 | 持仓区 header 展示 Profile | 已有 |
-| SP-04 | 新用户默认 Profile 配置项（仍默认 medium_watch 直至极致短线策略就绪） | 已有 |
+| SP-04 | 新用户默认 Profile + ultra_short onboarding 引导 | 已有 |
 | SP-05 | LimitBoard / OvernightExit 策略与 registry | **已有** |
 | SP-06 | Profile 切换同步硬过滤模板 | **已有** | ultra_short→激进；trend→保守；其余→均衡 |
 

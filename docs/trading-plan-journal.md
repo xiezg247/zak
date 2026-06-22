@@ -151,7 +151,7 @@ TradeJournalEntry
 
 ---
 
-## 7. 报表（Phase 4+）
+## 7. 报表（J-05，**已有**）
 
 | 指标 | 公式 |
 |------|------|
@@ -166,7 +166,9 @@ TradeJournalEntry
 
 ---
 
-## 8. Schema（规划 SQL）
+## 8. Schema（**已有**）
+
+> 建表逻辑见 `storage/connection.py`；下列为字段参考（与实现略有命名差异，如 `allowed_modes_json`）。
 
 ```sql
 CREATE TABLE trading_plans (
@@ -214,14 +216,14 @@ CREATE TABLE trade_journal (
 
 ---
 
-## 9. 实施分期
+## 9. 实施分期（均已交付）
 
-| Phase | 交付 |
-|-------|------|
-| 1 | 笔记 + 手动计划（无表） |
-| 2 | `trading_plans` + 同步自选 + 简单 UI |
-| 3 | `trade_journal` + 登记联动 + off_plan 标记 |
-| 4 | AI propose/get + 周度报表 |
+| Phase | 交付 | 状态 |
+|-------|------|------|
+| 1 | 笔记 + 手动计划（无表） | 归档 |
+| 2 | `trading_plans` + 同步自选 + 简单 UI | **已有** |
+| 3 | `trade_journal` + 登记联动 + off_plan 标记 | **已有** |
+| 4 | AI propose/get + 周度报表（J-05） | **已有** |
 
 ---
 

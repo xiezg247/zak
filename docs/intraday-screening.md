@@ -110,7 +110,7 @@ def run_dimension(spec: DimensionSpec, pool_size: int) -> tuple[list[DimensionHi
 - `top_n`: 20
 - `pool_size`: 80
 
-### 2.5 极致短线 Recipe（规划 R-01–R-04）
+### 2.5 极致短线 Recipe（R-01–R-04，**已有**）
 
 > 状态与分期见 [implementation-roadmap.md §3](./implementation-roadmap.md#3-选股-reciper-)。Hub 内置 `intraday_multi` 与 R-01–R-04 极致短线配方。
 

@@ -175,9 +175,9 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 **用途：** 自选页 Tab 切换（P-06 **已有**）；雷达/选股「加自选」写入自选池，分组仅作用户视图。详见 [自选分组](./watchlist-groups.md)。
 
-### 1.11 交易计划与流水（规划）
+### 1.11 交易计划与流水（**已有**）
 
-> **状态**：**已有**（J-01、J-02 已落库）。详见 [交易计划与流水](./trading-plan-journal.md)。
+> J-01、J-02 已落库。详见 [交易计划与流水](./trading-plan-journal.md)。
 
 #### `trading_plans`
 
@@ -219,9 +219,9 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 **用途：** K-05 违规统计、J-05 复盘报表；与 `stock_note_entries` 并存（笔记偏定性，流水偏聚合）。
 
-### 1.12 `notify_delivery_log`（规划）
+### 1.12 `notify_delivery_log`（**已有**，N-05）
 
-> **状态**：Phase 2（N-05）。详见 [消息通知](./notifications.md)。
+> Phase 2 已落库。详见 [消息通知](./notifications.md)。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|

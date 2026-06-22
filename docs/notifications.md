@@ -49,7 +49,7 @@ https://open.feishu.cn/open-apis/bot/v2/hook/{uuid}
 |----|------|
 | 创建位置 | 飞书群 → 设置 → 群机器人 → 添加自定义机器人 |
 | 鉴权 | Webhook URL 内含 secret；仅需 HTTPS POST |
-| 消息类型 | Phase 1：`text`；Phase 2：`interactive` 卡片（可选） |
+| 消息类型 | `text`（默认）；`interactive` 卡片（N-06 **已有**，可配置） |
 | 频率 | 飞书侧约 **100 次/分钟/机器人**；zak 侧另设合并限频 |
 
 ### 2.2 消息体（Phase 1）
@@ -112,24 +112,27 @@ NotifyDispatcher（后台 Queue + Worker 线程）
         └─► EmailChannel（可选）
         │
         ▼
-落库 notify_delivery_log（可选，Phase 2）
+落库 notify_delivery_log（N-05 **已有**）
 ```
 
-### 3.1 模块结构（规划）
+### 3.1 模块结构（**已有**）
 
 ```text
 packages/vnpy-ashare/vnpy_ashare/notifications/
-├── __init__.py
-├── models.py              # NotifyEvent, NotifyResult, DeliveryStatus
-├── service.py             # NotificationService.notify / test_send
-├── dispatcher.py          # 队列、Worker、限频
-├── rules.py               # 订阅、静默、dedupe key
+├── service.py                 # NotificationService.notify / test_send
+├── core/models.py             # NotifyEvent, NotifyResult, DeliveryStatus
+├── core/events.py             # 事件 ID 常量
+├── pipeline/dispatcher.py     # 队列、Worker、限频
+├── rules/engine.py            # 订阅、静默、dedupe key
 ├── channels/
 │   ├── base.py
-│   ├── feishu_webhook.py
-│   ├── vnpy_wechat.py     # 委托 MainEngine WechatEngine
-│   └── email.py
-└── formatters.py          # 各 event 标题/正文模板
+│   └── feishu_webhook.py
+├── content/
+│   ├── formatters.py          # 各 event 标题/正文模板
+│   ├── feishu_card.py         # interactive 卡片（N-06）
+│   └── delivery.py
+├── triggers/                  # position_alerts, radar_leader_ready
+└── prefs/store.py
 ```
 
 | 模块 | 路径 | 职责 |
@@ -230,26 +233,26 @@ packages/vnpy-ashare/vnpy_ashare/notifications/
 打开选股 Hub 查看龙头列表
 ```
 
-### 5.2 Phase 2 卡片（可选）
+### 5.2 interactive 卡片（N-06，**已有**）
 
-飞书 `msg_type: interactive` 展示「打开 zak」按钮（自定义 URL scheme 或仅文案提示）。
+飞书 `msg_type: interactive`；`content/feishu_card.py` 构建卡片，可选「打开 zak」按钮（`NOTIFY_OPEN_URL`）。
 
 ---
 
-## 6. 触发点改造
+## 6. 触发点
 
-### 6.1 已有逻辑 → 通知
+### 6.1 触发点（**已有**）
 
-| 现状 | 改造 |
+| 来源 | 行为 |
 |------|------|
-| `_handle_scheduler_job` 仅 Orb + 选股页 | 成功时 `notify(screener_*_done)` |
-| `page_notify` 全局 | **不**全部转发 |
-| 无 emotion / risk | 引擎状态变更时 notify |
+| scheduler `job_finished_hook` | 成功时 `notify(screener_*_done)` |
+| `page_notify` 全局 | **不**全部转发（仅白名单事件） |
+| `emotion_cycle` / `risk_gate` | 状态变更时 notify |
 
 ### 6.2 调用约定
 
 ```python
-# 规划 API
+# NotificationService（已有）
 service.notify(
     "screener_intraday_done",
     dedupe_key="screen_intraday",
@@ -334,8 +337,8 @@ Worker 内 HTTP 失败：重试 2 次（指数退避）；仍失败写 `last_err
 
 ### Phase 3 — 扩展
 
-- [ ] 飞书 interactive 卡片
-- [ ] 可选 `VnpyWechatChannel` / Email
+- [x] 飞书 interactive 卡片（N-06，`feishu_card.py`）
+- [ ] 可选 `VnpyWechatChannel` / Email（**不做**，见 §7.2）
 - [x] `radar_leader_ready`（高阈值，默认关；`NOTIFY_RADAR_LEADER_MIN_HITS` / `NOTIFY_RADAR_LEADER_MIN_SCORE`）
 
 ---

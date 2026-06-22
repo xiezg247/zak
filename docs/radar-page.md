@@ -58,28 +58,28 @@
 各卡 RadarRow
       │
       ▼
-resonance 加权（权重可配置，D-03 将增加「短线模式」预设）
+resonance 加权（权重可配置；D-03「短线龙头」预设 **已有**）
       │
       ▼
 共振列表 → context_store → Hub screen_by_radar_resonance
                           → AI build_radar_ai_prompt
 ```
 
-| 项 | 现状 | 规划（D-03） |
-|----|------|--------------|
-| 权重预设 | 默认均衡 | 「短线模式」提高 `sector_theme`、`discovery_*` |
-| 情绪 gate | 无 | T-03 退潮期降权或空列表提示 |
-| 加自选 | 雷达/共振一键写入自选池（D-04 **已有**） |
+| 项 | 说明 | 状态 |
+|----|------|------|
+| 权重预设 | 默认均衡；一键「短线龙头」提高 `sector_theme`、`discovery_*`、`leader_pick` | **已有**（`radar_resonance_prefs.apply_short_term_radar_resonance_weights`） |
+| 情绪 gate | T-03 退潮/冰点降权或空列表提示 | **已有** |
+| 加自选 | 雷达/共振一键写入自选池（D-04） | **已有** |
 
 ---
 
-## 5. 规划卡（Phase 1–2）
+## 5. 龙头与发现卡（Phase 1–2，**已有**）
 
 与 [radar-leader-screening.md](./radar-leader-screening.md) 对齐：
 
-| card_id | 标题 | ID | Phase |
-|---------|------|-----|-------|
-| `leader_pick` | 选股·龙头 | G-04, G-05 | 1 |
+| card_id | 标题 | ID | 状态 |
+|---------|------|-----|------|
+| `leader_pick` | 选股·龙头 | G-04, G-05 | **已有** |
 | `discovery_limit_ladder` | 发现·连板梯队 | D-01 | **已有** |
 | `discovery_first_board` | 发现·首板人气 | D-02 | **已有** |
 
@@ -89,14 +89,16 @@ resonance 加权（权重可配置，D-03 将增加「短线模式」预设）
 
 ## 6. 行数据 RadarRow
 
-| 字段（现有） | 说明 |
-|--------------|------|
+| 字段 | 说明 |
+|------|------|
 | vt_symbol, name | 标的 |
 | change_pct, amount | 涨跌、成交额 |
 | industry, concepts | 行业 / 概念 |
 | score, reasons | 卡内得分与原因 |
-
-**规划扩展（G-06）**：`limit_times`、`leader_tier`（龙一/龙二/跟风）、`leader_score`、`board_quality`（封板质量代理）。
+| `limit_times` | 连板数（G-06 **已有**） |
+| `leader_tier` | 龙一 / 龙二 / 跟风（G-06 **已有**） |
+| `leader_score` | 龙头分（G-06 **已有**） |
+| `board_quality` | 封板质量代理 | **可选增强**（尚未落字段） |
 
 ---
 
@@ -106,7 +108,7 @@ resonance 加权（权重可配置，D-03 将增加「短线模式」预设）
 |------|------|
 | 单击行 | 跳转看盘页选中标的 |
 | 卡 footer | 刷新本卡、跳转 Hub 条件选股、板块资金 |
-| 问 AI | `build_radar_ai_prompt`；Phase 1 注入 T-03 情绪阶段 |
+| 问 AI | `build_radar_ai_prompt`；注入 T-03 情绪阶段（**已有**） |
 | 自动刷新 | discovery / watchlist / sector 可配置间隔；screen / outlook 仅手动或读缓存 |
 
 ---
@@ -140,7 +142,8 @@ resonance 加权（权重可配置，D-03 将增加「短线模式」预设）
 | 实时快照 | Redis（行情采集 Job） | discovery, watchlist, sector |
 | 选股 run | `screener_runs` | screen_* |
 | 日 K / 模型 | 本地 bar_store | outlook_* |
-| 连板 / 涨停 | Tushare `limit_list_d` + 市场页（规划） | leader_*, D-01 |
+| 连板 / 涨停 | Tushare `limit_list_d` + 雷达 D-01 / G-* | leader_*, D-01 |
+| 市场页连板筛选 | 市场页 `limit_up` 排行 | **可选增强**（按 `limit_times` 分层筛选尚未实现） |
 
 ---
 

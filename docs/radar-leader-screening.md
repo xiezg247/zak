@@ -207,7 +207,7 @@ Phase 1 可简化为：**涨停 + 非近似一字 + 成交额分位**。
 ### 4.5 板块内排序与标签分配
 
 ```python
-# quotes/radar/radar_leader.py（规划）
+# quotes/radar/radar_leader.py（已有）
 
 def rank_sector_leaders(
     candidates: list[dict],
@@ -220,29 +220,32 @@ def rank_sector_leaders(
 - 每板块最多输出 **2 龙 + 3 跟风**（可配置），避免单板块占满整卡。
 - 全市场汇总后再按 `leader_score` 取 Top N 展示。
 
-### 4.6 模块结构（规划）
+### 4.6 模块结构（**已有**）
 
 ```text
 quotes/radar/
 ├── radar_leader.py          # 评分、分层、标签
-├── radar_leader_pool.py     # 候选池构建（涨停+强势+板块过滤）
-├── radar_limit_ladder.py    # 连板梯队 loader
-├── radar_first_board.py     # 首板人气 loader
-└── radar_sector.py          # 扩展 sector_theme，调用 radar_leader
+├── radar_leader_pick.py     # leader_pick 卡 loader
+├── radar_limit_ladder.py    # 连板梯队 loader（D-01）
+├── radar_first_board.py     # 首板人气 loader（D-02）
+├── radar_sector.py          # sector_theme + leaders_tiered
+├── radar_pool.py            # 候选池构建
+└── radar_loaders.py         # 统一入口 + AI prompt
+screener/run/radar_leader_screen.py   # run_leader_screen Hub 入口
 ```
 
 ---
 
 ## 5. 卡片与 UI 设计
 
-### 5.1 新增 / 改造卡片
+### 5.1 龙头与发现卡（**已有**）
 
 | card_id | 标题 | 类别 | 说明 |
 |---------|------|------|------|
 | `discovery_limit_ladder` | 发现·连板梯队 | discovery | 按 `limit_times` 分 Tab 或分段：≥5 / 4 / 3 / 2 / 首板 |
 | `discovery_first_board` | 发现·首板人气 | discovery | 当日首板（`limit_times=1`）按 seal_time + amount 排序 |
 | `leader_pick` | **选股·龙头** | **screen** | **主入口**：主线板块龙一 + 龙二 + 评分 |
-| `sector_theme` | 板块·主线 | sector | **改造** variant「板块龙头」→ 真龙一分层；新增 variant「龙二跟风」 |
+| `sector_theme` | 板块·主线 | sector | variant `leaders_tiered` 按板块展示龙一 / 龙二 / 跟风（**已有**） |
 
 **注册表示例扩展**（`radar_catalog.py`）：
 
@@ -441,7 +444,7 @@ ui/screener/workers/              # LeaderScreenWorker
 |------|------|------|
 | 整页 AI | `build_radar_ai_prompt` | 增加「选股·龙头」卡 + 连板梯队摘要 |
 | 共振 AI | `build_radar_resonance_ai_prompt` | 标注龙一 / 共振交集 |
-| 龙头卡 AI | `build_leader_pick_ai_prompt`（新） | 板块龙结构 + 次日 3–5 只观察 |
+| 龙头卡 AI | `build_eod_leader_prompt`（**已有**） | 雷达共振侧栏「盘后解读」；板块龙结构 + 次日观察 |
 
 **示例输出要求**（写入 prompt）：
 
@@ -450,13 +453,13 @@ ui/screener/workers/              # LeaderScreenWorker
 3. 不宜追高的标的（一字、异动预警）  
 4. 不编造未出现在卡片中的价格  
 
-### 9.2 新增工具（规划）
+### 9.2 AI 工具（**已有** / 可选）
 
-| 工具 | Skill | 说明 |
-|------|-------|------|
-| `get_leader_pick_snapshot` | vnpy-screening | 返回当前龙头池 JSON |
-| `run_leader_screen` | vnpy-screening | 执行龙头选股并落库 |
-| `explain_leader_tier` | vnpy-analysis | 解读单票为何为龙一 / 龙二 |
+| 工具 | Skill | 状态 | 说明 |
+|------|-------|------|------|
+| `get_leader_pick_snapshot` | vnpy-screening | **已有** | 返回当前龙头池 JSON |
+| `run_leader_screen` | vnpy-screening | **已有** | 执行龙头选股并落库 |
+| `explain_leader_tier` | vnpy-analysis | **待建** | 解读单票为何为龙一 / 龙二（可用 `get_quote_context` + 龙头卡上下文替代） |
 
 ### 9.3 路由短语
 

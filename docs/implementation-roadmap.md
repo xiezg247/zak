@@ -143,8 +143,8 @@
 
 ## 10. AI 工具（A-）
 
-| ID | 工具 | 状态 | Phase | Skill（规划） |
-|----|------|------|-------|---------------|
+| ID | 工具 | 状态 | Phase | Skill |
+|----|------|------|-------|-------|
 | A-01 | `get_emotion_cycle` | **已有** | 1 | vnpy-sentiment 扩展 |
 | A-02 | `get_short_term_watchlist` | **已有** | 1 | vnpy-watchlist 扩展 |
 | A-03 | `propose_trading_plan` | **已有** | 4 | vnpy-trading（新） |
@@ -241,5 +241,6 @@ Phase 5 ✅
 | — | Profile 切换同步硬过滤模板 | **已有** | `apply_strategy_profile` → 保守/均衡/激进 |
 | — | NL 选股 `propose_*` 执行前确认 | **已有** | `AgentGateway` + Qt 确认；系统配置 → AI 助手 |
 | — | 子文档 Post-Phase 表述对齐 | **已有** | trading-system §3.2、watchlist-groups、ai-data-routing 等 |
+| — | 子文档「规划」滞后同步 | **已有** | 2026-06 文档债清理：watchlist-positions、strategy-profiles、radar-page、data-design、notifications、trading-plan-journal、radar-leader-screening |
 
 > **Post-Phase 结论（2026-06）**：P0/P1 已全部交付；P2 两项经产品确认**不做**，backlog 关闭；续项（Profile/硬过滤、NL 确认、文档）已同步上表。
