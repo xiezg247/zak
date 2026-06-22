@@ -12,7 +12,6 @@ from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS, WatchlistService
 from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 
 
 class WatchlistController:

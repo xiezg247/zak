@@ -13,8 +13,4 @@ def format_pool_context_summary(
     signal_count: int,
     position_count: int,
 ) -> str:
-    return (
-        f"自选 {pool_count}/{WATCHLIST_MAX_ITEMS}"
-        f" · 信号 {signal_count}/{SIGNAL_PANEL_MAX_SYMBOLS}"
-        f" · 持仓 {position_count}/{POSITION_MAX_ITEMS}"
-    )
+    return f"自选 {pool_count}/{WATCHLIST_MAX_ITEMS} · 信号 {signal_count}/{SIGNAL_PANEL_MAX_SYMBOLS} · 持仓 {position_count}/{POSITION_MAX_ITEMS}"

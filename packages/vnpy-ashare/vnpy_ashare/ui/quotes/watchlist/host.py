@@ -11,6 +11,7 @@ from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
+
     from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
     from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
     from vnpy_ashare.domain.data.bar_health import BarMeta
@@ -79,4 +80,3 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     def _wire_signal_panel(self) -> None: ...
 
     def _wire_position_panel(self) -> None: ...
-

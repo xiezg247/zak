@@ -8,7 +8,6 @@ from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId
 from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import PRESET_SPECS
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 _EMOTION_MORE_LABEL = "情绪周期"
 _RISK_MORE_LABEL = "风控状态"

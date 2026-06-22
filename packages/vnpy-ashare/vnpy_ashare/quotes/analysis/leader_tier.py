@@ -36,35 +36,22 @@ def _build_summary(
     peers_ahead: list[dict[str, Any]],
     key_drivers: list[dict[str, Any]],
 ) -> str:
-    driver_text = "、".join(
-        f"{item.get('label')}({item.get('points')}分)"
-        for item in key_drivers
-        if float(item.get("points") or 0) > 0
-    )
+    driver_text = "、".join(f"{item.get('label')}({item.get('points')}分)" for item in key_drivers if float(item.get("points") or 0) > 0)
     if driver_text:
         driver_clause = f"主要得益于{driver_text}。"
     else:
         driver_clause = "各维度得分均偏弱。"
 
     if tier == "dragon_1":
-        return (
-            f"{name}在「{sector}」板块内龙头分 {leader_score} 排名第 {sector_rank}，"
-            f"判定为龙一。{driver_clause}"
-        )
+        return f"{name}在「{sector}」板块内龙头分 {leader_score} 排名第 {sector_rank}，判定为龙一。{driver_clause}"
     if tier == "dragon_2":
         ahead = peers_ahead[0] if peers_ahead else None
         if ahead:
             gap = round(float(ahead.get("leader_score") or 0) - leader_score, 1)
-            ahead_note = (
-                f"龙一 {ahead.get('name')} 龙头分 {ahead.get('leader_score')}，"
-                f"领先 {gap} 分。"
-            )
+            ahead_note = f"龙一 {ahead.get('name')} 龙头分 {ahead.get('leader_score')}，领先 {gap} 分。"
         else:
             ahead_note = ""
-        return (
-            f"{name}在「{sector}」板块内龙头分 {leader_score} 排名第 {sector_rank}，"
-            f"判定为龙二。{ahead_note}{driver_clause}"
-        )
+        return f"{name}在「{sector}」板块内龙头分 {leader_score} 排名第 {sector_rank}，判定为龙二。{ahead_note}{driver_clause}"
     if tier == "follower":
         return (
             f"{name}在「{sector}」板块内龙头分 {leader_score} 排名第 {sector_rank}，"
@@ -72,16 +59,8 @@ def _build_summary(
             f"判定为跟风。{driver_clause}"
         )
     if sector_rank <= _MAX_PER_SECTOR and leader_score < FOLLOWER_MIN_SCORE:
-        return (
-            f"{name}在「{sector}」板块内排名第 {sector_rank}，"
-            f"龙头分 {leader_score} 未达跟风门槛 {FOLLOWER_MIN_SCORE}，暂无龙头分层。"
-            f"{driver_clause}"
-        )
-    return (
-        f"{name}在「{sector}」板块内排名第 {sector_rank}，"
-        f"龙头分 {leader_score}，未进入板块 Top{_MAX_PER_SECTOR}，暂无龙头分层。"
-        f"{driver_clause}"
-    )
+        return f"{name}在「{sector}」板块内排名第 {sector_rank}，龙头分 {leader_score} 未达跟风门槛 {FOLLOWER_MIN_SCORE}，暂无龙头分层。{driver_clause}"
+    return f"{name}在「{sector}」板块内排名第 {sector_rank}，龙头分 {leader_score}，未进入板块 Top{_MAX_PER_SECTOR}，暂无龙头分层。{driver_clause}"
 
 
 def _build_reasons(
@@ -109,10 +88,7 @@ def _build_reasons(
         reasons.append("板块内龙头分排序第二 → 龙二")
         if peers_ahead:
             top = peers_ahead[0]
-            reasons.append(
-                f"龙一 {top.get('name')} 龙头分 {top.get('leader_score')}，"
-                f"连板 {top.get('limit_times')} 板"
-            )
+            reasons.append(f"龙一 {top.get('name')} 龙头分 {top.get('leader_score')}，连板 {top.get('limit_times')} 板")
     elif tier == "follower":
         reasons.append(f"Top{_MAX_PER_SECTOR} 内且龙头分 {leader_score} ≥ {FOLLOWER_MIN_SCORE} → 跟风")
     elif sector_rank <= _MAX_PER_SECTOR:

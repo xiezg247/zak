@@ -57,9 +57,7 @@ def _collect_limit_break_candidates(snapshot_rows: list) -> list[tuple[dict, str
             continue
         raw = item.get("open_times")
         try:
-            open_times_by_vt[vt] = (
-                int(float(raw)) if raw not in (None, "") and isinstance(raw, (int, float, str)) else None
-            )
+            open_times_by_vt[vt] = int(float(raw)) if raw not in (None, "") and isinstance(raw, (int, float, str)) else None
         except (TypeError, ValueError):
             open_times_by_vt[vt] = None
 

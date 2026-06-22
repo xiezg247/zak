@@ -660,7 +660,12 @@ class SectorFlowController(QtCore.QObject):
     def _find_main_window(self) -> QtWidgets.QWidget | None:
         widget: QtWidgets.QWidget | None = self._page
         while widget is not None:
-            if hasattr(widget, "open_market_industry_filter") or hasattr(widget, "open_market_concept_drilldown") or hasattr(widget, "open_screener_industry") or hasattr(widget, "open_radar_card"):
+            if (
+                hasattr(widget, "open_market_industry_filter")
+                or hasattr(widget, "open_market_concept_drilldown")
+                or hasattr(widget, "open_screener_industry")
+                or hasattr(widget, "open_radar_card")
+            ):
                 return widget
             widget = widget.parentWidget()
         return None

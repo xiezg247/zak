@@ -13,8 +13,8 @@ from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiBoardDat
 from vnpy_ashare.quotes.watchlist_multiview.sparkline_data import SparklineKind, SparklineMode
 from vnpy_ashare.quotes.watchlist_multiview.summary import build_multiview_board_summary
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
-from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
+from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_multiview.settings import (
     ViewMode,

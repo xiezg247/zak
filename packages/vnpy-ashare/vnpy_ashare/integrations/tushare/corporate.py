@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any, cast
 
 from vnpy_ashare.domain.core.numbers import safe_float
-from vnpy_ashare.integrations.events.announcements import fetch_announcements
 from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError, get_tushare_pro
 
 
@@ -114,4 +113,3 @@ def fetch_share_float(ts_code: str, *, limit: int = 8) -> list[dict[str, Any]]:
             }
         )
     return result
-

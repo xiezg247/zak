@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Callable, Literal
+from typing import TYPE_CHECKING, Literal
 
 from vnpy.trader.ui import QtCore
 
@@ -13,7 +14,6 @@ from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 StrategyZone = Literal["signal", "position"]

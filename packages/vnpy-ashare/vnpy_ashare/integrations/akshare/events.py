@@ -48,9 +48,7 @@ def fetch_announcements_akshare(
     try:
         import akshare as ak
     except ImportError as ex:
-        raise AkshareNotInstalledError(
-            "未安装 akshare。请执行 `uv pip install akshare` 或安装 vnpy-ashare[events] 后重试。"
-        ) from ex
+        raise AkshareNotInstalledError("未安装 akshare。请执行 `uv pip install akshare` 或安装 vnpy-ashare[events] 后重试。") from ex
 
     now = china_now()
     end = format_china_date_compact(now)
@@ -116,9 +114,7 @@ def fetch_stock_news_akshare(
     try:
         import akshare as ak
     except ImportError as ex:
-        raise AkshareNotInstalledError(
-            "未安装 akshare。请执行 `uv pip install akshare` 或安装 vnpy-ashare[events] 后重试。"
-        ) from ex
+        raise AkshareNotInstalledError("未安装 akshare。请执行 `uv pip install akshare` 或安装 vnpy-ashare[events] 后重试。") from ex
 
     try:
         frame = ak.stock_news_em(symbol=symbol)

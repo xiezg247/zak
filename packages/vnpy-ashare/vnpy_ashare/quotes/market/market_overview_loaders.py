@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.market.breadth import MarketBreadthSnapshot
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.market.overview import MarketOverviewData, SectorRankItem
 from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
+from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 from vnpy_ashare.integrations.tushare.factors import fetch_industry_l2_to_l1_map

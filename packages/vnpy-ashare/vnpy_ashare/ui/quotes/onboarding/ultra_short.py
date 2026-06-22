@@ -12,10 +12,9 @@ from vnpy_ashare.config.preferences.strategy_profile import (
     StrategyProfileId,
     load_strategy_profile_id,
 )
-from vnpy_common.ui.feedback import page_notify
-
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
+from vnpy_common.ui.feedback import page_notify
 
 _prompted_pages: set[int] = set()
 

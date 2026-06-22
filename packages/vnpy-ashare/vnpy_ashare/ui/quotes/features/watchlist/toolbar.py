@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import layout_preset_options
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import load_watchlist_layout_preset
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
@@ -15,7 +16,6 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import create_emotion_risk_more_buttons
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
-from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style

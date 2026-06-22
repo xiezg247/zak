@@ -5,20 +5,21 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
 from vnpy_ashare.ui.quotes.page.run_log import load_run_output_expanded, on_run_output_expansion_changed
 from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
+from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
 from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
-from vnpy_ashare.ui.quotes._host_widget import as_qwidget
-from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     bind_center_splitter_persistence,
     configure_center_splitter,
     restore_center_splitter,
 )
+
 
 def build_watchlist_center_layout(page: WatchlistHost, center_layout: QtWidgets.QVBoxLayout) -> None:
     """组装自选页中部区域并挂载到 center_layout。"""

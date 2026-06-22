@@ -7,9 +7,9 @@ from typing import Any
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.domain.stock.events import EventsProfile
-from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.events.announcements import AnnouncementFetchError, fetch_announcements
 from vnpy_ashare.integrations.events.news import NewsFetchError, fetch_stock_news
+from vnpy_ashare.integrations.tushare.client import TushareNotConfiguredError
 from vnpy_ashare.integrations.tushare.corporate import fetch_dividends, fetch_share_float
 from vnpy_ashare.integrations.tushare.disclosure import fetch_disclosure_dates
 from vnpy_ashare.services.stock.profile import sync_disclosure_calendar

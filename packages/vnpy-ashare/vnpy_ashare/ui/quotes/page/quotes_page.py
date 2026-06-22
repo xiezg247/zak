@@ -69,8 +69,8 @@ from vnpy_ashare.ui.quotes.page.config import (
     radar_refresh_hint,
     save_market_auto_refresh_pref,
 )
-from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
+from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
 from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
@@ -198,9 +198,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._market_rank = MarketRankFeature(self)
         self._watchlist_panels = WatchlistPanelsFeature(self)
         self._watchlist_feature: WatchlistPageFeature | None = WatchlistPageFeature(self) if page_name == "自选" else None
-        self._watchlist_bootstrap: WatchlistBootstrapCoordinator | None = (
-            WatchlistBootstrapCoordinator() if page_name == "自选" else None
-        )
+        self._watchlist_bootstrap: WatchlistBootstrapCoordinator | None = WatchlistBootstrapCoordinator() if page_name == "自选" else None
         self._stock_notes = StockNotesFeature(self)
         self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
         self._market_sort_column: str | None = None

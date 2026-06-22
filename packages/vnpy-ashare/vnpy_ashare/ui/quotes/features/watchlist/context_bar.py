@@ -31,10 +31,7 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         self._label.setObjectName("WatchlistPoolContextLabel")
         self._label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         self._label.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self._label.setToolTip(
-            "三层池：自选（总名单）→ 信号（当日监控）→ 持仓（已登记）。"
-            "点击各段可切换视图；右键表行可回测、排序、下载与 AI 分析。"
-        )
+        self._label.setToolTip("三层池：自选（总名单）→ 信号（当日监控）→ 持仓（已登记）。点击各段可切换视图；右键表行可回测、排序、下载与 AI 分析。")
         layout.addWidget(self._label, stretch=1)
 
         self._segments: list[tuple[str, str]] = []
