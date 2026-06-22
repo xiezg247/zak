@@ -49,6 +49,10 @@ def _panel_is_expanded(panel: QtWidgets.QWidget) -> bool:
     return True
 
 
+def _panel_present_in_splitter(panel: QtWidgets.QWidget | None) -> bool:
+    return panel is not None and panel.isVisible()
+
+
 def center_splitter(page: WatchlistHost) -> QtWidgets.QSplitter | None:
     splitter = page._center_splitter
     if isinstance(splitter, QtWidgets.QSplitter):
@@ -228,10 +232,10 @@ def apply_center_splitter_sizes(page: WatchlistHost, *, _retry: int = 0) -> None
 
     sizes_map = compute_center_splitter_sizes(
         splitter_total_height(splitter),
-        has_signal_panel=signal_panel is not None,
-        signal_expanded=_panel_is_expanded(signal_panel) if signal_panel is not None else False,
-        has_position_panel=position_panel is not None,
-        position_expanded=_panel_is_expanded(position_panel) if position_panel is not None else False,
+        has_signal_panel=_panel_present_in_splitter(signal_panel),
+        signal_expanded=_panel_is_expanded(signal_panel) if _panel_present_in_splitter(signal_panel) else False,
+        has_position_panel=_panel_present_in_splitter(position_panel),
+        position_expanded=_panel_is_expanded(position_panel) if _panel_present_in_splitter(position_panel) else False,
         has_run_output=run_panel is not None,
         run_expanded=_panel_is_expanded(run_panel) if run_panel is not None else False,
         signal_min_height=signal_panel.minimumHeight() if signal_panel is not None else 0,

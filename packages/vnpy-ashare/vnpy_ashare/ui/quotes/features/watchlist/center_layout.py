@@ -14,10 +14,10 @@ from vnpy_ashare.ui.quotes.watchlist_groups.tab_bar import WatchlistGroupTabBar
 from vnpy_ashare.ui.quotes.watchlist_multiview.panel import WatchlistMultiViewBoard
 from vnpy_ashare.ui.quotes.watchlist_positions.panel import WatchlistPositionPanel
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
+from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import init_strategy_workspace_on_layout
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import (
     bind_center_splitter_persistence,
     configure_center_splitter,
-    restore_center_splitter,
 )
 
 
@@ -76,7 +76,7 @@ def build_watchlist_center_layout(page: WatchlistHost, center_layout: QtWidgets.
         page._center_splitter = center_split
         center_layout.addWidget(center_split, stretch=1)
         bind_center_splitter_persistence(page)
-        QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
+        QtCore.QTimer.singleShot(0, lambda: init_strategy_workspace_on_layout(page))
     else:
         center_layout.addWidget(center_primary, stretch=1)
 

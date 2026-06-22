@@ -92,6 +92,9 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
             return
         if key == "signal":
             if feature is not None:
+                from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import open_strategy_workspace
+
+                open_strategy_workspace(page)
                 feature.apply_layout_preset("intraday")
             else:
                 panel = getattr(page, "signal_panel", None)

@@ -9,6 +9,11 @@ from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolCo
 from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_layout_preset, apply_position_focus
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_watchlist_layout_preset
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo, create_view_mode_buttons
+from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
+    apply_strategy_workspace,
+    refresh_strategy_workspace_button,
+)
+from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace_prefs import load_strategy_workspace_open
 from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
@@ -49,9 +54,11 @@ class WatchlistPageFeature:
             position_panel.rows_changed.connect(self.refresh_context_bar)
 
     def on_activate(self) -> None:
-        self.refresh_context_bar()
         preset = load_watchlist_layout_preset()
+        open_state = load_strategy_workspace_open()
+        apply_strategy_workspace(self._page, open_state, persist=False, apply_preset=False)
         apply_layout_preset(self._page, preset, persist=False)
+        self.refresh_context_bar()
         maybe_show_ultra_short_onboarding(self._page)
 
     def on_stock_list_loaded(self) -> None:
@@ -61,6 +68,7 @@ class WatchlistPageFeature:
         bar = self.pool_context_bar or getattr(self._page, "watchlist_pool_context_bar", None)
         if isinstance(bar, WatchlistPoolContextBar):
             bar.refresh()
+        refresh_strategy_workspace_button(self._page)
 
     def on_layout_preset_changed(self) -> None:
         combo = self.layout_preset_combo
