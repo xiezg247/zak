@@ -373,5 +373,148 @@ class CenterSplitterSizeTests(unittest.TestCase):
         self.assertEqual(load_center_splitter_sizes(), [620, 240, 32])
 
 
+class SignalControllerEnabledTests(unittest.TestCase):
+    def _make_controller(self, *, enabled: bool) -> tuple[object, object]:
+        from unittest.mock import MagicMock
+
+        from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
+
+        page = MagicMock()
+        page.config.show_watchlist_signals = True
+        page.page_name = "自选"
+        page._active = True
+        page.signal_config = WatchlistSignalConfig().normalized()
+        page._signal_cache_config = page.signal_config
+        page.signal_cache = {
+            "600000.SH": SignalSnapshot(
+                vt_symbol="600000.SH",
+                strategy_id=page.signal_config.class_name,
+                as_of="2026-06-20",
+                signal="buy",
+                signal_label="买入",
+                signal_date="2026-06-20",
+                ref_buy_price=10.0,
+                ref_sell_price=11.0,
+                strength=80.0,
+                reason_summary="测试",
+                reasons=("测试",),
+                warnings=(),
+            )
+        }
+        page.continuation_cache = {}
+        page.position_cache = {}
+        page._get_analysis_service.return_value = MagicMock()
+        page._strategy_batch.return_value = MagicMock()
+
+        panel = MagicMock()
+        panel.enabled = enabled
+        panel.is_expanded.return_value = True
+        panel.symbols = ["600000.SH"]
+        page.signal_panel = panel
+
+        controller = WatchlistSignalController(page)
+        controller._panel_symbols = lambda: ["600000.SH"]
+        controller._bar_end_date = lambda _vt: "2026-06-20"
+        controller._disk_cache = MagicMock()
+        controller._disk_cache.load_many.return_value = {}
+        controller._submit_batch = MagicMock()
+        controller._apply_refresh_result = MagicMock()
+        return controller, page
+
+    def test_refresh_when_disabled_still_renders_cache(self) -> None:
+        controller, _page = self._make_controller(enabled=False)
+
+        controller.refresh(force=True)
+
+        controller._submit_batch.assert_not_called()
+        controller._apply_refresh_result.assert_called()
+
+    def test_on_panel_enabled_changed_disabled_keeps_display(self) -> None:
+        controller, _page = self._make_controller(enabled=False)
+
+        controller.on_panel_enabled_changed(False)
+
+        controller._apply_refresh_result.assert_called_once()
+        controller._submit_batch.assert_not_called()
+
+    def test_on_panel_enabled_changed_enabled_refreshes_when_missing(self) -> None:
+        controller, page = self._make_controller(enabled=True)
+        page.signal_cache.clear()
+
+        controller.on_panel_enabled_changed(True)
+
+        controller._submit_batch.assert_called_once()
+
+
+class CanonicalVtSymbolTests(unittest.TestCase):
+    def test_tickflow_to_vt_symbol(self) -> None:
+        from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
+
+        self.assertEqual(canonical_vt_symbol("600000.SH"), "600000.SSE")
+        self.assertEqual(canonical_vt_symbol("000001.SZ"), "000001.SZSE")
+
+
+class StrategyBatchRemapTests(unittest.TestCase):
+    def test_remap_worker_keys_to_panel_symbols(self) -> None:
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.ui.quotes.watchlist.strategy_batch import remap_batch_results
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareShortBreakoutStrategy",
+            as_of="2026-06-20",
+            signal="hold",
+            signal_label="观望",
+            signal_date=None,
+            ref_buy_price=None,
+            ref_sell_price=None,
+            strength=None,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )
+        mapped = remap_batch_results({"600000.SSE": snap}, ["600000.SH"])
+        self.assertIn("600000.SH", mapped)
+        self.assertEqual(mapped["600000.SH"].vt_symbol, "600000.SSE")
+
+
+class SignalControllerCollapsedTests(unittest.TestCase):
+    def test_collapsed_still_submits_when_cache_missing(self) -> None:
+        from unittest.mock import MagicMock
+
+        from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
+        from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
+
+        page = MagicMock()
+        page.config.show_watchlist_signals = True
+        page.page_name = "自选"
+        page._active = True
+        page.signal_config = WatchlistSignalConfig().normalized()
+        page._signal_cache_config = None
+        page.signal_cache = {}
+        page.continuation_cache = {}
+        page._get_analysis_service.return_value = MagicMock()
+        page._strategy_batch.return_value = MagicMock()
+
+        panel = MagicMock()
+        panel.enabled = True
+        panel.is_expanded.return_value = False
+        panel.symbols = ["600000.SSE"]
+        page.signal_panel = panel
+
+        controller = WatchlistSignalController(page)
+        controller._panel_symbols = lambda: ["600000.SSE"]
+        controller._bar_end_date = lambda _vt: "2026-06-20"
+        controller._disk_cache = MagicMock()
+        controller._disk_cache.load_many.return_value = {}
+        controller._submit_batch = MagicMock()
+
+        controller.refresh(force=False)
+
+        controller._submit_batch.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

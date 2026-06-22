@@ -196,7 +196,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self.config_changed.emit()
 
     def _on_header_enabled_changed(self, enabled: bool) -> None:
-        self._table_view.set_enabled(enabled)
         self.enabled_changed.emit(enabled)
 
     def _on_header_expansion_changed(self, expanded: bool) -> None:

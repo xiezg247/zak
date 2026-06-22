@@ -61,6 +61,14 @@ def parse_tickflow_symbol(tf_symbol: str, name: str = "") -> StockItem | None:
     return StockItem(symbol=code, exchange=exchange, name=name)
 
 
+def canonical_vt_symbol(symbol: str) -> str | None:
+    """任意 A 股符号格式 → 标准 vt_symbol（如 600519.SSE）。"""
+    item = parse_stock_symbol(symbol)
+    if item is None:
+        return None
+    return item.vt_symbol
+
+
 def parse_stock_symbol(symbol: str) -> StockItem | None:
     """
     解析 A 股代码，支持：

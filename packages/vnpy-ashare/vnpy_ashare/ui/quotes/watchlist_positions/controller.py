@@ -32,11 +32,14 @@ class WatchlistPositionController:
         self._disk_cache = WatchlistPositionDiskCache()
         self._last_position_symbols: set[str] = set()
 
-    def _enabled(self) -> bool:
+    def _compute_enabled(self) -> bool:
         if not self._page.config.show_watchlist_positions or self._page.page_name != "自选":
             return False
         panel = getattr(self._page, "position_panel", None)
         return panel is not None and panel.enabled
+
+    def _enabled(self) -> bool:
+        return self._compute_enabled()
 
     def _position_service(self) -> PositionService | None:
         return self._page._get_position_service()
@@ -145,7 +148,7 @@ class WatchlistPositionController:
             panel.set_updated_at(format_china_time_hm())
             panel.render_panel()
         signal_panel = getattr(self._page, "signal_panel", None)
-        if signal_panel is not None and signal_panel.enabled:
+        if signal_panel is not None:
             signal_panel.render_panel()
         item = self._page.current_item
         if item is not None and self._page.chart_panel is not None:
@@ -262,18 +265,15 @@ class WatchlistPositionController:
     def refresh(self, *, force: bool = False, symbols: list[str] | None = None) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:
             return
-        if not self._enabled():
-            panel = getattr(self._page, "position_panel", None)
-            if panel is not None:
-                panel.render_panel()
-            return
         panel = getattr(self._page, "position_panel", None)
         if panel is not None and not panel.is_expanded() and not force:
-            panel.render_panel()
+            self._apply_refresh_result()
             return
 
         service = self._analysis_service()
         if service is None:
+            if panel is not None:
+                self._apply_refresh_result()
             return
 
         record_map = self._record_map()
@@ -287,7 +287,6 @@ class WatchlistPositionController:
         if not all_symbols:
             self._page.position_cache.clear()
             self._page._position_cache_config = None
-            panel = getattr(self._page, "position_panel", None)
             if panel is not None:
                 panel.render_panel()
             return
@@ -300,6 +299,7 @@ class WatchlistPositionController:
         else:
             to_fetch = self._symbols_needing_refresh(target, record_map)
             if not to_fetch:
+                self._apply_refresh_result()
                 return
 
         config = self._effective_config()
@@ -322,6 +322,11 @@ class WatchlistPositionController:
             self._apply_refresh_result()
             return
 
+        if not self._compute_enabled():
+            self._page._position_cache_config = config
+            self._apply_refresh_result()
+            return
+
         self._submit_batch(still_need, config=config, config_key=config_key, record_map=record_map)
 
     def _submit_batch(
@@ -334,6 +339,7 @@ class WatchlistPositionController:
     ) -> None:
         batch = self._strategy_batch()
         if batch is None:
+            self._apply_refresh_result()
             return
 
         def on_complete(signal_cache: dict) -> None:
@@ -420,8 +426,9 @@ class WatchlistPositionController:
 
     def on_panel_enabled_changed(self, enabled: bool) -> None:
         if enabled:
-            self.refresh(force=True)
+            record_map = self._record_map()
+            symbols = list(record_map)
+            needs = self._symbols_needing_refresh(symbols, record_map) if symbols else []
+            self.refresh(force=bool(needs))
         else:
-            panel = getattr(self._page, "position_panel", None)
-            if panel is not None:
-                panel.render_panel()
+            self._apply_refresh_result()

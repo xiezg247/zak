@@ -476,6 +476,11 @@ class SignalPanelTableView(QtWidgets.QWidget):
         parts = [f"监控 {len(self._symbols)}/{SIGNAL_PANEL_MAX_SYMBOLS} 只"]
         if self._updated_at:
             parts.append(f"更新 {self._updated_at}")
+        elif self._symbols:
+            signals = getattr(self._page, "_signals", None)
+            refreshing = bool(signals is not None and signals.is_refreshing)
+            if not refreshing and any(self._page.signal_cache.get(vt) is None for vt in self._symbols):
+                parts.append("待计算")
         if self._signal_filter:
             filter_labels = {
                 "buy": "买",

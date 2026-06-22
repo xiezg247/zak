@@ -48,8 +48,9 @@ class WatchlistPanelsFeature:
         panel.expansion_changed.connect(self.on_position_panel_expansion_changed)
 
     def on_signal_panel_expansion_changed(self, expanded: bool) -> None:
-        del expanded
         apply_center_splitter_sizes(self._page)
+        if expanded:
+            self._page._signals.refresh(force=False)
 
     def on_signal_panel_config_changed(self) -> None:
         page = self._page

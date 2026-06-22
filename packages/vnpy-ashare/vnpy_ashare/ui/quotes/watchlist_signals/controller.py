@@ -4,11 +4,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, save_watchlist_signal_config
+from vnpy.trader.ui import QtCore
+
+from vnpy_ashare.config.preferences.watchlist_signal import (
+    WatchlistSignalConfig,
+    normalize_signal_panel_symbols,
+    save_watchlist_signal_config,
+)
 from vnpy_ashare.data.bar_health import format_meta_date
+from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
 from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.panel import WatchlistSignalPanel
@@ -24,14 +32,20 @@ class WatchlistSignalController:
     def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
+        self._deferred_refresh: tuple[bool, list[str] | None] | None = None
+        self._service_retry_timer: QtCore.QTimer | None = None
         self._disk_cache = WatchlistSignalDiskCache()
         self._last_panel_symbols: set[str] = set()
 
-    def _enabled(self) -> bool:
+    def _compute_enabled(self) -> bool:
+        """是否允许提交策略 Worker（关闭时仍展示已有 cache）。"""
         if not self._page.config.show_watchlist_signals or self._page.page_name != "自选":
             return False
         panel = getattr(self._page, "signal_panel", None)
         return panel is not None and panel.enabled
+
+    def _enabled(self) -> bool:
+        return self._compute_enabled()
 
     def _panel_symbols(self) -> list[str]:
         panel = getattr(self._page, "signal_panel", None)
@@ -69,6 +83,43 @@ class WatchlistSignalController:
 
     def stop(self) -> None:
         self._pending_refresh = None
+        self._deferred_refresh = None
+        timer = self._service_retry_timer
+        if timer is not None:
+            timer.stop()
+            self._service_retry_timer = None
+
+    def _canonicalize_symbols(self, symbols: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for vt in symbols:
+            text = canonical_vt_symbol(vt) or str(vt or "").strip()
+            if text:
+                cleaned.append(text)
+        return normalize_signal_panel_symbols(cleaned)
+
+    def _schedule_service_retry(self, *, force: bool, symbols: list[str] | None) -> None:
+        if self._analysis_service() is not None:
+            return
+        self._deferred_refresh = (force, symbols)
+        timer = self._service_retry_timer
+        if timer is None:
+            timer = QtCore.QTimer(as_qwidget(self._page))
+            timer.setSingleShot(True)
+            timer.timeout.connect(self._on_service_retry)
+            self._service_retry_timer = timer
+        if not timer.isActive():
+            timer.start(800)
+
+    def _on_service_retry(self) -> None:
+        pending = self._deferred_refresh
+        if pending is None or not self._page._active:
+            return
+        if self._analysis_service() is None:
+            self._schedule_service_retry(force=pending[0], symbols=pending[1])
+            return
+        self._deferred_refresh = None
+        force, symbols = pending
+        self.refresh(force=force, symbols=symbols)
 
     @property
     def is_refreshing(self) -> bool:
@@ -91,7 +142,7 @@ class WatchlistSignalController:
             self.refresh(force=True)
         self._page._positions.on_signal_config_changed(normalized, changed=changed)
 
-    def _apply_refresh_result(self) -> None:
+    def _apply_refresh_result(self, *, worker_completed: bool = False) -> None:
         symbols = self._panel_symbols()
         if symbols:
             subset = {
@@ -103,7 +154,9 @@ class WatchlistSignalController:
             self._enrich_continuation(symbols)
         panel = getattr(self._page, "signal_panel", None)
         if panel is not None:
-            panel.set_updated_at(format_china_time_hm())
+            has_snapshots = bool(symbols) and any(self._page.signal_cache.get(vt) is not None for vt in symbols)
+            if has_snapshots or worker_completed or self.is_refreshing:
+                panel.set_updated_at(format_china_time_hm())
             panel.render_panel()
         self._sync_chart_signal_reference()
         if self._page.config.show_watchlist_multiview:
@@ -157,8 +210,6 @@ class WatchlistSignalController:
     def refresh_quotes_only(self, tickflow_symbols: set[str] | None = None) -> None:
         """WebSocket/REST 行情推送：仅更新信号区受影响行的展示列。"""
         if not self._page.config.show_watchlist_signals or not self._page._active:
-            return
-        if not self._enabled():
             return
         symbols = tickflow_symbols or set()
         if not symbols:
@@ -224,22 +275,31 @@ class WatchlistSignalController:
     def refresh(self, *, force: bool = False, symbols: list[str] | None = None) -> None:
         if not self._page.config.show_watchlist_signals or not self._page._active:
             return
-        if not self._enabled():
-            panel = getattr(self._page, "signal_panel", None)
+
+        panel_symbols = self._panel_symbols()
+        panel = getattr(self._page, "signal_panel", None)
+        if not panel_symbols:
+            self._page.signal_cache.clear()
+            self._page.continuation_cache.clear()
+            self._page._signal_cache_config = None
             if panel is not None:
                 panel.render_panel()
             return
-        panel = getattr(self._page, "signal_panel", None)
-        if panel is not None and not panel.is_expanded() and not force:
-            panel.render_panel()
+
+        if (
+            panel is not None
+            and not panel.is_expanded()
+            and not force
+            and self._cache_covers(panel_symbols)
+        ):
+            self._apply_refresh_result()
             return
 
         service = self._analysis_service()
-        panel_symbols = self._panel_symbols()
         if service is None:
-            panel = getattr(self._page, "signal_panel", None)
+            self._schedule_service_retry(force=force, symbols=symbols)
             if panel is not None:
-                panel.render_panel()
+                self._apply_refresh_result()
             return
 
         if symbols is None:
@@ -247,15 +307,6 @@ class WatchlistSignalController:
         else:
             allowed = set(panel_symbols)
             target = [vt for vt in symbols if vt in allowed]
-
-        if not panel_symbols:
-            self._page.signal_cache.clear()
-            self._page.continuation_cache.clear()
-            self._page._signal_cache_config = None
-            panel = getattr(self._page, "signal_panel", None)
-            if panel is not None:
-                panel.render_panel()
-            return
 
         if not target:
             return
@@ -284,11 +335,17 @@ class WatchlistSignalController:
             self._apply_refresh_result()
             return
 
+        if not self._compute_enabled():
+            self._page._signal_cache_config = config
+            self._apply_refresh_result()
+            return
+
         self._submit_batch(still_need, config=config, config_key=config_key)
 
     def _submit_batch(self, symbols: list[str], *, config: WatchlistSignalConfig, config_key: str) -> None:
         batch = self._strategy_batch()
         if batch is None:
+            self._apply_refresh_result()
             return
 
         def on_complete(cache: dict) -> None:
@@ -305,18 +362,23 @@ class WatchlistSignalController:
                     config_key=config_key,
                     bar_as_of_for=self._bar_end_date,
                 )
+            elif symbols:
+                self._page._toast.warning("策略信号未计算出结果，请确认本地日 K 已下载")
+                append_run_log(self._page, "[策略信号] 批量计算无结果，请检查本地日 K")
             if self._page._active:
                 self._notify_signal_transitions(before, cache)
-                self._apply_refresh_result()
+                self._apply_refresh_result(worker_completed=True)
             if pending is not None and self._page._active:
                 pending_force, pending_symbols = pending
                 self.refresh(force=pending_force, symbols=pending_symbols)
 
-        def on_failed(_msg: str) -> None:
+        def on_failed(msg: str) -> None:
             pending = self._pending_refresh
             self._pending_refresh = None
             if not self._page._active:
                 return
+            self._page._toast.warning(f"策略信号计算失败：{msg}")
+            append_run_log(self._page, f"[策略信号] 计算失败：{msg}")
             panel = getattr(self._page, "signal_panel", None)
             if panel is not None:
                 panel.render_panel()
@@ -361,7 +423,13 @@ class WatchlistSignalController:
         panel = getattr(self._page, "signal_panel", None)
         if panel is None:
             return
-        kept = [vt for vt in panel.symbols if vt in known]
+        kept = self._canonicalize_symbols(
+            [
+                vt
+                for vt in panel.symbols
+                if vt in known or (canonical_vt_symbol(vt) or "") in known
+            ]
+        )
         if kept != panel.symbols:
             panel.set_symbols(kept)
         stale = [vt for vt in list(self._page.signal_cache) if vt not in kept]
@@ -382,8 +450,7 @@ class WatchlistSignalController:
 
     def on_panel_enabled_changed(self, enabled: bool) -> None:
         if enabled:
-            self.refresh(force=True)
+            symbols = self._panel_symbols()
+            self.refresh(force=bool(symbols) and not self._cache_covers(symbols))
         else:
-            panel = getattr(self._page, "signal_panel", None)
-            if panel is not None:
-                panel.render_panel()
+            self._apply_refresh_result()

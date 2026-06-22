@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
+from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
 from vnpy_common.ui.qt_helpers import release_thread
@@ -20,6 +21,30 @@ StrategyZone = Literal["signal", "position"]
 SignalCache = dict[str, object]
 OnComplete = Callable[[SignalCache], None]
 OnFailed = Callable[[str], None]
+
+
+def remap_batch_results(cache: SignalCache, job_symbols: list[str]) -> SignalCache:
+    """将 Worker 结果键对齐到任务侧 vt_symbol（兼容 SH/SZ 与 SSE/SZSE）。"""
+    if not cache or not job_symbols:
+        return {}
+
+    by_key: SignalCache = {}
+    for vt, snap in cache.items():
+        by_key[str(vt)] = snap
+        canon = canonical_vt_symbol(str(vt)) or canonical_vt_symbol(str(getattr(snap, "vt_symbol", "") or ""))
+        if canon:
+            by_key[canon] = snap
+
+    subset: SignalCache = {}
+    for vt in job_symbols:
+        text = str(vt or "").strip()
+        if not text:
+            continue
+        canon = canonical_vt_symbol(text) or text
+        snap = by_key.get(text) or by_key.get(canon)
+        if snap is not None:
+            subset[text] = snap
+    return subset
 
 
 @dataclass
@@ -164,7 +189,7 @@ class WatchlistStrategyBatchCoordinator:
                 if not self._page._active:
                     return
                 for job in merged.jobs:
-                    subset = {vt: cache[vt] for vt in job.symbols if vt in cache}
+                    subset = remap_batch_results(cache, job.symbols)
                     job.on_complete(subset)
             finally:
                 release_thread(self._page._retired_workers, worker, timeout_ms=0)
