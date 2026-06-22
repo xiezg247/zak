@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_to_dict
 from vnpy_ashare.domain.radar.leader import LeaderScoredRow, LeaderTier
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
@@ -13,11 +15,15 @@ from vnpy_ashare.trading.signals.seal_time import seal_time_score
 __all__ = [
     "LeaderScoredRow",
     "LeaderTier",
+    "FOLLOWER_MIN_SCORE",
     "compute_leader_score",
+    "compute_leader_score_breakdown",
     "leader_tier_label",
+    "rank_sector_group_full",
     "rank_sector_leaders",
     "rank_unified_sector_leaders",
     "score_market_leaders",
+    "tier_for_group_rank",
 ]
 
 _TIER_LABELS: dict[str, str] = {
@@ -37,10 +43,55 @@ _DEFAULT_WEIGHTS: dict[str, float] = {
 }
 
 _FOLLOWER_MIN_SCORE = 35.0
+FOLLOWER_MIN_SCORE = _FOLLOWER_MIN_SCORE
+
+_COMPONENT_LABELS: dict[str, str] = {
+    "limit_times": "连板高度",
+    "seal_quality": "封板质量",
+    "amount_rank": "成交额排名",
+    "seal_time": "封板时间",
+    "net_mf": "主力净流入",
+    "sector_strength": "板块强度",
+    "resonance": "共振加成",
+}
 
 
 def leader_tier_label(tier: str) -> str:
     return _TIER_LABELS.get(tier, "")
+
+
+def tier_for_group_rank(index: int, *, leader_score: float, max_per_sector: int = 5) -> LeaderTier:
+    """板块内排序序号 → 龙头分层（与 rank_sector_leaders 规则一致）。"""
+    if index == 0:
+        return "dragon_1"
+    if index == 1:
+        return "dragon_2"
+    if index < max_per_sector and leader_score >= _FOLLOWER_MIN_SCORE:
+        return "follower"
+    return ""
+
+
+def _leader_score_parts(
+    row: QuoteRowLike,
+    *,
+    amount_rank: float = 0.5,
+    sector_strength_bonus: float = 1.0,
+    resonance_bonus: float = 0.0,
+    max_net_mf: float = 0.0,
+) -> tuple[dict[str, float], float]:
+    limit_times = float(row.get("limit_times") or 0)
+    if limit_times < 1 and is_at_limit_board(row):
+        limit_times = 1.0
+    parts = {
+        "limit_times": _norm_limit_times(limit_times),
+        "seal_quality": _seal_quality_proxy(row),
+        "amount_rank": _clamp01(amount_rank),
+        "seal_time": _clamp01(float(row.get("seal_time_score") or seal_time_score(str(row.get("first_time") or "")))),
+        "net_mf": _norm_net_mf(row, max_abs=max_net_mf),
+        "sector_strength": _clamp01(sector_strength_bonus),
+        "resonance": _clamp01(resonance_bonus),
+    }
+    return parts, limit_times
 
 
 def _clamp01(value: float) -> float:
@@ -119,25 +170,122 @@ def compute_leader_score(
     max_net_mf: float = 0.0,
     weights: dict[str, float] | None = None,
 ) -> float:
+    return compute_leader_score_breakdown(
+        row,
+        amount_rank=amount_rank,
+        sector_strength_bonus=sector_strength_bonus,
+        resonance_bonus=resonance_bonus,
+        max_net_mf=max_net_mf,
+        weights=weights,
+    )["leader_score"]
+
+
+def compute_leader_score_breakdown(
+    row: QuoteRowLike,
+    *,
+    amount_rank: float = 0.5,
+    sector_strength_bonus: float = 1.0,
+    resonance_bonus: float = 0.0,
+    max_net_mf: float = 0.0,
+    weights: dict[str, float] | None = None,
+) -> dict[str, object]:
+    """龙头分及加权分项（供 explain_leader_tier 等解读）。"""
     w = dict(_DEFAULT_WEIGHTS)
     if weights:
         w.update(weights)
 
-    limit_times = float(row.get("limit_times") or 0)
-    if limit_times < 1 and is_at_limit_board(row):
-        limit_times = 1.0
-
-    parts = {
-        "limit_times": _norm_limit_times(limit_times),
-        "seal_quality": _seal_quality_proxy(row),
-        "amount_rank": _clamp01(amount_rank),
-        "seal_time": _clamp01(float(row.get("seal_time_score") or seal_time_score(str(row.get("first_time") or "")))),
-        "net_mf": _norm_net_mf(row, max_abs=max_net_mf),
-        "sector_strength": _clamp01(sector_strength_bonus),
-        "resonance": _clamp01(resonance_bonus),
-    }
+    parts, limit_times = _leader_score_parts(
+        row,
+        amount_rank=amount_rank,
+        sector_strength_bonus=sector_strength_bonus,
+        resonance_bonus=resonance_bonus,
+        max_net_mf=max_net_mf,
+    )
     score = sum(parts[key] * w[key] for key in w) * 100.0
-    return round(max(0.0, min(100.0, score)), 1)
+    leader_score = round(max(0.0, min(100.0, score)), 1)
+    components = [
+        {
+            "key": key,
+            "label": _COMPONENT_LABELS[key],
+            "norm": round(parts[key], 4),
+            "weight": w[key],
+            "points": round(parts[key] * w[key] * 100.0, 1),
+        }
+        for key in w
+    ]
+    return {
+        "leader_score": leader_score,
+        "limit_times": int(limit_times) if limit_times >= 1 else 0,
+        "components": components,
+        "weights_note": "与 radar_leader.compute_leader_score 默认权重一致",
+    }
+
+
+def rank_sector_group_full(
+    group_rows: QuoteRowsLike,
+    *,
+    sector_name: str = "",
+    sector_key: str = "industry",
+    max_per_sector: int = 8,
+    strong_sectors: set[str] | None = None,
+    include_breakdown: bool = False,
+) -> list[dict[str, Any]]:
+    """单板块候选全量排序；可选返回 score_breakdown（供 explain_leader_tier）。"""
+    if not group_rows:
+        return []
+
+    amount_ranks = _amount_rank_in_group(group_rows)
+    max_mf = max(abs(float(row.get("net_mf_amount") or 0)) for row in group_rows)
+    bonus = 1.0
+    if strong_sectors is not None and sector_name:
+        bonus = 1.0 if sector_name in strong_sectors else 0.55
+
+    scored: list[tuple[QuoteRow, float, float]] = []
+    for row in group_rows:
+        coerced = coerce_quote_row(row)
+        vt = str(coerced.get("vt_symbol") or "")
+        score = compute_leader_score(
+            coerced,
+            amount_rank=amount_ranks.get(vt, 0.5),
+            sector_strength_bonus=bonus,
+            max_net_mf=max_mf,
+        )
+        boards = float(coerced.get("limit_times") or 0)
+        if boards < 1 and is_at_limit_board(coerced):
+            boards = 1.0
+        scored.append((coerced, score, boards))
+
+    scored.sort(
+        key=lambda item: (item[1], item[2], float(item[0].get("change_pct") or 0)),
+        reverse=True,
+    )
+
+    results: list[dict[str, Any]] = []
+    for index, (row, score, boards) in enumerate(scored):
+        tier = tier_for_group_rank(index, leader_score=score, max_per_sector=max_per_sector)
+        vt = str(row.get("vt_symbol") or "")
+        entry: dict[str, Any] = {
+            "vt_symbol": vt,
+            "name": str(row.get("name") or row.get("symbol") or vt),
+            "sector_rank": index + 1,
+            "leader_score": score,
+            "leader_tier": tier,
+            "leader_tier_label": leader_tier_label(tier),
+            "limit_times": int(boards) if boards >= 1 else 0,
+            "change_pct": row.get("change_pct"),
+            "in_tier_pool": index < max_per_sector,
+            "sector_axis": sector_key,
+            "sector_name": sector_name,
+        }
+        if include_breakdown:
+            entry["score_breakdown"] = compute_leader_score_breakdown(
+                row,
+                amount_rank=amount_ranks.get(vt, 0.5),
+                sector_strength_bonus=bonus,
+                max_net_mf=max_mf,
+            )
+        results.append(entry)
+    return results
 
 
 def rank_sector_leaders(
@@ -181,15 +329,7 @@ def rank_sector_leaders(
         scored.sort(key=lambda item: (item[1], item[2], float(item[0].get("change_pct") or 0)), reverse=True)
 
         for index, (row, score, boards) in enumerate(scored[:max_per_sector]):
-            tier: LeaderTier
-            if index == 0:
-                tier = "dragon_1"
-            elif index == 1:
-                tier = "dragon_2"
-            elif score >= _FOLLOWER_MIN_SCORE:
-                tier = "follower"
-            else:
-                tier = ""
+            tier = tier_for_group_rank(index, leader_score=score, max_per_sector=max_per_sector)
             if tier:
                 ranked.append(
                     LeaderScoredRow(

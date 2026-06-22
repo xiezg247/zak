@@ -187,6 +187,20 @@ class VnpyAnalysisSkill(SkillTemplate):
                 },
             ),
             ToolSpec(
+                name="explain_leader_tier",
+                description=(
+                    "解读单票在所属行业板块内为何为龙一、龙二或跟风；返回龙头分、分项贡献与同板块前排对比。"
+                    "用户问「为什么 XX 是龙头」「龙一龙二怎么分的」「是不是跟风」时调用。"
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "symbol": {"type": "string", "description": "股票代码，如 600519.SSE"},
+                    },
+                    "required": ["symbol"],
+                },
+            ),
+            ToolSpec(
                 name="assess_regulatory_deviation",
                 description=(
                     "评估监管异动距离：近 10 日涨停次数、10/30 日累计涨幅是否接近严重异动线。用户问「会不会进监管」「异动距离」「10 日 4 涨停」时调用。"
@@ -308,6 +322,11 @@ class VnpyAnalysisSkill(SkillTemplate):
     def evaluate_entry_mode(self, symbol: str) -> str:
         svc = self._get_analysis_service()
         result = svc.evaluate_entry_mode(symbol)
+        return json.dumps(result, ensure_ascii=False)
+
+    def explain_leader_tier(self, symbol: str) -> str:
+        svc = self._get_analysis_service()
+        result = svc.explain_leader_tier(symbol)
         return json.dumps(result, ensure_ascii=False)
 
     def assess_regulatory_deviation(self, symbol: str) -> str:

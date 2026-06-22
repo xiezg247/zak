@@ -379,6 +379,7 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | `build_journal_prompt` | 盘后复盘预填 | **已有** |
 | `check_risk_gate` | 风控闸 + 是否允许新开仓 | **已有** |
 | `evaluate_entry_mode` | 打板/半路/低吸适配度 | **已有** |
+| `explain_leader_tier` | 板块内龙一/龙二/跟风解读 | **已有** |
 | `assess_regulatory_deviation` | 监管异动距离 | **已有** |
 | `evaluate_overnight_exit` | 隔日卖点检查 | **已有** |
 

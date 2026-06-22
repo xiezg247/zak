@@ -459,7 +459,7 @@ ui/screener/workers/              # LeaderScreenWorker
 |------|-------|------|------|
 | `get_leader_pick_snapshot` | vnpy-screening | **已有** | 返回当前龙头池 JSON |
 | `run_leader_screen` | vnpy-screening | **已有** | 执行龙头选股并落库 |
-| `explain_leader_tier` | vnpy-analysis | **待建** | 解读单票为何为龙一 / 龙二（可用 `get_quote_context` + 龙头卡上下文替代） |
+| `explain_leader_tier` | vnpy-analysis | **已有** | 解读单票为何为龙一 / 龙二 / 跟风；返回龙头分与分项 |
 
 ### 9.3 路由短语
 
@@ -475,6 +475,7 @@ ui/screener/workers/              # LeaderScreenWorker
 
 | 文件 | 覆盖 |
 |------|------|
+| `tests/ashare/quotes/test_leader_tier_explain.py` | explain_leader_tier、分项拆解 |
 | `tests/ashare/quotes/test_radar_leader.py` | 评分、分层、同板块龙一龙二 |
 | `tests/ashare/quotes/test_radar_limit_ladder.py` | 梯队分组、空池 |
 | `tests/ashare/screener/test_radar_leader_screen.py` | `run_leader_screen`、硬过滤、空共振 |

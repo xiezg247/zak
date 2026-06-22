@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from vnpy_ashare.config.preferences.watchlist_signal import load_signal_panel_symbols
 from vnpy_ashare.integrations.tickflow.quotes import fetch_quotes_from_tickflow
 from vnpy_ashare.quotes.analysis.entry_mode import evaluate_entry_mode_for_symbol
+from vnpy_ashare.quotes.analysis.leader_tier import explain_leader_tier_for_symbol
 from vnpy_ashare.services.stock.regulatory_deviation import assess_regulatory_deviation_for_symbol
 from vnpy_ashare.services.stock.news import get_stock_news_for_symbol
 
@@ -427,6 +428,9 @@ class AnalysisService(BaseService):
     def evaluate_entry_mode(self, symbol: str) -> dict[str, Any]:
 
         return evaluate_entry_mode_for_symbol(symbol)
+
+    def explain_leader_tier(self, symbol: str) -> dict[str, Any]:
+        return explain_leader_tier_for_symbol(symbol)
 
     def assess_regulatory_deviation(self, symbol: str) -> dict[str, Any]:
         return assess_regulatory_deviation_for_symbol(symbol)
