@@ -47,11 +47,12 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
 
 _DEFAULT_REFRESH_MS = 30_000
-_TAB_INFLOW = 0
-_TAB_OUTFLOW = 1
-_TAB_DIVERGENCE = 2
-_TAB_ROTATION = 3
-_TAB_OUTLOOK = 4
+_TAB_OVERVIEW = 0
+_TAB_INFLOW = 1
+_TAB_OUTFLOW = 2
+_TAB_DIVERGENCE = 3
+_TAB_ROTATION = 4
+_TAB_OUTLOOK = 5
 
 
 class SectorFlowController(QtCore.QObject):
@@ -104,6 +105,7 @@ class SectorFlowController(QtCore.QObject):
         panel.detail.radar_leader_requested.connect(self._on_detail_radar_leader)
         panel.detail.radar_sector_theme_requested.connect(self._on_detail_radar_sector_theme)
         panel.detail.leader_screen_requested.connect(self._on_detail_leader_screen)
+        panel.sector_overview_selected.connect(self._on_sector_selected)
 
     def _get_service(self) -> SectorFlowService | None:
         if self._service is not None:
@@ -169,6 +171,10 @@ class SectorFlowController(QtCore.QObject):
         self._panel.set_loading(False)
         if not snapshot.rows:
             self._panel.apply_snapshot(snapshot)
+            service = self._get_service()
+            if service is not None:
+                overview = service.load_overview_snapshot(snapshot)
+                self._panel.apply_overview_snapshot(overview)
             self._panel.detail.clear()
             status = snapshot.empty_hint or snapshot.updated_at or "暂无数据"
             self._page.set_status(status)
@@ -177,6 +183,11 @@ class SectorFlowController(QtCore.QObject):
         self._last_rotation = None
         self._last_outlook = None
         self._panel.apply_snapshot(snapshot)
+        service = self._get_service()
+        if service is not None:
+            service.record_overview_sample(snapshot)
+            overview = service.load_overview_snapshot(snapshot)
+            self._panel.apply_overview_snapshot(overview)
         if self._pending_view_tab is not None:
             tab_id = self._pending_view_tab
             self._pending_view_tab = None
@@ -187,6 +198,15 @@ class SectorFlowController(QtCore.QObject):
             self._pending_focus.clear()
         self._update_status_label()
         self._publish_ai_context(snapshot)
+        if self._panel.active_tab == _TAB_OVERVIEW:
+            first_row = None
+            if snapshot.inflow_rows:
+                first_row = snapshot.inflow_rows[0]
+            elif snapshot.outflow_rows:
+                first_row = snapshot.outflow_rows[0]
+            if first_row is not None:
+                self._load_sector_leaders(first_row)
+            return
         if self._panel.active_tab == _TAB_ROTATION:
             self._load_rotation(snapshot)
             return
@@ -362,6 +382,16 @@ class SectorFlowController(QtCore.QObject):
                 return
             self._load_outlook(self._last_snapshot)
             return
+        if tab_id == _TAB_OVERVIEW and self._last_snapshot is not None:
+            service = self._get_service()
+            if service is not None:
+                overview = service.load_overview_snapshot(self._last_snapshot)
+                self._panel.apply_overview_snapshot(overview)
+            first = self._panel.table.selected_sector_row()
+            if first is None and self._last_snapshot.inflow_rows:
+                first = self._last_snapshot.inflow_rows[0]
+            if first is not None:
+                self._load_sector_leaders(first)
 
     def _load_rotation(self, snapshot: SectorFlowSnapshot | None = None) -> None:
         service = self._get_service()
@@ -605,16 +635,16 @@ class SectorFlowController(QtCore.QObject):
     ) -> None:
         cleaned = {name.strip() for name in sector_ids if name and name.strip()}
         tab_map = {
-            "default": None,
+            "default": _TAB_OVERVIEW,
+            "overview": _TAB_OVERVIEW,
             "inflow": _TAB_INFLOW,
             "outflow": _TAB_OUTFLOW,
             "divergence": _TAB_DIVERGENCE,
             "rotation": _TAB_ROTATION,
             "outlook": _TAB_OUTLOOK,
         }
-        pending_tab = tab_map.get(tab, tab_map["default"])
-        if pending_tab is not None:
-            self._pending_view_tab = pending_tab
+        pending_tab = tab_map.get(tab, _TAB_OVERVIEW)
+        self._pending_view_tab = pending_tab
         if sector_kind in {"industry", "concept"}:
             self._sector_kind = sector_kind
             self._panel.select_sector_kind(sector_kind, emit=False)
@@ -624,9 +654,8 @@ class SectorFlowController(QtCore.QObject):
         if cleaned:
             self._pending_focus = cleaned
         if self._last_snapshot and self._last_snapshot.rows and self._last_snapshot.sector_kind == self._sector_kind:
-            if pending_tab is not None:
-                self._panel.select_view_tab(pending_tab, emit=True)
-            elif cleaned:
+            self._panel.select_view_tab(pending_tab, emit=True)
+            if cleaned:
                 self._panel.focus_sectors(cleaned)
             return
         self.refresh()

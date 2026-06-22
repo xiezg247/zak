@@ -135,3 +135,42 @@ class SectorFlowSnapshot(FrozenModel):
     empty_hint: str = Field(default="", description="无数据时的提示文案")
     sector_kind: str = Field(default="industry", description="当前快照板块类型")
     data_mode: str = Field(default="intraday", description="数据模式：intraday/official_dc/official_ths")
+
+
+class SectorFlowIntradayPoint(FrozenModel):
+    """盘中采样点：某时间桶的主力净流入（亿元）。"""
+
+    bucket_time: str = Field(description="时间桶 HH:MM")
+    clock_minutes: int = Field(description="距 0 点分钟数，便于排序")
+    net_flow_yi: float = Field(description="主力净流入（亿元）")
+
+
+class SectorFlowOverviewSeries(FrozenModel):
+    """概览折线：单板块当日采样序列。"""
+
+    sector_id: str = Field(description="板块 ID")
+    name: str = Field(description="板块名称")
+    sector_kind: str = Field(default="industry", description="industry / concept")
+    latest_yi: float = Field(description="最新净额（亿元）")
+    change_pct: float = Field(default=0.0, description="涨跌幅（%）")
+    points: tuple[SectorFlowIntradayPoint, ...] = Field(description="按时间升序")
+
+
+class SectorFlowOverviewSnapshot(FrozenModel):
+    """板块资金概览：Top 榜 + 可选盘中曲线。"""
+
+    trade_date: str = Field(description="交易日")
+    sector_kind: str = Field(default="industry", description="板块类型")
+    data_mode: str = Field(default="intraday", description="数据模式")
+    updated_at: str = Field(default="", description="更新时间文案")
+    time_axis: tuple[str, ...] = Field(default=(), description="X 轴时间刻度")
+    inflow_series: tuple[SectorFlowOverviewSeries, ...] = Field(default=(), description="净流入 Top 曲线")
+    outflow_series: tuple[SectorFlowOverviewSeries, ...] = Field(default=(), description="净流出 Top 曲线")
+    top_inflow_name: str = Field(default="", description="最大净流入板块")
+    top_inflow_yi: float = Field(default=0.0, description="最大净流入（亿）")
+    top_outflow_name: str = Field(default="", description="最大净流出板块")
+    top_outflow_yi: float = Field(default=0.0, description="最大净流出（亿）")
+    net_inflow_count: int = Field(default=0, description="净流入板块数")
+    net_outflow_count: int = Field(default=0, description="净流出板块数")
+    has_intraday_curve: bool = Field(default=False, description="是否具备盘中曲线")
+    empty_hint: str = Field(default="", description="无数据提示")

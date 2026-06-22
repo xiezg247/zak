@@ -1350,6 +1350,33 @@ QFrame#SectorFlowDetailPanel {{
 QWidget#SectorFlowMiniBar {{
     background-color: transparent;
 }}
+QWidget#SectorFlowOverviewPanel {{
+    background-color: transparent;
+}}
+QWidget#SectorFlowOverviewChart {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QWidget#SectorFlowOverviewLegend {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QLabel#SectorFlowOverviewChip {{
+    color: {t.text_primary};
+    background-color: {t.input_bg};
+    border: 1px solid {t.input_border};
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+}}
+QTableWidget#SectorFlowOverviewLegendTable {{
+    background-color: transparent;
+    border: none;
+    gridline-color: {t.table_grid};
+    font-size: 11px;
+}}
 QSplitter#SectorFlowSplitter::handle {{
     background-color: {t.panel_border};
     width: 4px;

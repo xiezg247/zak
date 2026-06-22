@@ -216,6 +216,21 @@ CREATE TABLE IF NOT EXISTS sector_flow_daily (
 CREATE INDEX IF NOT EXISTS idx_sector_flow_daily_lookup
     ON sector_flow_daily(sector_kind, sector_id, trade_date DESC);
 
+CREATE TABLE IF NOT EXISTS sector_flow_intraday (
+    trade_date TEXT NOT NULL,
+    sector_kind TEXT NOT NULL,
+    sector_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    bucket_time TEXT NOT NULL,
+    clock_minutes INTEGER NOT NULL,
+    net_flow_yi REAL NOT NULL,
+    change_pct REAL NOT NULL DEFAULT 0,
+    PRIMARY KEY (trade_date, sector_kind, sector_id, bucket_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sector_flow_intraday_lookup
+    ON sector_flow_intraday(trade_date, sector_kind, clock_minutes);
+
 CREATE TABLE IF NOT EXISTS notify_delivery_log (
     id TEXT PRIMARY KEY,
     event_type TEXT NOT NULL,

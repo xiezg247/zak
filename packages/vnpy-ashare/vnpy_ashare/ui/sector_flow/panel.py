@@ -7,6 +7,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookBundle,
     SectorFlowOutlookRow,
+    SectorFlowOverviewSnapshot,
     SectorFlowRotationSnapshot,
     SectorFlowRow,
     SectorFlowSnapshot,
@@ -20,17 +21,19 @@ from vnpy_ashare.services.sector_flow_outlook import OUTLOOK_BIAS_LABELS, filter
 from vnpy_ashare.services.sector_flow_rotation import FLOW_PATTERN_LABELS, filter_rotation_rows
 from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
 from vnpy_ashare.ui.sector_flow.outlook_table import SectorFlowOutlookTable
+from vnpy_ashare.ui.sector_flow.overview_panel import SectorFlowOverviewPanel
 from vnpy_ashare.ui.sector_flow.rotation_table import SectorFlowRotationTable
 from vnpy_ashare.ui.sector_flow.table import SectorFlowTable
 from vnpy_common.ui.loading_overlay import LoadingContentHost
 from vnpy_common.ui.theme.build_extra import build_sector_flow_stylesheet
 from vnpy_common.ui.theme.manager import theme_manager
 
-_TAB_INFLOW = 0
-_TAB_OUTFLOW = 1
-_TAB_DIVERGENCE = 2
-_TAB_ROTATION = 3
-_TAB_OUTLOOK = 4
+_TAB_OVERVIEW = 0
+_TAB_INFLOW = 1
+_TAB_OUTFLOW = 2
+_TAB_DIVERGENCE = 3
+_TAB_ROTATION = 4
+_TAB_OUTLOOK = 5
 _TAB_INDUSTRY = 0
 _TAB_CONCEPT = 1
 _DETAIL_WIDTH = 280
@@ -68,12 +71,14 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._table = SectorFlowTable(self)
         self._rotation_table = SectorFlowRotationTable(self)
         self._outlook_table = SectorFlowOutlookTable(self)
+        self._overview_panel = SectorFlowOverviewPanel(self)
         self._table_stack = QtWidgets.QStackedWidget(self)
         self._table_stack.setObjectName("SectorFlowTableStack")
+        self._table_stack.addWidget(self._overview_panel)
         self._table_stack.addWidget(self._table)
         self._table_stack.addWidget(self._rotation_table)
         self._table_stack.addWidget(self._outlook_table)
-        self._active_tab = _TAB_INFLOW
+        self._active_tab = _TAB_OVERVIEW
         self._sector_kind = "industry"
         self._inflow_rows: list[SectorFlowRow] = []
         self._outflow_rows: list[SectorFlowRow] = []
@@ -109,10 +114,15 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._kind_group.addButton(self._tab_concept_btn, _TAB_CONCEPT)
         self._kind_group.idClicked.connect(self._switch_sector_kind)
 
+        self._tab_overview_btn = QtWidgets.QPushButton("概览")
+        self._tab_overview_btn.setObjectName("OverviewTabButton")
+        self._tab_overview_btn.setCheckable(True)
+        self._tab_overview_btn.setChecked(True)
+        self._tab_overview_btn.setToolTip("Top 板块主力净流入曲线与实时榜")
+
         self._tab_inflow_btn = QtWidgets.QPushButton("净流入")
         self._tab_inflow_btn.setObjectName("OverviewTabButton")
         self._tab_inflow_btn.setCheckable(True)
-        self._tab_inflow_btn.setChecked(True)
         self._tab_outflow_btn = QtWidgets.QPushButton("净流出")
         self._tab_outflow_btn.setObjectName("OverviewTabButton")
         self._tab_outflow_btn.setCheckable(True)
@@ -131,6 +141,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
 
         self._tab_group = QtWidgets.QButtonGroup(self)
         self._tab_group.setExclusive(True)
+        self._tab_group.addButton(self._tab_overview_btn, _TAB_OVERVIEW)
         self._tab_group.addButton(self._tab_inflow_btn, _TAB_INFLOW)
         self._tab_group.addButton(self._tab_outflow_btn, _TAB_OUTFLOW)
         self._tab_group.addButton(self._tab_divergence_btn, _TAB_DIVERGENCE)
@@ -221,7 +232,14 @@ class SectorFlowPanel(QtWidgets.QWidget):
         filter_row.addLayout(_tab_group_layout(self._tab_industry_btn, self._tab_concept_btn))
         filter_row.addWidget(_toolbar_separator(toolbar_host))
         filter_row.addLayout(
-            _tab_group_layout(self._tab_inflow_btn, self._tab_outflow_btn, self._tab_divergence_btn, self._tab_rotation_btn, self._tab_outlook_btn)
+            _tab_group_layout(
+                self._tab_overview_btn,
+                self._tab_inflow_btn,
+                self._tab_outflow_btn,
+                self._tab_divergence_btn,
+                self._tab_rotation_btn,
+                self._tab_outlook_btn,
+            )
         )
         filter_row.addStretch(1)
 
@@ -252,7 +270,15 @@ class SectorFlowPanel(QtWidgets.QWidget):
         layout.addWidget(self._content_host, stretch=1)
 
         theme_manager().bind_stylesheet(self, extra=build_sector_flow_stylesheet)
+        self._overview_panel.sector_selected.connect(self._on_overview_sector_selected)
         self._sync_view_tab_widgets()
+
+    sector_overview_selected = QtCore.Signal(object)
+
+    def _on_overview_sector_selected(self, sector_id: str) -> None:
+        row = self._find_row_by_id(sector_id)
+        if row is not None:
+            self.sector_overview_selected.emit(row)
 
     @property
     def outlook_table(self) -> SectorFlowOutlookTable:
@@ -261,6 +287,10 @@ class SectorFlowPanel(QtWidgets.QWidget):
     @property
     def rotation_table(self) -> SectorFlowRotationTable:
         return self._rotation_table
+
+    @property
+    def overview_panel(self) -> SectorFlowOverviewPanel:
+        return self._overview_panel
 
     @property
     def active_tab(self) -> int:
@@ -309,6 +339,7 @@ class SectorFlowPanel(QtWidgets.QWidget):
         self._tab_divergence_btn.setEnabled(enabled)
         self._tab_rotation_btn.setEnabled(enabled)
         self._tab_outlook_btn.setEnabled(enabled)
+        self._tab_overview_btn.setEnabled(enabled)
         for button in self._pattern_buttons:
             button.setEnabled(enabled)
         self._pattern_all_btn.setEnabled(enabled)
@@ -323,7 +354,9 @@ class SectorFlowPanel(QtWidgets.QWidget):
             button.setEnabled(enabled)
 
     def select_view_tab(self, tab_id: int, *, emit: bool = True) -> None:
-        if tab_id == _TAB_INFLOW:
+        if tab_id == _TAB_OVERVIEW:
+            self._tab_overview_btn.setChecked(True)
+        elif tab_id == _TAB_INFLOW:
             self._tab_inflow_btn.setChecked(True)
         elif tab_id == _TAB_OUTFLOW:
             self._tab_outflow_btn.setChecked(True)
@@ -409,7 +442,11 @@ class SectorFlowPanel(QtWidgets.QWidget):
         if show_outlook_filters:
             self._rebuild_outlook_filter_buttons()
         self._detail.set_history_visible(self._active_tab not in {_TAB_ROTATION, _TAB_OUTLOOK})
-        if self._active_tab == _TAB_ROTATION:
+        if self._active_tab == _TAB_OVERVIEW:
+            self._table_stack.setCurrentWidget(self._overview_panel)
+            self._detail.show()
+            self._splitter.setSizes(self._default_splitter_sizes)
+        elif self._active_tab == _TAB_ROTATION:
             self._table_stack.setCurrentWidget(self._rotation_table)
             self._detail.hide()
             total = max(sum(self._splitter.sizes()), 1)
@@ -514,6 +551,9 @@ class SectorFlowPanel(QtWidgets.QWidget):
         if snapshot is not None:
             self._update_rotation_summary(snapshot)
 
+    def apply_overview_snapshot(self, overview: SectorFlowOverviewSnapshot) -> None:
+        self._overview_panel.apply_snapshot(overview)
+
     def apply_snapshot(self, snapshot: SectorFlowSnapshot) -> None:
         if snapshot.sector_kind == "concept":
             self._sector_kind = "concept"
@@ -568,7 +608,9 @@ class SectorFlowPanel(QtWidgets.QWidget):
     def _switch_tab(self, tab_id: int) -> None:
         self._active_tab = tab_id
         self._sync_view_tab_widgets()
-        if tab_id not in {_TAB_ROTATION, _TAB_OUTLOOK}:
+        if tab_id == _TAB_OVERVIEW:
+            pass
+        elif tab_id not in {_TAB_ROTATION, _TAB_OUTLOOK}:
             self._render_active_tab()
         self.view_tab_changed.emit(tab_id)
 
@@ -602,6 +644,13 @@ class SectorFlowPanel(QtWidgets.QWidget):
     def focus_sectors(self, sector_ids: set[str]) -> None:
         if not sector_ids:
             return
+        if self._active_tab == _TAB_OVERVIEW:
+            sector_id = next(iter(sector_ids))
+            self._overview_panel.highlight_sector(sector_id)
+            row = self._find_row_by_id(sector_id)
+            if row is not None:
+                self.sector_overview_selected.emit(row)
+            return
         if self._active_tab == _TAB_OUTLOOK:
             self._outlook_table.focus_sectors(sector_ids)
             row = self._outlook_table.selected_sector_row()
@@ -627,3 +676,9 @@ class SectorFlowPanel(QtWidgets.QWidget):
         row = self._table.selected_sector_row()
         if row is not None:
             self._table.sector_selected.emit(row)
+
+    def _find_row_by_id(self, sector_id: str) -> SectorFlowRow | None:
+        for row in self._inflow_rows + self._outflow_rows + self._divergence_rows:
+            if row.sector_id == sector_id:
+                return row
+        return None

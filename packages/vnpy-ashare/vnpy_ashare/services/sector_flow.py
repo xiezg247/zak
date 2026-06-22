@@ -12,6 +12,7 @@ from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookBundle,
     SectorFlowOutlookRow,
     SectorFlowOutlookSnapshot,
+    SectorFlowOverviewSnapshot,
     SectorFlowRotationSnapshot,
     SectorFlowRow,
     SectorFlowSnapshot,
@@ -35,6 +36,7 @@ from vnpy_ashare.services.sector_flow_outlook import build_continuation_outlook_
 from vnpy_ashare.services.sector_flow_outlook_compare import build_outlook_compare_rows
 from vnpy_ashare.services.sector_flow_outlook_llm import attach_llm_outlook
 from vnpy_ashare.services.sector_flow_outlook_strategy import build_strategy_outlook
+from vnpy_ashare.services.sector_flow_overview import build_overview_snapshot, record_intraday_overview_sample
 from vnpy_ashare.services.sector_flow_rotation import build_rotation_snapshot
 from vnpy_ashare.storage.repositories.sector_flow_history import (
     _HISTORY_LIMIT,
@@ -409,6 +411,12 @@ class SectorFlowService(BaseService):
         if backfill:
             upsert_sector_history_points(sector, backfill)
         return merge_sector_flow_history(local, remote, limit=limit)
+
+    def record_overview_sample(self, snapshot: SectorFlowSnapshot) -> None:
+        record_intraday_overview_sample(snapshot)
+
+    def load_overview_snapshot(self, snapshot: SectorFlowSnapshot) -> SectorFlowOverviewSnapshot:
+        return build_overview_snapshot(snapshot)
 
     def load_rotation_snapshot(self, snapshot: SectorFlowSnapshot | None = None, *, sector_kind: str = "industry") -> SectorFlowRotationSnapshot:
         base = snapshot
