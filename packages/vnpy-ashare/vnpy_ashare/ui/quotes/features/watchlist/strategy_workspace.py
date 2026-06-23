@@ -151,11 +151,7 @@ def append_strategy_workspace_more_actions(
     page: WatchlistHost,
     more_actions: list[tuple[str, QtWidgets.QPushButton]],
 ) -> None:
-    """将策略区次要动作收入全局「更多」菜单。"""
-    if page.config.show_watchlist_signals:
-        more_actions.append(("加入信号区", page.add_signal_panel_button))
-    if page.config.show_watchlist_positions:
-        more_actions.append(("登记持仓", page.register_position_button))
+    """策略工作区：情绪/风控进「更多」；池操作改由主表右键。"""
     more_actions.extend(create_emotion_risk_more_buttons(page))
     page.add_signal_panel_button.hide()
     page.register_position_button.hide()

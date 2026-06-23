@@ -92,7 +92,7 @@ def signal_as_of_stale(snapshot: SignalSnapshot | None, *, bar_end_date: str | N
     if not snapshot.as_of:
         return True
     if not bar_end_date or bar_end_date == "—":
-        return True
+        return False
     return snapshot.as_of != bar_end_date
 
 

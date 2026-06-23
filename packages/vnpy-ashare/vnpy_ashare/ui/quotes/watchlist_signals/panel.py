@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.config.preferences.watchlist_signal import (
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
@@ -54,6 +55,10 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._wire()
         self._header.apply_config(page.signal_config.normalized())
         self._table_view.set_symbols(self._symbols)
+        self._render_timer = QtCore.QTimer(self)
+        self._render_timer.setSingleShot(True)
+        self._render_timer.setInterval(16)
+        self._render_timer.timeout.connect(self._do_render_panel)
         self._table_view.render_table()
 
     # ── 属性 ────────────────────────────────────────────────
@@ -104,7 +109,7 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         added = 0
         skipped = 0
         for vt in vt_symbols:
-            text = str(vt or "").strip()
+            text = canonical_vt_symbol(str(vt or "").strip()) or str(vt or "").strip()
             if not text or text in self._symbols:
                 continue
             if len(self._symbols) >= SIGNAL_PANEL_MAX_SYMBOLS:
@@ -154,6 +159,13 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         self._table_view.set_updated_at(self._updated_at)
 
     def render_panel(self) -> None:
+        self._do_render_panel()
+
+    def schedule_render_panel(self) -> None:
+        if not self._render_timer.isActive():
+            self._render_timer.start()
+
+    def _do_render_panel(self) -> None:
         self._table_view.set_symbols(self._symbols)
         self._table_view.render_table()
         self._table_view.sync_highlight_from_page()

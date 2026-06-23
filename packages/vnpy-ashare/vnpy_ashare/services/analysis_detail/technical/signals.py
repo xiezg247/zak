@@ -190,6 +190,7 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",
+        max_workers: int | None = None,
     ) -> dict[str, SignalSnapshot]:
         """批量计算策略信号（自选池 Worker 调用）。"""
         if not symbols:
@@ -205,14 +206,31 @@ class TechnicalSignalsMixin(_TechnicalAnalyzerBase):
         }
 
         def worker(symbol: str) -> tuple[str, SignalSnapshot] | None:
-            payload = self._build_signal_payload(symbol, **payload_kwargs)
+            try:
+                payload = self._build_signal_payload(symbol, **payload_kwargs)
+            except Exception:
+                return None
             if payload is None:
                 return None
             return payload["vt_symbol"], self._payload_to_signal_snapshot(payload)
 
-        workers = pattern_load_max_workers(item_count=len(symbols))
+        if max_workers is None:
+            workers = pattern_load_max_workers(item_count=len(symbols))
+        else:
+            workers = max(1, min(int(max_workers), len(symbols)))
+
+        if workers <= 1:
+            results: dict[str, SignalSnapshot] = {}
+            for symbol in symbols:
+                item = worker(symbol)
+                if item is None:
+                    continue
+                vt_symbol, snapshot = item
+                results[vt_symbol] = snapshot
+            return results
+
         pairs = run_parallel_map(symbols, worker, max_workers=workers)
-        results: dict[str, SignalSnapshot] = {}
+        results = {}
         for item in pairs:
             if item is None:
                 continue

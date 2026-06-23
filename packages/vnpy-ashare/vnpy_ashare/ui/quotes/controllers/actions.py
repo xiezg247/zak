@@ -721,13 +721,18 @@ class ActionsController:
             action.triggered.connect(lambda _checked=False, it=item: self.open_reference_peer(it))
             menu.addSeparator()
 
-        if page.config.show_add_watchlist_button:
+        if page.page_name == "自选":
+            self._append_watchlist_page_context_actions(menu, item)
+        elif page.config.show_add_watchlist_button:
             if page._watchlist.contains(item):
                 action = menu.addAction("移出自选")
                 action.triggered.connect(page.remove_from_watchlist)
             else:
                 action = menu.addAction("加入自选")
                 action.triggered.connect(page.add_to_watchlist)
+        elif page.config.show_remove_watchlist_button and page._watchlist.contains(item):
+            action = menu.addAction("移出自选")
+            action.triggered.connect(page.remove_from_watchlist)
 
         if page.config.show_download_button:
             action = menu.addAction("下载日K到本地")
@@ -758,6 +763,29 @@ class ActionsController:
             page._watchlist_groups.append_group_menu(menu, selected)
 
         return menu
+
+    def _append_watchlist_page_context_actions(self, menu: QtWidgets.QMenu, item: StockItem) -> None:
+        """自选页：池操作放右键（多选加入信号区 / 登记持仓 / 移出 / 刷新行情）。"""
+        page = self._p
+        added = False
+        if page.config.show_watchlist_signals:
+            action = menu.addAction("加入信号区")
+            action.triggered.connect(page.add_selection_to_signal_panel)
+            added = True
+        if page.config.show_watchlist_positions:
+            action = menu.addAction("登记持仓")
+            action.triggered.connect(page.register_position_for_selected)
+            added = True
+        if page.config.show_remove_watchlist_button and page._watchlist.contains(item):
+            action = menu.addAction("移出自选")
+            action.triggered.connect(page.remove_from_watchlist)
+            added = True
+        if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
+            action = menu.addAction("刷新行情")
+            action.triggered.connect(page._refresh_quotes_clicked)
+            added = True
+        if added:
+            menu.addSeparator()
 
     def open_stock_analysis(self, item: StockItem) -> None:
         page = self._p

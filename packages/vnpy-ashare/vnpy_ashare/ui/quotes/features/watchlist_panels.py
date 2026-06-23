@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, save_watchlist_position_config
 from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS
+from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 if TYPE_CHECKING:
@@ -49,7 +50,9 @@ class WatchlistPanelsFeature:
 
     def on_signal_panel_expansion_changed(self, expanded: bool) -> None:
         apply_center_splitter_sizes(self._page)
-        if expanded:
+        if expanded and self._page._signals._symbols_missing_cache(self._page._signals._panel_symbols()):
+            self._page._signals.refresh(force=True)
+        elif expanded:
             self._page._signals.refresh(force=False)
 
     def on_signal_panel_config_changed(self) -> None:
@@ -69,7 +72,7 @@ class WatchlistPanelsFeature:
         if item is None:
             return
         page._select_stock_key((item.symbol, item.exchange))
-        snap = page.signal_cache.get(vt_symbol)
+        snap = lookup_by_vt_symbol(page.signal_cache, vt_symbol)
         if snap is not None and page.chart_panel is not None:
             item = page.find_stock_item(vt_symbol)
             quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
@@ -169,6 +172,7 @@ class WatchlistPanelsFeature:
             if skipped:
                 message += f"，{skipped} 只因已达上限 {SIGNAL_PANEL_MAX_SYMBOLS} 未加入"
             page._toast.success(message)
+            page._signals.refresh(force=True)
         elif skipped:
             page._toast.warning(f"信号区已满（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只），请先移出后再加入")
         else:

@@ -29,7 +29,7 @@ from vnpy_ashare.data.bar_health import (
 )
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.domain.symbols.stock import StockItem, canonical_vt_symbol
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
@@ -357,6 +357,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._update_quote_source_label()
         if self.config.show_watchlist_signals or self.config.show_watchlist_positions:
             self._strategy_refresh.start()
+        self._signals.on_page_activated()
         if self.config.show_stock_notes:
             self._stock_notes.on_selection_item()
         if self.config.show_watchlist_multiview:
@@ -716,7 +717,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._table.update_stats()
 
     def refresh_watchlist_signals(self) -> None:
-        self._signals.invalidate_cache()
+        self._signals.invalidate_memory_cache()
         self._signals.refresh(force=True)
 
     def apply_strategy_profile(self, profile_id: str) -> None:
@@ -833,12 +834,23 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
     def add_selection_to_signal_panel(self) -> None:
         self._watchlist_panels.add_selection_to_signal_panel()
 
+    def watchlist_pool_items(self) -> list[StockItem]:
+        """自选全池（不受分组 Tab 筛选影响）。"""
+        pool = self.watchlist_pool_stocks
+        if pool:
+            return list(pool)
+        return list(self.all_stocks)
+
     def find_stock_item(self, vt_symbol: str) -> StockItem | None:
         target = (vt_symbol or "").strip()
         if not target:
             return None
+        canon = canonical_vt_symbol(target)
+        for item in self.watchlist_pool_items():
+            if item.vt_symbol == target or (canon is not None and item.vt_symbol == canon):
+                return item
         for item in self.all_stocks:
-            if item.vt_symbol == target:
+            if item.vt_symbol == target or (canon is not None and item.vt_symbol == canon):
                 return item
         return None
 

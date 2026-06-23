@@ -11,7 +11,10 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
-from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorker
+from vnpy_ashare.ui.quotes.watchlist_signals.worker import (
+    WatchlistSignalWorker,
+    unwrap_worker_payload,
+)
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
@@ -78,8 +81,13 @@ class WatchlistStrategyBatchCoordinator:
         worker = self._worker
         return worker is not None and worker.isRunning()
 
+    def _zone_has_queued_jobs(self, zone: StrategyZone) -> bool:
+        return any(job.zone == zone for job in self._pending_jobs + self._queued_jobs)
+
     def is_refreshing_zone(self, zone: StrategyZone) -> bool:
-        return zone in self._active_zones and self.is_busy()
+        if self.is_busy() and zone in self._active_zones:
+            return True
+        return self._zone_has_queued_jobs(zone)
 
     def submit(
         self,
@@ -117,6 +125,11 @@ class WatchlistStrategyBatchCoordinator:
                     pass
             release_thread(self._page._retired_workers, worker, timeout_ms=0)
 
+    def flush_pending(self) -> None:
+        """页面激活或显式刷新时冲刷排队任务。"""
+        if self._pending_jobs or self._queued_jobs:
+            self._schedule_flush()
+
     def _schedule_flush(self) -> None:
         if self._flush_pending:
             return
@@ -126,15 +139,13 @@ class WatchlistStrategyBatchCoordinator:
     def _flush(self) -> None:
         self._flush_pending = False
         if not self._page._active:
-            self._pending_jobs.clear()
             return
         if self.is_busy():
             self._queued_jobs.extend(self._pending_jobs)
             self._pending_jobs.clear()
             return
 
-        jobs = self._pending_jobs
-        self._pending_jobs.clear()
+        jobs, self._pending_jobs = self._pending_jobs, []
         if not jobs:
             return
 
@@ -170,6 +181,7 @@ class WatchlistStrategyBatchCoordinator:
         symbols = sorted(merged.symbols)
         config = merged.config
         self._active_zones = {job.zone for job in merged.jobs}
+        include_continuation = self._include_continuation_for_jobs(merged.jobs)
 
         worker = WatchlistSignalWorker(
             service,
@@ -177,20 +189,25 @@ class WatchlistStrategyBatchCoordinator:
             class_name=config.class_name,
             fast_window=config.fast_window,
             slow_window=config.slow_window,
+            include_continuation=include_continuation,
+            main_engine=self._page._get_main_engine() if include_continuation else None,
             parent=as_qwidget(self._page),
         )
         self._worker = worker
 
-        def on_finished(cache: SignalCache) -> None:
+        def on_finished(raw: object) -> None:
             if self._worker is worker:
                 self._worker = None
             self._active_zones.clear()
             try:
-                if not self._page._active:
-                    return
+                payload = unwrap_worker_payload(raw)
                 for job in merged.jobs:
-                    subset = remap_batch_results(cache, job.symbols)
-                    job.on_complete(subset)
+                    subset = remap_batch_results(payload.signals, job.symbols)
+                    if job.zone == "signal" and payload.continuations:
+                        subset_cont = remap_batch_results(payload.continuations, job.symbols)
+                        job.on_complete({"signals": subset, "continuations": subset_cont})
+                    else:
+                        job.on_complete(subset)
             finally:
                 release_thread(self._page._retired_workers, worker, timeout_ms=0)
                 self._drain_queued()
@@ -209,6 +226,23 @@ class WatchlistStrategyBatchCoordinator:
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
         worker.start()
+
+    def _signal_panel_wants_continuation(self) -> bool:
+        panel = getattr(self._page, "signal_panel", None)
+        if panel is None:
+            return False
+        if not panel.is_expanded():
+            return False
+        table = getattr(panel, "_table_view", None)
+        if table is None:
+            return True
+        visible = getattr(table, "visible_column_keys", lambda: [])()
+        return any(key in {"continuation_pattern", "outlook_compact"} for key in visible)
+
+    def _include_continuation_for_jobs(self, jobs: list[_BatchJob]) -> bool:
+        if not any(job.zone == "signal" for job in jobs):
+            return False
+        return self._signal_panel_wants_continuation()
 
     def _drain_queued(self) -> None:
         if not self._queued_jobs and not self._pending_jobs:

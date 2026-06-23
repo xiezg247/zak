@@ -62,6 +62,10 @@ class SignalPanelSettingsTests(unittest.TestCase):
         save_signal_panel_symbols(["600000.SSE", "000001.SZSE", "600000.SSE"])
         self.assertEqual(load_signal_panel_symbols(), ["600000.SSE", "000001.SZSE"])
 
+    def test_panel_symbols_migrate_tickflow_suffix(self) -> None:
+        save_signal_panel_symbols(["600000.SH", "000001.SZ"])
+        self.assertEqual(load_signal_panel_symbols(), ["600000.SSE", "000001.SZSE"])
+
     def test_panel_symbols_respects_max(self) -> None:
         from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS, normalize_signal_panel_symbols
 
@@ -132,6 +136,26 @@ class SignalAsOfStaleTests(unittest.TestCase):
             warnings=(),
         )
         self.assertTrue(signal_as_of_stale(snap, bar_end_date="2026-06-09"))
+
+    def test_unknown_bar_end_not_stale(self) -> None:
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_as_of_stale
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-09",
+            signal="buy",
+            signal_label="买入",
+            signal_date=None,
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=80.0,
+            reason_summary="测试",
+            reasons=("测试",),
+            warnings=(),
+        )
+        self.assertFalse(signal_as_of_stale(snap, bar_end_date=None))
+        self.assertFalse(signal_as_of_stale(snap, bar_end_date=""))
 
     def test_fresh_when_bar_end_matches(self) -> None:
         from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_as_of_stale
@@ -281,6 +305,35 @@ class SignalDiskCacheTests(unittest.TestCase):
         assert latest is not None
         self.assertEqual(latest.signal, "hold")
 
+    def test_load_many_accepts_tickflow_symbol(self) -> None:
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareDoubleMaStrategy",
+            as_of="2026-06-06",
+            signal="buy",
+            signal_label="买入",
+            signal_date=None,
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=70.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )
+        cache = WatchlistSignalDiskCache()
+        config_key = WatchlistSignalConfig().cache_key()
+        cache.put(snap, config_key=config_key, bar_as_of="2026-06-06")
+        loaded = cache.load_many(
+            ["600000.SH"],
+            config_key=config_key,
+            bar_as_of_for=lambda _vt: "2026-06-06",
+        )
+        self.assertIn("600000.SH", loaded)
+        self.assertEqual(loaded["600000.SH"].signal, "buy")
+
     def test_load_many_falls_back_to_latest_snapshot(self) -> None:
         from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
         from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
@@ -423,10 +476,21 @@ class SignalControllerEnabledTests(unittest.TestCase):
         controller._apply_refresh_result = MagicMock()
         return controller, page
 
-    def test_refresh_when_disabled_still_renders_cache(self) -> None:
+    def test_manual_refresh_submits_even_when_disabled(self) -> None:
         controller, _page = self._make_controller(enabled=False)
+        _page.signal_cache.clear()
+        _page._signal_cache_config = None
 
         controller.refresh(force=True)
+
+        controller._submit_batch.assert_called_once()
+
+    def test_auto_refresh_skips_worker_when_disabled(self) -> None:
+        controller, page = self._make_controller(enabled=False)
+        page.signal_cache.clear()
+        page._signal_cache_config = None
+
+        controller.refresh(force=False)
 
         controller._submit_batch.assert_not_called()
         controller._apply_refresh_result.assert_called()
@@ -448,12 +512,75 @@ class SignalControllerEnabledTests(unittest.TestCase):
         controller._submit_batch.assert_called_once()
 
 
+class SignalControllerSymbolsChangedTests(unittest.TestCase):
+    def test_first_add_triggers_force_refresh(self) -> None:
+        from unittest.mock import MagicMock
+
+        from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
+        from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
+
+        page = MagicMock()
+        page.config.show_watchlist_signals = True
+        page.page_name = "自选"
+        page._active = True
+        page.signal_config = WatchlistSignalConfig().normalized()
+        page.signal_cache = {}
+        page.continuation_cache = {}
+        page.watchlist_pool_items.return_value = [MagicMock(vt_symbol="600000.SSE")]
+
+        panel = MagicMock()
+        panel.symbols = ["600000.SSE"]
+        panel.enabled = True
+        page.signal_panel = panel
+
+        controller = WatchlistSignalController(page)
+        controller.refresh = MagicMock()
+        controller._ensure_bar_meta = MagicMock()
+        controller._rekey_signal_cache = MagicMock()
+        controller._canonicalize_symbols = lambda symbols: list(symbols)
+
+        controller.on_symbols_changed()
+
+        controller.refresh.assert_called_once_with(symbols=["600000.SSE"], force=True)
+
+
 class CanonicalVtSymbolTests(unittest.TestCase):
     def test_tickflow_to_vt_symbol(self) -> None:
         from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 
         self.assertEqual(canonical_vt_symbol("600000.SH"), "600000.SSE")
         self.assertEqual(canonical_vt_symbol("000001.SZ"), "000001.SZSE")
+
+    def test_lookup_by_vt_symbol_accepts_tickflow_key(self) -> None:
+        from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
+
+        snap = SignalSnapshot(
+            vt_symbol="600000.SSE",
+            strategy_id="AshareShortBreakoutStrategy",
+            as_of="2026-06-20",
+            signal="buy",
+            signal_label="买入",
+            signal_date=None,
+            ref_buy_price=10.0,
+            ref_sell_price=11.0,
+            strength=80.0,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )
+        cache = {"600000.SSE": snap}
+        self.assertIs(lookup_by_vt_symbol(cache, "600000.SH"), snap)
+
+
+class NormalizeSignalPanelSymbolsTests(unittest.TestCase):
+    def test_canonicalizes_tickflow_suffix(self) -> None:
+        from vnpy_ashare.config.preferences.watchlist_signal import normalize_signal_panel_symbols
+
+        self.assertEqual(
+            normalize_signal_panel_symbols(["600000.SH", "000001.SZ"]),
+            ["600000.SSE", "000001.SZSE"],
+        )
 
 
 class StrategyBatchRemapTests(unittest.TestCase):
@@ -514,6 +641,70 @@ class SignalControllerCollapsedTests(unittest.TestCase):
         controller.refresh(force=False)
 
         controller._submit_batch.assert_called_once()
+
+
+class SignalControllerMemoryCacheTests(unittest.TestCase):
+    def test_manual_refresh_keeps_disk_cache(self) -> None:
+        from unittest.mock import MagicMock
+
+        from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
+
+        page = MagicMock()
+        controller = WatchlistSignalController(page)
+        controller._disk_cache = MagicMock()
+
+        controller.invalidate_memory_cache()
+
+        controller._disk_cache.clear.assert_not_called()
+        page.signal_cache.clear.assert_called_once()
+
+
+class WorkerPayloadTests(unittest.TestCase):
+    def test_unwrap_legacy_dict(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_signals.worker import unwrap_worker_payload
+
+        payload = unwrap_worker_payload({"600000.SSE": object()})
+        self.assertIn("600000.SSE", payload.signals)
+        self.assertEqual(payload.continuations, {})
+
+    def test_unwrap_structured_payload(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_signals.worker import (
+            WatchlistSignalWorkerPayload,
+            unwrap_worker_payload,
+        )
+
+        raw = WatchlistSignalWorkerPayload(signals={"a": 1}, continuations={"a": 2})
+        payload = unwrap_worker_payload(raw)
+        self.assertEqual(payload.signals, {"a": 1})
+        self.assertEqual(payload.continuations, {"a": 2})
+
+
+class SignalCommitCacheTests(unittest.TestCase):
+    def test_commit_maps_tickflow_key_to_panel_symbol(self) -> None:
+        from unittest.mock import MagicMock
+
+        from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
+        from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
+
+        snap = SignalSnapshot(
+            vt_symbol="002428.SZSE",
+            strategy_id="AshareShortBreakoutStrategy",
+            as_of="2026-06-20",
+            signal="hold",
+            signal_label="观望",
+            signal_date=None,
+            ref_buy_price=None,
+            ref_sell_price=None,
+            strength=None,
+            reason_summary="",
+            reasons=(),
+            warnings=(),
+        )
+        page = MagicMock()
+        controller = WatchlistSignalController(page)
+        committed = controller._commit_signal_cache(["002428.SZSE"], {"002428.SZ": snap})
+        self.assertIn("002428.SZSE", committed)
+        self.assertEqual(committed["002428.SZSE"].signal, "hold")
 
 
 if __name__ == "__main__":

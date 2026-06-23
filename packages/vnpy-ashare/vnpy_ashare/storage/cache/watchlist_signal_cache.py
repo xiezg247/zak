@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_snapshot_to_dict
 from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
 from vnpy_common.paths import get_app_db_path
@@ -74,7 +75,7 @@ class WatchlistSignalDiskCache:
     """自选信号 Worker 专用磁盘缓存。"""
 
     def get(self, vt_symbol: str, config_key: str, bar_as_of: str) -> SignalSnapshot | None:
-        vt = str(vt_symbol or "").strip()
+        vt = canonical_vt_symbol(str(vt_symbol or "").strip()) or str(vt_symbol or "").strip()
         key = str(config_key or "").strip()
         as_of = str(bar_as_of or "")
         if not vt or not key or not as_of:
@@ -96,7 +97,7 @@ class WatchlistSignalDiskCache:
 
     def get_latest(self, vt_symbol: str, config_key: str) -> SignalSnapshot | None:
         """取该标的最近一条缓存（冷启动 bar_as_of 未就绪时的回退）。"""
-        vt = str(vt_symbol or "").strip()
+        vt = canonical_vt_symbol(str(vt_symbol or "").strip()) or str(vt_symbol or "").strip()
         key = str(config_key or "").strip()
         if not vt or not key:
             return None
@@ -141,7 +142,7 @@ class WatchlistSignalDiskCache:
         config_key: str,
         bar_as_of: str,
     ) -> None:
-        symbol = str(snapshot.vt_symbol or "").strip()
+        symbol = canonical_vt_symbol(str(snapshot.vt_symbol or "").strip()) or str(snapshot.vt_symbol or "").strip()
         key = str(config_key or "").strip()
         as_of = str(bar_as_of or "")
         if not symbol or not key:

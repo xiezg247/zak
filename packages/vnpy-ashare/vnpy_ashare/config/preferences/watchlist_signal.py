@@ -8,6 +8,7 @@ from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
+from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
 from vnpy_common.domain.base import FrozenModel
 
@@ -85,7 +86,8 @@ def normalize_signal_panel_symbols(
     seen: set[str] = set()
     limit = max(1, int(max_count))
     for vt in symbols:
-        text = str(vt or "").strip()
+        raw = str(vt or "").strip()
+        text = canonical_vt_symbol(raw) or raw
         if text and text not in seen:
             seen.add(text)
             cleaned.append(text)

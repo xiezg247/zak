@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
 import tests._bootstrap  # noqa: F401
+from vnpy.trader.ui import QtWidgets
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
 
@@ -15,6 +17,13 @@ def _config(*, class_name: str = "AshareDoubleMaStrategy", fast: int = 10, slow:
 
 
 class WatchlistStrategyBatchCoordinatorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if QtWidgets.QApplication.instance() is None:
+            cls._app = QtWidgets.QApplication(sys.argv)
+        else:
+            cls._app = QtWidgets.QApplication.instance()
+
     def _page(self) -> MagicMock:
         page = MagicMock()
         page._active = True
@@ -60,6 +69,25 @@ class WatchlistStrategyBatchCoordinatorTests(unittest.TestCase):
         merged = coord._merge_jobs(batch_jobs)
         self.assertEqual(len(merged), 2)
 
+    def test_is_refreshing_false_after_service_unavailable(self) -> None:
+        page = self._page()
+        page._get_analysis_service.return_value = None
+        coord = WatchlistStrategyBatchCoordinator(page)
+        config = _config()
+        failed: list[str] = []
+
+        coord.submit(
+            zone="signal",
+            symbols=["600519.SSE"],
+            config=config,
+            on_complete=lambda _cache: None,
+            on_failed=lambda msg: failed.append(msg),
+        )
+        self._app.processEvents()
+
+        self.assertFalse(coord.is_refreshing_zone("signal"))
+        self.assertEqual(failed, ["analysis service unavailable"])
+
     @patch("vnpy_ashare.ui.quotes.watchlist.strategy_batch.WatchlistSignalWorker")
     def test_start_merged_runs_single_worker(self, worker_cls: MagicMock) -> None:
         page = self._page()
@@ -98,7 +126,9 @@ class WatchlistStrategyBatchCoordinatorTests(unittest.TestCase):
 
         worker_cls.assert_called_once()
         finished = worker.finished.connect.call_args[0][0]
-        finished({"600519.SSE": object()})
+        from vnpy_ashare.ui.quotes.watchlist_signals.worker import WatchlistSignalWorkerPayload
+
+        finished(WatchlistSignalWorkerPayload(signals={"600519.SSE": object()}))
         self.assertEqual(signal_done, [1])
         self.assertEqual(position_done, [1])
 

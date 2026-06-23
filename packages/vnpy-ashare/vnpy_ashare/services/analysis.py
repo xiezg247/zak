@@ -262,6 +262,7 @@ class AnalysisService(BaseService):
         fast_window: int = 10,
         slow_window: int = 20,
         scope: str = "daily",
+        max_workers: int | None = None,
     ) -> dict[str, SignalSnapshot]:
         return self._technical.batch_strategy_signals(
             symbols,
@@ -270,6 +271,7 @@ class AnalysisService(BaseService):
             fast_window=fast_window,
             slow_window=slow_window,
             scope=scope,
+            max_workers=max_workers,
         )
 
     def enrich_relative_index(self, snapshot: SignalSnapshot) -> SignalSnapshot:

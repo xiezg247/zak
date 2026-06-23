@@ -66,10 +66,6 @@ def create_emotion_risk_more_buttons(page: WatchlistHost) -> list[tuple[str, QtW
 def apply_toolbar_for_preset(page: WatchlistHost, preset_id: LayoutPresetId) -> None:
     spec = PRESET_SPECS[preset_id]
     if getattr(page, "_watchlist_feature", None) is not None:
-        if page.config.show_watchlist_positions:
-            _set_more_menu_action_visible(page, "登记持仓", spec.show_register_toolbar)
-        if page.config.show_watchlist_signals:
-            _set_more_menu_action_visible(page, "加入信号区", spec.show_add_signal_toolbar)
         _sync_emotion_risk_chips(page, show_in_toolbar=False)
         _set_more_menu_action_visible(page, _EMOTION_MORE_LABEL, spec.show_emotion_risk_chips)
         _set_more_menu_action_visible(page, _RISK_MORE_LABEL, spec.show_emotion_risk_chips)

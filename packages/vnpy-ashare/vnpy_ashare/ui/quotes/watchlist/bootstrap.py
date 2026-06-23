@@ -20,8 +20,9 @@ class WatchlistBootstrapCoordinator:
 
     def __init__(self) -> None:
         self._last_pool_fingerprint: str | None = None
-        self._downstream_token = 0
         self._downstream_flush_pending = False
+        self._downstream_dirty = False
+        self._last_schedule_reason: ScheduleReason = "pool_ready"
 
     @staticmethod
     def pool_fingerprint(stocks: list[StockItem]) -> str:
@@ -72,19 +73,23 @@ class WatchlistBootstrapCoordinator:
         if page.page_name != "自选" or not page._active:
             return
 
-        self._downstream_token += 1
-        token = self._downstream_token
+        self._last_schedule_reason = reason
+        self._downstream_dirty = True
         if self._downstream_flush_pending:
             return
         self._downstream_flush_pending = True
+        QtCore.QTimer.singleShot(0, lambda: self._flush_downstream(page))
 
-        def _flush() -> None:
-            self._downstream_flush_pending = False
-            if token != self._downstream_token or not page._active:
-                return
-            self._run_downstream(page, reason=reason)
-
-        QtCore.QTimer.singleShot(0, _flush)
+    def _flush_downstream(self, page: WatchlistHost) -> None:
+        self._downstream_flush_pending = False
+        if not page._active or not self._downstream_dirty:
+            self._downstream_dirty = False
+            return
+        self._downstream_dirty = False
+        self._run_downstream(page, reason=self._last_schedule_reason)
+        if self._downstream_dirty and page._active:
+            self._downstream_flush_pending = True
+            QtCore.QTimer.singleShot(0, lambda: self._flush_downstream(page))
 
     def invalidate_symbols(self, page: WatchlistHost, vt_symbols: list[str]) -> None:
         for vt_symbol in vt_symbols:

@@ -8,6 +8,7 @@ from typing import Any
 from vnpy.trader.engine import MainEngine
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
+from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
 from vnpy_ashare.app.engine_access import get_sector_flow_service
 from vnpy_ashare.domain.market.flow_pattern import classify_flow_pattern_values
 from vnpy_ashare.domain.market.sector_flow import SectorFlowOutlookDay, SectorFlowOutlookRow
@@ -316,7 +317,7 @@ def build_continuation_batch(
 
     result: dict[str, StockContinuationSnapshot] = {}
     for vt_symbol in vt_symbols:
-        snapshot = signal_cache.get(vt_symbol)
+        snapshot = lookup_by_vt_symbol(signal_cache, vt_symbol)
         moneyflow_values: list[float] | None = None
         if include_moneyflow:
             moneyflow_values = load_stock_moneyflow_values(vt_symbol)

@@ -13,6 +13,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_signal_panel_columns,
     save_signal_panel_columns,
 )
+from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import (
     SIGNAL_STRENGTH_STRONG,
     SignalSnapshot,
@@ -36,7 +37,7 @@ from vnpy_common.ui.theme.market_colors import market_colors, pct_change_color
 
 _DETAIL_COLUMN_KEYS = ("signal_date", "signal_reason")
 
-_EMPTY_LIST_TEXT = f"暂无监控标的。请在上方自选表多选后点击「加入信号区」（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只）。"
+_EMPTY_LIST_TEXT = f"暂无监控标的。请在上方自选表多选后右键「加入信号区」（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只）。"
 _FILTER_EMPTY_TEXT = "当前筛选无匹配标的，再次点击统计项可取消筛选。"
 
 
@@ -216,8 +217,25 @@ class SignalPanelTableView(QtWidgets.QWidget):
         header_view.setStretchLastSection(False)
         header_view.setSectionResizeMode(info_index, QtWidgets.QHeaderView.ResizeMode.Fixed)
         self._table.setColumnWidth(info_index, 52)
-        for col in range(info_index):
-            header_view.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        default_widths = {
+            "symbol": 72,
+            "name": 88,
+            "signal": 56,
+            "signal_date": 88,
+            "volume_ratio_5d": 64,
+            "ma_gap_pct": 72,
+            "ref_buy_price": 80,
+            "ref_sell_price": 80,
+            "dist_buy_pct": 72,
+            "dist_sell_pct": 72,
+            "signal_strength": 56,
+            "relative_index_pct": 80,
+            "continuation_pattern": 88,
+            "outlook_compact": 96,
+        }
+        for col, (key, _label) in enumerate(columns):
+            header_view.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeMode.Interactive)
+            self._table.setColumnWidth(col, default_widths.get(key, 72))
         if reset_rows:
             self._rendered_symbols = []
             self._table.setRowCount(0)
@@ -228,7 +246,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         symbols = self._filtered_symbols()
         return sorted(
             symbols,
-            key=lambda vt: signal_row_sort_key(self._page.signal_cache.get(vt)),
+            key=lambda vt: signal_row_sort_key(lookup_by_vt_symbol(self._page.signal_cache, vt)),
             reverse=True,
         )
 
@@ -251,10 +269,10 @@ class SignalPanelTableView(QtWidgets.QWidget):
         page = self._page
         item = page.find_stock_item(vt_symbol)
         quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
-        snapshot = page.signal_cache.get(vt_symbol)
+        snapshot = lookup_by_vt_symbol(page.signal_cache, vt_symbol)
         missing_kline = signal_missing_kline(snapshot)
         bar_end_date = self._bar_end_date(vt_symbol)
-        continuation = page.continuation_cache.get(vt_symbol)
+        continuation = lookup_by_vt_symbol(page.continuation_cache, vt_symbol)
         values = _compute_row_values(
             item,
             snapshot,
@@ -360,8 +378,8 @@ class SignalPanelTableView(QtWidgets.QWidget):
         page = self._page
         item = page.find_stock_item(vt_symbol)
         quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
-        snapshot = page.signal_cache.get(vt_symbol)
-        continuation = page.continuation_cache.get(vt_symbol)
+        snapshot = lookup_by_vt_symbol(page.signal_cache, vt_symbol)
+        continuation = lookup_by_vt_symbol(page.continuation_cache, vt_symbol)
         values = _compute_row_values(
             item,
             snapshot,
@@ -427,7 +445,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             return list(self._symbols)
         filtered: list[str] = []
         for vt in self._symbols:
-            snap = self._page.signal_cache.get(vt)
+            snap = lookup_by_vt_symbol(self._page.signal_cache, vt)
             if self._signal_filter == "missing":
                 if signal_missing_kline(snap):
                     filtered.append(vt)
@@ -456,7 +474,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         warning_color = theme_manager().tokens().semantic_warning
         buy_n = sell_n = hold_n = missing_n = fresh_n = strong_n = held_n = 0
         for vt in self._symbols:
-            snap = self._page.signal_cache.get(vt)
+            snap = lookup_by_vt_symbol(self._page.signal_cache, vt)
             if snap is None:
                 continue
             if signal_missing_kline(snap):
@@ -479,7 +497,13 @@ class SignalPanelTableView(QtWidgets.QWidget):
         elif self._symbols:
             signals = getattr(self._page, "_signals", None)
             refreshing = bool(signals is not None and signals.is_refreshing)
-            if not refreshing and any(self._page.signal_cache.get(vt) is None for vt in self._symbols):
+            waiting = bool(signals is not None and getattr(signals, "is_waiting_for_service", False))
+            missing = any(lookup_by_vt_symbol(self._page.signal_cache, vt) is None for vt in self._symbols)
+            if refreshing:
+                parts.append("计算中")
+            elif waiting:
+                parts.append("服务初始化中")
+            elif missing:
                 parts.append("待计算")
         if self._signal_filter:
             filter_labels = {

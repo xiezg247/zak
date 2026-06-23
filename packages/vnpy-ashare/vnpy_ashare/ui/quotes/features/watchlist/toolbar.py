@@ -50,7 +50,7 @@ def append_watchlist_pool_toolbar_actions(
         toolbar.addWidget(page.add_watchlist_button)
     if page.config.show_remove_watchlist_button:
         if policy is not None:
-            more_actions.append(("移出自选", page.remove_watchlist_button))
+            page.remove_watchlist_button.hide()
         else:
             toolbar.addWidget(page.remove_watchlist_button)
     if show_move_in_toolbar:
@@ -114,7 +114,7 @@ def append_watchlist_strategy_toolbar_actions(
         toolbar.addWidget(page.diagnose_button)
     if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
         if policy is not None:
-            more_actions.append(("刷新行情", page.refresh_quotes_button))
+            page.refresh_quotes_button.hide()
         else:
             toolbar.addWidget(page.refresh_quotes_button)
 

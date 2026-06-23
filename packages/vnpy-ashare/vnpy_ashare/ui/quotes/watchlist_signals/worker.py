@@ -2,16 +2,40 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from vnpy.trader.ui import QtCore
 
 if TYPE_CHECKING:
+    from vnpy.trader.engine import MainEngine
     from vnpy_ashare.services.analysis import AnalysisService
 
 
+@dataclass
+class WatchlistSignalWorkerPayload:
+    """Worker 计算结果（信号 + 可选延续快照）。"""
+
+    signals: dict[str, Any] = field(default_factory=dict)
+    continuations: dict[str, Any] = field(default_factory=dict)
+
+
+def unwrap_worker_payload(raw: object) -> WatchlistSignalWorkerPayload:
+    """解析 Worker finished 载荷（兼容旧版纯 signals dict）。"""
+    if isinstance(raw, WatchlistSignalWorkerPayload):
+        return raw
+    if isinstance(raw, dict) and "signals" in raw:
+        return WatchlistSignalWorkerPayload(
+            signals=dict(raw.get("signals") or {}),
+            continuations=dict(raw.get("continuations") or {}),
+        )
+    if isinstance(raw, dict):
+        return WatchlistSignalWorkerPayload(signals=dict(raw))
+    return WatchlistSignalWorkerPayload()
+
+
 class WatchlistSignalWorker(QtCore.QThread):
-    """批量计算信号区策略信号。"""
+    """批量计算信号区策略信号（含相对指数 enrich，延续可选）。"""
 
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
@@ -24,6 +48,8 @@ class WatchlistSignalWorker(QtCore.QThread):
         class_name: str = "AshareDoubleMaStrategy",
         fast_window: int = 10,
         slow_window: int = 20,
+        include_continuation: bool = False,
+        main_engine: MainEngine | None = None,
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -32,6 +58,8 @@ class WatchlistSignalWorker(QtCore.QThread):
         self.class_name = class_name
         self.fast_window = fast_window
         self.slow_window = slow_window
+        self.include_continuation = include_continuation
+        self.main_engine = main_engine
 
     def run(self) -> None:
         try:
@@ -40,7 +68,25 @@ class WatchlistSignalWorker(QtCore.QThread):
                 class_name=self.class_name,
                 fast_window=self.fast_window,
                 slow_window=self.slow_window,
+                max_workers=1,
             )
-            self.finished.emit(cache)
+            if cache:
+                try:
+                    cache = self.analysis_service.enrich_relative_index_batch(cache)
+                except Exception:
+                    pass
+            continuations: dict[str, Any] = {}
+            if self.include_continuation and cache:
+                try:
+                    continuations = self.analysis_service.enrich_continuation_batch(
+                        list(cache),
+                        cache,
+                        main_engine=self.main_engine,
+                    )
+                except Exception:
+                    continuations = {}
+            self.finished.emit(
+                WatchlistSignalWorkerPayload(signals=cache, continuations=continuations),
+            )
         except Exception as ex:
             self.failed.emit(str(ex))

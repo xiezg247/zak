@@ -87,6 +87,15 @@ class WatchlistBootstrapCoordinatorTests(unittest.TestCase):
         self.assertNotIn("600519.SSE", page.signal_cache)
         self.assertNotIn("600519.SSE", page.position_cache)
 
+    def test_schedule_downstream_coalesces_while_flush_pending(self) -> None:
+        page = _mock_watchlist_page()
+        coord = WatchlistBootstrapCoordinator()
+        coord._downstream_flush_pending = True
+        coord.schedule_downstream(page, reason="pool_mutation")
+        self.assertTrue(coord._downstream_dirty)
+        coord._flush_downstream(page)
+        page._signals.on_stock_list_loaded.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

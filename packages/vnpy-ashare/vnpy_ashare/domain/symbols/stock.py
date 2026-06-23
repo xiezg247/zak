@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import TypeVar
+
 from pydantic import Field
 from vnpy.trader.constant import Exchange
 from vnpy.trader.utility import extract_vt_symbol
@@ -25,6 +28,8 @@ _VT_EXCHANGE_TO_SUFFIX: dict[str, str] = {
     "SZSE": "SZ",
     "BSE": "BJ",
 }
+
+T = TypeVar("T")
 
 
 class StockItem(MutableModel):
@@ -67,6 +72,20 @@ def canonical_vt_symbol(symbol: str) -> str | None:
     if item is None:
         return None
     return item.vt_symbol
+
+
+def lookup_by_vt_symbol(mapping: Mapping[str, T], vt_symbol: str) -> T | None:
+    """按 vt_symbol 查映射（兼容 SH/SZ 与 SSE/SZSE）。"""
+    text = str(vt_symbol or "").strip()
+    if not text:
+        return None
+    hit = mapping.get(text)
+    if hit is not None:
+        return hit
+    canon = canonical_vt_symbol(text)
+    if canon and canon != text:
+        return mapping.get(canon)
+    return None
 
 
 def parse_stock_symbol(symbol: str) -> StockItem | None:
