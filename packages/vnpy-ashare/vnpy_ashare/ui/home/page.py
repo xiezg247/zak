@@ -1,57 +1,42 @@
-"""工作台首屏：快捷入口 + 本地摘要（不拉 TickFlow）。"""
+"""Playbook 首屏：交易体系与规则。"""
 
 from __future__ import annotations
 
-from vnpy.event import EventEngine
+from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
+from vnpy_ashare.ai.context.playbook import build_discipline_one_liner_prompt, build_playbook_extra
+from vnpy_ashare.ai.context.store import set_ai_context
+from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
+from vnpy.event import Event, EventEngine
 from vnpy.trader.engine import MainEngine
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtWidgets
+from vnpy_common.ai.protocol import AiContextData
 
-from vnpy_ashare.app.engine_access import get_position_service, get_watchlist_service
-from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label
-from vnpy_ashare.scheduler.config import load_scheduler_config
-from vnpy_ashare.ui.home.market_peek import HomeMarketPeekStrip
-from vnpy_common.ui.theme.manager import theme_manager
-
-_QUICK_LINKS: tuple[tuple[str, str], ...] = (
-    ("watchlist", "自选"),
-    ("radar", "雷达"),
-    ("sector_flow", "板块资金"),
-    ("screener", "选股"),
+from vnpy_ashare.domain.trading.playbook import PlaybookSection
+from vnpy_ashare.services.trading_playbook import (
+    build_home_playbook_status,
+    load_discipline_checklist,
+    load_playbook_sections,
+    render_section_markdown,
 )
-
-
-class _SummaryCard(QtWidgets.QFrame):
-    def __init__(self, title: str, parent: QtWidgets.QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("MarketStatChip")
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(4)
-        self._title = QtWidgets.QLabel(title)
-        self._title.setObjectName("MarketStatChipLabel")
-        self._value = QtWidgets.QLabel("—")
-        self._value.setObjectName("MarketStatChipValue")
-        self._hint = QtWidgets.QLabel("")
-        self._hint.setObjectName("HomeSummaryHint")
-        self._hint.setWordWrap(True)
-        layout.addWidget(self._title)
-        layout.addWidget(self._value)
-        layout.addWidget(self._hint)
-
-    def apply(self, value: str, hint: str = "") -> None:
-        self._value.setText(value)
-        self._hint.setText(hint)
-        self._hint.setVisible(bool(hint))
+from vnpy_ashare.ui.home.discipline_section import PlaybookDisciplineSectionView
+from vnpy_ashare.ui.home.editor_dialog import edit_playbook_section_dialog
+from vnpy_ashare.ui.home.section_view import PlaybookSectionView
+from vnpy_ashare.ui.home.status_strip import HomePlaybookStatusStrip
+from vnpy_common.ui.theme.manager import theme_manager
 
 
 class HomePageWidget(QtWidgets.QWidget):
-    """轻量首屏：不加载 QuotesPage，不自动请求市场 API。"""
+    """个人交易体系 Playbook；activate 不发起行情网络请求。"""
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine) -> None:
         super().__init__()
         self.main_engine = main_engine
         self.event_engine = event_engine
         self.setObjectName("HomeRoot")
+
+        self._sections: dict[str, PlaybookSection] = {}
+        self._section_views: dict[str, QtWidgets.QWidget] = {}
+        self._last_status = build_home_playbook_status(main_engine)
 
         scroll = QtWidgets.QScrollArea(self)
         scroll.setObjectName("HomeScroll")
@@ -61,42 +46,27 @@ class HomePageWidget(QtWidgets.QWidget):
         body = QtWidgets.QWidget()
         body.setObjectName("HomeBody")
         root = QtWidgets.QVBoxLayout(body)
-        root.setContentsMargins(16, 16, 16, 24)
-        root.setSpacing(16)
+        root.setContentsMargins(20, 20, 20, 28)
+        root.setSpacing(14)
 
         header = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("工作台")
-        title.setObjectName("HomeTitle")
-        phase = QtWidgets.QLabel(ashare_market_phase_label())
-        phase.setObjectName("HomePhaseLabel")
-        header.addWidget(title)
+        self._title = QtWidgets.QLabel("我的交易体系")
+        self._title.setObjectName("HomeTitle")
+        self._subtitle = QtWidgets.QLabel("")
+        self._subtitle.setObjectName("HomePhaseLabel")
+        header.addWidget(self._title)
         header.addStretch(1)
-        header.addWidget(phase)
+        header.addWidget(self._subtitle)
         root.addLayout(header)
 
-        self._market_peek = HomeMarketPeekStrip(body)
-        self._market_peek.open_market_requested.connect(lambda: self._open_page("market"))
-        root.addWidget(self._market_peek)
+        self._status_strip = HomePlaybookStatusStrip(body)
+        root.addWidget(self._status_strip)
 
-        quick_row = QtWidgets.QHBoxLayout()
-        quick_row.setSpacing(10)
-        for key, label in _QUICK_LINKS:
-            btn = QtWidgets.QPushButton(label)
-            btn.setObjectName("SecondaryButton")
-            btn.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
-            btn.clicked.connect(lambda _checked=False, page_key=key: self._open_page(page_key))
-            quick_row.addWidget(btn)
-        quick_row.addStretch(1)
-        root.addLayout(quick_row)
-
-        summary_row = QtWidgets.QHBoxLayout()
-        summary_row.setSpacing(12)
-        self._watchlist_card = _SummaryCard("自选池")
-        self._position_card = _SummaryCard("持仓")
-        self._scheduler_card = _SummaryCard("定时任务")
-        for card in (self._watchlist_card, self._position_card, self._scheduler_card):
-            summary_row.addWidget(card, stretch=1)
-        root.addLayout(summary_row)
+        self._sections_container = QtWidgets.QWidget()
+        self._sections_host = QtWidgets.QVBoxLayout(self._sections_container)
+        self._sections_host.setContentsMargins(0, 0, 0, 0)
+        self._sections_host.setSpacing(10)
+        root.addWidget(self._sections_container)
         root.addStretch(1)
 
         scroll.setWidget(body)
@@ -106,50 +76,113 @@ class HomePageWidget(QtWidgets.QWidget):
         outer.addWidget(scroll)
 
         theme_manager().bind_stylesheet(self)
+        self._rebuild_sections()
 
     def activate(self) -> None:
-        self._market_peek.refresh_from_cache()
-        self._refresh_summary_cards()
+        self._last_status = build_home_playbook_status(self.main_engine)
+        self._title.setText(f"我的交易体系 · {self._last_status.profile_title}")
+        self._subtitle.setText(self._last_status.phase_label)
+        self._status_strip.apply(self._last_status)
+        set_ai_context(
+            enrich_context_with_actions(
+                AiContextData(page="交易体系", extra=build_playbook_extra(self._last_status)),
+            ),
+        )
+        self._reload_sections_if_needed()
 
     def deactivate(self) -> None:
         pass
 
-    def _refresh_summary_cards(self) -> None:
-        watchlist = get_watchlist_service(self.main_engine)
-        if watchlist is not None:
-            count = watchlist.count()
-            self._watchlist_card.apply(f"{count} 只", "进入自选查看行情与信号")
-        else:
-            self._watchlist_card.apply("—", "自选服务未就绪")
-
-        position = get_position_service(self.main_engine)
-        if position is not None:
-            count = position.count()
-            self._position_card.apply(f"{count} 笔", "进入自选 · 持仓区管理")
-        else:
-            self._position_card.apply("—", "持仓服务未就绪")
-
-        cfg = load_scheduler_config()
-        enabled = sum(
-            1
-            for name in cfg.model_fields
-            if getattr(getattr(cfg, name), "enabled", False)
-        )
-        self._scheduler_card.apply(
-            f"{enabled} 项已启用",
-            "后台 → 定时任务 可查看详情（窗口就绪后自动启动）",
-        )
-
-    def _open_page(self, key: str) -> None:
-        host = self._find_main_window()
-        if host is None or not hasattr(host, "navigate_to_page"):
+    def _reload_sections_if_needed(self) -> None:
+        sections = load_playbook_sections()
+        if {item.section_id for item in sections} != set(self._sections):
+            self._rebuild_sections()
             return
-        host.navigate_to_page(key)
+        for section in sections:
+            self._sections[section.section_id] = section
+            self._apply_section_widget(section)
 
-    def _find_main_window(self) -> QtWidgets.QWidget | None:
-        widget: QtWidgets.QWidget | None = self
-        while widget is not None:
-            if hasattr(widget, "navigate_to_page"):
-                return widget
-            widget = widget.parentWidget()
-        return None
+    def _apply_section_widget(self, section: PlaybookSection) -> None:
+        widget = self._section_views.get(section.section_id)
+        if widget is None:
+            return
+        if section.section_id == "discipline" and isinstance(widget, PlaybookDisciplineSectionView):
+            widget.apply(
+                section,
+                checklist=load_discipline_checklist(),
+                off_plan_symbols=self._last_status.off_plan_symbols,
+                rules_html=PlaybookSectionView.render_html(section.body_md.strip()),
+            )
+            return
+        if isinstance(widget, PlaybookSectionView):
+            markdown = render_section_markdown(section)
+            widget.apply(section, body_html=PlaybookSectionView.render_html(markdown))
+
+    def _rebuild_sections(self) -> None:
+        while self._sections_host.count():
+            item = self._sections_host.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._sections.clear()
+        self._section_views.clear()
+
+        for section in load_playbook_sections():
+            self._sections[section.section_id] = section
+            if section.section_id == "discipline":
+                view: QtWidgets.QWidget = PlaybookDisciplineSectionView(self._sections_container)
+                view.edit_requested.connect(self._on_edit_section)
+                view.checklist_changed.connect(self._on_discipline_changed)
+                view.discipline_ai_requested.connect(self._on_discipline_ai)
+            else:
+                view = PlaybookSectionView(self._sections_container)
+                view.edit_requested.connect(self._on_edit_section)
+            self._section_views[section.section_id] = view
+            self._sections_host.addWidget(view)
+            self._apply_section_widget(section)
+
+    def _on_discipline_changed(self) -> None:
+        self._last_status = build_home_playbook_status(self.main_engine)
+        self._status_strip.apply(self._last_status)
+        section = self._sections.get("discipline")
+        widget = self._section_views.get("discipline")
+        if section is not None and isinstance(widget, PlaybookDisciplineSectionView):
+            widget.apply(
+                section,
+                checklist=load_discipline_checklist(),
+                off_plan_symbols=self._last_status.off_plan_symbols,
+                rules_html=PlaybookSectionView.render_html(section.body_md.strip()),
+            )
+
+    def _on_discipline_ai(self) -> None:
+        self.event_engine.put(
+            Event(
+                EVENT_ASK_AI,
+                AskAiRequest(
+                    prompt=build_discipline_one_liner_prompt(),
+                    source_page="交易体系",
+                ),
+            ),
+        )
+
+    def _on_edit_section(self, section_id: str) -> None:
+        section = self._sections.get(section_id)
+        if section is None:
+            return
+        edited = edit_playbook_section_dialog(
+            section_id=section_id,
+            title=section.title,
+            body_md=section.body_md,
+            parent=self,
+        )
+        if edited is None:
+            return
+        updated = PlaybookSection(
+            section_id=section.section_id,
+            title=section.title,
+            body_md=edited,
+            collapsed=section.collapsed,
+            sort_order=section.sort_order,
+        )
+        self._sections[section_id] = updated
+        self._apply_section_widget(updated)

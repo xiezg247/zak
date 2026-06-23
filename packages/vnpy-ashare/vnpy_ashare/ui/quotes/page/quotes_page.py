@@ -18,7 +18,12 @@ from vnpy_ashare.app.engine_access import (
     get_watchlist_service,
 )
 from vnpy_ashare.config.preferences._settings import get_settings
-from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId, apply_strategy_profile, bootstrap_strategy_profile
+from vnpy_ashare.config.preferences.strategy_profile import (
+    StrategyProfileId,
+    apply_strategy_profile,
+    bootstrap_strategy_profile,
+    load_strategy_profile_id,
+)
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_watchlist_position_config
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
@@ -725,7 +730,28 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
     def apply_strategy_profile(self, profile_id: str) -> None:
 
         typed_id = cast(StrategyProfileId, profile_id)
-        self.signal_config = apply_strategy_profile(typed_id)
+        from_profile_id = cast(StrategyProfileId, load_strategy_profile_id())
+        if from_profile_id != typed_id:
+            from vnpy_ashare.services.trading_playbook import (
+                apply_playbook_template_merge,
+                list_playbook_merge_candidate_sections,
+                touch_playbook_seeded_profile,
+            )
+            from vnpy_ashare.ui.home.playbook_merge_dialog import prompt_playbook_template_merge
+
+            candidates = list_playbook_merge_candidate_sections(from_profile_id, typed_id)
+            self.signal_config = apply_strategy_profile(typed_id)
+            if candidates and prompt_playbook_template_merge(
+                self,
+                from_profile_id=from_profile_id,
+                to_profile_id=typed_id,
+                section_ids=candidates,
+            ):
+                apply_playbook_template_merge(typed_id, candidates)
+            else:
+                touch_playbook_seeded_profile(typed_id)
+        else:
+            self.signal_config = apply_strategy_profile(typed_id)
         signal_panel = self.signal_panel
         if signal_panel is not None:
             signal_panel.apply_config(self.signal_config)

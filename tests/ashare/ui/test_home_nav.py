@@ -13,7 +13,7 @@ from vnpy_ashare.ui.shell.nav import (
 
 def test_home_is_first_nav_entry() -> None:
     assert APP_NAV_ENTRIES[0].key == "home"
-    assert APP_NAV_ENTRIES[0].label == "工作台"
+    assert APP_NAV_ENTRIES[0].label == "交易体系"
 
 
 def test_local_in_backstage_not_sidebar() -> None:

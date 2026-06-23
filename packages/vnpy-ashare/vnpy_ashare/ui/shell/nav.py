@@ -29,7 +29,7 @@ class NavGroup(FrozenModel):
 APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     NavGroup(
         entries=(
-            NavEntry(key="home", label="工作台"),
+            NavEntry(key="home", label="交易体系"),
             NavEntry(key="watchlist", label="自选"),
             NavEntry(key="market", label="市场"),
             NavEntry(key="sector_flow", label="板块资金"),

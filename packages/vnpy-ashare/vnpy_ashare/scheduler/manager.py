@@ -134,6 +134,7 @@ class TaskSchedulerManager:
         self._job_finished_hooks: list[Callable[[str, JobResult], None]] = []
         self._run_log: deque[JobRunRecord] = deque(maxlen=_MAX_RUN_LOG)
         self._engine: AshareEngine | None = None
+        self._defer_immediate_collect = True
 
         self._jobs: dict[str, _JobMeta] = {
             "collect_quotes": _JobMeta(
@@ -588,7 +589,7 @@ class TaskSchedulerManager:
                 continue
             if job_id == _COLLECT_QUOTES_JOB_ID:
                 if job_id not in self._running_jobs:
-                    self._schedule_collect_quotes(prefer_immediate=True)
+                    self._schedule_collect_quotes(prefer_immediate=not self._defer_immediate_collect)
                 continue
             meta = self._jobs[job_id]
             if job_id == "screen_intraday":
@@ -617,6 +618,7 @@ class TaskSchedulerManager:
                 max_instances=1,
                 coalesce=True,
             )
+        self._defer_immediate_collect = False
         self._refresh_status_cache()
         self._notify("*")
 

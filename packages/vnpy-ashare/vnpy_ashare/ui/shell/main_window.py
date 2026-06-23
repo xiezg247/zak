@@ -131,6 +131,7 @@ class AshareMainWindow(MainWindow):
         self._ai_toggle_action: QtGui.QAction | None = None
         self._scheduler_listener_connected = False
         self._initial_page_scheduled = False
+        self._scheduler_deferred_scheduled = False
         self._theme_manager = theme_manager()
         self._theme_dark_action: QtGui.QAction | None = None
         self._theme_light_action: QtGui.QAction | None = None
@@ -293,7 +294,6 @@ class AshareMainWindow(MainWindow):
             assert self._floating_controller is not None
             self._floating_controller.bind_content_anchor(self.stack)
         self._bind_scheduler_notifications()
-        self._schedule_deferred_scheduler_start()
         self.sidebar.set_active_index(0)
 
     def schedule_initial_page(self) -> None:
@@ -311,6 +311,7 @@ class AshareMainWindow(MainWindow):
     def _load_initial_page(self) -> None:
         with profiler.phase("main_window_first_page"):
             self._show_page(0)
+        self._schedule_deferred_scheduler_start()
 
     def _show_shortcuts_help(self) -> None:
         lines = [
@@ -357,8 +358,11 @@ class AshareMainWindow(MainWindow):
         search.selectAll()
 
     def _schedule_deferred_scheduler_start(self) -> None:
-        """冷启动：窗口就绪后再启动 APScheduler。"""
-        QtCore.QTimer.singleShot(2000, self._deferred_scheduler_start)
+        """冷启动：首屏渲染完成后再启动 APScheduler，避免与窗口首帧争抢。"""
+        if self._scheduler_deferred_scheduled:
+            return
+        self._scheduler_deferred_scheduled = True
+        QtCore.QTimer.singleShot(4000, self._deferred_scheduler_start)
 
     def _deferred_scheduler_start(self) -> None:
         engine = self.main_engine.get_engine(APP_NAME)

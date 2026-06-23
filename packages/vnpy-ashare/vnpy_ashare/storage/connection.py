@@ -299,6 +299,22 @@ CREATE TABLE IF NOT EXISTS emotion_limit_ladder_daily (
     linked_board_vt_symbols TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS trading_playbook_sections (
+    section_id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    body_md TEXT NOT NULL DEFAULT '',
+    collapsed INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS trading_playbook_discipline_daily (
+    trade_date TEXT NOT NULL,
+    check_id TEXT NOT NULL,
+    checked INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (trade_date, check_id)
+);
 """
 
 

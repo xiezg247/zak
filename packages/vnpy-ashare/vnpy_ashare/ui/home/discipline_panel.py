@@ -1,0 +1,59 @@
+"""Playbook §5 每日纪律 checklist。"""
+
+from __future__ import annotations
+
+from vnpy.trader.ui import QtCore, QtWidgets
+
+from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem
+from vnpy_ashare.storage.repositories.trading_playbook_discipline import set_discipline_check
+from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
+
+
+class PlaybookDisciplinePanel(QtWidgets.QWidget):
+    changed = QtCore.Signal()
+
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("PlaybookDisciplinePanel")
+        self._layout = QtWidgets.QVBoxLayout(self)
+        self._layout.setContentsMargins(12, 4, 12, 8)
+        self._layout.setSpacing(6)
+        self._checks: list[QtWidgets.QCheckBox] = []
+        self._off_plan_label = QtWidgets.QLabel("")
+        self._off_plan_label.setObjectName("HomePlaybookAlert")
+        self._off_plan_label.setWordWrap(True)
+        self._off_plan_label.hide()
+        self._layout.addWidget(self._off_plan_label)
+
+    def apply(
+        self,
+        items: tuple[DisciplineCheckItem, ...],
+        *,
+        off_plan_symbols: tuple[str, ...] = (),
+    ) -> None:
+        while self._layout.count() > 1:
+            item = self._layout.takeAt(1)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._checks.clear()
+
+        for check in items:
+            box = QtWidgets.QCheckBox(check.label)
+            box.setObjectName("PlaybookDisciplineCheck")
+            box.setChecked(check.checked)
+            box.toggled.connect(lambda checked, cid=check.check_id: self._on_toggle(cid, checked))
+            self._checks.append(box)
+            self._layout.addWidget(box)
+
+        if off_plan_symbols:
+            joined = "、".join(off_plan_symbols)
+            self._off_plan_label.setText(f"计划外持仓（相对今日 active 计划）：{joined}")
+            self._off_plan_label.setStyleSheet("color: #e74c3c; font-weight: 600;")
+            self._off_plan_label.show()
+        else:
+            self._off_plan_label.hide()
+
+    def _on_toggle(self, check_id: str, checked: bool) -> None:
+        set_discipline_check(today_trade_date(), check_id, checked)
+        self.changed.emit()

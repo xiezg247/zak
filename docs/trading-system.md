@@ -43,6 +43,33 @@
   板块资金      共振标的       分 K 辅助      分组 Tab       单日止损      AI 解读        违规标记
 ```
 
+### 1.4 首屏：个人交易体系 Playbook
+
+侧栏 **Ctrl+1 · 交易体系** 为 zak 默认首屏（非行情页、非工作台导航）。定位为**每天开盘前必读的操作宪法**：规则全文 + 今日状态对照，不承担页面路由。
+
+| 区块 | 内容 | 数据来源 |
+|------|------|----------|
+| 对照条 | 情绪 / 风控 / 日盈亏 / 今日计划 / 持仓 / 纪律进度 | 本地 SQLite + QSettings + 内存缓存 peek，**首屏 activate 不拉 TickFlow** |
+| §1 择时 | 做不做 | 用户 Markdown + 模板 seed |
+| §2 选股 | 做什么 | 用户 Markdown + Profile / 硬过滤**只读镜像** |
+| §3 买卖 | 怎么做 | 用户 Markdown |
+| §4 仓位与风控 | 风控铁则 | 用户 Markdown + `TradingRiskPrefs` **只读镜像** |
+| §5 纪律 | 每日 checklist + 规则正文 | 5 项默认检查（按交易日重置）；计划外持仓标红 |
+
+**三层内容模型**
+
+```text
+L1 模板层 — 按 Strategy Profile seed（ultra_short / short_swing …）
+L2 用户层 — 编辑过的 Markdown 持久化于 trading_playbook_sections，优先于模板
+L3 镜像层 — §2 / §4 底部自动附加当前 Profile、硬过滤、风控参数（只读）
+```
+
+**Profile 切换**：已编辑章节不覆盖；仍为旧 Profile 默认模板的章节，切换时可确认套用新 Profile 对应章节。
+
+**AI**：§5「一句纪律」与悬浮球快捷动作「今日一句纪律」需**用户主动点击**；注入 Playbook 摘要与今日对照，不自动发送。
+
+**实现落点**：`ui/home/`、`services/trading_playbook.py`、`config/playbook_templates/`。
+
 ---
 
 ## 2. 择时体系：情绪周期决定「做不做」
@@ -496,6 +523,8 @@ AI 不编造价格；须走 Skill / MCP 与 `context_store`。
 | TradingPlan 实体 + 次日计划 UI | 计划对话框 + 笔记中心 Tab | **已有** |
 | `propose_trading_plan` AI 工具 | vnpy-trading | **已有** |
 | 计划外交易标记 + 周度统计 | off_plan + 流水报表 + 明细 CRUD | **已有** |
+| Playbook 首屏 + 每日纪律 checklist | `ui/home/` + `trading_playbook_*` 表 | **已有** |
+| Profile 切换模板合并 + AI 一句纪律 | `services/trading_playbook` + AI context | **已有** |
 
 ### Phase 5 — 中线辅线 & 回测验证
 
