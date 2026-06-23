@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import platform
 from typing import cast
 
 import markdown as _md_lib
@@ -28,6 +29,15 @@ def render_markdown(text: str, *, tokens: ThemeTokens | None = None) -> str:
     body = cast(str, md.convert(text))
     css = _build_markdown_css(tokens)
     return cast(str, _HTML_TEMPLATE_HEAD.format(css=css) + body + _HTML_TEMPLATE_TAIL)
+
+
+def _markdown_font_stack() -> str:
+    system = platform.system()
+    if system == "Darwin":
+        return '"PingFang SC", "Helvetica Neue", sans-serif'
+    if system == "Windows":
+        return '"Segoe UI", "Microsoft YaHei", sans-serif'
+    return '"Noto Sans SC", sans-serif'
 
 
 def _build_markdown_css(t: ThemeTokens) -> str:
@@ -60,7 +70,7 @@ def _build_markdown_css(t: ThemeTokens) -> str:
 
     return f"""
 body {{
-    font-family: -apple-system, "Segoe UI", "Noto Sans SC", sans-serif;
+    font-family: {_markdown_font_stack()};
     font-size: 13px;
     line-height: 1.65;
     color: {t.text_primary};

@@ -15,7 +15,7 @@ from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.ui.page import AiPageWidget
 from vnpy_ashare.app.branding import window_title as build_window_title
-from vnpy_ashare.app.deferred_apps import register_deferred_apps
+from vnpy_ashare.app.deferred_apps import ensure_cta_backtester_app, ensure_data_manager_app
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import (
     EVENT_AI_ACTION,
@@ -60,6 +60,7 @@ from vnpy_ashare.ui.shell.nav import (
 from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, RadarPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
+from vnpy_common.startup_profile import profiler
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
 from vnpy_common.ui.theme.manager import theme_manager
@@ -77,7 +78,7 @@ _QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "local": LocalPageWidget,
 }
 
-_DEFERRED_PAGE_KEYS = frozenset({"cta_backtest", "batch_backtest"})
+_DEFERRED_CTA_PAGE_KEY = "cta_backtest"
 
 _AI_NOT_LOADED_MSG = "AI 助手未加载，请确认已安装并启用 vnpy_llm"
 
@@ -123,7 +124,7 @@ class AshareMainWindow(MainWindow):
         self._page_before_ai: int = 0
         self._ai_toggle_action: QtGui.QAction | None = None
         self._scheduler_listener_connected = False
-        self._deferred_apps_registered = False
+        self._initial_page_scheduled = False
         self._theme_manager = theme_manager()
         self._theme_dark_action: QtGui.QAction | None = None
         self._theme_light_action: QtGui.QAction | None = None
@@ -288,7 +289,23 @@ class AshareMainWindow(MainWindow):
             self._floating_controller.bind_content_anchor(self.stack)
         self._bind_scheduler_notifications()
         self._schedule_deferred_scheduler_start()
-        self._show_page(0)
+        self.sidebar.set_active_index(0)
+
+    def schedule_initial_page(self) -> None:
+        """窗口可见后再创建首屏自选页，缩短 ``startup until window visible``。"""
+        if self._initial_page_scheduled:
+            return
+        self._initial_page_scheduled = True
+        QtCore.QTimer.singleShot(0, self._load_initial_page)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        super().showEvent(event)
+        if not self._initial_page_scheduled and self._current_key is None:
+            self.schedule_initial_page()
+
+    def _load_initial_page(self) -> None:
+        with profiler.phase("main_window_first_page"):
+            self._show_page(0)
 
     def _show_shortcuts_help(self) -> None:
         lines = [
@@ -803,7 +820,7 @@ class AshareMainWindow(MainWindow):
         show_data_manager_dialog(
             self.main_engine,
             self.event_engine,
-            ensure_apps=self._ensure_deferred_apps,
+            ensure_apps=self._ensure_data_manager_app,
             parent=self,
         )
 
@@ -836,16 +853,15 @@ class AshareMainWindow(MainWindow):
         if page.config.show_stock_notes and hasattr(page, "stock_note_panel"):
             page.stock_note_panel.expand()
 
-    def _ensure_deferred_apps(self) -> None:
-        if self._deferred_apps_registered:
-            return
+    def _ensure_cta_backtester_app(self) -> None:
+        ensure_cta_backtester_app(self.main_engine)
 
-        register_deferred_apps(self.main_engine)
-        self._deferred_apps_registered = True
+    def _ensure_data_manager_app(self) -> None:
+        ensure_data_manager_app(self.main_engine)
 
     def _get_or_create_page(self, key: str) -> QtWidgets.QWidget | None:
-        if key in _DEFERRED_PAGE_KEYS:
-            self._ensure_deferred_apps()
+        if key == _DEFERRED_CTA_PAGE_KEY:
+            self._ensure_cta_backtester_app()
         if key in self._page_widgets:
             return self._page_widgets[key]
 

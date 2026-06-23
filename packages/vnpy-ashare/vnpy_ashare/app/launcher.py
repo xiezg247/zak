@@ -9,11 +9,9 @@ from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.setting import SETTINGS
 from vnpy.trader.ui import create_qapp
-from vnpy.trader.ui.qt import QtCore
 
 from vnpy_ashare.app.bootstrap import install_shared_bridges
 from vnpy_ashare.app.branding import QAPP_NAME
-from vnpy_ashare.app.deferred_apps import register_deferred_apps
 from vnpy_ashare.app.plugin import AshareApp
 from vnpy_ashare.config.fonts import resolve_font_family
 from vnpy_ashare.config.runtime import ensure_runtime_config
@@ -22,9 +20,6 @@ from vnpy_ashare.integrations.tickflow.stream import shutdown_all_tickflow_strea
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_common.paths import PROJECT_ROOT
 from vnpy_common.startup_profile import profiler
-
-_DEFERRED_APP_DELAY_MS = 0
-
 
 def _optional_llm_app():
     try:
@@ -42,12 +37,6 @@ def _prepare_runtime() -> None:
     os.chdir(PROJECT_ROOT)
     SETTINGS["font.family"] = resolve_font_family(SETTINGS.get("font.family"))
     SETTINGS["font.size"] = int(SETTINGS.get("font.size", 12))
-
-
-def _register_deferred_apps(main_engine: MainEngine) -> None:
-    with profiler.phase("deferred_apps"):
-        register_deferred_apps(main_engine)
-    profiler.finish("startup until deferred apps")
 
 
 def main() -> None:
@@ -89,10 +78,6 @@ def main() -> None:
         main_window.showMaximized()
 
     profiler.finish("startup until window visible")
-
-    QtCore.QTimer.singleShot(
-        _DEFERRED_APP_DELAY_MS,
-        lambda: _register_deferred_apps(main_engine),
-    )
+    main_window.schedule_initial_page()
 
     qapp.exec()
