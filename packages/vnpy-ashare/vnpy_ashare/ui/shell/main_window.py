@@ -48,6 +48,7 @@ from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener.pages.screener_hub_page import ScreenerHubPageWidget
 from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.floating_controller import FloatingAiController
+from vnpy_ashare.ui.shell.local.dialog import show_local_data_dialog
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
 from vnpy_ashare.ui.shell.nav import (
     APP_NAV_ENTRIES,
@@ -59,7 +60,7 @@ from vnpy_ashare.ui.shell.nav import (
     SidebarNav,
 )
 from vnpy_ashare.ui.home.page import HomePageWidget
-from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, RadarPageWidget, WatchlistPageWidget
+from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.startup_profile import profiler
@@ -77,7 +78,6 @@ _QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "sector_flow": SectorFlowPageWidget,
     "radar": RadarPageWidget,
     "watchlist": WatchlistPageWidget,
-    "local": LocalPageWidget,
 }
 
 _SHELL_PAGE_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
@@ -822,21 +822,21 @@ class AshareMainWindow(MainWindow):
         elif key == "data_manager":
             self._open_data_manager_dialog()
         elif key == "local":
-            self._open_local_page()
+            self._open_local_data_dialog()
 
     def _open_scheduler_dialog(self) -> None:
         show_scheduler_dialog(self.main_engine, self.event_engine, parent=self)
 
     def navigate_to_page(self, key: str) -> None:
-        """侧栏页或仅菜单入口页（如本地数据）。"""
+        """侧栏页导航。"""
         nav_index = self._nav_index_for_key(key)
         if nav_index is not None:
             self._show_page(nav_index)
             return
         self._show_page_by_key(key)
 
-    def _open_local_page(self) -> None:
-        self.navigate_to_page("local")
+    def _open_local_data_dialog(self) -> None:
+        show_local_data_dialog(self.main_engine, self.event_engine, parent=self)
 
     def _open_data_manager_dialog(self) -> None:
         show_data_manager_dialog(

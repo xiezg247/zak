@@ -50,14 +50,14 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
 
 APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS for entry in group.entries)
 
-# 菜单栏「后台」入口（不在侧栏展示）
+# 菜单栏「后台」入口（不在侧栏展示；均为弹窗，非主内容页）
 BACKSTAGE_ENTRIES: tuple[NavEntry, ...] = (
     NavEntry(key="scheduler", label="定时任务"),
     NavEntry(key="data_manager", label="数据管理"),
     NavEntry(key="local", label="本地数据"),
 )
 
-BACKSTAGE_PAGE_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)
+BACKSTAGE_DIALOG_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)
 
 NAV_SHORTCUTS: dict[str, str] = {
     "home": "Ctrl+1",

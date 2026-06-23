@@ -21,7 +21,7 @@ from vnpy_llm.ui.session.widgets import show_ai_session_dialog
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
-FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "sector_flow", "radar", "local", "screener"})
+FLOATING_ORB_PAGE_KEYS = frozenset({"watchlist", "market", "sector_flow", "radar", "screener"})
 SCREENER_ATTENTION_SOURCES = frozenset({"screener", "auto_screener"})
 ORB_POSITION_KEY = "orb_position_content"
 
