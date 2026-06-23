@@ -1,26 +1,19 @@
-"""恐贪指数拉取注册表（打破 emotion_cycle_inputs ↔ services 循环）。"""
+"""恐贪指数拉取（经 SentimentService，engine 启动后 bind）。"""
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from vnpy_ashare.domain.sentiment.fear_greed import FearGreedSnapshot
+from vnpy_ashare.services.sentiment import bind_sentiment_service, try_compute_fear_greed
 
-_fetcher: Callable[..., Any | None] | None = None
-
-
-def register_fear_greed_fetcher(fetcher: Callable[..., Any | None]) -> None:
-    global _fetcher
-    _fetcher = fetcher
+__all__ = ["bind_sentiment_service", "try_fetch_fear_greed_index"]
 
 
 def try_fetch_fear_greed_index(
     *,
     include_components: bool = False,
     trade_date: str | None = None,
-) -> Any | None:
-    if _fetcher is None:
-        return None
-    try:
-        return _fetcher(include_components=include_components, trade_date=trade_date)
-    except Exception:
-        return None
+) -> FearGreedSnapshot | None:
+    return try_compute_fear_greed(
+        include_components=include_components,
+        trade_date=trade_date,
+    )

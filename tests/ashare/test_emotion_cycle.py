@@ -11,7 +11,6 @@ from vnpy_ashare.quotes.market.emotion_cycle import (
     load_emotion_cycle_snapshot,
 )
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, compute_limit_ladder_stats
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
 
 def _inputs(**kwargs) -> EmotionCycleInputs:
@@ -75,9 +74,9 @@ class EmotionCycleEngineTest(unittest.TestCase):
     def test_load_without_fetch_skips_network_when_no_cache(self) -> None:
         invalidate_emotion_cycle_cache()
         with (
-            patch("vnpy_ashare.quotes.core.quote_rows.get_market_quotes_cache", return_value=[]),
+            patch("vnpy_ashare.quotes.market.emotion_cycle.peek_market_quote_rows", return_value=None),
             patch(
-                "vnpy_ashare.screener.data.quotes_loader.load_market_quote_rows",
+                "vnpy_ashare.quotes.market.emotion_cycle.load_quote_rows_for_market",
                 side_effect=AssertionError("should not fetch"),
             ),
         ):
@@ -86,10 +85,10 @@ class EmotionCycleEngineTest(unittest.TestCase):
     def test_load_treats_redis_timeout_as_missing(self) -> None:
         invalidate_emotion_cycle_cache()
         with (
-            patch("vnpy_ashare.quotes.core.quote_rows.get_market_quotes_cache", return_value=[]),
+            patch("vnpy_ashare.quotes.market.emotion_cycle.peek_market_quote_rows", return_value=None),
             patch(
-                "vnpy_ashare.screener.data.quotes_loader.load_market_quote_rows",
-                side_effect=MarketQuotesLoadError("Redis 行情读取失败：Timeout writing to socket"),
+                "vnpy_ashare.quotes.market.emotion_cycle.load_quote_rows_for_market",
+                return_value=([], None),
             ),
         ):
             self.assertIsNone(load_emotion_cycle_snapshot(fetch_if_missing=True))

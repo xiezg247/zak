@@ -6,7 +6,7 @@ import unittest
 
 from vnpy_ashare.domain.market.emotion import EmotionCycleSnapshot
 from vnpy_ashare.domain.trading.risk import CombinedRiskGateSnapshot, RiskGateSnapshot
-from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import (
+from vnpy_ashare.trading.risk.display import (
     build_risk_gate_chip_tooltip,
     format_risk_gate_chip_value,
 )

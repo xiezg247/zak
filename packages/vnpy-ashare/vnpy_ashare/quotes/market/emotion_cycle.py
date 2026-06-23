@@ -14,7 +14,6 @@ from vnpy_ashare.domain.market.emotion import (
     EmotionStage,
 )
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.emotion_cycle_cache import (
     invalidate_emotion_cycle_cache,
     peek_emotion_cycle_snapshot,
@@ -25,7 +24,7 @@ from vnpy_ashare.quotes.market.emotion_cycle_hysteresis import (
 )
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_ashare.quotes.market.quote_source import load_quote_rows_for_market, peek_market_quote_rows
 from vnpy_common.domain.serialize import dump_python
 
 __all__ = [
@@ -178,16 +177,13 @@ def load_emotion_cycle_snapshot(
         if peeked is not None:
             return peeked
 
-        cached = get_market_quotes_cache()
+        cached = peek_market_quote_rows()
         if cached:
             rows, updated_at = cached, None
             cache_only = True
         elif fetch_if_missing:
-            try:
-                snapshot = load_market_quote_rows()
-                rows = snapshot.rows
-                updated_at = snapshot.updated_at
-            except MarketQuotesLoadError:
+            rows, updated_at = load_quote_rows_for_market(allow_network=True)
+            if not rows:
                 return None
         else:
             return None

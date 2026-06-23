@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from vnpy_ashare.config.constants.recipe import ENV_SENTIMENT_GATE
 from vnpy_ashare.domain.core.env import env_or_prefs_bool
@@ -15,18 +15,18 @@ from vnpy_ashare.domain.screener.result_row import (
 )
 from vnpy_ashare.screener.recipe_tuning_prefs import load_recipe_tuning_prefs
 from vnpy_ashare.screener.sentiment.emotion_gate import apply_emotion_modulation
-from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index as _try_fetch_fear_greed_index
+from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
-if TYPE_CHECKING:
-    from vnpy_ashare.services.sentiment import FearGreedSnapshot
+__all__ = [
+    "apply_emotion_modulation",
+    "apply_sentiment_modulation",
+    "sentiment_gate_enabled",
+    "try_fetch_fear_greed_index",
+]
 
 
 def sentiment_gate_enabled() -> bool:
     return env_or_prefs_bool(ENV_SENTIMENT_GATE, prefs=lambda: load_recipe_tuning_prefs().sentiment_gate_enabled)
-
-
-def try_fetch_fear_greed_index(*, include_components: bool = False) -> FearGreedSnapshot | None:
-    return _try_fetch_fear_greed_index(include_components=include_components)
 
 
 def apply_sentiment_modulation(

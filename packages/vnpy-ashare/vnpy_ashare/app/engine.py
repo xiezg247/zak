@@ -44,6 +44,9 @@ class AshareEngine(BaseEngine):
         self.analysis_service = AnalysisService(self)
         self.financial_service = FinancialService(self)
         self.sentiment_service = SentimentService(self)
+        from vnpy_ashare.screener.sentiment.fear_greed_provider import bind_sentiment_service
+
+        bind_sentiment_service(self.sentiment_service)
         self.stock_analysis_service = StockAnalysisService(self)
         self.sector_flow_service = SectorFlowService(self)
 

@@ -62,8 +62,6 @@ from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID,
 from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
 from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
 from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
-from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_refresh import refresh_emotion_cycle_chip
-from vnpy_ashare.ui.quotes.market_overview.risk_gate_refresh import refresh_risk_gate_chip
 from vnpy_ashare.ui.quotes.page.config import (
     MARKET_AUTO_REFRESH_DEFAULT,
     MARKET_SCROLL_DEBOUNCE_MS,
@@ -76,6 +74,11 @@ from vnpy_ashare.ui.quotes.page.config import (
     save_market_auto_refresh_pref,
 )
 from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
+from vnpy_ashare.ui.quotes.page.header_chips import (
+    open_risk_settings_for_page,
+    refresh_emotion_cycle_chip_for_page,
+    refresh_risk_gate_chip_for_page,
+)
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
@@ -88,7 +91,6 @@ from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatc
 from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
 from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
-from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
 from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes, restore_center_splitter
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
@@ -379,27 +381,13 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
             maybe_show_ultra_short_onboarding(self)
 
     def _refresh_emotion_cycle_chip(self) -> None:
-        chip = getattr(self, "emotion_cycle_chip", None)
-        if chip is None:
-            return
-
-        refresh_emotion_cycle_chip(chip)
+        refresh_emotion_cycle_chip_for_page(self)
 
     def _refresh_risk_gate_chip(self) -> None:
-        chip = getattr(self, "risk_gate_chip", None)
-        if chip is None:
-            return
-        refresh_risk_gate_chip(chip, page=self)
+        refresh_risk_gate_chip_for_page(self)
 
     def _open_risk_settings(self) -> None:
-        cache = getattr(self, "position_cache", None)
-        position_cache = cache if isinstance(cache, dict) else None
-        if RiskSettingsDialog.open_and_save(
-            self,
-            position_cache=position_cache,
-            on_prefs_changed=self._refresh_risk_gate_chip,
-        ):
-            self._refresh_risk_gate_chip()
+        open_risk_settings_for_page(self)
 
     def deactivate(self) -> None:
         if self.config.use_radar_cards:

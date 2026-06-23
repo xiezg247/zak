@@ -56,7 +56,7 @@ class MarketOverviewLoaderTests(unittest.TestCase):
         self.assertEqual(base.limit_source, "approx")
 
         with patch(
-            "vnpy_ashare.integrations.tushare.factors.fetch_limit_list_d",
+            "vnpy_ashare.quotes.market.market_breadth.fetch_limit_list_d",
             return_value=(
                 [{"limit": "U"}, {"limit": "U"}, {"limit": "D"}],
                 "20250612",
@@ -70,7 +70,7 @@ class MarketOverviewLoaderTests(unittest.TestCase):
     def test_merge_official_limit_counts_keeps_base_when_empty(self) -> None:
         base = compute_market_breadth([{"change_pct": 1.0, "amount": 0}]).model_copy(update={"limit_up": 9, "limit_down": 1})
         with patch(
-            "vnpy_ashare.integrations.tushare.factors.fetch_limit_list_d",
+            "vnpy_ashare.quotes.market.market_breadth.fetch_limit_list_d",
             return_value=([], "20250612"),
         ):
             merged = merge_official_limit_counts(base)

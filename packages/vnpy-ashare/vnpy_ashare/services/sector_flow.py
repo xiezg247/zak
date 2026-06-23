@@ -26,8 +26,7 @@ from vnpy_ashare.integrations.tushare.sector_moneyflow import (
     fetch_sector_flow_history_from_tushare,
 )
 from vnpy_ashare.integrations.tushare.sw_industry import fetch_sw_l2_index_map, fetch_sw_l2_member_count_map
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_ashare.quotes.market.quote_source import resolve_intraday_quote_rows
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.services.industry_sector import build_sw_industry_rows_from_dc, overlay_dc_moneyflow_on_sw_rows
@@ -543,19 +542,11 @@ class SectorFlowService(BaseService):
 
     def _resolve_quote_rows(self) -> tuple[list[QuoteRow], str | None, int, str | None]:
         """优先使用市场页全量缓存，否则从 Redis 拉全市场（不做逐股 Tushare enrich）。"""
-        quote_svc = getattr(self.engine, "quote_service", None)
-        if quote_svc is not None:
-            cached = quote_svc.get_market_quotes_cache()
-        else:
-            cached = get_market_quotes_cache()
-        if len(cached) >= _MIN_CACHE_ROWS_FOR_SECTOR:
-            return list(cached), None, len(cached), None
-
-        try:
-            market = load_market_quote_rows(enrich_factors=False)
-        except MarketQuotesLoadError as ex:
-            return [], None, 0, str(ex)
-        return list(market.rows), market.updated_at, market.total, None
+        rows, updated_at, total, error = resolve_intraday_quote_rows(
+            min_cached_rows=_MIN_CACHE_ROWS_FOR_SECTOR,
+            enrich_factors=False,
+        )
+        return list(rows), updated_at, total, error
 
     def load_snapshot(self, *, sector_kind: str = "industry") -> SectorFlowSnapshot:
         kind = str(sector_kind or "industry").strip().lower()

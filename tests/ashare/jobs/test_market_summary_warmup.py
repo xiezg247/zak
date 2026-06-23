@@ -12,7 +12,7 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, Marke
 
 def test_warm_market_summary_skips_without_redis() -> None:
     with patch(
-        "vnpy_ashare.jobs.market.summary_warmup.load_market_quote_rows",
+        "vnpy_ashare.jobs.market.summary_warmup.load_intraday_market_snapshot",
         side_effect=MarketQuotesLoadError("无 Redis"),
     ):
         result = warm_market_summary(enrich_factors=False)
@@ -41,7 +41,7 @@ def test_warm_market_summary_stores_emotion() -> None:
         updated_at="15:00",
     )
     with (
-        patch("vnpy_ashare.jobs.market.summary_warmup.load_market_quote_rows", return_value=snapshot),
+        patch("vnpy_ashare.jobs.market.summary_warmup.load_intraday_market_snapshot", return_value=snapshot),
         patch("vnpy_ashare.jobs.market.summary_warmup._load_breadth", return_value=breadth),
     ):
         result = warm_market_summary(enrich_factors=True)

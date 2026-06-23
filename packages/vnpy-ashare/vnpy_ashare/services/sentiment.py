@@ -377,4 +377,37 @@ def _shift_trade_date(trade_date: str, offset: int) -> str:
     return (day + timedelta(days=offset)).strftime("%Y%m%d")
 
 
-from vnpy_ashare.screener.sentiment import fear_greed_index as _fear_greed_bootstrap  # noqa: E402, F401
+_standalone_sentiment: SentimentService | None = None
+_bound_sentiment: SentimentService | None = None
+
+
+def bind_sentiment_service(service: SentimentService) -> None:
+    """AshareEngine 启动后注入，优先使用带 engine 的 SentimentService。"""
+    global _bound_sentiment
+    _bound_sentiment = service
+
+
+def _get_fear_greed_service() -> SentimentService:
+    if _bound_sentiment is not None:
+        return _bound_sentiment
+    global _standalone_sentiment
+    if _standalone_sentiment is None:
+        svc = SentimentService.__new__(SentimentService)
+        svc._cache = {}
+        _standalone_sentiment = svc
+    return _standalone_sentiment
+
+
+def try_compute_fear_greed(
+    *,
+    include_components: bool = False,
+    trade_date: str | None = None,
+) -> FearGreedSnapshot | None:
+    """无 engine 场景下的恐贪指数计算入口（Playbook / 市场页 peek 等）。"""
+    try:
+        return _get_fear_greed_service().compute_fear_greed(
+            trade_date=trade_date,
+            include_components=include_components,
+        )
+    except Exception:
+        return None

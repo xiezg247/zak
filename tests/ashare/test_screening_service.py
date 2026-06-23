@@ -28,8 +28,8 @@ class ScreeningServiceTests(unittest.TestCase):
         snapshot.rows = [{"symbol": "000001", "change_pct": -0.5}]
         self.engine.quote_service.get_market_quotes_cache.return_value = []
         with patch(
-            "vnpy_ashare.services.screening.load_market_quote_rows",
-            return_value=snapshot,
+            "vnpy_ashare.services.screening.resolve_intraday_quote_rows",
+            return_value=(snapshot.rows, None, len(snapshot.rows), None),
         ):
             loaded, err = self.service.load_quote_rows()
         self.assertEqual(loaded, snapshot.rows)

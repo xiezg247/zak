@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
+from vnpy_ashare.quotes.market.quote_source import probe_intraday_market_quotes
 from vnpy_ashare.screener.draft.draft_store import Confidence, ScreenerDraft, make_draft
 from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,
@@ -128,7 +128,7 @@ def collect_warnings(*, source: str) -> list[str]:
             warnings.append("需要 .env 中配置 TUSHARE_TOKEN，否则无法执行 Tushare 选股。")
     else:
         try:
-            load_market_quote_rows()
+            probe_intraday_market_quotes()
         except Exception as ex:
             warnings.append(f"Redis 全市场行情不可用（{ex}）。请先运行「工具 → 立即执行 → 行情采集」。")
     return warnings

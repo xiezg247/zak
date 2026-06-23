@@ -7,7 +7,8 @@ from vnpy_ashare.quotes.core.quote_rows import set_market_quote_rows_cache
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_overview_loaders import _load_breadth
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_ashare.quotes.market.quote_source import load_intraday_market_snapshot
+from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
 
 def warm_market_summary(*, enrich_factors: bool = False) -> JobResult:
@@ -17,7 +18,7 @@ def warm_market_summary(*, enrich_factors: bool = False) -> JobResult:
     - ``enrich_factors=True``：补全 Tushare 因子并拉取恐贪等辅助因子（适合盘后）
     """
     try:
-        snapshot = load_market_quote_rows(enrich_factors=enrich_factors)
+        snapshot = load_intraday_market_snapshot(enrich_factors=enrich_factors)
     except MarketQuotesLoadError as ex:
         return JobResult(success=True, skipped=True, message=str(ex))
 

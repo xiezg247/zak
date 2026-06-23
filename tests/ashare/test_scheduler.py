@@ -111,6 +111,77 @@ class TestSchedulerConfig(unittest.TestCase):
             self.assertTrue(loaded.batch_fill_stale.enabled)
             self.assertEqual(loaded.batch_fill_stale.cron_hour, 17)
 
+    def test_legacy_cron_defaults_migrate_to_spaced_schedule(self) -> None:
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scheduler.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "prefetch_moneyflow": {
+                            "enabled": False,
+                            "cron_hour": 16,
+                            "cron_minute": 31,
+                            "cron_day_of_week": "mon-fri",
+                        },
+                        "prefetch_tushare": {
+                            "enabled": False,
+                            "cron_hour": 16,
+                            "cron_minute": 32,
+                            "cron_day_of_week": "mon-fri",
+                        },
+                        "screen_post_close": {
+                            "enabled": False,
+                            "cron_hour": 16,
+                            "cron_minute": 35,
+                            "cron_day_of_week": "mon-fri",
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            loaded = load_scheduler_config(path)
+            self.assertEqual(loaded.prefetch_moneyflow.cron_minute, 30)
+            self.assertEqual(loaded.prefetch_tushare.cron_minute, 40)
+            self.assertEqual(loaded.screen_post_close.cron_hour, 17)
+            self.assertEqual(loaded.screen_post_close.cron_minute, 30)
+
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(saved["prefetch_moneyflow"]["cron_minute"], 30)
+            self.assertEqual(saved["screen_post_close"]["cron_hour"], 17)
+
+    def test_custom_cron_not_migrated(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scheduler.json"
+            config = SchedulerConfig()
+            config.prefetch_moneyflow.cron_hour = 16
+            config.prefetch_moneyflow.cron_minute = 28
+            save_scheduler_config(config, path)
+
+            loaded = load_scheduler_config(path)
+            self.assertEqual(loaded.prefetch_moneyflow.cron_minute, 28)
+
+    def test_post_close_defaults_are_spaced(self) -> None:
+        config = SchedulerConfig()
+        minutes = [
+            config.batch_download_universe.cron_hour * 60 + config.batch_download_universe.cron_minute,
+            config.prefetch_moneyflow.cron_hour * 60 + config.prefetch_moneyflow.cron_minute,
+            config.prefetch_tushare.cron_hour * 60 + config.prefetch_tushare.cron_minute,
+            config.sync_suspend_daily.cron_hour * 60 + config.sync_suspend_daily.cron_minute,
+            config.prefetch_concept_board.cron_hour * 60 + config.prefetch_concept_board.cron_minute,
+            config.warm_market_summary.cron_hour * 60 + config.warm_market_summary.cron_minute,
+            config.screen_post_close.cron_hour * 60 + config.screen_post_close.cron_minute,
+            config.scan_horizon_outlook.cron_hour * 60 + config.scan_horizon_outlook.cron_minute,
+            config.batch_fill_stale.cron_hour * 60 + config.batch_fill_stale.cron_minute,
+            config.warm_watchlist_strategy_cache.cron_hour * 60
+            + config.warm_watchlist_strategy_cache.cron_minute,
+            config.fill_focus_pool_minute.cron_hour * 60 + config.fill_focus_pool_minute.cron_minute,
+        ]
+        for earlier, later in zip(minutes, minutes[1:], strict=False):
+            self.assertGreaterEqual(later - earlier, 5)
+
     def test_screen_intraday_skips_off_hours(self) -> None:
         manager = TaskSchedulerManager()
         next_run = datetime(2026, 6, 10, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))

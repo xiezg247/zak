@@ -29,8 +29,8 @@ from vnpy_ashare.storage.repositories.trading_playbook import (
 )
 from vnpy_ashare.trading.risk.book_pnl import summarize_book_pnl
 from vnpy_ashare.trading.risk.combined import format_emotion_position_hint, load_combined_risk_gate_snapshot
+from vnpy_ashare.trading.risk.display import format_risk_gate_chip_value
 from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today, today_trade_date
-from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import format_risk_gate_chip_value
 
 _META_SEED_KEY = "playbook_seeded_profile"
 

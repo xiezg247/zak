@@ -14,11 +14,15 @@ from vnpy_ashare.domain.time.quote_time import normalize_datetime_text
 from vnpy_ashare.integrations.tickflow.quotes import fetch_index_ticker
 from vnpy_ashare.integrations.tushare.factor_fallback import resolve_latest_factor_trade_date
 from vnpy_ashare.integrations.tushare.factors import fetch_daily_pct_map, fetch_daily_turnover_total_yuan, fetch_industry_l2_to_l1_map, fetch_limit_list_d
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
 from vnpy_ashare.quotes.market.market_breadth import compute_market_breadth, merge_official_limit_counts
 from vnpy_ashare.quotes.market.market_environment import load_market_environment
-from vnpy_ashare.quotes.market.market_overview_cache import peek_market_overview_data, store_market_overview_data
-from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError, load_market_quote_rows
+from vnpy_ashare.quotes.market.market_overview_cache import (
+    peek_cached_indices,
+    peek_market_overview_data,
+    store_cached_indices,
+    store_market_overview_data,
+)
+from vnpy_ashare.quotes.market.quote_source import load_quote_rows_for_market
 from vnpy_ashare.screener.sector.sector_summary import attach_industry, compute_sector_distribution
 
 __all__ = [
@@ -33,44 +37,8 @@ __all__ = [
 SECTOR_TOP_N = 10
 SECTOR_MIN_STOCKS = 3
 
-
-def _quote_rows_for_overview(*, allow_network: bool = True, force: bool = False) -> tuple[QuoteRowsLike, str | None]:
-    if not is_ashare_trading_session():
-        return _quote_rows_from_tushare_fallback()
-    if not force:
-        cached = get_market_quotes_cache()
-        if cached:
-            return cached, None
-    if not allow_network:
-        return [], None
-    try:
-        snapshot = load_market_quote_rows()
-    except MarketQuotesLoadError:
-        return [], None
-    return snapshot.rows, snapshot.updated_at
-
-
-def _quote_rows_from_tushare_fallback() -> tuple[QuoteRowsLike, str | None]:
-    """盘外强制刷新时，用 Tushare daily_basic + daily 涨跌幅构造广度样本。"""
-    from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot_uncached
-
-    try:
-        snapshot = load_screening_quote_snapshot_uncached()
-    except Exception:
-        return [], None
-    rows: list[dict[str, Any]] = []
-    for row in snapshot.rows:
-        rows.append(
-            {
-                "change_pct": row.get("change_pct"),
-                "amount": row.get("amount", 0),
-                "vt_symbol": row.get("vt_symbol", ""),
-            }
-        )
-    updated_at = snapshot.updated_at
-    if updated_at and len(updated_at) == 8 and updated_at.isdigit():
-        updated_at = f"{updated_at[:4]}-{updated_at[4:6]}-{updated_at[6:8]}"
-    return rows, updated_at
+# 保留别名，便于测试 patch 与渐进迁移
+_quote_rows_for_overview = load_quote_rows_for_market
 
 
 def _load_off_session_breadth(*, trade_date: str, force: bool) -> MarketBreadthSnapshot | None:
@@ -174,14 +142,18 @@ def _is_intraday_snapshot_timestamp(updated_at: str | None) -> bool:
     return len(text) <= 8 and ":" in text
 
 
-def is_market_overview_stale(data: MarketOverviewData) -> bool:
+def is_market_overview_stale(
+    data: MarketOverviewData,
+    *,
+    factor_trade_date: str | None = None,
+) -> bool:
     """盘外概览若关键指标日期落后于最新可用因子日，视为需刷新。"""
     calendar_latest = last_trading_day().strftime("%Y%m%d")
     if not is_ashare_trading_session():
         breadth = data.breadth
         if breadth is not None and _is_intraday_snapshot_timestamp(breadth.updated_at):
             return True
-    latest = resolve_latest_factor_trade_date()
+    latest = factor_trade_date or resolve_latest_factor_trade_date()
     env = data.environment
     if env is not None and env.north_trade_date and env.north_trade_date < calendar_latest:
         return True
@@ -206,19 +178,23 @@ def load_market_overview(*, intraday: bool = True, force: bool = False) -> Marke
     if not intraday and not force:
         cached = peek_market_overview_data(intraday=False)
         if cached is not None:
-            try:
-                indices = _fetch_sorted_indices()
-            except Exception:
-                indices = list(cached.indices)
+            indices = peek_cached_indices(intraday=False)
+            if indices is None:
+                try:
+                    indices = _fetch_sorted_indices()
+                    store_cached_indices(indices)
+                except Exception:
+                    indices = list(cached.indices)
             data = cached.model_copy(update={"indices": indices})
             store_market_overview_data(data)
             return data
 
     allow_network = intraday or force
+    factor_date = resolve_latest_factor_trade_date()
     rows, updated_at = _quote_rows_for_overview(allow_network=allow_network, force=force)
     indices = _fetch_sorted_indices()
-    environment = load_market_environment(force=force)
-    factor_date = resolve_latest_factor_trade_date()
+    store_cached_indices(indices)
+    environment = load_market_environment(force=force, factor_trade_date=factor_date)
 
     if not intraday:
         cached = peek_market_overview_data(intraday=False) if not force else None

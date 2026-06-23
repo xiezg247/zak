@@ -29,10 +29,9 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
-from vnpy_ashare.quotes.core.quote_rows import get_market_quotes_cache
+from vnpy_ashare.quotes.market.quote_source import resolve_intraday_quote_rows
 from vnpy_ashare.quotes.radar.radar_leader_pick import LeaderPickVariant
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows, resolve_result_source_tag
-from vnpy_ashare.screener.data.quotes_loader import load_market_quote_rows
 from vnpy_ashare.screener.pattern.pattern_screen import (
     PatternScreenInput,
     resolve_pattern_screen,
@@ -94,16 +93,13 @@ class ScreeningService(BaseService):
         quote_svc = getattr(self.engine, "quote_service", None)
         if quote_svc is not None:
             cached = quote_svc.get_market_quotes_cache()
-        else:
-            cached = get_market_quotes_cache()
-        if cached:
-            return cached, None
+            if cached:
+                return cached, None
 
-        try:
-            snapshot = load_market_quote_rows()
-            return snapshot.rows, None
-        except Exception as ex:
-            return None, str(ex)
+        rows, _, _, error = resolve_intraday_quote_rows(min_cached_rows=1)
+        if rows:
+            return rows, None
+        return None, error
 
     def quote_rows_unavailable_message(self, reason: str | None = None) -> str:
         detail = reason or "未知原因"

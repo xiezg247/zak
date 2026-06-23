@@ -6,6 +6,7 @@ import unittest
 
 from vnpy_ashare.domain.time.quote_time import (
     format_batch_updated_at,
+    format_relative_updated_at,
     format_trade_time_display,
     resolve_trade_time_from_tickflow_row,
 )
@@ -29,6 +30,18 @@ class QuoteTimeTest(unittest.TestCase):
             "06-06 23:46:38",
         )
         self.assertEqual(format_batch_updated_at(None), "")
+
+    def test_format_relative_updated_at_off_session_yyyymmdd(self) -> None:
+        self.assertEqual(
+            format_relative_updated_at("20250623", off_session=True),
+            "更新 06-23 收盘",
+        )
+
+    def test_format_relative_updated_at_off_session_iso_date(self) -> None:
+        self.assertEqual(
+            format_relative_updated_at("2025-06-23", off_session=True),
+            "更新 06-23 收盘",
+        )
 
     def test_resolve_trade_time_from_timestamp(self) -> None:
         resolved = resolve_trade_time_from_tickflow_row(
