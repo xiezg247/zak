@@ -74,7 +74,7 @@ class ProfileOnboardingDialog(QtWidgets.QDialog):
         if checked is not None:
             profile_id = checked.property("profile_id")
             if isinstance(profile_id, str) and profile_id in _PROFILE_LAYOUT:
-                return profile_id  # type: ignore[return-value]
+                return profile_id
         return DEFAULT_STRATEGY_PROFILE
 
 

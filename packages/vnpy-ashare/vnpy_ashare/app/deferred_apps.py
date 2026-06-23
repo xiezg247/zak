@@ -6,9 +6,12 @@ from vnpy.trader.engine import MainEngine
 from vnpy_datamanager import DataManagerApp
 
 from vnpy_ashare.backtest.app import AshareCtaBacktesterApp
+from vnpy_common.startup_profile import profiler
 
 
 def register_deferred_apps(main_engine: MainEngine) -> None:
     """首屏渲染后再加载非核心 App，缩短冷启动。"""
-    main_engine.add_app(AshareCtaBacktesterApp)
-    main_engine.add_app(DataManagerApp)
+    with profiler.phase("add_app(AshareCtaBacktesterApp)"):
+        main_engine.add_app(AshareCtaBacktesterApp)
+    with profiler.phase("add_app(DataManagerApp)"):
+        main_engine.add_app(DataManagerApp)

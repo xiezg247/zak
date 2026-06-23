@@ -79,7 +79,9 @@ class SectorFlowOverviewChart(QtWidgets.QWidget):
         plot_h = max(plot_bottom - plot_top, 40)
 
         if snapshot.has_intraday_curve:
-            self._paint_intraday_chart(painter, snapshot, plot_left, plot_top, plot_w, plot_h, tokens)
+            self._paint_intraday_chart(
+                painter, snapshot, plot_left, plot_top, plot_w, plot_h, tokens, margin_left=margin_left,
+            )
         else:
             self._paint_bar_chart(painter, snapshot, plot_left, plot_top, plot_w, plot_h, tokens)
         painter.end()
@@ -93,6 +95,8 @@ class SectorFlowOverviewChart(QtWidgets.QWidget):
         plot_w: float,
         plot_h: float,
         tokens,
+        *,
+        margin_left: float,
     ) -> None:
         axis = list(snapshot.time_axis)
         if not axis:
@@ -249,7 +253,7 @@ class SectorFlowOverviewChart(QtWidgets.QWidget):
         plot_h = max(self.height() - 44, 40)
         bar_h = min(plot_h / max(len(rows), 1) - 4, 18)
         gap = 4
-        cursor = margin_top
+        cursor = float(margin_top)
         for series in rows:
             if cursor <= y <= cursor + bar_h:
                 return series.sector_id

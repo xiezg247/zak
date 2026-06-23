@@ -20,7 +20,7 @@ from vnpy_ashare.app.engine_access import (
 from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.strategy_profile import StrategyProfileId, apply_strategy_profile, bootstrap_strategy_profile
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_watchlist_position_config
-from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig, load_watchlist_signal_config
+from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
@@ -158,6 +158,8 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self.position_config: WatchlistPositionConfig = load_watchlist_position_config()
         self.signal_cache: dict[str, SignalSnapshot] = {}
         self.continuation_cache: dict[str, StockContinuationSnapshot] = {}
+        self.strategy_workspace_button: QtWidgets.QPushButton | None = None
+        self._strategy_workspace_open = False
         self._signal_cache_config: WatchlistSignalConfig | None = None
         self.position_cache: dict[str, PositionSnapshot] = {}
         self._position_cache_config: WatchlistSignalConfig | None = None

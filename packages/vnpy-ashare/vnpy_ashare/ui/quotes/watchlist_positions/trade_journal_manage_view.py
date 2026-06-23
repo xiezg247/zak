@@ -41,6 +41,8 @@ class TradeJournalManageView(QtWidgets.QWidget):
         self._fixed_end: str | None = None
         self._symbol_filter = ""
         self._exchange_filter = ""
+        self._days_spin: QtWidgets.QSpinBox | None
+        self._side_combo: QtWidgets.QComboBox | None
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from vnpy.trader.ui import QtCore
@@ -15,6 +16,7 @@ from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol, lookup_by_vt_symbol
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
+from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
 from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
@@ -177,7 +179,7 @@ class WatchlistSignalController:
             self.refresh(force=True)
         self._page._positions.on_signal_config_changed(normalized, changed=changed)
 
-    def _normalize_cache_keys(self, updates: dict[str, object]) -> dict[str, object]:
+    def _normalize_cache_keys(self, updates: Mapping[str, object]) -> dict[str, object]:
         normalized: dict[str, object] = {}
         for vt, value in updates.items():
             if value is None:
@@ -191,6 +193,13 @@ class WatchlistSignalController:
     def _normalize_signal_updates(self, updates: dict[str, SignalSnapshot]) -> dict[str, SignalSnapshot]:
         raw = self._normalize_cache_keys(dict(updates))
         return {key: value for key, value in raw.items() if isinstance(value, SignalSnapshot)}
+
+    def _normalize_continuation_updates(
+        self,
+        updates: Mapping[str, object],
+    ) -> dict[str, StockContinuationSnapshot]:
+        raw = self._normalize_cache_keys(dict(updates))
+        return {key: value for key, value in raw.items() if isinstance(value, StockContinuationSnapshot)}
 
     def _parse_worker_payload(self, raw: dict | object) -> tuple[dict[str, SignalSnapshot], dict[str, object]]:
         payload = unwrap_worker_payload(raw)
@@ -227,13 +236,13 @@ class WatchlistSignalController:
         committed: dict[str, SignalSnapshot] = {}
         for panel_vt in panel_symbols:
             canon = canonical_vt_symbol(panel_vt) or panel_vt
-            snap = (
+            matched: SignalSnapshot | None = (
                 by_key.get(panel_vt)
                 or by_key.get(canon)
                 or lookup_by_vt_symbol(cache, panel_vt)
             )
-            if snap is not None:
-                committed[canon] = snap
+            if matched is not None:
+                committed[canon] = matched
         return committed
 
     def _needs_continuation_enrich(self) -> bool:
@@ -352,7 +361,7 @@ class WatchlistSignalController:
             main_engine=self._page._get_main_engine(),
         )
         if built:
-            self._page.continuation_cache.update(self._normalize_cache_keys(built))
+            self._page.continuation_cache.update(self._normalize_continuation_updates(built))
 
     def _ensure_bar_meta(self, symbols: list[str]) -> None:
         items = []
@@ -377,9 +386,9 @@ class WatchlistSignalController:
             canon = canonical_vt_symbol(vt) or vt
             if canon == vt:
                 continue
-            snap = cont.pop(vt, None)
-            if snap is not None and canon not in cont:
-                cont[canon] = snap
+            cont_snap = cont.pop(vt, None)
+            if cont_snap is not None and canon not in cont:
+                cont[canon] = cont_snap
 
     def _has_local_daily_bars(self, vt_symbol: str) -> bool:
         item = self._page.find_stock_item(vt_symbol)
@@ -552,7 +561,7 @@ class WatchlistSignalController:
             if committed:
                 self._page.signal_cache.update(committed)
             if continuations:
-                self._page.continuation_cache.update(self._normalize_cache_keys(continuations))
+                self._page.continuation_cache.update(self._normalize_continuation_updates(continuations))
             self._page._signal_cache_config = config
             if committed:
                 self._disk_cache.put_many(

@@ -236,7 +236,7 @@ class WatchlistStrategyBatchCoordinator:
         table = getattr(panel, "_table_view", None)
         if table is None:
             return True
-        visible = getattr(table, "visible_column_keys", lambda: [])()
+        visible: list[str] = getattr(table, "visible_column_keys", lambda: [])()
         return any(key in {"continuation_pattern", "outlook_compact"} for key in visible)
 
     def _include_continuation_for_jobs(self, jobs: list[_BatchJob]) -> bool:

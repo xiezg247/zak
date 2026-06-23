@@ -17,8 +17,10 @@ if TYPE_CHECKING:
     from vnpy_ashare.domain.data.bar_health import BarMeta
     from vnpy_ashare.domain.symbols.stock import StockItem
     from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
+    from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
     from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
+    from vnpy_ashare.ui.quotes.controllers.local_data import LocalDataController
     from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
     from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
     from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
@@ -34,14 +36,19 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     bar_meta: dict[tuple[str, Exchange], BarMeta]
     market_table: QtWidgets.QTableView
     signal_cache: dict[str, SignalSnapshot]
+    continuation_cache: dict[str, StockContinuationSnapshot]
+    downloaded_keys: set[tuple[str, Exchange]]
     signal_config: WatchlistSignalConfig
     position_config: WatchlistPositionConfig
     chart_panel: ChartPanel | None
     signal_panel: WatchlistSignalPanel | None
+    strategy_workspace_button: QtWidgets.QPushButton | None
     _active: bool
+    _strategy_workspace_open: bool
     _signal_cache_config: WatchlistSignalConfig | None
     _position_cache_config: WatchlistSignalConfig | None
     _retired_workers: list[QtCore.QThread]
+    _local: LocalDataController
     _positions: WatchlistPositionController
     _multiview: WatchlistMultiViewController
     _toast: PageToastHost

@@ -127,10 +127,10 @@ def load_sector_flow_hot(spec: RadarCardSpec, *, variant: SectorFlowHotVariant =
         inflow = [sector for sector in sector_rows if sector.net_flow_yi > 0][: spec.top_n]
 
         by_industry: dict[str, list[dict]] = defaultdict(list)
-        for row in enriched or snapshot.rows:
-            industry = str(row.get("industry") or "").strip()
+        for quote_row in enriched:
+            industry = str(quote_row.get("industry") or "").strip()
             if industry:
-                by_industry[industry].append(dict(row))
+                by_industry[industry].append(dict(quote_row))
 
         for sector in inflow:
             items = by_industry.get(sector.name, [])

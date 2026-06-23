@@ -31,6 +31,7 @@ from vnpy_ashare.services.signals.runtime import (
     signal_cell_color,
     signal_cell_text,
 )
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, pct_change_color
@@ -431,12 +432,12 @@ class SignalPanelTableView(QtWidgets.QWidget):
         cleaned = str(sector_id or "").strip()
         if not cleaned:
             return
-        widget = self._page
+        widget: QtWidgets.QWidget | None = as_qwidget(self._page)
         while widget is not None:
             if hasattr(widget, "open_sector_flow"):
                 widget.open_sector_flow([cleaned], tab="outlook", sector_kind="industry")
                 return
-            widget = widget.parent()
+            widget = widget.parentWidget()
 
     # ── 内部：筛选 ───────────────────────────────────────────
 

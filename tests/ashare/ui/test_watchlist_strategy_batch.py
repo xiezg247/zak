@@ -6,8 +6,9 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.ui import QtWidgets
+
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
 

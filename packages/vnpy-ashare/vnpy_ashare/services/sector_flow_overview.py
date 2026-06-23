@@ -171,8 +171,8 @@ def build_overview_snapshot(snapshot: SectorFlowSnapshot) -> SectorFlowOverviewS
     time_axis = _build_time_axis_from_records(records) if has_curve else ("收盘",)
 
     if has_curve:
-        series_list = [_series_from_records(sid, items, sector_kind=sector_kind) for sid, items in grouped.items()]
-        series_list = [item for item in series_list if item is not None]
+        raw_series = [_series_from_records(sid, items, sector_kind=sector_kind) for sid, items in grouped.items()]
+        series_list: list[SectorFlowOverviewSeries] = [item for item in raw_series if item is not None]
         inflow_series = sorted(
             [item for item in series_list if item.latest_yi > 0],
             key=lambda item: item.latest_yi,

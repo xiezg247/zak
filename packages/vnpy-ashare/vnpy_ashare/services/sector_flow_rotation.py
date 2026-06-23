@@ -70,7 +70,7 @@ def rotation_trade_dates(*, days: int = _ROTATION_DAYS) -> tuple[str, ...]:
 def classify_flow_pattern(points: tuple[SectorFlowHistoryPoint, ...]) -> str:
     if not points:
         return "—"
-    return classify_flow_pattern_values(point.net_flow_yi for point in points)
+    return classify_flow_pattern_values([point.net_flow_yi for point in points])
 
 
 def _align_history_points(

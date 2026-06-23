@@ -21,6 +21,7 @@ from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_v
 from vnpy_ashare.integrations.tickflow.stream import shutdown_all_tickflow_streams
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_common.paths import PROJECT_ROOT
+from vnpy_common.startup_profile import profiler
 
 _DEFERRED_APP_DELAY_MS = 0
 
@@ -43,36 +44,55 @@ def _prepare_runtime() -> None:
     SETTINGS["font.size"] = int(SETTINGS.get("font.size", 12))
 
 
+def _register_deferred_apps(main_engine: MainEngine) -> None:
+    with profiler.phase("deferred_apps"):
+        register_deferred_apps(main_engine)
+    profiler.finish("startup until deferred apps")
+
+
 def main() -> None:
-    _prepare_runtime()
-    install_shared_bridges()
+    with profiler.phase("prepare_runtime"):
+        _prepare_runtime()
+    with profiler.phase("install_shared_bridges"):
+        install_shared_bridges()
 
-    if ensure_vt_settings_from_env():
-        reload_vnpy_settings()
-        print("已从 .env 生成或重建 vt_setting.json（~/.vntrader/）")
+    with profiler.phase("vt_settings"):
+        if ensure_vt_settings_from_env():
+            reload_vnpy_settings()
+            print("已从 .env 生成或重建 vt_setting.json（~/.vntrader/）")
 
-    if ensure_runtime_config():
-        print("已应用 A 股回测默认参数（~/.vntrader/cta_backtester_setting.json）")
+    with profiler.phase("runtime_config"):
+        if ensure_runtime_config():
+            print("已应用 A 股回测默认参数（~/.vntrader/cta_backtester_setting.json）")
 
-    qapp = create_qapp(QAPP_NAME)
-    qapp.setStyle("Fusion")
+    with profiler.phase("create_qapp"):
+        qapp = create_qapp(QAPP_NAME)
+        qapp.setStyle("Fusion")
 
     qapp.aboutToQuit.connect(shutdown_all_tickflow_streams)
 
-    event_engine = EventEngine()
-    main_engine = MainEngine(event_engine)
+    with profiler.phase("event_engine"):
+        event_engine = EventEngine()
+    with profiler.phase("main_engine"):
+        main_engine = MainEngine(event_engine)
 
-    main_engine.add_app(AshareApp)
-    llm_app = _optional_llm_app()
+    with profiler.phase("add_app(AshareApp)"):
+        main_engine.add_app(AshareApp)
+    with profiler.phase("optional_llm_import"):
+        llm_app = _optional_llm_app()
     if llm_app is not None:
-        main_engine.add_app(llm_app)
+        with profiler.phase("add_app(LlmApp)"):
+            main_engine.add_app(llm_app)
 
-    main_window = AshareMainWindow(main_engine, event_engine)
-    main_window.showMaximized()
+    with profiler.phase("main_window"):
+        main_window = AshareMainWindow(main_engine, event_engine)
+        main_window.showMaximized()
+
+    profiler.finish("startup until window visible")
 
     QtCore.QTimer.singleShot(
         _DEFERRED_APP_DELAY_MS,
-        lambda: register_deferred_apps(main_engine),
+        lambda: _register_deferred_apps(main_engine),
     )
 
     qapp.exec()
