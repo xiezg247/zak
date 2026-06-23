@@ -16,8 +16,8 @@ from vnpy_common.ui.theme.market_colors import pct_change_color
 MARKET_TURNOVER_TRILLION_YUAN = 1e12
 
 
-def _format_updated_at(raw: str | None) -> str:
-    return format_relative_updated_at(raw)
+def _format_updated_at(raw: str | None, *, off_session: bool = False) -> str:
+    return format_relative_updated_at(raw, off_session=off_session)
 
 
 def _format_trade_date(raw: str) -> str:
@@ -162,6 +162,8 @@ class _FearGauge(QtWidgets.QWidget):
 class MarketStatsBar(QtWidgets.QWidget):
     """市场页顶部统计条。"""
 
+    refresh_requested = QtCore.Signal()
+
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("MarketStatsBar")
@@ -183,6 +185,10 @@ class MarketStatsBar(QtWidgets.QWidget):
         self._amount_chip = _StatChip("成交额")
         self._north_chip = _StatChip("北向资金")
         self._fear_gauge = _FearGauge()
+        self._refresh_button = QtWidgets.QPushButton("刷新")
+        self._refresh_button.setObjectName("SecondaryButton")
+        self._refresh_button.setToolTip("重新拉取成交额、恐贪指数与北向资金")
+        self._refresh_button.clicked.connect(self.refresh_requested.emit)
         self._updated_label = QtWidgets.QLabel("")
         self._updated_label.setObjectName("MarketStatsUpdated")
         self._updated_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -205,6 +211,7 @@ class MarketStatsBar(QtWidgets.QWidget):
         ):
             chips_row.addWidget(widget)
         chips_row.addStretch(1)
+        chips_row.addWidget(self._refresh_button)
         chips_row.addWidget(self._updated_label)
         root.addLayout(chips_row)
 
@@ -212,6 +219,13 @@ class MarketStatsBar(QtWidgets.QWidget):
         root.addWidget(self._ratio_bar)
 
         self.set_loading()
+
+    def set_refreshing(self, refreshing: bool) -> None:
+        self._refresh_button.setEnabled(not refreshing)
+        if refreshing:
+            self._refresh_button.setText("刷新中…")
+        else:
+            self._refresh_button.setText("刷新")
 
     def set_loading(self) -> None:
         self._updated_label.setText("")
@@ -265,7 +279,8 @@ class MarketStatsBar(QtWidgets.QWidget):
         )
         self._amount_chip.setToolTip(self._amount_tooltip(breadth.total_amount))
         self._ratio_bar.set_counts(breadth.up, breadth.down, breadth.flat)
-        updated = _format_updated_at(breadth.updated_at)
+        off_session = bool(session_note)
+        updated = _format_updated_at(breadth.updated_at, off_session=off_session)
         self._updated_label.setText(f"{session_note}{updated}" if session_note else updated)
         self._render_environment(self._last_environment)
 
@@ -313,7 +328,10 @@ class MarketStatsBar(QtWidgets.QWidget):
         if env is None or env.fear_greed_index is None:
             self._fear_gauge.set_snapshot(None, "")
         else:
-            self._fear_gauge.set_snapshot(env.fear_greed_index, env.fear_greed_label or "")
+            label = env.fear_greed_label or ""
+            if env.fear_greed_trade_date:
+                label = f"{label} · {_format_trade_date(env.fear_greed_trade_date)}".strip(" ·")
+            self._fear_gauge.set_snapshot(env.fear_greed_index, label)
 
         if env is None or env.north_money is None:
             self._north_chip.set_value("—")

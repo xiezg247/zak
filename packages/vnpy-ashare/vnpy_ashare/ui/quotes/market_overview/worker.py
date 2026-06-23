@@ -11,12 +11,19 @@ class MarketOverviewLoadWorker(QtCore.QThread):
     finished = QtCore.Signal(object)
     failed = QtCore.Signal(str)
 
-    def __init__(self, *, intraday: bool = True, parent: QtCore.QObject | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        intraday: bool = True,
+        force: bool = False,
+        parent: QtCore.QObject | None = None,
+    ) -> None:
         super().__init__(parent)
         self._intraday = intraday
+        self._force = force
 
     def run(self) -> None:
         try:
-            self.finished.emit(load_market_overview(intraday=self._intraday))
+            self.finished.emit(load_market_overview(intraday=self._intraday, force=self._force))
         except Exception as ex:
             self.failed.emit(str(ex))

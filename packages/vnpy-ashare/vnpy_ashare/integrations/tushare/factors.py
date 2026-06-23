@@ -12,7 +12,9 @@ from vnpy_ashare.domain.core.numbers import safe_float
 from vnpy_ashare.domain.market.indices import MARKET_INDEX_TS_CODES
 from vnpy_ashare.domain.symbols.stock import EXCHANGE_TO_SUFFIX, ts_code_to_vt_symbol
 from vnpy_ashare.domain.time.calendar import last_trading_day
+from vnpy_ashare.domain.time.trade_dates import iter_trade_date_strs
 from vnpy_ashare.integrations.tushare.cache import (
+    DATASET_DAILY_AMOUNT_SUM,
     DATASET_DAILY_BASIC,
     DATASET_INDEX_DAILY,
     DATASET_LIMIT_LIST,
@@ -51,6 +53,38 @@ def fetch_daily_pct_map(trade_date: str) -> dict[str, float]:
     if pct_map:
         set_cached_pct_map(trade_date, pct_map)
     return pct_map
+
+
+def fetch_daily_turnover_total_yuan(trade_date: str, *, force: bool = False) -> float:
+    """汇总 Tushare daily.amount（千元）为两市成交额（元）。"""
+    if not force:
+        cached = get_cached_rows(DATASET_DAILY_AMOUNT_SUM, trade_date)
+        if cached:
+            raw = cached[0].get("total_yuan") if isinstance(cached[0], dict) else None
+            if raw is not None:
+                return float(raw)
+
+    pro = get_tushare_pro()
+    try:
+        frame = pro.daily(trade_date=trade_date, fields="amount")
+    except Exception:
+        return 0.0
+    if frame is None or frame.empty:
+        return 0.0
+    total_thousand_yuan = 0.0
+    for value in frame["amount"].tolist():
+        if value in (None, ""):
+            continue
+        try:
+            amount = float(value)
+        except (TypeError, ValueError):
+            continue
+        if amount > 0:
+            total_thousand_yuan += amount
+    total_yuan = total_thousand_yuan * 1000.0
+    if total_yuan > 0:
+        set_cached_rows(DATASET_DAILY_AMOUNT_SUM, trade_date, [{"total_yuan": total_yuan}])
+    return total_yuan
 
 
 def load_ts_code_name_map() -> dict[str, str]:
@@ -308,12 +342,32 @@ def fetch_index_daily_snapshot(*, trade_date: str | None = None) -> tuple[list[d
     return rows, trade_date
 
 
-def fetch_moneyflow_hsgt_window(*, trade_date: str | None = None) -> tuple[list[dict[str, Any]], str]:
+def _best_hsgt_cached_rows(end_date: str) -> list[dict[str, Any]]:
+    """在近日缓存键中选取 trade_date 最新的一窗 moneyflow_hsgt。"""
+    end_dt = datetime.strptime(end_date, "%Y%m%d").date()
+    best_rows: list[dict[str, Any]] = []
+    best_latest = ""
+    for key in iter_trade_date_strs(max_lookback=5, start=end_dt):
+        cached = get_cached_rows(DATASET_MONEYFLOW_HSGT, key)
+        if not cached:
+            continue
+        latest = max(str(row.get("trade_date") or "") for row in cached)
+        if latest > best_latest:
+            best_latest = latest
+            best_rows = list(cached)
+    return best_rows
+
+
+def fetch_moneyflow_hsgt_window(*, trade_date: str | None = None, force: bool = False) -> tuple[list[dict[str, Any]], str]:
     """拉取沪深港通资金流近期窗口。"""
     trade_date = trade_date or _latest_trade_date_str()
-    cached = get_cached_rows(DATASET_MONEYFLOW_HSGT, trade_date)
-    if cached is not None:
-        return cached, trade_date
+    if not force:
+        cached = get_cached_rows(DATASET_MONEYFLOW_HSGT, trade_date)
+        if cached is not None:
+            return cached, trade_date
+        merged = _best_hsgt_cached_rows(trade_date)
+        if merged:
+            return merged, trade_date
 
     end_dt = datetime.strptime(trade_date, "%Y%m%d")
     start_date = (end_dt - timedelta(days=_HSGT_LOOKBACK_CALENDAR_DAYS)).strftime("%Y%m%d")

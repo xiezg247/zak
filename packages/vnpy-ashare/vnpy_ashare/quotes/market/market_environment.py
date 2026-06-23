@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from vnpy_ashare.domain.market.environment import MarketEnvironmentSnapshot
+from vnpy_ashare.domain.time.calendar import last_trading_day
+from vnpy_ashare.integrations.tushare.factor_fallback import resolve_latest_factor_trade_date
 from vnpy_ashare.integrations.tushare.factors import fetch_moneyflow_hsgt_window
 from vnpy_ashare.screener.sentiment.fear_greed_provider import try_fetch_fear_greed_index
 
@@ -19,34 +21,40 @@ def format_north_money_hsgt(north_money: float | None) -> str:
     return f"{north_money:+.0f}百万"
 
 
-def load_market_environment() -> MarketEnvironmentSnapshot:
+def load_market_environment(*, force: bool = False) -> MarketEnvironmentSnapshot:
     """加载恐贪指数与北向资金（优先本地 Tushare 缓存）。"""
+    factor_trade_date = resolve_latest_factor_trade_date()
+    calendar_trade_date = last_trading_day().strftime("%Y%m%d")
     fear_index: float | None = None
     fear_label = ""
+    fear_trade_date = ""
     try:
-        snapshot = try_fetch_fear_greed_index()
+        snapshot = try_fetch_fear_greed_index(trade_date=factor_trade_date)
         if snapshot is not None:
             fear_index = float(snapshot.index)
             fear_label = str(snapshot.label or "")
+            raw_date = str(snapshot.trade_date or factor_trade_date)
+            fear_trade_date = raw_date.replace("-", "")[:8]
     except Exception:
         pass
 
     north_money: float | None = None
     north_trade_date = ""
     try:
-        rows, trade_date = fetch_moneyflow_hsgt_window()
+        rows, _anchor = fetch_moneyflow_hsgt_window(trade_date=calendar_trade_date, force=force)
         if rows:
             latest = max(rows, key=lambda row: str(row.get("trade_date") or ""))
             raw = latest.get("north_money")
             if raw is not None:
                 north_money = float(raw)
-            north_trade_date = str(latest.get("trade_date") or trade_date or "")
+            north_trade_date = str(latest.get("trade_date") or calendar_trade_date or "")
     except Exception:
         pass
 
     return MarketEnvironmentSnapshot(
         fear_greed_index=fear_index,
         fear_greed_label=fear_label,
+        fear_greed_trade_date=fear_trade_date,
         north_money=north_money,
         north_trade_date=north_trade_date,
     )

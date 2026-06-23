@@ -17,6 +17,7 @@ from vnpy_ashare.integrations.tushare.stk_shock import (
 )
 from vnpy_ashare.jobs.core.progress import job_log
 from vnpy_ashare.jobs.core.result import JobResult
+from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
 from vnpy_ashare.screener.data.data_source import fetch_daily_basic_with_fallback
 
 
@@ -56,8 +57,17 @@ def prefetch_tushare_factors() -> JobResult:
         job_log(parts[-1])
 
         job_log("拉取 moneyflow_hsgt …")
-        hsgt_rows, hsgt_date = fetch_moneyflow_hsgt_window(trade_date=anchor_date)
+        hsgt_end = last_trading_day().strftime("%Y%m%d")
+        hsgt_rows, hsgt_date = fetch_moneyflow_hsgt_window(trade_date=hsgt_end, force=True)
         parts.append(f"moneyflow_hsgt {len(hsgt_rows)} 条 @ {hsgt_date or '-'}")
+        job_log(parts[-1])
+
+        from vnpy_ashare.integrations.tushare.factors import fetch_daily_turnover_total_yuan
+
+        job_log("汇总 daily 成交额 …")
+        turnover_yuan = fetch_daily_turnover_total_yuan(anchor_date, force=True)
+        turnover_trillion = turnover_yuan / 1e12 if turnover_yuan > 0 else 0.0
+        parts.append(f"daily_amount {turnover_trillion:.2f} 万亿 @ {anchor_date}")
         job_log(parts[-1])
 
         shock_date = anchor_date or last_trading_day().strftime("%Y%m%d")
@@ -71,6 +81,12 @@ def prefetch_tushare_factors() -> JobResult:
     basic_snapshot, basic_count = fetch_stock_basic_snapshot()
     parts.append(f"stock_basic {basic_count} 条")
     job_log(parts[-1])
+
+    job_log("同步行业映射 …")
+    industry_result = sync_stock_industry_job(force=False)
+    if industry_result.message:
+        parts.append(industry_result.message)
+        job_log(industry_result.message)
 
     if not basic_rows:
         return JobResult(

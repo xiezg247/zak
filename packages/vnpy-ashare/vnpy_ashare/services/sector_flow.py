@@ -124,7 +124,7 @@ def diagnose_sector_flow_empty(
         return "Redis 无有效行情快照。请到「工具 → 立即执行 → 行情采集」运行后再刷新。"
     enriched = attach_industry(rows, industry_map=industry_map)
     if not enriched:
-        return "全市场行情已加载，但无法匹配行业字段。请配置 TUSHARE_TOKEN，并运行「工具 → 定时任务 → 同步行业映射」后再刷新。"
+        return "全市场行情已加载，但无法匹配行业字段。请配置 TUSHARE_TOKEN，并运行「后台 → 定时任务 → 同步行业映射」后再刷新。"
     buckets: dict[str, int] = defaultdict(int)
     for row in enriched:
         industry = str(row.get("industry") or "").strip()

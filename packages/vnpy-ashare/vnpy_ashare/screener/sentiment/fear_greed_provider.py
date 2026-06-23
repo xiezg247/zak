@@ -13,10 +13,14 @@ def register_fear_greed_fetcher(fetcher: Callable[..., Any | None]) -> None:
     _fetcher = fetcher
 
 
-def try_fetch_fear_greed_index(*, include_components: bool = False) -> Any | None:
+def try_fetch_fear_greed_index(
+    *,
+    include_components: bool = False,
+    trade_date: str | None = None,
+) -> Any | None:
     if _fetcher is None:
         return None
     try:
-        return _fetcher(include_components=include_components)
+        return _fetcher(include_components=include_components, trade_date=trade_date)
     except Exception:
         return None

@@ -16,8 +16,8 @@ from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label, is_a
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle, store_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_cache import peek_emotion_cycle_snapshot
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
-from vnpy_ashare.quotes.market.market_overview_cache import peek_market_overview_data
-from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows
+from vnpy_ashare.quotes.market.market_overview_cache import invalidate_market_overview_cache, peek_market_overview_data
+from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, build_overview_from_market_rows, is_market_overview_stale
 from vnpy_ashare.ui.quotes.market_overview.worker import MarketOverviewLoadWorker
 from vnpy_common.ui.feedback import page_notify
 from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
@@ -46,6 +46,7 @@ class MarketOverviewController(QtCore.QObject):
 
         panel.sector_selected.connect(self._on_sector_selected)
         panel.sector_flow_requested.connect(self._open_sector_flow)
+        panel.refresh_requested.connect(self.force_refresh)
         industry_filter = page.industry_filter
         if industry_filter is not None:
             industry_filter.industry_selected.connect(self._on_industry_picker_selected)
@@ -63,11 +64,12 @@ class MarketOverviewController(QtCore.QObject):
         if industry_filter is not None:
             industry_filter.ensure_options_loaded()
         intraday = is_ashare_trading_session()
+        peeked = peek_market_overview_data(intraday=intraday)
         self._apply_peeked_overview(intraday=intraday)
         if intraday:
             QtCore.QTimer.singleShot(500, self.refresh)
-        elif peek_market_overview_data(intraday=False) is None:
-            QtCore.QTimer.singleShot(500, self._refresh_off_session)
+        elif peeked is None or is_market_overview_stale(peeked):
+            QtCore.QTimer.singleShot(500, self.force_refresh)
         self._schedule_timer()
         self._session_timer.start()
 
@@ -88,52 +90,46 @@ class MarketOverviewController(QtCore.QObject):
             self._refresh_timer.stop()
 
     def refresh(self) -> None:
+        self._start_overview_load(force=False)
+
+    def force_refresh(self) -> None:
+        """手动或过期快照：跳过盘外 peek 短路并重拉环境指标。"""
+        self._start_overview_load(force=True)
+
+    def _start_overview_load(self, *, force: bool) -> None:
         if thread_is_active(self._worker):
             return
         intraday = is_ashare_trading_session()
-        if not intraday:
+        if not intraday and not force:
             peeked = peek_market_overview_data(intraday=False)
             if peeked is not None:
                 self._apply_overview(peeked, intraday=False)
                 return
-        worker = MarketOverviewLoadWorker(intraday=intraday)
+        if force:
+            invalidate_market_overview_cache()
+        self._panel.set_overview_refreshing(True)
+        worker = MarketOverviewLoadWorker(intraday=intraday, force=force)
         self._worker = worker
 
         def on_finished(data: MarketOverviewData) -> None:
             if self._worker is worker:
                 self._worker = None
             release_thread(self._retired_workers, worker)
+            self._panel.set_overview_refreshing(False)
             self._apply_overview(data, intraday=intraday)
 
         def on_failed(_msg: str) -> None:
             if self._worker is worker:
                 self._worker = None
             release_thread(self._retired_workers, worker)
+            self._panel.set_overview_refreshing(False)
 
         worker.finished.connect(on_finished)
         worker.failed.connect(on_failed)
         worker.start()
 
     def _refresh_off_session(self) -> None:
-        if thread_is_active(self._worker):
-            return
-        worker = MarketOverviewLoadWorker(intraday=False)
-        self._worker = worker
-
-        def on_finished(data: MarketOverviewData) -> None:
-            if self._worker is worker:
-                self._worker = None
-            release_thread(self._retired_workers, worker)
-            self._apply_overview(data, intraday=False)
-
-        def on_failed(_msg: str) -> None:
-            if self._worker is worker:
-                self._worker = None
-            release_thread(self._retired_workers, worker)
-
-        worker.finished.connect(on_finished)
-        worker.failed.connect(on_failed)
-        worker.start()
+        self.force_refresh()
 
     def _apply_peeked_overview(self, *, intraday: bool) -> None:
         peeked = peek_market_overview_data(intraday=intraday)
@@ -148,13 +144,15 @@ class MarketOverviewController(QtCore.QObject):
         intraday = is_ashare_trading_session()
         breadth, sectors = build_overview_from_market_rows(rows, updated_at=updated_at)
         session_note = f"{ashare_market_phase_label()} · " if not intraday and breadth is not None else ""
-        if breadth is not None:
+        if breadth is not None and intraday:
             self._panel.apply_breadth(breadth, session_note=session_note)
-            if intraday:
-                self._apply_emotion_cycle(breadth)
+            self._apply_emotion_cycle(breadth)
         if sectors:
             self._panel.apply_sectors(sectors)
-        sync_market_overview_partial(breadth=breadth, sectors=sectors or None)
+        sync_market_overview_partial(
+            breadth=breadth if intraday else None,
+            sectors=sectors or None,
+        )
         self._publish_ai_context()
 
     def _apply_overview(

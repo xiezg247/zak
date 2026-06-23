@@ -44,11 +44,17 @@ def format_relative_updated_at(
     *,
     today: str | None = None,
     prefix: str = "更新",
+    off_session: bool = False,
 ) -> str:
     """ISO / 空格分隔时间 → 相对展示（今日仅 HH:MM，否则 MM-DD HH:MM）。"""
     if not raw:
         return ""
     text = raw.strip()
+    if off_session:
+        if len(text) == 8 and text.isdigit():
+            return f"{prefix} {text[4:6]}-{text[6:8]} 收盘"
+        if len(text) >= 10 and text[4] == "-" and text[7] == "-":
+            return f"{prefix} {text[5:10]} 收盘"
     if "T" not in text:
         return f"{prefix} {text}" if prefix else text
     date_part, time_part = text.split("T", 1)

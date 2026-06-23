@@ -29,6 +29,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
 
     sector_selected = QtCore.Signal(str)
     sector_flow_requested = QtCore.Signal()
+    refresh_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -42,6 +43,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
 
         self._stats_bar = MarketStatsBar(self)
         self._stats_bar.set_loading()
+        self._stats_bar.refresh_requested.connect(self.refresh_requested.emit)
         root.addWidget(self._stats_bar)
 
         toolbar_host = QtWidgets.QWidget(self)
@@ -132,7 +134,9 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._sector_layout.setSpacing(8)
         self._sector_layout.addStretch(1)
 
-        self._sector_empty = QtWidgets.QLabel("暂无行业榜（请配置 TUSHARE_TOKEN 并运行「工具 → 定时任务 → 同步行业映射」）")
+        self._sector_empty = QtWidgets.QLabel(
+            "暂无行业榜（请配置 TUSHARE_TOKEN，并运行「后台 → 定时任务 → 同步行业映射」）"
+        )
         self._sector_empty.setObjectName("SectorCardEmpty")
         self._sector_layout.insertWidget(0, self._sector_empty)
 
@@ -192,6 +196,9 @@ class MarketOverviewPanel(QtWidgets.QWidget):
     def apply_environment(self, env: MarketEnvironmentSnapshot | None) -> None:
         self._last_environment = env
         self._stats_bar.render_environment(env)
+
+    def set_overview_refreshing(self, refreshing: bool) -> None:
+        self._stats_bar.set_refreshing(refreshing)
 
     def _sync_index_cards(self, indices: list[tuple[str, QuoteSnapshot]]) -> None:
         seen: set[str] = set()
