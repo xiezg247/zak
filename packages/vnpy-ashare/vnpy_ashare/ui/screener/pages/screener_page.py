@@ -9,32 +9,28 @@ from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.context.screener import build_ask_ai_prompt_for_run
-from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.app.engine_access import (
-    get_backtest_service,
     get_screening_service,
     get_watchlist_service,
 )
 from vnpy_ashare.app.events import (
     EVENT_ASK_AI,
-    EVENT_OPEN_BACKTEST,
     AskAiRequest,
-    BacktestRequest,
     FillScreenerRequest,
 )
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.screener.data.screening_status import request_uses_live_quotes
 from vnpy_ashare.screener.pattern.pattern_screen import list_pattern_screeners
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
-from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult, build_industry_scheme_config
-from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
+from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult
 from vnpy_ashare.services.screening import ScreeningService
 from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.features.stock_analysis.open import wire_stock_analysis_context_menu
-from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.screener.pages.screener_result_presenter import ScreenerResultPresenter
 from vnpy_ashare.ui.screener.pages.screener_run_controller import ScreenerRunController
+from vnpy_ashare.ui.screener.pages.screener_scheme_controller import ScreenerSchemeController
+from vnpy_ashare.ui.screener.pages.screener_selection_controller import ScreenerSelectionController
 from vnpy_ashare.ui.screener.pages.screener_session import activate_screener_page, deactivate_screener_page
 from vnpy_ashare.ui.screener.widgets.screener_config_section import ScreenerConfigSection
 from vnpy_ashare.ui.screener.widgets.screener_hard_filter_panel import ScreenerHardFilterPanel
@@ -50,7 +46,6 @@ from vnpy_ashare.ui.screener.widgets.screener_layout import (
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     ROW_DATA_ROLE,
     configure_screener_results_table,
-    iter_checked_table_rows,
     toggle_select_all_table_rows,
     update_select_all_button,
     wire_screener_results_table,
@@ -58,8 +53,7 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
-from vnpy_ashare.ui.screener.workers.screener_workers import ScreenerBatchDownloadWorker
-from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action
+from vnpy_common.ui.feedback import PageToastHost, TaskGuard
 from vnpy_common.ui.qt_helpers import release_thread
 
 _SCHEME_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -82,7 +76,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._active = False
         self._embedded = embedded
         self._pending_industry: str = ""
-        self._download_worker: ScreenerBatchDownloadWorker | None = None
+        self._download_worker: Any = None
         self._batch_backtest_flow: BatchBacktestFlow | None = None
         self._retired_workers: list[QtCore.QThread] = []
         self._results: list[ScreenerResultRow] = []
@@ -94,6 +88,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._build_ui()
         self._result_presenter = ScreenerResultPresenter(self)
         self._run_controller = ScreenerRunController(self)
+        self._selection_controller = ScreenerSelectionController(self)
+        self._scheme_controller = ScreenerSchemeController(self)
         self._status_controller = ScreeningPageStatusController(
             self,
             self.data_status_bar,
@@ -553,29 +549,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._run_controller.run_pattern_screen()
 
     def _open_reference_peer(self) -> None:
-        selected = self._iter_checked_rows()
-        if len(selected) != 1:
-            self._toast.warning("请勾选恰好一只标的作为标杆")
-            return
-        row = selected[0]
-        vt_symbol = str(row.get("vt_symbol") or "").strip()
-        if not vt_symbol:
-            self._toast.warning("所选行缺少 vt_symbol")
-            return
-        name = str(row.get("name") or "")
-
-        def watchlist_add(symbol: str, exchange, stock_name: str = "") -> bool:
-            if self._watchlist_service is None:
-                return False
-            return self._watchlist_service.add(symbol, exchange, stock_name)
-
-        show_reference_peer_dialog(
-            vt_symbol=vt_symbol,
-            reference_name=name,
-            watchlist_add=watchlist_add if self._watchlist_service is not None else None,
-            retired_workers=self._retired_workers,
-            parent=self,
-        )
+        self._selection_controller.open_reference_peer()
 
     def _apply_screen_result(
         self,
@@ -625,276 +599,43 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         update_select_all_button(self.result_table, self.select_all_btn)
 
     def _iter_checked_rows(self) -> list[dict[str, Any]]:
-        return iter_checked_table_rows(self.result_table)
+        return self._selection_controller.iter_checked_rows()
 
     def _add_selected_to_watchlist(self) -> None:
-        if self._watchlist_service is None:
-            self._toast.warning("自选服务未就绪")
-            return
-        selected = self._iter_checked_rows()
-        if not selected:
-            self._toast.warning("请先勾选要加入自选的标的")
-            return
-
-        if not confirm_recession_batch_watchlist(self):
-            return
-
-        added = skipped = 0
-        full_hit = False
-        for row in selected:
-            item = parse_stock_symbol(str(row.get("vt_symbol", "")))
-            if item is None:
-                skipped += 1
-                continue
-            name = str(row.get("name", "") or item.name)
-            if self._watchlist_service.add(item.symbol, item.exchange, name):
-                added += 1
-            else:
-                reason = self._watchlist_service.add_failure_reason(item.symbol, item.exchange)
-                if reason == "full":
-                    full_hit = True
-                    break
-                skipped += 1
-        msg = f"新加入 {added} 只"
-        if skipped:
-            msg += f" · 跳过 {skipped} 只"
-        if full_hit:
-            msg += f" · 自选已满（最多 {self._watchlist_service.max_items} 只）"
-        self._append_action_log(msg)
-        self._toast.success(msg)
+        self._selection_controller.add_to_watchlist()
 
     def _download_selected_bars(self) -> None:
-        if self._task_guard.active:
-            return
-        if self._download_worker is not None and self._download_worker.isRunning():
-            return
-        selected = self._iter_checked_rows()
-        if not selected:
-            self._toast.warning("请先勾选要下载日 K 的标的")
-            return
-
-        self._task_guard.begin(
-            f"正在下载 {len(selected)} 只日 K…",
-            widgets=self._task_lock_widgets(),
-            primary=self.download_btn,
-            primary_text="下载日K",
-            primary_handler=self._download_selected_bars,
-            on_cancel=self._cancel_download,
-        )
-        self._append_action_log(f"正在下载 {len(selected)} 只日 K…")
-        worker = ScreenerBatchDownloadWorker(selected)
-        self._download_worker = worker
-        worker.finished.connect(self._on_download_finished)
-        worker.failed.connect(self._on_download_failed)
-        worker.start()
+        self._selection_controller.download_selected_bars()
 
     def _cancel_download(self) -> None:
-        if self._download_worker is not None:
-            self._download_worker.request_cancel()
+        self._selection_controller.cancel_download()
 
     def _on_download_finished(self, result) -> None:
-        worker = self._download_worker
-        self._download_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        message = getattr(result, "message", str(result))
-        if cancelled or "已取消" in message:
-            self._append_action_log("日 K 下载已取消")
-            self._toast.info("日 K 下载已取消")
-            return
-        self._append_action_log(message)
-        if getattr(result, "success", True):
-            self._toast.success(message)
-        else:
-            self._toast.error(message)
+        self._selection_controller.on_download_finished(result)
 
     def _on_download_failed(self, message: str) -> None:
-        worker = self._download_worker
-        self._download_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled:
-            self._append_action_log("日 K 下载已取消")
-            self._toast.info("日 K 下载已取消")
-            return
-        self._append_action_log(message)
-        self._toast.error(message)
+        self._selection_controller.on_download_failed(message)
 
     def _open_backtest_for_selection(self) -> None:
-        selected = self._iter_checked_rows()
-        if not selected:
-            self._toast.warning("请先勾选一只标的进行回测")
-            return
-        if len(selected) > 1:
-            self._toast.info("「策略回测」仅打开单只；批量请用「批量回测」")
-            return
-        row = selected[0]
-        vt_symbol = str(row.get("vt_symbol", ""))
-        if not vt_symbol:
-            self._toast.warning("缺少 vt_symbol")
-            return
-        name = str(row.get("name", ""))
-        self.event_engine.put(
-            Event(
-                EVENT_OPEN_BACKTEST,
-                BacktestRequest(
-                    vt_symbol=vt_symbol,
-                    source_page="条件选股",
-                    name=name,
-                ),
-            )
-        )
+        self._selection_controller.open_backtest_for_selection(source_page="条件选股")
 
     def _run_batch_backtest(self) -> None:
-        flow = self._batch_backtest_flow
-        if flow is None or flow.is_running():
-            return
-        selected = self._iter_checked_rows()
-        if not selected:
-            self._toast.warning("请先勾选要批量回测的标的")
-            return
-
-        backtest_service = get_backtest_service(self.main_engine)
-        strategies = backtest_service.list_strategies() if backtest_service else []
-        class_names = [item["class_name"] for item in strategies if item.get("class_name")]
-        trigger = str(self._last_run_config.get("trigger") or "")
-        recipe_id = str(self._last_run_config.get("recipe_id") or "").strip() or None
-        flow.start(
-            selected,
+        self._selection_controller.run_batch_backtest(
             source_page="选股",
-            batch_source="batch_radar_leader" if trigger == "radar_leader" else "batch_screener",
-            list_strategies=lambda: class_names,
-            on_running=lambda running: self.batch_backtest_btn.setDisabled(running),
-            trigger=trigger or None,
-            recipe_id=recipe_id,
+            default_batch_source="batch_screener",
         )
 
     def _save_scheme(self) -> None:
-        service = self._screening_service()
-        if service is None:
-            self._toast.warning("选股服务未就绪")
-            return
-
-        label = self.preset_combo.currentText()
-        scheme_id = self._current_scheme_id()
-        industry = self.industry_edit.text().strip()
-
-        if label.startswith("我的 · ") and scheme_id:
-            for scheme in service.list_schemes():
-                if scheme.id != scheme_id:
-                    continue
-                if str(scheme.config.get("kind") or "") != "industry":
-                    self._toast.info("该方案不是行业成分类型，请新建保存")
-                    return
-                if not industry:
-                    self._toast.warning("请输入行业名称")
-                    return
-                try:
-                    service.save_scheme(
-                        scheme.name,
-                        build_industry_scheme_config(industry, top_n=self.top_n_spin.value()),
-                        scheme_id=scheme_id,
-                    )
-                    self._reload_preset_combo()
-                    self._append_action_log(f"已更新行业方案：{scheme.name}")
-                    self._toast.success(f"已更新方案：{scheme.name}")
-                except Exception as ex:
-                    self._toast.error(str(ex))
-                return
-            self._toast.info("方案不存在或已删除")
-            return
-
-        if industry:
-            default_name = f"{industry}成分"
-            text, ok = QtWidgets.QInputDialog.getText(self, "保存行业方案", "方案名称", text=default_name)
-            if not ok or not text.strip():
-                return
-            try:
-                service.save_scheme(
-                    text.strip(),
-                    build_industry_scheme_config(industry, top_n=self.top_n_spin.value()),
-                )
-                self._reload_preset_combo()
-                saved_name = f"我的 · {text.strip()}"
-                index = self.preset_combo.findText(saved_name)
-                if index >= 0:
-                    self.preset_combo.setCurrentIndex(index)
-                self._append_action_log(f"已保存行业方案：{text.strip()}")
-                self._toast.success(f"已保存行业方案：{text.strip()}")
-            except Exception as ex:
-                self._toast.error(str(ex))
-            return
-
-        if label.startswith("我的 · "):
-            self._toast.info("请选择内置方案或填写行业名称后再保存")
-            return
-        text, ok = QtWidgets.QInputDialog.getText(self, "保存方案", "方案名称")
-        if not ok or not text.strip():
-            return
-        request, _ = self._build_request()
-        if request is None or not request.preset:
-            return
-        try:
-            service.save_scheme(text.strip(), service.build_scheme_config(request))
-            self._reload_preset_combo()
-            saved_name = f"我的 · {text.strip()}"
-            index = self.preset_combo.findText(saved_name)
-            if index >= 0:
-                self.preset_combo.setCurrentIndex(index)
-            self._append_action_log(f"已保存方案：{text.strip()}")
-            self._toast.success(f"已保存方案：{text.strip()}")
-        except Exception as ex:
-            self._toast.error(str(ex))
+        self._scheme_controller.save_scheme()
 
     def _delete_scheme(self) -> None:
-        scheme_id = self._current_scheme_id()
-        if not scheme_id:
-            self._toast.info("请先选择「我的 · …」方案")
-            return
-        if not confirm_action(
-            self,
-            "确认删除",
-            f"删除方案「{self.preset_combo.currentText()}」？",
-            confirm_text="删除",
-            destructive=True,
-        ):
-            return
-        service = self._screening_service()
-        if service is None:
-            self._toast.warning("选股服务未就绪")
-            return
-        service.delete_scheme(scheme_id)
-        self._reload_preset_combo()
-        self._append_action_log("方案已删除")
-        self._toast.success("方案已删除")
+        self._scheme_controller.delete_scheme()
 
     def _export_csv(self) -> None:
-        if not self._results:
-            self._toast.warning("请先运行选股")
-            return
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self,
-            "导出 CSV",
-            "screener_results.csv",
-            "CSV (*.csv)",
+        self._selection_controller.export_csv(
+            default_filename="screener_results.csv",
+            empty_message="请先运行选股",
         )
-        if not path:
-            return
-        if not path.lower().endswith(".csv"):
-            path += ".csv"
-        service = self._screening_service()
-        if service is not None:
-            service.export_csv(self._results, path)
-        self._append_action_log(f"已导出：{path}")
-        self._toast.success(f"已导出 CSV：{path}")
 
     def activate(self) -> None:
         activate_screener_page(self)

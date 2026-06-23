@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Literal, cast
 
 from vnpy.event import EventEngine
@@ -17,7 +16,6 @@ from vnpy_ashare.app.engine_access import (
     get_quote_service,
     get_watchlist_service,
 )
-from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.strategy_profile import (
     StrategyProfileId,
     apply_strategy_profile,
@@ -26,7 +24,6 @@ from vnpy_ashare.config.preferences.strategy_profile import (
 )
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_watchlist_position_config
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
-from vnpy_ashare.config.trading_universe import is_market_board_combo_locked
 from vnpy_ashare.data.bar_health import (
     BarGapResult,
     BarHealthStatus,
@@ -35,13 +32,10 @@ from vnpy_ashare.data.bar_health import (
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem, canonical_vt_symbol
-from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
 from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
 from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge
-from vnpy_ashare.quotes.core.provider import is_gateway_quote_active
-from vnpy_ashare.quotes.rank.rank_catalog import get_rank_definition
 from vnpy_ashare.services.analysis import AnalysisService
 from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.services.position import PositionService
@@ -58,7 +52,7 @@ from vnpy_ashare.ui.quotes.controllers.pagination import MarketPaginationControl
 from vnpy_ashare.ui.quotes.controllers.quote_stream import QuoteStreamController
 from vnpy_ashare.ui.quotes.controllers.table import TableController
 from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
-from vnpy_ashare.ui.quotes.features.market_rank import SECTOR_DRILLDOWN_RANK_ID, MarketRankFeature
+from vnpy_ashare.ui.quotes.features.market_rank import MarketRankFeature
 from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
 from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
 from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
@@ -67,11 +61,6 @@ from vnpy_ashare.ui.quotes.page.config import (
     MARKET_SCROLL_DEBOUNCE_MS,
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
-    quote_refresh_hint,
-    quote_refresh_seconds,
-    quote_source_label,
-    radar_refresh_hint,
-    save_market_auto_refresh_pref,
 )
 from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
 from vnpy_ashare.ui.quotes.page.header_chips import (
@@ -79,9 +68,39 @@ from vnpy_ashare.ui.quotes.page.header_chips import (
     refresh_emotion_cycle_chip_for_page,
     refresh_risk_gate_chip_for_page,
 )
+from vnpy_ashare.ui.quotes.page.layout_persistence import (
+    on_quotes_page_resize,
+    restore_splitter,
+    save_splitter,
+    schedule_center_splitter_layout,
+    splitter_settings_key,
+)
+from vnpy_ashare.ui.quotes.page.market_drilldown import (
+    apply_pending_market_drilldown,
+    clear_market_drilldown_filters,
+    open_concept_drilldown,
+    open_industry_drilldown,
+    set_market_industry_filter,
+)
+from vnpy_ashare.ui.quotes.page.quote_refresh import (
+    market_auto_refresh_enabled as page_market_auto_refresh_enabled,
+    on_market_auto_refresh_toggled,
+    quote_auto_refresh_enabled as page_quote_auto_refresh_enabled,
+    quote_auto_refresh_paused_for_hours as page_quote_auto_refresh_paused_for_hours,
+    schedule_quote_auto_refresh,
+    update_quote_source_label,
+    update_refresh_hint_label,
+)
 from vnpy_ashare.ui.quotes.page.session_lifecycle import activate_quotes_page, deactivate_quotes_page
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
+from vnpy_ashare.ui.quotes.page.task_busy import (
+    begin_cancellable_task,
+    collect_busy_widgets,
+    end_cancellable_task,
+    finish_cancellable_task,
+    set_busy,
+)
 from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
 from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
 from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
@@ -93,7 +112,6 @@ from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupCont
 from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
 from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
 from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
-from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes, restore_center_splitter
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     BarGapCheckWorker,
     BarsLoadWorker,
@@ -345,39 +363,27 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         deactivate_quotes_page(self)
 
     def _splitter_settings_key(self) -> str:
-        return f"quotes/splitter/{self.page_name}"
+        return splitter_settings_key(self)
 
     def _column_settings_key(self) -> str:
         return self._table.column_settings_key()
 
     def _save_splitter(self) -> None:
-        if self._splitter is None:
-            return
-        settings = get_settings()
-        settings.setValue(self._splitter_settings_key(), self._splitter.saveState())
+        save_splitter(self)
 
     def _restore_splitter(self) -> None:
-        if self._splitter is None:
-            return
-        settings = get_settings()
-        state = settings.value(self._splitter_settings_key())
-        if state is not None:
-            self._splitter.restoreState(state)
+        restore_splitter(self)
 
     def _schedule_center_splitter_layout(self) -> None:
-        if not (self.config.show_watchlist_signals or self.config.show_watchlist_positions or self.config.show_run_output_panel):
-            return
-        QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self))
-        QtCore.QTimer.singleShot(150, lambda: restore_center_splitter(self))
+        schedule_center_splitter_layout(self)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
-        self._schedule_center_splitter_layout()
+        schedule_center_splitter_layout(self)
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         super().resizeEvent(event)
-        if getattr(self, "_center_splitter", None) is not None:
-            apply_center_splitter_sizes(self)
+        on_quotes_page_resize(self, event)
 
     def _save_column_config(self) -> None:
         self._table.save_column_config()
@@ -508,70 +514,16 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._market_industry_filter_listener = listener
 
     def set_market_industry_filter(self, industry: str | None) -> None:
-        self._market_industry_filter = industry
-        if industry:
-            self._market_vt_whitelist = None
-            self._market_drilldown_label = None
-        listener = self._market_industry_filter_listener
-        if listener is not None:
-            listener(industry)
-        self._table.filter_market_display()
+        set_market_industry_filter(self, industry)
 
     def clear_market_drilldown_filters(self) -> None:
-        self._market_industry_filter = None
-        self._market_vt_whitelist = None
-        self._market_drilldown_label = None
-        listener = self._market_industry_filter_listener
-        if listener is not None:
-            listener(None)
-        self._table.filter_market_display()
+        clear_market_drilldown_filters(self)
 
     def _apply_pending_market_drilldown(self) -> bool:
-        """将 open_industry/concept_drilldown 的 pending 筛选落盘。返回是否处理了 pending。"""
-        pending_concept = self._pending_concept_drilldown
-        pending_industry = self._pending_industry_drilldown
-        if not pending_concept and not pending_industry:
-            return False
-        self._pending_concept_drilldown = None
-        self._pending_industry_drilldown = None
-        if pending_concept:
-            self._market_vt_whitelist = pending_concept
-            self._market_industry_filter = None
-            listener = self._market_industry_filter_listener
-            if listener is not None:
-                listener(None)
-        else:
-            self._market_vt_whitelist = None
-            self._market_drilldown_label = None
-            self._market_industry_filter = pending_industry
-            listener = self._market_industry_filter_listener
-            if listener is not None:
-                listener(pending_industry)
-        self._industry_map_cache = None
-        self._market_board_base = None
-        self._market_board_base_key = None
-        return True
+        return apply_pending_market_drilldown(self)
 
     def open_industry_drilldown(self, industry: str, *, rank_id: str = "net_mf_in") -> None:
-        """从板块资金等入口下钻：主力净流入榜 + 行业成分筛选。"""
-
-        from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import resolve_industry_for_drilldown
-
-        cleaned = resolve_industry_for_drilldown(industry) or str(industry or "").strip()
-        if not cleaned:
-            return
-        self._pending_concept_drilldown = None
-        target_rank = get_rank_definition(rank_id or SECTOR_DRILLDOWN_RANK_ID).id
-        self._pending_industry_drilldown = cleaned
-        self.search_edit.clear()
-        self._market_filter_keyword = ""
-        if self.config.use_market_rank:
-            self._market_rank.apply_rank_for_drilldown(target_rank)
-        else:
-            self.set_market_industry_filter(cleaned)
-            self._pending_industry_drilldown = None
-        rank_title = get_rank_definition(target_rank).title
-        self.status_label.setText(f"{rank_title} · 行业筛选：{cleaned}（来自板块资金，点击行业 × 可清除）")
+        open_industry_drilldown(self, industry, rank_id=rank_id)
 
     def open_concept_drilldown(
         self,
@@ -580,26 +532,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         *,
         rank_id: str = "net_mf_in",
     ) -> None:
-        """从板块资金概念 Tab 下钻：主力净流入榜 + 概念成分白名单。"""
-
-        label = str(concept_name or "").strip()
-        cleaned = {str(item).strip() for item in vt_symbols if str(item or "").strip()}
-        if not label or not cleaned:
-            return
-        self._pending_industry_drilldown = None
-        target_rank = get_rank_definition(rank_id or SECTOR_DRILLDOWN_RANK_ID).id
-        self._pending_concept_drilldown = frozenset(cleaned)
-        self._market_drilldown_label = f"概念：{label}"
-        self.search_edit.clear()
-        self._market_filter_keyword = ""
-        if self.config.use_market_rank:
-            self._market_rank.apply_rank_for_drilldown(target_rank)
-        else:
-            self._market_vt_whitelist = self._pending_concept_drilldown
-            self._pending_concept_drilldown = None
-            self.set_market_industry_filter(None)
-        rank_title = get_rank_definition(target_rank).title
-        self.status_label.setText(f"{rank_title} · {self._market_drilldown_label}（来自板块资金）")
+        open_concept_drilldown(self, concept_name, vt_symbols, rank_id=rank_id)
 
     def _render_table(self, *, preserve_selection: bool = True) -> None:
         self._table.render_table(preserve_selection=preserve_selection)
@@ -788,11 +721,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._actions.emit_ai_context()
 
     def market_auto_refresh_enabled(self) -> bool:
-        if self.config.use_radar_cards:
-            return False
-        if self.config.use_market_rank:
-            return self._market_auto_refresh
-        return self.config.auto_refresh_quotes
+        return page_market_auto_refresh_enabled(self)
 
     def market_uses_client_pagination(self) -> bool:
         return self.config.use_market_rank and self.config.market_full_list and self._market_catalog_loaded
@@ -804,80 +733,22 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
             self.load_market_page()
 
     def quote_auto_refresh_enabled(self) -> bool:
-        if not self.config.quote_source:
-            return False
-        return self.market_auto_refresh_enabled()
+        return page_quote_auto_refresh_enabled(self)
 
     def quote_auto_refresh_paused_for_hours(self) -> bool:
-        return self.quote_auto_refresh_enabled() and not is_ashare_trading_session()
+        return page_quote_auto_refresh_paused_for_hours(self)
 
     def schedule_quote_auto_refresh(self) -> None:
-        """按交易时段调度下一次自动刷新（非交易时段休眠至下一段开盘）。"""
-        if not self._active or not self.quote_auto_refresh_enabled():
-            self._quote_timer.stop()
-            self._update_refresh_hint_label()
-            return
-
-        now = datetime.now(CHINA_TZ)
-        interval_sec = quote_refresh_seconds(self.config.quote_refresh_ms)
-        next_at = next_quotes_collect_at(now, interval_seconds=interval_sec)
-        delay_ms = max(int((next_at - now).total_seconds() * 1000), 1)
-        self._quote_timer.setInterval(delay_ms)
-        self._quote_timer.start()
-        self._update_refresh_hint_label()
+        schedule_quote_auto_refresh(self)
 
     def _on_market_auto_refresh_toggled(self, checked: bool) -> None:
-        if self.config.use_radar_cards:
-            return
-        self._market_auto_refresh = checked
-        save_market_auto_refresh_pref(checked)
-        self._update_refresh_hint_label()
-        self._market_page = 0
-        self._market_page_cache.clear()
-        self._pagination.set_visible()
-        if checked:
-            self._market_catalog_loaded = False
-            self._market_full_load_quiet = True
-            self.load_market_page()
-            if is_ashare_trading_session():
-                self.refresh_quotes()
-            self.schedule_quote_auto_refresh()
-        else:
-            self._quote_timer.stop()
-            if self._market_catalog_loaded:
-                self._table.apply_market_display()
-            else:
-                self._market_full_load_quiet = True
-                self.load_market_page()
+        on_market_auto_refresh_toggled(self, checked)
 
     def _update_refresh_hint_label(self) -> None:
-        label = getattr(self, "refresh_hint_label", None)
-        if label is None:
-            return
-        if self.config.use_radar_cards:
-            label.setText(radar_refresh_hint())
-            return
-        auto_refresh = self.quote_auto_refresh_enabled()
-        label.setText(
-            quote_refresh_hint(
-                auto_refresh=auto_refresh,
-                refresh_ms=self.config.quote_refresh_ms,
-                quote_source=self.config.quote_source,
-                paused_for_hours=self.quote_auto_refresh_paused_for_hours(),
-            )
-        )
+        update_refresh_hint_label(self)
 
     def _update_quote_source_label(self) -> None:
-        label = getattr(self, "quote_source_label", None)
-        if label is None:
-            return
-        text = quote_source_label(
-            self.config,
-            stream_active=self._use_quote_stream(),
-            gateway_active=is_gateway_quote_active(),
-        )
-        label.setText(text)
-        label.setVisible(bool(text))
+        update_quote_source_label(self)
 
     def _use_quote_stream(self) -> bool:
         return self._stream.use_stream()
@@ -1071,48 +942,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._local.run_download(mode=cast(Literal["full", "incremental"], mode), action_label=action_label)
 
     def _collect_busy_widgets(self, *, lock_table: bool = True) -> list[QtWidgets.QWidget]:
-        widgets: list[QtWidgets.QWidget] = [self.search_edit]
-        if self.config.use_local_table:
-            widgets.append(self.local_period_combo)
-        if self.config.show_board_filter:
-            widgets.append(self.board_combo)
-        if self.industry_filter is not None:
-            widgets.append(self.industry_filter)
-        if self.config.use_market_rank or self.config.show_refresh_quotes_button:
-            widgets.append(self.refresh_quotes_button)
-        if self.config.show_sync_button:
-            widgets.append(self.sync_button)
-        for name in (
-            "download_button",
-            "fill_button",
-            "redownload_button",
-            "delete_local_button",
-            "batch_fill_button",
-            "batch_gap_fill_button",
-            "gap_fill_button",
-            "add_watchlist_button",
-            "remove_watchlist_button",
-            "move_watchlist_up_button",
-            "move_watchlist_down_button",
-            "backtest_button",
-            "batch_backtest_button",
-            "diagnose_button",
-        ):
-            button = getattr(self, name, None)
-            if button is not None:
-                widgets.append(button)
-        if lock_table and self.config.use_market_rank and not self.config.market_full_list:
-            for name in (
-                "home_button",
-                "prev_page_button",
-                "next_page_button",
-                "end_button",
-                "page_jump_input",
-            ):
-                control = getattr(self, name, None)
-                if control is not None:
-                    widgets.append(control)
-        return widgets
+        return collect_busy_widgets(self, lock_table=lock_table)
 
     def _begin_cancellable_task(
         self,
@@ -1124,76 +954,21 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         primary_handler=None,
         lock_table: bool = True,
     ) -> None:
-        self._active_worker_attr = worker_attr
-        self._task_lock_table = lock_table
-        self._set_busy(True, lock_table=lock_table)
-
-        def on_cancel() -> None:
-            worker = getattr(self, worker_attr, None)
-            if worker is not None and hasattr(worker, "request_cancel"):
-                worker.request_cancel()
-
-        self._task_guard.begin(
+        begin_cancellable_task(
+            self,
             message,
-            widgets=self._collect_busy_widgets(lock_table=lock_table),
+            worker_attr=worker_attr,
             primary=primary,
             primary_text=primary_text,
             primary_handler=primary_handler,
-            on_cancel=on_cancel,
+            lock_table=lock_table,
         )
 
     def _end_cancellable_task(self) -> bool:
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        self._set_busy(False, lock_table=self._task_lock_table)
-        self._active_worker_attr = None
-        return cancelled
+        return end_cancellable_task(self)
 
     def _finish_cancellable_task(self, *, cancelled_message: str = "任务已取消") -> bool:
-        if self._end_cancellable_task():
-            self._toast.info(cancelled_message)
-            return True
-        return False
+        return finish_cancellable_task(self, cancelled_message=cancelled_message)
 
     def _set_busy(self, busy: bool, *, lock_table: bool = True) -> None:
-        self.search_edit.setEnabled(not busy)
-        if self.config.use_local_table:
-            self.local_period_combo.setEnabled(not busy)
-        if self.config.show_board_filter:
-            self.board_combo.setEnabled(not busy and not is_market_board_combo_locked())
-        if self.industry_filter is not None:
-            self.industry_filter.setEnabled(not busy)
-        rank_list = getattr(self, "rank_list", None)
-        if rank_list is not None:
-            rank_list.setEnabled(not busy)
-        if self.config.use_market_rank or self.config.show_refresh_quotes_button:
-            self.refresh_quotes_button.setEnabled(not busy)
-        if self.config.show_sync_button:
-            self.sync_button.setEnabled(not busy)
-        if self.config.use_market_rank and not self.config.market_full_list:
-            self._pagination.update_busy_state(busy)
-        if busy:
-            if self.config.show_download_button:
-                self.download_button.setEnabled(False)
-            if self.config.show_fill_button:
-                self.fill_button.setEnabled(False)
-            if self.config.show_redownload_button:
-                self.redownload_button.setEnabled(False)
-            if self.config.show_delete_button:
-                self.delete_local_button.setEnabled(False)
-            if self.config.show_batch_fill_button:
-                self.batch_fill_button.setEnabled(False)
-            if self.config.show_batch_gap_fill_button:
-                self.batch_gap_fill_button.setEnabled(False)
-                self.gap_fill_button.setEnabled(False)
-            if self.config.show_add_watchlist_button:
-                self.add_watchlist_button.setEnabled(False)
-            if self.config.show_remove_watchlist_button:
-                self.remove_watchlist_button.setEnabled(False)
-            if self.config.show_watchlist_move_buttons:
-                self.move_watchlist_up_button.setEnabled(False)
-                self.move_watchlist_down_button.setEnabled(False)
-        else:
-            self._update_action_buttons()
-        if lock_table:
-            self.market_table.setEnabled(not busy)
+        set_busy(self, busy, lock_table=lock_table)
