@@ -12,7 +12,7 @@ from vnpy_common.paths import APP_ID, VNTRADER_DIR
 
 SCHEDULER_CONFIG_PATH = VNTRADER_DIR / f"{APP_ID}_scheduler.json"
 
-# 推荐调度时刻：按依赖顺序排列，相邻重任务间隔 ≥10 分钟，避免上一轮未结束即触发下一轮。
+# 推荐调度时刻：按依赖顺序排列；全市场日 K 约 30 分钟，后续任务从 17:00 起排。
 # (hour, minute, day_of_week)；day_of_week 省略时默认为 mon-fri。
 _WEEKLY_CRON: dict[str, tuple[int, int, str]] = {
     "sync_trade_calendar": (7, 50, "mon"),
@@ -21,37 +21,37 @@ _WEEKLY_CRON: dict[str, tuple[int, int, str]] = {
 }
 _POST_CLOSE_CRON: dict[str, tuple[int, int]] = {
     "batch_download_universe": (16, 20),
-    "prefetch_moneyflow": (16, 30),
-    "prefetch_tushare": (16, 40),
-    "sync_suspend_daily": (16, 50),
-    "prefetch_concept_board": (17, 0),
-    "warm_market_summary": (17, 10),
-    "sync_sector_flow_daily": (17, 15),
-    "sync_disclosure_calendar": (17, 20),
-    "screen_post_close": (17, 30),
-    "scan_horizon_outlook": (17, 45),
-    "sync_watchlist_financials": (17, 50),
-    "batch_fill_stale": (18, 0),
-    "warm_watchlist_strategy_cache": (18, 15),
-    "fill_focus_pool_minute": (18, 30),
+    "prefetch_moneyflow": (17, 0),
+    "prefetch_tushare": (17, 10),
+    "sync_suspend_daily": (17, 20),
+    "prefetch_concept_board": (17, 30),
+    "warm_market_summary": (17, 40),
+    "sync_sector_flow_daily": (17, 45),
+    "sync_disclosure_calendar": (17, 50),
+    "screen_post_close": (18, 0),
+    "scan_horizon_outlook": (18, 15),
+    "sync_watchlist_financials": (18, 20),
+    "batch_fill_stale": (18, 30),
+    "warm_watchlist_strategy_cache": (18, 45),
+    "fill_focus_pool_minute": (19, 0),
 }
-# 升级前默认时刻；仅当 persisted 值仍等于旧默认时才自动迁移到新推荐时刻。
-_LEGACY_CRON_DEFAULTS: dict[str, tuple[int, int]] = {
-    "sync_stock_industry": (8, 10),
-    "batch_download_universe": (16, 25),
-    "prefetch_moneyflow": (16, 31),
-    "prefetch_tushare": (16, 32),
-    "sync_suspend_daily": (16, 33),
-    "prefetch_concept_board": (16, 33),
-    "warm_market_summary": (16, 34),
-    "sync_sector_flow_daily": (16, 36),
-    "sync_disclosure_calendar": (16, 40),
-    "screen_post_close": (16, 35),
-    "scan_horizon_outlook": (16, 40),
-    "sync_watchlist_financials": (16, 45),
-    "batch_fill_stale": (17, 0),
-    "warm_watchlist_strategy_cache": (16, 38),
-    "fill_focus_pool_minute": (17, 5),
+# 历史默认时刻；persisted 值仍等于其中任一时刻时自动迁移到新推荐时刻。
+_LEGACY_CRON_SCHEDULES: dict[str, list[tuple[int, int]]] = {
+    "sync_stock_industry": [(8, 10)],
+    "batch_download_universe": [(16, 25)],
+    "prefetch_moneyflow": [(16, 31), (16, 30)],
+    "prefetch_tushare": [(16, 32), (16, 40)],
+    "sync_suspend_daily": [(16, 33), (16, 50)],
+    "prefetch_concept_board": [(16, 33), (17, 0)],
+    "warm_market_summary": [(16, 34), (17, 10)],
+    "sync_sector_flow_daily": [(16, 36), (17, 15)],
+    "sync_disclosure_calendar": [(16, 40), (17, 20)],
+    "screen_post_close": [(16, 35), (17, 30)],
+    "scan_horizon_outlook": [(16, 40), (17, 45)],
+    "sync_watchlist_financials": [(16, 45), (17, 50)],
+    "batch_fill_stale": [(17, 0), (18, 0)],
+    "warm_watchlist_strategy_cache": [(16, 38), (18, 15)],
+    "fill_focus_pool_minute": [(17, 5), (18, 30)],
 }
 
 
@@ -104,8 +104,8 @@ class AutoScreenJobConfig(MutableModel):
     enabled: bool = Field(default=False, description="是否启用")
     recipe_id: str = Field(default="", description="配方 ID")
     top_n: int = Field(default=20, description="输出 Top N")
-    cron_hour: int = Field(default=17, description="Cron 小时（收盘后）")
-    cron_minute: int = Field(default=30, description="Cron 分钟")
+    cron_hour: int = Field(default=18, description="Cron 小时（收盘后）")
+    cron_minute: int = Field(default=0, description="Cron 分钟")
     cron_day_of_week: str = Field(default="mon-fri", description="Cron 星期")
     cron_hours: str = Field(default="10,14", description="盘中 Cron 小时列表")
     cron_minute_intraday: int = Field(default=2, description="盘中 Cron 分钟")
@@ -321,14 +321,12 @@ def _migrate_scheduler_cron_defaults(data: dict) -> tuple[dict, bool]:
     """将仍等于旧默认时刻的任务 cron 迁移到新推荐时刻。"""
     changed = False
     migrated = dict(data)
-    for key, legacy in _LEGACY_CRON_DEFAULTS.items():
+    for key, legacy_times in _LEGACY_CRON_SCHEDULES.items():
         raw = migrated.get(key)
         if not isinstance(raw, dict):
             continue
-        legacy_hour, legacy_minute = legacy
-        if int(raw.get("cron_hour", -1)) != legacy_hour:
-            continue
-        if int(raw.get("cron_minute", -1)) != legacy_minute:
+        current = (int(raw.get("cron_hour", -1)), int(raw.get("cron_minute", -1)))
+        if current not in legacy_times:
             continue
         if key in _POST_CLOSE_CRON:
             new_hour, new_minute = _POST_CLOSE_CRON[key]

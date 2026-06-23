@@ -8,7 +8,7 @@ from vnpy.event import Event, EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.ai.context.screener import build_ask_ai_prompt_for_run, sync_screener_page_context
+from vnpy_ashare.ai.context.screener import build_ask_ai_prompt_for_run
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.app.engine_access import (
     get_backtest_service,
@@ -18,25 +18,24 @@ from vnpy_ashare.app.engine_access import (
 from vnpy_ashare.app.events import (
     EVENT_ASK_AI,
     EVENT_OPEN_BACKTEST,
-    EVENT_ORB_ATTENTION,
     AskAiRequest,
     BacktestRequest,
     FillScreenerRequest,
-    OrbAttentionRequest,
 )
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
-from vnpy_ashare.screener.data.screening_status import build_run_insight_detail, request_uses_live_quotes
+from vnpy_ashare.screener.data.screening_status import request_uses_live_quotes
 from vnpy_ashare.screener.pattern.pattern_screen import list_pattern_screeners
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
-from vnpy_ashare.screener.run.run_diff import enrich_condition_run
 from vnpy_ashare.screener.run.runner import ScreenerRequest, ScreenerRunResult, build_industry_scheme_config
-from vnpy_ashare.screener.run.ultra_short_pool_filter import filter_ultra_short_main_pool
 from vnpy_ashare.screener.sentiment.recession_watchlist_guard import confirm_recession_batch_watchlist
 from vnpy_ashare.services.screening import ScreeningService
 from vnpy_ashare.ui.backtest.flow.batch_backtest_flow import BatchBacktestFlow
 from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.features.stock_analysis.open import wire_stock_analysis_context_menu
 from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
+from vnpy_ashare.ui.screener.pages.screener_result_presenter import ScreenerResultPresenter
+from vnpy_ashare.ui.screener.pages.screener_run_controller import ScreenerRunController
+from vnpy_ashare.ui.screener.pages.screener_session import activate_screener_page, deactivate_screener_page
 from vnpy_ashare.ui.screener.widgets.screener_config_section import ScreenerConfigSection
 from vnpy_ashare.ui.screener.widgets.screener_hard_filter_panel import ScreenerHardFilterPanel
 from vnpy_ashare.ui.screener.widgets.screener_insights import (
@@ -50,7 +49,6 @@ from vnpy_ashare.ui.screener.widgets.screener_layout import (
 )
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     ROW_DATA_ROLE,
-    apply_screener_results_view,
     configure_screener_results_table,
     iter_checked_table_rows,
     toggle_select_all_table_rows,
@@ -60,14 +58,7 @@ from vnpy_ashare.ui.screener.widgets.screener_results_table import (
 from vnpy_ashare.ui.screener.widgets.screener_run_output_panel import ScreenerRunOutputPanel
 from vnpy_ashare.ui.screener.widgets.screener_run_sidebar import ScreenerRunSidebar
 from vnpy_ashare.ui.screener.widgets.screener_toolbars import ScreenerResultActionBar, screener_toolbar_separator
-from vnpy_ashare.ui.screener.workers.screener_workers import (
-    IndustryScreenRunWorker,
-    LeaderScreenRunWorker,
-    PatternScreenRunWorker,
-    RadarResonanceRunWorker,
-    ScreenerBatchDownloadWorker,
-    ScreenerRunWorker,
-)
+from vnpy_ashare.ui.screener.workers.screener_workers import ScreenerBatchDownloadWorker
 from vnpy_common.ui.feedback import PageToastHost, TaskGuard, confirm_action
 from vnpy_common.ui.qt_helpers import release_thread
 
@@ -90,11 +81,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self.setObjectName("MarketRoot")
         self._active = False
         self._embedded = embedded
-        self._worker: ScreenerRunWorker | None = None
-        self._pattern_worker: PatternScreenRunWorker | None = None
-        self._radar_worker: RadarResonanceRunWorker | None = None
-        self._leader_worker: LeaderScreenRunWorker | None = None
-        self._industry_worker: IndustryScreenRunWorker | None = None
         self._pending_industry: str = ""
         self._download_worker: ScreenerBatchDownloadWorker | None = None
         self._batch_backtest_flow: BatchBacktestFlow | None = None
@@ -106,6 +92,8 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._watchlist_service = get_watchlist_service(main_engine)
 
         self._build_ui()
+        self._result_presenter = ScreenerResultPresenter(self)
+        self._run_controller = ScreenerRunController(self)
         self._status_controller = ScreeningPageStatusController(
             self,
             self.data_status_bar,
@@ -526,180 +514,24 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         release_thread(self._retired_workers, worker, timeout_ms=timeout_ms)
 
     def _run_screening(self) -> None:
-        if self._task_guard.active:
-            return
-        if self._worker is not None and self._worker.isRunning():
-            return
-
-        request, _ = self._build_request()
-        if request is None:
-            return
-
-        self._task_guard.begin(
-            "正在运行条件选股…",
-            widgets=self._task_lock_widgets(),
-            primary=self.run_btn,
-            primary_text="▶  运行条件选股",
-            primary_handler=self._run_screening,
-            on_cancel=self._cancel_screening,
-        )
-        self.run_output_panel.begin_run(
-            label=self.preset_combo.currentText(),
-            top_n=self.top_n_spin.value(),
-        )
-
-        worker = ScreenerRunWorker(
-            preset=request.preset,
-            top_n=request.top_n,
-            min_change_pct=request.min_change_pct,
-            max_change_pct=request.max_change_pct,
-            min_turnover=request.min_turnover,
-            scheme_id=request.scheme_id,
-        )
-        if request.scheme_id:
-            worker.preset = self.preset_combo.currentText()
-        self._worker = worker
-        worker.finished.connect(self._on_screen_finished)
-        worker.failed.connect(self._on_screen_failed)
-        worker.start()
+        self._run_controller.run_screening()
 
     def _cancel_screening(self) -> None:
-        if self._worker is not None:
-            self._worker.request_cancel()
-        if self._pattern_worker is not None:
-            self._pattern_worker.request_cancel()
-        if self._radar_worker is not None:
-            self._radar_worker.request_cancel()
-        if self._leader_worker is not None:
-            self._leader_worker.request_cancel()
-        if self._industry_worker is not None:
-            self._industry_worker.request_cancel()
+        self._run_controller.cancel_screening()
 
     def run_radar_resonance_screen(self) -> None:
         """供雷达共振面板等外部入口跳转并执行选股。"""
-        self._run_radar_resonance()
+        self._run_controller.run_radar_resonance()
 
     def run_leader_screen(self, *, variant: str = "mainline") -> None:
         """供雷达页 / 主窗口跳转并执行龙头选股。"""
-        self._run_leader_screen(variant=variant)
+        self._run_controller.run_leader_screen(variant=variant)
 
     def _run_leader_screen(self, *, variant: str = "mainline") -> None:
-        if self._task_guard.active:
-            return
-        if self._leader_worker is not None and self._leader_worker.isRunning():
-            return
-        top_n = self.top_n_spin.value()
-        self._pending_leader_variant = variant
-        self._task_guard.begin(
-            "正在运行雷达龙头选股…",
-            widgets=self._task_lock_widgets(),
-            primary=self.leader_screen_btn,
-            primary_text="运行雷达龙头",
-            primary_handler=lambda: self._run_leader_screen(variant=variant),
-            on_cancel=self._cancel_screening,
-        )
-        self.run_output_panel.begin_run(label="雷达龙头", top_n=top_n, kind="雷达")
-        worker = LeaderScreenRunWorker(
-            self.main_engine,
-            top_n=top_n,
-            variant=variant,
-            parent=self,
-        )
-        self._leader_worker = worker
-        worker.finished.connect(self._on_leader_finished)
-        worker.failed.connect(self._on_leader_failed)
-        worker.start()
-
-    def _on_leader_finished(self, result: ScreenerRunResult) -> None:
-        worker = self._leader_worker
-        self._leader_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled:
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("雷达龙头选股已取消")
-            return
-        config = {
-            "trigger": "radar_leader",
-            "leader_variant": getattr(self, "_pending_leader_variant", "mainline"),
-        }
-        self._apply_screen_result(result, trigger="radar_leader", extra_config=config)
-
-    def _on_leader_failed(self, message: str) -> None:
-        worker = self._leader_worker
-        self._leader_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled or message == "已取消":
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("雷达龙头选股已取消")
-            return
-        self.run_output_panel.fail_run(message)
-        self._toast.error(message)
+        self._run_controller.run_leader_screen(variant=variant)
 
     def _run_radar_resonance(self) -> None:
-        if self._task_guard.active:
-            return
-        if self._radar_worker is not None and self._radar_worker.isRunning():
-            return
-        top_n = self.top_n_spin.value()
-        self._task_guard.begin(
-            "正在运行雷达共振选股…",
-            widgets=self._task_lock_widgets(),
-            primary=self.radar_resonance_btn,
-            primary_text="运行雷达共振",
-            primary_handler=self._run_radar_resonance,
-            on_cancel=self._cancel_screening,
-        )
-        self.run_output_panel.begin_run(label="雷达共振", top_n=top_n, kind="雷达")
-        worker = RadarResonanceRunWorker(
-            self.main_engine,
-            top_n=top_n,
-            parent=self,
-        )
-        self._radar_worker = worker
-        worker.finished.connect(self._on_radar_finished)
-        worker.failed.connect(self._on_radar_failed)
-        worker.start()
-
-    def _on_radar_finished(self, result: ScreenerRunResult) -> None:
-        worker = self._radar_worker
-        self._radar_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled:
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("雷达共振选股已取消")
-            return
-        self._apply_screen_result(result, trigger="radar")
-
-    def _on_radar_failed(self, message: str) -> None:
-        worker = self._radar_worker
-        self._radar_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled or message == "已取消":
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("雷达共振选股已取消")
-            return
-        self.run_output_panel.fail_run(message)
-        self._toast.error(message)
+        self._run_controller.run_radar_resonance()
 
     def run_industry_screen(self, industry: str) -> None:
         """供板块资金页等外部入口跳转并执行行业成分选股。"""
@@ -709,108 +541,16 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             return
         self.industry_edit.setText(label)
         self._pending_industry = label
-        self._run_industry_screen()
+        self._run_controller.run_industry_screen()
 
     def _run_industry_from_form(self) -> None:
-        industry = self.industry_edit.text().strip()
-        if not industry:
-            self._toast.warning("请输入行业名称")
-            return
-        self._pending_industry = industry
-        self._run_industry_screen()
+        self._run_controller.run_industry_from_form()
 
     def _run_industry_screen(self) -> None:
-        industry = self._pending_industry.strip()
-        if not industry:
-            self._toast.warning("请先选择行业")
-            return
-        if self._task_guard.active:
-            return
-        if self._industry_worker is not None and self._industry_worker.isRunning():
-            return
-        top_n = self.top_n_spin.value()
-        self._task_guard.begin(
-            f"正在筛选「{industry}」成分股…",
-            widgets=self._task_lock_widgets(),
-            primary=None,
-            on_cancel=self._cancel_screening,
-        )
-        self.run_output_panel.begin_run(label=f"{industry} 成分", top_n=top_n, kind="行业")
-        worker = IndustryScreenRunWorker(
-            self.main_engine,
-            industry=industry,
-            top_n=top_n,
-            parent=self,
-        )
-        self._industry_worker = worker
-        worker.finished.connect(self._on_industry_finished)
-        worker.failed.connect(self._on_industry_failed)
-        worker.start()
-
-    def _on_industry_finished(self, result: ScreenerRunResult) -> None:
-        worker = self._industry_worker
-        self._industry_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled:
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("行业成分选股已取消")
-            return
-        industry = self._pending_industry.strip()
-        self._apply_screen_result(
-            result,
-            trigger="industry",
-            extra_config={"industry": industry} if industry else None,
-        )
-
-    def _on_industry_failed(self, message: str) -> None:
-        worker = self._industry_worker
-        self._industry_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled or message == "已取消":
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("行业成分选股已取消")
-            return
-        self.run_output_panel.fail_run(message)
-        self._toast.error(message)
+        self._run_controller.run_industry_screen()
 
     def _run_pattern_screen(self) -> None:
-        if self._task_guard.active:
-            return
-        if self._pattern_worker is not None and self._pattern_worker.isRunning():
-            return
-        pattern = self.pattern_combo.currentText().strip()
-        if not pattern:
-            return
-        top_n = self.top_n_spin.value()
-        self._task_guard.begin(
-            f"正在运行形态选股「{pattern}」…",
-            widgets=self._task_lock_widgets(),
-            primary=self.pattern_run_btn,
-            primary_text="运行形态选股",
-            primary_handler=self._run_pattern_screen,
-            on_cancel=self._cancel_screening,
-        )
-        self.run_output_panel.begin_run(label=pattern, top_n=top_n, kind="形态")
-        worker = PatternScreenRunWorker(
-            self.main_engine,
-            pattern=pattern,
-            top_n=top_n,
-            parent=self,
-        )
-        self._pattern_worker = worker
-        worker.finished.connect(self._on_pattern_finished)
-        worker.failed.connect(self._on_pattern_failed)
-        worker.start()
+        self._run_controller.run_pattern_screen()
 
     def _open_reference_peer(self) -> None:
         selected = self._iter_checked_rows()
@@ -837,41 +577,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             parent=self,
         )
 
-    def _on_pattern_finished(self, result: ScreenerRunResult) -> None:
-        worker = self._pattern_worker
-        self._pattern_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled:
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("形态选股已取消")
-            return
-        self._apply_screen_result(
-            result,
-            trigger="pattern",
-            extra_config={"pattern": self.pattern_combo.currentText().strip()},
-        )
-
-    def _on_pattern_failed(self, message: str) -> None:
-        worker = self._pattern_worker
-        self._pattern_worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled or message == "已取消":
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("形态选股已取消")
-            return
-        self.run_output_panel.fail_run(message)
-        self._toast.error(message)
-
     def _apply_screen_result(
         self,
         result: ScreenerRunResult,
@@ -879,74 +584,7 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         trigger: str = "manual",
         extra_config: dict[str, Any] | None = None,
     ) -> None:
-        config: dict[str, Any] = dict(extra_config or {})
-        config["trigger"] = trigger
-        self._last_run_config = dict(config)
-        self._results = list(result.rows)
-        if trigger in ("radar", "radar_leader", "industry", "pattern"):
-            self._results = enrich_condition_run(
-                self._results,
-                result.condition,
-                config,
-                source=result.source,
-            )
-        service = self._screening_service()
-        self._result_columns = result.columns or (service.resolve_export_columns(self._results) if service else [])
-        apply_screener_results_view(
-            self.result_table,
-            self._results,
-            self._result_columns,
-            empty_label=self._empty_result_label,
-            select_all_btn=self.select_all_btn,
-            result_action_bar=self.result_action_bar,
-            export_btn=self.export_btn,
-        )
-        if service is not None:
-            if trigger == "manual":
-                request, _ = self._build_request()
-                service.save_manual_run(result, request)
-            else:
-                service.persist_run_result(result, extra_config=config)
-        else:
-            self._store_screening_results(
-                condition=result.condition,
-                rows=self._results,
-                updated_at=result.updated_at,
-            )
-        updated = result.updated_at or "-"
-        source_label = service.format_source_tag(result.source) if service else result.source
-        summary = f"「{result.condition}」命中 {len(self._results)} 条 · 扫描 {result.total_scanned} 只 · {source_label} · 更新 {updated}"
-        insight_detail = build_run_insight_detail(self._results, config if trigger != "manual" else None)
-        detail_lines = [f"数据源 {result.source} · 已写入历史运行"]
-        if insight_detail:
-            detail_lines.append(insight_detail)
-        self.result_insights.apply(self._results, config if trigger != "manual" else None)
-        self.run_output_panel.complete_run(
-            summary=summary,
-            detail="\n".join(detail_lines),
-        )
-        self.run_sidebar.refresh()
-        sync_screener_page_context(self.main_engine)
-        self._toast.success(f"选股完成，命中 {len(self._results)} 条")
-        if self.event_engine is not None:
-            self.event_engine.put(
-                Event(EVENT_ORB_ATTENTION, OrbAttentionRequest(source="screener")),
-            )
-
-    def _on_screen_finished(self, result: ScreenerRunResult) -> None:
-        worker = self._worker
-        self._worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled:
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("条件选股已取消")
-            return
-        self._apply_screen_result(result, trigger="manual")
+        self._result_presenter.apply_screen_result(result, trigger=trigger, extra_config=extra_config)
 
     def _on_copy_run_id(self, run_id: str, condition: str) -> None:
         short = run_id[:8] + "…" if len(run_id) > 8 else run_id
@@ -969,95 +607,18 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._load_historical_run(run_id)
 
     def _load_historical_run(self, run_id: str) -> None:
-        service = self._screening_service()
-        record = service.get_run_record(run_id) if service else None
-        if record is None:
-            self._append_action_log("历史运行不存在或已删除")
-            self._clear_loaded_run_view()
-            return
-        self._loaded_run_id = run_id
-        self._results = list(record.rows)
-        self._result_columns = service.resolve_export_columns(self._results) if service else []
-        apply_screener_results_view(
-            self.result_table,
-            self._results,
-            self._result_columns,
-            empty_label=self._empty_result_label,
-            select_all_btn=self.select_all_btn,
-            result_action_bar=self.result_action_bar,
-            export_btn=self.export_btn,
-        )
-        self._store_screening_results(
-            condition=record.condition,
-            rows=self._results,
-            updated_at=record.created_at,
-        )
-        source_label = service.format_source_tag(record.source) if service else record.source
-        summary = f"[历史] 「{record.condition}」命中 {len(self._results)} 条 · 扫描 {record.total_scanned} · {source_label} · {record.created_at}"
-        self.result_insights.apply(self._results, record.config)
-        self.run_output_panel.load_history(summary=summary)
-        sync_screener_page_context(self.main_engine)
+        self._result_presenter.load_historical_run(run_id)
 
     def _filter_ultra_short_pool(self) -> None:
-        if not self._results:
-            self._toast.info("暂无结果可筛选")
-            return
-        before = len(self._results)
-        filtered = filter_ultra_short_main_pool(self._results)
-        if not filtered:
-            self._toast.warning("短线主池过滤后无命中（需连板/涨幅/龙头分 + 激进硬过滤）")
-            return
-        self._results = filtered
-        apply_screener_results_view(
-            self.result_table,
-            self._results,
-            self._result_columns,
-            empty_label=self._empty_result_label,
-            select_all_btn=self.select_all_btn,
-            result_action_bar=self.result_action_bar,
-            export_btn=self.export_btn,
-        )
-        self.result_insights.apply(self._results, self._last_run_config or None)
-        sync_screener_page_context(self.main_engine)
-        self._toast.success(f"已收窄至短线主池：{before} → {len(filtered)} 条")
+        self._result_presenter.filter_ultra_short_pool()
 
     def _clear_loaded_run_view(self) -> None:
-        self._loaded_run_id = None
-        self._results = []
-        self._result_columns = []
-        apply_screener_results_view(
-            self.result_table,
-            self._results,
-            self._result_columns,
-            empty_label=self._empty_result_label,
-            select_all_btn=self.select_all_btn,
-            result_action_bar=self.result_action_bar,
-            export_btn=self.export_btn,
-        )
-        self._store_screening_results(condition="", rows=[])
-        self.result_insights.clear()
+        self._result_presenter.clear_loaded_run_view()
 
     def _on_runs_deleted(self, run_ids: list) -> None:
         if self._loaded_run_id is not None and self._loaded_run_id in run_ids:
             self._clear_loaded_run_view()
             self._append_action_log("已删除当前展示的历史运行")
-
-    def _on_screen_failed(self, message: str) -> None:
-        worker = self._worker
-        self._worker = None
-        self._release_worker(worker)
-        if not self._active:
-            self._task_guard.end()
-            return
-        cancelled = self._task_guard.cancelled
-        self._task_guard.end()
-        if cancelled or message == "已取消":
-            self.run_output_panel.fail_run("已取消")
-            self._toast.info("条件选股已取消")
-            return
-        self.run_output_panel.fail_run(message)
-        if message != "已取消":
-            self._toast.error(message)
 
     def _select_all(self) -> None:
         toggle_select_all_table_rows(self.result_table)
@@ -1101,21 +662,6 @@ class ScreenerPageWidget(QtWidgets.QWidget):
             msg += f" · 自选已满（最多 {self._watchlist_service.max_items} 只）"
         self._append_action_log(msg)
         self._toast.success(msg)
-
-    def _store_screening_results(
-        self,
-        *,
-        condition: str,
-        rows: list,
-        updated_at: str | None = None,
-    ) -> None:
-        service = self._screening_service()
-        if service is not None:
-            service.set_screening_results(
-                condition=condition,
-                rows=rows,
-                updated_at=updated_at,
-            )
 
     def _download_selected_bars(self) -> None:
         if self._task_guard.active:
@@ -1351,28 +897,10 @@ class ScreenerPageWidget(QtWidgets.QWidget):
         self._toast.success(f"已导出 CSV：{path}")
 
     def activate(self) -> None:
-        self._active = True
-        self._reload_preset_combo()
-        self.run_sidebar.refresh()
-        self._status_controller.activate()
-        sync_screener_page_context(self.main_engine)
+        activate_screener_page(self)
 
     def deactivate(self) -> None:
-        self._active = False
-        self._status_controller.deactivate()
-        if self._worker is not None:
-            self._worker.request_cancel()
-        if self._pattern_worker is not None:
-            self._pattern_worker.request_cancel()
-        if self._download_worker is not None:
-            self._download_worker.request_cancel()
-        self._task_guard.end()
-        for attr in ("_worker", "_pattern_worker", "_download_worker"):
-            worker = getattr(self, attr, None)
-            setattr(self, attr, None)
-            self._release_worker(worker, timeout_ms=0)
-        if self._batch_backtest_flow is not None:
-            self._batch_backtest_flow.release_worker(self._retired_workers, timeout_ms=0)
+        deactivate_screener_page(self)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.deactivate()

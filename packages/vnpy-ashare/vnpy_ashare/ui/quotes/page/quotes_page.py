@@ -79,6 +79,7 @@ from vnpy_ashare.ui.quotes.page.header_chips import (
     refresh_emotion_cycle_chip_for_page,
     refresh_risk_gate_chip_for_page,
 )
+from vnpy_ashare.ui.quotes.page.session_lifecycle import activate_quotes_page, deactivate_quotes_page
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
 from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
@@ -329,56 +330,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
             self._watchlist_feature.wire()
 
     def activate(self) -> None:
-        self._active = True
-        if self.config.column_configurable and self._table.sync_tail_columns_with_config():
-            self._table.rebuild_table()
-        if self.config.use_radar_cards:
-            self._update_quote_source_label()
-            self._refresh_emotion_cycle_chip()
-            controller = getattr(self, "_radar_controller", None)
-            if controller is not None:
-                controller.activate()
-            return
-        if self.chart_panel is not None:
-            self.chart_panel.set_active(True)
-        if self.config.use_quote_stream:
-            self._stream.start()
-        if self.config.show_add_watchlist_button or self.page_name == "自选":
-            self._watchlist.refresh_keys()
-        if self._watchlist_groups is not None:
-            self._watchlist_groups.refresh_groups()
-        if self.config.use_local_table:
-            self._local.schedule_invalid_bar_cleanup()
-        if self.config.use_local_table and not self.config.use_local_pagination:
-            self._local.refresh_meta()
-        if self.current_item is not None and self.chart_panel is not None:
-            quote = self.quote_map.get(self.current_item.tickflow_symbol)
-            self.chart_panel.load_item(self.current_item, quote=quote)
-        if self._watchlist_bootstrap is not None:
-            self._watchlist_bootstrap.on_activate(self)
-        else:
-            self.load_stock_list()
-        self._restore_splitter()
-        chart_section = getattr(self, "chart_section", None)
-        if chart_section is not None:
-            self._on_chart_section_expansion_changed(chart_section.is_expanded())
-        self._schedule_center_splitter_layout()
-        self._update_quote_source_label()
-        if self.config.show_watchlist_signals or self.config.show_watchlist_positions:
-            self._strategy_refresh.start()
-        self._signals.on_page_activated()
-        if self.config.show_stock_notes:
-            self._stock_notes.on_selection_item()
-        if self.config.show_watchlist_multiview:
-            self._multiview.restore_view_mode()
-        self._refresh_emotion_cycle_chip()
-        self._refresh_risk_gate_chip()
-        if self._watchlist_feature is not None:
-            self._watchlist_feature.on_activate()
-        elif self.page_name == "自选":
-            from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
-
-            maybe_show_ultra_short_onboarding(self)
+        activate_quotes_page(self)
 
     def _refresh_emotion_cycle_chip(self) -> None:
         refresh_emotion_cycle_chip_for_page(self)
@@ -390,63 +342,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         open_risk_settings_for_page(self)
 
     def deactivate(self) -> None:
-        if self.config.use_radar_cards:
-            controller = getattr(self, "_radar_controller", None)
-            if controller is not None:
-                controller.deactivate()
-            self._active = False
-            return
-        self._save_splitter()
-        self._save_column_config()
-        self._active = False
-        self._load_generation += 1
-        self._bars_generation += 1
-        self._depth_generation += 1
-        self._gap_generation += 1
-        if self.chart_panel is not None:
-            self.chart_panel.set_active(False)
-        self._stream.stop()
-        self._quote_timer.stop()
-        self._strategy_refresh.stop()
-        batch = getattr(self, "_strategy_batch", None)
-        if batch is not None:
-            batch.stop()
-        self._signals.stop()
-        self._positions.stop()
-        panel = getattr(self, "stock_note_panel", None)
-        if panel is not None:
-            panel.flush_memo()
-        for attr in (
-            "_load_worker",
-            "_market_worker",
-            "_prefetch_worker",
-            "_sync_worker",
-            "_download_worker",
-            "_batch_fill_worker",
-            "_batch_gap_fill_worker",
-        ):
-            worker = getattr(self, attr, None)
-            if worker is not None and hasattr(worker, "request_cancel"):
-                worker.request_cancel()
-        self._task_guard.end()
-        self._set_busy(False, lock_table=self._task_lock_table)
-        for attr in (
-            "_load_worker",
-            "_market_worker",
-            "_prefetch_worker",
-            "_sync_worker",
-            "_bars_worker",
-            "_download_worker",
-            "_batch_fill_worker",
-            "_batch_gap_fill_worker",
-            "_gap_worker",
-            "_quotes_worker",
-            "_depth_worker",
-            "_diagnose_worker",
-            "_invalid_bar_cleanup_worker",
-        ):
-            self._wait_worker_release(attr, timeout_ms=0)
-        self._batch_backtest.release_workers(self._retired_workers)
+        deactivate_quotes_page(self)
 
     def _splitter_settings_key(self) -> str:
         return f"quotes/splitter/{self.page_name}"

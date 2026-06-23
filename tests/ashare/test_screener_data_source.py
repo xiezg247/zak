@@ -27,8 +27,12 @@ class DataSourceRoutingTests(unittest.TestCase):
         self.assertEqual(dates[0], "20260608")
         self.assertEqual(len(dates), 3)
 
-    @patch("vnpy_ashare.screener.data.data_source.fetch_daily_basic")
-    def test_fetch_daily_basic_with_fallback(self, mock_fetch: MagicMock) -> None:
+    @patch(
+        "vnpy_ashare.integrations.tushare.factor_fallback.iter_trade_date_strs",
+        return_value=["20260609", "20260608"],
+    )
+    @patch("vnpy_ashare.integrations.tushare.factor_fallback.fetch_daily_basic")
+    def test_fetch_daily_basic_with_fallback(self, mock_fetch: MagicMock, _dates: MagicMock) -> None:
         mock_fetch.side_effect = [
             ([], "20260609"),
             ([{"symbol": "600519", "vt_symbol": "600519.SSE"}], "20260608"),
@@ -124,7 +128,7 @@ class DataSourceRoutingTests(unittest.TestCase):
         self.assertEqual(rows[0]["total_mv"], 2_000_000.0)
         self.assertEqual(rows[0]["circ_mv"], 1_800_000.0)
 
-    @patch("vnpy_ashare.screener.data.data_source.load_market_quote_rows")
+    @patch("vnpy_ashare.screener.data.data_source.load_intraday_market_snapshot")
     @patch("vnpy_ashare.screener.data.data_source.is_ashare_trading_session", return_value=True)
     def test_trading_session_uses_redis(
         self,
@@ -160,7 +164,7 @@ class DataSourceRoutingTests(unittest.TestCase):
         self.assertEqual(snap.source, "tushare")
         self.assertEqual(snap.updated_at, "20260608")
 
-    @patch("vnpy_ashare.screener.data.data_source.load_market_quote_rows")
+    @patch("vnpy_ashare.screener.data.data_source.load_intraday_market_snapshot")
     @patch("vnpy_ashare.screener.data.data_source.fetch_daily_basic_with_fallback")
     @patch("vnpy_ashare.screener.data.data_source.is_ashare_trading_session", return_value=True)
     def test_fundamental_trading_merges_redis(

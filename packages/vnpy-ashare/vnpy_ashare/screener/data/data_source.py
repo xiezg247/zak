@@ -24,10 +24,10 @@ from vnpy_ashare.quotes.core.screening_snapshot_router import (
     register_uncached_quote_snapshot_loader,
 )
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind, row_has_moneyflow_fields
+from vnpy_ashare.quotes.market.quote_source import load_intraday_market_snapshot
 from vnpy_ashare.screener.data.quotes_loader import (
     MarketQuotesLoadError,
     MarketQuotesSnapshot,
-    load_market_quote_rows,
 )
 
 __all__ = [
@@ -153,7 +153,7 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
     - 仍无数据时：尝试 Redis 陈旧快照
     """
     if is_ashare_trading_session():
-        return load_market_quote_rows()
+        return load_intraday_market_snapshot(enrich_factors=True)
 
     rows, trade_date = fetch_daily_basic_with_fallback()
     if rows:
@@ -172,7 +172,7 @@ def load_screening_quote_snapshot_uncached() -> MarketQuotesSnapshot:
             source="tushare",
         )
 
-    return load_market_quote_rows()
+    return load_intraday_market_snapshot(enrich_factors=True)
 
 
 def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:
@@ -195,7 +195,7 @@ def fetch_fundamental_screening_rows() -> tuple[list[dict[str, Any]], str, str]:
     source = "tushare"
     if trading:
         try:
-            snapshot = load_market_quote_rows()
+            snapshot = load_intraday_market_snapshot(enrich_factors=True)
             rows = merge_quotes_into_fundamentals(rows, snapshot.rows)
             source = "quote+tushare"
         except MarketQuotesLoadError:

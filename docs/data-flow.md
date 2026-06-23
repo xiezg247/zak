@@ -26,23 +26,23 @@
 与 `commands/jobs.py` 共用实现。推荐盘后顺序：
 
 ```text
-batch_download_universe (16:20)
-  → prefetch_moneyflow (16:30)
-  → prefetch_tushare (16:40)        # 结束后轻量预热情绪
-  → sync_suspend_daily (16:50)
-  → prefetch_concept_board (17:00)
-  → warm_market_summary (17:10)     # 情绪周期预热（盘后补全因子）
-  → sync_sector_flow_daily (17:15)
-  → sync_disclosure_calendar (17:20)
-  → screen_post_close (17:30)
-  → scan_horizon_outlook (17:45)
-  → sync_watchlist_financials (17:50)
-  → batch_fill_stale (18:00)
-  → warm_watchlist_strategy_cache (18:15)
-  → fill_focus_pool_minute (18:30)
+batch_download_universe (16:20)   # 约 30 分钟，后续任务从 17:00 起
+  → prefetch_moneyflow (17:00)
+  → prefetch_tushare (17:10)        # 结束后轻量预热情绪
+  → sync_suspend_daily (17:20)
+  → prefetch_concept_board (17:30)
+  → warm_market_summary (17:40)     # 情绪周期预热（盘后补全因子）
+  → sync_sector_flow_daily (17:45)
+  → sync_disclosure_calendar (17:50)
+  → screen_post_close (18:00)
+  → scan_horizon_outlook (18:15)
+  → sync_watchlist_financials (18:20)
+  → batch_fill_stale (18:30)
+  → warm_watchlist_strategy_cache (18:45)
+  → fill_focus_pool_minute (19:00)
 ```
 
-相邻重任务间隔 ≥10 分钟，避免上一轮未结束即触发 `max_instances` 跳过。
+全市场日 K 与后续任务间隔 ≥40 分钟；其余相邻重任务间隔 ≥10 分钟。
 
 | job_id | 说明 |
 |--------|------|

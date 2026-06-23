@@ -66,7 +66,7 @@ WatchlistHost              # 自选页：信号/持仓/多维 controller 与 pan
 
 ### 2.3 刷新调度
 
-`ui/quotes/watchlist/refresh_scheduler.py`：`WatchlistStrategyStaleSweep`（别名 `WatchlistStrategyRefreshScheduler`）在**交易时段**按用户配置的间隔（信号区表头「巡检 N 分」，默认 30 分钟）巡检 signal/position 是否 stale，仅 `refresh(force=False)`；与 3 秒行情 `_quote_timer` 分离。全局 Scheduler 任务 **`warm_watchlist_strategy_cache`**（默认关闭，建议 18:15）可在收盘后为名单预热磁盘 cache。
+`ui/quotes/watchlist/refresh_scheduler.py`：`WatchlistStrategyStaleSweep`（别名 `WatchlistStrategyRefreshScheduler`）在**交易时段**按用户配置的间隔（信号区表头「巡检 N 分」，默认 30 分钟）巡检 signal/position 是否 stale，仅 `refresh(force=False)`；与 3 秒行情 `_quote_timer` 分离。全局 Scheduler 任务 **`warm_watchlist_strategy_cache`**（默认关闭，建议 18:45）可在收盘后为名单预热磁盘 cache。
 
 `ui/quotes/watchlist/bootstrap.py`：`WatchlistBootstrapCoordinator` 作为自选页**加载编排入口**：
 
