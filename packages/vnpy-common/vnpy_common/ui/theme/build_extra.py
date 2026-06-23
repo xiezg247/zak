@@ -1484,6 +1484,169 @@ QListWidget#WatchlistGroupList::item:selected {{
 """
 
 
+def build_home_playbook_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QWidget#HomeRoot {{
+    background-color: {t.app_bg};
+}}
+QScrollArea#HomeScroll {{
+    background-color: transparent;
+    border: none;
+}}
+QWidget#HomeBody {{
+    background-color: transparent;
+}}
+QLabel#HomePageTitle {{
+    color: {t.text_primary};
+    font-size: 21px;
+    font-weight: 600;
+}}
+QLabel#HomePageSubtitle {{
+    color: {t.text_secondary};
+    font-size: 13px;
+}}
+/* ── 状态卡片 ── */
+QFrame#HomeStatusCard {{
+    background-color: transparent;
+}}
+QLabel#HomeAlert {{
+    color: {t.text_secondary};
+    background-color: {t.depth_bg};
+    border-left: 3px solid {t.accent};
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+}}
+QLabel#HomeAlert[severity="danger"] {{
+    color: #f0aca8;
+    background-color: rgba(231, 76, 60, 0.16);
+    border-left-color: #e74c3c;
+    font-weight: 600;
+}}
+QFrame#HomeStatusInner {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+}}
+/* ── 芯片 ── */
+QFrame#HomeChip {{
+    background-color: {t.depth_bg};
+    border: none;
+    border-radius: 6px;
+    min-height: 68px;
+}}
+QFrame#HomeChip[tone="danger"] {{
+    background-color: rgba(231, 76, 60, 0.14);
+}}
+QFrame#HomeChip[tone="caution"] {{
+    background-color: rgba(241, 196, 15, 0.14);
+}}
+QLabel#HomeChipLabel {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QLabel#HomeChipValue {{
+    color: {t.text_primary};
+    font-size: 14px;
+    font-weight: 600;
+}}
+QLabel#HomeChipSub {{
+    color: {t.text_hint};
+    font-size: 10px;
+}}
+/* ── 卡片 ── */
+QFrame#HomeCard {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+}}
+QFrame#HomeCardDiscipline {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.accent};
+    border-radius: 8px;
+}}
+QLabel#HomeCardBadge {{
+    color: {t.accent};
+    background-color: {t.depth_bg};
+    border: 1px solid {t.accent};
+    border-radius: 6px;
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    font-size: 12px;
+    font-weight: 700;
+    qproperty-alignment: AlignCenter;
+}}
+QLabel#HomeCardTitle {{
+    color: {t.text_primary};
+    font-size: 14px;
+    font-weight: 600;
+}}
+QToolButton#HomeCardToggle {{
+    border: none;
+    background: transparent;
+    padding: 2px;
+    color: {t.text_muted};
+}}
+QToolButton#HomeCardToggle:hover {{
+    color: {t.text_primary};
+}}
+QToolButton#HomeCardAction {{
+    background-color: transparent;
+    border: none;
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QToolButton#HomeCardAction:hover {{
+    color: {t.accent};
+    background-color: {t.depth_bg};
+}}
+QToolButton#HomeCardAIBtn {{
+    background-color: transparent;
+    border: 1px solid {t.accent};
+    border-radius: 4px;
+    padding: 3px 10px;
+    color: {t.accent};
+    font-size: 11px;
+    font-weight: 600;
+}}
+QToolButton#HomeCardAIBtn:hover {{
+    background-color: rgba(74, 158, 255, 0.12);
+}}
+QTextBrowser#HomeCardBody {{
+    background-color: transparent;
+    border: none;
+    font-size: 13px;
+    color: {t.text_primary};
+}}
+QWidget#HomeDisciplinePanel {{
+    background-color: {t.depth_bg};
+    border-radius: 6px;
+    padding: 8px 0;
+}}
+QCheckBox#HomeDisciplineCheck {{
+    color: {t.text_primary};
+    font-size: 12px;
+    spacing: 6px;
+    padding: 3px 0;
+}}
+QCheckBox#HomeDisciplineCheck::indicator {{
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    border: 1px solid {t.input_border};
+    background-color: {t.input_bg};
+}}
+QCheckBox#HomeDisciplineCheck::indicator:checked {{
+    background-color: {t.accent};
+    border-color: {t.accent};
+}}
+"""
+
+
 def build_insight_rank_stylesheet(t: ThemeTokens) -> str:
     """Deprecated: use build_radar_stylesheet."""
     return build_radar_stylesheet(t)

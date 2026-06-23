@@ -13,5 +13,5 @@ def test_playbook_ai_prompt_and_actions() -> None:
     assert "40 字" in prompt
     extra = build_playbook_extra(build_home_playbook_status(None))
     assert "Playbook" in extra
-    actions = build_page_quick_actions(AiContextData(page="交易体系"))
+    actions = build_page_quick_actions(AiContextData(page="守则"))
     assert any(item.id == "discipline_one_liner" for item in actions)

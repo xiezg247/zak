@@ -26,7 +26,7 @@ def prompt_playbook_template_merge(
 
     answer = QtWidgets.QMessageBox.question(
         parent,
-        "更新交易体系模板",
+        "更新守则模板",
         (
             f"以下章节仍为「{from_title}」默认模板，是否套用「{to_title}」对应章节？\n\n"
             f"{names}\n\n"

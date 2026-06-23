@@ -27,8 +27,9 @@ from vnpy_ashare.storage.repositories.trading_playbook import (
     list_playbook_sections,
     upsert_playbook_sections,
 )
+from vnpy_ashare.trading.risk.book_pnl import summarize_book_pnl
 from vnpy_ashare.trading.risk.combined import format_emotion_position_hint, load_combined_risk_gate_snapshot
-from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
+from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today, today_trade_date
 from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import format_risk_gate_chip_value
 
 _META_SEED_KEY = "playbook_seeded_profile"
@@ -166,11 +167,36 @@ def load_discipline_checklist(trade_date: str | None = None) -> tuple[Discipline
     return load_discipline_checks(day)
 
 
+def _resolve_home_daily_pnl_pct(day: str) -> float | None:
+    """首屏只读：优先流水/记账汇总，不用 QSettings 里可能过期的 daily_pnl_pct。"""
+    book = summarize_book_pnl({})
+    if book.combined_pnl_pct is not None:
+        return book.combined_pnl_pct
+    prefs = load_trading_risk_prefs()
+    effective, _, _ = resolve_realized_pnl_today(day)
+    if effective is not None and prefs.total_capital is not None and prefs.total_capital > 0:
+        return round(effective / prefs.total_capital * 100, 2)
+    return None
+
+
+def _format_home_daily_pnl_text(daily_pct: float | None, *, halt_line: float) -> str:
+    line = f"线 {halt_line:.1f}%"
+    if daily_pct is not None:
+        return f"{daily_pct:+.2f}% / {line}"
+    return f"— / {line}"
+
+
 def build_home_playbook_status(main_engine: MainEngine | None) -> HomePlaybookStatus:
     day = today_trade_date()
     profile = get_strategy_profile(load_strategy_profile_id())
-    combined = load_combined_risk_gate_snapshot(position_cache={})
+    daily_pct = _resolve_home_daily_pnl_pct(day)
+    combined = load_combined_risk_gate_snapshot(
+        position_cache={},
+        daily_pnl_pct=daily_pct,
+        persist_drawdown=False,
+    )
     emotion = combined.emotion
+    account = combined.account
 
     emotion_label = emotion.stage_label if emotion is not None else "—"
     pos_hint = format_emotion_position_hint(
@@ -179,12 +205,8 @@ def build_home_playbook_status(main_engine: MainEngine | None) -> HomePlaybookSt
     ) or "—"
 
     risk_label = format_risk_gate_chip_value(combined)
-    daily = combined.account.daily_pnl_pct
     prefs = load_trading_risk_prefs()
-    if daily is not None:
-        daily_text = f"{daily:+.2f}% / 熔断 {prefs.halt_daily_pct:.1f}%"
-    else:
-        daily_text = f"— / 熔断 {prefs.halt_daily_pct:.1f}%"
+    daily_text = _format_home_daily_pnl_text(daily_pct if daily_pct is not None else account.daily_pnl_pct, halt_line=prefs.halt_daily_pct)
 
     position_vts = {
         f"{row.get('symbol')}.{row.get('exchange')}"
@@ -211,10 +233,19 @@ def build_home_playbook_status(main_engine: MainEngine | None) -> HomePlaybookSt
     discipline_progress = f"纪律 {done}/{len(checks)}" if checks else ""
 
     alerts: list[str] = []
-    if not combined.allow_new_positions:
-        alerts.append("当前环境或风控不建议新开仓")
-    elif emotion is not None and emotion.stage in {"recession", "divergence"}:
-        alerts.append("情绪阶段偏保守，请对照择时章节")
+    if account.state == "halt":
+        if account.halt_until:
+            alerts.append(f"风控熔断中，停手至 {account.halt_until}")
+        elif prefs.manual_halt:
+            alerts.append("手动熔断已开启")
+        else:
+            alerts.append("风控熔断中，暂停新开仓")
+    elif account.state == "caution":
+        alerts.append("风控警戒，请对照 §4 仓位与风控")
+    elif emotion is not None and emotion.stage in {"recession", "divergence", "ice"}:
+        alerts.append("情绪阶段偏保守，请对照 §1 择时")
+    elif not combined.allow_new_positions:
+        alerts.append("当前环境不建议新开仓")
     if off_plan:
         preview = "、".join(off_plan[:3])
         suffix = "…" if len(off_plan) > 3 else ""

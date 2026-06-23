@@ -29,13 +29,15 @@ def build_risk_gate_snapshot(
     *,
     avg_float_pnl_pct: float | None = None,
     position_cache: Mapping[str, PositionSnapshot] | None = None,
+    daily_pnl_pct: float | None = None,
+    persist_drawdown: bool = True,
 ) -> RiskGateSnapshot:
     """评估当前风控闸快照（无状态变更检测）。"""
     prefs = load_trading_risk_prefs()
     _, weekly_dd, total_dd, drawdown_warnings = evaluate_drawdown(
         prefs,
         position_cache=position_cache,
-        persist=True,
+        persist=persist_drawdown,
     )
     prefs = load_trading_risk_prefs()
 
@@ -45,7 +47,7 @@ def build_risk_gate_snapshot(
 
     warnings: list[str] = list(drawdown_warnings)
     state: RiskGateState = "normal"
-    daily_pnl = prefs.daily_pnl_pct
+    daily_pnl = daily_pnl_pct if daily_pnl_pct is not None else prefs.daily_pnl_pct
 
     if daily_pnl is not None and daily_pnl <= halt_daily:
         state = "halt"

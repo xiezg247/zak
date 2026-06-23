@@ -203,7 +203,7 @@ def delete_trade_journal_entry(entry_id: int) -> bool:
             "DELETE FROM trade_journal WHERE id = ?",
             (int(entry_id),),
         )
-    return int(cursor.rowcount) > 0
+        return int(cursor.rowcount) > 0
 
 
 def summarize_trade_journal(

@@ -95,6 +95,18 @@ class TradeJournalManageView(QtWidgets.QWidget):
         self._table.doubleClicked.connect(self._edit_selected)
         layout.addWidget(self._table, stretch=1)
 
+        action_row = QtWidgets.QHBoxLayout()
+        self._edit_button = QtWidgets.QPushButton("编辑…", self)
+        self._edit_button.setObjectName("SecondaryButton")
+        self._edit_button.clicked.connect(self._edit_selected)
+        self._delete_button = QtWidgets.QPushButton("删除", self)
+        self._delete_button.setObjectName("SecondaryButton")
+        self._delete_button.clicked.connect(self._delete_selected)
+        action_row.addWidget(self._edit_button)
+        action_row.addWidget(self._delete_button)
+        action_row.addStretch(1)
+        layout.addLayout(action_row)
+
         self.reload()
 
     def set_date_range(self, *, start_date: str, end_date: str) -> None:
@@ -170,20 +182,26 @@ class TradeJournalManageView(QtWidgets.QWidget):
             self._table.setItem(row_index, 6, QtWidgets.QTableWidgetItem(plan_text))
             reason = entry.reason or entry.mode or "—"
             self._table.setItem(row_index, 7, QtWidgets.QTableWidgetItem(reason))
-            for col in range(self._table.columnCount()):
-                item = self._table.item(row_index, col)
-                if item is not None:
-                    item.setData(_ENTRY_ID_ROLE, entry.id)
+            id_item = self._table.item(row_index, 0)
+            if id_item is not None:
+                id_item.setData(_ENTRY_ID_ROLE, int(entry.id))
 
-    def _selected_entry_id(self) -> int | None:
-        row = self._table.currentRow()
+    def _entry_id_for_row(self, row: int) -> int | None:
         if row < 0:
             return None
         item = self._table.item(row, 0)
         if item is None:
             return None
         value = item.data(_ENTRY_ID_ROLE)
-        return int(value) if value is not None else None
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _selected_entry_id(self) -> int | None:
+        return self._entry_id_for_row(self._table.currentRow())
 
     def _edit_selected(self) -> None:
         entry_id = self._selected_entry_id()
@@ -199,9 +217,11 @@ class TradeJournalManageView(QtWidgets.QWidget):
     def _delete_selected(self) -> None:
         entry_id = self._selected_entry_id()
         if entry_id is None:
+            QtWidgets.QMessageBox.information(self, "删除流水", "请先选中一条流水。")
             return
         entry = get_trade_journal_entry(entry_id)
         if entry is None:
+            QtWidgets.QMessageBox.warning(self, "删除流水", "未找到该条流水，请刷新后重试。")
             return
         answer = QtWidgets.QMessageBox.question(
             self,
@@ -215,13 +235,15 @@ class TradeJournalManageView(QtWidgets.QWidget):
         if delete_journal_entry(entry_id):
             self.reload()
             self.entries_changed.emit()
+            return
+        QtWidgets.QMessageBox.warning(self, "删除流水", "删除失败，请重试。")
 
     def _show_context_menu(self, pos: QtCore.QPoint) -> None:
-        if self._selected_entry_id() is None:
-            row = self._table.rowAt(pos.y())
-            if row >= 0:
-                self._table.selectRow(row)
-        if self._selected_entry_id() is None:
+        row = self._table.rowAt(pos.y())
+        if row < 0:
+            return
+        self._table.selectRow(row)
+        if self._entry_id_for_row(row) is None:
             return
         menu = QtWidgets.QMenu(self)
         edit_action = menu.addAction("编辑…")

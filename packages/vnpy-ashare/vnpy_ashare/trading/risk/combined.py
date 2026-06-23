@@ -55,10 +55,14 @@ def load_combined_risk_gate_snapshot(
     *,
     avg_float_pnl_pct: float | None = None,
     position_cache: Mapping[str, PositionSnapshot] | None = None,
+    daily_pnl_pct: float | None = None,
+    persist_drawdown: bool = True,
 ) -> CombinedRiskGateSnapshot:
     account = build_risk_gate_snapshot(
         avg_float_pnl_pct=avg_float_pnl_pct,
         position_cache=position_cache,
+        daily_pnl_pct=daily_pnl_pct,
+        persist_drawdown=persist_drawdown,
     )
     emotion = load_emotion_cycle_snapshot()  # 默认不拉全市场，仅缓存
     total_capital = read_total_capital()

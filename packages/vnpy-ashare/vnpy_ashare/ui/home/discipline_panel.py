@@ -14,13 +14,13 @@ class PlaybookDisciplinePanel(QtWidgets.QWidget):
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setObjectName("PlaybookDisciplinePanel")
+        self.setObjectName("HomeDisciplinePanel")
         self._layout = QtWidgets.QVBoxLayout(self)
-        self._layout.setContentsMargins(12, 4, 12, 8)
-        self._layout.setSpacing(6)
+        self._layout.setContentsMargins(0, 4, 0, 4)
+        self._layout.setSpacing(4)
         self._checks: list[QtWidgets.QCheckBox] = []
         self._off_plan_label = QtWidgets.QLabel("")
-        self._off_plan_label.setObjectName("HomePlaybookAlert")
+        self._off_plan_label.setObjectName("HomeAlert")
         self._off_plan_label.setWordWrap(True)
         self._off_plan_label.hide()
         self._layout.addWidget(self._off_plan_label)
@@ -40,7 +40,7 @@ class PlaybookDisciplinePanel(QtWidgets.QWidget):
 
         for check in items:
             box = QtWidgets.QCheckBox(check.label)
-            box.setObjectName("PlaybookDisciplineCheck")
+            box.setObjectName("HomeDisciplineCheck")
             box.setChecked(check.checked)
             box.toggled.connect(lambda checked, cid=check.check_id: self._on_toggle(cid, checked))
             self._checks.append(box)
@@ -48,11 +48,14 @@ class PlaybookDisciplinePanel(QtWidgets.QWidget):
 
         if off_plan_symbols:
             joined = "、".join(off_plan_symbols)
-            self._off_plan_label.setText(f"计划外持仓（相对今日 active 计划）：{joined}")
-            self._off_plan_label.setStyleSheet("color: #e74c3c; font-weight: 600;")
+            self._off_plan_label.setText(f"计划外持仓：{joined}")
+            self._off_plan_label.setProperty("severity", "danger")
+            self._off_plan_label.style().unpolish(self._off_plan_label)
+            self._off_plan_label.style().polish(self._off_plan_label)
             self._off_plan_label.show()
         else:
             self._off_plan_label.hide()
+            self._off_plan_label.setProperty("severity", "")
 
     def _on_toggle(self, check_id: str, checked: bool) -> None:
         set_discipline_check(today_trade_date(), check_id, checked)

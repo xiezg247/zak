@@ -1,4 +1,4 @@
-"""Playbook 纪律章节（checklist + 规则正文）。"""
+"""Playbook 纪律卡片（checklist + 规则正文）。"""
 
 from __future__ import annotations
 
@@ -8,55 +8,61 @@ from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem, PlaybookSec
 from vnpy_ashare.ui.home.discipline_panel import PlaybookDisciplinePanel
 
 
-class PlaybookDisciplineSectionView(QtWidgets.QWidget):
+class PlaybookDisciplineCard(QtWidgets.QFrame):
     edit_requested = QtCore.Signal(str)
     checklist_changed = QtCore.Signal()
     discipline_ai_requested = QtCore.Signal()
 
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("HomeCardDiscipline")
         self._section_id = "discipline"
         self._collapsed = False
 
         root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(0)
+        root.setContentsMargins(14, 12, 14, 14)
+        root.setSpacing(10)
 
         header = QtWidgets.QHBoxLayout()
-        header.setContentsMargins(12, 8, 12, 8)
+        header.setSpacing(8)
+
         self._toggle = QtWidgets.QToolButton()
+        self._toggle.setObjectName("HomeCardToggle")
+        self._toggle.setArrowType(QtCore.Qt.ArrowType.DownArrow)
         self._toggle.clicked.connect(self._on_toggle)
 
-        self._title = QtWidgets.QLabel("")
-        self._title.setObjectName("HomeTitle")
+        self._num = QtWidgets.QLabel("5")
+        self._num.setObjectName("HomeCardBadge")
 
-        self._edit_btn = QtWidgets.QToolButton()
-        self._edit_btn.setText("编辑")
-        self._edit_btn.clicked.connect(lambda: self.edit_requested.emit(self._section_id))
+        self._title = QtWidgets.QLabel("")
+        self._title.setObjectName("HomeCardTitle")
 
         self._ai_btn = QtWidgets.QToolButton()
         self._ai_btn.setText("一句纪律")
+        self._ai_btn.setObjectName("HomeCardAIBtn")
         self._ai_btn.setToolTip("结合 Playbook 与今日状态，请 AI 生成一句可执行纪律")
         self._ai_btn.clicked.connect(self.discipline_ai_requested.emit)
 
+        self._edit = QtWidgets.QToolButton()
+        self._edit.setText("编辑")
+        self._edit.setObjectName("HomeCardAction")
+        self._edit.clicked.connect(lambda: self.edit_requested.emit(self._section_id))
+
         header.addWidget(self._toggle)
+        header.addWidget(self._num)
         header.addWidget(self._title, stretch=1)
         header.addWidget(self._ai_btn)
-        header.addWidget(self._edit_btn)
-
-        header_host = QtWidgets.QWidget()
-        header_host.setObjectName("PlaybookSectionHeader")
-        header_host.setLayout(header)
+        header.addWidget(self._edit)
 
         self._discipline_panel = PlaybookDisciplinePanel(self)
         self._discipline_panel.changed.connect(self.checklist_changed.emit)
 
         self._rules = QtWidgets.QTextBrowser()
-        self._rules.setObjectName("PlaybookSectionBody")
+        self._rules.setObjectName("HomeCardBody")
         self._rules.setOpenExternalLinks(True)
         self._rules.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
 
-        root.addWidget(header_host)
+        root.addLayout(header)
         root.addWidget(self._discipline_panel)
         root.addWidget(self._rules)
 
@@ -75,10 +81,6 @@ class PlaybookDisciplineSectionView(QtWidgets.QWidget):
         self._rules.setHtml(rules_html)
         self._sync_collapsed()
 
-    def set_collapsed(self, collapsed: bool) -> None:
-        self._collapsed = collapsed
-        self._sync_collapsed()
-
     def _sync_collapsed(self) -> None:
         visible = not self._collapsed
         self._discipline_panel.setVisible(visible)
@@ -88,7 +90,8 @@ class PlaybookDisciplineSectionView(QtWidgets.QWidget):
         )
 
     def _on_toggle(self) -> None:
-        self.set_collapsed(not self._collapsed)
+        self._collapsed = not self._collapsed
+        self._sync_collapsed()
         from vnpy_ashare.storage.repositories.trading_playbook import set_playbook_section_collapsed
 
         set_playbook_section_collapsed(self._section_id, self._collapsed)
