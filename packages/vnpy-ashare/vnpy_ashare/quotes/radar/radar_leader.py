@@ -17,6 +17,7 @@ __all__ = [
     "LeaderScoredRow",
     "LeaderTier",
     "FOLLOWER_MIN_SCORE",
+    "board_quality_score",
     "compute_leader_score",
     "compute_leader_score_breakdown",
     "leader_score_weights_for_stage",
@@ -105,6 +106,14 @@ def tier_for_group_rank(index: int, *, leader_score: float, max_per_sector: int 
     if index < max_per_sector and leader_score >= _FOLLOWER_MIN_SCORE:
         return "follower"
     return ""
+
+
+def board_quality_score(row: QuoteRowLike) -> float | None:
+    """封板质量代理 0–100（涨停 / 连板候选）。"""
+    limit_times = float(row.get("limit_times") or 0)
+    if limit_times < 1 and not is_at_limit_board(row):
+        return None
+    return round(_seal_quality_proxy(row) * 100, 1)
 
 
 def _leader_score_parts(

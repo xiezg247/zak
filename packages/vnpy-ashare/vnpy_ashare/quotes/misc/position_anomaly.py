@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
+from vnpy_ashare.trading.exit.morning_must_sell import should_tag_morning_must_sell
 from vnpy_ashare.trading.exit.opening_stop_intraday import resolve_opening_stop_for_quote
 from vnpy_ashare.trading.journal.float_loss_hold import is_float_loss_hold
 
@@ -21,6 +22,7 @@ FLOAT_GAIN_PCT = 15.0
 _ANOMALY_WEIGHTS: dict[str, int] = {
     "卖出信号": 100,
     "开盘止损": 95,
+    "上午必卖": 88,
     "急跌": 80,
     "浮亏": 60,
     "浮亏扛单": 58,
@@ -55,6 +57,9 @@ def position_anomaly_reasons(
             reasons.append("大涨")
         if volume_ratio >= VOLUME_RATIO_ACTIVE and abs(change_pct) >= 1.5:
             reasons.append("放量")
+
+    if should_tag_morning_must_sell(snap=snap, quote=quote):
+        reasons.append("上午必卖")
 
     if snap is not None and snap.unrealized_pnl_pct is not None:
         pnl_pct = float(snap.unrealized_pnl_pct)

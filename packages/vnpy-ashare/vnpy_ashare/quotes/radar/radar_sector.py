@@ -11,7 +11,7 @@ from vnpy_ashare.integrations.tushare.concept_board import build_hot_concept_vt_
 from vnpy_ashare.quotes.format import format_pct
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, leader_tier_label, rank_unified_sector_leaders
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, apply_board_quality, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
@@ -53,19 +53,22 @@ def _row_from_leader_scored(scored: LeaderScoredRow) -> RadarRow | None:
     tier_label = leader_tier_label(scored.leader_tier)
     axis_label = "概念" if scored.sector_axis == "concept" else "行业"
     sector_name = scored.sector_name or str(row.get("industry") or row.get("concept") or "—")
-    return RadarRow(
-        vt_symbol=vt_symbol,
-        name=name,
-        symbol=symbol,
-        price=price,
-        change_pct=change_pct,
-        metric_label=tier_label or "龙头分",
-        metric_value=f"{scored.leader_score:.0f}" if tier_label else f"{scored.leader_score:.0f}",
-        sub_label=axis_label,
-        sub_value=sector_name[:8],
-        leader_score=scored.leader_score,
-        leader_tier=scored.leader_tier,
-        limit_times=scored.limit_times if scored.limit_times >= 1 else None,
+    return apply_board_quality(
+        RadarRow(
+            vt_symbol=vt_symbol,
+            name=name,
+            symbol=symbol,
+            price=price,
+            change_pct=change_pct,
+            metric_label=tier_label or "龙头分",
+            metric_value=f"{scored.leader_score:.0f}" if tier_label else f"{scored.leader_score:.0f}",
+            sub_label=axis_label,
+            sub_value=sector_name[:8],
+            leader_score=scored.leader_score,
+            leader_tier=scored.leader_tier,
+            limit_times=scored.limit_times if scored.limit_times >= 1 else None,
+        ),
+        row,
     )
 
 
@@ -291,7 +294,7 @@ def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders_tiered") -
         card_id=spec.id,
         title=spec.title,
         subtitle=subtitle or f"Top {len(rows)}",
-        rows=tuple(rows),
+        rows=enrich_radar_rows(tuple(rows)),
         empty_message="",
         updated_at="",
         total_count=len(rows),

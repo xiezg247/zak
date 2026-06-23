@@ -105,6 +105,14 @@ class PositionAnomalyTests(unittest.TestCase):
         text = format_anomaly_tags(("卖出信号", "浮亏"))
         self.assertEqual(text, "卖出信号 · 浮亏")
 
+    def test_morning_must_sell_tag(self) -> None:
+        with patch(
+            "vnpy_ashare.quotes.misc.position_anomaly.should_tag_morning_must_sell",
+            return_value=True,
+        ):
+            reasons = position_anomaly_reasons(snap=_snap(), quote=_quote())
+        self.assertIn("上午必卖", reasons)
+
 
 if __name__ == "__main__":
     unittest.main()

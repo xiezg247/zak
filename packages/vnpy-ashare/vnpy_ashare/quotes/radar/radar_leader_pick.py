@@ -8,7 +8,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike, quote_r
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_leader import LeaderScoredRow, score_market_leaders
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_sector import _row_from_leader_scored
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
@@ -162,7 +162,7 @@ def load_leader_pick(spec: RadarCardSpec, *, variant: LeaderPickVariant = "mainl
         card_id=spec.id,
         title=spec.title,
         subtitle=subtitle,
-        rows=tuple(rows),
+        rows=enrich_radar_rows(tuple(rows)),
         empty_message="",
         updated_at="",
         total_count=len(rows),

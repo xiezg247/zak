@@ -11,7 +11,7 @@ from vnpy_ashare.quotes.radar.radar_limit_ladder import (
     build_limit_ladder_candidates,
     resolve_limit_times,
 )
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, apply_board_quality, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
@@ -123,17 +123,20 @@ def _row_to_radar(row: QuoteRowLike, *, popularity: float, seal_label: str) -> R
     change_raw = merged.get("change_pct")
     change_pct = float(change_raw) if isinstance(change_raw, (int, float)) else None
     seal_text = seal_label or "—"
-    return RadarRow(
-        vt_symbol=vt_symbol,
-        name=name,
-        symbol=symbol,
-        price=price,
-        change_pct=change_pct,
-        metric_label="封板",
-        metric_value=seal_text,
-        sub_label="人气",
-        sub_value=f"{popularity:.0f}",
-        limit_times=1.0,
+    return apply_board_quality(
+        RadarRow(
+            vt_symbol=vt_symbol,
+            name=name,
+            symbol=symbol,
+            price=price,
+            change_pct=change_pct,
+            metric_label="封板",
+            metric_value=seal_text,
+            sub_label="人气",
+            sub_value=f"{popularity:.0f}",
+            limit_times=1.0,
+        ),
+        merged,
     )
 
 
@@ -186,7 +189,7 @@ def load_first_board(spec: RadarCardSpec) -> RadarCardData:
         card_id=spec.id,
         title=spec.title,
         subtitle=subtitle,
-        rows=tuple(rows),
+        rows=enrich_radar_rows(tuple(rows)),
         empty_message="",
         updated_at="",
         total_count=len(candidates),

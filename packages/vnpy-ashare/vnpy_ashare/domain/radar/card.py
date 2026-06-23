@@ -20,6 +20,7 @@ class RadarRow(FrozenModel):
     leader_score: float | None = Field(default=None, description="龙头评分")
     leader_tier: str = Field(default="", description="龙头分层（龙一/龙二/跟风）")
     limit_times: float | None = Field(default=None, description="连板数")
+    board_quality: float | None = Field(default=None, description="封板质量代理 0–100")
 
 
 class RadarCardData(FrozenModel):

@@ -16,6 +16,7 @@ _KEY_MIN_TOTAL_MV_YI = "screener/hard_filter/min_total_mv_yi"
 _KEY_EXCLUDE_NEW_LISTING = "screener/hard_filter/exclude_new_listing"
 _KEY_MIN_LISTING_DAYS = "screener/hard_filter/min_listing_days"
 _KEY_EXCLUDE_LIMIT_BOARD = "screener/hard_filter/exclude_limit_board"
+_KEY_EXCLUDE_ONE_WORD = "screener/hard_filter/exclude_one_word"
 _KEY_ALLOWED_INDUSTRIES = "screener/hard_filter/allowed_industries"
 _KEY_ALLOWED_MARKET_BOARDS = "screener/hard_filter/allowed_market_boards"
 
@@ -41,6 +42,7 @@ class HardFilterPrefs(FrozenModel):
     exclude_new_listing: bool = Field(description="是否排除新股")
     min_listing_days: int = Field(description="最低上市天数")
     exclude_limit_board: bool = Field(description="是否排除连板涨停股")
+    exclude_one_word: bool = Field(default=False, description="是否排除一字涨停（振幅极小）")
     allowed_industries: str = Field(default="", description="允许的行业（逗号分隔）")
     allowed_market_boards: str = Field(default="", description="允许的板块（逗号分隔）")
 
@@ -122,6 +124,12 @@ def load_hard_filter_prefs() -> HardFilterPrefs:
     else:
         exclude_limit_board = str(exclude_limit).strip().lower() not in ("0", "false", "no")
 
+    exclude_one_word_raw = _SETTINGS.value(_KEY_EXCLUDE_ONE_WORD)
+    if exclude_one_word_raw is None:
+        exclude_one_word = defaults.exclude_one_word
+    else:
+        exclude_one_word = str(exclude_one_word_raw).strip().lower() not in ("0", "false", "no")
+
     amount_wan = _read_float(_SETTINGS.value(_KEY_MIN_AMOUNT_WAN), defaults.min_amount_wan)
     mv_yi = _read_float(_SETTINGS.value(_KEY_MIN_TOTAL_MV_YI), defaults.min_total_mv_yi)
     listing_days = _read_int(_SETTINGS.value(_KEY_MIN_LISTING_DAYS), defaults.min_listing_days)
@@ -137,6 +145,7 @@ def load_hard_filter_prefs() -> HardFilterPrefs:
         exclude_new_listing=exclude_new_listing,
         min_listing_days=max(0, listing_days),
         exclude_limit_board=exclude_limit_board,
+        exclude_one_word=exclude_one_word,
         allowed_industries=allowed_industries,
         allowed_market_boards=allowed_market_boards,
     )
@@ -150,6 +159,7 @@ def save_hard_filter_prefs(prefs: HardFilterPrefs) -> None:
     _SETTINGS.setValue(_KEY_EXCLUDE_NEW_LISTING, prefs.exclude_new_listing)
     _SETTINGS.setValue(_KEY_MIN_LISTING_DAYS, prefs.min_listing_days)
     _SETTINGS.setValue(_KEY_EXCLUDE_LIMIT_BOARD, prefs.exclude_limit_board)
+    _SETTINGS.setValue(_KEY_EXCLUDE_ONE_WORD, prefs.exclude_one_word)
     _SETTINGS.setValue(_KEY_ALLOWED_INDUSTRIES, prefs.allowed_industries)
     _SETTINGS.setValue(_KEY_ALLOWED_MARKET_BOARDS, prefs.allowed_market_boards)
 

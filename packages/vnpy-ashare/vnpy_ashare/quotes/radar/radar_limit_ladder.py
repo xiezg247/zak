@@ -9,7 +9,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol
 from vnpy_ashare.quotes.core.enrich import get_cached_limit_times_map
 from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
-from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge_row_quotes
+from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.hard_filters import apply_screening_filters, is_at_limit_board
@@ -208,7 +208,7 @@ def load_limit_ladder(spec: RadarCardSpec, *, variant: LimitLadderVariant = "by_
         card_id=spec.id,
         title=spec.title,
         subtitle=subtitle,
-        rows=tuple(rows),
+        rows=tuple(enrich_radar_rows(tuple(rows))),
         empty_message="",
         updated_at="",
         total_count=len(candidates),

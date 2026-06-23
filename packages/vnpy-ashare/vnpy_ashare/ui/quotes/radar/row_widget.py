@@ -138,8 +138,13 @@ class RadarStockRowWidget(QtWidgets.QFrame):
             self._metric_chip.show()
         else:
             self._metric_chip.hide()
+        sub_parts: list[str] = []
         if row.sub_label and row.sub_value:
-            self._sub_chip.setText(f"{row.sub_label} {row.sub_value}")
+            sub_parts.append(f"{row.sub_label} {row.sub_value}")
+        if row.board_quality is not None:
+            sub_parts.append(f"封板 {row.board_quality:.0f}")
+        if sub_parts:
+            self._sub_chip.setText(" · ".join(sub_parts))
             self._sub_chip.show()
         else:
             self._sub_chip.hide()

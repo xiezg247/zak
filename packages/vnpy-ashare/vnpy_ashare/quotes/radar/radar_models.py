@@ -17,6 +17,7 @@ from vnpy_ashare.quotes.radar.radar_relative_strength import (
     build_relative_strength_context,
     enrich_radar_row_relative_strength,
 )
+from vnpy_ashare.quotes.radar.radar_leader import board_quality_score
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 
@@ -24,10 +25,21 @@ __all__ = [
     "RadarCardData",
     "RadarResonanceEntry",
     "RadarRow",
+    "apply_board_quality",
     "enrich_radar_rows",
     "merge_row_quotes",
     "quote_map",
 ]
+
+
+def apply_board_quality(row: RadarRow, payload: QuoteRowLike | Mapping[str, Any]) -> RadarRow:
+    """为涨停/连板行写入 board_quality（已有则跳过）。"""
+    if row.board_quality is not None:
+        return row
+    score = board_quality_score(payload)
+    if score is None:
+        return row
+    return row.model_copy(update={"board_quality": score})
 
 
 def quote_map() -> dict[str, QuoteRow]:
@@ -177,6 +189,7 @@ def enrich_radar_row(
     updated = row
     if price != row.price or change_pct != row.change_pct:
         updated = row.model_copy(update={"price": price, "change_pct": change_pct})
+    updated = apply_board_quality(updated, merged)
     return enrich_radar_row_relative_strength(
         updated,
         merged,
@@ -222,6 +235,8 @@ def radar_row_to_cache_dict(row: RadarRow) -> dict[str, Any]:
         payload["last_close"] = row.price
     if row.change_pct is not None:
         payload["change_pct"] = row.change_pct
+    if row.board_quality is not None:
+        payload["board_quality"] = row.board_quality
     return payload
 
 
@@ -243,6 +258,7 @@ def radar_row_from_cache_dict(
         metric_value=str(raw.get("metric_value") or ""),
         sub_label=str(raw.get("sub_label") or ""),
         sub_value=str(raw.get("sub_value") or ""),
+        board_quality=float_or_none(raw.get("board_quality")),
     )
     if not enrich:
         return row

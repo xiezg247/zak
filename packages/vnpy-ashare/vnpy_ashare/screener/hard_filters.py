@@ -16,6 +16,7 @@ from vnpy_ashare.config.constants.recipe import (
     ENV_ALLOWED_INDUSTRIES,
     ENV_ALLOWED_MARKET_BOARDS,
     ENV_EXCLUDE_LIMIT_BOARD,
+    ENV_EXCLUDE_ONE_WORD,
     ENV_EXCLUDE_NEW_LISTING,
     ENV_EXCLUDE_ST,
     ENV_EXCLUDE_SUSPENDED,
@@ -93,6 +94,10 @@ def recipe_min_listing_days() -> int:
 
 def recipe_exclude_limit_board_enabled() -> bool:
     return env_or_prefs_bool(ENV_EXCLUDE_LIMIT_BOARD, prefs=lambda: load_hard_filter_prefs().exclude_limit_board)
+
+
+def recipe_exclude_one_word_enabled() -> bool:
+    return env_or_prefs_bool(ENV_EXCLUDE_ONE_WORD, prefs=lambda: load_hard_filter_prefs().exclude_one_word)
 
 
 def recipe_allowed_industries() -> frozenset[str]:
@@ -333,6 +338,33 @@ def is_at_limit_board(row: ScreeningFilterRow, market_board_map: dict[str, str] 
     return change >= threshold or change <= -threshold
 
 
+ONE_WORD_AMPLITUDE_MAX_PCT = 0.5
+
+
+def is_one_word_limit_board(
+    row: ScreeningFilterRow,
+    *,
+    market_board_map: dict[str, str] | None = None,
+    max_amplitude_pct: float = ONE_WORD_AMPLITUDE_MAX_PCT,
+) -> bool:
+    """涨停且日内振幅极小（近似一字板）。"""
+    threshold = limit_board_threshold_pct(row, market_board_map=market_board_map)
+    change = float(row.get("change_pct") or row.get("pct_chg") or 0)
+    if change < threshold - 0.3:
+        return False
+    high = float(row.get("high_price") or row.get("high") or 0)
+    low = float(row.get("low_price") or row.get("low") or 0)
+    prev_close = float(row.get("prev_close") or row.get("pre_close") or 0)
+    if high > 0 and low > 0 and prev_close > 0:
+        amplitude = (high - low) / prev_close * 100
+        return 0 <= amplitude < max_amplitude_pct
+    open_price = float(row.get("open_price") or row.get("open") or 0)
+    if open_price > 0 and high > 0 and low > 0:
+        amplitude = (high - low) / open_price * 100
+        return 0 <= amplitude < max_amplitude_pct
+    return False
+
+
 def passes_liquidity_filter(row: ScreeningFilterRow) -> bool:
     """成交额或总市值（小资金）达标；无相关字段时不排除。"""
     min_amount = recipe_min_amount_yuan()
@@ -391,6 +423,8 @@ def passes_screening_hard_filter(
         return False
     if recipe_exclude_limit_board_enabled() and is_at_limit_board(row, market_board_map=market_board_map):
         return False
+    if recipe_exclude_one_word_enabled() and is_one_word_limit_board(row, market_board_map=market_board_map):
+        return False
     return passes_liquidity_filter(row)
 
 
@@ -400,7 +434,11 @@ def apply_recipe_filters(rows: Sequence[T_ScreeningRow]) -> list[T_ScreeningRow]
     suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
     name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
     list_date_map = _list_date_map_for_screening() if recipe_exclude_new_listing_enabled() else None
-    market_board_map = _market_board_map_for_screening() if recipe_exclude_limit_board_enabled() else None
+    market_board_map = (
+        _market_board_map_for_screening()
+        if recipe_exclude_limit_board_enabled() or recipe_exclude_one_word_enabled()
+        else None
+    )
     industry_map = _industry_map_for_screening() if allowed_industries else None
     return [
         row

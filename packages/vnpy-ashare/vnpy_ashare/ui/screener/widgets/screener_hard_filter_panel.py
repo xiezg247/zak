@@ -83,6 +83,11 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self.exclude_limit_board_check.toggled.connect(self._on_changed)
         form.addRow(self.exclude_limit_board_check)
 
+        self.exclude_one_word_check = QtWidgets.QCheckBox("排除一字涨停")
+        self.exclude_one_word_check.setToolTip("打板场景可选：排除日内振幅极小的缩量一字板")
+        self.exclude_one_word_check.toggled.connect(self._on_changed)
+        form.addRow(self.exclude_one_word_check)
+
         self.min_amount_spin = QtWidgets.QDoubleSpinBox()
         self.min_amount_spin.setRange(0, 100_000)
         self.min_amount_spin.setDecimals(0)
@@ -186,6 +191,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
             self.exclude_suspended_check,
             self.exclude_new_listing_check,
             self.exclude_limit_board_check,
+            self.exclude_one_word_check,
             self.min_listing_days_spin,
             self.min_amount_spin,
             self.min_mv_spin,
@@ -200,6 +206,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self.exclude_suspended_check.setChecked(prefs.exclude_suspended)
         self.exclude_new_listing_check.setChecked(prefs.exclude_new_listing)
         self.exclude_limit_board_check.setChecked(prefs.exclude_limit_board)
+        self.exclude_one_word_check.setChecked(prefs.exclude_one_word)
         self.min_listing_days_spin.setValue(prefs.min_listing_days)
         self.min_amount_spin.setValue(prefs.min_amount_wan)
         self.min_mv_spin.setValue(prefs.min_total_mv_yi)
@@ -254,6 +261,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
             exclude_new_listing=self.exclude_new_listing_check.isChecked(),
             min_listing_days=int(self.min_listing_days_spin.value()),
             exclude_limit_board=self.exclude_limit_board_check.isChecked(),
+            exclude_one_word=self.exclude_one_word_check.isChecked(),
             allowed_industries=normalize_allowed_industries_text(industries_text),
             allowed_market_boards=normalize_allowed_market_boards_text(",".join(selected_boards)),
         )
@@ -274,6 +282,7 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
                     exclude_new_listing=prefs.exclude_new_listing,
                     min_listing_days=prefs.min_listing_days,
                     exclude_limit_board=prefs.exclude_limit_board,
+                    exclude_one_word=prefs.exclude_one_word,
                     allowed_industries=current_industries,
                     allowed_market_boards=current_boards,
                 )
