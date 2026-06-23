@@ -32,6 +32,7 @@ class InfoFeedPageWidget(QtWidgets.QWidget):
 
         self._service = get_feed_service(main_engine)
         self._sync_worker: FeedSyncWorker | None = None
+        self._retired_workers: list[QtCore.QThread] = []
         self._filter_subscription_id: str | None = None
 
         self._unread_label = QtWidgets.QLabel("未读 0", self)
@@ -99,7 +100,7 @@ class InfoFeedPageWidget(QtWidgets.QWidget):
         worker = self._sync_worker
         self._sync_worker = None
         if worker is not None:
-            release_thread(worker)
+            release_thread(self._retired_workers, worker)
 
     def unread_count(self) -> int:
         if self._service is None:
@@ -156,7 +157,7 @@ class InfoFeedPageWidget(QtWidgets.QWidget):
         self._sync_worker = None
         self._sync_btn.setEnabled(True)
         if worker is not None:
-            release_thread(worker)
+            release_thread(self._retired_workers, worker)
         message = getattr(result, "message", str(result))
         skipped = bool(getattr(result, "skipped", False))
         success = bool(getattr(result, "success", False))
