@@ -11,6 +11,7 @@ from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
 from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
 from vnpy_ashare.jobs.core.result import JobResult
+from vnpy_ashare.jobs.feed.sync_bilibili import sync_bilibili_feed_job
 from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
 from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
 from vnpy_ashare.jobs.market.summary_warmup import warm_market_summary
@@ -50,6 +51,7 @@ JOB_CATALOG: dict[str, tuple[str, str]] = {
     "screen_intraday": ("盘中自动选股", "交易时段多维度选股，结果写入选股历史"),
     "screen_post_close": ("盘后自动选股", "收盘后多维度选股，结果写入选股历史"),
     "scan_horizon_outlook": ("雷达展望扫描", "全市场扫描未来·关注/可持并写入本地缓存"),
+    "sync_bilibili_feed": ("B站订阅同步", "拉取已订阅 UP 主视频与动态写入信息流"),
 }
 
 _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
@@ -67,6 +69,7 @@ _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
     "batch_fill_stale": batch_fill_downloaded_stale_job,
     "fill_focus_pool_minute": batch_fill_focus_pool_minute_job,
     "warm_market_summary": lambda: warm_market_summary(enrich_factors=True),
+    "sync_bilibili_feed": sync_bilibili_feed_job,
 }
 
 

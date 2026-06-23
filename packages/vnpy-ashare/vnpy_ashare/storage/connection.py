@@ -315,6 +315,47 @@ CREATE TABLE IF NOT EXISTS trading_playbook_discipline_daily (
     checked INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (trade_date, check_id)
 );
+
+CREATE TABLE IF NOT EXISTS feed_subscriptions (
+    id              TEXT PRIMARY KEY,
+    source_type     TEXT NOT NULL DEFAULT 'bilibili_up',
+    source_id       TEXT NOT NULL,
+    display_name    TEXT NOT NULL DEFAULT '',
+    avatar_url      TEXT NOT NULL DEFAULT '',
+    config_json     TEXT NOT NULL DEFAULT '{}',
+    enabled         INTEGER NOT NULL DEFAULT 1,
+    sort_order      INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL,
+    UNIQUE(source_type, source_id)
+);
+
+CREATE TABLE IF NOT EXISTS feed_items (
+    id              TEXT PRIMARY KEY,
+    subscription_id TEXT NOT NULL,
+    source_type     TEXT NOT NULL,
+    external_id     TEXT NOT NULL,
+    item_type       TEXT NOT NULL,
+    title           TEXT NOT NULL DEFAULT '',
+    summary         TEXT NOT NULL DEFAULT '',
+    url             TEXT NOT NULL,
+    author_name     TEXT NOT NULL DEFAULT '',
+    published_at    TEXT NOT NULL,
+    payload_json    TEXT NOT NULL DEFAULT '{}',
+    read_at         TEXT,
+    created_at      TEXT NOT NULL,
+    UNIQUE(source_type, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_feed_items_published ON feed_items(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feed_items_sub ON feed_items(subscription_id, published_at DESC);
+
+CREATE TABLE IF NOT EXISTS feed_cursors (
+    subscription_id TEXT PRIMARY KEY,
+    last_video_ts   INTEGER NOT NULL DEFAULT 0,
+    last_dynamic_id TEXT NOT NULL DEFAULT '',
+    last_ok_at      TEXT,
+    last_error      TEXT NOT NULL DEFAULT ''
+);
 """
 
 

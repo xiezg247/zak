@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.services.analysis import AnalysisService
     from vnpy_ashare.services.backtest import BacktestService
     from vnpy_ashare.services.bar import BarService
+    from vnpy_ashare.services.feed import FeedService
     from vnpy_ashare.services.financial import FinancialService
     from vnpy_ashare.services.note import NoteService
     from vnpy_ashare.services.position import PositionService
@@ -106,6 +107,12 @@ def get_note_service(main_engine: MainEngine | None) -> NoteService | None:
     """个股笔记 Service。"""
     engine = get_ashare_engine(main_engine)
     return engine.note_service if engine is not None else None
+
+
+def get_feed_service(main_engine: MainEngine | None) -> FeedService | None:
+    """信息流 Service。"""
+    engine = get_ashare_engine(main_engine)
+    return engine.feed_service if engine is not None else None
 
 
 def get_position_service(main_engine: MainEngine | None) -> PositionService | None:

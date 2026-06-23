@@ -39,6 +39,7 @@ APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     NavGroup(
         entries=(NavEntry(key="screener", label="选股"),),
     ),
+    NavGroup(entries=(NavEntry(key="info_feed", label="信息流"),)),
     NavGroup(entries=(NavEntry(key="ai_assistant", label="AI 助手"),)),
     NavGroup(
         entries=(
@@ -66,6 +67,7 @@ NAV_SHORTCUTS: dict[str, str] = {
     "sector_flow": "Ctrl+4",
     "radar": "Ctrl+5",
     "screener": "Ctrl+6",
+    "info_feed": "Ctrl+Shift+F",
     "ai_assistant": "Ctrl+7",
     "cta_backtest": "Ctrl+8",
     "batch_backtest": "Ctrl+9",
@@ -166,6 +168,14 @@ def _draw_data(painter: QtGui.QPainter, size: int) -> None:
     painter.drawEllipse(m, m + 10, w, 6)
 
 
+def _draw_info_feed(painter: QtGui.QPainter, size: int) -> None:
+    m = 5
+    painter.drawRoundedRect(m, m + 1, size - m * 2 - 2, size - m * 2 - 2, 2, 2)
+    for index, y in enumerate((m + 8, m + 14, m + 20)):
+        painter.drawLine(m + 6, y, size - m - 8, y)
+        painter.drawEllipse(QtCore.QPointF(m + 3, y), 1.4, 1.4)
+
+
 def _draw_ai_assistant(painter: QtGui.QPainter, size: int) -> None:
     m = 4
     rect = QtCore.QRectF(m + 1, m + 3, size - m * 2 - 2, size - m * 2 - 4)
@@ -233,6 +243,7 @@ _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
     "radar": _draw_radar,
     "watchlist": _draw_watchlist,
     "screener": _draw_screener,
+    "info_feed": _draw_info_feed,
     "auto_screener": _draw_auto_screener,
     "local": _draw_local,
     "cta_backtest": _draw_backtest,
@@ -251,7 +262,8 @@ class NavButton(QtWidgets.QToolButton):
         self.setCheckable(True)
         self.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.setIconSize(QtCore.QSize(28, 28))
-        self.setText(entry.label)
+        self._badge_count = 0
+        self._apply_label()
         shortcut = NAV_SHORTCUTS.get(entry.key, "")
         if shortcut:
             self.setToolTip(f"{entry.label}（{shortcut}）")
@@ -262,6 +274,19 @@ class NavButton(QtWidgets.QToolButton):
         self._muted = QtGui.QColor(NAV_MUTED_COLOR)
         self._accent = QtGui.QColor(ACCENT_COLOR)
         self._update_icon(False)
+
+    def _apply_label(self) -> None:
+        if self._badge_count > 0:
+            self.setText(f"{self.entry.label}\n{self._badge_count}")
+        else:
+            self.setText(self.entry.label)
+
+    def set_badge_count(self, count: int) -> None:
+        count = max(0, int(count))
+        if count == self._badge_count:
+            return
+        self._badge_count = count
+        self._apply_label()
 
     def _update_icon(self, active: bool) -> None:
         color = self._accent if active else self._muted
@@ -399,6 +424,12 @@ class SidebarNav(QtWidgets.QWidget):
     def set_active_index(self, index: int) -> None:
         for i, btn in enumerate(self._buttons):
             btn.set_active(i == index)
+
+    def set_badge_count(self, key: str, count: int) -> None:
+        for btn in self._buttons:
+            if btn.entry.key == key:
+                btn.set_badge_count(count)
+                return
 
     def clear_active(self) -> None:
         """后台页等非侧栏页面：取消侧栏选中态。"""

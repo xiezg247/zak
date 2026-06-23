@@ -43,6 +43,12 @@ RADAR_PAGE_PROMPT = """【雷达页】
 可结合 get_emotion_cycle、check_risk_gate、run_leader_screen、get_short_term_watchlist。
 「生成次日计划」场景用 propose_trading_plan（草案，须用户激活）。"""
 
+INFO_FEED_PAGE_PROMPT = """【信息流页】
+用户正在查看 B 站 UP 主订阅的时间线（视频/动态）。
+问「今天更新了吗」「最近发了什么」时调用 check_bilibili_updated_today 或 get_feed_items。
+需要最新数据时可设 refresh=true 触发同步；不要编造未在工具结果中的标题或链接。
+订阅列表用 list_feed_subscriptions。"""
+
 
 def _market_page_prompt(page: str) -> str:
     """市场/雷达页注入 ashare 动态摘要（经 vnpy_common 桥接）。"""
@@ -66,6 +72,8 @@ def build_page_prompt(page: str) -> str:
         if injected:
             parts.append(injected)
         return "\n\n".join(parts)
+    if page == "信息流":
+        return INFO_FEED_PAGE_PROMPT
     if page in ("自选", "市场", "本地"):
         if page == "市场":
             injected = _market_page_prompt(page)

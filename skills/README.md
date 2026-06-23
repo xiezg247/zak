@@ -27,6 +27,7 @@ Agent 可调用的业务 Skill：Python 实现（`*.py`）+ 可选 `SKILL.md`（
 | `vnpy_backtest_skill.py` | vnpy-backtest | get_backtest_result, … |
 | `vnpy_watchlist_skill.py` | vnpy-watchlist | get_watchlist、get_short_term_watchlist、add_to_watchlist、… |
 | `vnpy_notes_skill.py` | vnpy-notes | get_stock_notes, … |
+| `vnpy_feed_skill.py` | vnpy-feed | list_feed_subscriptions、get_feed_items、check_bilibili_updated_today |
 | `vnpy_sentiment_skill.py` | vnpy-sentiment | get_ashare_fear_greed_index、get_emotion_cycle |
 | `vnpy_trading_skill.py` | vnpy-trading | check_risk_gate、compute_position_size |
 | `tdx_diagnose_skill.py` | tdx-stock-diagnose | diagnose_stock |

@@ -30,6 +30,7 @@ class ToolRegistry:
                 "watchlist": ashare_engine.watchlist_service,
                 "position": ashare_engine.position_service,
                 "note": ashare_engine.note_service,
+                "feed": getattr(ashare_engine, "feed_service", None),
                 "analysis": ashare_engine.analysis_service,
                 "sentiment": ashare_engine.sentiment_service,
             }

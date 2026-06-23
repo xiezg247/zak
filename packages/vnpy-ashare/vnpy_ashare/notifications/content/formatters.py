@@ -15,6 +15,7 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
+    NOTIFY_EVENT_FEED_ITEM_NEW,
 )
 
 
@@ -111,6 +112,18 @@ def format_notify_text(event_id: str, payload: dict[str, Any]) -> str:
 
     if event_id == NOTIFY_EVENT_RADAR_LEADER_READY:
         return _format_radar_leader_ready(payload, now)
+
+    if event_id == NOTIFY_EVENT_FEED_ITEM_NEW:
+        author = str(payload.get("author_name") or "").strip()
+        title = str(payload.get("title") or "").strip()
+        url = str(payload.get("url") or "").strip()
+        item_type = str(payload.get("item_type") or "update")
+        lines = [f"【zak】B站更新 · {author or 'UP主'}"]
+        lines.append(f"[{item_type}] {title}")
+        if url:
+            lines.append(url)
+        lines.append(f"时间 {now}")
+        return "\n".join(lines)
 
     msg = f"unknown event: {event_id}"
     raise ValueError(msg)

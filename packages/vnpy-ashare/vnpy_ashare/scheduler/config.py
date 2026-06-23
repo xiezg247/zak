@@ -218,6 +218,15 @@ class SchedulerConfig(MutableModel):
         default_factory=lambda: _job_config_from_cron(*_POST_CLOSE_CRON["scan_horizon_outlook"]),
         description="雷达展望扫描任务配置",
     )
+    sync_bilibili_feed: JobConfig = Field(
+        default_factory=lambda: JobConfig(
+            enabled=True,
+            cron_hour=0,
+            cron_minute=15,
+            cron_day_of_week="mon-sun",
+        ),
+        description="B站订阅同步任务配置",
+    )
 
     def to_dict(self) -> dict:
         def dump_job(job: JobConfig) -> dict:
@@ -262,6 +271,7 @@ class SchedulerConfig(MutableModel):
             "screen_intraday": dump_auto(self.screen_intraday),
             "screen_post_close": dump_auto(self.screen_post_close),
             "scan_horizon_outlook": dump_job(self.scan_horizon_outlook),
+            "sync_bilibili_feed": dump_job(self.sync_bilibili_feed),
         }
 
     @classmethod
@@ -314,6 +324,7 @@ class SchedulerConfig(MutableModel):
             screen_intraday=load_auto("screen_intraday", defaults.screen_intraday),
             screen_post_close=load_auto("screen_post_close", defaults.screen_post_close),
             scan_horizon_outlook=load_job("scan_horizon_outlook", defaults.scan_horizon_outlook),
+            sync_bilibili_feed=load_job("sync_bilibili_feed", defaults.sync_bilibili_feed),
         )
 
 

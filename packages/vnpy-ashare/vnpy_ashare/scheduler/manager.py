@@ -23,6 +23,7 @@ from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
 from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
 from vnpy_ashare.jobs.core.progress import bind_job_log
 from vnpy_ashare.jobs.core.result import JobResult
+from vnpy_ashare.jobs.feed.sync_bilibili import sync_bilibili_feed_job
 from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
 from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
 from vnpy_ashare.jobs.market.summary_warmup import warm_market_summary
@@ -376,6 +377,18 @@ class TaskSchedulerManager:
                 ),
                 schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在盘后自动选股之后）",
             ),
+            "sync_bilibili_feed": _JobMeta(
+                job_id="sync_bilibili_feed",
+                name="B站订阅同步",
+                description="拉取已订阅 UP 主的最新视频与动态，写入信息流",
+                runner=lambda: self._run_sync_bilibili_feed(),
+                config_attr="sync_bilibili_feed",
+                schedule_builder=lambda cfg: CronTrigger(
+                    day_of_week=cfg.cron_day_of_week,
+                    minute=cfg.cron_minute,
+                ),
+                schedule_text_builder=lambda cfg: f"每小时 :{cfg.cron_minute:02d}",
+            ),
         }
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)
         self._refresh_status_cache()
@@ -422,6 +435,11 @@ class TaskSchedulerManager:
         if warm.message:
             return JobResult(success=result.success, message=f"{result.message} · {warm.message}")
         return result
+
+    def _run_sync_bilibili_feed(self) -> JobResult:
+        if self._engine is not None:
+            return self._engine.feed_service.sync_all_enabled()
+        return sync_bilibili_feed_job()
 
     def _next_collect_quotes_run_at(self, *, prefer_immediate: bool = False) -> datetime:
         now = china_now()

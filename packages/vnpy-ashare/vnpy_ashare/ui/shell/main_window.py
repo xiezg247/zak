@@ -15,6 +15,7 @@ from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.ui.page import AiPageWidget
 from vnpy_ashare.app.branding import window_title as build_window_title
+from vnpy_ashare.app.engine_access import get_feed_service
 from vnpy_ashare.app.deferred_apps import ensure_cta_backtester_app, ensure_data_manager_app
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import (
@@ -43,6 +44,7 @@ from vnpy_ashare.domain.ai.actions import (
 )
 from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
 from vnpy_ashare.ui.backtest.pages.batch_backtest_page import BatchBacktestPageWidget
+from vnpy_ashare.ui.features.info_feed.page import InfoFeedPageWidget
 from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener.pages.screener_hub_page import ScreenerHubPageWidget
@@ -294,6 +296,7 @@ class AshareMainWindow(MainWindow):
             assert self._floating_controller is not None
             self._floating_controller.bind_content_anchor(self.stack)
         self._bind_scheduler_notifications()
+        self._refresh_info_feed_badge()
         self.sidebar.set_active_index(0)
 
     def schedule_initial_page(self) -> None:
@@ -905,6 +908,9 @@ class AshareMainWindow(MainWindow):
         elif key == "screener":
             widget = ScreenerHubPageWidget(self.main_engine, self.event_engine)
             widget.open_scheduler_requested.connect(self._open_scheduler_page)
+        elif key == "info_feed":
+            widget = InfoFeedPageWidget(self.main_engine, self.event_engine)
+            widget.unread_changed.connect(self._refresh_info_feed_badge)
         elif key == "batch_backtest":
             widget = BatchBacktestPageWidget(self.main_engine, self.event_engine)
 
@@ -917,6 +923,13 @@ class AshareMainWindow(MainWindow):
 
     def _open_scheduler_page(self) -> None:
         self._open_scheduler_dialog()
+
+    def _refresh_info_feed_badge(self) -> None:
+        count = 0
+        service = get_feed_service(self.main_engine)
+        if service is not None:
+            count = service.count_unread()
+        self.sidebar.set_badge_count("info_feed", count)
 
     def _bind_scheduler_notifications(self) -> None:
         if self._scheduler_listener_connected:
@@ -931,6 +944,12 @@ class AshareMainWindow(MainWindow):
         self._signal_scheduler_job.emit(job_id)
 
     def _handle_scheduler_job(self, job_id: str) -> None:
+        if job_id == "sync_bilibili_feed":
+            self._refresh_info_feed_badge()
+            widget = self._page_widgets.get("info_feed")
+            if widget is not None and hasattr(widget, "activate"):
+                widget.activate()
+            return
         if job_id not in ("screen_intraday", "screen_post_close"):
             return
         engine = self.main_engine.get_engine(APP_NAME)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions, format_market_overview_extra
+from vnpy_ashare.ai.context.feed import build_feed_page_quick_actions
 from vnpy_ashare.ai.context.playbook import build_playbook_page_quick_actions
 from vnpy_ashare.ai.context.quote.assembly import build_assistant_quick_actions, build_assistant_screening_menus, build_floating_stock_quick_actions
 from vnpy_ashare.ai.context.radar import build_radar_page_quick_actions
@@ -59,6 +60,8 @@ def build_page_quick_actions(data: AiContextData) -> list[QuickAction]:
     """按页面类型组装非个股快捷动作。"""
     if data.page == "守则":
         return build_playbook_page_quick_actions()
+    if data.page == "信息流":
+        return build_feed_page_quick_actions()
     if data.page == "选股":
         return build_screening_quick_actions()
     if data.page == "数据管理":
@@ -75,6 +78,8 @@ def build_page_quick_actions(data: AiContextData) -> list[QuickAction]:
 def _build_actions(data: AiContextData) -> list[QuickAction]:
     if data.page == "守则":
         return build_playbook_page_quick_actions()
+    if data.page == "信息流":
+        return build_feed_page_quick_actions()
     if data.page == "雷达" and not data.symbol:
         return build_radar_page_quick_actions()
     if data.page == "市场":
@@ -107,7 +112,7 @@ def _build_badge(data: AiContextData) -> str:
         if ctx is not None and ctx.count > 0:
             return f"选股·{ctx.count}"
         return "选股"
-    if data.page in ("自选", "市场", "雷达", "本地", "数据管理", "守则"):
+    if data.page in ("自选", "市场", "雷达", "本地", "数据管理", "守则", "信息流"):
         if data.page == "雷达":
             snapshot = get_radar_board_snapshot()
             if snapshot is not None and snapshot.resonance_count > 0:

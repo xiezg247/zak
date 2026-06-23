@@ -31,6 +31,14 @@ ENV_CONFIG_SPECS: tuple[ConfigFieldSpec, ...] = (
     ),
     ConfigFieldSpec(key="TUSHARE_TOKEN", label="Tushare Token", group="数据源", default="", sensitive=True, description="财务/选股辅助，https://tushare.pro"),
     ConfigFieldSpec(
+        key="BILIBILI_COOKIES",
+        label="Bilibili Cookie",
+        group="内容订阅",
+        default="",
+        sensitive=True,
+        description="登录 bilibili.com 后从浏览器 DevTools 复制 Cookie，用于 UP 主订阅同步",
+    ),
+    ConfigFieldSpec(
         key="ASHARE_TRADING_BOARDS",
         label="可交易市场板块",
         group="数据源",

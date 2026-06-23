@@ -67,6 +67,8 @@ class ContextAssembler:
                 capabilities.append("自选管理")
             elif name.startswith("vnpy-notes"):
                 capabilities.append("个股笔记")
+            elif name.startswith("vnpy-feed"):
+                capabilities.append("B站信息流订阅")
             elif name.startswith("vnpy-sentiment"):
                 capabilities.append("全市场恐贪指数")
         if capabilities:
