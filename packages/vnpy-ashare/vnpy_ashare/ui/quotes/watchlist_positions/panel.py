@@ -232,6 +232,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         h.refresh_requested.connect(self.refresh_requested.emit)
         h.expansion_changed.connect(self._on_header_expansion_changed)
         h.edit_requested.connect(self._on_edit_clicked)
+        h.record_sell_requested.connect(self._on_record_sell_clicked)
         h.remove_requested.connect(self._on_remove_clicked)
         h.clear_requested.connect(self._on_clear_clicked)
         h.plan_requested.connect(self._on_plan_clicked)
@@ -278,12 +279,71 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             return
         self._save_form(vt_symbol, dialog.read_form(), existing=True)
 
-    def _on_remove_clicked(self) -> None:
+    def _resolve_selected_vt_symbol(self) -> str | None:
         vt_symbol = self._table_view.selected_vt_symbol()
         if not vt_symbol:
             item = self._page.current_item
             if item is not None:
                 vt_symbol = item.vt_symbol
+        return vt_symbol or None
+
+    def _on_record_sell_clicked(self) -> None:
+        vt_symbol = self._resolve_selected_vt_symbol()
+        if not vt_symbol:
+            self._page._toast.warning("请先选择要补录卖出的持仓")
+            return
+        stock = self._page.find_stock_item(vt_symbol)
+        service = self._page._get_position_service()
+        if stock is None or service is None:
+            return
+        record = next((row for row in self._records() if row.vt_symbol == vt_symbol), None)
+        if record is None:
+            self._page._toast.warning("该标的尚未登记持仓")
+            return
+        snap = self._page.position_cache.get(vt_symbol)
+        suggested = snap.last_price if snap is not None else None
+        sell_dialog = PositionSellDialog(
+            vt_symbol=vt_symbol,
+            cost_price=record.cost_price,
+            volume=record.volume,
+            suggested_price=suggested,
+            record_only=True,
+            parent=self,
+        )
+        if sell_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        form = sell_dialog.read_form()
+        if form is None:
+            self._page._toast.warning("请填写有效卖出价")
+            return
+        error = service.record_sell(
+            stock.symbol,
+            stock.exchange,
+            sell_price=form.sell_price,
+            sell_volume=form.volume,
+            sell_date=form.sell_date,
+            reason=form.reason,
+        )
+        if error == "volume_exceeds":
+            self._page._toast.warning("卖出量不能超过当前持仓")
+            return
+        if error is not None:
+            self._page._toast.warning("补录卖出失败")
+            return
+        if form.volume < record.volume:
+            self._page._positions.invalidate_cache()
+            self._page.status_label.setText(
+                f"已补录卖出流水并减少持仓：{vt_symbol}（-{form.volume} 股）",
+            )
+        else:
+            self._page.status_label.setText(f"已补录卖出流水（持仓保留）：{vt_symbol}")
+        refresh = getattr(self._page, "_refresh_risk_gate_chip", None)
+        if callable(refresh):
+            refresh()
+        self.rows_changed.emit()
+
+    def _on_remove_clicked(self) -> None:
+        vt_symbol = self._resolve_selected_vt_symbol()
         if not vt_symbol:
             self._page._toast.warning("请先选择要移出的持仓")
             return

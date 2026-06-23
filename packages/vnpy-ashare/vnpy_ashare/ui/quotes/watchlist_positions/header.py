@@ -27,6 +27,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
     expansion_changed = QtCore.Signal(bool)
     refresh_requested = QtCore.Signal()
     edit_requested = QtCore.Signal()
+    record_sell_requested = QtCore.Signal()
     remove_requested = QtCore.Signal()
     clear_requested = QtCore.Signal()
     plan_requested = QtCore.Signal()
@@ -158,6 +159,11 @@ class PositionPanelHeader(QtWidgets.QWidget):
         self._edit_button.setObjectName("SecondaryButton")
         self._edit_button.clicked.connect(self.edit_requested.emit)
 
+        self._record_sell_button = QtWidgets.QPushButton("补录卖出", self)
+        self._record_sell_button.setObjectName("SecondaryButton")
+        self._record_sell_button.setToolTip("写入卖出流水，不移除持仓；分批卖出时同步减少持仓量")
+        self._record_sell_button.clicked.connect(self.record_sell_requested.emit)
+
         self._remove_button = QtWidgets.QPushButton("移出", self)
         self._remove_button.setObjectName("SecondaryButton")
         self._remove_button.clicked.connect(self.remove_requested.emit)
@@ -195,6 +201,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
         layout.addWidget(self._fast_spin)
         layout.addWidget(self._slow_spin)
         layout.addWidget(self._edit_button)
+        layout.addWidget(self._record_sell_button)
         layout.addWidget(self._remove_button)
         layout.addWidget(self._clear_button)
         layout.addWidget(self._refresh_button)
@@ -212,6 +219,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
             self._fast_spin,
             self._slow_spin,
             self._edit_button,
+            self._record_sell_button,
             self._remove_button,
             self._clear_button,
             self._refresh_button,

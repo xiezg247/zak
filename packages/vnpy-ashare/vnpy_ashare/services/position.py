@@ -255,6 +255,52 @@ class PositionService(BaseService):
             )
         return ok
 
+    def record_sell(
+        self,
+        symbol: str,
+        exchange: Exchange,
+        *,
+        sell_price: float,
+        sell_volume: int,
+        sell_date: str | None = None,
+        reason: str = "",
+    ) -> str | None:
+        """补录卖出流水；不移除持仓。卖出量小于当前持仓时同步减量。"""
+        row = load_position_row(symbol, exchange)
+        if row is None:
+            return "not_found"
+        cost_price = _row_float(row["cost_price"])
+        position_volume = _row_int(row["volume"])
+        normalized_volume = normalize_volume(sell_volume)
+        if sell_price <= 0:
+            return "invalid_price"
+        if normalized_volume <= 0:
+            return "invalid_volume"
+        if normalized_volume > position_volume:
+            return "volume_exceeds"
+        self._record_sell_journal(
+            symbol,
+            exchange,
+            cost_price=cost_price,
+            volume=normalized_volume,
+            sell_price=sell_price,
+            sell_date=sell_date,
+            reason=reason.strip() or "补录卖出",
+        )
+        if normalized_volume < position_volume:
+            ok = update_position_item(
+                symbol,
+                exchange,
+                cost_price=cost_price,
+                volume=position_volume - normalized_volume,
+                buy_date=str(row["buy_date"]),
+                notes=str(row.get("notes") or ""),
+                plan_pct=row.get("plan_pct"),  # type: ignore[arg-type]
+            )
+            if not ok:
+                return "update_failed"
+        return None
+
     def clear(
         self,
         *,

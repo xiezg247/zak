@@ -18,7 +18,9 @@ ui/quotes/features/watchlist/
 ├── prefs.py              # 布局预设 QSettings
 ├── toolbar.py            # 工具栏控件与自选动作收拢
 ├── toolbar_policy.py     # 自选页工具栏 policy（轻量，供 shell / 单测）
-└── toolbar_preset.py     # 预设驱动工具栏显隐（登记、chip 等）
+├── toolbar_preset.py     # 预设驱动工具栏显隐（登记、chip 等）
+├── strategy_workspace.py # 策略/持仓工作区：工具栏主控、面板显隐
+└── strategy_workspace_prefs.py  # 工作区开闭 QSettings
 ```
 
 | 模块 | 职责 |
@@ -28,6 +30,7 @@ ui/quotes/features/watchlist/
 | `apply_layout_preset` | 盘中 / 登记 / 复盘：面板折叠、Tab、视图、工具栏 |
 | `apply_position_focus` | 点击「持仓 n/20」：信号折叠 + 持仓展开 + 主表 25% |
 | `WatchlistToolbarPolicy` | 自选页将回测/排序/下载等收入右键或「更多」 |
+| `strategy_workspace` | 工具栏「策略/持仓 · 信号 n · 持仓 n」：一键显隐信号区 + 持仓区 |
 
 ---
 
@@ -72,6 +75,19 @@ WatchlistHost              # 自选页：信号/持仓/多维 controller 与 pan
 - `schedule_downstream`：按布局预设（盘中/登记/复盘）决定信号/持仓/多维的加载优先级；折叠面板在 `force=False` 时不启策略 worker
 
 `ui/quotes/watchlist/strategy_batch.py`：`WatchlistStrategyBatchCoordinator` 合并信号区与持仓区**相同 `cache_key`** 的待算标的，单次 `batch_strategy_signals` 后分别写入两区缓存；持仓不跟随信号（独立 Profile）时仍分两次计算。
+
+### 2.4 策略/持仓工作区
+
+工具栏 **可切换按钮** `策略/持仓 · 信号 n · 持仓 n`（`strategy_workspace.py`）：
+
+| 状态 | 行为 |
+|------|------|
+| **关闭** | 信号区 + 持仓区 UI 隐藏，主表占满；后台仍按 stale 巡检 / 预热刷新 cache |
+| **展开** | 两区可见，并按当前布局预设（盘中/登记/复盘）同步各 panel 折叠态 |
+
+开闭持久化：`QSettings` key `quotes/watchlist/strategy_workspace_open_v1`（`strategy_workspace_prefs.py`）。展开时调用 `sync_strategy_workspace_from_preset()`，与 §3 预设表一致。
+
+工作区模式下：情绪/风控 chip 收入工具栏「更多」；「加入信号区」「登记持仓」改由主表右键等入口提供（`append_strategy_workspace_more_actions`）。
 
 ---
 

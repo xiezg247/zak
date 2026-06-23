@@ -123,6 +123,57 @@ class PositionServiceTests(unittest.TestCase):
             )
         )
 
+    def test_record_sell_keeps_position_when_full_volume(self) -> None:
+        self._sell_patcher.stop()
+        self._journal_patcher.stop()
+        with patch(
+            "vnpy_ashare.trading.journal.record_sell.load_emotion_cycle_snapshot",
+            return_value=None,
+        ):
+            self.service.add(
+                "600000",
+                Exchange.SSE,
+                cost_price=10.0,
+                volume=200,
+                buy_date="2026-06-01",
+            )
+            error = self.service.record_sell(
+                "600000",
+                Exchange.SSE,
+                sell_price=11.0,
+                sell_volume=200,
+                sell_date="2026-06-02",
+                reason="漏记补录",
+            )
+        self.assertIsNone(error)
+        items = self.service.get_items()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].volume, 200)
+
+    def test_record_sell_reduces_position_on_partial(self) -> None:
+        self._sell_patcher.stop()
+        self._journal_patcher.stop()
+        with patch(
+            "vnpy_ashare.trading.journal.record_sell.load_emotion_cycle_snapshot",
+            return_value=None,
+        ):
+            self.service.add(
+                "600000",
+                Exchange.SSE,
+                cost_price=10.0,
+                volume=300,
+                buy_date="2026-06-01",
+            )
+            error = self.service.record_sell(
+                "600000",
+                Exchange.SSE,
+                sell_price=11.0,
+                sell_volume=100,
+                sell_date="2026-06-02",
+            )
+        self.assertIsNone(error)
+        self.assertEqual(self.service.get_items()[0].volume, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -83,9 +83,10 @@ chief 输出含「综合研判」时，`persist_team_analysis_report()` 写入 `
 
 ## 后续演进
 
-- portfolio Agent（持仓维度，待持仓模块完善）
 - Tushare 补全 `analyze_financial` 全量财务指标
 - K 线衍生补全 `analyze_risk`（Beta、下行标准差等）
+
+> **不做**：portfolio Agent（持仓维度子 Agent；现有 `get_short_term_watchlist` / 持仓上下文已覆盖主场景）。
 
 ## 关键代码
 

@@ -146,7 +146,7 @@ resonance 加权（权重可配置；D-03「短线龙头」预设 **已有**）
 | 板块资金 → 雷达 | 详情侧栏「雷达·龙头 / 雷达·主线」 | `open_radar_card(leader_pick \| sector_theme)` |
 | 板块资金 → 选股 | 详情「龙头选股」 | `open_radar_leader_loop` → Hub `run_leader_screen` |
 
----
+板块资金页另支持成分 **批量策略扫描** 与 **延续 / 未来 3 日展望**（`sector_flow_rotation`、`outlook_batch`）；自选信号区可选列「延续模式」「未来3日」共用 `services/signals/stock_continuation.py`。
 
 ## 10. 数据依赖
 

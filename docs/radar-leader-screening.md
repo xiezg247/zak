@@ -83,9 +83,9 @@
 | **板块龙头** `leaders` | `run_sector_strength` → 强势行业内按**涨幅**排序取 Top N | 强势板块内涨最多的票 | 未区分连板高度、封板先后、资金辨识度、龙二/跟风 |
 | **广度扩散** `breadth` | `breadth_leader_candidates` → 高上涨占比行业内的涨幅前列 | 扩散行情中的前排 | 偏补涨逻辑，非情绪龙头 |
 
-板块资金页 `load_sector_leaders`（`services/sector_constituents.py`）同样按**涨幅 + 主力**排序，且仅在板块详情侧栏使用，**未接入雷达选股闭环**。
+板块资金页 `load_sector_leaders`（`services/sector_constituents.py`）在详情侧栏按**涨幅 + 主力**排序展示成分前排；与 `leader_pick` 的 `leader_score` 评分体系不同，但已通过侧栏 **「雷达·龙头 / 雷达·主线 / 龙头选股」** 与雷达 / Hub 闭环（见 [radar-page.md §9](./radar-page.md#9-与板块资金页)）。
 
-市场页已有 `limit_up`、`limit_times` 排行（`quotes/rank/rank_catalog.py`），但雷达页**未消费连板字段**。
+连板高度由 D-01 `discovery_limit_ladder` 与市场页 **连板榜**（`limit_times`）消费；`sector_theme` 的 `leaders` variant 仍偏涨幅排序，与 G-04 评分差距见上表。
 
 ### 2.3 需求 ID 索引（均已实现）
 
