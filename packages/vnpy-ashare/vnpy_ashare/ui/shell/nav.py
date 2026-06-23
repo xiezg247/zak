@@ -25,15 +25,15 @@ class NavGroup(FrozenModel):
     entries: tuple[NavEntry, ...] = Field(description="导航项列表")
 
 
-# 主窗口左侧菜单（自选首页；组间以分隔线区分）
+# 主窗口左侧菜单（工作台首页；组间以分隔线区分）
 APP_NAV_GROUPS: tuple[NavGroup, ...] = (
     NavGroup(
         entries=(
+            NavEntry(key="home", label="工作台"),
             NavEntry(key="watchlist", label="自选"),
             NavEntry(key="market", label="市场"),
             NavEntry(key="sector_flow", label="板块资金"),
             NavEntry(key="radar", label="雷达"),
-            NavEntry(key="local", label="本地"),
         ),
     ),
     NavGroup(
@@ -54,16 +54,17 @@ APP_NAV_ENTRIES: tuple[NavEntry, ...] = tuple(entry for group in APP_NAV_GROUPS 
 BACKSTAGE_ENTRIES: tuple[NavEntry, ...] = (
     NavEntry(key="scheduler", label="定时任务"),
     NavEntry(key="data_manager", label="数据管理"),
+    NavEntry(key="local", label="本地数据"),
 )
 
 BACKSTAGE_PAGE_KEYS: frozenset[str] = frozenset(entry.key for entry in BACKSTAGE_ENTRIES)
 
 NAV_SHORTCUTS: dict[str, str] = {
-    "watchlist": "Ctrl+1",
-    "market": "Ctrl+2",
-    "sector_flow": "Ctrl+3",
-    "radar": "Ctrl+4",
-    "local": "Ctrl+5",
+    "home": "Ctrl+1",
+    "watchlist": "Ctrl+2",
+    "market": "Ctrl+3",
+    "sector_flow": "Ctrl+4",
+    "radar": "Ctrl+5",
     "screener": "Ctrl+6",
     "ai_assistant": "Ctrl+7",
     "cta_backtest": "Ctrl+8",
@@ -72,6 +73,7 @@ NAV_SHORTCUTS: dict[str, str] = {
 
 BACKSTAGE_SHORTCUTS: dict[str, str] = {
     "scheduler": "Ctrl+0",
+    "local": "Ctrl+Shift+L",
 }
 
 
@@ -118,6 +120,13 @@ def _draw_watchlist(painter: QtGui.QPainter, size: int) -> None:
     painter.drawPath(path)
     painter.drawLine(size // 2 - 4, size // 2, size // 2 + 4, size // 2)
     painter.drawLine(size // 2, size // 2 - 4, size // 2, size // 2 + 4)
+
+
+def _draw_home(painter: QtGui.QPainter, size: int) -> None:
+    m = 5
+    painter.drawRoundedRect(m, m + 4, size - m * 2, size - m * 2 - 2, 3, 3)
+    painter.drawLine(size // 2, m + 10, size // 2, size - m - 6)
+    painter.drawLine(m + 8, size // 2 + 2, size - m - 8, size // 2 + 2)
 
 
 def _draw_local(painter: QtGui.QPainter, size: int) -> None:
@@ -218,6 +227,7 @@ def _draw_radar(painter: QtGui.QPainter, size: int) -> None:
 
 
 _ICON_DRAWERS: dict[str, Callable[[QtGui.QPainter, int], None]] = {
+    "home": _draw_home,
     "market": _draw_market,
     "sector_flow": _draw_sector_flow,
     "radar": _draw_radar,

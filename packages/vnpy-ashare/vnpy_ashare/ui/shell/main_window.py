@@ -54,9 +54,11 @@ from vnpy_ashare.ui.shell.nav import (
     APP_NAV_GROUPS,
     BACKSTAGE_ENTRIES,
     BACKSTAGE_SHORTCUTS,
+    BACKSTAGE_SHORTCUTS,
     NAV_SHORTCUTS,
     SidebarNav,
 )
+from vnpy_ashare.ui.home.page import HomePageWidget
 from vnpy_ashare.ui.shell.page_shell import LocalPageWidget, MarketPageWidget, RadarPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG
@@ -76,6 +78,10 @@ _QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "radar": RadarPageWidget,
     "watchlist": WatchlistPageWidget,
     "local": LocalPageWidget,
+}
+
+_SHELL_PAGE_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
+    "home": HomePageWidget,
 }
 
 _DEFERRED_CTA_PAGE_KEY = "cta_backtest"
@@ -200,7 +206,6 @@ class AshareMainWindow(MainWindow):
         )
         self._ai_toggle_action.triggered.connect(self._toggle_floating_orb)
         self.addAction(self._ai_toggle_action)
-        tools_menu.addSeparator()
         ai_tools_action = tools_menu.addAction("AI 工具能力…")
         ai_tools_action.triggered.connect(self._open_ai_tools_dialog)
         audit_action = tools_menu.addAction("AI 工具审计…")
@@ -812,9 +817,22 @@ class AshareMainWindow(MainWindow):
             self._open_scheduler_dialog()
         elif key == "data_manager":
             self._open_data_manager_dialog()
+        elif key == "local":
+            self._open_local_page()
 
     def _open_scheduler_dialog(self) -> None:
         show_scheduler_dialog(self.main_engine, self.event_engine, parent=self)
+
+    def navigate_to_page(self, key: str) -> None:
+        """侧栏页或仅菜单入口页（如本地数据）。"""
+        nav_index = self._nav_index_for_key(key)
+        if nav_index is not None:
+            self._show_page(nav_index)
+            return
+        self._show_page_by_key(key)
+
+    def _open_local_page(self) -> None:
+        self.navigate_to_page("local")
 
     def _open_data_manager_dialog(self) -> None:
         show_data_manager_dialog(
@@ -869,6 +887,8 @@ class AshareMainWindow(MainWindow):
 
         if key in _QUOTES_WIDGETS:
             widget = _QUOTES_WIDGETS[key](self.main_engine, self.event_engine)
+        elif key in _SHELL_PAGE_WIDGETS:
+            widget = _SHELL_PAGE_WIDGETS[key](self.main_engine, self.event_engine)
         elif key in _VNPY_WIDGETS:
             module_path, class_name = _VNPY_WIDGETS[key]
             ui_module: ModuleType = import_module(module_path)
@@ -932,6 +952,7 @@ class AshareMainWindow(MainWindow):
             return
         name_map = {
             "Ashare": "watchlist",
+            "Home": "home",
             "CtaBacktester": "cta_backtest",
         }
         key = name_map.get(name)

@@ -34,10 +34,10 @@ def render_markdown(text: str, *, tokens: ThemeTokens | None = None) -> str:
 def _markdown_font_stack() -> str:
     system = platform.system()
     if system == "Darwin":
-        return '"PingFang SC", "Helvetica Neue", sans-serif'
+        return '"PingFang SC", "Helvetica Neue", "Arial"'
     if system == "Windows":
-        return '"Segoe UI", "Microsoft YaHei", sans-serif'
-    return '"Noto Sans SC", sans-serif'
+        return '"Segoe UI", "Microsoft YaHei", "Arial"'
+    return '"Noto Sans SC", "Arial"'
 
 
 def _build_markdown_css(t: ThemeTokens) -> str:
