@@ -6,11 +6,11 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market.index_amount import IndexAmountSeries
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleSnapshot
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.quotes.market.market_environment import MarketEnvironmentSnapshot
 from vnpy_ashare.quotes.market.market_overview_loaders import MarketOverviewData, SectorRankItem
+from vnpy_ashare.services.industry_sector import DEFAULT_TRADING_DAYS
 from vnpy_ashare.ui.quotes.market_overview.index_amount_popup import IndexAmountPopup
 from vnpy_ashare.ui.quotes.market_overview.index_amount_worker import IndexAmountLoadWorker
 from vnpy_ashare.ui.quotes.market_overview.index_card import IndexCardWidget

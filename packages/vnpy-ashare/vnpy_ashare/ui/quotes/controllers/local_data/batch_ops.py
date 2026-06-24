@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
-from vnpy_ashare.data.bar_health import BarHealthStatus, format_gap_ranges, list_status
+from vnpy_ashare.domain.data.bar_health import BarHealthStatus
 from vnpy_ashare.jobs.bars.local_fill import (
     BatchFillProgress,
     BatchFillResult,
@@ -13,6 +13,7 @@ from vnpy_ashare.jobs.bars.local_fill import (
     count_stale_daily_items,
     select_stale_daily_items,
 )
+from vnpy_ashare.services.bar import format_gap_ranges, list_status
 from vnpy_ashare.ui.quotes.controllers.local_data.base import LocalDataControllerBase
 from vnpy_ashare.ui.quotes.controllers.local_data.watchlist_hooks import (
     position_vt_symbols,

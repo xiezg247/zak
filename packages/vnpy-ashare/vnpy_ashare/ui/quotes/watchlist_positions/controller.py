@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
-from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.position import PositionRecord, build_position_snapshot
 from vnpy_ashare.domain.trading.signal_snapshot import signal_as_of_stale
 from vnpy_ashare.notifications.core.position_alert_scan import PositionAlertRow, PositionAlertScanInput
 from vnpy_ashare.notifications.triggers.position_alerts import scan_position_alerts
-from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
+from vnpy_ashare.services.bar import format_meta_date
+from vnpy_ashare.services.position import get_position_disk_cache_standalone
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
@@ -28,8 +28,21 @@ class WatchlistPositionController:
     def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self._pending_refresh: tuple[bool, list[str] | None] | None = None
-        self._disk_cache = WatchlistPositionDiskCache()
+        self._disk_cache_override = None
         self._last_position_symbols: set[str] = set()
+
+    @property
+    def _disk_cache(self):
+        if self._disk_cache_override is not None:
+            return self._disk_cache_override
+        service = self._position_service()
+        if service is not None:
+            return service.get_position_disk_cache()
+        return get_position_disk_cache_standalone()
+
+    @_disk_cache.setter
+    def _disk_cache(self, value) -> None:
+        self._disk_cache_override = value
 
     def _compute_enabled(self) -> bool:
         if not self._page.config.show_watchlist_positions or self._page.page_name != "自选":

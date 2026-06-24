@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS, fetch_index_amount_history
+from vnpy_ashare.services.industry_sector import DEFAULT_TRADING_DAYS, fetch_index_amount_history
 
 
 class IndexAmountLoadWorker(QtCore.QThread):

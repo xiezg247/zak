@@ -9,7 +9,7 @@ from pydantic import Field
 from vnpy.trader.constant import Exchange
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.data.bar_access import get_period_overview
+from vnpy_ashare.services.bar import get_period_overview
 from vnpy_common.domain.base import FrozenModel, MutableModel
 
 LIVE_MINUTE_TAIL_COUNT = 5

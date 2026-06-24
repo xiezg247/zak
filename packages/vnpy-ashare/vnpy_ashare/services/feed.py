@@ -130,6 +130,9 @@ class FeedService(BaseService):
     def remove_subscription(self, subscription_id: str) -> None:
         feed_repo.delete_subscription(subscription_id)
 
+    def get_subscription_cursor(self, subscription_id: str) -> dict[str, object]:
+        return feed_repo.get_cursor(subscription_id)
+
     def list_items(
         self,
         *,

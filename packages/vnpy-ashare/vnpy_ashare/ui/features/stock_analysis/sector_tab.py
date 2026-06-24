@@ -7,7 +7,7 @@ from typing import Any
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.services.stock.profile import SectorProfile, ValuationProfile
-from vnpy_ashare.storage.repositories.valuation import ValuationRow
+from vnpy_ashare.services.stock_analysis import ValuationRow
 from vnpy_ashare.ui.features.stock_analysis.valuation_sparkline import ValuationHistorySection
 from vnpy_common.ui.data_table import configure_data_table
 from vnpy_common.ui.panel_widgets import MetricTile, content_card, hint_label, section_title, tab_page

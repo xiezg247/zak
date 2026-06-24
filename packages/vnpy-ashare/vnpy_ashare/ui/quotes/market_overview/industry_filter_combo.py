@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
-from vnpy_ashare.integrations.tushare.factors import (
+from vnpy_ashare.services.industry_sector import (
+    build_grouped_l2_industries,
     fetch_industry_l2_to_l1_map,
     fetch_stock_industry_map,
-)
-from vnpy_ashare.integrations.tushare.sw_industry import (
-    build_grouped_l2_industries,
     fetch_sw_l2_index_map,
     format_industry_filter_label,
+    get_cached_industry_map,
 )
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
 

@@ -10,7 +10,7 @@ from vnpy_ashare.config.preferences.watchlist_position import (
 )
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.trading.position import PositionRecord
-from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
+from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.trading.plan.plan_check import check_buy_against_plan
 from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
@@ -165,7 +165,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         if not ok:
             reason = service.add_failure_reason(item.symbol, item.exchange) if not existing else None
             if reason == "full":
-                self._page._toast.warning(f"持仓已满（最多 {POSITION_MAX_ITEMS} 只）")
+                self._page._toast.warning(f"持仓已满（最多 {PositionService.max_items} 只）")
             elif reason == "duplicate":
                 self._page._toast.warning("该标的已有持仓")
             elif reason == "not_in_watchlist":

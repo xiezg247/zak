@@ -93,5 +93,11 @@ module = [
     "vnpy_ashare.ui.shell.main_window_navigation",
     "vnpy_ashare.ui.shell.main_window_pages",
     "vnpy_ashare.ui.shell.main_window_scheduler",
+    "vnpy_ashare.ui.sector_flow.controller.base",
+    "vnpy_ashare.ui.sector_flow.controller.snapshot",
+    "vnpy_ashare.ui.sector_flow.controller.rotation",
+    "vnpy_ashare.ui.sector_flow.controller.outlook",
+    "vnpy_ashare.ui.sector_flow.controller.navigation",
+    "vnpy_ashare.ui.sector_flow.controller.ai_context",
 ]
 disable_error_code = ["attr-defined"]

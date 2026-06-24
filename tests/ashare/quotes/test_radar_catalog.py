@@ -184,3 +184,27 @@ def test_refresh_options_and_supports() -> None:
     assert refresh_options_for_card("outlook_watch") == ()
     off_labels = {opt.label for opt in RADAR_DISCOVERY_REFRESH_OPTIONS if opt.ms == RADAR_REFRESH_OFF_MS}
     assert off_labels == {"不刷新"}
+
+
+def test_new_cards_registered() -> None:
+    from vnpy_ashare.quotes.radar.radar_catalog import RADAR_CARD_SPECS
+
+    ids = {spec.id for spec in RADAR_CARD_SPECS}
+    for card_id in (
+        "market_emotion",
+        "discovery_limit_break",
+        "watchlist_short_term",
+        "sector_flow_hot",
+    ):
+        assert card_id in ids
+
+
+def test_resonance_excludes_environment_and_risk_cards() -> None:
+    from vnpy_ashare.quotes.radar.radar_resonance_prefs import (
+        RADAR_CARDS_EXCLUDED_FROM_RESONANCE,
+        radar_card_participates_in_resonance,
+    )
+
+    assert "market_emotion" in RADAR_CARDS_EXCLUDED_FROM_RESONANCE
+    assert radar_card_participates_in_resonance("leader_pick")
+    assert not radar_card_participates_in_resonance("market_emotion")

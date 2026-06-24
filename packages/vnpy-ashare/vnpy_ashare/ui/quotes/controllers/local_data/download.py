@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Literal
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
-from vnpy_ashare.data.bar_access import delete_scope_bars
 from vnpy_ashare.data.minute_periods import DEFAULT_MINUTE_DOWNLOAD_MONTHS
+from vnpy_ashare.services.bar import delete_scope_bars
 from vnpy_ashare.ui.quotes.chart.tab_indices import MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.controllers.local_data.base import LocalDataControllerBase
 from vnpy_ashare.ui.quotes.controllers.local_data.watchlist_hooks import refresh_watchlist_strategy_panels

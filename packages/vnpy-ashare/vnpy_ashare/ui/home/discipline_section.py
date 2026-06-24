@@ -90,6 +90,6 @@ class PlaybookDisciplineCard(QtWidgets.QFrame):
     def _on_toggle(self) -> None:
         self._collapsed = not self._collapsed
         self._sync_collapsed()
-        from vnpy_ashare.storage.repositories.trading_playbook import set_playbook_section_collapsed
+        from vnpy_ashare.services.trading_playbook import save_playbook_section_collapsed
 
-        set_playbook_section_collapsed(self._section_id, self._collapsed)
+        save_playbook_section_collapsed(self._section_id, self._collapsed)

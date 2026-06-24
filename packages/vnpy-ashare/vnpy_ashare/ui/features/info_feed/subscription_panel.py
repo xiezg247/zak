@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.feed.models import FeedSubscription
-from vnpy_ashare.storage.repositories import feed as feed_repo
 from vnpy_ashare.ui.features.info_feed.add_subscription_dialog import AddBilibiliSubscriptionDialog
 from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_common.ui.panel_widgets import content_card, hint_label, section_title
@@ -72,7 +71,7 @@ class SubscriptionPanel(QtWidgets.QWidget):
         self._list.clear()
         restore_row = 0
         for index, sub in enumerate(self._rows):
-            cursor = feed_repo.get_cursor(sub.id)
+            cursor = self._service.get_subscription_cursor(sub.id)
             status = "启用" if sub.enabled else "停用"
             sync_hint = cursor.get("last_ok_at") or cursor.get("last_error") or "未同步"
             if isinstance(sync_hint, str) and len(sync_hint) > 18:

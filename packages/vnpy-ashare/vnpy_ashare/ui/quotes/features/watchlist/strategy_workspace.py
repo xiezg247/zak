@@ -6,7 +6,6 @@ from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.config.preferences.watchlist_position import save_position_panel_expanded
 from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_expanded
-from vnpy_ashare.storage.repositories.positions import position_item_count
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_watchlist_layout_preset
 from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import PRESET_SPECS
@@ -107,9 +106,11 @@ def refresh_strategy_workspace_button(page: WatchlistHost) -> None:
     button = getattr(page, "strategy_workspace_button", None)
     if button is None:
         return
+    position_service = page._get_position_service()
+    position_count = position_service.count() if position_service is not None else 0
     label = format_strategy_workspace_button_label(
         signal_count=_signal_count(page),
-        position_count=position_item_count(),
+        position_count=position_count,
     )
     button.blockSignals(True)
     button.setText(label)

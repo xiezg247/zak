@@ -12,12 +12,12 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     normalize_signal_panel_symbols,
     save_watchlist_signal_config,
 )
-from vnpy_ashare.data.bar_health import format_meta_date
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol, lookup_by_vt_symbol
 from vnpy_ashare.domain.time.china import format_china_time_hm
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, detect_signal_transitions, signal_as_of_stale
 from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
-from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
+from vnpy_ashare.services.bar import format_meta_date
+from vnpy_ashare.services.watchlist import get_signal_disk_cache_standalone
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.page.run_log import append_run_log
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
@@ -42,8 +42,21 @@ class WatchlistSignalController:
         self._deferred_refresh: tuple[bool, list[str] | None] | None = None
         self._service_retry_timer: QtCore.QTimer | None = None
         self._service_retry_count = 0
-        self._disk_cache = WatchlistSignalDiskCache()
+        self._disk_cache_override = None
         self._last_panel_symbols: set[str] = set()
+
+    @property
+    def _disk_cache(self):
+        if self._disk_cache_override is not None:
+            return self._disk_cache_override
+        service = self._page._get_watchlist_service()
+        if service is not None:
+            return service.get_signal_disk_cache()
+        return get_signal_disk_cache_standalone()
+
+    @_disk_cache.setter
+    def _disk_cache(self, value) -> None:
+        self._disk_cache_override = value
 
     def _compute_enabled(self) -> bool:
         """是否允许自动策略 Worker（关闭时仍展示已有 cache）。"""

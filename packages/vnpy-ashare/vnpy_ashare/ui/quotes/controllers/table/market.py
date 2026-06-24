@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.domain.market.board import matches_board
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.quote_time import format_batch_updated_at
-from vnpy_ashare.integrations.tushare.factors import fetch_stock_industry_map, fetch_stock_market_board_map
+from vnpy_ashare.services.industry_sector import fetch_stock_industry_map, fetch_stock_market_board_map
 from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.table.display import slice_market_display, sort_market_items
 

@@ -10,14 +10,20 @@ from vnpy.trader.object import BarData
 
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.store import set_ai_context
+from vnpy_ashare.data import bar_health as _bar_health
 from vnpy_ashare.data.bar_access import (
     PeriodBarOverview,
     build_symbol_name_map,
+    count_universe,
+    delete_scope_bars,
     get_period_overview,
+    get_scope_overview,
     iter_bar_overviews,
     load_scope_bars,
     universe_exists,
 )
+from vnpy_ashare.data.bar_store import invalidate_bar_overview_cache
+from vnpy_ashare.domain.data.bar_health import BarGapResult, BarHealthStatus, BarMeta, GapRange
 from vnpy_ashare.services.base import BaseService
 from vnpy_common.ai.protocol import AiContextData
 
@@ -120,3 +126,38 @@ def publish_data_manager_page_context() -> None:
         "补全数据请引导用户使用「自选 / 本地」页或「工具 → 立即执行」。",
     ]
     set_ai_context(enrich_context_with_actions(AiContextData(page="数据管理", extra="\n".join(extra_lines))))
+
+
+# UI 层 K 线 / 健康检查门面（禁止 ui → data.bar_*）
+clip_bars_from_unified_start = _bar_health.clip_bars_from_unified_start
+bar_meta_from_overview = _bar_health.bar_meta_from_overview
+format_gap_ranges = _bar_health.format_gap_ranges
+format_meta_date = _bar_health.format_meta_date
+format_meta_datetime = _bar_health.format_meta_datetime
+inspect_bar_gaps = _bar_health.inspect_bar_gaps
+list_status = _bar_health.list_status
+status_label = _bar_health.status_label
+
+__all__ = [
+    "BarGapResult",
+    "BarHealthStatus",
+    "BarMeta",
+    "GapRange",
+    "PeriodBarOverview",
+    "bar_meta_from_overview",
+    "build_symbol_name_map",
+    "clip_bars_from_unified_start",
+    "count_universe",
+    "delete_scope_bars",
+    "format_gap_ranges",
+    "format_meta_date",
+    "format_meta_datetime",
+    "get_period_overview",
+    "get_scope_overview",
+    "inspect_bar_gaps",
+    "invalidate_bar_overview_cache",
+    "iter_bar_overviews",
+    "list_status",
+    "status_label",
+    "universe_exists",
+]

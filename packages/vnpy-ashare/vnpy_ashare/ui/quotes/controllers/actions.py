@@ -19,12 +19,13 @@ from vnpy_ashare.ai.context.quote.prompts import (
 )
 from vnpy_ashare.app.events import EVENT_ASK_AI, EVENT_OPEN_BACKTEST, AskAiRequest, BacktestRequest
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
-from vnpy_ashare.data.bar_health import BarHealthStatus, list_status
+from vnpy_ashare.domain.data.bar_health import BarHealthStatus
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.quotes.format import format_volume
+from vnpy_ashare.services.bar import list_status
 from vnpy_ashare.services.signals.stock_continuation import format_signal_panel_context_extra
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX

@@ -128,18 +128,7 @@ uv run pytest tests/ -q
 
 ## 文档
 
-完整索引与**短线主线阅读顺序**见 **[docs/README.md](docs/README.md)**。
-
-| 文档 | 说明 |
-|------|------|
-| [交易体系说明](docs/trading-system.md) | 极致短线总纲；守则 Playbook |
-| [盘中工作流](docs/intraday-workflow.md) | 盘前→盘中→盘后 |
-| [产品说明](docs/product-plan.md) | 功能模块、导航、快捷键 |
-| [功能索引](docs/feature-index.md) | 按域查阅能力 |
-| [架构说明](docs/architecture.md) | GUI 分层、Service、AI 编排 |
-| [选股 Hub 使用指南](docs/screener-hub-guide.md) | 条件选股 / 多因子配方操作速查 |
-| [AI 数据路由](docs/ai-data-routing.md) | Skill / MCP 与意图路由 |
-| [编码规范](docs/coding-standards.md) | 分层约定、类型注解 |
+完整索引与**短线主线阅读顺序**见 **[docs/README.md](docs/README.md)**。入口：[交易体系](docs/trading-system.md) · [盘中工作流](docs/intraday-workflow.md) · [功能索引](docs/feature-index.md)
 
 ## 项目结构
 

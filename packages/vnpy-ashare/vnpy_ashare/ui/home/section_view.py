@@ -83,9 +83,9 @@ class PlaybookSectionCard(QtWidgets.QFrame):
         self._collapsed = not self._collapsed
         self._sync_collapsed()
         if self._section_id:
-            from vnpy_ashare.storage.repositories.trading_playbook import set_playbook_section_collapsed
+            from vnpy_ashare.services.trading_playbook import save_playbook_section_collapsed
 
-            set_playbook_section_collapsed(self._section_id, self._collapsed)
+            save_playbook_section_collapsed(self._section_id, self._collapsed)
 
     @staticmethod
     def render_html(markdown: str) -> str:

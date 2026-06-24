@@ -1,79 +1,45 @@
 # 盘中工作流（短线为主）
 
-> 把 [交易体系](./trading-system.md) 串成 **盘前 → 盘中 → 盘后** 路径。  
-> 信号区默认 Profile `short_swing`；首次打开自选页可切换风格。布局预设默认「盘中」。
+把 [交易体系](./trading-system.md) 串成 **盘前 → 盘中 → 盘后**。自选页布局预设默认「盘中」；信号区默认 Profile `short_swing`。
 
 ---
 
-## 1. 风格与页面
-
-| 层级 | 周期 | 主用页面 | 策略/工具 |
-|------|------|----------|-----------|
-| 极致短线 | 1–3 日 | 雷达、市场、自选持仓 | 龙头选股、LimitBoard、OvernightExit、情绪周期 |
-| 短线波段 | 3–10 日 | 雷达展望、自选信号 | `AshareShortBreakoutStrategy` |
-| 中线观察 | 2–8 周 | 回测、团队分析 | `AshareDoubleMaStrategy` |
-
----
-
-## 2. 总流程
+## 总流程
 
 ```text
-盘前：守则(Ctrl+1) → 情绪预期 → 次日计划(3–5只)
+盘前：守则(Ctrl+1) → 情绪预期 → 次日计划(3–5只) → 补日 K
 盘中：择时闸 → 选股/信号区 → 登记持仓 → 风控异动
 盘后：笔记复盘 → 更新计划 → 导出/飞书
 ```
 
----
-
-## 3. 逐步说明
-
-### 盘前
-
-| 步骤 | 操作 | 页面/工具 |
-|------|------|-----------|
-| 守则 | Playbook + checklist | [守则](./trading-system.md#13-守则-playbook默认首屏) `Ctrl+1` |
-| 环境 | 涨跌停、连板、主线 | [市场](./market-page.md)、[雷达](./radar-page.md) |
-| 计划 | 观察名单、仓位、条件 | 交易计划对话框 |
-| 数据 | 下载日 K | 本地数据 / 选股「下载日 K」 |
-
-AI：「帮我做次日计划」→ `propose_trading_plan`。
-
-### 盘中
-
-| 步骤 | 操作 | 页面/工具 |
-|------|------|-----------|
-| 择时 | 阶段与建议仓位 | [情绪周期](./emotion-cycle.md) 芯片 |
-| 选股 | 龙头、共振 | [雷达选龙头](./radar-leader-screening.md) |
-| 监控 | 信号区 ≤10 | [自选页](./watchlist.md#4-信号区) |
-| 登记 | 持仓 + T+1 | [自选页](./watchlist.md#5-持仓区) |
-| 风控 | 浮亏异动 | [风控](./risk-gate.md)、[通知](./notifications.md) |
-
-池子上限：计划 3–5 · 信号 10 · 自选 50 · 持仓见 `POSITION_MAX_ITEMS`。
-
-### 盘后
-
-笔记流水 + Playbook；选股/龙头 CSV 导出；雷达「盘后解读」；飞书推送（可选）。
+| 阶段 | 重点页面 |
+|------|----------|
+| 极致短线 1–3 日 | 雷达、市场、自选持仓；LimitBoard、OvernightExit |
+| 短线波段 3–10 日 | 雷达展望、信号区 `AshareShortBreakoutStrategy` |
+| 中线 2–8 周 | 回测、团队分析 `AshareDoubleMaStrategy` |
 
 ---
 
-## 4. 按情绪阶段
+## 逐步
 
-| 阶段 | 重点 | 少做 |
-|------|------|------|
-| 冰点 | 空仓或试错 | 打板追高 |
+**盘前**： [守则](./trading-system.md#13-守则-playbook默认首屏) Playbook → [市场](./market-page.md)/[雷达](./radar-page.md) 看环境 → 交易计划对话框 → `propose_trading_plan`（AI）。
+
+**盘中**：情绪芯片 → [雷达选龙头](./radar-leader-screening.md) → [信号区](./watchlist.md#4-信号区) ≤10 → [持仓区](./watchlist.md#5-持仓区) 登记 → [风控/通知](./risk-gate.md)。池子上限：计划 3–5 · 信号 10 · 自选 50。
+
+**盘后**：笔记 + Playbook；CSV 导出；雷达「盘后解读」。
+
+### 按情绪阶段
+
+| 阶段 | 做 | 少做 |
+|------|-----|------|
+| 冰点 | 空仓试错 | 打板追高 |
 | 启动 | 首板二板 | 重仓龙头 |
 | 高潮 | 龙头+共振 | 杂毛 |
 | 分歧 | 龙一低吸减仓 | 跟风 |
-| 退潮 | 不新开，隔日卖 | 一切买入 |
+| 退潮 | 隔日卖、不新开 | 一切买入 |
+
+快捷：雷达 → Hub · 选股 → 自选 · 自选 → 信号/持仓 · `Ctrl+L` AI。
 
 ---
 
-## 5. 快捷路径
-
-雷达 → 选股 Hub · 选股结果 → 自选 · 自选 → 信号/持仓 · `Ctrl+L` AI 悬浮球
-
----
-
-## 参考
-
-[功能索引](./feature-index.md) · [策略 Profile](./strategy-profiles.md) · [产品说明](./product-plan.md)
+[功能索引](./feature-index.md) · [策略 Profile](./strategy-profiles.md)

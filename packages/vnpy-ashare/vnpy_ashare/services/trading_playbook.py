@@ -13,7 +13,7 @@ from vnpy_ashare.config.preferences.strategy_profile import (
     load_strategy_profile_id,
 )
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label
-from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem, HomePlaybookStatus, PlaybookSection
+from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem, HomePlaybookStatus, PlaybookSection, PlaybookSectionUpdate
 from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.screener.hard_filter_prefs import (
     STRATEGY_PROFILE_HARD_FILTER_PRESET,
@@ -25,9 +25,11 @@ from vnpy_ashare.storage.repositories.trading_plans import load_active_trading_p
 from vnpy_ashare.storage.repositories.trading_playbook import (
     count_playbook_sections,
     list_playbook_sections,
+    set_playbook_section_collapsed,
+    update_playbook_section,
     upsert_playbook_sections,
 )
-from vnpy_ashare.storage.repositories.trading_playbook_discipline import load_discipline_checks
+from vnpy_ashare.storage.repositories.trading_playbook_discipline import load_discipline_checks, set_discipline_check
 from vnpy_ashare.trading.plan.off_plan import list_off_plan_position_vt_symbols
 from vnpy_ashare.trading.risk.book_pnl import summarize_book_pnl
 from vnpy_ashare.trading.risk.metrics import format_emotion_position_hint
@@ -153,6 +155,18 @@ def render_section_markdown(section: PlaybookSection) -> str:
 def load_discipline_checklist(trade_date: str | None = None) -> tuple[DisciplineCheckItem, ...]:
     day = (trade_date or today_trade_date())[:10]
     return load_discipline_checks(day)
+
+
+def save_playbook_section_body(section_id: str, update: PlaybookSectionUpdate) -> None:
+    update_playbook_section(section_id, update)
+
+
+def save_playbook_section_collapsed(section_id: str, collapsed: bool) -> None:
+    set_playbook_section_collapsed(section_id, collapsed)
+
+
+def save_discipline_check(trade_date: str, check_id: str, checked: bool) -> None:
+    set_discipline_check(trade_date, check_id, checked)
 
 
 def _resolve_home_daily_pnl_pct() -> float | None:

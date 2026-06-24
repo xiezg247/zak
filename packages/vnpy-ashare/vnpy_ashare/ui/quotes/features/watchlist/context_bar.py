@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.storage.repositories.positions import position_item_count
 from vnpy_ashare.ui.quotes.features.watchlist.pool_context_summary import format_pool_context_summary
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
@@ -42,7 +41,8 @@ class WatchlistPoolContextBar(QtWidgets.QWidget):
         pool_count = len(page.watchlist_pool_stocks or page.all_stocks)
         signal_panel = getattr(page, "signal_panel", None)
         signal_count = len(signal_panel.symbols) if signal_panel is not None else 0
-        position_count = position_item_count()
+        position_service = page._get_position_service()
+        position_count = position_service.count() if position_service is not None else 0
         text = format_pool_context_summary(
             pool_count=pool_count,
             signal_count=signal_count,

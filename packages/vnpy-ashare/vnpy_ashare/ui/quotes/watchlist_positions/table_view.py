@@ -12,8 +12,8 @@ from vnpy_ashare.quotes.misc.position_anomaly import (
     position_anomaly_reasons,
     position_anomaly_score,
 )
+from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.services.signals.runtime import signal_cell_color
-from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 from vnpy_ashare.trading.exit.exit_display import (
     exit_rule_cell_color,
     format_exit_rules_summary,
@@ -45,7 +45,7 @@ PANEL_COLUMNS = (
     ("ref_sell_price", "参考卖价"),
 )
 
-_EMPTY_TEXT = f"暂无持仓。请在自选表选中标的后点击持仓区「添加」（最多 {POSITION_MAX_ITEMS} 只）。"
+_EMPTY_TEXT = f"暂无持仓。请在自选表选中标的后点击持仓区「添加」（最多 {PositionService.max_items} 只）。"
 _FILTER_EMPTY_TEXT = "当前筛选无匹配标的，再次点击统计项可取消筛选。"
 
 

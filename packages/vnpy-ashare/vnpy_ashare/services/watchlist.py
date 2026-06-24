@@ -7,6 +7,7 @@ from typing import Literal
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.services.base import BaseService
+from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
 from vnpy_ashare.storage.repositories.watchlist import (
     WATCHLIST_MAX_ITEMS,
     add_watchlist_item,
@@ -33,6 +34,15 @@ from vnpy_ashare.storage.repositories.watchlist_groups import (
 )
 
 WatchlistAddFailure = Literal["duplicate", "full"]
+
+_standalone_signal_disk_cache: WatchlistSignalDiskCache | None = None
+
+
+def get_signal_disk_cache_standalone() -> WatchlistSignalDiskCache:
+    global _standalone_signal_disk_cache
+    if _standalone_signal_disk_cache is None:
+        _standalone_signal_disk_cache = WatchlistSignalDiskCache()
+    return _standalone_signal_disk_cache
 
 
 class WatchlistService(BaseService):
@@ -99,3 +109,10 @@ class WatchlistService(BaseService):
 
     def set_group_position_cap(self, group_id: str, position_cap_pct: float | None) -> bool:
         return update_watchlist_group_position_cap(group_id, position_cap_pct)
+
+    def get_signal_disk_cache(self) -> WatchlistSignalDiskCache:
+        cache = getattr(self, "_signal_disk_cache", None)
+        if cache is None:
+            cache = WatchlistSignalDiskCache()
+            self._signal_disk_cache = cache
+        return cache

@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem
-from vnpy_ashare.storage.repositories.trading_playbook_discipline import set_discipline_check
+from vnpy_ashare.services.trading_playbook import save_discipline_check
 from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
 
 
@@ -58,5 +58,5 @@ class PlaybookDisciplinePanel(QtWidgets.QWidget):
             self._off_plan_label.setProperty("severity", "")
 
     def _on_toggle(self, check_id: str, checked: bool) -> None:
-        set_discipline_check(today_trade_date(), check_id, checked)
+        save_discipline_check(today_trade_date(), check_id, checked)
         self.changed.emit()

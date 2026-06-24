@@ -4,15 +4,11 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.data.bar_health import (
-    BarHealthStatus,
-    format_meta_datetime,
-    list_status,
-    status_label,
-)
+from vnpy_ashare.domain.data.bar_health import BarHealthStatus
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.quotes.rank.rank_engine import quote_rank_value
+from vnpy_ashare.services.bar import format_meta_datetime, list_status, status_label
 from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.table.columns import (
     build_local_data_row,

@@ -11,14 +11,6 @@ import tests._bootstrap  # noqa: F401
 from vnpy_ashare.quotes.watchlist_multiview.loader import build_watchlist_multiview_board
 from vnpy_ashare.quotes.watchlist_multiview.models import WatchlistMultiRow
 from vnpy_ashare.quotes.watchlist_multiview.sort import sort_multiview_rows
-from vnpy_ashare.ui.quotes.watchlist_multiview.settings import (
-    load_grid_columns,
-    load_sort_key,
-    load_view_mode,
-    save_grid_columns,
-    save_sort_key,
-    save_view_mode,
-)
 
 
 def _sample_row(
@@ -383,16 +375,6 @@ class WatchlistMultiViewSparklineDataTests(unittest.TestCase):
         self.assertEqual(payload["600000.SSE"], (10.0, 10.1, 10.3))
 
 
-class WatchlistMultiViewChartTabSyncTests(unittest.TestCase):
-    def test_sparkline_mode_from_chart_tab(self) -> None:
-        from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, INTRADAY_TAB_INDEX, MINUTE_TAB_INDEX
-        from vnpy_ashare.ui.quotes.watchlist_multiview.controller import _sparkline_mode_from_chart_tab
-
-        self.assertEqual(_sparkline_mode_from_chart_tab(INTRADAY_TAB_INDEX), "intraday")
-        self.assertEqual(_sparkline_mode_from_chart_tab(DAILY_TAB_INDEX), "daily")
-        self.assertEqual(_sparkline_mode_from_chart_tab(MINUTE_TAB_INDEX), "minute")
-
-
 class WatchlistMultiViewMoneyflowCacheTests(unittest.TestCase):
     def test_moneyflow_cache_avoids_repeat_tushare(self) -> None:
         from vnpy_ashare.quotes.radar import radar_moneyflow as module
@@ -408,27 +390,6 @@ class WatchlistMultiViewMoneyflowCacheTests(unittest.TestCase):
         self.assertEqual(second["600000.SSE"]["net_mf_amount"], 1200.0)
         fetch.assert_called_once()
         module.clear_moneyflow_cache()
-
-
-class WatchlistMultiViewSettingsTests(unittest.TestCase):
-    def test_view_mode_defaults_table(self) -> None:
-        save_view_mode("table")
-        self.assertEqual(load_view_mode(), "table")
-
-    def test_view_mode_roundtrip_multiview(self) -> None:
-        save_view_mode("multiview")
-        self.assertEqual(load_view_mode(), "multiview")
-        save_view_mode("table")
-
-    def test_sort_key_roundtrip(self) -> None:
-        save_sort_key("anomaly_score")
-        self.assertEqual(load_sort_key(), "anomaly_score")
-        save_sort_key("sort_order")
-
-    def test_grid_columns_roundtrip(self) -> None:
-        save_grid_columns(4)
-        self.assertEqual(load_grid_columns(), 4)
-        save_grid_columns(3)
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ from vnpy_ashare.screener.reference.reference_peer import (
     clamp_reference_peer_top_n,
     env_default_reference_peer_top_n,
 )
-from vnpy_ashare.storage.repositories.watchlist import WATCHLIST_MAX_ITEMS, watchlist_add_failure_reason
+from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS, watchlist_add_failure_reason
 from vnpy_ashare.ui.screener.widgets.screener_results_table import (
     configure_screener_results_table,
     iter_checked_table_rows,

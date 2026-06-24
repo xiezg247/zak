@@ -10,13 +10,13 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
-from vnpy_ashare.data.bar_health import BarGapResult, BarHealthStatus, BarMeta
+from vnpy_ashare.domain.data.bar_health import BarGapResult, BarHealthStatus, BarMeta
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.trading.position import PositionSnapshot
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
-from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge
+from vnpy_ashare.services.tickflow_quote import TickflowStreamBridge
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     BarGapCheckWorker,
     BarsLoadWorker,

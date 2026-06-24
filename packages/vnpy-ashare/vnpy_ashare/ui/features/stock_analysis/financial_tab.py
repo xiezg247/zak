@@ -6,9 +6,8 @@ from typing import Any
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.services.financial import FinancialBundle
+from vnpy_ashare.services.financial import FinancialBundle, FinancialSnapshotRow
 from vnpy_ashare.services.stock.context import build_financial_quality_hints
-from vnpy_ashare.storage.repositories.financial import FinancialSnapshotRow
 from vnpy_common.ui.data_table import configure_data_table
 from vnpy_common.ui.panel_widgets import configure_document_tab_widget, content_card, hint_label, section_title, tab_page
 

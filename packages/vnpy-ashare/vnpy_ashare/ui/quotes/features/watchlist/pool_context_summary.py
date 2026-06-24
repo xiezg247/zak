@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS
+from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.services.watchlist import WATCHLIST_MAX_ITEMS
-from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
 
 
 def format_pool_context_summary(
@@ -13,4 +13,4 @@ def format_pool_context_summary(
     signal_count: int,
     position_count: int,
 ) -> str:
-    return f"自选 {pool_count}/{WATCHLIST_MAX_ITEMS} · 信号 {signal_count}/{SIGNAL_PANEL_MAX_SYMBOLS} · 持仓 {position_count}/{POSITION_MAX_ITEMS}"
+    return f"自选 {pool_count}/{WATCHLIST_MAX_ITEMS} · 信号 {signal_count}/{SIGNAL_PANEL_MAX_SYMBOLS} · 持仓 {position_count}/{PositionService.max_items}"

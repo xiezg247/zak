@@ -9,7 +9,7 @@ from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import EVENT_ORB_ATTENTION, OrbAttentionRequest
-from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
+from vnpy_ashare.services.industry_sector import get_cached_industry_map
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow

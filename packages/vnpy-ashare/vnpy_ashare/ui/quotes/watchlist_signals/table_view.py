@@ -338,7 +338,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         self._fill_info_button(row, vt_symbol)
 
     def _bar_end_date(self, vt_symbol: str) -> str | None:
-        from vnpy_ashare.data.bar_health import format_meta_date
+        from vnpy_ashare.services.bar import format_meta_date
 
         item = self._page.find_stock_item(vt_symbol)
         if item is None:

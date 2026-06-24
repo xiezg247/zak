@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtWidgets
 
 from vnpy_ashare.domain.trading.playbook import PlaybookSectionUpdate
-from vnpy_ashare.storage.repositories.trading_playbook import update_playbook_section
+from vnpy_ashare.services.trading_playbook import save_playbook_section_body
 from vnpy_common.ui.dialog_shell import setup_responsive_dialog
 
 
@@ -31,7 +31,7 @@ def edit_playbook_section_dialog(
 
     def on_save() -> None:
         text = editor.toPlainText().strip()
-        update_playbook_section(section_id, PlaybookSectionUpdate(body_md=text))
+        save_playbook_section_body(section_id, PlaybookSectionUpdate(body_md=text))
         saved[0] = text
         dialog.accept()
 

@@ -4,16 +4,10 @@ from __future__ import annotations
 
 from vnpy.trader.object import BarData
 
-from vnpy_ashare.data.bar_health import (
-    BarGapResult,
-    BarHealthStatus,
-    clip_bars_from_unified_start,
-    format_gap_ranges,
-    format_meta_datetime,
-    list_status,
-)
+from vnpy_ashare.domain.data.bar_health import BarGapResult, BarHealthStatus
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.calendar import last_trading_day
+from vnpy_ashare.services.bar import clip_bars_from_unified_start, format_gap_ranges, format_meta_datetime, list_status
 from vnpy_ashare.ui.quotes.chart.daily import AshareChartWidget, prepare_chart_bars
 from vnpy_ashare.ui.quotes.controllers.local_data.base import LocalDataControllerBase
 from vnpy_ashare.ui.quotes.controllers.local_data.helpers import should_apply_loaded_bars

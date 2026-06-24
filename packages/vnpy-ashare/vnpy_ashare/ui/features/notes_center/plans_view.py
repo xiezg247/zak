@@ -5,7 +5,7 @@ from __future__ import annotations
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.trading.plan import TradingPlanRecord
-from vnpy_ashare.storage.repositories.trading_plans import list_trading_plans
+from vnpy_ashare.services.trading_plan import list_trading_plans
 from vnpy_common.ui.panel_widgets import hint_label
 
 _PLAN_ID_ROLE = QtCore.Qt.ItemDataRole.UserRole

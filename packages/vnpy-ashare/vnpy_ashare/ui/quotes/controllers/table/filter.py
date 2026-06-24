@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.data.bar_health import BarHealthStatus
+from vnpy_ashare.domain.data.bar_health import BarHealthStatus
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.page.config import MAX_DISPLAY_ROWS

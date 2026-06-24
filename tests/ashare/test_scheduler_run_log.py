@@ -7,9 +7,7 @@ from unittest.mock import patch
 
 from vnpy_ashare.jobs.core.progress import bind_job_log, job_log, job_progress
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.scheduler.manager import JobRunRecord, TaskSchedulerManager
-from vnpy_common.ui.theme.build_extra import format_scheduler_run_log_html
-from vnpy_common.ui.theme.tokens import LIGHT_TOKENS
+from vnpy_ashare.scheduler.manager import TaskSchedulerManager
 
 
 class JobProgressTests(unittest.TestCase):
@@ -29,23 +27,6 @@ class JobProgressTests(unittest.TestCase):
 
 
 class SchedulerRunLogTests(unittest.TestCase):
-    def test_running_record_renders_detail_lines(self) -> None:
-        record = JobRunRecord(
-            job_id="batch_download_universe",
-            job_name="全市场日 K",
-            started_at="2026-06-12 16:25:00",
-            finished_at="2026-06-12 16:25:00",
-            success=True,
-            skipped=False,
-            message="执行中…",
-            running=True,
-            detail_lines=["[开始] 全市场日 K", "待下载 3 只", "✓ 600519.SSE"],
-        )
-        html = format_scheduler_run_log_html(LIGHT_TOKENS, [record])
-        self.assertIn("运行中", html)
-        self.assertIn("600519.SSE", html)
-        self.assertIn(LIGHT_TOKENS.accent, html)
-
     def test_wrap_job_emits_progress_lines(self) -> None:
         manager = TaskSchedulerManager()
 

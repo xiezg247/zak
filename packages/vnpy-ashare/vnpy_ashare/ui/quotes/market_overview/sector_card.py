@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.integrations.tushare.sw_industry import format_industry_filter_label
 from vnpy_ashare.quotes.market.market_overview_loaders import SectorRankItem
+from vnpy_ashare.services.industry_sector import format_industry_filter_label
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import pct_change_color
 

@@ -8,7 +8,11 @@ import pytest
 
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
-from vnpy_ashare.quotes.radar.radar_leader import rank_sector_leaders
+from vnpy_ashare.quotes.radar.radar_leader import (
+    board_quality_score,
+    leader_score_weights_for_stage,
+    rank_sector_leaders,
+)
 from vnpy_ashare.screener.run.radar_leader_screen import leader_scored_to_result_row, run_leader_screen
 
 
@@ -24,6 +28,26 @@ def _candidate(symbol: str, *, limit_times: int = 3) -> dict:
         "net_mf_amount": 2e7,
         "last_price": 12.0,
     }
+
+
+def test_stage_weights_normalized() -> None:
+    for stage in ("startup", "climax", "divergence", None):
+        weights = leader_score_weights_for_stage(stage)
+        assert abs(sum(weights.values()) - 1.0) < 0.01
+
+
+def test_board_quality_score_for_limit_up() -> None:
+    score = board_quality_score(
+        {
+            "symbol": "600000",
+            "change_pct": 10.0,
+            "limit_times": 1,
+            "fd_amount": 30_000,
+            "open_times": 0,
+        }
+    )
+    assert score is not None
+    assert score >= 80.0
 
 
 def test_leader_scored_to_row_includes_hit_reason():

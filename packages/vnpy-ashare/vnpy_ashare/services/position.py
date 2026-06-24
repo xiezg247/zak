@@ -11,6 +11,7 @@ from vnpy_ashare.config.runtime import PRICE_TICK, normalize_volume
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.services.base import BaseService
+from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
 from vnpy_ashare.storage.repositories.positions import (
     POSITION_MAX_ITEMS,
     add_position_item,
@@ -28,6 +29,15 @@ from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
 
 PositionAddFailure = Literal["duplicate", "full", "not_in_watchlist"]
+
+_standalone_position_disk_cache: WatchlistPositionDiskCache | None = None
+
+
+def get_position_disk_cache_standalone() -> WatchlistPositionDiskCache:
+    global _standalone_position_disk_cache
+    if _standalone_position_disk_cache is None:
+        _standalone_position_disk_cache = WatchlistPositionDiskCache()
+    return _standalone_position_disk_cache
 
 
 def _row_float(value: str | float | int | None) -> float:
@@ -174,3 +184,10 @@ class PositionService(BaseService):
 
     def clear(self) -> None:
         clear_positions()
+
+    def get_position_disk_cache(self) -> WatchlistPositionDiskCache:
+        cache = getattr(self, "_position_disk_cache", None)
+        if cache is None:
+            cache = WatchlistPositionDiskCache()
+            self._position_disk_cache = cache
+        return cache

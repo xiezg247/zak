@@ -5,7 +5,7 @@ from __future__ import annotations
 import pyqtgraph as pg
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.storage.repositories.valuation import ValuationRow
+from vnpy_ashare.services.stock_analysis import ValuationRow
 from vnpy_ashare.ui.components.chart_style import apply_sparkline_plot_theme
 from vnpy_common.ui.panel_widgets import configure_document_tab_widget, content_card, section_title
 
