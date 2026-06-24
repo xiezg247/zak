@@ -17,7 +17,6 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
     watchlist_toolbar_group3_visible,
     watchlist_toolbar_policy,
 )
-from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import create_emotion_more_buttons
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
@@ -80,9 +79,10 @@ def append_watchlist_strategy_toolbar_actions(
     has_strategy_workspace = policy is not None and (page.config.show_watchlist_signals or page.config.show_watchlist_positions)
     if has_strategy_workspace:
         toolbar.addWidget(create_strategy_workspace_toolbar(page))
-        parent = as_qwidget(page)
-        page.emotion_cycle_chip = EmotionCycleChip(parent)
-        page.emotion_cycle_chip.hide()
+        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
+            parent = as_qwidget(page)
+            page.emotion_cycle_chip = EmotionCycleChip(parent)
+            toolbar.addWidget(page.emotion_cycle_chip)
         append_strategy_workspace_more_actions(page, more_actions)
     else:
         if page.config.show_watchlist_signals:
@@ -91,14 +91,12 @@ def append_watchlist_strategy_toolbar_actions(
             parent = as_qwidget(page)
             page.emotion_cycle_chip = EmotionCycleChip(parent)
             toolbar.addWidget(page.emotion_cycle_chip)
-            if policy is not None:
-                more_actions.extend(create_emotion_more_buttons(page))
     if page.config.show_stock_notes:
         toolbar.addWidget(page.quick_note_button)
-        if policy is not None:
-            more_actions.append(("笔记中心", page.notes_center_button))
-        else:
+        if policy is None:
             toolbar.addWidget(page.notes_center_button)
+        else:
+            page.notes_center_button.hide()
     if show_diagnose_in_toolbar:
         toolbar.addWidget(page.diagnose_button)
     if page.config.show_refresh_quotes_button and not page.config.use_market_rank:

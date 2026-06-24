@@ -13,10 +13,7 @@ from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace_prefs import (
     load_strategy_workspace_open,
     save_strategy_workspace_open,
 )
-from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import (
-    apply_toolbar_for_preset,
-    create_emotion_more_buttons,
-)
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import apply_toolbar_for_preset
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
@@ -148,6 +145,6 @@ def append_strategy_workspace_more_actions(
     page: WatchlistHost,
     more_actions: list[tuple[str, QtWidgets.QPushButton]],
 ) -> None:
-    """策略工作区：情绪周期进「更多」；池操作改由主表右键。"""
-    more_actions.extend(create_emotion_more_buttons(page))
+    """策略工作区：池操作改由主表右键；情绪周期与笔记中心在工具栏/菜单栏展示。"""
+    _ = more_actions
     page.add_signal_panel_button.hide()

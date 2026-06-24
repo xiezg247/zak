@@ -36,7 +36,7 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
         select_all_group=False,
         force_table_view=False,
         show_add_signal_toolbar=False,
-        show_emotion_chips=False,
+        show_emotion_chips=True,
         splitter_table_ratio=0.4,
     ),
 }
