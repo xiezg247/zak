@@ -10,9 +10,28 @@ from vnpy.trader.ui import QtCore
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import EVENT_ORB_ATTENTION, OrbAttentionRequest
 from vnpy_ashare.services.industry_sector import get_cached_industry_map
+from vnpy_common.startup_profile import profiler
 
 if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
+
+
+def schedule_deferred_shell_extras(win: AshareMainWindow) -> None:
+    """首屏渲染后再初始化悬浮 AI 等非关键壳层组件。"""
+    if win._shell_extras_scheduled:
+        return
+    win._shell_extras_scheduled = True
+    QtCore.QTimer.singleShot(0, lambda: _load_deferred_shell_extras(win))
+
+
+def _load_deferred_shell_extras(win: AshareMainWindow) -> None:
+    with profiler.phase("main_window.floating_ai"):
+        shell = win.centralWidget()
+        if shell is not None and win._init_floating_ai(shell):
+            assert win._floating_controller is not None
+            win._floating_controller.bind_content_anchor(win.stack)
+    with profiler.phase("main_window.info_feed_badge"):
+        refresh_info_feed_badge(win)
 
 
 def schedule_deferred_scheduler_start(win: AshareMainWindow) -> None:

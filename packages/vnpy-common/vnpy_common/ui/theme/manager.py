@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.paths import QSETTINGS_ORG
-from vnpy_common.ui.theme.build import build_terminal_stylesheet, stylesheet_for
+from vnpy_common.ui.theme.build import cached_terminal_stylesheet, stylesheet_for
 from vnpy_common.ui.theme.system import resolve_theme_id
 from vnpy_common.ui.theme.tokens import (
     DEFAULT_THEME_PREFERENCE,
@@ -107,7 +107,7 @@ class ThemeManager(QtCore.QObject):
     def apply(self) -> None:
         self._ensure_system_listener()
         tokens = self.tokens()
-        qss = build_terminal_stylesheet(tokens)
+        qss = cached_terminal_stylesheet(self.resolved())
         app = QtWidgets.QApplication.instance()
         if app is not None:
             self._apply_palette(app, tokens)
@@ -157,7 +157,7 @@ class ThemeManager(QtCore.QObject):
 
     def _apply_widget_stylesheet(self, widget: QtWidgets.QWidget, extra: ExtraStyles) -> None:
         tokens = self.tokens()
-        widget.setStyleSheet(build_terminal_stylesheet(tokens) + self._resolve_extra(extra, tokens))
+        widget.setStyleSheet(cached_terminal_stylesheet(self.resolved()) + self._resolve_extra(extra, tokens))
 
     def _refresh_charts(self, tokens: ThemeTokens) -> None:
         if _chart_refresh_handler is not None:
@@ -171,7 +171,6 @@ def theme_manager() -> ThemeManager:
 __all__ = [
     "ExtraStyles",
     "ThemeManager",
-    "build_terminal_stylesheet",
     "stylesheet_for",
     "theme_manager",
 ]

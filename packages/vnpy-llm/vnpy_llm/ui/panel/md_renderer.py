@@ -40,6 +40,15 @@ def _markdown_font_stack() -> str:
     return '"Noto Sans SC", "Arial"'
 
 
+def _monospace_font_stack() -> str:
+    system = platform.system()
+    if system == "Darwin":
+        return '"Menlo", "SF Mono", "Monaco", monospace'
+    if system == "Windows":
+        return '"Cascadia Code", "Consolas", "Courier New", monospace'
+    return '"JetBrains Mono", "Fira Code", "DejaVu Sans Mono", monospace'
+
+
 def _build_markdown_css(t: ThemeTokens) -> str:
     if t.id == "light":
         code_inline_color = "#b45309"
@@ -100,7 +109,7 @@ pre {{
     line-height: 1.5;
 }}
 code {{
-    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    font-family: {_monospace_font_stack()};
     font-size: 12px;
     background-color: {t.table_alt};
     padding: 1px 4px;

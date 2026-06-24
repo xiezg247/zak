@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ctypes
-import os
 import sys
 from ctypes import Structure, byref, c_int, c_uint32
 from typing import TextIO
@@ -27,10 +26,9 @@ def is_macos() -> bool:
 
 
 def configure_macos_before_qt() -> None:
-    """在首次 import Qt 之前调用，降低 Cocoa 初始化差异。"""
+    """在首次 import Qt 之前调用（macOS 日志过滤等）。"""
     if not is_macos():
         return
-    os.environ.setdefault("QT_MAC_WANTS_LAYER", "1")
 
 
 def promote_macos_gui_process() -> bool:

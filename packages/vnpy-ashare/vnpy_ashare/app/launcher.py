@@ -10,7 +10,7 @@ import vnpy_ashare.app._macos_qt_bootstrap  # noqa: F401 — 须在 Qt 之前加
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.setting import SETTINGS
-from vnpy.trader.ui import create_qapp
+from vnpy_common.ui.qt_app import create_zak_qapp
 
 from vnpy_ashare.app.bootstrap import install_shared_bridges
 from vnpy_ashare.app.branding import QAPP_NAME
@@ -59,7 +59,7 @@ def main() -> None:
             print("已应用 A 股回测默认参数（~/.vntrader/cta_backtester_setting.json）")
 
     with profiler.phase("create_qapp"):
-        qapp = create_qapp(QAPP_NAME)
+        qapp = create_zak_qapp(QAPP_NAME)
         bootstrap_macos_gui_runtime(before_qt=False)
         qapp.setStyle("Fusion")
 

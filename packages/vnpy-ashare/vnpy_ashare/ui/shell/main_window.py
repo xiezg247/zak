@@ -72,6 +72,7 @@ from vnpy_ashare.ui.shell.main_window_scheduler import (
     on_scheduler_job_event,
     refresh_info_feed_badge,
     schedule_deferred_scheduler_start,
+    schedule_deferred_shell_extras,
 )
 from vnpy_ashare.ui.shell.nav import (
     APP_NAV_ENTRIES,
@@ -112,11 +113,17 @@ class AshareMainWindow(MainWindow):
         self._scheduler_listener_connected = False
         self._initial_page_scheduled = False
         self._scheduler_deferred_scheduled = False
+        self._shell_extras_scheduled = False
         self._theme_manager = theme_manager()
         self._theme_dark_action: QtGui.QAction | None = None
         self._theme_light_action: QtGui.QAction | None = None
         self._theme_system_action: QtGui.QAction | None = None
-        super().__init__(main_engine, event_engine)
+        with profiler.phase("main_window.super"):
+            super().__init__(main_engine, event_engine)
+        with profiler.phase("main_window.events"):
+            self._wire_window_events()
+
+    def _wire_window_events(self) -> None:
         self._signal_open_backtest.connect(lambda data: handle_open_backtest(self, data))
         self._signal_open_batch_backtest.connect(lambda data: handle_open_batch_backtest(self, data))
         self._signal_fill_screener.connect(lambda data: _handle_fill_screener(self, data))
@@ -139,15 +146,19 @@ class AshareMainWindow(MainWindow):
         self.toolbar.setVisible(False)
 
     def init_ui(self) -> None:
-        self.window_title = build_window_title()
-        self.setWindowTitle(self.window_title)
-        self.init_dock()
-        self.init_toolbar()
-        self._theme_manager.load_saved()
-        self.init_menu()
-        self._init_shell()
-        self._bind_nav_shortcuts()
-        self.load_window_setting("custom")
+        with profiler.phase("main_window.title"):
+            self.window_title = build_window_title()
+            self.setWindowTitle(self.window_title)
+            self.init_dock()
+            self.init_toolbar()
+        with profiler.phase("main_window.theme_menu"):
+            self._theme_manager.load_saved()
+            self.init_menu()
+        with profiler.phase("main_window.shell"):
+            self._init_shell()
+        with profiler.phase("main_window.shortcuts"):
+            self._bind_nav_shortcuts()
+            self.load_window_setting("custom")
 
     def init_menu(self) -> None:
         bar = self.menuBar()
@@ -264,11 +275,7 @@ class AshareMainWindow(MainWindow):
         self.setCentralWidget(shell)
         self._toast = PageToastHost(self)
         self.setStatusBar(self._toast)
-        if self._init_floating_ai(shell):
-            assert self._floating_controller is not None
-            self._floating_controller.bind_content_anchor(self.stack)
         bind_scheduler_notifications(self)
-        refresh_info_feed_badge(self)
         self.sidebar.set_active_index(0)
 
     def schedule_initial_page(self) -> None:
@@ -285,6 +292,7 @@ class AshareMainWindow(MainWindow):
     def _load_initial_page(self) -> None:
         with profiler.phase("main_window_first_page"):
             self._show_page(0)
+        schedule_deferred_shell_extras(self)
         schedule_deferred_scheduler_start(self)
 
     def _show_shortcuts_help(self) -> None:

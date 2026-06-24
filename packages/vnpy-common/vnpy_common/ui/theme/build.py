@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from vnpy_common.ui.theme.build_loading import build_content_loading_stylesheet
 from vnpy_common.ui.theme.build_panel import build_panel_stylesheet
 from vnpy_common.ui.theme.build_screener import build_screener_stylesheet
@@ -18,8 +20,14 @@ def build_terminal_stylesheet(tokens: ThemeTokens) -> str:
     return _build_global_base(t) + _build_menu_styles(t) + _build_terminal_base(t) + _build_toolbar_combo(t) + build_screener_stylesheet(t)
 
 
+@lru_cache(maxsize=8)
+def cached_terminal_stylesheet(theme_id: ThemeId) -> str:
+    """按已解析主题 id 缓存全局 QSS，避免重复拼接。"""
+    return build_terminal_stylesheet(get_tokens(theme_id))
+
+
 def stylesheet_for(theme: ThemeId) -> str:
-    return build_terminal_stylesheet(get_tokens(theme))
+    return cached_terminal_stylesheet(theme)
 
 
 def _build_global_base(t: ThemeTokens) -> str:
