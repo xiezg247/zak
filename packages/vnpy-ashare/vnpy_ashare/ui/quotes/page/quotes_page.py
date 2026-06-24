@@ -321,7 +321,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
 
         self._init_ui()
         self._task_guard = TaskGuard(self._toast)
-        self._task_lock_table = True
+        self._task_lock_table: bool = True
         self._active_worker_attr: str | None = None
         theme_manager().register_callback(self._on_theme_changed)
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 from vnpy.trader.engine import MainEngine
 
 from vnpy_ashare.config.playbook_templates.defaults import _TEMPLATE_BUILDERS, playbook_template_sections
@@ -38,7 +40,7 @@ _META_SEED_KEY = "playbook_seeded_profile"
 def load_playbook_seeded_profile() -> StrategyProfileId:
     raw = get_meta(_META_SEED_KEY)
     if raw in _TEMPLATE_BUILDERS:
-        return raw  # type: ignore[return-value]
+        return cast(StrategyProfileId, raw)
     return load_strategy_profile_id()
 
 
@@ -139,14 +141,14 @@ def build_mirror_appendix(section_id: str) -> str:
             f"- 板块：{boards}\n"
         )
     if section_id == "risk":
-        prefs = load_trading_risk_prefs()
-        cap = f"{prefs.total_capital:,.0f} 元" if prefs.total_capital else "未设置"
+        risk_prefs = load_trading_risk_prefs()
+        cap = f"{risk_prefs.total_capital:,.0f} 元" if risk_prefs.total_capital else "未设置"
         return (
             "\n\n---\n\n**当前风控参数（只读）**\n\n"
             f"- 总资金：{cap}\n"
-            f"- 单笔风险：{prefs.per_trade_risk_pct:.1f}%\n"
-            f"- 止损比例：{prefs.stop_loss_pct:.1f}%\n"
-            f"- 日亏警戒 / 熔断：{prefs.caution_daily_pct:.1f}% / {prefs.halt_daily_pct:.1f}%\n"
+            f"- 单笔风险：{risk_prefs.per_trade_risk_pct:.1f}%\n"
+            f"- 止损比例：{risk_prefs.stop_loss_pct:.1f}%\n"
+            f"- 日亏警戒 / 熔断：{risk_prefs.caution_daily_pct:.1f}% / {risk_prefs.halt_daily_pct:.1f}%\n"
         )
     return ""
 

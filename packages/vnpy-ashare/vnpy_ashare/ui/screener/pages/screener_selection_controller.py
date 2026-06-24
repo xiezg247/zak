@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 from vnpy.event import Event
 from vnpy.trader.ui import QtWidgets
@@ -20,9 +20,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.screener.pages.auto_screener_page import AutoScreenerPageWidget
     from vnpy_ashare.ui.screener.pages.screener_page import ScreenerPageWidget
 
-    ScreenerResultsPage = ScreenerPageWidget | AutoScreenerPageWidget
-else:
-    ScreenerResultsPage = Any
+    ScreenerResultsPage: TypeAlias = ScreenerPageWidget | AutoScreenerPageWidget
 
 
 class ScreenerSelectionController:
@@ -216,7 +214,7 @@ class ScreenerSelectionController:
         def watchlist_add(symbol: str, exchange, stock_name: str = "") -> bool:
             if page._watchlist_service is None:
                 return False
-            return page._watchlist_service.add(symbol, exchange, stock_name)
+            return bool(page._watchlist_service.add(symbol, exchange, stock_name))
 
         show_reference_peer_dialog(
             vt_symbol=vt_symbol,

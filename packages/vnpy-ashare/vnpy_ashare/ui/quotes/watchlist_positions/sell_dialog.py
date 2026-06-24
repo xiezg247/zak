@@ -51,6 +51,7 @@ class PositionSellDialog(QtWidgets.QDialog):
         self._price_edit.setValidator(validator)
         layout.addRow("卖出价", self._price_edit)
 
+        self._volume_spin: QtWidgets.QSpinBox | None = None
         if record_only:
             self._volume_spin = QtWidgets.QSpinBox(self)
             self._volume_spin.setRange(100, max(100, volume))
@@ -58,8 +59,6 @@ class PositionSellDialog(QtWidgets.QDialog):
             self._volume_spin.setValue(volume)
             self._volume_spin.setSuffix(" 股")
             layout.addRow("卖出量", self._volume_spin)
-        else:
-            self._volume_spin = None
 
         self._sell_date = QtWidgets.QDateEdit(self)
         self._sell_date.setCalendarPopup(True)
@@ -68,12 +67,11 @@ class PositionSellDialog(QtWidgets.QDialog):
         self._sell_date.setDate(QtCore.QDate(today.year, today.month, today.day))
         layout.addRow("卖出日", self._sell_date)
 
+        self._reason_edit: QtWidgets.QLineEdit | None = None
         if record_only:
             self._reason_edit = QtWidgets.QLineEdit(self)
             self._reason_edit.setPlaceholderText("可选，如：分批止盈、漏记补录")
             layout.addRow("理由", self._reason_edit)
-        else:
-            self._reason_edit = None
 
         self._pnl_hint = QtWidgets.QLabel("", self)
         self._pnl_hint.setObjectName("SettingsHint")

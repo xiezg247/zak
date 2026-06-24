@@ -42,7 +42,10 @@ def _overlay_periods(overlays: list[dict[str, object]]) -> list[int]:
         if str(item.get("kind") or "") != "ma":
             continue
         try:
-            period = int(item.get("period") or 0)
+            raw_period = item.get("period", 0)
+            if not isinstance(raw_period, (int, float, str)):
+                continue
+            period = int(raw_period)
         except (TypeError, ValueError):
             continue
         if period > 1 and period not in periods:
@@ -173,8 +176,8 @@ class AiMiniCandleChart(QtWidgets.QWidget):
                 )
 
         for period, values in ma_lines.items():
-            color = _MA_COLORS.get(period, tokens.text_secondary)
-            pen = QtGui.QPen(QtGui.QColor(color), 1.0)
+            ma_color = _MA_COLORS.get(period, tokens.text_secondary)
+            pen = QtGui.QPen(QtGui.QColor(ma_color), 1.0)
             painter.setPen(pen)
             path = QtGui.QPainterPath()
             started = False

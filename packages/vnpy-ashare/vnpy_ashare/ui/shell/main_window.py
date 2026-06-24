@@ -81,7 +81,7 @@ _QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "watchlist": WatchlistPageWidget,
 }
 
-_SHELL_PAGE_WIDGETS: dict[str, type[QtWidgets.QWidget]] = {
+_SHELL_PAGE_WIDGETS: dict[str, _QuotesPageFactory] = {
     "home": HomePageWidget,
 }
 

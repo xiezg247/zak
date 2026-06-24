@@ -77,9 +77,14 @@ def _parse_line_points(rows: list[Any]) -> list[AiChartBar]:
         date = str(row.get("date") or "").strip()
         if not date:
             continue
+        raw_value = row.get("value")
+        if raw_value is None:
+            raw_value = row.get("close", 0)
+        if not isinstance(raw_value, (int, float, str)):
+            continue
         try:
-            value = float(row.get("value", row.get("close", 0)))
-        except (TypeError, ValueError):
+            value = float(raw_value)
+        except ValueError:
             continue
         points.append(
             AiChartBar(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_rows
 from vnpy_ashare.domain.market.sector_flow import (
     OUTLOOK_DISCLAIMER,
     SectorFlowHistoryPoint,
@@ -546,7 +546,7 @@ class SectorFlowService(BaseService):
             min_cached_rows=_MIN_CACHE_ROWS_FOR_SECTOR,
             enrich_factors=False,
         )
-        return list(rows), updated_at, total, error
+        return coerce_quote_rows(rows), updated_at, total, error
 
     def load_snapshot(self, *, sector_kind: str = "industry") -> SectorFlowSnapshot:
         kind = str(sector_kind or "industry").strip().lower()

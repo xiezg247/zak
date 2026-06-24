@@ -89,4 +89,4 @@ class PlaybookSectionCard(QtWidgets.QFrame):
 
     @staticmethod
     def render_html(markdown: str) -> str:
-        return render_markdown(markdown)
+        return str(render_markdown(markdown))

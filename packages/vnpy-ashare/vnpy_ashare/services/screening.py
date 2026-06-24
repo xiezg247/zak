@@ -25,7 +25,7 @@ from vnpy_ashare.ai.context.store import (
 from vnpy_ashare.ai.context.store import (
     set_screening_results as _set_screening_results,
 )
-from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike
+from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowsLike, coerce_quote_rows
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.screener.run_result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.integrations.mcp.pattern_screen import run_pattern_screen_mcp
@@ -98,7 +98,7 @@ class ScreeningService(BaseService):
 
         rows, _, _, error = resolve_intraday_quote_rows(min_cached_rows=1)
         if rows:
-            return rows, None
+            return coerce_quote_rows(rows), None
         return None, error
 
     def quote_rows_unavailable_message(self, reason: str | None = None) -> str:

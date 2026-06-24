@@ -61,4 +61,4 @@ class AiMiniChartBlock(AiMiniChartPanel):
 
 
 def _build_chart_block_stylesheet(tokens) -> str:
-    return chart_gallery_stylesheet(tokens).replace("AiMiniChartPanel", "AiMiniChartBlock")
+    return str(chart_gallery_stylesheet(tokens).replace("AiMiniChartPanel", "AiMiniChartBlock"))

@@ -173,14 +173,17 @@ class HomePageWidget(QtWidgets.QWidget):
 
         for section in load_playbook_sections():
             self._sections[section.section_id] = section
+            view: QtWidgets.QWidget
             if section.section_id == "discipline":
-                view: QtWidgets.QWidget = PlaybookDisciplineCard(self._cards_container)
-                view.edit_requested.connect(self._on_edit_section)
-                view.checklist_changed.connect(self._on_discipline_changed)
-                view.discipline_ai_requested.connect(self._on_discipline_ai)
+                discipline_view = PlaybookDisciplineCard(self._cards_container)
+                discipline_view.edit_requested.connect(self._on_edit_section)
+                discipline_view.checklist_changed.connect(self._on_discipline_changed)
+                discipline_view.discipline_ai_requested.connect(self._on_discipline_ai)
+                view = discipline_view
             else:
-                view = PlaybookSectionCard(self._cards_container)
-                view.edit_requested.connect(self._on_edit_section)
+                section_view = PlaybookSectionCard(self._cards_container)
+                section_view.edit_requested.connect(self._on_edit_section)
+                view = section_view
             self._card_views[section.section_id] = view
             row, col, rspan, cspan = _CARD_LAYOUT.get(section.section_id, (0, 0, 1, 1))
             self._cards_grid.addWidget(view, row, col, rspan, cspan)

@@ -9,6 +9,7 @@ from vnpy_common.ui.theme.manager import theme_manager
 
 
 def create_ai_chart_widget(spec: AiChartSpec, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    chart: QtWidgets.QWidget
     if spec.kind == "line":
         from vnpy_ashare.ui.components.ai_mini_line import AiMiniLineChart
 
