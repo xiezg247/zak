@@ -21,9 +21,13 @@ _IMK_LOG_MARKERS = (
     "IMKCFRunLoopWakeUpReliable",
     "error messaging the mach port for IMK",
 )
-_TSM_LOG_MARKERS = (
+_TSM_COMPOUND_MARKERS = (
     "TSMSendMessageToUIServer:",
     "com.apple.tsm.uiserver",
+)
+_TSM_SINGLE_MARKERS = (
+    "TSM AdjustCapsLockLEDForKeyTransitionHandling",
+    "_ISSetPhysicalKeyboardCapsLockLED Inhibit",
 )
 
 _stderr_filter_installed = False
@@ -69,7 +73,9 @@ def promote_macos_gui_process() -> bool:
 
 def is_benign_macos_gui_log(text: str) -> bool:
     """判断是否为可安全忽略的 macOS GUI 运行时 stderr 行。"""
-    if all(marker in text for marker in _TSM_LOG_MARKERS):
+    if all(marker in text for marker in _TSM_COMPOUND_MARKERS):
+        return True
+    if any(marker in text for marker in _TSM_SINGLE_MARKERS):
         return True
     return any(marker in text for marker in _IMK_LOG_MARKERS)
 

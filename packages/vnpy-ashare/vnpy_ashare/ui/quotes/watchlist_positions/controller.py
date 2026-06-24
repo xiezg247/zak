@@ -350,7 +350,10 @@ class WatchlistPositionController:
             self._apply_refresh_result()
             return
 
-        def on_complete(signal_cache: dict) -> None:
+        def on_complete(raw: object) -> None:
+            if not isinstance(raw, dict):
+                return
+            signal_cache = raw
             pending = self._pending_refresh
             self._pending_refresh = None
             if not self._page._active:

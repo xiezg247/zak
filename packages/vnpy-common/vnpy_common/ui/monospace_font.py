@@ -10,6 +10,7 @@ from vnpy.trader.ui import QtGui
 def monospace_font_css_stack(*, quoted: bool = False) -> str:
     """QSS / HTML 用等宽 font-family 列表（不含 ``monospace`` 关键字）。"""
     system = platform.system()
+    names: tuple[str, ...]
     if system == "Darwin":
         names = ("Menlo", "Monaco", "Courier New")
     elif system == "Windows":

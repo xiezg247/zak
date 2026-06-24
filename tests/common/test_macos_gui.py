@@ -34,6 +34,10 @@ def test_is_benign_macos_gui_log() -> None:
     assert macos_gui.is_benign_macos_gui_log(
         "2026-06-24 python[52096:53223772] error messaging the mach port for IMKCFRunLoopWakeUpReliable\n"
     )
+    assert macos_gui.is_benign_macos_gui_log(
+        "2026-06-24 python[60255:53262380] TSM AdjustCapsLockLEDForKeyTransitionHandling - "
+        "_ISSetPhysicalKeyboardCapsLockLED Inhibit\n"
+    )
     assert not macos_gui.is_benign_macos_gui_log("real application error\n")
 
 

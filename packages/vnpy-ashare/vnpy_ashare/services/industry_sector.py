@@ -5,8 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 from vnpy_ashare.domain.market.sector_flow import SectorFlowRow
+from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
+from vnpy_ashare.integrations.tushare.factors import (
+    fetch_industry_l2_to_l1_map,
+    fetch_stock_industry_l1_map,
+    fetch_stock_industry_map,
+    fetch_stock_market_board_map,
+)
+from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS, fetch_index_amount_history
 from vnpy_ashare.integrations.tushare.sw_industry import (
+    build_grouped_l2_industries,
     fetch_sw_l2_index_map,
+    format_industry_filter_label,
 )
 
 
@@ -93,45 +103,6 @@ def overlay_dc_moneyflow_on_sw_rows(
         )
     return merged
 
-
-# UI / 选股页 Tushare 行业门面（禁止 ui → integrations.tushare）
-from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
-from vnpy_ashare.integrations.tushare.factors import (
-    fetch_industry_l2_to_l1_map,
-    fetch_stock_industry_l1_map,
-    fetch_stock_industry_map,
-    fetch_stock_market_board_map,
-)
-from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS, fetch_index_amount_history
-from vnpy_ashare.integrations.tushare.sw_industry import build_grouped_l2_industries, format_industry_filter_label
-
-__all__ = [
-    "DEFAULT_TRADING_DAYS",
-    "build_grouped_l2_industries",
-    "build_sw_industry_rows_from_dc",
-    "fetch_index_amount_history",
-    "fetch_industry_l2_to_l1_map",
-    "fetch_stock_industry_l1_map",
-    "fetch_stock_industry_map",
-    "fetch_stock_market_board_map",
-    "fetch_sw_l2_index_map",
-    "format_industry_filter_label",
-    "get_cached_industry_map",
-    "normalize_sw_industry_sector_rows",
-    "overlay_dc_moneyflow_on_sw_rows",
-]
-
-
-# UI / 选股页 Tushare 行业门面（禁止 ui → integrations.tushare）
-from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
-from vnpy_ashare.integrations.tushare.factors import (
-    fetch_industry_l2_to_l1_map,
-    fetch_stock_industry_l1_map,
-    fetch_stock_industry_map,
-    fetch_stock_market_board_map,
-)
-from vnpy_ashare.integrations.tushare.index_amount import DEFAULT_TRADING_DAYS, fetch_index_amount_history
-from vnpy_ashare.integrations.tushare.sw_industry import build_grouped_l2_industries, format_industry_filter_label
 
 __all__ = [
     "DEFAULT_TRADING_DAYS",

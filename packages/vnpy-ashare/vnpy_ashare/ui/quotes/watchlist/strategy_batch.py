@@ -23,7 +23,8 @@ if TYPE_CHECKING:
 
 StrategyZone = Literal["signal", "position"]
 SignalCache = dict[str, object]
-OnComplete = Callable[[SignalCache], None]
+BatchCompletePayload = SignalCache | WatchlistSignalWorkerPayload
+OnComplete = Callable[[object], None]
 OnFailed = Callable[[str], None]
 
 
