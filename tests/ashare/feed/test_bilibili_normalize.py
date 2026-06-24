@@ -2,27 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy_ashare.integrations.bilibili.normalize import normalize_dynamic, normalize_video
-
-
-def test_normalize_video_maps_bvid_and_pubdate() -> None:
-    draft = normalize_video(
-        {
-            "bvid": "BV1xx411c7mD",
-            "title": "测试视频",
-            "description": "简介",
-            "created": 1719000000,
-            "pic": "https://example.com/cover.jpg",
-            "play": 12345,
-        },
-        author_name="测试UP",
-    )
-    assert draft is not None
-    assert draft.external_id == "BV1xx411c7mD"
-    assert draft.item_type == "video"
-    assert draft.url.endswith("BV1xx411c7mD")
-    assert draft.author_name == "测试UP"
-    assert draft.payload["view_count"] == 12345
+from vnpy_ashare.integrations.bilibili.normalize import normalize_dynamic
 
 
 def test_normalize_dynamic_uses_desc_text() -> None:
@@ -42,4 +22,69 @@ def test_normalize_dynamic_uses_desc_text() -> None:
     assert draft is not None
     assert draft.external_id == "123456"
     assert draft.item_type == "dynamic"
-    assert "动态" in draft.title or "今天发个动态" in draft.title
+    assert "今天发个动态" in draft.title
+
+
+def test_normalize_dynamic_parses_rich_text_nodes() -> None:
+    draft = normalize_dynamic(
+        {
+            "id_str": "999",
+            "modules": {
+                "module_dynamic": {
+                    "desc": {
+                        "rich_text_nodes": [
+                            {
+                                "orig_text": "正文第一段",
+                                "text": "正文第一段",
+                                "type": "RICH_TEXT_NODE_TYPE_TEXT",
+                            },
+                            {
+                                "orig_text": "第二段",
+                                "text": "第二段",
+                                "type": "RICH_TEXT_NODE_TYPE_TEXT",
+                            },
+                        ],
+                        "text": "",
+                    },
+                    "major": None,
+                },
+                "module_author": {"pub_ts": 1719000000},
+            },
+        },
+        author_name="测试UP",
+    )
+    assert draft is not None
+    assert draft.summary == "正文第一段第二段"
+    assert draft.title == "正文第一段第二段"
+
+
+def test_normalize_dynamic_opus_summary_nodes() -> None:
+    draft = normalize_dynamic(
+        {
+            "id_str": "888",
+            "modules": {
+                "module_dynamic": {
+                    "desc": None,
+                    "major": {
+                        "opus": {
+                            "summary": {
+                                "rich_text_nodes": [
+                                    {
+                                        "orig_text": "图文正文",
+                                        "text": "图文正文",
+                                        "type": "RICH_TEXT_NODE_TYPE_TEXT",
+                                    }
+                                ],
+                                "text": "",
+                            }
+                        },
+                        "type": "MAJOR_TYPE_OPUS",
+                    },
+                },
+                "module_author": {"pub_ts": 1719000000},
+            },
+        },
+        author_name="测试UP",
+    )
+    assert draft is not None
+    assert draft.summary == "图文正文"

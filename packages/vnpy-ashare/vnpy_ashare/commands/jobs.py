@@ -69,7 +69,7 @@ _SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
     "batch_fill_stale": batch_fill_downloaded_stale_job,
     "fill_focus_pool_minute": batch_fill_focus_pool_minute_job,
     "warm_market_summary": lambda: warm_market_summary(enrich_factors=True),
-    "sync_bilibili_feed": sync_bilibili_feed_job,
+    "sync_bilibili_feed": lambda: sync_bilibili_feed_job(force=True),
 }
 
 

@@ -7,7 +7,7 @@ from datetime import datetime
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.feed.models import FeedItem
-from vnpy_ashare.domain.feed.present import feed_item_detail_text, feed_item_meta_text
+from vnpy_ashare.domain.feed.present import feed_item_detail_text, feed_item_meta_text, feed_item_title_text
 
 
 class FeedItemCard(QtWidgets.QFrame):
@@ -40,8 +40,9 @@ class FeedItemCard(QtWidgets.QFrame):
         prefix = "● " if item.is_unread else ""
         when = _format_when(item.published_at)
         self._header_label.setText(f"{prefix}{when} · {feed_item_meta_text(item)}")
-        self._title_label.setText(item.title or "（无标题）")
+        title = feed_item_title_text(item)
         detail = feed_item_detail_text(item)
+        self._title_label.setText(title)
         self._detail_label.setText(detail)
         self._detail_label.setVisible(bool(detail))
         tooltip_parts = [item.url]

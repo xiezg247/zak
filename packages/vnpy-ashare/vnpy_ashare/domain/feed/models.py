@@ -11,11 +11,10 @@ from vnpy_common.domain.base import FrozenModel, MutableModel
 SOURCE_TYPE_BILIBILI_UP = "bilibili_up"
 MAX_FEED_SUBSCRIPTIONS = 50
 FEED_RETENTION_DAYS = 90
-FEED_RECENT_LIMIT = 5
+FEED_RECENT_LIMIT = 10
 
 
 class FeedSubscriptionConfig(MutableModel):
-    videos: bool = Field(default=True, description="采集投稿视频")
     dynamics: bool = Field(default=True, description="采集空间动态")
 
 

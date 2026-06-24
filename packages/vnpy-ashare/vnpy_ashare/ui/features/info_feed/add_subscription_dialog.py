@@ -27,10 +27,6 @@ class AddBilibiliSubscriptionDialog(QtWidgets.QDialog):
         self._mid_edit = QtWidgets.QLineEdit(self)
         self._mid_edit.setPlaceholderText("或直接输入 mid")
         self._result_list = QtWidgets.QListWidget(self)
-        self._videos_check = QtWidgets.QCheckBox("采集视频", self)
-        self._videos_check.setChecked(True)
-        self._dynamics_check = QtWidgets.QCheckBox("采集动态", self)
-        self._dynamics_check.setChecked(True)
 
         search_row = QtWidgets.QHBoxLayout()
         search_row.addWidget(self._keyword_edit, stretch=1)
@@ -39,7 +35,6 @@ class AddBilibiliSubscriptionDialog(QtWidgets.QDialog):
         form = QtWidgets.QFormLayout()
         form.addRow("搜索", search_row)
         form.addRow("mid", self._mid_edit)
-        form.addRow("采集项", self._option_row())
 
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
@@ -55,15 +50,6 @@ class AddBilibiliSubscriptionDialog(QtWidgets.QDialog):
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
         self._result_list.itemClicked.connect(self._on_pick_result)
-
-    def _option_row(self) -> QtWidgets.QWidget:
-        row = QtWidgets.QWidget(self)
-        layout = QtWidgets.QHBoxLayout(row)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._videos_check)
-        layout.addWidget(self._dynamics_check)
-        layout.addStretch()
-        return row
 
     def _on_search(self) -> None:
         keyword = self._keyword_edit.text().strip()
@@ -94,12 +80,22 @@ class AddBilibiliSubscriptionDialog(QtWidgets.QDialog):
         if not mid and not keyword:
             page_notify(self, "请搜索选择 UP 主或填写 mid", level="warning")
             return
-        config = FeedSubscriptionConfig(
-            videos=self._videos_check.isChecked(),
-            dynamics=self._dynamics_check.isChecked(),
-        )
+        picked_name = ""
+        picked_avatar = ""
+        if mid:
+            for item in self._matches:
+                if str(item.get("mid") or "") == mid:
+                    picked_name = str(item.get("name") or "")
+                    picked_avatar = str(item.get("avatar") or "")
+                    break
         try:
-            self._service.add_bilibili_up(mid=mid or None, keyword=keyword or None, config=config)
+            self._service.add_bilibili_up(
+                mid=mid or None,
+                keyword=keyword or None,
+                display_name=picked_name or None,
+                avatar_url=picked_avatar or None,
+                config=FeedSubscriptionConfig(),
+            )
         except Exception as ex:
             page_notify(self, str(ex), level="error")
             return

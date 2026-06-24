@@ -221,8 +221,9 @@ class SchedulerConfig(MutableModel):
     sync_bilibili_feed: JobConfig = Field(
         default_factory=lambda: JobConfig(
             enabled=True,
-            cron_hour=0,
-            cron_minute=15,
+            interval_seconds=300,
+            cron_hour=8,
+            cron_minute=0,
             cron_day_of_week="mon-sun",
         ),
         description="B站订阅同步任务配置",

@@ -144,7 +144,7 @@ class InfoFeedPageWidget(QtWidgets.QWidget):
         if self._service is None or self._sync_worker is not None:
             return
         if not self._service.cookies_configured():
-            page_notify(self, "请先配置 BILIBILI_COOKIES", level="warning", toast_host=self._toast)
+            page_notify(self, "请先配置 BILIBILI_COOKIES", level="warning")
             return
         self._sync_btn.setEnabled(False)
         worker = FeedSyncWorker(self._service, self)
@@ -162,7 +162,7 @@ class InfoFeedPageWidget(QtWidgets.QWidget):
         skipped = bool(getattr(result, "skipped", False))
         success = bool(getattr(result, "success", False))
         level = "info" if success or skipped else "error"
-        page_notify(self, message, level=level, toast_host=self._toast)
+        page_notify(self, message, level=level)
         self._subscriptions.refresh()
         self._apply_filters()
         sync_info_feed_context(self.main_engine)

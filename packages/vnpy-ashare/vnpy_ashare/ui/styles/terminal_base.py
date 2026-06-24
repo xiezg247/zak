@@ -188,4 +188,23 @@ QLabel#DiagnoseBody {
     color: #8a8a8a;
     font-size: 12px;
 }
+QFrame#FeedItemCard {
+    background-color: #1a1a1e;
+    border: 1px solid #2a2a30;
+    border-radius: 6px;
+}
+QLabel#FeedItemHeader {
+    color: #8a8a8a;
+    font-size: 11px;
+}
+QLabel#FeedItemTitle {
+    color: #e8e8e8;
+    font-size: 13px;
+    font-weight: 600;
+}
+QLabel#FeedItemDetail {
+    color: #a8a8b8;
+    font-size: 12px;
+    line-height: 1.4;
+}
 """

@@ -66,7 +66,7 @@ def build_feed_page_quick_actions() -> list[QuickAction]:
             label="摘要未读",
             auto_send=True,
             prompt=(
-                "请调用 get_feed_items，unread_only=true，limit=5，"
+                "请调用 get_feed_items，unread_only=true，limit=10，"
                 "用简短条目列表概括未读信息流，不要编造。"
             ),
         ),

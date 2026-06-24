@@ -31,7 +31,7 @@ class BilibiliApiError(Exception):
 class BilibiliClient:
     def __init__(self, *, cookies: str | None = None, session: requests.Session | None = None) -> None:
         self._session = session or requests.Session()
-        self._cookies = (cookies if cookies is not None else os.environ.get("BILIBILI_COOKIES", "")).strip()
+        self._cookies = (cookies if cookies is not None else _resolve_bilibili_cookies()).strip()
         self._img_key = ""
         self._sub_key = ""
         self._wbi_refreshed_at = 0.0
@@ -116,3 +116,15 @@ def _mixin_key(raw: str) -> str:
 def _filter_wbi_value(value: Any) -> str:
     text = str(value)
     return re.sub(r"[!'()*]", "", text)
+
+
+def _resolve_bilibili_cookies() -> str:
+    from_env = os.environ.get("BILIBILI_COOKIES", "").strip()
+    if from_env:
+        return from_env
+    try:
+        from vnpy.trader.setting import SETTINGS
+
+        return str(SETTINGS.get("BILIBILI_COOKIES", "")).strip()
+    except Exception:
+        return ""

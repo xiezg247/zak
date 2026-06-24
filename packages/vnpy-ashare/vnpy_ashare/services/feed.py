@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from vnpy_ashare.domain.feed.models import (
     FEED_RECENT_LIMIT,
+    MAX_FEED_SUBSCRIPTIONS,
     SOURCE_TYPE_BILIBILI_UP,
     FeedItem,
     FeedItemDraft,
@@ -17,10 +18,17 @@ from vnpy_ashare.domain.feed.models import (
     SyncResult,
 )
 from vnpy_ashare.integrations.bilibili.client import BilibiliApiError, BilibiliClient
-from vnpy_ashare.integrations.bilibili.dynamics import list_recent_dynamics
-from vnpy_ashare.integrations.bilibili.normalize import normalize_dynamic, normalize_video
+from vnpy_ashare.integrations.bilibili.dynamics import (
+    get_dynamic_detail,
+    list_recent_dynamics,
+    sleep_before_detail_fetch,
+)
+from vnpy_ashare.integrations.bilibili.normalize import (
+    dynamic_needs_detail_fetch,
+    merge_dynamic_drafts,
+    normalize_dynamic,
+)
 from vnpy_ashare.integrations.bilibili.user import get_user_profile, search_users
-from vnpy_ashare.integrations.bilibili.videos import list_recent_videos
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.notifications.core.events import NOTIFY_EVENT_FEED_ITEM_NEW
 from vnpy_ashare.services.base import BaseService
@@ -30,6 +38,7 @@ if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
 
 _SUBSCRIPTION_SLEEP_SEC = 3.0
+_MAX_DETAIL_FETCH_PER_SYNC = 20
 
 
 class FeedService(BaseService):
@@ -57,6 +66,8 @@ class FeedService(BaseService):
         *,
         mid: str | None = None,
         keyword: str | None = None,
+        display_name: str | None = None,
+        avatar_url: str | None = None,
         config: FeedSubscriptionConfig | None = None,
         sync_now: bool = True,
     ) -> FeedSubscription:
@@ -68,8 +79,8 @@ class FeedService(BaseService):
             raise RuntimeError("未配置 BILIBILI_COOKIES")
 
         resolved_mid = (mid or "").strip()
-        display_name = ""
-        avatar_url = ""
+        resolved_name = (display_name or "").strip()
+        resolved_avatar = (avatar_url or "").strip()
         if not resolved_mid:
             query = (keyword or "").strip()
             if not query:
@@ -78,22 +89,26 @@ class FeedService(BaseService):
             if not matches:
                 raise RuntimeError(f"未找到 UP 主：{query}")
             resolved_mid = str(matches[0]["mid"])
-            display_name = str(matches[0].get("name") or "")
-            avatar_url = str(matches[0].get("avatar") or "")
+            resolved_name = str(matches[0].get("name") or "")
+            resolved_avatar = str(matches[0].get("avatar") or "")
 
         existing = feed_repo.find_subscription_by_source(SOURCE_TYPE_BILIBILI_UP, resolved_mid)
         if existing is not None:
             raise RuntimeError(f"已订阅：{existing.display_name or existing.source_id}")
 
-        profile = get_user_profile(client, resolved_mid)
-        display_name = display_name or profile["name"] or resolved_mid
-        avatar_url = avatar_url or profile["avatar"]
+        if not resolved_name or not resolved_avatar:
+            try:
+                profile = get_user_profile(client, resolved_mid)
+            except BilibiliApiError:
+                profile = {"name": "", "avatar": ""}
+            resolved_name = resolved_name or profile["name"] or resolved_mid
+            resolved_avatar = resolved_avatar or profile["avatar"]
 
         subscription = feed_repo.insert_subscription(
             source_type=SOURCE_TYPE_BILIBILI_UP,
             source_id=resolved_mid,
-            display_name=display_name,
-            avatar_url=avatar_url,
+            display_name=resolved_name,
+            avatar_url=resolved_avatar,
             config=config,
         )
         if sync_now:
@@ -187,51 +202,41 @@ def sync_subscription_record(subscription_id: str, client: BilibiliClient) -> Sy
         return SyncResult(subscription_id=subscription_id, error="未配置 BILIBILI_COOKIES")
 
     cursor = feed_repo.get_cursor(subscription_id)
-    drafts: list[FeedItemDraft] = []
-    max_video_ts = int(cursor["last_video_ts"])
     max_dynamic_id = str(cursor["last_dynamic_id"])
+    inserted: list[FeedItem] = []
 
     try:
-        if subscription.config.videos:
-            for raw in list_recent_videos(client, subscription.source_id, count=FEED_RECENT_LIMIT):
-                draft = normalize_video(raw, author_name=subscription.display_name)
-                if draft is None:
-                    continue
-                pub_ts = int(draft.payload.get("raw_pubdate") or 0)
-                if pub_ts > int(cursor["last_video_ts"]):
-                    drafts.append(draft)
-                if pub_ts > max_video_ts:
-                    max_video_ts = pub_ts
-
         if subscription.config.dynamics:
+            dynamic_drafts: list[FeedItemDraft] = []
+            detail_fetches = 0
             for raw in list_recent_dynamics(client, subscription.source_id, count=FEED_RECENT_LIMIT):
                 draft = normalize_dynamic(raw, author_name=subscription.display_name)
                 if draft is None:
                     continue
+                if dynamic_needs_detail_fetch(draft) and detail_fetches < _MAX_DETAIL_FETCH_PER_SYNC:
+                    detail_fetches += 1
+                    sleep_before_detail_fetch()
+                    detail_raw = get_dynamic_detail(client, draft.external_id)
+                    if detail_raw is not None:
+                        detail_draft = normalize_dynamic(detail_raw, author_name=subscription.display_name)
+                        if detail_draft is not None:
+                            draft = merge_dynamic_drafts(draft, detail_draft)
+                dynamic_drafts.append(draft)
                 dynamic_id = draft.external_id
-                if cursor["last_dynamic_id"] and dynamic_id == cursor["last_dynamic_id"]:
-                    continue
-                if (
-                    cursor["last_dynamic_id"]
-                    and dynamic_id.isdigit()
-                    and cursor["last_dynamic_id"].isdigit()
-                    and int(dynamic_id) <= int(cursor["last_dynamic_id"])
-                ):
-                    continue
-                drafts.append(draft)
                 if dynamic_id.isdigit() and (not max_dynamic_id.isdigit() or int(dynamic_id) > int(max_dynamic_id)):
                     max_dynamic_id = dynamic_id
                 elif not max_dynamic_id:
                     max_dynamic_id = dynamic_id
+            inserted.extend(
+                feed_repo.upsert_items(
+                    subscription.id,
+                    subscription.source_type,
+                    dynamic_drafts,
+                )
+            )
 
-        inserted = feed_repo.insert_items_if_new(
-            subscription.id,
-            subscription.source_type,
-            drafts,
-        )
         feed_repo.update_cursor(
             subscription.id,
-            last_video_ts=max_video_ts,
             last_dynamic_id=max_dynamic_id,
             last_ok_at=datetime.now().isoformat(timespec="seconds"),
             last_error="",

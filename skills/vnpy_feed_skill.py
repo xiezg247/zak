@@ -28,7 +28,10 @@ class VnpyFeedSkill(SkillTemplate):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "limit": {"type": "integer", "description": f"条数上限，默认 {FEED_RECENT_LIMIT}，最大 50"},
+                        "limit": {
+                            "type": "integer",
+                            "description": f"条数上限，默认 {FEED_RECENT_LIMIT}，最大 50",
+                        },
                         "unread_only": {"type": "boolean", "description": "仅未读，默认 false"},
                         "subscription_id": {"type": "string", "description": "按订阅 id 过滤"},
                         "refresh": {"type": "boolean", "description": "先同步 B 站再读库，默认 false"},
@@ -79,7 +82,6 @@ class VnpyFeedSkill(SkillTemplate):
                     "mid": sub.source_id,
                     "name": sub.display_name,
                     "enabled": sub.enabled,
-                    "videos": sub.config.videos,
                     "dynamics": sub.config.dynamics,
                     "last_ok_at": cursor.get("last_ok_at") or "",
                     "last_error": cursor.get("last_error") or "",
@@ -97,8 +99,12 @@ class VnpyFeedSkill(SkillTemplate):
         service = self._get_feed_service()
         sub_id = subscription_id.strip() or None
         refresh_error = self._maybe_refresh(refresh=refresh, subscription_id=sub_id)
-        limit = max(1, min(int(limit), 50))
-        items = service.list_items(limit=limit, unread_only=unread_only, subscription_id=sub_id)
+        row_limit = max(1, min(int(limit), 50))
+        items = service.list_items(
+            limit=row_limit,
+            unread_only=unread_only,
+            subscription_id=sub_id,
+        )
         payload = {
             "count": len(items),
             "refresh_error": refresh_error or "",

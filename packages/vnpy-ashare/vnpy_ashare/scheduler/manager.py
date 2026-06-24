@@ -23,7 +23,11 @@ from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
 from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
 from vnpy_ashare.jobs.core.progress import bind_job_log
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.jobs.feed.sync_bilibili import sync_bilibili_feed_job
+from vnpy_ashare.jobs.feed.sync_bilibili import (
+    BILIBILI_SYNC_INTERVAL_SECONDS,
+    is_bilibili_sync_window,
+    sync_bilibili_feed_job,
+)
 from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
 from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
 from vnpy_ashare.jobs.market.summary_warmup import warm_market_summary
@@ -55,6 +59,7 @@ if TYPE_CHECKING:
 
 _COLLECT_QUOTES_JOB_ID = "collect_quotes"
 _COLLECT_QUOTES_INTERVAL_MIN = 5
+_BILIBILI_FEED_SYNC_INTERVAL_MIN = BILIBILI_SYNC_INTERVAL_SECONDS
 
 logger = logging.getLogger(__name__)
 _MAX_RUN_LOG = 200
@@ -383,11 +388,12 @@ class TaskSchedulerManager:
                 description="拉取已订阅 UP 主的最新视频与动态，写入信息流",
                 runner=lambda: self._run_sync_bilibili_feed(),
                 config_attr="sync_bilibili_feed",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    minute=cfg.cron_minute,
+                schedule_builder=lambda cfg: IntervalTrigger(
+                    seconds=max(cfg.interval_seconds, _BILIBILI_FEED_SYNC_INTERVAL_MIN),
                 ),
-                schedule_text_builder=lambda cfg: f"每小时 :{cfg.cron_minute:02d}",
+                schedule_text_builder=lambda cfg: (
+                    f"每天 08:00–20:00 每 {max(cfg.interval_seconds, _BILIBILI_FEED_SYNC_INTERVAL_MIN) // 60} 分钟"
+                ),
             ),
         }
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)
@@ -436,10 +442,16 @@ class TaskSchedulerManager:
             return JobResult(success=result.success, message=f"{result.message} · {warm.message}")
         return result
 
-    def _run_sync_bilibili_feed(self) -> JobResult:
+    def _run_sync_bilibili_feed(self, *, force: bool = False) -> JobResult:
+        if not force and not is_bilibili_sync_window():
+            return JobResult(
+                success=True,
+                skipped=True,
+                message="非 08:00–20:00 时段，已跳过 B 站订阅同步",
+            )
         if self._engine is not None:
             return self._engine.feed_service.sync_all_enabled()
-        return sync_bilibili_feed_job()
+        return sync_bilibili_feed_job(force=True)
 
     def _next_collect_quotes_run_at(self, *, prefer_immediate: bool = False) -> datetime:
         now = china_now()
@@ -717,6 +729,7 @@ class TaskSchedulerManager:
             "screen_post_close",
             "scan_horizon_outlook",
             "warm_watchlist_strategy_cache",
+            "sync_bilibili_feed",
         )
         self._scheduler.add_job(
             self._wrap_job,
@@ -752,6 +765,8 @@ class TaskSchedulerManager:
                 result = run_horizon_outlook_scan_job(force=force)
             elif job_id == "warm_watchlist_strategy_cache":
                 result = warm_watchlist_strategy_cache_job(engine=self._engine, force=force)
+            elif job_id == "sync_bilibili_feed":
+                result = self._run_sync_bilibili_feed(force=force)
             else:
                 result = meta.runner()
             message = result.message

@@ -73,6 +73,7 @@ def _ensure_schema() -> None:
 
 def _row_to_subscription(row: Any) -> FeedSubscription:
     config_raw = json.loads(row["config_json"] or "{}")
+    config_raw.pop("videos", None)
     return FeedSubscription(
         id=row["id"],
         source_type=row["source_type"],
@@ -317,6 +318,68 @@ def insert_items_if_new(
     return inserted
 
 
+def upsert_items(
+    subscription_id: str,
+    source_type: str,
+    drafts: list[FeedItemDraft],
+) -> list[FeedItem]:
+    """插入或更新条目（保留 read_at）；返回本次新插入的条目。"""
+    if not drafts:
+        return []
+    _ensure_schema()
+    now = _now_iso()
+    inserted: list[FeedItem] = []
+    with connect() as conn:
+        for draft in drafts:
+            existing = conn.execute(
+                "SELECT id FROM feed_items WHERE source_type = ? AND external_id = ?",
+                (source_type, draft.external_id),
+            ).fetchone()
+            if existing is not None:
+                conn.execute(
+                    "UPDATE feed_items SET item_type = ?, title = ?, summary = ?, url = ?, "
+                    "author_name = ?, published_at = ?, payload_json = ? WHERE id = ?",
+                    (
+                        draft.item_type,
+                        draft.title,
+                        draft.summary,
+                        draft.url,
+                        draft.author_name,
+                        draft.published_at,
+                        json.dumps(draft.payload, ensure_ascii=False),
+                        existing["id"],
+                    ),
+                )
+                continue
+            item_id = str(uuid.uuid4())
+            cursor = conn.execute(
+                "INSERT INTO feed_items("
+                "id, subscription_id, source_type, external_id, item_type, title, summary, url, "
+                "author_name, published_at, payload_json, read_at, created_at"
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
+                (
+                    item_id,
+                    subscription_id,
+                    source_type,
+                    draft.external_id,
+                    draft.item_type,
+                    draft.title,
+                    draft.summary,
+                    draft.url,
+                    draft.author_name,
+                    draft.published_at,
+                    json.dumps(draft.payload, ensure_ascii=False),
+                    now,
+                ),
+            )
+            if cursor.rowcount <= 0:
+                continue
+            row = conn.execute("SELECT * FROM feed_items WHERE id = ?", (item_id,)).fetchone()
+            if row is not None:
+                inserted.append(_row_to_item(row))
+    return inserted
+
+
 def list_items(
     *,
     limit: int = 50,
@@ -437,4 +500,5 @@ __all__ = [
     "purge_old_items",
     "update_cursor",
     "update_subscription",
+    "upsert_items",
 ]

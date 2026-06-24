@@ -60,7 +60,7 @@ def test_update_subscription_config(feed_db) -> None:
         source_type="bilibili_up",
         source_id="999",
         display_name="UP主B",
-        config=FeedSubscriptionConfig(videos=True, dynamics=False),
+        config=FeedSubscriptionConfig(dynamics=False),
     )
     feed_repo.update_subscription(sub.id, enabled=False)
     loaded = feed_repo.get_subscription(sub.id)
