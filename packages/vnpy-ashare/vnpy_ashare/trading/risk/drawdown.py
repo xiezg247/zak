@@ -12,7 +12,6 @@ from vnpy_ashare.config.preferences.trading_risk import (
     save_trading_risk_prefs,
 )
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
-from vnpy_ashare.storage.repositories.trade_journal import sum_realized_pnl_all
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.trading.position import PositionSnapshot
@@ -43,8 +42,7 @@ def compute_current_equity(
         for snap in position_cache.values():
             if snap.unrealized_pnl is not None:
                 float_pnl += float(snap.unrealized_pnl)
-    realized_all = sum_realized_pnl_all()
-    return round(total_capital + realized_all + float_pnl, 2)
+    return round(total_capital + float_pnl, 2)
 
 
 def _drawdown_pct(current: float, peak: float) -> float | None:

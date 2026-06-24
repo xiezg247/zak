@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import unittest
 from unittest.mock import patch
 
@@ -126,15 +125,6 @@ class CombinedRiskGateTest(unittest.TestCase):
     def test_format_emotion_position_hint(self) -> None:
         self.assertEqual(format_emotion_position_hint(position_pct_min=0.3, position_pct_max=0.5), "情绪建议 30–50%")
         self.assertEqual(format_emotion_position_hint(position_pct_min=0.0, position_pct_max=0.5), "情绪建议 ≤50%")
-
-    def test_trading_skill_check_risk_gate(self) -> None:
-        from skills.vnpy_trading_skill import VnpyTradingSkill
-
-        skill = VnpyTradingSkill()
-        skill.setup()
-        payload = json.loads(skill.check_risk_gate())
-        self.assertIn("allow_new_positions", payload)
-        self.assertIn("account", payload)
 
 
 if __name__ == "__main__":

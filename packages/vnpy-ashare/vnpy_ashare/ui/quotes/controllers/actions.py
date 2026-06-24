@@ -26,7 +26,6 @@ from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.quotes.format import format_volume
 from vnpy_ashare.services.signals.stock_continuation import format_signal_panel_context_extra
-from vnpy_ashare.trading.journal.discipline_context import format_trading_discipline_extra
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
@@ -151,21 +150,7 @@ class ActionsController:
         note = self._note_context_extra()
         if note:
             parts.append(note)
-        discipline = self._trading_discipline_context_extra()
-        if discipline:
-            parts.append(discipline)
         return "\n\n".join(parts)
-
-    def _trading_discipline_context_extra(self) -> str:
-        page = self._p
-        if page.page_name != "自选" or not page.config.show_watchlist_positions:
-            return ""
-
-        vt_symbol = page.current_item.vt_symbol if page.current_item is not None else None
-        return format_trading_discipline_extra(
-            position_cache=page.position_cache,
-            vt_symbol=vt_symbol,
-        )
 
     def _multiview_context_extra(self) -> str:
         page = self._p
@@ -508,10 +493,6 @@ class ActionsController:
         cfg = page.position_config.normalized().effective_signal_config(page.signal_config)
         snap = page.position_cache.get(item.vt_symbol)
 
-        discipline = format_trading_discipline_extra(
-            position_cache=page.position_cache,
-            vt_symbol=item.vt_symbol,
-        )
         self._ask_ai(
             build_positions_ai_prompt(
                 item.vt_symbol,
@@ -523,7 +504,6 @@ class ActionsController:
                 volume=snap.volume if snap is not None else None,
                 unrealized_pnl_pct=snap.unrealized_pnl_pct if snap is not None else None,
                 t1_locked=snap.t1_locked if snap is not None else None,
-                discipline_extra=discipline,
             )
         )
 
@@ -765,16 +745,12 @@ class ActionsController:
         return menu
 
     def _append_watchlist_page_context_actions(self, menu: QtWidgets.QMenu, item: StockItem) -> None:
-        """自选页：池操作放右键（多选加入信号区 / 登记持仓 / 移出 / 刷新行情）。"""
+        """自选页：池操作放右键（多选加入信号区 / 移出 / 刷新行情）。"""
         page = self._p
         added = False
         if page.config.show_watchlist_signals:
             action = menu.addAction("加入信号区")
             action.triggered.connect(page.add_selection_to_signal_panel)
-            added = True
-        if page.config.show_watchlist_positions:
-            action = menu.addAction("登记持仓")
-            action.triggered.connect(page.register_position_for_selected)
             added = True
         if page.config.show_remove_watchlist_button and page._watchlist.contains(item):
             action = menu.addAction("移出自选")

@@ -63,11 +63,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     SEARCH_DEBOUNCE_MS,
 )
 from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
-from vnpy_ashare.ui.quotes.page.header_chips import (
-    open_risk_settings_for_page,
-    refresh_emotion_cycle_chip_for_page,
-    refresh_risk_gate_chip_for_page,
-)
+from vnpy_ashare.ui.quotes.page.header_chips import refresh_emotion_cycle_chip_for_page
 from vnpy_ashare.ui.quotes.page.layout_persistence import (
     on_quotes_page_resize,
     restore_splitter,
@@ -241,7 +237,6 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._market_sort_ascending = True
         self._center_splitter_bound = False
         self.emotion_cycle_more_button: QtWidgets.QPushButton | None = None
-        self.risk_gate_more_button: QtWidgets.QPushButton | None = None
         self._watchlist_table_ratio_override: float | None = None
         self.column_button = None
         self.rank_sidebar = None
@@ -358,12 +353,6 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
 
     def _refresh_emotion_cycle_chip(self) -> None:
         refresh_emotion_cycle_chip_for_page(self)
-
-    def _refresh_risk_gate_chip(self) -> None:
-        refresh_risk_gate_chip_for_page(self)
-
-    def _open_risk_settings(self) -> None:
-        open_risk_settings_for_page(self)
 
     def deactivate(self) -> None:
         deactivate_quotes_page(self)
@@ -670,17 +659,11 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
     ) -> None:
         self._watchlist_panels.apply_position_config(config, save=save)
 
-    def _on_signal_register_position(self, vt_symbol: str) -> None:
-        self._watchlist_panels.on_signal_register_position(vt_symbol)
-
     def _on_position_panel_row_selected(self, vt_symbol: str) -> None:
         self._watchlist_panels.on_position_panel_row_selected(vt_symbol)
 
     def _on_position_panel_row_activated(self, vt_symbol: str) -> None:
         self._watchlist_panels.on_position_panel_row_activated(vt_symbol)
-
-    def register_position_for_selected(self) -> None:
-        self._watchlist_panels.register_position_for_selected()
 
     def add_selection_to_signal_panel(self) -> None:
         self._watchlist_panels.add_selection_to_signal_panel()

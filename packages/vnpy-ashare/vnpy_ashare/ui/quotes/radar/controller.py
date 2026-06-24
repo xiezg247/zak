@@ -53,7 +53,7 @@ from vnpy_ashare.services.watchlist_short_term import (
     collect_dragon_1_rows,
     resonance_entries_to_rows,
 )
-from vnpy_ashare.trading.journal.propose import _next_trade_date
+from vnpy_ashare.trading.plan.propose import _next_trade_date
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.page.config import save_radar_card_refresh_ms
 from vnpy_ashare.ui.quotes.radar.resonance_weight_dialog import RadarResonanceWeightDialog
@@ -213,7 +213,6 @@ class RadarController(QtCore.QObject):
         self._board.update_tab_badges()
         self._sync_resonance_tab_from_board()
         self._page._refresh_emotion_cycle_chip()
-        self._page._refresh_risk_gate_chip()
         self.refresh_current_group()
         self._start_auto_refresh()
         self._session_timer.start()

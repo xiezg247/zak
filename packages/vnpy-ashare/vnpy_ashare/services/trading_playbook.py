@@ -12,9 +12,9 @@ from vnpy_ashare.config.preferences.strategy_profile import (
     get_strategy_profile,
     load_strategy_profile_id,
 )
-from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
 from vnpy_ashare.domain.time.market_hours import ashare_market_phase_label
 from vnpy_ashare.domain.trading.playbook import DisciplineCheckItem, HomePlaybookStatus, PlaybookSection
+from vnpy_ashare.quotes.market.emotion_cycle import load_emotion_cycle_snapshot
 from vnpy_ashare.screener.hard_filter_prefs import (
     STRATEGY_PROFILE_HARD_FILTER_PRESET,
     load_hard_filter_prefs,
@@ -28,11 +28,10 @@ from vnpy_ashare.storage.repositories.trading_playbook import (
     upsert_playbook_sections,
 )
 from vnpy_ashare.storage.repositories.trading_playbook_discipline import load_discipline_checks
-from vnpy_ashare.trading.journal.off_plan_scan import count_journal_off_plan_buys, list_off_plan_position_vt_symbols
+from vnpy_ashare.trading.plan.off_plan import list_off_plan_position_vt_symbols
 from vnpy_ashare.trading.risk.book_pnl import summarize_book_pnl
-from vnpy_ashare.trading.risk.combined import format_emotion_position_hint, load_combined_risk_gate_snapshot
-from vnpy_ashare.trading.risk.display import format_risk_gate_chip_value
-from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today, today_trade_date
+from vnpy_ashare.trading.risk.combined import format_emotion_position_hint
+from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
 
 _META_SEED_KEY = "playbook_seeded_profile"
 
@@ -141,15 +140,7 @@ def build_mirror_appendix(section_id: str) -> str:
             f"- 板块：{boards}\n"
         )
     if section_id == "risk":
-        risk_prefs = load_trading_risk_prefs()
-        cap = f"{risk_prefs.total_capital:,.0f} 元" if risk_prefs.total_capital else "未设置"
-        return (
-            "\n\n---\n\n**当前风控参数（只读）**\n\n"
-            f"- 总资金：{cap}\n"
-            f"- 单笔风险：{risk_prefs.per_trade_risk_pct:.1f}%\n"
-            f"- 止损比例：{risk_prefs.stop_loss_pct:.1f}%\n"
-            f"- 日亏警戒 / 熔断：{risk_prefs.caution_daily_pct:.1f}% / {risk_prefs.halt_daily_pct:.1f}%\n"
-        )
+        return ""
     return ""
 
 
@@ -166,49 +157,36 @@ def load_discipline_checklist(trade_date: str | None = None) -> tuple[Discipline
     return load_discipline_checks(day)
 
 
-def _resolve_home_daily_pnl_pct(day: str) -> float | None:
-    """首屏只读：优先流水/记账汇总，不用 QSettings 里可能过期的 daily_pnl_pct。"""
+def _resolve_home_daily_pnl_pct() -> float | None:
+    """首屏只读：持仓浮盈占比（无持仓时返回 None）。"""
     book = summarize_book_pnl({})
-    if book.combined_pnl_pct is not None:
-        return book.combined_pnl_pct
-    prefs = load_trading_risk_prefs()
-    effective, _, _ = resolve_realized_pnl_today(day)
-    if effective is not None and prefs.total_capital is not None and prefs.total_capital > 0:
-        return round(effective / prefs.total_capital * 100, 2)
-    return None
+    if book.total_float_pnl_pct is not None:
+        return book.total_float_pnl_pct
+    return book.combined_pnl_pct
 
 
-def _format_home_daily_pnl_text(daily_pct: float | None, *, halt_line: float) -> str:
-    line = f"线 {halt_line:.1f}%"
+def _format_home_daily_pnl_text(daily_pct: float | None) -> str:
     if daily_pct is not None:
-        return f"{daily_pct:+.2f}% / {line}"
-    return f"— / {line}"
+        return f"{daily_pct:+.2f}%"
+    return "—"
 
 
 def build_home_playbook_status(main_engine: MainEngine | None) -> HomePlaybookStatus:
     day = today_trade_date()
     profile = get_strategy_profile(load_strategy_profile_id())
-    daily_pct = _resolve_home_daily_pnl_pct(day)
-    combined = load_combined_risk_gate_snapshot(
-        position_cache={},
-        daily_pnl_pct=daily_pct,
-        persist_drawdown=False,
-    )
-    emotion = combined.emotion
-    account = combined.account
+    daily_pct = _resolve_home_daily_pnl_pct()
+    daily_text = _format_home_daily_pnl_text(daily_pct)
 
+    emotion = load_emotion_cycle_snapshot(fetch_if_missing=False)
     emotion_label = emotion.stage_label if emotion is not None else "—"
     pos_hint = (
         format_emotion_position_hint(
-            position_pct_min=combined.emotion_position_pct_min,
-            position_pct_max=combined.emotion_position_pct_max,
+            position_pct_min=emotion.position_pct_min if emotion is not None else None,
+            position_pct_max=emotion.position_pct_max if emotion is not None else None,
         )
         or "—"
     )
-
-    risk_label = format_risk_gate_chip_value(combined)
-    prefs = load_trading_risk_prefs()
-    daily_text = _format_home_daily_pnl_text(daily_pct if daily_pct is not None else account.daily_pnl_pct, halt_line=prefs.halt_daily_pct)
+    allow_new = emotion.allow_new_positions if emotion is not None else True
 
     position_vts = {f"{row.get('symbol')}.{row.get('exchange')}" for row in load_position_rows() if row.get("symbol") and row.get("exchange")}
     position_count = len(position_vts)
@@ -231,34 +209,22 @@ def build_home_playbook_status(main_engine: MainEngine | None) -> HomePlaybookSt
     discipline_progress = f"纪律 {done}/{len(checks)}" if checks else ""
 
     alerts: list[str] = []
-    if account.state == "halt":
-        if account.halt_until:
-            alerts.append(f"风控熔断中，停手至 {account.halt_until}")
-        elif prefs.manual_halt:
-            alerts.append("手动熔断已开启")
-        else:
-            alerts.append("风控熔断中，暂停新开仓")
-    elif account.state == "caution":
-        alerts.append("风控警戒，请对照 §4 仓位与风控")
-    elif emotion is not None and emotion.stage in {"recession", "divergence", "ice"}:
+    if emotion is not None and emotion.stage in {"recession", "divergence", "ice"}:
         alerts.append("情绪阶段偏保守，请对照 §1 择时")
-    elif not combined.allow_new_positions:
+    elif emotion is not None and not emotion.allow_new_positions:
         alerts.append("当前环境不建议新开仓")
     if off_plan:
         preview = "、".join(off_plan[:3])
         suffix = "…" if len(off_plan) > 3 else ""
         alerts.append(f"计划外持仓：{preview}{suffix}")
-    journal_off = count_journal_off_plan_buys(trade_date=day)
-    if journal_off:
-        alerts.append(f"今日计划外买入流水 {journal_off} 笔")
 
     return HomePlaybookStatus(
         profile_title=profile.title,
         phase_label=ashare_market_phase_label(),
         emotion_label=emotion_label,
         emotion_position_hint=pos_hint,
-        risk_label=risk_label,
-        allow_new_positions=combined.allow_new_positions,
+        risk_label="—",
+        allow_new_positions=allow_new,
         daily_pnl_text=daily_text,
         plan_text=plan_text,
         position_text=position_text,

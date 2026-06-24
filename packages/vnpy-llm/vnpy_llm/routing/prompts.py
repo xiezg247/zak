@@ -41,7 +41,7 @@ QUOTES_PAGE_PROMPT = """【看盘页】
 RADAR_PAGE_PROMPT = """【雷达页】
 用户正在雷达页浏览盘面统计与共振侧栏。
 问短线环境、情绪周期、能不能做、连板结构、龙头/主线时走 Market Agent 择时工具链。
-可结合 get_emotion_cycle、check_risk_gate、run_leader_screen、get_short_term_watchlist。
+可结合 get_emotion_cycle、run_leader_screen、get_short_term_watchlist。
 「生成次日计划」场景用 propose_trading_plan（草案，须用户激活）。"""
 
 INFO_FEED_PAGE_PROMPT = """【信息流页】

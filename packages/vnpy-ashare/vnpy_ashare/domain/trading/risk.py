@@ -75,8 +75,6 @@ class BookPnlSummary(FrozenModel):
     total_float_pnl_pct: float | None = Field(description="浮动盈亏占比（%）")
     avg_float_pnl_pct: float | None = Field(description="持仓平均浮盈占比（%）")
     realized_pnl_today: float | None = Field(description="当日已实现盈亏")
-    realized_pnl_journal: float | None = Field(description="登记已实现盈亏")
-    realized_pnl_manual: float | None = Field(description="手动录入已实现盈亏")
     combined_pnl_amount: float | None = Field(description="合计盈亏金额")
     combined_pnl_pct: float | None = Field(description="合计盈亏占比（%）")
 

@@ -28,7 +28,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
     refresh_requested = QtCore.Signal()
     row_activated = QtCore.Signal(str)
     row_selected = QtCore.Signal(str)
-    register_position_requested = QtCore.Signal(str)
     ai_interpret_requested = QtCore.Signal(str)
     ai_scan_requested = QtCore.Signal()
     expansion_changed = QtCore.Signal(bool)
@@ -190,7 +189,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
         h.refresh_requested.connect(self.refresh_requested.emit)
         h.ai_scan_requested.connect(self.ai_scan_requested.emit)
         h.ai_clicked.connect(self._on_ai_clicked)
-        h.register_position_clicked.connect(self._on_register_position_clicked_header)
         h.remove_requested.connect(self._on_remove_from_header)
         h.clear_requested.connect(self._on_clear_from_header)
         h.expansion_changed.connect(self._on_header_expansion_changed)
@@ -227,16 +225,6 @@ class WatchlistSignalPanel(QtWidgets.QWidget):
             self.ai_interpret_requested.emit(item.vt_symbol)
             return
         self._page._toast.warning("请先在策略信号区选择标的")
-
-    def _on_register_position_clicked_header(self) -> None:
-        symbols = self.selected_vt_symbols()
-        if not symbols:
-            self._page._toast.warning("请先在策略信号区选择标的")
-            return
-        if len(symbols) > 1:
-            self._page._toast.warning("登记持仓一次仅支持单只标的")
-            return
-        self.register_position_requested.emit(symbols[0])
 
     def _on_remove_from_header(self) -> None:
         item = self._page.current_item

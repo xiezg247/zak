@@ -11,13 +11,11 @@ from vnpy_llm.graph.state import GraphStreamContext
 
 MARKET_PREFETCH_SPECS: tuple[tuple[str, dict[str, Any]], ...] = (
     ("get_emotion_cycle", {}),
-    ("check_risk_gate", {}),
     ("get_ashare_fear_greed_index", {"include_components": False}),
 )
 
 _PREFETCH_LABELS: dict[str, str] = {
     "get_emotion_cycle": "情绪周期",
-    "check_risk_gate": "风控闸",
     "get_ashare_fear_greed_index": "恐贪指数",
 }
 
@@ -59,7 +57,7 @@ def stream_market_analysis(
     mcp_tool_names: frozenset[str] | set[str] | None = None,
     on_handoff: Callable[[str, str, str], None] | None = None,
 ) -> Iterator[str]:
-    """Market 专用编排：预取情绪/风控/恐贪后进入 ReAct 流式 loop。"""
+    """Market 专用编排：预取情绪/恐贪后进入 ReAct 流式 loop。"""
     prefetch = prefetch_market_facts(tool_executor)
     block = format_market_prefetch_block(prefetch)
     merged_context = graph_ctx.context_text.strip()
@@ -73,7 +71,7 @@ def stream_market_analysis(
             "context_text": merged_context,
         }
     )
-    yield "\n📊 已预取情绪周期 / 风控闸 / 恐贪指数…\n\n"
+    yield "\n📊 已预取情绪周期 / 恐贪指数…\n\n"
     yield from stream_with_tools(
         config,
         messages,

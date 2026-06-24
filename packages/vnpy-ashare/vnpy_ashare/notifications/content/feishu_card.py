@@ -8,7 +8,6 @@ from typing import Any
 from vnpy_ashare.notifications.content.formatters import format_notify_text
 from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
-    NOTIFY_EVENT_JOURNAL_VIOLATION,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_POSITION_ALERT,
     NOTIFY_EVENT_RADAR_LEADER_READY,
@@ -135,21 +134,6 @@ def _card_content(
         if t1_locked is not None:
             lines.append(f"T+1：{'锁定' if t1_locked else '可卖'}")
         return "持仓异动", "yellow", lines, "打开自选"
-
-    if event_id == NOTIFY_EVENT_JOURNAL_VIOLATION:
-        symbol = str(payload.get("symbol") or "")
-        exchange = str(payload.get("exchange") or "")
-        side = str(payload.get("side") or "")
-        tags = str(payload.get("violation_tags") or "")
-        reason = str(payload.get("reason") or "").strip()
-        side_label = {"buy": "买入", "sell": "卖出", "hold": "持有"}.get(side, side)
-        lines = [f"**{symbol}.{exchange}** · {side_label}"]
-        if tags:
-            lines.append(f"违规：**{tags}**")
-        if reason:
-            lines.append(reason)
-        lines.append("请复盘计划与纪律")
-        return "交易纪律提醒", "red", lines, "打开自选持仓"
 
     if event_id == NOTIFY_EVENT_RADAR_LEADER_READY:
         condition = str(payload.get("condition") or "雷达龙头")

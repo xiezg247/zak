@@ -70,7 +70,6 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     _watchlist_groups: Any
     event_engine: Any
     emotion_cycle_more_button: QtWidgets.QPushButton | None
-    risk_gate_more_button: QtWidgets.QPushButton | None
 
     def find_stock_item(self, vt_symbol: str) -> StockItem | None: ...
 
@@ -79,8 +78,6 @@ class WatchlistHost(WatchlistPoolHost, Protocol):
     def _get_analysis_service(self) -> AnalysisService | None: ...
 
     def _get_main_engine(self) -> MainEngine | None: ...
-
-    def _refresh_risk_gate_chip(self) -> None: ...
 
     def apply_strategy_profile(self, profile_id: str) -> None: ...
 

@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
-
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord, position_row_sort_key, position_t1_locked
 from vnpy_ashare.domain.trading.signal_snapshot import signal_missing_kline
 from vnpy_ashare.quotes.misc.position_anomaly import (
@@ -22,18 +19,11 @@ from vnpy_ashare.trading.exit.exit_display import (
     format_exit_rules_summary,
     format_exit_rules_tooltip,
 )
-from vnpy_ashare.trading.journal.report import format_journal_report_hint, load_journal_report
 from vnpy_ashare.trading.risk.book_pnl import format_book_pnl_hint, summarize_book_pnl
-from vnpy_ashare.trading.risk.combined import (
-    compute_avg_float_pnl_pct,
-    format_emotion_position_hint,
-    load_combined_risk_gate_snapshot,
-)
+from vnpy_ashare.trading.risk.combined import load_combined_risk_gate_snapshot
 from vnpy_ashare.trading.risk.plan_position import (
     compute_position_actual_pct,
-    format_plan_position_hint,
     format_plan_vs_actual_cell,
-    sum_plan_pct,
 )
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_common.ui.theme.manager import theme_manager
@@ -55,7 +45,7 @@ PANEL_COLUMNS = (
     ("ref_sell_price", "参考卖价"),
 )
 
-_EMPTY_TEXT = f"暂无持仓。请在上方自选表选中标的后点击「登记持仓」（最多 {POSITION_MAX_ITEMS} 只）。"
+_EMPTY_TEXT = f"暂无持仓。请在自选表选中标的后点击持仓区「添加」（最多 {POSITION_MAX_ITEMS} 只）。"
 _FILTER_EMPTY_TEXT = "当前筛选无匹配标的，再次点击统计项可取消筛选。"
 
 
@@ -427,10 +417,6 @@ class PositionPanelTableView(QtWidgets.QWidget):
                 has_pnl = True
         pnl_text = f"{total_pnl:+.2f}" if has_pnl else "—"
         updated = f" · 更新 {self._updated_at}" if self._updated_at else ""
-        combined = load_combined_risk_gate_snapshot(
-            avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
-            position_cache=self._page.position_cache,
-        )
         book_hint = format_book_pnl_hint(summarize_book_pnl(self._page.position_cache))
         parts = [
             f"持仓 {len(records)}",
@@ -438,27 +424,6 @@ class PositionPanelTableView(QtWidgets.QWidget):
         ]
         if book_hint:
             parts.append(book_hint)
-        parts.append(f"风控 {combined.account.state_label}")
-        emotion_hint = format_emotion_position_hint(
-            position_pct_min=combined.emotion_position_pct_min,
-            position_pct_max=combined.emotion_position_pct_max,
-        )
-        if emotion_hint:
-            parts.append(emotion_hint)
-        if combined.actual_position_pct is not None:
-            parts.append(f"实际 {int(combined.actual_position_pct * 100)}%")
-        plan_hint = format_plan_position_hint(
-            actual_pct=combined.actual_position_pct,
-            plan_pct_sum=sum_plan_pct(records),
-        )
-        if plan_hint:
-            parts.append(plan_hint)
-
-        end_day = datetime.now(CHINA_TZ).date()
-        start_day = end_day - timedelta(days=6)
-        journal_hint = format_journal_report_hint(load_journal_report(start_date=start_day.isoformat(), end_date=end_day.isoformat()))
-        if journal_hint:
-            parts.append(journal_hint)
         parts.extend(
             [
                 self._stats_link("anomaly", f"异动 {anomaly_count}", warning_color),

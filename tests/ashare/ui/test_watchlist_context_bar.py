@@ -36,24 +36,16 @@ class WatchlistLayoutPresetTests(unittest.TestCase):
         spec = PRESET_SPECS["intraday"]
         self.assertTrue(spec.select_all_group)
         self.assertTrue(spec.force_table_view)
-        self.assertFalse(spec.show_register_toolbar)
         self.assertTrue(spec.show_add_signal_toolbar)
-
-    def test_register_mode(self) -> None:
-        spec = PRESET_SPECS["register"]
-        self.assertTrue(spec.position_expanded)
-        self.assertTrue(spec.show_register_toolbar)
 
     def test_review_hides_add_signal_toolbar(self) -> None:
         spec = PRESET_SPECS["review"]
         self.assertFalse(spec.show_add_signal_toolbar)
-        self.assertTrue(spec.show_register_toolbar)
-        self.assertFalse(spec.show_emotion_risk_chips)
+        self.assertFalse(spec.show_emotion_chips)
         self.assertEqual(spec.splitter_table_ratio, 0.4)
 
-    def test_intraday_shows_emotion_risk_chips(self) -> None:
-        self.assertTrue(PRESET_SPECS["intraday"].show_emotion_risk_chips)
-        self.assertTrue(PRESET_SPECS["register"].show_emotion_risk_chips)
+    def test_intraday_shows_emotion_chips(self) -> None:
+        self.assertTrue(PRESET_SPECS["intraday"].show_emotion_chips)
 
 
 class WatchlistPositionFocusTests(unittest.TestCase):

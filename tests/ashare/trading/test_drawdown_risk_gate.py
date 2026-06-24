@@ -61,15 +61,13 @@ def _snap(vt_symbol: str, *, pnl: float) -> PositionSnapshot:
 class DrawdownRiskGateTest(unittest.TestCase):
     def test_compute_current_equity(self) -> None:
         cache = {"600519.SSE": _snap("600519.SSE", pnl=-3000.0)}
-        with patch("vnpy_ashare.trading.risk.drawdown.sum_realized_pnl_all", return_value=-2000.0):
-            equity = compute_current_equity(total_capital=100_000.0, position_cache=cache)
-        self.assertEqual(equity, 95_000.0)
+        equity = compute_current_equity(total_capital=100_000.0, position_cache=cache)
+        self.assertEqual(equity, 97_000.0)
 
     def test_total_drawdown_triggers_halt(self) -> None:
         prefs = _prefs(peak_equity=100_000.0)
         cache = {"600519.SSE": _snap("600519.SSE", pnl=-11_000.0)}
         with (
-            patch("vnpy_ashare.trading.risk.drawdown.sum_realized_pnl_all", return_value=0.0),
             patch("vnpy_ashare.trading.risk.drawdown.save_trading_risk_prefs") as save_mock,
             patch("vnpy_ashare.trading.risk.drawdown._today", return_value=date(2026, 6, 18)),
         ):
@@ -96,6 +94,7 @@ class DrawdownRiskGateTest(unittest.TestCase):
         with (
             patch("vnpy_ashare.trading.risk.gate.load_trading_risk_prefs", return_value=prefs),
             patch("vnpy_ashare.trading.risk.gate.evaluate_drawdown", return_value=(prefs, -6.0, -3.0, ["单周回撤熔断中，停手至 2026-06-20"])),
+            patch("vnpy_ashare.trading.risk.gate.is_halt_active", return_value=True),
         ):
             snap = build_risk_gate_snapshot()
         self.assertEqual(snap.state, "halt")

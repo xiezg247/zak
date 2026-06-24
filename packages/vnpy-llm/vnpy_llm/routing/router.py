@@ -60,11 +60,9 @@ TOOL_GROUPS: dict[IntentCategory, frozenset[str]] = {
         {
             "get_emotion_cycle",
             "get_ashare_fear_greed_index",
-            "check_risk_gate",
             "get_short_term_watchlist",
             "get_trading_plan",
             "propose_trading_plan",
-            "get_trading_discipline_context",
             "get_quote_context",
             "get_bars_summary",
             "technical_snapshot",
@@ -413,8 +411,8 @@ def build_routing_hint(analysis: IntentAnalysis, *, page: str = "", user_text: s
 
     if route.category == "market":
         lines.append("【Market Agent 路由】")
-        lines.append("- 优先引用终端已注入摘要与 Market 预取块（情绪周期 / 风控闸 / 恐贪）")
-        lines.append("- 预取缺失时须调用 get_emotion_cycle、check_risk_gate、get_ashare_fear_greed_index")
+        lines.append("- 优先引用终端已注入摘要与 Market 预取块（情绪周期 / 恐贪）")
+        lines.append("- 预取缺失时须调用 get_emotion_cycle、get_ashare_fear_greed_index")
         lines.append("- 退潮/冰点/熔断时明确不建议短线新开仓；引用 inputs 涨跌停数，禁止编造")
         lines.append("- 龙头/共振/极致短线用 vnpy-radar（get_radar_snapshot、run_short_term_screen）；盘中上下文用 get_short_term_watchlist")
         lines.append("- 次日计划草案用 propose_trading_plan（不自动激活）")

@@ -17,9 +17,8 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
     watchlist_toolbar_group3_visible,
     watchlist_toolbar_policy,
 )
-from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import create_emotion_risk_more_buttons
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import create_emotion_more_buttons
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist.pool_host import WatchlistPoolHost
 from vnpy_ashare.ui.styles.vnpy_page import apply_toolbar_combo_style
@@ -84,24 +83,16 @@ def append_watchlist_strategy_toolbar_actions(
         parent = as_qwidget(page)
         page.emotion_cycle_chip = EmotionCycleChip(parent)
         page.emotion_cycle_chip.hide()
-        page.risk_gate_chip = RiskGateChip(parent)
-        page.risk_gate_chip.hide()
-        page.risk_gate_chip.clicked.connect(page._open_risk_settings)
         append_strategy_workspace_more_actions(page, more_actions)
     else:
         if page.config.show_watchlist_signals:
             toolbar.addWidget(page.add_signal_panel_button)
-        if page.config.show_watchlist_positions:
-            toolbar.addWidget(page.register_position_button)
         if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
             parent = as_qwidget(page)
             page.emotion_cycle_chip = EmotionCycleChip(parent)
             toolbar.addWidget(page.emotion_cycle_chip)
-            page.risk_gate_chip = RiskGateChip(parent)
-            toolbar.addWidget(page.risk_gate_chip)
-            page.risk_gate_chip.clicked.connect(page._open_risk_settings)
             if policy is not None:
-                more_actions.extend(create_emotion_risk_more_buttons(page))
+                more_actions.extend(create_emotion_more_buttons(page))
     if page.config.show_stock_notes:
         toolbar.addWidget(page.quick_note_button)
         if policy is not None:

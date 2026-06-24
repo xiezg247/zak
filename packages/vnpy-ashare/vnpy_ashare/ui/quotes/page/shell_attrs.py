@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
     from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
     from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
-    from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
     from vnpy_ashare.ui.quotes.radar.card import RadarBoard
     from vnpy_ashare.ui.quotes.radar.controller import RadarController
     from vnpy_ashare.ui.quotes.radar.resonance_panel import RadarResonancePanel
@@ -62,7 +61,6 @@ class QuotesPageShellAttrs:
     batch_backtest_button: QtWidgets.QPushButton
     refresh_signals_button: QtWidgets.QPushButton
     add_signal_panel_button: QtWidgets.QPushButton
-    register_position_button: QtWidgets.QPushButton
     quick_note_button: QtWidgets.QPushButton
     notes_center_button: QtWidgets.QPushButton
     diagnose_button: QtWidgets.QPushButton
@@ -85,7 +83,6 @@ class QuotesPageShellAttrs:
     quote_source_label: QtWidgets.QLabel
     refresh_hint_label: QtWidgets.QLabel
     emotion_cycle_chip: EmotionCycleChip | None
-    risk_gate_chip: RiskGateChip | None
     _toast: PageToastHost
 
     chart_panel: ChartPanel | None

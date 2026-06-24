@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from vnpy_ashare.services.position import PositionService
     from vnpy_ashare.services.watchlist import WatchlistService
     from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
-    from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
     from vnpy_ashare.ui.quotes.page.config import PageConfig
     from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
     from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
@@ -42,13 +41,11 @@ class WatchlistPoolHost(Protocol):
     backtest_button: QtWidgets.QPushButton
     batch_backtest_button: QtWidgets.QPushButton
     add_signal_panel_button: QtWidgets.QPushButton
-    register_position_button: QtWidgets.QPushButton
     quick_note_button: QtWidgets.QPushButton
     notes_center_button: QtWidgets.QPushButton
     diagnose_button: QtWidgets.QPushButton
     refresh_quotes_button: QtWidgets.QPushButton
     emotion_cycle_chip: EmotionCycleChip | None
-    risk_gate_chip: RiskGateChip | None
     _watchlist_groups: WatchlistGroupController | None
     _watchlist_feature: Any
     _signals: WatchlistSignalController
@@ -62,5 +59,3 @@ class WatchlistPoolHost(Protocol):
     def _update_action_buttons(self) -> None: ...
 
     def _select_stock_key(self, key: tuple[str, Exchange]) -> None: ...
-
-    def _open_risk_settings(self) -> None: ...

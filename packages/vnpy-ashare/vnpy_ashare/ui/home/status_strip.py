@@ -68,12 +68,11 @@ class HomePlaybookStatusStrip(QtWidgets.QFrame):
         row.setSpacing(10)
 
         self._emotion = _HomeChip("情绪")
-        self._risk = _HomeChip("风控")
         self._daily = _HomeChip("日盈亏")
         self._plan = _HomeChip("计划")
         self._position = _HomeChip("持仓")
 
-        for chip in (self._emotion, self._risk, self._daily, self._plan, self._position):
+        for chip in (self._emotion, self._daily, self._plan, self._position):
             row.addWidget(chip, stretch=1)
 
         outer.addWidget(self._alert)
@@ -95,22 +94,10 @@ class HomePlaybookStatusStrip(QtWidgets.QFrame):
             emotion_value = status.emotion_label
             emotion_sub = status.emotion_position_hint or ""
 
-        daily_parts = status.daily_pnl_text.split(" / ", 1)
-        daily_value = daily_parts[0]
-        daily_sub = daily_parts[1] if len(daily_parts) > 1 else ""
-
-        risk_sub = "可以新开仓" if status.allow_new_positions else "暂停新开仓"
-        risk_tone = ""
-        if not status.allow_new_positions:
-            risk_tone = "danger"
-        elif status.risk_label.startswith("警戒"):
-            risk_tone = "caution"
-
         position_tone = "danger" if status.off_plan_symbols else ""
 
         self._emotion.set_content(emotion_value, sub=emotion_sub)
-        self._risk.set_content(status.risk_label, sub=risk_sub, tone=risk_tone)
-        self._daily.set_content(daily_value, sub=daily_sub)
+        self._daily.set_content(status.daily_pnl_text)
         self._plan.set_content(status.plan_text)
         self._position.set_content(
             status.position_text,
@@ -120,7 +107,7 @@ class HomePlaybookStatusStrip(QtWidgets.QFrame):
 
         if status.alert:
             self._alert.setText(status.alert)
-            is_danger = status.risk_label.startswith("熔断") or bool(status.off_plan_symbols)
+            is_danger = bool(status.off_plan_symbols) or not status.allow_new_positions
             self._alert.setProperty("severity", "danger" if is_danger else "info")
             self._alert.style().unpolish(self._alert)
             self._alert.style().polish(self._alert)

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.watchlist_position import (
@@ -11,22 +9,13 @@ from vnpy_ashare.config.preferences.watchlist_position import (
     WatchlistPositionConfig,
 )
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
-from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
-from vnpy_ashare.trading.journal.plan_check import check_buy_against_plan
-from vnpy_ashare.trading.risk.combined import (
-    compute_avg_float_pnl_pct,
-    load_combined_risk_gate_snapshot,
-)
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.header import PositionPanelHeader
-from vnpy_ashare.ui.quotes.watchlist_positions.journal_report_dialog import JournalReportDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
-from vnpy_ashare.ui.quotes.watchlist_positions.risk_settings_dialog import RiskSettingsDialog
-from vnpy_ashare.ui.quotes.watchlist_positions.sell_dialog import PositionSellDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.table_view import PositionPanelTableView
 from vnpy_common.ui.theme.manager import theme_manager
 
@@ -63,8 +52,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._table_view.setVisible(expanded)
         self._sync_panel_geometry(expanded)
         self.render_panel()
-
-    # ── 属性 / 配置代理 ─────────────────────────────────────
 
     @property
     def enabled(self) -> bool:
@@ -107,9 +94,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             expanded=self.is_expanded(),
         )
 
-    # ── 登记 / 编辑 / 移出 ───────────────────────────────────
-
-    def register_symbol(self, vt_symbol: str) -> bool:
+    def add_symbol(self, vt_symbol: str) -> bool:
         service = self._page._get_position_service()
         if service is None:
             self._page.status_label.setText("持仓服务未就绪")
@@ -118,30 +103,13 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         if item is None:
             return False
         if service.contains(item.symbol, item.exchange):
-            self._page._toast.warning("该标的已登记持仓，请使用编辑")
+            self._page._toast.warning("该标的已有持仓，请使用编辑")
             return False
-        combined = load_combined_risk_gate_snapshot(
-            avg_float_pnl_pct=compute_avg_float_pnl_pct(self._page.position_cache),
-            position_cache=self._page.position_cache,
-        )
-        if combined.account.state == "halt":
-            hint = "；".join(combined.account.warnings) or "账户熔断"
-            self._page._toast.warning(f"{hint}：不建议新开仓（登记不阻断，仅记账）")
-        elif combined.account.state == "caution":
-            hint = "；".join(combined.account.warnings) or "账户警戒"
-            self._page._toast.warning(f"{hint}：建议减频新开仓（登记不阻断，仅记账）")
-        elif not combined.allow_new_positions:
-            hint = "；".join(combined.warnings[:2]) or "当前环境不建议短线新开仓"
-            self._page._toast.warning(f"{hint}（登记仅作记账参考）")
-
-        today = datetime.now(CHINA_TZ).date().isoformat()
-        if not self._confirm_plan_violations(item, buy_date=today):
-            return False
-        title = f"登记持仓 · {item.symbol}"
+        title = f"添加持仓 · {item.symbol}"
         dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, parent=self)
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return False
-        self._save_form(vt_symbol, dialog.read_form(), existing=False)
+        self._save_form(vt_symbol, dialog.read_form(), existing=False, existing_plan_pct=None)
         return True
 
     def _records(self) -> list[PositionRecord]:
@@ -150,23 +118,14 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             return []
         return service.get_items()
 
-    def _confirm_plan_violations(self, item, *, buy_date: str) -> bool:
-        check = check_buy_against_plan(item.symbol, item.exchange, trade_date=buy_date)
-        if not check.warnings:
-            return True
-        if "off_plan" not in check.violation_tags and "recession_buy" not in check.violation_tags:
-            return True
-        hint = "；".join(check.warnings)
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "计划外登记",
-            f"{hint}\n登记后将写入流水并标记 {', '.join(check.violation_tags)}。\n仍要登记？",
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
-        )
-        return answer == QtWidgets.QMessageBox.StandardButton.Yes
-
-    def _save_form(self, vt_symbol: str, form, *, existing: bool) -> None:
+    def _save_form(
+        self,
+        vt_symbol: str,
+        form,
+        *,
+        existing: bool,
+        existing_plan_pct: float | None,
+    ) -> None:
         service = self._page._get_position_service()
         if service is None:
             self._page.status_label.setText("持仓服务未就绪")
@@ -179,9 +138,8 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         if error:
             self._page._toast.warning(error)
             return
+        plan_pct = existing_plan_pct if existing else None
         if existing:
-            snap = self._page.position_cache.get(vt_symbol)
-            last_price = snap.last_price if snap is not None else None
             ok = service.update(
                 item.symbol,
                 item.exchange,
@@ -189,8 +147,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 volume=form.volume,
                 buy_date=form.buy_date,
                 notes=form.notes,
-                plan_pct=form.plan_pct,
-                last_price=last_price,
+                plan_pct=plan_pct,
             )
         else:
             ok = service.add(
@@ -200,28 +157,21 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 volume=form.volume,
                 buy_date=form.buy_date,
                 notes=form.notes,
-                plan_pct=form.plan_pct,
+                plan_pct=plan_pct,
             )
         if not ok:
             reason = service.add_failure_reason(item.symbol, item.exchange) if not existing else None
             if reason == "full":
                 self._page._toast.warning(f"持仓已满（最多 {POSITION_MAX_ITEMS} 只）")
             elif reason == "duplicate":
-                self._page._toast.warning("该标的已登记持仓")
+                self._page._toast.warning("该标的已有持仓")
             elif reason == "not_in_watchlist":
                 self._page._toast.warning("须先将标的加入自选池")
             else:
                 self._page._toast.warning("保存失败")
             return
-        if not existing:
-            check = check_buy_against_plan(item.symbol, item.exchange, trade_date=form.buy_date)
-            if check.violation_tags:
-                tags = "、".join(check.violation_tags)
-                self._page._toast.warning(f"已登记；流水标记 {tags}")
         self._page.status_label.setText(f"已保存持仓：{vt_symbol}")
         self.rows_changed.emit()
-
-    # ── 内部连线 ────────────────────────────────────────────
 
     def _wire(self) -> None:
         h = self._header
@@ -231,13 +181,11 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         h.enabled_changed.connect(self.enabled_changed.emit)
         h.refresh_requested.connect(self.refresh_requested.emit)
         h.expansion_changed.connect(self._on_header_expansion_changed)
+        h.add_requested.connect(self._on_add_clicked)
         h.edit_requested.connect(self._on_edit_clicked)
-        h.record_sell_requested.connect(self._on_record_sell_clicked)
         h.remove_requested.connect(self._on_remove_clicked)
         h.clear_requested.connect(self._on_clear_clicked)
         h.plan_requested.connect(self._on_plan_clicked)
-        h.journal_requested.connect(self._on_journal_clicked)
-        h.risk_requested.connect(self._on_risk_settings_clicked)
 
         t.row_activated.connect(self._on_row_activated)
         t.row_selected.connect(self.row_selected.emit)
@@ -259,26 +207,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self.row_activated.emit(vt_symbol)
         self._on_edit_clicked()
 
-    def _on_edit_clicked(self) -> None:
-        vt_symbol = self._table_view.selected_vt_symbol()
-        if not vt_symbol:
-            main_item = self._page.current_item
-            if main_item is not None:
-                vt_symbol = main_item.vt_symbol
-        if not vt_symbol:
-            self._page._toast.warning("请先选择要编辑的持仓")
-            return
-        record = next((row for row in self._records() if row.vt_symbol == vt_symbol), None)
-        if record is None:
-            self._page._toast.warning("该标的尚未登记持仓")
-            return
-        item = self._page.find_stock_item(vt_symbol)
-        title = f"编辑持仓 · {item.symbol if item else vt_symbol}"
-        dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, record=record, parent=self)
-        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-            return
-        self._save_form(vt_symbol, dialog.read_form(), existing=True)
-
     def _resolve_selected_vt_symbol(self) -> str | None:
         vt_symbol = self._table_view.selected_vt_symbol()
         if not vt_symbol:
@@ -287,60 +215,28 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
                 vt_symbol = item.vt_symbol
         return vt_symbol or None
 
-    def _on_record_sell_clicked(self) -> None:
+    def _on_add_clicked(self) -> None:
         vt_symbol = self._resolve_selected_vt_symbol()
         if not vt_symbol:
-            self._page._toast.warning("请先选择要补录卖出的持仓")
+            self._page._toast.warning("请先在自选表中选择要添加的标的")
             return
-        stock = self._page.find_stock_item(vt_symbol)
-        service = self._page._get_position_service()
-        if stock is None or service is None:
+        self.add_symbol(vt_symbol)
+
+    def _on_edit_clicked(self) -> None:
+        vt_symbol = self._resolve_selected_vt_symbol()
+        if not vt_symbol:
+            self._page._toast.warning("请先选择要编辑的持仓")
             return
         record = next((row for row in self._records() if row.vt_symbol == vt_symbol), None)
         if record is None:
-            self._page._toast.warning("该标的尚未登记持仓")
+            self._page._toast.warning("该标的尚无持仓记录")
             return
-        snap = self._page.position_cache.get(vt_symbol)
-        suggested = snap.last_price if snap is not None else None
-        sell_dialog = PositionSellDialog(
-            vt_symbol=vt_symbol,
-            cost_price=record.cost_price,
-            volume=record.volume,
-            suggested_price=suggested,
-            record_only=True,
-            parent=self,
-        )
-        if sell_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+        item = self._page.find_stock_item(vt_symbol)
+        title = f"编辑持仓 · {item.symbol if item else vt_symbol}"
+        dialog = PositionEditDialog(title=title, symbol_text=vt_symbol, record=record, parent=self)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
-        form = sell_dialog.read_form()
-        if form is None:
-            self._page._toast.warning("请填写有效卖出价")
-            return
-        error = service.record_sell(
-            stock.symbol,
-            stock.exchange,
-            sell_price=form.sell_price,
-            sell_volume=form.volume,
-            sell_date=form.sell_date,
-            reason=form.reason,
-        )
-        if error == "volume_exceeds":
-            self._page._toast.warning("卖出量不能超过当前持仓")
-            return
-        if error is not None:
-            self._page._toast.warning("补录卖出失败")
-            return
-        if form.volume < record.volume:
-            self._page._positions.invalidate_cache()
-            self._page.status_label.setText(
-                f"已补录卖出流水并减少持仓：{vt_symbol}（-{form.volume} 股）",
-            )
-        else:
-            self._page.status_label.setText(f"已补录卖出流水（持仓保留）：{vt_symbol}")
-        refresh = getattr(self._page, "_refresh_risk_gate_chip", None)
-        if callable(refresh):
-            refresh()
-        self.rows_changed.emit()
+        self._save_form(vt_symbol, dialog.read_form(), existing=True, existing_plan_pct=record.plan_pct)
 
     def _on_remove_clicked(self) -> None:
         vt_symbol = self._resolve_selected_vt_symbol()
@@ -360,32 +256,9 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         service = self._page._get_position_service()
         if stock is None or service is None:
             return
-        record = next((row for row in self._records() if row.vt_symbol == vt_symbol), None)
-        if record is None:
-            return
-        snap = self._page.position_cache.get(vt_symbol)
-        suggested = snap.last_price if snap is not None else None
-        sell_dialog = PositionSellDialog(
-            vt_symbol=vt_symbol,
-            cost_price=record.cost_price,
-            volume=record.volume,
-            suggested_price=suggested,
-            parent=self,
-        )
-        if sell_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-            return
-        form = sell_dialog.read_form()
-        if form is None:
-            self._page._toast.warning("请填写有效卖出价")
-            return
-        if service.remove(
-            stock.symbol,
-            stock.exchange,
-            sell_price=form.sell_price,
-            sell_date=form.sell_date,
-        ):
+        if service.remove(stock.symbol, stock.exchange):
             self._page.position_cache.pop(vt_symbol, None)
-            self._page.status_label.setText(f"已移出持仓并记卖出流水：{vt_symbol}")
+            self._page.status_label.setText(f"已移出持仓：{vt_symbol}")
             self.rows_changed.emit()
 
     def _on_clear_clicked(self) -> None:
@@ -408,27 +281,6 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         self._page.status_label.setText("已清空全部持仓")
         self.rows_changed.emit()
 
-    def _on_risk_settings_clicked(self) -> None:
-        page = self._page
-        cache = getattr(page, "position_cache", None)
-        position_cache = cache if isinstance(cache, dict) else None
-        refresh = getattr(page, "_refresh_risk_gate_chip", None)
-        on_changed = refresh if callable(refresh) else None
-        if RiskSettingsDialog.open_and_save(
-            self,
-            position_cache=position_cache,
-            on_prefs_changed=on_changed,
-        ):
-            self._page.status_label.setText("已保存交易风控设置")
-            self.render_panel()
-
     def _on_plan_clicked(self) -> None:
         dialog = TradingPlanDialog(page=self._page, parent=self)
-        dialog.exec()
-
-    def _on_journal_clicked(self) -> None:
-        page = self._page
-        refresh = getattr(page, "_refresh_risk_gate_chip", None)
-        on_changed = refresh if callable(refresh) else None
-        dialog = JournalReportDialog(parent=self, on_entries_changed=on_changed)
         dialog.exec()

@@ -35,7 +35,6 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
 )
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.market_overview.industry_filter_combo import IndustryFilterCombo
-from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
 from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,
@@ -263,11 +262,6 @@ class QuotesPageShell:
         page.add_signal_panel_button.setObjectName("SecondaryButton")
         page.add_signal_panel_button.clicked.connect(page.add_selection_to_signal_panel)
         page.add_signal_panel_button.setVisible(page.config.show_watchlist_signals)
-
-        page.register_position_button = QtWidgets.QPushButton("登记持仓", page)
-        page.register_position_button.setObjectName("SecondaryButton")
-        page.register_position_button.clicked.connect(page.register_position_for_selected)
-        page.register_position_button.setVisible(page.config.show_watchlist_positions)
 
         page.quick_note_button = QtWidgets.QPushButton("记一笔", page)
         page.quick_note_button.setObjectName("SecondaryButton")
@@ -710,9 +704,6 @@ class QuotesPageShell:
         toolbar.addWidget(page.radar_ai_button)
         page.emotion_cycle_chip = EmotionCycleChip(page)
         toolbar.addWidget(page.emotion_cycle_chip)
-        page.risk_gate_chip = RiskGateChip(page)
-        toolbar.addWidget(page.risk_gate_chip)
-        page.risk_gate_chip.clicked.connect(page._open_risk_settings)
         toolbar.addStretch(1)
 
         toolbar_host = QtWidgets.QWidget()

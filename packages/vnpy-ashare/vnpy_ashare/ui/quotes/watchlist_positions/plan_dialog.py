@@ -17,7 +17,7 @@ from vnpy_ashare.storage.repositories.trading_plans import (
     replace_trading_plan_symbols,
     update_trading_plan_meta,
 )
-from vnpy_ashare.trading.journal.propose import (
+from vnpy_ashare.trading.plan.propose import (
     _next_trade_date,
     build_trading_plan_draft,
     sync_plan_to_watchlist_pool,

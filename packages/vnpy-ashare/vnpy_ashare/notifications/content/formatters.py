@@ -8,7 +8,6 @@ from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_FEED_ITEM_NEW,
-    NOTIFY_EVENT_JOURNAL_VIOLATION,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_POSITION_ALERT,
     NOTIFY_EVENT_RADAR_LEADER_READY,
@@ -89,24 +88,6 @@ def format_notify_text(event_id: str, payload: dict[str, Any]) -> str:
             lines.append(f"退出信号：{exit_signal}")
         if t1_locked is not None:
             lines.append(f"T+1：{'锁定' if t1_locked else '可卖'}")
-        lines.append(f"时间 {now}")
-        return "\n".join(lines)
-
-    if event_id == NOTIFY_EVENT_JOURNAL_VIOLATION:
-        name = str(payload.get("symbol") or "")
-        exchange = str(payload.get("exchange") or "")
-        side = str(payload.get("side") or "")
-        tags = str(payload.get("violation_tags") or "")
-        reason = str(payload.get("reason") or "").strip()
-        emotion = str(payload.get("emotion_stage") or "").strip()
-        side_label = {"buy": "买入", "sell": "卖出", "hold": "持有"}.get(side, side)
-        lines = ["【zak】交易纪律提醒", f"{name}.{exchange} · {side_label}"]
-        if tags:
-            lines.append(f"违规：{tags}")
-        if emotion:
-            lines.append(f"情绪阶段：{emotion}")
-        if reason:
-            lines.append(reason)
         lines.append(f"时间 {now}")
         return "\n".join(lines)
 

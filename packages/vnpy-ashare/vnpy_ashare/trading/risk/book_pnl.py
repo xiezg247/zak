@@ -1,4 +1,4 @@
-"""记账盈亏汇总（K-03 MVP）。"""
+"""记账盈亏汇总。"""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from vnpy_ashare.config.preferences.trading_risk import load_trading_risk_prefs
 from vnpy_ashare.domain.trading.risk import BookPnlSummary
 from vnpy_ashare.trading.risk.combined import compute_avg_float_pnl_pct
-from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today, today_trade_date
+from vnpy_ashare.trading.risk.realized_pnl import resolve_realized_pnl_today
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.trading.position import PositionSnapshot
@@ -34,10 +34,7 @@ def summarize_book_pnl(
     if prefs.total_capital is not None and prefs.total_capital > 0 and has_float:
         float_pct = round(total_float / prefs.total_capital * 100, 2)
 
-    realized = prefs.realized_pnl_today
-    effective, journal_total, manual = resolve_realized_pnl_today(today_trade_date())
-    if effective is not None:
-        realized = effective
+    realized = resolve_realized_pnl_today()
     combined_amount: float | None = None
     combined_pct: float | None = None
     if has_float or realized is not None:
@@ -51,8 +48,6 @@ def summarize_book_pnl(
         total_float_pnl_pct=float_pct,
         avg_float_pnl_pct=round(avg_pct, 2) if avg_pct is not None else None,
         realized_pnl_today=realized,
-        realized_pnl_journal=journal_total if journal_total != 0.0 else None,
-        realized_pnl_manual=manual,
         combined_pnl_amount=combined_amount,
         combined_pnl_pct=combined_pct,
     )
@@ -65,12 +60,7 @@ def format_book_pnl_hint(summary: BookPnlSummary) -> str | None:
     if summary.position_count > 0:
         parts.append(f"浮盈 {summary.total_float_pnl:+.2f}")
     if summary.realized_pnl_today is not None:
-        if summary.realized_pnl_journal is not None and summary.realized_pnl_manual not in (None, 0.0):
-            parts.append(f"已实现 {summary.realized_pnl_today:+.2f}（登记 {summary.realized_pnl_journal:+.0f}+额外 {summary.realized_pnl_manual:+.0f}）")
-        elif summary.realized_pnl_journal is not None:
-            parts.append(f"已实现 {summary.realized_pnl_today:+.2f}（登记卖出）")
-        else:
-            parts.append(f"已实现 {summary.realized_pnl_today:+.2f}")
+        parts.append(f"已实现 {summary.realized_pnl_today:+.2f}")
     if summary.combined_pnl_pct is not None:
         parts.append(f"合计 {summary.combined_pnl_pct:+.1f}%")
     elif summary.total_float_pnl_pct is not None:

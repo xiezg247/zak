@@ -6,7 +6,6 @@ from typing import Any
 
 from vnpy_ashare.ui.quotes.page.header_chips import (
     refresh_emotion_cycle_chip_for_page,
-    refresh_risk_gate_chip_for_page,
 )
 from vnpy_ashare.ui.quotes.page.worker_lifecycle import teardown_quotes_page_workers
 
@@ -55,7 +54,6 @@ def activate_quotes_page(page: Any) -> None:
     if page.config.show_watchlist_multiview:
         page._multiview.restore_view_mode()
     refresh_emotion_cycle_chip_for_page(page)
-    refresh_risk_gate_chip_for_page(page)
     if page._watchlist_feature is not None:
         page._watchlist_feature.on_activate()
     elif page.page_name == "自选":

@@ -1,4 +1,4 @@
-"""登记 / 编辑持仓弹窗。"""
+"""编辑 / 添加持仓弹窗。"""
 
 from __future__ import annotations
 
@@ -10,11 +10,6 @@ from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 from vnpy_ashare.config.runtime import format_decimal_field
 from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.position import PositionRecord
-from vnpy_ashare.trading.risk.plan_position import normalize_plan_pct
-from vnpy_ashare.trading.risk.position_size import (
-    compute_position_size_from_prefs,
-    format_position_size_hint,
-)
 from vnpy_common.domain.base import FrozenModel
 
 _COST_PRICE_PLACES = 4
@@ -25,7 +20,6 @@ class PositionFormData(FrozenModel):
     volume: int = Field(description="持仓数量（股）")
     buy_date: str = Field(description="买入日期")
     notes: str = Field(description="备注")
-    plan_pct: float | None = Field(default=None, description="计划仓位比例（%）")
 
 
 class PositionEditDialog(QtWidgets.QDialog):
@@ -69,27 +63,6 @@ class PositionEditDialog(QtWidgets.QDialog):
         self._notes_edit = QtWidgets.QLineEdit(self)
         layout.addRow("备注", self._notes_edit)
 
-        self._plan_check = QtWidgets.QCheckBox("设定计划仓位", self)
-        self._plan_spin = QtWidgets.QDoubleSpinBox(self)
-        self._plan_spin.setRange(1.0, 50.0)
-        self._plan_spin.setDecimals(1)
-        self._plan_spin.setSingleStep(1.0)
-        self._plan_spin.setSuffix(" %")
-        self._plan_spin.setToolTip("相对总资金的单票计划占比（需在风控设置中填写总资金）")
-        plan_row = QtWidgets.QHBoxLayout()
-        plan_row.addWidget(self._plan_check)
-        plan_row.addWidget(self._plan_spin, 1)
-        plan_widget = QtWidgets.QWidget(self)
-        plan_widget.setLayout(plan_row)
-        layout.addRow("计划仓位", plan_widget)
-        self._plan_check.toggled.connect(self._plan_spin.setEnabled)
-        self._plan_spin.setEnabled(False)
-
-        self._risk_hint = QtWidgets.QLabel("", self)
-        self._risk_hint.setObjectName("SettingsHint")
-        self._risk_hint.setWordWrap(True)
-        layout.addRow("", self._risk_hint)
-
         buttons = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -104,27 +77,10 @@ class PositionEditDialog(QtWidgets.QDialog):
             parsed = datetime.strptime(record.buy_date[:10], "%Y-%m-%d").date()
             self._buy_date.setDate(QtCore.QDate(parsed.year, parsed.month, parsed.day))
             self._notes_edit.setText(record.notes)
-            if record.plan_pct is not None and record.plan_pct > 0:
-                self._plan_check.setChecked(True)
-                self._plan_spin.setEnabled(True)
-                self._plan_spin.setValue(round(record.plan_pct * 100, 1))
         else:
             self._cost_edit.setText(format_decimal_field(10.0, places=_COST_PRICE_PLACES))
             self._volume_spin.setValue(100)
             self._buy_date.setDate(QtCore.QDate(today.year, today.month, today.day))
-
-        self._cost_edit.textChanged.connect(self._refresh_risk_hint)
-        self._volume_spin.valueChanged.connect(self._refresh_risk_hint)
-        self._refresh_risk_hint()
-
-    def _refresh_risk_hint(self) -> None:
-        cost = self._parse_cost_price()
-        volume = int(self._volume_spin.value())
-        if cost is None:
-            self._risk_hint.setText(format_position_size_hint(None))
-            return
-        result = compute_position_size_from_prefs(cost_price=cost, requested_volume=volume)
-        self._risk_hint.setText(format_position_size_hint(result))
 
     def _parse_cost_price(self) -> float | None:
         text = self._cost_edit.text().strip()
@@ -144,13 +100,9 @@ class PositionEditDialog(QtWidgets.QDialog):
         cost_price = self._parse_cost_price()
         if cost_price is None:
             cost_price = 0.0
-        plan_pct = None
-        if self._plan_check.isChecked():
-            plan_pct = normalize_plan_pct(self._plan_spin.value() / 100.0)
         return PositionFormData(
             cost_price=cost_price,
             volume=int(self._volume_spin.value()),
             buy_date=buy_date,
             notes=self._notes_edit.text().strip(),
-            plan_pct=plan_pct,
         )

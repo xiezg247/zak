@@ -117,10 +117,7 @@ class WatchlistBootstrapCoordinator:
         if preset == "intraday":
             self._schedule_signals(page)
             self._render_positions_only(page)
-        elif preset == "register":
-            self._schedule_signals(page)
-            self._schedule_positions(page)
-        elif preset == "review":
+        else:
             self._schedule_positions(page)
             QtCore.QTimer.singleShot(100, lambda: self._schedule_signals(page))
 
@@ -154,7 +151,4 @@ class WatchlistBootstrapCoordinator:
             if page._active:
                 page._multiview.on_stock_list_loaded()
 
-        if preset == "register" and page._multiview.is_multiview_active():
-            QtCore.QTimer.singleShot(100, _load)
-        else:
-            _load()
+        _load()

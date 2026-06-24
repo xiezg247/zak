@@ -47,7 +47,7 @@ def build_market_ai_prompt(*, focus: str = "intraday") -> str:
             "2) 涨跌停与连板结构反映的情绪阶段；"
             "3) 行业强弱与可能主线；"
             "4) 需规避的风险（退潮、成交额不足、监管异动等）。"
-            "须调用 get_emotion_cycle、get_ashare_fear_greed_index、check_risk_gate 补充；勿编造。"
+            "须调用 get_emotion_cycle、get_ashare_fear_greed_index 补充；勿编造。"
         )
     lines = [intro, "", "## 终端已注入摘要"]
     overview = format_market_overview_extra(ctx)

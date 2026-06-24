@@ -31,7 +31,6 @@ class WatchlistPanelsFeature:
         panel.row_activated.connect(self.on_signal_panel_row_activated)
         panel.row_selected.connect(self.on_signal_panel_row_activated)
         panel.expansion_changed.connect(self.on_signal_panel_expansion_changed)
-        panel.register_position_requested.connect(self.on_signal_register_position)
         panel.ai_interpret_requested.connect(page._actions.ask_ai_for_signal_panel)
         panel.ai_scan_requested.connect(page._actions.ask_ai_for_signal_panel_batch)
 
@@ -112,12 +111,6 @@ class WatchlistPanelsFeature:
             page._positions.invalidate_cache()
             page._positions.refresh(force=True)
 
-    def on_signal_register_position(self, vt_symbol: str) -> None:
-        panel = getattr(self._page, "position_panel", None)
-        if panel is None:
-            return
-        panel.register_symbol(vt_symbol)
-
     def on_position_panel_row_selected(self, vt_symbol: str) -> None:
         page = self._page
         item = page.find_stock_item(vt_symbol)
@@ -139,23 +132,6 @@ class WatchlistPanelsFeature:
                 fast_window=pos_cfg.fast_window,
                 slow_window=pos_cfg.slow_window,
             )
-
-    def register_position_for_selected(self) -> None:
-        page = self._page
-        panel = getattr(page, "position_panel", None)
-        if panel is None:
-            return
-        items = page._table.selected_items()
-        if not items:
-            if page.current_item is not None:
-                items = [page.current_item]
-        if not items:
-            page._toast.warning("请先在自选表中选择标的")
-            return
-        if len(items) > 1:
-            page._toast.warning("登记持仓一次仅支持单只标的")
-            return
-        panel.register_symbol(items[0].vt_symbol)
 
     def add_selection_to_signal_panel(self) -> None:
         page = self._page

@@ -1,4 +1,4 @@
-"""自选持仓记账 Service（投研层，非实盘 OMS）。"""
+"""自选持仓 Service（投研层，非实盘 OMS）。"""
 
 from __future__ import annotations
 
@@ -26,12 +26,6 @@ from vnpy_ashare.storage.repositories.positions import (
 )
 from vnpy_ashare.storage.repositories.symbols import build_symbol_name_map
 from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
-from vnpy_ashare.trading.journal.record_add import (
-    record_volume_increase_buy,
-    should_tag_add_loss,
-)
-from vnpy_ashare.trading.journal.record_buy import record_buy_from_position
-from vnpy_ashare.trading.journal.record_sell import record_sell_from_position
 
 PositionAddFailure = Literal["duplicate", "full", "not_in_watchlist"]
 
@@ -60,7 +54,7 @@ def normalize_cost_price(cost_price: float) -> float:
 
 
 class PositionService(BaseService):
-    """自选页持仓记账。"""
+    """自选页持仓记录。"""
 
     max_items = POSITION_MAX_ITEMS
 
@@ -135,44 +129,14 @@ class PositionService(BaseService):
             return False
         if not watchlist_contains(symbol, exchange):
             return False
-        normalized_cost = normalize_cost_price(cost_price)
-        normalized_volume = normalize_volume(volume)
-        normalized_date = buy_date[:10]
-        ok = add_position_item(
-            symbol,
-            exchange,
-            cost_price=normalized_cost,
-            volume=normalized_volume,
-            buy_date=normalized_date,
-            notes=notes.strip(),
-            plan_pct=plan_pct,
-        )
-        if ok:
-            self._record_buy_journal(
-                symbol,
-                exchange,
-                cost_price=normalized_cost,
-                volume=normalized_volume,
-                buy_date=normalized_date,
-            )
-        return ok
-
-    def _record_buy_journal(
-        self,
-        symbol: str,
-        exchange: Exchange,
-        *,
-        cost_price: float,
-        volume: int,
-        buy_date: str,
-    ) -> None:
-        record_buy_from_position(
+        return add_position_item(
             symbol,
             exchange,
             cost_price=normalize_cost_price(cost_price),
             volume=normalize_volume(volume),
             buy_date=buy_date[:10],
-            notify_engine=self.engine,
+            notes=notes.strip(),
+            plan_pct=plan_pct,
         )
 
     def update(
@@ -187,165 +151,26 @@ class PositionService(BaseService):
         plan_pct: float | None = None,
         last_price: float | None = None,
     ) -> bool:
+        del last_price
         error = self.validate_inputs(cost_price=cost_price, volume=volume, buy_date=buy_date)
         if error is not None:
             return False
-        existing_row = load_position_row(symbol, exchange)
-        if existing_row is None:
+        if load_position_row(symbol, exchange) is None:
             return False
-        old_volume = _row_int(existing_row["volume"])
-        normalized_cost = normalize_cost_price(cost_price)
-        normalized_volume = normalize_volume(volume)
-        normalized_date = buy_date[:10]
-        ok = update_position_item(
+        return update_position_item(
             symbol,
             exchange,
-            cost_price=normalized_cost,
-            volume=normalized_volume,
-            buy_date=normalized_date,
+            cost_price=normalize_cost_price(cost_price),
+            volume=normalize_volume(volume),
+            buy_date=buy_date[:10],
             notes=notes.strip(),
             plan_pct=plan_pct,
         )
-        if ok and normalized_volume > old_volume:
-            record = PositionRecord(
-                symbol=symbol,
-                exchange=exchange.value,
-                name="",
-                cost_price=_row_float(existing_row["cost_price"]),
-                volume=old_volume,
-                buy_date=str(existing_row["buy_date"]),
-            )
-            add_loss = should_tag_add_loss(record, new_volume=normalized_volume, last_price=last_price)
-            record_volume_increase_buy(
-                symbol,
-                exchange,
-                cost_price=normalized_cost,
-                delta_volume=normalized_volume - old_volume,
-                buy_date=normalized_date,
-                add_loss=add_loss,
-                notify_engine=self.engine,
-            )
-        return ok
 
-    def remove(
-        self,
-        symbol: str,
-        exchange: Exchange,
-        *,
-        sell_price: float | None = None,
-        sell_date: str | None = None,
-        reason: str = "",
-    ) -> bool:
-        row = load_position_row(symbol, exchange)
-        if row is None:
+    def remove(self, symbol: str, exchange: Exchange) -> bool:
+        if load_position_row(symbol, exchange) is None:
             return False
-        cost_price = _row_float(row["cost_price"])
-        volume = _row_int(row["volume"])
-        price = sell_price if sell_price is not None and sell_price > 0 else cost_price
-        ok = remove_position_item(symbol, exchange)
-        if ok:
-            self._record_sell_journal(
-                symbol,
-                exchange,
-                cost_price=cost_price,
-                volume=volume,
-                sell_price=price,
-                sell_date=sell_date,
-                reason=reason,
-            )
-        return ok
+        return remove_position_item(symbol, exchange)
 
-    def record_sell(
-        self,
-        symbol: str,
-        exchange: Exchange,
-        *,
-        sell_price: float,
-        sell_volume: int,
-        sell_date: str | None = None,
-        reason: str = "",
-    ) -> str | None:
-        """补录卖出流水；不移除持仓。卖出量小于当前持仓时同步减量。"""
-        row = load_position_row(symbol, exchange)
-        if row is None:
-            return "not_found"
-        cost_price = _row_float(row["cost_price"])
-        position_volume = _row_int(row["volume"])
-        normalized_volume = normalize_volume(sell_volume)
-        if sell_price <= 0:
-            return "invalid_price"
-        if normalized_volume <= 0:
-            return "invalid_volume"
-        if normalized_volume > position_volume:
-            return "volume_exceeds"
-        self._record_sell_journal(
-            symbol,
-            exchange,
-            cost_price=cost_price,
-            volume=normalized_volume,
-            sell_price=sell_price,
-            sell_date=sell_date,
-            reason=reason.strip() or "补录卖出",
-        )
-        if normalized_volume < position_volume:
-            ok = update_position_item(
-                symbol,
-                exchange,
-                cost_price=cost_price,
-                volume=position_volume - normalized_volume,
-                buy_date=str(row["buy_date"]),
-                notes=str(row.get("notes") or ""),
-                plan_pct=row.get("plan_pct"),  # type: ignore[arg-type]
-            )
-            if not ok:
-                return "update_failed"
-        return None
-
-    def clear(
-        self,
-        *,
-        sell_prices: dict[tuple[str, str], float] | None = None,
-        sell_date: str | None = None,
-    ) -> None:
-        rows = load_position_rows()
+    def clear(self) -> None:
         clear_positions()
-        for row in rows:
-            symbol = str(row["symbol"])
-            exchange_name = str(row["exchange"])
-            try:
-                exchange = Exchange(exchange_name)
-            except ValueError:
-                continue
-            key = (symbol, exchange_name)
-            cost_price = _row_float(row["cost_price"])
-            sell_price = (sell_prices or {}).get(key, cost_price)
-            self._record_sell_journal(
-                symbol,
-                exchange,
-                cost_price=cost_price,
-                volume=_row_int(row["volume"]),
-                sell_price=sell_price,
-                sell_date=sell_date,
-                reason="批量清仓",
-            )
-
-    def _record_sell_journal(
-        self,
-        symbol: str,
-        exchange: Exchange,
-        *,
-        cost_price: float,
-        volume: int,
-        sell_price: float,
-        sell_date: str | None,
-        reason: str,
-    ) -> None:
-        record_sell_from_position(
-            symbol,
-            exchange,
-            cost_price=cost_price,
-            volume=volume,
-            sell_price=sell_price,
-            sell_date=sell_date,
-            reason=reason,
-        )

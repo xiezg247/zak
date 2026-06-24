@@ -112,7 +112,7 @@ class BookPnlTest(unittest.TestCase):
             ) as mock_prefs,
             patch(
                 "vnpy_ashare.trading.risk.book_pnl.resolve_realized_pnl_today",
-                return_value=(-500.0, 0.0, -500.0),
+                return_value=-500.0,
             ),
         ):
             from vnpy_ashare.config.preferences.trading_risk import TradingRiskPrefs

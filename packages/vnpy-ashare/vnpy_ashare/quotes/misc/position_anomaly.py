@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from vnpy_ashare.quotes.market.market_breadth import LIMIT_UP_PCT
 from vnpy_ashare.trading.exit.morning_must_sell import should_tag_morning_must_sell
 from vnpy_ashare.trading.exit.opening_stop_intraday import resolve_opening_stop_for_quote
-from vnpy_ashare.trading.journal.float_loss_hold import is_float_loss_hold
+from vnpy_ashare.trading.risk.float_loss_hold import is_float_loss_hold
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot

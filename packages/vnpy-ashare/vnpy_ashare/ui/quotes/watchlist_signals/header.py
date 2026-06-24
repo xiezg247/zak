@@ -41,7 +41,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
     refresh_requested = QtCore.Signal()
     ai_scan_requested = QtCore.Signal()
     ai_clicked = QtCore.Signal()
-    register_position_clicked = QtCore.Signal()
     remove_requested = QtCore.Signal()
     clear_requested = QtCore.Signal()
     enabled_changed = QtCore.Signal(bool)
@@ -195,10 +194,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
         self._sweep_spin.setToolTip("交易时段内策略 stale 巡检间隔（仅补算过期快照，与 3 秒行情刷新分离）")
         self._sweep_spin.setValue(load_watchlist_strategy_stale_sweep_minutes())
 
-        self._register_position_button = QtWidgets.QPushButton("→ 登记持仓", self)
-        self._register_position_button.setObjectName("SecondaryButton")
-        self._register_position_button.clicked.connect(self._on_register_position_clicked)
-
         self._remove_button = QtWidgets.QPushButton("移出", self)
         self._remove_button.setObjectName("SecondaryButton")
         self._remove_button.clicked.connect(self.remove_requested.emit)
@@ -235,7 +230,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
         layout.addWidget(self._fast_spin)
         layout.addWidget(self._slow_spin)
         layout.addWidget(self._sweep_spin)
-        layout.addWidget(self._register_position_button)
         layout.addWidget(self._remove_button)
         layout.addWidget(self._clear_button)
         layout.addWidget(self._refresh_button)
@@ -252,7 +246,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
             self._fast_spin,
             self._slow_spin,
             self._sweep_spin,
-            self._register_position_button,
             self._remove_button,
             self._clear_button,
             self._refresh_button,
@@ -317,9 +310,6 @@ class SignalPanelHeader(QtWidgets.QWidget):
 
     def _on_ai_clicked(self) -> None:
         self.ai_clicked.emit()
-
-    def _on_register_position_clicked(self) -> None:
-        self.register_position_clicked.emit()
 
     def _on_collapse_toggled(self, expanded: bool) -> None:
         save_signal_panel_expanded(expanded)

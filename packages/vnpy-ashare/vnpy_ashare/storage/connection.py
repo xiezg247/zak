@@ -270,28 +270,6 @@ CREATE TABLE IF NOT EXISTS trading_plan_symbols (
     FOREIGN KEY (plan_id) REFERENCES trading_plans(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS trade_journal (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    symbol TEXT NOT NULL,
-    exchange TEXT NOT NULL,
-    side TEXT NOT NULL,
-    trade_date TEXT NOT NULL,
-    price REAL NOT NULL,
-    volume INTEGER NOT NULL,
-    mode TEXT NOT NULL DEFAULT '',
-    plan_id TEXT,
-    on_plan INTEGER NOT NULL DEFAULT 0,
-    violation_tags TEXT NOT NULL DEFAULT '',
-    pnl REAL,
-    pnl_pct REAL,
-    reason TEXT NOT NULL DEFAULT '',
-    emotion_stage TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_trade_journal_trade_date
-    ON trade_journal(trade_date DESC, created_at DESC);
-
 CREATE TABLE IF NOT EXISTS emotion_limit_ladder_daily (
     trade_date TEXT PRIMARY KEY,
     max_limit_times INTEGER NOT NULL DEFAULT 0,
@@ -394,6 +372,7 @@ def _ensure_column(
 def _migrate_app_db(conn: sqlite3.Connection) -> None:
     _ensure_column(conn, "watchlist_positions", "plan_pct", "plan_pct REAL")
     _ensure_column(conn, "watchlist_groups", "position_cap_pct", "position_cap_pct REAL")
+    conn.execute("DROP TABLE IF EXISTS trade_journal")
 
 
 def init_app_db() -> Path:

@@ -17,9 +17,8 @@ class LayoutPresetSpec:
     position_expanded: bool
     select_all_group: bool
     force_table_view: bool
-    show_register_toolbar: bool
     show_add_signal_toolbar: bool
-    show_emotion_risk_chips: bool = True
+    show_emotion_chips: bool = True
     splitter_table_ratio: float | None = None
 
 
@@ -29,15 +28,6 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
         position_expanded=False,
         select_all_group=True,
         force_table_view=True,
-        show_register_toolbar=False,
-        show_add_signal_toolbar=True,
-    ),
-    "register": LayoutPresetSpec(
-        signal_expanded=True,
-        position_expanded=True,
-        select_all_group=False,
-        force_table_view=False,
-        show_register_toolbar=True,
         show_add_signal_toolbar=True,
     ),
     "review": LayoutPresetSpec(
@@ -45,16 +35,14 @@ PRESET_SPECS: dict[LayoutPresetId, LayoutPresetSpec] = {
         position_expanded=True,
         select_all_group=False,
         force_table_view=False,
-        show_register_toolbar=True,
         show_add_signal_toolbar=False,
-        show_emotion_risk_chips=False,
+        show_emotion_chips=False,
         splitter_table_ratio=0.4,
     ),
 }
 
 PRESET_LABELS: tuple[tuple[LayoutPresetId, str], ...] = (
     ("intraday", "盘中"),
-    ("register", "登记"),
     ("review", "复盘"),
 )
 

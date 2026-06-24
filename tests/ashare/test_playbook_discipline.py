@@ -11,7 +11,7 @@ from vnpy_ashare.storage.repositories.trading_playbook_discipline import (
     set_discipline_check,
 )
 from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item
-from vnpy_ashare.trading.journal.off_plan_scan import list_off_plan_position_vt_symbols
+from vnpy_ashare.trading.plan.off_plan import list_off_plan_position_vt_symbols
 
 
 def test_discipline_checks_reset_by_trade_date(tmp_path, monkeypatch) -> None:
@@ -33,7 +33,7 @@ def test_discipline_checks_reset_by_trade_date(tmp_path, monkeypatch) -> None:
 def test_off_plan_positions(tmp_path, monkeypatch) -> None:
     db_path = tmp_path / "zak.db"
     monkeypatch.setattr("vnpy_ashare.storage.connection.get_app_db_path", lambda: db_path)
-    monkeypatch.setattr("vnpy_ashare.trading.journal.off_plan_scan.today_trade_date", lambda: "2026-06-23")
+    monkeypatch.setattr("vnpy_ashare.trading.plan.off_plan.today_trade_date", lambda: "2026-06-23")
 
     add_watchlist_item("600000", Exchange.SSE, name="浦发")
     add_watchlist_item("000001", Exchange.SZSE, name="平安")

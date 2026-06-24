@@ -14,7 +14,6 @@ from vnpy_ashare.notifications.core.position_alert_scan import PositionAlertRow,
 from vnpy_ashare.notifications.triggers.position_alerts import scan_position_alerts
 from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
 from vnpy_ashare.trading.exit.overlay import apply_overnight_exit_overlay
-from vnpy_ashare.trading.journal.float_loss_hold import scan_and_record_float_loss_holds
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 if TYPE_CHECKING:
@@ -164,10 +163,6 @@ class WatchlistPositionController:
                 )
         if self._page.config.show_watchlist_multiview:
             self._page._multiview.on_signal_or_position_updated()
-
-        engine = get_ashare_engine(self._page._get_main_engine())
-        scan_and_record_float_loss_holds(self._page.position_cache, notify_engine=engine)
-        self._page._refresh_risk_gate_chip()
 
     def refresh_quotes_only(self, tickflow_symbols: set[str] | None = None) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:
@@ -422,7 +417,6 @@ class WatchlistPositionController:
         groups = getattr(self._page, "_watchlist_groups", None)
         if groups is not None:
             groups.refresh_groups()
-        self._page._refresh_risk_gate_chip()
 
     def on_panel_enabled_changed(self, enabled: bool) -> None:
         if enabled:

@@ -56,7 +56,6 @@ class WatchlistContextMenuTests(unittest.TestCase):
         page._watchlist.contains.return_value = bool(kwargs.get("in_watchlist", True))
         page._get_position_service = MagicMock(return_value=None)
         page.add_selection_to_signal_panel = MagicMock()
-        page.register_position_for_selected = MagicMock()
         page.remove_from_watchlist = MagicMock()
         page._refresh_quotes_clicked = MagicMock()
         page.add_to_watchlist = MagicMock()
@@ -72,7 +71,7 @@ class WatchlistContextMenuTests(unittest.TestCase):
         item = StockItem(symbol="600000", exchange=Exchange.SSE, name="浦发银行")
         labels = _menu_action_labels(self._controller(page)._build_stock_context_menu(item))
         self.assertIn("加入信号区", labels)
-        self.assertIn("登记持仓", labels)
+        self.assertNotIn("登记持仓", labels)
         self.assertIn("移出自选", labels)
         self.assertIn("刷新行情", labels)
 

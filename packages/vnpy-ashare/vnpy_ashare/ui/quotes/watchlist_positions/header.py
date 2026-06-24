@@ -27,12 +27,10 @@ class PositionPanelHeader(QtWidgets.QWidget):
     expansion_changed = QtCore.Signal(bool)
     refresh_requested = QtCore.Signal()
     edit_requested = QtCore.Signal()
-    record_sell_requested = QtCore.Signal()
+    add_requested = QtCore.Signal()
     remove_requested = QtCore.Signal()
     clear_requested = QtCore.Signal()
     plan_requested = QtCore.Signal()
-    journal_requested = QtCore.Signal()
-    risk_requested = QtCore.Signal()
 
     def __init__(self, page: WatchlistHost, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -155,14 +153,14 @@ class PositionPanelHeader(QtWidgets.QWidget):
         self._slow_spin.setPrefix("慢 ")
         self._slow_spin.setValue(position_cfg.slow_window)
 
+        self._add_button = QtWidgets.QPushButton("添加", self)
+        self._add_button.setObjectName("SecondaryButton")
+        self._add_button.setToolTip("为自选表当前选中标的添加持仓记录")
+        self._add_button.clicked.connect(self.add_requested.emit)
+
         self._edit_button = QtWidgets.QPushButton("编辑", self)
         self._edit_button.setObjectName("SecondaryButton")
         self._edit_button.clicked.connect(self.edit_requested.emit)
-
-        self._record_sell_button = QtWidgets.QPushButton("补录卖出", self)
-        self._record_sell_button.setObjectName("SecondaryButton")
-        self._record_sell_button.setToolTip("写入卖出流水，不移除持仓；分批卖出时同步减少持仓量")
-        self._record_sell_button.clicked.connect(self.record_sell_requested.emit)
 
         self._remove_button = QtWidgets.QPushButton("移出", self)
         self._remove_button.setObjectName("SecondaryButton")
@@ -178,18 +176,8 @@ class PositionPanelHeader(QtWidgets.QWidget):
 
         self._plan_button = QtWidgets.QPushButton("今日计划", self)
         self._plan_button.setObjectName("SecondaryButton")
-        self._plan_button.setToolTip("查看/编辑当日交易计划（计划外登记将标记 off_plan）")
+        self._plan_button.setToolTip("查看/编辑当日交易计划")
         self._plan_button.clicked.connect(self.plan_requested.emit)
-
-        self._journal_button = QtWidgets.QPushButton("复盘", self)
-        self._journal_button.setObjectName("SecondaryButton")
-        self._journal_button.setToolTip("近 7 日流水胜率、盈亏比与违规统计")
-        self._journal_button.clicked.connect(self.journal_requested.emit)
-
-        self._risk_button = QtWidgets.QPushButton("风控设置", self)
-        self._risk_button.setObjectName("SecondaryButton")
-        self._risk_button.setToolTip("总资金、单笔风险；高级页可调整风控闸阈值")
-        self._risk_button.clicked.connect(self.risk_requested.emit)
 
         layout.addWidget(self._collapse_button)
         layout.addWidget(QtWidgets.QLabel("持仓策略", self))
@@ -200,14 +188,12 @@ class PositionPanelHeader(QtWidgets.QWidget):
         layout.addWidget(self._strategy_label)
         layout.addWidget(self._fast_spin)
         layout.addWidget(self._slow_spin)
+        layout.addWidget(self._add_button)
         layout.addWidget(self._edit_button)
-        layout.addWidget(self._record_sell_button)
         layout.addWidget(self._remove_button)
         layout.addWidget(self._clear_button)
         layout.addWidget(self._refresh_button)
         layout.addWidget(self._plan_button)
-        layout.addWidget(self._journal_button)
-        layout.addWidget(self._risk_button)
 
         self._fast_spin.valueChanged.connect(self._emit_config_changed)
         self._slow_spin.valueChanged.connect(self._emit_config_changed)
@@ -218,8 +204,8 @@ class PositionPanelHeader(QtWidgets.QWidget):
             self._strategy_label,
             self._fast_spin,
             self._slow_spin,
+            self._add_button,
             self._edit_button,
-            self._record_sell_button,
             self._remove_button,
             self._clear_button,
             self._refresh_button,

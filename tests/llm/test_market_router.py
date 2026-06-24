@@ -20,7 +20,6 @@ def _tool(name: str) -> dict:
 
 ALL_TOOLS = [
     _tool("get_emotion_cycle"),
-    _tool("check_risk_gate"),
     _tool("get_ashare_fear_greed_index"),
     _tool("run_leader_screen"),
     _tool("run_short_term_screen"),
@@ -64,7 +63,6 @@ def test_filter_tools_by_route_market_subset():
     filtered = filter_tools_by_route(ALL_TOOLS, "market")
     names = {t["function"]["name"] for t in filtered}
     assert "get_emotion_cycle" in names
-    assert "check_risk_gate" in names
     assert "diagnose_stock" not in names
     assert "run_leader_screen" not in names
 
@@ -90,7 +88,7 @@ def test_prefetch_market_facts_calls_executor():
         return f'{{"tool": "{name}"}}'
 
     payload = prefetch_market_facts(executor)
-    assert set(calls) == {"get_emotion_cycle", "check_risk_gate", "get_ashare_fear_greed_index"}
+    assert set(calls) == {"get_emotion_cycle", "get_ashare_fear_greed_index"}
     block = format_market_prefetch_block(payload)
     assert "情绪周期" in block
     assert "get_emotion_cycle" in block
