@@ -195,4 +195,22 @@ QPushButton#OverviewAlertLink[alert_severity="warn"] {{
 QPushButton#OverviewAlertLink:hover {{
     color: {t.accent};
 }}
+QWidget#OverviewAlertRow {{
+    background: transparent;
+}}
+QLabel#OverviewAlertText {{
+    color: {t.text_secondary};
+    font-size: 12px;
+    padding: 2px 0;
+    background: transparent;
+}}
+QLabel#OverviewAlertText[alert_severity="warn"] {{
+    color: {t.semantic_warning};
+}}
+QWidget#OverviewAlertRow[alert_severity="warn"] QLabel#OverviewAlertText {{
+    color: {t.semantic_warning};
+}}
+QWidget#OverviewAlertRow[clickable="true"]:hover QLabel#OverviewAlertText {{
+    color: {t.accent};
+}}
 """

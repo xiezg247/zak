@@ -160,8 +160,6 @@ class RadarResonancePanel(QtWidgets.QWidget):
             list_widget.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
             list_widget.setSpacing(4)
             list_widget.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel)
-            list_widget.itemDoubleClicked.connect(self._on_item_double_clicked)
-            list_widget.itemClicked.connect(self._on_item_clicked)
             list_widget.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
             list_widget.customContextMenuRequested.connect(self._show_context_menu)
 
@@ -496,16 +494,6 @@ class RadarResonancePanel(QtWidgets.QWidget):
         for row_map in self._row_widgets.values():
             for row in row_map.values():
                 row.refresh_theme()
-
-    def _on_item_double_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
-        vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole)
-        if vt_symbol:
-            self.row_activated.emit(str(vt_symbol))
-
-    def _on_item_clicked(self, item: QtWidgets.QListWidgetItem) -> None:
-        vt_symbol = item.data(QtCore.Qt.ItemDataRole.UserRole)
-        if vt_symbol:
-            self._select_symbol(str(vt_symbol))
 
     def _show_context_menu(self, pos: QtCore.QPoint) -> None:
         list_widget = self._active_list()

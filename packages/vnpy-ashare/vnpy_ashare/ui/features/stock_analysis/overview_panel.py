@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from vnpy.trader.ui import QtCore, QtWidgets
+from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.domain.stock.overview import ReadinessStatus
 from vnpy_ashare.services.stock.overview_dashboard import (
@@ -29,6 +29,51 @@ def _fmt(value: float | None, *, digits: int = 2, suffix: str = "") -> str:
     if value is None:
         return "—"
     return f"{value:.{digits}f}{suffix}"
+
+
+class _OverviewAlertRow(QtWidgets.QWidget):
+    """关键提醒单行：QLabel 换行，可点击跳转。"""
+
+    jump_requested = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        alert: OverviewAlert,
+        *,
+        parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._jump_target = alert.jump_target or ""
+        self.setObjectName("OverviewAlertRow")
+        self.setProperty("alert_severity", alert.severity)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        label = QtWidgets.QLabel(alert.text)
+        label.setObjectName("OverviewAlertText")
+        label.setWordWrap(True)
+        label.setProperty("alert_severity", alert.severity)
+        layout.addWidget(label, stretch=1)
+
+        if self._jump_target:
+            self.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+            self.setProperty("clickable", True)
+        style = self.style()
+        style.unpolish(self)
+        style.polish(self)
+        style.unpolish(label)
+        style.polish(label)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if (
+            self._jump_target
+            and event.button() == QtCore.Qt.MouseButton.LeftButton
+            and self.rect().contains(event.position().toPoint())
+        ):
+            self.jump_requested.emit(self._jump_target)
+        super().mouseReleaseEvent(event)
 
 
 class OverviewAnalysisPanel(QtWidgets.QWidget):
@@ -187,7 +232,7 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
         if dashboard.alerts:
             self._alerts_empty.hide()
             for alert in dashboard.alerts:
-                self._alerts_layout.addWidget(self._build_alert_link(alert))
+                self._alerts_layout.addWidget(self._build_alert_row(alert))
         else:
             self._alerts_empty.setText("暂无关键提醒")
             self._alerts_empty.show()
@@ -200,13 +245,15 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
                 widget.deleteLater()
 
     def _clear_alerts(self) -> None:
-        while self._alerts_layout.count():
-            item = self._alerts_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
+        index = 0
+        while index < self._alerts_layout.count():
+            item = self._alerts_layout.itemAt(index)
+            widget = item.widget() if item is not None else None
+            if widget is not None and widget is not self._alerts_empty:
+                self._alerts_layout.takeAt(index)
                 widget.deleteLater()
-        self._alerts_empty = hint_label("暂无关键提醒")
-        self._alerts_layout.addWidget(self._alerts_empty)
+            else:
+                index += 1
 
     def _build_readiness_chip(self, item: DataReadinessItem) -> QtWidgets.QPushButton:
         status_label = _STATUS_LABELS.get(item.status, item.status)
@@ -224,16 +271,9 @@ class OverviewAnalysisPanel(QtWidgets.QWidget):
             button.setEnabled(False)
         return button
 
-    def _build_alert_link(self, alert: OverviewAlert) -> QtWidgets.QPushButton:
-        button = QtWidgets.QPushButton(alert.text)
-        button.setObjectName("OverviewAlertLink")
-        button.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        button.setProperty("alert_severity", alert.severity)
-        button.style().unpolish(button)
-        button.style().polish(button)
+    def _build_alert_row(self, alert: OverviewAlert) -> _OverviewAlertRow:
+        row = _OverviewAlertRow(alert, parent=self._alerts_host)
         if alert.jump_target:
             target = alert.jump_target
-            button.clicked.connect(lambda _checked=False, t=target: self.jump_requested.emit(t))
-        else:
-            button.setEnabled(False)
-        return button
+            row.jump_requested.connect(lambda t=target: self.jump_requested.emit(t))
+        return row

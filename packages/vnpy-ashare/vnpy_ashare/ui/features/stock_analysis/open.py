@@ -13,7 +13,21 @@ from vnpy_ashare.ui.features.stock_analysis.host import StockAnalysisHost
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 
 if TYPE_CHECKING:
+    from vnpy_ashare.ui.features.stock_analysis.dialog import StockAnalysisDialog
     from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
+
+_OPEN_REGISTRY: dict[str, StockAnalysisDialog] = {}
+_OPENING_SYMBOLS: set[str] = set()
+
+
+def _focus_dialog(dialog: QtWidgets.QWidget) -> None:
+    dialog.raise_()
+    dialog.activateWindow()
+
+
+def _unregister_dialog(vt_symbol: str, *_args: object) -> None:
+    _OPEN_REGISTRY.pop(vt_symbol, None)
+    _OPENING_SYMBOLS.discard(vt_symbol)
 
 
 def show_stock_analysis_dialog(
@@ -26,9 +40,27 @@ def show_stock_analysis_dialog(
 ) -> None:
     from vnpy_ashare.ui.features.stock_analysis.dialog import StockAnalysisDialog
 
-    dialog = StockAnalysisDialog(item=item, host=host, quote=quote, parent=parent)
-    dialog.setWindowModality(modality)
-    dialog.show()
+    key = item.vt_symbol
+    existing = _OPEN_REGISTRY.get(key)
+    if existing is not None:
+        try:
+            if not getattr(existing, "_closing", False):
+                _focus_dialog(existing)
+                return
+        except RuntimeError:
+            _OPEN_REGISTRY.pop(key, None)
+
+    if key in _OPENING_SYMBOLS:
+        return
+    _OPENING_SYMBOLS.add(key)
+    try:
+        dialog = StockAnalysisDialog(item=item, host=host, quote=quote, parent=parent)
+        dialog.setWindowModality(modality)
+        _OPEN_REGISTRY[key] = dialog
+        dialog.destroyed.connect(lambda *_: _unregister_dialog(key))
+        dialog.show()
+    finally:
+        _OPENING_SYMBOLS.discard(key)
 
 
 def show_stock_analysis_vt_symbol(

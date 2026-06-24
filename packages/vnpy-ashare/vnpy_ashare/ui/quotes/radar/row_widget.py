@@ -75,19 +75,36 @@ class RadarStockRowWidget(QtWidgets.QFrame):
         self._price_label.setObjectName("RadarRowPrice")
         self._change_chip = QtWidgets.QLabel("")
         self._change_chip.setObjectName("RadarChangeChip")
+        self._change_chip.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self._change_chip.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
-        quote_col = QtWidgets.QVBoxLayout()
-        quote_col.setContentsMargins(0, 0, 0, 0)
-        quote_col.setSpacing(2)
-        quote_col.addWidget(self._price_label, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
-        quote_col.addWidget(self._change_chip, alignment=QtCore.Qt.AlignmentFlag.AlignRight)
+        quote_row = QtWidgets.QHBoxLayout()
+        quote_row.setContentsMargins(0, 0, 0, 0)
+        quote_row.setSpacing(6)
+        quote_row.addWidget(self._price_label)
+        quote_row.addWidget(self._change_chip)
+
+        quote_wrapper = QtWidgets.QWidget()
+        quote_wrapper.setObjectName("RadarRowQuote")
+        quote_wrapper.setLayout(quote_row)
+        quote_wrapper.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Maximum,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(4, 3, 4, 3)
         layout.setSpacing(6)
         layout.addLayout(name_col, stretch=3)
         layout.addLayout(metric_col, stretch=2)
-        layout.addLayout(quote_col, stretch=2)
+        layout.addWidget(
+            quote_wrapper,
+            stretch=0,
+            alignment=QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter,
+        )
 
         self._apply_row()
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
@@ -140,7 +157,8 @@ class RadarStockRowWidget(QtWidgets.QFrame):
             self._metric_chip.hide()
         sub_parts: list[str] = []
         if row.sub_label and row.sub_value:
-            sub_parts.append(f"{row.sub_label} {row.sub_value}")
+            if not (row.sub_label == "涨幅" and row.change_pct is not None):
+                sub_parts.append(f"{row.sub_label} {row.sub_value}")
         if row.board_quality is not None:
             sub_parts.append(f"封板 {row.board_quality:.0f}")
         if sub_parts:

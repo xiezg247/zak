@@ -8,7 +8,6 @@ from vnpy.event import Event
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.context.quote.prompts import build_diagnose_ai_prompt, build_team_analysis_short_prompt
-from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.ai.llm_bridge import get_llm_engine
 from vnpy_ashare.app.engine_access import get_quote_service, get_stock_analysis_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
@@ -190,7 +189,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         theme_manager().bind_stylesheet(self, extra=build_stock_analysis_stylesheet)
         self._refresh_live_quote()
         self._init_idle_tabs()
-        self._ensure_tab_data(_TAB_OVERVIEW, sync_financials=True)
+        QtCore.QTimer.singleShot(0, lambda: self._ensure_tab_data(_TAB_OVERVIEW, sync_financials=True))
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
@@ -309,15 +308,9 @@ class StockAnalysisDialog(QtWidgets.QDialog):
     def _open_peer_analysis(self, vt_symbol: str, name: str) -> None:
         if not vt_symbol or vt_symbol == self._item.vt_symbol:
             return
-        item = parse_stock_symbol(vt_symbol)
-        if item is None:
-            return
-        if name and not item.name:
-            item = StockItem(symbol=item.symbol, exchange=item.exchange, name=name)
-        quote = self._host.quote_for_item(item)
-        peer = StockAnalysisDialog(item=item, host=self._host, quote=quote, parent=self)
-        peer.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
-        peer.show()
+        from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_vt_symbol
+
+        show_stock_analysis_vt_symbol(vt_symbol, self._host, name=name, parent=self)
 
     def _build_quote_metrics_section(self) -> QtWidgets.QWidget:
         self._quote_tiles = {
@@ -387,6 +380,7 @@ class StockAnalysisDialog(QtWidgets.QDialog):
 
     def closeEvent(self, event) -> None:
         self._closing = True
+        self._pending_scopes.clear()
         self._stop_quote_auto_refresh()
         self._ai_sidebar.deactivate()
         main = self._find_ashare_main_window()
