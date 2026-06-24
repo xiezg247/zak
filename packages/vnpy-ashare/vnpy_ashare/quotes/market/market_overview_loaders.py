@@ -232,8 +232,10 @@ def build_overview_from_market_rows(
 ) -> tuple[MarketBreadthSnapshot | None, list[SectorRankItem]]:
     """由市场页 catalog 行增量刷新广度与行业榜（不拉指数）。
 
-    非交易时段仍会按行情行重算行业榜；无映射缓存时回退已存 overview。
+    显式 ``intraday=False`` 时仅重算广度并回退缓存行业榜；未传参时按当前是否交易时段推断，
+    盘外仍会按行情行重算行业榜。
     """
+    explicit_intraday = intraday is not None
     if intraday is None:
         intraday = is_ashare_trading_session()
 
@@ -242,11 +244,15 @@ def build_overview_from_market_rows(
 
     if not intraday:
         breadth = _load_breadth(rows, updated_at=updated_at, merge_official=False)
-        sectors = load_sector_ranks(rows)
-        if not sectors:
+        if explicit_intraday:
             peeked = peek_market_overview_data(intraday=False)
-            if peeked is not None:
-                sectors = list(peeked.sectors)
+            sectors = list(peeked.sectors) if peeked is not None else []
+        else:
+            sectors = load_sector_ranks(rows)
+            if not sectors:
+                peeked = peek_market_overview_data(intraday=False)
+                if peeked is not None:
+                    sectors = list(peeked.sectors)
         return breadth, sectors
 
     return _load_breadth(rows, updated_at=updated_at), load_sector_ranks(rows)
