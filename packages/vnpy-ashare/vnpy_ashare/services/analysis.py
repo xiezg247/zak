@@ -89,6 +89,9 @@ class AnalysisService(BaseService):
         overview = self.engine.bar_service.get_overview(item.symbol, item.exchange, "daily")
         return_info = self.engine.bar_service.get_return(item.symbol, item.exchange, "daily", lookback_days=60)
         extras = build_financial_extras(item.ts_code, item.vt_symbol)
+        from vnpy_ashare.services.stock.valuation_chart import build_valuation_chart_series
+
+        valuation_series = build_valuation_chart_series(item.ts_code)
 
         return {
             "symbol": item.vt_symbol,
@@ -98,6 +101,8 @@ class AnalysisService(BaseService):
             "start_date": overview.start.strftime("%Y-%m-%d") if overview and overview.start else None,
             "end_date": overview.end.strftime("%Y-%m-%d") if overview and overview.end else None,
             "return_pct_60d": return_info.get("return_pct"),
+            "valuation_pe_series": valuation_series["pe_ttm"],
+            "valuation_pb_series": valuation_series["pb"],
             **extras,
         }
 

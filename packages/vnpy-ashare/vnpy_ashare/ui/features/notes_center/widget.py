@@ -98,7 +98,11 @@ class NotesCenterWidget(QtWidgets.QWidget):
 
         self._memo_view = NotesCenterMemoView(self)
         self._journal_view = StockNoteJournalTab(self)
-        self._reports_view = NotesCenterReportsView(self)
+        self._reports_view = NotesCenterReportsView(
+            self,
+            main_engine=main_engine,
+            event_engine=event_engine,
+        )
         self._plans_view = NotesCenterPlansView(self)
         self._trade_journal_view = TradeJournalManageView(self, initial_days=30)
 

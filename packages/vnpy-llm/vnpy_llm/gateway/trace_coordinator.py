@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from vnpy_common.domain.serialize import dump_json
 from vnpy_llm.graph.supervisor import build_supervisor_decision
+from vnpy_common.ai.protocol import AiChartSpec
 from vnpy_llm.tools.labels import tool_display_name
 from vnpy_llm.trace.persistence import TracePersistence
 from vnpy_llm.trace.trace import TraceStep, TraceStore, TurnTrace, preview_text
@@ -135,6 +136,10 @@ class TraceCoordinator:
             summary=summary,
             detail={"result_preview": preview_text(result)},
         )
+        self._emit_changed()
+
+    def attach_chart(self, spec: AiChartSpec) -> None:
+        self._store.add_chart_attachment(spec)
         self._emit_changed()
 
     def begin_reply(self) -> None:

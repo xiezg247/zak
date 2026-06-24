@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import vnpy_llm.chat.store as store
+from vnpy_common.ai.protocol import AiChartBar, AiChartSpec
 from vnpy_llm.trace.persistence import TracePersistence
 from vnpy_llm.trace.trace import TraceStore
 
@@ -27,6 +28,22 @@ class TracePersistenceTest(unittest.TestCase):
 
     def test_save_and_reload_turn(self) -> None:
         turn = self.store.start_turn("sess-1", "诊断 600519")
+        self.store.add_chart_attachment(
+            AiChartSpec(
+                chart_id="c1",
+                kind="candlestick",
+                symbol="600519.SSE",
+                series=[
+                    AiChartBar(
+                        date="2026-06-24",
+                        open=1,
+                        high=2,
+                        low=0.5,
+                        close=1.5,
+                    )
+                ],
+            )
+        )
         self.store.add_step(
             kind="routing",
             name="intent_route",
@@ -54,6 +71,8 @@ class TracePersistenceTest(unittest.TestCase):
         self.assertEqual(turns[0].user_text, "诊断 600519")
         self.assertEqual(len(turns[0].steps), 2)
         self.assertEqual(turns[0].steps[1].name, "diagnose_stock")
+        self.assertEqual(len(turns[0].attachments), 1)
+        self.assertEqual(turns[0].attachments[0].symbol, "600519.SSE")
         self.assertTrue(turns[0].created_at)
 
     def test_clear_session_removes_db_rows(self) -> None:

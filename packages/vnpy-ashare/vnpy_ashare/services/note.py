@@ -300,8 +300,17 @@ def _report_from_row(row: dict[str, str | int]) -> StockAnalysisReport:
     )
 
 
-def build_report_context_json(*, scope: str, summary: str) -> str:
-    payload = {"scope": scope.strip(), "summary": summary.strip()}
+def build_report_context_json(
+    *,
+    scope: str,
+    summary: str,
+    charts: list | None = None,
+) -> str:
+    payload: dict[str, object] = {"scope": scope.strip(), "summary": summary.strip()}
+    if charts:
+        payload["charts"] = [
+            item.model_dump() if hasattr(item, "model_dump") else item for item in charts
+        ]
     return json.dumps(payload, ensure_ascii=False)
 
 

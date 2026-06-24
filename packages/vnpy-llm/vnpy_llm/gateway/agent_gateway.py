@@ -30,6 +30,7 @@ from vnpy_llm.gateway.types import AgentEvent, AgentEventType, SendRequest
 from vnpy_llm.graph.state import GraphStreamContext
 from vnpy_llm.routing.router import RouteContext, normalize_market_command, normalize_team_command
 from vnpy_llm.tools.audit import log_tool_call
+from vnpy_llm.tools.chart_collector import try_collect_charts
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TraceStep, TurnTrace
 from vnpy_llm.ui.nl_screening_confirm import (
@@ -386,6 +387,9 @@ class AgentGateway:
             return result
         finally:
             self._trace.finish_tool(step_id, result=result, success=success)
+            if success and result:
+                for chart_spec in try_collect_charts(name, result, success=success):
+                    self._trace.attach_chart(chart_spec)
             try:
                 if result:
                     log_tool_call(

@@ -196,9 +196,23 @@ class AshareSymbolNavigation:
             )
         ]
 
-    def save_report(self, *, main_engine: Any, text: str, item: SymbolRef, parent: Any) -> bool:
+    def save_report(
+        self,
+        *,
+        main_engine: Any,
+        text: str,
+        item: SymbolRef,
+        parent: Any,
+        charts: Sequence[Any] | None = None,
+    ) -> bool:
         stock = ContextStock(symbol=item.symbol, exchange=item.exchange, name=item.name)
-        return save_message_as_report(main_engine, text, parent=parent, stock=stock)
+        return save_message_as_report(
+            main_engine,
+            text,
+            parent=parent,
+            stock=stock,
+            charts=list(charts or []),
+        )
 
     def save_journal(self, *, main_engine: Any, text: str, item: SymbolRef) -> bool:
         stock = ContextStock(symbol=item.symbol, exchange=item.exchange, name=item.name)
@@ -212,6 +226,7 @@ class AshareSymbolNavigation:
         turn_count: int,
         parent: Any,
         item: SymbolRef | None = None,
+        charts: Sequence[Any] | None = None,
     ) -> bool:
         stock = self._context_stock(item) if item is not None else None
         return save_recent_turns_as_report(
@@ -220,6 +235,7 @@ class AshareSymbolNavigation:
             turn_count=turn_count,
             parent=parent,
             stock=stock,
+            charts=list(charts or []),
         )
 
     def save_recent_turns_as_journal(

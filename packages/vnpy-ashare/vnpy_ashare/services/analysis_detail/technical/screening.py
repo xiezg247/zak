@@ -91,6 +91,7 @@ class TechnicalScreeningMixin(_TechnicalAnalyzerBase):
                         "last_close": snap.get("last_close"),
                         "period_return": snap.get("period_return"),
                         "warnings": snap.get("warnings") or [],
+                        "chart_series": snap.get("chart_series") or [],
                     }
                 )
             payload["batch_snapshots"] = snapshots

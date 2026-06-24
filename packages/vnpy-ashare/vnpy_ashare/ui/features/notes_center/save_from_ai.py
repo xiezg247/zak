@@ -16,6 +16,8 @@ from vnpy_ashare.domain.time.china import format_china_datetime_minute
 from vnpy_ashare.services.note import build_report_context_json
 from vnpy_ashare.ui.features.stock_analysis.save_report_dialog import SaveAnalysisReportDialog
 from vnpy_common.ai.access import get_ai_context
+from vnpy_common.ai.chart_notes import merge_report_body_with_charts
+from vnpy_common.ai.protocol import AiChartSpec
 from vnpy_common.domain.base import FrozenModel
 
 
@@ -102,6 +104,7 @@ def save_recent_turns_as_report(
     turn_count: int = 1,
     parent: QtWidgets.QWidget | None = None,
     stock: ContextStock | None = None,
+    charts: Sequence[AiChartSpec] | None = None,
 ) -> bool:
     body = build_recent_turns_markdown(messages, turn_count=turn_count)
     if not body.strip():
@@ -116,6 +119,7 @@ def save_recent_turns_as_report(
         parent=parent,
         stock=resolved,
         default_title=title,
+        charts=list(charts or []),
     )
 
 
@@ -139,6 +143,7 @@ def save_message_as_report(
     parent: QtWidgets.QWidget | None = None,
     stock: ContextStock | None = None,
     default_title: str = "",
+    charts: Sequence[AiChartSpec] | None = None,
 ) -> bool:
     text = body.strip()
     if not text:
@@ -149,10 +154,12 @@ def save_message_as_report(
     service = get_note_service(main_engine)
     if service is None:
         return False
+    chart_list = list(charts or [])
+    dialog_body = merge_report_body_with_charts(text, chart_list)
     title = default_title.strip() or default_ai_report_title(resolved)
     dialog = SaveAnalysisReportDialog(
         default_title=title,
-        default_body=text,
+        default_body=dialog_body,
         parent=parent,
     )
     if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
@@ -160,7 +167,11 @@ def save_message_as_report(
     final_body = dialog.body_text()
     if not final_body:
         return False
-    context_json = build_report_context_json(scope="ai_chat", summary=f"页面：{get_ai_context().page}")
+    context_json = build_report_context_json(
+        scope="ai_chat",
+        summary=f"页面：{get_ai_context().page}",
+        charts=chart_list or None,
+    )
     service.create_report(
         resolved.symbol,
         Exchange[resolved.exchange],

@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.ai.access import build_quick_actions_for_panel, build_stock_completion_items, get_ai_context
-from vnpy_common.ai.protocol import QuickAction, SymbolRef
+from vnpy_common.ai.protocol import QuickAction, SymbolRef, AiChartSpec
 from vnpy_common.ai.symbol_navigation import get_symbol_navigation
 from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished, thread_is_active
@@ -18,8 +18,10 @@ from vnpy_llm.app.engine import LlmEngine
 from vnpy_llm.tools.labels import tool_display_name
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TurnTrace, map_turns_to_user_messages
+from vnpy_llm.tools.chart_collector import attachment_key
 from vnpy_llm.ui.dialogs.tools import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.floating.widgets import QuickActionChips
+from vnpy_llm.ui.panel.chart_block import AiMiniChartBlock, chart_blocks_available
 from vnpy_llm.ui.panel.md_renderer import render_markdown
 from vnpy_llm.ui.panel.pending_bubble import (
     SPINNER_FRAMES,
@@ -567,6 +569,96 @@ class AiChatPanel(QtWidgets.QWidget):
                 continue
             yield from row.findChildren(AiInlineTraceBlock)
 
+    def _iter_chart_blocks(self):
+        for index in range(self.message_layout.count() - 1):
+            row = self.message_layout.itemAt(index).widget()
+            if row is None:
+                continue
+            yield from row.findChildren(AiMiniChartBlock)
+
+    @staticmethod
+    def _turn_for_assistant_message(
+        assistant_index: int,
+        messages: list,
+        turn_map: dict[int, TurnTrace],
+    ) -> TurnTrace | None:
+        for index in range(assistant_index - 1, -1, -1):
+            msg = messages[index]
+            if getattr(msg, "role", "") == "user":
+                return turn_map.get(index)
+        return None
+
+    def _attachments_for_assistant_text(self, body: str) -> list[AiChartSpec]:
+        messages = self.engine.get_messages()
+        turns = self.engine.get_trace_turns()
+        turn_map = map_turns_to_user_messages(messages, turns)
+        target = body.strip()
+        if not target:
+            return []
+        for index, msg in enumerate(messages):
+            if msg.role != "assistant" or msg.content.strip() != target:
+                continue
+            turn = self._turn_for_assistant_message(index, messages, turn_map)
+            if turn is not None:
+                return list(turn.attachments)
+        return []
+
+    def _attachments_for_recent_turns(self, turn_count: int) -> list[AiChartSpec]:
+        messages = self.engine.get_messages()
+        turns = self.engine.get_trace_turns()
+        turn_map = map_turns_to_user_messages(messages, turns)
+        limit = max(1, int(turn_count))
+        collected: list[AiChartSpec] = []
+        seen: set[str] = set()
+        matched = 0
+        for index in range(len(messages) - 1, -1, -1):
+            msg = messages[index]
+            if msg.role != "assistant" or not str(msg.content).strip():
+                continue
+            turn = self._turn_for_assistant_message(index, messages, turn_map)
+            if turn is None:
+                continue
+            matched += 1
+            for spec in turn.attachments:
+                key = attachment_key(spec)
+                if key in seen:
+                    continue
+                seen.add(key)
+                collected.append(spec)
+            if matched >= limit:
+                break
+        collected.reverse()
+        return collected
+
+    def _insert_chart_blocks(self, turn: TurnTrace) -> None:
+        if not chart_blocks_available() or not turn.attachments:
+            return
+        width = self._trace_block_width()
+        for spec in turn.attachments:
+            block = AiMiniChartBlock(
+                spec,
+                symbol_actions=self._symbol_actions,
+                parent=self.message_container,
+            )
+            block.sync_width(width)
+            row = QtWidgets.QWidget()
+            row.setObjectName("AiChartRow")
+            if self.floating:
+                row.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
+            row_layout = QtWidgets.QHBoxLayout(row)
+            row_layout.setContentsMargins(2, 0, 2, 4)
+            row_layout.setSpacing(0)
+            row_layout.addWidget(block, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+            row_layout.addStretch(1)
+            self.message_layout.insertWidget(self.message_layout.count() - 1, row)
+
+    def _sync_chart_block_widths(self) -> None:
+        if not chart_blocks_available():
+            return
+        width = self._trace_block_width()
+        for block in self._iter_chart_blocks():
+            block.sync_width(width)
+
     def _on_theme_changed(self, _tokens) -> None:
         """主题切换后重渲染 Markdown 气泡（HTML 内联样式不随 QSS 更新）。"""
         self._refresh_messages()
@@ -595,6 +687,9 @@ class AiChatPanel(QtWidgets.QWidget):
                 continue
             if msg.role == "assistant":
                 self._insert_assistant_html_bubble(msg.content)
+                turn = self._turn_for_assistant_message(index, messages, turn_map)
+                if turn is not None:
+                    self._insert_chart_blocks(turn)
             else:
                 self._append_bubble(msg.role, msg.content, persist=False)
         self._sync_all_bubble_widths()
@@ -681,6 +776,7 @@ class AiChatPanel(QtWidgets.QWidget):
             elif isinstance(bubble, QtWidgets.QTextBrowser):
                 self._sync_browser_bubble(bubble)
         self._sync_trace_block_widths()
+        self._sync_chart_block_widths()
 
     def _sync_browser_bubble(self, browser: QtWidgets.QTextBrowser) -> None:
         role = self._bubble_role(browser)
@@ -940,6 +1036,7 @@ class AiChatPanel(QtWidgets.QWidget):
             turn_count=turn_count,
             parent=self,
             item=stock,
+            charts=self._attachments_for_recent_turns(turn_count),
         ):
             label = "本轮" if turn_count <= 1 else f"最近 {turn_count} 轮"
             page_notify(self, f"已保存{label}为分析报告（{stock.vt_symbol}）", level="success")
@@ -971,7 +1068,13 @@ class AiChatPanel(QtWidgets.QWidget):
         if nav is None:
             page_notify(self, "笔记功能需要 vnpy-ashare 插件", level="warning")
             return
-        if nav.save_report(main_engine=self.engine.main_engine, text=body, item=stock, parent=self):
+        if nav.save_report(
+            main_engine=self.engine.main_engine,
+            text=body,
+            item=stock,
+            parent=self,
+            charts=self._attachments_for_assistant_text(body),
+        ):
             page_notify(self, f"已保存分析报告（{stock.vt_symbol}）", level="success")
 
     def _save_assistant_as_journal(self, body: str, stock: SymbolRef) -> None:
@@ -1267,6 +1370,18 @@ class AiChatPanel(QtWidgets.QWidget):
                     self._bind_assistant_note_menu(self._streaming_bubble, text)
             self._sync_all_bubble_widths()
         self._streaming_bubble = None
+        turn = self._latest_finished_turn()
+        if turn is not None:
+            self._insert_chart_blocks(turn)
+            self._sync_chart_block_widths()
+            self._schedule_throttled_scroll()
+
+    def _latest_finished_turn(self) -> TurnTrace | None:
+        turns = self.engine.get_trace_turns()
+        if not turns:
+            return None
+        latest = turns[-1]
+        return latest if latest.attachments else None
 
     def _on_stream_cancelled(self) -> None:
         self._trace_live_timer.stop()

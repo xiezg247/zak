@@ -55,7 +55,15 @@ class SymbolNavigationPort(Protocol):
 
     def build_completion_items(self, item: SymbolRef) -> list[StockCompletionItem]: ...
 
-    def save_report(self, *, main_engine: Any, text: str, item: SymbolRef, parent: Any) -> bool: ...
+    def save_report(
+        self,
+        *,
+        main_engine: Any,
+        text: str,
+        item: SymbolRef,
+        parent: Any,
+        charts: Sequence[Any] | None = None,
+    ) -> bool: ...
 
     def save_journal(self, *, main_engine: Any, text: str, item: SymbolRef) -> bool: ...
 
@@ -67,6 +75,7 @@ class SymbolNavigationPort(Protocol):
         turn_count: int,
         parent: Any,
         item: SymbolRef | None = None,
+        charts: Sequence[Any] | None = None,
     ) -> bool: ...
 
     def save_recent_turns_as_journal(

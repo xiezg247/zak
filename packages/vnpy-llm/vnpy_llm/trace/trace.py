@@ -8,7 +8,9 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from vnpy_common.ai.protocol import AiChartSpec
 from vnpy_llm.domain.trace import TraceKind, TraceStatus, TraceStep, TurnStatus, TurnTrace
+from vnpy_llm.tools.chart_collector import merge_chart_attachment
 
 if TYPE_CHECKING:
     from vnpy_llm.trace.persistence import TracePersistence
@@ -202,6 +204,12 @@ class TraceStore:
         if turn is not None:
             self._persist_turn(turn)
         return step
+
+    def add_chart_attachment(self, spec: AiChartSpec) -> None:
+        if self._current is None:
+            return
+        self._current.attachments = merge_chart_attachment(self._current.attachments, spec)
+        self._persist_turn(self._current)
 
     def clear_session(self, session_id: str) -> None:
         removed = self._turns.pop(session_id, [])

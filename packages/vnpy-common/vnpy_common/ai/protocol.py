@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
 from vnpy_common.domain.base import FrozenModel, MutableModel
@@ -71,3 +73,29 @@ class WatchlistToggleResult(FrozenModel):
 
     level: str = Field(description="success / info / warning / error")
     message: str = Field(description="用户可见文案")
+
+
+class AiChartBar(FrozenModel):
+    """迷你图单根 K 线 / 折线点。"""
+
+    date: str = Field(description="日期 YYYY-MM-DD")
+    open: float = Field(description="开盘价")
+    high: float = Field(description="最高价")
+    low: float = Field(description="最低价")
+    close: float = Field(description="收盘价")
+    volume: int = Field(default=0, description="成交量")
+
+
+class AiChartSpec(FrozenModel):
+    """AI 聊天内嵌迷你图规格（由工具结果生成，非 LLM 编造）。"""
+
+    chart_id: str = Field(description="图表唯一 ID")
+    kind: Literal["line", "candlestick"] = Field(description="图表类型")
+    symbol: str = Field(description="vt_symbol，如 600519.SSE")
+    chart_key: str = Field(default="", description="去重键，默认等同 symbol")
+    name: str = Field(default="", description="证券名称")
+    scope: str = Field(default="daily", description="K 线周期")
+    caption: str = Field(default="", description="图表标题/说明")
+    series: list[AiChartBar] = Field(default_factory=list, description="OHLCV 序列")
+    overlays: list[dict[str, object]] = Field(default_factory=list, description="叠加层（Phase 2）")
+    source_tool: str = Field(default="", description="来源工具名")

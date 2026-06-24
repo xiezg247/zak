@@ -238,6 +238,7 @@ class AssistantSymbolActions:
             text=text,
             item=item,
             parent=self._panel,
+            charts=self._panel._attachments_for_assistant_text(text),
         ):
             page_notify(self._panel, f"已保存分析报告（{item.vt_symbol}）", level="success")
 

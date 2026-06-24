@@ -75,6 +75,17 @@ class TechnicalSnapshotMixin(_TechnicalAnalyzerBase):
             "ma_alignment": ma_alignment,
             "volume_ratio_5d": volume_ratio,
             "period_return": period_return,
+            "chart_series": [
+                {
+                    "date": bar.datetime.strftime("%Y-%m-%d"),
+                    "open": round(bar.open_price, 2),
+                    "high": round(bar.high_price, 2),
+                    "low": round(bar.low_price, 2),
+                    "close": round(bar.close_price, 2),
+                    "volume": int(bar.volume),
+                }
+                for bar in (tail[-60:] if len(tail) > 60 else tail)
+            ],
             "sources": ["bar"],
             "warnings": warnings,
         }

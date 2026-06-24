@@ -6,6 +6,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
+from vnpy_common.ai.protocol import AiChartSpec
 from vnpy_common.domain.base import MutableModel
 from vnpy_common.domain.serialize import dump_json
 
@@ -40,6 +41,7 @@ class TurnTrace(MutableModel):
     user_text: str
     status: TurnStatus = "running"
     steps: list[TraceStep] = Field(default_factory=list)
+    attachments: list[AiChartSpec] = Field(default_factory=list, description="聊天内嵌迷你图")
     started_at: float = 0.0
     created_at: str = ""
 
@@ -52,6 +54,7 @@ class TurnTrace(MutableModel):
             "status": self.status,
             "created_at": self.created_at,
             "steps": [step.persist_dict() for step in self.steps],
+            "attachments": [item.model_dump() for item in self.attachments],
         }
 
     @classmethod
@@ -61,4 +64,6 @@ class TurnTrace(MutableModel):
         if "status" not in payload:
             payload["status"] = "ok"
         payload["steps"] = [TraceStep.model_validate(item) for item in (payload.get("steps") or [])]
+        raw_attachments = payload.pop("attachments", None) or []
+        payload["attachments"] = [AiChartSpec.model_validate(item) for item in raw_attachments]
         return cls.model_validate(payload)
