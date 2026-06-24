@@ -167,4 +167,4 @@ resonance 加权（权重可配置；D-03「短线龙头」预设 **已有**）
 | [交易体系 §3.4](./trading-system.md) | D-01–D-04 |
 | [盘中工作流](./intraday-workflow.md) | 盘中刷新节奏 |
 | [架构说明 §板块资金与雷达](./architecture.md#板块资金与雷达) | 包路径 |
-| [implementation-roadmap.md](./implementation-roadmap.md) | D-/G- ID 状态 |
+| [功能索引](./implementation-roadmap.md) | 按域查阅 |

@@ -50,8 +50,6 @@ Redis 全市场快照 + Tushare 补充
 | 涨停榜 | 同上 + 连板列 | `rank_id=limit_up` |
 | 连板榜 | 同上 | `rank_id=limit_times`；按连板数降序（**已有**） |
 
-> **不做**：在「涨停榜」上再加按 `limit_times` 分层 Tab——与侧栏「连板榜」、雷达 D-01 重复，产品确认不实现。
-
 单击行 → 看盘页选中标的（与自选页行为一致）。
 
 ---
@@ -111,4 +109,4 @@ Redis 全市场快照 + Tushare 补充
 | [intraday-workflow.md](./intraday-workflow.md) | 盘前看广度 |
 | [radar-page.md](./radar-page.md) | 雷达 vs 市场分工 |
 | [trading-system.md §2](./trading-system.md) | 择时需求 T-01–T-06 |
-| [implementation-roadmap.md](./implementation-roadmap.md) | ID 状态 |
+| [功能索引](./implementation-roadmap.md) | 按域查阅 |

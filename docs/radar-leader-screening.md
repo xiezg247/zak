@@ -523,11 +523,11 @@ ui/screener/workers/              # LeaderScreenWorker
 
 | 文档 | 关联 |
 |------|------|
-| [交易体系需求](./trading-system.md) | 短线选股原则、情绪周期、Recipe R-01 |
+| [交易体系说明](./trading-system.md) | 短线选股原则、情绪周期 |
 | [盘中选股](./intraday-screening.md) | 硬过滤、Recipe 框架 |
-| [选股 Hub 使用指南](./screener-hub-guide.md) | 雷达共振操作（将并列增加雷达龙头） |
+| [选股 Hub 使用指南](./screener-hub-guide.md) | 雷达共振、龙头选股 |
 | [雷达页](./radar-page.md) | 十卡与共振总览 |
-| [implementation-roadmap.md](./implementation-roadmap.md) | G-/D- ID 状态 |
+| [功能索引](./implementation-roadmap.md) | 按域查阅 |
 | [产品说明](./product-plan.md) | 雷达页导航 |
 | [AI 数据路由](./ai-data-routing.md) | Skill 注册 |
 

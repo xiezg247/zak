@@ -34,14 +34,16 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/data/` | K 线下载、bar_store、健康检测 |
 | `packages/vnpy-ashare/vnpy_ashare/storage/` | app_db、universe、交易日历 |
 | `packages/vnpy-ashare/vnpy_ashare/backtest/` | CTA App/Engine、run_store |
-| `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
+| `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment、`feed`（信息流） |
 | `packages/vnpy-ashare/vnpy_ashare/trading/` | `risk/` 盈亏指标与浮亏判定；`plans/` 交易计划 |
 | `packages/vnpy-ashare/vnpy_ashare/notifications/` | `NotificationService`、飞书 Webhook、出站队列 |
 | `packages/vnpy-ashare/vnpy_ashare/quotes/` | 行情领域：快照、Provider、排行、市场概览、雷达数据加载（见下节） |
 | `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方（`run/`、`recipe/`、`preset/`、`sector/`、`data/`、`dimensions/`） |
-| `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务 |
+| `packages/vnpy-ashare/vnpy_ashare/scheduler/` + `jobs/` | 定时任务（含 `jobs/feed/sync_bilibili`） |
 | `packages/vnpy-ashare/vnpy_ashare/ui/shell/` | 主窗口、导航（`settings/`、`manager/`） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/home/` | 守则 Playbook 首屏 |
 | `packages/vnpy-ashare/vnpy_ashare/ui/quotes/` | 看盘页 + 雷达（`page/`、`radar/`、`chart/`、`table/`、`panels/`、`workers/`） |
+| `packages/vnpy-ashare/vnpy_ashare/ui/features/info_feed/` | 信息流页（B 站订阅时间线） |
 | `packages/vnpy-ashare/vnpy_ashare/ui/sector_flow/` | 板块资金页 |
 | `packages/vnpy-ashare/vnpy_ashare/ui/screener/` | 选股 hub（`pages/screener_hub_page.py`：条件选股 + 多因子配方；`widgets/`、`dialogs/`、`workers/`） |
 | `packages/vnpy-ashare/vnpy_ashare/ui/backtest/` | 回测页（`pages/`、`flow/`、`chart/`、`table/`） |

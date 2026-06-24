@@ -9,8 +9,9 @@
 
 ## 功能
 
-- **看盘**：自选 / 市场 / 板块资金 / 雷达 / 本地；TickFlow 行情与五档、Redis 涨幅榜、分 K 图表
+- **看盘**：守则（Playbook）/ 自选 / 市场 / 板块资金 / 雷达；TickFlow 行情与五档、Redis 涨幅榜、分 K 图表
 - **选股**：条件选股（规则 + 方案）与多因子配方（定时收件箱）；硬过滤、导出 CSV、行业分布与 diff；详见 [docs/screener-hub-guide.md](docs/screener-hub-guide.md)
+- **信息流**：B 站 UP 订阅时间线（`Ctrl+Shift+F`）；见 [docs/info-feed.md](docs/info-feed.md)
 - **回测**：`AShareTemplate`（T+1、整手、只做多）；看盘联动、批量回测与回测对比
 - **AI**：悬浮球 + Dock + 全屏；Agent Skills + MCP；**投研团队**（`/team 600519` 并行分析）；多会话、流式停止、配置热重载
 - **运维**：定时任务、本地 K 线健康检测与补全；系统配置页编辑 `.env` / `vt_setting.json` 并分级热加载（见 [docs/config-hot-reload.md](docs/config-hot-reload.md)）
@@ -127,43 +128,18 @@ uv run pytest tests/ -q
 
 ## 文档
 
-完整索引见 **[docs/README.md](docs/README.md)**。
-
-### 产品与架构
+完整索引与**短线主线阅读顺序**见 **[docs/README.md](docs/README.md)**。
 
 | 文档 | 说明 |
 |------|------|
-| [产品说明](docs/product-plan.md) | 功能模块、导航、数据分工 |
-| [架构说明](docs/architecture.md) | GUI 分层、Service、行情 Provider、AI 编排 |
-| [数据设计](docs/data-design.md) | 双存储（SQLite 元数据 + SQLite/PostgreSQL K 线）+ Redis + context_store |
-| [配置分级热加载](docs/config-hot-reload.md) | `.env` / `vt_setting.json` 保存后的 instant / soft / restart |
-
-### 功能域
-
-| 文档 | 说明 |
-|------|------|
+| [交易体系说明](docs/trading-system.md) | 极致短线总纲；守则 Playbook |
+| [盘中工作流](docs/intraday-workflow.md) | 盘前→盘中→盘后 |
+| [产品说明](docs/product-plan.md) | 功能模块、导航、快捷键 |
+| [功能索引](docs/implementation-roadmap.md) | 按域查阅能力 |
+| [架构说明](docs/architecture.md) | GUI 分层、Service、AI 编排 |
 | [选股 Hub 使用指南](docs/screener-hub-guide.md) | 条件选股 / 多因子配方操作速查 |
-| [盘中选股](docs/intraday-screening.md) | Recipe、硬过滤、AI 工具（技术向） |
-| [策略回测](docs/backtest-ux.md) | 联动、批量回测、摘要落库 |
-| [自选策略信号区](docs/watchlist-signals.md) | 双均线信号面板、缓存与联动 |
-| [自选多维看盘](docs/watchlist-multiview.md) | 表格 / 多维卡片、迷你图 |
-| [看盘页个股笔记](docs/stock-notes.md) | 备忘、流水、分析报告与 AI 上下文 |
-
-### AI
-
-| 文档 | 说明 |
-|------|------|
-| [AI 数据路由](docs/ai-data-routing.md) | Skill / MCP 与数据源、意图路由 |
-| [AI 功能与 K 线](docs/ai-kline-data.md) | 各功能对本地日 K 的依赖与下载建议 |
-| [智能体投研团队](docs/team-agent.md) | `/team` 并行分析 + chief 汇总 |
-| [Skill 目录](skills/README.md) | 各 Skill 的 `SKILL.md` 与 Python 实现 |
-
-### 开发
-
-| 文档 | 说明 |
-|------|------|
-| [编码规范](docs/coding-standards.md) | 分层约定、类型注解、K 线访问门面 |
-| [mypy 静态类型检查](docs/mypy.md) | 各 package 配置与本地检查入口 |
+| [AI 数据路由](docs/ai-data-routing.md) | Skill / MCP 与意图路由 |
+| [编码规范](docs/coding-standards.md) | 分层约定、类型注解 |
 
 ## 项目结构
 

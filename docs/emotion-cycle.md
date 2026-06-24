@@ -1,6 +1,6 @@
 # 情绪周期引擎
 
-> **阶段**：框架期需求。择时模块核心：**先定环境再动手**。总纲见 [交易体系 §2](./trading-system.md#二择时体系情绪周期决定做不做)。
+> 择时模块核心：**先定环境再动手**。总纲见 [交易体系 §2](./trading-system.md#2-择时情绪周期)。
 >
 > **Blocker**：雷达龙头 gate、短线 Recipe R-04、持仓建议仓位、AI 择时均依赖本模块。
 
@@ -150,12 +150,12 @@ quotes/market/
 | 2 | 雷达/选股 gate（**已有**）+ 阈值设置 UI | **已有** | 系统配置 →「情绪周期」Tab |
 | 3 | 连板断板率、昨最高板跌停（需日切缓存） | **已有** |
 
-gate 已接入：`run_leader_screen`、选股批量入自选、Recipe R-04、持仓登记 warning。详见 [roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
+gate 已接入：`run_leader_screen`、选股批量入自选、Recipe `emotion_gate_only`、持仓登记 warning。
 
 ---
 
 ## 参考
 
-- [交易体系需求](./trading-system.md)
+- [交易体系说明](./trading-system.md)
 - [盘中工作流](./intraday-workflow.md)
 - [雷达选龙头 §8](./radar-leader-screening.md#8-情绪周期与硬过滤)

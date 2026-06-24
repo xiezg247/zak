@@ -77,7 +77,7 @@
 | 今天能不能做短线 | `get_emotion_cycle`（**已有**） |
 | 龙头池 / 连板 | `run_leader_screen`（**已有**）；Hub 工具栏「运行雷达龙头」 |
 
-路由表见 [AI 数据路由](./ai-data-routing.md)。`propose_screening` / `propose_recipe` 执行前会弹窗确认；结果区「过滤至短线主池」见 [roadmap §14](./implementation-roadmap.md#14-post-phase-backlog)。
+路由表见 [AI 数据路由](./ai-data-routing.md)。`propose_screening` / `propose_recipe` 执行前会弹窗确认；结果区可「过滤至短线主池」。
 
 ## 常见问题
 
@@ -97,6 +97,6 @@
 - [产品说明 §选股 Hub](./product-plan.md#选股-hub)
 - [盘中选股](./intraday-screening.md)（R-01–R-04、激进硬过滤）
 - [雷达页](./radar-page.md) / [雷达选龙头](./radar-leader-screening.md)
-- [implementation-roadmap.md](./implementation-roadmap.md)
+- [功能索引](./implementation-roadmap.md)
 - [架构说明](./architecture.md)
 - [数据设计 §1.8 screener_runs](./data-design.md#18-screener_runs--选股运行历史)

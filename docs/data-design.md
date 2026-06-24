@@ -175,9 +175,9 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 
 **用途：** 自选页 Tab 切换（P-06 **已有**）；雷达/选股「加自选」写入自选池，分组仅作用户视图。详见 [自选分组](./watchlist-groups.md)。
 
-### 1.11 交易计划与流水（**已有**）
+### 1.11 交易计划（**已有**）
 
-> J-01、J-02 已落库。详见 [交易计划与流水](./trading-plan-journal.md)。
+> J-01 已落库。详见 [交易计划](./trading-plan-journal.md)。
 
 #### `trading_plans`
 
@@ -201,11 +201,7 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | `entry_conditions_json` | TEXT | 结构化入场条件 |
 | `exit_conditions_json` | TEXT | 结构化退出条件 |
 
-#### ~~`trade_journal`~~（已移除）
-
-不再建表、不读写。若旧库中仍有该表，可手动 `DROP TABLE trade_journal`；复盘改用笔记流水 + Playbook。
-
-### 1.12 `notify_delivery_log`（**已有**，N-05）
+### 1.12 `notify_delivery_log`
 
 > Phase 2 已落库。详见 [消息通知](./notifications.md)。
 
@@ -219,7 +215,17 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | `error` | TEXT | 失败原因 |
 | `created_at` | TEXT | 时间戳 |
 
-### 1.13 风控与交易配置（非 DB）
+### 1.13 信息流（**已有**）
+
+> B 站 UP 订阅。详见 [信息流](./info-feed.md)。
+
+| 表 | 用途 |
+|----|------|
+| `feed_subscriptions` | 订阅源（类型、`source_id`、展示名、启用） |
+| `feed_items` | 归一化动态条目 |
+| `feed_cursors` | 各订阅同步游标与最近错误 |
+
+### 1.14 风控与交易配置（非 DB）
 
 以下存 **QSettings** 或 `.env`，不落 App DB 表：
 
@@ -231,7 +237,7 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | `NOTIFY_*` | 通知开关与限频 | 同上 |
 | `RECIPE_*` | 硬过滤 env 覆盖 | [intraday-screening.md](./intraday-screening.md) |
 
-### 1.14 其它 App DB 表
+### 1.15 其它 App DB 表
 
 | 表 | 说明 |
 |----|------|

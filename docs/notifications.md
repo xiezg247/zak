@@ -1,7 +1,6 @@
-# 消息通知（飞书优先）
+# 消息通知（飞书）
 
-> **阶段**：框架期需求。为 zak 提供**出站通知**能力，**优先飞书**；应用内 toast / 悬浮球提醒保留为本地通道。  
-> 对齐 [盘中工作流](./intraday-workflow.md)、[风控体系](./risk-gate.md)、[情绪周期](./emotion-cycle.md)。
+> 出站通知，**飞书 Webhook** 为主；应用内 toast 保留。对齐 [盘中工作流](./intraday-workflow.md)、[风控](./risk-gate.md)。
 
 ---
 
@@ -18,19 +17,9 @@
 
 ### 1.2 非目标
 
-- 不做飞书 inbound（不在飞书里下单、不读群消息做交易）
-- 不替代应用内 `page_notify` / AI 悬浮球 `OrbAttention`
-- 第一阶段不接飞书开放平台「应用机器人」（tenant token、卡片回调）
-
-### 1.3 与 vnpy 内置通道关系
-
-| 渠道 | vnpy 支持 | zak 优先级 |
-|------|-----------|------------|
-| **飞书 Webhook** | 无 | **P0**（新建） |
-| 微信 iLink | `WechatEngine`（`MainEngine` 已注册） | **不做**（Post-Phase 已明确排除） |
-| 邮件 | `EmailEngine` | **不做**（Post-Phase 已明确排除） |
-
-zak 菜单曾**隐藏** vnpy「微信」入口；飞书走独立 `NotificationService`，不依赖 CTA/网关。
+- 飞书 inbound（不在飞书里下单）
+- 不替代应用内 `page_notify` / AI 悬浮球
+- 不接飞书开放平台应用机器人（tenant token）
 
 ---
 
@@ -273,7 +262,6 @@ Worker 内 HTTP 失败：重试 2 次（指数退避）；仍失败写 `last_err
 | 最小发送间隔 | 秒，默认 30（低于 vnpy 微信 60s） |
 | 事件订阅 | 多选 checklist（§4 表） |
 | 静默时段 | 可选 |
-| 次要渠道 | 微信/邮件（**不做**，设置页不展示） |
 
 保存：`FEISHU_*` 写 `.env`；订阅写 QSettings；Webhook 变更后自动 `test_send`。
 
@@ -310,30 +298,7 @@ Worker 内 HTTP 失败：重试 2 次（指数退避）；仍失败写 `last_err
 
 ---
 
-## 10. 实施分期
-
-### Phase 1 — 飞书 MVP
-
-- [x] `FeishuWebhookChannel` + `NotificationService` + Worker
-- [x] `.env` + 设置页 Tab「通知」（URL、总开关、测试）
-- [x] 事件：`screener_intraday_done`、`scheduler_job_failed`、`manual_test`
-- [x] 接入 scheduler `job_finished_hook`
-
-### Phase 2 — 短线体系联动
-
-- [x] `emotion_stage_change`、`position_alert`
-- [x] `position_alert`（去重）
-- [x] 签名校验、delivery log
-
-### Phase 3 — 扩展
-
-- [x] 飞书 interactive 卡片（N-06，`feishu_card.py`）
-- [ ] 可选 `VnpyWechatChannel` / Email（**不做**，见 §7.2）
-- [x] `radar_leader_ready`（高阈值，默认关；`NOTIFY_RADAR_LEADER_MIN_HITS` / `NOTIFY_RADAR_LEADER_MIN_SCORE`）
-
----
-
-## 11. 合规
+## 10. 合规
 
 - 推送内容 = 任务状态 / 规则统计 / 风险提示，**不构成**投资建议。
 - 模板末尾可选固定句：「规则计算结果，仅供研究。」

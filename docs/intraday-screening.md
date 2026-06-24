@@ -112,7 +112,7 @@ def run_dimension(spec: DimensionSpec, pool_size: int) -> tuple[list[DimensionHi
 
 ### 2.5 极致短线 Recipe（R-01–R-04，**已有**）
 
-> 状态与分期见 [implementation-roadmap.md §3](./implementation-roadmap.md#3-选股-reciper-)。Hub 内置 `intraday_multi` 与 R-01–R-04 极致短线配方。
+> Hub 内置 `intraday_multi` 与极致短线配方（`ultra_short_*`、`emotion_gate_only` 等）。
 
 | ID | 名称 | trigger | 核心维度 | 用途 |
 |----|------|---------|----------|------|
@@ -276,7 +276,7 @@ recipe 维度 → load_screening_quote_snapshot() / Tushare fallback
 ## 参考
 
 - [选股 Hub 使用指南](./screener-hub-guide.md)
-- [implementation-roadmap.md](./implementation-roadmap.md)（R-01–R-04）
+- [功能索引](./implementation-roadmap.md)
 - [emotion-cycle.md](./emotion-cycle.md)（R-04 gate）
 - [产品说明 §选股 Hub](./product-plan.md#选股-hub)
 - [架构说明 §选股 Hub](./architecture.md)
