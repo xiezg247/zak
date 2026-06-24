@@ -72,6 +72,7 @@ ignore = [
 "packages/vnpy-ashare/vnpy_ashare/ui/features/stock_analysis/open.py" = ["PLC0415"]
 "packages/vnpy-ashare/vnpy_ashare/ui/quotes/page/run_log.py" = ["PLC0415"]
 "packages/vnpy-ashare/vnpy_ashare/ui/quotes/quotes_config.py" = ["E402"]
+"packages/vnpy-ashare/vnpy_ashare/app/launcher.py" = ["I001"]
 "packages/vnpy-mcp/vnpy_mcp/domain/provider.py" = ["B027"]
 "packages/vnpy-skills/vnpy_skills/domain/template.py" = ["B027"]
 

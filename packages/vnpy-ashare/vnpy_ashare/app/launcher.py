@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import sys
 
+import vnpy_ashare.app._macos_qt_bootstrap  # noqa: F401 — 须在 Qt 之前加载
+
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 from vnpy.trader.setting import SETTINGS
@@ -19,6 +21,7 @@ from vnpy_ashare.config.vt_settings import ensure_vt_settings_from_env, reload_v
 from vnpy_ashare.integrations.tickflow.stream import shutdown_all_tickflow_streams
 from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_common.paths import PROJECT_ROOT
+from vnpy_common.platform.macos_gui import bootstrap_macos_gui_runtime
 from vnpy_common.startup_profile import profiler
 
 
@@ -57,6 +60,7 @@ def main() -> None:
 
     with profiler.phase("create_qapp"):
         qapp = create_qapp(QAPP_NAME)
+        bootstrap_macos_gui_runtime(before_qt=False)
         qapp.setStyle("Fusion")
 
     qapp.aboutToQuit.connect(shutdown_all_tickflow_streams)
