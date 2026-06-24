@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from vnpy_common.ui.monospace_font import monospace_font_css_stack
 from vnpy_common.ui.theme.build_scrollbar import build_prominent_scrollbar_stylesheet
 from vnpy_common.ui.theme.tokens import DARK_TOKENS, ThemeTokens
 
@@ -575,7 +576,7 @@ QPlainTextEdit#AiInlineTraceDetail {{
     border: 1px solid {t.panel_border};
     border-radius: 4px;
     color: {t.text_secondary};
-    font-family: Menlo, Monaco, Consolas, monospace;
+    font-family: {monospace_font_css_stack()};
     font-size: 10px;
     padding: 6px;
 }}

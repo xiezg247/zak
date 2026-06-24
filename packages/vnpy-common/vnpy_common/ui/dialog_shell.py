@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_common.ui.panel_widgets import center_dialog_on_parent, initial_dialog_size
+from vnpy_common.ui.panel_widgets import (
+    center_dialog_on_parent,
+    fit_dialog_to_reference_rect,
+    initial_dialog_size,
+    reference_widget_global_rect,
+)
 
 
 def setup_responsive_dialog(
@@ -17,8 +22,22 @@ def setup_responsive_dialog(
     height_ratio: float = 0.86,
     max_width: int = 1440,
     max_height: int = 1000,
+    size_reference: QtWidgets.QWidget | None = None,
 ) -> None:
-    """按屏幕比例设置弹窗最小/初始尺寸并居中。"""
+    """按屏幕或参考控件比例设置弹窗最小/初始尺寸并居中。
+
+    ``size_reference`` 非空时，初始尺寸不超过参考区域（子控件用 mapToGlobal，顶层窗口用 frameGeometry）。
+    """
+    ref = size_reference
+    if ref is not None and ref is not dialog:
+        fit_dialog_to_reference_rect(
+            dialog,
+            reference_widget_global_rect(ref),
+            min_width=min_width,
+            min_height=min_height,
+        )
+        return
+
     dialog.setMinimumSize(min_width, min_height)
     width, height = initial_dialog_size(
         min_width=min_width,

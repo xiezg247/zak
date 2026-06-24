@@ -6,6 +6,7 @@ import html
 from collections.abc import Sequence
 from typing import Protocol
 
+from vnpy_common.ui.monospace_font import monospace_font_css_stack
 from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
@@ -300,7 +301,7 @@ QTextEdit#SchedulerLogView {{
     background-color: {t.screener_log_bg};
     border: none;
     color: {t.screener_log_text};
-    font-family: Menlo, Monaco, "Courier New", monospace;
+    font-family: {monospace_font_css_stack()};
     font-size: 12px;
     padding: 10px 12px;
 }}
@@ -343,7 +344,7 @@ QTextEdit#BacktestLogView {{
     border: 1px solid {t.table_grid};
     border-radius: 4px;
     color: {t.screener_log_text};
-    font-family: Menlo, Monaco, "Courier New", monospace;
+    font-family: {monospace_font_css_stack()};
     font-size: 12px;
 }}
 QTableWidget#BacktestStatisticsTable,
@@ -464,7 +465,7 @@ def format_scheduler_run_log_html(t: ThemeTokens, records: Sequence[SchedulerRun
             lines.append(
                 "<div style='margin:0 0 10px 12px;padding:6px 8px;"
                 f"background:{t.depth_bg};border:1px solid {t.table_grid};border-radius:4px;"
-                "font-family:Menlo,Consolas,monospace;font-size:11px;line-height:1.45;"
+                f"font-family:{monospace_font_css_stack()};font-size:11px;line-height:1.45;"
                 f"color:{t.text_secondary};white-space:normal;'>{detail_body}</div>"
             )
     return "".join(lines)

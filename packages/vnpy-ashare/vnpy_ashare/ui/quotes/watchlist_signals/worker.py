@@ -24,6 +24,15 @@ class WatchlistSignalWorkerPayload:
 def unwrap_worker_payload(raw: object) -> WatchlistSignalWorkerPayload:
     if isinstance(raw, WatchlistSignalWorkerPayload):
         return raw
+    if isinstance(raw, dict):
+        if "signals" in raw:
+            signals = raw.get("signals") or {}
+            continuations = raw.get("continuations") or {}
+            return WatchlistSignalWorkerPayload(
+                signals=dict(signals),
+                continuations=dict(continuations),
+            )
+        return WatchlistSignalWorkerPayload(signals=dict(raw))
     raise TypeError(f"expected WatchlistSignalWorkerPayload, got {type(raw)!r}")
 
 

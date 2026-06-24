@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
+from vnpy_common.ui.monospace_font import apply_system_monospace_font
 from vnpy_common.ui.theme.manager import theme_manager
 
 DEFAULT_TOAST_MS = 4000
@@ -292,10 +293,7 @@ class InfoDialog(QtWidgets.QDialog):
         label.setWordWrap(not monospace)
         label.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
         if monospace:
-            font = label.font()
-            font.setStyleHint(QtGui.QFont.StyleHint.Monospace)
-            font.setFamily("Menlo, Consolas, monospace")
-            label.setFont(font)
+            label.setFont(apply_system_monospace_font(label.font()))
         layout.addWidget(label)
 
         buttons = QtWidgets.QDialogButtonBox()

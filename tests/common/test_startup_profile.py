@@ -54,3 +54,19 @@ def test_profiler_skips_records_when_disabled(monkeypatch, tmp_path) -> None:
     with profiler.phase("a"):
         time.sleep(0.001)
     assert profiler._records == []
+
+
+def test_profiler_logs_to_stdout_when_enabled(monkeypatch, tmp_path, capfd) -> None:
+    monkeypatch.delenv("ZAK_STARTUP_PROFILE", raising=False)
+    _use_env_file(monkeypatch, tmp_path)
+    monkeypatch.setenv("ZAK_STARTUP_PROFILE", "1")
+    from vnpy_common.startup_profile import logger
+
+    logger.handlers.clear()
+    profiler = StartupProfiler()
+    with profiler.phase("phase_x"):
+        pass
+    profiler.finish("done")
+    out, _err = capfd.readouterr()
+    assert "phase_x" in out
+    assert "done" in out

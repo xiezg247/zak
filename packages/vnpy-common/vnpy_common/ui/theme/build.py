@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from vnpy_common.ui.monospace_font import monospace_font_css_stack
 from vnpy_common.ui.theme.build_loading import build_content_loading_stylesheet
 from vnpy_common.ui.theme.build_panel import build_panel_stylesheet
 from vnpy_common.ui.theme.build_screener import build_screener_stylesheet
@@ -263,7 +264,7 @@ QPlainTextEdit#TaskRunLogView {{
     border: 1px solid {t.screener_log_border};
     border-radius: 4px;
     color: {t.screener_log_text};
-    font-family: Menlo, Monaco, "Courier New", monospace;
+    font-family: {monospace_font_css_stack()};
     font-size: 11px;
     padding: 8px 10px;
 }}

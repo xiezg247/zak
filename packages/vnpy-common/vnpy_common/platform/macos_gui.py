@@ -124,11 +124,10 @@ def _install_native_stderr_line_filter() -> None:
 
     def pump() -> None:
         buf = b""
-        reader = os.fdopen(read_fd, "rb", closefd=True)
         writer = os.fdopen(saved_fd, "wb", closefd=False)
         try:
             while True:
-                chunk = reader.read(8192)
+                chunk = os.read(read_fd, 8192)
                 if not chunk:
                     break
                 buf += chunk
@@ -142,7 +141,6 @@ def _install_native_stderr_line_filter() -> None:
             if buf:
                 _emit_filtered_stderr_line(buf, writer)
         finally:
-            reader.close()
             writer.close()
 
     threading.Thread(target=pump, name="zak-macos-stderr", daemon=True).start()

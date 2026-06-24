@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_common.ui.scroll_area import TERMINAL_SCROLL_AREA, frameless_scroll_area
 
@@ -158,18 +158,52 @@ def document_tab_widget(*tabs: tuple[str, QtWidgets.QWidget]) -> QtWidgets.QTabW
 
 def center_dialog_on_parent(dialog: QtWidgets.QDialog, parent: QtWidgets.QWidget | None) -> None:
     if parent is not None:
-        center = parent.geometry().center()
-        frame = dialog.frameGeometry()
-        frame.moveCenter(center)
-        dialog.move(frame.topLeft())
+        center_dialog_in_global_rect(dialog, reference_widget_global_rect(parent))
         return
     screen = QtWidgets.QApplication.primaryScreen()
     if screen is None:
         return
-    center = screen.availableGeometry().center()
+    center_dialog_in_global_rect(dialog, screen.availableGeometry())
+
+
+def reference_widget_global_rect(widget: QtWidgets.QWidget) -> QtCore.QRect:
+    """参考控件在屏幕上的占位；顶层窗口用 frameGeometry，子控件用 mapToGlobal。"""
+    if widget.isWindow():
+        return widget.frameGeometry()
+    return QtCore.QRect(widget.mapToGlobal(QtCore.QPoint(0, 0)), widget.size())
+
+
+def center_dialog_in_global_rect(dialog: QtWidgets.QDialog, rect: QtCore.QRect) -> None:
     frame = dialog.frameGeometry()
-    frame.moveCenter(center)
-    dialog.move(frame.topLeft())
+    frame.moveCenter(rect.center())
+    left = max(rect.left(), min(frame.left(), rect.right() - frame.width() + 1))
+    top = max(rect.top(), min(frame.top(), rect.bottom() - frame.height() + 1))
+    dialog.move(left, top)
+
+
+def fit_dialog_to_reference_rect(
+    dialog: QtWidgets.QDialog,
+    rect: QtCore.QRect,
+    *,
+    min_width: int,
+    min_height: int,
+) -> None:
+    """将弹窗尺寸限制在参考区域内，并在该区域内居中。"""
+    host_w = max(1, rect.width())
+    host_h = max(1, rect.height())
+    eff_min_w = min(min_width, host_w)
+    eff_min_h = min(min_height, host_h)
+    dialog.setMinimumSize(eff_min_w, eff_min_h)
+    dialog.setMaximumSize(host_w, host_h)
+    dialog.resize(host_w, host_h)
+    overflow_w = dialog.frameGeometry().width() - host_w
+    overflow_h = dialog.frameGeometry().height() - host_h
+    if overflow_w > 0 or overflow_h > 0:
+        dialog.resize(
+            max(eff_min_w, host_w - overflow_w),
+            max(eff_min_h, host_h - overflow_h),
+        )
+    center_dialog_in_global_rect(dialog, rect)
 
 
 def initial_dialog_size(

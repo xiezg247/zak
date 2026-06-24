@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -35,14 +36,13 @@ def startup_profile_enabled() -> bool:
 
 
 def _ensure_logging() -> None:
-    if logging.root.handlers:
-        if not logger.isEnabledFor(logging.INFO):
-            logger.setLevel(logging.INFO)
+    if logger.handlers:
         return
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(levelname)s %(name)s: %(message)s",
-    )
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
 
 
 @dataclass

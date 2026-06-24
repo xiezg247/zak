@@ -13,6 +13,7 @@ from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist_signals.worker import (
     WatchlistSignalWorker,
+    WatchlistSignalWorkerPayload,
     unwrap_worker_payload,
 )
 from vnpy_common.ui.qt_helpers import release_thread
@@ -203,9 +204,15 @@ class WatchlistStrategyBatchCoordinator:
                 payload = unwrap_worker_payload(raw)
                 for job in merged.jobs:
                     subset = remap_batch_results(payload.signals, job.symbols)
-                    if job.zone == "signal" and payload.continuations:
-                        subset_cont = remap_batch_results(payload.continuations, job.symbols)
-                        job.on_complete({"signals": subset, "continuations": subset_cont})
+                    if job.zone == "signal":
+                        subset_cont = (
+                            remap_batch_results(payload.continuations, job.symbols)
+                            if payload.continuations
+                            else {}
+                        )
+                        job.on_complete(
+                            WatchlistSignalWorkerPayload(signals=subset, continuations=subset_cont),
+                        )
                     else:
                         job.on_complete(subset)
             finally:

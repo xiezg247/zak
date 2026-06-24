@@ -122,6 +122,19 @@ def _quote_header_meta(quote: QuoteSnapshot | None, item: StockItem) -> dict[str
     }
 
 
+def _stock_analysis_size_reference(parent: QtWidgets.QWidget | None) -> QtWidgets.QWidget | None:
+    """个股分析弹窗尺寸参考：主窗口中央内容区（不含侧栏/菜单栏）。"""
+    if parent is None:
+        return None
+    main = find_ashare_main_window(parent)
+    if main is not None:
+        stack = getattr(main, "stack", None)
+        if isinstance(stack, QtWidgets.QWidget):
+            return stack
+        return main
+    return parent.window()
+
+
 class StockAnalysisDialog(QtWidgets.QDialog):
     def __init__(
         self,
@@ -153,12 +166,9 @@ class StockAnalysisDialog(QtWidgets.QDialog):
         setup_responsive_dialog(
             self,
             parent,
-            min_width=1320,
-            min_height=920,
-            width_ratio=0.92,
-            height_ratio=0.94,
-            max_width=1720,
-            max_height=1200,
+            min_width=960,
+            min_height=640,
+            size_reference=_stock_analysis_size_reference(parent),
         )
 
         header = self._build_header(meta)

@@ -13,7 +13,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_signal_panel_columns,
     save_signal_panel_columns,
 )
-from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
+from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol, parse_stock_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import (
     SIGNAL_STRENGTH_STRONG,
     SignalSnapshot,
@@ -188,7 +188,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         self._building = True
         try:
             for row, vt_symbol in enumerate(display_symbols):
-                item = page.find_stock_item(vt_symbol)
+                item, quote = _resolve_row_item_and_quote(page, vt_symbol)
                 if item is None or item.tickflow_symbol not in tickflow_symbols:
                     continue
                 self._fill_row(row, vt_symbol)
@@ -268,8 +268,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
 
     def _fill_row(self, row: int, vt_symbol: str) -> None:
         page = self._page
-        item = page.find_stock_item(vt_symbol)
-        quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
+        item, quote = _resolve_row_item_and_quote(page, vt_symbol)
         snapshot = lookup_by_vt_symbol(page.signal_cache, vt_symbol)
         missing_kline = signal_missing_kline(snapshot)
         bar_end_date = self._bar_end_date(vt_symbol)
@@ -377,8 +376,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
 
     def _show_signal_reason_dialog(self, vt_symbol: str) -> None:
         page = self._page
-        item = page.find_stock_item(vt_symbol)
-        quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
+        item, quote = _resolve_row_item_and_quote(page, vt_symbol)
         snapshot = lookup_by_vt_symbol(page.signal_cache, vt_symbol)
         continuation = lookup_by_vt_symbol(page.continuation_cache, vt_symbol)
         values = _compute_row_values(
@@ -597,6 +595,26 @@ class SignalPanelTableView(QtWidgets.QWidget):
 # ── 行渲染纯函数 ────────────────────────────────────────────
 
 
+def _resolve_row_item_and_quote(page: WatchlistHost, vt_symbol: str):
+    item = page.find_stock_item(vt_symbol)
+    if item is None:
+        item = parse_stock_symbol(vt_symbol)
+    quote = page.quote_map.get(item.tickflow_symbol) if item is not None else None
+    return item, quote
+
+
+def _resolve_signal_row_name(item, quote) -> str:
+    if quote is not None and quote.name:
+        text = str(quote.name).strip()
+        if text:
+            return text
+    if item is not None and item.name:
+        text = str(item.name).strip()
+        if text:
+            return text
+    return "—"
+
+
 def _compute_row_values(
     item,
     snapshot: SignalSnapshot | None,
@@ -609,7 +627,7 @@ def _compute_row_values(
 ) -> dict[str, str]:
     values: dict[str, str] = {
         "symbol": item.symbol if item is not None else "—",
-        "name": (item.name if item is not None else "—") or "—",
+        "name": _resolve_signal_row_name(item, quote),
     }
     if snapshot is None:
         for col_key, _ in panel_columns:

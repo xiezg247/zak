@@ -8,6 +8,7 @@ from typing import cast
 import markdown as _md_lib
 from markdown.extensions import codehilite, fenced_code, tables
 
+from vnpy_common.ui.monospace_font import monospace_font_css_stack
 from vnpy_common.ui.theme.tokens import ThemeTokens
 
 
@@ -41,12 +42,7 @@ def _markdown_font_stack() -> str:
 
 
 def _monospace_font_stack() -> str:
-    system = platform.system()
-    if system == "Darwin":
-        return '"Menlo", "SF Mono", "Monaco", monospace'
-    if system == "Windows":
-        return '"Cascadia Code", "Consolas", "Courier New", monospace'
-    return '"JetBrains Mono", "Fira Code", "DejaVu Sans Mono", monospace'
+    return monospace_font_css_stack(quoted=True)
 
 
 def _build_markdown_css(t: ThemeTokens) -> str:
