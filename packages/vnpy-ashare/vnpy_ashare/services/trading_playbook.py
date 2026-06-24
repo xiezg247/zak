@@ -139,8 +139,6 @@ def build_mirror_appendix(section_id: str) -> str:
             f"- 开关：{' · '.join(flags) if flags else '无额外排除'}\n"
             f"- 板块：{boards}\n"
         )
-    if section_id == "risk":
-        return ""
     return ""
 
 

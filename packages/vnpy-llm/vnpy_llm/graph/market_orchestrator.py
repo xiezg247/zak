@@ -23,7 +23,7 @@ _PREFETCH_LABELS: dict[str, str] = {
 def prefetch_market_facts(
     tool_executor: Callable[[str, dict[str, Any]], str],
 ) -> dict[str, str]:
-    """同步预取择时三件套，供 Market Agent 首轮引用。"""
+    """同步预取情绪周期与恐贪指数，供 Market Agent 首轮引用。"""
     payload: dict[str, str] = {}
     for name, arguments in MARKET_PREFETCH_SPECS:
         try:

@@ -12,7 +12,6 @@ def today_trade_date() -> str:
     return datetime.now(CHINA_TZ).date().isoformat()
 
 
-def resolve_realized_pnl_today(trade_date: str | None = None) -> float | None:
+def resolve_realized_pnl_today() -> float | None:
     """返回当日手动录入的已实现盈亏；无录入时为 None。"""
-    del trade_date
     return load_trading_risk_prefs().realized_pnl_today

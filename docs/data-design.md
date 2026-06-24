@@ -201,11 +201,9 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | `entry_conditions_json` | TEXT | 结构化入场条件 |
 | `exit_conditions_json` | TEXT | 结构化退出条件 |
 
-#### ~~`trade_journal`~~（已移除，2026-06）
+#### ~~`trade_journal`~~（已移除）
 
-升级脚本执行 `DROP TABLE IF EXISTS trade_journal`。结构化流水能力已下线；复盘改用笔记流水 + Playbook。
-
-**历史字段参考（归档）：** `side`、`mode`、`on_plan`、`violation_tags`、`pnl` 等曾用于 K-05 / J-05 统计。
+不再建表、不读写。若旧库中仍有该表，可手动 `DROP TABLE trade_journal`；复盘改用笔记流水 + Playbook。
 
 ### 1.12 `notify_delivery_log`（**已有**，N-05）
 

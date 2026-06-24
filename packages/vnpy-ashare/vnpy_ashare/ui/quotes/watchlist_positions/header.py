@@ -31,6 +31,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
     remove_requested = QtCore.Signal()
     clear_requested = QtCore.Signal()
     plan_requested = QtCore.Signal()
+    params_requested = QtCore.Signal()
 
     def __init__(self, page: WatchlistHost, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -179,6 +180,11 @@ class PositionPanelHeader(QtWidgets.QWidget):
         self._plan_button.setToolTip("查看/编辑当日交易计划")
         self._plan_button.clicked.connect(self.plan_requested.emit)
 
+        self._params_button = QtWidgets.QPushButton("参数", self)
+        self._params_button.setObjectName("SecondaryButton")
+        self._params_button.setToolTip("总资金、止损比例、浮亏警戒、当日已实现")
+        self._params_button.clicked.connect(self.params_requested.emit)
+
         layout.addWidget(self._collapse_button)
         layout.addWidget(QtWidgets.QLabel("持仓策略", self))
         layout.addWidget(self._toggle)
@@ -194,6 +200,7 @@ class PositionPanelHeader(QtWidgets.QWidget):
         layout.addWidget(self._clear_button)
         layout.addWidget(self._refresh_button)
         layout.addWidget(self._plan_button)
+        layout.addWidget(self._params_button)
 
         self._fast_spin.valueChanged.connect(self._emit_config_changed)
         self._slow_spin.valueChanged.connect(self._emit_config_changed)
@@ -209,6 +216,8 @@ class PositionPanelHeader(QtWidgets.QWidget):
             self._remove_button,
             self._clear_button,
             self._refresh_button,
+            self._plan_button,
+            self._params_button,
         )
         self._sync_strategy_controls(signal_config=self._page.signal_config)
         self._sync_expansion_ui()

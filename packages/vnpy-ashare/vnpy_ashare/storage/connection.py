@@ -372,7 +372,6 @@ def _ensure_column(
 def _migrate_app_db(conn: sqlite3.Connection) -> None:
     _ensure_column(conn, "watchlist_positions", "plan_pct", "plan_pct REAL")
     _ensure_column(conn, "watchlist_groups", "position_cap_pct", "position_cap_pct REAL")
-    conn.execute("DROP TABLE IF EXISTS trade_journal")
 
 
 def init_app_db() -> Path:

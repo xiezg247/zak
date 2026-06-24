@@ -14,8 +14,6 @@ DEFAULT_LAYOUT_PRESET: LayoutPresetId = "intraday"
 
 def load_watchlist_layout_preset() -> LayoutPresetId:
     value = str(get_settings().value(LAYOUT_PRESET_KEY, DEFAULT_LAYOUT_PRESET) or "").strip()
-    if value == "register":
-        return "review"
     if value in ("intraday", "review"):
         return value  # type: ignore[return-value]
     return DEFAULT_LAYOUT_PRESET

@@ -104,8 +104,6 @@ class TradingRiskPrefs(FrozenModel):
 - `trade_journal` 表及登记买入/卖出流水、复盘流水明细 CRUD
 - 飞书 `risk_gate_change` / `journal_violation` 事件
 
-数据库升级时会执行 `DROP TABLE IF EXISTS trade_journal`（见 `storage/connection.py`）。
-
 ---
 
 ## 参考

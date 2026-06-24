@@ -134,7 +134,7 @@ CREATE TABLE trading_plan_symbols (
 );
 ```
 
-> `trade_journal` 表已在升级脚本中删除，不再建表。
+> `trade_journal` 已不再建表；旧库残留表需手动清理。
 
 ---
 

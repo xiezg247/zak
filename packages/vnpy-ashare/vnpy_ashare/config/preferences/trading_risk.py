@@ -62,3 +62,16 @@ def load_trading_risk_prefs() -> TradingRiskPrefs:
         or DEFAULT_CAUTION_FLOAT_PCT,
         realized_pnl_today=_coerce_float(settings.value(f"{PREFIX}/realized_pnl_today")),
     ).normalized()
+
+
+def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
+    item = prefs.normalized()
+    settings = get_settings()
+    settings.setValue(f"{PREFIX}/total_capital", "" if item.total_capital is None else item.total_capital)
+    settings.setValue(f"{PREFIX}/stop_loss_pct", item.stop_loss_pct)
+    settings.setValue(f"{PREFIX}/caution_float_pct", item.caution_float_pct)
+    settings.setValue(
+        f"{PREFIX}/realized_pnl_today",
+        "" if item.realized_pnl_today is None else item.realized_pnl_today,
+    )
+    settings.sync()

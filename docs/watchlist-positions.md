@@ -160,8 +160,7 @@ CREATE TABLE watchlist_positions (
 
 | 操作 | 行为 |
 |------|------|
-| 登记持仓 | 主表选中 → 「登记持仓」→ `PositionEditDialog` |
-| 补录卖出 | 选中持仓 → 「补录卖出」→ 写 sell 流水；持仓保留；分批卖出时同步减量 |
+| 添加持仓 | 主表选中 → 「添加」→ `PositionEditDialog`；计划外 / 退潮期 toast 提示 |
 | 移出 / 编辑 | 持仓区工具栏「移出」「编辑」 |
 | 单击行 | 联动主表、图表 |
 | 统计栏筛选 | 待卖 / T+1 锁 / 浮亏（已有 filter） |
@@ -180,7 +179,7 @@ CREATE TABLE watchlist_positions (
                     笔记流水复盘 + Playbook（**已有**）
 ```
 
-登记时：`emotion_cycle` 退潮期 toast 警告（**已有**）；总资金参数供仓位 % 列（见 [risk-gate.md](./risk-gate.md)）。
+登记时：`emotion_cycle` 退潮期 toast 警告（**已有**）；「参数」可设总资金供仓位 % 列（见 [risk-gate.md](./risk-gate.md)）。
 
 ---
 

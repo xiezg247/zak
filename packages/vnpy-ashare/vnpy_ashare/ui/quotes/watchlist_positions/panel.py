@@ -11,12 +11,15 @@ from vnpy_ashare.config.preferences.watchlist_position import (
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.trading.position import PositionRecord
 from vnpy_ashare.storage.repositories.positions import POSITION_MAX_ITEMS
+from vnpy_ashare.trading.plan.plan_check import check_buy_against_plan
+from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_positions.dialog import PositionEditDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.header import PositionPanelHeader
 from vnpy_ashare.ui.quotes.watchlist_positions.plan_dialog import TradingPlanDialog
 from vnpy_ashare.ui.quotes.watchlist_positions.table_view import PositionPanelTableView
+from vnpy_ashare.ui.quotes.watchlist_positions.trading_params_dialog import TradingParamsDialog
 from vnpy_common.ui.theme.manager import theme_manager
 
 
@@ -170,6 +173,10 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
             else:
                 self._page._toast.warning("保存失败")
             return
+        if not existing:
+            check = check_buy_against_plan(item.symbol, item.exchange, trade_date=today_trade_date())
+            for warning in check.warnings:
+                self._page._toast.warning(warning)
         self._page.status_label.setText(f"已保存持仓：{vt_symbol}")
         self.rows_changed.emit()
 
@@ -186,6 +193,7 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
         h.remove_requested.connect(self._on_remove_clicked)
         h.clear_requested.connect(self._on_clear_clicked)
         h.plan_requested.connect(self._on_plan_clicked)
+        h.params_requested.connect(self._on_params_clicked)
 
         t.row_activated.connect(self._on_row_activated)
         t.row_selected.connect(self.row_selected.emit)
@@ -284,3 +292,10 @@ class WatchlistPositionPanel(QtWidgets.QWidget):
     def _on_plan_clicked(self) -> None:
         dialog = TradingPlanDialog(page=self._page, parent=self)
         dialog.exec()
+
+    def _on_params_clicked(self) -> None:
+        dialog = TradingParamsDialog(parent=self)
+        if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        self.render_panel()
+        self.rows_changed.emit()

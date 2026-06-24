@@ -1,11 +1,11 @@
-"""自选页工作流布局预设（盘中 / 登记 / 复盘）。"""
+"""自选页工作流布局预设（盘中 / 复盘）。"""
 
 from __future__ import annotations
 
 from vnpy_ashare.config.preferences.watchlist_position import save_position_panel_expanded
 from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_expanded
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, save_watchlist_layout_preset
-from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import POSITION_FOCUS_TABLE_RATIO, PRESET_LABELS, PRESET_PANEL_STATE, PRESET_SPECS
+from vnpy_ashare.ui.quotes.features.watchlist.preset_specs import POSITION_FOCUS_TABLE_RATIO, PRESET_LABELS, PRESET_SPECS
 from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
     is_strategy_workspace_open,
     open_strategy_workspace,
@@ -14,9 +14,6 @@ from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import apply_toolbar_for_preset
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
-
-# 兼容旧测试
-_PRESET_PANEL_STATE = PRESET_PANEL_STATE
 
 
 def layout_preset_options() -> tuple[tuple[LayoutPresetId, str], ...]:
@@ -52,7 +49,7 @@ def apply_layout_preset(page: WatchlistHost, preset_id: LayoutPresetId, *, persi
 
 
 def apply_position_focus(page: WatchlistHost) -> None:
-    """持仓专注：折叠信号区、展开持仓区，主表缩至最小比例（不切换登记预设）。"""
+    """持仓专注：折叠信号区、展开持仓区，主表缩至最小比例（不切换布局预设）。"""
     open_strategy_workspace(page, persist=True)
     page._watchlist_table_ratio_override = POSITION_FOCUS_TABLE_RATIO
     signal_panel = getattr(page, "signal_panel", None)

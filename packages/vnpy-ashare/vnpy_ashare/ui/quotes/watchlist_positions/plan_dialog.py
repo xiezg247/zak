@@ -194,7 +194,7 @@ class TradingPlanDialog(QtWidgets.QDialog):
             if added:
                 self._status_label.setText(f"已激活并同步自选（新增 {added} 只）")
             else:
-                self._status_label.setText("已激活（登记时将校验计划内）")
+                self._status_label.setText("已激活（添加持仓时将提示计划内外）")
             groups = getattr(self._page, "_watchlist_groups", None)
             if groups is not None:
                 groups.refresh_groups()
