@@ -60,11 +60,6 @@ class VnpyRadarSkill(SkillTemplate):
                     "type": "object",
                     "properties": {
                         "top_n": {"type": "integer", "description": "返回前 N 条，默认 12"},
-                        "variant": {
-                            "type": "string",
-                            "enum": ["mainline", "all_market"],
-                            "description": "龙头 variant，默认 mainline",
-                        },
                         "require_resonance": {
                             "type": "boolean",
                             "description": "是否与雷达共振≥2卡取交集，默认 false",
@@ -114,18 +109,13 @@ class VnpyRadarSkill(SkillTemplate):
     def run_short_term_screen(
         self,
         top_n: int = 12,
-        variant: str = "mainline",
         require_resonance: bool = False,
         ultra_short_only: bool = True,
     ) -> str:
         svc = self._get_screening_service()
-        variant_key = (variant or "mainline").strip().lower()
-        if variant_key not in ("mainline", "all_market"):
-            variant_key = "mainline"
         try:
             result = run_short_term_screen(
                 top_n=int(top_n or 12),
-                variant=variant_key,
                 require_resonance=bool(require_resonance),
                 ultra_short_only=bool(ultra_short_only),
             )
@@ -134,7 +124,6 @@ class VnpyRadarSkill(SkillTemplate):
 
         config = {
             "trigger": "short_term",
-            "leader_variant": variant_key,
             "require_resonance": bool(require_resonance),
             "ultra_short_only": bool(ultra_short_only),
         }
@@ -143,7 +132,6 @@ class VnpyRadarSkill(SkillTemplate):
 
         return self._format_screen_result(
             result,
-            variant=variant_key,
             require_resonance=bool(require_resonance),
             ultra_short_only=bool(ultra_short_only),
         )
@@ -188,35 +176,34 @@ class VnpyRadarSkill(SkillTemplate):
     def _format_screen_result(
         result,
         *,
-        variant: str = "mainline",
+        variant: str | None = None,
         require_resonance: bool = False,
         ultra_short_only: bool = False,
     ) -> str:
-        return json.dumps(
-            {
-                "status": "ok",
-                "condition": result.condition,
-                "count": len(result.rows),
-                "source": result.source,
-                "updated_at": result.updated_at,
-                "total_scanned": result.total_scanned,
-                "variant": variant,
-                "require_resonance": require_resonance,
-                "ultra_short_only": ultra_short_only,
-                "results": [
-                    {
-                        "symbol": r.get("symbol", ""),
-                        "name": r.get("name", ""),
-                        "vt_symbol": r.get("vt_symbol", ""),
-                        "leader_score": r.get("leader_score"),
-                        "leader_tier": r.get("leader_tier"),
-                        "leader_tier_label": r.get("leader_tier_label"),
-                        "limit_times": r.get("limit_times"),
-                        "hit_reason": r.get("hit_reason"),
-                        "change_pct": r.get("change_pct"),
-                    }
-                    for r in result.rows
-                ],
-            },
-            ensure_ascii=False,
-        )
+        payload: dict = {
+            "status": "ok",
+            "condition": result.condition,
+            "count": len(result.rows),
+            "source": result.source,
+            "updated_at": result.updated_at,
+            "total_scanned": result.total_scanned,
+            "require_resonance": require_resonance,
+            "ultra_short_only": ultra_short_only,
+            "results": [
+                {
+                    "symbol": r.get("symbol", ""),
+                    "name": r.get("name", ""),
+                    "vt_symbol": r.get("vt_symbol", ""),
+                    "leader_score": r.get("leader_score"),
+                    "leader_tier": r.get("leader_tier"),
+                    "leader_tier_label": r.get("leader_tier_label"),
+                    "limit_times": r.get("limit_times"),
+                    "hit_reason": r.get("hit_reason"),
+                    "change_pct": r.get("change_pct"),
+                }
+                for r in result.rows
+            ],
+        }
+        if variant is not None:
+            payload["variant"] = variant
+        return json.dumps(payload, ensure_ascii=False)

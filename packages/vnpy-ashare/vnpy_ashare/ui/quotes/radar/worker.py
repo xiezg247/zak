@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, incremental_refresh_radar_card_quotes, load_radar_board, load_radar_card
+from vnpy_ashare.quotes.radar.radar_loaders import RadarCardData, incremental_refresh_radar_card_quotes, load_radar_card
 
 
 class RadarCardLoadWorker(QtCore.QThread):
@@ -68,40 +68,3 @@ class RadarCardLoadWorker(QtCore.QThread):
         if self._cancelled:
             return
         self.finished.emit(self._card_id, data, self._quote_only)
-
-
-class RadarBoardLoadWorker(QtCore.QThread):
-    """兼容：一次性加载全部雷达卡片。"""
-
-    finished = QtCore.Signal(dict)
-    failed = QtCore.Signal(str)
-
-    def __init__(
-        self,
-        *,
-        screen_task_variant: str,
-        sector_variant: str,
-        parent: QtCore.QObject | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._screen_task_variant = screen_task_variant
-        self._sector_variant = sector_variant
-        self._cancelled = False
-
-    def request_cancel(self) -> None:
-        self._cancelled = True
-
-    def run(self) -> None:
-        if self._cancelled:
-            return
-        try:
-            payload = load_radar_board(
-                screen_task_variant=self._screen_task_variant,
-                sector_variant=self._sector_variant,
-            )
-        except Exception as ex:
-            self.failed.emit(str(ex))
-            return
-        if self._cancelled:
-            return
-        self.finished.emit(payload)

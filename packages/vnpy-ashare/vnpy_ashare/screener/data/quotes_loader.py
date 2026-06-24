@@ -5,9 +5,8 @@ from __future__ import annotations
 import redis
 
 from vnpy_ashare.domain.market.quote_row import QuoteRow, quote_row_from_stock_and_snapshot
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.screener.quotes_snapshot import MarketQuotesSnapshot
-from vnpy_ashare.domain.symbols.stock import StockItem, parse_tickflow_symbol
+from vnpy_ashare.domain.symbols.stock import parse_tickflow_symbol
 from vnpy_ashare.quotes.core.redis_store import RedisQuoteStore
 
 __all__ = ["MarketQuotesLoadError", "MarketQuotesSnapshot", "load_market_quote_rows"]
@@ -48,8 +47,3 @@ def load_market_quote_rows(*, enrich_factors: bool = True) -> MarketQuotesSnapsh
         total=len(rows),
         source="quote",
     )
-
-
-def row_from_item_quote(item: StockItem, quote: QuoteSnapshot) -> QuoteRow:
-    """公开别名，供 data_source / 测试使用。"""
-    return quote_row_from_stock_and_snapshot(item, quote)

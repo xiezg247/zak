@@ -19,7 +19,7 @@ from vnpy_ashare.config.preferences.watchlist_position import (
 )
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.ui.quotes.watchlist_positions.cache import WatchlistPositionDiskCache
+from vnpy_ashare.storage.cache.watchlist_position_cache import WatchlistPositionDiskCache
 
 
 def _sample_signal(vt_symbol: str = "600000.SSE") -> SignalSnapshot:

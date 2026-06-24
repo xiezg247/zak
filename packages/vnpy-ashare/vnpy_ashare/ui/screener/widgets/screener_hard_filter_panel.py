@@ -139,11 +139,6 @@ class ScreenerHardFilterPanel(QtWidgets.QGroupBox):
         self._load_industry_combo_items()
         self.reload()
 
-    @property
-    def allowed_industries_edit(self) -> QtWidgets.QLineEdit | None:
-        """兼容旧测试/调用方。"""
-        return self.allowed_industries_combo.lineEdit()
-
     def _load_industry_combo_items(self) -> None:
         try:
             self._industry_names = sorted({name.strip() for name in fetch_stock_industry_map().values() if str(name).strip()})

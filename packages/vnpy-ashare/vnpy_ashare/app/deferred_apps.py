@@ -30,10 +30,3 @@ def ensure_data_manager_app(main_engine: MainEngine) -> None:
     with profiler.phase("add_app(DataManagerApp)"):
         main_engine.add_app(DataManagerApp)
     _data_manager_registered = True
-
-
-def register_deferred_apps(main_engine: MainEngine) -> None:
-    """兼容旧入口：一次性注册全部延迟 App。"""
-    with profiler.phase("deferred_apps"):
-        ensure_cta_backtester_app(main_engine)
-        ensure_data_manager_app(main_engine)

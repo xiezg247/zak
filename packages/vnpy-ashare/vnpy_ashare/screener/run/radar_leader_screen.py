@@ -49,11 +49,6 @@ def leader_scored_to_result_row(scored: LeaderScoredRow) -> ScreenerResultRow:
     return ScreenerResultRow.from_mapping(enriched.to_dict())
 
 
-def leader_scored_to_row(scored: LeaderScoredRow) -> dict:
-    """兼容旧调用：返回 flat dict。"""
-    return leader_scored_to_result_row(scored).to_dict()
-
-
 def run_leader_screen(
     *,
     top_n: int = 12,

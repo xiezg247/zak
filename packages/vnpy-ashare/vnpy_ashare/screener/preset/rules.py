@@ -10,7 +10,7 @@ from typing import Any
 from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRowsLike, coerce_quote_row, quote_row_copy
 from vnpy_ashare.quotes.market.moneyflow_kind import enrich_moneyflow_row_with_kind
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.presets import (
     SCREENER_CHANGE_TOP,
     SCREENER_CUSTOM,
@@ -51,7 +51,7 @@ def apply_quote_preset(
     """对行情行应用 preset 规则，返回标准化结果行（最多 top_n 条）。"""
     preset = preset.strip()
     top_n = max(1, min(int(top_n or 20), 200))
-    quotes = apply_screening_filters(quotes)
+    quotes = apply_recipe_filters(quotes)
 
     if preset == SCREENER_CUSTOM:
         result = quotes
@@ -83,7 +83,7 @@ def apply_quote_preset(
 
 def apply_low_pe(rows: QuoteRowsLike, *, top_n: int, max_pe_ttm: float = 15.0) -> list[QuoteRow]:
     """PE(TTM) 在 (0, max_pe_ttm) 内升序取 top_n。"""
-    rows = apply_screening_filters(rows)
+    rows = apply_recipe_filters(rows)
     filtered = [row for row in rows if row.get("pe_ttm", 0) > 0 and row.get("pe_ttm", 0) < max_pe_ttm]
     filtered.sort(key=lambda r: r.get("pe_ttm", 0))
     return [_fundamental_row(r) for r in filtered[:top_n]]
@@ -96,7 +96,7 @@ def apply_large_cap(
     min_total_mv: float = MIN_TOTAL_MV_50YI,
 ) -> list[QuoteRow]:
     """总市值 ≥ min_total_mv（默认 50 亿）降序取 top_n。"""
-    rows = apply_screening_filters(rows)
+    rows = apply_recipe_filters(rows)
     filtered = [row for row in rows if row.get("total_mv", 0) >= min_total_mv]
     filtered.sort(key=lambda r: r.get("total_mv", 0), reverse=True)
     return [_fundamental_row(r) for r in filtered[:top_n]]
@@ -104,7 +104,7 @@ def apply_large_cap(
 
 def apply_limit_up(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     """涨停列表按连板次数降序取 top_n。"""
-    rows = apply_screening_filters(rows)
+    rows = apply_recipe_filters(rows)
     sorted_rows = sorted(rows, key=lambda r: float(r.get("limit_times") or 0), reverse=True)
     return [_limit_up_row(r) for r in sorted_rows[:top_n]]
 
@@ -124,7 +124,7 @@ def _sort_by_volume_ratio(quotes: QuoteRowsLike) -> list[QuoteRow]:
 
 def apply_moneyflow_in(rows: QuoteRowsLike, *, top_n: int) -> list[QuoteRow]:
     """主力净流入 > 0 降序取 top_n。"""
-    rows = apply_screening_filters(rows)
+    rows = apply_recipe_filters(rows)
     filtered = [row for row in rows if row.get("net_mf_amount", 0) > 0]
     filtered.sort(key=lambda r: r.get("net_mf_amount", 0), reverse=True)
     return [_moneyflow_row(r) for r in filtered[:top_n]]

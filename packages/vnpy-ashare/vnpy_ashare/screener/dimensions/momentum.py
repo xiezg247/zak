@@ -22,7 +22,7 @@ from vnpy_ashare.screener.dimensions.history_signals import (
 )
 from vnpy_ashare.screener.dimensions.momentum_bounds import momentum_change_bounds as _momentum_change_bounds
 from vnpy_ashare.screener.dimensions.scoring import blended_score
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
@@ -60,7 +60,7 @@ def run_momentum(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
                 merged["industry_relative_strength"] = relative_strength_pct(merged, industry_avg_pct)
             scored_rows.append(merged)
 
-        filtered_rows = apply_screening_filters(scored_rows)
+        filtered_rows = apply_recipe_filters(scored_rows)
         filtered_rows.sort(key=lambda item: float(item.get("relative_strength") or 0), reverse=True)
         top_for_history = filtered_rows[: pool_size * 2]
         bars_map = load_history_bars_map([str(item.get("vt_symbol") or "") for item in top_for_history if item.get("vt_symbol")])

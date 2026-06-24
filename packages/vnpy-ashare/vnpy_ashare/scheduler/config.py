@@ -35,24 +35,6 @@ _POST_CLOSE_CRON: dict[str, tuple[int, int]] = {
     "warm_watchlist_strategy_cache": (18, 45),
     "fill_focus_pool_minute": (19, 0),
 }
-# 历史默认时刻；persisted 值仍等于其中任一时刻时自动迁移到新推荐时刻。
-_LEGACY_CRON_SCHEDULES: dict[str, list[tuple[int, int]]] = {
-    "sync_stock_industry": [(8, 10)],
-    "batch_download_universe": [(16, 25)],
-    "prefetch_moneyflow": [(16, 31), (16, 30)],
-    "prefetch_tushare": [(16, 32), (16, 40)],
-    "sync_suspend_daily": [(16, 33), (16, 50)],
-    "prefetch_concept_board": [(16, 33), (17, 0)],
-    "warm_market_summary": [(16, 34), (17, 10)],
-    "sync_sector_flow_daily": [(16, 36), (17, 15)],
-    "sync_disclosure_calendar": [(16, 40), (17, 20)],
-    "screen_post_close": [(16, 35), (17, 30)],
-    "scan_horizon_outlook": [(16, 40), (17, 45)],
-    "sync_watchlist_financials": [(16, 45), (17, 50)],
-    "batch_fill_stale": [(17, 0), (18, 0)],
-    "warm_watchlist_strategy_cache": [(16, 38), (18, 15)],
-    "fill_focus_pool_minute": [(17, 5), (18, 30)],
-}
 
 
 def _job_config_from_cron(
@@ -329,44 +311,6 @@ class SchedulerConfig(MutableModel):
         )
 
 
-def _migrate_scheduler_cron_defaults(data: dict) -> tuple[dict, bool]:
-    """将仍等于旧默认时刻的任务 cron 迁移到新推荐时刻。"""
-    changed = False
-    migrated = dict(data)
-    for key, legacy_times in _LEGACY_CRON_SCHEDULES.items():
-        raw = migrated.get(key)
-        if not isinstance(raw, dict):
-            continue
-        current = (int(raw.get("cron_hour", -1)), int(raw.get("cron_minute", -1)))
-        if current not in legacy_times:
-            continue
-        if key in _POST_CLOSE_CRON:
-            new_hour, new_minute = _POST_CLOSE_CRON[key]
-        elif key in _WEEKLY_CRON:
-            new_hour, new_minute, _ = _WEEKLY_CRON[key]
-        else:
-            continue
-        raw["cron_hour"] = new_hour
-        raw["cron_minute"] = new_minute
-        migrated[key] = raw
-        changed = True
-    return migrated, changed
-
-
-def _migrate_scheduler_data(data: dict) -> tuple[dict, bool]:
-    """将旧 ``batch_download`` 键合并进 ``batch_download_universe`` 并移除旧键。"""
-    legacy = data.get("batch_download")
-    if not isinstance(legacy, dict):
-        return data, False
-    migrated = {key: value for key, value in data.items() if key != "batch_download"}
-    universe_raw = dict(migrated.get("batch_download_universe") or {})
-    legacy_start = legacy.get("download_start")
-    if legacy_start and not universe_raw.get("download_start"):
-        universe_raw["download_start"] = str(legacy_start)
-    migrated["batch_download_universe"] = universe_raw
-    return migrated, True
-
-
 def load_scheduler_config(path: Path | None = None) -> SchedulerConfig:
     target = path or SCHEDULER_CONFIG_PATH
     if not target.exists():
@@ -376,12 +320,7 @@ def load_scheduler_config(path: Path | None = None) -> SchedulerConfig:
             data = json.load(f)
     except (json.JSONDecodeError, OSError, TypeError, ValueError):
         return SchedulerConfig()
-    migrated, changed = _migrate_scheduler_data(data)
-    migrated, cron_changed = _migrate_scheduler_cron_defaults(migrated)
-    config = SchedulerConfig.from_dict(migrated)
-    if changed or cron_changed:
-        save_scheduler_config(config, target)
-    return config
+    return SchedulerConfig.from_dict(data)
 
 
 def save_scheduler_config(config: SchedulerConfig, path: Path | None = None) -> Path:

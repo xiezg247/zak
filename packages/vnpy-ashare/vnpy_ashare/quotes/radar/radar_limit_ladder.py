@@ -12,7 +12,7 @@ from vnpy_ashare.quotes.radar.radar_catalog import RadarCardSpec
 from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, enrich_radar_rows, merge_row_quotes
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.hard_filters import apply_screening_filters, is_at_limit_board
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters, is_at_limit_board
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 LimitLadderVariant = Literal["by_height", "by_sector"]
@@ -81,7 +81,7 @@ def build_limit_ladder_candidates(
     """涨停池：limit_times ≥ 1 或近似涨停，经硬过滤。"""
     enriched = [enrich_limit_times(row, limit_times_map=limit_times_map) for row in rows]
     limit_up = [row for row in enriched if resolve_limit_times(row, limit_times_map=limit_times_map) >= 1]
-    return [coerce_quote_row(row) for row in apply_screening_filters(limit_up)]
+    return [coerce_quote_row(row) for row in apply_recipe_filters(limit_up)]
 
 
 def count_ladder_buckets(candidates: QuoteRowsLike) -> dict[str, int]:

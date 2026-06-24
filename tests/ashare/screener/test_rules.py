@@ -28,7 +28,7 @@ def _quote(symbol: str, **kwargs) -> dict:
 
 def test_apply_quote_preserves_fundamental_fields(monkeypatch):
     monkeypatch.setattr(
-        "vnpy_ashare.screener.preset.rules.apply_screening_filters",
+        "vnpy_ashare.screener.preset.rules.apply_recipe_filters",
         lambda rows: rows,
     )
     rows = apply_quote_preset(
@@ -57,7 +57,7 @@ def test_apply_quote_preserves_fundamental_fields(monkeypatch):
 
 def test_apply_quote_maps_close_from_last_price(monkeypatch):
     monkeypatch.setattr(
-        "vnpy_ashare.screener.preset.rules.apply_screening_filters",
+        "vnpy_ashare.screener.preset.rules.apply_recipe_filters",
         lambda rows: rows,
     )
     rows = apply_quote_preset(
@@ -129,7 +129,7 @@ def test_apply_large_cap():
 
 def test_apply_moneyflow_in_sets_flow_kind(monkeypatch):
     monkeypatch.setattr(
-        "vnpy_ashare.screener.preset.rules.apply_screening_filters",
+        "vnpy_ashare.screener.preset.rules.apply_recipe_filters",
         lambda rows: rows,
     )
     rows = apply_moneyflow_in(

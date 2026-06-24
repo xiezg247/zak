@@ -11,7 +11,7 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row, quote_hits
 from vnpy_ashare.screener.dimensions.scoring import blended_score
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
 
 _VOLUME_RATIO_TIER_2 = 2.0
@@ -42,7 +42,7 @@ def run_volume_ratio(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
     if not enriched:
         return _volume_ratio_from_tushare_only(pool_size, weight=weight)
 
-    filtered = apply_screening_filters(enriched)
+    filtered = apply_recipe_filters(enriched)
     filtered.sort(key=lambda item: float(item.get("volume_ratio") or 0), reverse=True)
     rows: list[QuoteRow] = []
     for item in filtered[:pool_size]:
@@ -94,7 +94,7 @@ def _volume_ratio_from_tushare_only(
         return [], 0
     if not basic_rows:
         return [], 0
-    filtered_rows = apply_screening_filters(
+    filtered_rows = apply_recipe_filters(
         [row for row in basic_rows if float(row.get("volume_ratio") or 0) > 0],
     )
     sorted_rows = sorted(

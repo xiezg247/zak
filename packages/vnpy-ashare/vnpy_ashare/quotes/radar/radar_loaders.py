@@ -64,7 +64,7 @@ from vnpy_ashare.screener.dimensions.moneyflow_resolve import (
 from vnpy_ashare.screener.dimensions.volume_dedup import build_volume_discovery_subtitle
 from vnpy_ashare.screener.dimensions.volume_ratio import run_volume_ratio
 from vnpy_ashare.screener.dimensions.volume_surge import run_volume_surge
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 from vnpy_ashare.screener.run.run_store import get_latest_run, is_auto_run, is_strategy_run, list_runs
 
@@ -318,7 +318,7 @@ def _discovery_hits_card(
         if mapped_name:
             row["name"] = mapped_name
         filter_inputs.append(row)
-    filtered_rows = apply_screening_filters(filter_inputs)
+    filtered_rows = apply_recipe_filters(filter_inputs)
     allowed_vt = {str(row.get("vt_symbol") or "") for row in filtered_rows}
     for hit in hits:
         vt = str(hit.row.get("vt_symbol") or "").strip()
@@ -376,7 +376,7 @@ def _volume_liquidity_proxy(pool_size: int, total: int):
     except MarketQuotesLoadError:
         return [], total
 
-    ranked = sorted(apply_screening_filters(snapshot.rows), key=_quote_liquidity_key, reverse=True)
+    ranked = sorted(apply_recipe_filters(snapshot.rows), key=_quote_liquidity_key, reverse=True)
     hits: list[DimensionHit] = []
     for index, row in enumerate(ranked[:pool_size], start=1):
         vt_symbol = str(row.get("vt_symbol") or "")

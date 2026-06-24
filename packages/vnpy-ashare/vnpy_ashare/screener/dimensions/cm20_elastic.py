@@ -7,7 +7,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRow, QuoteRowLike, QuoteRow
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.base import DimensionHit, dimension_hit_row
-from vnpy_ashare.screener.hard_filters import apply_screening_filters, row_symbol
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters, row_symbol
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
 _CM20_MIN_CHANGE = 7.0
@@ -77,7 +77,7 @@ def run_cm20_elastic(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
             continue
         candidates.append(quote_row_copy(row, board_tag="20cm"))
 
-    filtered = apply_screening_filters(candidates)
+    filtered = apply_recipe_filters(candidates)
     if not filtered:
         return [], snapshot.total
 

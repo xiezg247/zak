@@ -43,7 +43,7 @@ ui/quotes/watchlist_signals/
 ├── panel.py           # WatchlistSignalPanel UI
 ├── controller.py      # WatchlistSignalController 刷新编排
 ├── worker.py          # WatchlistSignalWorker（QThread）
-├── cache.py           # WatchlistSignalDiskCache（SQLite）
+│   storage/cache/watchlist_signal_cache.py   # WatchlistSignalDiskCache（SQLite）
 └── splitter.py        # center_splitter 尺寸
 ```
 

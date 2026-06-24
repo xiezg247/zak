@@ -225,15 +225,6 @@ def attach_diagnose_snapshot(
     _enrich_strategy_from_diagnose(payload.get("strategy") or {}, metrics, source_label=source)
 
 
-def attach_diagnose_cache(service: AnalysisService, payload: dict[str, Any]) -> None:
-    """兼容入口：仅读取 context_store 缓存。"""
-    vt_symbol = payload.get("symbol")
-    if not vt_symbol:
-        return
-    cached = _resolve_cached_diagnose(service, vt_symbol)
-    attach_diagnose_snapshot(payload, cached, source="context_cache")
-
-
 def attach_ultra_short_strategy_context(service: AnalysisService, payload: dict[str, Any]) -> None:
     """并入极致短线维度：情绪周期 + 打板/突破信号。"""
     strategy = payload.get("strategy")

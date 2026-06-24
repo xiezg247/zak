@@ -149,7 +149,7 @@ class MarketOverviewLoaderTests(unittest.TestCase):
                 return_value=cached,
             ) as peek,
             patch(
-                "vnpy_ashare.quotes.market.market_overview_loaders._quote_rows_for_overview",
+                "vnpy_ashare.quotes.market.market_overview_loaders.load_quote_rows_for_market",
                 return_value=([], None),
             ),
             patch(

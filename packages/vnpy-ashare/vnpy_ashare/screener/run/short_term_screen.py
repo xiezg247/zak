@@ -16,12 +16,10 @@ __all__ = ["run_short_term_screen"]
 def run_short_term_screen(
     *,
     top_n: int = 12,
-    variant: str = "mainline",
     require_resonance: bool = False,
     ultra_short_only: bool = True,
 ) -> ScreenerRunResult:
     """编排极致短线选股：情绪 gate → ultra_short_unified 配方 → 可选共振交集 → 可选主池过滤。"""
-    _ = variant  # 统一配方固定主线龙头池；保留参数兼容 vnpy-radar 工具
     top_n = max(1, min(int(top_n or 12), 200))
 
     cycle = load_emotion_cycle_snapshot(fetch_if_missing=True)

@@ -19,7 +19,7 @@ from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_scr
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import enrich_recipe_rows
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.pattern.pattern_rules import PATTERN_MATCHERS, BarSeries, PatternMatch
 from vnpy_ashare.screener.preset.presets import SCREENER_CUSTOM
 from vnpy_ashare.screener.preset.rules import apply_quote_preset
@@ -186,7 +186,7 @@ def run_pattern_screen(
         hits.append((match.score, row))
 
     hits.sort(key=lambda pair: pair[0], reverse=True)
-    filtered_rows = apply_screening_filters([row for _, row in hits])[:top_n]
+    filtered_rows = apply_recipe_filters([row for _, row in hits])[:top_n]
     return build_screener_run_result(
         rows=coerce_screener_result_rows(filtered_rows),
         condition=f"形态 · {label}",

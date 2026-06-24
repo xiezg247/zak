@@ -349,7 +349,7 @@ RadarCardSpec("leader_pick", "选股·龙头", "screen", top_n=12)
 LeaderScreenWorker (QThread)
         │
         ├─► load_leader_pick_card(force_recompute=True)
-        ├─► apply_screening_filters(hard_filter_prefs)
+        ├─► apply_recipe_filters(hard_filter_prefs)
         ├─► emotion_cycle_gate (可选，退潮→空结果+提示)
         │
         ▼

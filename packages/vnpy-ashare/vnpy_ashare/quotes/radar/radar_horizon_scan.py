@@ -34,7 +34,7 @@ from vnpy_ashare.quotes.radar.radar_horizon_stats import HorizonScanStats
 from vnpy_ashare.quotes.radar.radar_pool import collect_outlook_exclusion_vt_symbols, name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_liquidity_key
 
 HORIZON_PREFILTER_TOP = 600
@@ -115,7 +115,7 @@ def prefilter_horizon_universe(
         )
 
     scanned_total = int(snapshot.total or len(snapshot.rows))
-    filtered = apply_screening_filters(list(snapshot.rows))
+    filtered = apply_recipe_filters(list(snapshot.rows))
     min_bars = horizon_min_signal_bars(config)
     k_ready = collect_daily_k_ready_vt_symbols(min_bars, config=config)
     candidates: list[dict[str, Any]] = []

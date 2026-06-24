@@ -36,7 +36,7 @@ class FirstBoardTest(unittest.TestCase):
     def test_format_seal_time_label(self) -> None:
         self.assertEqual(format_seal_time_label("103015"), "10:30 封板")
 
-    @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.apply_screening_filters", side_effect=lambda rows: rows)
+    @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.apply_recipe_filters", side_effect=lambda rows: rows)
     def test_build_first_board_candidates_only_first_board(self, _filters) -> None:
         rows = [_row("A", boards=1), _row("B", boards=3)]
         candidates = build_first_board_candidates(rows, limit_times_map={})

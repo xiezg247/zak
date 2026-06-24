@@ -10,7 +10,7 @@ from vnpy_ashare.quotes.radar.radar_resonance_store import (
     set_radar_resonance_entries,
 )
 from vnpy_ashare.screener.run.radar_resonance import (
-    resonance_entries_to_rows,
+    resonance_entries_to_result_rows,
     run_radar_resonance_screen,
 )
 
@@ -28,7 +28,7 @@ def _entry(symbol: str, *, card_count: int = 2) -> RadarResonanceEntry:
 
 
 def test_resonance_entries_to_rows_includes_hit_reason():
-    rows = resonance_entries_to_rows((_entry("AAA"),))
+    rows = [row.to_dict() for row in resonance_entries_to_result_rows((_entry("AAA"),))]
     assert rows[0]["symbol"] == "AAA"
     assert "共振 2" in rows[0]["hit_reason"]
     assert rows[0]["source"] == "radar"

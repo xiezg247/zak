@@ -58,7 +58,7 @@ ui/quotes/watchlist_positions/
 ├── panel.py
 ├── controller.py
 ├── worker.py          # WatchlistPositionWorker
-├── cache.py           # 磁盘短缓存
+│   storage/cache/watchlist_position_cache.py   # 磁盘短缓存
 └── dialog.py          # PositionEditDialog
 quotes/misc/position_anomaly.py      # 异动标签
 ```

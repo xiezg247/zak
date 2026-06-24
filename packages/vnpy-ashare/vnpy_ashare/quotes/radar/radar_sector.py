@@ -15,7 +15,7 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, apply
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.dimensions.sector_strength import run_sector_strength
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.sector.sector_summary import (
     attach_industry,
     attach_sector_fields,
@@ -96,11 +96,6 @@ def _row_from_sector_hit(row: QuoteRowLike) -> RadarRow | None:
         sub_label=sub_label,
         sub_value=sub_value,
     )
-
-
-def _build_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
-    """兼容旧 variant=leaders：与 leaders_tiered 相同。"""
-    return _build_leaders_tiered_rows(pool_size)
 
 
 def _build_leaders_tiered_rows(pool_size: int) -> tuple[list[RadarRow], str, int, tuple[str, ...]]:
@@ -220,7 +215,7 @@ def _build_concept_leaders_rows(pool_size: int) -> tuple[list[RadarRow], str, in
 
     hot_set = set(hot_names)
     candidates: list[dict] = []
-    for row in apply_screening_filters(list(snapshot.rows)):
+    for row in apply_recipe_filters(list(snapshot.rows)):
         vt_symbol = str(row.get("vt_symbol") or "").strip()
         concept = vt_to_concept.get(vt_symbol)
         if not concept or concept not in hot_set:
@@ -271,7 +266,7 @@ def load_sector_theme(spec: RadarCardSpec, *, variant: str = "leaders_tiered") -
     elif variant == "concept_leaders":
         rows, subtitle, total, sector_names = _build_concept_leaders_rows(spec.top_n)
         empty = "暂无概念板块数据，请先运行 Tushare 概念预拉取任务。"
-    elif variant in {"leaders", "leaders_tiered"}:
+    elif variant == "leaders_tiered":
         rows, subtitle, total, sector_names = _build_leaders_tiered_rows(spec.top_n)
         empty = "暂无板块主线数据，请先同步行业信息或采集行情。"
     else:

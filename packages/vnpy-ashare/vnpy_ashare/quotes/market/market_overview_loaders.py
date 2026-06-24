@@ -37,9 +37,6 @@ __all__ = [
 SECTOR_TOP_N = 10
 SECTOR_MIN_STOCKS = 3
 
-# 保留别名，便于测试 patch 与渐进迁移
-_quote_rows_for_overview = load_quote_rows_for_market
-
 
 def _load_off_session_breadth(*, trade_date: str, force: bool) -> MarketBreadthSnapshot | None:
     pct_map = fetch_daily_pct_map(trade_date)
@@ -191,7 +188,7 @@ def load_market_overview(*, intraday: bool = True, force: bool = False) -> Marke
 
     allow_network = intraday or force
     factor_date = resolve_latest_factor_trade_date()
-    rows, updated_at = _quote_rows_for_overview(allow_network=allow_network, force=force)
+    rows, updated_at = load_quote_rows_for_market(allow_network=allow_network, force=force)
     indices = _fetch_sorted_indices()
     store_cached_indices(indices)
     environment = load_market_environment(force=force, factor_trade_date=factor_date)

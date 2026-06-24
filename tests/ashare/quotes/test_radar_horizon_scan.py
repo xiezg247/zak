@@ -101,7 +101,7 @@ def test_prefilter_skips_symbols_without_local_daily_k() -> None:
         return_value=snapshot,
     ):
         with patch(
-            "vnpy_ashare.quotes.radar.radar_horizon_scan.apply_screening_filters",
+            "vnpy_ashare.quotes.radar.radar_horizon_scan.apply_recipe_filters",
             side_effect=lambda rows: rows,
         ):
             with patch(

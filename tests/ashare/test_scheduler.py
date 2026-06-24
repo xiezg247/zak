@@ -30,21 +30,6 @@ class TestSchedulerConfig(unittest.TestCase):
             self.assertEqual(loaded.collect_quotes.interval_seconds, 30)
             self.assertEqual(loaded.batch_download_universe.download_start, "2018-01-01")
 
-    def test_legacy_batch_download_start_migrates_to_universe(self) -> None:
-        import json
-
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "scheduler.json"
-            path.write_text(
-                '{"batch_download": {"enabled": false, "download_start": "2019-03-01"}}',
-                encoding="utf-8",
-            )
-            loaded = load_scheduler_config(path)
-            self.assertEqual(loaded.batch_download_universe.download_start, "2019-03-01")
-            saved = json.loads(path.read_text(encoding="utf-8"))
-            self.assertNotIn("batch_download", saved)
-            self.assertEqual(saved["batch_download_universe"]["download_start"], "2019-03-01")
-
     def test_auto_screen_config_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "scheduler.json"
@@ -111,84 +96,13 @@ class TestSchedulerConfig(unittest.TestCase):
             self.assertTrue(loaded.batch_fill_stale.enabled)
             self.assertEqual(loaded.batch_fill_stale.cron_hour, 17)
 
-    def test_legacy_cron_defaults_migrate_to_spaced_schedule(self) -> None:
-        import json
-
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "scheduler.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "prefetch_moneyflow": {
-                            "enabled": False,
-                            "cron_hour": 16,
-                            "cron_minute": 31,
-                            "cron_day_of_week": "mon-fri",
-                        },
-                        "prefetch_tushare": {
-                            "enabled": False,
-                            "cron_hour": 16,
-                            "cron_minute": 32,
-                            "cron_day_of_week": "mon-fri",
-                        },
-                        "screen_post_close": {
-                            "enabled": False,
-                            "cron_hour": 16,
-                            "cron_minute": 35,
-                            "cron_day_of_week": "mon-fri",
-                        },
-                    },
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
-            )
-            loaded = load_scheduler_config(path)
-            self.assertEqual(loaded.prefetch_moneyflow.cron_minute, 0)
-            self.assertEqual(loaded.prefetch_moneyflow.cron_hour, 17)
-            self.assertEqual(loaded.prefetch_tushare.cron_minute, 10)
-            self.assertEqual(loaded.screen_post_close.cron_hour, 18)
-            self.assertEqual(loaded.screen_post_close.cron_minute, 0)
-
-            saved = json.loads(path.read_text(encoding="utf-8"))
-            self.assertEqual(saved["prefetch_moneyflow"]["cron_hour"], 17)
-            self.assertEqual(saved["screen_post_close"]["cron_hour"], 18)
-
-    def test_spaced_cron_defaults_migrate_after_batch_download(self) -> None:
-        import json
-
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "scheduler.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "prefetch_moneyflow": {
-                            "enabled": False,
-                            "cron_hour": 16,
-                            "cron_minute": 30,
-                            "cron_day_of_week": "mon-fri",
-                        },
-                        "batch_fill_stale": {
-                            "enabled": False,
-                            "cron_hour": 18,
-                            "cron_minute": 0,
-                            "cron_day_of_week": "mon-fri",
-                        },
-                    },
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
-            )
-            loaded = load_scheduler_config(path)
-            self.assertEqual(loaded.prefetch_moneyflow.cron_hour, 17)
-            self.assertEqual(loaded.batch_fill_stale.cron_minute, 30)
-
     def test_batch_download_has_buffer_before_next_job(self) -> None:
         config = SchedulerConfig()
         download_end = config.batch_download_universe.cron_hour * 60 + config.batch_download_universe.cron_minute + 30
         next_job = config.prefetch_moneyflow.cron_hour * 60 + config.prefetch_moneyflow.cron_minute
         self.assertGreaterEqual(next_job - download_end, 10)
 
-    def test_custom_cron_not_migrated(self) -> None:
+    def test_custom_cron_preserved_on_roundtrip(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "scheduler.json"
             config = SchedulerConfig()
@@ -234,37 +148,31 @@ class TestSchedulerConfig(unittest.TestCase):
         manager = TaskSchedulerManager()
         manager._config.collect_quotes.enabled = True
         manager._config.collect_quotes.interval_seconds = 12
+        manager.start()
 
         with patch(
             "vnpy_ashare.scheduler.manager.is_ashare_trading_session",
             return_value=True,
         ):
-            with (
-                patch(
-                    "vnpy_ashare.scheduler.manager.collect_market_quotes",
-                    return_value=JobResult(success=True, message="ok"),
-                ),
-                patch(
-                    "vnpy_ashare.scheduler.manager.warm_market_summary",
-                    return_value=JobResult(success=True, message="warm"),
-                ),
-            ):
-                manager.start()
-                time.sleep(0.2)
+            with patch.object(
+                manager,
+                "_run_collect_quotes",
+                return_value=JobResult(success=True, message="ok"),
+            ) as mock_run:
+                manager._wrap_job("collect_quotes", force=False)
+                mock_run.assert_called_once()
 
-                status = manager.get_status("collect_quotes")
-                self.assertIsNotNone(status)
-                assert status is not None
-                self.assertIn("交易时段内", status.schedule_text)
-                self.assertFalse(status.running)
-                self.assertIn("ok", status.last_message or "")
+        status = manager.get_status("collect_quotes")
+        self.assertIsNotNone(status)
+        assert status is not None
+        self.assertIn("ok", status.last_message or "")
 
-                job = manager._scheduler.get_job("collect_quotes")
-                self.assertIsNotNone(job)
-                assert job is not None
-                self.assertIsNotNone(job.next_run_time)
+        job = manager._scheduler.get_job("collect_quotes")
+        self.assertIsNotNone(job)
+        assert job is not None
+        self.assertIsNotNone(job.next_run_time)
 
-                manager.shutdown()
+        manager.shutdown()
 
     def test_collect_quotes_skips_off_hours(self) -> None:
         manager = TaskSchedulerManager()

@@ -9,7 +9,7 @@ from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_volume_ratio_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
 
 
@@ -44,7 +44,7 @@ def run_volume_surge(pool_size: int, *, weight: float) -> tuple[list[DimensionHi
     if not enriched:
         return [], snapshot.total
 
-    filtered = apply_screening_filters(enriched)
+    filtered = apply_recipe_filters(enriched)
     filtered.sort(key=lambda item: float(item.get("relative_volume") or 0), reverse=True)
     rows: list[QuoteRow] = []
     for item in filtered[:pool_size]:

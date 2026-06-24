@@ -449,7 +449,3 @@ def apply_recipe_filters(rows: Sequence[T_ScreeningRow]) -> list[T_ScreeningRow]
             allowed_industries=allowed_industries,
         )
     ]
-
-
-# 策略选股等路径别名
-apply_screening_filters = apply_recipe_filters

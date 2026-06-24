@@ -11,7 +11,7 @@ from vnpy_ashare.quotes.radar.radar_models import RadarCardData, RadarRow, merge
 from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
-from vnpy_ashare.screener.hard_filters import apply_screening_filters, is_at_limit_board, limit_board_threshold_pct
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters, is_at_limit_board, limit_board_threshold_pct
 from vnpy_ashare.trading.signals.seal_reopen import classify_seal_reopen, format_seal_reopen_label
 
 _BREAK_KINDS = frozenset({"broken", "weak"})
@@ -36,7 +36,7 @@ def _severity_key(kind: str, *, boards: int, change: float) -> tuple[int, float]
 def _collect_limit_break_candidates(snapshot_rows: list) -> list[tuple[dict, str, str, str]]:
     """返回 (row, kind, metric_label, metric_value)。"""
     by_vt: dict[str, dict] = {}
-    for row in apply_screening_filters(snapshot_rows):
+    for row in apply_recipe_filters(snapshot_rows):
         vt = str(row.get("vt_symbol") or "").strip()
         if vt:
             by_vt[vt] = merge_row_quotes(row)

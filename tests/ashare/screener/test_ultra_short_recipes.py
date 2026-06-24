@@ -97,7 +97,7 @@ class UltraShortRecipeTest(unittest.TestCase):
         self.assertEqual(len(hits), 1)
         self.assertEqual(hits[0].dimension_id, "limit_board")
 
-    @patch("vnpy_ashare.screener.dimensions.cm20_elastic.apply_screening_filters", side_effect=lambda rows: rows)
+    @patch("vnpy_ashare.screener.dimensions.cm20_elastic.apply_recipe_filters", side_effect=lambda rows: rows)
     @patch("vnpy_ashare.screener.dimensions.cm20_elastic.attach_industry", side_effect=lambda rows: rows)
     @patch("vnpy_ashare.screener.dimensions.cm20_elastic.load_screening_quote_snapshot")
     def test_run_cm20_elastic_dimension(self, mock_snapshot, _industry, _filters) -> None:

@@ -147,20 +147,6 @@ def run_predict_scan(*, top_n: int = 8) -> PredictScanResult:
     return scan
 
 
-def run_predict_baseline_scan(*, top_n: int = 8) -> PredictScanResult:
-    """仅基线扫描并写缓存（兼容旧调用）。"""
-    scan = scan_predict_baseline(top_n=top_n)
-
-    put_predict_cache(
-        variant=scan.variant,
-        rows=scan.rows,
-        stats=scan.stats,
-        model_label=scan.model_label,
-        computed_at=scan.computed_at,
-    )
-    return scan
-
-
 def build_predict_subtitle(
     *,
     horizon_days: int,

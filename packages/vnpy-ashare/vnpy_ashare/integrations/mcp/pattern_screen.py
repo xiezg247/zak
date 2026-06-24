@@ -11,7 +11,7 @@ from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.pattern.pattern_screen import pattern_label
 from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 
@@ -157,7 +157,7 @@ def run_pattern_screen_mcp(
 
     # 多取候选，硬过滤 ST / 停牌 / 流动性后再截断 top_n
     rows, total_scanned = parse_wenda_screen_rows(raw, top_n=max(top_n * 5, top_n + 12))
-    filtered_rows = apply_screening_filters(rows)[:top_n]
+    filtered_rows = apply_recipe_filters(rows)[:top_n]
     if not filtered_rows:
         return None
 

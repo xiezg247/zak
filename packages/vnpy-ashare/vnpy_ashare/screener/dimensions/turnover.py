@@ -10,7 +10,7 @@ from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 from vnpy_ashare.screener.data.screening_context import get_avg_turnover_map
 from vnpy_ashare.screener.dimensions.base import DimensionHit, quote_hits
 from vnpy_ashare.screener.dimensions.scoring import relative_ratio
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.preset.rules import _quote_row
 
 
@@ -36,7 +36,7 @@ def run_turnover(pool_size: int, *, weight: float) -> tuple[list[DimensionHit], 
     if not enriched:
         return [], snapshot.total
 
-    filtered = apply_screening_filters(enriched)
+    filtered = apply_recipe_filters(enriched)
     filtered.sort(key=lambda item: float(item.get("relative_turnover") or 0), reverse=True)
     rows: list[QuoteRow] = []
     for item in filtered[:pool_size]:

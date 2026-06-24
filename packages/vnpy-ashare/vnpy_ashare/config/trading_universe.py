@@ -41,11 +41,6 @@ def effective_market_board_filter(*, recipe_boards: frozenset[str]) -> MarketBoa
     return MarketBoardFilter(active=True, boards=trading & recipe_boards)
 
 
-def effective_allowed_market_boards(*, recipe_boards: frozenset[str]) -> frozenset[str]:
-    """有效板块集合（兼容旧调用）。"""
-    return effective_market_board_filter(recipe_boards=recipe_boards).boards
-
-
 def passes_trading_board(symbol: str) -> bool:
     """标的是否在账户可交易板块内；未配置交易上限时恒为 True。"""
     allowed = get_trading_allowed_boards()

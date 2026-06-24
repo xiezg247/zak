@@ -33,7 +33,7 @@ class RadarSectorFlowLinkTests(unittest.TestCase):
             "vnpy_ashare.quotes.radar.radar_sector.run_sector_strength",
             return_value=(hits, 100),
         ):
-            data = load_sector_theme(RADAR_CARD_BY_ID["sector_theme"], variant="leaders")
+            data = load_sector_theme(RADAR_CARD_BY_ID["sector_theme"], variant="leaders_tiered")
         self.assertEqual(data.sector_names[:2], ("银行", "白酒"))
 
 

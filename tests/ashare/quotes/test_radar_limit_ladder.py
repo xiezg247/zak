@@ -41,7 +41,7 @@ class LimitLadderTest(unittest.TestCase):
         boards = resolve_limit_times(row, limit_times_map={"600000.SH": 4})
         self.assertEqual(boards, 4)
 
-    @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.apply_screening_filters", side_effect=lambda rows: rows)
+    @patch("vnpy_ashare.quotes.radar.radar_limit_ladder.apply_recipe_filters", side_effect=lambda rows: rows)
     def test_build_limit_ladder_candidates_filters_non_limit(self, _filters) -> None:
         rows = [_row("A", boards=3), _row("B", boards=0, amount=1e7)]
         rows[1]["change_pct"] = 3.0

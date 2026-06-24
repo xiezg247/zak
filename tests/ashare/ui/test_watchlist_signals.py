@@ -253,7 +253,7 @@ class SignalDiskCacheTests(unittest.TestCase):
 
     def test_disk_cache_roundtrip(self) -> None:
         from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+        from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -280,7 +280,7 @@ class SignalDiskCacheTests(unittest.TestCase):
 
     def test_disk_cache_miss_when_bar_as_of_changes(self) -> None:
         from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+        from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -307,7 +307,7 @@ class SignalDiskCacheTests(unittest.TestCase):
 
     def test_load_many_accepts_tickflow_symbol(self) -> None:
         from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+        from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -336,7 +336,7 @@ class SignalDiskCacheTests(unittest.TestCase):
 
     def test_load_many_falls_back_to_latest_snapshot(self) -> None:
         from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-        from vnpy_ashare.ui.quotes.watchlist_signals.cache import WatchlistSignalDiskCache
+        from vnpy_ashare.storage.cache.watchlist_signal_cache import WatchlistSignalDiskCache
 
         snap = SignalSnapshot(
             vt_symbol="600000.SSE",
@@ -660,13 +660,6 @@ class SignalControllerMemoryCacheTests(unittest.TestCase):
 
 
 class WorkerPayloadTests(unittest.TestCase):
-    def test_unwrap_legacy_dict(self) -> None:
-        from vnpy_ashare.ui.quotes.watchlist_signals.worker import unwrap_worker_payload
-
-        payload = unwrap_worker_payload({"600000.SSE": object()})
-        self.assertIn("600000.SSE", payload.signals)
-        self.assertEqual(payload.continuations, {})
-
     def test_unwrap_structured_payload(self) -> None:
         from vnpy_ashare.ui.quotes.watchlist_signals.worker import (
             WatchlistSignalWorkerPayload,
@@ -677,6 +670,12 @@ class WorkerPayloadTests(unittest.TestCase):
         payload = unwrap_worker_payload(raw)
         self.assertEqual(payload.signals, {"a": 1})
         self.assertEqual(payload.continuations, {"a": 2})
+
+    def test_unwrap_rejects_legacy_dict(self) -> None:
+        from vnpy_ashare.ui.quotes.watchlist_signals.worker import unwrap_worker_payload
+
+        with self.assertRaises(TypeError):
+            unwrap_worker_payload({"600000.SSE": object()})
 
 
 class SignalCommitCacheTests(unittest.TestCase):

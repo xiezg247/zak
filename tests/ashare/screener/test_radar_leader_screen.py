@@ -9,7 +9,7 @@ import pytest
 from vnpy_ashare.quotes.market.emotion_cycle import classify_emotion_cycle
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs
 from vnpy_ashare.quotes.radar.radar_leader import rank_sector_leaders
-from vnpy_ashare.screener.run.radar_leader_screen import leader_scored_to_row, run_leader_screen
+from vnpy_ashare.screener.run.radar_leader_screen import leader_scored_to_result_row, run_leader_screen
 
 
 def _candidate(symbol: str, *, limit_times: int = 3) -> dict:
@@ -28,7 +28,7 @@ def _candidate(symbol: str, *, limit_times: int = 3) -> dict:
 
 def test_leader_scored_to_row_includes_hit_reason():
     scored = rank_sector_leaders([_candidate("AAA"), _candidate("BBB", limit_times=2)])[0]
-    row = leader_scored_to_row(scored)
+    row = leader_scored_to_result_row(scored).to_dict()
     assert row["symbol"] == scored.row.symbol
     assert row["source"] == "radar_leader"
     assert "龙头" in row["hit_reason"]

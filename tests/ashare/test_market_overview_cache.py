@@ -71,7 +71,7 @@ class MarketOverviewCacheTests(unittest.TestCase):
                 "vnpy_ashare.quotes.market.market_overview_loaders.load_sector_ranks",
             ) as load_sectors,
             patch(
-                "vnpy_ashare.quotes.market.market_overview_loaders._quote_rows_for_overview",
+                "vnpy_ashare.quotes.market.market_overview_loaders.load_quote_rows_for_market",
             ) as load_rows,
         ):
             result = load_market_overview(intraday=False)

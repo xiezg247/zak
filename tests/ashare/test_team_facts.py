@@ -85,7 +85,7 @@ def test_prefetch_team_facts_invalid_symbol():
 
 
 @patch("vnpy_ashare.services.analysis_detail.team_facts.build_team_market_context", return_value={"summary_lines": []})
-def test_attach_diagnose_cache_enriches_financial(_mock_market: MagicMock):
+def test_prefetch_enriches_financial_from_diagnose_cache(_mock_market: MagicMock):
     service = MagicMock()
     service.get_diagnose_result.return_value = {
         "symbol": "600519.SSE",

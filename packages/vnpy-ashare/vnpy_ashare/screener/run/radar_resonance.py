@@ -49,8 +49,3 @@ def run_radar_resonance_screen(*, top_n: int = 50) -> ScreenerRunResult:
         total_scanned=len(entries),
         source="radar",
     )
-
-
-def resonance_entries_to_rows(entries: tuple[RadarResonanceEntry, ...]) -> list[dict]:
-    """兼容旧调用：返回 flat dict 列表。"""
-    return [row.to_dict() for row in resonance_entries_to_result_rows(entries)]

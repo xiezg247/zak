@@ -6,7 +6,7 @@ from vnpy_ashare.domain.market.quote_row import QuoteRowsLike
 from vnpy_ashare.domain.screener.result_row import coerce_screener_result_rows
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
-from vnpy_ashare.screener.hard_filters import apply_screening_filters
+from vnpy_ashare.screener.hard_filters import apply_recipe_filters
 from vnpy_ashare.screener.run.result import ScreenerRunResult, build_screener_run_result
 from vnpy_ashare.screener.sector.sector_summary import attach_industry
 
@@ -32,7 +32,7 @@ def run_industry_screen(
     if not matched:
         raise RuntimeError(f"未找到行业「{label}」的成分股，请检查行业映射是否已同步。")
 
-    filtered = apply_screening_filters(matched)
+    filtered = apply_recipe_filters(matched)
     sorted_rows = sorted(filtered, key=lambda row: float(row.get("change_pct") or 0), reverse=True)
     top_n = max(1, min(int(top_n or 50), 200))
     updated_at = format_china_datetime()

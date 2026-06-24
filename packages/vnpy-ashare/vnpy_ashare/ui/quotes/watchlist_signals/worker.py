@@ -22,17 +22,9 @@ class WatchlistSignalWorkerPayload:
 
 
 def unwrap_worker_payload(raw: object) -> WatchlistSignalWorkerPayload:
-    """解析 Worker finished 载荷（兼容旧版纯 signals dict）。"""
     if isinstance(raw, WatchlistSignalWorkerPayload):
         return raw
-    if isinstance(raw, dict) and "signals" in raw:
-        return WatchlistSignalWorkerPayload(
-            signals=dict(raw.get("signals") or {}),
-            continuations=dict(raw.get("continuations") or {}),
-        )
-    if isinstance(raw, dict):
-        return WatchlistSignalWorkerPayload(signals=dict(raw))
-    return WatchlistSignalWorkerPayload()
+    raise TypeError(f"expected WatchlistSignalWorkerPayload, got {type(raw)!r}")
 
 
 class WatchlistSignalWorker(QtCore.QThread):
