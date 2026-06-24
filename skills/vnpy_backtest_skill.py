@@ -21,7 +21,7 @@ class VnpyBacktestSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="get_backtest_result",
-                description="获取最近一次策略回测的摘要指标（收益、回撤、夏普等）",
+                description="获取最近一次策略回测的摘要指标（收益、回撤、夏普等）；解读回测时必调，终端自动展示权益曲线迷你图",
                 parameters={"type": "object", "properties": {}},
             ),
             ToolSpec(

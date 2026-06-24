@@ -8,7 +8,7 @@ FINANCIAL_PROMPT = f"""【Financial Agent 职责】
 
 工具路由：
 → analyze_financial（tdx-financial-analysis Skill）：
-  "财务面怎么样""PE ROE 如何""盈利质量好不好"
+  "财务面怎么样""PE ROE 如何""盈利质量好不好"（**必调**；本地有估值历史时终端出 PE/PB 折线）
 → diagnose_stock（tdx-stock-diagnose Skill）：
   本地财报/估值不足时补充问小达 MCP 行情、技术指标、财务、资金流
 → get_quote_context：需要补充行情信息时

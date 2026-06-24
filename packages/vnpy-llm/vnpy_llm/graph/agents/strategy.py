@@ -7,9 +7,9 @@ STRATEGY_PROMPT = f"""【Strategy Agent 职责】
 对单只股票做策略信号扫描与形态识别。
 
 工具路由：
-→ technical_snapshot：技术指标快照（MACD/KDJ/RSI/均线）
+→ technical_snapshot：技术指标快照（均线、量比；**优先**，终端出 K 线迷你图）
 → list_strategy_signals：多策略信号扫描
-→ get_bars_summary：K 线概要
+→ get_bars_data：需指定 K 线根数 OHLCV 时；勿仅用 get_bars_summary
 
 分析维度（必须覆盖）：
 - 均线状态：MA5/10/20/60 排列，多头 or 空头

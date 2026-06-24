@@ -14,7 +14,7 @@ SCREENING_PROMPT = """【Screening Agent 职责】
 → screen_by_pattern：形态选股（老鸭头/均线多头/W底/热点活跃）
 → screen_reference_peer：标杆对标
 → run_recipe(recipe_id=ultra_short_unified)：极致短线雷达统一配方（与 vnpy-radar run_short_term_screen 同源）
-→ explain_screening_run / get_screening_context：选股结果解读
+→ explain_screening_run / get_screening_context：选股结果解读（explain 优先；解读 Top 时 batch_top_n≥3 以出 K 线迷你图）
 
 雷达龙头/共振编排 → vnpy-radar（get_radar_snapshot、run_short_term_screen），非本 Agent。
 

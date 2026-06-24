@@ -16,7 +16,7 @@ class VnpyAnalysisSkill(SkillTemplate):
         return [
             ToolSpec(
                 name="technical_snapshot",
-                description="查询本地 K 线的均线排列、区间涨跌、量比等技术面快照",
+                description="查询本地 K 线的均线排列、区间涨跌、量比等技术面快照；终端自动展示 K 线迷你图。单票技术面/K线/形态问题优先于 get_bars_summary",
                 parameters={
                     "type": "object",
                     "properties": {
@@ -31,7 +31,8 @@ class VnpyAnalysisSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="explain_screening_run",
-                description=("编排选股解读上下文：结果快照、板块分布、同配方与上次 diff、可选技术面 batch。解读选股结果时优先于 get_screening_context。"),
+                description=("编排选股解读上下文：结果快照、板块分布、同配方与上次 diff、可选技术面 batch。"
+                    "解读选股结果时优先于 get_screening_context；设 batch_top_n≥3 时终端为 Top 标的展示 K 线迷你图。"),
                 parameters={
                     "type": "object",
                     "properties": {
@@ -41,7 +42,7 @@ class VnpyAnalysisSkill(SkillTemplate):
                         },
                         "batch_top_n": {
                             "type": "integer",
-                            "description": "对前 N 只（最多 10）附加技术面快照，默认 5",
+                            "description": "对前 N 只（最多 10）附加技术面快照并出 K 线迷你图，解读 Top 时建议≥3，默认 5",
                         },
                     },
                 },

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_llm.graph.state import AgentName, GraphStreamContext
-from vnpy_llm.routing.base_prompt import BASE_PROMPT
+from vnpy_llm.routing.base_prompt import FULL_BASE_PROMPT
 
 _AGENT_DOMAIN_GETTERS: dict[AgentName, str] = {}
 
@@ -28,7 +28,7 @@ def build_agent_system_prompt(
     顺序：合规基座 → 域职责 → 策略表（回测）→ 工具/Skill/MCP → 页面上下文
          → 终端上下文 → 本轮 routing_hint → handoff 续接说明
     """
-    parts = [BASE_PROMPT, f"【当前 Agent】{agent}"]
+    parts = [FULL_BASE_PROMPT, f"【当前 Agent】{agent}"]
     domain = get_agent_domain_prompt(agent)
     if domain:
         parts.append(domain)

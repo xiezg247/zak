@@ -13,7 +13,7 @@ RADAR_PROMPT = """【Radar Agent 职责】
 
 协作：
 → get_emotion_cycle（vnpy-sentiment）：「能不能做」类问题
-→ explain_screening_run / get_screening_context：落库结果解读
+→ explain_screening_run / get_screening_context：落库结果解读（batch_top_n≥3 时终端为 Top 标的出 K 线迷你图）
 → vnpy-watchlist：用户明确要求加自选时
 
 规则：

@@ -16,11 +16,11 @@ MARKET_PROMPT = """【Market Agent 职责】
 
 行情 / 技术：
 → get_quote_context：当前价格、涨跌、选中标的行情
-→ technical_snapshot：技术面、均线、量比、短期趋势
+→ technical_snapshot：技术面、均线、量比、短期趋势（**优先**；终端自动出 K 线迷你图）
 → list_strategy_signals / list_watchlist_signal_panel：双均线等策略信号（规则计算，非买卖建议）
 → historical_pattern_summary：最近走势、区间统计（仅历史，禁止预测未来）
 → trend_scenario_summary：走势情景分析（bull/base/bear 三情景；一次调用优先；禁止确定性预测）
-→ get_bars_summary / get_bars_data：本地 K 线（无数据时提示下载日 K）
+→ get_bars_data：需指定根数 OHLCV 时调用（出 K 线迷你图）；get_bars_summary 仅作条数/涨跌概览，不出图
 → get_watchlist / list_watchlist_positions / add_to_watchlist / remove_from_watchlist：自选 CRUD
 → get_stock_notes / append_stock_note_entry / update_stock_note_memo：个股投研笔记（备忘 + 流水）
 → list_stock_analysis_reports / get_stock_analysis_report：历史 AI 分析报告（摘要与全文）

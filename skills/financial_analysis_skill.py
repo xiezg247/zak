@@ -17,9 +17,9 @@ class FinancialAnalysisSkill(SkillTemplate):
             ToolSpec(
                 name="analyze_financial",
                 description=(
-                    "对单只股票做财务深度分析。返回盈利能力（ROE/毛利率/净利率/扣非净利润同比）、"
-                    "成长性（营收/利润 CAGR 近3年）、估值（PE(TTM)/PB/PS 与行业均值对比）、"
-                    "偿债能力（资产负债率/流动比率）。用户问「财务面」「PE ROE」「盈利质量」时优先调用。"
+                    "对单只股票做财务深度分析。返回盈利能力、成长性、估值、偿债能力。"
+                    "用户问「财务面」「PE ROE」「盈利质量」「估值趋势」时优先调用；"
+                    "本地有估值历史时终端自动展示 PE/PB 折线迷你图。"
                 ),
                 parameters={
                     "type": "object",

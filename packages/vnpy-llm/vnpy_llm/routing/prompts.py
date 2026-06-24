@@ -2,19 +2,20 @@
 
 from strategies.registry import STRATEGY_REGISTRY
 from vnpy_common.ai.access import build_market_ai_prompt
-from vnpy_llm.routing.base_prompt import BASE_PROMPT
+from vnpy_llm.routing.base_prompt import BASE_PROMPT, FULL_BASE_PROMPT
 
 # 无工具纯文本对话（stream_chat_completion）使用的轻量补充
 GENERAL_CHAT_SUPPLEMENT = """【无工具模式】
 当前未加载 Skill 工具。勿编造行情或选股结果。
 可做 A 股投研概念解释；涉及实时数据、选股、诊断时请说明需启用工具与 API 配置。"""
 
-SYSTEM_PROMPT = f"{BASE_PROMPT}\n\n{GENERAL_CHAT_SUPPLEMENT}"
+SYSTEM_PROMPT = f"{FULL_BASE_PROMPT}\n\n{GENERAL_CHAT_SUPPLEMENT}"
 
 BACKTEST_PAGE_PROMPT = """【策略回测页】
 用户正在策略回测页。请协助解读回测指标（总收益、最大回撤、夏普、交易次数等）。
-优先引用上下文中的「最近回测摘要」；需要历史对比时调用 list_backtest_history。
-需要解读当前标的的策略规则状态时，可结合 list_strategy_signals 与 get_backtest_result。
+优先引用上下文中的「最近回测摘要」；解读当前这次回测时**必须**调用 get_backtest_result（终端会自动展示权益曲线迷你图）。
+需要历史对比时调用 list_backtest_history（对比表格，不出权益曲线）。
+需要解读当前标的的策略规则状态时，可结合 list_strategy_signals。
 不要编造回测数字或信号；若尚未回测，说明需用户先点击「开始回测」。"""
 
 BATCH_BACKTEST_PAGE_PROMPT = """【批量回测对比页】
@@ -24,7 +25,7 @@ BATCH_BACKTEST_PAGE_PROMPT = """【批量回测对比页】
 
 SCREENING_PAGE_PROMPT = """【选股页】
 用户正在查看选股结果。请优先 explain_screening_run 获取板块分布与 diff，再解读筛选列表。
-需要历史某次运行时可传 run_id；对比前几只技术面时可设 batch_top_n（最多 10）。
+解读 Top 标的时设 batch_top_n≥3（终端会为前几只展示 K 线迷你图）；需要历史某次运行时可传 run_id。
 不要编造未在结果中的标的或指标。
 意图明确：形态用 screen_by_pattern，多因子用 run_recipe，内置 preset 用 screen_by_condition。
 已保存方案、复杂自定义条件用 propose_screening / propose_recipe（解析后需用户在客户端确认再执行）。
@@ -32,7 +33,7 @@ SCREENING_PAGE_PROMPT = """【选股页】
 
 QUOTES_PAGE_PROMPT = """【看盘页】
 用户正在看盘。问「当前这只」「我选中的」时优先 get_quote_context。
-技术面问题可调用 technical_snapshot 或 get_bars_summary。
+技术面 / 均线 / 形态 / K 线：优先 technical_snapshot（自动出 K 线迷你图）；需指定天数 OHLCV 时用 get_bars_data。勿仅用 get_bars_summary。
 问「最近走势」「什么形态」时用 historical_pattern_summary（本地优先、MCP 兜底），仅描述历史统计。
 问「走势预测」「5日情景」「方向倾向」「支撑压力」时优先 trend_scenario_summary，一次调用后通常即可作答。
 问策略信号 / 双均线状态时调用 list_strategy_signals，不得给出具体买卖价位。"""

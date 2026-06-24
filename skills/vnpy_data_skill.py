@@ -17,7 +17,7 @@ class VnpyDataSkill(SkillTemplate):
         return [
             ToolSpec(
                 name="get_bars_summary",
-                description="查询本地已下载 K 线的条数、日期区间以及近 N 日区间涨跌",
+                description="查询本地 K 线的条数、日期区间以及近 N 日区间涨跌（无 OHLCV，聊天不出 K 线图；需可视化时用 get_bars_data 或 technical_snapshot）",
                 parameters={
                     "type": "object",
                     "properties": {
@@ -39,7 +39,7 @@ class VnpyDataSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="get_bars_data",
-                description="获取指定标的最近 N 根 K 线的 OHLCV 数据",
+                description="获取指定标的最近 N 根 K 线的 OHLCV；终端会在聊天中自动展示 K 线迷你图。技术面综述优先用 technical_snapshot",
                 parameters={
                     "type": "object",
                     "properties": {
