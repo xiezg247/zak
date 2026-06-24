@@ -13,6 +13,7 @@ from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
 from vnpy_ashare.domain.feed.models import FEED_RECENT_LIMIT, FeedItem
 from vnpy_ashare.ui.features.info_feed.feed_item_card import FeedItemCard
 from vnpy_common.ui.feedback import page_notify
+from vnpy_common.ui.panel_widgets import hint_label, section_title
 
 if TYPE_CHECKING:
     from vnpy_ashare.services.feed import FeedService
@@ -21,8 +22,6 @@ _ITEM_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
 
 class FeedTimelineView(QtWidgets.QWidget):
-    unread_changed = QtCore.Signal()
-
     def __init__(
         self,
         service: FeedService,
@@ -30,12 +29,27 @@ class FeedTimelineView(QtWidgets.QWidget):
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
+        self.setObjectName("InfoFeedTimelinePanel")
         self._service = service
         self._event_engine = event_engine
         self._items: list[FeedItem] = []
-        self._unread_only = False
         self._subscription_id: str | None = None
         self._cards: dict[str, FeedItemCard] = {}
+
+        self._title_label = section_title("时间线")
+        self._title_label.setObjectName("InfoFeedTimelineTitle")
+        self._count_label = hint_label("")
+        self._count_label.setObjectName("InfoFeedTimelineCount")
+
+        header = QtWidgets.QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.addWidget(self._title_label)
+        header.addStretch()
+        header.addWidget(self._count_label)
+
+        self._empty_hint = hint_label("暂无内容。添加订阅或点击「立即同步」拉取更新。")
+        self._empty_hint.setObjectName("InfoFeedEmptyHint")
+        self._empty_hint.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
         self._list = QtWidgets.QListWidget(self)
         self._list.setObjectName("InfoFeedTimeline")
@@ -45,17 +59,18 @@ class FeedTimelineView(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._list)
+        layout.setSpacing(8)
+        layout.addLayout(header)
+        layout.addWidget(self._empty_hint)
+        layout.addWidget(self._list, stretch=1)
 
-    def set_filters(self, *, unread_only: bool, subscription_id: str | None) -> None:
-        self._unread_only = unread_only
+    def set_subscription_filter(self, subscription_id: str | None) -> None:
         self._subscription_id = subscription_id
         self.refresh()
 
     def refresh(self) -> None:
         self._items = self._service.list_items(
             limit=FEED_RECENT_LIMIT,
-            unread_only=self._unread_only,
             subscription_id=self._subscription_id,
         )
         self._cards.clear()
@@ -71,6 +86,12 @@ class FeedTimelineView(QtWidgets.QWidget):
             self._list.addItem(row)
             self._list.setItemWidget(row, card)
             self._cards[item.id] = card
+
+        count = len(self._items)
+        self._count_label.setText(f"共 {count} 条")
+        has_items = count > 0
+        self._empty_hint.setVisible(not has_items)
+        self._list.setVisible(has_items)
 
     def open_current_item(self) -> None:
         item = self._list.currentItem()
@@ -95,23 +116,12 @@ class FeedTimelineView(QtWidgets.QWidget):
         menu = QtWidgets.QMenu(self)
         open_action = menu.addAction("在浏览器打开")
         ask_action = menu.addAction("问 AI")
-        if feed_item.is_unread:
-            read_action = menu.addAction("标记已读")
-        else:
-            read_action = menu.addAction("标记未读")
         copy_action = menu.addAction("复制链接")
         chosen = menu.exec(self._list.mapToGlobal(pos))
         if chosen is open_action:
             self._open_item_id(feed_item.id)
         elif chosen is ask_action:
             self._ask_ai(feed_item)
-        elif chosen is read_action:
-            if feed_item.is_unread:
-                self._service.mark_read([feed_item.id])
-            else:
-                self._service.mark_unread([feed_item.id])
-            self.refresh()
-            self.unread_changed.emit()
         elif chosen is copy_action:
             QtWidgets.QApplication.clipboard().setText(feed_item.url)
 
@@ -138,8 +148,3 @@ class FeedTimelineView(QtWidgets.QWidget):
             webbrowser.open(feed_item.url)
         except Exception as ex:
             page_notify(self, f"无法打开链接：{ex}", level="error")
-            return
-        if feed_item.is_unread:
-            self._service.mark_read([feed_item.id])
-            self.refresh()
-            self.unread_changed.emit()

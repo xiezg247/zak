@@ -68,6 +68,7 @@ from vnpy_common.paths import QSETTINGS_ORG
 from vnpy_common.startup_profile import profiler
 from vnpy_common.ui.feedback import PageToastHost, page_notify, show_info_dialog
 from vnpy_common.ui.qt_helpers import restore_geometry_on_screen
+from vnpy_common.ui.theme.build_extra import build_info_feed_stylesheet
 from vnpy_common.ui.theme.manager import theme_manager
 
 if TYPE_CHECKING:
@@ -910,14 +911,14 @@ class AshareMainWindow(MainWindow):
             widget.open_scheduler_requested.connect(self._open_scheduler_page)
         elif key == "info_feed":
             widget = InfoFeedPageWidget(self.main_engine, self.event_engine)
-            widget.unread_changed.connect(self._refresh_info_feed_badge)
         elif key == "batch_backtest":
             widget = BatchBacktestPageWidget(self.main_engine, self.event_engine)
 
         if widget is not None:
             self._page_widgets[key] = widget
             self.widgets[key] = widget
-            self._theme_manager.bind_stylesheet(widget)
+            page_extra = build_info_feed_stylesheet if key == "info_feed" else ""
+            self._theme_manager.bind_stylesheet(widget, extra=page_extra)
 
         return widget
 
@@ -925,11 +926,7 @@ class AshareMainWindow(MainWindow):
         self._open_scheduler_dialog()
 
     def _refresh_info_feed_badge(self) -> None:
-        count = 0
-        service = get_feed_service(self.main_engine)
-        if service is not None:
-            count = service.count_unread()
-        self.sidebar.set_badge_count("info_feed", count)
+        self.sidebar.set_badge_count("info_feed", 0)
 
     def _bind_scheduler_notifications(self) -> None:
         if self._scheduler_listener_connected:

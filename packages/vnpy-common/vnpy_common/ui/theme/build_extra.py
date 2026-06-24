@@ -1647,6 +1647,147 @@ QCheckBox#HomeDisciplineCheck::indicator:checked {{
 """
 
 
+def build_info_feed_stylesheet(t: ThemeTokens) -> str:
+    return f"""
+QWidget#InfoFeedPage {{
+    background-color: {t.app_bg};
+}}
+QWidget#InfoFeedToolbar {{
+    background-color: transparent;
+}}
+QLabel#InfoFeedCookieHint {{
+    color: {t.semantic_warning};
+    background-color: rgba(241, 196, 15, 0.12);
+    border-left: 3px solid {t.semantic_warning};
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+}}
+QSplitter#InfoFeedSplitter::handle {{
+    background-color: {t.panel_border};
+    width: 4px;
+    margin: 0 4px;
+}}
+QWidget#InfoFeedTimelinePanel {{
+    background-color: transparent;
+}}
+QLabel#InfoFeedTimelineTitle {{
+    color: {t.text_section};
+    font-size: 12px;
+    font-weight: bold;
+}}
+QLabel#InfoFeedTimelineCount {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QLabel#InfoFeedEmptyHint {{
+    color: {t.text_muted};
+    font-size: 13px;
+    padding: 40px 24px;
+}}
+QListWidget#InfoFeedTimeline {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+    outline: none;
+    padding: 8px;
+}}
+QListWidget#InfoFeedTimeline::item {{
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-bottom: 6px;
+}}
+QListWidget#InfoFeedTimeline::item:selected {{
+    background: transparent;
+}}
+QFrame#FeedItemCard {{
+    background-color: {t.depth_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+}}
+QFrame#FeedItemCard:hover {{
+    border-color: {t.accent};
+    background-color: {t.panel_bg};
+}}
+QLabel#FeedItemTypeBadge {{
+    color: {t.accent};
+    background-color: {t.accent_soft};
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 600;
+}}
+QLabel#FeedItemTypeBadge[item_type="video"] {{
+    color: #7eb8ff;
+    background-color: rgba(52, 152, 219, 0.18);
+}}
+QLabel#FeedItemTypeBadge[item_type="dynamic"] {{
+    color: #a8e6cf;
+    background-color: rgba(46, 204, 113, 0.16);
+}}
+QLabel#FeedItemTypeBadge[item_type="article"] {{
+    color: #f5d896;
+    background-color: rgba(241, 196, 15, 0.16);
+}}
+QLabel#FeedItemMeta {{
+    color: {t.text_muted};
+    font-size: 11px;
+}}
+QLabel#FeedItemTime {{
+    color: {t.text_secondary};
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}}
+QLabel#FeedItemTitle {{
+    color: {t.text_primary};
+    font-size: 13px;
+    font-weight: 600;
+}}
+QLabel#FeedItemDetail {{
+    color: {t.text_secondary};
+    font-size: 12px;
+}}
+QWidget#InfoFeedSubscriptionPanel {{
+    background-color: transparent;
+}}
+QFrame#InfoFeedSubscriptionCard {{
+    background-color: {t.panel_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 8px;
+}}
+QLabel#InfoFeedSubscriptionHint {{
+    color: {t.text_muted};
+    font-size: 12px;
+    padding: 16px 8px;
+}}
+QListWidget#InfoFeedSubscriptionList {{
+    background-color: transparent;
+    border: none;
+    outline: none;
+    padding: 0;
+    font-size: 12px;
+}}
+QListWidget#InfoFeedSubscriptionList::item {{
+    background-color: {t.depth_bg};
+    border: 1px solid {t.panel_border};
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    color: {t.text_primary};
+}}
+QListWidget#InfoFeedSubscriptionList::item:selected {{
+    background-color: {t.tab_selected_bg};
+    border-color: {t.accent};
+    color: {t.tab_selected_text};
+}}
+QListWidget#InfoFeedSubscriptionList::item:hover {{
+    border-color: {t.accent};
+}}
+"""
+
+
 def build_insight_rank_stylesheet(t: ThemeTokens) -> str:
     """Deprecated: use build_radar_stylesheet."""
     return build_radar_stylesheet(t)
