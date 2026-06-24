@@ -152,9 +152,7 @@ packages/vnpy-ashare/vnpy_ashare/notifications/
 | `screener_intraday_done` | 盘中选股完成 | `scheduler` `screen_intraday` | **开** | 替代仅 Orb 提醒 |
 | `screener_post_close_done` | 盘后选股完成 | `screen_post_close` | 关 | |
 | `emotion_stage_change` | 情绪阶段变化 | `emotion_cycle` | **开** | 尤其 → 退潮/冰点 |
-| `risk_gate_change` | 风控状态变化 | `risk_gate` | **开** | caution / halt |
 | `position_alert` | 持仓异动 | `position_anomaly` | 关 | 浮亏≤−5%、卖出信号等 |
-| `journal_violation` | 流水违规 | `trade_journal` | 关 | off_plan / 退潮买入 / 亏损加仓 / 浮亏扛单 |
 | `radar_leader_ready` | 龙头池更新 | 雷达 `leader_pick` | 关 | 易刷屏，需高阈值 |
 | `scheduler_job_failed` | 定时任务失败 | `TaskSchedulerManager` | **开** | |
 | `manual_test` | 测试消息 | 设置页按钮 | — | |
@@ -204,14 +202,6 @@ packages/vnpy-ashare/vnpy_ashare/notifications/
 建议：不开新仓（规则参考，非投资建议）
 ```
 
-**风控熔断**
-
-```text
-【zak】风控状态 → 熔断(halt)
-当日浮亏合计 -3.2% · 周回撤 5.1%
-请复盘后再操作
-```
-
 **持仓异动**
 
 ```text
@@ -247,7 +237,7 @@ packages/vnpy-ashare/vnpy_ashare/notifications/
 |------|------|
 | scheduler `job_finished_hook` | 成功时 `notify(screener_*_done)` |
 | `page_notify` 全局 | **不**全部转发（仅白名单事件） |
-| `emotion_cycle` / `risk_gate` | 状态变更时 notify |
+| `emotion_cycle` | 状态变更时 notify |
 
 ### 6.2 调用约定
 
@@ -331,7 +321,7 @@ Worker 内 HTTP 失败：重试 2 次（指数退避）；仍失败写 `last_err
 
 ### Phase 2 — 短线体系联动
 
-- [x] `emotion_stage_change`、`risk_gate_change`
+- [x] `emotion_stage_change`、`position_alert`
 - [x] `position_alert`（去重）
 - [x] 签名校验、delivery log
 

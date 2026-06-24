@@ -112,11 +112,11 @@
 
 | ID | 能力 | 状态 | Phase | 文档 |
 |----|------|------|-------|------|
-| K-01 | 总资金与风控参数 | **已有** | 3 | 持仓区「风控设置」（基础 / 高级） |
-| K-02 | 单笔风险计算器 | **已有** | 3 | 登记对话框 + `compute_position_size` |
-| K-03 | 当日已实现 + 浮亏汇总 | **已有** | 3 | 记账浮盈 + 手动已实现 |
-| K-04 | normal / caution / halt | **已有** | 3 | 顶栏芯片 + 登记 toast（不阻断） |
-| K-05 | 违规 off_plan 标记 | **已有** | 4 | [trading-plan-journal.md](./trading-plan-journal.md) |
+| K-01 | 总资金与交易参数 | **已有** | 3 | QSettings `trading/risk/*` |
+| K-02 | ~~单笔风险计算器~~ | **已移除** | — | — |
+| K-03 | 浮盈汇总 + 可选当日已实现 | **已有** | 3 | 持仓 stats |
+| K-04 | ~~normal / caution / halt~~ | **已移除** | — | — |
+| K-05 | 计划外 / 违规提示 | **已有** | 4 | 登记 toast |
 
 ---
 
@@ -125,11 +125,11 @@
 | ID | 能力 | 状态 | Phase | 存储 | 文档 |
 |----|------|------|-------|------|------|
 | J-01 | `trading_plans` 表 | **已有** | 4 | App DB | [trading-plan-journal.md](./trading-plan-journal.md) |
-| J-02 | `trade_journal` 表 | **已有** | 3–4 | App DB | 同上 |
+| J-02 | ~~`trade_journal` 表~~ | **已移除** | — | — | — |
 | J-03 | `propose_trading_plan` AI | **已有** | 4 | — | [ai-data-routing.md](./ai-data-routing.md) |
 | J-04 | 计划内 / 计划外校验 | **已有** | 4 | J-01, P-01 | 同上 |
-| J-05 | 复盘报表（胜率 / 盈亏比） | **已有** | 5 | J-02 | 同上 |
-| J-06 | 流水明细 CRUD UI | **已有** | 5 | J-02 | 复盘 Tab / 笔记中心「交易流水」/ 风控查看 |
+| J-05 | ~~复盘报表（胜率 / 盈亏比）~~ | **已移除** | — | — | — |
+| J-06 | ~~流水明细 CRUD UI~~ | **已移除** | — | — | — |
 | — | 笔记流水 `stock_note_entries` | **已有** | 0 | App DB | [stock-notes.md](./stock-notes.md) |
 
 ---
@@ -141,7 +141,7 @@
 | N-01 | 飞书 Webhook MVP | **已有** | 1 | [notifications.md](./notifications.md) |
 | N-02 | 事件白名单 + 限频 | **已有** | 1 | 同上 |
 | N-03 | 定时任务 screener 完成推送 | **已有** | 1 | 同上 |
-| N-04 | 情绪 / 风控状态变更推送 | **已有** | 2 | 联动 `emotion_cycle` + `risk_gate_engine` |
+| N-04 | 情绪阶段变更推送 | **已有** | 2 | 联动 `emotion_cycle` |
 | N-05 | `notify_delivery_log` | **已有** | 2 | [data-design.md](./data-design.md) |
 | N-06 | interactive 卡片 | **已有** | 3 | [notifications.md](./notifications.md) |
 
@@ -153,11 +153,12 @@
 |----|------|------|-------|-------|
 | A-01 | `get_emotion_cycle` | **已有** | 1 | vnpy-sentiment 扩展 |
 | A-02 | `get_short_term_watchlist` | **已有** | 1 | vnpy-watchlist 扩展 |
-| A-03 | `propose_trading_plan` | **已有** | 4 | vnpy-trading（新） |
-| A-04 | `get_trade_journal` | **已有** | 4 | 同上 |
-| A-05 | `check_risk_gate` | **已有** | 3 | vnpy-trading Skill |
+| A-03 | `propose_trading_plan` | **已有** | 4 | vnpy-trading |
+| A-04 | ~~`get_trade_journal`~~ | **已移除** | — | — |
+| A-05 | ~~`check_risk_gate`~~ | **已移除** | — | — |
 | A-06 | `evaluate_entry_mode` | **已有** | 2 | vnpy-analysis 扩展 |
 | A-07 | `run_leader_screen` | **已有** | 1 | vnpy-screening 扩展 |
+| A-08 | `evaluate_overnight_exit` | **已有** | 2 | vnpy-trading |
 | — | 现有 Skills 清单 | **已有** | 0 | [ai-data-routing.md](./ai-data-routing.md) |
 
 ---

@@ -35,7 +35,7 @@ zak 继承 `vnpy.trader.ui.MainWindow`：
 | `packages/vnpy-ashare/vnpy_ashare/storage/` | app_db、universe、交易日历 |
 | `packages/vnpy-ashare/vnpy_ashare/backtest/` | CTA App/Engine、run_store |
 | `packages/vnpy-ashare/vnpy_ashare/services/` | Quote、Bar、Backtest、Screening、Watchlist、Analysis、Sentiment |
-| `packages/vnpy-ashare/vnpy_ashare/trading/` | `risk/` 风控闸、仓位计算器；`plans/` 交易计划；`journal/` 流水 |
+| `packages/vnpy-ashare/vnpy_ashare/trading/` | `risk/` 盈亏指标与浮亏判定；`plans/` 交易计划 |
 | `packages/vnpy-ashare/vnpy_ashare/notifications/` | `NotificationService`、飞书 Webhook、出站队列 |
 | `packages/vnpy-ashare/vnpy_ashare/quotes/` | 行情领域：快照、Provider、排行、市场概览、雷达数据加载（见下节） |
 | `packages/vnpy-ashare/vnpy_ashare/screener/` | 因子、规则、方案、配方（`run/`、`recipe/`、`preset/`、`sector/`、`data/`、`dimensions/`） |
@@ -244,7 +244,7 @@ TeamOrchestrator.stream_team_analysis
 IntentCategory == market
         ↓
 MarketOrchestrator.stream_market_analysis
-├── prefetch：get_emotion_cycle + check_risk_gate + get_ashare_fear_greed_index
+├── prefetch：get_emotion_cycle + get_ashare_fear_greed_index
 ├── 注入 GraphStreamContext.market_prefetch / 终端上下文
 └── 单 Market Agent ReAct（`stream_with_tools`，target=market）
 ```

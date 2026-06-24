@@ -177,10 +177,10 @@ CREATE TABLE watchlist_positions (
                     T+1 锁定 + 隔日 exit 规则（**已有**，overlay + AI）
                               │
                               ▼
-                    笔记流水复盘 + trade_journal（**已有**；笔记可导入流水；结构化流水可在复盘/笔记中心「交易流水」编辑）
+                    笔记流水复盘 + Playbook（**已有**）
 ```
 
-登记时：`emotion_cycle` 退潮期 toast 警告（**已有**）；`risk_gate` 单笔 2% 计算器 + 顶栏芯片（**已有**，见 [risk-gate.md](./risk-gate.md)）。
+登记时：`emotion_cycle` 退潮期 toast 警告（**已有**）；总资金参数供仓位 % 列（见 [risk-gate.md](./risk-gate.md)）。
 
 ---
 

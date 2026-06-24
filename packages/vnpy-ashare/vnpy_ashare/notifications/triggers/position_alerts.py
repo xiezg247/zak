@@ -17,13 +17,10 @@ def scan_position_alerts(scan_input: PositionAlertScanInput, service: Notificati
     if not scan_input.enabled or not scan_input.rows:
         return
 
-    float_pnls: list[float] = []
     for row in scan_input.rows:
         if not is_position_anomaly(snap=row.snap, quote=row.quote):
             continue
         reasons = position_anomaly_reasons(snap=row.snap, quote=row.quote)
-        if row.snap.unrealized_pnl_pct is not None:
-            float_pnls.append(float(row.snap.unrealized_pnl_pct))
         service.notify(
             NOTIFY_EVENT_POSITION_ALERT,
             dedupe_key=f"{row.vt_symbol}:{','.join(reasons)}",
@@ -37,7 +34,3 @@ def scan_position_alerts(scan_input: PositionAlertScanInput, service: Notificati
                 "t1_locked": row.snap.t1_locked,
             },
         )
-
-    if float_pnls:
-        avg = sum(float_pnls) / len(float_pnls)
-        service.evaluate_risk_gate(avg_float_pnl_pct=avg)

@@ -69,9 +69,9 @@ batch_download_universe (16:20)   # 约 30 分钟，后续任务从 17:00 起
 | 缓存 | 写入 | 读取 |
 |------|------|------|
 | 行情行 | `set_market_quote_rows_cache` / QuoteService | `load_emotion_cycle_snapshot(fetch_if_missing=False)` |
-| 情绪周期 | `store_emotion_cycle_snapshot` | 持仓风控、雷达 subtitle、工具栏芯片 |
+| 情绪周期 | `store_emotion_cycle_snapshot` | 持仓 stats、雷达 subtitle、工具栏芯片 |
 
-UI 与 `load_combined_risk_gate_snapshot` **默认不拉全市场**；显式分析/流水仍可用 `fetch_if_missing=True`。
+UI **默认不拉全市场**；显式分析仍可用 `fetch_if_missing=True`。
 
 ## 用户触发（不宜默认定时）
 

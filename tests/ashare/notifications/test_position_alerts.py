@@ -58,4 +58,3 @@ def test_scan_position_alerts_notifies_anomaly() -> None:
         ):
             scan_position_alerts(PositionAlertScanInput(enabled=True, rows=(row,)), service)
     service.notify.assert_called_once()
-    service.evaluate_risk_gate.assert_called_once_with(avg_float_pnl_pct=-6.0)

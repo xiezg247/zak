@@ -20,7 +20,7 @@ from vnpy_ashare.trading.exit.exit_display import (
     format_exit_rules_tooltip,
 )
 from vnpy_ashare.trading.risk.book_pnl import format_book_pnl_hint, summarize_book_pnl
-from vnpy_ashare.trading.risk.combined import load_combined_risk_gate_snapshot
+from vnpy_ashare.trading.risk.metrics import read_total_capital
 from vnpy_ashare.trading.risk.plan_position import (
     compute_position_actual_pct,
     format_plan_vs_actual_cell,
@@ -126,8 +126,7 @@ class PositionPanelTableView(QtWidgets.QWidget):
             if len(records) != self._table.rowCount():
                 self._table.setRowCount(len(records))
 
-            combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
-            total_capital = combined.total_capital
+            total_capital = read_total_capital()
             highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
 
             rendered: list[str] = []
@@ -164,7 +163,7 @@ class PositionPanelTableView(QtWidgets.QWidget):
                 self.render_table()
                 return
 
-        combined = load_combined_risk_gate_snapshot(position_cache=self._page.position_cache)
+        total_capital = read_total_capital()
         colors = market_colors(theme_manager().tokens())
         warning_color = theme_manager().tokens().semantic_warning
         highlight_bg = QtGui.QColor(theme_manager().tokens().nav_hover_bg)
@@ -177,7 +176,7 @@ class PositionPanelTableView(QtWidgets.QWidget):
                 self._fill_row(
                     row,
                     record,
-                    total_capital=combined.total_capital,
+                    total_capital=total_capital,
                     colors=colors,
                     warning_color=warning_color,
                     highlight_bg=highlight_bg,

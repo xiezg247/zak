@@ -11,7 +11,6 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_POSITION_ALERT,
     NOTIFY_EVENT_RADAR_LEADER_READY,
-    NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
@@ -57,18 +56,6 @@ def format_notify_text(event_id: str, payload: dict[str, Any]) -> str:
             lines.append(f"建议总仓位 ≤ {int(float(pos_max) * 100)}%")
         if not payload.get("allow_new_positions", True):
             lines.append("建议：不开新仓（规则参考，非投资建议）")
-        lines.append(f"时间 {now}")
-        return "\n".join(lines)
-
-    if event_id == NOTIFY_EVENT_RISK_GATE_CHANGE:
-        state_label = str(payload.get("state_label") or payload.get("state") or "")
-        lines = [f"【zak】风控状态 → {state_label}"]
-        for warning in payload.get("warnings") or ():
-            lines.append(str(warning))
-        daily = payload.get("daily_pnl_pct")
-        if daily is not None:
-            lines.append(f"当日盈亏合计 {daily:.1f}%")
-        lines.append("请复盘后再操作")
         lines.append(f"时间 {now}")
         return "\n".join(lines)
 

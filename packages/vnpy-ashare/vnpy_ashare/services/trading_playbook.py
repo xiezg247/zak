@@ -30,7 +30,7 @@ from vnpy_ashare.storage.repositories.trading_playbook import (
 from vnpy_ashare.storage.repositories.trading_playbook_discipline import load_discipline_checks
 from vnpy_ashare.trading.plan.off_plan import list_off_plan_position_vt_symbols
 from vnpy_ashare.trading.risk.book_pnl import summarize_book_pnl
-from vnpy_ashare.trading.risk.combined import format_emotion_position_hint
+from vnpy_ashare.trading.risk.metrics import format_emotion_position_hint
 from vnpy_ashare.trading.risk.realized_pnl import today_trade_date
 
 _META_SEED_KEY = "playbook_seeded_profile"
@@ -223,7 +223,6 @@ def build_home_playbook_status(main_engine: MainEngine | None) -> HomePlaybookSt
         phase_label=ashare_market_phase_label(),
         emotion_label=emotion_label,
         emotion_position_hint=pos_hint,
-        risk_label="—",
         allow_new_positions=allow_new,
         daily_pnl_text=daily_text,
         plan_text=plan_text,

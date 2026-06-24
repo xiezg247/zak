@@ -24,7 +24,6 @@ from vnpy_ashare.services.sector_flow import SectorFlowService
 from vnpy_ashare.services.sentiment import SentimentService
 from vnpy_ashare.services.stock_analysis import StockAnalysisService
 from vnpy_ashare.services.watchlist import WatchlistService
-from vnpy_ashare.trading.risk.gate import RiskGateEngine
 
 
 class AshareEngine(BaseEngine):
@@ -53,7 +52,6 @@ class AshareEngine(BaseEngine):
         self.sector_flow_service = SectorFlowService(self)
 
         self.emotion_cycle_tracker = EmotionCycleTracker()
-        self.risk_gate_engine = RiskGateEngine()
         self.notification_service = NotificationService(self)
         self.scheduler.add_job_finished_hook(self.notification_service.on_job_finished)
         self.scheduler.bind_engine(self)

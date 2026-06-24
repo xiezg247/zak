@@ -1,4 +1,4 @@
-"""登记买入 vs 交易计划校验（J-04 / K-05）。"""
+"""买入 vs 交易计划校验。"""
 
 from __future__ import annotations
 

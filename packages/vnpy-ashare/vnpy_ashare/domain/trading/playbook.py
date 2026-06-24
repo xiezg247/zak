@@ -33,7 +33,6 @@ class HomePlaybookStatus(FrozenModel):
     phase_label: str = Field(description="市场阶段标签")
     emotion_label: str = Field(description="情绪周期")
     emotion_position_hint: str = Field(description="情绪建议仓位")
-    risk_label: str = Field(description="风控闸状态")
     allow_new_positions: bool = Field(description="是否可新开仓")
     daily_pnl_text: str = Field(description="当日盈亏")
     plan_text: str = Field(description="今日计划摘要")

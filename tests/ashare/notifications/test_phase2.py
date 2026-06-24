@@ -10,14 +10,12 @@ from vnpy_ashare.notifications.content.formatters import format_notify_text
 from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_POSITION_ALERT,
-    NOTIFY_EVENT_RISK_GATE_CHANGE,
 )
 from vnpy_ashare.notifications.prefs.store import NotifyPrefs
 from vnpy_ashare.notifications.service import NotificationService
 from vnpy_ashare.quotes.market.emotion_cycle import EmotionCycleTracker
 from vnpy_ashare.quotes.market.emotion_cycle_inputs import build_emotion_cycle_inputs
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
-from vnpy_ashare.trading.risk.gate import RiskGateEngine
 
 
 def _breadth(**kwargs) -> MarketBreadthSnapshot:
@@ -40,7 +38,6 @@ class _FakeEngine:
     event_engine = MagicMock()
     scheduler = MagicMock()
     emotion_cycle_tracker = EmotionCycleTracker()
-    risk_gate_engine = RiskGateEngine()
 
 
 class Phase2NotificationTest(unittest.TestCase):
@@ -58,18 +55,6 @@ class Phase2NotificationTest(unittest.TestCase):
         self.assertIn("情绪阶段", text)
         self.assertIn("启动", text)
         self.assertIn("50%", text)
-
-    def test_risk_gate_formatter(self) -> None:
-        text = format_notify_text(
-            NOTIFY_EVENT_RISK_GATE_CHANGE,
-            {
-                "state_label": "警戒",
-                "warnings": ["当日盈亏 -3.5% 触发警戒阈值"],
-                "daily_pnl_pct": -3.5,
-            },
-        )
-        self.assertIn("风控状态", text)
-        self.assertIn("警戒", text)
 
     def test_position_alert_formatter(self) -> None:
         text = format_notify_text(
@@ -126,43 +111,6 @@ class Phase2NotificationTest(unittest.TestCase):
             svc.publish_emotion_cycle(inputs)
         mock_send.assert_called_once()
 
-    @patch.dict(
-        os.environ,
-        {"NOTIFY_ENABLED": "true", "FEISHU_WEBHOOK_URL": "http://x", "NOTIFY_MIN_INTERVAL_SEC": "0"},
-        clear=False,
-    )
-    @patch("vnpy_ashare.notifications.service.append_notify_delivery_log")
-    @patch("vnpy_ashare.notifications.service.FeishuWebhookChannel.send_outbound")
-    @patch("vnpy_ashare.notifications.rules.engine.load_notify_prefs")
-    @patch("vnpy_ashare.trading.risk.gate.load_trading_risk_prefs")
-    def test_evaluate_risk_gate_change(
-        self,
-        mock_risk_prefs: MagicMock,
-        mock_prefs: MagicMock,
-        mock_send: MagicMock,
-        mock_log: MagicMock,
-    ) -> None:
-        from vnpy_ashare.config.preferences.trading_risk import TradingRiskPrefs
 
-        mock_risk_prefs.return_value = TradingRiskPrefs(
-            total_capital=100_000.0,
-            per_trade_risk_pct=0.02,
-            stop_loss_pct=0.05,
-            daily_pnl_pct=-6.0,
-            realized_pnl_today=None,
-            caution_daily_pct=-3.0,
-            halt_daily_pct=-5.0,
-            caution_float_pct=-5.0,
-            manual_halt=False,
-        )
-        mock_prefs.return_value = NotifyPrefs(
-            event_subscriptions={NOTIFY_EVENT_RISK_GATE_CHANGE: True},
-            use_interactive_card=True,
-        )
-        mock_send.return_value = type("R", (), {"success": True, "message": "ok", "status_code": 200})()
-        engine = _FakeEngine()
-        svc = NotificationService(engine, sync=True)
-        svc.evaluate_risk_gate(avg_float_pnl_pct=-2.0)
-        mock_send.assert_called_once()
-        self.assertIn("风控状态", mock_send.call_args.args[0].text)
-        mock_log.assert_called_once()
+if __name__ == "__main__":
+    unittest.main()

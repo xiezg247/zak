@@ -201,24 +201,11 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | `entry_conditions_json` | TEXT | 结构化入场条件 |
 | `exit_conditions_json` | TEXT | 结构化退出条件 |
 
-#### `trade_journal`
+#### ~~`trade_journal`~~（已移除，2026-06）
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | INTEGER PK | 自增主键 |
-| `symbol` / `exchange` | TEXT | 标的 |
-| `trade_date` | TEXT | 交易日 |
-| `side` | TEXT | `buy` / `sell` / `hold` |
-| `mode` | TEXT | `limit_board` / `halfway` / `pullback` 等 |
-| `price` / `volume` | REAL / INTEGER | 成交价、数量 |
-| `on_plan` | INTEGER | 是否计划内（0/1） |
-| `violation_tags` | TEXT | 逗号分隔违规标签 |
-| `pnl` / `pnl_pct` | REAL | 已实现盈亏（卖出行） |
-| `plan_id` | TEXT | 关联计划（可空） |
-| `reason` / `emotion_stage` | TEXT | 理由 / 登记时情绪阶段 |
-| `created_at` | TEXT | 写入时间 |
+升级脚本执行 `DROP TABLE IF EXISTS trade_journal`。结构化流水能力已下线；复盘改用笔记流水 + Playbook。
 
-**用途：** K-05 违规统计、J-05 复盘报表、J-06 明细 CRUD；与 `stock_note_entries` 并存（笔记偏定性，流水偏聚合）。Repository：`get` / `update` / `delete` + 区间与 `side` 筛选。
+**历史字段参考（归档）：** `side`、`mode`、`on_plan`、`violation_tags`、`pnl` 等曾用于 K-05 / J-05 统计。
 
 ### 1.12 `notify_delivery_log`（**已有**，N-05）
 
@@ -241,7 +228,7 @@ CREATE TABLE IF NOT EXISTS trade_calendar (
 | 键 / 环境变量 | 说明 | 文档 |
 |---------------|------|------|
 | `trading/strategy_profile` | 策略 Profile | [strategy-profiles.md](./strategy-profiles.md) |
-| `trading/total_capital` 等 | 总资金、单笔止损 % | [risk-gate.md](./risk-gate.md) |
+| `trading/risk/*` | 总资金、止损 %、浮亏阈值 | [risk-gate.md](./risk-gate.md) |
 | `FEISHU_WEBHOOK_URL` | 飞书 Webhook | [notifications.md](./notifications.md) |
 | `NOTIFY_*` | 通知开关与限频 | 同上 |
 | `RECIPE_*` | 硬过滤 env 覆盖 | [intraday-screening.md](./intraday-screening.md) |

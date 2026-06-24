@@ -119,14 +119,9 @@ class BookPnlTest(unittest.TestCase):
 
             mock_prefs.return_value = TradingRiskPrefs(
                 total_capital=100_000.0,
-                per_trade_risk_pct=0.02,
                 stop_loss_pct=0.05,
-                daily_pnl_pct=None,
-                realized_pnl_today=-500.0,
-                caution_daily_pct=-3.0,
-                halt_daily_pct=-5.0,
                 caution_float_pct=-5.0,
-                manual_halt=False,
+                realized_pnl_today=-500.0,
             )
             summary = summarize_book_pnl(cache)
         self.assertAlmostEqual(summary.total_float_pnl, -200.0)

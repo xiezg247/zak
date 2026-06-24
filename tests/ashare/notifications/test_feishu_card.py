@@ -11,7 +11,6 @@ from vnpy_ashare.notifications.content.feishu_card import build_feishu_interacti
 from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_MANUAL_TEST,
-    NOTIFY_EVENT_RISK_GATE_CHANGE,
 )
 
 
@@ -41,8 +40,8 @@ class FeishuCardTest(unittest.TestCase):
     @patch.dict(os.environ, {"NOTIFY_OPEN_URL": ""}, clear=False)
     def test_card_note_without_open_url(self) -> None:
         card = build_feishu_interactive_card(
-            NOTIFY_EVENT_RISK_GATE_CHANGE,
-            {"state_label": "警戒", "warnings": [], "daily_pnl_pct": -3.0},
+            NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
+            {"stage_label": "启动", "limit_up_count": 55, "limit_down_count": 3},
         )
         self.assertEqual(card["elements"][-1]["tag"], "note")
 

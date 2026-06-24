@@ -15,7 +15,7 @@
 | 入口 | 行为 |
 |------|------|
 | 自选右侧 `StockNotePanel` | 备忘 + 流水（可折叠） |
-| 笔记 → 笔记中心（`Ctrl+Shift+N`） | 左侧标的列表 + 备忘 / 流水 / 报告 / 计划 / **交易流水** Tab |
+| 笔记 → 笔记中心（`Ctrl+Shift+N`） | 左侧标的列表 + 备忘 / 流水 / 报告 / 计划 Tab |
 | 自选「笔记中心」按钮 | 打开笔记中心并定位当前标的 |
 | 个股分析 | 「保存分析报告」「历史报告」→ 笔记中心报告 Tab |
 | AI 对话气泡右键 | 存为分析报告、追加到流水 |
@@ -24,7 +24,6 @@
 
 | 项 | 约定 |
 |----|------|
-| **流水** vs **交易流水** | 「流水」Tab = `stock_note_entries` 自由文本；「**交易流水**」Tab = `trade_journal` 结构化（可编辑 / 删除），见 [trading-plan-journal.md §3.3](./trading-plan-journal.md#33-ui-入口查看--编辑--删除) |
 | Panel 范围 | 自选页（`show_stock_notes=True` 且 `show_kline=True`） |
 | 笔记中心 | 全局，不依赖当前看盘页 |
 | 存储 | `~/.vntrader/zak.db` |
@@ -50,12 +49,12 @@
 ### 2.2 笔记中心
 
 ```text
-┌ 搜索 + 筛选 ─┬ 标题 + [备忘|流水|报告|计划|交易流水] Tab ─┐
-│ 标的列表      │  编辑 / 列表 / 报告 / 结构化流水明细         │
+┌ 搜索 + 筛选 ─┬ 标题 + [备忘|流水|报告|计划] Tab ─┐
+│ 标的列表      │  编辑 / 列表 / 报告 / 计划             │
 └──────────────┴────────────────────────────────────────────┘
 ```
 
-路径：`ui/features/notes_center/`（`widget.py`、`memo_view.py`、`reports_view.py`）；结构化流水复用 `ui/quotes/watchlist_positions/trade_journal_manage_view.py`。
+路径：`ui/features/notes_center/`（`widget.py`、`memo_view.py`、`reports_view.py`）。
 
 ---
 

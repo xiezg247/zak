@@ -15,7 +15,6 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_RADAR_LEADER_READY,
-    NOTIFY_EVENT_RISK_GATE_CHANGE,
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
@@ -29,7 +28,6 @@ from vnpy_ashare.quotes.market.emotion_cycle_inputs import EmotionCycleInputs, b
 from vnpy_ashare.quotes.market.market_breadth import MarketBreadthSnapshot
 from vnpy_ashare.services.base import BaseService
 from vnpy_ashare.storage.repositories.notify_delivery_log import append_notify_delivery_log
-from vnpy_ashare.trading.risk.gate import RiskGateSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -116,15 +114,6 @@ class NotificationService(BaseService):
 
         self.publish_emotion_cycle(build_emotion_cycle_inputs(breadth))
 
-    def evaluate_risk_gate(self, *, avg_float_pnl_pct: float | None = None) -> None:
-        gate = getattr(self.engine, "risk_gate_engine", None)
-        if gate is None:
-            return
-        changed = gate.evaluate(avg_float_pnl_pct=avg_float_pnl_pct)
-        if changed is None:
-            return
-        self._notify_risk_gate_change(changed)
-
     def publish_radar_leader_ready(
         self,
         result: ScreenerRunResult,
@@ -201,19 +190,6 @@ class NotificationService(BaseService):
                 "limit_down_count": snapshot.limit_down_count,
                 "position_pct_max": snapshot.position_pct_max,
                 "allow_new_positions": snapshot.allow_new_positions,
-            },
-        )
-
-    def _notify_risk_gate_change(self, snapshot: RiskGateSnapshot) -> None:
-        self.notify(
-            NOTIFY_EVENT_RISK_GATE_CHANGE,
-            dedupe_key=snapshot.state,
-            payload={
-                "state": snapshot.state,
-                "state_label": snapshot.state_label,
-                "warnings": list(snapshot.warnings),
-                "daily_pnl_pct": snapshot.daily_pnl_pct,
-                "avg_float_pnl_pct": snapshot.avg_float_pnl_pct,
             },
         )
 
