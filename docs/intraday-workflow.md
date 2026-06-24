@@ -44,8 +44,8 @@ AI：「帮我做次日计划」→ `propose_trading_plan`。
 |------|------|-----------|
 | 择时 | 阶段与建议仓位 | [情绪周期](./emotion-cycle.md) 芯片 |
 | 选股 | 龙头、共振 | [雷达选龙头](./radar-leader-screening.md) |
-| 监控 | 信号区 ≤10 | [信号区](./watchlist-signals.md) |
-| 登记 | 持仓 + T+1 | [持仓区](./watchlist-positions.md) |
+| 监控 | 信号区 ≤10 | [自选页](./watchlist.md#4-信号区) |
+| 登记 | 持仓 + T+1 | [自选页](./watchlist.md#5-持仓区) |
 | 风控 | 浮亏异动 | [风控](./risk-gate.md)、[通知](./notifications.md) |
 
 池子上限：计划 3–5 · 信号 10 · 自选 50 · 持仓见 `POSITION_MAX_ITEMS`。
@@ -76,4 +76,4 @@ AI：「帮我做次日计划」→ `propose_trading_plan`。
 
 ## 参考
 
-[功能索引](./implementation-roadmap.md) · [策略 Profile](./strategy-profiles.md) · [产品说明](./product-plan.md)
+[功能索引](./feature-index.md) · [策略 Profile](./strategy-profiles.md) · [产品说明](./product-plan.md)

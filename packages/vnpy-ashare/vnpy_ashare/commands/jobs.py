@@ -3,74 +3,10 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
-from datetime import datetime
 
-from vnpy_ashare.domain.time.market_hours import CHINA_TZ, is_ashare_trading_session, next_quotes_collect_at
-from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
-from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
-from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
+from vnpy_ashare.jobs.catalog import JOB_CATALOG
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.jobs.feed.sync_bilibili import sync_bilibili_feed_job
-from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
-from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
-from vnpy_ashare.jobs.market.summary_warmup import warm_market_summary
-from vnpy_ashare.jobs.prefetch.concept import prefetch_concept_board
-from vnpy_ashare.jobs.prefetch.moneyflow import prefetch_moneyflow
-from vnpy_ashare.jobs.prefetch.sector_flow import sync_sector_flow_daily_job
-from vnpy_ashare.jobs.prefetch.tushare import prefetch_tushare_factors
-from vnpy_ashare.jobs.quotes.collect import collect_market_quotes
-from vnpy_ashare.jobs.screen.auto_screen import run_scheduled_auto_screen
-from vnpy_ashare.jobs.screen.horizon_scan import run_horizon_outlook_scan_job
-from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
-from vnpy_ashare.jobs.sync.suspend_sync import sync_suspend_daily_job
-from vnpy_ashare.jobs.sync.trade_calendar import sync_trade_calendar_job
-from vnpy_ashare.jobs.sync.universe import sync_universe_job
-from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
-from vnpy_ashare.scheduler.config import load_scheduler_config
-
-_COLLECT_QUOTES_INTERVAL_MIN = 5
-
-JOB_CATALOG: dict[str, tuple[str, str]] = {
-    "collect_quotes": ("行情采集", "TickFlow 全市场快照写入 Redis"),
-    "sync_universe": ("同步 A 股列表", "从 TickFlow 更新全市场标的到本地 SQLite"),
-    "sync_stock_industry": ("同步行业映射", "从 Tushare 申万 2021 L2 更新行业分类本地缓存（失败回退 stock_basic）"),
-    "sync_trade_calendar": ("同步交易日历", "从 Tushare 更新 A 股交易日历到本地 SQLite"),
-    "batch_download_universe": ("全市场日 K", "从 Tushare 为全 A 股下载/补全自 2020 年以来的日 K"),
-    "prefetch_moneyflow": ("主力资金预拉", "收盘后拉取全市场 moneyflow 主力资金流向到本地缓存"),
-    "sync_sector_flow_daily": ("板块资金同步", "收盘后拉取东财行业/同花顺概念板块资金流近 N 日到本地"),
-    "prefetch_concept_board": ("概念板块预拉", "预热同花顺概念指数、行情与强势概念成分映射"),
-    "warm_market_summary": ("市场摘要预热", "计算情绪周期并写入内存缓存"),
-    "warm_watchlist_strategy_cache": ("策略信号磁盘预热", "为信号区/持仓区名单重算策略快照并写入磁盘 cache"),
-    "sync_suspend_daily": ("停牌日同步", "收盘后增量拉取最近交易日全市场停牌记录"),
-    "prefetch_tushare": ("Tushare 因子预拉", "收盘后拉取 daily_basic、涨跌停、指数、北向等写入本地缓存"),
-    "sync_watchlist_financials": ("同步自选财报", "增量拉取自选池三表与财务指标到本地"),
-    "sync_disclosure_calendar": ("同步披露计划", "拉取自选池财报预约披露日期"),
-    "batch_fill_stale": ("补全本地日 K", "为本地已下载列表中过期的日 K 增量补全"),
-    "fill_focus_pool_minute": ("关注池 1m K 补全", "为信号区 + 持仓补全/增量 1 分钟 K 线"),
-    "screen_intraday": ("盘中自动选股", "交易时段多维度选股，结果写入选股历史"),
-    "screen_post_close": ("盘后自动选股", "收盘后多维度选股，结果写入选股历史"),
-    "scan_horizon_outlook": ("雷达展望扫描", "全市场扫描未来·关注/可持并写入本地缓存"),
-    "sync_bilibili_feed": ("B站订阅同步", "拉取已订阅 UP 主视频与动态写入信息流"),
-}
-
-_SIMPLE_JOB_RUNNERS: dict[str, Callable[[], JobResult]] = {
-    "sync_universe": sync_universe_job,
-    "sync_stock_industry": sync_stock_industry_job,
-    "sync_trade_calendar": sync_trade_calendar_job,
-    "batch_download_universe": batch_download_universe_daily_bars,
-    "prefetch_moneyflow": prefetch_moneyflow,
-    "sync_sector_flow_daily": sync_sector_flow_daily_job,
-    "prefetch_concept_board": prefetch_concept_board,
-    "sync_suspend_daily": sync_suspend_daily_job,
-    "prefetch_tushare": prefetch_tushare_factors,
-    "sync_watchlist_financials": sync_watchlist_financials_job,
-    "sync_disclosure_calendar": sync_disclosure_calendar_job,
-    "batch_fill_stale": batch_fill_downloaded_stale_job,
-    "fill_focus_pool_minute": batch_fill_focus_pool_minute_job,
-    "warm_market_summary": lambda: warm_market_summary(enrich_factors=True),
-    "sync_bilibili_feed": lambda: sync_bilibili_feed_job(force=True),
-}
+from vnpy_ashare.jobs.runners import run_job
 
 
 def print_job_result(result: JobResult) -> int:
@@ -79,59 +15,6 @@ def print_job_result(result: JobResult) -> int:
         return 0
     print(result.message)
     return 0 if result.success else 1
-
-
-def _run_collect_quotes(*, force: bool) -> JobResult:
-    now = datetime.now(CHINA_TZ)
-    cfg = load_scheduler_config().collect_quotes
-    interval = max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)
-    if not force and not is_ashare_trading_session(now):
-        nxt = next_quotes_collect_at(now, interval_seconds=interval)
-        return JobResult(
-            success=True,
-            skipped=True,
-            message=f"非交易时段，已跳过（下次 {nxt.strftime('%Y-%m-%d %H:%M:%S')}）",
-        )
-
-    result = collect_market_quotes()
-    if result.success and not result.skipped:
-        warm = warm_market_summary(enrich_factors=False)
-        if warm.message:
-            result = JobResult(
-                success=result.success,
-                skipped=result.skipped,
-                message=f"{result.message} · {warm.message}",
-            )
-    if force and not is_ashare_trading_session(now):
-        return JobResult(
-            success=result.success,
-            skipped=False,
-            message=f"非交易时段手动采集 · {result.message}",
-        )
-    return result
-
-
-def run_job(job_id: str, *, force: bool = False, download_start: str | None = None) -> JobResult:
-    """执行定时任务（与 GUI 调度器共用 jobs 实现）。"""
-    if job_id not in JOB_CATALOG:
-        return JobResult(success=False, message=f"未知任务：{job_id}")
-
-    if job_id == "collect_quotes":
-        return _run_collect_quotes(force=force)
-    if job_id in ("screen_intraday", "screen_post_close"):
-        return run_scheduled_auto_screen(job_id, force=force)
-    if job_id == "scan_horizon_outlook":
-        return run_horizon_outlook_scan_job(force=force)
-    if job_id == "warm_watchlist_strategy_cache":
-        return warm_watchlist_strategy_cache_job(engine=None, force=force)
-    if job_id == "batch_download_universe":
-        start = download_start or load_scheduler_config().batch_download_universe.download_start
-        return batch_download_universe_daily_bars(daily_start=start)
-
-    runner = _SIMPLE_JOB_RUNNERS.get(job_id)
-    if runner is None:
-        return JobResult(success=False, message=f"未注册执行器：{job_id}")
-    return runner()
 
 
 def _cmd_job_list(_args: argparse.Namespace) -> int:

@@ -8,7 +8,7 @@
 |------|------|
 | [产品说明](./product-plan.md) | 功能模块、导航、数据分工 |
 | [交易体系说明](./trading-system.md) | 极致短线总纲；含守则 Playbook |
-| [功能索引](./implementation-roadmap.md) | 按域查阅已实现能力 |
+| [功能索引](./feature-index.md) | 按域查阅已实现能力 |
 | [盘中工作流](./intraday-workflow.md) | 盘前→盘中→盘后短线主路径 |
 | [情绪周期引擎](./emotion-cycle.md) | 五阶段择时、仓位系数、gate |
 | [策略配置方案](./strategy-profiles.md) | 现有四套策略去留、Profile 映射 |
@@ -21,11 +21,7 @@
 | 文档 | 说明 |
 |------|------|
 | [策略回测](./backtest-ux.md) | 联动、批量回测、摘要落库 |
-| [自选策略信号区](./watchlist-signals.md) | 独立信号面板、缓存、联动与限额 |
-| [自选页 UI 架构](./watchlist-ui.md) | `features/watchlist/`、Host 协议、盘中/登记/复盘预设 |
-| [自选分组](./watchlist-groups.md) | Tab 分组、与自选池/信号区关系 |
-| [自选持仓区](./watchlist-positions.md) | 记账、T+1、退出信号、异动 |
-| [自选多维看盘](./watchlist-multiview.md) | 表格/多维切换、卡片网格、迷你图与 AI 摘要 |
+| [自选页](./watchlist.md) | 分组、信号区、持仓、多维、工作流预设 |
 | [雷达选龙头](./radar-leader-screening.md) | 连板梯队、龙头评分、龙头选股 |
 | [雷达页](./radar-page.md) | 十卡布局、共振、与 Hub/板块分工 |
 | [市场页](./market-page.md) | 广度、排行、涨停池与择时输入 |
@@ -64,6 +60,6 @@
 3. [情绪周期引擎](./emotion-cycle.md) — 择时  
 4. [策略配置方案](./strategy-profiles.md) — Profile  
 5. [雷达页](./radar-page.md) / [雷达选龙头](./radar-leader-screening.md) — 选股  
-6. [自选页 UI](./watchlist-ui.md) → [分组](./watchlist-groups.md) / [持仓](./watchlist-positions.md) / [信号](./watchlist-signals.md)  
+6. [自选页](./watchlist.md) — 分组 / 信号 / 持仓 / 多维  
 7. [风控](./risk-gate.md) / [交易计划](./trading-plan-journal.md)  
 8. [消息通知](./notifications.md)  

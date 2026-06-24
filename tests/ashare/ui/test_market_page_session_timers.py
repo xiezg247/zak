@@ -26,6 +26,7 @@ class MarketPageSessionTimerTests(unittest.TestCase):
         page = QtWidgets.QWidget()
         page._actions = None  # type: ignore[attr-defined]
         page._market_industry_filter = None  # type: ignore[attr-defined]
+        page.industry_filter = None  # type: ignore[attr-defined]
         page.set_market_industry_filter = MagicMock()  # type: ignore[attr-defined]
         page.status_label = SimpleNamespace(setText=MagicMock())  # type: ignore[attr-defined]
         panel = MagicMock()

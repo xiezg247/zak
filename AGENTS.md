@@ -17,4 +17,4 @@ Agent 对话提交时见 [.cursor/rules/commit-messages.mdc](.cursor/rules/commi
 - **可用**：实现前用 Superpowers skills（`brainstorming` → `writing-plans` → 执行）写设计与任务计划。
 - **路径**：`docs/superpowers/specs/`、`docs/superpowers/plans/`（见该目录 [README](docs/superpowers/README.md)）。
 - **不提交 Git**：已在 [`.gitignore`](.gitignore) 排除；与已提交的 `docs/*.md` 产品文档分工见 superpowers README。
-- **已提交文档**：`docs/trading-system.md`、`docs/implementation-roadmap.md` 等仍为需求总纲；实现完成后更新其中**状态**即可。
+- **已提交文档**：`docs/trading-system.md`、`docs/feature-index.md` 等为产品与能力说明；与代码不一致时以代码为准。

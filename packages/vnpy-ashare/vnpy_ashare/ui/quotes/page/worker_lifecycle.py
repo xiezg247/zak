@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy.trader.ui import QtCore
+
+from vnpy_common.ui.qt_helpers import release_thread
+
 _CANCEL_WORKER_ATTRS = (
     "_load_worker",
     "_market_worker",
@@ -31,6 +35,18 @@ _RELEASE_WORKER_ATTRS = (
 )
 
 
+def wait_worker_release(page: Any, attr: str, *, timeout_ms: int = 3000) -> None:
+    worker = getattr(page, attr, None)
+    if worker is None:
+        return
+    setattr(page, attr, None)
+    release_thread(page._retired_workers, worker, timeout_ms=timeout_ms)
+
+
+def release_worker(page: Any, worker: QtCore.QThread | None) -> None:
+    release_thread(page._retired_workers, worker, timeout_ms=0)
+
+
 def cancel_quotes_page_workers(page: Any) -> None:
     for attr in _CANCEL_WORKER_ATTRS:
         worker = getattr(page, attr, None)
@@ -40,7 +56,7 @@ def cancel_quotes_page_workers(page: Any) -> None:
 
 def release_quotes_page_workers(page: Any, *, timeout_ms: int = 0) -> None:
     for attr in _RELEASE_WORKER_ATTRS:
-        page._wait_worker_release(attr, timeout_ms=timeout_ms)
+        wait_worker_release(page, attr, timeout_ms=timeout_ms)
     page._batch_backtest.release_workers(page._retired_workers)
 
 

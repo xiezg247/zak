@@ -69,11 +69,11 @@ class CleanupDailyBarsTests(unittest.TestCase):
         )
 
     @patch("vnpy_ashare.data.bars.iter_bar_overviews")
-    @patch("vnpy_ashare.data.bars.load_universe_rows")
-    def test_load_downloaded_stocks(self, load_universe_rows_mock, iter_mock) -> None:
+    @patch("vnpy_ashare.data.bars.load_universe_names_for_keys")
+    def test_load_downloaded_stocks(self, names_mock, iter_mock) -> None:
         from vnpy_ashare.data.bar_store import PeriodBarOverview
 
-        load_universe_rows_mock.return_value = [("600519", Exchange.SSE, "贵州茅台")]
+        names_mock.return_value = {("600519", Exchange.SSE): "贵州茅台"}
         iter_mock.return_value = [
             PeriodBarOverview(
                 symbol="600519",
@@ -91,11 +91,11 @@ class CleanupDailyBarsTests(unittest.TestCase):
         iter_mock.assert_called_once_with(scope="daily")
 
     @patch("vnpy_ashare.data.bars.iter_bar_overviews")
-    @patch("vnpy_ashare.data.bars.load_universe_rows")
-    def test_load_downloaded_minute_scope(self, load_universe_rows_mock, iter_mock) -> None:
+    @patch("vnpy_ashare.data.bars.load_universe_names_for_keys")
+    def test_load_downloaded_minute_scope(self, names_mock, iter_mock) -> None:
         from vnpy_ashare.data.bar_store import PeriodBarOverview
 
-        load_universe_rows_mock.return_value = []
+        names_mock.return_value = {}
         iter_mock.return_value = [
             PeriodBarOverview(
                 symbol="600519",

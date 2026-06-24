@@ -62,7 +62,7 @@ uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
 uv run python cli.py data download --symbol 600519 --exchange SSE --period 1m --start 2025-01-01 --end 2026-06-01
 ```
 
-**分 K 回测（Phase 5）**：
+**分 K 回测**：
 
 | 策略 | 周期 | 数据要求 |
 |------|------|----------|
@@ -76,22 +76,13 @@ uv run python cli.py data download --symbol 600519 --exchange SSE --period 1m --
 
 ## 相关文件
 
-| 文件 | 职责 |
-|------|------|
-| `app/events.py` | `EVENT_OPEN_BACKTEST`、`BacktestRequest` |
-| `ui/backtest/flow/batch_backtest_flow.py` | 批量回测编排 |
-| `ui/backtest/pages/batch_backtest_page.py` | 回测对比页 |
-| `ui/quotes/controllers/batch_backtest.py` | 看盘页批量回测入口 |
-| `backtest/run_store.py` | `backtest_runs` 表 |
-| `services/backtest.py` | 摘要落库与 context |
-| `ai/context/backtest.py` | 回测页 AI 上下文组装 |
-| `strategies/ashare_template.py` | 策略基类 `AShareTemplate` |
+`ui/backtest/`、`backtest/run_store.py`、`services/backtest.py`、`strategies/ashare_template.py`
 
 ---
 
 ## 参考
 
-- [产品说明 §回测](./product-plan.md#回测)
+- [产品说明](./product-plan.md)
 - [AI 数据路由 §回测解读](./ai-data-routing.md#路由总表)
 - [AI 功能与 K 线](./ai-kline-data.md)
 - [数据设计 §backtest_runs](./data-design.md)

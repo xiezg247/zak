@@ -134,7 +134,7 @@ class TestSchedulerConfig(unittest.TestCase):
         manager = TaskSchedulerManager()
         next_run = datetime(2026, 6, 10, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
         with patch(
-            "vnpy_ashare.scheduler.manager.run_scheduled_auto_screen",
+            "vnpy_ashare.jobs.runners.run_scheduled_auto_screen",
             return_value=JobResult(success=True, skipped=True, message="非交易时段，已跳过"),
         ):
             manager._wrap_job("screen_intraday", force=False)
@@ -153,9 +153,8 @@ class TestSchedulerConfig(unittest.TestCase):
             "vnpy_ashare.scheduler.manager.is_ashare_trading_session",
             return_value=True,
         ):
-            with patch.object(
-                manager,
-                "_run_collect_quotes",
+            with patch(
+                "vnpy_ashare.jobs.runners.run_collect_quotes",
                 return_value=JobResult(success=True, message="ok"),
             ) as mock_run:
                 manager._wrap_job("collect_quotes", force=False)
@@ -177,11 +176,11 @@ class TestSchedulerConfig(unittest.TestCase):
         manager = TaskSchedulerManager()
         next_run = datetime(2026, 6, 10, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai"))
         with patch(
-            "vnpy_ashare.scheduler.manager.is_ashare_trading_session",
+            "vnpy_ashare.jobs.runners.is_ashare_trading_session",
             return_value=False,
         ):
             with patch(
-                "vnpy_ashare.scheduler.manager.next_quotes_collect_at",
+                "vnpy_ashare.jobs.runners.next_quotes_collect_at",
                 return_value=next_run,
             ):
                 manager._wrap_job("collect_quotes", force=False)
@@ -198,9 +197,8 @@ class TestSchedulerConfig(unittest.TestCase):
     def test_run_log_records_completed_jobs(self) -> None:
         manager = TaskSchedulerManager()
 
-        with patch.object(
-            manager._jobs["sync_universe"],
-            "runner",
+        with patch(
+            "vnpy_ashare.scheduler.manager.run_job",
             return_value=JobResult(success=True, message="synced 100"),
         ):
             manager._wrap_job("sync_universe")
@@ -217,9 +215,8 @@ class TestSchedulerConfig(unittest.TestCase):
         manager = TaskSchedulerManager()
         manager._run_log = deque(maxlen=3)
 
-        with patch.object(
-            manager._jobs["sync_universe"],
-            "runner",
+        with patch(
+            "vnpy_ashare.scheduler.manager.run_job",
             return_value=JobResult(success=True, message="ok"),
         ):
             for _ in range(5):

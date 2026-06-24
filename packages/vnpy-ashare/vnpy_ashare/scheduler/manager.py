@@ -13,35 +13,21 @@ from apscheduler.events import EVENT_JOB_MAX_INSTANCES
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
-from apscheduler.triggers.interval import IntervalTrigger
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
 from vnpy_ashare.domain.time.china import china_now, format_china_datetime
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session, next_quotes_collect_at
-from vnpy_ashare.jobs.bars.batch_fill import batch_fill_downloaded_stale_job
 from vnpy_ashare.jobs.bars.download import batch_download_universe_daily_bars
-from vnpy_ashare.jobs.bars.focus_pool_minute import batch_fill_focus_pool_minute_job
+from vnpy_ashare.jobs.catalog import COLLECT_QUOTES_JOB_ID, MANUAL_FORCE_JOB_IDS
 from vnpy_ashare.jobs.core.progress import bind_job_log
 from vnpy_ashare.jobs.core.result import JobResult
-from vnpy_ashare.jobs.feed.sync_bilibili import (
-    BILIBILI_SYNC_INTERVAL_SECONDS,
-    is_bilibili_sync_window,
-    sync_bilibili_feed_job,
+from vnpy_ashare.jobs.runners import (
+    collect_quotes_interval_seconds,
+    run_collect_quotes,
+    run_job,
+    run_prefetch_tushare_with_warm,
+    run_sync_bilibili_feed,
 )
-from vnpy_ashare.jobs.financial.disclosure import sync_disclosure_calendar_job
-from vnpy_ashare.jobs.financial.sync import sync_watchlist_financials_job
-from vnpy_ashare.jobs.market.summary_warmup import warm_market_summary
-from vnpy_ashare.jobs.prefetch.concept import prefetch_concept_board
-from vnpy_ashare.jobs.prefetch.moneyflow import prefetch_moneyflow
-from vnpy_ashare.jobs.prefetch.sector_flow import sync_sector_flow_daily_job
-from vnpy_ashare.jobs.prefetch.tushare import prefetch_tushare_factors
-from vnpy_ashare.jobs.quotes.collect import collect_market_quotes
-from vnpy_ashare.jobs.screen.auto_screen import run_scheduled_auto_screen
-from vnpy_ashare.jobs.screen.horizon_scan import run_horizon_outlook_scan_job
-from vnpy_ashare.jobs.sync.stock_industry import sync_stock_industry_job
-from vnpy_ashare.jobs.sync.suspend_sync import sync_suspend_daily_job
-from vnpy_ashare.jobs.sync.trade_calendar import sync_trade_calendar_job
-from vnpy_ashare.jobs.sync.universe import sync_universe_job
 from vnpy_ashare.jobs.watchlist.strategy_prewarm import warm_watchlist_strategy_cache_job
 from vnpy_ashare.scheduler.config import (
     AutoScreenJobConfig,
@@ -51,29 +37,17 @@ from vnpy_ashare.scheduler.config import (
     save_scheduler_config,
 )
 from vnpy_ashare.scheduler.job_meta import load_job_run_meta, save_job_run_meta
-from vnpy_ashare.screener.recipe.recipe import resolve_recipe
+from vnpy_ashare.scheduler.job_registry import SchedulerJobMeta, SchedulerJobRunners, build_scheduler_jobs
 from vnpy_common.domain.base import MutableModel
 
 if TYPE_CHECKING:
     from vnpy_ashare.app.engine import AshareEngine
-
-_COLLECT_QUOTES_JOB_ID = "collect_quotes"
-_COLLECT_QUOTES_INTERVAL_MIN = 5
-_BILIBILI_FEED_SYNC_INTERVAL_MIN = BILIBILI_SYNC_INTERVAL_SECONDS
 
 logger = logging.getLogger(__name__)
 _MAX_RUN_LOG = 200
 _MAX_RUN_DETAIL_LINES = 400
 
 SchedulerJobConfig = JobConfig | AutoScreenJobConfig
-
-
-def _recipe_label(recipe_id: str, fallback: str) -> str:
-    recipe = resolve_recipe(recipe_id or fallback)
-    if recipe is None:
-        return recipe_id or fallback
-    prefix = "内置" if recipe.builtin else "我的"
-    return f"{prefix} · {recipe.name}"
 
 
 def _normalize_cron_hours(raw: str, *, default: str = "10,14") -> str:
@@ -109,22 +83,6 @@ class JobStatus(MutableModel):
     next_run_at: str | None = Field(default=None, description="下次执行时间")
 
 
-class _JobMeta(MutableModel):
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_assignment=True,
-        arbitrary_types_allowed=True,
-    )
-
-    job_id: str = Field(description="任务 ID")
-    name: str = Field(description="任务名称")
-    description: str = Field(description="任务说明")
-    runner: Callable[[], JobResult] = Field(description="任务执行函数")
-    config_attr: str = Field(description="SchedulerConfig 属性名")
-    schedule_builder: Callable[[Any], Any] = Field(description="构建 APScheduler trigger")
-    schedule_text_builder: Callable[[Any], str] = Field(description="构建调度说明文案")
-
-
 class TaskSchedulerManager:
     """后台定时任务：行情采集 / 同步标的 / 批量下载。"""
 
@@ -142,314 +100,32 @@ class TaskSchedulerManager:
         self._engine: AshareEngine | None = None
         self._defer_immediate_collect = True
 
-        self._jobs: dict[str, _JobMeta] = {
-            "collect_quotes": _JobMeta(
-                job_id="collect_quotes",
-                name="行情采集",
-                description="TickFlow 全市场快照写入 Redis（开发调试用，生产建议独立进程）",
-                runner=collect_market_quotes,
-                config_attr="collect_quotes",
-                schedule_builder=lambda cfg: IntervalTrigger(seconds=max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)),
-                schedule_text_builder=lambda cfg: f"交易时段内每 {max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)} 秒；非交易时段自动休眠",
-            ),
-            "sync_universe": _JobMeta(
-                job_id="sync_universe",
-                name="同步 A 股列表",
-                description="从 TickFlow 更新全市场标的到本地 SQLite",
-                runner=sync_universe_job,
-                config_attr="sync_universe",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
+        self._jobs: dict[str, SchedulerJobMeta] = build_scheduler_jobs(
+            SchedulerJobRunners(
+                run_universe_daily_download=self._run_universe_daily_download,
+                run_prefetch_tushare=self._run_prefetch_tushare,
+                run_sync_bilibili_feed=lambda: self._run_sync_bilibili_feed(),
+                run_warm_watchlist_strategy_cache=lambda: warm_watchlist_strategy_cache_job(
+                    engine=self._engine,
                 ),
-                schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
             ),
-            "sync_stock_industry": _JobMeta(
-                job_id="sync_stock_industry",
-                name="同步行业映射",
-                description="从 Tushare 申万 2021 L2 拉取行业分类，失败时回退 stock_basic",
-                runner=sync_stock_industry_job,
-                config_attr="sync_stock_industry",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
-            ),
-            "sync_trade_calendar": _JobMeta(
-                job_id="sync_trade_calendar",
-                name="同步交易日历",
-                description="从 Tushare 更新 A 股交易日历到本地 SQLite",
-                runner=sync_trade_calendar_job,
-                config_attr="sync_trade_calendar",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"每周 {cfg.cron_day_of_week} {cfg.cron_hour:02d}:{cfg.cron_minute:02d}",
-            ),
-            "batch_download_universe": _JobMeta(
-                job_id="batch_download_universe",
-                name="全市场日 K",
-                description="从 Tushare 为全 A 股下载/补全自 2020 年以来的日 K；增量由「补全本地日 K」维护",
-                runner=self._run_universe_daily_download,
-                config_attr="batch_download_universe",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}，起始于 {cfg.download_start}",
-            ),
-            "prefetch_moneyflow": _JobMeta(
-                job_id="prefetch_moneyflow",
-                name="主力资金预拉",
-                description="收盘后从 Tushare 拉取全市场 moneyflow 主力资金流向，供雷达与个股分析",
-                runner=prefetch_moneyflow,
-                config_attr="prefetch_moneyflow",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于 Tushare 因子预拉）",
-            ),
-            "sync_sector_flow_daily": _JobMeta(
-                job_id="sync_sector_flow_daily",
-                name="板块资金同步",
-                description="收盘后拉取东财行业/同花顺概念近 N 日板块资金流，写入 sector_flow_daily 供详情页近5日柱图",
-                runner=sync_sector_flow_daily_job,
-                config_attr="sync_sector_flow_daily",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在主力资金预拉之后）",
-            ),
-            "sync_suspend_daily": _JobMeta(
-                job_id="sync_suspend_daily",
-                name="停牌日同步",
-                description="收盘后从 Tushare 增量拉取最近交易日全市场停牌记录，供日 K 断层扫描排除",
-                runner=sync_suspend_daily_job,
-                config_attr="sync_suspend_daily",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在主力资金预拉之后）",
-            ),
-            "prefetch_tushare": _JobMeta(
-                job_id="prefetch_tushare",
-                name="Tushare 因子预拉",
-                description="收盘后拉取 daily_basic、涨跌停、指数、北向、stock_basic 等写入本地缓存",
-                runner=self._run_prefetch_tushare,
-                config_attr="prefetch_tushare",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议早于盘后自动选股）",
-            ),
-            "prefetch_concept_board": _JobMeta(
-                job_id="prefetch_concept_board",
-                name="概念板块预拉",
-                description="预热同花顺概念指数、当日行情与强势概念成分映射（雷达概念维度依赖）",
-                runner=prefetch_concept_board,
-                config_attr="prefetch_concept_board",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在 Tushare 因子预拉之后）",
-            ),
-            "warm_market_summary": _JobMeta(
-                job_id="warm_market_summary",
-                name="市场摘要预热",
-                description="收盘后计算情绪周期并写入内存缓存，供 UI / 风控只读（避免启动阻塞）",
-                runner=lambda: warm_market_summary(enrich_factors=True),
-                config_attr="warm_market_summary",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在概念预拉之后）",
-            ),
-            "warm_watchlist_strategy_cache": _JobMeta(
-                job_id="warm_watchlist_strategy_cache",
-                name="策略信号磁盘预热",
-                description="收盘后为信号区/持仓区名单重算策略快照并写入磁盘 cache，供 UI hydrate",
-                runner=lambda: warm_watchlist_strategy_cache_job(engine=self._engine),
-                config_attr="warm_watchlist_strategy_cache",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在日 K 补全之后）",
-            ),
-            "sync_watchlist_financials": _JobMeta(
-                job_id="sync_watchlist_financials",
-                name="同步自选财报",
-                description="增量拉取自选池利润表/资产负债表/现金流量表/财务指标到本地",
-                runner=sync_watchlist_financials_job,
-                config_attr="sync_watchlist_financials",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在 Tushare 因子预拉之后）",
-            ),
-            "sync_disclosure_calendar": _JobMeta(
-                job_id="sync_disclosure_calendar",
-                name="同步披露计划",
-                description="拉取自选池财报预约披露日期，用于驱动财报增量同步",
-                runner=sync_disclosure_calendar_job,
-                config_attr="sync_disclosure_calendar",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在同步自选财报之前）",
-            ),
-            "batch_fill_stale": _JobMeta(
-                job_id="batch_fill_stale",
-                name="补全本地日 K",
-                description="为本地已下载列表中过期的日 K 增量补全到最近交易日",
-                runner=batch_fill_downloaded_stale_job,
-                config_attr="batch_fill_stale",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在全市场日 K 与补全之后）",
-            ),
-            "fill_focus_pool_minute": _JobMeta(
-                job_id="fill_focus_pool_minute",
-                name="关注池 1m K 补全",
-                description="为信号区与持仓记账标的补全/增量 1 分钟 K 线",
-                runner=batch_fill_focus_pool_minute_job,
-                config_attr="fill_focus_pool_minute",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在日 K 补全之后）",
-            ),
-            "screen_intraday": _JobMeta(
-                job_id="screen_intraday",
-                name="盘中自动选股",
-                description="交易时段多维度选股（动量+换手），结果写入选股历史",
-                runner=lambda: run_scheduled_auto_screen("screen_intraday"),
-                config_attr="screen_intraday",
-                schedule_builder=lambda _cfg: CronTrigger(hour="10,14", minute=0),
-                schedule_text_builder=lambda cfg: f"交易日 {cfg.cron_hours}:{cfg.cron_minute_intraday:02d} · {_recipe_label(cfg.recipe_id, 'intraday_multi')}",
-            ),
-            "screen_post_close": _JobMeta(
-                job_id="screen_post_close",
-                name="盘后自动选股",
-                description="收盘后多维度选股（资金+估值+动量），结果写入选股历史",
-                runner=lambda: run_scheduled_auto_screen("screen_post_close"),
-                config_attr="screen_post_close",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d} · {_recipe_label(cfg.recipe_id, 'post_close_multi')}",
-            ),
-            "scan_horizon_outlook": _JobMeta(
-                job_id="scan_horizon_outlook",
-                name="雷达展望扫描",
-                description="收盘后全市场扫描未来·关注/可持/情景/预测，写入本地缓存",
-                runner=run_horizon_outlook_scan_job,
-                config_attr="scan_horizon_outlook",
-                schedule_builder=lambda cfg: CronTrigger(
-                    day_of_week=cfg.cron_day_of_week,
-                    hour=cfg.cron_hour,
-                    minute=cfg.cron_minute,
-                ),
-                schedule_text_builder=lambda cfg: f"工作日 {cfg.cron_hour:02d}:{cfg.cron_minute:02d}（建议在盘后自动选股之后）",
-            ),
-            "sync_bilibili_feed": _JobMeta(
-                job_id="sync_bilibili_feed",
-                name="B站订阅同步",
-                description="拉取已订阅 UP 主的最新视频与动态，写入信息流",
-                runner=lambda: self._run_sync_bilibili_feed(),
-                config_attr="sync_bilibili_feed",
-                schedule_builder=lambda cfg: IntervalTrigger(
-                    seconds=max(cfg.interval_seconds, _BILIBILI_FEED_SYNC_INTERVAL_MIN),
-                ),
-                schedule_text_builder=lambda cfg: f"每天 08:00–20:00 每 {max(cfg.interval_seconds, _BILIBILI_FEED_SYNC_INTERVAL_MIN) // 60} 分钟",
-            ),
-        }
+        )
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)
         self._refresh_status_cache()
 
     def _collect_quotes_interval(self) -> int:
-        cfg = cast(JobConfig, self._get_job_config(_COLLECT_QUOTES_JOB_ID))
-        return max(cfg.interval_seconds, _COLLECT_QUOTES_INTERVAL_MIN)
+        return collect_quotes_interval_seconds()
 
     def _run_collect_quotes(self, *, force: bool = False) -> JobResult:
-        now = china_now()
-        if not force and not is_ashare_trading_session(now):
-            nxt = next_quotes_collect_at(
-                now,
-                interval_seconds=self._collect_quotes_interval(),
-            )
-            return JobResult(
-                success=True,
-                skipped=True,
-                message=f"非交易时段，已跳过（下次 {nxt.strftime('%Y-%m-%d %H:%M:%S')}）",
-            )
+        return run_collect_quotes(force=force)
 
-        result = collect_market_quotes()
-        if result.success and not result.skipped:
-            warm = warm_market_summary(enrich_factors=False)
-            if warm.message:
-                result = JobResult(
-                    success=result.success,
-                    skipped=result.skipped,
-                    message=f"{result.message} · {warm.message}",
-                )
-        if force and not is_ashare_trading_session(now):
-            return JobResult(
-                success=result.success,
-                skipped=False,
-                message=f"非交易时段手动采集 · {result.message}",
-            )
-        return result
 
     def _run_prefetch_tushare(self) -> JobResult:
-        result = prefetch_tushare_factors()
-        if not result.success or result.skipped:
-            return result
-        warm = warm_market_summary(enrich_factors=False)
-        if warm.message:
-            return JobResult(success=result.success, message=f"{result.message} · {warm.message}")
-        return result
+        return run_prefetch_tushare_with_warm()
+
 
     def _run_sync_bilibili_feed(self, *, force: bool = False) -> JobResult:
-        if not force and not is_bilibili_sync_window():
-            return JobResult(
-                success=True,
-                skipped=True,
-                message="非 08:00–20:00 时段，已跳过 B 站订阅同步",
-            )
-        if self._engine is not None:
-            return self._engine.feed_service.sync_all_enabled()
-        return sync_bilibili_feed_job(force=True)
+        return run_sync_bilibili_feed(force=force, engine=self._engine)
 
     def _next_collect_quotes_run_at(self, *, prefer_immediate: bool = False) -> datetime:
         now = china_now()
@@ -461,18 +137,18 @@ class TaskSchedulerManager:
         )
 
     def _schedule_collect_quotes(self, *, prefer_immediate: bool = False) -> None:
-        cfg = self._get_job_config(_COLLECT_QUOTES_JOB_ID)
+        cfg = self._get_job_config(COLLECT_QUOTES_JOB_ID)
         if not cfg.enabled:
             return
 
         run_at = self._next_collect_quotes_run_at(prefer_immediate=prefer_immediate)
-        meta = self._jobs[_COLLECT_QUOTES_JOB_ID]
+        meta = self._jobs[COLLECT_QUOTES_JOB_ID]
         self._scheduler.add_job(
             self._wrap_job,
             trigger=DateTrigger(run_date=run_at),
-            id=_COLLECT_QUOTES_JOB_ID,
+            id=COLLECT_QUOTES_JOB_ID,
             name=meta.name,
-            kwargs={"job_id": _COLLECT_QUOTES_JOB_ID, "force": False},
+            kwargs={"job_id": COLLECT_QUOTES_JOB_ID, "force": False},
             replace_existing=True,
             max_instances=1,
         )
@@ -615,7 +291,7 @@ class TaskSchedulerManager:
             cfg = self._get_job_config(job_id)
             if not cfg.enabled:
                 continue
-            if job_id == _COLLECT_QUOTES_JOB_ID:
+            if job_id == COLLECT_QUOTES_JOB_ID:
                 if job_id not in self._running_jobs:
                     self._schedule_collect_quotes(prefer_immediate=not self._defer_immediate_collect)
                 continue
@@ -683,7 +359,7 @@ class TaskSchedulerManager:
                 status.last_message = text[:240]
         self._notify(record.job_id)
 
-    def _begin_run_log(self, job_id: str, meta: _JobMeta) -> JobRunRecord:
+    def _begin_run_log(self, job_id: str, meta: SchedulerJobMeta) -> JobRunRecord:
         started_at = format_china_datetime()
         record = JobRunRecord(
             started_at=started_at,
@@ -721,14 +397,7 @@ class TaskSchedulerManager:
         if job_id in self._running_jobs:
             return False
         self.ensure_started()
-        force = job_id in (
-            _COLLECT_QUOTES_JOB_ID,
-            "screen_intraday",
-            "screen_post_close",
-            "scan_horizon_outlook",
-            "warm_watchlist_strategy_cache",
-            "sync_bilibili_feed",
-        )
+        force = job_id in MANUAL_FORCE_JOB_IDS
         self._scheduler.add_job(
             self._wrap_job,
             kwargs={"job_id": job_id, "force": force},
@@ -755,18 +424,7 @@ class TaskSchedulerManager:
         success = False
         message = ""
         try:
-            if job_id == _COLLECT_QUOTES_JOB_ID:
-                result = self._run_collect_quotes(force=force)
-            elif job_id in ("screen_intraday", "screen_post_close"):
-                result = run_scheduled_auto_screen(job_id, force=force)
-            elif job_id == "scan_horizon_outlook":
-                result = run_horizon_outlook_scan_job(force=force)
-            elif job_id == "warm_watchlist_strategy_cache":
-                result = warm_watchlist_strategy_cache_job(engine=self._engine, force=force)
-            elif job_id == "sync_bilibili_feed":
-                result = self._run_sync_bilibili_feed(force=force)
-            else:
-                result = meta.runner()
+            result = run_job(job_id, force=force, engine=self._engine)
             message = result.message
             skipped = result.skipped
             success = result.success if not skipped else True
@@ -808,5 +466,5 @@ class TaskSchedulerManager:
             except Exception:
                 logger.exception("job_finished_hook failed job_id=%s", job_id)
 
-        if job_id == _COLLECT_QUOTES_JOB_ID and self._get_job_config(job_id).enabled:
+        if job_id == COLLECT_QUOTES_JOB_ID and self._get_job_config(job_id).enabled:
             self._schedule_collect_quotes()

@@ -1,85 +1,47 @@
 # 数据流与触发方式
 
-说明 zak 各类数据**何时加载、由谁触发**，避免在 App 启动或 UI 主线程做全市场重算。
+zak 数据按四档触发，避免启动时全市场重算。
 
-## 四档触发
+---
 
-| 档位 | 时机 | 典型数据 | 原则 |
-|------|------|----------|------|
-| **冷启动** | 打开 App | 本地 SQLite、磁盘持仓/信号缓存 | 只读已有数据；**不**拉 Redis 全市场 |
-| **打开页面** | Tab `activate()` | 当前页行情、雷达单卡 | Worker + 页面内 QTimer；无缓存则占位 |
-| **定时任务** | Scheduler / CLI `job run` | 全市场因子、选股、摘要预热 | 批量、可离线、写缓存 |
-| **用户触发** | 按钮 / 记账 / AI | 试跑选股、回测、流水 | 强交互、参数多变 |
+## 四档
 
-```text
-冷启动 ──► 只读本地 / 内存缓存
-              │
-打开市场/雷达/自选 ──► 轻量 Timer + Worker（仅当前页）
-              │
-定时任务 ──► Redis / SQLite / 内存摘要缓存
-              │
-用户操作 ──► 即时执行（可 force）
-```
-
-## 定时任务（后台 → 定时任务）
-
-与 `commands/jobs.py` 共用实现。推荐盘后顺序：
-
-```text
-batch_download_universe (16:20)   # 约 30 分钟，后续任务从 17:00 起
-  → prefetch_moneyflow (17:00)
-  → prefetch_tushare (17:10)        # 结束后轻量预热情绪
-  → sync_suspend_daily (17:20)
-  → prefetch_concept_board (17:30)
-  → warm_market_summary (17:40)     # 情绪周期预热（盘后补全因子）
-  → sync_sector_flow_daily (17:45)
-  → sync_disclosure_calendar (17:50)
-  → screen_post_close (18:00)
-  → scan_horizon_outlook (18:15)
-  → sync_watchlist_financials (18:20)
-  → batch_fill_stale (18:30)
-  → warm_watchlist_strategy_cache (18:45)
-  → fill_focus_pool_minute (19:00)
-```
-
-全市场日 K 与后续任务间隔 ≥40 分钟；其余相邻重任务间隔 ≥10 分钟。
-
-| job_id | 说明 |
-|--------|------|
-| `collect_quotes` | 交易时段 TickFlow → Redis；**成功后自动轻量预热情绪** |
-| `prefetch_concept_board` | 同花顺概念指数与成分映射 |
-| `warm_market_summary` | 情绪周期 → 内存缓存 |
-| `prefetch_tushare` | daily_basic、涨跌停等；**成功后轻量预热情绪** |
-| 其余 | 见定时任务页描述 |
-
-盘中：`collect_quotes` + 轻量 `warm_market_summary(enrich_factors=False)`。
-
-## 页面内定时（仅 Tab 激活时）
-
-| 页面 | 机制 | 间隔（约） |
-|------|------|------------|
-| 市场页概览 | `MarketOverviewLoadWorker` | 30s（交易时段） |
-| 市场列表 | 行情自动刷新 | 用户可关 |
-| 雷达卡片 | 每卡 QTimer | 60s+ 可配 |
-| 自选信号/持仓 | Controller Timer | 5min |
-| 情绪芯片 | 读缓存；缺失则后台 Worker | 不阻塞启动 |
-
-## 内存摘要缓存
-
-| 缓存 | 写入 | 读取 |
+| 档位 | 时机 | 原则 |
 |------|------|------|
-| 行情行 | `set_market_quote_rows_cache` / QuoteService | `load_emotion_cycle_snapshot(fetch_if_missing=False)` |
-| 情绪周期 | `store_emotion_cycle_snapshot` | 持仓 stats、雷达 subtitle、工具栏芯片 |
+| 冷启动 | 打开 App | 只读本地 SQLite / 磁盘缓存 |
+| 打开页面 | Tab activate | Worker + 页内 Timer |
+| 定时任务 | Scheduler / CLI | 批量写 Redis / 缓存 |
+| 用户操作 | 按钮 / AI | 即时执行 |
 
-UI **默认不拉全市场**；显式分析仍可用 `fetch_if_missing=True`。
+---
 
-## 用户触发（不宜默认定时）
+## 定时任务（要点）
 
-- 选股 Hub「运行」、雷达刷新、回测、登记买卖、交易计划、AI 分析
-- `工具 → 立即执行 → <job>`（等同 CLI `job run --force`）
+交易时段：`collect_quotes` → Redis，并轻量预热情绪周期。
 
-## 相关文档
+盘后推荐顺序（间隔见定时任务页）：全市场日 K 下载 → Tushare/概念/情绪预热 → 盘后选股 → 展望扫描 → 自选财务 → K 线补全 → 关注池分 K 补全。
 
-- [市场页](./market-page.md) · [情绪周期](./emotion-cycle.md)
-- [盘中选股](./intraday-screening.md) · [消息通知](./notifications.md)
-- [数据设计](./data-design.md)
+其它：`sync_bilibili_feed`（信息流）、`screen_intraday`（盘中选股）等。
+
+---
+
+## 页面内刷新
+
+| 页面 | 约间隔 |
+|------|--------|
+| 市场概览 | 30s（交易时段） |
+| 雷达单卡 | 60s+ 可配 |
+| 自选信号/持仓 | 5min 巡检 |
+| 情绪芯片 | 读内存缓存，缺失后台补 |
+
+---
+
+## 用户触发
+
+选股运行、雷达刷新、回测、登记持仓、交易计划、AI 分析；菜单「立即执行」任务。
+
+---
+
+## 参考
+
+[数据设计](./data-design.md) · [市场页](./market-page.md) · [情绪周期](./emotion-cycle.md)

@@ -8,60 +8,13 @@ from vnpy.event import EventEngine
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
-from vnpy_ashare.app.engine_access import (
-    get_analysis_service,
-    get_bar_service,
-    get_note_service,
-    get_position_service,
-    get_quote_service,
-    get_watchlist_service,
-)
-from vnpy_ashare.config.preferences.strategy_profile import (
-    StrategyProfileId,
-    apply_strategy_profile,
-    bootstrap_strategy_profile,
-    load_strategy_profile_id,
-)
-from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, load_watchlist_position_config
-from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
-from vnpy_ashare.data.bar_health import (
-    BarGapResult,
-    BarHealthStatus,
-    BarMeta,
-)
+from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig
 from vnpy_ashare.domain.market.depth_snapshot import DepthSnapshot
-from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
-from vnpy_ashare.domain.symbols.stock import StockItem, canonical_vt_symbol
-from vnpy_ashare.domain.trading.position import PositionSnapshot
-from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.domain.trading.stock_continuation import StockContinuationSnapshot
-from vnpy_ashare.integrations.tickflow.stream import TickflowStreamBridge
+from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.services.analysis import AnalysisService
 from vnpy_ashare.services.note import NoteService
 from vnpy_ashare.services.position import PositionService
 from vnpy_ashare.services.watchlist import WatchlistService
-from vnpy_ashare.ui.components.task_run_output_panel import TaskRunOutputPanel
-from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
-from vnpy_ashare.ui.quotes.chart.panel import ChartPanel
-from vnpy_ashare.ui.quotes.chart.section import ChartSectionPanel, sync_chart_splitter_for_expansion
-from vnpy_ashare.ui.quotes.controllers.actions import ActionsController
-from vnpy_ashare.ui.quotes.controllers.batch_backtest import WatchlistBatchBacktestController
-from vnpy_ashare.ui.quotes.controllers.data_loader import DataLoaderController
-from vnpy_ashare.ui.quotes.controllers.local_data import LocalDataController
-from vnpy_ashare.ui.quotes.controllers.pagination import MarketPaginationController
-from vnpy_ashare.ui.quotes.controllers.quote_stream import QuoteStreamController
-from vnpy_ashare.ui.quotes.controllers.table import TableController
-from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
-from vnpy_ashare.ui.quotes.features.market_rank import MarketRankFeature
-from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
-from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
-from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
-from vnpy_ashare.ui.quotes.page.config import (
-    MARKET_AUTO_REFRESH_DEFAULT,
-    MARKET_SCROLL_DEBOUNCE_MS,
-    PAGE_CONFIGS,
-    SEARCH_DEBOUNCE_MS,
-)
 from vnpy_ashare.ui.quotes.page.controller_attrs import QuotesPageControllerAttrs
 from vnpy_ashare.ui.quotes.page.header_chips import refresh_emotion_cycle_chip_for_page
 from vnpy_ashare.ui.quotes.page.layout_persistence import (
@@ -78,6 +31,39 @@ from vnpy_ashare.ui.quotes.page.market_drilldown import (
     open_industry_drilldown,
     set_market_industry_filter,
 )
+from vnpy_ashare.ui.quotes.page.page_bootstrap import (
+    finish_page_init,
+    init_controllers,
+    init_page_config,
+    init_page_state,
+    init_timers,
+    wire_page_features,
+)
+from vnpy_ashare.ui.quotes.page.panel_wiring import (
+    add_selection_to_signal_panel,
+    apply_position_config,
+    apply_signal_panel_config,
+    apply_strategy_profile_for_page,
+    find_stock_item,
+    on_chart_section_expansion_changed,
+    on_position_panel_config_changed,
+    on_position_panel_expansion_changed,
+    on_position_panel_row_activated,
+    on_position_panel_row_selected,
+    on_radar_resonance_expansion_changed,
+    on_signal_panel_config_changed,
+    on_signal_panel_expansion_changed,
+    on_signal_panel_row_activated,
+    open_notes_center,
+    refresh_watchlist_positions,
+    refresh_watchlist_signals,
+    signal_chart_ref_kwargs,
+    watchlist_pool_items,
+    wire_multiview,
+    wire_position_panel,
+    wire_signal_panel,
+    wire_stock_note_panel,
+)
 from vnpy_ashare.ui.quotes.page.quote_refresh import (
     market_auto_refresh_enabled as page_market_auto_refresh_enabled,
 )
@@ -93,9 +79,19 @@ from vnpy_ashare.ui.quotes.page.quote_refresh import (
 from vnpy_ashare.ui.quotes.page.quote_refresh import (
     quote_auto_refresh_paused_for_hours as page_quote_auto_refresh_paused_for_hours,
 )
+from vnpy_ashare.ui.quotes.page.service_access import (
+    get_analysis_service_for_page,
+    get_bar_service_for_page,
+    get_main_engine_for_page,
+    get_note_service_for_page,
+    get_position_service_for_page,
+    get_quote_service_for_page,
+    get_watchlist_service_for_page,
+)
 from vnpy_ashare.ui.quotes.page.session_lifecycle import activate_quotes_page, deactivate_quotes_page
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell
 from vnpy_ashare.ui.quotes.page.shell_attrs import QuotesPageShellAttrs
+from vnpy_ashare.ui.quotes.page.state_attrs import QuotesPageStateAttrs
 from vnpy_ashare.ui.quotes.page.task_busy import (
     begin_cancellable_task,
     collect_busy_widgets,
@@ -103,49 +99,20 @@ from vnpy_ashare.ui.quotes.page.task_busy import (
     finish_cancellable_task,
     set_busy,
 )
-from vnpy_ashare.ui.quotes.panels.depth import DepthPanel
-from vnpy_ashare.ui.quotes.panels.diagnose import DiagnosePanel
-from vnpy_ashare.ui.quotes.panels.loading_overlay import MarketTableHost
-from vnpy_ashare.ui.quotes.radar.resonance_panel import sync_radar_resonance_splitter_for_expansion
-from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
-from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
-from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
-from vnpy_ashare.ui.quotes.watchlist_groups.controller import WatchlistGroupController
-from vnpy_ashare.ui.quotes.watchlist_multiview.controller import WatchlistMultiViewController
-from vnpy_ashare.ui.quotes.watchlist_positions.controller import WatchlistPositionController
-from vnpy_ashare.ui.quotes.watchlist_signals.controller import WatchlistSignalController
-from vnpy_ashare.ui.quotes.workers.quotes_workers import (
-    BarGapCheckWorker,
-    BarsLoadWorker,
-    BatchFillWorker,
-    BatchGapFillWorker,
-    DepthRefreshWorker,
-    DiagnoseWorker,
-    DownloadWorker,
-    InvalidBarCleanupWorker,
-    MinuteDownloadWorker,
-    QuotesRefreshWorker,
-    ScopeBarsLoadWorker,
-)
-from vnpy_common.ui.feedback import TaskGuard
-from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
-from vnpy_common.ui.theme.manager import theme_manager
+from vnpy_ashare.ui.quotes.page.worker_lifecycle import release_worker, wait_worker_release
+from vnpy_common.ui.qt_helpers import thread_is_active
 
 
-class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWidget):
+class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStateAttrs, QtWidgets.QWidget):
     """单页行情：列表 + 报价头 + 日 K。"""
 
     _thread_active = staticmethod(thread_is_active)
 
     def _wait_worker_release(self, attr: str, *, timeout_ms: int = 3000) -> None:
-        worker = getattr(self, attr, None)
-        if worker is None:
-            return
-        setattr(self, attr, None)
-        release_thread(self._retired_workers, worker, timeout_ms=timeout_ms)
+        wait_worker_release(self, attr, timeout_ms=timeout_ms)
 
     def _release_worker(self, worker: QtCore.QThread | None) -> None:
-        release_thread(self._retired_workers, worker, timeout_ms=0)
+        release_worker(self, worker)
 
     def __init__(
         self,
@@ -155,170 +122,12 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         event_engine: EventEngine | None = None,
     ) -> None:
         super().__init__(parent)
-        self.config = PAGE_CONFIGS[page_name]
-        self.page_name = page_name
-        self.event_engine = event_engine
-
-        self.all_stocks: list[StockItem] = []
-        self.watchlist_pool_stocks: list[StockItem] = []
-        self.display_stocks: list[StockItem] = []
-        self.quote_map: dict[str, QuoteSnapshot] = {}
-        self.downloaded_keys: set[tuple[str, Exchange]] = set()
-        self.bar_meta: dict[tuple[str, Exchange], BarMeta] = {}
-        self.bar_list_status: dict[tuple[str, Exchange], BarHealthStatus] = {}
-        self._selected_gap_result: BarGapResult | None = None
-        self.current_item: StockItem | None = None
-        self._watchlist = WatchlistController(self)
-        self._pagination = MarketPaginationController(self)
-        self._stream = QuoteStreamController(self)
-        self._local = LocalDataController(self)
-        self._table = TableController(self)
-        self._actions = ActionsController(self)
-        self._batch_backtest = WatchlistBatchBacktestController(self)
-        self._signals = WatchlistSignalController(self)
-        self._positions = WatchlistPositionController(self)
-        self._multiview = WatchlistMultiViewController(self)
-        self._strategy_refresh = WatchlistStrategyRefreshScheduler(self, self._signals, self._positions)
-        self._strategy_batch = WatchlistStrategyBatchCoordinator(self) if page_name == "自选" else None
-        self._watchlist_groups: WatchlistGroupController | None = None
-        self._loader = DataLoaderController(self)
-        self.signal_config: WatchlistSignalConfig = bootstrap_strategy_profile()
-        self.position_config: WatchlistPositionConfig = load_watchlist_position_config()
-        self.signal_cache: dict[str, SignalSnapshot] = {}
-        self.continuation_cache: dict[str, StockContinuationSnapshot] = {}
-        self.strategy_workspace_button: QtWidgets.QPushButton | None = None
-        self._strategy_workspace_open = False
-        self._signal_cache_config: WatchlistSignalConfig | None = None
-        self.position_cache: dict[str, PositionSnapshot] = {}
-        self._position_cache_config: WatchlistSignalConfig | None = None
-        self._retired_workers: list[QtCore.QThread] = []
-        self._load_generation = 0
-        self._bars_generation = 0
-        self._bars_request_id = 0
-        self._active = False
-        self._market_page = 0
-        self._market_total = 0
-        self._local_total = 0
-        self._market_board: str | None = None
-        self._market_rank_id: str = self.config.default_rank_id
-        self._market_catalog: list = []
-        self._market_catalog_quotes: dict = {}
-        self._market_catalog_loaded = False
-        self._market_full_load_quiet = True
-        self._market_updated_at: str | None = None
-        self._market_page_cache: dict = {}
-        self._market_count_cache: dict = {}
-        self._market_loading_more = False
-        self._market_load_mode = "rank"
-        self._market_scroll_blocked = False
-        self._market_last_load_more_at = 0.0
-        self._apply_default_table_sort = False
-        self._market_table_host: MarketTableHost | None = None
-        self._market_matched: list[StockItem] = []
-        self._market_board_base: list[StockItem] | None = None
-        self._market_board_base_key: str | None = None
-        self._market_filter_keyword: str = ""
-        self._local_filter_keyword: str = ""
-        self._market_industry_filter: str | None = None
-        self._market_vt_whitelist: frozenset[str] | None = None
-        self._market_drilldown_label: str | None = None
-        self._pending_industry_drilldown: str | None = None
-        self._pending_concept_drilldown: frozenset[str] | None = None
-        self._industry_map_cache: dict[str, str] | None = None
-        self._market_board_map_cache: dict[str, str] | None = None
-        self._market_industry_filter_listener = None
-        self._market_rank = MarketRankFeature(self)
-        self._watchlist_panels = WatchlistPanelsFeature(self)
-        self._watchlist_feature: WatchlistPageFeature | None = WatchlistPageFeature(self) if page_name == "自选" else None
-        self._watchlist_bootstrap: WatchlistBootstrapCoordinator | None = WatchlistBootstrapCoordinator() if page_name == "自选" else None
-        self._stock_notes = StockNotesFeature(self)
-        self._market_auto_refresh = MARKET_AUTO_REFRESH_DEFAULT
-        self._market_sort_column: str | None = None
-        self._market_sort_ascending = True
-        self._center_splitter_bound = False
-        self.emotion_cycle_more_button: QtWidgets.QPushButton | None = None
-        self._watchlist_table_ratio_override: float | None = None
-        self.column_button = None
-        self.rank_sidebar = None
-        self.rank_list = None
-        self.chart = None
-        self.signal_panel = None
-        self.position_panel = None
-        self.multiview_board = None
-        self.view_table_button = None
-        self.view_multiview_button = None
-        self._center_view_stack = None
-        self.stock_note_panel = None
-        self.refresh_radar_button = None
-        self.radar_ai_button = None
-        self.radar_board = None
-        self.radar_resonance_panel = None
-        self._radar_controller = None
-        self._radar_splitter = None
-        self._radar_resonance_splitter_saved_state: QtCore.QByteArray | None = None
-        self._rank_splitter = None
-        self._rank_splitter_filter = None
-
-        self._load_worker: QtCore.QThread | None = None
-        self._market_worker: QtCore.QThread | None = None
-        self._prefetch_worker: QtCore.QThread | None = None
-        self._sync_worker: QtCore.QThread | None = None
-        self._bars_worker: BarsLoadWorker | ScopeBarsLoadWorker | None = None
-        self._download_worker: DownloadWorker | MinuteDownloadWorker | None = None
-        self._batch_fill_worker: BatchFillWorker | None = None
-        self._batch_gap_fill_worker: BatchGapFillWorker | None = None
-        self._gap_worker: BarGapCheckWorker | None = None
-        self._gap_generation = 0
-        self._quotes_worker: QuotesRefreshWorker | None = None
-        self._depth_worker: DepthRefreshWorker | None = None
-        self._diagnose_worker: DiagnoseWorker | None = None
-        self._invalid_bar_cleanup_worker: InvalidBarCleanupWorker | None = None
-        self._depth_generation = 0
-        self._depth_permission_denied = False
-        self.depth_panel: DepthPanel | None = None
-        self.diagnose_panel: DiagnosePanel | None = None
-        self.chart_panel: ChartPanel | None = None
-        self.chart_section: ChartSectionPanel | None = None
-        self.chart_hint: QtWidgets.QLabel | None = None
-        self._right_panel_widget: QtWidgets.QWidget | None = None
-        self._chart_splitter_saved_state: QtCore.QByteArray | None = None
-        self.run_output_panel: TaskRunOutputPanel | None = None
-        self._center_splitter: QtWidgets.QSplitter | None = None
-        self._stream_bridge: TickflowStreamBridge | None = None
-        self._stream_fallback = False
-        self._local_scope = "daily"
-        self._splitter: QtWidgets.QSplitter | None = None
-        self._column_menu: QtWidgets.QMenu | None = None
-        self._stats_label: QtWidgets.QLabel | None = None
-        self._open_label: QtWidgets.QLabel | None = None
-        self._high_label: QtWidgets.QLabel | None = None
-        self._low_label: QtWidgets.QLabel | None = None
-        self._volume_label: QtWidgets.QLabel | None = None
-
-        self._search_timer = QtCore.QTimer(self)
-        self._search_timer.setSingleShot(True)
-        self._search_timer.setInterval(SEARCH_DEBOUNCE_MS)
-        self._search_timer.timeout.connect(self.apply_filter)
-
-        self._quote_timer = QtCore.QTimer(self)
-        self._quote_timer.setSingleShot(True)
-        self._quote_timer.timeout.connect(self.refresh_quotes)
-
-        self._market_scroll_timer = QtCore.QTimer(self)
-        self._market_scroll_timer.setSingleShot(True)
-        self._market_scroll_timer.setInterval(MARKET_SCROLL_DEBOUNCE_MS)
-        self._market_scroll_timer.timeout.connect(self._check_market_scroll_load)
-
-        self._market_cache_sync_timer = QtCore.QTimer(self)
-        self._market_cache_sync_timer.setSingleShot(True)
-        self._market_cache_sync_timer.setInterval(400)
-        self._market_cache_sync_timer.timeout.connect(self._loader.flush_market_cache_sync)
-
+        init_page_config(self, page_name, event_engine=event_engine)
+        init_page_state(self)
+        init_controllers(self, page_name)
+        init_timers(self)
         self._init_ui()
-        self._task_guard = TaskGuard(self._toast)
-        self._task_lock_table: bool = True
-        self._active_worker_attr: str | None = None
-        theme_manager().register_callback(self._on_theme_changed)
+        finish_page_init(self)
 
     def _on_theme_changed(self, _tokens) -> None:
         if not self._active:
@@ -342,11 +151,7 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self.watchlist_group_tab_bar = None
         self.watchlist_pool_context_bar = None
         QuotesPageShell(self).build()
-        if self.config.show_watchlist_groups:
-            self._watchlist_groups = WatchlistGroupController(self)
-            self._watchlist_groups.wire()
-        if self._watchlist_feature is not None:
-            self._watchlist_feature.wire()
+        wire_page_features(self)
 
     def activate(self) -> None:
         activate_quotes_page(self)
@@ -536,120 +341,58 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._table.update_stats()
 
     def refresh_watchlist_signals(self) -> None:
-        self._signals.invalidate_memory_cache()
-        self._signals.refresh(force=True)
+        refresh_watchlist_signals(self)
 
     def apply_strategy_profile(self, profile_id: str) -> None:
-
-        typed_id = cast(StrategyProfileId, profile_id)
-        from_profile_id = cast(StrategyProfileId, load_strategy_profile_id())
-        if from_profile_id != typed_id:
-            from vnpy_ashare.services.trading_playbook import (
-                apply_playbook_template_merge,
-                list_playbook_merge_candidate_sections,
-                touch_playbook_seeded_profile,
-            )
-            from vnpy_ashare.ui.home.playbook_merge_dialog import prompt_playbook_template_merge
-
-            candidates = list_playbook_merge_candidate_sections(from_profile_id, typed_id)
-            self.signal_config = apply_strategy_profile(typed_id)
-            if candidates and prompt_playbook_template_merge(
-                self,
-                from_profile_id=from_profile_id,
-                to_profile_id=typed_id,
-                section_ids=candidates,
-            ):
-                apply_playbook_template_merge(typed_id, candidates)
-            else:
-                touch_playbook_seeded_profile(typed_id)
-        else:
-            self.signal_config = apply_strategy_profile(typed_id)
-        signal_panel = self.signal_panel
-        if signal_panel is not None:
-            signal_panel.apply_config(self.signal_config)
-            signal_panel.sync_strategy_profile_combo(profile_id)
-        position_panel = self.position_panel
-        if position_panel is not None:
-            position_panel.sync_strategy_profile_combo(profile_id)
-        self.refresh_watchlist_signals()
+        apply_strategy_profile_for_page(self, profile_id)
 
     def refresh_watchlist_positions(self) -> None:
-        self._positions.invalidate_cache()
-        self._positions.refresh(force=True)
+        refresh_watchlist_positions(self)
 
     def _wire_signal_panel(self) -> None:
-        self._watchlist_panels.wire_signal_panel()
+        wire_signal_panel(self)
 
     def _wire_multiview(self) -> None:
-        board = self.multiview_board
-        if board is None:
-            return
-        self._multiview.wire_board(board)
-        if self.view_table_button is not None:
-            self.view_table_button.clicked.connect(lambda: self._multiview.set_view_mode("table"))
-        if self.view_multiview_button is not None:
-            self.view_multiview_button.clicked.connect(lambda: self._multiview.set_view_mode("multiview"))
-        self._multiview.restore_view_mode()
+        wire_multiview(self)
 
     def _on_signal_panel_expansion_changed(self, expanded: bool) -> None:
-        self._watchlist_panels.on_signal_panel_expansion_changed(expanded)
+        on_signal_panel_expansion_changed(self, expanded)
 
     def _on_chart_section_expansion_changed(self, expanded: bool) -> None:
-
-        sync_chart_splitter_for_expansion(self, expanded)
+        on_chart_section_expansion_changed(self, expanded)
 
     def _on_radar_resonance_expansion_changed(self, expanded: bool) -> None:
-        sync_radar_resonance_splitter_for_expansion(self, expanded)
+        on_radar_resonance_expansion_changed(self, expanded)
 
     def _on_signal_panel_config_changed(self) -> None:
-        self._watchlist_panels.on_signal_panel_config_changed()
+        on_signal_panel_config_changed(self)
 
     def apply_signal_panel_config(self) -> None:
-        """应用信号区当前配置（构建 UI 期间也可安全调用）。"""
-        self._watchlist_panels.apply_signal_panel_config()
+        apply_signal_panel_config(self)
 
     def _on_signal_panel_row_activated(self, vt_symbol: str) -> None:
-        self._watchlist_panels.on_signal_panel_row_activated(vt_symbol)
+        on_signal_panel_row_activated(self, vt_symbol)
 
     def _signal_chart_ref_kwargs(self) -> dict[str, int]:
-        cfg = self.signal_config.normalized()
-        return {"fast_window": cfg.fast_window, "slow_window": cfg.slow_window}
+        return signal_chart_ref_kwargs(self)
 
     def _wire_position_panel(self) -> None:
-        self._watchlist_panels.wire_position_panel()
+        wire_position_panel(self)
 
     def _wire_stock_note_panel(self) -> None:
-        self._stock_notes.wire_panel()
+        wire_stock_note_panel(self)
 
     def quick_note_for_selected(self) -> None:
         self._stock_notes.focus_quick_note()
 
     def open_notes_center(self) -> None:
-
-        main_engine = self._get_main_engine()
-        if main_engine is None:
-            return
-        initial_vt_symbol = ""
-        key = self._selected_stock_key()
-        if key is not None:
-            initial_vt_symbol = f"{key[0]}.{key[1].name}"
-        parent = self.window()
-        focus_watchlist = None
-        if parent is not None and hasattr(parent, "focus_watchlist_symbol"):
-            focus_watchlist = parent.focus_watchlist_symbol
-        show_notes_center_dialog(
-            main_engine,
-            self.event_engine,
-            focus_watchlist=focus_watchlist,
-            initial_vt_symbol=initial_vt_symbol,
-            parent=parent,
-        )
+        open_notes_center(self)
 
     def _on_position_panel_expansion_changed(self, _expanded: bool) -> None:
-        self._watchlist_panels.on_position_panel_expansion_changed(_expanded)
+        on_position_panel_expansion_changed(self, _expanded)
 
     def _on_position_panel_config_changed(self) -> None:
-        self._watchlist_panels.on_position_panel_config_changed()
+        on_position_panel_config_changed(self)
 
     def _apply_position_config(
         self,
@@ -657,36 +400,22 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         *,
         save: bool = True,
     ) -> None:
-        self._watchlist_panels.apply_position_config(config, save=save)
+        apply_position_config(self, config, save=save)
 
     def _on_position_panel_row_selected(self, vt_symbol: str) -> None:
-        self._watchlist_panels.on_position_panel_row_selected(vt_symbol)
+        on_position_panel_row_selected(self, vt_symbol)
 
     def _on_position_panel_row_activated(self, vt_symbol: str) -> None:
-        self._watchlist_panels.on_position_panel_row_activated(vt_symbol)
+        on_position_panel_row_activated(self, vt_symbol)
 
     def add_selection_to_signal_panel(self) -> None:
-        self._watchlist_panels.add_selection_to_signal_panel()
+        add_selection_to_signal_panel(self)
 
     def watchlist_pool_items(self) -> list[StockItem]:
-        """自选全池（不受分组 Tab 筛选影响）。"""
-        pool = self.watchlist_pool_stocks
-        if pool:
-            return list(pool)
-        return list(self.all_stocks)
+        return watchlist_pool_items(self)
 
     def find_stock_item(self, vt_symbol: str) -> StockItem | None:
-        target = (vt_symbol or "").strip()
-        if not target:
-            return None
-        canon = canonical_vt_symbol(target)
-        for item in self.watchlist_pool_items():
-            if item.vt_symbol == target or (canon is not None and item.vt_symbol == canon):
-                return item
-        for item in self.all_stocks:
-            if item.vt_symbol == target or (canon is not None and item.vt_symbol == canon):
-                return item
-        return None
+        return find_stock_item(self, vt_symbol)
 
     def _refresh_table_quotes(self) -> None:
         self._table.refresh_table_quotes()
@@ -787,30 +516,25 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QtWidgets.QWid
         self._actions.update_action_buttons()
 
     def _get_main_engine(self):
-        parent = self.parent()
-        if parent is not None and hasattr(parent, "main_engine"):
-            return parent.main_engine
-        return None
-
-    # ── Service 访问（统一经 engine_access，勿 getattr AshareEngine） ──
+        return get_main_engine_for_page(self)
 
     def _get_watchlist_service(self) -> WatchlistService | None:
-        return get_watchlist_service(self._get_main_engine())
+        return get_watchlist_service_for_page(self)
 
     def _get_position_service(self) -> PositionService | None:
-        return get_position_service(self._get_main_engine())
+        return get_position_service_for_page(self)
 
     def _get_note_service(self) -> NoteService | None:
-        return get_note_service(self._get_main_engine())
+        return get_note_service_for_page(self)
 
     def _get_analysis_service(self) -> AnalysisService | None:
-        return get_analysis_service(self._get_main_engine())
+        return get_analysis_service_for_page(self)
 
     def _get_quote_service(self):
-        return get_quote_service(self._get_main_engine())
+        return get_quote_service_for_page(self)
 
     def _get_bar_service(self):
-        return get_bar_service(self._get_main_engine())
+        return get_bar_service_for_page(self)
 
     def run_watchlist_batch_backtest(self) -> None:
         self._batch_backtest.run_batch_backtest()

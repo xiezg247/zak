@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from vnpy_ashare.jobs.core.result import JobResult
 from vnpy_ashare.scheduler.job_meta import clear_job_run_meta, load_job_run_meta, save_job_run_meta
@@ -48,16 +49,11 @@ class SchedulerJobMetaTests(unittest.TestCase):
     def test_wrap_job_persists_last_run(self) -> None:
         manager = TaskSchedulerManager()
 
-        def runner() -> JobResult:
-            return JobResult(success=True, message="persist-me")
-
-        meta = manager._jobs["sync_universe"]
-        original = meta.runner
-        meta.runner = runner
-        try:
+        with patch(
+            "vnpy_ashare.scheduler.manager.run_job",
+            return_value=JobResult(success=True, message="persist-me"),
+        ):
             manager._wrap_job("sync_universe")
-        finally:
-            meta.runner = original
 
         loaded = load_job_run_meta("sync_universe")
         self.assertIsNotNone(loaded)

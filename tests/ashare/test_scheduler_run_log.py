@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from vnpy_ashare.jobs.core.progress import bind_job_log, job_log, job_progress
 from vnpy_ashare.jobs.core.result import JobResult
@@ -48,18 +49,13 @@ class SchedulerRunLogTests(unittest.TestCase):
     def test_wrap_job_emits_progress_lines(self) -> None:
         manager = TaskSchedulerManager()
 
-        def runner() -> JobResult:
+        def _fake_run_job(job_id: str, *, force: bool = False, engine=None) -> JobResult:
             job_log("step-1")
             job_log("step-2")
             return JobResult(success=True, message="done")
 
-        meta = manager._jobs["sync_universe"]
-        original = meta.runner
-        meta.runner = runner
-        try:
+        with patch("vnpy_ashare.scheduler.manager.run_job", side_effect=_fake_run_job):
             manager._wrap_job("sync_universe")
-        finally:
-            meta.runner = original
 
         records = manager.list_run_log(limit=1)
         self.assertEqual(len(records), 1)

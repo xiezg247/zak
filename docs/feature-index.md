@@ -32,10 +32,9 @@
 
 | 能力 | 文档 |
 |------|------|
-| 自选页 UI、工作流预设 | [自选页 UI](./watchlist-ui.md) |
-| 分组 Tab、信号区、持仓区、多维看盘 | [分组](./watchlist-groups.md)、[信号区](./watchlist-signals.md)、[持仓区](./watchlist-positions.md)、[多维](./watchlist-multiview.md) |
+| 自选页（分组、信号、持仓、多维、预设） | [自选页](./watchlist.md) |
 | 策略 Profile、买卖点、隔日退出 | [策略配置方案](./strategy-profiles.md) |
-| 计划仓位、情绪系数对比 | [持仓区](./watchlist-positions.md) |
+| 计划仓位、情绪系数、异动 | [风控体系](./risk-gate.md) |
 
 ## 风控与通知
 
