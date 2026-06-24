@@ -49,8 +49,5 @@ def watchlist_toolbar_group3_visible(
         or page.config.show_batch_backtest_button
         or page.config.show_fill_button
         or show_move_in_toolbar
-        or (
-            policy is not None
-            and (page.config.show_watchlist_signals or page.config.show_watchlist_positions)
-        )
+        or (policy is not None and (page.config.show_watchlist_signals or page.config.show_watchlist_positions))
     )

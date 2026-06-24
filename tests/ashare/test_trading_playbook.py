@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from vnpy_ashare.config.playbook_templates.defaults import playbook_template_sections
-from vnpy_ashare.domain.trading.playbook import PLAYBOOK_SECTION_IDS
+from vnpy_ashare.domain.trading.playbook import PLAYBOOK_SECTION_IDS, PlaybookSectionUpdate
 from vnpy_ashare.services.trading_playbook import (
     apply_playbook_template_merge,
     build_home_playbook_status,
@@ -14,7 +14,6 @@ from vnpy_ashare.services.trading_playbook import (
     render_section_markdown,
 )
 from vnpy_ashare.storage.repositories.trading_playbook import count_playbook_sections, update_playbook_section
-from vnpy_ashare.domain.trading.playbook import PlaybookSectionUpdate
 
 
 def test_playbook_template_has_five_sections() -> None:
@@ -57,7 +56,5 @@ def test_playbook_merge_candidates_respect_user_edits(tmp_path, monkeypatch) -> 
 
     apply_playbook_template_merge("ultra_short", ("execution",))
     execution = next(item for item in load_playbook_sections() if item.section_id == "execution")
-    ultra_tpl = next(
-        item for item in playbook_template_sections("ultra_short") if item.section_id == "execution"
-    )
+    ultra_tpl = next(item for item in playbook_template_sections("ultra_short") if item.section_id == "execution")
     assert execution.body_md.strip() == ultra_tpl.body_md.strip()

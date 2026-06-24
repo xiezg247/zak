@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.constant import Exchange
 
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.symbols.stock import StockItem
 
 

@@ -84,12 +84,18 @@ from vnpy_ashare.ui.quotes.page.market_drilldown import (
 )
 from vnpy_ashare.ui.quotes.page.quote_refresh import (
     market_auto_refresh_enabled as page_market_auto_refresh_enabled,
+)
+from vnpy_ashare.ui.quotes.page.quote_refresh import (
     on_market_auto_refresh_toggled,
-    quote_auto_refresh_enabled as page_quote_auto_refresh_enabled,
-    quote_auto_refresh_paused_for_hours as page_quote_auto_refresh_paused_for_hours,
     schedule_quote_auto_refresh,
     update_quote_source_label,
     update_refresh_hint_label,
+)
+from vnpy_ashare.ui.quotes.page.quote_refresh import (
+    quote_auto_refresh_enabled as page_quote_auto_refresh_enabled,
+)
+from vnpy_ashare.ui.quotes.page.quote_refresh import (
+    quote_auto_refresh_paused_for_hours as page_quote_auto_refresh_paused_for_hours,
 )
 from vnpy_ashare.ui.quotes.page.session_lifecycle import activate_quotes_page, deactivate_quotes_page
 from vnpy_ashare.ui.quotes.page.shell import QuotesPageShell

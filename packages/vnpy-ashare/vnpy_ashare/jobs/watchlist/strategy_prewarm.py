@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
 from vnpy_ashare.config.preferences.watchlist_position import load_watchlist_position_config
@@ -80,7 +80,9 @@ def prewarm_watchlist_strategy_disks(engine: AshareEngine, *, force: bool = Fals
     position_config = load_watchlist_position_config().normalized()
     position_signal_config = position_config.effective_signal_config(signal_config)
 
-    bar_end_date_fn: Callable[[str], str | None] = lambda vt: _bar_end_date_for(engine, vt)
+    def bar_end_date_fn(vt: str) -> str | None:
+        return _bar_end_date_for(engine, vt)
+
     signal_disk = WatchlistSignalDiskCache()
     position_disk = WatchlistPositionDiskCache()
     analysis = engine.analysis_service

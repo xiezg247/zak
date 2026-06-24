@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
+from vnpy.event import Event, EventEngine
+from vnpy.trader.engine import MainEngine
+from vnpy.trader.ui import QtCore, QtWidgets
+
 from vnpy_ashare.ai.context.enrichment import enrich_context_with_actions
 from vnpy_ashare.ai.context.playbook import build_discipline_one_liner_prompt, build_playbook_extra
 from vnpy_ashare.ai.context.store import set_ai_context
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
-from vnpy.event import Event, EventEngine
-from vnpy.trader.engine import MainEngine
-from vnpy.trader.ui import QtCore, QtWidgets
-from vnpy_common.ai.protocol import AiContextData
-from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
-
 from vnpy_ashare.domain.trading.playbook import PlaybookSection
 from vnpy_ashare.services.trading_playbook import (
     build_home_playbook_status,
@@ -24,6 +22,8 @@ from vnpy_ashare.ui.home.editor_dialog import edit_playbook_section_dialog
 from vnpy_ashare.ui.home.section_view import PlaybookSectionCard
 from vnpy_ashare.ui.home.status_strip import HomePlaybookStatusStrip
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_worker import EmotionCycleLoadWorker
+from vnpy_common.ai.protocol import AiContextData
+from vnpy_common.ui.qt_helpers import release_thread, thread_is_active
 from vnpy_common.ui.theme.build_extra import build_home_playbook_stylesheet
 from vnpy_common.ui.theme.manager import theme_manager
 

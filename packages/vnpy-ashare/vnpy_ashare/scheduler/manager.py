@@ -391,9 +391,7 @@ class TaskSchedulerManager:
                 schedule_builder=lambda cfg: IntervalTrigger(
                     seconds=max(cfg.interval_seconds, _BILIBILI_FEED_SYNC_INTERVAL_MIN),
                 ),
-                schedule_text_builder=lambda cfg: (
-                    f"每天 08:00–20:00 每 {max(cfg.interval_seconds, _BILIBILI_FEED_SYNC_INTERVAL_MIN) // 60} 分钟"
-                ),
+                schedule_text_builder=lambda cfg: f"每天 08:00–20:00 每 {max(cfg.interval_seconds, _BILIBILI_FEED_SYNC_INTERVAL_MIN) // 60} 分钟",
             ),
         }
         self._scheduler.add_listener(self._on_job_max_instances, EVENT_JOB_MAX_INSTANCES)

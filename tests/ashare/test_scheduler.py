@@ -184,11 +184,7 @@ class TestSchedulerConfig(unittest.TestCase):
 
     def test_batch_download_has_buffer_before_next_job(self) -> None:
         config = SchedulerConfig()
-        download_end = (
-            config.batch_download_universe.cron_hour * 60
-            + config.batch_download_universe.cron_minute
-            + 30
-        )
+        download_end = config.batch_download_universe.cron_hour * 60 + config.batch_download_universe.cron_minute + 30
         next_job = config.prefetch_moneyflow.cron_hour * 60 + config.prefetch_moneyflow.cron_minute
         self.assertGreaterEqual(next_job - download_end, 10)
 
@@ -215,8 +211,7 @@ class TestSchedulerConfig(unittest.TestCase):
             config.screen_post_close.cron_hour * 60 + config.screen_post_close.cron_minute,
             config.scan_horizon_outlook.cron_hour * 60 + config.scan_horizon_outlook.cron_minute,
             config.batch_fill_stale.cron_hour * 60 + config.batch_fill_stale.cron_minute,
-            config.warm_watchlist_strategy_cache.cron_hour * 60
-            + config.warm_watchlist_strategy_cache.cron_minute,
+            config.warm_watchlist_strategy_cache.cron_hour * 60 + config.warm_watchlist_strategy_cache.cron_minute,
             config.fill_focus_pool_minute.cron_hour * 60 + config.fill_focus_pool_minute.cron_minute,
         ]
         for earlier, later in zip(minutes, minutes[1:], strict=False):

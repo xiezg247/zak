@@ -77,9 +77,7 @@ class PlaybookSectionCard(QtWidgets.QFrame):
 
     def _sync_collapsed(self) -> None:
         self._body.setVisible(not self._collapsed)
-        self._toggle.setArrowType(
-            QtCore.Qt.ArrowType.RightArrow if self._collapsed else QtCore.Qt.ArrowType.DownArrow
-        )
+        self._toggle.setArrowType(QtCore.Qt.ArrowType.RightArrow if self._collapsed else QtCore.Qt.ArrowType.DownArrow)
 
     def _on_toggle(self) -> None:
         self._collapsed = not self._collapsed

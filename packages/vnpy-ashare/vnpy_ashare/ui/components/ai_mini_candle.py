@@ -101,9 +101,7 @@ class AiMiniCandleChart(QtWidgets.QWidget):
         price_max = max(highs)
 
         overlay_periods = _overlay_periods(self._overlays)
-        ma_lines: dict[int, list[float | None]] = {
-            period: _compute_ma(closes, period) for period in overlay_periods
-        }
+        ma_lines: dict[int, list[float | None]] = {period: _compute_ma(closes, period) for period in overlay_periods}
         for values in ma_lines.values():
             for value in values:
                 if value is not None:

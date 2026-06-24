@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from vnpy_ashare.config.preferences._settings import get_settings
 from vnpy_ashare.config.preferences.strategy_profile import (
     DEFAULT_STRATEGY_PROFILE,
     STRATEGY_PROFILE_KEY,
@@ -19,7 +20,6 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     load_watchlist_signal_config,
     save_watchlist_signal_config,
 )
-from vnpy_ashare.config.preferences._settings import get_settings
 
 
 def test_default_profile_is_short_swing() -> None:
@@ -59,9 +59,7 @@ def test_bootstrap_fresh_install_applies_default() -> None:
 
 def test_bootstrap_repairs_limit_board_under_default_profile() -> None:
     save_strategy_profile_id("short_swing")
-    save_watchlist_signal_config(
-        WatchlistSignalConfig(class_name="AshareLimitBoardStrategy", fast_window=5, slow_window=10)
-    )
+    save_watchlist_signal_config(WatchlistSignalConfig(class_name="AshareLimitBoardStrategy", fast_window=5, slow_window=10))
     cfg = bootstrap_strategy_profile()
     assert cfg.class_name == "AshareShortBreakoutStrategy"
     assert load_strategy_profile_id() == "short_swing"

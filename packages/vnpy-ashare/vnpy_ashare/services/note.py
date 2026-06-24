@@ -308,9 +308,7 @@ def build_report_context_json(
 ) -> str:
     payload: dict[str, object] = {"scope": scope.strip(), "summary": summary.strip()}
     if charts:
-        payload["charts"] = [
-            item.model_dump() if hasattr(item, "model_dump") else item for item in charts
-        ]
+        payload["charts"] = [item.model_dump() if hasattr(item, "model_dump") else item for item in charts]
     return json.dumps(payload, ensure_ascii=False)
 
 

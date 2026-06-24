@@ -16,8 +16,8 @@ from vnpy_ashare.config.constants.recipe import (
     ENV_ALLOWED_INDUSTRIES,
     ENV_ALLOWED_MARKET_BOARDS,
     ENV_EXCLUDE_LIMIT_BOARD,
-    ENV_EXCLUDE_ONE_WORD,
     ENV_EXCLUDE_NEW_LISTING,
+    ENV_EXCLUDE_ONE_WORD,
     ENV_EXCLUDE_ST,
     ENV_EXCLUDE_SUSPENDED,
     ENV_MIN_AMOUNT_YUAN,
@@ -434,11 +434,7 @@ def apply_recipe_filters(rows: Sequence[T_ScreeningRow]) -> list[T_ScreeningRow]
     suspended_keys = _suspended_keys_for_screening() if recipe_exclude_suspended_enabled() else frozenset()
     name_map = _screening_vt_name_map() if recipe_exclude_st_enabled() else None
     list_date_map = _list_date_map_for_screening() if recipe_exclude_new_listing_enabled() else None
-    market_board_map = (
-        _market_board_map_for_screening()
-        if recipe_exclude_limit_board_enabled() or recipe_exclude_one_word_enabled()
-        else None
-    )
+    market_board_map = _market_board_map_for_screening() if recipe_exclude_limit_board_enabled() or recipe_exclude_one_word_enabled() else None
     industry_map = _industry_map_for_screening() if allowed_industries else None
     return [
         row

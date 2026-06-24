@@ -8,10 +8,10 @@ from typing import Any
 from vnpy.trader.engine import MainEngine
 
 from vnpy_ashare.ai.context.symbol import parse_stock_symbol
-from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
 from vnpy_ashare.app.engine_access import get_sector_flow_service
 from vnpy_ashare.domain.market.flow_pattern import classify_flow_pattern_values
 from vnpy_ashare.domain.market.sector_flow import SectorFlowOutlookDay, SectorFlowOutlookRow
+from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
 from vnpy_ashare.domain.time.trade_dates import iter_forward_trade_date_strs
 from vnpy_ashare.domain.trading.signal_snapshot import (
     SIGNAL_RECENT_DAYS,

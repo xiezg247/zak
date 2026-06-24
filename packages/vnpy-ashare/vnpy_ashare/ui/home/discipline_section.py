@@ -85,9 +85,7 @@ class PlaybookDisciplineCard(QtWidgets.QFrame):
         visible = not self._collapsed
         self._discipline_panel.setVisible(visible)
         self._rules.setVisible(visible)
-        self._toggle.setArrowType(
-            QtCore.Qt.ArrowType.RightArrow if self._collapsed else QtCore.Qt.ArrowType.DownArrow
-        )
+        self._toggle.setArrowType(QtCore.Qt.ArrowType.RightArrow if self._collapsed else QtCore.Qt.ArrowType.DownArrow)
 
     def _on_toggle(self) -> None:
         self._collapsed = not self._collapsed

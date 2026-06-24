@@ -8,13 +8,9 @@ from typing import Any
 from vnpy_ashare.integrations.bilibili.client import BilibiliApiError, BilibiliClient
 
 _SPACE_FEATURES = (
-    "itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote,forwardListHidden,"
-    "decorationCard,commentsNewVersion,onlyfansAssetsV2,ugcDelete,onlyfansQaCard"
+    "itemOpusStyle,listOnlyfans,opusBigCover,onlyfansVote,forwardListHidden,decorationCard,commentsNewVersion,onlyfansAssetsV2,ugcDelete,onlyfansQaCard"
 )
-_DETAIL_FEATURES = (
-    "itemOpusStyle,opusBigCover,onlyfansVote,endFooterHidden,decorationCard,"
-    "onlyfansAssetsV2,ugcDelete,onlyfansQaCard,commentsNewVersion"
-)
+_DETAIL_FEATURES = "itemOpusStyle,opusBigCover,onlyfansVote,endFooterHidden,decorationCard,onlyfansAssetsV2,ugcDelete,onlyfansQaCard,commentsNewVersion"
 _DETAIL_FETCH_SLEEP_SEC = 0.35
 
 

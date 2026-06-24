@@ -203,11 +203,7 @@ class WatchlistSignalController:
 
     def _parse_worker_payload(self, raw: dict | object) -> tuple[dict[str, SignalSnapshot], dict[str, object]]:
         payload = unwrap_worker_payload(raw)
-        signals = {
-            str(vt): snap
-            for vt, snap in payload.signals.items()
-            if isinstance(snap, SignalSnapshot)
-        }
+        signals = {str(vt): snap for vt, snap in payload.signals.items() if isinstance(snap, SignalSnapshot)}
         continuations = dict(payload.continuations or {})
         return signals, continuations
 
@@ -236,11 +232,7 @@ class WatchlistSignalController:
         committed: dict[str, SignalSnapshot] = {}
         for panel_vt in panel_symbols:
             canon = canonical_vt_symbol(panel_vt) or panel_vt
-            matched: SignalSnapshot | None = (
-                by_key.get(panel_vt)
-                or by_key.get(canon)
-                or lookup_by_vt_symbol(cache, panel_vt)
-            )
+            matched: SignalSnapshot | None = by_key.get(panel_vt) or by_key.get(canon) or lookup_by_vt_symbol(cache, panel_vt)
             if matched is not None:
                 committed[canon] = matched
         return committed
@@ -259,9 +251,7 @@ class WatchlistSignalController:
         symbols = self._panel_symbols()
         panel = getattr(self._page, "signal_panel", None)
         if panel is not None:
-            has_snapshots = bool(symbols) and any(
-                lookup_by_vt_symbol(self._page.signal_cache, vt) is not None for vt in symbols
-            )
+            has_snapshots = bool(symbols) and any(lookup_by_vt_symbol(self._page.signal_cache, vt) is not None for vt in symbols)
             if has_snapshots:
                 panel.set_updated_at(format_china_time_hm())
             panel.render_panel()
@@ -272,8 +262,7 @@ class WatchlistSignalController:
             missing = [
                 vt
                 for vt in symbols
-                if lookup_by_vt_symbol(self._page.continuation_cache, vt) is None
-                and lookup_by_vt_symbol(self._page.signal_cache, vt) is not None
+                if lookup_by_vt_symbol(self._page.continuation_cache, vt) is None and lookup_by_vt_symbol(self._page.signal_cache, vt) is not None
             ]
             if missing:
                 QtCore.QTimer.singleShot(0, lambda syms=list(missing): self._deferred_enrich_continuation(syms))
@@ -484,12 +473,7 @@ class WatchlistSignalController:
                 panel.render_panel()
             return
 
-        if (
-            panel is not None
-            and not panel.is_expanded()
-            and not force
-            and self._cache_covers(panel_symbols)
-        ):
+        if panel is not None and not panel.is_expanded() and not force and self._cache_covers(panel_symbols):
             self._apply_refresh_result()
             return
 
@@ -639,13 +623,7 @@ class WatchlistSignalController:
 
         known = self._watchlist_pool_vt_symbols()
         if known:
-            kept = self._canonicalize_symbols(
-                [
-                    vt
-                    for vt in panel.symbols
-                    if vt in known or (canonical_vt_symbol(vt) or "") in known
-                ]
-            )
+            kept = self._canonicalize_symbols([vt for vt in panel.symbols if vt in known or (canonical_vt_symbol(vt) or "") in known])
         else:
             kept = self._canonicalize_symbols(panel.symbols)
 
@@ -653,11 +631,7 @@ class WatchlistSignalController:
             panel.set_symbols(kept)
         self._rekey_signal_cache(kept)
         kept_canon = {canonical_vt_symbol(vt) or vt for vt in kept}
-        stale = [
-            vt
-            for vt in list(self._page.signal_cache)
-            if vt not in kept and (canonical_vt_symbol(vt) or vt) not in kept_canon
-        ]
+        stale = [vt for vt in list(self._page.signal_cache) if vt not in kept and (canonical_vt_symbol(vt) or vt) not in kept_canon]
         for vt in stale:
             self._page.signal_cache.pop(vt, None)
             self._page.continuation_cache.pop(vt, None)

@@ -21,6 +21,7 @@ from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 from vnpy_common.paths import PROJECT_ROOT
 from vnpy_common.startup_profile import profiler
 
+
 def _optional_llm_app():
     try:
         from vnpy_llm.app.plugin import LlmApp

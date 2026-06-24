@@ -47,9 +47,7 @@ class SectorFlowOverviewChart(QtWidgets.QWidget):
     def render_snapshot(self, snapshot: SectorFlowOverviewSnapshot) -> None:
         self._snapshot = snapshot
         self._series = list(snapshot.inflow_series) + list(snapshot.outflow_series)
-        self._color_map = {
-            item.sector_id: _LINE_COLORS[index % len(_LINE_COLORS)] for index, item in enumerate(self._series)
-        }
+        self._color_map = {item.sector_id: _LINE_COLORS[index % len(_LINE_COLORS)] for index, item in enumerate(self._series)}
         self._highlight_id = ""
         self._hover_bucket = ""
         self.update()
@@ -80,7 +78,14 @@ class SectorFlowOverviewChart(QtWidgets.QWidget):
 
         if snapshot.has_intraday_curve:
             self._paint_intraday_chart(
-                painter, snapshot, plot_left, plot_top, plot_w, plot_h, tokens, margin_left=margin_left,
+                painter,
+                snapshot,
+                plot_left,
+                plot_top,
+                plot_w,
+                plot_h,
+                tokens,
+                margin_left=margin_left,
             )
         else:
             self._paint_bar_chart(painter, snapshot, plot_left, plot_top, plot_w, plot_h, tokens)

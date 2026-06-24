@@ -9,11 +9,11 @@ from typing import Any
 
 from vnpy_ashare.domain.feed.models import (
     FEED_RETENTION_DAYS,
+    SOURCE_TYPE_BILIBILI_UP,
     FeedItem,
     FeedItemDraft,
     FeedSubscription,
     FeedSubscriptionConfig,
-    SOURCE_TYPE_BILIBILI_UP,
 )
 from vnpy_ashare.storage.connection import connect, init_app_db
 
@@ -337,8 +337,7 @@ def upsert_items(
             ).fetchone()
             if existing is not None:
                 conn.execute(
-                    "UPDATE feed_items SET item_type = ?, title = ?, summary = ?, url = ?, "
-                    "author_name = ?, published_at = ?, payload_json = ? WHERE id = ?",
+                    "UPDATE feed_items SET item_type = ?, title = ?, summary = ?, url = ?, author_name = ?, published_at = ?, payload_json = ? WHERE id = ?",
                     (
                         draft.item_type,
                         draft.title,

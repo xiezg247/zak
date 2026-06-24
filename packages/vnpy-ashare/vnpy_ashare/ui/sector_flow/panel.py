@@ -19,8 +19,8 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 from vnpy_ashare.services.sector_flow import format_sector_net_flow_yi
 from vnpy_ashare.services.sector_flow_outlook import OUTLOOK_BIAS_LABELS, filter_outlook_rows
 from vnpy_ashare.services.sector_flow_rotation import FLOW_PATTERN_LABELS, filter_rotation_rows
-from vnpy_ashare.ui.sector_flow.outlook_batch import OUTLOOK_BATCH_SCAN_MAX, prepare_batch_sector_scans
 from vnpy_ashare.ui.sector_flow.detail_panel import SectorFlowDetailPanel
+from vnpy_ashare.ui.sector_flow.outlook_batch import OUTLOOK_BATCH_SCAN_MAX, prepare_batch_sector_scans
 from vnpy_ashare.ui.sector_flow.outlook_table import SectorFlowOutlookTable
 from vnpy_ashare.ui.sector_flow.overview_panel import SectorFlowOverviewPanel
 from vnpy_ashare.ui.sector_flow.rotation_table import SectorFlowRotationTable

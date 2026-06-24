@@ -7,6 +7,10 @@ from vnpy.trader.ui import QtWidgets
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import layout_preset_options
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import load_watchlist_layout_preset
+from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
+    append_strategy_workspace_more_actions,
+    create_strategy_workspace_toolbar,
+)
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
     WatchlistToolbarPolicy,
     configure_watchlist_action_button_visibility,
@@ -14,10 +18,6 @@ from vnpy_ashare.ui.quotes.features.watchlist.toolbar_policy import (
     watchlist_toolbar_policy,
 )
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import create_emotion_risk_more_buttons
-from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
-    append_strategy_workspace_more_actions,
-    create_strategy_workspace_toolbar,
-)
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_chip import EmotionCycleChip
 from vnpy_ashare.ui.quotes.market_overview.risk_gate_chip import RiskGateChip
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
@@ -78,9 +78,7 @@ def append_watchlist_strategy_toolbar_actions(
         toolbar.addWidget(page.backtest_button)
     if page.config.show_batch_backtest_button:
         more_actions.append(("批量回测", page.batch_backtest_button))
-    has_strategy_workspace = policy is not None and (
-        page.config.show_watchlist_signals or page.config.show_watchlist_positions
-    )
+    has_strategy_workspace = policy is not None and (page.config.show_watchlist_signals or page.config.show_watchlist_positions)
     if has_strategy_workspace:
         toolbar.addWidget(create_strategy_workspace_toolbar(page))
         parent = as_qwidget(page)

@@ -8,8 +8,8 @@ from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
-from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
+from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_common.domain.base import FrozenModel
 
 SIGNAL_STRATEGY_KEY = "watchlist/signal_strategy"

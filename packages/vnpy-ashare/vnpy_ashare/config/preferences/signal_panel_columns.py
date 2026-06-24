@@ -23,9 +23,7 @@ SIGNAL_PANEL_OPTIONAL_COLUMNS: tuple[tuple[str, str], ...] = (
 
 _CONTINUATION_COLUMN_KEYS: frozenset[str] = frozenset({"continuation_pattern", "outlook_compact"})
 
-DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(
-    key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS if key not in _CONTINUATION_COLUMN_KEYS
-)
+DEFAULT_VISIBLE_OPTIONAL_KEYS: tuple[str, ...] = tuple(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS if key not in _CONTINUATION_COLUMN_KEYS)
 
 
 SIGNAL_PANEL_OPTIONAL_KEYS: frozenset[str] = frozenset(key for key, _ in SIGNAL_PANEL_OPTIONAL_COLUMNS)

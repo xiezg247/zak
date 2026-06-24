@@ -16,9 +16,7 @@ class StockMoneyflowSeriesTests(unittest.TestCase):
         return_value=[f"202406{i:02d}" for i in range(10, 22)],
     )
     def test_reads_from_local_cache(self, _dates: mock.Mock, cached_rows: mock.Mock, _fetch: mock.Mock) -> None:
-        cached_rows.side_effect = [
-            [{"ts_code": "600000.SH", "net_mf_amount": float(index)}] for index in range(12)
-        ]
+        cached_rows.side_effect = [[{"ts_code": "600000.SH", "net_mf_amount": float(index)}] for index in range(12)]
         values = load_stock_moneyflow_values("600000.SSE", days=12)
         self.assertEqual(values, [float(index) for index in range(12)])
 

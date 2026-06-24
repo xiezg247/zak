@@ -8,9 +8,9 @@ from unittest.mock import patch
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
+from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.domain.trading.exit import ExitRuleHit
 from vnpy_ashare.domain.trading.position import PositionSnapshot
-from vnpy_ashare.domain.time.market_hours import CHINA_TZ
 from vnpy_ashare.trading.exit.morning_must_sell import (
     is_morning_sell_reminder_window,
     should_tag_morning_must_sell,

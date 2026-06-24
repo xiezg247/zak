@@ -31,8 +31,8 @@ from vnpy_ashare.ai.context.backtest import build_backtest_ai_prompt, format_bac
 from vnpy_ashare.ai.context.store import BacktestSummary, get_backtest_summary_dict
 from vnpy_ashare.app.engine_access import get_backtest_service
 from vnpy_ashare.app.events import EVENT_ASK_AI, AskAiRequest
-from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.backtest.equity_curve import sample_equity_curve
+from vnpy_ashare.backtest.strategy_filter import filter_ashare_strategy_names
 from vnpy_ashare.config.runtime import ASHARE_BACKTEST_DEFAULTS, format_decimal_field
 from vnpy_ashare.ui.backtest.chart.backtest_chart import AshareBacktesterChart, AshareStatisticsMonitor
 from vnpy_ashare.ui.backtest.pages.backtest_page_shell import BacktestPageShell

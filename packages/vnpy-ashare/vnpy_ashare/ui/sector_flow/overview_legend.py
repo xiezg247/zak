@@ -64,9 +64,7 @@ class SectorFlowOverviewLegend(QtWidgets.QWidget):
                 name_item.setForeground(QtGui.QColor(color))
             value_item = QtWidgets.QTableWidgetItem(format_sector_net_flow_yi(series.latest_yi))
             value_item.setTextAlignment(int(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter))
-            value_item.setForeground(
-                QtGui.QColor(pct_change_color(series.latest_yi, theme_manager().tokens()))
-            )
+            value_item.setForeground(QtGui.QColor(pct_change_color(series.latest_yi, theme_manager().tokens())))
             self._table.setItem(row_index, 0, name_item)
             self._table.setItem(row_index, 1, value_item)
         self._table.resizeColumnToContents(0)

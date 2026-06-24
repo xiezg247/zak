@@ -6,10 +6,10 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import tests._bootstrap  # noqa: F401
 from vnpy.trader.constant import Exchange
 from vnpy.trader.ui import QtWidgets
 
+import tests._bootstrap  # noqa: F401
 from vnpy_ashare.domain.symbols.stock import StockItem
 from vnpy_ashare.ui.quotes.controllers.actions import ActionsController
 

@@ -70,12 +70,16 @@ class StrategyWorkspaceApplyTests(unittest.TestCase):
         page.config.show_watchlist_positions = True
         page.strategy_workspace_button = MagicMock()
 
-        with patch(
-            "vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace.apply_toolbar_for_preset",
-        ), patch(
-            "vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace.apply_center_splitter_sizes",
-        ), patch(
-            "vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace.save_strategy_workspace_open",
+        with (
+            patch(
+                "vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace.apply_toolbar_for_preset",
+            ),
+            patch(
+                "vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace.apply_center_splitter_sizes",
+            ),
+            patch(
+                "vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace.save_strategy_workspace_open",
+            ),
         ):
             apply_strategy_workspace(page, False, persist=False, apply_preset=False)
 

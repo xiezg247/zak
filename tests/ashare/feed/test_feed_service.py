@@ -72,9 +72,7 @@ def test_sync_subscription_inserts_new_dynamic(feed_db, monkeypatch) -> None:
 def test_add_bilibili_up_by_keyword(feed_db, monkeypatch) -> None:
     monkeypatch.setattr(
         "vnpy_ashare.services.feed.search_users",
-        lambda client, keyword, **kwargs: [
-            {"mid": "123", "name": "测试UP", "avatar": "https://example.com/a.jpg"}
-        ],
+        lambda client, keyword, **kwargs: [{"mid": "123", "name": "测试UP", "avatar": "https://example.com/a.jpg"}],
     )
     service = FeedService(MagicMock())
     service.set_client_factory(_FakeClient)

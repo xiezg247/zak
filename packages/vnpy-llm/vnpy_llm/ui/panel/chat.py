@@ -8,17 +8,17 @@ from collections.abc import Iterator
 from vnpy.trader.ui import QtCore, QtGui, QtWidgets
 
 from vnpy_common.ai.access import build_quick_actions_for_panel, build_stock_completion_items, get_ai_context
-from vnpy_common.ai.protocol import QuickAction, SymbolRef, AiChartSpec
+from vnpy_common.ai.protocol import AiChartSpec, QuickAction, SymbolRef
 from vnpy_common.ai.symbol_navigation import get_symbol_navigation
 from vnpy_common.ui.feedback import confirm_action, page_notify
 from vnpy_common.ui.qt_helpers import release_thread, retain_thread_until_finished, thread_is_active
 from vnpy_common.ui.scroll_area import AI_MESSAGE_SCROLL_AREA, AI_MESSAGE_SCROLL_BAR, style_scroll_area
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_llm.app.engine import LlmEngine
+from vnpy_llm.tools.chart_collector import attachment_key
 from vnpy_llm.tools.labels import tool_display_name
 from vnpy_llm.tools.status import ToolsStatusSnapshot
 from vnpy_llm.trace.trace import TurnTrace, map_turns_to_user_messages
-from vnpy_llm.tools.chart_collector import attachment_key
 from vnpy_llm.ui.dialogs.tools import AiToolsDialog, AiToolsStatusBar
 from vnpy_llm.ui.floating.widgets import QuickActionChips
 from vnpy_llm.ui.panel.chart_block import AiMiniChartBlock, chart_blocks_available

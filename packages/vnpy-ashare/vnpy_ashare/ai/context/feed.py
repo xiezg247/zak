@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from vnpy_ashare.app.engine_access import get_feed_service
 from vnpy_ashare.ai.context.store import set_ai_context
+from vnpy_ashare.app.engine_access import get_feed_service
 from vnpy_ashare.domain.feed.models import FEED_RECENT_LIMIT
 from vnpy_common.ai.protocol import AiContextData, QuickAction
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.feed import FeedService
     from vnpy_ashare.domain.feed.models import FeedItem
+    from vnpy_ashare.services.feed import FeedService
 
 
 def sync_info_feed_context(main_engine=None) -> None:
@@ -56,19 +56,13 @@ def build_feed_page_quick_actions() -> list[QuickAction]:
             id="feed_today",
             label="今天更新了吗",
             auto_send=True,
-            prompt=(
-                "请调用 check_bilibili_updated_today（必要时 refresh=true）"
-                "回答：我订阅的 B 站 UP 主今天是否有新视频或动态，并列出标题与链接。"
-            ),
+            prompt=("请调用 check_bilibili_updated_today（必要时 refresh=true）回答：我订阅的 B 站 UP 主今天是否有新视频或动态，并列出标题与链接。"),
         ),
         QuickAction(
             id="feed_unread",
             label="摘要未读",
             auto_send=True,
-            prompt=(
-                "请调用 get_feed_items，unread_only=true，limit=10，"
-                "用简短条目列表概括未读信息流，不要编造。"
-            ),
+            prompt=("请调用 get_feed_items，unread_only=true，limit=10，用简短条目列表概括未读信息流，不要编造。"),
         ),
     ]
 

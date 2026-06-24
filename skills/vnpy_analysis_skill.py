@@ -31,8 +31,10 @@ class VnpyAnalysisSkill(SkillTemplate):
             ),
             ToolSpec(
                 name="explain_screening_run",
-                description=("编排选股解读上下文：结果快照、板块分布、同配方与上次 diff、可选技术面 batch。"
-                    "解读选股结果时优先于 get_screening_context；设 batch_top_n≥3 时终端为 Top 标的展示 K 线迷你图。"),
+                description=(
+                    "编排选股解读上下文：结果快照、板块分布、同配方与上次 diff、可选技术面 batch。"
+                    "解读选股结果时优先于 get_screening_context；设 batch_top_n≥3 时终端为 Top 标的展示 K 线迷你图。"
+                ),
                 parameters={
                     "type": "object",
                     "properties": {

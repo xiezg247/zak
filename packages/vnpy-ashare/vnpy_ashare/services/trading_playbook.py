@@ -19,14 +19,14 @@ from vnpy_ashare.screener.hard_filter_prefs import (
 )
 from vnpy_ashare.storage.connection import get_meta, set_meta
 from vnpy_ashare.storage.repositories.positions import load_position_rows
-from vnpy_ashare.storage.repositories.trading_playbook_discipline import load_discipline_checks
-from vnpy_ashare.trading.journal.off_plan_scan import count_journal_off_plan_buys, list_off_plan_position_vt_symbols
 from vnpy_ashare.storage.repositories.trading_plans import load_active_trading_plan
 from vnpy_ashare.storage.repositories.trading_playbook import (
     count_playbook_sections,
     list_playbook_sections,
     upsert_playbook_sections,
 )
+from vnpy_ashare.storage.repositories.trading_playbook_discipline import load_discipline_checks
+from vnpy_ashare.trading.journal.off_plan_scan import count_journal_off_plan_buys, list_off_plan_position_vt_symbols
 from vnpy_ashare.trading.risk.book_pnl import summarize_book_pnl
 from vnpy_ashare.trading.risk.combined import format_emotion_position_hint, load_combined_risk_gate_snapshot
 from vnpy_ashare.trading.risk.display import format_risk_gate_chip_value
@@ -47,10 +47,7 @@ def touch_playbook_seeded_profile(profile_id: StrategyProfileId) -> None:
 
 
 def _template_body_map(profile_id: StrategyProfileId) -> dict[str, str]:
-    return {
-        section.section_id: section.body_md.strip()
-        for section in playbook_template_sections(profile_id)
-    }
+    return {section.section_id: section.body_md.strip() for section in playbook_template_sections(profile_id)}
 
 
 def list_playbook_merge_candidate_sections(
@@ -199,20 +196,19 @@ def build_home_playbook_status(main_engine: MainEngine | None) -> HomePlaybookSt
     account = combined.account
 
     emotion_label = emotion.stage_label if emotion is not None else "—"
-    pos_hint = format_emotion_position_hint(
-        position_pct_min=combined.emotion_position_pct_min,
-        position_pct_max=combined.emotion_position_pct_max,
-    ) or "—"
+    pos_hint = (
+        format_emotion_position_hint(
+            position_pct_min=combined.emotion_position_pct_min,
+            position_pct_max=combined.emotion_position_pct_max,
+        )
+        or "—"
+    )
 
     risk_label = format_risk_gate_chip_value(combined)
     prefs = load_trading_risk_prefs()
     daily_text = _format_home_daily_pnl_text(daily_pct if daily_pct is not None else account.daily_pnl_pct, halt_line=prefs.halt_daily_pct)
 
-    position_vts = {
-        f"{row.get('symbol')}.{row.get('exchange')}"
-        for row in load_position_rows()
-        if row.get("symbol") and row.get("exchange")
-    }
+    position_vts = {f"{row.get('symbol')}.{row.get('exchange')}" for row in load_position_rows() if row.get("symbol") and row.get("exchange")}
     position_count = len(position_vts)
 
     plan = load_active_trading_plan(day)

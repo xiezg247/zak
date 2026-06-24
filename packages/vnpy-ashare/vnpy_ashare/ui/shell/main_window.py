@@ -15,7 +15,6 @@ from vnpy.trader.ui.qt import QtCore, QtGui, QtWidgets
 
 from vnpy_ashare.ai.ui.page import AiPageWidget
 from vnpy_ashare.app.branding import window_title as build_window_title
-from vnpy_ashare.app.engine_access import get_feed_service
 from vnpy_ashare.app.deferred_apps import ensure_cta_backtester_app, ensure_data_manager_app
 from vnpy_ashare.app.engine import APP_NAME, AshareEngine
 from vnpy_ashare.app.events import (
@@ -46,6 +45,7 @@ from vnpy_ashare.integrations.tushare.cache import get_cached_industry_map
 from vnpy_ashare.ui.backtest.pages.batch_backtest_page import BatchBacktestPageWidget
 from vnpy_ashare.ui.features.info_feed.page import InfoFeedPageWidget
 from vnpy_ashare.ui.features.notes_center.open import show_notes_center_dialog
+from vnpy_ashare.ui.home.page import HomePageWidget
 from vnpy_ashare.ui.scheduler.dialog import show_scheduler_dialog
 from vnpy_ashare.ui.screener.pages.screener_hub_page import ScreenerHubPageWidget
 from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
@@ -57,11 +57,9 @@ from vnpy_ashare.ui.shell.nav import (
     APP_NAV_GROUPS,
     BACKSTAGE_ENTRIES,
     BACKSTAGE_SHORTCUTS,
-    BACKSTAGE_SHORTCUTS,
     NAV_SHORTCUTS,
     SidebarNav,
 )
-from vnpy_ashare.ui.home.page import HomePageWidget
 from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, WatchlistPageWidget
 from vnpy_ashare.ui.shell.settings.dialog import show_settings_dialog
 from vnpy_common.paths import QSETTINGS_ORG

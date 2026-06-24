@@ -48,7 +48,8 @@ _ULTRA_SHORT_UNIVERSE = """\
 - 雷达共振 / 选股结果 → 先入自选，再进信号区（上限 10）
 """
 
-_ULTRA_SHORT_EXECUTION = """\
+_ULTRA_SHORT_EXECUTION = (
+    """\
 **三类买点**
 
 | 模式 | 环境 | 规则要点 |
@@ -57,7 +58,9 @@ _ULTRA_SHORT_EXECUTION = """\
 | 半路 | 题材发酵 | 涨幅 3–7%；带量突破；9:40–10:30 |
 | 低吸 | 核心分歧 | 回调 MA5 或日内 −3%~−5% 承接 |
 
-""" + _COMMON_EXECUTION
+"""
+    + _COMMON_EXECUTION
+)
 
 _SHORT_SWING_TIMING = """\
 - 情绪退潮 / 冰点 → 减少新开，以观察为主

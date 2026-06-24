@@ -417,9 +417,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Close)
         if continuation is not None and continuation.sector_id:
             sector_btn = buttons.addButton("板块资金", QtWidgets.QDialogButtonBox.ButtonRole.ActionRole)
-            sector_btn.clicked.connect(
-                lambda _checked=False, sector_id=continuation.sector_id: self._open_sector_flow(sector_id)
-            )
+            sector_btn.clicked.connect(lambda _checked=False, sector_id=continuation.sector_id: self._open_sector_flow(sector_id))
         buttons.rejected.connect(dialog.reject)
         buttons.accepted.connect(dialog.accept)
         close_btn = buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Close)

@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import unittest
 
-from vnpy_common.ai.protocol import AiChartSpec
-from vnpy_ashare.backtest.equity_curve import sample_equity_curve
-from vnpy_llm.tools.chart_collector import attachment_key, merge_chart_attachment, try_collect_chart, try_collect_charts
 import pandas as pd
+
+from vnpy_ashare.backtest.equity_curve import sample_equity_curve
+from vnpy_common.ai.protocol import AiChartSpec
+from vnpy_llm.tools.chart_collector import attachment_key, merge_chart_attachment, try_collect_chart, try_collect_charts
 
 
 class ChartCollectorTests(unittest.TestCase):

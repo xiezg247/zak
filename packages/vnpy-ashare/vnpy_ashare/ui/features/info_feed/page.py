@@ -18,7 +18,7 @@ from vnpy_common.ui.panel_widgets import section_title
 from vnpy_common.ui.qt_helpers import release_thread
 
 if TYPE_CHECKING:
-    from vnpy_ashare.services.feed import FeedService
+    pass
 
 
 class InfoFeedPageWidget(QtWidgets.QWidget):

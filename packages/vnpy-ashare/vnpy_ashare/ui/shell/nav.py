@@ -171,7 +171,7 @@ def _draw_data(painter: QtGui.QPainter, size: int) -> None:
 def _draw_info_feed(painter: QtGui.QPainter, size: int) -> None:
     m = 5
     painter.drawRoundedRect(m, m + 1, size - m * 2 - 2, size - m * 2 - 2, 2, 2)
-    for index, y in enumerate((m + 8, m + 14, m + 20)):
+    for y in (m + 8, m + 14, m + 20):
         painter.drawLine(m + 6, y, size - m - 8, y)
         painter.drawEllipse(QtCore.QPointF(m + 3, y), 1.4, 1.4)
 

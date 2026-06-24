@@ -2,7 +2,7 @@
 
 from strategies.registry import STRATEGY_REGISTRY
 from vnpy_common.ai.access import build_market_ai_prompt
-from vnpy_llm.routing.base_prompt import BASE_PROMPT, FULL_BASE_PROMPT
+from vnpy_llm.routing.base_prompt import FULL_BASE_PROMPT
 
 # 无工具纯文本对话（stream_chat_completion）使用的轻量补充
 GENERAL_CHAT_SUPPLEMENT = """【无工具模式】

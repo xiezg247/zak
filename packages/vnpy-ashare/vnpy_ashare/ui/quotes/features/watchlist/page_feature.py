@@ -8,12 +8,12 @@ from vnpy_ashare.ui.quotes.features.watchlist.center_layout import build_watchli
 from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
 from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_layout_preset, apply_position_focus
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_watchlist_layout_preset
-from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo, create_view_mode_buttons
 from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace import (
     apply_strategy_workspace,
     refresh_strategy_workspace_button,
 )
 from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace_prefs import load_strategy_workspace_open
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo, create_view_mode_buttons
 from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 

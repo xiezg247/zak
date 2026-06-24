@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from unittest import mock
 
-from vnpy_ashare.domain.market.sector_flow import SectorFlowOutlookDay, SectorFlowOutlookRow, SectorFlowRow
 from vnpy_ashare.domain.market.flow_pattern import classify_flow_pattern_values
+from vnpy_ashare.domain.market.sector_flow import SectorFlowOutlookDay, SectorFlowOutlookRow, SectorFlowRow
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
 from vnpy_ashare.domain.trading.stock_continuation import format_outlook_compact
 from vnpy_ashare.services.signals.stock_continuation import (
@@ -85,9 +85,7 @@ class StockContinuationTests(unittest.TestCase):
         self.assertIn("价量", continuation.rationale)
 
     def test_expired_buy_produces_decay(self) -> None:
-        continuation = build_stock_continuation(
-            _snapshot(signal_date="2024-06-01", ma_gap_pct=-1.0, volume_ratio_5d=0.6)
-        )
+        continuation = build_stock_continuation(_snapshot(signal_date="2024-06-01", ma_gap_pct=-1.0, volume_ratio_5d=0.6))
         self.assertIsNotNone(continuation)
         assert continuation is not None
         self.assertEqual(continuation.headline_pattern, "动能衰减")
@@ -146,9 +144,7 @@ class StockContinuationTests(unittest.TestCase):
         self.assertIn("【个股延续】", text)
 
     def test_missing_kline_returns_none(self) -> None:
-        continuation = build_stock_continuation(
-            _snapshot(signal="na", warnings=("暂无足够 K 线",))
-        )
+        continuation = build_stock_continuation(_snapshot(signal="na", warnings=("暂无足够 K 线",)))
         self.assertIsNone(continuation)
 
 

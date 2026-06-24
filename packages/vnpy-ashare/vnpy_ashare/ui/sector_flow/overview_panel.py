@@ -6,7 +6,7 @@ from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.domain.market.sector_flow import SectorFlowOverviewSnapshot
 from vnpy_ashare.services.sector_flow import format_sector_net_flow_yi
-from vnpy_ashare.ui.sector_flow.overview_chart import SectorFlowOverviewChart, _LINE_COLORS
+from vnpy_ashare.ui.sector_flow.overview_chart import _LINE_COLORS, SectorFlowOverviewChart
 from vnpy_ashare.ui.sector_flow.overview_legend import SectorFlowOverviewLegend
 
 

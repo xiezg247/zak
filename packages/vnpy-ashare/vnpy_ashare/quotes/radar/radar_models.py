@@ -12,12 +12,12 @@ from vnpy_ashare.domain.screener.result_row import ScreenerResultRow
 from vnpy_ashare.domain.symbols.stock import parse_stock_symbol, parse_tickflow_symbol
 from vnpy_ashare.quotes.core.quote_rows import quote_rows_by_vt_symbol
 from vnpy_ashare.quotes.core.redis_store import get_redis_quote_store
+from vnpy_ashare.quotes.radar.radar_leader import board_quality_score
 from vnpy_ashare.quotes.radar.radar_relative_strength import (
     RelativeStrengthContext,
     build_relative_strength_context,
     enrich_radar_row_relative_strength,
 )
-from vnpy_ashare.quotes.radar.radar_leader import board_quality_score
 from vnpy_ashare.screener.data.data_source import load_screening_quote_snapshot
 from vnpy_ashare.screener.data.quotes_loader import MarketQuotesLoadError
 

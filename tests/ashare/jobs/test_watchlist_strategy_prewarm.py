@@ -31,9 +31,7 @@ class WatchlistStrategyPrewarmTests(unittest.TestCase):
         _symbols: MagicMock,
     ) -> None:
         load_signal_config.return_value = WatchlistSignalConfig().normalized()
-        load_position_config.return_value.normalized.return_value.effective_signal_config.return_value = (
-            WatchlistSignalConfig().normalized()
-        )
+        load_position_config.return_value.normalized.return_value.effective_signal_config.return_value = WatchlistSignalConfig().normalized()
         engine = MagicMock()
         engine.position_service.get_items.return_value = []
 

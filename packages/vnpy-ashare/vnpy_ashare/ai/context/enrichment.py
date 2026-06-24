@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 
-from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions, format_market_overview_extra
 from vnpy_ashare.ai.context.feed import build_feed_page_quick_actions
+from vnpy_ashare.ai.context.market_overview import build_market_page_quick_actions, format_market_overview_extra
 from vnpy_ashare.ai.context.playbook import build_playbook_page_quick_actions
 from vnpy_ashare.ai.context.quote.assembly import build_assistant_quick_actions, build_assistant_screening_menus, build_floating_stock_quick_actions
 from vnpy_ashare.ai.context.radar import build_radar_page_quick_actions

@@ -34,11 +34,7 @@ def restore_splitter(page: QuotesPage) -> None:
 
 
 def schedule_center_splitter_layout(page: QuotesPage) -> None:
-    if not (
-        page.config.show_watchlist_signals
-        or page.config.show_watchlist_positions
-        or page.config.show_run_output_panel
-    ):
+    if not (page.config.show_watchlist_signals or page.config.show_watchlist_positions or page.config.show_run_output_panel):
         return
     QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(page))
     QtCore.QTimer.singleShot(150, lambda: restore_center_splitter(page))

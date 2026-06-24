@@ -31,10 +31,7 @@ def load_discipline_checks(trade_date: str) -> tuple[DisciplineCheckItem, ...]:
             (day,),
         ).fetchall()
     checked_map = {str(row["check_id"]): bool(row["checked"]) for row in rows}
-    return tuple(
-        DisciplineCheckItem(check_id=check_id, label=label, checked=checked_map.get(check_id, False))
-        for check_id, label in DEFAULT_DISCIPLINE_CHECKS
-    )
+    return tuple(DisciplineCheckItem(check_id=check_id, label=label, checked=checked_map.get(check_id, False)) for check_id, label in DEFAULT_DISCIPLINE_CHECKS)
 
 
 def set_discipline_check(trade_date: str, check_id: str, checked: bool) -> None:

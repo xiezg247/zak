@@ -134,9 +134,7 @@ class MarketOverviewPanel(QtWidgets.QWidget):
         self._sector_layout.setSpacing(8)
         self._sector_layout.addStretch(1)
 
-        self._sector_empty = QtWidgets.QLabel(
-            "暂无行业榜（请配置 TUSHARE_TOKEN，并运行「后台 → 定时任务 → 同步行业映射」）"
-        )
+        self._sector_empty = QtWidgets.QLabel("暂无行业榜（请配置 TUSHARE_TOKEN，并运行「后台 → 定时任务 → 同步行业映射」）")
         self._sector_empty.setObjectName("SectorCardEmpty")
         self._sector_layout.insertWidget(0, self._sector_empty)
 

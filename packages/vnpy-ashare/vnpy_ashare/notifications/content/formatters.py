@@ -7,6 +7,7 @@ from typing import Any
 from vnpy_ashare.domain.time.china import format_china_datetime
 from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_EMOTION_STAGE_CHANGE,
+    NOTIFY_EVENT_FEED_ITEM_NEW,
     NOTIFY_EVENT_JOURNAL_VIOLATION,
     NOTIFY_EVENT_MANUAL_TEST,
     NOTIFY_EVENT_POSITION_ALERT,
@@ -15,7 +16,6 @@ from vnpy_ashare.notifications.core.events import (
     NOTIFY_EVENT_SCHEDULER_JOB_FAILED,
     NOTIFY_EVENT_SCREENER_INTRADAY_DONE,
     NOTIFY_EVENT_SCREENER_POST_CLOSE_DONE,
-    NOTIFY_EVENT_FEED_ITEM_NEW,
 )
 
 

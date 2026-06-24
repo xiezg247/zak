@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, time
 from typing import TYPE_CHECKING
 
+from vnpy_ashare.domain.time.calendar import is_trading_day
 from vnpy_ashare.domain.time.market_hours import (
     AFTERNOON_CLOSE,
     AFTERNOON_OPEN,
@@ -12,7 +13,6 @@ from vnpy_ashare.domain.time.market_hours import (
     MORNING_CLOSE,
     is_ashare_trading_session,
 )
-from vnpy_ashare.domain.time.calendar import is_trading_day
 
 if TYPE_CHECKING:
     from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot

@@ -9,6 +9,7 @@ from vnpy.trader.ui import QtCore
 
 if TYPE_CHECKING:
     from vnpy.trader.engine import MainEngine
+
     from vnpy_ashare.services.analysis import AnalysisService
 
 

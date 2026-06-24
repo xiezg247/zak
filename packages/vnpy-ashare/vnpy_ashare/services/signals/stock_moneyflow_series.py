@@ -26,11 +26,7 @@ def load_stock_moneyflow_values(vt_symbol: str, *, days: int = _MONEYFLOW_LOOKBA
         if not cached:
             continue
         row = next(
-            (
-                record
-                for record in cached
-                if record.get("ts_code") == item.ts_code or record.get("vt_symbol") == item.vt_symbol
-            ),
+            (record for record in cached if record.get("ts_code") == item.ts_code or record.get("vt_symbol") == item.vt_symbol),
             None,
         )
         if row is None:

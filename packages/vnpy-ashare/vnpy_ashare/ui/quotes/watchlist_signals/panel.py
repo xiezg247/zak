@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore, QtWidgets
 
-from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.config.preferences.watchlist_signal import (
     SIGNAL_PANEL_MAX_SYMBOLS,
     WatchlistSignalConfig,
@@ -12,6 +11,7 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     normalize_signal_panel_symbols,
     save_signal_panel_symbols,
 )
+from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.header import SignalPanelHeader

@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import unittest
 
-from vnpy_common.ai.chart_notes import format_chart_attachments_appendix, merge_report_body_with_charts
-from vnpy_common.ai.protocol import AiChartBar, AiChartSpec
 from vnpy_ashare.services.note import build_report_context_json
 from vnpy_ashare.services.stock.valuation_chart import build_valuation_chart_series
+from vnpy_common.ai.chart_notes import format_chart_attachments_appendix, merge_report_body_with_charts
+from vnpy_common.ai.protocol import AiChartSpec
 from vnpy_llm.tools.chart_collector import try_collect_charts
 
 

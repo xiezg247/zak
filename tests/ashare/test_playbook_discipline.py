@@ -5,11 +5,11 @@ from __future__ import annotations
 from vnpy.trader.constant import Exchange
 
 from vnpy_ashare.storage.repositories.positions import add_position_item
+from vnpy_ashare.storage.repositories.trading_plans import create_trading_plan
 from vnpy_ashare.storage.repositories.trading_playbook_discipline import (
     load_discipline_checks,
     set_discipline_check,
 )
-from vnpy_ashare.storage.repositories.trading_plans import create_trading_plan
 from vnpy_ashare.storage.repositories.watchlist import add_watchlist_item
 from vnpy_ashare.trading.journal.off_plan_scan import list_off_plan_position_vt_symbols
 

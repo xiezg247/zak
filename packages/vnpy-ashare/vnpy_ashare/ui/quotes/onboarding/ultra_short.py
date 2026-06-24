@@ -38,9 +38,7 @@ class ProfileOnboardingDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         default_spec = get_strategy_profile(DEFAULT_STRATEGY_PROFILE)
-        title = QtWidgets.QLabel(
-            f"请选择默认策略 Profile（推荐「{default_spec.title}」· 短线放量突破，可随时在信号区切换）"
-        )
+        title = QtWidgets.QLabel(f"请选择默认策略 Profile（推荐「{default_spec.title}」· 短线放量突破，可随时在信号区切换）")
         title.setWordWrap(True)
         layout.addWidget(title)
 
