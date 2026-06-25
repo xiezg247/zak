@@ -121,15 +121,61 @@ class WatchlistController:
         self._page.status_label.setText(status)
 
     def remove_selected(self) -> None:
-        if not self._page.current_item:
+        self.remove_items()
+
+    def remove_items(self, context_item: StockItem | None = None) -> None:
+        targets = self._remove_targets(context_item)
+        if not targets:
             return
         service = self._service()
         if service is None:
             self._page.status_label.setText("自选服务未就绪")
             return
 
-        item = self._page.current_item
-        removed_vt = item.vt_symbol
+        removed_vts: list[str] = []
+        removed_labels: list[str] = []
+        failed = 0
+        for item in targets:
+            if not self._remove_one_item(service, item):
+                failed += 1
+                continue
+            removed_vts.append(item.vt_symbol)
+            removed_labels.append(format_vt_symbol_cn(item.symbol, item.exchange))
+
+        if not removed_labels:
+            self._page.status_label.setText("移出失败：标的不在自选池")
+            return
+
+        self._page.current_item = None
+        if self._page.depth_panel is not None:
+            self._page.depth_panel.clear()
+        if len(removed_labels) == 1:
+            status = f"已移出自选：{removed_labels[0]}"
+        else:
+            status = f"已移出自选 {len(removed_labels)} 只"
+        if failed:
+            status += f"（{failed} 只失败）"
+        self._page.status_label.setText(status)
+        self._apply_pool(self._pool_from_service())
+        bootstrap = getattr(self._page, "_watchlist_bootstrap", None)
+        if isinstance(bootstrap, WatchlistBootstrapCoordinator) and removed_vts:
+            bootstrap.invalidate_symbols(self._page, removed_vts)
+        if self._page.config.show_watchlist_signals:
+            self._page._signals.on_symbols_changed()
+
+    def _remove_targets(self, context_item: StockItem | None = None) -> list[StockItem]:
+        selected = self._page._table.selected_items()
+        if len(selected) > 1:
+            return selected
+        if context_item is not None:
+            return [context_item]
+        if selected:
+            return selected
+        if self._page.current_item is not None:
+            return [self._page.current_item]
+        return []
+
+    def _remove_one_item(self, service: WatchlistService, item: StockItem) -> bool:
         position_service = self._page._get_position_service()
         if position_service is not None and position_service.contains(item.symbol, item.exchange):
             answer = QtWidgets.QMessageBox.question(
@@ -146,18 +192,8 @@ class WatchlistController:
                 if panel is not None:
                     panel.render_panel()
         if not service.remove(item.symbol, item.exchange):
-            self._page.status_label.setText("移出失败：标的不在自选池")
-            return
-        self._page.current_item = None
-        if self._page.depth_panel is not None:
-            self._page.depth_panel.clear()
-        self._page.status_label.setText(f"已移出自选：{format_vt_symbol_cn(item.symbol, item.exchange)}")
-        self._apply_pool(self._pool_from_service())
-        bootstrap = getattr(self._page, "_watchlist_bootstrap", None)
-        if isinstance(bootstrap, WatchlistBootstrapCoordinator) and removed_vt:
-            bootstrap.invalidate_symbols(self._page, [removed_vt])
-        if self._page.config.show_watchlist_signals:
-            self._page._signals.on_symbols_changed()
+            return False
+        return True
 
     def move_selected(self, direction: Literal["up", "down"]) -> None:
         if not self._page.current_item:

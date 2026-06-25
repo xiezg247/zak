@@ -1,8 +1,8 @@
-"""自选信号区表格体（QTableWidget + 统计 + 行渲染）。"""
+"""自选信号区表格体（QTableView + Model + 统计 + 行渲染）。"""
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtCore, QtGui, QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.signal_panel_columns import (
     normalize_visible_optional_keys,
@@ -32,7 +32,10 @@ from vnpy_ashare.services.signals.runtime import (
     signal_cell_text,
 )
 from vnpy_ashare.ui.quotes._host_widget import as_qwidget
+from vnpy_ashare.ui.quotes.table.model import QuoteCell
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
+from vnpy_ashare.ui.quotes.watchlist_signals.signal_info_delegate import SignalInfoColumnDelegate
+from vnpy_ashare.ui.quotes.watchlist_signals.signal_panel_model import SignalPanelTableModel
 from vnpy_common.ui.theme.manager import theme_manager
 from vnpy_common.ui.theme.market_colors import market_colors, pct_change_color
 
@@ -59,6 +62,8 @@ class SignalPanelTableView(QtWidgets.QWidget):
         self._updated_at = ""
         self._visible_column_keys: list[str] = load_signal_panel_columns()
         self._column_menu: QtWidgets.QMenu | None = None
+        self._model = SignalPanelTableModel(self)
+        self._info_delegate: SignalInfoColumnDelegate | None = None
         self._build_ui()
         self._sync_table_columns(reset_rows=False)
 
@@ -116,7 +121,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             self._table.setVisible(False)
             self._empty_label.setText(_EMPTY_LIST_TEXT)
             self._empty_label.setVisible(True)
-            self._table.setRowCount(0)
+            self._model.clear_rows()
             self._refresh_stats()
             return
         if not display_symbols:
@@ -124,7 +129,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             self._table.setVisible(False)
             self._empty_label.setText(_FILTER_EMPTY_TEXT)
             self._empty_label.setVisible(True)
-            self._table.setRowCount(0)
+            self._model.clear_rows()
             self._refresh_stats()
             return
         self._empty_label.setVisible(False)
@@ -145,14 +150,10 @@ class SignalPanelTableView(QtWidgets.QWidget):
             if not target:
                 self._table.clearSelection()
                 return
-            for row in range(self._table.rowCount()):
-                item = self._table.item(row, 0)
-                if item is None:
-                    continue
-                vt = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
-                if vt == target:
-                    self._table.selectRow(row)
-                    return
+            row = self._model.row_for_vt_symbol(target)
+            if row >= 0:
+                self._table.selectRow(row)
+                return
             self._table.clearSelection()
         finally:
             self._suppress_selection_signal = False
@@ -168,10 +169,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
         rows = self._table.selectionModel().selectedRows()
         symbols: list[str] = []
         for model_index in rows:
-            item = self._table.item(model_index.row(), 0)
-            if item is None:
-                continue
-            vt = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
+            vt = self._model.vt_symbol_at(model_index.row())
             if vt:
                 symbols.append(vt)
         return symbols
@@ -191,7 +189,12 @@ class SignalPanelTableView(QtWidgets.QWidget):
                 item, quote = _resolve_row_item_and_quote(page, vt_symbol)
                 if item is None or item.tickflow_symbol not in tickflow_symbols:
                     continue
-                self._fill_row(row, vt_symbol)
+                cells = _build_signal_row_cells(
+                    page,
+                    vt_symbol,
+                    panel_columns=self._panel_columns(),
+                )
+                self._model.apply_row(row, cells)
         finally:
             self._building = False
 
@@ -206,8 +209,9 @@ class SignalPanelTableView(QtWidgets.QWidget):
     def _sync_table_columns(self, *, reset_rows: bool) -> None:
         columns = self._panel_columns()
         info_index = len(columns)
-        self._table.setColumnCount(info_index + 1)
-        self._table.setHorizontalHeaderLabels([label for _, label in columns] + [""])
+        headers = [label for _, label in columns] + [""]
+        self._model.set_headers(headers)
+
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self._table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self._table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -218,6 +222,8 @@ class SignalPanelTableView(QtWidgets.QWidget):
         header_view.setStretchLastSection(False)
         header_view.setSectionResizeMode(info_index, QtWidgets.QHeaderView.ResizeMode.Fixed)
         self._table.setColumnWidth(info_index, 52)
+        if self._info_delegate is not None:
+            self._table.setItemDelegateForColumn(info_index, self._info_delegate)
         default_widths = {
             "symbol": 72,
             "name": 88,
@@ -239,7 +245,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             self._table.setColumnWidth(col, default_widths.get(key, 72))
         if reset_rows:
             self._rendered_symbols = []
-            self._table.setRowCount(0)
+            self._model.clear_rows()
 
     # ── 内部：表格重建 / 更新 ────────────────────────────────
 
@@ -253,126 +259,32 @@ class SignalPanelTableView(QtWidgets.QWidget):
 
     def _rebuild_table(self, display_symbols: list[str]) -> None:
         self._building = True
-        self._table.setRowCount(len(display_symbols))
-        for row, vt_symbol in enumerate(display_symbols):
-            self._fill_row(row, vt_symbol)
-        self._building = False
+        try:
+            rows = [
+                _build_signal_row_cells(self._page, vt_symbol, panel_columns=self._panel_columns())
+                for vt_symbol in display_symbols
+            ]
+            self._model.set_rows_with_symbols(display_symbols, rows)
+        finally:
+            self._building = False
 
     def _update_row_cells(self, display_symbols: list[str]) -> None:
         self._building = True
-        for row, vt_symbol in enumerate(display_symbols):
-            self._fill_row(row, vt_symbol)
-        self._building = False
+        try:
+            for row, vt_symbol in enumerate(display_symbols):
+                cells = _build_signal_row_cells(
+                    self._page,
+                    vt_symbol,
+                    panel_columns=self._panel_columns(),
+                )
+                self._model.apply_row(row, cells)
+        finally:
+            self._building = False
 
-    # ── 内部：行填充 ─────────────────────────────────────────
-
-    def _fill_row(self, row: int, vt_symbol: str) -> None:
-        page = self._page
-        item, quote = _resolve_row_item_and_quote(page, vt_symbol)
-        snapshot = lookup_by_vt_symbol(page.signal_cache, vt_symbol)
-        missing_kline = signal_missing_kline(snapshot)
-        bar_end_date = self._bar_end_date(vt_symbol)
-        continuation = lookup_by_vt_symbol(page.continuation_cache, vt_symbol)
-        values = _compute_row_values(
-            item,
-            snapshot,
-            quote,
-            bar_end_date=bar_end_date,
-            config=page.signal_config.normalized(),
-            panel_columns=self._panel_columns(),
-            continuation=continuation,
-        )
-        tooltip = _compute_row_tooltip(
-            snapshot,
-            values,
-            quote=quote,
-            vt_symbol=vt_symbol,
-            config=page.signal_config.normalized(),
-            position_cache=page.position_cache,
-            continuation=continuation,
-        )
-        strength_tooltip = format_strength_breakdown(snapshot)
-        colors = market_colors(theme_manager().tokens())
-        warning_color = theme_manager().tokens().semantic_warning
-
-        for col, (key, _label) in enumerate(self._panel_columns()):
-            text = values.get(key, "—")
-            cell = self._table.item(row, col)
-            if cell is None:
-                cell = QtWidgets.QTableWidgetItem(text)
-                self._table.setItem(row, col, cell)
-            elif cell.text() != text:
-                cell.setText(text)
-            cell.setData(QtCore.Qt.ItemDataRole.UserRole, vt_symbol)
-            config = page.signal_config.normalized()
-            fg = signal_cell_color(
-                key,
-                snapshot,
-                colors=colors,
-                quote=quote,
-                bar_end_date=bar_end_date,
-                slow_window=config.slow_window,
-                fast_window=config.fast_window,
-                warning_color=warning_color,
-            )
-            if missing_kline and key == "signal":
-                fg = warning_color
-            elif key in {"continuation_pattern", "outlook_compact"} and continuation is not None:
-                bias_value = 0.0
-                if continuation.outlook_days:
-                    bias = continuation.outlook_days[0].bias
-                    if bias == "偏多":
-                        bias_value = 1.0
-                    elif bias == "偏空":
-                        bias_value = -1.0
-                fg = pct_change_color(bias_value, theme_manager().tokens())
-            if fg:
-                cell.setForeground(QtGui.QColor(fg))
-            else:
-                cell.setData(QtCore.Qt.ItemDataRole.ForegroundRole, None)
-            if key == "signal_strength" and strength_tooltip:
-                cell.setToolTip(strength_tooltip)
-            else:
-                cell.setToolTip(tooltip)
-        self._fill_info_button(row, vt_symbol)
-
-    def _bar_end_date(self, vt_symbol: str) -> str | None:
-        from vnpy_ashare.services.bar import format_meta_date
-
-        item = self._page.find_stock_item(vt_symbol)
-        if item is None:
-            return None
-        meta = self._page.bar_meta.get((item.symbol, item.exchange))
-        if meta is None or meta.end is None:
-            return None
-        return format_meta_date(meta.end)
-
-    def _fill_info_button(self, row: int, vt_symbol: str) -> None:
-        widget = self._table.cellWidget(row, self._info_column_index())
-        if isinstance(widget, QtWidgets.QToolButton):
-            btn = widget
-        elif widget is None:
-            btn = QtWidgets.QToolButton(self._table)
-            btn.setText("理由")
-            btn.setToolTip("查看信号理由")
-            btn.setAutoRaise(True)
-            btn.setObjectName("SignalInfoButton")
-            btn.clicked.connect(self._on_info_clicked)
-            self._table.setCellWidget(row, self._info_column_index(), btn)
-        else:
-            return
-        btn.setText("理由")
-        btn.setProperty("vt_symbol", vt_symbol)
-        btn.setEnabled(bool(vt_symbol))
-
-    def _on_info_clicked(self) -> None:
-        sender = self.sender()
-        if not isinstance(sender, QtWidgets.QToolButton):
-            return
-        vt_symbol = str(sender.property("vt_symbol") or "").strip()
-        if not vt_symbol:
-            return
-        self._show_signal_reason_dialog(vt_symbol)
+    def _on_info_row_requested(self, row: int) -> None:
+        vt_symbol = self._model.vt_symbol_at(row)
+        if vt_symbol:
+            self._show_signal_reason_dialog(vt_symbol)
 
     def _show_signal_reason_dialog(self, vt_symbol: str) -> None:
         page = self._page
@@ -383,7 +295,7 @@ class SignalPanelTableView(QtWidgets.QWidget):
             item,
             snapshot,
             quote,
-            bar_end_date=self._bar_end_date(vt_symbol),
+            bar_end_date=_bar_end_date_for(page, vt_symbol),
             config=page.signal_config.normalized(),
             panel_columns=self._panel_columns(),
             continuation=continuation,
@@ -547,20 +459,14 @@ class SignalPanelTableView(QtWidgets.QWidget):
         rows = self._table.selectionModel().selectedRows()
         if not rows:
             return
-        item = self._table.item(rows[0].row(), 0)
-        if item is None:
-            return
-        vt = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
+        vt = self._model.vt_symbol_at(rows[0].row())
         if vt:
             self.row_selected.emit(vt)
 
-    def _on_cell_activated(self, row: int, _col: int) -> None:
-        if row < 0 or row >= self._table.rowCount():
+    def _on_cell_activated(self, index: QtCore.QModelIndex) -> None:
+        if not index.isValid():
             return
-        item = self._table.item(row, 0)
-        if item is None:
-            return
-        vt = str(item.data(QtCore.Qt.ItemDataRole.UserRole) or "")
+        vt = self._model.vt_symbol_at(index.row())
         if vt:
             self.row_activated.emit(vt)
 
@@ -579,10 +485,13 @@ class SignalPanelTableView(QtWidgets.QWidget):
         self._stats_label.linkActivated.connect(self._on_stats_filter_link)
         root.addWidget(self._stats_label)
 
-        self._table = QtWidgets.QTableWidget(self)
+        self._table = QtWidgets.QTableView(self)
         self._table.setObjectName("WatchlistSignalTable")
-        self._table.cellDoubleClicked.connect(self._on_cell_activated)
-        self._table.itemSelectionChanged.connect(self._on_table_selection_changed)
+        self._table.setModel(self._model)
+        self._info_delegate = SignalInfoColumnDelegate(self._table)
+        self._info_delegate.reason_requested.connect(self._on_info_row_requested)
+        self._table.doubleClicked.connect(self._on_cell_activated)
+        self._table.selectionModel().selectionChanged.connect(self._on_table_selection_changed)
         root.addWidget(self._table, stretch=1)
 
         self._empty_label = QtWidgets.QLabel(_EMPTY_LIST_TEXT, self)
@@ -593,6 +502,83 @@ class SignalPanelTableView(QtWidgets.QWidget):
 
 
 # ── 行渲染纯函数 ────────────────────────────────────────────
+
+
+def _bar_end_date_for(page: WatchlistHost, vt_symbol: str) -> str | None:
+    from vnpy_ashare.services.bar import format_meta_date
+
+    item = page.find_stock_item(vt_symbol)
+    if item is None:
+        return None
+    meta = page.bar_meta.get((item.symbol, item.exchange))
+    if meta is None or meta.end is None:
+        return None
+    return format_meta_date(meta.end)
+
+
+def _build_signal_row_cells(
+    page: WatchlistHost,
+    vt_symbol: str,
+    *,
+    panel_columns: tuple[tuple[str, str], ...],
+) -> list[QuoteCell]:
+    item, quote = _resolve_row_item_and_quote(page, vt_symbol)
+    snapshot = lookup_by_vt_symbol(page.signal_cache, vt_symbol)
+    missing_kline = signal_missing_kline(snapshot)
+    bar_end_date = _bar_end_date_for(page, vt_symbol)
+    continuation = lookup_by_vt_symbol(page.continuation_cache, vt_symbol)
+    values = _compute_row_values(
+        item,
+        snapshot,
+        quote,
+        bar_end_date=bar_end_date,
+        config=page.signal_config.normalized(),
+        panel_columns=panel_columns,
+        continuation=continuation,
+    )
+    tooltip = _compute_row_tooltip(
+        snapshot,
+        values,
+        quote=quote,
+        vt_symbol=vt_symbol,
+        config=page.signal_config.normalized(),
+        position_cache=page.position_cache,
+        continuation=continuation,
+    )
+    strength_tooltip = format_strength_breakdown(snapshot)
+    colors = market_colors(theme_manager().tokens())
+    warning_color = theme_manager().tokens().semantic_warning
+    config = page.signal_config.normalized()
+
+    cells: list[QuoteCell] = []
+    for key, _label in panel_columns:
+        text = values.get(key, "—")
+        fg = signal_cell_color(
+            key,
+            snapshot,
+            colors=colors,
+            quote=quote,
+            bar_end_date=bar_end_date,
+            slow_window=config.slow_window,
+            fast_window=config.fast_window,
+            warning_color=warning_color,
+        )
+        if missing_kline and key == "signal":
+            fg = warning_color
+        elif key in {"continuation_pattern", "outlook_compact"} and continuation is not None:
+            bias_value = 0.0
+            if continuation.outlook_days:
+                bias = continuation.outlook_days[0].bias
+                if bias == "偏多":
+                    bias_value = 1.0
+                elif bias == "偏空":
+                    bias_value = -1.0
+            fg = pct_change_color(bias_value, theme_manager().tokens())
+        cell_tooltip = strength_tooltip if key == "signal_strength" and strength_tooltip else tooltip
+        cells.append(QuoteCell(text=text, color=fg or None, tooltip=cell_tooltip))
+
+    cells.append(QuoteCell(text="理由", tooltip="查看信号理由"))
+    return cells
 
 
 def _resolve_row_item_and_quote(page: WatchlistHost, vt_symbol: str):

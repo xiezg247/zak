@@ -18,6 +18,7 @@ from vnpy_ashare.ui.quotes.controllers.table import TableController
 from vnpy_ashare.ui.quotes.controllers.watchlist import WatchlistController
 from vnpy_ashare.ui.quotes.features.market_rank import MarketRankFeature
 from vnpy_ashare.ui.quotes.features.stock_notes import StockNotesFeature
+from vnpy_ashare.ui.quotes.features.strategy_monitor import StrategyMonitorPageFeature
 from vnpy_ashare.ui.quotes.features.watchlist import WatchlistPageFeature
 from vnpy_ashare.ui.quotes.features.watchlist_panels import WatchlistPanelsFeature
 from vnpy_ashare.ui.quotes.page.config import (
@@ -26,6 +27,8 @@ from vnpy_ashare.ui.quotes.page.config import (
     PAGE_CONFIGS,
     SEARCH_DEBOUNCE_MS,
 )
+from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE, uses_watchlist_pool
+from vnpy_ashare.ui.quotes.features.watchlist.lazy_build import WatchlistLazyBuildCoordinator
 from vnpy_ashare.ui.quotes.watchlist.bootstrap import WatchlistBootstrapCoordinator
 from vnpy_ashare.ui.quotes.watchlist.refresh_scheduler import WatchlistStrategyRefreshScheduler
 from vnpy_ashare.ui.quotes.watchlist.strategy_batch import WatchlistStrategyBatchCoordinator
@@ -179,13 +182,15 @@ def init_controllers(page: QuotesPage, page_name: str) -> None:
     page._positions = WatchlistPositionController(page)
     page._multiview = WatchlistMultiViewController(page)
     page._strategy_refresh = WatchlistStrategyRefreshScheduler(page, page._signals, page._positions)
-    page._strategy_batch = WatchlistStrategyBatchCoordinator(page) if page_name == "自选" else None
+    page._strategy_batch = WatchlistStrategyBatchCoordinator(page) if page_name == STRATEGY_MONITOR_PAGE else None
     page._watchlist_groups = None
     page._loader = DataLoaderController(page)
     page._market_rank = MarketRankFeature(page)
     page._watchlist_panels = WatchlistPanelsFeature(page)
-    page._watchlist_feature = WatchlistPageFeature(page) if page_name == "自选" else None
-    page._watchlist_bootstrap = WatchlistBootstrapCoordinator() if page_name == "自选" else None
+    page._watchlist_feature = WatchlistPageFeature(page) if page_name == WATCHLIST_PAGE else None
+    page._strategy_monitor_feature = StrategyMonitorPageFeature(page) if page_name == STRATEGY_MONITOR_PAGE else None
+    page._watchlist_bootstrap = WatchlistBootstrapCoordinator() if uses_watchlist_pool(page_name) else None
+    page._watchlist_lazy = WatchlistLazyBuildCoordinator() if page_name == WATCHLIST_PAGE else None
     page._stock_notes = StockNotesFeature(page)
 
 
@@ -223,3 +228,5 @@ def wire_page_features(page: QuotesPage) -> None:
         page._watchlist_groups.wire()
     if page._watchlist_feature is not None:
         page._watchlist_feature.wire()
+    if getattr(page, "_strategy_monitor_feature", None) is not None:
+        page._strategy_monitor_feature.wire()

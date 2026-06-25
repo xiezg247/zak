@@ -135,7 +135,7 @@ def build_quote_row(
             "index": index_text,
             "symbol": item.symbol,
             "exchange": exchange_to_cn(item.exchange),
-            "name": quote.name or item.name,
+            "name": item.name or quote.name,
             "last_price": f"{quote.last_price:.2f}",
             "change_pct": f"{quote.change_pct:+.2f}",
             "limit_times": format_limit_times(quote.limit_times),

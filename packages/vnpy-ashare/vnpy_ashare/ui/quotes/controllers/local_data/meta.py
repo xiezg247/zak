@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy_ashare.config.runtime import format_vt_symbol_cn
 from vnpy_ashare.domain.symbols.stock import StockItem
+from vnpy_ashare.data.bar_store import is_overview_cache_warmed
 from vnpy_ashare.services.bar import bar_meta_from_overview, get_scope_overview, invalidate_bar_overview_cache, iter_bar_overviews, list_status
 from vnpy_ashare.ui.quotes.controllers.local_data.base import LocalDataControllerBase
 from vnpy_ashare.ui.quotes.workers.quotes_workers import InvalidBarCleanupWorker
@@ -20,6 +21,8 @@ class LocalDataMetaMixin(LocalDataControllerBase):
 
     def ensure_meta_for_items(self, items: list[StockItem]) -> None:
         """按当前页标的懒加载 K 线概览，避免全量扫描卡死 UI。"""
+        if not is_overview_cache_warmed():
+            return
         page = self._p
         for item in items:
             key = (item.symbol, item.exchange)

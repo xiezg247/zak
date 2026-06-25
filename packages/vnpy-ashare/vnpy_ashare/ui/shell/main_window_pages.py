@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
-from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.ai.ui.page import AiPageWidget
 from vnpy_ashare.app.deferred_apps import ensure_cta_backtester_app, ensure_data_manager_app
@@ -22,7 +22,7 @@ from vnpy_ashare.ui.screener.pages.screener_hub_page import ScreenerHubPageWidge
 from vnpy_ashare.ui.sector_flow.page import SectorFlowPageWidget
 from vnpy_ashare.ui.shell.local.dialog import show_local_data_dialog
 from vnpy_ashare.ui.shell.manager.dialog import show_data_manager_dialog
-from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, WatchlistPageWidget
+from vnpy_ashare.ui.shell.page_shell import MarketPageWidget, RadarPageWidget, StrategyMonitorPageWidget, WatchlistPageWidget
 from vnpy_common.ui.theme.build_extra import build_info_feed_stylesheet
 
 if TYPE_CHECKING:
@@ -35,6 +35,7 @@ QUOTES_WIDGETS: dict[str, _QuotesPageFactory] = {
     "sector_flow": SectorFlowPageWidget,
     "radar": RadarPageWidget,
     "watchlist": WatchlistPageWidget,
+    "strategy_monitor": StrategyMonitorPageWidget,
 }
 
 SHELL_PAGE_WIDGETS: dict[str, _QuotesPageFactory] = {
@@ -95,6 +96,53 @@ def get_or_create_page(win: AshareMainWindow, key: str) -> QtWidgets.QWidget | N
     return widget
 
 
+def _finalize_page_switch(
+    win: AshareMainWindow,
+    *,
+    widget: QtWidgets.QWidget,
+    key: str,
+    nav_index: int | None,
+) -> None:
+    win._current_key = key
+    if key != "ai_assistant" and nav_index is not None:
+        win._page_before_ai = nav_index
+    if win._floating_controller is not None:
+        win._floating_controller.on_page_changed(key)
+        win._floating_controller.raise_floating_layers()
+
+
+def _switch_watchlist_deferred(
+    win: AshareMainWindow,
+    widget: QtWidgets.QWidget,
+    *,
+    key: str,
+    old_key: str | None,
+    nav_index: int | None,
+) -> None:
+    """先切到自选页壳层并显示加载态，下一帧再 deactivate/activate，避免侧栏切换卡顿。"""
+    if win.stack.indexOf(widget) < 0:
+        win.stack.addWidget(widget)
+    win.stack.setCurrentWidget(widget)
+    if nav_index is not None:
+        win.sidebar.set_active_index(nav_index)
+    page = getattr(widget, "page", None)
+    if page is not None and hasattr(page, "begin_tab_switch_loading"):
+        page.begin_tab_switch_loading()
+    win.raise_()
+    win.activateWindow()
+
+    def _complete() -> None:
+        if old_key and old_key != key:
+            old = win._page_widgets.get(old_key)
+            if old is not None and hasattr(old, "deactivate"):
+                old.deactivate()
+        if hasattr(widget, "activate"):
+            widget.activate()
+        _finalize_page_switch(win, widget=widget, key=key, nav_index=nav_index)
+
+    QtCore.QTimer.singleShot(0, _complete)
+
+
 def show_page_by_key(win: AshareMainWindow, key: str, *, nav_index: int | None = None) -> None:
     widget = get_or_create_page(win, key)
     if widget is None:
@@ -108,8 +156,13 @@ def show_page_by_key(win: AshareMainWindow, key: str, *, nav_index: int | None =
         if win._floating_controller is not None:
             win._floating_controller.on_ai_assistant_entered()
 
-    if win._current_key and win._current_key != key:
-        old = win._page_widgets.get(win._current_key)
+    old_key = win._current_key
+    if key == "watchlist":
+        _switch_watchlist_deferred(win, widget, key=key, old_key=old_key, nav_index=nav_index)
+        return
+
+    if old_key and old_key != key:
+        old = win._page_widgets.get(old_key)
         if old is not None and hasattr(old, "deactivate"):
             old.deactivate()
 
@@ -120,12 +173,7 @@ def show_page_by_key(win: AshareMainWindow, key: str, *, nav_index: int | None =
     if hasattr(widget, "activate"):
         widget.activate()
 
-    win._current_key = key
-    if key != "ai_assistant" and nav_index is not None:
-        win._page_before_ai = nav_index
-    if win._floating_controller is not None:
-        win._floating_controller.on_page_changed(key)
-        win._floating_controller.raise_floating_layers()
+    _finalize_page_switch(win, widget=widget, key=key, nav_index=nav_index)
     if nav_index is not None:
         win.sidebar.set_active_index(nav_index)
     win.raise_()

@@ -14,6 +14,7 @@ from vnpy_ashare.ui.quotes.features.watchlist.strategy_workspace_prefs import (
     save_strategy_workspace_open,
 )
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar_preset import apply_toolbar_for_preset
+from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
@@ -44,6 +45,35 @@ def is_strategy_workspace_open(page: WatchlistHost) -> bool:
     if isinstance(cached, bool):
         return cached
     return load_strategy_workspace_open()
+
+
+def strategy_workspace_pref_open() -> bool:
+    """读取持久化偏好（激活早期尚未写入 page 缓存时使用）。"""
+    return load_strategy_workspace_open()
+
+
+def _mount_strategy_panels(page: WatchlistHost) -> None:
+    lazy = getattr(page, "_watchlist_lazy", None)
+    if lazy is not None:
+        lazy.ensure_strategy_panels(page)
+
+
+def _sync_workspace_runtime(page: WatchlistHost, open_state: bool) -> None:
+    """工作区开闭时启停策略 Worker；展开后补一次下游刷新。"""
+    if not getattr(page, "_active", False) or page.page_name not in {WATCHLIST_PAGE, STRATEGY_MONITOR_PAGE}:
+        return
+    if open_state:
+        page._strategy_refresh.start()
+        bootstrap = getattr(page, "_watchlist_bootstrap", None)
+        if bootstrap is not None:
+            bootstrap.schedule_downstream(page, reason="pool_ready")
+        return
+    page._strategy_refresh.stop()
+    page._signals.stop()
+    page._positions.stop()
+    batch = getattr(page, "_strategy_batch", None)
+    if batch is not None:
+        batch.stop()
 
 
 def _signal_count(page: WatchlistHost) -> int:
@@ -95,8 +125,13 @@ def apply_strategy_workspace(
 
 def open_strategy_workspace(page: WatchlistHost, *, persist: bool = True) -> None:
     if is_strategy_workspace_open(page):
+        _mount_strategy_panels(page)
+        _sync_workspace_runtime(page, True)
         return
+    page._strategy_workspace_open = True
+    _mount_strategy_panels(page)
     apply_strategy_workspace(page, True, persist=persist, apply_preset=True)
+    _sync_workspace_runtime(page, True)
 
 
 def refresh_strategy_workspace_button(page: WatchlistHost) -> None:
@@ -113,12 +148,15 @@ def refresh_strategy_workspace_button(page: WatchlistHost) -> None:
     button.setText(label)
     button.setChecked(is_strategy_workspace_open(page))
     button.blockSignals(False)
-    button.setToolTip("展开或收起策略信号区与持仓区。关闭时主表占满空间，后台仍刷新信号与持仓；展开后按当前预设（盘中/复盘）分配面板。")
+    button.setToolTip(
+        "展开或收起策略信号区与持仓区。收起时主表占满空间且不跑策略计算；"
+        "展开后按当前预设（盘中/复盘）分配面板并刷新信号/持仓。"
+    )
 
 
 def init_strategy_workspace_on_layout(page: WatchlistHost) -> None:
     """中部布局就绪后：应用工作区开闭并校正 splitter。"""
-    open_state = load_strategy_workspace_open()
+    open_state = is_strategy_workspace_open(page)
     apply_strategy_workspace(page, open_state, persist=False, apply_preset=open_state)
     from vnpy_ashare.ui.quotes.watchlist_signals.splitter import restore_center_splitter
 
@@ -126,7 +164,11 @@ def init_strategy_workspace_on_layout(page: WatchlistHost) -> None:
 
 
 def _on_workspace_toggled(page: WatchlistHost, checked: bool) -> None:
+    page._strategy_workspace_open = checked
+    if checked:
+        _mount_strategy_panels(page)
     apply_strategy_workspace(page, checked, persist=True, apply_preset=checked)
+    _sync_workspace_runtime(page, checked)
 
 
 def create_strategy_workspace_toolbar(page: WatchlistHost) -> QtWidgets.QPushButton:

@@ -6,6 +6,7 @@ from vnpy_ashare.domain.data.bar_health import BarHealthStatus
 from vnpy_ashare.domain.time.market_hours import is_ashare_trading_session
 from vnpy_ashare.ui.quotes.controllers.table.base import TableControllerBase
 from vnpy_ashare.ui.quotes.page.config import MAX_DISPLAY_ROWS
+from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE
 
 
 class TableFilterMixin(TableControllerBase):
@@ -102,9 +103,11 @@ class TableFilterMixin(TableControllerBase):
             page._quote_timer.stop()
 
         extra = f"，显示前 {MAX_DISPLAY_ROWS} 条" if len(matched) > MAX_DISPLAY_ROWS else ""
+        groups = getattr(page, "_watchlist_groups", None)
         if not matched and page.config.scope_key == "自选池":
-            groups = getattr(page, "_watchlist_groups", None)
-            if groups is not None and groups.is_filtering():
+            if page.page_name == STRATEGY_MONITOR_PAGE:
+                page.status_label.setText("自选池为空，请在市场页加入自选后再监控")
+            elif groups is not None and groups.is_filtering():
                 page.status_label.setText(f"分组「{groups.active_group_label()}」暂无标的，可在右键菜单中勾选加入")
             else:
                 page.status_label.setText("自选池为空，请在市场页搜索标的并点击「加入自选」")
@@ -127,4 +130,7 @@ class TableFilterMixin(TableControllerBase):
             page.status_label.setText(status)
             page._local.update_batch_toolbar_buttons()
         else:
-            page.status_label.setText(f"{page.page_name}  匹配 {len(matched)} 只{extra}")
+            if page.page_name == STRATEGY_MONITOR_PAGE:
+                page.status_label.setText(f"自选池 {len(matched)} 只{extra}")
+            else:
+                page.status_label.setText(f"{page.page_name}  匹配 {len(matched)} 只{extra}")

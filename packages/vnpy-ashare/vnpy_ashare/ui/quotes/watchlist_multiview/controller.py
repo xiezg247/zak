@@ -277,8 +277,14 @@ class WatchlistMultiViewController:
         self._switching_view = True
         try:
             if self._view_mode == "multiview":
+                lazy = getattr(page, "_watchlist_lazy", None)
+                if lazy is not None:
+                    lazy.ensure_multiview(page)
+                board = page.multiview_board
+                if board is None:
+                    return
                 self._sync_sparkline_mode_from_chart()
-                stack.setCurrentWidget(page.multiview_board)
+                stack.setCurrentWidget(board)
                 self.refresh(force=True, refresh_moneyflow=False)
                 self._schedule_sparkline_load()
                 self._sync_sparkline_refresh_timer()

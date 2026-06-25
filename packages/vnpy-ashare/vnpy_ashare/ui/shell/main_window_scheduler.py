@@ -16,6 +16,21 @@ if TYPE_CHECKING:
     from vnpy_ashare.ui.shell.main_window import AshareMainWindow
 
 
+def schedule_deferred_watchlist_prewarm(win: AshareMainWindow) -> None:
+    """首屏稳定后静默构造自选页，缩短用户首次切入选自的等待。"""
+    if getattr(win, "_watchlist_prewarm_scheduled", False):
+        return
+    win._watchlist_prewarm_scheduled = True
+
+    def _prewarm() -> None:
+        from vnpy_ashare.ui.shell.main_window_pages import get_or_create_page
+
+        with profiler.phase("main_window.watchlist_prewarm"):
+            get_or_create_page(win, "watchlist")
+
+    QtCore.QTimer.singleShot(2000, _prewarm)
+
+
 def schedule_deferred_shell_extras(win: AshareMainWindow) -> None:
     """首屏渲染后再初始化悬浮 AI 等非关键壳层组件。"""
     if win._shell_extras_scheduled:

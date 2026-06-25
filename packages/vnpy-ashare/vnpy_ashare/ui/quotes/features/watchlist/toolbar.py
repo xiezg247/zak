@@ -47,10 +47,7 @@ def append_watchlist_pool_toolbar_actions(
     if page.config.show_add_watchlist_button:
         toolbar.addWidget(page.add_watchlist_button)
     if page.config.show_remove_watchlist_button:
-        if policy is not None:
-            page.remove_watchlist_button.hide()
-        else:
-            toolbar.addWidget(page.remove_watchlist_button)
+        toolbar.addWidget(page.remove_watchlist_button)
     if show_move_in_toolbar:
         more_actions.extend(
             [

@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
 from vnpy.trader.ui import QtCore
 
-from vnpy_ashare.data.bar_store import warm_bar_overview_cache
 from vnpy_ashare.data.bars import (
     count_downloaded_stocks,
     load_downloaded_stocks,
@@ -14,6 +15,8 @@ from vnpy_ashare.data.bars import (
 )
 from vnpy_ashare.storage.universe import load_universe, sync_universe
 from vnpy_ashare.ui.quotes.workers.quotes_workers.models import UniverseLoadResult
+
+logger = logging.getLogger(__name__)
 
 
 class UniverseLoadWorker(QtCore.QThread):
@@ -50,9 +53,8 @@ class UniverseLoadWorker(QtCore.QThread):
             if self.scope == "全部A股":
                 stocks = load_universe(allow_sync=False)
                 total = len(stocks)
-            elif self.scope == "自选池":
+            elif self.scope == "自选池" or self.scope == "策略监控":
                 stocks = load_watchlist()
-                warm_bar_overview_cache()
                 total = len(stocks)
             elif self.limit is not None:
                 if self.keyword:
@@ -77,6 +79,14 @@ class UniverseLoadWorker(QtCore.QThread):
                 return
             self.finished.emit(UniverseLoadResult(items=stocks, total=total))
         except Exception as ex:
+            logger.exception(
+                "列表加载失败 scope=%s local_scope=%s offset=%s limit=%s keyword=%r",
+                self.scope,
+                self.local_scope,
+                self.offset,
+                self.limit,
+                self.keyword,
+            )
             self.failed.emit(str(ex))
 
 
@@ -104,4 +114,5 @@ class UniverseSyncWorker(QtCore.QThread):
                 return
             self.finished.emit(str(path))
         except Exception as ex:
+            logger.exception("A 股列表同步失败")
             self.failed.emit(str(ex))

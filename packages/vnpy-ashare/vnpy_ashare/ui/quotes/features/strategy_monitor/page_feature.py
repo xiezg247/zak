@@ -1,46 +1,35 @@
-"""自选页 feature 主入口。"""
+"""策略监控页 feature：工具栏预设与池上下文。"""
 
 from __future__ import annotations
 
 from vnpy.trader.ui import QtWidgets
 
-from vnpy_ashare.ui.quotes.features.watchlist.center_layout import build_watchlist_center_layout
+from vnpy_ashare.ui.quotes.features.strategy_monitor.center_layout import build_strategy_monitor_center_layout
 from vnpy_ashare.ui.quotes.features.watchlist.context_bar import WatchlistPoolContextBar
 from vnpy_ashare.ui.quotes.features.watchlist.layout_preset import apply_layout_preset, apply_position_focus
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, load_watchlist_layout_preset
-from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo, create_view_mode_buttons
-from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
+from vnpy_ashare.ui.quotes.features.watchlist.toolbar import create_layout_preset_combo
 from vnpy_ashare.ui.quotes.watchlist.host import WatchlistHost
 
 
-class WatchlistPageFeature:
-    """封装自选页 toolbar / 中部布局 / 生命周期。"""
-
+class StrategyMonitorPageFeature:
     def __init__(self, page: WatchlistHost) -> None:
         self._page = page
         self.layout_preset_combo: QtWidgets.QComboBox | None = None
         self.pool_context_bar: WatchlistPoolContextBar | None = None
-
-    def create_view_mode_buttons(self) -> tuple[QtWidgets.QPushButton, QtWidgets.QPushButton] | None:
-        if not self._page.config.show_watchlist_multiview:
-            return None
-        return create_view_mode_buttons(self._page)
 
     def prepend_toolbar_widgets(self, toolbar: QtWidgets.QHBoxLayout) -> None:
         self.layout_preset_combo = create_layout_preset_combo(self._page)
         toolbar.addWidget(self.layout_preset_combo)
 
     def build_center_layout(self, center_layout: QtWidgets.QVBoxLayout) -> None:
-        build_watchlist_center_layout(self._page, center_layout)
+        build_strategy_monitor_center_layout(self._page, center_layout)
         bar = getattr(self._page, "watchlist_pool_context_bar", None)
         if isinstance(bar, WatchlistPoolContextBar):
             self.pool_context_bar = bar
 
     def wire(self) -> None:
         page = self._page
-        groups = page._watchlist_groups
-        if groups is not None:
-            groups.groups_changed.connect(self.refresh_context_bar)
         signal_panel = getattr(page, "signal_panel", None)
         if signal_panel is not None:
             signal_panel.symbols_changed.connect(self.refresh_context_bar)
@@ -50,9 +39,8 @@ class WatchlistPageFeature:
 
     def on_activate(self) -> None:
         preset = load_watchlist_layout_preset()
-        apply_layout_preset(self._page, preset, persist=False, apply_splitter=False)
+        apply_layout_preset(self._page, preset, persist=False, apply_splitter=True)
         self.refresh_context_bar()
-        maybe_show_ultra_short_onboarding(self._page)
 
     def on_stock_list_loaded(self) -> None:
         self.refresh_context_bar()

@@ -195,6 +195,7 @@ class PageConfig(FrozenModel):
     show_stock_notes: bool = Field(default=False, description="是否显示个股笔记区")
     show_watchlist_multiview: bool = Field(default=False, description="是否显示自选多维看盘")
     show_watchlist_groups: bool = Field(default=False, description="是否显示自选分组")
+    show_market_table: bool = Field(default=True, description="是否显示主行情表")
     search_max_width: int = Field(default=280, description="搜索框最大宽度（像素）")
 
 
@@ -348,11 +349,42 @@ PAGE_CONFIGS: dict[str, PageConfig] = {
         show_batch_backtest_button=True,
         show_refresh_quotes_button=True,
         show_run_output_panel=False,
-        show_watchlist_signals=True,
-        show_watchlist_positions=True,
+        show_watchlist_signals=False,
+        show_watchlist_positions=False,
         show_stock_notes=True,
         show_watchlist_multiview=True,
         show_watchlist_groups=True,
+    ),
+    "策略监控": PageConfig(
+        title="策略监控",
+        scope_key="自选池",
+        search_placeholder="",
+        search_max_width=0,
+        show_sync_button=False,
+        show_download_button=False,
+        show_local_column=False,
+        require_keyword=False,
+        show_remove_watchlist_button=False,
+        show_watchlist_move_buttons=False,
+        auto_refresh_quotes=False,
+        quote_source="watchlist",
+        show_depth_panel=False,
+        show_chart_tabs=False,
+        show_kline=False,
+        use_quote_stream=False,
+        column_configurable=False,
+        hide_quote_header=True,
+        show_diagnose_button=False,
+        show_diagnose_panel=False,
+        show_batch_backtest_button=False,
+        show_refresh_quotes_button=False,
+        show_run_output_panel=False,
+        show_watchlist_signals=True,
+        show_watchlist_positions=True,
+        show_stock_notes=False,
+        show_watchlist_multiview=False,
+        show_watchlist_groups=False,
+        show_market_table=False,
     ),
     "本地": PageConfig(
         title="本地",

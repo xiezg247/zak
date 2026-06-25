@@ -27,6 +27,7 @@ def connect_app() -> Iterator[DbConnection]:
     conn = _open_backend(search_path=APP_SEARCH_PATH)
     try:
         yield conn
+        conn.commit()
     except Exception:
         conn.rollback()
         raise
@@ -40,6 +41,7 @@ def chat_session() -> Iterator[DbConnection]:
     conn = _open_backend(search_path=APP_SEARCH_PATH)
     try:
         yield conn
+        conn.commit()
     except Exception:
         conn.rollback()
         raise
@@ -63,6 +65,7 @@ def cache_session(
         if schema.strip():
             conn.executescript(schema)
         yield conn
+        conn.commit()
     except Exception:
         conn.rollback()
         raise

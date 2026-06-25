@@ -47,7 +47,7 @@ class WatchlistPositionController:
         self._disk_cache_override = value
 
     def _compute_enabled(self) -> bool:
-        if not self._page.config.show_watchlist_positions or self._page.page_name != "自选":
+        if not self._page.config.show_watchlist_positions:
             return False
         panel = getattr(self._page, "position_panel", None)
         return panel is not None and panel.enabled
@@ -133,6 +133,20 @@ class WatchlistPositionController:
 
     def _symbols_needing_refresh(self, symbols: list[str], record_map: dict[str, PositionRecord]) -> list[str]:
         return [symbol for symbol in symbols if not self._cache_valid(symbol, record_map[symbol])]
+
+    def cache_covers_panel(self) -> bool:
+        record_map = self._record_map()
+        if not record_map:
+            return True
+        return not self._symbols_needing_refresh(list(record_map), record_map)
+
+    def render_on_resume(self) -> None:
+        """Tab 复进且 cache 仍有效：仅重绘持仓区，不提交策略 Worker。"""
+        if not self._page._active:
+            return
+        record_map = self._record_map()
+        self.on_rows_changed(record_map=record_map)
+        self._apply_refresh_result()
 
     def _strategy_batch(self) -> WatchlistStrategyBatchCoordinator | None:
         return getattr(self._page, "_strategy_batch", None)

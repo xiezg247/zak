@@ -295,6 +295,18 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
         if host is not None:
             host.hide_loading()
 
+    def begin_tab_switch_loading(self) -> None:
+        if self.page_name != "自选":
+            return
+        self._tab_switch_loading = True
+        self._show_market_loading("正在加载自选…")
+
+    def end_tab_switch_loading(self) -> None:
+        if not getattr(self, "_tab_switch_loading", False):
+            return
+        self._tab_switch_loading = False
+        self._hide_market_loading()
+
     def load_stock_list(self) -> None:
         self._loader.load_stock_list()
 
@@ -572,8 +584,8 @@ class QuotesPage(QuotesPageShellAttrs, QuotesPageControllerAttrs, QuotesPageStat
     def add_to_watchlist(self) -> None:
         self._watchlist.add_selected()
 
-    def remove_from_watchlist(self) -> None:
-        self._watchlist.remove_selected()
+    def remove_from_watchlist(self, item: StockItem | None = None) -> None:
+        self._watchlist.remove_items(item)
 
     def _on_context_menu(self, pos: QtCore.QPoint) -> None:
         self._actions.show_context_menu(pos)

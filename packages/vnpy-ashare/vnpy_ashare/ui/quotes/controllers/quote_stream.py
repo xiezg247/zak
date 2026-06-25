@@ -40,6 +40,7 @@ class QuoteStreamController:
     def start(self) -> None:
         page = self._page
         if page._stream_bridge is not None:
+            self.sync_subscriptions()
             return
         if not can_use_tickflow_stream():
             page._stream_fallback = True
@@ -56,6 +57,22 @@ class QuoteStreamController:
         page._stream_fallback = False
         bridge.start()
         page._update_quote_source_label()
+
+    def pause(self) -> None:
+        """页面切走：退订行情但保留 WebSocket 连接，避免反复建连。"""
+        page = self._page
+        self._flush_timer.stop()
+        self._chart_quote_timer.stop()
+        self._pending_symbols.clear()
+        bridge = page._stream_bridge
+        if bridge is None:
+            return
+        bridge.set_quote_symbols([])
+        bridge.set_depth_symbol(None)
+
+    def resume(self) -> None:
+        """页面切回：恢复订阅（bridge 不存在时等同 start）。"""
+        self.start()
 
     def stop(self) -> None:
         page = self._page

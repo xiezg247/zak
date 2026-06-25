@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from vnpy.trader.ui import QtCore
 
 from vnpy_ashare.data.bar_access import load_universe_page, load_universe_rows, load_universe_slice, search_universe
@@ -14,6 +16,8 @@ from vnpy_ashare.quotes.rank.rank_scope import (
     load_watchlist_rank_catalog,
 )
 from vnpy_ashare.ui.quotes.workers.quotes_workers.models import MarketFullResult, MarketPageResult
+
+logger = logging.getLogger(__name__)
 
 
 class MarketPageLoadWorker(QtCore.QThread):
@@ -104,6 +108,13 @@ class MarketPageLoadWorker(QtCore.QThread):
                 )
             )
         except Exception as ex:
+            logger.exception(
+                "市场页分页加载失败 rank_id=%s board=%s page=%s keyword=%r",
+                self.rank_id,
+                self.board,
+                self.page,
+                self.keyword,
+            )
             self.failed.emit(str(ex))
 
 
@@ -154,4 +165,5 @@ class MarketFullLoadWorker(QtCore.QThread):
                 )
             )
         except Exception as ex:
+            logger.exception("市场页全量榜单加载失败 rank_id=%s", self.rank_id)
             self.failed.emit(str(ex))

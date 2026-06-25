@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 from vnpy_ashare.config.preferences.watchlist_position import WatchlistPositionConfig, save_watchlist_position_config
 from vnpy_ashare.config.preferences.watchlist_signal import SIGNAL_PANEL_MAX_SYMBOLS
 from vnpy_ashare.domain.symbols.stock import lookup_by_vt_symbol
+from vnpy_ashare.ui.quotes._host_widget import as_qwidget
+from vnpy_ashare.ui.quotes.page.roles import STRATEGY_MONITOR_PAGE, WATCHLIST_PAGE
+from vnpy_ashare.ui.quotes.page.strategy_bridge import add_items_to_strategy_monitor, focus_watchlist_symbol_from_page
 from vnpy_ashare.ui.quotes.watchlist_signals.splitter import apply_center_splitter_sizes
 
 if TYPE_CHECKING:
@@ -67,6 +70,9 @@ class WatchlistPanelsFeature:
 
     def on_signal_panel_row_activated(self, vt_symbol: str) -> None:
         page = self._page
+        if page.page_name == STRATEGY_MONITOR_PAGE:
+            focus_watchlist_symbol_from_page(page, vt_symbol)
+            return
         item = page.find_stock_item(vt_symbol)
         if item is None:
             return
@@ -113,6 +119,9 @@ class WatchlistPanelsFeature:
 
     def on_position_panel_row_selected(self, vt_symbol: str) -> None:
         page = self._page
+        if page.page_name == STRATEGY_MONITOR_PAGE:
+            focus_watchlist_symbol_from_page(page, vt_symbol)
+            return
         item = page.find_stock_item(vt_symbol)
         if item is None:
             return
@@ -135,12 +144,24 @@ class WatchlistPanelsFeature:
 
     def add_selection_to_signal_panel(self) -> None:
         page = self._page
-        panel = getattr(page, "signal_panel", None)
-        if panel is None:
-            return
         items = page._table.selected_items()
         if not items:
             page._toast.warning("请先在自选表中选择标的")
+            return
+        if page.page_name == WATCHLIST_PAGE and not page.config.show_watchlist_signals:
+            added, skipped = add_items_to_strategy_monitor(as_qwidget(page), items)
+            if added:
+                message = f"已加入信号区 {added} 只"
+                if skipped:
+                    message += f"，{skipped} 只因已达上限 {SIGNAL_PANEL_MAX_SYMBOLS} 未加入"
+                page._toast.success(message)
+            elif skipped:
+                page._toast.warning(f"信号区已满（最多 {SIGNAL_PANEL_MAX_SYMBOLS} 只），请先移出后再加入")
+            else:
+                page._toast.info("所选标的已在信号区")
+            return
+        panel = getattr(page, "signal_panel", None)
+        if panel is None:
             return
         added, skipped = panel.add_symbols([item.vt_symbol for item in items])
         if added:

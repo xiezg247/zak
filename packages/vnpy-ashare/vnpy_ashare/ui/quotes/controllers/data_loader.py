@@ -9,6 +9,7 @@ from vnpy_ashare.app.engine_access import get_bar_service
 from vnpy_ashare.quotes.core.enrich import merge_quote_maps_into
 from vnpy_ashare.services.bar import count_universe, universe_exists
 from vnpy_ashare.ui.quotes.page.config import MARKET_SCROLL_LOAD_COOLDOWN_MS
+from vnpy_ashare.ui.quotes.page.roles import uses_watchlist_pool
 from vnpy_ashare.ui.quotes.workers.quotes_workers import (
     MarketFullLoadWorker,
     MarketFullResult,
@@ -456,6 +457,17 @@ class DataLoaderController:
     def load_stock_list(self) -> None:
         page = self._p
         if not page._active:
+            return
+
+        if uses_watchlist_pool(page.page_name):
+            bootstrap = getattr(page, "_watchlist_bootstrap", None)
+            if bootstrap is not None:
+                bootstrap.reload_watchlist_pool(page)
+            else:
+                pool = page._watchlist._pool_from_service()
+                page.all_stocks = list(pool)
+                page.apply_filter()
+                page._watchlist.refresh_keys()
             return
 
         if page.config.use_market_rank:

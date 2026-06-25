@@ -73,6 +73,7 @@ from vnpy_ashare.ui.shell.main_window_scheduler import (
     refresh_info_feed_badge,
     schedule_deferred_scheduler_start,
     schedule_deferred_shell_extras,
+    schedule_deferred_watchlist_prewarm,
 )
 from vnpy_ashare.ui.shell.nav import (
     APP_NAV_ENTRIES,
@@ -114,6 +115,7 @@ class AshareMainWindow(MainWindow):
         self._initial_page_scheduled = False
         self._scheduler_deferred_scheduled = False
         self._shell_extras_scheduled = False
+        self._watchlist_prewarm_scheduled = False
         self._theme_manager = theme_manager()
         self._theme_dark_action: QtGui.QAction | None = None
         self._theme_light_action: QtGui.QAction | None = None
@@ -293,6 +295,7 @@ class AshareMainWindow(MainWindow):
         with profiler.phase("main_window_first_page"):
             self._show_page(0)
         schedule_deferred_shell_extras(self)
+        schedule_deferred_watchlist_prewarm(self)
         schedule_deferred_scheduler_start(self)
 
     def _show_shortcuts_help(self) -> None:

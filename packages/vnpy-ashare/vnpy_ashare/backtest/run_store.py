@@ -255,7 +255,7 @@ def list_batch_sessions(*, limit: int = 30) -> list[BatchBacktestSession]:
             f"""
             SELECT
                 batch_id,
-                strategy,
+                MIN(strategy) AS strategy,
                 MIN(start_date) AS start_date,
                 MAX(end_date) AS end_date,
                 COUNT(*) AS row_count,
@@ -266,7 +266,7 @@ def list_batch_sessions(*, limit: int = 30) -> list[BatchBacktestSession]:
             FROM backtest_runs
             WHERE {user_sql('batch_id IS NOT NULL')}
             GROUP BY batch_id
-            ORDER BY created_at DESC
+            ORDER BY MIN(created_at) DESC
             LIMIT ?
             """,
             (uid, limit),

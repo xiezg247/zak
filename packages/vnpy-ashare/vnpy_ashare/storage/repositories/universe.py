@@ -18,19 +18,22 @@ def _row_to_stock(row) -> tuple[str, Exchange, str]:
     return row["symbol"], Exchange[row["exchange"]], row["name"]
 
 
-def _board_where_clause(board: str | None) -> tuple[str, list]:
+def _board_where_clause(board: str | None) -> tuple[str, list[str]]:
+    """板块过滤 SQL；LIKE 模式必须参数化，避免 PostgreSQL 将 % 解析为占位符。"""
     if not board or board == "全部":
         return "", []
-    board_rules: dict[str, str] = {
-        "沪深主板": "symbol LIKE '600%' OR symbol LIKE '601%' OR symbol LIKE '603%' OR symbol LIKE '000%' OR symbol LIKE '001%' OR symbol LIKE '002%' OR symbol LIKE '003%'",
-        "创业板": "symbol LIKE '300%'",
-        "科创板": "symbol LIKE '688%'",
-        "北交所": "symbol LIKE '8%' OR symbol LIKE '4%'",
+    board_prefixes: dict[str, tuple[str, ...]] = {
+        "沪深主板": ("600", "601", "603", "000", "001", "002", "003"),
+        "创业板": ("300",),
+        "科创板": ("688",),
+        "北交所": ("8", "4"),
     }
-    rule = board_rules.get(board, "")
-    if not rule:
+    prefixes = board_prefixes.get(board)
+    if not prefixes:
         return "", []
-    return f" AND ({rule})", []
+    conditions = ["symbol LIKE ?" for _ in prefixes]
+    params = [f"{prefix}%" for prefix in prefixes]
+    return f" AND ({' OR '.join(conditions)})", params
 
 
 def count_universe(board: str | None = None) -> int:

@@ -9,7 +9,6 @@ from vnpy_ashare.domain.market.quote_snapshot import QuoteSnapshot
 from vnpy_ashare.domain.symbols.stock import StockItem, parse_stock_symbol
 from vnpy_ashare.quotes.radar.radar_models import merge_row_quotes
 from vnpy_ashare.quotes.radar.radar_moneyflow import enrich_quotes_with_moneyflow
-from vnpy_ashare.quotes.radar.radar_pool import name_map_for_symbols
 from vnpy_ashare.quotes.radar.radar_watchlist import (
     _intraday_score,
     _quotes_for_candidates,
@@ -30,7 +29,7 @@ def _quote_row_from_snapshot(item: StockItem, quote: QuoteSnapshot | None) -> di
         return row
     row.update(
         {
-            "name": quote.name or item.name or "",
+            "name": item.name or quote.name or "",
             "last_price": quote.last_price,
             "close": quote.last_price,
             "change_pct": quote.change_pct,
@@ -53,11 +52,12 @@ def _assemble_multiview_board(
     *,
     sort_key: str,
     empty_message: str = "",
+    name_by_vt: dict[str, str] | None = None,
 ) -> WatchlistMultiBoardData:
     if not candidates:
         return WatchlistMultiBoardData(rows=(), empty_message=empty_message, total_count=0)
 
-    name_map = name_map_for_symbols(candidates)
+    stored_names = name_by_vt or {}
     changes = [float(merge_row_quotes(quotes_by_vt.get(vt, {})).get("change_pct") or 0) for vt in candidates if quotes_by_vt.get(vt)]
     pool_median = sorted(changes)[len(changes) // 2] if changes else 0.0
 
@@ -68,7 +68,7 @@ def _assemble_multiview_board(
             continue
         raw = quotes_by_vt.get(vt_symbol, {"vt_symbol": vt_symbol})
         merged = merge_row_quotes(raw)
-        name = str(merged.get("name") or name_map.get(vt_symbol) or item.name or vt_symbol)
+        name = str(stored_names.get(vt_symbol) or merged.get("name") or item.name or vt_symbol)
         price_raw = merged.get("last_price") or merged.get("close")
         last_price = float(price_raw) if isinstance(price_raw, (int, float)) and float(price_raw) > 0 else None
         metric_label, metric_value, sub_label, sub_value = _watchlist_metric(merged)
@@ -116,6 +116,7 @@ def build_watchlist_multiview_board_from_page(
 
     candidates = [item.vt_symbol for item in stocks]
     sort_orders = {item.vt_symbol: index for index, item in enumerate(stocks)}
+    name_by_vt = {item.vt_symbol: item.name or "" for item in stocks}
     quotes_by_vt = {item.vt_symbol: _quote_row_from_snapshot(item, quote_map.get(item.tickflow_symbol)) for item in stocks}
     if refresh_moneyflow:
         try:
@@ -127,6 +128,7 @@ def build_watchlist_multiview_board_from_page(
         sort_orders,
         quotes_by_vt,
         sort_key=sort_key,
+        name_by_vt=name_by_vt,
     )
 
 
@@ -144,10 +146,12 @@ def build_watchlist_multiview_board(
 
     candidates: list[str] = []
     sort_orders: dict[str, int] = {}
-    for index, (symbol, exchange, _name) in enumerate(watchlist):
+    name_by_vt: dict[str, str] = {}
+    for index, (symbol, exchange, name) in enumerate(watchlist):
         vt_symbol = f"{symbol}.{exchange.value}"
         candidates.append(vt_symbol)
         sort_orders[vt_symbol] = index
+        name_by_vt[vt_symbol] = name or ""
 
     quotes_by_vt = _quotes_for_candidates(candidates)
     try:
@@ -160,4 +164,5 @@ def build_watchlist_multiview_board(
         sort_orders,
         quotes_by_vt,
         sort_key=sort_key,
+        name_by_vt=name_by_vt,
     )

@@ -10,6 +10,7 @@ from vnpy_common.storage.config import require_database_url, resolve_database_ur
 from vnpy_common.storage.migrate import upgrade_head
 
 from vnpy_ashare.storage.import_legacy import ImportLegacyOptions, import_legacy
+from vnpy_ashare.storage.repositories.watchlist_repair import repair_all_watchlist_names
 
 
 def _cmd_upgrade(_args: argparse.Namespace) -> int:
@@ -58,6 +59,19 @@ def _cmd_import_legacy(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_repair_watchlist_names(args: argparse.Namespace) -> int:
+    try:
+        require_database_url()
+    except RuntimeError as ex:
+        print(str(ex))
+        return 1
+    legacy_db = Path(args.legacy_db) if args.legacy_db else None
+    report = repair_all_watchlist_names(legacy_db=legacy_db, dry_run=args.dry_run)
+    for line in report.summary_lines():
+        print(line)
+    return 0
+
+
 def register(subparsers: argparse._SubParsersAction) -> None:
     db = subparsers.add_parser("db", help="PostgreSQL schema 迁移与遗留数据导入")
     db_sub = db.add_subparsers(dest="db_command", required=True)
@@ -82,3 +96,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     legacy.add_argument("--archive", action="store_true", help="导入成功后将源 SQLite 移至 data/backup/")
     legacy.add_argument("--no-upgrade", action="store_true", help="跳过 db upgrade")
     legacy.set_defaults(handler=_cmd_import_legacy)
+
+    repair = db_sub.add_parser("repair-watchlist-names", help="补全 watchlist 表中缺失的证券名称（一次性修复）")
+    repair.add_argument("--dry-run", action="store_true", help="仅预览，不写入")
+    repair.add_argument(
+        "--legacy-db",
+        default="",
+        help=f"优先从遗留 SQLite 读取名称（默认 {get_app_db_path()}）",
+    )
+    repair.set_defaults(handler=_cmd_repair_watchlist_names)

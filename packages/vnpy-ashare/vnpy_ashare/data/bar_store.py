@@ -67,6 +67,12 @@ def invalidate_bar_overview_cache() -> None:
         _overview_by_interval = None
 
 
+def is_overview_cache_warmed() -> bool:
+    """概览索引是否已在内存中（未预热时主线程不得触发全库扫描）。"""
+    with _overview_cache_lock:
+        return _overview_by_interval is not None
+
+
 def warm_bar_overview_cache() -> None:
     """预热线 K 线概览内存索引（应在后台线程调用，避免 UI 全量扫描）。"""
     _ensure_overview_cache()

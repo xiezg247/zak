@@ -63,7 +63,11 @@ class QuotesShellWidget(QtWidgets.QWidget):
             self._overview_controller.activate()
         if self._discovery_controller is not None:
             self._discovery_controller.activate()
-        if self.page.config.show_watchlist_signals or self.page.config.show_watchlist_positions or self.page.config.show_run_output_panel:
+        if self.PAGE_NAME != "自选" and (
+            self.page.config.show_watchlist_signals
+            or self.page.config.show_watchlist_positions
+            or self.page.config.show_run_output_panel
+        ):
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
         if self.PAGE_NAME == "市场":
             sidebar = self.page.rank_sidebar
@@ -75,7 +79,11 @@ class QuotesShellWidget(QtWidgets.QWidget):
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
-        if self.page.config.show_watchlist_signals or self.page.config.show_watchlist_positions or self.page.config.show_run_output_panel:
+        if self.PAGE_NAME != "自选" and (
+            self.page.config.show_watchlist_signals
+            or self.page.config.show_watchlist_positions
+            or self.page.config.show_run_output_panel
+        ):
             QtCore.QTimer.singleShot(0, lambda: restore_center_splitter(self.page))
         if self.PAGE_NAME == "市场":
             sidebar = self.page.rank_sidebar
@@ -107,6 +115,10 @@ class RadarPageWidget(QuotesShellWidget):
 
 class WatchlistPageWidget(QuotesShellWidget):
     PAGE_NAME = "自选"
+
+
+class StrategyMonitorPageWidget(QuotesShellWidget):
+    PAGE_NAME = "策略监控"
 
 
 class LocalPageWidget(QuotesShellWidget):

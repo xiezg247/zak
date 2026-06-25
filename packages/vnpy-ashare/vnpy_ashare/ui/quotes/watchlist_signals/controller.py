@@ -60,7 +60,7 @@ class WatchlistSignalController:
 
     def _compute_enabled(self) -> bool:
         """是否允许自动策略 Worker（关闭时仍展示已有 cache）。"""
-        if not self._page.config.show_watchlist_signals or self._page.page_name != "自选":
+        if not self._page.config.show_watchlist_signals:
             return False
         panel = getattr(self._page, "signal_panel", None)
         return panel is not None and panel.enabled
@@ -366,6 +366,10 @@ class WatchlistSignalController:
             self._page.continuation_cache.update(self._normalize_continuation_updates(built))
 
     def _ensure_bar_meta(self, symbols: list[str]) -> None:
+        from vnpy_ashare.data.bar_store import is_overview_cache_warmed
+
+        if not is_overview_cache_warmed():
+            return
         items = []
         for vt in symbols:
             item = self._page.find_stock_item(vt)
@@ -373,6 +377,19 @@ class WatchlistSignalController:
                 items.append(item)
         if items:
             self._page._local.ensure_meta_for_items(items)
+
+    def cache_covers_panel(self) -> bool:
+        symbols = self._panel_symbols()
+        if not symbols:
+            return True
+        return self._cache_covers(symbols)
+
+    def render_on_resume(self) -> None:
+        """Tab 复进且 cache 仍有效：仅同步名单并重绘，不提交策略 Worker。"""
+        if not self._page._active:
+            return
+        self._sync_panel_with_pool()
+        self._apply_refresh_result()
 
     def _rekey_signal_cache(self, symbols: list[str]) -> None:
         cache = self._page.signal_cache

@@ -30,6 +30,7 @@ from vnpy_ashare.services.signals.stock_continuation import format_signal_panel_
 from vnpy_ashare.ui.features.stock_analysis.open import show_stock_analysis_from_quotes_page
 from vnpy_ashare.ui.quotes.chart.tab_indices import DAILY_TAB_INDEX, MINUTE_TAB_INDEX
 from vnpy_ashare.ui.quotes.page.config import AI_CONTEXT_DEBOUNCE_MS
+from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.workers.quotes_workers import DepthRefreshWorker, DiagnoseWorker, QuotesRefreshWorker
 from vnpy_ashare.ui.screener.dialogs.reference_peer_dialog import show_reference_peer_dialog
 from vnpy_ashare.ui.styles.colors import NAV_MUTED_COLOR
@@ -669,6 +670,8 @@ class ActionsController:
             item = page._stock_at_row(row)
             if item is None:
                 return
+            page.current_item = item
+            page._update_action_buttons()
         menu = self._build_stock_context_menu(item)
         popup_at = global_pos if global_pos is not None else page.market_table.viewport().mapToGlobal(pos)
         menu.popup(popup_at)
@@ -707,13 +710,13 @@ class ActionsController:
         elif page.config.show_add_watchlist_button:
             if page._watchlist.contains(item):
                 action = menu.addAction("移出自选")
-                action.triggered.connect(page.remove_from_watchlist)
+                action.triggered.connect(lambda _checked=False, it=item: page.remove_from_watchlist(it))
             else:
                 action = menu.addAction("加入自选")
                 action.triggered.connect(page.add_to_watchlist)
         elif page.config.show_remove_watchlist_button and page._watchlist.contains(item):
             action = menu.addAction("移出自选")
-            action.triggered.connect(page.remove_from_watchlist)
+            action.triggered.connect(lambda _checked=False, it=item: page.remove_from_watchlist(it))
 
         if page.config.show_download_button:
             action = menu.addAction("下载日K到本地")
@@ -749,13 +752,13 @@ class ActionsController:
         """自选页：池操作放右键（多选加入信号区 / 移出 / 刷新行情）。"""
         page = self._p
         added = False
-        if page.config.show_watchlist_signals:
+        if page.page_name == WATCHLIST_PAGE or page.config.show_watchlist_signals:
             action = menu.addAction("加入信号区")
             action.triggered.connect(page.add_selection_to_signal_panel)
             added = True
         if page.config.show_remove_watchlist_button and page._watchlist.contains(item):
             action = menu.addAction("移出自选")
-            action.triggered.connect(page.remove_from_watchlist)
+            action.triggered.connect(lambda _checked=False, it=item: page.remove_from_watchlist(it))
             added = True
         if page.config.show_refresh_quotes_button and not page.config.use_market_rank:
             action = menu.addAction("刷新行情")

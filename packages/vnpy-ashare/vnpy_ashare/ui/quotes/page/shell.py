@@ -24,6 +24,7 @@ from vnpy_ashare.ui.quotes.features.market_rank_sidebar import (
     clamp_rank_splitter_sizes,
     sync_rank_splitter_for_expansion,
 )
+from vnpy_ashare.ui.quotes.features.watchlist.lazy_build import create_lazy_chart_row_host, watchlist_lazy_build_enabled
 from vnpy_ashare.ui.quotes.features.watchlist.toolbar import (
     append_watchlist_pool_toolbar_actions,
     append_watchlist_strategy_toolbar_actions,
@@ -39,6 +40,7 @@ from vnpy_ashare.ui.quotes.page.config import (
     load_market_auto_refresh_pref,
     quote_source_label,
 )
+from vnpy_ashare.ui.quotes.page.roles import WATCHLIST_PAGE
 from vnpy_ashare.ui.quotes.page.market_board_filter import configure_market_board_combo
 from vnpy_ashare.ui.quotes.page.run_log import (
     load_run_output_expanded,
@@ -261,7 +263,9 @@ class QuotesPageShell:
         page.add_signal_panel_button = QtWidgets.QPushButton("加入信号区", page)
         page.add_signal_panel_button.setObjectName("SecondaryButton")
         page.add_signal_panel_button.clicked.connect(page.add_selection_to_signal_panel)
-        page.add_signal_panel_button.setVisible(page.config.show_watchlist_signals)
+        page.add_signal_panel_button.setVisible(
+            page.config.show_watchlist_signals or page.page_name == WATCHLIST_PAGE
+        )
 
         page.quick_note_button = QtWidgets.QPushButton("记一笔", page)
         page.quick_note_button.setObjectName("SecondaryButton")
@@ -304,7 +308,12 @@ class QuotesPageShell:
         toolbar.setSpacing(8)
         if watchlist_feature is not None:
             watchlist_feature.prepend_toolbar_widgets(toolbar)
+        strategy_feature = getattr(page, "_strategy_monitor_feature", None)
+        if strategy_feature is not None:
+            strategy_feature.prepend_toolbar_widgets(toolbar)
         toolbar.addWidget(page.search_edit)
+        if page.config.search_max_width <= 0:
+            page.search_edit.hide()
         if page.config.show_watchlist_multiview and page.view_table_button is not None:
             toolbar.addWidget(page.view_table_button)
             if page.view_multiview_button is not None:
@@ -470,10 +479,15 @@ class QuotesPageShell:
         page.quote_sub_info.addWidget(page._volume_label)
 
         if page.config.show_chart_tabs:
-            page.chart_panel = ChartPanel()
-            page.chart_panel.tab_changed.connect(page._on_chart_tab_changed)
-            page._on_chart_tab_changed(page.chart_panel.current_tab_index())
-            chart_widget: QtWidgets.QWidget | None = page.chart_panel
+            lazy_chart = watchlist_lazy_build_enabled(page)
+            if lazy_chart:
+                page.chart_panel = None
+                chart_widget = create_lazy_chart_row_host(page)
+            else:
+                page.chart_panel = ChartPanel()
+                page.chart_panel.tab_changed.connect(page._on_chart_tab_changed)
+                page._on_chart_tab_changed(page.chart_panel.current_tab_index())
+                chart_widget: QtWidgets.QWidget | None = page.chart_panel
         elif not page.config.show_kline:
             chart_widget = None
         else:
@@ -499,7 +513,8 @@ class QuotesPageShell:
             chart_row.setSpacing(6)
             if chart_widget is not None:
                 chart_row.addWidget(chart_widget, stretch=1)
-            if page.config.show_depth_panel:
+            lazy_chart = watchlist_lazy_build_enabled(page)
+            if page.config.show_depth_panel and not lazy_chart:
                 page.depth_panel = DepthPanel()
                 chart_row.addWidget(page.depth_panel)
 
@@ -519,7 +534,9 @@ class QuotesPageShell:
                 page.diagnose_panel.refresh_requested.connect(page.run_diagnose_for_selected)
                 right_panel.addWidget(page.diagnose_panel)
             right_panel.addWidget(chart_row_host, stretch=1)
-            if page.config.show_stock_notes:
+            lazy_chart = watchlist_lazy_build_enabled(page)
+            page._lazy_right_panel = right_panel
+            if page.config.show_stock_notes and not lazy_chart:
                 page.stock_note_panel = StockNotePanel(page)
                 right_panel.addWidget(page.stock_note_panel)
 
@@ -620,8 +637,12 @@ class QuotesPageShell:
             center_layout.addWidget(toolbar_host)
             if page._stats_label is not None and page._stats_label.isVisible():
                 center_layout.addWidget(page._stats_label)
-            page._market_table_host = MarketTableHost(page.market_table)
-            center_layout.addWidget(page._market_table_host, stretch=1)
+            strategy_feature = getattr(page, "_strategy_monitor_feature", None)
+            if strategy_feature is not None:
+                strategy_feature.build_center_layout(center_layout)
+            elif page.config.show_market_table:
+                page._market_table_host = MarketTableHost(page.market_table)
+                center_layout.addWidget(page._market_table_host, stretch=1)
 
             main_content = center_widget
             if page.config.show_rank_sidebar:
