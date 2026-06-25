@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vnpy.trader.ui import QtWidgets
+from vnpy.trader.ui import QtCore, QtWidgets
 
 from vnpy_ashare.config.preferences.watchlist_position import save_position_panel_expanded
 from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_expanded
@@ -88,7 +88,7 @@ def apply_strategy_workspace(
         sync_strategy_workspace_from_preset(page, load_watchlist_layout_preset())
     apply_toolbar_for_preset(page, load_watchlist_layout_preset())
     refresh_strategy_workspace_button(page)
-    apply_center_splitter_sizes(page)
+    QtCore.QTimer.singleShot(0, lambda: apply_center_splitter_sizes(page))
     if persist:
         save_strategy_workspace_open(open_state)
 

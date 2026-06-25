@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 import uuid
 from datetime import date, datetime
 from typing import Any
@@ -11,13 +10,16 @@ from typing import Any
 from pydantic import Field
 
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
+from vnpy_ashare.storage.auth.scope import get_user_id
+from vnpy_ashare.storage.cache.db_session import app_db_session
+from vnpy_common.auth.scope import user_sql
 from vnpy_common.domain.base import MutableModel
-from vnpy_common.paths import get_app_db_path
+from vnpy_common.storage.compat import DbRow
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS backtest_runs (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     vt_symbol TEXT NOT NULL,
     strategy TEXT NOT NULL,
     interval TEXT NOT NULL DEFAULT 'd',
@@ -84,7 +86,7 @@ class BacktestRunRecord(MutableModel):
 
 
 def _connect():
-    return sqlite_cache_session(get_app_db_path(), _SCHEMA)
+    return app_db_session(_SCHEMA)
 
 
 def _now() -> str:
@@ -145,17 +147,19 @@ def save_backtest_run(
     run_id = uuid.uuid4().hex
     now = _now()
     stats_payload = _json_dumps(stats)
+    uid = get_user_id()
     with _connect() as conn:
         conn.execute(
             """
             INSERT INTO backtest_runs
-            (id, vt_symbol, strategy, interval, start_date, end_date,
+            (id, user_id, vt_symbol, strategy, interval, start_date, end_date,
              total_return, max_drawdown, sharpe_ratio, trade_count,
              source, batch_id, raw_statistics_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 run_id,
+                uid,
                 vt_symbol,
                 strategy,
                 interval,
@@ -203,15 +207,17 @@ def save_backtest_summary_dict(summary: dict[str, Any], *, source: str = "single
 
 
 def list_backtest_runs(*, limit: int = 20, vt_symbol: str | None = None) -> list[BacktestRunRecord]:
-    query = """
+    uid = get_user_id()
+    query = f"""
         SELECT id, vt_symbol, strategy, interval, start_date, end_date,
                total_return, max_drawdown, sharpe_ratio, trade_count,
                source, batch_id, raw_statistics_json, created_at
         FROM backtest_runs
+        WHERE {user_sql()}
     """
-    params: list[Any] = []
+    params: list[Any] = [uid]
     if vt_symbol:
-        query += " WHERE vt_symbol=?"
+        query += " AND vt_symbol=?"
         params.append(vt_symbol)
     query += " ORDER BY created_at DESC LIMIT ?"
     params.append(limit)
@@ -221,15 +227,16 @@ def list_backtest_runs(*, limit: int = 20, vt_symbol: str | None = None) -> list
 
 
 def get_backtest_run(run_id: str) -> BacktestRunRecord | None:
+    uid = get_user_id()
     with _connect() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT id, vt_symbol, strategy, interval, start_date, end_date,
                    total_return, max_drawdown, sharpe_ratio, trade_count,
                    source, batch_id, raw_statistics_json, created_at
-            FROM backtest_runs WHERE id=?
+            FROM backtest_runs WHERE {user_sql('id=?')}
             """,
-            (run_id,),
+            (uid, run_id),
         ).fetchone()
     if row is None:
         return None
@@ -242,9 +249,10 @@ def get_latest_backtest_run(*, vt_symbol: str | None = None) -> BacktestRunRecor
 
 
 def list_batch_sessions(*, limit: int = 30) -> list[BatchBacktestSession]:
+    uid = get_user_id()
     with _connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT
                 batch_id,
                 strategy,
@@ -256,12 +264,12 @@ def list_batch_sessions(*, limit: int = 30) -> list[BatchBacktestSession]:
                 MIN(source) AS source,
                 MIN(created_at) AS created_at
             FROM backtest_runs
-            WHERE batch_id IS NOT NULL
+            WHERE {user_sql('batch_id IS NOT NULL')}
             GROUP BY batch_id
             ORDER BY created_at DESC
             LIMIT ?
             """,
-            (limit,),
+            (uid, limit),
         ).fetchall()
     return [
         BatchBacktestSession(
@@ -280,28 +288,30 @@ def list_batch_sessions(*, limit: int = 30) -> list[BatchBacktestSession]:
 
 
 def list_runs_by_batch(batch_id: str) -> list[BacktestRunRecord]:
+    uid = get_user_id()
     with _connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT id, vt_symbol, strategy, interval, start_date, end_date,
                    total_return, max_drawdown, sharpe_ratio, trade_count,
                    source, batch_id, raw_statistics_json, created_at
             FROM backtest_runs
-            WHERE batch_id=?
+            WHERE {user_sql('batch_id=?')}
             ORDER BY (total_return IS NULL), total_return DESC, vt_symbol ASC
             """,
-            (batch_id,),
+            (uid, batch_id),
         ).fetchall()
     return [_row_to_record(row) for row in rows]
 
 
 def delete_batch(batch_id: str) -> int:
+    uid = get_user_id()
     with _connect() as conn:
-        cursor = conn.execute("DELETE FROM backtest_runs WHERE batch_id=?", (batch_id,))
+        cursor = conn.execute(f"DELETE FROM backtest_runs WHERE {user_sql('batch_id=?')}", (uid, batch_id))
         return int(cursor.rowcount or 0)
 
 
-def _row_to_record(row: sqlite3.Row) -> BacktestRunRecord:
+def _row_to_record(row: DbRow) -> BacktestRunRecord:
     return BacktestRunRecord(
         id=str(row["id"]),
         vt_symbol=str(row["vt_symbol"]),

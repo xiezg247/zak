@@ -11,9 +11,8 @@ from vnpy_ashare.screener.recipe.recipe import (
 )
 
 
-def test_save_and_resolve_custom_recipe(tmp_path, monkeypatch):
-    db_path = tmp_path / "app.db"
-    monkeypatch.setattr(recipe_store, "get_app_db_path", lambda settings=None: db_path)
+def test_save_and_resolve_custom_recipe(pg_storage):
+    _ = pg_storage
 
     config = normalize_recipe_config(
         {

@@ -6,9 +6,12 @@ from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_MIN_AMOUNT_YUAN, DEFAULT_MIN_TOTAL_MV_WAN
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.storage.auth.preferences import get_pref, set_pref
 from vnpy_common.domain.base import FrozenModel
 
 _SETTINGS = get_settings()
+_PREF_NAMESPACE = "screener"
+_PREF_KEY = "hard_filter"
 _KEY_EXCLUDE_ST = "screener/hard_filter/exclude_st"
 _KEY_EXCLUDE_SUSPENDED = "screener/hard_filter/exclude_suspended"
 _KEY_MIN_AMOUNT_WAN = "screener/hard_filter/min_amount_wan"
@@ -99,6 +102,36 @@ def hard_filter_preset(preset_id: str) -> HardFilterPrefs:
 
 
 def load_hard_filter_prefs() -> HardFilterPrefs:
+    stored = get_pref(_PREF_NAMESPACE, _PREF_KEY, None)
+    if stored is not None:
+        return HardFilterPrefs.model_validate(stored)
+    legacy = _load_hard_filter_from_qsettings()
+    if _qsettings_has_hard_filter():
+        set_pref(_PREF_NAMESPACE, _PREF_KEY, legacy.model_dump())
+    return legacy
+
+
+def save_hard_filter_prefs(prefs: HardFilterPrefs) -> None:
+    set_pref(_PREF_NAMESPACE, _PREF_KEY, prefs.model_dump())
+
+
+def _qsettings_has_hard_filter() -> bool:
+    keys = (
+        _KEY_EXCLUDE_ST,
+        _KEY_EXCLUDE_SUSPENDED,
+        _KEY_MIN_AMOUNT_WAN,
+        _KEY_MIN_TOTAL_MV_YI,
+        _KEY_EXCLUDE_NEW_LISTING,
+        _KEY_MIN_LISTING_DAYS,
+        _KEY_EXCLUDE_LIMIT_BOARD,
+        _KEY_EXCLUDE_ONE_WORD,
+        _KEY_ALLOWED_INDUSTRIES,
+        _KEY_ALLOWED_MARKET_BOARDS,
+    )
+    return any(_SETTINGS.value(key) is not None for key in keys)
+
+
+def _load_hard_filter_from_qsettings() -> HardFilterPrefs:
     defaults = default_hard_filter_prefs()
     exclude_st = _SETTINGS.value(_KEY_EXCLUDE_ST)
     if exclude_st is None:
@@ -149,19 +182,6 @@ def load_hard_filter_prefs() -> HardFilterPrefs:
         allowed_industries=allowed_industries,
         allowed_market_boards=allowed_market_boards,
     )
-
-
-def save_hard_filter_prefs(prefs: HardFilterPrefs) -> None:
-    _SETTINGS.setValue(_KEY_EXCLUDE_ST, prefs.exclude_st)
-    _SETTINGS.setValue(_KEY_EXCLUDE_SUSPENDED, prefs.exclude_suspended)
-    _SETTINGS.setValue(_KEY_MIN_AMOUNT_WAN, prefs.min_amount_wan)
-    _SETTINGS.setValue(_KEY_MIN_TOTAL_MV_YI, prefs.min_total_mv_yi)
-    _SETTINGS.setValue(_KEY_EXCLUDE_NEW_LISTING, prefs.exclude_new_listing)
-    _SETTINGS.setValue(_KEY_MIN_LISTING_DAYS, prefs.min_listing_days)
-    _SETTINGS.setValue(_KEY_EXCLUDE_LIMIT_BOARD, prefs.exclude_limit_board)
-    _SETTINGS.setValue(_KEY_EXCLUDE_ONE_WORD, prefs.exclude_one_word)
-    _SETTINGS.setValue(_KEY_ALLOWED_INDUSTRIES, prefs.allowed_industries)
-    _SETTINGS.setValue(_KEY_ALLOWED_MARKET_BOARDS, prefs.allowed_market_boards)
 
 
 def normalize_allowed_industries_text(raw: str) -> str:

@@ -38,6 +38,7 @@ from vnpy_ashare.scheduler.config import (
 )
 from vnpy_ashare.scheduler.job_meta import load_job_run_meta, save_job_run_meta
 from vnpy_ashare.scheduler.job_registry import SchedulerJobMeta, SchedulerJobRunners, build_scheduler_jobs
+from vnpy_ashare.scheduler.leader import is_user_scoped_job, run_job_for_active_users, should_run_scheduler
 from vnpy_common.domain.base import MutableModel
 
 if TYPE_CHECKING:
@@ -251,7 +252,8 @@ class TaskSchedulerManager:
         save_scheduler_config(self._config)
 
     def list_status(self) -> list[JobStatus]:
-        self.ensure_started()
+        if should_run_scheduler():
+            self.ensure_started()
         self._refresh_status_cache()
         return [self._status[job_id] for job_id in self._jobs]
 
@@ -264,17 +266,23 @@ class TaskSchedulerManager:
         return list(reversed(records[-limit:]))
 
     def get_status(self, job_id: str) -> JobStatus | None:
-        self.ensure_started()
+        if should_run_scheduler():
+            self.ensure_started()
         self._refresh_status_cache()
         return self._status.get(job_id)
 
     def ensure_started(self) -> None:
         """按需启动调度器（冷启动延迟，首次访问时再加载任务）。"""
+        if not should_run_scheduler():
+            return
         if self._scheduler.running:
             return
         self.start()
 
     def start(self) -> None:
+        if not should_run_scheduler():
+            logger.info("ZAK_RUN_SCHEDULER 未启用，跳过 APScheduler 启动")
+            return
         if self._scheduler.running:
             self.reload_jobs()
             return
@@ -331,20 +339,24 @@ class TaskSchedulerManager:
             self._scheduler.remove_job(job_id)
 
     def set_enabled(self, job_id: str, enabled: bool) -> None:
-        self.ensure_started()
+        if should_run_scheduler():
+            self.ensure_started()
         cfg = self._get_job_config(job_id)
         cfg.enabled = enabled
         self.save_config()
-        self.reload_jobs()
+        if should_run_scheduler():
+            self.reload_jobs()
 
     def update_job_config(self, job_id: str, **kwargs: Any) -> None:
-        self.ensure_started()
+        if should_run_scheduler():
+            self.ensure_started()
         cfg = self._get_job_config(job_id)
         for key, value in kwargs.items():
             if hasattr(cfg, key):
                 setattr(cfg, key, value)
         self.save_config()
-        self.reload_jobs()
+        if should_run_scheduler():
+            self.reload_jobs()
 
     def _append_run_detail(self, record: JobRunRecord, message: str) -> None:
         text = str(message).strip()
@@ -396,15 +408,23 @@ class TaskSchedulerManager:
             return False
         if job_id in self._running_jobs:
             return False
-        self.ensure_started()
         force = job_id in MANUAL_FORCE_JOB_IDS
-        self._scheduler.add_job(
-            self._wrap_job,
+        if should_run_scheduler():
+            self.ensure_started()
+            if self._scheduler.running:
+                self._scheduler.add_job(
+                    self._wrap_job,
+                    kwargs={"job_id": job_id, "force": force},
+                    id=f"{job_id}__manual__{datetime.now().timestamp()}",
+                    replace_existing=False,
+                    max_instances=1,
+                )
+                return True
+        threading.Thread(
+            target=self._wrap_job,
             kwargs={"job_id": job_id, "force": force},
-            id=f"{job_id}__manual__{datetime.now().timestamp()}",
-            replace_existing=False,
-            max_instances=1,
-        )
+            daemon=True,
+        ).start()
         return True
 
     def _wrap_job(self, job_id: str, force: bool = False) -> None:
@@ -424,7 +444,13 @@ class TaskSchedulerManager:
         success = False
         message = ""
         try:
-            result = run_job(job_id, force=force, engine=self._engine)
+            if is_user_scoped_job(job_id):
+                result = run_job_for_active_users(
+                    job_id,
+                    lambda: run_job(job_id, force=force, engine=self._engine),
+                )
+            else:
+                result = run_job(job_id, force=force, engine=self._engine)
             message = result.message
             skipped = result.skipped
             success = result.success if not skipped else True

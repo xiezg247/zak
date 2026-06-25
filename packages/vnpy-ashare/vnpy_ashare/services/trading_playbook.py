@@ -105,6 +105,26 @@ def apply_playbook_template_merge(
     touch_playbook_seeded_profile(profile_id)
 
 
+def sync_playbook_from_template(profile_id: StrategyProfileId) -> None:
+    """用内置模板覆盖 Playbook 正文（全局只读；切换 Profile 时刷新）。"""
+    current = {item.section_id: item for item in list_playbook_sections()}
+    sections: list[PlaybookSection] = []
+    for template in playbook_template_sections(profile_id):
+        existing = current.get(template.section_id)
+        sections.append(
+            PlaybookSection(
+                section_id=template.section_id,
+                title=template.title,
+                body_md=template.body_md,
+                collapsed=existing.collapsed if existing is not None else template.collapsed,
+                sort_order=existing.sort_order if existing is not None else template.sort_order,
+            ),
+        )
+    if sections:
+        upsert_playbook_sections(tuple(sections))
+    touch_playbook_seeded_profile(profile_id)
+
+
 def ensure_playbook_seeded() -> None:
     profile_id = load_strategy_profile_id()
     if count_playbook_sections() > 0:
@@ -158,6 +178,7 @@ def load_discipline_checklist(trade_date: str | None = None) -> tuple[Discipline
 
 
 def save_playbook_section_body(section_id: str, update: PlaybookSectionUpdate) -> None:
+    """Playbook 正文只读（模板由代码维护）；保留 API 供测试与后续运维脚本。"""
     update_playbook_section(section_id, update)
 
 

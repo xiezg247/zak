@@ -461,14 +461,54 @@ class WatchlistSignalController:
     def _symbols_missing_cache(self, symbols: list[str]) -> bool:
         return any(lookup_by_vt_symbol(self._page.signal_cache, vt) is None for vt in symbols)
 
+    def _sync_panel_with_pool(self, *, render: bool = True) -> list[str]:
+        """对齐信号区名单与自选池，不触发策略 Worker。"""
+        panel = getattr(self._page, "signal_panel", None)
+        if panel is None:
+            return []
+
+        known = self._watchlist_pool_vt_symbols()
+        if known:
+            kept = self._canonicalize_symbols(
+                [vt for vt in panel.symbols if vt in known or (canonical_vt_symbol(vt) or "") in known]
+            )
+        else:
+            kept = self._canonicalize_symbols(panel.symbols)
+
+        if kept != panel.symbols:
+            panel.set_symbols(kept, save=False)
+        else:
+            self._rekey_signal_cache(kept)
+            kept_canon = {canonical_vt_symbol(vt) or vt for vt in kept}
+            stale = [
+                vt
+                for vt in list(self._page.signal_cache)
+                if vt not in kept and (canonical_vt_symbol(vt) or vt) not in kept_canon
+            ]
+            for vt in stale:
+                self._page.signal_cache.pop(vt, None)
+                self._page.continuation_cache.pop(vt, None)
+
+        self._last_panel_symbols = set(kept)
+        if render:
+            panel.schedule_render_panel()
+        return kept
+
     def on_stock_list_loaded(self) -> None:
         """自选列表加载完成后：校验名单、预热磁盘缓存、增量刷新。"""
         if not self._page.config.show_watchlist_signals:
             return
-        symbols = self._panel_symbols()
-        self._ensure_bar_meta(symbols)
-        self.on_symbols_changed()
+        QtCore.QTimer.singleShot(0, self._complete_stock_list_loaded)
+
+    def _complete_stock_list_loaded(self) -> None:
+        if not self._page._active:
+            return
+        symbols = self._sync_panel_with_pool()
+        if symbols:
+            self._ensure_bar_meta(symbols)
         self.hydrate_from_disk()
+        if not symbols:
+            return
         missing = self._symbols_missing_cache(symbols)
         self.refresh(force=missing)
 

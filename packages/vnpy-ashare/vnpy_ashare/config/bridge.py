@@ -12,7 +12,7 @@ from pydantic import Field
 from vnpy_ashare.config.fonts import default_font_family
 from vnpy_ashare.config.schema import ENV_CONFIG_SPECS, normalize_database_name
 from vnpy_common.domain.base import FrozenModel
-from vnpy_common.paths import DEFAULT_META_APP_FILE, DEFAULT_META_CHAT_FILE, ENV_FILE, META_APP_SETTING_KEY, META_CHAT_SETTING_KEY
+from vnpy_common.paths import ENV_FILE
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -55,18 +55,8 @@ def _env_lookup(env: dict[str, str], key: str, default: str = "") -> str:
     return default
 
 
-def sqlite_database_settings(*, database_file: str = "database.db") -> dict[str, Any]:
-    return {
-        "database.name": "sqlite",
-        "database.database": database_file,
-        "database.host": "",
-        "database.port": 0,
-        "database.user": "",
-        "database.password": "",
-    }
-
-
-def postgres_database_settings(env: dict[str, str]) -> dict[str, Any]:
+def postgres_database_settings(env: dict[str, str] | None = None) -> dict[str, Any]:
+    env = env or {}
     return {
         "database.name": "postgresql",
         "database.host": _env_lookup(env, "POSTGRES_HOST", "localhost"),
@@ -78,19 +68,13 @@ def postgres_database_settings(env: dict[str, str]) -> dict[str, Any]:
 
 
 def database_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
-    name = normalize_database_name(_env_lookup(env, "DATABASE_NAME", "sqlite"))
-    if name == "postgresql":
-        return postgres_database_settings(env)
-    return sqlite_database_settings()
+    return postgres_database_settings(env)
 
 
-def meta_database_settings() -> dict[str, str]:
-    """元数据 SQLite 路径（固定本地，不随 DATABASE_NAME 切换）。"""
-
-    return {
-        META_APP_SETTING_KEY: DEFAULT_META_APP_FILE,
-        META_CHAT_SETTING_KEY: DEFAULT_META_CHAT_FILE,
-    }
+def meta_database_settings(*, env: dict[str, str] | None = None) -> dict[str, str]:
+    """业务元数据 / 对话走 PostgreSQL DATABASE_URL，不再写入 vt_setting SQLite 路径。"""
+    _ = env
+    return {}
 
 
 def datafeed_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
@@ -115,7 +99,7 @@ def base_vt_settings_from_env(env: dict[str, str]) -> dict[str, Any]:
         "log.active": True,
         "log.level": "INFO",
         **database_settings_from_env(env),
-        **meta_database_settings(),
+        **meta_database_settings(env=env),
     }
 
 
@@ -171,8 +155,8 @@ def detect_config_drift(
             )
         )
 
-    env_db = normalize_database_name(env.get("DATABASE_NAME", "sqlite"))
-    vt_db = normalize_database_name(str(runtime_settings.get("database.name", "sqlite")))
+    env_db = normalize_database_name(env.get("DATABASE_NAME", "postgresql"))
+    vt_db = normalize_database_name(str(runtime_settings.get("database.name", "postgresql")))
     if env_db != vt_db:
         drifts.append(
             ConfigDrift(

@@ -37,6 +37,10 @@ uv run python cli.py data download-batch --start 2020-01-01 --end 2026-06-08
 uv run python cli.py data list-bars
 ```
 
+### 多人共用 PostgreSQL
+
+内网小团队可共用一套 PostgreSQL，PyQt 客户端直连数据库。配置 `DATABASE_URL` 后执行 `cli.py db upgrade`；从本地 SQLite 迁移见 `cli.py db import-legacy`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
+
 ## 回测默认参数
 
 启动时若检测到期货默认参数，会自动写入 A 股配置：
@@ -67,15 +71,15 @@ class MyStrategy(AShareTemplate):
 
 ## 数据存储
 
-项目采用**双存储结构**，元数据与行情数据分离：
+业务元数据、AI 对话、Cache **仅 PostgreSQL**（`DATABASE_URL` / `APP_DATABASE_DRIVER=postgresql`）。K 线仍由 VeighNa `DATABASE_NAME` 切换（`sqlite` 本地 / `postgresql` 远程）。
 
-| 存储位置 | 数据类型 | 可否切换 |
-|----------|----------|----------|
-| `~/.vntrader/zak.db` | 自选池、全 A 股、交易日历、回测/选股历史、个股笔记与研报 | **固定 SQLite** |
-| `~/.vntrader/llm_chat.db` | AI 对话会话与消息 | **固定 SQLite** |
-| `~/.vntrader/database.db` | K 线数据（日线/分钟线/Tick） | SQLite 或 PostgreSQL |
+| 存储 | 数据类型 |
+|------|----------|
+| PostgreSQL `app` / `chat` / `auth` / `cache` | 自选、选股、笔记、AI 会话、计算缓存等 |
+| `database.db` 或 PG `public` | K 线（VeighNa） |
+| QSettings | 纯 UI 偏好（本机） |
 
-K 线数据通过 `DATABASE_NAME` 切换存储后端，默认 `sqlite` 即可使用；如需远程共享或多进程查询，可切换为 `postgresql`。
+首次配置：`cli.py db upgrade`；自 SQLite 迁移见 `cli.py db import-legacy`。详见 [docs/multi-user-pg.md](docs/multi-user-pg.md)。
 
 ### 切换为 PostgreSQL
 
@@ -97,8 +101,6 @@ bash bin/start-postgresql.sh
 # 4. 同步配置并重启 GUI
 # 在设置页点「从 .env 同步」，或删除 ~/.vntrader/vt_setting.json 后重启
 ```
-
-> **注意**：仅 K 线数据切换存储，元数据（`zak.db`）和 AI 对话（`llm_chat.db`）始终为本机 SQLite，不受 `DATABASE_NAME` 影响。
 
 ## 命令行
 

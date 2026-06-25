@@ -1,4 +1,4 @@
-"""Tushare 因子本地缓存（app_db SQLite）。"""
+"""Tushare 因子缓存（PostgreSQL app schema）。"""
 
 from __future__ import annotations
 
@@ -6,9 +6,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
-from vnpy_ashare.storage.connection import init_app_db
-from vnpy_common.paths import get_app_db_path
+from vnpy_ashare.storage.cache.db_session import app_db_session
 
 DATASET_DAILY_BASIC = "daily_basic"
 DATASET_MONEYFLOW = "moneyflow"
@@ -36,12 +34,8 @@ DEFAULT_MAX_AGE = timedelta(hours=24)
 INDUSTRY_MAX_AGE = timedelta(days=7)
 
 
-def _prepare_app_db() -> None:
-    init_app_db()
-
-
 def _connect():
-    return sqlite_cache_session(get_app_db_path(), "", prepare=_prepare_app_db)
+    return app_db_session("")
 
 
 def _parse_fetched_at(value: str) -> datetime | None:

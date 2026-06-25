@@ -7,7 +7,9 @@ from datetime import datetime
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.storage.auth.scope import get_user_id
 from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_common.auth.scope import user_sql
 
 REPORT_MAX_BODY = 128000
 REPORT_MAX_TITLE = 200
@@ -55,15 +57,18 @@ def create_report(
     now = _now_iso()
     summary = _build_summary(report_body)
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
-        cursor = conn.execute(
+        row = conn.execute(
             """
             INSERT INTO stock_analysis_reports(
-                symbol, exchange, title, body, source_scope, context_json,
+                user_id, symbol, exchange, title, body, source_scope, context_json,
                 summary, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
             """,
             (
+                uid,
                 symbol,
                 exchange.name,
                 report_title,
@@ -74,8 +79,10 @@ def create_report(
                 now,
                 now,
             ),
-        )
-        report_id = int(cursor.lastrowid)
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("创建分析报告失败")
+        report_id = int(row["id"])
     return {
         "id": report_id,
         "symbol": symbol,
@@ -92,14 +99,15 @@ def create_report(
 
 def get_report(report_id: int) -> dict[str, str | int] | None:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT id, symbol, exchange, title, body, source_scope, context_json,
                    summary, created_at, updated_at
-            FROM stock_analysis_reports WHERE id = ?
+            FROM stock_analysis_reports WHERE {user_sql('id = ?')}
             """,
-            (int(report_id),),
+            (uid, int(report_id),),
         ).fetchone()
     if row is None:
         return None
@@ -114,40 +122,45 @@ def list_reports(
 ) -> list[dict[str, str | int]]:
     limit = max(1, min(int(limit), 500))
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT id, symbol, exchange, title, body, source_scope, context_json,
                    summary, created_at, updated_at
             FROM stock_analysis_reports
-            WHERE symbol = ? AND exchange = ?
+            WHERE {user_sql('symbol = ? AND exchange = ?')}
             ORDER BY created_at DESC, id DESC
             LIMIT ?
             """,
-            (symbol, exchange.name, limit),
+            (uid, symbol, exchange.name, limit),
         ).fetchall()
     return [_row_to_dict(row) for row in rows]
 
 
 def delete_report(report_id: int) -> bool:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         cursor = conn.execute(
-            "DELETE FROM stock_analysis_reports WHERE id = ?",
-            (int(report_id),),
+            f"DELETE FROM stock_analysis_reports WHERE {user_sql('id = ?')}",
+            (uid, int(report_id),),
         )
     return bool(cursor.rowcount > 0)
 
 
 def list_symbols_with_reports() -> list[tuple[str, str]]:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT symbol, exchange FROM stock_analysis_reports
+            WHERE {user_sql()}
             GROUP BY symbol, exchange
             ORDER BY symbol, exchange
-            """
+            """,
+            (uid,),
         ).fetchall()
     return [(row["symbol"], row["exchange"]) for row in rows]
 

@@ -5,10 +5,8 @@ from __future__ import annotations
 from vnpy_ashare.screener.run import run_store
 
 
-def test_save_and_list_runs(tmp_path, monkeypatch):
-    db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
-
+def test_save_and_list_runs(pg_storage):
+    _ = pg_storage
     record = run_store.save_run(
         condition="涨幅榜",
         source="redis",
@@ -21,18 +19,16 @@ def test_save_and_list_runs(tmp_path, monkeypatch):
     assert record.total_scanned == 100
 
     runs = run_store.list_runs(limit=5)
-    assert len(runs) == 1
+    assert len(runs) >= 1
     assert runs[0].condition == "涨幅榜"
     assert runs[0].rows[0]["name"] == "浦发银行"
 
     assert run_store.delete_run(record.id) is True
-    assert run_store.list_runs(limit=5) == []
+    assert run_store.get_run(record.id) is None
 
 
-def test_mark_run_read(tmp_path, monkeypatch):
-    db_path = tmp_path / "app.db"
-    monkeypatch.setattr(run_store, "get_app_db_path", lambda settings=None: db_path)
-
+def test_mark_run_read(pg_storage):
+    _ = pg_storage
     record = run_store.save_run(
         condition="自动 · 盘中多因子",
         source="recipe",

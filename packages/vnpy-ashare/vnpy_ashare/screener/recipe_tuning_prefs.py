@@ -6,10 +6,13 @@ from pydantic import Field
 
 from vnpy_ashare.config.constants.recipe import DEFAULT_METRIC_SCORE_BLEND
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.storage.auth.preferences import get_pref, set_pref
 from vnpy_common.domain.base import FrozenModel
 
 _SETTINGS = get_settings()
 _KEY_PREFIX = "screener/recipe_tuning/"
+_PREF_NAMESPACE = "screener"
+_PREF_KEY = "recipe_tuning"
 
 
 class RecipeTuningPrefs(FrozenModel):
@@ -49,6 +52,42 @@ def default_recipe_tuning_prefs() -> RecipeTuningPrefs:
 
 
 def load_recipe_tuning_prefs() -> RecipeTuningPrefs:
+    stored = get_pref(_PREF_NAMESPACE, _PREF_KEY, None)
+    if stored is not None:
+        return RecipeTuningPrefs.model_validate(stored)
+    legacy = _load_recipe_tuning_from_qsettings()
+    if _qsettings_has_recipe_tuning():
+        set_pref(_PREF_NAMESPACE, _PREF_KEY, legacy.model_dump())
+    return legacy
+
+
+def save_recipe_tuning_prefs(prefs: RecipeTuningPrefs) -> None:
+    set_pref(_PREF_NAMESPACE, _PREF_KEY, prefs.model_dump())
+
+
+def _qsettings_has_recipe_tuning() -> bool:
+    return any(_SETTINGS.value(f"{_KEY_PREFIX}{suffix}") is not None for suffix in _RECIPE_TUNING_QSETTINGS_SUFFIXES)
+
+
+_RECIPE_TUNING_QSETTINGS_SUFFIXES = (
+    "metric_blend",
+    "momentum_min",
+    "momentum_max",
+    "momentum_fear_max",
+    "sentiment_enabled",
+    "sf_momentum",
+    "sf_sector",
+    "sf_breakout",
+    "fear_momentum",
+    "sg_turnover",
+    "sg_volume",
+    "g_turnover",
+    "breakout_lookback",
+    "volume_dedup",
+)
+
+
+def _load_recipe_tuning_from_qsettings() -> RecipeTuningPrefs:
     defaults = default_recipe_tuning_prefs()
     return RecipeTuningPrefs(
         metric_score_blend=_read_float(
@@ -134,23 +173,6 @@ def load_recipe_tuning_prefs() -> RecipeTuningPrefs:
             1.0,
         ),
     )
-
-
-def save_recipe_tuning_prefs(prefs: RecipeTuningPrefs) -> None:
-    _SETTINGS.setValue(f"{_KEY_PREFIX}metric_blend", prefs.metric_score_blend)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}momentum_min", prefs.momentum_min_change_pct)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}momentum_max", prefs.momentum_max_change_pct)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}momentum_fear_max", prefs.momentum_fear_max_change_pct)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}sentiment_enabled", prefs.sentiment_gate_enabled)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}sf_momentum", prefs.extreme_fear_momentum)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}sf_sector", prefs.extreme_fear_sector)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}sf_breakout", prefs.extreme_fear_breakout)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}fear_momentum", prefs.fear_momentum)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}sg_turnover", prefs.extreme_greed_turnover)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}sg_volume", prefs.extreme_greed_volume_surge)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}g_turnover", prefs.greed_turnover)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}breakout_lookback", prefs.breakout_lookback_days)
-    _SETTINGS.setValue(f"{_KEY_PREFIX}volume_dedup", prefs.volume_liquidity_dedup_factor)
 
 
 def _read_bool(raw: object, default: bool) -> bool:

@@ -4,28 +4,78 @@ from __future__ import annotations
 
 from typing import Any
 
+from vnpy.trader.ui import QtCore
+
 from vnpy_ashare.ui.quotes.page.header_chips import (
     refresh_emotion_cycle_chip_for_page,
 )
 from vnpy_ashare.ui.quotes.page.worker_lifecycle import teardown_quotes_page_workers
 
 
+def _deferred_watchlist_activate(page: Any) -> None:
+    """自选页延后任务：分组/图表/布局/多维看盘等，避免 Tab 切换卡死。"""
+    if not page._active or page.page_name != "自选":
+        return
+    if page._watchlist_groups is not None:
+        page._watchlist_groups.refresh_groups()
+    if page.current_item is not None and page.chart_panel is not None:
+        quote = page.quote_map.get(page.current_item.tickflow_symbol)
+        page.chart_panel.load_item(page.current_item, quote=quote)
+    page._restore_splitter()
+    chart_section = getattr(page, "chart_section", None)
+    if chart_section is not None:
+        page._on_chart_section_expansion_changed(chart_section.is_expanded())
+    page._schedule_center_splitter_layout()
+    page._update_quote_source_label()
+    if page.config.show_stock_notes:
+        page._stock_notes.on_selection_item()
+    if page.config.show_watchlist_multiview:
+        page._multiview.restore_view_mode()
+    refresh_emotion_cycle_chip_for_page(page)
+    if page._watchlist_feature is not None:
+        page._watchlist_feature.on_activate()
+    else:
+        from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
+
+        maybe_show_ultra_short_onboarding(page)
+
+
 def activate_quotes_page(page: Any) -> None:
     page._active = True
-    if page.config.column_configurable and page._table.sync_tail_columns_with_config():
-        page._table.rebuild_table()
     if page.config.use_radar_cards:
+        if page.config.column_configurable and page._table.sync_tail_columns_with_config():
+            page._table.rebuild_table()
         page._update_quote_source_label()
         refresh_emotion_cycle_chip_for_page(page)
         controller = getattr(page, "_radar_controller", None)
         if controller is not None:
             controller.activate()
         return
+
+    if page.page_name == "自选":
+        if page.chart_panel is not None:
+            page.chart_panel.set_active(True)
+        if page.config.use_quote_stream:
+            page._stream.start()
+        if page.config.column_configurable and page._table.sync_tail_columns_with_config():
+            QtCore.QTimer.singleShot(0, page._table.rebuild_table)
+        if page._watchlist_bootstrap is not None:
+            page._watchlist_bootstrap.on_activate(page)
+        else:
+            page.load_stock_list()
+        if page.config.show_watchlist_signals or page.config.show_watchlist_positions:
+            page._strategy_refresh.start()
+        page._signals.on_page_activated()
+        QtCore.QTimer.singleShot(0, lambda: _deferred_watchlist_activate(page))
+        return
+
+    if page.config.column_configurable and page._table.sync_tail_columns_with_config():
+        page._table.rebuild_table()
     if page.chart_panel is not None:
         page.chart_panel.set_active(True)
     if page.config.use_quote_stream:
         page._stream.start()
-    if page.config.show_add_watchlist_button or page.page_name == "自选":
+    if page.config.show_add_watchlist_button:
         page._watchlist.refresh_keys()
     if page._watchlist_groups is not None:
         page._watchlist_groups.refresh_groups()
@@ -56,10 +106,6 @@ def activate_quotes_page(page: Any) -> None:
     refresh_emotion_cycle_chip_for_page(page)
     if page._watchlist_feature is not None:
         page._watchlist_feature.on_activate()
-    elif page.page_name == "自选":
-        from vnpy_ashare.ui.quotes.onboarding.ultra_short import maybe_show_ultra_short_onboarding
-
-        maybe_show_ultra_short_onboarding(page)
 
 
 def deactivate_quotes_page(page: Any) -> None:

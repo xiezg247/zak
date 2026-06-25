@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
 
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
+from vnpy_ashare.storage.cache.db_session import cache_db_session
 from vnpy_ashare.storage.cache.watchlist_signal_cache import snapshot_from_payload, snapshot_to_payload
-from vnpy_common.paths import get_app_db_path
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS watchlist_position_cache (
@@ -24,13 +22,8 @@ CREATE TABLE IF NOT EXISTS watchlist_position_cache (
 """
 
 
-def _cache_db_path() -> Path:
-    return get_app_db_path().parent / "watchlist_position_cache.db"
-
-
-def _connect(db_path: Path | None = None):
-    path = db_path or _cache_db_path()
-    return sqlite_cache_session(path, _SCHEMA)
+def _connect():
+    return cache_db_session(_SCHEMA)
 
 
 class WatchlistPositionDiskCache:
@@ -100,17 +93,61 @@ class WatchlistPositionDiskCache:
         position_key_for: Callable[[str], str | None],
         bar_as_of_for: Callable[[str], str | None],
     ) -> dict[str, SignalSnapshot]:
-        loaded: dict[str, SignalSnapshot] = {}
+        key = str(config_key or "").strip()
+        if not key:
+            return {}
+
+        targets: list[tuple[str, str, str]] = []
+        seen: set[str] = set()
         for vt in vt_symbols:
-            pos_key = position_key_for(vt) or ""
+            symbol = str(vt or "").strip()
+            if not symbol or symbol in seen:
+                continue
+            pos_key = str(position_key_for(symbol) or "").strip()
             if not pos_key:
                 continue
-            bar_as_of = bar_as_of_for(vt) or ""
-            snap = self.get(vt, config_key, bar_as_of, pos_key)
-            if snap is None:
-                snap = self.get_latest(vt, config_key, pos_key)
-            if snap is not None:
-                loaded[vt] = snap
+            seen.add(symbol)
+            targets.append((symbol, pos_key, bar_as_of_for(symbol) or ""))
+        if not targets:
+            return {}
+
+        symbols = [symbol for symbol, _, _ in targets]
+        placeholders = ", ".join("?" for _ in symbols)
+        with _connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT vt_symbol, bar_as_of, position_key, payload, updated_at
+                FROM watchlist_position_cache
+                WHERE config_key = ? AND vt_symbol IN ({placeholders})
+                """,
+                (key, *symbols),
+            ).fetchall()
+
+        by_vt: dict[str, list[dict[str, str]]] = {}
+        for row in rows:
+            vt = str(row["vt_symbol"] or "").strip()
+            if vt:
+                by_vt.setdefault(vt, []).append(
+                    {
+                        "bar_as_of": str(row["bar_as_of"] or ""),
+                        "position_key": str(row["position_key"] or ""),
+                        "payload": str(row["payload"] or ""),
+                        "updated_at": str(row["updated_at"] or ""),
+                    }
+                )
+
+        loaded: dict[str, SignalSnapshot] = {}
+        for symbol, pos_key, bar_as_of in targets:
+            candidates = [row for row in by_vt.get(symbol, []) if row["position_key"] == pos_key]
+            chosen = next((row for row in candidates if row["bar_as_of"] == bar_as_of), None)
+            if chosen is None and candidates:
+                chosen = max(candidates, key=lambda row: row["updated_at"])
+            if chosen is None:
+                continue
+            try:
+                loaded[symbol] = snapshot_from_payload(chosen["payload"])
+            except (TypeError, ValueError):
+                continue
         return loaded
 
     def put(

@@ -1,16 +1,26 @@
-"""交易参数 QSettings（总资金、止损、浮亏阈值等）。"""
+"""交易参数（总资金、止损、浮亏阈值等）。"""
 
 from __future__ import annotations
 
 from pydantic import Field
 
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_common.domain.base import FrozenModel
 
 PREFIX = "trading/risk"
+_PREF_NAMESPACE = "trading"
+_PREF_KEY = "risk"
 
 DEFAULT_STOP_LOSS_PCT = 0.05
 DEFAULT_CAUTION_FLOAT_PCT = -5.0
+
+_MIGRATE_KEYS = (
+    f"{PREFIX}/total_capital",
+    f"{PREFIX}/stop_loss_pct",
+    f"{PREFIX}/caution_float_pct",
+    f"{PREFIX}/realized_pnl_today",
+)
 
 
 def _coerce_float(value: object, *, default: float | None = None) -> float | None:
@@ -46,7 +56,7 @@ class TradingRiskPrefs(FrozenModel):
         )
 
 
-def load_trading_risk_prefs() -> TradingRiskPrefs:
+def _load_trading_risk_from_qsettings() -> TradingRiskPrefs:
     settings = get_settings()
     return TradingRiskPrefs(
         total_capital=_coerce_float(settings.value(f"{PREFIX}/total_capital")),
@@ -64,14 +74,16 @@ def load_trading_risk_prefs() -> TradingRiskPrefs:
     ).normalized()
 
 
-def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
-    item = prefs.normalized()
-    settings = get_settings()
-    settings.setValue(f"{PREFIX}/total_capital", "" if item.total_capital is None else item.total_capital)
-    settings.setValue(f"{PREFIX}/stop_loss_pct", item.stop_loss_pct)
-    settings.setValue(f"{PREFIX}/caution_float_pct", item.caution_float_pct)
-    settings.setValue(
-        f"{PREFIX}/realized_pnl_today",
-        "" if item.realized_pnl_today is None else item.realized_pnl_today,
+def load_trading_risk_prefs() -> TradingRiskPrefs:
+    item = load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY,
+        TradingRiskPrefs,
+        load_legacy=_load_trading_risk_from_qsettings,
+        migrate_keys=_MIGRATE_KEYS,
     )
-    settings.sync()
+    return item.normalized()
+
+
+def save_trading_risk_prefs(prefs: TradingRiskPrefs) -> None:
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY, prefs.normalized())

@@ -1,4 +1,4 @@
-# 仅 K 线数据使用 PostgreSQL，元数据（自选池/对话）始终为本地 SQLite
+# PostgreSQL：元数据、K 线、Cache 共用
 services:
   postgresql:
     image: postgres:16-alpine

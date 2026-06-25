@@ -1,11 +1,13 @@
-"""雷达共振卡片权重（QSettings，可覆盖内置默认）。"""
+"""雷达共振卡片权重（可覆盖内置默认）。"""
 
 from __future__ import annotations
 
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.preferences._user_pref import load_json_pref, save_json_pref
 
-_SETTINGS = get_settings()
 _KEY_PREFIX = "quotes/radar/resonance_weight/"
+_PREF_NAMESPACE = "radar"
+_PREF_KEY = "resonance_weights"
 
 DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
     "discovery_volume_surge": 2.0,
@@ -23,7 +25,6 @@ DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS: dict[str, float] = {
     "outlook_predict": 1.0,
 }
 
-# 不参与共振加权（环境 stat 卡 / 风险卡）
 RADAR_CARDS_EXCLUDED_FROM_RESONANCE: frozenset[str] = frozenset(
     {
         "market_emotion",
@@ -49,18 +50,22 @@ _WEIGHT_LABELS: dict[str, str] = {
     "outlook_predict": "未来·预测",
 }
 
+_MIGRATE_KEYS = tuple(f"{_KEY_PREFIX}{card_id}" for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS)
+
 
 def list_radar_resonance_weight_items() -> tuple[tuple[str, str, float], ...]:
     """(card_id, 展示名, 默认权重)。"""
     return tuple(
-        (card_id, _WEIGHT_LABELS.get(card_id, card_id), DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS[card_id]) for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
+        (card_id, _WEIGHT_LABELS.get(card_id, card_id), DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS[card_id])
+        for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS
     )
 
 
-def load_radar_resonance_weights() -> dict[str, float]:
+def _load_resonance_from_qsettings() -> dict[str, float]:
+    settings = get_settings()
     weights = dict(DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS)
     for card_id in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS:
-        raw = _SETTINGS.value(f"{_KEY_PREFIX}{card_id}")
+        raw = settings.value(f"{_KEY_PREFIX}{card_id}")
         if raw is None:
             continue
         try:
@@ -72,11 +77,37 @@ def load_radar_resonance_weights() -> dict[str, float]:
     return weights
 
 
+def _merge_resonance_weights(stored: object) -> dict[str, float]:
+    weights = dict(DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS)
+    if isinstance(stored, dict):
+        for card_id, raw in stored.items():
+            if card_id not in weights:
+                continue
+            try:
+                value = float(raw)
+            except (TypeError, ValueError):
+                continue
+            if value > 0:
+                weights[card_id] = round(value, 2)
+    return weights
+
+
+def load_radar_resonance_weights() -> dict[str, float]:
+    stored = load_json_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY,
+        load_legacy=_load_resonance_from_qsettings,
+        migrate_keys=_MIGRATE_KEYS,
+    )
+    return _merge_resonance_weights(stored)
+
+
 def save_radar_resonance_weights(weights: dict[str, float]) -> None:
+    payload: dict[str, float] = {}
     for card_id, default in DEFAULT_RADAR_CARD_RESONANCE_WEIGHTS.items():
         value = float(weights.get(card_id, default))
-        value = max(0.1, min(value, 5.0))
-        _SETTINGS.setValue(f"{_KEY_PREFIX}{card_id}", value)
+        payload[card_id] = round(max(0.1, min(value, 5.0)), 2)
+    save_json_pref(_PREF_NAMESPACE, _PREF_KEY, payload)
 
 
 SHORT_TERM_RADAR_RESONANCE_WEIGHTS: dict[str, float] = {

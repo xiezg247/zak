@@ -15,21 +15,21 @@ from vnpy_ashare.storage.repositories.universe import (
     universe_exists,
     universe_is_fresh,
 )
-from vnpy_common.paths import get_app_db_path
+from vnpy_common.paths import legacy_app_db_path
 
 
 def sync_universe(force: bool = False) -> Path:
-    """从 TickFlow 同步全 A 股标的列表到本地 SQLite"""
+    """从 TickFlow 同步全 A 股标的列表到 PostgreSQL。"""
     init_app_db()
     if not force and universe_is_fresh(CACHE_MAX_AGE):
-        return get_app_db_path()
+        return legacy_app_db_path()
 
     rows = fetch_universe_items()
     save_universe_rows(
         [(row.symbol, row.exchange, row.name) for row in rows],
         synced_at=datetime.now(),
     )
-    return get_app_db_path()
+    return legacy_app_db_path()
 
 
 def load_universe(*, allow_sync: bool = False) -> list[StockItem]:

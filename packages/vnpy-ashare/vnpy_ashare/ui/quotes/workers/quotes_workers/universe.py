@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from vnpy.trader.ui import QtCore
 
+from vnpy_ashare.data.bar_store import warm_bar_overview_cache
 from vnpy_ashare.data.bars import (
     count_downloaded_stocks,
     load_downloaded_stocks,
@@ -51,6 +52,7 @@ class UniverseLoadWorker(QtCore.QThread):
                 total = len(stocks)
             elif self.scope == "自选池":
                 stocks = load_watchlist()
+                warm_bar_overview_cache()
                 total = len(stocks)
             elif self.limit is not None:
                 if self.keyword:

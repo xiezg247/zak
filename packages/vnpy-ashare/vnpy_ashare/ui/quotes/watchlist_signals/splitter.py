@@ -294,13 +294,13 @@ def restore_center_splitter(page: WatchlistHost) -> None:
         if normalized and sum(normalized) >= 320:
             set_splitter_sizes_quiet(splitter, normalized)
             if signal_panel is not None:
-                signal_panel.render_panel()
+                signal_panel.schedule_render_panel()
             if position_panel is not None:
                 position_panel.render_panel()
             return
-    apply_center_splitter_sizes(page)
+    QtCore.QTimer.singleShot(0, lambda: apply_center_splitter_sizes(page))
     if signal_panel is not None:
-        signal_panel.render_panel()
+        signal_panel.schedule_render_panel()
     if position_panel is not None:
         position_panel.render_panel()
 

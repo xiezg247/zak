@@ -67,6 +67,11 @@ def invalidate_bar_overview_cache() -> None:
         _overview_by_interval = None
 
 
+def warm_bar_overview_cache() -> None:
+    """预热线 K 线概览内存索引（应在后台线程调用，避免 UI 全量扫描）。"""
+    _ensure_overview_cache()
+
+
 def _ensure_overview_cache() -> dict[Interval, dict[tuple[str, Exchange], PeriodBarOverview]]:
     global _overview_by_interval
     with _overview_cache_lock:

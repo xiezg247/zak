@@ -11,10 +11,8 @@ VNTRADER_DIR = Path.home() / ".vntrader"
 APP_ID = "zak"
 QSETTINGS_ORG = APP_ID
 
-META_APP_SETTING_KEY = "database.meta.app"
-META_CHAT_SETTING_KEY = "database.meta.chat"
-DEFAULT_META_APP_FILE = f"{APP_ID}.db"
-DEFAULT_META_CHAT_FILE = "llm_chat.db"
+DEFAULT_LEGACY_APP_DB = f"{APP_ID}.db"
+DEFAULT_LEGACY_CHAT_DB = "llm_chat.db"
 
 _settings_loader: Callable[[], dict] | None = None
 
@@ -44,32 +42,26 @@ BACKUP_DIR = DATA_DIR / "backup"
 ENV_FILE = PROJECT_ROOT / ".env"
 
 
-def _runtime_settings(settings: dict | None) -> dict:
-    if settings is not None:
-        return settings
-    if _settings_loader is not None:
-        return _settings_loader()
-    return {}
+def legacy_app_db_path() -> Path:
+    """import-legacy 默认源：~/.vntrader/zak.db。"""
+    return VNTRADER_DIR / DEFAULT_LEGACY_APP_DB
 
 
-def meta_db_filenames(settings: dict | None = None) -> tuple[str, str]:
-    """元数据 SQLite 相对路径（相对 ~/.vntrader/）。"""
-    runtime = _runtime_settings(settings)
-    app_file = str(runtime.get(META_APP_SETTING_KEY, DEFAULT_META_APP_FILE)).strip() or DEFAULT_META_APP_FILE
-    chat_file = str(runtime.get(META_CHAT_SETTING_KEY, DEFAULT_META_CHAT_FILE)).strip() or DEFAULT_META_CHAT_FILE
-    return app_file, chat_file
+def legacy_chat_db_path() -> Path:
+    """import-legacy 默认源：~/.vntrader/llm_chat.db。"""
+    return VNTRADER_DIR / DEFAULT_LEGACY_CHAT_DB
 
 
 def get_app_db_path(settings: dict | None = None) -> Path:
-    """业务元数据 SQLite 绝对路径。"""
-    app_file, _ = meta_db_filenames(settings)
-    return VNTRADER_DIR / app_file
+    """兼容旧调用：返回 legacy SQLite 路径（仅 import-legacy 使用）。"""
+    _ = settings
+    return legacy_app_db_path()
 
 
 def get_chat_db_path(settings: dict | None = None) -> Path:
-    """AI 对话 SQLite 绝对路径。"""
-    _, chat_file = meta_db_filenames(settings)
-    return VNTRADER_DIR / chat_file
+    """兼容旧调用：返回 legacy SQLite 路径（仅 import-legacy 使用）。"""
+    _ = settings
+    return legacy_chat_db_path()
 
 
-APP_DB_PATH = VNTRADER_DIR / DEFAULT_META_APP_FILE
+APP_DB_PATH = legacy_app_db_path()

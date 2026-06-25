@@ -1,4 +1,4 @@
-"""情绪周期判定阈值 QSettings（Post-Phase P0-2）。"""
+"""情绪周期判定阈值。"""
 
 from __future__ import annotations
 
@@ -10,9 +10,12 @@ from vnpy_ashare.config.preferences._settings import (
     coerce_settings_int,
     get_settings,
 )
+from vnpy_ashare.config.preferences._user_pref import load_model_pref, save_model_pref
 from vnpy_common.domain.base import FrozenModel
 
 EMOTION_THRESHOLD_PREFIX = "trading/emotion"
+_PREF_NAMESPACE = "emotion"
+_PREF_KEY = "thresholds"
 
 DEFAULT_RECESSION_LIMIT_DOWN = 20
 DEFAULT_ICE_MAX_BOARDS = 2
@@ -53,7 +56,10 @@ def _threshold_key(field: str) -> str:
     return f"{EMOTION_THRESHOLD_PREFIX}/{field}"
 
 
-def load_emotion_cycle_thresholds() -> EmotionCycleThresholds:
+_MIGRATE_KEYS = tuple(_threshold_key(field) for field in EmotionCycleThresholds.model_fields)
+
+
+def _load_emotion_from_qsettings() -> EmotionCycleThresholds:
     defaults = DEFAULT_EMOTION_CYCLE_THRESHOLDS
     settings = get_settings()
     return EmotionCycleThresholds(
@@ -116,12 +122,18 @@ def load_emotion_cycle_thresholds() -> EmotionCycleThresholds:
     )
 
 
+def load_emotion_cycle_thresholds() -> EmotionCycleThresholds:
+    return load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY,
+        EmotionCycleThresholds,
+        load_legacy=_load_emotion_from_qsettings,
+        migrate_keys=_MIGRATE_KEYS,
+    )
+
+
 def save_emotion_cycle_thresholds(thresholds: EmotionCycleThresholds) -> None:
-    settings = get_settings()
-    payload = thresholds.model_dump()
-    for field, value in payload.items():
-        settings.setValue(_threshold_key(field), value)
-    settings.sync()
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY, thresholds)
 
 
 def reset_emotion_cycle_thresholds() -> EmotionCycleThresholds:

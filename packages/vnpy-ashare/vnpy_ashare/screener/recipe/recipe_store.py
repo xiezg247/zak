@@ -3,23 +3,25 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 import uuid
 from typing import Any, Literal
 
 from pydantic import Field
 
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
+from vnpy_ashare.storage.auth.scope import get_user_id
+from vnpy_ashare.storage.cache.db_session import app_db_session
+from vnpy_common.auth.scope import user_sql
 from vnpy_common.domain.base import MutableModel
-from vnpy_common.paths import get_app_db_path
+from vnpy_common.storage.compat import DbRow
 
 TriggerKind = Literal["intraday", "post_close"]
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS screener_recipes (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL,
     trigger_kind TEXT NOT NULL,
     config_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -40,7 +42,7 @@ class SavedRecipe(MutableModel):
 
 
 def _connect():
-    return sqlite_cache_session(get_app_db_path(), _SCHEMA)
+    return app_db_session(_SCHEMA)
 
 
 def _now() -> str:
@@ -49,37 +51,41 @@ def _now() -> str:
 
 def list_saved_recipes(*, trigger_kind: TriggerKind | None = None) -> list[SavedRecipe]:
     """列出用户配方；可按 trigger_kind 过滤。"""
+    uid = get_user_id()
     with _connect() as conn:
         if trigger_kind:
             rows = conn.execute(
-                """
+                f"""
                 SELECT id, name, trigger_kind, config_json, created_at, updated_at
                 FROM screener_recipes
-                WHERE trigger_kind=?
+                WHERE {user_sql('trigger_kind=?')}
                 ORDER BY updated_at DESC
                 """,
-                (trigger_kind,),
+                (uid, trigger_kind),
             ).fetchall()
         else:
             rows = conn.execute(
-                """
+                f"""
                 SELECT id, name, trigger_kind, config_json, created_at, updated_at
                 FROM screener_recipes
+                WHERE {user_sql()}
                 ORDER BY updated_at DESC
-                """
+                """,
+                (uid,),
             ).fetchall()
     return [_row_to_saved(row) for row in rows]
 
 
 def get_saved_recipe(recipe_id: str) -> SavedRecipe | None:
     """按 id 读取用户配方。"""
+    uid = get_user_id()
     with _connect() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT id, name, trigger_kind, config_json, created_at, updated_at
-            FROM screener_recipes WHERE id=?
+            FROM screener_recipes WHERE {user_sql('id=?')}
             """,
-            (recipe_id,),
+            (uid, recipe_id),
         ).fetchone()
     if row is None:
         return None
@@ -99,15 +105,16 @@ def save_recipe(
         raise ValueError("配方名称不能为空")
     now = _now()
     payload = json.dumps(config, ensure_ascii=False)
+    uid = get_user_id()
     with _connect() as conn:
         if recipe_id:
             conn.execute(
-                """
+                f"""
                 UPDATE screener_recipes
                 SET name=?, trigger_kind=?, config_json=?, updated_at=?
-                WHERE id=?
+                WHERE {user_sql('id=?')}
                 """,
-                (cleaned, trigger_kind, payload, now, recipe_id),
+                (cleaned, trigger_kind, payload, now, uid, recipe_id),
             )
             sid = recipe_id
         else:
@@ -115,10 +122,10 @@ def save_recipe(
             conn.execute(
                 """
                 INSERT INTO screener_recipes
-                (id, name, trigger_kind, config_json, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (id, user_id, name, trigger_kind, config_json, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (sid, cleaned, trigger_kind, payload, now, now),
+                (sid, uid, cleaned, trigger_kind, payload, now, now),
             )
     saved = get_saved_recipe(sid)
     if saved is None:
@@ -128,12 +135,13 @@ def save_recipe(
 
 def delete_recipe(recipe_id: str) -> bool:
     """删除用户配方；成功返回 True。"""
+    uid = get_user_id()
     with _connect() as conn:
-        cursor = conn.execute("DELETE FROM screener_recipes WHERE id=?", (recipe_id,))
+        cursor = conn.execute(f"DELETE FROM screener_recipes WHERE {user_sql('id=?')}", (uid, recipe_id))
         return bool(cursor.rowcount > 0)
 
 
-def _row_to_saved(row: sqlite3.Row) -> SavedRecipe:
+def _row_to_saved(row: DbRow) -> SavedRecipe:
     return SavedRecipe(
         id=str(row["id"]),
         name=str(row["name"]),

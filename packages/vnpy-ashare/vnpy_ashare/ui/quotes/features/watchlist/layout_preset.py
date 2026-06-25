@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from vnpy.trader.ui import QtCore
+
 from vnpy_ashare.config.preferences.watchlist_position import save_position_panel_expanded
 from vnpy_ashare.config.preferences.watchlist_signal import save_signal_panel_expanded
 from vnpy_ashare.ui.quotes.features.watchlist.prefs import LayoutPresetId, save_watchlist_layout_preset
@@ -45,7 +47,7 @@ def apply_layout_preset(page: WatchlistHost, preset_id: LayoutPresetId, *, persi
     apply_toolbar_for_preset(page, preset_id)
     if persist:
         save_watchlist_layout_preset(preset_id)
-    apply_center_splitter_sizes(page)
+    QtCore.QTimer.singleShot(0, lambda: apply_center_splitter_sizes(page))
 
 
 def apply_position_focus(page: WatchlistHost) -> None:

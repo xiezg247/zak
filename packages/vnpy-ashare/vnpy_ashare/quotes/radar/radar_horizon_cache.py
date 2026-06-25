@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-import sqlite3
-from pathlib import Path
-from typing import cast
 
 from vnpy_ashare.domain.radar.horizon_cache import HorizonCacheEntry
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
@@ -14,8 +11,8 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
-from vnpy_common.paths import get_app_db_path
+from vnpy_ashare.storage.cache.db_session import cache_db_session
+from vnpy_common.storage.compat import DbRow
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS radar_horizon_cache (
@@ -32,13 +29,8 @@ CREATE TABLE IF NOT EXISTS radar_horizon_cache (
 """
 
 
-def _db_path() -> Path:
-    return cast(Path, get_app_db_path().parent / "radar_horizon_cache.db")
-
-
-def _connect(db_path: Path | None = None):
-    path = db_path or _db_path()
-    return sqlite_cache_session(path, _SCHEMA)
+def _connect():
+    return cache_db_session(_SCHEMA)
 
 
 def horizon_cache_storage_key(variant: str, strategy_key: str) -> str:
@@ -52,7 +44,7 @@ def horizon_cache_storage_key(variant: str, strategy_key: str) -> str:
     return f"{text}|{key}"
 
 
-def _entry_from_row(row: sqlite3.Row, *, logical_variant: str) -> HorizonCacheEntry:
+def _entry_from_row(row: DbRow, *, logical_variant: str) -> HorizonCacheEntry:
     try:
         payload = json.loads(str(row["rows_json"] or "[]"))
     except (json.JSONDecodeError, TypeError):

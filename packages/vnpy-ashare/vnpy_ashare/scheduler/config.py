@@ -312,20 +312,43 @@ class SchedulerConfig(MutableModel):
 
 
 def load_scheduler_config(path: Path | None = None) -> SchedulerConfig:
-    target = path or SCHEDULER_CONFIG_PATH
-    if not target.exists():
+    if path is not None:
+        if not path.exists():
+            return SchedulerConfig()
+        try:
+            with path.open(encoding="utf-8") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError, TypeError, ValueError):
+            return SchedulerConfig()
+        return SchedulerConfig.from_dict(data)
+
+    from vnpy_ashare.storage.system.scheduler_config_store import load_scheduler_config_dict
+
+    stored = load_scheduler_config_dict()
+    if stored is not None:
+        return SchedulerConfig.from_dict(stored)
+
+    if not SCHEDULER_CONFIG_PATH.exists():
         return SchedulerConfig()
     try:
-        with target.open(encoding="utf-8") as f:
+        with SCHEDULER_CONFIG_PATH.open(encoding="utf-8") as f:
             data = json.load(f)
     except (json.JSONDecodeError, OSError, TypeError, ValueError):
         return SchedulerConfig()
-    return SchedulerConfig.from_dict(data)
+    config = SchedulerConfig.from_dict(data)
+    save_scheduler_config(config)
+    return config
 
 
 def save_scheduler_config(config: SchedulerConfig, path: Path | None = None) -> Path:
-    target = path or SCHEDULER_CONFIG_PATH
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with target.open("w", encoding="utf-8") as f:
-        json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
-    return target
+    if path is not None:
+        target = path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("w", encoding="utf-8") as f:
+            json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
+        return target
+
+    from vnpy_ashare.storage.system.scheduler_config_store import save_scheduler_config_dict
+
+    save_scheduler_config_dict(config.to_dict())
+    return SCHEDULER_CONFIG_PATH

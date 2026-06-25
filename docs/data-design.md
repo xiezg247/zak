@@ -1,6 +1,6 @@
 # 数据设计
 
-元数据与行情**分离**；建表 `CREATE TABLE IF NOT EXISTS`（无独立迁移）。AI 运行时态在 `context_store`（内存）。
+元数据与行情**分离**；业务库由 **Alembic + PostgreSQL** 管理（`app` / `chat` / `auth` / `cache` / `system` schema）。AI 运行时态在 `context_store`（内存）。
 
 ---
 
@@ -8,17 +8,17 @@
 
 | 存储 | 位置 | 内容 |
 |------|------|------|
-| **App DB** | `~/.vntrader/zak.db`（固定 SQLite） | 自选、universe、回测/选股历史、笔记、计划、持仓、信息流 |
-| **K 线 DB** | `database.db` 或 PostgreSQL | VeighNa `dbbardata` 等；`DATABASE_NAME` 切换 |
-| **LLM Chat DB** | `~/.vntrader/llm_chat.db` | AI 会话 `sessions` / `messages` |
+| **PostgreSQL** | `.env` → `DATABASE_URL` | 自选、笔记、选股、AI 会话、Cache、用户偏好等 |
+| **K 线 DB** | `database.db`（SQLite）或 PG `public` | VeighNa `dbbardata` 等；`DATABASE_NAME` 切换 |
+| **QSettings** | 本机 OS 级 | 纯 UI 偏好 |
 | **Redis** | `.env` | 行情快照、涨幅榜 |
-| **磁盘缓存** | 用户数据目录 | 信号区/持仓短缓存 |
 
 ```text
-GUI → Pydantic → App DB / K线DB / Redis / context_store
+GUI → Service → Repository → PostgreSQL（业务）
+K 线 → VeighNa → database.db 或 PG public
 ```
 
-入口：`storage/connection.py`、`app_db.py`、`repositories/`；K 线 `bar_store.py`、`bars.py`。
+入口：`storage/connection.py`、`vnpy_common/storage/session.py`；迁移 `cli.py db upgrade`；一次性 SQLite 导入 `cli.py db import-legacy`。
 
 ---
 
@@ -45,7 +45,7 @@ GUI → Pydantic → App DB / K线DB / Redis / context_store
 | `zak:rank:change_pct` | 涨幅 ZSET |
 | `zak:meta:*` | 更新时间等 |
 
-QSettings：`trading/*`（Profile、风控）、`screener/*`（硬过滤）、`notify/*`；`.env` 密钥与 `RECIPE_*`。见 [配置热加载](./config-hot-reload.md)。
+QSettings（纯 UI）：窗口几何、列宽、雷达 Tab 等；业务偏好已迁 PG `auth.user_preferences`（`trading` / `screener` / `radar` / `notify` / `watchlist` / `llm` 等 namespace）。`.env` 密钥与 `RECIPE_*`。见 [配置热加载](./config-hot-reload.md)、[多人 PG](./multi-user-pg.md)。
 
 领域模型：`StockItem`、`QuoteSnapshot`、`ScreenerResultRow` 等（`domain/`、`vnpy_common/ai/protocol.py`）。
 

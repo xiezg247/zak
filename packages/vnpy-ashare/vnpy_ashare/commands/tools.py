@@ -43,7 +43,7 @@ def _cmd_mcp_list(_args: argparse.Namespace) -> int:
 
 
 def _cmd_db_check(_args: argparse.Namespace) -> int:
-    name = SETTINGS.get("database.name", "sqlite")
+    name = SETTINGS.get("database.name", "postgresql")
     print(f"database.name = {name}")
 
     if name == "postgresql":

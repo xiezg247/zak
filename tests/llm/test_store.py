@@ -2,28 +2,35 @@
 
 from __future__ import annotations
 
-import tempfile
+import os
 import unittest
-from pathlib import Path
-from unittest.mock import patch
+import uuid
+
+from vnpy_common.auth.context import clear_current_user, set_current_user
+from vnpy_common.storage.config import force_database_url, reset_storage_config
 
 import vnpy_llm.chat.store as store
+from vnpy_ashare.storage.auth.users import get_or_create_default_user_id
+from vnpy_ashare.storage.connection import init_app_db
 
 
 class TestChatStore(unittest.TestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-        self._patcher = patch.object(store, "_chat_db_path", return_value=self.db_path)
-        self._patcher.start()
+        url = os.environ.get("DATABASE_URL", "").strip()
+        if not url:
+            self.skipTest("需要 DATABASE_URL")
+        reset_storage_config()
+        force_database_url(url)
+        init_app_db()
+        set_current_user(get_or_create_default_user_id())
         self.chat_store = store.ChatStore()
 
     def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
+        clear_current_user()
+        reset_storage_config()
 
     def test_append_and_list_messages(self) -> None:
-        session_id = self.chat_store.create_session(title="测试")
+        session_id = self.chat_store.create_session(title=f"测试-{uuid.uuid4().hex[:6]}")
         self.chat_store.append_message(session_id, role="user", content="你好")
         self.chat_store.append_message(session_id, role="assistant", content="你好，有什么可以帮你？")
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from vnpy.trader.ui import QtCore
+
 from vnpy_ashare.app.engine_access import get_ashare_engine
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.domain.time.china import format_china_time_hm
@@ -239,9 +241,10 @@ class WatchlistPositionController:
             )
         return PositionAlertScanInput(enabled=True, rows=tuple(rows))
 
-    def hydrate_from_disk(self) -> bool:
+    def hydrate_from_disk(self, *, record_map: dict[str, PositionRecord] | None = None) -> bool:
         """从磁盘恢复策略信号到内存并渲染（冷启动快速展示）。"""
-        record_map = self._record_map()
+        if record_map is None:
+            record_map = self._record_map()
         symbols = list(record_map)
         if not symbols:
             return False
@@ -266,11 +269,17 @@ class WatchlistPositionController:
     def on_stock_list_loaded(self) -> None:
         if not self._page.config.show_watchlist_positions:
             return
-        self.on_rows_changed()
-        self.hydrate_from_disk()
-        self.refresh(force=False)
+        QtCore.QTimer.singleShot(0, self._complete_stock_list_loaded)
 
-    def refresh(self, *, force: bool = False, symbols: list[str] | None = None) -> None:
+    def _complete_stock_list_loaded(self) -> None:
+        if not self._page._active:
+            return
+        record_map = self._record_map()
+        self.on_rows_changed(record_map=record_map)
+        self.hydrate_from_disk(record_map=record_map)
+        self.refresh(force=False, record_map=record_map)
+
+    def refresh(self, *, force: bool = False, symbols: list[str] | None = None, record_map: dict[str, PositionRecord] | None = None) -> None:
         if not self._page.config.show_watchlist_positions or not self._page._active:
             return
         panel = getattr(self._page, "position_panel", None)
@@ -284,7 +293,8 @@ class WatchlistPositionController:
                 self._apply_refresh_result()
             return
 
-        record_map = self._record_map()
+        if record_map is None:
+            record_map = self._record_map()
         all_symbols = list(record_map)
         if symbols is None:
             target = all_symbols
@@ -411,8 +421,9 @@ class WatchlistPositionController:
             self._page.position_cache.pop(vt, None)
         self.refresh(symbols=affected)
 
-    def on_rows_changed(self) -> None:
-        record_map = self._record_map()
+    def on_rows_changed(self, *, record_map: dict[str, PositionRecord] | None = None) -> None:
+        if record_map is None:
+            record_map = self._record_map()
         kept = set(record_map)
         stale = [vt for vt in list(self._page.position_cache) if vt not in kept]
         for vt in stale:

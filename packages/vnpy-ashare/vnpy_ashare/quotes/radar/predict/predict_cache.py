@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import cast
 
 from vnpy_ashare.domain.radar.predict import PredictCacheEntry
 from vnpy_ashare.domain.time.china import format_china_datetime_minute
@@ -14,8 +12,7 @@ from vnpy_ashare.quotes.radar.radar_models import (
     radar_row_from_cache_dict,
     radar_row_to_cache_dict,
 )
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
-from vnpy_common.paths import get_app_db_path
+from vnpy_ashare.storage.cache.db_session import cache_db_session
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS radar_predict_cache (
@@ -32,13 +29,8 @@ CREATE TABLE IF NOT EXISTS radar_predict_cache (
 """
 
 
-def _db_path() -> Path:
-    return cast(Path, get_app_db_path().parent / "radar_predict_cache.db")
-
-
-def _connect(db_path: Path | None = None):
-    path = db_path or _db_path()
-    return sqlite_cache_session(path, _SCHEMA)
+def _connect():
+    return cache_db_session(_SCHEMA)
 
 
 def get_predict_cache(variant: str) -> PredictCacheEntry | None:

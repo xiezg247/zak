@@ -1,4 +1,4 @@
-"""自选页策略信号配置（QSettings 持久化）。"""
+"""自选页策略信号配置。"""
 
 from __future__ import annotations
 
@@ -8,6 +8,12 @@ from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
+from vnpy_ashare.config.preferences._user_pref import (
+    load_json_pref,
+    load_model_pref,
+    save_json_pref,
+    save_model_pref,
+)
 from vnpy_ashare.config.preferences.signal_panel_columns import normalize_visible_optional_keys
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_common.domain.base import FrozenModel
@@ -29,6 +35,20 @@ DEFAULT_SLOW = 10
 DEFAULT_STALE_SWEEP_MINUTES = 30
 MIN_STALE_SWEEP_MINUTES = 5
 MAX_STALE_SWEEP_MINUTES = 120
+
+_PREF_NAMESPACE = "watchlist"
+_PREF_KEY_CONFIG = "signal_config"
+_PREF_KEY_PANEL = "signal_panel"
+_PREF_KEY_STALE = "stale_sweep_minutes"
+_PREF_KEY_SPLITTER = "center_splitter_sizes"
+
+_MIGRATE_CONFIG_KEYS = (SIGNAL_STRATEGY_KEY, SIGNAL_FAST_KEY, SIGNAL_SLOW_KEY)
+_MIGRATE_PANEL_KEYS = (
+    SIGNAL_PANEL_SYMBOLS_KEY,
+    SIGNAL_PANEL_ENABLED_KEY,
+    SIGNAL_PANEL_EXPANDED_KEY,
+    SIGNAL_PANEL_COLUMNS_KEY,
+)
 
 
 class WatchlistSignalConfig(FrozenModel):
@@ -54,7 +74,7 @@ class WatchlistSignalConfig(FrozenModel):
         return {"fast_window": item.fast_window, "slow_window": item.slow_window}
 
 
-def load_watchlist_signal_config() -> WatchlistSignalConfig:
+def _load_signal_config_from_qsettings() -> WatchlistSignalConfig:
     settings = get_settings()
     raw_class = settings.value(SIGNAL_STRATEGY_KEY, DEFAULT_CLASS)
     raw_fast = settings.value(SIGNAL_FAST_KEY, DEFAULT_FAST)
@@ -68,12 +88,19 @@ def load_watchlist_signal_config() -> WatchlistSignalConfig:
     ).normalized()
 
 
+def load_watchlist_signal_config() -> WatchlistSignalConfig:
+    item = load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_CONFIG,
+        WatchlistSignalConfig,
+        load_legacy=_load_signal_config_from_qsettings,
+        migrate_keys=_MIGRATE_CONFIG_KEYS,
+    )
+    return item.normalized()
+
+
 def save_watchlist_signal_config(config: WatchlistSignalConfig) -> None:
-    item = config.normalized()
-    settings = get_settings()
-    settings.setValue(SIGNAL_STRATEGY_KEY, item.class_name)
-    settings.setValue(SIGNAL_FAST_KEY, item.fast_window)
-    settings.setValue(SIGNAL_SLOW_KEY, item.slow_window)
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY_CONFIG, config.normalized())
 
 
 def normalize_signal_panel_symbols(
@@ -96,57 +123,88 @@ def normalize_signal_panel_symbols(
     return cleaned
 
 
-def load_signal_panel_symbols() -> list[str]:
+def _load_panel_state_from_qsettings() -> dict[str, object]:
     settings = get_settings()
-    raw = settings.value(SIGNAL_PANEL_SYMBOLS_KEY, "")
-    if not isinstance(raw, str) or not raw.strip():
+    raw_symbols = settings.value(SIGNAL_PANEL_SYMBOLS_KEY, "")
+    symbols = ""
+    if isinstance(raw_symbols, str) and raw_symbols.strip():
+        parts = [part.strip() for part in raw_symbols.split(",") if part.strip()]
+        symbols = ",".join(normalize_signal_panel_symbols(parts))
+    raw_columns = settings.value(SIGNAL_PANEL_COLUMNS_KEY, "")
+    columns = ""
+    if isinstance(raw_columns, str) and raw_columns.strip():
+        parts = [part.strip() for part in raw_columns.split(",") if part.strip()]
+        columns = ",".join(normalize_visible_optional_keys(parts))
+    return {
+        "symbols": symbols,
+        "enabled": coerce_settings_bool(settings.value(SIGNAL_PANEL_ENABLED_KEY), default=True),
+        "expanded": coerce_settings_bool(settings.value(SIGNAL_PANEL_EXPANDED_KEY), default=True),
+        "columns": columns,
+    }
+
+
+def _load_panel_state() -> dict[str, object]:
+    return load_json_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_PANEL,
+        load_legacy=_load_panel_state_from_qsettings,
+        migrate_keys=_MIGRATE_PANEL_KEYS,
+    )
+
+
+def _save_panel_state(state: dict[str, object]) -> None:
+    save_json_pref(_PREF_NAMESPACE, _PREF_KEY_PANEL, state)
+
+
+def load_signal_panel_symbols() -> list[str]:
+    raw = str(_load_panel_state().get("symbols") or "")
+    if not raw.strip():
         return []
     parts = [part.strip() for part in raw.split(",") if part.strip()]
     return normalize_signal_panel_symbols(parts)
 
 
 def save_signal_panel_symbols(symbols: list[str]) -> None:
-    settings = get_settings()
-    cleaned = normalize_signal_panel_symbols(symbols)
-    settings.setValue(SIGNAL_PANEL_SYMBOLS_KEY, ",".join(cleaned))
+    state = dict(_load_panel_state())
+    state["symbols"] = ",".join(normalize_signal_panel_symbols(symbols))
+    _save_panel_state(state)
 
 
 def load_signal_panel_enabled() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(SIGNAL_PANEL_ENABLED_KEY), default=True)
+    return bool(_load_panel_state().get("enabled", True))
 
 
 def save_signal_panel_enabled(enabled: bool) -> None:
-    settings = get_settings()
-    settings.setValue(SIGNAL_PANEL_ENABLED_KEY, enabled)
+    state = dict(_load_panel_state())
+    state["enabled"] = enabled
+    _save_panel_state(state)
 
 
 def load_signal_panel_expanded() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(SIGNAL_PANEL_EXPANDED_KEY), default=True)
+    return bool(_load_panel_state().get("expanded", True))
 
 
 def save_signal_panel_expanded(expanded: bool) -> None:
-    settings = get_settings()
-    settings.setValue(SIGNAL_PANEL_EXPANDED_KEY, expanded)
+    state = dict(_load_panel_state())
+    state["expanded"] = expanded
+    _save_panel_state(state)
 
 
 def load_signal_panel_columns() -> list[str]:
-    settings = get_settings()
-    raw = settings.value(SIGNAL_PANEL_COLUMNS_KEY, "")
-    if not isinstance(raw, str) or not raw.strip():
+    raw = str(_load_panel_state().get("columns") or "")
+    if not raw.strip():
         return normalize_visible_optional_keys(None)
     parts = [part.strip() for part in raw.split(",") if part.strip()]
     return normalize_visible_optional_keys(parts)
 
 
 def save_signal_panel_columns(keys: list[str]) -> None:
-    settings = get_settings()
-    cleaned = normalize_visible_optional_keys(keys)
-    settings.setValue(SIGNAL_PANEL_COLUMNS_KEY, ",".join(cleaned))
+    state = dict(_load_panel_state())
+    state["columns"] = ",".join(normalize_visible_optional_keys(keys))
+    _save_panel_state(state)
 
 
-def load_center_splitter_sizes() -> list[int]:
+def _load_splitter_from_qsettings() -> list[int]:
     settings = get_settings()
     raw = settings.value(SIGNAL_CENTER_SPLITTER_SIZES_KEY)
     if raw is None:
@@ -167,16 +225,41 @@ def load_center_splitter_sizes() -> list[int]:
     return sizes
 
 
+def load_center_splitter_sizes() -> list[int]:
+    stored = load_json_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_SPLITTER,
+        load_legacy=_load_splitter_from_qsettings,
+        migrate_keys=(SIGNAL_CENTER_SPLITTER_SIZES_KEY,),
+    )
+    if isinstance(stored, list):
+        return [max(0, int(value)) for value in stored if isinstance(value, (int, float, str))]
+    return _load_splitter_from_qsettings()
+
+
 def save_center_splitter_sizes(sizes: list[int]) -> None:
-    settings = get_settings()
     cleaned = [max(0, int(value)) for value in sizes]
-    settings.setValue(SIGNAL_CENTER_SPLITTER_SIZES_KEY, ",".join(str(value) for value in cleaned))
+    save_json_pref(_PREF_NAMESPACE, _PREF_KEY_SPLITTER, cleaned)
 
 
-def load_watchlist_strategy_stale_sweep_minutes() -> int:
+def _load_stale_sweep_from_qsettings() -> int:
     settings = get_settings()
     raw = settings.value(SIGNAL_STALE_SWEEP_MINUTES_KEY, DEFAULT_STALE_SWEEP_MINUTES)
     minutes = coerce_settings_int(raw, default=DEFAULT_STALE_SWEEP_MINUTES)
+    return max(MIN_STALE_SWEEP_MINUTES, min(minutes, MAX_STALE_SWEEP_MINUTES))
+
+
+def load_watchlist_strategy_stale_sweep_minutes() -> int:
+    value = load_json_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_STALE,
+        load_legacy=_load_stale_sweep_from_qsettings,
+        migrate_keys=(SIGNAL_STALE_SWEEP_MINUTES_KEY,),
+    )
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        minutes = DEFAULT_STALE_SWEEP_MINUTES
     return max(MIN_STALE_SWEEP_MINUTES, min(minutes, MAX_STALE_SWEEP_MINUTES))
 
 
@@ -185,6 +268,5 @@ def load_watchlist_strategy_stale_sweep_ms() -> int:
 
 
 def save_watchlist_strategy_stale_sweep_minutes(minutes: int) -> None:
-    settings = get_settings()
     value = max(MIN_STALE_SWEEP_MINUTES, min(int(minutes), MAX_STALE_SWEEP_MINUTES))
-    settings.setValue(SIGNAL_STALE_SWEEP_MINUTES_KEY, value)
+    save_json_pref(_PREF_NAMESPACE, _PREF_KEY_STALE, value)

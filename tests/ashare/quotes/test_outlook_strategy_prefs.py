@@ -1,5 +1,9 @@
 """雷达展望策略偏好测试。"""
 
+from __future__ import annotations
+
+import pytest
+
 from vnpy_ashare.config.preferences.watchlist_signal import WatchlistSignalConfig
 from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
     OUTLOOK_STRATEGY_WHITELIST,
@@ -11,26 +15,36 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 )
 
 
+@pytest.fixture
+def outlook_pref_store(monkeypatch):
+    store: dict[tuple[str, str], object] = {}
+
+    def _load(namespace: str, key: str, *, load_legacy, migrate_key: str = ""):
+        if (namespace, key) in store:
+            return store[(namespace, key)]
+        return load_legacy()
+
+    def _save(namespace: str, key: str, value: object) -> None:
+        store[(namespace, key)] = value
+
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.outlook_strategy_prefs.load_scalar_pref",
+        _load,
+    )
+    monkeypatch.setattr(
+        "vnpy_ashare.quotes.radar.outlook_strategy_prefs.save_scalar_pref",
+        _save,
+    )
+    return store
+
+
 def test_outlook_strategy_whitelist_includes_short_term() -> None:
     assert "AshareShortBreakoutStrategy" in OUTLOOK_STRATEGY_WHITELIST
     assert "AshareLimitBoardStrategy" in OUTLOOK_STRATEGY_WHITELIST
     assert "AshareIntradayBreakoutStrategy" not in OUTLOOK_STRATEGY_WHITELIST
 
 
-def test_save_and_load_outlook_strategy_class(monkeypatch) -> None:
-    store: dict[str, object] = {}
-
-    class _Settings:
-        def value(self, key, default=None):
-            return store.get(key, default)
-
-        def setValue(self, key, value):
-            store[key] = value
-
-    monkeypatch.setattr(
-        "vnpy_ashare.quotes.radar.outlook_strategy_prefs.get_settings",
-        lambda: _Settings(),
-    )
+def test_save_and_load_outlook_strategy_class(monkeypatch, outlook_pref_store) -> None:
     monkeypatch.setattr(
         "vnpy_ashare.quotes.radar.outlook_strategy_prefs.load_watchlist_signal_config",
         lambda: WatchlistSignalConfig(class_name="AshareLimitBoardStrategy", fast_window=5, slow_window=10),
@@ -40,7 +54,9 @@ def test_save_and_load_outlook_strategy_class(monkeypatch) -> None:
     save_outlook_strategy_class("AshareTrendMaStrategy")
     assert load_outlook_strategy_class() == "AshareTrendMaStrategy"
     save_outlook_strategy_class("AshareIntradayBreakoutStrategy")
-    assert load_outlook_strategy_class() == "AshareDoubleMaStrategy"
+    from vnpy_ashare.config.preferences.watchlist_signal import DEFAULT_CLASS
+
+    assert load_outlook_strategy_class() == DEFAULT_CLASS
 
 
 def test_load_outlook_signal_config_uses_strategy_defaults(monkeypatch) -> None:

@@ -157,8 +157,9 @@ class WatchlistMultiViewController:
         self._sparkline_kind = "none"
         if not self.is_multiview_active():
             return
-        self.refresh(force=True, refresh_moneyflow=True)
+        self.refresh(force=True, refresh_moneyflow=False)
         self._schedule_sparkline_load()
+        QtCore.QTimer.singleShot(0, lambda: self.refresh(force=False, refresh_moneyflow=True))
 
     def on_bars_updated(self, vt_symbols: list[str] | None = None) -> None:
         if self._sparkline_mode == "intraday":
@@ -278,9 +279,10 @@ class WatchlistMultiViewController:
             if self._view_mode == "multiview":
                 self._sync_sparkline_mode_from_chart()
                 stack.setCurrentWidget(page.multiview_board)
-                self.refresh(force=True, refresh_moneyflow=True)
+                self.refresh(force=True, refresh_moneyflow=False)
                 self._schedule_sparkline_load()
                 self._sync_sparkline_refresh_timer()
+                QtCore.QTimer.singleShot(0, lambda: self.refresh(force=False, refresh_moneyflow=True))
             else:
                 stack.setCurrentWidget(page._market_table_host)
                 self._quote_refresh_timer.stop()

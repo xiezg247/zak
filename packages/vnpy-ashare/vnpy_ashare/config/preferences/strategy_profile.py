@@ -1,4 +1,4 @@
-"""策略 Profile 枚举与 QSettings（SP-01 / SP-04）。"""
+"""策略 Profile 枚举与偏好持久化（SP-01 / SP-04）。"""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import Field
 
 from vnpy_ashare.config.preferences._settings import get_settings
+from vnpy_ashare.config.preferences._user_pref import save_scalar_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
     SIGNAL_STRATEGY_KEY,
     WatchlistSignalConfig,
@@ -14,12 +15,15 @@ from vnpy_ashare.config.preferences.watchlist_signal import (
     save_watchlist_signal_config,
 )
 from vnpy_ashare.screener.hard_filter_prefs import sync_hard_filter_for_strategy_profile
+from vnpy_ashare.storage.auth.preferences import batch_get_prefs, get_pref
 from vnpy_common.domain.base import FrozenModel
 
 StrategyProfileId = Literal["ultra_short", "short_swing", "medium_watch", "trend"]
 
 STRATEGY_PROFILE_KEY = "trading/strategy_profile"
 DEFAULT_STRATEGY_PROFILE: StrategyProfileId = "short_swing"
+_PREF_NAMESPACE = "trading"
+_PREF_KEY = "strategy_profile"
 
 
 class StrategyProfileSpec(FrozenModel):
@@ -33,34 +37,20 @@ class StrategyProfileSpec(FrozenModel):
 
 STRATEGY_PROFILES: tuple[StrategyProfileSpec, ...] = (
     StrategyProfileSpec(
-        profile_id="ultra_short",
-        title="极致短线",
-        signal_class_name="AshareLimitBoardStrategy",
-        fast_window=5,
-        slow_window=10,
-        transition_hint="打板日 K 代理；隔日退出绑定 OvernightExit",
+        profile_id="ultra_short", title="极致短线", signal_class_name="AshareLimitBoardStrategy",
+        fast_window=5, slow_window=10, transition_hint="打板日 K 代理；隔日退出绑定 OvernightExit",
     ),
     StrategyProfileSpec(
-        profile_id="short_swing",
-        title="短线波段",
-        signal_class_name="AshareShortBreakoutStrategy",
-        fast_window=5,
-        slow_window=10,
-        transition_hint="短线放量突破（全局默认）",
+        profile_id="short_swing", title="短线波段", signal_class_name="AshareShortBreakoutStrategy",
+        fast_window=5, slow_window=10, transition_hint="短线放量突破（全局默认）",
     ),
     StrategyProfileSpec(
-        profile_id="medium_watch",
-        title="中线观察",
-        signal_class_name="AshareDoubleMaStrategy",
-        fast_window=10,
-        slow_window=20,
+        profile_id="medium_watch", title="中线观察", signal_class_name="AshareDoubleMaStrategy",
+        fast_window=10, slow_window=20,
     ),
     StrategyProfileSpec(
-        profile_id="trend",
-        title="趋势中线",
-        signal_class_name="AshareTrendMaStrategy",
-        fast_window=20,
-        slow_window=60,
+        profile_id="trend", title="趋势中线", signal_class_name="AshareTrendMaStrategy",
+        fast_window=20, slow_window=60,
     ),
 )
 
@@ -75,29 +65,35 @@ def get_strategy_profile(profile_id: str) -> StrategyProfileSpec:
     return _PROFILE_BY_ID.get(profile_id, _PROFILE_BY_ID[DEFAULT_STRATEGY_PROFILE])
 
 
-def load_strategy_profile_id() -> StrategyProfileId:
-    settings = get_settings()
-    raw = str(settings.value(STRATEGY_PROFILE_KEY, DEFAULT_STRATEGY_PROFILE) or DEFAULT_STRATEGY_PROFILE)
-    if raw in _PROFILE_BY_ID:
-        return raw  # type: ignore[return-value]
+def _resolve_profile_id(raw: str | None) -> StrategyProfileId:
+    rid = str(raw or DEFAULT_STRATEGY_PROFILE)
+    if rid in _PROFILE_BY_ID:
+        return rid  # type: ignore[return-value]
     return DEFAULT_STRATEGY_PROFILE
 
 
+def load_strategy_profile_id() -> StrategyProfileId:
+    from vnpy_ashare.config.preferences._user_pref import load_scalar_pref
+
+    stored = load_scalar_pref(
+        _PREF_NAMESPACE, _PREF_KEY,
+        load_legacy=_load_profile_from_qsettings, migrate_key=STRATEGY_PROFILE_KEY,
+    )
+    return _resolve_profile_id(str(stored))
+
+
 def save_strategy_profile_id(profile_id: StrategyProfileId) -> None:
-    get_settings().setValue(STRATEGY_PROFILE_KEY, profile_id)
+    save_scalar_pref(_PREF_NAMESPACE, _PREF_KEY, profile_id)
 
 
 def profile_signal_config(profile_id: str) -> WatchlistSignalConfig:
     spec = get_strategy_profile(profile_id)
     return WatchlistSignalConfig(
-        class_name=spec.signal_class_name,
-        fast_window=spec.fast_window,
-        slow_window=spec.slow_window,
+        class_name=spec.signal_class_name, fast_window=spec.fast_window, slow_window=spec.slow_window,
     ).normalized()
 
 
 def apply_strategy_profile(profile_id: StrategyProfileId) -> WatchlistSignalConfig:
-    """写入 Profile 并同步信号区策略参数与硬过滤模板。"""
     cfg = profile_signal_config(profile_id)
     save_strategy_profile_id(profile_id)
     save_watchlist_signal_config(cfg)
@@ -106,7 +102,6 @@ def apply_strategy_profile(profile_id: StrategyProfileId) -> WatchlistSignalConf
 
 
 def match_strategy_profile(config: WatchlistSignalConfig | None = None) -> StrategyProfileId:
-    """根据当前信号配置推断最接近的 Profile。"""
     item = (config or load_watchlist_signal_config()).normalized()
     for spec in STRATEGY_PROFILES:
         probe = profile_signal_config(spec.profile_id)
@@ -115,13 +110,29 @@ def match_strategy_profile(config: WatchlistSignalConfig | None = None) -> Strat
     return load_strategy_profile_id()
 
 
-def bootstrap_strategy_profile() -> WatchlistSignalConfig:
-    """启动时保证 Profile / 信号区 / 硬过滤一致；全局默认 short_swing（短线放量）。"""
+def _load_profile_from_qsettings() -> StrategyProfileId:
     settings = get_settings()
-    has_profile = settings.contains(STRATEGY_PROFILE_KEY)
-    has_signal = settings.contains(SIGNAL_STRATEGY_KEY)
-    profile_id = load_strategy_profile_id()
-    current = load_watchlist_signal_config().normalized()
+    raw = str(settings.value(STRATEGY_PROFILE_KEY, DEFAULT_STRATEGY_PROFILE) or DEFAULT_STRATEGY_PROFILE)
+    return _resolve_profile_id(raw)
+
+
+def bootstrap_strategy_profile() -> WatchlistSignalConfig:
+    """启动时保证 Profile / 信号区 / 硬过滤一致。一次批量查询 + QSettings 合并。"""
+    prefs = batch_get_prefs([(_PREF_NAMESPACE, _PREF_KEY), ("watchlist", "signal_config")])
+
+    has_profile = (_PREF_NAMESPACE, _PREF_KEY) in prefs or bool(get_settings().contains(STRATEGY_PROFILE_KEY))
+    has_signal = ("watchlist", "signal_config") in prefs or bool(get_settings().contains(SIGNAL_STRATEGY_KEY))
+
+    # 从预拉取值解析 profile_id
+    stored_profile = prefs.get((_PREF_NAMESPACE, _PREF_KEY))
+    profile_id = _resolve_profile_id(str(stored_profile)) if stored_profile is not None else _load_profile_from_qsettings()
+
+    # 解析信号配置
+    stored_signal = prefs.get(("watchlist", "signal_config"))
+    if isinstance(stored_signal, dict):
+        current = WatchlistSignalConfig.model_validate(stored_signal).normalized()
+    else:
+        current = load_watchlist_signal_config().normalized()
 
     if not has_profile and not has_signal:
         return apply_strategy_profile(DEFAULT_STRATEGY_PROFILE)

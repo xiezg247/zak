@@ -43,16 +43,10 @@ class PlaybookDisciplineCard(QtWidgets.QFrame):
         self._ai_btn.setToolTip("结合 Playbook 与今日状态，请 AI 生成一句可执行纪律")
         self._ai_btn.clicked.connect(self.discipline_ai_requested.emit)
 
-        self._edit = QtWidgets.QToolButton()
-        self._edit.setText("编辑")
-        self._edit.setObjectName("HomeCardAction")
-        self._edit.clicked.connect(lambda: self.edit_requested.emit(self._section_id))
-
         header.addWidget(self._toggle)
         header.addWidget(self._num)
         header.addWidget(self._title, stretch=1)
         header.addWidget(self._ai_btn)
-        header.addWidget(self._edit)
 
         self._discipline_panel = PlaybookDisciplinePanel(self)
         self._discipline_panel.changed.connect(self.checklist_changed.emit)

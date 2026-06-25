@@ -2,37 +2,25 @@
 
 from __future__ import annotations
 
-import sqlite3
-import tempfile
+import os
 import unittest
-from contextlib import contextmanager
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import tests._bootstrap  # noqa: F401
 from vnpy_ashare.ai.context.feed import format_feed_page_extra
 from vnpy_ashare.domain.feed.models import FeedItemDraft
 from vnpy_ashare.services.feed import FeedService
 from vnpy_ashare.storage.repositories import feed as feed_repo
+from vnpy_common.storage.config import force_database_url, reset_storage_config
 
 
 class FeedContextTests(unittest.TestCase):
     def setUp(self) -> None:
-        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
-        self.db_path = Path(self._tmp.name)
-
-        @contextmanager
-        def _connect():
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            try:
-                yield conn
-                conn.commit()
-            finally:
-                conn.close()
-
-        self._patcher = patch.object(feed_repo, "connect", _connect)
-        self._patcher.start()
+        url = os.environ.get("DATABASE_URL", "").strip()
+        if not url:
+            self.skipTest("需要 DATABASE_URL")
+        reset_storage_config()
+        force_database_url(url)
         feed_repo._ensure_schema()
         engine = Mock(notification_service=Mock())
         self.feed_service = FeedService(engine)
@@ -58,8 +46,7 @@ class FeedContextTests(unittest.TestCase):
         )
 
     def tearDown(self) -> None:
-        self._patcher.stop()
-        self.db_path.unlink(missing_ok=True)
+        reset_storage_config()
 
     def test_format_feed_page_extra_lists_unread(self) -> None:
         text = format_feed_page_extra(self.feed_service)

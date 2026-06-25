@@ -1,4 +1,4 @@
-"""信息流 SQLite repository。"""
+"""信息流 repository（PostgreSQL app schema）。"""
 
 from __future__ import annotations
 
@@ -15,11 +15,14 @@ from vnpy_ashare.domain.feed.models import (
     FeedSubscription,
     FeedSubscriptionConfig,
 )
+from vnpy_ashare.storage.auth.scope import get_user_id
 from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_common.auth.scope import user_sql
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS feed_subscriptions (
     id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL DEFAULT '',
     source_type     TEXT NOT NULL DEFAULT 'bilibili_up',
     source_id       TEXT NOT NULL,
     display_name    TEXT NOT NULL DEFAULT '',
@@ -53,10 +56,18 @@ CREATE INDEX IF NOT EXISTS idx_feed_items_sub ON feed_items(subscription_id, pub
 
 CREATE TABLE IF NOT EXISTS feed_cursors (
     subscription_id TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL DEFAULT '',
     last_video_ts   INTEGER NOT NULL DEFAULT 0,
     last_dynamic_id TEXT NOT NULL DEFAULT '',
     last_ok_at      TEXT,
     last_error      TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS feed_item_reads (
+    user_id TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    read_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, item_id)
 );
 """
 
@@ -89,6 +100,11 @@ def _row_to_subscription(row: Any) -> FeedSubscription:
 
 
 def _row_to_item(row: Any) -> FeedItem:
+    read_at = None
+    if "user_read_at" in row.keys():
+        read_at = row["user_read_at"]
+    elif "read_at" in row.keys():
+        read_at = row["read_at"]
     return FeedItem(
         id=row["id"],
         subscription_id=row["subscription_id"],
@@ -101,45 +117,59 @@ def _row_to_item(row: Any) -> FeedItem:
         author_name=row["author_name"] or "",
         published_at=row["published_at"],
         payload=json.loads(row["payload_json"] or "{}"),
-        read_at=row["read_at"],
+        read_at=read_at,
         created_at=row["created_at"],
     )
 
 
+def _items_base_sql() -> str:
+    return """
+        SELECT fi.*, fir.read_at AS user_read_at
+        FROM feed_items fi
+        INNER JOIN feed_subscriptions fs ON fs.id = fi.subscription_id AND fs.user_id = ?
+        LEFT JOIN feed_item_reads fir ON fir.item_id = fi.id AND fir.user_id = ?
+    """
+
+
 def count_subscriptions() -> int:
     _ensure_schema()
+    uid = get_user_id()
     with connect() as conn:
-        row = conn.execute("SELECT COUNT(*) AS c FROM feed_subscriptions").fetchone()
+        row = conn.execute(f"SELECT COUNT(*) AS c FROM feed_subscriptions WHERE {user_sql()}", (uid,)).fetchone()
     return int(row["c"] if row else 0)
 
 
 def list_subscriptions(*, enabled_only: bool = False) -> list[FeedSubscription]:
     _ensure_schema()
-    sql = "SELECT * FROM feed_subscriptions"
+    uid = get_user_id()
+    sql = f"SELECT * FROM feed_subscriptions WHERE {user_sql()}"
+    params: list[Any] = [uid]
     if enabled_only:
-        sql += " WHERE enabled = 1"
+        sql += " AND enabled = 1"
     sql += " ORDER BY sort_order ASC, created_at ASC"
     with connect() as conn:
-        rows = conn.execute(sql).fetchall()
+        rows = conn.execute(sql, params).fetchall()
     return [_row_to_subscription(row) for row in rows]
 
 
 def get_subscription(subscription_id: str) -> FeedSubscription | None:
     _ensure_schema()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            "SELECT * FROM feed_subscriptions WHERE id = ?",
-            (subscription_id,),
+            f"SELECT * FROM feed_subscriptions WHERE {user_sql('id = ?')}",
+            (uid, subscription_id),
         ).fetchone()
     return _row_to_subscription(row) if row is not None else None
 
 
 def find_subscription_by_source(source_type: str, source_id: str) -> FeedSubscription | None:
     _ensure_schema()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            "SELECT * FROM feed_subscriptions WHERE source_type = ? AND source_id = ?",
-            (source_type, source_id),
+            f"SELECT * FROM feed_subscriptions WHERE {user_sql('source_type = ? AND source_id = ?')}",
+            (uid, source_type, source_id),
         ).fetchone()
     return _row_to_subscription(row) if row is not None else None
 
@@ -153,18 +183,20 @@ def insert_subscription(
     config: FeedSubscriptionConfig | None = None,
 ) -> FeedSubscription:
     _ensure_schema()
+    uid = get_user_id()
     now = _now_iso()
     sub_id = str(uuid.uuid4())
     cfg = config or FeedSubscriptionConfig()
     with connect() as conn:
-        row = conn.execute("SELECT COALESCE(MAX(sort_order), -1) AS m FROM feed_subscriptions").fetchone()
+        row = conn.execute(f"SELECT COALESCE(MAX(sort_order), -1) AS m FROM feed_subscriptions WHERE {user_sql()}", (uid,)).fetchone()
         sort_order = int(row["m"] if row else -1) + 1
         conn.execute(
             "INSERT INTO feed_subscriptions("
-            "id, source_type, source_id, display_name, avatar_url, config_json, enabled, sort_order, created_at, updated_at"
-            ") VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
+            "id, user_id, source_type, source_id, display_name, avatar_url, config_json, enabled, sort_order, created_at, updated_at"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)",
             (
                 sub_id,
+                uid,
                 source_type,
                 source_id,
                 display_name,
@@ -176,8 +208,8 @@ def insert_subscription(
             ),
         )
         conn.execute(
-            "INSERT OR IGNORE INTO feed_cursors(subscription_id, last_video_ts, last_dynamic_id, last_error) VALUES (?, 0, '', '')",
-            (sub_id,),
+            "INSERT OR IGNORE INTO feed_cursors(subscription_id, user_id, last_video_ts, last_dynamic_id, last_error) VALUES (?, ?, 0, '', '')",
+            (sub_id, uid),
         )
     sub = get_subscription(sub_id)
     assert sub is not None
@@ -193,6 +225,7 @@ def update_subscription(
     enabled: bool | None = None,
 ) -> None:
     _ensure_schema()
+    uid = get_user_id()
     fields: list[str] = []
     values: list[Any] = []
     if display_name is not None:
@@ -211,27 +244,35 @@ def update_subscription(
         return
     fields.append("updated_at = ?")
     values.append(_now_iso())
-    values.append(subscription_id)
+    values.extend([uid, subscription_id])
     with connect() as conn:
         conn.execute(
-            f"UPDATE feed_subscriptions SET {', '.join(fields)} WHERE id = ?",
+            f"UPDATE feed_subscriptions SET {', '.join(fields)} WHERE {user_sql('id = ?')}",
             values,
         )
 
 
 def delete_subscription(subscription_id: str) -> None:
     _ensure_schema()
+    uid = get_user_id()
     with connect() as conn:
-        conn.execute("DELETE FROM feed_cursors WHERE subscription_id = ?", (subscription_id,))
-        conn.execute("DELETE FROM feed_subscriptions WHERE id = ?", (subscription_id,))
+        conn.execute(
+            f"DELETE FROM feed_cursors WHERE subscription_id = ? AND {user_sql()}",
+            (subscription_id, uid),
+        )
+        conn.execute(
+            f"DELETE FROM feed_subscriptions WHERE {user_sql('id = ?')}",
+            (uid, subscription_id),
+        )
 
 
 def get_cursor(subscription_id: str) -> dict[str, Any]:
     _ensure_schema()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            "SELECT last_video_ts, last_dynamic_id, last_ok_at, last_error FROM feed_cursors WHERE subscription_id = ?",
-            (subscription_id,),
+            f"SELECT last_video_ts, last_dynamic_id, last_ok_at, last_error FROM feed_cursors WHERE subscription_id = ? AND {user_sql()}",
+            (subscription_id, uid),
         ).fetchone()
     if row is None:
         return {
@@ -257,11 +298,12 @@ def update_cursor(
     last_error: str | None = None,
 ) -> None:
     _ensure_schema()
+    uid = get_user_id()
     cursor = get_cursor(subscription_id)
     with connect() as conn:
         conn.execute(
-            "INSERT INTO feed_cursors(subscription_id, last_video_ts, last_dynamic_id, last_ok_at, last_error) "
-            "VALUES (?, ?, ?, ?, ?) "
+            "INSERT INTO feed_cursors(subscription_id, user_id, last_video_ts, last_dynamic_id, last_ok_at, last_error) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(subscription_id) DO UPDATE SET "
             "last_video_ts = excluded.last_video_ts, "
             "last_dynamic_id = excluded.last_dynamic_id, "
@@ -269,6 +311,7 @@ def update_cursor(
             "last_error = excluded.last_error",
             (
                 subscription_id,
+                uid,
                 int(last_video_ts if last_video_ts is not None else cursor["last_video_ts"]),
                 str(last_dynamic_id if last_dynamic_id is not None else cursor["last_dynamic_id"]),
                 last_ok_at if last_ok_at is not None else cursor["last_ok_at"],
@@ -282,39 +325,47 @@ def insert_items_if_new(
     source_type: str,
     drafts: list[FeedItemDraft],
 ) -> list[FeedItem]:
+    """批量插入新条目（ON CONFLICT DO NOTHING），一次性返回新插入的条目。"""
     if not drafts:
         return []
     _ensure_schema()
     now = _now_iso()
+    item_ids = [str(uuid.uuid4()) for _ in drafts]
+    batch = [
+        (
+            item_ids[i],
+            subscription_id,
+            source_type,
+            draft.external_id,
+            draft.item_type,
+            draft.title,
+            draft.summary,
+            draft.url,
+            draft.author_name,
+            draft.published_at,
+            json.dumps(draft.payload, ensure_ascii=False),
+            now,
+        )
+        for i, draft in enumerate(drafts)
+    ]
     inserted: list[FeedItem] = []
     with connect() as conn:
-        for draft in drafts:
-            item_id = str(uuid.uuid4())
-            cursor = conn.execute(
-                "INSERT OR IGNORE INTO feed_items("
-                "id, subscription_id, source_type, external_id, item_type, title, summary, url, "
-                "author_name, published_at, payload_json, read_at, created_at"
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
-                (
-                    item_id,
-                    subscription_id,
-                    source_type,
-                    draft.external_id,
-                    draft.item_type,
-                    draft.title,
-                    draft.summary,
-                    draft.url,
-                    draft.author_name,
-                    draft.published_at,
-                    json.dumps(draft.payload, ensure_ascii=False),
-                    now,
-                ),
-            )
-            if cursor.rowcount <= 0:
-                continue
-            row = conn.execute("SELECT * FROM feed_items WHERE id = ?", (item_id,)).fetchone()
-            if row is not None:
-                inserted.append(_row_to_item(row))
+        conn.executemany(
+            "INSERT INTO feed_items("
+            "id, subscription_id, source_type, external_id, item_type, title, summary, url, "
+            "author_name, published_at, payload_json, read_at, created_at"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?) "
+            "ON CONFLICT(source_type, external_id) DO NOTHING",
+            batch,
+        )
+        # 批量回查新插入项
+        ext_ids = [d.external_id for d in drafts]
+        placeholders = ",".join("?" for _ in ext_ids)
+        rows = conn.execute(
+            f"SELECT * FROM feed_items WHERE source_type = ? AND external_id IN ({placeholders}) AND created_at = ?",
+            (source_type, *ext_ids, now),
+        ).fetchall()
+        inserted.extend(_row_to_item(row) for row in rows)
     return inserted
 
 
@@ -323,60 +374,70 @@ def upsert_items(
     source_type: str,
     drafts: list[FeedItemDraft],
 ) -> list[FeedItem]:
-    """插入或更新条目（保留 read_at）；返回本次新插入的条目。"""
+    """批量插入或更新条目（保留用户已读状态）；返回本次新插入的条目。"""
     if not drafts:
         return []
     _ensure_schema()
     now = _now_iso()
-    inserted: list[FeedItem] = []
+
     with connect() as conn:
+        # 批量查询已有条目
+        ext_ids = [d.external_id for d in drafts]
+        placeholders = ",".join("?" for _ in ext_ids)
+        existing_rows = conn.execute(
+            f"SELECT id, external_id FROM feed_items WHERE source_type = ? AND external_id IN ({placeholders})",
+            (source_type, *ext_ids),
+        ).fetchall()
+        existing_map: dict[str, str] = {str(r["external_id"]): str(r["id"]) for r in existing_rows}
+
+        # 更新已有
+        update_batch = []
         for draft in drafts:
-            existing = conn.execute(
-                "SELECT id FROM feed_items WHERE source_type = ? AND external_id = ?",
-                (source_type, draft.external_id),
-            ).fetchone()
-            if existing is not None:
-                conn.execute(
-                    "UPDATE feed_items SET item_type = ?, title = ?, summary = ?, url = ?, author_name = ?, published_at = ?, payload_json = ? WHERE id = ?",
-                    (
-                        draft.item_type,
-                        draft.title,
-                        draft.summary,
-                        draft.url,
-                        draft.author_name,
-                        draft.published_at,
-                        json.dumps(draft.payload, ensure_ascii=False),
-                        existing["id"],
-                    ),
-                )
-                continue
-            item_id = str(uuid.uuid4())
-            cursor = conn.execute(
-                "INSERT INTO feed_items("
-                "id, subscription_id, source_type, external_id, item_type, title, summary, url, "
-                "author_name, published_at, payload_json, read_at, created_at"
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
-                (
-                    item_id,
-                    subscription_id,
-                    source_type,
-                    draft.external_id,
-                    draft.item_type,
-                    draft.title,
-                    draft.summary,
-                    draft.url,
-                    draft.author_name,
-                    draft.published_at,
+            if draft.external_id in existing_map:
+                update_batch.append((
+                    draft.item_type, draft.title, draft.summary, draft.url,
+                    draft.author_name, draft.published_at,
                     json.dumps(draft.payload, ensure_ascii=False),
-                    now,
-                ),
+                    existing_map[draft.external_id],
+                ))
+        if update_batch:
+            conn.executemany(
+                "UPDATE feed_items SET item_type = ?, title = ?, summary = ?, url = ?, "
+                "author_name = ?, published_at = ?, payload_json = ? WHERE id = ?",
+                update_batch,
             )
-            if cursor.rowcount <= 0:
-                continue
-            row = conn.execute("SELECT * FROM feed_items WHERE id = ?", (item_id,)).fetchone()
-            if row is not None:
-                inserted.append(_row_to_item(row))
-    return inserted
+
+        # 插入新条目
+        new_drafts = [d for d in drafts if d.external_id not in existing_map]
+        if not new_drafts:
+            return []
+
+        item_ids = [str(uuid.uuid4()) for _ in new_drafts]
+        insert_batch = [
+            (
+                item_ids[i], subscription_id, source_type,
+                draft.external_id, draft.item_type, draft.title, draft.summary,
+                draft.url, draft.author_name, draft.published_at,
+                json.dumps(draft.payload, ensure_ascii=False), now,
+            )
+            for i, draft in enumerate(new_drafts)
+        ]
+        conn.executemany(
+            "INSERT INTO feed_items(id, subscription_id, source_type, external_id, "
+            "item_type, title, summary, url, author_name, published_at, "
+            "payload_json, read_at, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
+            insert_batch,
+        )
+
+        # 回查新插入项
+        new_ext_ids = [d.external_id for d in new_drafts]
+        new_placeholders = ",".join("?" for _ in new_ext_ids)
+        rows = conn.execute(
+            f"SELECT * FROM feed_items WHERE source_type = ? AND external_id IN ({new_placeholders}) AND created_at = ?",
+            (source_type, *new_ext_ids, now),
+        ).fetchall()
+        return [_row_to_item(row) for row in rows]
 
 
 def list_items(
@@ -386,19 +447,20 @@ def list_items(
     subscription_id: str | None = None,
 ) -> list[FeedItem]:
     _ensure_schema()
+    uid = get_user_id()
     limit = max(1, min(int(limit), 200))
     clauses: list[str] = []
-    params: list[Any] = []
+    params: list[Any] = [uid, uid]
     if unread_only:
-        clauses.append("read_at IS NULL")
+        clauses.append("fir.read_at IS NULL")
     if subscription_id:
-        clauses.append("subscription_id = ?")
+        clauses.append("fi.subscription_id = ?")
         params.append(subscription_id)
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     params.append(limit)
     with connect() as conn:
         rows = conn.execute(
-            f"SELECT * FROM feed_items {where} ORDER BY published_at DESC, created_at DESC LIMIT ?",
+            f"{_items_base_sql()} {where} ORDER BY fi.published_at DESC, fi.created_at DESC LIMIT ?",
             params,
         ).fetchall()
     return [_row_to_item(row) for row in rows]
@@ -406,52 +468,80 @@ def list_items(
 
 def count_unread(*, subscription_id: str | None = None) -> int:
     _ensure_schema()
+    uid = get_user_id()
+    clauses = ["fir.read_at IS NULL"]
+    params: list[Any] = [uid, uid]
     if subscription_id:
-        sql = "SELECT COUNT(*) AS c FROM feed_items WHERE read_at IS NULL AND subscription_id = ?"
-        params: tuple[Any, ...] = (subscription_id,)
-    else:
-        sql = "SELECT COUNT(*) AS c FROM feed_items WHERE read_at IS NULL"
-        params = ()
+        clauses.append("fi.subscription_id = ?")
+        params.append(subscription_id)
+    where = " AND ".join(clauses)
     with connect() as conn:
-        row = conn.execute(sql, params).fetchone()
+        row = conn.execute(
+            f"""
+            SELECT COUNT(*) AS c
+            FROM feed_items fi
+            INNER JOIN feed_subscriptions fs ON fs.id = fi.subscription_id AND fs.user_id = ?
+            LEFT JOIN feed_item_reads fir ON fir.item_id = fi.id AND fir.user_id = ?
+            WHERE {where}
+            """,
+            params,
+        ).fetchone()
     return int(row["c"] if row else 0)
 
 
 def mark_read(item_ids: list[str]) -> None:
+    """批量标记已读 —— 一次 executemany 代替 N 次 execute。"""
     if not item_ids:
         return
     _ensure_schema()
+    uid = get_user_id()
     now = _now_iso()
-    placeholders = ",".join("?" for _ in item_ids)
+    batch = [(uid, item_id, now) for item_id in item_ids]
     with connect() as conn:
-        conn.execute(
-            f"UPDATE feed_items SET read_at = ? WHERE id IN ({placeholders}) AND read_at IS NULL",
-            (now, *item_ids),
+        conn.executemany(
+            """
+            INSERT INTO feed_item_reads (user_id, item_id, read_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id, item_id) DO UPDATE SET read_at = excluded.read_at
+            """,
+            batch,
         )
 
 
 def mark_all_read(*, subscription_id: str | None = None) -> None:
+    """批量全部已读 —— INSERT ... SELECT 一次完成，无需应用层循环。"""
     _ensure_schema()
+    uid = get_user_id()
     now = _now_iso()
+    extra_clause = "AND fi.subscription_id = ?" if subscription_id else ""
+    params: list[Any] = [uid, now, uid, uid]
+    if subscription_id:
+        params.append(subscription_id)
     with connect() as conn:
-        if subscription_id:
-            conn.execute(
-                "UPDATE feed_items SET read_at = ? WHERE subscription_id = ? AND read_at IS NULL",
-                (now, subscription_id),
-            )
-        else:
-            conn.execute("UPDATE feed_items SET read_at = ? WHERE read_at IS NULL", (now,))
+        conn.execute(
+            f"""
+            INSERT INTO feed_item_reads (user_id, item_id, read_at)
+            SELECT ?, fi.id, ?
+            FROM feed_items fi
+            INNER JOIN feed_subscriptions fs ON fs.id = fi.subscription_id AND fs.user_id = ?
+            LEFT JOIN feed_item_reads fir ON fir.item_id = fi.id AND fir.user_id = ?
+            WHERE fir.read_at IS NULL {extra_clause}
+            ON CONFLICT(user_id, item_id) DO UPDATE SET read_at = excluded.read_at
+            """,
+            params,
+        )
 
 
 def mark_unread(item_ids: list[str]) -> None:
     if not item_ids:
         return
     _ensure_schema()
+    uid = get_user_id()
     placeholders = ",".join("?" for _ in item_ids)
     with connect() as conn:
         conn.execute(
-            f"UPDATE feed_items SET read_at = NULL WHERE id IN ({placeholders})",
-            item_ids,
+            f"DELETE FROM feed_item_reads WHERE user_id = ? AND item_id IN ({placeholders})",
+            (uid, *item_ids),
         )
 
 
@@ -459,22 +549,30 @@ def purge_old_items(*, retention_days: int = FEED_RETENTION_DAYS) -> int:
     _ensure_schema()
     cutoff = (datetime.now() - timedelta(days=max(1, retention_days))).isoformat(timespec="seconds")
     with connect() as conn:
+        old_ids = conn.execute("SELECT id FROM feed_items WHERE published_at < ?", (cutoff,)).fetchall()
+        if old_ids:
+            placeholders = ",".join("?" for _ in old_ids)
+            conn.execute(
+                f"DELETE FROM feed_item_reads WHERE item_id IN ({placeholders})",
+                tuple(row["id"] for row in old_ids),
+            )
         cursor = conn.execute("DELETE FROM feed_items WHERE published_at < ?", (cutoff,))
     return int(cursor.rowcount)
 
 
 def list_items_published_on(trade_date: str, *, subscription_id: str | None = None) -> list[FeedItem]:
     _ensure_schema()
+    uid = get_user_id()
     prefix = trade_date.strip()[:10]
-    clauses = ["published_at LIKE ?"]
-    params: list[Any] = [f"{prefix}%"]
+    clauses = ["fi.published_at LIKE ?"]
+    params: list[Any] = [uid, uid, f"{prefix}%"]
     if subscription_id:
-        clauses.append("subscription_id = ?")
+        clauses.append("fi.subscription_id = ?")
         params.append(subscription_id)
     where = " AND ".join(clauses)
     with connect() as conn:
         rows = conn.execute(
-            f"SELECT * FROM feed_items WHERE {where} ORDER BY published_at DESC",
+            f"{_items_base_sql()} WHERE {where} ORDER BY fi.published_at DESC",
             params,
         ).fetchall()
     return [_row_to_item(row) for row in rows]

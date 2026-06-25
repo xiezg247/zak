@@ -5,13 +5,11 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from vnpy_ashare.domain.symbols.stock import canonical_vt_symbol
 from vnpy_ashare.domain.trading.signal_snapshot import SignalSnapshot, signal_snapshot_to_dict
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
-from vnpy_common.paths import get_app_db_path
+from vnpy_ashare.storage.cache.db_session import cache_db_session
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS watchlist_signal_cache (
@@ -25,13 +23,8 @@ CREATE TABLE IF NOT EXISTS watchlist_signal_cache (
 """
 
 
-def _cache_db_path() -> Path:
-    return get_app_db_path().parent / "watchlist_signal_cache.db"
-
-
-def _connect(db_path: Path | None = None):
-    path = db_path or _cache_db_path()
-    return sqlite_cache_session(path, _SCHEMA)
+def _connect():
+    return cache_db_session(_SCHEMA)
 
 
 def snapshot_to_payload(snapshot: SignalSnapshot) -> str:
@@ -125,14 +118,51 @@ class WatchlistSignalDiskCache:
         config_key: str,
         bar_as_of_for: Callable[[str], str | None],
     ) -> dict[str, SignalSnapshot]:
-        loaded: dict[str, SignalSnapshot] = {}
+        key = str(config_key or "").strip()
+        if not key:
+            return {}
+
+        normalized: list[str] = []
+        seen: set[str] = set()
         for vt in vt_symbols:
+            canon = canonical_vt_symbol(str(vt or "").strip()) or str(vt or "").strip()
+            if not canon or canon in seen:
+                continue
+            seen.add(canon)
+            normalized.append(canon)
+        if not normalized:
+            return {}
+
+        placeholders = ", ".join("?" for _ in normalized)
+        with _connect() as conn:
+            rows = conn.execute(
+                f"""
+                SELECT vt_symbol, bar_as_of, payload, updated_at
+                FROM watchlist_signal_cache
+                WHERE config_key = ? AND vt_symbol IN ({placeholders})
+                """,
+                (key, *normalized),
+            ).fetchall()
+
+        by_vt: dict[str, list[dict[str, Any]]] = {}
+        for row in rows:
+            vt = str(row["vt_symbol"] or "").strip()
+            if vt:
+                by_vt.setdefault(vt, []).append(dict(row))
+
+        loaded: dict[str, SignalSnapshot] = {}
+        for vt in normalized:
             bar_as_of = bar_as_of_for(vt) or ""
-            snap = self.get(vt, config_key, bar_as_of)
-            if snap is None:
-                snap = self.get_latest(vt, config_key)
-            if snap is not None:
-                loaded[vt] = snap
+            candidates = by_vt.get(vt, [])
+            chosen = next((row for row in candidates if str(row.get("bar_as_of") or "") == bar_as_of), None)
+            if chosen is None and candidates:
+                chosen = max(candidates, key=lambda row: str(row.get("updated_at") or ""))
+            if chosen is None:
+                continue
+            try:
+                loaded[vt] = snapshot_from_payload(str(chosen["payload"]))
+            except (json.JSONDecodeError, TypeError, ValueError):
+                continue
         return loaded
 
     def put(

@@ -1,12 +1,8 @@
-"""选股运行历史落库（SQLite app_db）。
-
-UI 经 ScreeningService 访问，禁止页面直连。``config`` 含 trigger / recipe_id / read_at 等元数据。
-"""
+"""选股运行历史落库（PostgreSQL app schema）。"""
 
 from __future__ import annotations
 
 import json
-import sqlite3
 import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -15,13 +11,16 @@ from pydantic import Field, field_validator
 
 from vnpy_ashare.domain.screener.result_row import ScreenerResultRow, coerce_screener_result_rows, screener_rows_to_dicts
 from vnpy_ashare.domain.time.china import format_china_datetime
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
+from vnpy_ashare.storage.auth.scope import get_user_id
+from vnpy_ashare.storage.cache.db_session import app_db_session
+from vnpy_common.auth.scope import user_sql
 from vnpy_common.domain.base import MutableModel
-from vnpy_common.paths import get_app_db_path
+from vnpy_common.storage.compat import DbRow
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS screener_runs (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     condition TEXT NOT NULL,
     source TEXT NOT NULL,
     row_count INTEGER NOT NULL,
@@ -55,7 +54,7 @@ class ScreenerRunRecord(MutableModel):
 
 
 def _connect():
-    return sqlite_cache_session(get_app_db_path(), _SCHEMA)
+    return app_db_session(_SCHEMA)
 
 
 def _now() -> str:
@@ -77,14 +76,16 @@ def save_run(
     payload = json.dumps(screener_rows_to_dicts(normalized), ensure_ascii=False)
     config_payload = json.dumps(config or {}, ensure_ascii=False)
     with _connect() as conn:
+        uid = get_user_id()
         conn.execute(
             """
             INSERT INTO screener_runs
-            (id, condition, source, row_count, total_scanned, config_json, result_json, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (id, user_id, condition, source, row_count, total_scanned, config_json, result_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 run_id,
+                uid,
                 condition,
                 source,
                 len(normalized),
@@ -109,14 +110,16 @@ def save_run(
 def list_runs(*, limit: int = 20) -> list[ScreenerRunRecord]:
     """按创建时间倒序列出历史运行。"""
     with _connect() as conn:
+        uid = get_user_id()
         rows = conn.execute(
-            """
+            f"""
             SELECT id, condition, source, row_count, total_scanned, config_json, result_json, created_at
             FROM screener_runs
+            WHERE {user_sql()}
             ORDER BY created_at DESC
             LIMIT ?
             """,
-            (limit,),
+            (uid, limit),
         ).fetchall()
     return [_row_to_record(row) for row in rows]
 
@@ -124,12 +127,13 @@ def list_runs(*, limit: int = 20) -> list[ScreenerRunRecord]:
 def get_run(run_id: str) -> ScreenerRunRecord | None:
     """按 id 读取单次运行。"""
     with _connect() as conn:
+        uid = get_user_id()
         row = conn.execute(
-            """
+            f"""
             SELECT id, condition, source, row_count, total_scanned, config_json, result_json, created_at
-            FROM screener_runs WHERE id=?
+            FROM screener_runs WHERE {user_sql('id=?')}
             """,
-            (run_id,),
+            (uid, run_id),
         ).fetchone()
     if row is None:
         return None
@@ -184,7 +188,8 @@ def find_previous_run_by_condition(
 def delete_run(run_id: str) -> bool:
     """删除运行记录；成功返回 True。"""
     with _connect() as conn:
-        cursor = conn.execute("DELETE FROM screener_runs WHERE id=?", (run_id,))
+        uid = get_user_id()
+        cursor = conn.execute(f"DELETE FROM screener_runs WHERE {user_sql('id=?')}", (uid, run_id))
         return bool(cursor.rowcount > 0)
 
 
@@ -192,9 +197,10 @@ def update_run_config(run_id: str, config: dict[str, Any]) -> bool:
     """更新运行的 config_json（如标记 read_at）。"""
     payload = json.dumps(config, ensure_ascii=False)
     with _connect() as conn:
+        uid = get_user_id()
         cursor = conn.execute(
-            "UPDATE screener_runs SET config_json=? WHERE id=?",
-            (payload, run_id),
+            f"UPDATE screener_runs SET config_json=? WHERE {user_sql('id=?')}",
+            (payload, uid, run_id),
         )
         return bool(cursor.rowcount > 0)
 
@@ -232,7 +238,7 @@ def is_run_unread(config: dict[str, Any]) -> bool:
     return trigger.startswith("scheduled_") and not config.get("read_at")
 
 
-def _row_to_record(row: sqlite3.Row) -> ScreenerRunRecord:
+def _row_to_record(row: DbRow) -> ScreenerRunRecord:
     return ScreenerRunRecord(
         id=str(row["id"]),
         condition=str(row["condition"]),

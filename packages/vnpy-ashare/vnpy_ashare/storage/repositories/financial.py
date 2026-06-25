@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from datetime import datetime
 from typing import Any
+
+from vnpy_common.storage.compat import DbRow
 
 from pydantic import Field
 
@@ -202,7 +203,7 @@ def list_snapshots(ts_code: str, *, limit: int = 12) -> list[FinancialSnapshotRo
     return [_row_to_snapshot(row) for row in rows]
 
 
-def _row_to_snapshot(row: sqlite3.Row) -> FinancialSnapshotRow:
+def _row_to_snapshot(row: DbRow) -> FinancialSnapshotRow:
     def _opt(key: str) -> float | None:
         value = row[key]
         if value is None:

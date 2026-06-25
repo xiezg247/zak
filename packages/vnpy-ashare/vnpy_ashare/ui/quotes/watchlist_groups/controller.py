@@ -261,8 +261,6 @@ class WatchlistGroupController(QtCore.QObject):
         pool = list(getattr(page, "watchlist_pool_stocks", page.all_stocks))
         page.all_stocks = self.filter_stocks(pool)
         page.apply_filter()
-        if page.config.show_watchlist_multiview and page._multiview.is_multiview_active():
-            page._multiview.on_stock_list_loaded()
         page._update_action_buttons()
 
     def on_stock_list_loaded(self, stocks: list[StockItem]) -> None:

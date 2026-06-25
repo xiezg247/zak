@@ -8,7 +8,9 @@ import uuid
 from pydantic import Field
 
 from vnpy_ashare.domain.time.china import format_china_datetime
+from vnpy_ashare.storage.auth.scope import get_user_id
 from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_common.auth.scope import user_sql
 from vnpy_common.domain.base import FrozenModel
 
 _MAX_ROWS = 500
@@ -33,6 +35,7 @@ def append_notify_delivery_log(
     error: str = "",
 ) -> str:
     init_app_db()
+    uid = get_user_id()
     record_id = uuid.uuid4().hex
     created_at = format_china_datetime()
     payload_json = json.dumps(payload or {}, ensure_ascii=False)
@@ -40,36 +43,39 @@ def append_notify_delivery_log(
         conn.execute(
             """
             INSERT INTO notify_delivery_log(
-                id, event_type, channel, payload_json, status, error, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                id, user_id, event_type, channel, payload_json, status, error, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (record_id, event_type, channel, payload_json, status, error, created_at),
+            (record_id, uid, event_type, channel, payload_json, status, error, created_at),
         )
         conn.execute(
-            """
+            f"""
             DELETE FROM notify_delivery_log
-            WHERE id NOT IN (
+            WHERE {user_sql()} AND id NOT IN (
                 SELECT id FROM notify_delivery_log
+                WHERE {user_sql()}
                 ORDER BY created_at DESC
                 LIMIT ?
             )
             """,
-            (_MAX_ROWS,),
+            (uid, uid, _MAX_ROWS),
         )
     return record_id
 
 
 def load_recent_notify_delivery_logs(*, limit: int = 20) -> list[NotifyDeliveryRecord]:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT id, event_type, channel, payload_json, status, error, created_at
             FROM notify_delivery_log
+            WHERE {user_sql()}
             ORDER BY created_at DESC
             LIMIT ?
             """,
-            (max(1, limit),),
+            (uid, max(1, limit)),
         ).fetchall()
     return [
         NotifyDeliveryRecord(

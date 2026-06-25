@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import sqlite3
-from contextlib import contextmanager
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,20 +22,8 @@ class _FakeClient(BilibiliClient):
 
 
 @pytest.fixture()
-def feed_db(tmp_path, monkeypatch):
-    db_path = tmp_path / "feed.db"
-
-    @contextmanager
-    def _connect():
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-            conn.commit()
-        finally:
-            conn.close()
-
-    monkeypatch.setattr(feed_repo, "connect", _connect)
+def feed_db(pg_storage):
+    _ = pg_storage
     feed_repo._ensure_schema()
     yield
 

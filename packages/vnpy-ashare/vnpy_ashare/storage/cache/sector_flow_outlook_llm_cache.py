@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookDay,
@@ -12,8 +11,7 @@ from vnpy_ashare.domain.market.sector_flow import (
     SectorFlowOutlookSnapshot,
     SectorFlowRow,
 )
-from vnpy_ashare.storage.cache.sqlite_session import sqlite_cache_session
-from vnpy_common.paths import get_app_db_path
+from vnpy_ashare.storage.cache.db_session import cache_db_session
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS sector_flow_outlook_llm_cache (
@@ -29,13 +27,8 @@ CREATE TABLE IF NOT EXISTS sector_flow_outlook_llm_cache (
 """
 
 
-def _db_path() -> Path:
-    return cast(Path, get_app_db_path().parent / "sector_flow_outlook_llm_cache.db")
-
-
-def _connect(db_path: Path | None = None):
-    path = db_path or _db_path()
-    return sqlite_cache_session(path, _SCHEMA)
+def _connect():
+    return cache_db_session(_SCHEMA)
 
 
 def outlook_llm_cache_key(*, sector_kind: str, strategy_key: str, fingerprint: str) -> str:

@@ -12,32 +12,48 @@ from vnpy_ashare.quotes.radar.outlook_strategy_prefs import (
 
 
 class SectorFlowOutlookStrategyPrefsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._store: dict[tuple[str, str], str] = {}
+        self._load_patch = mock.patch(
+            "vnpy_ashare.quotes.radar.outlook_strategy_prefs.load_scalar_pref",
+            side_effect=self._load_scalar,
+        )
+        self._save_patch = mock.patch(
+            "vnpy_ashare.quotes.radar.outlook_strategy_prefs.save_scalar_pref",
+            side_effect=self._save_scalar,
+        )
+        self._load_patch.start()
+        self._save_patch.start()
+
+    def tearDown(self) -> None:
+        self._save_patch.stop()
+        self._load_patch.stop()
+
+    def _load_scalar(self, namespace: str, key: str, *, load_legacy, migrate_key: str = ""):
+        stored = self._store.get((namespace, key))
+        if stored is not None:
+            return stored
+        return load_legacy()
+
+    def _save_scalar(self, namespace: str, key: str, value: str) -> None:
+        self._store[(namespace, key)] = value
+
     def test_save_and_load_sector_flow_strategy(self) -> None:
-        with mock.patch("vnpy_ashare.quotes.radar.outlook_strategy_prefs.get_settings") as get_settings:
-            store: dict[str, str] = {}
-
-            class _Settings:
-                def value(self, key: str, default: str = "") -> str:
-                    return store.get(key, default)
-
-                def setValue(self, key: str, value: str) -> None:
-                    store[key] = value
-
-            get_settings.return_value = _Settings()
+        with mock.patch(
+            "vnpy_ashare.quotes.radar.outlook_strategy_prefs.OUTLOOK_STRATEGY_WHITELIST",
+            ("AshareDoubleMaStrategy",),
+        ):
             with mock.patch(
-                "vnpy_ashare.quotes.radar.outlook_strategy_prefs.OUTLOOK_STRATEGY_WHITELIST",
-                ("AshareDoubleMaStrategy",),
+                "vnpy_ashare.quotes.radar.outlook_strategy_prefs._WHITELIST_SET",
+                frozenset({"AshareDoubleMaStrategy"}),
             ):
-                with mock.patch(
-                    "vnpy_ashare.quotes.radar.outlook_strategy_prefs._WHITELIST_SET",
-                    frozenset({"AshareDoubleMaStrategy"}),
-                ):
-                    save_sector_flow_outlook_strategy_class("AshareDoubleMaStrategy")
-                    self.assertEqual(load_sector_flow_outlook_strategy_class(), "AshareDoubleMaStrategy")
+                save_sector_flow_outlook_strategy_class("AshareDoubleMaStrategy")
+                self.assertEqual(load_sector_flow_outlook_strategy_class(), "AshareDoubleMaStrategy")
 
     def test_fallback_to_radar_when_unset(self) -> None:
-        with mock.patch("vnpy_ashare.quotes.radar.outlook_strategy_prefs.get_settings") as get_settings:
-
+        with mock.patch(
+            "vnpy_ashare.quotes.radar.outlook_strategy_prefs.get_settings",
+        ) as get_settings:
             class _Settings:
                 def value(self, _key: str, default: str = "") -> str:
                     return default

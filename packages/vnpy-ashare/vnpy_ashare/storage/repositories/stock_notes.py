@@ -6,7 +6,9 @@ from datetime import datetime
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.storage.auth.scope import get_user_id
 from vnpy_ashare.storage.connection import connect, init_app_db
+from vnpy_common.auth.scope import user_sql
 
 ENTRY_MAX_BODY = 2000
 MEMO_MAX_BODY = 32000
@@ -25,10 +27,11 @@ def _clip_body(body: str, max_len: int) -> str:
 
 def load_memo(symbol: str, exchange: Exchange) -> dict[str, str] | None:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            "SELECT symbol, exchange, body, updated_at FROM stock_note_memos WHERE symbol = ? AND exchange = ?",
-            (symbol, exchange.name),
+            f"SELECT symbol, exchange, body, updated_at FROM stock_note_memos WHERE {user_sql('symbol = ? AND exchange = ?')}",
+            (uid, symbol, exchange.name),
         ).fetchone()
     if row is None:
         return None
@@ -44,14 +47,22 @@ def upsert_memo(symbol: str, exchange: Exchange, body: str) -> None:
     text = _clip_body(body, MEMO_MAX_BODY)
     now = _now_iso()
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
-        conn.execute(
-            "INSERT INTO stock_note_memos(symbol, exchange, body, updated_at) "
-            "VALUES (?, ?, ?, ?) "
-            "ON CONFLICT(symbol, exchange) DO UPDATE SET "
-            "body = excluded.body, updated_at = excluded.updated_at",
-            (symbol, exchange.name, text, now),
-        )
+        existing = conn.execute(
+            f"SELECT 1 FROM stock_note_memos WHERE {user_sql('symbol = ? AND exchange = ?')}",
+            (uid, symbol, exchange.name),
+        ).fetchone()
+        if existing is not None:
+            conn.execute(
+                f"UPDATE stock_note_memos SET body = ?, updated_at = ? WHERE {user_sql('symbol = ? AND exchange = ?')}",
+                (text, now, uid, symbol, exchange.name),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO stock_note_memos(user_id, symbol, exchange, body, updated_at) VALUES (?, ?, ?, ?, ?)",
+                (uid, symbol, exchange.name, text, now),
+            )
 
 
 def append_entry(symbol: str, exchange: Exchange, body: str) -> dict[str, str | int] | None:
@@ -60,13 +71,16 @@ def append_entry(symbol: str, exchange: Exchange, body: str) -> dict[str, str | 
         return None
     now = _now_iso()
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
-        cursor = conn.execute(
-            "INSERT INTO stock_note_entries(symbol, exchange, body, created_at) VALUES (?, ?, ?, ?)",
-            (symbol, exchange.name, text, now),
-        )
+        row = conn.execute(
+            "INSERT INTO stock_note_entries(user_id, symbol, exchange, body, created_at) VALUES (?, ?, ?, ?, ?) RETURNING id",
+            (uid, symbol, exchange.name, text, now),
+        ).fetchone()
+        if row is None:
+            return None
         return {
-            "id": int(cursor.lastrowid),
+            "id": int(row["id"]),
             "symbol": symbol,
             "exchange": exchange.name,
             "body": text,
@@ -77,10 +91,11 @@ def append_entry(symbol: str, exchange: Exchange, body: str) -> dict[str, str | 
 def list_entries(symbol: str, exchange: Exchange, limit: int = 50) -> list[dict[str, str | int]]:
     limit = max(1, min(int(limit), 200))
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         rows = conn.execute(
-            "SELECT id, symbol, exchange, body, created_at FROM stock_note_entries WHERE symbol = ? AND exchange = ? ORDER BY created_at DESC, id DESC LIMIT ?",
-            (symbol, exchange.name, limit),
+            f"SELECT id, symbol, exchange, body, created_at FROM stock_note_entries WHERE {user_sql('symbol = ? AND exchange = ?')} ORDER BY created_at DESC, id DESC LIMIT ?",
+            (uid, symbol, exchange.name, limit),
         ).fetchall()
     return [
         {
@@ -96,17 +111,19 @@ def list_entries(symbol: str, exchange: Exchange, limit: int = 50) -> list[dict[
 
 def delete_entry(entry_id: int) -> bool:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
-        cursor = conn.execute("DELETE FROM stock_note_entries WHERE id = ?", (int(entry_id),))
+        cursor = conn.execute(f"DELETE FROM stock_note_entries WHERE {user_sql('id = ?')}", (uid, int(entry_id),))
     return bool(cursor.rowcount > 0)
 
 
 def get_entry(entry_id: int) -> dict[str, str | int] | None:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            "SELECT id, symbol, exchange, body, created_at FROM stock_note_entries WHERE id = ?",
-            (int(entry_id),),
+            f"SELECT id, symbol, exchange, body, created_at FROM stock_note_entries WHERE {user_sql('id = ?')}",
+            (uid, int(entry_id),),
         ).fetchone()
     if row is None:
         return None
@@ -121,14 +138,15 @@ def get_entry(entry_id: int) -> dict[str, str | int] | None:
 
 def clear_notes_for_symbol(symbol: str, exchange: Exchange) -> dict[str, int]:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         memo_cursor = conn.execute(
-            "DELETE FROM stock_note_memos WHERE symbol = ? AND exchange = ?",
-            (symbol, exchange.name),
+            f"DELETE FROM stock_note_memos WHERE {user_sql('symbol = ? AND exchange = ?')}",
+            (uid, symbol, exchange.name),
         )
         entry_cursor = conn.execute(
-            "DELETE FROM stock_note_entries WHERE symbol = ? AND exchange = ?",
-            (symbol, exchange.name),
+            f"DELETE FROM stock_note_entries WHERE {user_sql('symbol = ? AND exchange = ?')}",
+            (uid, symbol, exchange.name),
         )
     return {
         "memos": int(memo_cursor.rowcount),
@@ -138,16 +156,18 @@ def clear_notes_for_symbol(symbol: str, exchange: Exchange) -> dict[str, int]:
 
 def list_symbols_with_notes() -> list[tuple[str, str]]:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         rows = conn.execute(
-            """
-            SELECT symbol, exchange FROM stock_note_memos WHERE TRIM(body) != ''
+            f"""
+            SELECT symbol, exchange FROM stock_note_memos WHERE {user_sql("TRIM(body) != ''")}
             UNION
-            SELECT symbol, exchange FROM stock_note_entries
+            SELECT symbol, exchange FROM stock_note_entries WHERE {user_sql()}
             UNION
-            SELECT symbol, exchange FROM stock_analysis_reports
+            SELECT symbol, exchange FROM stock_analysis_reports WHERE {user_sql()}
             ORDER BY symbol, exchange
-            """
+            """,
+            (uid, uid, uid),
         ).fetchall()
     return [(row["symbol"], row["exchange"]) for row in rows]
 
@@ -155,15 +175,16 @@ def list_symbols_with_notes() -> list[tuple[str, str]]:
 def list_note_index_rows() -> list[dict[str, str | int]]:
     """按标的聚合备忘与流水数量，供笔记中心列表使用。"""
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         rows = conn.execute(
-            """
+            f"""
             WITH symbols AS (
-                SELECT symbol, exchange FROM stock_note_memos WHERE TRIM(body) != ''
+                SELECT symbol, exchange FROM stock_note_memos WHERE {user_sql("TRIM(body) != ''")}
                 UNION
-                SELECT symbol, exchange FROM stock_note_entries
+                SELECT symbol, exchange FROM stock_note_entries WHERE {user_sql()}
                 UNION
-                SELECT symbol, exchange FROM stock_analysis_reports
+                SELECT symbol, exchange FROM stock_analysis_reports WHERE {user_sql()}
             )
             SELECT
                 s.symbol,
@@ -173,28 +194,29 @@ def list_note_index_rows() -> list[dict[str, str | int]]:
                 (
                     SELECT COUNT(*)
                     FROM stock_note_entries e
-                    WHERE e.symbol = s.symbol AND e.exchange = s.exchange
+                    WHERE e.user_id = ? AND e.symbol = s.symbol AND e.exchange = s.exchange
                 ) AS entry_count,
                 (
                     SELECT MAX(created_at)
                     FROM stock_note_entries e
-                    WHERE e.symbol = s.symbol AND e.exchange = s.exchange
+                    WHERE e.user_id = ? AND e.symbol = s.symbol AND e.exchange = s.exchange
                 ) AS latest_entry_at,
                 (
                     SELECT COUNT(*)
                     FROM stock_analysis_reports r
-                    WHERE r.symbol = s.symbol AND r.exchange = s.exchange
+                    WHERE r.user_id = ? AND r.symbol = s.symbol AND r.exchange = s.exchange
                 ) AS report_count,
                 (
                     SELECT MAX(created_at)
                     FROM stock_analysis_reports r
-                    WHERE r.symbol = s.symbol AND r.exchange = s.exchange
+                    WHERE r.user_id = ? AND r.symbol = s.symbol AND r.exchange = s.exchange
                 ) AS latest_report_at
             FROM symbols s
             LEFT JOIN stock_note_memos m
-                ON m.symbol = s.symbol AND m.exchange = s.exchange
+                ON m.user_id = ? AND m.symbol = s.symbol AND m.exchange = s.exchange
             ORDER BY s.symbol, s.exchange
-            """
+            """,
+            (uid, uid, uid, uid, uid, uid, uid, uid),
         ).fetchall()
     result: list[dict[str, str | int]] = []
     for row in rows:

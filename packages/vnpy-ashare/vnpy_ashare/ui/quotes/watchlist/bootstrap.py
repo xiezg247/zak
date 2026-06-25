@@ -33,12 +33,13 @@ class WatchlistBootstrapCoordinator:
             page.load_stock_list()
             return
 
-        pool = page._watchlist._pool_from_service()
-        fingerprint = self.pool_fingerprint(pool)
-        if self._last_pool_fingerprint is not None and fingerprint == self._last_pool_fingerprint and page.display_stocks:
-            self._sync_display_only(page, pool)
-            self.schedule_downstream(page, reason="tab_resume")
-            return
+        if page.display_stocks and self._last_pool_fingerprint is not None:
+            pool = page._watchlist._pool_from_service()
+            fingerprint = self.pool_fingerprint(pool)
+            if fingerprint == self._last_pool_fingerprint:
+                self._sync_display_only(page, pool)
+                self.schedule_downstream(page, reason="tab_resume")
+                return
 
         page.load_stock_list()
 
@@ -115,21 +116,29 @@ class WatchlistBootstrapCoordinator:
         preset = load_watchlist_layout_preset()
 
         if preset == "intraday":
-            self._schedule_signals(page)
+            self._schedule_signals(page, delay_ms=0)
             self._render_positions_only(page)
         else:
-            self._schedule_positions(page)
-            QtCore.QTimer.singleShot(100, lambda: self._schedule_signals(page))
+            self._schedule_positions(page, delay_ms=0)
+            self._schedule_signals(page, delay_ms=100)
 
         self._schedule_multiview(page, preset=preset)
 
-    def _schedule_signals(self, page: WatchlistHost) -> None:
-        if page.config.show_watchlist_signals:
-            page._signals.on_stock_list_loaded()
+    def _schedule_signals(self, page: WatchlistHost, *, delay_ms: int = 0) -> None:
+        if not page.config.show_watchlist_signals:
+            return
+        QtCore.QTimer.singleShot(
+            delay_ms,
+            lambda: page._signals.on_stock_list_loaded() if page._active else None,
+        )
 
-    def _schedule_positions(self, page: WatchlistHost) -> None:
-        if page.config.show_watchlist_positions:
-            page._positions.on_stock_list_loaded()
+    def _schedule_positions(self, page: WatchlistHost, *, delay_ms: int = 0) -> None:
+        if not page.config.show_watchlist_positions:
+            return
+        QtCore.QTimer.singleShot(
+            delay_ms,
+            lambda: page._positions.on_stock_list_loaded() if page._active else None,
+        )
 
     @staticmethod
     def _render_positions_only(page: WatchlistHost) -> None:
@@ -147,8 +156,7 @@ class WatchlistBootstrapCoordinator:
         if preset == "review" and not page._multiview.is_multiview_active():
             return
 
-        def _load() -> None:
-            if page._active:
-                page._multiview.on_stock_list_loaded()
-
-        _load()
+        QtCore.QTimer.singleShot(
+            0,
+            lambda: page._multiview.on_stock_list_loaded() if page._active else None,
+        )

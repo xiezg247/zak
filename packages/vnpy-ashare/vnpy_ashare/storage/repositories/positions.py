@@ -7,8 +7,10 @@ from typing import Literal
 
 from vnpy.trader.constant import Exchange
 
+from vnpy_ashare.storage.auth.scope import get_user_id
 from vnpy_ashare.storage.connection import connect, init_app_db
 from vnpy_ashare.storage.repositories.watchlist import watchlist_contains
+from vnpy_common.auth.scope import user_sql
 
 POSITION_MAX_ITEMS = 20
 
@@ -37,31 +39,37 @@ def _row_to_position(row) -> dict[str, str | float | int | None]:
 
 def load_position_rows() -> list[dict[str, str | float | int | None]]:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         rows = conn.execute(
-            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at "
-            "FROM watchlist_positions ORDER BY sort_order, symbol"
+            f"""
+            SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at
+            FROM watchlist_positions WHERE {user_sql()} ORDER BY sort_order, symbol
+            """,
+            (uid,),
         ).fetchall()
     return [_row_to_position(row) for row in rows]
 
 
 def load_position_row(symbol: str, exchange: Exchange) -> dict[str, str | float | int | None] | None:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at
-            FROM watchlist_positions WHERE symbol = ? AND exchange = ?
+            FROM watchlist_positions WHERE {user_sql("symbol = ? AND exchange = ?")}
             """,
-            (symbol, exchange.name),
+            (uid, symbol, exchange.name),
         ).fetchone()
     return _row_to_position(row) if row is not None else None
 
 
 def position_item_count() -> int:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
-        return int(conn.execute("SELECT COUNT(*) FROM watchlist_positions").fetchone()[0])
+        return int(conn.execute(f"SELECT COUNT(*) FROM watchlist_positions WHERE {user_sql()}", (uid,)).fetchone()[0])
 
 
 def position_at_capacity() -> bool:
@@ -70,10 +78,11 @@ def position_at_capacity() -> bool:
 
 def position_contains(symbol: str, exchange: Exchange) -> bool:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         row = conn.execute(
-            "SELECT 1 FROM watchlist_positions WHERE symbol = ? AND exchange = ?",
-            (symbol, exchange.name),
+            f"SELECT 1 FROM watchlist_positions WHERE {user_sql('symbol = ? AND exchange = ?')}",
+            (uid, symbol, exchange.name),
         ).fetchone()
     return row is not None
 
@@ -105,12 +114,13 @@ def add_position_item(
         return False
     now = _now_iso()
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
-        sort_order = conn.execute("SELECT COUNT(*) FROM watchlist_positions").fetchone()[0]
+        sort_order = conn.execute(f"SELECT COUNT(*) FROM watchlist_positions WHERE {user_sql()}", (uid,)).fetchone()[0]
         conn.execute(
-            "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (symbol, exchange.name, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, now, now),
+            "INSERT INTO watchlist_positions(user_id, symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (uid, symbol, exchange.name, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, now, now),
         )
     return True
 
@@ -131,21 +141,23 @@ def update_position_item(
         return False
     now = _now_iso()
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         cursor = conn.execute(
-            "UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, plan_pct = ?, updated_at = ? WHERE symbol = ? AND exchange = ?",
-            (cost_price, volume, buy_date, notes, plan_pct, now, symbol, exchange.name),
+            f"UPDATE watchlist_positions SET cost_price = ?, volume = ?, buy_date = ?, notes = ?, plan_pct = ?, updated_at = ? WHERE {user_sql('symbol = ? AND exchange = ?')}",
+            (cost_price, volume, buy_date, notes, plan_pct, now, uid, symbol, exchange.name),
         )
         return bool(cursor.rowcount > 0)
 
 
-def _rewrite_position_order(conn, rows) -> None:
-    conn.execute("DELETE FROM watchlist_positions")
+def _rewrite_position_order(conn, uid: str, rows) -> None:
+    conn.execute(f"DELETE FROM watchlist_positions WHERE {user_sql()}", (uid,))
     for index, row in enumerate(rows):
         conn.execute(
-            "INSERT INTO watchlist_positions(symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO watchlist_positions(user_id, symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
+                uid,
                 row["symbol"],
                 row["exchange"],
                 row["cost_price"],
@@ -163,22 +175,27 @@ def _rewrite_position_order(conn, rows) -> None:
 
 def remove_position_item(symbol: str, exchange: Exchange) -> bool:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
         cursor = conn.execute(
-            "DELETE FROM watchlist_positions WHERE symbol = ? AND exchange = ?",
-            (symbol, exchange.name),
+            f"DELETE FROM watchlist_positions WHERE {user_sql('symbol = ? AND exchange = ?')}",
+            (uid, symbol, exchange.name),
         )
         if cursor.rowcount == 0:
             return False
         rows = conn.execute(
-            "SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at "
-            "FROM watchlist_positions ORDER BY sort_order, symbol"
+            f"""
+            SELECT symbol, exchange, cost_price, volume, buy_date, notes, source, plan_pct, sort_order, created_at, updated_at
+            FROM watchlist_positions WHERE {user_sql()} ORDER BY sort_order, symbol
+            """,
+            (uid,),
         ).fetchall()
-        _rewrite_position_order(conn, rows)
+        _rewrite_position_order(conn, uid, rows)
     return True
 
 
 def clear_positions() -> None:
     init_app_db()
+    uid = get_user_id()
     with connect() as conn:
-        conn.execute("DELETE FROM watchlist_positions")
+        conn.execute(f"DELETE FROM watchlist_positions WHERE {user_sql()}", (uid,))

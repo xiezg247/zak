@@ -1,4 +1,4 @@
-"""自选页持仓策略区配置（QSettings 持久化）。"""
+"""自选页持仓策略区配置。"""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from pydantic import Field
 
 from strategies.signals import list_supported_signal_strategies
 from vnpy_ashare.config.preferences._settings import coerce_settings_bool, coerce_settings_int, get_settings
+from vnpy_ashare.config.preferences._user_pref import load_json_pref, load_model_pref, save_json_pref, save_model_pref
 from vnpy_ashare.config.preferences.watchlist_signal import (
     DEFAULT_CLASS,
     DEFAULT_FAST,
@@ -22,6 +23,18 @@ POSITION_FAST_KEY = "watchlist/position_panel/fast_window"
 POSITION_SLOW_KEY = "watchlist/position_panel/slow_window"
 POSITION_PANEL_DEFAULT_HEIGHT = 220
 POSITION_PANEL_COLLAPSED_HEIGHT = 32
+
+_PREF_NAMESPACE = "watchlist"
+_PREF_KEY_CONFIG = "position_config"
+_PREF_KEY_PANEL = "position_panel"
+
+_MIGRATE_CONFIG_KEYS = (
+    POSITION_FOLLOW_SIGNAL_KEY,
+    POSITION_STRATEGY_KEY,
+    POSITION_FAST_KEY,
+    POSITION_SLOW_KEY,
+)
+_MIGRATE_PANEL_KEYS = (POSITION_PANEL_ENABLED_KEY, POSITION_PANEL_EXPANDED_KEY)
 
 
 class WatchlistPositionConfig(FrozenModel):
@@ -55,27 +68,48 @@ class WatchlistPositionConfig(FrozenModel):
         ).normalized()
 
 
-def load_position_panel_enabled() -> bool:
+def _load_panel_from_qsettings() -> dict[str, bool]:
     settings = get_settings()
-    return coerce_settings_bool(settings.value(POSITION_PANEL_ENABLED_KEY), default=True)
+    return {
+        "enabled": coerce_settings_bool(settings.value(POSITION_PANEL_ENABLED_KEY), default=True),
+        "expanded": coerce_settings_bool(settings.value(POSITION_PANEL_EXPANDED_KEY), default=True),
+    }
+
+
+def _load_panel_state() -> dict[str, bool]:
+    return load_json_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_PANEL,
+        load_legacy=_load_panel_from_qsettings,
+        migrate_keys=_MIGRATE_PANEL_KEYS,
+    )
+
+
+def _save_panel_state(state: dict[str, bool]) -> None:
+    save_json_pref(_PREF_NAMESPACE, _PREF_KEY_PANEL, state)
+
+
+def load_position_panel_enabled() -> bool:
+    return bool(_load_panel_state().get("enabled", True))
 
 
 def save_position_panel_enabled(enabled: bool) -> None:
-    settings = get_settings()
-    settings.setValue(POSITION_PANEL_ENABLED_KEY, enabled)
+    state = dict(_load_panel_state())
+    state["enabled"] = enabled
+    _save_panel_state(state)
 
 
 def load_position_panel_expanded() -> bool:
-    settings = get_settings()
-    return coerce_settings_bool(settings.value(POSITION_PANEL_EXPANDED_KEY), default=True)
+    return bool(_load_panel_state().get("expanded", True))
 
 
 def save_position_panel_expanded(expanded: bool) -> None:
-    settings = get_settings()
-    settings.setValue(POSITION_PANEL_EXPANDED_KEY, expanded)
+    state = dict(_load_panel_state())
+    state["expanded"] = expanded
+    _save_panel_state(state)
 
 
-def load_watchlist_position_config() -> WatchlistPositionConfig:
+def _load_position_config_from_qsettings() -> WatchlistPositionConfig:
     settings = get_settings()
     follow = coerce_settings_bool(settings.value(POSITION_FOLLOW_SIGNAL_KEY), default=True)
     raw_class = settings.value(POSITION_STRATEGY_KEY, DEFAULT_CLASS)
@@ -91,10 +125,16 @@ def load_watchlist_position_config() -> WatchlistPositionConfig:
     ).normalized()
 
 
+def load_watchlist_position_config() -> WatchlistPositionConfig:
+    item = load_model_pref(
+        _PREF_NAMESPACE,
+        _PREF_KEY_CONFIG,
+        WatchlistPositionConfig,
+        load_legacy=_load_position_config_from_qsettings,
+        migrate_keys=_MIGRATE_CONFIG_KEYS,
+    )
+    return item.normalized()
+
+
 def save_watchlist_position_config(config: WatchlistPositionConfig) -> None:
-    item = config.normalized()
-    settings = get_settings()
-    settings.setValue(POSITION_FOLLOW_SIGNAL_KEY, item.follow_signal)
-    settings.setValue(POSITION_STRATEGY_KEY, item.class_name)
-    settings.setValue(POSITION_FAST_KEY, item.fast_window)
-    settings.setValue(POSITION_SLOW_KEY, item.slow_window)
+    save_model_pref(_PREF_NAMESPACE, _PREF_KEY_CONFIG, config.normalized())

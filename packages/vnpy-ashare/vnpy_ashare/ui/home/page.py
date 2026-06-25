@@ -18,7 +18,6 @@ from vnpy_ashare.services.trading_playbook import (
     render_section_markdown,
 )
 from vnpy_ashare.ui.home.discipline_section import PlaybookDisciplineCard
-from vnpy_ashare.ui.home.editor_dialog import edit_playbook_section_dialog
 from vnpy_ashare.ui.home.section_view import PlaybookSectionCard
 from vnpy_ashare.ui.home.status_strip import HomePlaybookStatusStrip
 from vnpy_ashare.ui.quotes.market_overview.emotion_cycle_worker import EmotionCycleLoadWorker
@@ -176,13 +175,11 @@ class HomePageWidget(QtWidgets.QWidget):
             view: QtWidgets.QWidget
             if section.section_id == "discipline":
                 discipline_view = PlaybookDisciplineCard(self._cards_container)
-                discipline_view.edit_requested.connect(self._on_edit_section)
                 discipline_view.checklist_changed.connect(self._on_discipline_changed)
                 discipline_view.discipline_ai_requested.connect(self._on_discipline_ai)
                 view = discipline_view
             else:
                 section_view = PlaybookSectionCard(self._cards_container)
-                section_view.edit_requested.connect(self._on_edit_section)
                 view = section_view
             self._card_views[section.section_id] = view
             row, col, rspan, cspan = _CARD_LAYOUT.get(section.section_id, (0, 0, 1, 1))
@@ -215,25 +212,3 @@ class HomePageWidget(QtWidgets.QWidget):
                 ),
             ),
         )
-
-    def _on_edit_section(self, section_id: str) -> None:
-        section = self._sections.get(section_id)
-        if section is None:
-            return
-        edited = edit_playbook_section_dialog(
-            section_id=section_id,
-            title=section.title,
-            body_md=section.body_md,
-            parent=self,
-        )
-        if edited is None:
-            return
-        updated = PlaybookSection(
-            section_id=section.section_id,
-            title=section.title,
-            body_md=edited,
-            collapsed=section.collapsed,
-            sort_order=section.sort_order,
-        )
-        self._sections[section_id] = updated
-        self._apply_card(updated)
